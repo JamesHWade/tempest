@@ -1,0 +1,231 @@
+test_that("storm_type_personas returns valid ellmer type", {
+  skip_if_not_installed("ellmer")
+
+  type <- stormr:::storm_type_personas()
+  expect_true(!is.null(type))
+})
+
+test_that("storm_format_persona_details formats correctly", {
+  persona <- list(
+    name = "Dr. Sarah Chen",
+    title = "Climate Scientist",
+    affiliation = "Arctic Research Institute",
+    background = "20 years studying polar ice dynamics.",
+    focus_areas = c("Ice sheet modeling", "Sea level rise"),
+    perspective = "Physical science perspective on climate change"
+  )
+
+  details <- stormr:::storm_format_persona_details(persona)
+
+  expect_true(grepl("Arctic Research Institute", details))
+  expect_true(grepl("20 years", details))
+  expect_true(grepl("Ice sheet modeling", details))
+  expect_true(grepl("Physical science", details))
+})
+
+test_that("storm_format_persona_details handles missing fields", {
+  persona <- list(
+    name = "Dr. Sarah Chen",
+    title = "Climate Scientist"
+  )
+
+  details <- stormr:::storm_format_persona_details(persona)
+  expect_true(is.character(details))
+  expect_equal(details, "")  # No fields to format
+})
+
+test_that("storm_render_expert_prompt creates prompt with persona", {
+  persona <- list(
+    name = "Dr. Sarah Chen",
+    title = "Climate Scientist",
+    affiliation = "Arctic Research Institute",
+    background = "20 years studying polar ice dynamics.",
+    focus_areas = c("Ice sheet modeling", "Sea level rise"),
+    perspective = "Physical science perspective on climate change"
+  )
+
+  prompt <- stormr:::storm_render_expert_prompt(persona = persona, expert_id = 1)
+
+  expect_true(grepl("Dr. Sarah Chen", prompt))
+  expect_true(grepl("Climate Scientist", prompt))
+  expect_true(grepl("Arctic Research Institute", prompt))
+})
+
+test_that("storm_render_expert_prompt creates fallback for NULL persona", {
+  prompt <- stormr:::storm_render_expert_prompt(persona = NULL, expert_id = 3)
+
+  expect_true(grepl("Expert 3", prompt))
+  expect_true(grepl("Research Specialist", prompt))
+})
+
+test_that("CoStormSession stores personas", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
+    "No API key available"
+  )
+
+  # Create session with mock personas to avoid API call
+  mock_personas <- list(
+    list(
+      id = 1,
+      name = "Dr. Alice Smith",
+      title = "Computer Scientist",
+      affiliation = "Tech University",
+      background = "Expert in algorithms",
+      focus_areas = c("Machine learning"),
+      perspective = "Technical perspective"
+    ),
+    list(
+      id = 2,
+      name = "Prof. Bob Jones",
+      title = "Ethicist",
+      affiliation = "Philosophy Department",
+      background = "Expert in AI ethics",
+      focus_areas = c("AI ethics"),
+      perspective = "Ethical perspective"
+    )
+  )
+
+  cfg <- storm_config()
+  session <- costorm_session(
+    topic = "AI in healthcare",
+    config = cfg,
+    n_experts = 2,
+    personas = mock_personas
+  )
+
+  expect_equal(length(session$personas), 2)
+  expect_equal(session$personas[[1]]$name, "Dr. Alice Smith")
+  expect_equal(session$personas[[2]]$name, "Prof. Bob Jones")
+})
+
+test_that("CoStormSession get_persona_names returns names", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
+    "No API key available"
+  )
+
+  mock_personas <- list(
+    list(id = 1, name = "Dr. Alice Smith", title = "Scientist"),
+    list(id = 2, name = "Prof. Bob Jones", title = "Ethicist")
+  )
+
+  cfg <- storm_config()
+  session <- costorm_session(
+    topic = "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
+
+  names <- session$get_persona_names()
+  expect_equal(names, c("Dr. Alice Smith", "Prof. Bob Jones"))
+})
+
+test_that("CoStormSession find_expert_index matches names", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
+    "No API key available"
+  )
+
+  mock_personas <- list(
+    list(id = 1, name = "Dr. Alice Smith", title = "Scientist"),
+    list(id = 2, name = "Prof. Bob Jones", title = "Ethicist")
+  )
+
+  cfg <- storm_config()
+  session <- costorm_session(
+    topic = "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
+
+  # Exact match
+ expect_equal(session$find_expert_index("Dr. Alice Smith"), 1)
+  expect_equal(session$find_expert_index("Prof. Bob Jones"), 2)
+
+  # Case-insensitive
+  expect_equal(session$find_expert_index("dr. alice smith"), 1)
+
+  # First word match (handles titles like Dr., Prof.)
+  expect_equal(session$find_expert_index("Dr."), 1)
+  expect_equal(session$find_expert_index("Prof."), 2)
+
+  # Legacy format
+  expect_equal(session$find_expert_index("expert_1"), 1)
+  expect_equal(session$find_expert_index("expert_2"), 2)
+
+  # Not found
+  expect_null(session$find_expert_index("Unknown Person"))
+})
+
+test_that("CoStormSession has expert_session_manager", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
+    "No API key available"
+  )
+
+  mock_personas <- list(
+    list(id = 1, name = "Dr. Alice Smith", title = "Scientist", perspective = "Technical")
+  )
+
+  cfg <- storm_config()
+  session <- costorm_session(
+    topic = "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
+
+  # Session has an expert_session_manager
+  expect_true(inherits(session$expert_session_manager, "ExpertSessionManager"))
+})
+
+test_that("ExpertSessionManager generates session IDs", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
+    "No API key available"
+  )
+
+  cfg <- storm_config()
+  store <- stormr:::SourceStore$new()
+  retriever <- stormr:::storm_retriever(config = cfg, store = store)
+  mgr <- stormr:::ExpertSessionManager$new(cfg, retriever)
+
+  # Generate a session ID
+  sid <- mgr$generate_session_id("Dr. Sarah Chen")
+  expect_true(is.character(sid))
+  expect_true(grepl("^dr-sarah-chen-", sid))
+})
+
+test_that("storm_create_expert_tool creates valid ellmer tool", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
+    "No API key available"
+  )
+
+  persona <- list(
+    id = 1,
+    name = "Dr. Sarah Chen",
+    title = "Climate Scientist",
+    perspective = "Physical science perspective"
+  )
+
+  cfg <- storm_config()
+  store <- stormr:::SourceStore$new()
+  retriever <- stormr:::storm_retriever(config = cfg, store = store)
+  mgr <- stormr:::ExpertSessionManager$new(cfg, retriever)
+
+  tool <- stormr:::storm_create_expert_tool(persona, mgr, "Climate change")
+
+  # Tool should have the expected name (ellmer tools are S7 objects, use @)
+  expect_equal(tool@name, "ask_dr_sarah_chen")
+
+  # Tool should have a description mentioning the persona
+  expect_true(grepl("Dr. Sarah Chen", tool@description))
+  expect_true(grepl("Climate Scientist", tool@description))
+})

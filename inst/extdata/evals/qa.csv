@@ -1,0 +1,11 @@
+input,target
+"What is the difference between precision and recall in information retrieval?","Precision is the fraction of retrieved items that are relevant; recall is the fraction of relevant items that are retrieved."
+"What is overfitting in machine learning, and how can it be mitigated?","Overfitting is when a model fits noise in training data and generalizes poorly; mitigate with regularization, cross-validation, early stopping, simpler models, more data, etc."
+"What is the pH of pure water at 25°C under standard conditions?","Approximately pH 7 (neutral) at 25°C; note temperature dependence."
+"Define a confidence interval and interpret a 95% confidence interval.","A range of values for a parameter constructed from data; under repeated sampling 95% of such intervals would contain the true parameter."
+"What is the difference between an R package's Imports and Suggests fields?","Imports are required dependencies loaded when the package loads; Suggests are optional used for examples/tests/vignettes and not required for core functionality."
+"What is an R6 class in R and why might it be used?","R6 provides reference semantics (mutable objects) and encapsulated methods/fields; useful for stateful objects like sessions/clients."
+"What is a Shiny module?","A reusable UI + server component pattern in Shiny using moduleServer and namespaced IDs."
+"What does CRAN stand for and what is its role for R?","Comprehensive R Archive Network; distributes R and packages and provides mirrors and checks."
+"What is a DOI and why is it useful for citations?","Digital Object Identifier; persistent identifier for scholarly objects enabling stable linking/citation."
+"What is the MediaWiki API and what can it be used for?","An HTTP API provided by MediaWiki (e.g., Wikipedia) for querying pages, search, extracts, metadata, etc."

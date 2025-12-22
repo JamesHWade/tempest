@@ -1,0 +1,49 @@
+Package: stormr
+Title: STORM and Co-STORM Research and Writing Agents for R
+Version: 0.1.0
+Authors@R: c(
+    person("James", "User", role = c("aut", "cre"), email = "james@example.com"),
+    person("OpenAI", role = "cph")
+  )
+Description: Implements an R-native clone of the STORM and Co-STORM
+    research-and-writing workflows using 'ellmer' for LLM orchestration and
+    'shinychat' for an interactive Shiny UI. Includes web retrieval tools,
+    evidence tracking with citations, mind-map style topic planning, and
+    evaluation helpers built on 'vitals'.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    R6,
+    cli,
+    digest,
+    dplyr,
+    fs,
+    glue,
+    httr2,
+    jsonlite,
+    purrr,
+    rlang,
+    stringi,
+    tibble,
+    tidyr
+Suggests:
+    ellmer,
+    shiny,
+    shinychat,
+    bslib,
+    promises,
+    later,
+    rvest,
+    xml2,
+    commonmark,
+    vitals,
+    testthat (>= 3.0.0),
+    withr,
+    knitr,
+    rmarkdown,
+    pdftools
+Config/testthat/edition: 3
+URL: https://example.com/stormr
+BugReports: https://example.com/stormr/issues
