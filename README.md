@@ -1,21 +1,24 @@
 # stormr
 
-STORM and Co-STORM style research + writing agents for R, built on:
+An R-native implementation of [STORM](https://storm.genie.stanford.edu/) (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and [Co-STORM](https://co-storm.genie.stanford.edu/) from Stanford's STORM project.
 
-- **ellmer** (LLM orchestration: tool calling, structured output, streaming)
-- **ragnar** (RAG: chunking, embedding, semantic retrieval)
-- **shinychat** (interactive chat UI)
-- **vitals** (evaluation tasks)
+This package reproduces the core workflow primitives:
+- **Multi-perspective research** with automatically generated expert personas
+- **Evidence tracking** with citations and source attribution
+- **Outline-to-draft writing** for structured report generation
+- **Interactive multi-agent moderation** with mind map (Co-STORM)
 
-> This package is an R-native implementation that reproduces the *workflow primitives*
-> of STORM / Co-STORM: multi-perspective research, evidence tracking with citations,
-> outline-to-draft writing, and interactive multi-agent moderation with a mind map.
+Built on the R AI ecosystem:
+- [ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration: tool calling, structured output, streaming
+- [ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking, embedding, semantic retrieval
+- [shinychat](https://github.com/posit-dev/shinychat) — interactive chat UI
+- [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
 
-## Installation (local)
+## Installation
 
 ```r
-# from a folder (after downloading)
-install.packages("stormr_0.1.0.tar.gz", repos = NULL, type = "source")
+# install.packages("pak")
+pak::pak("JamesHWade/stormr")
 ```
 
 ## Setup
@@ -54,11 +57,11 @@ library(stormr)
 cfg <- storm_config(
   # search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)
   models = list(
-    coordinator = "openai/gpt-4.1-mini",
-    expert = "openai/gpt-4.1-mini",
-    writer = "openai/gpt-4.1-mini",
-    judge = "openai/gpt-4.1-nano",
-    mindmap = "openai/gpt-4.1-nano"
+    coordinator = "openai/gpt-4o-mini",
+    expert = "openai/gpt-4o-mini",
+    writer = "openai/gpt-4o",
+    judge = "openai/gpt-4o-mini",
+    mindmap = "openai/gpt-4o-mini"
   )
 )
 
@@ -66,6 +69,28 @@ res <- storm_run("Life cycle assessment of lithium-ion batteries", config = cfg,
 
 cat(res$report_md)
 ```
+
+You can also use a single model for all roles:
+
+```r
+cfg <- storm_config(models = "anthropic/claude-sonnet-4-20250514")
+```
+
+### Configuration Options
+
+`storm_config()` accepts the following parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `models` | `"openai/gpt-4o-mini"` | Single model string or named list with `coordinator`, `expert`, `writer`, `mindmap`, `judge` |
+| `search_provider` | `"native"` | Search backend: `"native"`, `"wikipedia"`, `"serper"`, `"brave"`, `"tavily"` |
+| `embed_fn` | `NULL` | Embedding function for RAG (e.g., `ragnar::embed_openai()`) |
+| `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
+| `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
+| `tools` | `NULL` | Additional ellmer tools (e.g., `btw::btw_tools()`) |
+| `cache_dir` | `"~/.stormr"` | Cache directory for searches and fetched content |
+| `max_search_results` | `8` | Maximum results per search query |
+| `max_sources` | `24` | Maximum sources to track per session |
 
 ## RAG with ragnar
 
@@ -148,8 +173,8 @@ session$warmup(verbose = TRUE)
 result <- session$step("What are the main risks from advanced AI systems?")
 cat(result$answer)
 
-# Generate report
-report <- session$report(style = "technical")
+# Generate report (styles: "technical" or "executive")
+report <- session$report(style = "technical", include_references = TRUE)
 cat(report)
 ```
 
@@ -186,14 +211,18 @@ library(stormr)
 run_stormchat()
 ```
 
-The app supports:
+The app provides:
 
-- Multi-expert chat with generated personas
-- Optional warmup checkbox (experts research initial questions)
-- Retrieval tools with visible tool calls
-- Live mind map (markdown view)
-- Sources + fact notes tables
-- One-click report generation with footnotes
+- **Chat tab**: Multi-expert conversation with auto-generated personas
+- **Mind Map tab**: Real-time knowledge graph visualization
+- **Sources tab**: Table of all retrieved sources with metadata
+- **Facts tab**: Extracted facts with citations and confidence
+- **Report tab**: Rendered markdown report with footnotes
+
+Features:
+- Configurable number of experts and optional warmup phase
+- Report style selection (technical or executive)
+- Dark mode toggle
 
 ## vitals evals
 
@@ -203,7 +232,7 @@ library(vitals)
 library(ellmer)
 
 # scorer chat must be provided for model-graded scoring:
-judge <- ellmer::chat("openai/gpt-4.1-mini")
+judge <- ellmer::chat("openai/gpt-4o-mini")
 
 tsk <- stormr_task(dataset = "qa", scorer_chat = judge)
 tsk$eval(view = interactive())
@@ -218,3 +247,9 @@ tsk$get_samples()
   - use ragnar with domain-specific content (internal docs, databases)
   - add guardrails (policy, bias checks) and more systematic evaluations
   - customize prompts in `inst/prompts/`
+
+## References
+
+- **STORM**: Shao, Y., et al. (2024). [Assisting in Writing Wikipedia-like Articles From Scratch with Large Language Models](https://arxiv.org/abs/2402.14207). NAACL 2024.
+- **Co-STORM**: Jiang, Y., et al. (2024). [Into the Unknown Unknowns: Engaged Human Learning through Participation in Language Model Agent Conversations](https://arxiv.org/abs/2408.15232). arXiv preprint.
+- **Stanford STORM Project**: https://storm.genie.stanford.edu/
