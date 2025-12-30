@@ -69,7 +69,7 @@ StormConfig <- R6::R6Class(
       cache_dir = NULL,
       max_search_results = 8,
       max_sources = 24,
-      user_agent = "stormr (R; +https://example.com/stormr)"
+      user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)"
     ) {
       default_models <- list(
         coordinator = "openai/gpt-4.1-mini",
@@ -92,7 +92,7 @@ StormConfig <- R6::R6Class(
       self$tools <- tools
       self$embed_fn <- embed_fn
       self$search_provider <- match.arg(search_provider)
-      self$cache_dir <- stormr_cache_dir(cache_dir)
+      self$cache_dir <- tempest_cache_dir(cache_dir)
       self$max_search_results <- max_search_results
       self$max_sources <- max_sources
       self$user_agent <- user_agent
@@ -138,7 +138,7 @@ StormConfig <- R6::R6Class(
           echo = echo
         )
       } else {
-        stormr_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
+        tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
         chat <- ellmer::chat(
           name = model,
           system_prompt = system_prompt,
@@ -171,7 +171,7 @@ storm_config <- function(...) {
   StormConfig$new(...)
 }
 
-#' Create a ragnar store with stormr metadata schema
+#' Create a ragnar store with tempest metadata schema
 #'
 #' Creates a ragnar store configured with metadata columns useful for
 #' STORM/Co-STORM workflows: source tracking, citation linking, and
@@ -187,7 +187,7 @@ storm_config <- function(...) {
 #' @details
 #' The store includes these metadata columns:
 #' \describe{
-#'   \item{source_id}{stormr source ID (Sxxxxxxxxxxxx) for citation linking}
+#'   \item{source_id}{tempest source ID (Sxxxxxxxxxxxx) for citation linking}
 #'   \item{url}{Original source URL}
 #'   \item{title}{Document title}
 #'   \item{fetched_at}{ISO timestamp when content was fetched}
@@ -202,7 +202,7 @@ storm_create_ragnar_store <- function(
   name = "storm_knowledge",
   title = "STORM Knowledge Base"
 ) {
-  stormr_require("ragnar", "RAG capabilities require the ragnar package.")
+  tempest_require("ragnar", "RAG capabilities require the ragnar package.")
 
   # Determine storage location
   location <- if (!is.null(cache_dir)) {
@@ -211,7 +211,7 @@ storm_create_ragnar_store <- function(
     ":memory:"
   }
 
-  # Define metadata schema for stormr
+  # Define metadata schema for tempest
   extra_cols <- data.frame(
     source_id = character(),
     url = character(),

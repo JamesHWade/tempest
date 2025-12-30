@@ -2,7 +2,7 @@
 % Please edit documentation in R/config.R
 \name{storm_create_ragnar_store}
 \alias{storm_create_ragnar_store}
-\title{Create a ragnar store with stormr metadata schema}
+\title{Create a ragnar store with tempest metadata schema}
 \usage{
 storm_create_ragnar_store(
   embed_fn,
@@ -32,7 +32,7 @@ content organization.
 \details{
 The store includes these metadata columns:
 \describe{
-\item{source_id}{stormr source ID (Sxxxxxxxxxxxx) for citation linking}
+\item{source_id}{tempest source ID (Sxxxxxxxxxxxx) for citation linking}
 \item{url}{Original source URL}
 \item{title}{Document title}
 \item{fetched_at}{ISO timestamp when content was fetched}

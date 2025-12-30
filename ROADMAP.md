@@ -1,6 +1,6 @@
-# stormr Improvement Roadmap
+# tempest Improvement Roadmap
 
-This document provides a comprehensive analysis of the stormr package with prioritized improvements organized by urgency and category.
+This document provides a comprehensive analysis of the tempest package with prioritized improvements organized by urgency and category.
 
 ---
 
@@ -24,87 +24,36 @@ This document provides a comprehensive analysis of the stormr package with prior
 
 ## Critical Priority (Before Any Release)
 
-### 1. Package Name Conflict
+### 1. ~~Package Name Conflict~~ (RESOLVED)
 **Category:** R CMD Check | **File:** `DESCRIPTION`
 
-The package name `stormr` conflicts with an existing CRAN package `StormR`. This will block CRAN submission.
+~~The package name `stormr` conflicts with an existing CRAN package `StormR`. This will block CRAN submission.~~
 
-**Options:**
-- Rename package (e.g., `rstorm`, `stormllm`, `stormrag`, `researchair`)
-- Keep name for GitHub-only distribution (document non-CRAN status)
+**Resolution:** Package renamed to `tempest` to avoid CRAN conflict.
 
 ---
 
-### 2. Invalid URLs in DESCRIPTION
+### 2. ~~Invalid URLs in DESCRIPTION~~ (RESOLVED)
 **Category:** R CMD Check | **File:** `DESCRIPTION:48-49`
 
-```
-URL: https://example.com/stormr
-BugReports: https://example.com/stormr/issues
-```
-
-**Fix:** Update to actual GitHub repository:
-```
-URL: https://github.com/JamesHWade/stormr
-BugReports: https://github.com/JamesHWade/stormr/issues
-```
+**Resolution:** URLs updated to `https://github.com/JamesHWade/tempest`
 
 ---
 
-### 3. Security: Unvalidated URL Input (SSRF Risk)
-**Category:** Security | **File:** `R/retriever.R:4-10`
+### 3. ~~Security: Unvalidated URL Input (SSRF Risk)~~ (RESOLVED)
+**Category:** Security | **File:** `R/retriever.R`
 
-URLs are normalized but not validated. Malicious URLs could cause Server-Side Request Forgery attacks (accessing internal networks, localhost, etc.).
-
-**Current:**
-```r
-storm_normalize_url <- function(url) {
-  url <- stormr_trim(url)
-  if (is.na(url) || url == "") return(NA_character_)
-  url <- sub("^http://", "https://", url)
-  url
-}
-```
-
-**Fix:** Add protocol and host validation:
-```r
-storm_normalize_url <- function(url) {
-  url <- stormr_trim(url)
-  if (is.na(url) || url == "") return(NA_character_)
-
-  # Block dangerous protocols
-
-if (grepl("^(file|ftp|gopher|data):", url, ignore.case = TRUE)) {
-    stormr_abort("URL protocol not allowed: {.url {url}}")
-  }
-
-  # Block local/internal addresses
-  local_patterns <- "^https?://(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[::\\]|192\\.168\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)"
-  if (grepl(local_patterns, url, ignore.case = TRUE)) {
-    stormr_abort("Local network URLs not allowed: {.url {url}}")
-  }
-
-  url <- sub("^http://", "https://", url)
-  url
-}
-```
+**Resolution:** Added comprehensive SSRF protection in `storm_normalize_url()`:
+- Blocks dangerous protocols (file, ftp, gopher, data, javascript, vbscript)
+- Blocks local/internal addresses (localhost, 127.0.0.1, private IP ranges)
+- Upgrades HTTP to HTTPS
 
 ---
 
-### 4. Bug: Missing "native" Provider in Search Switch
-**Category:** Bug | **File:** `R/retriever.R:231-246`
+### 4. ~~Bug: Missing "native" Provider in Search Switch~~ (RESOLVED)
+**Category:** Bug | **File:** `R/retriever.R`
 
-The default `search_provider = "native"` is not handled in the `StormRetriever$search()` method, causing errors when search is called directly.
-
-**Fix:** Add native case with fallback:
-```r
-out <- if (identical(provider, "native")) {
-  # Native provider handled via tool registration; fall back to Wikipedia for direct calls
-  storm_wiki_search(query, limit = k)
-} else {
-  switch(provider, ...)
-}
-```
+**Resolution:** Added fallback to Wikipedia when "native" provider is used for direct `search()` calls.
 
 ---
 
@@ -140,8 +89,9 @@ WARNING: Namespaces in Imports field not imported from:
 NOTE: Undefined global functions: head, read.csv, runif, setNames
 ```
 
-**Fix:** Add to `R/stormr-package.R`:
+**Fix:** Add to `R/tempest-package.R`:
 ```r
+#' @importFrom rlang %||%
 #' @importFrom stats runif setNames
 #' @importFrom utils head read.csv
 NULL
@@ -171,48 +121,17 @@ WARNING: Undocumented arguments in Rd file 'storm_run_async.Rd': '...'
 
 ---
 
-### 10. Security: API Keys in Function Parameters
-**Category:** Security | **File:** `R/retriever.R:452, 473, 494`
+### 10. ~~Security: API Keys in Function Parameters~~ (RESOLVED)
+**Category:** Security | **File:** `R/retriever.R`
 
-API keys are accepted as parameters with environment variable defaults, risking exposure in stack traces.
-
-**Current:**
-```r
-storm_search_serper <- function(query, k = 8, api_key = Sys.getenv("SERPER_API_KEY", ""))
-```
-
-**Fix:** Move environment lookup inside function body:
-```r
-storm_search_serper <- function(query, k = 8) {
-  api_key <- Sys.getenv("SERPER_API_KEY", "")
-  if (identical(api_key, "")) {
-    stormr_abort("SERPER_API_KEY environment variable is not set.")
-  }
-  ...
-}
-```
+**Resolution:** API keys are now retrieved inside function bodies, not as parameters. Clear error messages guide users to set environment variables.
 
 ---
 
-### 11. Silent Cache Failures
-**Category:** Error Handling | **File:** `R/cache.R:24-28`
+### 11. ~~Silent Cache Failures~~ (RESOLVED)
+**Category:** Error Handling | **File:** `R/cache.R`
 
-Cache read errors are silently swallowed, masking disk corruption or permission issues.
-
-**Fix:** Add warning on failure:
-```r
-stormr_cache_get <- function(cache_dir, key) {
-  p <- stormr_cache_path(cache_dir, key)
-  if (!fs::file_exists(p)) return(NULL)
-  tryCatch(
-    readRDS(p),
-    error = function(e) {
-      cli::cli_warn("Cache read failed for {.file {key}}: {conditionMessage(e)}")
-      NULL
-    }
-  )
-}
-```
+**Resolution:** Cache read/write errors now emit warnings via `tempest_warn()` instead of failing silently.
 
 ---
 
@@ -236,15 +155,10 @@ stormr_cache_get <- function(cache_dir, key) {
 
 ---
 
-### 13. Add R Version Dependency
+### 13. ~~Add R Version Dependency~~ (RESOLVED)
 **Category:** R CMD Check | **File:** `DESCRIPTION`
 
-Package uses R 4.1+ syntax (`|>`, `\(x)`) but doesn't declare dependency.
-
-**Fix:** Add to DESCRIPTION:
-```
-Depends: R (>= 4.1.0)
-```
+**Resolution:** Added `Depends: R (>= 4.1.0)` to DESCRIPTION.
 
 ---
 
@@ -268,7 +182,7 @@ LLM structured outputs are used without validation.
 ```r
 validate_perspectives <- function(plan) {
   if (!is.list(plan$perspectives)) {
-    stormr_abort("Invalid structured output: 'perspectives' must be a list")
+    tempest_abort("Invalid structured output: 'perspectives' must be a list")
   }
   # ... additional validation
 }

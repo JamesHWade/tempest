@@ -2,7 +2,7 @@
 
 #' @keywords internal
 storm_type_perspectives <- function() {
-  stormr_require("ellmer")
+  tempest_require("ellmer")
   ellmer::type_object(
     title = ellmer::type_string("Suggested title for the final report."),
     perspectives = ellmer::type_array(
@@ -17,7 +17,7 @@ storm_type_perspectives <- function() {
 
 #' @keywords internal
 storm_type_personas <- function() {
-  stormr_require("ellmer")
+  tempest_require("ellmer")
   ellmer::type_object(
     personas = ellmer::type_array(
       ellmer::type_object(
@@ -46,7 +46,7 @@ storm_type_personas <- function() {
 #'
 #' @export
 storm_generate_personas <- function(topic, n = 3, config = storm_config(), verbose = FALSE) {
-  stormr_require("ellmer", "Persona generation requires ellmer.")
+  tempest_require("ellmer", "Persona generation requires ellmer.")
 
   chat <- config$make_chat(
     "coordinator",
@@ -65,7 +65,7 @@ storm_generate_personas <- function(topic, n = 3, config = storm_config(), verbo
     "- Initial questions should reflect their unique expertise and concerns\n"
   )
 
-  if (verbose) stormr_inform("Generating {n} expert personas for: {.val {topic}}")
+  if (verbose) tempest_inform("Generating {n} expert personas for: {.val {topic}}")
 
   result <- chat$chat_structured(
     prompt,
@@ -83,7 +83,7 @@ storm_generate_personas <- function(topic, n = 3, config = storm_config(), verbo
 
   if (verbose) {
     for (p in personas) {
-      stormr_inform("  - {p$name}, {p$title}")
+      tempest_inform("  - {p$name}, {p$title}")
     }
   }
 
@@ -145,7 +145,7 @@ storm_render_expert_prompt <- function(persona = NULL, expert_id = 1) {
 
 #' @keywords internal
 storm_type_outline <- function() {
-  stormr_require("ellmer")
+  tempest_require("ellmer")
   subsection <- ellmer::type_object(
     title = ellmer::type_string("Subsection title"),
     bullets = ellmer::type_array(ellmer::type_string("Bullet: a specific point to cover")),
@@ -164,7 +164,7 @@ storm_type_outline <- function() {
 
 #' @keywords internal
 storm_type_fact_extract <- function() {
-  stormr_require("ellmer")
+  tempest_require("ellmer")
   src <- ellmer::type_object(
     source_id = ellmer::type_string("Source id like Sxxxxxxxxxxxx"),
     url = ellmer::type_string("URL if available", required = FALSE),
@@ -181,7 +181,7 @@ storm_type_fact_extract <- function() {
 
 #' @keywords internal
 storm_type_next_question <- function() {
-  stormr_require("ellmer")
+  tempest_require("ellmer")
   ellmer::type_object(
     question = ellmer::type_string("Next research question to ask the expert."),
     done = ellmer::type_boolean("Whether research for this perspective is complete.", required = FALSE)
@@ -222,7 +222,7 @@ storm_keyword_filter_facts <- function(store, query, max_items = 30) {
   facts <- store$list_facts()
   if (length(facts) == 0) return(list())
 
-  tokens <- unique(tolower(unlist(strsplit(stormr_trim(query), "\\s+"))))
+  tokens <- unique(tolower(unlist(strsplit(tempest_trim(query), "\\s+"))))
   tokens <- tokens[nzchar(tokens)]
   if (length(tokens) == 0) return(list())
 
@@ -301,9 +301,9 @@ storm_run <- function(
   steps = c("perspectives", "research", "outline", "write", "polish"),
   verbose = TRUE
 ) {
-  stormr_require("ellmer", "storm_run() requires ellmer.")
-  topic <- stormr_trim(topic)
-  if (is.na(topic) || topic == "") stormr_abort("topic must be a non-empty string.")
+  tempest_require("ellmer", "storm_run() requires ellmer.")
+  topic <- tempest_trim(topic)
+  if (is.na(topic) || topic == "") tempest_abort("topic must be a non-empty string.")
 
   research_strategy <- match.arg(research_strategy)
   max_rounds <- as.integer(max_rounds %||% 6)
@@ -333,7 +333,7 @@ storm_run <- function(
   report_md <- NULL
 
   if ("perspectives" %in% steps) {
-    if (verbose) stormr_inform("Discovering perspectives for: {.val {topic}}")
+    if (verbose) tempest_inform("Discovering perspectives for: {.val {topic}}")
     seed <- retriever$search(topic, k = min(5, config$max_search_results))
     seed_txt <- paste0(
       "Seed sources:\n",
@@ -358,7 +358,7 @@ storm_run <- function(
     store$set_artifact("title", title)
 
     # Generate personas aligned with perspectives
-    if (verbose) stormr_inform("Generating {n_experts} expert personas")
+    if (verbose) tempest_inform("Generating {n_experts} expert personas")
     personas <- storm_generate_personas(
       topic = topic,
       n = n_experts,
@@ -372,7 +372,7 @@ storm_run <- function(
   }
 
   if ("research" %in% steps) {
-    if (verbose) stormr_inform("Research loop: {length(perspectives)} perspectives")
+    if (verbose) tempest_inform("Research loop: {length(perspectives)} perspectives")
 
     if (length(perspectives) == 0) {
       # Fallback: single perspective
@@ -403,9 +403,9 @@ storm_run <- function(
       persona_name <- persona$name %||% paste("Expert", i)
 
       if (verbose) {
-        stormr_inform("Perspective: {.val {p_name}}")
+        tempest_inform("Perspective: {.val {p_name}}")
         if (!is.null(persona)) {
-          stormr_inform("  Expert: {persona_name} ({persona$title %||% 'Research Specialist'})")
+          tempest_inform("  Expert: {persona_name} ({persona$title %||% 'Research Specialist'})")
         }
       }
 
@@ -413,7 +413,7 @@ storm_run <- function(
         # Ask expert to answer each planned key question (limited)
         qs_limited <- head(qs, max_questions_per_perspective)
         if (verbose && length(qs) > length(qs_limited)) {
-          stormr_inform("  Limiting to {length(qs_limited)} of {length(qs)} questions")
+          tempest_inform("  Limiting to {length(qs_limited)} of {length(qs)} questions")
         }
         for (q in qs_limited) {
           prompt <- paste0(
@@ -439,7 +439,7 @@ storm_run <- function(
           facts_md <- storm_summarize_facts_for_prompt(store, max_items = 60)
 
           nxt <- storm_generate_next_question(writer, topic, p, answered_md = answered_md, facts_md = facts_md)
-          q <- stormr_trim(nxt$question %||% "")
+          q <- tempest_trim(nxt$question %||% "")
           done <- isTRUE(nxt$done)
 
           if (is.na(q) || q == "") break
@@ -469,7 +469,7 @@ storm_run <- function(
   }
 
   if ("outline" %in% steps) {
-    if (verbose) stormr_inform("Generating outline")
+    if (verbose) tempest_inform("Generating outline")
     facts_txt <- storm_summarize_facts_for_prompt(store, max_items = 80)
     prompt <- paste0(
       "Create a detailed outline for a report.\n\n",
@@ -491,9 +491,9 @@ storm_run <- function(
   }
 
   if ("write" %in% steps) {
-    if (verbose) stormr_inform("Writing draft")
+    if (verbose) tempest_inform("Writing draft")
     if (is.null(outline) || is.null(outline$sections)) {
-      stormr_abort("No outline available; run steps including 'outline'.")
+      tempest_abort("No outline available; run steps including 'outline'.")
     }
 
     parts <- c()
@@ -542,7 +542,7 @@ storm_run <- function(
   }
 
   if ("polish" %in% steps) {
-    if (verbose) stormr_inform("Polishing and consistency pass")
+    if (verbose) tempest_inform("Polishing and consistency pass")
     prompt <- paste0(
       "Polish the following Markdown report.\n\n",
       "Rules:\n",
@@ -582,7 +582,7 @@ storm_run <- function(
 #' @seealso [storm_run()] for the synchronous version.
 #' @export
 storm_run_async <- function(...) {
-  stormr_require("promises", "storm_run_async() uses promises.")
+  tempest_require("promises", "storm_run_async() uses promises.")
   promises::promise(function(resolve, reject) {
     tryCatch(resolve(storm_run(...)), error = reject)
   })

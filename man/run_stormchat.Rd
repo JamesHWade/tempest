@@ -2,7 +2,7 @@
 % Please edit documentation in R/app.R
 \name{run_stormchat}
 \alias{run_stormchat}
-\title{Run the stormr Shiny chat application}
+\title{Run the tempest Shiny chat application}
 \usage{
 run_stormchat(...)
 }

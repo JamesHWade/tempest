@@ -5,17 +5,17 @@
 #' @param name Dataset name. Currently supports "qa".
 #' @return A tibble with columns `input` and `target`.
 #' @keywords internal
-stormr_eval_dataset <- function(name = c("qa")) {
+tempest_eval_dataset <- function(name = c("qa")) {
   name <- match.arg(name)
-  path <- system.file("extdata", "evals", paste0(name, ".csv"), package = "stormr")
-  if (identical(path, "")) stormr_abort("Eval dataset not found in installed package.")
+  path <- system.file("extdata", "evals", paste0(name, ".csv"), package = "tempest")
+  if (identical(path, "")) tempest_abort("Eval dataset not found in installed package.")
   read.csv(path, stringsAsFactors = FALSE) |>
     tibble::as_tibble()
 }
 
 #' A vitals solver that answers questions using retrieval + citations
 #'
-#' This solver is designed to evaluate the end-to-end behavior of the stormr
+#' This solver is designed to evaluate the end-to-end behavior of the tempest
 #' retrieval + citation discipline. It is intentionally lighter than a full
 #' `storm_run()` call.
 #'
@@ -24,8 +24,8 @@ stormr_eval_dataset <- function(name = c("qa")) {
 #' @param solver_chat Optional (ignored). Present to match vitals conventions.
 #' @return A list with `result` and `solver_chat` (and `solver_metadata`).
 #' @keywords internal
-stormr_solver_cited_answer <- function(input, config = storm_config(), solver_chat = NULL) {
-  stormr_require("ellmer", "stormr_solver_cited_answer() requires ellmer.")
+tempest_solver_cited_answer <- function(input, config = storm_config(), solver_chat = NULL) {
+  tempest_require("ellmer", "tempest_solver_cited_answer() requires ellmer.")
   n <- length(input)
   results <- character(n)
   chats <- vector("list", n)
@@ -68,29 +68,29 @@ stormr_solver_cited_answer <- function(input, config = storm_config(), solver_ch
 #' Create a vitals Task for stormr
 #'
 #' @param dataset Which built-in dataset to use. Currently "qa".
-#' @param solver A vitals-compatible solver. Defaults to `stormr_solver_cited_answer`.
+#' @param solver A vitals-compatible solver. Defaults to `tempest_solver_cited_answer`.
 #' @param scorer A vitals scorer. If `NULL`, defaults to `vitals::model_graded_qa()`.
 #' @param scorer_chat Chat used by the scorer (required for model-graded scoring).
 #' @param config A `StormConfig` passed to the solver.
 #' @param ... Passed to `vitals::Task$new()`.
 #' @return A `vitals::Task`.
 #' @export
-stormr_task <- function(
+tempest_task <- function(
   dataset = c("qa"),
-  solver = stormr_solver_cited_answer,
+  solver = tempest_solver_cited_answer,
   scorer = NULL,
   scorer_chat = NULL,
   config = storm_config(),
   ...
 ) {
-  stormr_require("vitals", "stormr_task() requires vitals.")
-  stormr_require("ellmer", "stormr_task() requires ellmer (solver + scorer).")
+  tempest_require("vitals", "tempest_task() requires vitals.")
+  tempest_require("ellmer", "tempest_task() requires ellmer (solver + scorer).")
   dataset <- match.arg(dataset)
-  ds <- stormr_eval_dataset(dataset)
+  ds <- tempest_eval_dataset(dataset)
 
   if (is.null(scorer)) {
     if (is.null(scorer_chat)) {
-      stormr_abort("Provide scorer_chat (an ellmer Chat) or set scorer explicitly.")
+      tempest_abort("Provide scorer_chat (an ellmer Chat) or set scorer explicitly.")
     }
     scorer <- vitals::model_graded_qa(partial_credit = TRUE, scorer_chat = scorer_chat)
   }
@@ -99,7 +99,7 @@ stormr_task <- function(
     dataset = ds,
     solver = function(input, ...) solver(input = input, config = config, ...),
     scorer = scorer,
-    name = paste0("stormr-", dataset),
+    name = paste0("tempest-", dataset),
     ...
   )
 }

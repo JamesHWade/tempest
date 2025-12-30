@@ -1,5 +1,5 @@
 # testthat infrastructure
 library(testthat)
-library(stormr)
+library(tempest)
 
-test_check("stormr")
+test_check("tempest")

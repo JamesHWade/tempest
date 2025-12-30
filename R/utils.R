@@ -1,4 +1,4 @@
-# stormr utility helpers
+# tempest utility helpers
 # Uses explicit namespacing for clarity and traceability
 
 #' Check if a package is available
@@ -6,9 +6,9 @@
 #' @param pkg Package name as string.
 #' @return Logical indicating if package is installed.
 #' @keywords internal
-stormr_has <- function(pkg) {
+tempest_has <- function(pkg) {
   if (!rlang::is_string(pkg)) {
-    stormr_abort("{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}.")
+    tempest_abort("{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}.")
   }
   rlang::is_installed(pkg)
 }
@@ -22,7 +22,7 @@ stormr_has <- function(pkg) {
 #' @param .envir Environment for glue interpolation.
 #' @return Never returns; always throws an error.
 #' @keywords internal
-stormr_abort <- function(message, ..., .envir = rlang::caller_env()) {
+tempest_abort <- function(message, ..., .envir = rlang::caller_env()) {
   cli::cli_abort(message, ..., .envir = .envir, call = rlang::caller_env())
 }
 
@@ -34,7 +34,7 @@ stormr_abort <- function(message, ..., .envir = rlang::caller_env()) {
 #' @param ... Additional arguments passed to [cli::cli_inform()].
 #' @param .envir Environment for glue interpolation.
 #' @keywords internal
-stormr_inform <- function(message, ..., .envir = rlang::caller_env()) {
+tempest_inform <- function(message, ..., .envir = rlang::caller_env()) {
   cli::cli_inform(message, ..., .envir = .envir)
 }
 
@@ -46,7 +46,7 @@ stormr_inform <- function(message, ..., .envir = rlang::caller_env()) {
 #' @param ... Additional arguments passed to [cli::cli_warn()].
 #' @param .envir Environment for glue interpolation.
 #' @keywords internal
-stormr_warn <- function(message, ..., .envir = rlang::caller_env()) {
+tempest_warn <- function(message, ..., .envir = rlang::caller_env()) {
   cli::cli_warn(message, ..., .envir = .envir)
 }
 
@@ -54,7 +54,7 @@ stormr_warn <- function(message, ..., .envir = rlang::caller_env()) {
 #'
 #' @return Character string with UTC timestamp.
 #' @keywords internal
-stormr_now_utc <- function() {
+tempest_now_utc <- function() {
   format(Sys.time(), tz = "UTC", usetz = TRUE)
 }
 
@@ -63,7 +63,7 @@ stormr_now_utc <- function() {
 #' @param x Character vector.
 #' @return Trimmed character vector.
 #' @keywords internal
-stormr_trim <- function(x) {
+tempest_trim <- function(x) {
   if (length(x) == 0L) {
     return(x)
   }
@@ -78,7 +78,7 @@ stormr_trim <- function(x) {
 #' @param prefix Prefix string for the identifier.
 #' @return Character string identifier.
 #' @keywords internal
-stormr_uuid <- function(prefix = "id") {
+tempest_uuid <- function(prefix = "id") {
   raw <- paste0(prefix, "-", sprintf("%.0f", runif(1, 1e8, 1e9)), "-", sprintf("%.0f", Sys.time()))
   paste0(prefix, "_", digest::digest(raw, algo = "xxhash64"))
 }
@@ -90,12 +90,12 @@ stormr_uuid <- function(prefix = "id") {
 #' @param pkg Package name.
 #' @param why Optional reason explaining why the package is needed.
 #' @keywords internal
-stormr_require <- function(pkg, why = NULL) {
+tempest_require <- function(pkg, why = NULL) {
   if (!rlang::is_string(pkg)) {
-    stormr_abort("{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}.")
+    tempest_abort("{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}.")
   }
 
-  if (!stormr_has(pkg)) {
+  if (!tempest_has(pkg)) {
     msg <- if (is.null(why)) {
       c("Package {.pkg {pkg}} is required but not installed.",
         i = "Install it with: {.run install.packages(\"{pkg}\")}")
@@ -103,7 +103,7 @@ stormr_require <- function(pkg, why = NULL) {
       c("Package {.pkg {pkg}} is required: {why}",
         i = "Install it with: {.run install.packages(\"{pkg}\")}")
     }
-    stormr_abort(msg)
+    tempest_abort(msg)
   }
   invisible(TRUE)
 }
@@ -113,8 +113,8 @@ stormr_require <- function(pkg, why = NULL) {
 #' @param ... Path components relative to package root.
 #' @return Full path to file.
 #' @keywords internal
-stormr_pkg_file <- function(...) {
-  system.file(..., package = "stormr")
+tempest_pkg_file <- function(...) {
+  system.file(..., package = "tempest")
 }
 
 #' Read text file contents
@@ -122,13 +122,13 @@ stormr_pkg_file <- function(...) {
 #' @param path Path to file.
 #' @return File contents as single string.
 #' @keywords internal
-stormr_read_text <- function(path) {
+tempest_read_text <- function(path) {
   if (!rlang::is_string(path)) {
-    stormr_abort("{.arg path} must be a single string, not {.obj_type_friendly {path}}.")
+    tempest_abort("{.arg path} must be a single string, not {.obj_type_friendly {path}}.")
   }
 
   if (!file.exists(path)) {
-    stormr_abort("File does not exist: {.path {path}}")
+    tempest_abort("File does not exist: {.path {path}}")
   }
   paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 }
@@ -141,12 +141,12 @@ stormr_read_text <- function(path) {
 #' @param text Text content to write.
 #' @return Invisibly returns the path.
 #' @keywords internal
-stormr_write_text <- function(path, text) {
+tempest_write_text <- function(path, text) {
   if (!rlang::is_string(path)) {
-    stormr_abort("{.arg path} must be a single string, not {.obj_type_friendly {path}}.")
+    tempest_abort("{.arg path} must be a single string, not {.obj_type_friendly {path}}.")
   }
   if (!rlang::is_string(text)) {
-    stormr_abort("{.arg text} must be a single string, not {.obj_type_friendly {text}}.")
+    tempest_abort("{.arg text} must be a single string, not {.obj_type_friendly {text}}.")
   }
 
   dir <- dirname(path)

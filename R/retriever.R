@@ -11,7 +11,7 @@
 #' @return Normalized URL or `NA_character_` if invalid.
 #' @keywords internal
 storm_normalize_url <- function(url) {
-  url <- stormr_trim(url)
+  url <- tempest_trim(url)
 
   if (is.na(url) || identical(url, "")) {
     return(NA_character_)
@@ -21,7 +21,7 @@ storm_normalize_url <- function(url) {
   # Block dangerous protocols (SSRF prevention)
   dangerous_protocols <- "^(file|ftp|gopher|data|javascript|vbscript):"
   if (stringi::stri_detect_regex(url, dangerous_protocols, case_insensitive = TRUE)) {
-    stormr_abort(c(
+    tempest_abort(c(
       "URL protocol not allowed for security reasons.",
       x = "Blocked URL: {.url {url}}",
       i = "Only HTTP/HTTPS URLs are permitted."
@@ -41,7 +41,7 @@ storm_normalize_url <- function(url) {
     ")(/|:|$)"
   )
   if (stringi::stri_detect_regex(url, local_patterns, case_insensitive = TRUE)) {
-    stormr_abort(c(
+    tempest_abort(c(
       "Local network URLs not allowed for security reasons.",
       x = "Blocked URL: {.url {url}}",
       i = "Only public URLs are permitted."
@@ -80,7 +80,7 @@ storm_http_get <- function(url, user_agent = NULL, timeout_s = 20) {
 storm_html_to_text <- function(html) {
 
   # Prefer rvest/xml2 when available.
-  if (stormr_has("xml2") && stormr_has("rvest")) {
+  if (tempest_has("xml2") && tempest_has("rvest")) {
     doc <- xml2::read_html(html)
     # Remove script/style/noscript nodes.
     for (tag in c("script", "style", "noscript")) {
@@ -90,7 +90,7 @@ storm_html_to_text <- function(html) {
     txt <- rvest::html_text2(doc)
     txt <- gsub("[ \t]+", " ", txt)
     txt <- gsub("\n{3,}", "\n\n", txt)
-    return(stormr_trim(txt))
+    return(tempest_trim(txt))
   }
 
   # Fallback: extremely naive tag stripping.
@@ -102,7 +102,7 @@ storm_html_to_text <- function(html) {
   txt <- gsub("&gt;", ">", txt, fixed = TRUE)
   txt <- gsub("[ \t]+", " ", txt)
   txt <- gsub("\n{3,}", "\n\n", txt)
-  stormr_trim(txt)
+  tempest_trim(txt)
 }
 
 #' Fetch URL as markdown using ragnar
@@ -115,7 +115,7 @@ storm_html_to_text <- function(html) {
 #' @keywords internal
 storm_fetch_url_markdown <- function(url) {
   url <- storm_normalize_url(url)
-  if (is.na(url)) stormr_abort("Invalid URL.")
+  if (is.na(url)) tempest_abort("Invalid URL.")
 
   # Determine content type from URL extension
   is_pdf <- grepl("\\.pdf($|\\?)", url, ignore.case = TRUE)
@@ -135,7 +135,7 @@ storm_fetch_url_markdown <- function(url) {
       lines <- strsplit(as.character(md), "\n")[[1]]
       for (line in lines) {
         if (grepl("^#+ ", line)) {
-          title <- sub("^#+ ", "", stormr_trim(line))
+          title <- sub("^#+ ", "", tempest_trim(line))
           if (nchar(title) > 120) title <- paste0(substr(title, 1, 117), "...")
           break
         }
@@ -143,7 +143,7 @@ storm_fetch_url_markdown <- function(url) {
 
       list(
         kind = kind,
-        text = stormr_trim(as.character(md)),
+        text = tempest_trim(as.character(md)),
         title = title,
         error = NULL
       )
@@ -164,10 +164,10 @@ storm_fetch_url_markdown <- function(url) {
 #' @keywords internal
 storm_fetch_url_text <- function(url, user_agent = NULL) {
   url <- storm_normalize_url(url)
-  if (is.na(url)) stormr_abort("Invalid URL.")
+  if (is.na(url)) tempest_abort("Invalid URL.")
 
   # Use ragnar's read_as_markdown when available (preferred)
-  if (stormr_has("ragnar")) {
+  if (tempest_has("ragnar")) {
     result <- storm_fetch_url_markdown(url)
     # Return in same format as legacy, but include title
     return(list(
@@ -183,7 +183,7 @@ storm_fetch_url_text <- function(url, user_agent = NULL) {
   ctype <- httr2::resp_header(resp, "content-type") %||% ""
 
   if (grepl("application/pdf", ctype, fixed = TRUE) || grepl("\\.pdf($|\\?)", url, ignore.case = TRUE)) {
-    if (!stormr_has("pdftools")) {
+    if (!tempest_has("pdftools")) {
       return(list(kind = "pdf", text = NA_character_, title = NA_character_, error = "pdftools not installed; cannot parse PDF."))
     }
     bin <- httr2::resp_body_raw(resp)
@@ -191,7 +191,7 @@ storm_fetch_url_text <- function(url, user_agent = NULL) {
     writeBin(bin, tmp)
     txt <- paste(pdftools::pdf_text(tmp), collapse = "\n\n")
     unlink(tmp)
-    return(list(kind = "pdf", text = stormr_trim(txt), title = NA_character_, error = NULL))
+    return(list(kind = "pdf", text = tempest_trim(txt), title = NA_character_, error = NULL))
   }
 
   html <- httr2::resp_body_string(resp)
@@ -203,7 +203,7 @@ storm_wikipedia_api <- function(params) {
   base <- "https://en.wikipedia.org/w/api.php"
   req <- httr2::request(base) |>
     httr2::req_url_query(!!!params) |>
-    httr2::req_user_agent("stormr (R; Wikipedia API)")
+    httr2::req_user_agent("tempest (R; Wikipedia API)")
   resp <- httr2::req_perform(req)
   httr2::resp_body_json(resp, simplifyVector = TRUE)
 }
@@ -291,8 +291,8 @@ StormRetriever <- R6::R6Class(
       k <- k %||% self$config$max_search_results
       provider <- provider %||% self$config$search_provider
 
-      key <- stormr_cache_key("search", provider, query, k)
-      cached <- stormr_cache_get(self$cache_dir, key)
+      key <- tempest_cache_key("search", provider, query, k)
+      cached <- tempest_cache_get(self$cache_dir, key)
       if (!is.null(cached)) return(cached)
 
       # Handle "native" provider - falls back to Wikipedia for direct search() calls
@@ -305,7 +305,7 @@ StormRetriever <- R6::R6Class(
         serper = storm_search_serper(query, k = k),
         brave = storm_search_brave(query, k = k),
         tavily = storm_search_tavily(query, k = k),
-        stormr_abort(c(
+        tempest_abort(c(
           "Unknown search provider: {.val {provider}}",
           i = "Available providers: native, wikipedia, serper, brave, tavily"
         ))
@@ -315,7 +315,7 @@ StormRetriever <- R6::R6Class(
       out$url <- purrr::map_chr(out$url, storm_normalize_url)
       out$source_id <- purrr::map_chr(out$url, storm_source_id)
 
-      stormr_cache_set(self$cache_dir, key, out)
+      tempest_cache_set(self$cache_dir, key, out)
       out
     },
 
@@ -327,17 +327,17 @@ StormRetriever <- R6::R6Class(
     #' @return A source object.
     fetch = function(url, force = FALSE, perspective = NA_character_) {
       url <- storm_normalize_url(url)
-      if (is.na(url)) stormr_abort("Invalid URL.")
+      if (is.na(url)) tempest_abort("Invalid URL.")
 
-      key <- stormr_cache_key("fetch", url)
-      cached <- if (!force) stormr_cache_get(self$cache_dir, key) else NULL
+      key <- tempest_cache_key("fetch", url)
+      cached <- if (!force) tempest_cache_get(self$cache_dir, key) else NULL
       if (!is.null(cached)) {
         self$store$upsert_source(cached)
         return(cached)
       }
 
       res <- storm_fetch_url_text(url, user_agent = self$config$user_agent)
-      fetched_at <- stormr_now_utc()
+      fetched_at <- tempest_now_utc()
 
       if (!is.null(res$error)) {
         src <- storm_source(
@@ -350,7 +350,7 @@ StormRetriever <- R6::R6Class(
           meta = list(kind = res$kind, error = res$error)
         )
         self$store$upsert_source(src)
-        stormr_cache_set(self$cache_dir, key, src)
+        tempest_cache_set(self$cache_dir, key, src)
         return(src)
       }
 
@@ -366,7 +366,7 @@ StormRetriever <- R6::R6Class(
       title <- res$title %||% NA_character_
       if (is.na(title) && !is.na(txt) && nzchar(txt)) {
         first <- unlist(strsplit(txt, "\n", fixed = TRUE))[1]
-        title <- stormr_trim(first)
+        title <- tempest_trim(first)
         if (nchar(title) > 120) title <- paste0(substr(title, 1, 117), "...")
       }
 
@@ -382,7 +382,7 @@ StormRetriever <- R6::R6Class(
         meta = list(kind = res$kind, error = NULL)
       )
       self$store$upsert_source(src)
-      stormr_cache_set(self$cache_dir, key, src)
+      tempest_cache_set(self$cache_dir, key, src)
 
       # Ingest into ragnar store if available
       if (!is.null(self$ragnar_store) && !is.na(txt) && nzchar(txt)) {
@@ -402,7 +402,7 @@ StormRetriever <- R6::R6Class(
 
     #' @description
     #' Ingest content into the ragnar store.
-    #' @param source_id The stormr source ID.
+    #' @param source_id The tempest source ID.
     #' @param url The source URL.
     #' @param title The document title.
     #' @param text The full text content.
@@ -419,7 +419,7 @@ StormRetriever <- R6::R6Class(
       perspective = NA_character_
     ) {
       if (is.null(self$ragnar_store)) return(invisible(NULL))
-      stormr_require("ragnar", "RAG capabilities require the ragnar package.")
+      tempest_require("ragnar", "RAG capabilities require the ragnar package.")
 
       # Create markdown document and chunk it
       doc <- ragnar::MarkdownDocument(text, origin = url)
@@ -454,7 +454,7 @@ StormRetriever <- R6::R6Class(
     #' Build the ragnar store index for faster retrieval.
     build_ragnar_index = function() {
       if (is.null(self$ragnar_store)) return(invisible(NULL))
-      stormr_require("ragnar", "RAG capabilities require the ragnar package.")
+      tempest_require("ragnar", "RAG capabilities require the ragnar package.")
       ragnar::ragnar_store_build_index(self$ragnar_store)
       invisible(TRUE)
     },
@@ -467,9 +467,9 @@ StormRetriever <- R6::R6Class(
     #' @return A data frame of relevant chunks with metadata.
     retrieve = function(query, k = 10, method = c("hybrid", "vss", "bm25")) {
       if (is.null(self$ragnar_store)) {
-        stormr_abort("No ragnar store configured. Use embed_fn in storm_config().")
+        tempest_abort("No ragnar store configured. Use embed_fn in storm_config().")
       }
-      stormr_require("ragnar", "RAG capabilities require the ragnar package.")
+      tempest_require("ragnar", "RAG capabilities require the ragnar package.")
       method <- match.arg(method)
 
       retrieve_fn <- switch(
@@ -525,7 +525,7 @@ storm_search_serper <- function(query, k = 8L) {
   api_key <- Sys.getenv("SERPER_API_KEY", unset = "")
 
   if (identical(api_key, "")) {
-    stormr_abort(c(
+    tempest_abort(c(
       "SERPER_API_KEY environment variable is not set.",
       i = "Set it with: {.code Sys.setenv(SERPER_API_KEY = \"your-key\")}",
       i = "Or use a different provider: {.code storm_config(search_provider = \"wikipedia\")}"
@@ -561,7 +561,7 @@ storm_search_brave <- function(query, k = 8L) {
   api_key <- Sys.getenv("BRAVE_API_KEY", unset = "")
 
   if (identical(api_key, "")) {
-    stormr_abort(c(
+    tempest_abort(c(
       "BRAVE_API_KEY environment variable is not set.",
       i = "Set it with: {.code Sys.setenv(BRAVE_API_KEY = \"your-key\")}",
       i = "Or use a different provider: {.code storm_config(search_provider = \"wikipedia\")}"
@@ -597,7 +597,7 @@ storm_search_tavily <- function(query, k = 8L) {
   api_key <- Sys.getenv("TAVILY_API_KEY", unset = "")
 
   if (identical(api_key, "")) {
-    stormr_abort(c(
+    tempest_abort(c(
       "TAVILY_API_KEY environment variable is not set.",
       i = "Set it with: {.code Sys.setenv(TAVILY_API_KEY = \"your-key\")}",
       i = "Or use a different provider: {.code storm_config(search_provider = \"wikipedia\")}"

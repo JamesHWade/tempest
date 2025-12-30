@@ -37,7 +37,7 @@ storm_detect_provider <- function(model) {
 #' @return List of ellmer tools, or NULL if provider doesn
 #' @keywords internal
 storm_get_native_web_tools <- function(provider) {
-  stormr_require("ellmer", "Provider-native web tools require ellmer.")
+  tempest_require("ellmer", "Provider-native web tools require ellmer.")
 
   tools <- switch(provider,
     "openai" = list(
@@ -67,7 +67,7 @@ storm_provider_has_native_search <- function(provider) {
 
 #' @keywords internal
 storm_tools_retrieval <- function(retriever) {
-  stormr_require("ellmer", "Tool calling for retrieval.")
+  tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "StormRetriever"))
 
   web_search <- function(query, k = retriever$config$max_search_results) {
@@ -126,7 +126,7 @@ storm_tools_retrieval <- function(retriever) {
   }
 
   add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
-    if (is.null(source_ids) || length(source_ids) == 0) stormr_abort("add_fact requires at least one source_id.")
+    if (is.null(source_ids) || length(source_ids) == 0) tempest_abort("add_fact requires at least one source_id.")
     fact <- storm_fact(claim = claim, source_ids = source_ids, confidence = confidence, note = note)
     retriever$store$add_fact(fact)
     list(fact_id = fact$id, claim = fact$claim, source_ids = fact$source_ids, confidence = fact$confidence)
@@ -204,7 +204,7 @@ storm_tools_retrieval <- function(retriever) {
 #' @return List of ellmer tools for source/fact management
 #' @keywords internal
 storm_tools_source_management <- function(retriever) {
-  stormr_require("ellmer", "Tool calling for retrieval.")
+  tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "StormRetriever"))
 
   get_source <- function(source_id) {
@@ -245,7 +245,7 @@ storm_tools_source_management <- function(retriever) {
   }
 
   add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
-    if (is.null(source_ids) || length(source_ids) == 0) stormr_abort("add_fact requires at least one source_id.")
+    if (is.null(source_ids) || length(source_ids) == 0) tempest_abort("add_fact requires at least one source_id.")
     fact <- storm_fact(claim = claim, source_ids = source_ids, confidence = confidence, note = note)
     retriever$store$add_fact(fact)
     list(fact_id = fact$id, claim = fact$claim, source_ids = fact$source_ids, confidence = fact$confidence)
@@ -302,7 +302,7 @@ storm_tools_source_management <- function(retriever) {
 #' @return The chat object (invisibly)
 #' @keywords internal
 storm_register_default_tools <- function(chat, retriever, model = NULL, search_provider = "native") {
-  stormr_require("ellmer", "Tool calling for retrieval.")
+  tempest_require("ellmer", "Tool calling for retrieval.")
 
 
   # Determine if we should use native provider tools
@@ -329,7 +329,7 @@ storm_register_default_tools <- function(chat, retriever, model = NULL, search_p
   }
 
   # Register ragnar retrieve tool if store is available
-  if (!is.null(retriever$ragnar_store) && stormr_has("ragnar")) {
+  if (!is.null(retriever$ragnar_store) && tempest_has("ragnar")) {
     ragnar::ragnar_register_tool_retrieve(
       chat,
       retriever$ragnar_store,
@@ -456,7 +456,7 @@ ExpertSessionManager <- R6::R6Class(
 #' @return An ellmer tool.
 #' @keywords internal
 storm_create_expert_tool <- function(persona, session_manager, topic) {
-  stormr_require("ellmer", "Expert tools require ellmer.")
+  tempest_require("ellmer", "Expert tools require ellmer.")
 
   # Sanitize name for tool name (e.g., "Dr. Sarah Chen" -> "ask_dr_sarah_chen")
   safe_name <- tolower(gsub("[^a-zA-Z0-9]+", "_", persona$name %||% "expert"))

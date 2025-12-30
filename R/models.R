@@ -5,8 +5,8 @@
 #' @return Source id like "Sxxxxxxxxxxxx"
 #' @keywords internal
 storm_source_id <- function(url) {
-  url <- stormr_trim(url)
-  if (length(url) != 1 || is.na(url) || url == "") stormr_abort("Invalid url for source id.")
+  url <- tempest_trim(url)
+  if (length(url) != 1 || is.na(url) || url == "") tempest_abort("Invalid url for source id.")
   paste0("S", substr(digest::digest(url, algo = "xxhash64"), 1, 12))
 }
 
@@ -30,13 +30,13 @@ storm_source <- function(url, title = NULL, snippet = NULL, content_text = NULL,
 #' @keywords internal
 storm_fact <- function(claim, source_ids, confidence = NA_character_, note = NA_character_, tags = character()) {
   list(
-    id = stormr_uuid("fact"),
+    id = tempest_uuid("fact"),
     claim = claim,
     source_ids = unique(source_ids),
     confidence = confidence %||% NA_character_,
     note = note %||% NA_character_,
     tags = unique(tags),
-    created_at = stormr_now_utc()
+    created_at = tempest_now_utc()
   )
 }
 

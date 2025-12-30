@@ -127,7 +127,7 @@ Ingest content into the ragnar store.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{source_id}}{The stormr source ID.}
+\item{\code{source_id}}{The tempest source ID.}
 
 \item{\code{url}}{The source URL.}
 

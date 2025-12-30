@@ -2,7 +2,7 @@
 
 #' @keywords internal
 costorm_type_decision <- function(persona_names = NULL) {
-  stormr_require("ellmer")
+  tempest_require("ellmer")
   example <- if (!is.null(persona_names) && length(persona_names) > 0) {
     paste0("moderator, ", paste(persona_names, collapse = ", "))
   } else {
@@ -17,7 +17,7 @@ costorm_type_decision <- function(persona_names = NULL) {
 
 #' @keywords internal
 costorm_type_mindmap <- function() {
-  stormr_require("ellmer")
+  tempest_require("ellmer")
   node <- ellmer::type_object(
     id = ellmer::type_string("Stable node id (short). Use 'root' for the root."),
     label = ellmer::type_string("Node label"),
@@ -119,9 +119,9 @@ CoStormSession <- R6::R6Class(
     #' @param personas Optional list of pre-generated personas. If NULL,
     #'   personas are generated automatically using `storm_generate_personas()`.
     initialize = function(topic, config = storm_config(), n_experts = 3, personas = NULL) {
-      stormr_require("ellmer", "CoStormSession requires ellmer.")
-      self$topic <- stormr_trim(topic)
-      if (is.na(self$topic) || self$topic == "") stormr_abort("topic must be a non-empty string.")
+      tempest_require("ellmer", "CoStormSession requires ellmer.")
+      self$topic <- tempest_trim(topic)
+      if (is.na(self$topic) || self$topic == "") tempest_abort("topic must be a non-empty string.")
       self$title <- self$topic
       self$config <- config
       self$store <- SourceStore$new()
@@ -200,7 +200,7 @@ CoStormSession <- R6::R6Class(
         speaker = speaker,
         role = role,
         text = text,
-        at = stormr_now_utc()
+        at = tempest_now_utc()
       )))
       invisible(TRUE)
     },
@@ -334,7 +334,7 @@ CoStormSession <- R6::R6Class(
     #' @param user_input User's input message.
     #' @return A list with speaker, answer, tool_calls, and mindmap_md.
     step = function(user_input) {
-      user_input <- stormr_trim(user_input)
+      user_input <- tempest_trim(user_input)
       if (is.na(user_input) || user_input == "") return(invisible(NULL))
 
       self$add_turn("user", "user", user_input)
@@ -375,7 +375,7 @@ CoStormSession <- R6::R6Class(
     #' @return A list with results from each expert's warmup.
     warmup = function(verbose = TRUE) {
       if (length(self$personas) == 0) {
-        if (verbose) stormr_inform("No personas available for warmup.")
+        if (verbose) tempest_inform("No personas available for warmup.")
         return(invisible(list()))
       }
 
@@ -387,11 +387,11 @@ CoStormSession <- R6::R6Class(
         initial_qs <- persona$initial_questions %||% character()
 
         if (length(initial_qs) == 0) {
-          if (verbose) stormr_inform("Skipping {persona_name}: no initial questions")
+          if (verbose) tempest_inform("Skipping {persona_name}: no initial questions")
           next
         }
 
-        if (verbose) stormr_inform("Warmup: {persona_name} ({length(initial_qs)} questions)")
+        if (verbose) tempest_inform("Warmup: {persona_name} ({length(initial_qs)} questions)")
 
         # Get or create expert session
         session_result <- self$expert_session_manager$get_or_create(persona)
@@ -400,7 +400,7 @@ CoStormSession <- R6::R6Class(
 
         expert_results <- list()
         for (q in initial_qs) {
-          if (verbose) stormr_inform("  Q: {q}")
+          if (verbose) tempest_inform("  Q: {q}")
 
           prompt <- paste0(
             "Topic: ", self$topic, "\n\n",
@@ -444,7 +444,7 @@ CoStormSession <- R6::R6Class(
       if (verbose) {
         total_facts <- length(self$store$list_facts())
         total_sources <- length(self$store$list_sources())
-        stormr_inform("Warmup complete: {total_facts} facts, {total_sources} sources")
+        tempest_inform("Warmup complete: {total_facts} facts, {total_sources} sources")
       }
 
       invisible(results)

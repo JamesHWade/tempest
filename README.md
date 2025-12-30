@@ -1,4 +1,4 @@
-# stormr
+# tempest
 
 An R-native implementation of [STORM](https://storm.genie.stanford.edu/) (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and [Co-STORM](https://co-storm.genie.stanford.edu/) from Stanford's STORM project.
 
@@ -18,7 +18,7 @@ Built on the R AI ecosystem:
 
 ```r
 # install.packages("pak")
-pak::pak("JamesHWade/stormr")
+pak::pak("JamesHWade/tempest")
 ```
 
 ## Setup
@@ -33,7 +33,7 @@ Sys.setenv(OPENAI_API_KEY = "<your key>")
 
 ### Search provider
 
-By default, `stormr` uses **native provider web search** when available (OpenAI, Anthropic, Google). This leverages each provider's built-in web search capabilities for better results.
+By default, `tempest` uses **native provider web search** when available (OpenAI, Anthropic, Google). This leverages each provider's built-in web search capabilities for better results.
 
 To use alternative search providers:
 
@@ -52,7 +52,7 @@ Provider-specific API keys for alternative search:
 ## Scripted STORM
 
 ```r
-library(stormr)
+library(tempest)
 
 cfg <- storm_config(
   # search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)
@@ -88,7 +88,7 @@ cfg <- storm_config(models = "anthropic/claude-sonnet-4-20250514")
 | `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
 | `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
 | `tools` | `NULL` | Additional ellmer tools (e.g., `btw::btw_tools()`) |
-| `cache_dir` | `"~/.stormr"` | Cache directory for searches and fetched content |
+| `cache_dir` | `"~/.tempest"` | Cache directory for searches and fetched content |
 | `max_search_results` | `8` | Maximum results per search query |
 | `max_sources` | `24` | Maximum sources to track per session |
 
@@ -96,7 +96,7 @@ cfg <- storm_config(models = "anthropic/claude-sonnet-4-20250514")
 
 Enable semantic search over fetched sources by providing an embedding function:
 ```r
-library(stormr)
+library(tempest)
 
 cfg <- storm_config(
   embed_fn = ragnar::embed_openai(),  # or embed_ollama(), custom function
@@ -106,7 +106,7 @@ cfg <- storm_config(
 res <- storm_run("Quantum computing applications", config = cfg)
 ```
 
-When `embed_fn` is provided, stormr automatically:
+When `embed_fn` is provided, tempest automatically:
 - Chunks fetched web content using `ragnar::markdown_chunk()`
 - Stores chunks with metadata (source_id, url, title, perspective)
 - Registers a semantic retrieve tool with chat agents
@@ -115,7 +115,7 @@ You can also provide a pre-built ragnar store:
 ```r
 store <- storm_create_ragnar_store(
   embed_fn = ragnar::embed_openai(),
-  cache_dir = "~/.stormr_cache"
+  cache_dir = "~/.tempest_cache"
 )
 cfg <- storm_config(ragnar_store = store)
 ```
@@ -152,7 +152,7 @@ Co-STORM provides an interactive multi-expert research experience with automatic
 ### Console Usage
 
 ```r
-library(stormr)
+library(tempest)
 
 # Create a session - personas are generated automatically
 session <- costorm_session("AI safety and alignment", n_experts = 3)
@@ -207,7 +207,7 @@ session$step("What is quantum supremacy?")  # Benefits from prior research
 ### Shiny App
 
 ```r
-library(stormr)
+library(tempest)
 run_stormchat()
 ```
 
@@ -227,14 +227,14 @@ Features:
 ## vitals evals
 
 ```r
-library(stormr)
+library(tempest)
 library(vitals)
 library(ellmer)
 
 # scorer chat must be provided for model-graded scoring:
 judge <- ellmer::chat("openai/gpt-4o-mini")
 
-tsk <- stormr_task(dataset = "qa", scorer_chat = judge)
+tsk <- tempest_task(dataset = "qa", scorer_chat = judge)
 tsk$eval(view = interactive())
 
 tsk$get_samples()

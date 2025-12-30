@@ -1,7 +1,7 @@
 test_that("storm_type_personas returns valid ellmer type", {
   skip_if_not_installed("ellmer")
 
-  type <- stormr:::storm_type_personas()
+  type <- tempest:::storm_type_personas()
   expect_true(!is.null(type))
 })
 
@@ -15,7 +15,7 @@ test_that("storm_format_persona_details formats correctly", {
     perspective = "Physical science perspective on climate change"
   )
 
-  details <- stormr:::storm_format_persona_details(persona)
+  details <- tempest:::storm_format_persona_details(persona)
 
   expect_true(grepl("Arctic Research Institute", details))
   expect_true(grepl("20 years", details))
@@ -29,7 +29,7 @@ test_that("storm_format_persona_details handles missing fields", {
     title = "Climate Scientist"
   )
 
-  details <- stormr:::storm_format_persona_details(persona)
+  details <- tempest:::storm_format_persona_details(persona)
   expect_true(is.character(details))
   expect_equal(details, "")  # No fields to format
 })
@@ -44,7 +44,7 @@ test_that("storm_render_expert_prompt creates prompt with persona", {
     perspective = "Physical science perspective on climate change"
   )
 
-  prompt <- stormr:::storm_render_expert_prompt(persona = persona, expert_id = 1)
+  prompt <- tempest:::storm_render_expert_prompt(persona = persona, expert_id = 1)
 
   expect_true(grepl("Dr. Sarah Chen", prompt))
   expect_true(grepl("Climate Scientist", prompt))
@@ -52,7 +52,7 @@ test_that("storm_render_expert_prompt creates prompt with persona", {
 })
 
 test_that("storm_render_expert_prompt creates fallback for NULL persona", {
-  prompt <- stormr:::storm_render_expert_prompt(persona = NULL, expert_id = 3)
+  prompt <- tempest:::storm_render_expert_prompt(persona = NULL, expert_id = 3)
 
   expect_true(grepl("Expert 3", prompt))
   expect_true(grepl("Research Specialist", prompt))
@@ -191,9 +191,9 @@ test_that("ExpertSessionManager generates session IDs", {
   )
 
   cfg <- storm_config()
-  store <- stormr:::SourceStore$new()
-  retriever <- stormr:::storm_retriever(config = cfg, store = store)
-  mgr <- stormr:::ExpertSessionManager$new(cfg, retriever)
+  store <- tempest:::SourceStore$new()
+  retriever <- tempest:::storm_retriever(config = cfg, store = store)
+  mgr <- tempest:::ExpertSessionManager$new(cfg, retriever)
 
   # Generate a session ID
   sid <- mgr$generate_session_id("Dr. Sarah Chen")
@@ -216,11 +216,11 @@ test_that("storm_create_expert_tool creates valid ellmer tool", {
   )
 
   cfg <- storm_config()
-  store <- stormr:::SourceStore$new()
-  retriever <- stormr:::storm_retriever(config = cfg, store = store)
-  mgr <- stormr:::ExpertSessionManager$new(cfg, retriever)
+  store <- tempest:::SourceStore$new()
+  retriever <- tempest:::storm_retriever(config = cfg, store = store)
+  mgr <- tempest:::ExpertSessionManager$new(cfg, retriever)
 
-  tool <- stormr:::storm_create_expert_tool(persona, mgr, "Climate change")
+  tool <- tempest:::storm_create_expert_tool(persona, mgr, "Climate change")
 
   # Tool should have the expected name (ellmer tools are S7 objects, use @)
   expect_equal(tool@name, "ask_dr_sarah_chen")

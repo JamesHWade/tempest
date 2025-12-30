@@ -64,7 +64,7 @@ Create a new StormConfig.
   cache_dir = NULL,
   max_search_results = 8,
   max_sources = 24,
-  user_agent = "stormr (R; +https://example.com/stormr)"
+  user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)"
 )}\if{html}{\out{</div>}}
 }
 

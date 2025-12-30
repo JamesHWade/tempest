@@ -6,11 +6,11 @@
 #' @return A character string containing the prompt.
 #' @keywords internal
 storm_prompt <- function(name) {
-  path <- stormr_pkg_file("prompts", paste0(name, ".md"))
+  path <- tempest_pkg_file("prompts", paste0(name, ".md"))
   if (identical(path, "")) {
-    stormr_abort("Unknown prompt {.val {name}}. Prompt file not found in inst/prompts.")
+    tempest_abort("Unknown prompt {.val {name}}. Prompt file not found in inst/prompts.")
   }
-  stormr_read_text(path)
+  tempest_read_text(path)
 }
 
 #' @keywords internal
