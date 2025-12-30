@@ -65,7 +65,7 @@ tempest_solver_cited_answer <- function(input, config = storm_config(), solver_c
   list(result = results, solver_chat = chats, solver_metadata = meta)
 }
 
-#' Create a vitals Task for stormr
+#' Create a vitals Task for tempest
 #'
 #' @param dataset Which built-in dataset to use. Currently "qa".
 #' @param solver A vitals-compatible solver. Defaults to `tempest_solver_cited_answer`.

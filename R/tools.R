@@ -293,7 +293,7 @@ storm_tools_source_management <- function(retriever) {
 #'
 #' Registers web search and source/fact management tools on a chat object.
 #' When search_provider is "native" and the provider supports it, uses the
-#' provider's built-in web search. Otherwise uses custom stormr tools.
+#' provider's built-in web search. Otherwise uses custom tempest tools.
 #'
 #' @param chat An ellmer chat object
 #' @param retriever A StormRetriever object

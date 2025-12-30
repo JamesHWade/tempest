@@ -2,7 +2,7 @@
 % Please edit documentation in R/evals.R
 \name{tempest_task}
 \alias{tempest_task}
-\title{Create a vitals Task for stormr}
+\title{Create a vitals Task for tempest}
 \usage{
 tempest_task(
   dataset = c("qa"),
@@ -30,5 +30,5 @@ tempest_task(
 A \code{vitals::Task}.
 }
 \description{
-Create a vitals Task for stormr
+Create a vitals Task for tempest
 }

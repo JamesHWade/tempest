@@ -1,5 +1,5 @@
 devtools::load_all()
-# stormr demo app (Co-STORM)
+# tempest demo app (Co-STORM)
 # Modern bslib/shiny implementation
 
 # Theme configuration with storm brand colors
@@ -15,7 +15,7 @@ theme <- bslib::bs_theme(
 )
 
 ui <- bslib::page_navbar(
-  title = shiny::tagList(shiny::icon("cloud-bolt"), "stormr"),
+  title = shiny::tagList(shiny::icon("cloud-bolt"), "tempest"),
   id = "main_nav",
   theme = theme,
   fillable = TRUE,
@@ -139,8 +139,8 @@ server <- function(input, output, session) {
 
   # Helper to create session
   create_session <- function(topic, n_experts = 3) {
-    cfg <- stormr::storm_config()
-    ses <- stormr::costorm_session(topic, config = cfg, n_experts = n_experts)
+    cfg <- tempest::storm_config()
+    ses <- tempest::costorm_session(topic, config = cfg, n_experts = n_experts)
     storm_session(ses)
     bump_version()
     shinychat::chat_clear("storm_chat")
@@ -323,7 +323,7 @@ server <- function(input, output, session) {
       if (is.null(ses)) {
         return(NULL)
       }
-      stormr::storm_sources(ses$store)
+      tempest::storm_sources(ses$store)
     },
     striped = TRUE,
     hover = TRUE,
@@ -338,7 +338,7 @@ server <- function(input, output, session) {
       if (is.null(ses)) {
         return(NULL)
       }
-      stormr::storm_facts(ses$store)
+      tempest::storm_facts(ses$store)
     },
     striped = TRUE,
     hover = TRUE,
