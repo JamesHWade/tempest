@@ -1,0 +1,24 @@
+# Authors and Citation
+
+## Authors
+
+- **James Wade**. Author, maintainer.
+
+- **OpenAI**. Copyright holder.
+
+## Citation
+
+Source:
+[`DESCRIPTION`](https://github.com/JamesHWade/tempest/blob/main/DESCRIPTION)
+
+Wade J (2025). *tempest: STORM and Co-STORM Research and Writing Agents
+for R*. R package version 0.1.0,
+<https://github.com/JamesHWade/tempest>.
+
+    @Manual{,
+      title = {tempest: STORM and Co-STORM Research and Writing Agents for R},
+      author = {James Wade},
+      year = {2025},
+      note = {R package version 0.1.0},
+      url = {https://github.com/JamesHWade/tempest},
+    }
