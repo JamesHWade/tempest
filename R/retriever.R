@@ -1,12 +1,71 @@
 # Retrieval and web access
+# Security-hardened URL handling with tidyverse style
 
+#' Validate and normalize a URL
+#'
+#' Normalizes URLs to HTTPS and validates against security risks including
+
+#' SSRF attacks (Server-Side Request Forgery).
+#'
+#' @param url URL string to normalize.
+#' @return Normalized URL or `NA_character_` if invalid.
 #' @keywords internal
 storm_normalize_url <- function(url) {
   url <- stormr_trim(url)
-  if (is.na(url) || url == "") return(NA_character_)
-  # Minimal normalization; avoid introducing dependencies.
+
+  if (is.na(url) || identical(url, "")) {
+    return(NA_character_)
+  }
+
+
+  # Block dangerous protocols (SSRF prevention)
+  dangerous_protocols <- "^(file|ftp|gopher|data|javascript|vbscript):"
+  if (stringi::stri_detect_regex(url, dangerous_protocols, case_insensitive = TRUE)) {
+    stormr_abort(c(
+      "URL protocol not allowed for security reasons.",
+      x = "Blocked URL: {.url {url}}",
+      i = "Only HTTP/HTTPS URLs are permitted."
+    ))
+  }
+
+  # Block local/internal addresses (SSRF prevention)
+  local_patterns <- paste0(
+    "^https?://(",
+    "localhost|",
+    "127\\.0\\.0\\.1|",
+    "0\\.0\\.0\\.0|",
+    "\\[::1?\\]|",
+    "192\\.168\\.[0-9]+\\.[0-9]+|",
+    "10\\.[0-9]+\\.[0-9]+\\.[0-9]+|",
+    "172\\.(1[6-9]|2[0-9]|3[01])\\.[0-9]+\\.[0-9]+",
+    ")(/|:|$)"
+  )
+  if (stringi::stri_detect_regex(url, local_patterns, case_insensitive = TRUE)) {
+    stormr_abort(c(
+      "Local network URLs not allowed for security reasons.",
+      x = "Blocked URL: {.url {url}}",
+      i = "Only public URLs are permitted."
+    ))
+  }
+
+  # Upgrade HTTP to HTTPS
   url <- sub("^http://", "https://", url)
   url
+}
+
+#' Check if URL is safe (non-throwing version)
+#'
+#' @param url URL to check.
+#' @return Logical indicating if URL passes security checks.
+#' @keywords internal
+storm_url_is_safe <- function(url) {
+  tryCatch(
+    {
+      storm_normalize_url(url)
+      TRUE
+    },
+    error = function(e) FALSE
+  )
 }
 
 #' @keywords internal
@@ -236,13 +295,20 @@ StormRetriever <- R6::R6Class(
       cached <- stormr_cache_get(self$cache_dir, key)
       if (!is.null(cached)) return(cached)
 
+      # Handle "native" provider - falls back to Wikipedia for direct search() calls
+      # since native provider web search is handled via tool registration
+      effective_provider <- if (identical(provider, "native")) "wikipedia" else provider
+
       out <- switch(
-        provider,
+        effective_provider,
         wikipedia = storm_wiki_search(query, limit = k),
         serper = storm_search_serper(query, k = k),
         brave = storm_search_brave(query, k = k),
         tavily = storm_search_tavily(query, k = k),
-        stormr_abort("Unknown search provider {.val {provider}}.")
+        stormr_abort(c(
+          "Unknown search provider: {.val {provider}}",
+          i = "Available providers: native, wikipedia, serper, brave, tavily"
+        ))
       )
 
       # Normalize and add deterministic source ids
@@ -445,22 +511,39 @@ storm_retriever <- function(config = storm_config(), store = SourceStore$new()) 
   StormRetriever$new(config = config, store = store)
 }
 
-# --- Provider-specific search helpers (API-key based) -----------------------
+# --- Provider-specific search helpers ----------------------------------------
+# API keys are retrieved from environment variables inside functions,
+# never as parameters (security: prevents exposure in stack traces)
 
+#' Search using Serper API
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
 #' @keywords internal
-storm_search_serper <- function(query, k = 8, api_key = Sys.getenv("SERPER_API_KEY", "")) {
+storm_search_serper <- function(query, k = 8L) {
+  api_key <- Sys.getenv("SERPER_API_KEY", unset = "")
+
   if (identical(api_key, "")) {
-    stormr_abort("SERPER_API_KEY is not set. Set it to use provider = 'serper'.")
+    stormr_abort(c(
+      "SERPER_API_KEY environment variable is not set.",
+      i = "Set it with: {.code Sys.setenv(SERPER_API_KEY = \"your-key\")}",
+      i = "Or use a different provider: {.code storm_config(search_provider = \"wikipedia\")}"
+    ))
   }
+
   req <- httr2::request("https://google.serper.dev/search") |>
     httr2::req_headers(`X-API-KEY` = api_key, `Content-Type` = "application/json") |>
     httr2::req_body_json(list(q = query, num = k))
+
   resp <- httr2::req_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$organic
-  if (is.null(items) || length(items) == 0) {
+
+  if (is.null(items) || length(items) == 0L) {
     return(tibble::tibble(title = character(), url = character(), snippet = character()))
   }
+
   tibble::tibble(
     title = items$title %||% character(),
     url = items$link %||% character(),
@@ -468,20 +551,35 @@ storm_search_serper <- function(query, k = 8, api_key = Sys.getenv("SERPER_API_K
   )
 }
 
+#' Search using Brave Search API
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
 #' @keywords internal
-storm_search_brave <- function(query, k = 8, api_key = Sys.getenv("BRAVE_API_KEY", "")) {
+storm_search_brave <- function(query, k = 8L) {
+  api_key <- Sys.getenv("BRAVE_API_KEY", unset = "")
+
   if (identical(api_key, "")) {
-    stormr_abort("BRAVE_API_KEY is not set. Set it to use provider = 'brave'.")
+    stormr_abort(c(
+      "BRAVE_API_KEY environment variable is not set.",
+      i = "Set it with: {.code Sys.setenv(BRAVE_API_KEY = \"your-key\")}",
+      i = "Or use a different provider: {.code storm_config(search_provider = \"wikipedia\")}"
+    ))
   }
+
   req <- httr2::request("https://api.search.brave.com/res/v1/web/search") |>
-    httr2::req_headers(`Accept` = "application/json", `X-Subscription-Token` = api_key) |>
+    httr2::req_headers(Accept = "application/json", `X-Subscription-Token` = api_key) |>
     httr2::req_url_query(q = query, count = k)
+
   resp <- httr2::req_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$web$results
-  if (is.null(items) || length(items) == 0) {
+
+  if (is.null(items) || length(items) == 0L) {
     return(tibble::tibble(title = character(), url = character(), snippet = character()))
   }
+
   tibble::tibble(
     title = items$title %||% character(),
     url = items$url %||% character(),
@@ -489,20 +587,35 @@ storm_search_brave <- function(query, k = 8, api_key = Sys.getenv("BRAVE_API_KEY
   )
 }
 
+#' Search using Tavily API
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
 #' @keywords internal
-storm_search_tavily <- function(query, k = 8, api_key = Sys.getenv("TAVILY_API_KEY", "")) {
+storm_search_tavily <- function(query, k = 8L) {
+  api_key <- Sys.getenv("TAVILY_API_KEY", unset = "")
+
   if (identical(api_key, "")) {
-    stormr_abort("TAVILY_API_KEY is not set. Set it to use provider = 'tavily'.")
+    stormr_abort(c(
+      "TAVILY_API_KEY environment variable is not set.",
+      i = "Set it with: {.code Sys.setenv(TAVILY_API_KEY = \"your-key\")}",
+      i = "Or use a different provider: {.code storm_config(search_provider = \"wikipedia\")}"
+    ))
   }
+
   req <- httr2::request("https://api.tavily.com/search") |>
     httr2::req_headers(`Content-Type` = "application/json") |>
     httr2::req_body_json(list(api_key = api_key, query = query, max_results = k))
+
   resp <- httr2::req_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$results
-  if (is.null(items) || length(items) == 0) {
+
+  if (is.null(items) || length(items) == 0L) {
     return(tibble::tibble(title = character(), url = character(), snippet = character()))
   }
+
   tibble::tibble(
     title = items$title %||% character(),
     url = items$url %||% character(),

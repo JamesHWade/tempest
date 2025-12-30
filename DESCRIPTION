@@ -2,7 +2,7 @@ Package: stormr
 Title: STORM and Co-STORM Research and Writing Agents for R
 Version: 0.1.0
 Authors@R: c(
-    person("James", "User", role = c("aut", "cre"), email = "james@example.com"),
+    person("James", "Wade", role = c("aut", "cre"), email = "james@example.com"),
     person("OpenAI", role = "cph")
   )
 Description: Implements an R-native clone of the STORM and Co-STORM
@@ -14,36 +14,39 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.1.0)
 Imports:
-    R6,
     cli,
     digest,
-    dplyr,
     fs,
     glue,
     httr2,
-    jsonlite,
     purrr,
-    rlang,
+    R6,
+    rlang (>= 1.0.0),
     stringi,
-    tibble,
-    tidyr
+    tibble
 Suggests:
+    bslib,
+    commonmark,
+    dplyr,
     ellmer,
+    jsonlite,
+    knitr,
+    later,
+    pdftools,
+    promises,
+    ragnar,
+    rmarkdown,
+    rvest,
     shiny,
     shinychat,
-    bslib,
-    promises,
-    later,
-    rvest,
-    xml2,
-    commonmark,
-    vitals,
     testthat (>= 3.0.0),
+    tidyr,
+    vitals,
     withr,
-    knitr,
-    rmarkdown,
-    pdftools
+    xml2
 Config/testthat/edition: 3
-URL: https://example.com/stormr
-BugReports: https://example.com/stormr/issues
+URL: https://github.com/JamesHWade/stormr
+BugReports: https://github.com/JamesHWade/stormr/issues

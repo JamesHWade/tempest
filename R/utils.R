@@ -1,70 +1,158 @@
 # stormr utility helpers
+# Uses explicit namespacing for clarity and traceability
 
+#' Check if a package is available
+#'
+#' @param pkg Package name as string.
+#' @return Logical indicating if package is installed.
 #' @keywords internal
 stormr_has <- function(pkg) {
-  requireNamespace(pkg, quietly = TRUE)
+  if (!rlang::is_string(pkg)) {
+    stormr_abort("{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}.")
+  }
+  rlang::is_installed(pkg)
 }
 
+#' Abort with a formatted error message
+#'
+#' Wrapper around [cli::cli_abort()] for consistent error formatting.
+#'
+#' @param message Error message with cli formatting.
+#' @param ... Additional arguments passed to [cli::cli_abort()].
+#' @param .envir Environment for glue interpolation.
+#' @return Never returns; always throws an error.
 #' @keywords internal
-stormr_abort <- function(message, ..., .envir = parent.frame()) {
-  cli::cli_abort(message, ..., .envir = .envir)
+stormr_abort <- function(message, ..., .envir = rlang::caller_env()) {
+  cli::cli_abort(message, ..., .envir = .envir, call = rlang::caller_env())
 }
 
+#' Inform user with a formatted message
+#'
+#' Wrapper around [cli::cli_inform()] for consistent messaging.
+#'
+#' @param message Message with cli formatting.
+#' @param ... Additional arguments passed to [cli::cli_inform()].
+#' @param .envir Environment for glue interpolation.
 #' @keywords internal
-stormr_inform <- function(message, ..., .envir = parent.frame()) {
+stormr_inform <- function(message, ..., .envir = rlang::caller_env()) {
   cli::cli_inform(message, ..., .envir = .envir)
 }
 
+#' Warn user with a formatted message
+#'
+#' Wrapper around [cli::cli_warn()] for consistent warning formatting.
+#'
+#' @param message Warning message with cli formatting.
+#' @param ... Additional arguments passed to [cli::cli_warn()].
+#' @param .envir Environment for glue interpolation.
 #' @keywords internal
-`%||%` <- function(x, y) {
-  if (is.null(x)) y else x
+stormr_warn <- function(message, ..., .envir = rlang::caller_env()) {
+  cli::cli_warn(message, ..., .envir = .envir)
 }
 
+#' Get current UTC timestamp
+#'
+#' @return Character string with UTC timestamp.
 #' @keywords internal
 stormr_now_utc <- function() {
   format(Sys.time(), tz = "UTC", usetz = TRUE)
 }
 
+#' Trim whitespace from strings
+#'
+#' @param x Character vector.
+#' @return Trimmed character vector.
 #' @keywords internal
 stormr_trim <- function(x) {
-  if (length(x) == 0) return(x)
+  if (length(x) == 0L) {
+    return(x)
+  }
   stringi::stri_trim_both(x)
 }
 
+#' Generate a unique identifier
+#'
+#' Creates a prefixed identifier using xxhash64. Not cryptographically secure,
+#' but sufficient for local session state tracking.
+#'
+#' @param prefix Prefix string for the identifier.
+#' @return Character string identifier.
 #' @keywords internal
 stormr_uuid <- function(prefix = "id") {
-  # Cheap, good-enough identifier for local state; not cryptographically secure.
   raw <- paste0(prefix, "-", sprintf("%.0f", runif(1, 1e8, 1e9)), "-", sprintf("%.0f", Sys.time()))
   paste0(prefix, "_", digest::digest(raw, algo = "xxhash64"))
 }
 
+#' Require a package or abort
+#'
+#' Checks if a package is installed and aborts with a helpful message if not.
+#'
+#' @param pkg Package name.
+#' @param why Optional reason explaining why the package is needed.
 #' @keywords internal
 stormr_require <- function(pkg, why = NULL) {
+  if (!rlang::is_string(pkg)) {
+    stormr_abort("{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}.")
+  }
+
   if (!stormr_has(pkg)) {
     msg <- if (is.null(why)) {
-      glue::glue("Package {.pkg {pkg}} is required for this feature but is not installed.")
+      c("Package {.pkg {pkg}} is required but not installed.",
+        i = "Install it with: {.run install.packages(\"{pkg}\")}")
     } else {
-      glue::glue("Package {.pkg {pkg}} is required: {why}")
+      c("Package {.pkg {pkg}} is required: {why}",
+        i = "Install it with: {.run install.packages(\"{pkg}\")}")
     }
     stormr_abort(msg)
   }
+  invisible(TRUE)
 }
 
+#' Get path to package file
+#'
+#' @param ... Path components relative to package root.
+#' @return Full path to file.
 #' @keywords internal
 stormr_pkg_file <- function(...) {
   system.file(..., package = "stormr")
 }
 
+#' Read text file contents
+#'
+#' @param path Path to file.
+#' @return File contents as single string.
 #' @keywords internal
 stormr_read_text <- function(path) {
-  if (!file.exists(path)) stormr_abort("File does not exist: {.path {path}}")
+  if (!rlang::is_string(path)) {
+    stormr_abort("{.arg path} must be a single string, not {.obj_type_friendly {path}}.")
+  }
+
+  if (!file.exists(path)) {
+    stormr_abort("File does not exist: {.path {path}}")
+  }
   paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 }
 
+#' Write text to file
+#'
+#' Creates parent directories if needed.
+#'
+#' @param path Path to file.
+#' @param text Text content to write.
+#' @return Invisibly returns the path.
 #' @keywords internal
 stormr_write_text <- function(path, text) {
+  if (!rlang::is_string(path)) {
+    stormr_abort("{.arg path} must be a single string, not {.obj_type_friendly {path}}.")
+  }
+  if (!rlang::is_string(text)) {
+    stormr_abort("{.arg text} must be a single string, not {.obj_type_friendly {text}}.")
+  }
+
   dir <- dirname(path)
-  if (!dir.exists(dir)) dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  if (!dir.exists(dir)) {
+    dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  }
   writeLines(text, con = path, useBytes = TRUE)
   invisible(path)
 }

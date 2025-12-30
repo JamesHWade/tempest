@@ -345,6 +345,15 @@ storm_register_default_tools <- function(chat, retriever, model = NULL, search_p
 #' Expert Session Manager
 #'
 #' Manages expert chat sessions with session IDs for conversation continuity.
+#' Each expert persona gets their own chat session that can be resumed using
+#' the session ID returned from previous interactions.
+#'
+#' @field sessions Environment storing active chat sessions keyed by session ID.
+#' @field config A `StormConfig` object for creating chats.
+#' @field retriever A `StormRetriever` for registering tools.
+#' @field extractor Chat object for fact extraction (optional).
+#' @field store A `SourceStore` for storing extracted facts (optional).
+#'
 #' @keywords internal
 ExpertSessionManager <- R6::R6Class(
   "ExpertSessionManager",
@@ -355,15 +364,25 @@ ExpertSessionManager <- R6::R6Class(
     extractor = NULL,
     store = NULL,
 
+    #' @description
+    #' Create a new ExpertSessionManager.
+    #' @param config A `StormConfig` object.
+    #' @param retriever A `StormRetriever` object.
+    #' @param extractor Optional chat object for fact extraction.
+    #' @param store Optional `SourceStore` for storing extracted facts.
     initialize = function(config, retriever, extractor = NULL, store = NULL) {
       self$sessions <- new.env(parent = emptyenv())
       self$config <- config
       self$retriever <- retriever
       self$extractor <- extractor
       self$store <- store
+      invisible(self)
     },
 
-    #' Extract facts from expert response
+    #' @description
+    #' Extract facts from an expert response.
+    #' @param response Character string response from expert.
+    #' @return Invisibly returns NULL.
     extract_facts = function(response) {
       if (!is.null(self$extractor) && !is.null(self$store)) {
         storm_extract_facts_from_answer(self$extractor, response, self$store)
@@ -371,17 +390,22 @@ ExpertSessionManager <- R6::R6Class(
       invisible(NULL)
     },
 
-    #' Generate a human-readable session ID
+    #' @description
+    #' Generate a human-readable session ID from a persona name.
+    #' @param persona_name Name of the persona.
+    #' @return Character string session ID like "dr-sarah-chen-abc123".
     generate_session_id = function(persona_name) {
-      # Create ID like "dr-sarah-chen-abc123"
       base <- tolower(gsub("[^a-zA-Z0-9]+", "-", persona_name))
       base <- gsub("^-|-$", "", base)
-      # Generate random suffix using digest
-      suffix <- substr(digest::digest(stats::runif(1), algo = "xxhash64"), 1, 7)
+      suffix <- substr(digest::digest(runif(1), algo = "xxhash64"), 1, 7)
       paste0(base, "-", suffix)
     },
 
-    #' Get or create an expert chat session
+    #' @description
+    #' Get an existing session or create a new one.
+    #' @param persona A persona object from `storm_generate_personas()`.
+    #' @param session_id Optional session ID to resume.
+    #' @return List with `chat`, `session_id`, and `is_new` fields.
     get_or_create = function(persona, session_id = NULL) {
       # If session_id provided and exists, return it
       if (!is.null(session_id) && exists(session_id, envir = self$sessions)) {
@@ -393,7 +417,7 @@ ExpertSessionManager <- R6::R6Class(
       }
 
       # Create new session
-      sp <- storm_render_expert_prompt(persona = persona, expert_id = persona$id %||% 1)
+      sp <- storm_render_expert_prompt(persona = persona, expert_id = persona$id %||% 1L)
       chat <- self$config$make_chat("expert", system_prompt = sp, echo = "none")
       storm_register_default_tools(
         chat,
@@ -412,7 +436,9 @@ ExpertSessionManager <- R6::R6Class(
       )
     },
 
-    #' List active session IDs
+    #' @description
+    #' List all active session IDs.
+    #' @return Character vector of session IDs.
     list_sessions = function() {
       ls(envir = self$sessions)
     }

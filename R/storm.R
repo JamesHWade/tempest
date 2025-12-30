@@ -572,11 +572,14 @@ storm_run <- function(
 
 #' Run STORM asynchronously (Shiny-friendly)
 #'
-#' This is a thin wrapper around `storm_run()` that returns a promise.
+#' This is a thin wrapper around [storm_run()] that returns a promise.
 #' It is useful when calling STORM from a Shiny app without blocking the session.
 #'
-#' @inheritParams storm_run
-#' @return A `promises::promise`.
+#' @param ... Arguments passed to [storm_run()]. See [storm_run()] for details
+#'   on available parameters including `topic`, `config`, `retriever`,
+#'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
+#' @return A `promises::promise` that resolves with the storm_run result.
+#' @seealso [storm_run()] for the synchronous version.
 #' @export
 storm_run_async <- function(...) {
   stormr_require("promises", "storm_run_async() uses promises.")

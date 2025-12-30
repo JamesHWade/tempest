@@ -6,10 +6,18 @@
 \usage{
 storm_run_async(...)
 }
+\arguments{
+\item{...}{Arguments passed to \code{\link[=storm_run]{storm_run()}}. See \code{\link[=storm_run]{storm_run()}} for details
+on available parameters including \code{topic}, \code{config}, \code{retriever},
+\code{n_experts}, \code{research_strategy}, \code{max_rounds}, \code{steps}, and \code{verbose}.}
+}
 \value{
-A \code{promises::promise}.
+A \code{promises::promise} that resolves with the storm_run result.
 }
 \description{
-This is a thin wrapper around \code{storm_run()} that returns a promise.
+This is a thin wrapper around \code{\link[=storm_run]{storm_run()}} that returns a promise.
 It is useful when calling STORM from a Shiny app without blocking the session.
+}
+\seealso{
+\code{\link[=storm_run]{storm_run()}} for the synchronous version.
 }

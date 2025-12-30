@@ -4,27 +4,31 @@
 \alias{ExpertSessionManager}
 \title{Expert Session Manager}
 \description{
-Manages expert chat sessions with session IDs for conversation continuity.
+Expert Session Manager
+
+Expert Session Manager
 }
-\keyword{Extract}
-\keyword{Generate}
-\keyword{Get}
-\keyword{ID}
-\keyword{IDs}
-\keyword{List}
-\keyword{a}
-\keyword{active}
-\keyword{an}
-\keyword{chat}
-\keyword{create}
-\keyword{expert}
-\keyword{facts}
-\keyword{from}
-\keyword{human-readable}
+\details{
+Manages expert chat sessions with session IDs for conversation continuity.
+Each expert persona gets their own chat session that can be resumed using
+the session ID returned from previous interactions.
+}
 \keyword{internal}
-\keyword{or}
-\keyword{response}
-\keyword{session}
+\section{Public fields}{
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{sessions}}{Environment storing active chat sessions keyed by session ID.}
+
+\item{\code{config}}{A \code{StormConfig} object for creating chats.}
+
+\item{\code{retriever}}{A \code{StormRetriever} for registering tools.}
+
+\item{\code{extractor}}{Chat object for fact extraction (optional).}
+
+\item{\code{store}}{A \code{SourceStore} for storing extracted facts (optional).}
+}
+\if{html}{\out{</div>}}
+}
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
@@ -40,46 +44,99 @@ Manages expert chat sessions with session IDs for conversation continuity.
 \if{html}{\out{<a id="method-ExpertSessionManager-new"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-new}{}}}
 \subsection{Method \code{new()}}{
+Create a new ExpertSessionManager.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$new(config, retriever, extractor = NULL, store = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{config}}{A \code{StormConfig} object.}
+
+\item{\code{retriever}}{A \code{StormRetriever} object.}
+
+\item{\code{extractor}}{Optional chat object for fact extraction.}
+
+\item{\code{store}}{Optional \code{SourceStore} for storing extracted facts.}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-extract_facts"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-extract_facts}{}}}
 \subsection{Method \code{extract_facts()}}{
+Extract facts from an expert response.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$extract_facts(response)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{response}}{Character string response from expert.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Invisibly returns NULL.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-generate_session_id"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-generate_session_id}{}}}
 \subsection{Method \code{generate_session_id()}}{
+Generate a human-readable session ID from a persona name.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$generate_session_id(persona_name)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{persona_name}}{Name of the persona.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Character string session ID like "dr-sarah-chen-abc123".
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-get_or_create"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-get_or_create}{}}}
 \subsection{Method \code{get_or_create()}}{
+Get an existing session or create a new one.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$get_or_create(persona, session_id = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{persona}}{A persona object from \code{storm_generate_personas()}.}
+
+\item{\code{session_id}}{Optional session ID to resume.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+List with \code{chat}, \code{session_id}, and \code{is_new} fields.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-list_sessions"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-list_sessions}{}}}
 \subsection{Method \code{list_sessions()}}{
+List all active session IDs.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$list_sessions()}\if{html}{\out{</div>}}
 }
 
+\subsection{Returns}{
+Character vector of session IDs.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-clone"></a>}}
