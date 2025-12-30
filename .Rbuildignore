@@ -1,2 +1,10 @@
 ^LICENSE\.md$
 ^\.claude$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$
+^codecov\.yml$
+^[.]?air[.]toml$
+^\.vscode$
+^ROADMAP\.md$

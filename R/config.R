@@ -1,6 +1,6 @@
 # Configuration
 
-#' StormConfig
+#' TempestConfig
 #'
 #' Holds configuration for STORM / Co-STORM sessions: LLM models, prompts,
 #' retrieval settings, and cache paths.
@@ -18,8 +18,8 @@
 #' @field user_agent User agent string for HTTP requests.
 #'
 #' @export
-StormConfig <- R6::R6Class(
-  "StormConfig",
+TempestConfig <- R6::R6Class(
+  "TempestConfig",
   public = list(
     models = NULL,
     params = NULL,
@@ -34,7 +34,7 @@ StormConfig <- R6::R6Class(
     user_agent = NULL,
 
     #' @description
-    #' Create a new StormConfig.
+    #' Create a new TempestConfig.
     #' @param models Named list of model identifiers for each role, or a single
     #'   string to use for all roles.
     #' @param params Additional parameters passed to chat creation.
@@ -49,7 +49,7 @@ StormConfig <- R6::R6Class(
     #'   `ragnar::embed_ollama()`, or a custom function. If provided, a ragnar
     #'   store is automatically created.
     #' @param ragnar_store A pre-built ragnar store. If NULL and `embed_fn` is
-    #'   provided, a store is created automatically with the stormr metadata schema.
+    #'   provided, a store is created automatically with the tempest metadata schema.
     #' @param search_provider Search provider: "native" (use provider's built-in web
     #'   search when available), "wikipedia", "serper", "brave", or "tavily".
     #'   Default is "native" which uses OpenAI, Anthropic, or Google's native
@@ -101,7 +101,7 @@ StormConfig <- R6::R6Class(
       if (!is.null(ragnar_store)) {
         self$ragnar_store <- ragnar_store
       } else if (!is.null(embed_fn)) {
-        self$ragnar_store <- storm_create_ragnar_store(embed_fn, self$cache_dir)
+        self$ragnar_store <- tempest_create_ragnar_store(embed_fn, self$cache_dir)
       }
 
       invisible(self)
@@ -121,7 +121,7 @@ StormConfig <- R6::R6Class(
       if (is.null(system_prompt)) {
         prompt_name <- paste0(role, "_system")
         system_prompt <- tryCatch(
-          storm_prompt(prompt_name),
+          tempest_prompt(prompt_name),
           error = function(e) NULL
         )
         if (is.null(system_prompt)) {
@@ -164,11 +164,11 @@ StormConfig <- R6::R6Class(
 
 #' Create a STORM configuration
 #'
-#' @param ... Passed to `StormConfig$new()`.
-#' @return A `StormConfig` R6 object.
+#' @param ... Passed to `TempestConfig$new()`.
+#' @return A `TempestConfig` R6 object.
 #' @export
-storm_config <- function(...) {
-  StormConfig$new(...)
+tempest_config <- function(...) {
+  TempestConfig$new(...)
 }
 
 #' Create a ragnar store with tempest metadata schema
@@ -196,17 +196,17 @@ storm_config <- function(...) {
 #' }
 #'
 #' @export
-storm_create_ragnar_store <- function(
+tempest_create_ragnar_store <- function(
   embed_fn,
   cache_dir = NULL,
-  name = "storm_knowledge",
+  name = "tempest_knowledge",
   title = "STORM Knowledge Base"
 ) {
   tempest_require("ragnar", "RAG capabilities require the ragnar package.")
 
   # Determine storage location
   location <- if (!is.null(cache_dir)) {
-    fs::path(cache_dir, "storm_ragnar.duckdb")
+    fs::path(cache_dir, "tempest_ragnar.duckdb")
   } else {
     ":memory:"
   }

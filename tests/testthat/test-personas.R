@@ -1,11 +1,11 @@
-test_that("storm_type_personas returns valid ellmer type", {
+test_that("tempest_type_personas returns valid ellmer type", {
   skip_if_not_installed("ellmer")
 
-  type <- tempest:::storm_type_personas()
+  type <- tempest:::tempest_type_personas()
   expect_true(!is.null(type))
 })
 
-test_that("storm_format_persona_details formats correctly", {
+test_that("tempest_format_persona_details formats correctly", {
   persona <- list(
     name = "Dr. Sarah Chen",
     title = "Climate Scientist",
@@ -15,7 +15,7 @@ test_that("storm_format_persona_details formats correctly", {
     perspective = "Physical science perspective on climate change"
   )
 
-  details <- tempest:::storm_format_persona_details(persona)
+  details <- tempest:::tempest_format_persona_details(persona)
 
   expect_true(grepl("Arctic Research Institute", details))
   expect_true(grepl("20 years", details))
@@ -23,18 +23,18 @@ test_that("storm_format_persona_details formats correctly", {
   expect_true(grepl("Physical science", details))
 })
 
-test_that("storm_format_persona_details handles missing fields", {
+test_that("tempest_format_persona_details handles missing fields", {
   persona <- list(
     name = "Dr. Sarah Chen",
     title = "Climate Scientist"
   )
 
-  details <- tempest:::storm_format_persona_details(persona)
+  details <- tempest:::tempest_format_persona_details(persona)
   expect_true(is.character(details))
   expect_equal(details, "")  # No fields to format
 })
 
-test_that("storm_render_expert_prompt creates prompt with persona", {
+test_that("tempest_render_expert_prompt creates prompt with persona", {
   persona <- list(
     name = "Dr. Sarah Chen",
     title = "Climate Scientist",
@@ -44,21 +44,21 @@ test_that("storm_render_expert_prompt creates prompt with persona", {
     perspective = "Physical science perspective on climate change"
   )
 
-  prompt <- tempest:::storm_render_expert_prompt(persona = persona, expert_id = 1)
+  prompt <- tempest:::tempest_render_expert_prompt(persona = persona, expert_id = 1)
 
   expect_true(grepl("Dr. Sarah Chen", prompt))
   expect_true(grepl("Climate Scientist", prompt))
   expect_true(grepl("Arctic Research Institute", prompt))
 })
 
-test_that("storm_render_expert_prompt creates fallback for NULL persona", {
-  prompt <- tempest:::storm_render_expert_prompt(persona = NULL, expert_id = 3)
+test_that("tempest_render_expert_prompt creates fallback for NULL persona", {
+  prompt <- tempest:::tempest_render_expert_prompt(persona = NULL, expert_id = 3)
 
   expect_true(grepl("Expert 3", prompt))
   expect_true(grepl("Research Specialist", prompt))
 })
 
-test_that("CoStormSession stores personas", {
+test_that("TempestSession stores personas", {
   skip_if_not_installed("ellmer")
   skip_if(
     Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
@@ -87,8 +87,8 @@ test_that("CoStormSession stores personas", {
     )
   )
 
-  cfg <- storm_config()
-  session <- costorm_session(
+  cfg <- tempest_config()
+  session <- tempest_session(
     topic = "AI in healthcare",
     config = cfg,
     n_experts = 2,
@@ -100,7 +100,7 @@ test_that("CoStormSession stores personas", {
   expect_equal(session$personas[[2]]$name, "Prof. Bob Jones")
 })
 
-test_that("CoStormSession get_persona_names returns names", {
+test_that("TempestSession get_persona_names returns names", {
   skip_if_not_installed("ellmer")
   skip_if(
     Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
@@ -112,8 +112,8 @@ test_that("CoStormSession get_persona_names returns names", {
     list(id = 2, name = "Prof. Bob Jones", title = "Ethicist")
   )
 
-  cfg <- storm_config()
-  session <- costorm_session(
+  cfg <- tempest_config()
+  session <- tempest_session(
     topic = "Test topic",
     config = cfg,
     personas = mock_personas
@@ -123,7 +123,7 @@ test_that("CoStormSession get_persona_names returns names", {
   expect_equal(names, c("Dr. Alice Smith", "Prof. Bob Jones"))
 })
 
-test_that("CoStormSession find_expert_index matches names", {
+test_that("TempestSession find_expert_index matches names", {
   skip_if_not_installed("ellmer")
   skip_if(
     Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
@@ -135,8 +135,8 @@ test_that("CoStormSession find_expert_index matches names", {
     list(id = 2, name = "Prof. Bob Jones", title = "Ethicist")
   )
 
-  cfg <- storm_config()
-  session <- costorm_session(
+  cfg <- tempest_config()
+  session <- tempest_session(
     topic = "Test topic",
     config = cfg,
     personas = mock_personas
@@ -161,7 +161,7 @@ test_that("CoStormSession find_expert_index matches names", {
   expect_null(session$find_expert_index("Unknown Person"))
 })
 
-test_that("CoStormSession has expert_session_manager", {
+test_that("TempestSession has expert_session_manager", {
   skip_if_not_installed("ellmer")
   skip_if(
     Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
@@ -172,8 +172,8 @@ test_that("CoStormSession has expert_session_manager", {
     list(id = 1, name = "Dr. Alice Smith", title = "Scientist", perspective = "Technical")
   )
 
-  cfg <- storm_config()
-  session <- costorm_session(
+  cfg <- tempest_config()
+  session <- tempest_session(
     topic = "Test topic",
     config = cfg,
     personas = mock_personas
@@ -190,9 +190,9 @@ test_that("ExpertSessionManager generates session IDs", {
     "No API key available"
   )
 
-  cfg <- storm_config()
+  cfg <- tempest_config()
   store <- tempest:::SourceStore$new()
-  retriever <- tempest:::storm_retriever(config = cfg, store = store)
+  retriever <- tempest:::tempest_retriever(config = cfg, store = store)
   mgr <- tempest:::ExpertSessionManager$new(cfg, retriever)
 
   # Generate a session ID
@@ -201,7 +201,7 @@ test_that("ExpertSessionManager generates session IDs", {
   expect_true(grepl("^dr-sarah-chen-", sid))
 })
 
-test_that("storm_create_expert_tool creates valid ellmer tool", {
+test_that("tempest_create_expert_tool creates valid ellmer tool", {
   skip_if_not_installed("ellmer")
   skip_if(
     Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
@@ -215,12 +215,12 @@ test_that("storm_create_expert_tool creates valid ellmer tool", {
     perspective = "Physical science perspective"
   )
 
-  cfg <- storm_config()
+  cfg <- tempest_config()
   store <- tempest:::SourceStore$new()
-  retriever <- tempest:::storm_retriever(config = cfg, store = store)
+  retriever <- tempest:::tempest_retriever(config = cfg, store = store)
   mgr <- tempest:::ExpertSessionManager$new(cfg, retriever)
 
-  tool <- tempest:::storm_create_expert_tool(persona, mgr, "Climate change")
+  tool <- tempest:::tempest_create_expert_tool(persona, mgr, "Climate change")
 
   # Tool should have the expected name (ellmer tools are S7 objects, use @)
   expect_equal(tool@name, "ask_dr_sarah_chen")

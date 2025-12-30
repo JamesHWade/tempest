@@ -8,7 +8,7 @@
 #' @param model Model name string
 #' @return Provider name (e.g., "openai", "anthropic", "google") or NULL if unknown
 #' @keywords internal
-storm_detect_provider <- function(model) {
+tempest_detect_provider <- function(model) {
   if (is.null(model) || !is.character(model) || length(model) == 0) {
     return(NULL)
   }
@@ -36,7 +36,7 @@ storm_detect_provider <- function(model) {
 #' @param provider Provider name ("openai", "anthropic", "google")
 #' @return List of ellmer tools, or NULL if provider doesn
 #' @keywords internal
-storm_get_native_web_tools <- function(provider) {
+tempest_get_native_web_tools <- function(provider) {
   tempest_require("ellmer", "Provider-native web tools require ellmer.")
 
   tools <- switch(provider,
@@ -61,14 +61,14 @@ storm_get_native_web_tools <- function(provider) {
 #' @param provider Provider name
 #' @return TRUE if provider supports native web search
 #' @keywords internal
-storm_provider_has_native_search <- function(provider) {
+tempest_provider_has_native_search <- function(provider) {
   provider %in% c("openai", "anthropic", "google")
 }
 
 #' @keywords internal
-storm_tools_retrieval <- function(retriever) {
+tempest_tools_retrieval <- function(retriever) {
   tempest_require("ellmer", "Tool calling for retrieval.")
-  stopifnot(inherits(retriever, "StormRetriever"))
+  stopifnot(inherits(retriever, "TempestRetriever"))
 
   web_search <- function(query, k = retriever$config$max_search_results) {
     retriever$search(query = query, k = k)
@@ -127,7 +127,7 @@ storm_tools_retrieval <- function(retriever) {
 
   add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
     if (is.null(source_ids) || length(source_ids) == 0) tempest_abort("add_fact requires at least one source_id.")
-    fact <- storm_fact(claim = claim, source_ids = source_ids, confidence = confidence, note = note)
+    fact <- tempest_fact(claim = claim, source_ids = source_ids, confidence = confidence, note = note)
     retriever$store$add_fact(fact)
     list(fact_id = fact$id, claim = fact$claim, source_ids = fact$source_ids, confidence = fact$confidence)
   }
@@ -200,12 +200,12 @@ storm_tools_retrieval <- function(retriever) {
 #' Returns tools for managing sources and facts, but not the web search tools.
 #' Used when provider-native web search is enabled.
 #'
-#' @param retriever A StormRetriever object
+#' @param retriever A TempestRetriever object
 #' @return List of ellmer tools for source/fact management
 #' @keywords internal
-storm_tools_source_management <- function(retriever) {
+tempest_tools_source_management <- function(retriever) {
   tempest_require("ellmer", "Tool calling for retrieval.")
-  stopifnot(inherits(retriever, "StormRetriever"))
+  stopifnot(inherits(retriever, "TempestRetriever"))
 
   get_source <- function(source_id) {
     src <- retriever$store$get_source(source_id)
@@ -246,7 +246,7 @@ storm_tools_source_management <- function(retriever) {
 
   add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
     if (is.null(source_ids) || length(source_ids) == 0) tempest_abort("add_fact requires at least one source_id.")
-    fact <- storm_fact(claim = claim, source_ids = source_ids, confidence = confidence, note = note)
+    fact <- tempest_fact(claim = claim, source_ids = source_ids, confidence = confidence, note = note)
     retriever$store$add_fact(fact)
     list(fact_id = fact$id, claim = fact$claim, source_ids = fact$source_ids, confidence = fact$confidence)
   }
@@ -296,21 +296,21 @@ storm_tools_source_management <- function(retriever) {
 #' provider's built-in web search. Otherwise uses custom tempest tools.
 #'
 #' @param chat An ellmer chat object
-#' @param retriever A StormRetriever object
+#' @param retriever A TempestRetriever object
 #' @param model Model name (used to detect provider for native tools)
 #' @param search_provider Search provider setting from config
 #' @return The chat object (invisibly)
 #' @keywords internal
-storm_register_default_tools <- function(chat, retriever, model = NULL, search_provider = "native") {
+tempest_register_default_tools <- function(chat, retriever, model = NULL, search_provider = "native") {
   tempest_require("ellmer", "Tool calling for retrieval.")
 
 
   # Determine if we should use native provider tools
   use_native <- FALSE
   if (identical(search_provider, "native") && !is.null(model)) {
-    provider <- storm_detect_provider(model)
-    if (!is.null(provider) && storm_provider_has_native_search(provider)) {
-      native_tools <- storm_get_native_web_tools(provider)
+    provider <- tempest_detect_provider(model)
+    if (!is.null(provider) && tempest_provider_has_native_search(provider)) {
+      native_tools <- tempest_get_native_web_tools(provider)
       if (!is.null(native_tools)) {
         chat$register_tools(native_tools)
         use_native <- TRUE
@@ -320,11 +320,11 @@ storm_register_default_tools <- function(chat, retriever, model = NULL, search_p
 
   # If not using native tools, register custom web search/fetch tools
   if (!use_native) {
-    tools <- storm_tools_retrieval(retriever)
+    tools <- tempest_tools_retrieval(retriever)
     chat$register_tools(tools)
   } else {
     # Still register source/fact management tools even with native search
-    mgmt_tools <- storm_tools_source_management(retriever)
+    mgmt_tools <- tempest_tools_source_management(retriever)
     chat$register_tools(mgmt_tools)
   }
 
@@ -349,8 +349,8 @@ storm_register_default_tools <- function(chat, retriever, model = NULL, search_p
 #' the session ID returned from previous interactions.
 #'
 #' @field sessions Environment storing active chat sessions keyed by session ID.
-#' @field config A `StormConfig` object for creating chats.
-#' @field retriever A `StormRetriever` for registering tools.
+#' @field config A `TempestConfig` object for creating chats.
+#' @field retriever A `TempestRetriever` for registering tools.
 #' @field extractor Chat object for fact extraction (optional).
 #' @field store A `SourceStore` for storing extracted facts (optional).
 #'
@@ -366,8 +366,8 @@ ExpertSessionManager <- R6::R6Class(
 
     #' @description
     #' Create a new ExpertSessionManager.
-    #' @param config A `StormConfig` object.
-    #' @param retriever A `StormRetriever` object.
+    #' @param config A `TempestConfig` object.
+    #' @param retriever A `TempestRetriever` object.
     #' @param extractor Optional chat object for fact extraction.
     #' @param store Optional `SourceStore` for storing extracted facts.
     initialize = function(config, retriever, extractor = NULL, store = NULL) {
@@ -385,7 +385,7 @@ ExpertSessionManager <- R6::R6Class(
     #' @return Invisibly returns NULL.
     extract_facts = function(response) {
       if (!is.null(self$extractor) && !is.null(self$store)) {
-        storm_extract_facts_from_answer(self$extractor, response, self$store)
+        tempest_extract_facts_from_answer(self$extractor, response, self$store)
       }
       invisible(NULL)
     },
@@ -403,7 +403,7 @@ ExpertSessionManager <- R6::R6Class(
 
     #' @description
     #' Get an existing session or create a new one.
-    #' @param persona A persona object from `storm_generate_personas()`.
+    #' @param persona A persona object from `tempest_generate_personas()`.
     #' @param session_id Optional session ID to resume.
     #' @return List with `chat`, `session_id`, and `is_new` fields.
     get_or_create = function(persona, session_id = NULL) {
@@ -417,9 +417,9 @@ ExpertSessionManager <- R6::R6Class(
       }
 
       # Create new session
-      sp <- storm_render_expert_prompt(persona = persona, expert_id = persona$id %||% 1L)
+      sp <- tempest_render_expert_prompt(persona = persona, expert_id = persona$id %||% 1L)
       chat <- self$config$make_chat("expert", system_prompt = sp, echo = "none")
-      storm_register_default_tools(
+      tempest_register_default_tools(
         chat,
         self$retriever,
         model = self$config$models[["expert"]],
@@ -450,12 +450,12 @@ ExpertSessionManager <- R6::R6Class(
 #' Creates an ellmer tool for a specific expert persona that can be called
 #' by the moderator to delegate questions.
 #'
-#' @param persona A persona object from `storm_generate_personas()`.
+#' @param persona A persona object from `tempest_generate_personas()`.
 #' @param session_manager An `ExpertSessionManager` instance.
 #' @param topic The research topic (for context).
 #' @return An ellmer tool.
 #' @keywords internal
-storm_create_expert_tool <- function(persona, session_manager, topic) {
+tempest_create_expert_tool <- function(persona, session_manager, topic) {
   tempest_require("ellmer", "Expert tools require ellmer.")
 
   # Sanitize name for tool name (e.g., "Dr. Sarah Chen" -> "ask_dr_sarah_chen")
@@ -532,8 +532,8 @@ storm_create_expert_tool <- function(persona, session_manager, topic) {
 #' @param topic The research topic.
 #' @return A list of ellmer tools.
 #' @keywords internal
-storm_create_expert_tools <- function(personas, session_manager, topic) {
-  purrr::map(personas, ~ storm_create_expert_tool(.x, session_manager, topic))
+tempest_create_expert_tools <- function(personas, session_manager, topic) {
+  purrr::map(personas, ~ tempest_create_expert_tool(.x, session_manager, topic))
 }
 
 #' Register Expert Tools on a Chat
@@ -547,8 +547,8 @@ storm_create_expert_tools <- function(personas, session_manager, topic) {
 #' @param topic The research topic.
 #' @return The chat object (invisibly).
 #' @keywords internal
-storm_register_expert_tools <- function(chat, personas, session_manager, topic) {
-  tools <- storm_create_expert_tools(personas, session_manager, topic)
+tempest_register_expert_tools <- function(chat, personas, session_manager, topic) {
+  tools <- tempest_create_expert_tools(personas, session_manager, topic)
   chat$register_tools(tools)
   invisible(chat)
 }

@@ -9,7 +9,7 @@ tempest_task(
   solver = tempest_solver_cited_answer,
   scorer = NULL,
   scorer_chat = NULL,
-  config = storm_config(),
+  config = tempest_config(),
   ...
 )
 }
@@ -22,7 +22,7 @@ tempest_task(
 
 \item{scorer_chat}{Chat used by the scorer (required for model-graded scoring).}
 
-\item{config}{A \code{StormConfig} passed to the solver.}
+\item{config}{A \code{TempestConfig} passed to the solver.}
 
 \item{...}{Passed to \code{vitals::Task$new()}.}
 }

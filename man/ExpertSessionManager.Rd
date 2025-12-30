@@ -19,9 +19,9 @@ the session ID returned from previous interactions.
 \describe{
 \item{\code{sessions}}{Environment storing active chat sessions keyed by session ID.}
 
-\item{\code{config}}{A \code{StormConfig} object for creating chats.}
+\item{\code{config}}{A \code{TempestConfig} object for creating chats.}
 
-\item{\code{retriever}}{A \code{StormRetriever} for registering tools.}
+\item{\code{retriever}}{A \code{TempestRetriever} for registering tools.}
 
 \item{\code{extractor}}{Chat object for fact extraction (optional).}
 
@@ -52,9 +52,9 @@ Create a new ExpertSessionManager.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{config}}{A \code{StormConfig} object.}
+\item{\code{config}}{A \code{TempestConfig} object.}
 
-\item{\code{retriever}}{A \code{StormRetriever} object.}
+\item{\code{retriever}}{A \code{TempestRetriever} object.}
 
 \item{\code{extractor}}{Optional chat object for fact extraction.}
 
@@ -115,7 +115,7 @@ Get an existing session or create a new one.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{persona}}{A persona object from \code{storm_generate_personas()}.}
+\item{\code{persona}}{A persona object from \code{tempest_generate_personas()}.}
 
 \item{\code{session_id}}{Optional session ID to resume.}
 }

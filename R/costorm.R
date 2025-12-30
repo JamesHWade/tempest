@@ -1,7 +1,7 @@
 # Co-STORM (interactive multi-agent)
 
 #' @keywords internal
-costorm_type_decision <- function(persona_names = NULL) {
+tempest_type_decision <- function(persona_names = NULL) {
   tempest_require("ellmer")
   example <- if (!is.null(persona_names) && length(persona_names) > 0) {
     paste0("moderator, ", paste(persona_names, collapse = ", "))
@@ -16,7 +16,7 @@ costorm_type_decision <- function(persona_names = NULL) {
 }
 
 #' @keywords internal
-costorm_type_mindmap <- function() {
+tempest_type_mindmap <- function() {
   tempest_require("ellmer")
   node <- ellmer::type_object(
     id = ellmer::type_string("Stable node id (short). Use 'root' for the root."),
@@ -37,7 +37,7 @@ costorm_type_mindmap <- function() {
 }
 
 #' @keywords internal
-costorm_mindmap_init <- function(topic) {
+tempest_mindmap_init <- function(topic) {
   list(
     nodes = list(list(id = "root", label = topic, parent = NULL, notes = "", source_ids = character())),
     edges = list()
@@ -45,7 +45,7 @@ costorm_mindmap_init <- function(topic) {
 }
 
 #' @keywords internal
-costorm_mindmap_to_markdown <- function(m) {
+tempest_mindmap_to_markdown <- function(m) {
   nodes <- m$nodes %||% list()
   edges <- m$edges %||% list()
   if (length(nodes) == 0) return("(empty mind map)")
@@ -79,15 +79,15 @@ costorm_mindmap_to_markdown <- function(m) {
   paste(out, collapse = "\n")
 }
 
-#' CoStormSession
+#' TempestSession
 #'
 #' Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, and report artifacts.
 #'
 #' @field topic The research topic.
 #' @field title The report title.
-#' @field config A `StormConfig` object.
+#' @field config A `TempestConfig` object.
 #' @field store A `SourceStore` object.
-#' @field retriever A `StormRetriever` object.
+#' @field retriever A `TempestRetriever` object.
 #' @field personas List of expert personas.
 #' @field expert_session_manager Manages expert chat sessions.
 #' @field chats List of chat objects for each role.
@@ -96,8 +96,8 @@ costorm_mindmap_to_markdown <- function(m) {
 #' @field artifacts Environment of report artifacts.
 #'
 #' @export
-CoStormSession <- R6::R6Class(
-  "CoStormSession",
+TempestSession <- R6::R6Class(
+  "TempestSession",
   public = list(
     topic = NULL,
     title = NULL,
@@ -112,27 +112,27 @@ CoStormSession <- R6::R6Class(
     artifacts = NULL,
 
     #' @description
-    #' Create a new CoStormSession.
+    #' Create a new TempestSession.
     #' @param topic The research topic.
-    #' @param config A `StormConfig` object.
+    #' @param config A `TempestConfig` object.
     #' @param n_experts Number of expert agents.
     #' @param personas Optional list of pre-generated personas. If NULL,
-    #'   personas are generated automatically using `storm_generate_personas()`.
-    initialize = function(topic, config = storm_config(), n_experts = 3, personas = NULL) {
-      tempest_require("ellmer", "CoStormSession requires ellmer.")
+    #'   personas are generated automatically using `tempest_generate_personas()`.
+    initialize = function(topic, config = tempest_config(), n_experts = 3, personas = NULL) {
+      tempest_require("ellmer", "TempestSession requires ellmer.")
       self$topic <- tempest_trim(topic)
       if (is.na(self$topic) || self$topic == "") tempest_abort("topic must be a non-empty string.")
       self$title <- self$topic
       self$config <- config
       self$store <- SourceStore$new()
-      self$retriever <- storm_retriever(config = config, store = self$store)
+      self$retriever <- tempest_retriever(config = config, store = self$store)
       self$transcript <- list()
-      self$mindmap <- costorm_mindmap_init(self$topic)
+      self$mindmap <- tempest_mindmap_init(self$topic)
       self$artifacts <- new.env(parent = emptyenv())
 
       # Generate or use provided personas
       if (is.null(personas)) {
-        self$personas <- storm_generate_personas(
+        self$personas <- tempest_generate_personas(
           topic = self$topic,
           n = n_experts,
           config = config,
@@ -144,10 +144,10 @@ CoStormSession <- R6::R6Class(
 
       # Create chats first (need extractor for session manager)
       self$chats <- list(
-        moderator = config$make_chat("coordinator", system_prompt = storm_prompt("moderator_system")),
-        mindmap = config$make_chat("mindmap", system_prompt = storm_prompt("mindmap_system")),
-        reporter = config$make_chat("writer", system_prompt = storm_prompt("reporter_system")),
-        extractor = config$make_chat("judge", system_prompt = storm_prompt("fact_extractor_system"))
+        moderator = config$make_chat("coordinator", system_prompt = tempest_prompt("moderator_system")),
+        mindmap = config$make_chat("mindmap", system_prompt = tempest_prompt("mindmap_system")),
+        reporter = config$make_chat("writer", system_prompt = tempest_prompt("reporter_system")),
+        extractor = config$make_chat("judge", system_prompt = tempest_prompt("fact_extractor_system"))
       )
 
       # Create expert session manager for subagent pattern (with extractor for fact extraction)
@@ -159,13 +159,13 @@ CoStormSession <- R6::R6Class(
       )
 
       # Register tools on moderator: default tools + expert subagent tools
-      storm_register_default_tools(
+      tempest_register_default_tools(
         self$chats$moderator,
         self$retriever,
         model = self$config$models[["coordinator"]],
         search_provider = self$config$search_provider
       )
-      storm_register_expert_tools(
+      tempest_register_expert_tools(
         self$chats$moderator,
         self$personas,
         self$expert_session_manager,
@@ -173,13 +173,13 @@ CoStormSession <- R6::R6Class(
       )
 
       # Register tools on other chats that may need them
-      storm_register_default_tools(
+      tempest_register_default_tools(
         self$chats$mindmap,
         self$retriever,
         model = self$config$models[["mindmap"]],
         search_provider = self$config$search_provider
       )
-      storm_register_default_tools(
+      tempest_register_default_tools(
         self$chats$reporter,
         self$retriever,
         model = self$config$models[["writer"]],
@@ -249,12 +249,12 @@ CoStormSession <- R6::R6Class(
       # Moderator chooses which agent to respond next and with what instruction.
       m <- self$chats$moderator
       persona_names <- self$get_persona_names()
-      type <- costorm_type_decision(persona_names)
+      type <- tempest_type_decision(persona_names)
       prompt <- paste0(
         "You are routing questions to the appropriate expert.\n\n",
         "Topic: ", self$topic, "\n\n",
         "Expert panel (choose one to respond):\n", self$get_persona_descriptions(), "\n\n",
-        "Current mind map:\n", costorm_mindmap_to_markdown(self$mindmap), "\n\n",
+        "Current mind map:\n", tempest_mindmap_to_markdown(self$mindmap), "\n\n",
         "Recent dialog:\n", self$transcript_markdown(max_turns = 20), "\n\n",
         "New user message:\n", user_input, "\n\n",
         "IMPORTANT: Route to an expert for research questions. Only choose 'moderator' for meta-questions about the session itself.\n",
@@ -270,11 +270,11 @@ CoStormSession <- R6::R6Class(
     #' @param last_exchange The latest exchange text.
     update_mindmap = function(last_exchange) {
       mm <- self$chats$mindmap
-      type <- costorm_type_mindmap()
+      type <- tempest_type_mindmap()
       prompt <- paste0(
         "Update the research mind map based on the latest exchange.\n\n",
         "Topic: ", self$topic, "\n\n",
-        "Current mind map:\n", costorm_mindmap_to_markdown(self$mindmap), "\n\n",
+        "Current mind map:\n", tempest_mindmap_to_markdown(self$mindmap), "\n\n",
         "Latest exchange:\n", last_exchange, "\n\n",
         "Rules:\n",
         "- Keep node ids stable where possible.\n",
@@ -286,7 +286,7 @@ CoStormSession <- R6::R6Class(
       new_mm <- mm$chat_structured(prompt, type = type, echo = "none", convert = FALSE)
       if (!is.null(new_mm$nodes) && length(new_mm$nodes) > 0) {
         self$mindmap <- new_mm
-        self$artifacts[["mindmap_md"]] <- costorm_mindmap_to_markdown(new_mm)
+        self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(new_mm)
       }
       invisible(TRUE)
     },
@@ -295,14 +295,14 @@ CoStormSession <- R6::R6Class(
     #' Get the mind map as markdown.
     #' @return Markdown string.
     mindmap_markdown = function() {
-      costorm_mindmap_to_markdown(self$mindmap)
+      tempest_mindmap_to_markdown(self$mindmap)
     },
 
     #' @description
     #' Extract facts from text into the store.
     #' @param text Text containing factual claims.
     extract_facts = function(text) {
-      storm_extract_facts_from_answer(self$chats$extractor, text, self$store)
+      tempest_extract_facts_from_answer(self$chats$extractor, text, self$store)
       invisible(TRUE)
     },
 
@@ -342,7 +342,7 @@ CoStormSession <- R6::R6Class(
       # Build context for the moderator
       prompt <- paste0(
         "Topic: ", self$topic, "\n\n",
-        "Mind map:\n", costorm_mindmap_to_markdown(self$mindmap), "\n\n",
+        "Mind map:\n", tempest_mindmap_to_markdown(self$mindmap), "\n\n",
         "Recent dialog:\n", self$transcript_markdown(max_turns = 30), "\n\n",
         "User question:\n", user_input, "\n\n",
         "You have tools to ask experts (ask_*) for research questions.\n",
@@ -356,7 +356,7 @@ CoStormSession <- R6::R6Class(
       self$add_turn("Moderator", "assistant", ans)
 
       # Extract facts (best-effort)
-      storm_extract_facts_from_answer(self$chats$extractor, ans, self$store)
+      tempest_extract_facts_from_answer(self$chats$extractor, ans, self$store)
 
       # Update mind map
       self$update_mindmap(last_exchange = paste0("User: ", user_input, "\n\nModerator: ", ans))
@@ -364,7 +364,7 @@ CoStormSession <- R6::R6Class(
       list(
         speaker = "Moderator",
         answer = ans,
-        mindmap_md = self$artifacts[["mindmap_md"]] %||% costorm_mindmap_to_markdown(self$mindmap)
+        mindmap_md = self$artifacts[["mindmap_md"]] %||% tempest_mindmap_to_markdown(self$mindmap)
       )
     },
 
@@ -461,8 +461,8 @@ CoStormSession <- R6::R6Class(
       prompt <- paste0(
         "Write a comprehensive report based on the session.\n\n",
         "Topic: ", self$topic, "\n\n",
-        "Mind map:\n", costorm_mindmap_to_markdown(self$mindmap), "\n\n",
-        "Verified facts:\n", storm_summarize_facts_for_prompt(self$store, max_items = 120), "\n\n",
+        "Mind map:\n", tempest_mindmap_to_markdown(self$mindmap), "\n\n",
+        "Verified facts:\n", tempest_summarize_facts_for_prompt(self$store, max_items = 120), "\n\n",
         "Conversation (summary):\n", self$transcript_markdown(max_turns = 80), "\n\n",
         "Style: ", style, "\n\n",
         "Rules:\n",
@@ -473,7 +473,7 @@ CoStormSession <- R6::R6Class(
       )
       body <- rep$chat(prompt, echo = "none")
       self$artifacts[["report"]] <- body
-      md <- if (include_references) storm_report_md(self$title %||% self$topic, body, self$store) else body
+      md <- if (include_references) tempest_report_md(self$title %||% self$topic, body, self$store) else body
       self$artifacts[["report_md"]] <- md
       md
     }
@@ -483,11 +483,11 @@ CoStormSession <- R6::R6Class(
 #' Create a Co-STORM session
 #'
 #' @param topic Topic string.
-#' @param config A `StormConfig`.
+#' @param config A `TempestConfig`.
 #' @param n_experts Number of expert agents.
 #' @param personas Optional list of pre-generated personas. If NULL,
 #'   personas are generated automatically.
 #' @export
-costorm_session <- function(topic, config = storm_config(), n_experts = 3, personas = NULL) {
-  CoStormSession$new(topic = topic, config = config, n_experts = n_experts, personas = personas)
+tempest_session <- function(topic, config = tempest_config(), n_experts = 3, personas = NULL) {
+  TempestSession$new(topic = topic, config = config, n_experts = n_experts, personas = personas)
 }

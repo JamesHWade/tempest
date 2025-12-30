@@ -17,14 +17,14 @@ tempest_eval_dataset <- function(name = c("qa")) {
 #'
 #' This solver is designed to evaluate the end-to-end behavior of the tempest
 #' retrieval + citation discipline. It is intentionally lighter than a full
-#' `storm_run()` call.
+#' `tempest_run()` call.
 #'
 #' @param input Character vector of questions.
-#' @param config A `StormConfig`.
+#' @param config A `TempestConfig`.
 #' @param solver_chat Optional (ignored). Present to match vitals conventions.
 #' @return A list with `result` and `solver_chat` (and `solver_metadata`).
 #' @keywords internal
-tempest_solver_cited_answer <- function(input, config = storm_config(), solver_chat = NULL) {
+tempest_solver_cited_answer <- function(input, config = tempest_config(), solver_chat = NULL) {
   tempest_require("ellmer", "tempest_solver_cited_answer() requires ellmer.")
   n <- length(input)
   results <- character(n)
@@ -33,9 +33,9 @@ tempest_solver_cited_answer <- function(input, config = storm_config(), solver_c
 
   for (i in seq_len(n)) {
     store <- SourceStore$new()
-    retriever <- storm_retriever(config = config, store = store)
-    chat <- config$make_chat("expert", system_prompt = storm_prompt("qa_solver_system"), echo = "none")
-    storm_register_default_tools(
+    retriever <- tempest_retriever(config = config, store = store)
+    chat <- config$make_chat("expert", system_prompt = tempest_prompt("qa_solver_system"), echo = "none")
+    tempest_register_default_tools(
       chat,
       retriever,
       model = config$models[["expert"]],
@@ -71,7 +71,7 @@ tempest_solver_cited_answer <- function(input, config = storm_config(), solver_c
 #' @param solver A vitals-compatible solver. Defaults to `tempest_solver_cited_answer`.
 #' @param scorer A vitals scorer. If `NULL`, defaults to `vitals::model_graded_qa()`.
 #' @param scorer_chat Chat used by the scorer (required for model-graded scoring).
-#' @param config A `StormConfig` passed to the solver.
+#' @param config A `TempestConfig` passed to the solver.
 #' @param ... Passed to `vitals::Task$new()`.
 #' @return A `vitals::Task`.
 #' @export
@@ -80,7 +80,7 @@ tempest_task <- function(
   solver = tempest_solver_cited_answer,
   scorer = NULL,
   scorer_chat = NULL,
-  config = storm_config(),
+  config = tempest_config(),
   ...
 ) {
   tempest_require("vitals", "tempest_task() requires vitals.")

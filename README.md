@@ -1,5 +1,10 @@
 # tempest
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/JamesHWade/tempest/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/JamesHWade/tempest/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/JamesHWade/tempest/graph/badge.svg)](https://app.codecov.io/gh/JamesHWade/tempest)
+<!-- badges: end -->
+
 An R-native implementation of [STORM](https://storm.genie.stanford.edu/) (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and [Co-STORM](https://co-storm.genie.stanford.edu/) from Stanford's STORM project.
 
 This package reproduces the core workflow primitives:
@@ -38,7 +43,7 @@ By default, `tempest` uses **native provider web search** when available (OpenAI
 To use alternative search providers:
 
 ```r
-cfg <- storm_config(
+cfg <- tempest_config(
   search_provider = "wikipedia"  # or "serper", "brave", "tavily"
 )
 ```
@@ -54,7 +59,7 @@ Provider-specific API keys for alternative search:
 ```r
 library(tempest)
 
-cfg <- storm_config(
+cfg <- tempest_config(
   # search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)
   models = list(
     coordinator = "openai/gpt-4o-mini",
@@ -65,7 +70,7 @@ cfg <- storm_config(
   )
 )
 
-res <- storm_run("Life cycle assessment of lithium-ion batteries", config = cfg, verbose = TRUE)
+res <- tempest_run("Life cycle assessment of lithium-ion batteries", config = cfg, verbose = TRUE)
 
 cat(res$report_md)
 ```
@@ -73,12 +78,12 @@ cat(res$report_md)
 You can also use a single model for all roles:
 
 ```r
-cfg <- storm_config(models = "anthropic/claude-sonnet-4-20250514")
+cfg <- tempest_config(models = "anthropic/claude-sonnet-4-20250514")
 ```
 
 ### Configuration Options
 
-`storm_config()` accepts the following parameters:
+`tempest_config()` accepts the following parameters:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -95,15 +100,16 @@ cfg <- storm_config(models = "anthropic/claude-sonnet-4-20250514")
 ## RAG with ragnar
 
 Enable semantic search over fetched sources by providing an embedding function:
+
 ```r
 library(tempest)
 
-cfg <- storm_config(
+cfg <- tempest_config(
   embed_fn = ragnar::embed_openai(),  # or embed_ollama(), custom function
   search_provider = "wikipedia"
 )
 
-res <- storm_run("Quantum computing applications", config = cfg)
+res <- tempest_run("Quantum computing applications", config = cfg)
 ```
 
 When `embed_fn` is provided, tempest automatically:
@@ -112,19 +118,21 @@ When `embed_fn` is provided, tempest automatically:
 - Registers a semantic retrieve tool with chat agents
 
 You can also provide a pre-built ragnar store:
+
 ```r
-store <- storm_create_ragnar_store(
+store <- tempest_create_ragnar_store(
   embed_fn = ragnar::embed_openai(),
   cache_dir = "~/.tempest_cache"
 )
-cfg <- storm_config(ragnar_store = store)
+cfg <- tempest_config(ragnar_store = store)
 ```
 
 ## Custom Chat Functions
 
 Use custom LLM providers (e.g., internal APIs) with the `chat_fn` parameter:
+
 ```r
-cfg <- storm_config(
+cfg <- tempest_config(
   chat_fn = function(role, model, system_prompt, echo) {
     my_company_chat(
       model = model,
@@ -138,8 +146,9 @@ cfg <- storm_config(
 ## Additional Tools
 
 Register additional tools (e.g., from btw) with chat agents:
+
 ```r
-cfg <- storm_config(
+cfg <- tempest_config(
   tools = btw::btw_tools()
   # or: tools = list(my_custom_tool1, my_custom_tool2)
 )
@@ -155,7 +164,7 @@ Co-STORM provides an interactive multi-expert research experience with automatic
 library(tempest)
 
 # Create a session - personas are generated automatically
-session <- costorm_session("AI safety and alignment", n_experts = 3)
+session <- tempest_session("AI safety and alignment", n_experts = 3)
 
 # See who's on the panel
 session$get_persona_names()
@@ -195,11 +204,11 @@ The optional warmup phase has each expert research their initial questions befor
 
 ```r
 # Skip warmup - jump straight into Q&A
-session <- costorm_session("Quantum computing")
+session <- tempest_session("Quantum computing")
 session$step("What is quantum supremacy?")
 
 # With warmup - experts research first
-session <- costorm_session("Quantum computing")
+session <- tempest_session("Quantum computing")
 session$warmup()  # Each expert answers 2-4 initial questions
 session$step("What is quantum supremacy?")  # Benefits from prior research
 ```
@@ -208,7 +217,7 @@ session$step("What is quantum supremacy?")  # Benefits from prior research
 
 ```r
 library(tempest)
-run_stormchat()
+run_app()
 ```
 
 The app provides:
@@ -252,4 +261,4 @@ tsk$get_samples()
 
 - **STORM**: Shao, Y., et al. (2024). [Assisting in Writing Wikipedia-like Articles From Scratch with Large Language Models](https://arxiv.org/abs/2402.14207). NAACL 2024.
 - **Co-STORM**: Jiang, Y., et al. (2024). [Into the Unknown Unknowns: Engaged Human Learning through Participation in Language Model Agent Conversations](https://arxiv.org/abs/2408.15232). arXiv preprint.
-- **Stanford STORM Project**: https://storm.genie.stanford.edu/
+- **Stanford STORM Project**: <https://storm.genie.stanford.edu/>

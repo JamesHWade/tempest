@@ -139,8 +139,8 @@ server <- function(input, output, session) {
 
   # Helper to create session
   create_session <- function(topic, n_experts = 3) {
-    cfg <- tempest::storm_config()
-    ses <- tempest::costorm_session(topic, config = cfg, n_experts = n_experts)
+    cfg <- tempest::tempest_config()
+    ses <- tempest::tempest_session(topic, config = cfg, n_experts = n_experts)
     storm_session(ses)
     bump_version()
     shinychat::chat_clear("storm_chat")
@@ -323,7 +323,7 @@ server <- function(input, output, session) {
       if (is.null(ses)) {
         return(NULL)
       }
-      tempest::storm_sources(ses$store)
+      tempest::tempest_sources(ses$store)
     },
     striped = TRUE,
     hover = TRUE,
@@ -338,7 +338,7 @@ server <- function(input, output, session) {
       if (is.null(ses)) {
         return(NULL)
       }
-      tempest::storm_facts(ses$store)
+      tempest::tempest_facts(ses$store)
     },
     striped = TRUE,
     hover = TRUE,

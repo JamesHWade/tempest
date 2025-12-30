@@ -1,7 +1,7 @@
 # STORM pipeline (scripted)
 
 #' @keywords internal
-storm_type_perspectives <- function() {
+tempest_type_perspectives <- function() {
   tempest_require("ellmer")
   ellmer::type_object(
     title = ellmer::type_string("Suggested title for the final report."),
@@ -16,7 +16,7 @@ storm_type_perspectives <- function() {
 }
 
 #' @keywords internal
-storm_type_personas <- function() {
+tempest_type_personas <- function() {
   tempest_require("ellmer")
   ellmer::type_object(
     personas = ellmer::type_array(
@@ -40,17 +40,17 @@ storm_type_personas <- function() {
 #'
 #' @param topic The research topic.
 #' @param n Number of personas to generate.
-#' @param config A `StormConfig` object.
+#' @param config A `TempestConfig` object.
 #' @param verbose Print progress.
 #' @return A list of persona objects.
 #'
 #' @export
-storm_generate_personas <- function(topic, n = 3, config = storm_config(), verbose = FALSE) {
+tempest_generate_personas <- function(topic, n = 3, config = tempest_config(), verbose = FALSE) {
   tempest_require("ellmer", "Persona generation requires ellmer.")
 
   chat <- config$make_chat(
     "coordinator",
-    system_prompt = storm_prompt("persona_generator_system"),
+    system_prompt = tempest_prompt("persona_generator_system"),
     echo = "none"
   )
 
@@ -69,7 +69,7 @@ storm_generate_personas <- function(topic, n = 3, config = storm_config(), verbo
 
   result <- chat$chat_structured(
     prompt,
-    type = storm_type_personas(),
+    type = tempest_type_personas(),
     echo = "none",
     convert = FALSE
   )
@@ -92,10 +92,10 @@ storm_generate_personas <- function(topic, n = 3, config = storm_config(), verbo
 
 #' Format Persona Details for Prompt
 #'
-#' @param persona A persona object from `storm_generate_personas()`.
+#' @param persona A persona object from `tempest_generate_personas()`.
 #' @return A formatted string with persona details.
 #' @keywords internal
-storm_format_persona_details <- function(persona) {
+tempest_format_persona_details <- function(persona) {
   parts <- character()
 
   if (!is.null(persona$affiliation) && nzchar(persona$affiliation)) {
@@ -124,27 +124,27 @@ storm_format_persona_details <- function(persona) {
 #' @param expert_id Fallback expert ID if no persona provided.
 #' @return A rendered system prompt string.
 #' @keywords internal
-storm_render_expert_prompt <- function(persona = NULL, expert_id = 1) {
+tempest_render_expert_prompt <- function(persona = NULL, expert_id = 1) {
   if (is.null(persona)) {
     # Fallback to generic expert
-    storm_prompt_render(
+    tempest_prompt_render(
       "expert_system",
       persona_name = paste("Expert", expert_id),
       persona_title = "Research Specialist",
       persona_details = ""
     )
   } else {
-    storm_prompt_render(
+    tempest_prompt_render(
       "expert_system",
       persona_name = persona$name %||% paste("Expert", expert_id),
       persona_title = persona$title %||% "Research Specialist",
-      persona_details = storm_format_persona_details(persona)
+      persona_details = tempest_format_persona_details(persona)
     )
   }
 }
 
 #' @keywords internal
-storm_type_outline <- function() {
+tempest_type_outline <- function() {
   tempest_require("ellmer")
   subsection <- ellmer::type_object(
     title = ellmer::type_string("Subsection title"),
@@ -163,7 +163,7 @@ storm_type_outline <- function() {
 }
 
 #' @keywords internal
-storm_type_fact_extract <- function() {
+tempest_type_fact_extract <- function() {
   tempest_require("ellmer")
   src <- ellmer::type_object(
     source_id = ellmer::type_string("Source id like Sxxxxxxxxxxxx"),
@@ -180,7 +180,7 @@ storm_type_fact_extract <- function() {
 }
 
 #' @keywords internal
-storm_type_next_question <- function() {
+tempest_type_next_question <- function() {
   tempest_require("ellmer")
   ellmer::type_object(
     question = ellmer::type_string("Next research question to ask the expert."),
@@ -189,8 +189,8 @@ storm_type_next_question <- function() {
 }
 
 #' @keywords internal
-storm_generate_next_question <- function(writer_chat, topic, perspective, answered_md, facts_md) {
-  type <- storm_type_next_question()
+tempest_generate_next_question <- function(writer_chat, topic, perspective, answered_md, facts_md) {
+  type <- tempest_type_next_question()
   prompt <- paste0(
     "You are interviewing an expert to build a factual knowledge base.\n\n",
     "Topic: ", topic, "\n",
@@ -205,7 +205,7 @@ storm_generate_next_question <- function(writer_chat, topic, perspective, answer
   writer_chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE)
 }
 
-storm_summarize_facts_for_prompt <- function(store, max_items = 60) {
+tempest_summarize_facts_for_prompt <- function(store, max_items = 60) {
   stopifnot(inherits(store, "SourceStore"))
   facts <- store$list_facts()
   if (length(facts) == 0) return("(no facts yet)")
@@ -218,7 +218,7 @@ storm_summarize_facts_for_prompt <- function(store, max_items = 60) {
 }
 
 #' @keywords internal
-storm_keyword_filter_facts <- function(store, query, max_items = 30) {
+tempest_keyword_filter_facts <- function(store, query, max_items = 30) {
   facts <- store$list_facts()
   if (length(facts) == 0) return(list())
 
@@ -239,11 +239,11 @@ storm_keyword_filter_facts <- function(store, query, max_items = 30) {
 
 
 #' @keywords internal
-storm_extract_facts_from_answer <- function(chat, answer_text, store) {
+tempest_extract_facts_from_answer <- function(chat, answer_text, store) {
   # Use a separate extraction call to minimize hallucinated facts.
   # We instruct the model to ONLY extract claims that are explicitly supported
   # by citations like [Sxxxxxxxxxxxx] in the answer.
-  type <- storm_type_fact_extract()
+  type <- tempest_type_fact_extract()
   prompt <- paste0(
     "Extract atomic factual claims from the following answer.\n\n",
     "Rules:\n",
@@ -258,7 +258,7 @@ storm_extract_facts_from_answer <- function(chat, answer_text, store) {
   for (f in facts) {
     src_ids <- purrr::map_chr(f$sources %||% list(), "source_id")
     if (length(src_ids) == 0) next
-    store$add_fact(storm_fact(
+    store$add_fact(tempest_fact(
       claim = f$claim,
       source_ids = src_ids,
       confidence = f$confidence %||% NA_character_,
@@ -277,8 +277,8 @@ storm_extract_facts_from_answer <- function(chat, answer_text, store) {
 #' 4) writes a cited report in Markdown.
 #'
 #' @param topic Research topic or question.
-#' @param config A `StormConfig`.
-#' @param retriever Optional `StormRetriever`. If `NULL`, created from `config`.
+#' @param config A `TempestConfig`.
+#' @param retriever Optional `TempestRetriever`. If `NULL`, created from `config`.
 #' @param n_experts Number of expert personas to use (default 3).
 #' @param research_strategy Either "key_questions" (default, faster) or "conversation"
 #'   (more thorough but slower). Key questions uses predefined questions; conversation
@@ -290,9 +290,9 @@ storm_extract_facts_from_answer <- function(chat, answer_text, store) {
 #' @param verbose If `TRUE`, prints progress messages.
 #' @return A list with `title`, `outline`, `draft_md`, `report_md`, and `store`.
 #' @export
-storm_run <- function(
+tempest_run <- function(
   topic,
-  config = storm_config(),
+  config = tempest_config(),
   retriever = NULL,
   n_experts = 3,
   research_strategy = c("key_questions", "conversation"),
@@ -301,7 +301,7 @@ storm_run <- function(
   steps = c("perspectives", "research", "outline", "write", "polish"),
   verbose = TRUE
 ) {
-  tempest_require("ellmer", "storm_run() requires ellmer.")
+  tempest_require("ellmer", "tempest_run() requires ellmer.")
   topic <- tempest_trim(topic)
   if (is.na(topic) || topic == "") tempest_abort("topic must be a non-empty string.")
 
@@ -309,15 +309,15 @@ storm_run <- function(
   max_rounds <- as.integer(max_rounds %||% 6)
   if (is.na(max_rounds) || max_rounds < 1) max_rounds <- 6L
 
-  retriever <- retriever %||% storm_retriever(config = config, store = SourceStore$new())
+  retriever <- retriever %||% tempest_retriever(config = config, store = SourceStore$new())
   store <- retriever$store
 
   coordinator <- config$make_chat("coordinator", echo = if (verbose) "output" else "none")
   writer <- config$make_chat("writer", echo = if (verbose) "output" else "none")
-  polisher <- config$make_chat("writer", system_prompt = storm_prompt("polisher_system"), echo = if (verbose) "output" else "none")
-  extractor <- config$make_chat("judge", system_prompt = storm_prompt("fact_extractor_system"), echo = "none")
+  polisher <- config$make_chat("writer", system_prompt = tempest_prompt("polisher_system"), echo = if (verbose) "output" else "none")
+  extractor <- config$make_chat("judge", system_prompt = tempest_prompt("fact_extractor_system"), echo = "none")
 
-  storm_register_default_tools(
+  tempest_register_default_tools(
     writer,
     retriever,
     model = config$models[["writer"]],
@@ -346,7 +346,7 @@ storm_run <- function(
       "Propose ", n_experts, "-", n_experts + 2, " distinct perspectives to cover the topic. Each perspective should have 3-6 research questions.\n",
       "Return structured data."
     )
-    type <- storm_type_perspectives()
+    type <- tempest_type_perspectives()
     plan <- coordinator$chat_structured(prompt, type = type, echo = "none", convert = FALSE)
     title <- plan$title %||% topic
     perspectives <- plan$perspectives %||% list()
@@ -359,7 +359,7 @@ storm_run <- function(
 
     # Generate personas aligned with perspectives
     if (verbose) tempest_inform("Generating {n_experts} expert personas")
-    personas <- storm_generate_personas(
+    personas <- tempest_generate_personas(
       topic = topic,
       n = n_experts,
       config = config,
@@ -382,9 +382,9 @@ storm_run <- function(
     # Create expert chats with personas (one per perspective)
     for (i in seq_along(perspectives)) {
       persona <- if (i <= length(personas)) personas[[i]] else NULL
-      sp <- storm_render_expert_prompt(persona = persona, expert_id = i)
+      sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
       expert_chats[[i]] <- config$make_chat("expert", system_prompt = sp, echo = if (verbose) "output" else "none")
-      storm_register_default_tools(
+      tempest_register_default_tools(
         expert_chats[[i]],
         retriever,
         model = config$models[["expert"]],
@@ -428,7 +428,7 @@ storm_run <- function(
             "Answer:"
           )
           ans <- expert$chat(prompt, echo = if (verbose) "output" else "none")
-          storm_extract_facts_from_answer(extractor, ans, store)
+          tempest_extract_facts_from_answer(extractor, ans, store)
         }
       } else {
         # Conversation-style interviewing: writer proposes the next best question,
@@ -436,9 +436,9 @@ storm_run <- function(
         answered <- character()
         for (round in seq_len(max_rounds)) {
           answered_md <- if (length(answered) == 0) "(none yet)" else paste0("- ", answered, collapse = "\n")
-          facts_md <- storm_summarize_facts_for_prompt(store, max_items = 60)
+          facts_md <- tempest_summarize_facts_for_prompt(store, max_items = 60)
 
-          nxt <- storm_generate_next_question(writer, topic, p, answered_md = answered_md, facts_md = facts_md)
+          nxt <- tempest_generate_next_question(writer, topic, p, answered_md = answered_md, facts_md = facts_md)
           q <- tempest_trim(nxt$question %||% "")
           done <- isTRUE(nxt$done)
 
@@ -458,7 +458,7 @@ storm_run <- function(
 
           ans <- expert$chat(prompt, echo = if (verbose) "output" else "none")
           answered <- c(answered, paste0("Q: ", q, "\nA: ", ans))
-          storm_extract_facts_from_answer(extractor, ans, store)
+          tempest_extract_facts_from_answer(extractor, ans, store)
 
           if (done) break
         }
@@ -470,7 +470,7 @@ storm_run <- function(
 
   if ("outline" %in% steps) {
     if (verbose) tempest_inform("Generating outline")
-    facts_txt <- storm_summarize_facts_for_prompt(store, max_items = 80)
+    facts_txt <- tempest_summarize_facts_for_prompt(store, max_items = 80)
     prompt <- paste0(
       "Create a detailed outline for a report.\n\n",
       "Topic: ", topic, "\n",
@@ -483,7 +483,7 @@ storm_run <- function(
       "- Do not invent facts; plan based on available facts.\n",
       "- Return structured data.\n"
     )
-    type <- storm_type_outline()
+    type <- tempest_type_outline()
     outline <- writer$chat_structured(prompt, type = type, echo = "none", convert = FALSE)
     store$set_artifact("outline", outline)
   } else {
@@ -502,7 +502,7 @@ storm_run <- function(
       sec_summary <- sec$summary %||% ""
       sub <- sec$subsections %||% list()
 
-      relevant <- storm_keyword_filter_facts(store, query = sec_title, max_items = 25)
+      relevant <- tempest_keyword_filter_facts(store, query = sec_title, max_items = 25)
       rel_txt <- if (length(relevant) == 0) "(no directly matched facts; use best judgement and call tools)" else
         paste(purrr::map_chr(relevant, function(f) {
           paste0("- ", f$claim, " [", paste(f$source_ids, collapse = ", "), "]")
@@ -532,7 +532,7 @@ storm_run <- function(
       sec_md <- writer$chat(prompt, echo = if (verbose) "output" else "none")
       parts <- c(parts, paste0("## ", sec_title, "\n\n", sec_md))
       # Extract any newly-cited facts from the section itself
-      storm_extract_facts_from_answer(extractor, sec_md, store)
+      tempest_extract_facts_from_answer(extractor, sec_md, store)
     }
 
     draft_md <- paste(parts, collapse = "\n\n")
@@ -552,7 +552,7 @@ storm_run <- function(
       "<draft>\n", draft_md, "\n</draft>\n"
     )
     polished <- polisher$chat(prompt, echo = if (verbose) "output" else "none")
-    report_md <- storm_report_md(title = title, body = polished, store = store)
+    report_md <- tempest_report_md(title = title, body = polished, store = store)
     store$set_artifact("report_md", report_md)
   } else {
     report_md <- store$get_artifact("report_md")
@@ -572,18 +572,18 @@ storm_run <- function(
 
 #' Run STORM asynchronously (Shiny-friendly)
 #'
-#' This is a thin wrapper around [storm_run()] that returns a promise.
+#' This is a thin wrapper around [tempest_run()] that returns a promise.
 #' It is useful when calling STORM from a Shiny app without blocking the session.
 #'
-#' @param ... Arguments passed to [storm_run()]. See [storm_run()] for details
+#' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for details
 #'   on available parameters including `topic`, `config`, `retriever`,
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
-#' @return A `promises::promise` that resolves with the storm_run result.
-#' @seealso [storm_run()] for the synchronous version.
+#' @return A `promises::promise` that resolves with the tempest_run result.
+#' @seealso [tempest_run()] for the synchronous version.
 #' @export
-storm_run_async <- function(...) {
-  tempest_require("promises", "storm_run_async() uses promises.")
+tempest_run_async <- function(...) {
+  tempest_require("promises", "tempest_run_async() uses promises.")
   promises::promise(function(resolve, reject) {
-    tryCatch(resolve(storm_run(...)), error = reject)
+    tryCatch(resolve(tempest_run(...)), error = reject)
   })
 }

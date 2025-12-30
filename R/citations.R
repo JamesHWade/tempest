@@ -1,33 +1,33 @@
 # Citations and report assembly
 
 #' Return sources as a tibble
-#' @param store A `SourceStore` or `StormRetriever`.
+#' @param store A `SourceStore` or `TempestRetriever`.
 #' @export
-storm_sources <- function(store) {
-  if (inherits(store, "StormRetriever")) store <- store$store
+tempest_sources <- function(store) {
+  if (inherits(store, "TempestRetriever")) store <- store$store
   stopifnot(inherits(store, "SourceStore"))
   store$to_tibbles()$sources
 }
 
 #' Return fact notes as a tibble
-#' @param store A `SourceStore` or `StormRetriever`.
+#' @param store A `SourceStore` or `TempestRetriever`.
 #' @export
-storm_facts <- function(store) {
-  if (inherits(store, "StormRetriever")) store <- store$store
+tempest_facts <- function(store) {
+  if (inherits(store, "TempestRetriever")) store <- store$store
   stopifnot(inherits(store, "SourceStore"))
   store$to_tibbles()$facts
 }
 
 #' @keywords internal
-storm_extract_citation_ids <- function(text) {
+tempest_extract_citation_ids <- function(text) {
   ids <- unique(unlist(regmatches(text, gregexpr("\\[S[0-9a-f]{12}\\]", text, perl = TRUE))))
   gsub("\\[|\\]", "", ids)
 }
 
 #' @keywords internal
-storm_add_footnotes <- function(text, store) {
+tempest_add_footnotes <- function(text, store) {
   stopifnot(inherits(store, "SourceStore"))
-  ids <- storm_extract_citation_ids(text)
+  ids <- tempest_extract_citation_ids(text)
   if (length(ids) == 0) return(list(text = text, footnotes = ""))
 
   # Replace [Sxxxx] with [^Sxxxx]
@@ -54,11 +54,11 @@ storm_add_footnotes <- function(text, store) {
 #' @param store A `SourceStore` containing sources.
 #' @return Markdown with footnotes.
 #' @export
-storm_report_md <- function(title, body, store) {
-  if (inherits(store, "StormRetriever")) store <- store$store
+tempest_report_md <- function(title, body, store) {
+  if (inherits(store, "TempestRetriever")) store <- store$store
   stopifnot(inherits(store, "SourceStore"))
 
-  res <- storm_add_footnotes(body, store)
+  res <- tempest_add_footnotes(body, store)
   md <- paste0(
     "# ", title, "\n\n",
     res$text, "\n\n",
@@ -70,12 +70,12 @@ storm_report_md <- function(title, body, store) {
 
 #' Assemble a Markdown report from a Co-STORM session
 #'
-#' @param session A `CoStormSession`.
+#' @param session A `TempestSession`.
 #' @return Markdown with footnotes.
 #' @export
-costorm_report_md <- function(session) {
-  stopifnot(inherits(session, "CoStormSession"))
+tempest_session_report_md <- function(session) {
+  stopifnot(inherits(session, "TempestSession"))
   title <- session$title %||% "Co-STORM Report"
   body <- session$artifacts$report %||% ""
-  storm_report_md(title = title, body = body, store = session$store)
+  tempest_report_md(title = title, body = body, store = session$store)
 }

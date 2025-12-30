@@ -4,12 +4,16 @@
 \alias{tempest_solver_cited_answer}
 \title{A vitals solver that answers questions using retrieval + citations}
 \usage{
-tempest_solver_cited_answer(input, config = storm_config(), solver_chat = NULL)
+tempest_solver_cited_answer(
+  input,
+  config = tempest_config(),
+  solver_chat = NULL
+)
 }
 \arguments{
 \item{input}{Character vector of questions.}
 
-\item{config}{A \code{StormConfig}.}
+\item{config}{A \code{TempestConfig}.}
 
 \item{solver_chat}{Optional (ignored). Present to match vitals conventions.}
 }
@@ -19,6 +23,6 @@ A list with \code{result} and \code{solver_chat} (and \code{solver_metadata}).
 \description{
 This solver is designed to evaluate the end-to-end behavior of the tempest
 retrieval + citation discipline. It is intentionally lighter than a full
-\code{storm_run()} call.
+\code{tempest_run()} call.
 }
 \keyword{internal}

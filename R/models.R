@@ -4,7 +4,7 @@
 #' @param url URL
 #' @return Source id like "Sxxxxxxxxxxxx"
 #' @keywords internal
-storm_source_id <- function(url) {
+tempest_source_id <- function(url) {
   url <- tempest_trim(url)
   if (length(url) != 1 || is.na(url) || url == "") tempest_abort("Invalid url for source id.")
   paste0("S", substr(digest::digest(url, algo = "xxhash64"), 1, 12))
@@ -12,10 +12,10 @@ storm_source_id <- function(url) {
 
 #' Create a Source object
 #' @keywords internal
-storm_source <- function(url, title = NULL, snippet = NULL, content_text = NULL,
+tempest_source <- function(url, title = NULL, snippet = NULL, content_text = NULL,
                          fetched_at = NULL, content_hash = NULL, meta = list()) {
   list(
-    id = storm_source_id(url),
+    id = tempest_source_id(url),
     url = url,
     title = title %||% NA_character_,
     snippet = snippet %||% NA_character_,
@@ -28,7 +28,7 @@ storm_source <- function(url, title = NULL, snippet = NULL, content_text = NULL,
 
 #' Create a Fact note (atomic claim with citations)
 #' @keywords internal
-storm_fact <- function(claim, source_ids, confidence = NA_character_, note = NA_character_, tags = character()) {
+tempest_fact <- function(claim, source_ids, confidence = NA_character_, note = NA_character_, tags = character()) {
   list(
     id = tempest_uuid("fact"),
     claim = claim,
