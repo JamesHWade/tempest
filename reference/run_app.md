@@ -18,3 +18,8 @@ run_app(...)
 
   Passed to
   [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html).
+
+## Value
+
+A Shiny app object (invisibly, from
+[`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html)).

@@ -13,3 +13,8 @@ tempest_sources(store)
 - store:
 
   A `SourceStore` or `TempestRetriever`.
+
+## Value
+
+A tibble of sources with columns: id, url, title, snippet, content_text,
+fetched_at.

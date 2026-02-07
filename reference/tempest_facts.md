@@ -13,3 +13,8 @@ tempest_facts(store)
 - store:
 
   A `SourceStore` or `TempestRetriever`.
+
+## Value
+
+A tibble of facts with columns: claim, source_ids, confidence, note,
+tags.

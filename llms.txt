@@ -140,7 +140,7 @@ parameters:
 | `ragnar_store`                 | `NULL`                | Pre-built ragnar store; auto-created if `embed_fn` provided                                                             |
 | `chat_fn`                      | `NULL`                | Custom chat factory: `function(role, model, system_prompt, echo)`                                                       |
 | `tools`                        | `NULL`                | Additional ellmer tools (e.g., `btw::btw_tools()`)                                                                      |
-| `cache_dir`                    | `"~/.tempest"`        | Cache directory for searches and fetched content                                                                        |
+| `cache_dir`                    | `NULL`                | Cache directory; defaults to `tempdir()/tempest-cache` or `TEMPEST_CACHE_DIR` env var                                   |
 | `max_search_results`           | `8`                   | Maximum results per search query                                                                                        |
 | `max_sources`                  | `24`                  | Maximum sources to track per session                                                                                    |
 | `node_expansion_trigger_count` | `NULL`                | Co-STORM: auto-split oversized mind map nodes when note count exceeds this (NULL = disabled)                            |

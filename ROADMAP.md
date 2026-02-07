@@ -47,9 +47,10 @@ with prioritized improvements organized by urgency and category.
 **Category:** Security \| **File:** `R/retriever.R`
 
 **Resolution:** Added comprehensive SSRF protection in
-`storm_normalize_url()`: - Blocks dangerous protocols (file, ftp,
-gopher, data, javascript, vbscript) - Blocks local/internal addresses
-(localhost, 127.0.0.1, private IP ranges) - Upgrades HTTP to HTTPS
+[`tempest_normalize_url()`](reference/tempest_normalize_url.md): -
+Blocks dangerous protocols (file, ftp, gopher, data, javascript,
+vbscript) - Blocks local/internal addresses (localhost, 127.0.0.1,
+private IP ranges) - Upgrades HTTP to HTTPS
 
 ------------------------------------------------------------------------
 
@@ -107,11 +108,11 @@ NULL
 
 ### 8. Undocumented Function Arguments
 
-**Category:** R CMD Check \| **File:** `R/storm.R` (storm_run_async)
+**Category:** R CMD Check \| **File:** `R/storm.R` (tempest_run_async)
 
-    WARNING: Undocumented arguments in Rd file 'storm_run_async.Rd': '...'
+    WARNING: Undocumented arguments in Rd file 'tempest_run_async.Rd': '...'
 
-**Fix:** Add `@param ...` documentation or `@inheritParams storm_run`.
+**Fix:** Add `@param ...` documentation or `@inheritParams tempest_run`.
 
 ------------------------------------------------------------------------
 
