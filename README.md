@@ -20,7 +20,7 @@ This package reproduces the core workflow primitives:
 Built on the R AI ecosystem:
 - [ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration: tool calling, structured output, streaming
 - [ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking, embedding, semantic retrieval
-- [dsprrr](https://github.com/tidyverse/dsprrr) — structured extraction/generation modules (optional)
+- [dsprrr](https://github.com/JamesHWade/dsprrr) — structured extraction/generation modules (optional)
 - [shinychat](https://github.com/posit-dev/shinychat) — interactive chat UI
 - [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
 
@@ -108,7 +108,7 @@ res <- tempest_run(
 - **Semantic fact retrieval** -- when ragnar is configured, section writing uses semantic similarity to select the most relevant facts (falls back to keyword matching otherwise).
 - **Two-step outline** -- a draft outline is generated from the LLM's parametric knowledge, then refined with research findings.
 - **Lead section** -- a Wikipedia-style lead (2-3 paragraphs) is generated and prepended to the article.
-- **dsprrr modules** -- when [dsprrr](https://github.com/tidyverse/dsprrr) is installed, structured extraction steps (query decomposition, fact extraction, outline drafting, section writing) use dsprrr modules for more reliable structured output. Falls back to `chat$chat_structured()` otherwise.
+- **dsprrr modules** -- when [dsprrr](https://github.com/JamesHWade/dsprrr) is installed, structured extraction steps (query decomposition, fact extraction, outline drafting, section writing) use dsprrr modules for more reliable structured output. Falls back to `chat$chat_structured()` otherwise.
 
 ### Configuration Options
 

@@ -49,6 +49,8 @@ Suggests:
     vitals,
     withr,
     xml2
+Remotes:
+    JamesHWade/dsprrr
 Config/testthat/edition: 3
 URL: https://github.com/JamesHWade/tempest
 BugReports: https://github.com/JamesHWade/tempest/issues
