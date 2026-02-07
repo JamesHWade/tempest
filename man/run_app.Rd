@@ -9,6 +9,9 @@ run_app(...)
 \arguments{
 \item{...}{Passed to \code{shiny::runApp()}.}
 }
+\value{
+A Shiny app object (invisibly, from \code{shiny::runApp()}).
+}
 \description{
 Launches an interactive app that provides:
 \itemize{

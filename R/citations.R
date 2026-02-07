@@ -2,6 +2,7 @@
 
 #' Return sources as a tibble
 #' @param store A `SourceStore` or `TempestRetriever`.
+#' @return A tibble of sources with columns: id, url, title, snippet, content_text, fetched_at.
 #' @export
 tempest_sources <- function(store) {
   if (inherits(store, "TempestRetriever")) store <- store$store
@@ -11,6 +12,7 @@ tempest_sources <- function(store) {
 
 #' Return fact notes as a tibble
 #' @param store A `SourceStore` or `TempestRetriever`.
+#' @return A tibble of facts with columns: claim, source_ids, confidence, note, tags.
 #' @export
 tempest_facts <- function(store) {
   if (inherits(store, "TempestRetriever")) store <- store$store

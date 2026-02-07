@@ -7,6 +7,7 @@
 #' - One-click report generation with citations
 #'
 #' @param ... Passed to `shiny::runApp()`.
+#' @return A Shiny app object (invisibly, from `shiny::runApp()`).
 #' @export
 run_app <- function(...) {
   tempest_require("shiny", "run_app() launches a Shiny app.")

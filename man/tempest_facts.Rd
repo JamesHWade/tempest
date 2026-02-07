@@ -9,6 +9,9 @@ tempest_facts(store)
 \arguments{
 \item{store}{A \code{SourceStore} or \code{TempestRetriever}.}
 }
+\value{
+A tibble of facts with columns: claim, source_ids, confidence, note, tags.
+}
 \description{
 Return fact notes as a tibble
 }
