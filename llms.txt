@@ -8,14 +8,20 @@ from Stanford’s STORM project.
 This package reproduces the core workflow primitives: -
 **Multi-perspective research** with automatically generated expert
 personas - **Evidence tracking** with citations and source attribution -
-**Outline-to-draft writing** for structured report generation -
-**Interactive multi-agent moderation** with mind map (Co-STORM)
+**Two-step outline refinement** and **lead section generation** -
+**Query decomposition** and **semantic fact retrieval** - **Parallel
+research** across perspectives (optional) - **Interactive multi-agent
+moderation** with mind map (Co-STORM) - **LLM-driven discourse
+management** with dynamic expert roster (Co-STORM) - **Automated
+evaluation** with simulated users
 
 Built on the R AI ecosystem: -
 [ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration: tool
 calling, structured output, streaming -
 [ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking,
 embedding, semantic retrieval -
+[dsprrr](https://github.com/JamesHWade/dsprrr) — structured
+extraction/generation modules (optional) -
 [shinychat](https://github.com/posit-dev/shinychat) — interactive chat
 UI - [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
 
@@ -83,22 +89,64 @@ You can also use a single model for all roles:
 cfg <- tempest_config(models = "anthropic/claude-sonnet-4-20250514")
 ```
 
+### Parallel Research
+
+Run perspective research in parallel using
+[mirai](https://github.com/shikokuchuo/mirai):
+
+``` r
+res <- tempest_run(
+  "Quantum computing applications",
+  config = cfg,
+  parallel_research = TRUE,  # requires mirai
+  verbose = TRUE
+)
+```
+
+### Pipeline Details
+
+[`tempest_run()`](reference/tempest_run.md) executes five steps:
+`perspectives`, `research`, `outline`, `write`, `polish`. Key features:
+
+- **ToC-enriched perspective discovery** – seed URLs are fetched and
+  their table-of-contents headings are extracted to give the coordinator
+  richer context for generating expert perspectives.
+- **Query decomposition** – each expert research question is decomposed
+  into 2-3 targeted search queries before retrieval.
+- **Semantic fact retrieval** – when ragnar is configured, section
+  writing uses semantic similarity to select the most relevant facts
+  (falls back to keyword matching otherwise).
+- **Two-step outline** – a draft outline is generated from the LLM’s
+  parametric knowledge, then refined with research findings.
+- **Lead section** – a Wikipedia-style lead (2-3 paragraphs) is
+  generated and prepended to the article.
+- **dsprrr modules** – when
+  [dsprrr](https://github.com/JamesHWade/dsprrr) is installed,
+  structured extraction steps (query decomposition, fact extraction,
+  outline drafting, section writing) use dsprrr modules for more
+  reliable structured output. Falls back to `chat$chat_structured()`
+  otherwise.
+
 ### Configuration Options
 
 [`tempest_config()`](reference/tempest_config.md) accepts the following
 parameters:
 
-| Parameter            | Default                | Description                                                                                                             |
-|----------------------|------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `models`             | `"openai/gpt-4o-mini"` | Single model string or named list with `coordinator`, `expert`, `writer`, `mindmap`, `judge`                            |
-| `search_provider`    | `"native"`             | Search backend: `"native"`, `"wikipedia"`, `"serper"`, `"brave"`, `"tavily"`                                            |
-| `embed_fn`           | `NULL`                 | Embedding function for RAG (e.g., [`ragnar::embed_openai()`](https://ragnar.tidyverse.org/reference/embed_ollama.html)) |
-| `ragnar_store`       | `NULL`                 | Pre-built ragnar store; auto-created if `embed_fn` provided                                                             |
-| `chat_fn`            | `NULL`                 | Custom chat factory: `function(role, model, system_prompt, echo)`                                                       |
-| `tools`              | `NULL`                 | Additional ellmer tools (e.g., `btw::btw_tools()`)                                                                      |
-| `cache_dir`          | `"~/.tempest"`         | Cache directory for searches and fetched content                                                                        |
-| `max_search_results` | `8`                    | Maximum results per search query                                                                                        |
-| `max_sources`        | `24`                   | Maximum sources to track per session                                                                                    |
+| Parameter                      | Default               | Description                                                                                                             |
+|--------------------------------|-----------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `models`                       | `"openai/gpt-5-mini"` | Single model string or named list with `coordinator`, `expert`, `writer`, `mindmap`, `judge`                            |
+| `search_provider`              | `"native"`            | Search backend: `"native"`, `"wikipedia"`, `"serper"`, `"brave"`, `"tavily"`                                            |
+| `embed_fn`                     | `NULL`                | Embedding function for RAG (e.g., [`ragnar::embed_openai()`](https://ragnar.tidyverse.org/reference/embed_ollama.html)) |
+| `ragnar_store`                 | `NULL`                | Pre-built ragnar store; auto-created if `embed_fn` provided                                                             |
+| `chat_fn`                      | `NULL`                | Custom chat factory: `function(role, model, system_prompt, echo)`                                                       |
+| `tools`                        | `NULL`                | Additional ellmer tools (e.g., `btw::btw_tools()`)                                                                      |
+| `cache_dir`                    | `"~/.tempest"`        | Cache directory for searches and fetched content                                                                        |
+| `max_search_results`           | `8`                   | Maximum results per search query                                                                                        |
+| `max_sources`                  | `24`                  | Maximum sources to track per session                                                                                    |
+| `node_expansion_trigger_count` | `NULL`                | Co-STORM: auto-split oversized mind map nodes when note count exceeds this (NULL = disabled)                            |
+| `enable_discourse_manager`     | `FALSE`               | Co-STORM: use LLM-driven turn management                                                                                |
+| `max_active_experts`           | `5`                   | Co-STORM: maximum concurrent active experts                                                                             |
+| `enable_unseen_surfacing`      | `FALSE`               | Co-STORM: surface undiscussed sources as moderator questions                                                            |
 
 ## RAG with ragnar
 
@@ -225,6 +273,54 @@ session$warmup()  # Each expert answers 2-4 initial questions
 session$step("What is quantum supremacy?")  # Benefits from prior research
 ```
 
+### Discourse Manager
+
+Enable LLM-driven turn management for autonomous multi-agent
+conversations:
+
+``` r
+cfg <- tempest_config(enable_discourse_manager = TRUE)
+session <- tempest_session("CRISPR gene editing", config = cfg)
+session$warmup()
+
+# Autonomous mode: the discourse manager decides who speaks next
+result <- session$step(auto = TRUE)
+```
+
+The discourse manager decides each turn’s action: which expert speaks,
+whether to add or retire experts, whether to probe for deeper questions,
+or when to end the round.
+
+### Dynamic Expert Roster
+
+Experts can be added or retired during a session:
+
+``` r
+session$add_expert("quantum error correction")
+session$retire_expert("Dr. Sarah Chen")
+session$get_active_personas()
+```
+
+The roster respects `max_active_experts` (default 5). Retired experts’
+tools return a notice that the expert is no longer available.
+
+### Mind Map Node Expansion
+
+When `node_expansion_trigger_count` is set, oversized mind map nodes are
+automatically split into subtopics:
+
+``` r
+cfg <- tempest_config(node_expansion_trigger_count = 8)
+session <- tempest_session("AI safety", config = cfg)
+```
+
+### Report Generation
+
+``` r
+# Reorganize the mind map before generating the report
+report <- session$report(style = "technical", reorganize = TRUE)
+```
+
 ### Shiny App
 
 ``` r
@@ -243,20 +339,33 @@ The app provides:
 Features: - Configurable number of experts and optional warmup phase -
 Report style selection (technical or executive) - Dark mode toggle
 
-## vitals evals
+## Evaluation
+
+### STORM evaluation with vitals
 
 ``` r
 library(tempest)
 library(vitals)
 library(ellmer)
 
-# scorer chat must be provided for model-graded scoring:
 judge <- ellmer::chat("openai/gpt-4o-mini")
-
 tsk <- tempest_task(dataset = "qa", scorer_chat = judge)
-tsk$eval(view = interactive())
-
 tsk$get_samples()
+```
+
+### Co-STORM evaluation with SimulatedUser
+
+Run automated Co-STORM sessions with a simulated curious researcher:
+
+``` r
+# Standalone SimulatedUser
+session <- tempest_session("AI safety")
+sim <- SimulatedUser$new("AI safety", max_turns = 5)
+sim$run_session(session, warmup = TRUE, verbose = TRUE)
+report <- session$report()
+
+# As a vitals task
+tsk <- tempest_costorm_task(dataset = "qa", max_turns = 5, scorer_chat = judge)
 ```
 
 ## Notes
@@ -282,12 +391,15 @@ tsk$get_samples()
 
 ## All functions
 
+- [`SimulatedUser`](SimulatedUser.md) : SimulatedUser
 - [`SourceStore`](SourceStore.md) : SourceStore
 - [`TempestConfig`](TempestConfig.md) : TempestConfig
 - [`TempestRetriever`](TempestRetriever.md) : TempestRetriever
 - [`TempestSession`](TempestSession.md) : TempestSession
 - [`run_app()`](run_app.md) : Run the tempest Shiny chat application
 - [`tempest_config()`](tempest_config.md) : Create a STORM configuration
+- [`tempest_costorm_task()`](tempest_costorm_task.md) : Create a
+  Co-STORM evaluation task using SimulatedUser
 - [`tempest_create_ragnar_store()`](tempest_create_ragnar_store.md) :
   Create a ragnar store with tempest metadata schema
 - [`tempest_facts()`](tempest_facts.md) : Return fact notes as a tibble

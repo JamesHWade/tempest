@@ -2,12 +2,15 @@
 
 ## All functions
 
+- [`SimulatedUser`](SimulatedUser.md) : SimulatedUser
 - [`SourceStore`](SourceStore.md) : SourceStore
 - [`TempestConfig`](TempestConfig.md) : TempestConfig
 - [`TempestRetriever`](TempestRetriever.md) : TempestRetriever
 - [`TempestSession`](TempestSession.md) : TempestSession
 - [`run_app()`](run_app.md) : Run the tempest Shiny chat application
 - [`tempest_config()`](tempest_config.md) : Create a STORM configuration
+- [`tempest_costorm_task()`](tempest_costorm_task.md) : Create a
+  Co-STORM evaluation task using SimulatedUser
 - [`tempest_create_ragnar_store()`](tempest_create_ragnar_store.md) :
   Create a ragnar store with tempest metadata schema
 - [`tempest_facts()`](tempest_facts.md) : Return fact notes as a tibble

@@ -17,9 +17,7 @@ with prioritized improvements organized by urgency and category.
 | Performance        | \-       | 1    | 2      | \-  |
 | Features           | \-       | \-   | 4      | 6   |
 
-**Overall Test Coverage: 23.29%** (Target: 60%+)
-
-**R CMD check Status:** 1 ERROR, 2 WARNINGs, 2 NOTEs
+**R CMD check Status:** 0 errors, 0 warnings, 1 note
 
 ------------------------------------------------------------------------
 
@@ -243,12 +241,11 @@ Using ragnar for semantic search
 
 ------------------------------------------------------------------------
 
-### 19. Fix Default Model Name Typo
+### ~~19. Fix Default Model Name Typo~~ (RESOLVED)
 
 **Category:** Bug \| **File:** `R/config.R`
 
-Default model names may use invalid identifiers. Audit and update to
-current valid model names.
+**Resolution:** Default model updated to `openai/gpt-4.1-mini`.
 
 ------------------------------------------------------------------------
 
@@ -337,11 +334,11 @@ Source credibility scoring
 
 ## R CMD Check Summary
 
-| Type    | Count | Status                                     |
-|---------|-------|--------------------------------------------|
-| ERROR   | 1     | Package name conflict + invalid URLs       |
-| WARNING | 2     | Missing ragnar import, undocumented args   |
-| NOTE    | 2     | Non-standard files, missing base R imports |
+| Type    | Count | Status                                                   |
+|---------|-------|----------------------------------------------------------|
+| ERROR   | 0     |                                                          |
+| WARNING | 0     |                                                          |
+| NOTE    | 1     | `:::` calls in mirai worker (expected for cross-process) |
 
 ------------------------------------------------------------------------
 
@@ -360,5 +357,12 @@ Please ensure `R CMD check` passes and test coverage doesn’t decrease.
 
 ## Changelog
 
+- **2026-02-07**: Close all 12 STORM/Co-STORM gaps: ToC-enriched
+  perspectives, two-step outline, lead section, query decomposition,
+  semantic fact retrieval, parallel research, discourse manager, dynamic
+  expert roster, mind map expansion, unseen source surfacing, mind map
+  reorganization, SimulatedUser evaluation. Optional dsprrr integration.
+  Added [`tempest_warn()`](reference/tempest_warn.md) to all
+  error-handling paths.
 - **2025-12-29**: Comprehensive analysis with code review, R CMD check,
   and coverage assessment

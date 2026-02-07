@@ -76,8 +76,7 @@
 <td>-</td>
 <td>4</td>
 <td>6</td>
-</tr></tbody></table><p><strong>Overall Test Coverage: 23.29%</strong> (Target: 60%+)</p>
-<p><strong>R CMD check Status:</strong> 1 ERROR, 2 WARNINGs, 2 NOTEs</p>
+</tr></tbody></table><p><strong>R CMD check Status:</strong> 0 errors, 0 warnings, 1 note</p>
 <hr></div>
 <div class="section level2">
 <h2 id="critical-priority-before-any-release">Critical Priority (Before Any Release)<a class="anchor" aria-label="anchor" href="#critical-priority-before-any-release"></a></h2>
@@ -225,9 +224,10 @@
 <p>Planned vignettes: - [ ] <code>vignettes/getting-started.Rmd</code> - Installation and first run - [ ] <code>vignettes/storm-pipeline.Rmd</code> - Scripted STORM workflow - [ ] <code>vignettes/costorm-interactive.Rmd</code> - Interactive Co-STORM guide - [ ] <code>vignettes/rag-integration.Rmd</code> - Using ragnar for semantic search</p>
 <hr></div>
 <div class="section level3">
-<h3 id="id_19-fix-default-model-name-typo">19. Fix Default Model Name Typo<a class="anchor" aria-label="anchor" href="#id_19-fix-default-model-name-typo"></a></h3>
+<h3 id="id_19-fix-default-model-name-typo-resolved">
+<del>19. Fix Default Model Name Typo</del> (RESOLVED)<a class="anchor" aria-label="anchor" href="#id_19-fix-default-model-name-typo-resolved"></a></h3>
 <p><strong>Category:</strong> Bug | <strong>File:</strong> <code>R/config.R</code></p>
-<p>Default model names may use invalid identifiers. Audit and update to current valid model names.</p>
+<p><strong>Resolution:</strong> Default model updated to <code>openai/gpt-4.1-mini</code>.</p>
 <hr></div>
 <div class="section level3">
 <h3 id="id_20-add-security-documentation">20. Add Security Documentation<a class="anchor" aria-label="anchor" href="#id_20-add-security-documentation"></a></h3>
@@ -297,14 +297,15 @@ R/evals.R       ░░░░░░░░░░░░░░░░░░░░░�
 <th>Count</th>
 <th>Status</th>
 </tr></thead><tbody><tr class="odd"><td>ERROR</td>
-<td>1</td>
-<td>Package name conflict + invalid URLs</td>
+<td>0</td>
+<td></td>
 </tr><tr class="even"><td>WARNING</td>
-<td>2</td>
-<td>Missing ragnar import, undocumented args</td>
+<td>0</td>
+<td></td>
 </tr><tr class="odd"><td>NOTE</td>
-<td>2</td>
-<td>Non-standard files, missing base R imports</td>
+<td>1</td>
+<td>
+<code>:::</code> calls in mirai worker (expected for cross-process)</td>
 </tr></tbody></table><hr></div>
 <div class="section level2">
 <h2 id="contributing">Contributing<a class="anchor" aria-label="anchor" href="#contributing"></a></h2>
@@ -318,6 +319,8 @@ R/evals.R       ░░░░░░░░░░░░░░░░░░░░░�
 <div class="section level2">
 <h2 id="changelog">Changelog<a class="anchor" aria-label="anchor" href="#changelog"></a></h2>
 <ul><li>
+<strong>2026-02-07</strong>: Close all 12 STORM/Co-STORM gaps: ToC-enriched perspectives, two-step outline, lead section, query decomposition, semantic fact retrieval, parallel research, discourse manager, dynamic expert roster, mind map expansion, unseen source surfacing, mind map reorganization, SimulatedUser evaluation. Optional dsprrr integration. Added <code><a href="reference/tempest_warn.html">tempest_warn()</a></code> to all error-handling paths.</li>
+<li>
 <strong>2025-12-29</strong>: Comprehensive analysis with code review, R CMD check, and coverage assessment</li>
 </ul></div>
 </div>

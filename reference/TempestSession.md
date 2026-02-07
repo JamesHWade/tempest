@@ -55,6 +55,10 @@ sources, and report artifacts.
 
   Environment of report artifacts.
 
+- `discourse_manager`:
+
+  A `DiscourseManager` object (NULL when disabled).
+
 ## Methods
 
 ### Public methods
@@ -84,6 +88,24 @@ sources, and report artifacts.
 - [`TempestSession$warmup()`](#method-TempestSession-warmup)
 
 - [`TempestSession$report()`](#method-TempestSession-report)
+
+- [`TempestSession$add_expert()`](#method-TempestSession-add_expert)
+
+- [`TempestSession$retire_expert()`](#method-TempestSession-retire_expert)
+
+- [`TempestSession$get_active_personas()`](#method-TempestSession-get_active_personas)
+
+- [`TempestSession$check_and_expand_nodes()`](#method-TempestSession-check_and_expand_nodes)
+
+- [`TempestSession$get_discussed_source_ids()`](#method-TempestSession-get_discussed_source_ids)
+
+- [`TempestSession$find_undiscussed_sources()`](#method-TempestSession-find_undiscussed_sources)
+
+- [`TempestSession$surface_unseen_information()`](#method-TempestSession-surface_unseen_information)
+
+- [`TempestSession$reorganize_mindmap()`](#method-TempestSession-reorganize_mindmap)
+
+- [`TempestSession$execute_turn_decision()`](#method-TempestSession-execute_turn_decision)
 
 - [`TempestSession$clone()`](#method-TempestSession-clone)
 
@@ -288,7 +310,7 @@ Process one step of the conversation.
 
 #### Usage
 
-    TempestSession$step(user_input)
+    TempestSession$step(user_input = NULL, auto = FALSE)
 
 #### Arguments
 
@@ -296,9 +318,14 @@ Process one step of the conversation.
 
   User's input message.
 
+- `auto`:
+
+  If TRUE and discourse manager is enabled, let the discourse manager
+  decide.
+
 #### Returns
 
-A list with speaker, answer, tool_calls, and mindmap_md.
+A list with speaker, answer, and mindmap_md.
 
 ------------------------------------------------------------------------
 
@@ -332,7 +359,8 @@ Generate a report from the session.
 
     TempestSession$report(
       style = c("technical", "executive"),
-      include_references = TRUE
+      include_references = TRUE,
+      reorganize = TRUE
     )
 
 #### Arguments
@@ -345,9 +373,159 @@ Generate a report from the session.
 
   Include references section.
 
+- `reorganize`:
+
+  Whether to reorganize mind map before generating.
+
 #### Returns
 
 Markdown report string.
+
+------------------------------------------------------------------------
+
+### Method `add_expert()`
+
+Add a new expert to the panel dynamically.
+
+#### Usage
+
+    TempestSession$add_expert(area, name = NULL)
+
+#### Arguments
+
+- `area`:
+
+  The area of expertise needed.
+
+- `name`:
+
+  Optional name for the new expert.
+
+#### Returns
+
+The new persona (invisibly).
+
+------------------------------------------------------------------------
+
+### Method `retire_expert()`
+
+Retire an expert from the panel.
+
+#### Usage
+
+    TempestSession$retire_expert(name)
+
+#### Arguments
+
+- `name`:
+
+  The name of the expert to retire.
+
+#### Returns
+
+Logical indicating success.
+
+------------------------------------------------------------------------
+
+### Method `get_active_personas()`
+
+Get active (non-retired) personas.
+
+#### Usage
+
+    TempestSession$get_active_personas()
+
+#### Returns
+
+List of active persona objects.
+
+------------------------------------------------------------------------
+
+### Method `check_and_expand_nodes()`
+
+Check and expand oversized mind map nodes.
+
+#### Usage
+
+    TempestSession$check_and_expand_nodes()
+
+------------------------------------------------------------------------
+
+### Method `get_discussed_source_ids()`
+
+Get source IDs that have been discussed in the transcript.
+
+#### Usage
+
+    TempestSession$get_discussed_source_ids()
+
+#### Returns
+
+Character vector of discussed source IDs.
+
+------------------------------------------------------------------------
+
+### Method `find_undiscussed_sources()`
+
+Find sources that haven't been discussed yet.
+
+#### Usage
+
+    TempestSession$find_undiscussed_sources()
+
+#### Returns
+
+Character vector of undiscussed source IDs.
+
+------------------------------------------------------------------------
+
+### Method `surface_unseen_information()`
+
+Generate questions about undiscussed sources.
+
+#### Usage
+
+    TempestSession$surface_unseen_information(max_questions = 3)
+
+#### Arguments
+
+- `max_questions`:
+
+  Maximum questions to generate.
+
+#### Returns
+
+Character vector of questions, or NULL if none.
+
+------------------------------------------------------------------------
+
+### Method `reorganize_mindmap()`
+
+Reorganize the mind map for clarity.
+
+#### Usage
+
+    TempestSession$reorganize_mindmap()
+
+------------------------------------------------------------------------
+
+### Method `execute_turn_decision()`
+
+Execute a discourse manager turn decision.
+
+#### Usage
+
+    TempestSession$execute_turn_decision(decision)
+
+#### Arguments
+
+- `decision`:
+
+  A turn decision from the discourse manager.
+
+#### Returns
+
+A list with speaker, answer, and mindmap_md.
 
 ------------------------------------------------------------------------
 

@@ -22,6 +22,7 @@ tempest_run(
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
+  parallel_research = FALSE,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   verbose = TRUE
 )
@@ -60,6 +61,11 @@ tempest_run(
 
   Maximum questions per perspective for "key_questions" strategy
   (default 3).
+
+- parallel_research:
+
+  If `TRUE`, run research perspectives in parallel using the mirai
+  package. Requires mirai to be installed. Default `FALSE`.
 
 - steps:
 

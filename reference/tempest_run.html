@@ -61,6 +61,7 @@ writes a cited report in Markdown.
 <span>  research_strategy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"key_questions"</span>, <span class="st">"conversation"</span><span class="op">)</span>,</span>
 <span>  max_rounds <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  max_questions_per_perspective <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  parallel_research <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  steps <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"perspectives"</span>, <span class="st">"research"</span>, <span class="st">"outline"</span>, <span class="st">"write"</span>, <span class="st">"polish"</span><span class="op">)</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -99,6 +100,11 @@ dynamically generates follow-up questions.</p></dd>
 <dt id="arg-max-questions-per-perspective">max_questions_per_perspective<a class="anchor" aria-label="anchor" href="#arg-max-questions-per-perspective"></a></dt>
 <dd><p>Maximum questions per perspective for "key_questions"
 strategy (default 3).</p></dd>
+
+
+<dt id="arg-parallel-research">parallel_research<a class="anchor" aria-label="anchor" href="#arg-parallel-research"></a></dt>
+<dd><p>If <code>TRUE</code>, run research perspectives in parallel using
+the mirai package. Requires mirai to be installed. Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-steps">steps<a class="anchor" aria-label="anchor" href="#arg-steps"></a></dt>
