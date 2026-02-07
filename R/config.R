@@ -16,6 +16,10 @@
 #' @field max_search_results Maximum number of search results to return.
 #' @field max_sources Maximum number of sources to keep.
 #' @field user_agent User agent string for HTTP requests.
+#' @field node_expansion_trigger_count Number of notes/sources per node that triggers expansion (NULL = disabled).
+#' @field enable_discourse_manager Whether to enable LLM-driven discourse management in Co-STORM.
+#' @field max_active_experts Maximum number of active expert agents in Co-STORM.
+#' @field enable_unseen_surfacing Whether to surface undiscussed sources in Co-STORM.
 #'
 #' @export
 TempestConfig <- R6::R6Class(
@@ -32,6 +36,10 @@ TempestConfig <- R6::R6Class(
     max_search_results = NULL,
     max_sources = NULL,
     user_agent = NULL,
+    node_expansion_trigger_count = NULL,
+    enable_discourse_manager = NULL,
+    max_active_experts = NULL,
+    enable_unseen_surfacing = NULL,
 
     #' @description
     #' Create a new TempestConfig.
@@ -58,6 +66,10 @@ TempestConfig <- R6::R6Class(
     #' @param max_search_results Maximum search results to return.
     #' @param max_sources Maximum sources to keep.
     #' @param user_agent User agent string for HTTP requests.
+    #' @param node_expansion_trigger_count Number of notes/sources per node that triggers expansion (NULL = disabled).
+    #' @param enable_discourse_manager Whether to enable LLM-driven discourse management in Co-STORM.
+    #' @param max_active_experts Maximum number of active expert agents in Co-STORM.
+    #' @param enable_unseen_surfacing Whether to surface undiscussed sources in Co-STORM.
     initialize = function(
       models = NULL,
       params = NULL,
@@ -69,14 +81,18 @@ TempestConfig <- R6::R6Class(
       cache_dir = NULL,
       max_search_results = 8,
       max_sources = 24,
-      user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)"
+      user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
+      node_expansion_trigger_count = NULL,
+      enable_discourse_manager = FALSE,
+      max_active_experts = 5L,
+      enable_unseen_surfacing = FALSE
     ) {
       default_models <- list(
-        coordinator = "openai/gpt-4.1-mini",
-        writer = "openai/gpt-4.1-mini",
-        expert = "openai/gpt-4.1-mini",
-        mindmap = "openai/gpt-4.1-mini",
-        judge = "openai/gpt-4.1-mini"
+        coordinator = "openai/gpt-5-mini",
+        writer = "openai/gpt-5-mini",
+        expert = "openai/gpt-5-mini",
+        mindmap = "openai/gpt-5-mini",
+        judge = "openai/gpt-5-mini"
       )
 
       if (is.null(models)) {
@@ -96,6 +112,10 @@ TempestConfig <- R6::R6Class(
       self$max_search_results <- max_search_results
       self$max_sources <- max_sources
       self$user_agent <- user_agent
+      self$node_expansion_trigger_count <- node_expansion_trigger_count
+      self$enable_discourse_manager <- enable_discourse_manager
+      self$max_active_experts <- as.integer(max_active_experts)
+      self$enable_unseen_surfacing <- enable_unseen_surfacing
 
       # Create or use ragnar store
       if (!is.null(ragnar_store)) {
@@ -116,7 +136,7 @@ TempestConfig <- R6::R6Class(
     make_chat = function(role, system_prompt = NULL, echo = "none") {
       model <- self$models[[role]] %||%
         self$models[["coordinator"]] %||%
-        "openai/gpt-4.1-mini"
+        "openai/gpt-5-mini"
 
       if (is.null(system_prompt)) {
         prompt_name <- paste0(role, "_system")

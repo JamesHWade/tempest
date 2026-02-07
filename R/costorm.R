@@ -94,6 +94,7 @@ tempest_mindmap_to_markdown <- function(m) {
 #' @field transcript List of dialog turns.
 #' @field mindmap The mind map data structure.
 #' @field artifacts Environment of report artifacts.
+#' @field discourse_manager A `DiscourseManager` object (NULL when disabled).
 #'
 #' @export
 TempestSession <- R6::R6Class(
@@ -110,6 +111,7 @@ TempestSession <- R6::R6Class(
     transcript = NULL,
     mindmap = NULL,
     artifacts = NULL,
+    discourse_manager = NULL,
 
     #' @description
     #' Create a new TempestSession.
@@ -185,6 +187,11 @@ TempestSession <- R6::R6Class(
         model = self$config$models[["writer"]],
         search_provider = self$config$search_provider
       )
+
+      # Initialize discourse manager if enabled
+      if (isTRUE(config$enable_discourse_manager)) {
+        self$discourse_manager <- DiscourseManager$new(config)
+      }
 
       invisible(self)
     },
@@ -287,6 +294,8 @@ TempestSession <- R6::R6Class(
       if (!is.null(new_mm$nodes) && length(new_mm$nodes) > 0) {
         self$mindmap <- new_mm
         self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(new_mm)
+        # Check for oversized nodes and split if needed
+        self$check_and_expand_nodes()
       }
       invisible(TRUE)
     },
@@ -332,10 +341,30 @@ TempestSession <- R6::R6Class(
     #' @description
     #' Process one step of the conversation.
     #' @param user_input User's input message.
-    #' @return A list with speaker, answer, tool_calls, and mindmap_md.
-    step = function(user_input) {
+    #' @param auto If TRUE and discourse manager is enabled, let the discourse manager decide.
+    #' @return A list with speaker, answer, and mindmap_md.
+    step = function(user_input = NULL, auto = FALSE) {
+      user_input <- user_input %||% ""
       user_input <- tempest_trim(user_input)
-      if (is.na(user_input) || user_input == "") return(invisible(NULL))
+      if (is.na(user_input) || user_input == "") {
+        if (!isTRUE(auto)) return(invisible(NULL))
+      }
+
+      # Auto mode: let discourse manager decide next turn
+      if (isTRUE(auto) && !is.null(self$discourse_manager)) {
+        decision <- self$discourse_manager$decide_next_turn(
+          topic = self$topic,
+          transcript_md = self$transcript_markdown(max_turns = 20),
+          mindmap_md = tempest_mindmap_to_markdown(self$mindmap),
+          persona_descriptions = self$get_persona_descriptions(),
+          unseen_sources = if (isTRUE(self$config$enable_unseen_surfacing)) {
+            self$find_undiscussed_sources()
+          } else {
+            character()
+          }
+        )
+        return(self$execute_turn_decision(decision))
+      }
 
       self$add_turn("user", "user", user_input)
 
@@ -454,9 +483,14 @@ TempestSession <- R6::R6Class(
     #' Generate a report from the session.
     #' @param style Report style: "technical" or "executive".
     #' @param include_references Include references section.
+    #' @param reorganize Whether to reorganize mind map before generating.
     #' @return Markdown report string.
-    report = function(style = c("technical", "executive"), include_references = TRUE) {
+    report = function(style = c("technical", "executive"), include_references = TRUE, reorganize = TRUE) {
       style <- match.arg(style)
+      # Reorganize mind map before report generation
+      if (isTRUE(reorganize)) {
+        self$reorganize_mindmap()
+      }
       rep <- self$chats$reporter
       prompt <- paste0(
         "Write a comprehensive report based on the session.\n\n",
@@ -476,6 +510,216 @@ TempestSession <- R6::R6Class(
       md <- if (include_references) tempest_report_md(self$title %||% self$topic, body, self$store) else body
       self$artifacts[["report_md"]] <- md
       md
+    },
+
+    #' @description
+    #' Add a new expert to the panel dynamically.
+    #' @param area The area of expertise needed.
+    #' @param name Optional name for the new expert.
+    #' @return The new persona (invisibly).
+    add_expert = function(area, name = NULL) {
+      active <- self$get_active_personas()
+      if (length(active) >= self$config$max_active_experts) {
+        tempest_warn("Maximum active experts ({self$config$max_active_experts}) reached.")
+        return(invisible(NULL))
+      }
+      new_persona <- tempest_generate_single_persona(
+        self$topic, area, self$personas, self$config
+      )
+      if (!is.null(name)) new_persona$name <- name
+      new_persona$id <- length(self$personas) + 1L
+      self$personas <- c(self$personas, list(new_persona))
+
+      # Register new expert tool on moderator
+      tempest_register_single_expert_tool(
+        self$chats$moderator, new_persona,
+        self$expert_session_manager, self$topic
+      )
+      invisible(new_persona)
+    },
+
+    #' @description
+    #' Retire an expert from the panel.
+    #' @param name The name of the expert to retire.
+    #' @return Logical indicating success.
+    retire_expert = function(name) {
+      idx <- self$find_expert_index(name)
+      if (is.null(idx)) return(FALSE)
+      self$personas[[idx]]$retired <- TRUE
+      TRUE
+    },
+
+    #' @description
+    #' Get active (non-retired) personas.
+    #' @return List of active persona objects.
+    get_active_personas = function() {
+      purrr::keep(self$personas, ~ !isTRUE(.x$retired))
+    },
+
+    #' @description
+    #' Check and expand oversized mind map nodes.
+    check_and_expand_nodes = function() {
+      trigger <- self$config$node_expansion_trigger_count
+      if (is.null(trigger)) return(invisible(NULL))
+
+      oversized <- tempest_mindmap_oversized_nodes(self$mindmap, trigger)
+      for (node_id in oversized) {
+        self$mindmap <- tempest_mindmap_expand_node(
+          self$chats$mindmap, self$mindmap, node_id
+        )
+      }
+      if (length(oversized) > 0) {
+        self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(self$mindmap)
+      }
+      invisible(length(oversized))
+    },
+
+    #' @description
+    #' Get source IDs that have been discussed in the transcript.
+    #' @return Character vector of discussed source IDs.
+    get_discussed_source_ids = function() {
+      all_text <- paste(purrr::map_chr(self$transcript, "text"), collapse = " ")
+      tempest_extract_citation_ids(all_text)
+    },
+
+    #' @description
+    #' Find sources that haven't been discussed yet.
+    #' @return Character vector of undiscussed source IDs.
+    find_undiscussed_sources = function() {
+      all_source_ids <- purrr::map_chr(self$store$list_sources(), "id")
+      discussed <- self$get_discussed_source_ids()
+      setdiff(all_source_ids, discussed)
+    },
+
+    #' @description
+    #' Generate questions about undiscussed sources.
+    #' @param max_questions Maximum questions to generate.
+    #' @return Character vector of questions, or NULL if none.
+    surface_unseen_information = function(max_questions = 3) {
+      unseen_ids <- self$find_undiscussed_sources()
+      if (length(unseen_ids) == 0) return(NULL)
+
+      # Get snippets from unseen sources
+      unseen_info <- purrr::map_chr(head(unseen_ids, 5), function(id) {
+        src <- self$store$get_source(id)
+        if (is.null(src)) return("")
+        paste0("[", id, "] ", src$title %||% "", ": ", substr(src$snippet %||% "", 1, 200))
+      })
+      unseen_info <- unseen_info[nzchar(unseen_info)]
+      if (length(unseen_info) == 0) return(NULL)
+
+      prompt <- paste0(
+        "Topic: ", self$topic, "\n\n",
+        "Current mind map:\n", tempest_mindmap_to_markdown(self$mindmap), "\n\n",
+        "These sources have NOT been discussed yet:\n",
+        paste(unseen_info, collapse = "\n"), "\n\n",
+        "Generate ", max_questions, " targeted questions that would surface important information from these undiscussed sources.\n",
+        "Return each question on a new line."
+      )
+
+      response <- self$chats$moderator$chat(prompt, echo = "none")
+      questions <- strsplit(tempest_trim(response), "\n")[[1]]
+      questions <- tempest_trim(questions)
+      questions <- questions[nzchar(questions)]
+      head(questions, max_questions)
+    },
+
+    #' @description
+    #' Reorganize the mind map for clarity.
+    reorganize_mindmap = function() {
+      mm_chat <- self$chats$mindmap
+      type <- tempest_type_mindmap()
+      prompt <- paste0(
+        "Reorganize this mind map for clarity and coherence.\n\n",
+        "Topic: ", self$topic, "\n\n",
+        "Current mind map:\n", tempest_mindmap_to_markdown(self$mindmap), "\n\n",
+        "Rules:\n",
+        "- Merge duplicate or overlapping nodes.\n",
+        "- Improve hierarchy and logical grouping.\n",
+        "- Preserve ALL citations and source_ids exactly.\n",
+        "- Do not fabricate sources.\n\n",
+        "Return the reorganized mind map as structured data."
+      )
+      new_mm <- tryCatch(
+        mm_chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
+        error = function(e) {
+          tempest_warn("Mind map reorganization failed: {conditionMessage(e)}")
+          NULL
+        }
+      )
+      if (!is.null(new_mm) && !is.null(new_mm$nodes) && length(new_mm$nodes) > 0) {
+        self$mindmap <- new_mm
+        self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(new_mm)
+      }
+      invisible(TRUE)
+    },
+
+    #' @description
+    #' Execute a discourse manager turn decision.
+    #' @param decision A turn decision from the discourse manager.
+    #' @return A list with speaker, answer, and mindmap_md.
+    execute_turn_decision = function(decision) {
+      action <- decision$action %||% "moderator_probes"
+      instruction <- decision$instruction %||% ""
+      agent_name <- decision$agent_name %||% ""
+
+      if (action == "add_expert") {
+        new_persona <- self$add_expert(area = instruction)
+        self$add_turn("System", "assistant",
+          paste0("Added new expert: ", new_persona$name, " (", new_persona$title, ")"))
+        return(list(
+          speaker = "System",
+          answer = paste0("Added expert: ", new_persona$name),
+          mindmap_md = self$mindmap_markdown()
+        ))
+      }
+
+      if (action == "retire_expert") {
+        success <- self$retire_expert(agent_name)
+        if (success) {
+          self$add_turn("System", "assistant",
+            paste0("Retired expert: ", agent_name))
+          return(list(
+            speaker = "System",
+            answer = paste0("Retired expert: ", agent_name),
+            mindmap_md = self$mindmap_markdown()
+          ))
+        } else {
+          tempest_warn("Discourse manager tried to retire unknown expert: {.val {agent_name}}")
+          self$add_turn("System", "assistant",
+            paste0("Expert not found: ", agent_name))
+          return(list(
+            speaker = "System",
+            answer = paste0("Expert not found: ", agent_name),
+            mindmap_md = self$mindmap_markdown()
+          ))
+        }
+      }
+
+      if (action == "surface_unseen") {
+        questions <- self$surface_unseen_information(max_questions = 3)
+        if (is.null(questions) || length(questions) == 0) {
+          return(list(
+            speaker = "System",
+            answer = "No undiscussed sources to surface.",
+            mindmap_md = self$mindmap_markdown()
+          ))
+        }
+        # Ask the first question as if the user asked it
+        return(self$step(questions[[1]]))
+      }
+
+      if (action == "end_round") {
+        self$add_turn("System", "assistant", "Round ended by discourse manager.")
+        return(list(
+          speaker = "System",
+          answer = "Round complete.",
+          mindmap_md = self$mindmap_markdown()
+        ))
+      }
+
+      # expert_speaks or moderator_probes: route through normal step
+      self$step(instruction)
     }
   )
 )

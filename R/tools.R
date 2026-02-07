@@ -552,3 +552,74 @@ tempest_register_expert_tools <- function(chat, personas, session_manager, topic
   chat$register_tools(tools)
   invisible(chat)
 }
+
+#' Register a single expert tool on a chat
+#'
+#' @param chat An ellmer chat object.
+#' @param persona A persona object.
+#' @param session_manager An `ExpertSessionManager` instance.
+#' @param topic The research topic.
+#' @return The chat object (invisibly).
+#' @keywords internal
+tempest_register_single_expert_tool <- function(chat, persona, session_manager, topic) {
+  tool <- tempest_create_expert_tool(persona, session_manager, topic)
+  chat$register_tools(list(tool))
+  invisible(chat)
+}
+
+#' Generate a single expert persona for a specific area
+#'
+#' @param topic The research topic.
+#' @param area The area of expertise needed.
+#' @param existing_personas List of existing personas to avoid duplication.
+#' @param config A `TempestConfig` object.
+#' @return A persona list.
+#' @keywords internal
+tempest_generate_single_persona <- function(topic, area, existing_personas, config) {
+  tempest_require("ellmer", "Generating expert personas requires ellmer.")
+
+  chat <- config$make_chat(
+    "coordinator",
+    system_prompt = tempest_prompt("expert_generator_system"),
+    echo = "none"
+  )
+
+  existing_desc <- if (length(existing_personas) > 0) {
+    paste(purrr::map_chr(existing_personas, function(p) {
+      paste0("- ", p$name %||% "Expert", " (", p$title %||% "", "): ", p$perspective %||% "")
+    }), collapse = "\n")
+  } else {
+    "(none)"
+  }
+
+  type <- tempest_type_personas()
+  prompt <- paste0(
+    "Topic: ", topic, "\n\n",
+    "Needed expertise: ", area, "\n\n",
+    "Existing experts (do not duplicate):\n", existing_desc, "\n\n",
+    "Generate exactly 1 expert persona to fill this knowledge gap.\n",
+    "Return structured data."
+  )
+
+  result <- tryCatch(
+    chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
+    error = function(e) {
+      tempest_warn("Failed to generate expert persona for {.val {area}}: {conditionMessage(e)}")
+      list(personas = list())
+    }
+  )
+  personas <- result$personas %||% list()
+  if (length(personas) == 0) {
+    tempest_warn("Using generic fallback persona for {.val {area}}.")
+    return(list(
+      name = paste("Expert in", area),
+      title = area,
+      affiliation = "Independent",
+      background = paste("Expert in", area),
+      focus_areas = list(area),
+      perspective = paste("Specializes in", area),
+      initial_questions = list(paste("What are the key aspects of", area, "related to", topic, "?"))
+    ))
+  }
+  personas[[1]]
+}

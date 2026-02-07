@@ -237,6 +237,148 @@ tempest_keyword_filter_facts <- function(store, query, max_items = 30) {
   keep[seq_len(min(length(keep), max_items))]
 }
 
+#' Semantic fact retrieval
+#'
+#' When ragnar is configured, retrieves semantically similar chunks and maps
+#' them back to facts. Falls back to keyword filtering otherwise.
+#'
+#' @param retriever A `TempestRetriever` object.
+#' @param query Search query.
+#' @param store A `SourceStore` object.
+#' @param max_items Maximum facts to return.
+#' @return A list of fact objects.
+#' @keywords internal
+tempest_semantic_filter_facts <- function(retriever, query, store, max_items = 30) {
+  # Fall back to keyword when ragnar is unavailable
+  if (is.null(retriever$ragnar_store) || !tempest_has("ragnar")) {
+    return(tempest_keyword_filter_facts(store, query, max_items = max_items))
+  }
+
+  facts <- store$list_facts()
+  if (length(facts) == 0) return(list())
+
+  # Retrieve semantically similar chunks
+  chunks <- tryCatch(
+    retriever$retrieve(query, k = max_items, method = "hybrid"),
+    error = function(e) {
+      tempest_warn("Hybrid retrieval failed, falling back to BM25: {conditionMessage(e)}")
+      tryCatch(
+        retriever$retrieve(query, k = max_items, method = "bm25"),
+        error = function(e2) {
+          tempest_warn("BM25 retrieval also failed, falling back to keyword filter: {conditionMessage(e2)}")
+          NULL
+        }
+      )
+    }
+  )
+
+  if (is.null(chunks) || nrow(chunks) == 0) {
+    return(tempest_keyword_filter_facts(store, query, max_items = max_items))
+  }
+
+  # Map chunk source_ids back to facts
+  chunk_source_ids <- unique(chunks$source_id)
+  scored <- vapply(facts, function(f) {
+    sum(f$source_ids %in% chunk_source_ids)
+  }, integer(1))
+
+  # Also add keyword overlap as tiebreaker
+  tokens <- unique(tolower(unlist(strsplit(tempest_trim(query), "\\s+"))))
+  tokens <- tokens[nzchar(tokens)]
+  keyword_scores <- vapply(facts, function(f) {
+    claim <- tolower(f$claim %||% "")
+    sum(vapply(tokens, function(t) grepl(t, claim, fixed = TRUE), logical(1)))
+  }, integer(1))
+
+  combined <- scored * 10L + keyword_scores
+  ord <- order(combined, decreasing = TRUE)
+  keep <- facts[ord]
+  keep <- keep[combined[ord] > 0]
+  keep[seq_len(min(length(keep), max_items))]
+}
+
+#' @keywords internal
+tempest_type_query_decomposition <- function() {
+  tempest_require("ellmer")
+  ellmer::type_object(
+    queries = ellmer::type_array(
+      ellmer::type_string("A targeted search query")
+    )
+  )
+}
+
+#' Decompose a research question into targeted search queries
+#'
+#' @param chat An ellmer chat object.
+#' @param question The research question to decompose.
+#' @param topic The overall research topic.
+#' @return A list with a `queries` character vector.
+#' @keywords internal
+tempest_decompose_query <- function(chat, question, topic) {
+  type <- tempest_type_query_decomposition()
+  prompt <- paste0(
+    "Topic: ", topic, "\n\n",
+    "Research question: ", question, "\n\n",
+    "Decompose this into 2-3 targeted search queries.\n",
+    "Each query should be specific and cover a different aspect.\n",
+    "Return structured data."
+  )
+  chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE)
+}
+
+#' Check if dsprrr is available
+#' @return Logical.
+#' @keywords internal
+tempest_has_dsprrr <- function() {
+  tempest_has("dsprrr")
+}
+
+#' Create dsprrr modules for structured steps
+#'
+#' Creates dsprrr modules for STORM structured extraction/generation steps
+#' when dsprrr is available. Returns NULL otherwise.
+#'
+#' @param config A `TempestConfig` object.
+#' @return A named list of dsprrr modules, or NULL.
+#' @keywords internal
+tempest_make_dsprrr_modules <- function(config) {
+  if (!tempest_has_dsprrr()) return(NULL)
+
+  model <- config$models[["writer"]] %||% "openai/gpt-4.1-mini"
+
+  tryCatch({
+    modules <- list(
+      query_decomposition = dsprrr::module(
+        dsprrr::signature("question, topic -> queries"),
+        type = "chain_of_thought"
+      ),
+      fact_extraction = dsprrr::module(
+        dsprrr::signature("answer_text -> facts"),
+        type = "chain_of_thought"
+      ),
+      draft_outline = dsprrr::module(
+        dsprrr::signature("topic, title -> outline"),
+        type = "predict"
+      ),
+      refined_outline = dsprrr::module(
+        dsprrr::signature("topic, title, draft_outline, facts -> outline"),
+        type = "predict"
+      ),
+      section_writing = dsprrr::module(
+        dsprrr::signature("section_title, section_summary, subsections, facts -> section_text"),
+        type = "chain_of_thought"
+      ),
+      lead_section = dsprrr::module(
+        dsprrr::signature("topic, title, article_body, facts -> lead_section"),
+        type = "predict"
+      )
+    )
+    modules
+  }, error = function(e) {
+    tempest_warn("Failed to create dsprrr modules: {conditionMessage(e)}")
+    NULL
+  })
+}
 
 #' @keywords internal
 tempest_extract_facts_from_answer <- function(chat, answer_text, store) {
@@ -268,6 +410,83 @@ tempest_extract_facts_from_answer <- function(chat, answer_text, store) {
   invisible(TRUE)
 }
 
+#' Run research in parallel using mirai
+#' @keywords internal
+tempest_research_parallel <- function(
+  perspectives, personas, config, retriever, store, topic,
+  research_strategy, max_rounds, max_questions_per_perspective, verbose
+) {
+  tempest_require("mirai", "Parallel research requires the mirai package.")
+
+  # Each perspective gets its own isolated SourceStore + retriever
+  results <- mirai::mirai_map(seq_along(perspectives), function(
+    i, perspectives, personas, config, topic, research_strategy,
+    max_rounds, max_questions_per_perspective
+  ) {
+    p <- perspectives[[i]]
+    persona <- if (i <= length(personas)) personas[[i]] else NULL
+
+    # Create isolated store and retriever
+    local_store <- tempest::SourceStore$new()
+    local_retriever <- tempest::tempest_retriever(config = config, store = local_store)
+
+    sp <- tempest:::tempest_render_expert_prompt(persona = persona, expert_id = i)
+    expert <- config$make_chat("expert", system_prompt = sp, echo = "none")
+    tempest:::tempest_register_default_tools(
+      expert, local_retriever,
+      model = config$models[["expert"]],
+      search_provider = config$search_provider
+    )
+    writer <- config$make_chat("writer", echo = "none")
+    extractor <- config$make_chat("judge",
+      system_prompt = tempest:::tempest_prompt("fact_extractor_system"), echo = "none"
+    )
+
+    p_name <- p$name %||% "Perspective"
+    p_desc <- p$description %||% ""
+    qs <- p$key_questions %||% c(topic)
+
+    if (identical(research_strategy, "key_questions")) {
+      qs_limited <- utils::head(qs, max_questions_per_perspective)
+      for (q in qs_limited) {
+        prompt <- paste0(
+          "Perspective: ", p_name, "\n",
+          "Description: ", p_desc, "\n\n",
+          "Question: ", q, "\n\n",
+          "Instructions:\n",
+          "- Use web_search + fetch_url as needed.\n",
+          "- Only state factual claims that are supported by sources you fetched.\n",
+          "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
+          "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
+          "Answer:"
+        )
+        ans <- expert$chat(prompt, echo = "none")
+        tempest:::tempest_extract_facts_from_answer(extractor, ans, local_store)
+      }
+    }
+    list(sources = local_store$list_sources(), facts = local_store$list_facts())
+  }, .args = list(
+    perspectives = perspectives, personas = personas, config = config,
+    topic = topic, research_strategy = research_strategy,
+    max_rounds = max_rounds,
+    max_questions_per_perspective = max_questions_per_perspective
+  ))
+
+  # Merge results back into main store
+  for (i in seq_along(results)) {
+    val <- tryCatch(results[[i]]$data, error = function(e) NULL)
+    if (inherits(val, "errorValue") || is.null(val)) {
+      p_name <- perspectives[[i]]$name %||% paste("Perspective", i)
+      tempest_warn("Parallel research failed for {.val {p_name}}")
+      next
+    }
+    for (src in val$sources %||% list()) store$upsert_source(src)
+    for (fact in val$facts %||% list()) store$add_fact(fact)
+  }
+
+  invisible(TRUE)
+}
+
 #' Run the STORM pipeline
 #'
 #' This is a scripted workflow that:
@@ -286,6 +505,8 @@ tempest_extract_facts_from_answer <- function(chat, answer_text, store) {
 #' @param max_rounds Maximum rounds per perspective for "conversation" strategy (default 3).
 #' @param max_questions_per_perspective Maximum questions per perspective for "key_questions"
 #'   strategy (default 3).
+#' @param parallel_research If `TRUE`, run research perspectives in parallel using
+#'   the mirai package. Requires mirai to be installed. Default `FALSE`.
 #' @param steps Character vector controlling which steps to run. Defaults to all.
 #' @param verbose If `TRUE`, prints progress messages.
 #' @return A list with `title`, `outline`, `draft_md`, `report_md`, and `store`.
@@ -298,6 +519,7 @@ tempest_run <- function(
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
+  parallel_research = FALSE,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   verbose = TRUE
 ) {
@@ -339,6 +561,26 @@ tempest_run <- function(
       "Seed sources:\n",
       paste0("- ", seed$title, " (", seed$source_id, ") ", seed$url, collapse = "\n")
     )
+
+    # Enrich perspective discovery with ToC headings from top seed URLs
+    toc_lines <- character()
+    seed_urls <- head(seed$url, 3)
+    for (u in seed_urls) {
+      # Try Wikipedia sections first, then general ToC
+      wiki_title <- sub("^https://en.wikipedia.org/wiki/", "", u)
+      if (grepl("^https://en.wikipedia.org/", u)) {
+        toc <- tempest_wiki_page_sections(gsub("_", " ", wiki_title))
+      } else {
+        toc <- tempest_extract_toc_from_url(u)
+      }
+      if (length(toc) > 0) {
+        toc_lines <- c(toc_lines, paste0("\nToC from ", u, ":"), toc)
+      }
+    }
+    if (length(toc_lines) > 0) {
+      seed_txt <- paste0(seed_txt, "\n\n", paste(toc_lines, collapse = "\n"))
+    }
+
     prompt <- paste0(
       "You are planning a comprehensive research report.\n",
       "Topic: ", topic, "\n\n",
@@ -379,88 +621,125 @@ tempest_run <- function(
       perspectives <- list(list(name = "Overview", description = "General overview", key_questions = c(topic)))
     }
 
-    # Create expert chats with personas (one per perspective)
-    for (i in seq_along(perspectives)) {
-      persona <- if (i <= length(personas)) personas[[i]] else NULL
-      sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
-      expert_chats[[i]] <- config$make_chat("expert", system_prompt = sp, echo = if (verbose) "output" else "none")
-      tempest_register_default_tools(
-        expert_chats[[i]],
-        retriever,
-        model = config$models[["expert"]],
-        search_provider = config$search_provider
+    if (isTRUE(parallel_research) && tempest_has("mirai") && identical(research_strategy, "key_questions")) {
+      if (verbose) tempest_inform("Running research in parallel ({length(perspectives)} perspectives)")
+      tempest_research_parallel(
+        perspectives, personas, config, retriever, store, topic,
+        research_strategy, max_rounds, max_questions_per_perspective, verbose
       )
-    }
-
-    for (i in seq_along(perspectives)) {
-      p <- perspectives[[i]]
-      p_name <- p$name %||% "Perspective"
-      p_desc <- p$description %||% ""
-      qs <- p$key_questions %||% c(topic)
-
-      expert <- expert_chats[[i]]
-      persona <- if (i <= length(personas)) personas[[i]] else NULL
-      persona_name <- persona$name %||% paste("Expert", i)
-
-      if (verbose) {
-        tempest_inform("Perspective: {.val {p_name}}")
-        if (!is.null(persona)) {
-          tempest_inform("  Expert: {persona_name} ({persona$title %||% 'Research Specialist'})")
-        }
+    } else {
+      # Sequential research loop
+      # Create expert chats with personas (one per perspective)
+      for (i in seq_along(perspectives)) {
+        persona <- if (i <= length(personas)) personas[[i]] else NULL
+        sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
+        expert_chats[[i]] <- config$make_chat("expert", system_prompt = sp, echo = if (verbose) "output" else "none")
+        tempest_register_default_tools(
+          expert_chats[[i]],
+          retriever,
+          model = config$models[["expert"]],
+          search_provider = config$search_provider
+        )
       }
 
-      if (identical(research_strategy, "key_questions")) {
-        # Ask expert to answer each planned key question (limited)
-        qs_limited <- head(qs, max_questions_per_perspective)
-        if (verbose && length(qs) > length(qs_limited)) {
-          tempest_inform("  Limiting to {length(qs_limited)} of {length(qs)} questions")
+      for (i in seq_along(perspectives)) {
+        p <- perspectives[[i]]
+        p_name <- p$name %||% "Perspective"
+        p_desc <- p$description %||% ""
+        qs <- p$key_questions %||% c(topic)
+
+        expert <- expert_chats[[i]]
+        persona <- if (i <= length(personas)) personas[[i]] else NULL
+        persona_name <- persona$name %||% paste("Expert", i)
+
+        if (verbose) {
+          tempest_inform("Perspective: {.val {p_name}}")
+          if (!is.null(persona)) {
+            tempest_inform("  Expert: {persona_name} ({persona$title %||% 'Research Specialist'})")
+          }
         }
-        for (q in qs_limited) {
-          prompt <- paste0(
-            "Perspective: ", p_name, "\n",
-            "Description: ", p_desc, "\n\n",
-            "Question: ", q, "\n\n",
-            "Instructions:\n",
-            "- Use web_search + fetch_url as needed.\n",
-            "- Only state factual claims that are supported by sources you fetched.\n",
-            "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
-            "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
-            "Answer:"
-          )
-          ans <- expert$chat(prompt, echo = if (verbose) "output" else "none")
-          tempest_extract_facts_from_answer(extractor, ans, store)
-        }
-      } else {
-        # Conversation-style interviewing: writer proposes the next best question,
-        # expert answers with citations; repeat until done or max_rounds.
-        answered <- character()
-        for (round in seq_len(max_rounds)) {
-          answered_md <- if (length(answered) == 0) "(none yet)" else paste0("- ", answered, collapse = "\n")
-          facts_md <- tempest_summarize_facts_for_prompt(store, max_items = 60)
 
-          nxt <- tempest_generate_next_question(writer, topic, p, answered_md = answered_md, facts_md = facts_md)
-          q <- tempest_trim(nxt$question %||% "")
-          done <- isTRUE(nxt$done)
+        if (identical(research_strategy, "key_questions")) {
+          # Ask expert to answer each planned key question (limited)
+          qs_limited <- head(qs, max_questions_per_perspective)
+          if (verbose && length(qs) > length(qs_limited)) {
+            tempest_inform("  Limiting to {length(qs_limited)} of {length(qs)} questions")
+          }
+          for (q in qs_limited) {
+            # Decompose query into targeted search queries
+            decomposed <- tryCatch(
+              tempest_decompose_query(writer, q, topic),
+              error = function(e) {
+                tempest_warn("Query decomposition failed, using original query: {conditionMessage(e)}")
+                list(queries = list(q))
+              }
+            )
+            search_instructions <- paste0(
+              "Suggested search queries:\n",
+              paste0("- ", decomposed$queries %||% q, collapse = "\n"), "\n\n"
+            )
 
-          if (is.na(q) || q == "") break
+            prompt <- paste0(
+              "Perspective: ", p_name, "\n",
+              "Description: ", p_desc, "\n\n",
+              "Question: ", q, "\n\n",
+              search_instructions,
+              "Instructions:\n",
+              "- Use web_search + fetch_url as needed.\n",
+              "- Only state factual claims that are supported by sources you fetched.\n",
+              "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
+              "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
+              "Answer:"
+            )
+            ans <- expert$chat(prompt, echo = if (verbose) "output" else "none")
+            tempest_extract_facts_from_answer(extractor, ans, store)
+          }
+        } else {
+          # Conversation-style interviewing: writer proposes the next best question,
+          # expert answers with citations; repeat until done or max_rounds.
+          answered <- character()
+          for (round in seq_len(max_rounds)) {
+            answered_md <- if (length(answered) == 0) "(none yet)" else paste0("- ", answered, collapse = "\n")
+            facts_md <- tempest_summarize_facts_for_prompt(store, max_items = 60)
 
-          prompt <- paste0(
-            "Perspective: ", p_name, "\n",
-            "Description: ", p_desc, "\n\n",
-            "Question: ", q, "\n\n",
-            "Instructions:\n",
-            "- Use web_search + fetch_url as needed.\n",
-            "- Only state factual claims that are supported by sources you fetched.\n",
-            "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
-            "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
-            "Answer:"
-          )
+            nxt <- tempest_generate_next_question(writer, topic, p, answered_md = answered_md, facts_md = facts_md)
+            q <- tempest_trim(nxt$question %||% "")
+            done <- isTRUE(nxt$done)
 
-          ans <- expert$chat(prompt, echo = if (verbose) "output" else "none")
-          answered <- c(answered, paste0("Q: ", q, "\nA: ", ans))
-          tempest_extract_facts_from_answer(extractor, ans, store)
+            if (is.na(q) || q == "") break
 
-          if (done) break
+            # Decompose query into targeted search queries
+            decomposed <- tryCatch(
+              tempest_decompose_query(writer, q, topic),
+              error = function(e) {
+                tempest_warn("Query decomposition failed, using original query: {conditionMessage(e)}")
+                list(queries = list(q))
+              }
+            )
+            search_instructions <- paste0(
+              "Suggested search queries:\n",
+              paste0("- ", decomposed$queries %||% q, collapse = "\n"), "\n\n"
+            )
+
+            prompt <- paste0(
+              "Perspective: ", p_name, "\n",
+              "Description: ", p_desc, "\n\n",
+              "Question: ", q, "\n\n",
+              search_instructions,
+              "Instructions:\n",
+              "- Use web_search + fetch_url as needed.\n",
+              "- Only state factual claims that are supported by sources you fetched.\n",
+              "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
+              "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
+              "Answer:"
+            )
+
+            ans <- expert$chat(prompt, echo = if (verbose) "output" else "none")
+            answered <- c(answered, paste0("Q: ", q, "\nA: ", ans))
+            tempest_extract_facts_from_answer(extractor, ans, store)
+
+            if (done) break
+          }
         }
       }
     }
@@ -469,22 +748,45 @@ tempest_run <- function(
   }
 
   if ("outline" %in% steps) {
-    if (verbose) tempest_inform("Generating outline")
-    facts_txt <- tempest_summarize_facts_for_prompt(store, max_items = 80)
-    prompt <- paste0(
-      "Create a detailed outline for a report.\n\n",
+    if (verbose) tempest_inform("Generating outline (two-step)")
+
+    # Step 1: Draft outline from LLM knowledge alone
+    draft_outline_prompt <- paste0(
+      "Create a draft outline for a report based on your own knowledge.\n\n",
       "Topic: ", topic, "\n",
       "Desired report title: ", title, "\n\n",
-      "Available verified fact notes (each includes citations):\n",
-      facts_txt, "\n\n",
       "Requirements:\n",
-      "- Organize into 4-6 sections (keep it focused).\n",
+      "- Organize into 4-6 sections based on what you know about the topic.\n",
       "- Include subsections with bullet points.\n",
-      "- Do not invent facts; plan based on available facts.\n",
+      "- This is a preliminary outline; it will be refined with research findings.\n",
       "- Return structured data.\n"
     )
     type <- tempest_type_outline()
-    outline <- writer$chat_structured(prompt, type = type, echo = "none", convert = FALSE)
+
+    draft_outline <- writer$chat_structured(
+      draft_outline_prompt, type = type, echo = "none", convert = FALSE
+    )
+    store$set_artifact("draft_outline", draft_outline)
+
+    # Step 2: Refined outline incorporating facts
+    facts_txt <- tempest_summarize_facts_for_prompt(store, max_items = 80)
+    refine_prompt <- paste0(
+      "Refine this draft outline using verified research findings.\n\n",
+      "Topic: ", topic, "\n",
+      "Desired report title: ", title, "\n\n",
+      "Draft outline sections:\n",
+      paste(purrr::map_chr(draft_outline$sections %||% list(), function(s) {
+        paste0("- ", s$title, ": ", s$summary %||% "")
+      }), collapse = "\n"), "\n\n",
+      "Available verified fact notes (each includes citations):\n",
+      facts_txt, "\n\n",
+      "Requirements:\n",
+      "- Adjust sections based on available evidence.\n",
+      "- Add, merge, or remove sections as needed.\n",
+      "- Ensure each section has supporting facts.\n",
+      "- Return structured data.\n"
+    )
+    outline <- writer$chat_structured(refine_prompt, type = type, echo = "none", convert = FALSE)
     store$set_artifact("outline", outline)
   } else {
     outline <- store$get_artifact("outline")
@@ -499,10 +801,16 @@ tempest_run <- function(
     parts <- c()
     for (sec in outline$sections) {
       sec_title <- sec$title %||% "Section"
+
+      # Skip intro, conclusion, summary, and overview sections -- a lead section is generated instead
+      if (grepl("^(introduction|conclusion|summary|overview)$", tolower(sec_title))) {
+        next
+      }
+
       sec_summary <- sec$summary %||% ""
       sub <- sec$subsections %||% list()
 
-      relevant <- tempest_keyword_filter_facts(store, query = sec_title, max_items = 25)
+      relevant <- tempest_semantic_filter_facts(retriever, query = sec_title, store = store, max_items = 25)
       rel_txt <- if (length(relevant) == 0) "(no directly matched facts; use best judgement and call tools)" else
         paste(purrr::map_chr(relevant, function(f) {
           paste0("- ", f$claim, " [", paste(f$source_ids, collapse = ", "), "]")
@@ -536,6 +844,27 @@ tempest_run <- function(
     }
 
     draft_md <- paste(parts, collapse = "\n\n")
+
+    # Generate Wikipedia-style lead section
+    if (verbose) tempest_inform("Generating lead section")
+    lead_facts <- tempest_summarize_facts_for_prompt(store, max_items = 40)
+    lead_prompt <- paste0(
+      "Write a Wikipedia-style lead section (2-3 paragraphs) for this report.\n\n",
+      "Topic: ", topic, "\n",
+      "Title: ", title, "\n\n",
+      "Article body (for context):\n",
+      substr(draft_md, 1, 3000), "\n\n",
+      "Key facts:\n", lead_facts, "\n\n",
+      "Rules:\n",
+      "- Summarize the most important points from the article.\n",
+      "- Include citations like [Sxxxxxxxxxxxx] for key claims.\n",
+      "- The lead should be self-contained.\n",
+      "- Write 2-3 paragraphs.\n"
+    )
+    lead_section <- writer$chat(lead_prompt, echo = if (verbose) "output" else "none")
+    draft_md <- paste0(lead_section, "\n\n", draft_md)
+    store$set_artifact("lead_section", lead_section)
+
     store$set_artifact("draft_md", draft_md)
   } else {
     draft_md <- store$get_artifact("draft_md")

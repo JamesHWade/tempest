@@ -719,3 +719,65 @@ tempest_search_tavily <- function(query, k = 8L) {
     snippet = items$content %||% character()
   )
 }
+
+#' Extract table of contents from a URL
+#'
+#' Fetches a page and extracts h1-h4 headings as a structured ToC.
+#'
+#' @param url URL to extract ToC from.
+#' @return Character vector of indented headings, or `character()` on error.
+#' @keywords internal
+tempest_extract_toc_from_url <- function(url) {
+  tryCatch({
+    if (!tempest_has("xml2")) return(character())
+    url <- tempest_normalize_url(url)
+    if (is.na(url)) return(character())
+    resp <- tempest_http_get(url, timeout_s = 10)
+    html <- httr2::resp_body_string(resp)
+    doc <- xml2::read_html(html)
+    headings <- xml2::xml_find_all(doc, ".//h1|.//h2|.//h3|.//h4")
+    if (length(headings) == 0) return(character())
+    levels <- as.integer(sub("h", "", xml2::xml_name(headings)))
+    texts <- tempest_trim(xml2::xml_text(headings))
+    keep <- nzchar(texts)
+    levels <- levels[keep]
+    texts <- texts[keep]
+    if (length(texts) == 0) return(character())
+    min_level <- min(levels)
+    indents <- strrep("  ", levels - min_level)
+    paste0(indents, "- ", texts)
+  }, error = function(e) {
+    tempest_warn("Failed to extract ToC from {.url {url}}: {conditionMessage(e)}")
+    character()
+  })
+}
+
+#' Get Wikipedia page sections via Parse API
+#'
+#' Uses the Wikipedia Parse API to get structured section headings.
+#'
+#' @param title Wikipedia page title.
+#' @return Character vector of indented section headings, or `character()` on error.
+#' @keywords internal
+tempest_wiki_page_sections <- function(title) {
+  tryCatch({
+    res <- tempest_wikipedia_api(list(
+      action = "parse",
+      page = title,
+      prop = "sections",
+      format = "json",
+      utf8 = 1
+    ))
+    sections <- res$parse$sections
+    if (is.null(sections) || length(sections) == 0) return(character())
+    # sections is a data.frame with toclevel, line, number columns
+    levels <- as.integer(sections$toclevel)
+    texts <- sections$line
+    if (length(texts) == 0) return(character())
+    indents <- strrep("  ", levels - 1L)
+    paste0(indents, "- ", texts)
+  }, error = function(e) {
+    tempest_warn("Failed to get Wikipedia sections for {.val {title}}: {conditionMessage(e)}")
+    character()
+  })
+}

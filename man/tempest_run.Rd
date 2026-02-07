@@ -12,6 +12,7 @@ tempest_run(
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
+  parallel_research = FALSE,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   verbose = TRUE
 )
@@ -33,6 +34,9 @@ dynamically generates follow-up questions.}
 
 \item{max_questions_per_perspective}{Maximum questions per perspective for "key_questions"
 strategy (default 3).}
+
+\item{parallel_research}{If \code{TRUE}, run research perspectives in parallel using
+the mirai package. Requires mirai to be installed. Default \code{FALSE}.}
 
 \item{steps}{Character vector controlling which steps to run. Defaults to all.}
 

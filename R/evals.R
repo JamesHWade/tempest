@@ -103,3 +103,61 @@ tempest_task <- function(
     ...
   )
 }
+
+#' Create a Co-STORM evaluation task using SimulatedUser
+#'
+#' Runs automated Co-STORM sessions with a simulated user for evaluation.
+#'
+#' @param dataset Which built-in dataset to use. Currently "qa".
+#' @param config A `TempestConfig`.
+#' @param max_turns Maximum turns per simulated session.
+#' @param ... Passed to `vitals::Task$new()`.
+#' @return A `vitals::Task`.
+#' @export
+tempest_costorm_task <- function(
+  dataset = c("qa"),
+  config = tempest_config(),
+  max_turns = 5L,
+  ...
+) {
+  tempest_require("vitals", "tempest_costorm_task() requires vitals.")
+  tempest_require("ellmer", "tempest_costorm_task() requires ellmer.")
+  dataset <- match.arg(dataset)
+  ds <- tempest_eval_dataset(dataset)
+
+  solver <- function(input, ...) {
+    n <- length(input)
+    results <- character(n)
+    chats <- vector("list", n)
+    meta <- vector("list", n)
+
+    for (i in seq_len(n)) {
+      topic <- input[[i]]
+      session <- tempest_session(topic, config = config, n_experts = 2)
+      sim_user <- SimulatedUser$new(topic, config = config, max_turns = max_turns)
+      sim_user$run_session(session, warmup = FALSE, verbose = FALSE)
+
+      report <- session$report(style = "technical", include_references = FALSE)
+      results[[i]] <- report
+      chats[[i]] <- session$chats$moderator
+      meta[[i]] <- list(
+        turns = sim_user$turn_count,
+        sources = session$store$to_tibbles()$sources,
+        facts = session$store$to_tibbles()$facts
+      )
+    }
+
+    list(result = results, solver_chat = chats, solver_metadata = meta)
+  }
+
+  scorer_chat <- config$make_chat("judge", echo = "none")
+  scorer <- vitals::model_graded_qa(partial_credit = TRUE, scorer_chat = scorer_chat)
+
+  vitals::Task$new(
+    dataset = ds,
+    solver = solver,
+    scorer = scorer,
+    name = paste0("tempest-costorm-", dataset),
+    ...
+  )
+}

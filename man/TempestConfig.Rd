@@ -36,6 +36,14 @@ retrieval settings, and cache paths.
 \item{\code{max_sources}}{Maximum number of sources to keep.}
 
 \item{\code{user_agent}}{User agent string for HTTP requests.}
+
+\item{\code{node_expansion_trigger_count}}{Number of notes/sources per node that triggers expansion (NULL = disabled).}
+
+\item{\code{enable_discourse_manager}}{Whether to enable LLM-driven discourse management in Co-STORM.}
+
+\item{\code{max_active_experts}}{Maximum number of active expert agents in Co-STORM.}
+
+\item{\code{enable_unseen_surfacing}}{Whether to surface undiscussed sources in Co-STORM.}
 }
 \if{html}{\out{</div>}}
 }
@@ -64,7 +72,11 @@ Create a new TempestConfig.
   cache_dir = NULL,
   max_search_results = 8,
   max_sources = 24,
-  user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)"
+  user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
+  node_expansion_trigger_count = NULL,
+  enable_discourse_manager = FALSE,
+  max_active_experts = 5L,
+  enable_unseen_surfacing = FALSE
 )}\if{html}{\out{</div>}}
 }
 
@@ -104,6 +116,14 @@ web search capabilities when available, falling back to "wikipedia".}
 \item{\code{max_sources}}{Maximum sources to keep.}
 
 \item{\code{user_agent}}{User agent string for HTTP requests.}
+
+\item{\code{node_expansion_trigger_count}}{Number of notes/sources per node that triggers expansion (NULL = disabled).}
+
+\item{\code{enable_discourse_manager}}{Whether to enable LLM-driven discourse management in Co-STORM.}
+
+\item{\code{max_active_experts}}{Maximum number of active expert agents in Co-STORM.}
+
+\item{\code{enable_unseen_surfacing}}{Whether to surface undiscussed sources in Co-STORM.}
 }
 \if{html}{\out{</div>}}
 }

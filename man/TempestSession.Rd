@@ -35,6 +35,8 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
 \item{\code{mindmap}}{The mind map data structure.}
 
 \item{\code{artifacts}}{Environment of report artifacts.}
+
+\item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
 }
 \if{html}{\out{</div>}}
 }
@@ -54,6 +56,15 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
 \item \href{#method-TempestSession-step}{\code{TempestSession$step()}}
 \item \href{#method-TempestSession-warmup}{\code{TempestSession$warmup()}}
 \item \href{#method-TempestSession-report}{\code{TempestSession$report()}}
+\item \href{#method-TempestSession-add_expert}{\code{TempestSession$add_expert()}}
+\item \href{#method-TempestSession-retire_expert}{\code{TempestSession$retire_expert()}}
+\item \href{#method-TempestSession-get_active_personas}{\code{TempestSession$get_active_personas()}}
+\item \href{#method-TempestSession-check_and_expand_nodes}{\code{TempestSession$check_and_expand_nodes()}}
+\item \href{#method-TempestSession-get_discussed_source_ids}{\code{TempestSession$get_discussed_source_ids()}}
+\item \href{#method-TempestSession-find_undiscussed_sources}{\code{TempestSession$find_undiscussed_sources()}}
+\item \href{#method-TempestSession-surface_unseen_information}{\code{TempestSession$surface_unseen_information()}}
+\item \href{#method-TempestSession-reorganize_mindmap}{\code{TempestSession$reorganize_mindmap()}}
+\item \href{#method-TempestSession-execute_turn_decision}{\code{TempestSession$execute_turn_decision()}}
 \item \href{#method-TempestSession-clone}{\code{TempestSession$clone()}}
 }
 }
@@ -246,18 +257,20 @@ Index of the expert, or NULL if not found.
 \subsection{Method \code{step()}}{
 Process one step of the conversation.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$step(user_input)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$step(user_input = NULL, auto = FALSE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{user_input}}{User's input message.}
+
+\item{\code{auto}}{If TRUE and discourse manager is enabled, let the discourse manager decide.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A list with speaker, answer, tool_calls, and mindmap_md.
+A list with speaker, answer, and mindmap_md.
 }
 }
 \if{html}{\out{<hr>}}
@@ -289,7 +302,8 @@ Generate a report from the session.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{TempestSession$report(
   style = c("technical", "executive"),
-  include_references = TRUE
+  include_references = TRUE,
+  reorganize = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -299,11 +313,154 @@ Generate a report from the session.
 \item{\code{style}}{Report style: "technical" or "executive".}
 
 \item{\code{include_references}}{Include references section.}
+
+\item{\code{reorganize}}{Whether to reorganize mind map before generating.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
 Markdown report string.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-add_expert"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-add_expert}{}}}
+\subsection{Method \code{add_expert()}}{
+Add a new expert to the panel dynamically.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$add_expert(area, name = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{area}}{The area of expertise needed.}
+
+\item{\code{name}}{Optional name for the new expert.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The new persona (invisibly).
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-retire_expert"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-retire_expert}{}}}
+\subsection{Method \code{retire_expert()}}{
+Retire an expert from the panel.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$retire_expert(name)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{name}}{The name of the expert to retire.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Logical indicating success.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-get_active_personas"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-get_active_personas}{}}}
+\subsection{Method \code{get_active_personas()}}{
+Get active (non-retired) personas.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$get_active_personas()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+List of active persona objects.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-check_and_expand_nodes"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-check_and_expand_nodes}{}}}
+\subsection{Method \code{check_and_expand_nodes()}}{
+Check and expand oversized mind map nodes.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$check_and_expand_nodes()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-get_discussed_source_ids"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-get_discussed_source_ids}{}}}
+\subsection{Method \code{get_discussed_source_ids()}}{
+Get source IDs that have been discussed in the transcript.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$get_discussed_source_ids()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+Character vector of discussed source IDs.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-find_undiscussed_sources"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-find_undiscussed_sources}{}}}
+\subsection{Method \code{find_undiscussed_sources()}}{
+Find sources that haven't been discussed yet.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$find_undiscussed_sources()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+Character vector of undiscussed source IDs.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-surface_unseen_information"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-surface_unseen_information}{}}}
+\subsection{Method \code{surface_unseen_information()}}{
+Generate questions about undiscussed sources.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$surface_unseen_information(max_questions = 3)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{max_questions}}{Maximum questions to generate.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Character vector of questions, or NULL if none.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-reorganize_mindmap"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-reorganize_mindmap}{}}}
+\subsection{Method \code{reorganize_mindmap()}}{
+Reorganize the mind map for clarity.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$reorganize_mindmap()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-execute_turn_decision"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-execute_turn_decision}{}}}
+\subsection{Method \code{execute_turn_decision()}}{
+Execute a discourse manager turn decision.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TempestSession$execute_turn_decision(decision)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{decision}}{A turn decision from the discourse manager.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A list with speaker, answer, and mindmap_md.
 }
 }
 \if{html}{\out{<hr>}}
