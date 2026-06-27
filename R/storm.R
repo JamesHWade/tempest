@@ -17,7 +17,12 @@ tempest_as_character_vector <- function(x) {
 }
 
 #' @keywords internal
-tempest_run_verification <- function(store, config, verifier = NULL, modules = NULL) {
+tempest_run_verification <- function(
+  store,
+  config,
+  verifier = NULL,
+  modules = NULL
+) {
   if (!config@citation_policy %in% c("claim_verified", "strict")) {
     return(invisible(NULL))
   }
@@ -34,7 +39,9 @@ tempest_run_verification <- function(store, config, verifier = NULL, modules = N
       min_support_score = config@min_support_score
     ),
     error = function(e) {
-      tempest_warn("Citation verification failed; report left unverified: {conditionMessage(e)}")
+      tempest_warn(
+        "Citation verification failed; report left unverified: {conditionMessage(e)}"
+      )
       NULL
     }
   )

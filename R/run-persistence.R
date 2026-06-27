@@ -117,6 +117,41 @@ tempest_restore_claims <- function(store, claims) {
 }
 
 #' @keywords internal
+tempest_restore_citation_audit <- function(citation_audit) {
+  if (is.null(citation_audit) || length(citation_audit) == 0) {
+    return(tibble::tibble(
+      claim_id = character(),
+      claim_text = character(),
+      verification_status = character(),
+      support_score = numeric(),
+      rationale = character()
+    ))
+  }
+  if (is.data.frame(citation_audit)) {
+    return(tibble::as_tibble(citation_audit))
+  }
+
+  tibble::tibble(
+    claim_id = purrr::map_chr(citation_audit, ~ .x$claim_id %||% NA_character_),
+    claim_text = purrr::map_chr(
+      citation_audit,
+      ~ .x$claim_text %||% NA_character_
+    ),
+    verification_status = purrr::map_chr(
+      citation_audit,
+      ~ .x$verification_status %||% NA_character_
+    ),
+    support_score = purrr::map_dbl(citation_audit, function(x) {
+      suppressWarnings(as.numeric(x$support_score %||% NA_real_))
+    }),
+    rationale = purrr::map_chr(
+      citation_audit,
+      ~ .x$rationale %||% NA_character_
+    )
+  )
+}
+
+#' @keywords internal
 tempest_load_run_artifacts <- function(run_dir, store) {
   stopifnot(inherits(store, "SourceStore"))
   paths <- tempest_run_artifact_paths(run_dir)
@@ -137,6 +172,15 @@ tempest_load_run_artifacts <- function(run_dir, store) {
     references <- tempest_read_json(paths$references)
     if (!is.null(references)) {
       store$set_artifact("references", references)
+    }
+  }
+  if (file.exists(paths$citation_audit)) {
+    citation_audit <- tempest_read_json(paths$citation_audit)
+    if (!is.null(citation_audit)) {
+      store$set_artifact(
+        "citation_audit",
+        tempest_restore_citation_audit(citation_audit)
+      )
     }
   }
 

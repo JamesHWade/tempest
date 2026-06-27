@@ -54,7 +54,11 @@ tempest_normalize_min_support_score <- function(min_support_score) {
 }
 
 #' @keywords internal
-tempest_apply_min_support_score <- function(status, score, min_support_score = 0.7) {
+tempest_apply_min_support_score <- function(
+  status,
+  score,
+  min_support_score = 0.7
+) {
   score <- suppressWarnings(as.numeric(score))
   if (length(score) != 1 || is.na(score)) {
     return(status)
@@ -119,18 +123,28 @@ tempest_claims_for_citation_context <- function(claims, context = NULL) {
     function(claim) tempest_normalize_claim_match_text(claim@claim_text),
     character(1)
   )
-  matches <- vapply(claim_texts, function(claim_text) {
-    nzchar(claim_text) && grepl(claim_text, context_text, fixed = TRUE)
-  }, logical(1))
+  matches <- vapply(
+    claim_texts,
+    function(claim_text) {
+      nzchar(claim_text) && grepl(claim_text, context_text, fixed = TRUE)
+    },
+    logical(1)
+  )
   matched <- claims[matches]
   if (length(matched) > 0) matched else claims
 }
 
 #' @keywords internal
-tempest_source_status <- function(store, source_id, min_support_score = 0.7,
-                                  context = NULL) {
+tempest_source_status <- function(
+  store,
+  source_id,
+  min_support_score = 0.7,
+  context = NULL
+) {
   claims <- store$claims_for_source(source_id)
-  if (length(claims) == 0) return(NA_character_)
+  if (length(claims) == 0) {
+    return(NA_character_)
+  }
   claims <- tempest_claims_for_citation_context(claims, context)
   statuses <- vapply(
     claims,
@@ -145,15 +159,24 @@ tempest_source_status <- function(store, source_id, min_support_score = 0.7,
   )
   # Worst-case wins within the matched citation context so weak evidence is not
   # masked by strong evidence for the same sentence.
-  worst_first <- c("contradicted", "unsupported", "unverifiable",
-                   "partially_supported", "supported", "unverified")
+  worst_first <- c(
+    "contradicted",
+    "unsupported",
+    "unverifiable",
+    "partially_supported",
+    "supported",
+    "unverified"
+  )
   statuses[order(match(statuses, worst_first))][1]
 }
 
 #' @keywords internal
 tempest_status_badge <- function(status) {
-  if (length(status) != 1 || is.na(status)) return("")
-  switch(status,
+  if (length(status) != 1 || is.na(status)) {
+    return("")
+  }
+  switch(
+    status,
     supported = " \u2713",
     partially_supported = " \u26a0",
     unsupported = " \u2717 unsupported",
@@ -164,9 +187,13 @@ tempest_status_badge <- function(status) {
 }
 
 #' @keywords internal
-tempest_add_footnotes <- function(text, store, citation_policy = "source_attributed",
-                                  on_unsupported_claim = "flag",
-                                  min_support_score = 0.7) {
+tempest_add_footnotes <- function(
+  text,
+  store,
+  citation_policy = "source_attributed",
+  on_unsupported_claim = "flag",
+  min_support_score = 0.7
+) {
   stopifnot(inherits(store, "SourceStore"))
   if (identical(citation_policy, "none")) {
     return(list(text = text, footnotes = ""))
@@ -261,22 +288,36 @@ tempest_add_footnotes <- function(text, store, citation_policy = "source_attribu
 #' )
 #' }
 #' @export
-tempest_report_md <- function(title, body, store,
-                              citation_policy = "source_attributed",
-                              on_unsupported_claim = "flag",
-                              min_support_score = 0.7) {
+tempest_report_md <- function(
+  title,
+  body,
+  store,
+  citation_policy = "source_attributed",
+  on_unsupported_claim = "flag",
+  min_support_score = 0.7
+) {
   if (inherits(store, "TempestRetriever")) {
     store <- store$store
   }
   stopifnot(inherits(store, "SourceStore"))
 
-  res <- tempest_add_footnotes(body, store, citation_policy = citation_policy,
-                               on_unsupported_claim = on_unsupported_claim,
-                               min_support_score = min_support_score)
+  res <- tempest_add_footnotes(
+    body,
+    store,
+    citation_policy = citation_policy,
+    on_unsupported_claim = on_unsupported_claim,
+    min_support_score = min_support_score
+  )
   if (nzchar(res$footnotes)) {
     return(paste0(
-      "# ", title, "\n\n", res$text, "\n\n",
-      "## References\n\n", res$footnotes, "\n"
+      "# ",
+      title,
+      "\n\n",
+      res$text,
+      "\n\n",
+      "## References\n\n",
+      res$footnotes,
+      "\n"
     ))
   }
   paste0("# ", title, "\n\n", res$text, "\n")

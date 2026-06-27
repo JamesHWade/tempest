@@ -54,6 +54,16 @@ test_that("run artifacts save and load store state", {
   )
   store$set_artifact("draft_md", "Draft body")
   store$set_artifact("report_md", "Polished body")
+  store$set_artifact(
+    "citation_audit",
+    tibble::tibble(
+      claim_id = store$list_claims()[[1]]@claim_id,
+      claim_text = "Lithium batteries store energy.",
+      verification_status = "supported",
+      support_score = 0.9,
+      rationale = "matches source"
+    )
+  )
 
   cfg <- tempest_config()
   tempest:::tempest_save_run_artifacts(
@@ -88,6 +98,8 @@ test_that("run artifacts save and load store state", {
   expect_equal(restored$get_artifact("outline")$title, "Lithium Batteries")
   expect_equal(restored$get_artifact("draft_md"), "Draft body")
   expect_equal(restored$get_artifact("report_md"), "Polished body")
+  expect_s3_class(restored$get_artifact("citation_audit"), "tbl_df")
+  expect_equal(nrow(restored$get_artifact("citation_audit")), 1)
   expect_equal(loaded$metadata$parallel_writing, TRUE)
   expect_equal(loaded$metadata$remove_duplicate, TRUE)
 })

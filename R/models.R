@@ -134,7 +134,9 @@ SourceStore <- R6::R6Class(
     #' @param span_id Evidence span id.
     link_evidence = function(claim_id, span_id) {
       claim <- self$get_claim(claim_id)
-      if (is.null(claim)) tempest_abort("Unknown claim id: {.val {claim_id}}")
+      if (is.null(claim)) {
+        tempest_abort("Unknown claim id: {.val {claim_id}}")
+      }
       self$claims[[claim_id]] <- S7::set_props(
         claim,
         evidence_span_ids = unique(c(claim@evidence_span_ids, span_id))
@@ -146,7 +148,9 @@ SourceStore <- R6::R6Class(
     #' @param claim_id Claim id.
     get_evidence_for_claim = function(claim_id) {
       claim <- self$get_claim(claim_id)
-      if (is.null(claim)) return(list())
+      if (is.null(claim)) {
+        return(list())
+      }
       purrr::map(claim@evidence_span_ids, ~ self$evidence_spans[[.x]])
     },
 
@@ -155,9 +159,16 @@ SourceStore <- R6::R6Class(
     #' @param status One of the verification status labels.
     #' @param score Support score in `[0, 1]` or NA.
     #' @param verifier Verifier model id.
-    verify_claim = function(claim_id, status, score = NA_real_, verifier = NA_character_) {
+    verify_claim = function(
+      claim_id,
+      status,
+      score = NA_real_,
+      verifier = NA_character_
+    ) {
       claim <- self$get_claim(claim_id)
-      if (is.null(claim)) tempest_abort("Unknown claim id: {.val {claim_id}}")
+      if (is.null(claim)) {
+        tempest_abort("Unknown claim id: {.val {claim_id}}")
+      }
       self$claims[[claim_id]] <- S7::set_props(
         claim,
         verification_status = status,
@@ -202,9 +213,13 @@ SourceStore <- R6::R6Class(
       s <- self$list_sources()
       sources <- if (length(s) == 0) {
         tibble::tibble(
-          id = character(), url = character(), title = character(),
-          snippet = character(), content_text = character(),
-          fetched_at = character(), meta = list()
+          id = character(),
+          url = character(),
+          title = character(),
+          snippet = character(),
+          content_text = character(),
+          fetched_at = character(),
+          meta = list()
         )
       } else {
         tibble::tibble(
@@ -212,7 +227,10 @@ SourceStore <- R6::R6Class(
           url = purrr::map_chr(s, "url"),
           title = purrr::map_chr(s, ~ .x$title %||% NA_character_),
           snippet = purrr::map_chr(s, ~ .x$snippet %||% NA_character_),
-          content_text = purrr::map_chr(s, ~ .x$content_text %||% NA_character_),
+          content_text = purrr::map_chr(
+            s,
+            ~ .x$content_text %||% NA_character_
+          ),
           fetched_at = purrr::map_chr(s, ~ .x$fetched_at %||% NA_character_),
           meta = purrr::map(s, ~ .x$meta %||% list())
         )

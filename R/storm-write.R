@@ -84,7 +84,7 @@ tempest_section_facts_text <- function(
     max_items = max_items
   )
   if (length(relevant) == 0) {
-    return("(no directly matched facts; use best judgement and call tools)")
+    return("(no directly matched facts; do not add unsupported factual claims)")
   }
 
   paste(

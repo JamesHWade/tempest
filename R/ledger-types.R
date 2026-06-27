@@ -9,7 +9,7 @@ prop_enum <- function(choices, default = choices[[1]]) {
     S7::class_character,
     default = default,
     validator = function(value) {
-      if (length(value) != 1 || !value %in% choices) {
+      if (length(value) != 1 || is.na(value) || !value %in% choices) {
         sprintf("must be one of: %s", paste(choices, collapse = ", "))
       }
     }
@@ -21,7 +21,9 @@ prop_score <- function() {
     S7::class_numeric,
     default = NA_real_,
     validator = function(value) {
-      if (length(value) != 1) return("must be length 1")
+      if (length(value) != 1) {
+        return("must be length 1")
+      }
       if (!is.na(value) && (value < 0 || value > 1)) return("must be in [0, 1]")
     }
   )
@@ -37,7 +39,9 @@ prop_score_default <- function(default) {
     S7::class_numeric,
     default = default,
     validator = function(value) {
-      if (length(value) != 1) return("must be length 1")
+      if (length(value) != 1) {
+        return("must be length 1")
+      }
       if (!is.na(value) && (value < 0 || value > 1)) return("must be in [0, 1]")
     }
   )
@@ -50,12 +54,25 @@ prop_chr_vec <- function() {
 # --- enums --------------------------------------------------------------------
 
 tempest_claim_types <- function() {
-  c("finding", "definition", "method", "limitation", "contradiction", "open_question")
+  c(
+    "finding",
+    "definition",
+    "method",
+    "limitation",
+    "contradiction",
+    "open_question"
+  )
 }
 
 tempest_verification_statuses <- function() {
-  c("unverified", "supported", "partially_supported", "unsupported",
-    "contradicted", "unverifiable")
+  c(
+    "unverified",
+    "supported",
+    "partially_supported",
+    "unsupported",
+    "contradicted",
+    "unverifiable"
+  )
 }
 
 # --- claim --------------------------------------------------------------------
@@ -85,29 +102,34 @@ tempest_claim <- S7::new_class(
     created_at = prop_chr(),
     verified_at = prop_chr(),
     verifier_model = prop_chr(),
-    verification_status = prop_enum(tempest_verification_statuses(), "unverified")
+    verification_status = prop_enum(
+      tempest_verification_statuses(),
+      "unverified"
+    )
   ),
-  constructor = function(claim_text,
-                         source_ids = character(),
-                         claim_type = "finding",
-                         confidence = "medium",
-                         verification_status = "unverified",
-                         support_score = NA_real_,
-                         contradiction_score = NA_real_,
-                         source_quality_score = NA_real_,
-                         evidence_span_ids = character(),
-                         supporting_quotes = list(),
-                         contradicting_source_ids = character(),
-                         contradiction_note = NA_character_,
-                         retrieval_query = NA_character_,
-                         retrieval_step_id = NA_character_,
-                         perspective_id = NA_character_,
-                         persona_id = NA_character_,
-                         section_id = NA_character_,
-                         verified_at = NA_character_,
-                         verifier_model = NA_character_,
-                         claim_id = NULL,
-                         created_at = NULL) {
+  constructor = function(
+    claim_text,
+    source_ids = character(),
+    claim_type = "finding",
+    confidence = "medium",
+    verification_status = "unverified",
+    support_score = NA_real_,
+    contradiction_score = NA_real_,
+    source_quality_score = NA_real_,
+    evidence_span_ids = character(),
+    supporting_quotes = list(),
+    contradicting_source_ids = character(),
+    contradiction_note = NA_character_,
+    retrieval_query = NA_character_,
+    retrieval_step_id = NA_character_,
+    perspective_id = NA_character_,
+    persona_id = NA_character_,
+    section_id = NA_character_,
+    verified_at = NA_character_,
+    verifier_model = NA_character_,
+    claim_id = NULL,
+    created_at = NULL
+  ) {
     S7::new_object(
       S7::S7_object(),
       claim_id = claim_id %||% tempest_uuid("C"),
@@ -134,7 +156,11 @@ tempest_claim <- S7::new_class(
     )
   },
   validator = function(self) {
-    if (length(self@claim_text) != 1 || is.na(self@claim_text) || !nzchar(self@claim_text)) {
+    if (
+      length(self@claim_text) != 1 ||
+        is.na(self@claim_text) ||
+        !nzchar(self@claim_text)
+    ) {
       return("claim_text must be a single non-empty string")
     }
   }
@@ -159,17 +185,19 @@ tempest_evidence_span <- S7::new_class(
     extracted_by = prop_chr("expert"),
     created_at = prop_chr()
   ),
-  constructor = function(source_id,
-                         quote = NA_character_,
-                         chunk_id = NA_character_,
-                         start_offset = NA_integer_,
-                         end_offset = NA_integer_,
-                         page = NA_integer_,
-                         section_heading = NA_character_,
-                         relevance_score = NA_real_,
-                         extracted_by = "expert",
-                         evidence_span_id = NULL,
-                         created_at = NULL) {
+  constructor = function(
+    source_id,
+    quote = NA_character_,
+    chunk_id = NA_character_,
+    start_offset = NA_integer_,
+    end_offset = NA_integer_,
+    page = NA_integer_,
+    section_heading = NA_character_,
+    relevance_score = NA_real_,
+    extracted_by = "expert",
+    evidence_span_id = NULL,
+    created_at = NULL
+  ) {
     S7::new_object(
       S7::S7_object(),
       evidence_span_id = evidence_span_id %||% tempest_uuid("E"),
@@ -203,14 +231,16 @@ tempest_dispute <- S7::new_class(
     unresolved_questions = prop_chr_vec(),
     created_at = prop_chr()
   ),
-  constructor = function(topic,
-                         claim_ids = character(),
-                         axis_of_disagreement = NA_character_,
-                         likely_explanation = NA_character_,
-                         evidence_balance = "mixed",
-                         unresolved_questions = character(),
-                         dispute_id = NULL,
-                         created_at = NULL) {
+  constructor = function(
+    topic,
+    claim_ids = character(),
+    axis_of_disagreement = NA_character_,
+    likely_explanation = NA_character_,
+    evidence_balance = "mixed",
+    unresolved_questions = character(),
+    dispute_id = NULL,
+    created_at = NULL
+  ) {
     S7::new_object(
       S7::S7_object(),
       dispute_id = dispute_id %||% tempest_uuid("D"),
@@ -243,16 +273,30 @@ tempest_claim_from_list <- function(x) {
   # - non-empty character vectors come back as list of scalars => unlist
 
   chr_scalar_fields <- c(
-    "claim_id", "claim_text", "claim_type", "contradiction_note",
-    "retrieval_query", "retrieval_step_id", "perspective_id", "persona_id",
-    "section_id", "created_at", "verified_at", "verifier_model",
-    "confidence", "verification_status"
+    "claim_id",
+    "claim_text",
+    "claim_type",
+    "contradiction_note",
+    "retrieval_query",
+    "retrieval_step_id",
+    "perspective_id",
+    "persona_id",
+    "section_id",
+    "created_at",
+    "verified_at",
+    "verifier_model",
+    "confidence",
+    "verification_status"
   )
   for (f in chr_scalar_fields) {
     if (is.null(x[[f]])) x[[f]] <- NA_character_
   }
 
-  chr_vec_fields <- c("source_ids", "evidence_span_ids", "contradicting_source_ids")
+  chr_vec_fields <- c(
+    "source_ids",
+    "evidence_span_ids",
+    "contradicting_source_ids"
+  )
   for (f in chr_vec_fields) {
     v <- x[[f]]
     if (is.null(v) || (is.list(v) && length(v) == 0)) {
@@ -262,24 +306,35 @@ tempest_claim_from_list <- function(x) {
     }
   }
 
-  dbl_scalar_fields <- c("support_score", "contradiction_score", "source_quality_score")
+  dbl_scalar_fields <- c(
+    "support_score",
+    "contradiction_score",
+    "source_quality_score"
+  )
   for (f in dbl_scalar_fields) {
     if (is.null(x[[f]])) x[[f]] <- NA_real_
   }
 
-  do.call(tempest_claim, c(
-    list(claim_text = x$claim_text %||% ""),
-    x[setdiff(names(x), "claim_text")]
-  ))
+  do.call(
+    tempest_claim,
+    c(
+      list(claim_text = x$claim_text %||% ""),
+      x[setdiff(names(x), "claim_text")]
+    )
+  )
 }
 
 #' @keywords internal
 tempest_claims_tibble <- function(claims) {
   if (length(claims) == 0) {
     return(tibble::tibble(
-      claim_id = character(), claim_text = character(), claim_type = character(),
-      source_ids = list(), confidence = character(),
-      verification_status = character(), support_score = numeric(),
+      claim_id = character(),
+      claim_text = character(),
+      claim_type = character(),
+      source_ids = list(),
+      confidence = character(),
+      verification_status = character(),
+      support_score = numeric(),
       created_at = character()
     ))
   }
@@ -311,14 +366,16 @@ tempest_source_record <- S7::new_class(
     content_hash = prop_chr(),
     meta = S7::new_property(S7::class_list, default = list())
   ),
-  constructor = function(url,
-                         title = NA_character_,
-                         snippet = NA_character_,
-                         content_text = NA_character_,
-                         fetched_at = NA_character_,
-                         content_hash = NA_character_,
-                         meta = list(),
-                         id = NULL) {
+  constructor = function(
+    url,
+    title = NA_character_,
+    snippet = NA_character_,
+    content_text = NA_character_,
+    fetched_at = NA_character_,
+    content_hash = NA_character_,
+    meta = list(),
+    id = NULL
+  ) {
     S7::new_object(
       S7::S7_object(),
       id = id %||% tempest_source_id(url),

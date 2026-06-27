@@ -215,7 +215,9 @@ tempest_extract_facts_from_answer <- function(
     # "medium" so the S7 enum validator never aborts (which would discard the
     # whole answer's claims).
     conf <- f$confidence
-    if (length(conf) != 1 || is.na(conf) || !conf %in% c("low", "medium", "high")) {
+    if (
+      length(conf) != 1 || is.na(conf) || !conf %in% c("low", "medium", "high")
+    ) {
       conf <- "medium"
     }
     store$add_claim(tempest_claim(

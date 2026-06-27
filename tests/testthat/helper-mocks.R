@@ -10,7 +10,10 @@ fake_chat <- function(structured = list(), text = list()) {
   state$calls <- list()
   list(
     chat_structured = function(prompt, type = NULL, ...) {
-      state$calls <- c(state$calls, list(list(kind = "structured", prompt = prompt)))
+      state$calls <- c(
+        state$calls,
+        list(list(kind = "structured", prompt = prompt))
+      )
       if (length(state$structured) == 0) {
         stop("fake_chat: structured queue exhausted")
       }
@@ -20,7 +23,9 @@ fake_chat <- function(structured = list(), text = list()) {
     },
     chat = function(prompt, ...) {
       state$calls <- c(state$calls, list(list(kind = "text", prompt = prompt)))
-      if (length(state$text) == 0) return("")
+      if (length(state$text) == 0) {
+        return("")
+      }
       out <- state$text[[1]]
       state$text <- state$text[-1]
       out
@@ -31,8 +36,12 @@ fake_chat <- function(structured = list(), text = list()) {
 }
 
 # A fake judge that returns a fixed verification verdict for every claim.
-fake_judge <- function(status = "supported", score = 0.9, rationale = "matches source") {
-  fake_chat(structured = list())  # placeholder; verdict queue set per-test via fake_verdicts()
+fake_judge <- function(
+  status = "supported",
+  score = 0.9,
+  rationale = "matches source"
+) {
+  fake_chat(structured = list()) # placeholder; verdict queue set per-test via fake_verdicts()
 }
 
 # Build a queue of verdicts (one per claim) for tempest_verify_claims tests.
@@ -42,10 +51,17 @@ fake_verdicts <- function(...) {
 }
 
 # Fixture builders.
-fake_source <- function(url = "https://example.org/a", title = "Example A",
-                        content_text = "Photosynthesis converts light to chemical energy.") {
-  tempest_source(url = url, title = title, content_text = content_text,
-                 fetched_at = "2026-01-01 00:00:00 UTC")
+fake_source <- function(
+  url = "https://example.org/a",
+  title = "Example A",
+  content_text = "Photosynthesis converts light to chemical energy."
+) {
+  tempest_source(
+    url = url,
+    title = title,
+    content_text = content_text,
+    fetched_at = "2026-01-01 00:00:00 UTC"
+  )
 }
 
 fake_store_with_sources <- function(n = 2) {

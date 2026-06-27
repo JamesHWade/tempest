@@ -1,23 +1,4 @@
-test_that("tempest_has_dsprrr returns logical", {
-  result <- tempest:::tempest_has_dsprrr()
-  expect_type(result, "logical")
-  expect_length(result, 1)
-})
-
-test_that("tempest_make_dsprrr_modules returns NULL without dsprrr", {
-  skip_if(
-    tempest:::tempest_has_dsprrr(),
-    "dsprrr is installed, skipping absence test"
-  )
-
-  cfg <- tempest_config()
-  result <- tempest:::tempest_make_dsprrr_modules(cfg)
-  expect_null(result)
-})
-
-test_that("tempest_make_dsprrr_modules creates modules when available", {
-  skip_if_not_installed("dsprrr")
-
+test_that("tempest_make_dsprrr_modules creates modules", {
   cfg <- tempest_config()
   result <- tempest:::tempest_make_dsprrr_modules(cfg)
 
@@ -39,10 +20,7 @@ test_that("tempest_make_dsprrr_modules creates modules when available", {
 })
 
 test_that("tempest_optimize_dsprrr_modules compiles named modules", {
-  skip_if_not_installed("dsprrr")
-
   modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
-  skip_if(is.null(modules), "dsprrr modules unavailable")
 
   train <- data.frame(
     question = c(
@@ -70,10 +48,7 @@ test_that("tempest_optimize_dsprrr_modules compiles named modules", {
 })
 
 test_that("compiled dsprrr module sets can be saved and loaded", {
-  skip_if_not_installed("dsprrr")
-
   modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
-  skip_if(is.null(modules), "dsprrr modules unavailable")
   path <- withr::local_tempdir()
 
   saved_path <- tempest_save_dsprrr_modules(modules, path)
