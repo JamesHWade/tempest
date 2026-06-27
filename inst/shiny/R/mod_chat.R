@@ -93,21 +93,9 @@ mod_chat_server <- function(id, config, store) {
     )
     append_chat <- function(text) chat$append(text, role = "assistant")
 
-    # Generate + append suggestion cards, gated on the sidebar toggle. Quiet on
-    # failure: a stalled or erroring generator simply shows no cards.
+    # Gated on the sidebar toggle; delegates to the testable append_suggestions().
     maybe_append_suggestions <- function(ses, n = 4) {
-      if (is.null(ses) || !isTRUE(input$suggest)) {
-        return(invisible(NULL))
-      }
-      questions <- tryCatch(
-        ses$suggest_questions(n),
-        error = function(e) character()
-      )
-      cards <- suggestion_cards(questions)
-      if (!is.null(cards)) {
-        append_chat(cards)
-      }
-      invisible(NULL)
+      append_suggestions(ses, input$suggest, append_chat, n)
     }
 
     # --- Session lifecycle ---------------------------------------------------
@@ -354,6 +342,21 @@ suggestion_cards <- function(questions, lead = "**You might ask:**") {
     "</span>"
   )
   paste0(lead, "\n\n", paste(items, collapse = "\n"))
+}
+
+# Generate suggestion cards and append them, gated on `enabled`. Quiet on
+# failure: a stalled or erroring generator simply shows no cards. Pure of Shiny
+# reactives (deps injected) so it can be unit-tested directly.
+append_suggestions <- function(ses, enabled, append_fn, n = 4) {
+  if (is.null(ses) || !isTRUE(enabled)) {
+    return(invisible(NULL))
+  }
+  questions <- tryCatch(ses$suggest_questions(n), error = function(e) character())
+  cards <- suggestion_cards(questions)
+  if (!is.null(cards)) {
+    append_fn(cards)
+  }
+  invisible(NULL)
 }
 
 warmup_prompt <- function(topic, question) {

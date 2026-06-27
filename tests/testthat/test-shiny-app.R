@@ -164,6 +164,29 @@ test_that("suggestion_cards honors a custom lead", {
   expect_match(md, "Try asking", fixed = TRUE)
 })
 
+test_that("append_suggestions gates on the toggle and swallows generator errors", {
+  app <- source_shiny_modules()
+  calls <- character()
+  rec <- function(x) calls[[length(calls) + 1L]] <<- x
+  ok <- list(suggest_questions = function(n) c("Q1?", "Q2?"))
+  err <- list(suggest_questions = function(n) stop("boom"))
+
+  app$append_suggestions(ok, TRUE, rec)
+  expect_match(calls[[1]], "suggestion submit")
+
+  calls <- character()
+  app$append_suggestions(ok, FALSE, rec)
+  expect_length(calls, 0)
+
+  calls <- character()
+  expect_silent(app$append_suggestions(err, TRUE, rec))
+  expect_length(calls, 0)
+
+  calls <- character()
+  app$append_suggestions(NULL, TRUE, rec)
+  expect_length(calls, 0)
+})
+
 test_that("the chat sidebar offers a follow-up-questions toggle", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
