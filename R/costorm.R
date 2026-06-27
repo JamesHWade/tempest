@@ -356,6 +356,8 @@ TempestSession <- R6::R6Class(
     #' @param n Maximum number of questions to return.
     #' @return A character vector of questions (possibly empty).
     suggest_questions = function(n = 4) {
+      # Pass NULL (not transcript_markdown's "(no dialog yet)" placeholder) so an
+      # empty session gets newcomer-style questions rather than follow-ups.
       context <- if (length(self$transcript) > 0) {
         self$transcript_markdown(max_turns = 12)
       } else {

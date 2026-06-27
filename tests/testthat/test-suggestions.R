@@ -57,3 +57,20 @@ test_that("TempestSession$suggest_questions delegates to the generator", {
   out <- ses$suggest_questions(n = 2)
   expect_equal(out, c("Q1", "Q2"))
 })
+
+test_that("suggest_questions forwards transcript context when non-empty", {
+  skip_if_not_installed("ellmer")
+  fake <- fake_chat(structured = list(list(questions = "Q1")))
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake
+  )
+  ses <- tempest_session(
+    "Test topic",
+    config = cfg,
+    personas = list(list(id = 1, name = "Dr. A", title = "Sci", perspective = "X"))
+  )
+  ses$add_turn("User", "user", "hello there")
+  ses$suggest_questions(n = 1)
+  prompts <- vapply(fake$.calls(), function(call) call$prompt, character(1))
+  expect_true(any(grepl("Conversation so far:", prompts, fixed = TRUE)))
+})
