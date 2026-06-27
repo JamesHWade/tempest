@@ -143,7 +143,7 @@ tempest_tools_retrieval <- function(retriever) {
     )
   }
 
-  add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
+  add_fact <- function(claim, source_ids, confidence = "medium") {
     if (is.null(source_ids) || length(source_ids) == 0) {
       tempest_abort("add_fact requires at least one source_id.")
     }
@@ -224,10 +224,6 @@ tempest_tools_retrieval <- function(retriever) {
           c("low", "medium", "high"),
           "Confidence level.",
           required = FALSE
-        ),
-        note = ellmer::type_string(
-          "Optional note on nuances/conditions/limitations.",
-          required = FALSE
         )
       )
     )
@@ -297,7 +293,7 @@ tempest_tools_source_management <- function(retriever) {
     )
   }
 
-  add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
+  add_fact <- function(claim, source_ids, confidence = "medium") {
     if (is.null(source_ids) || length(source_ids) == 0) {
       tempest_abort("add_fact requires at least one source_id.")
     }
@@ -351,10 +347,6 @@ tempest_tools_source_management <- function(retriever) {
         confidence = ellmer::type_enum(
           c("low", "medium", "high"),
           "Confidence level.",
-          required = FALSE
-        ),
-        note = ellmer::type_string(
-          "Optional note on nuances/conditions/limitations.",
           required = FALSE
         )
       )
