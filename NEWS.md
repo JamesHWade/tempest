@@ -1,5 +1,9 @@
 # tempest 0.1.0
 
+* The Chat tab now suggests follow-up questions as clickable cards. A set appears
+  when the expert panel assembles and refreshes after each answer; clicking a card
+  sends that question to the Moderator. Toggle it off with "Suggest follow-up
+  questions" in the sidebar. New exported helper `tempest_suggest_questions()`.
 * `tempest_config()` gains `max_search_queries_per_turn` and `retrieve_top_k`
   controls to mirror the upstream STORM runner's query and section-retrieval
   limits.

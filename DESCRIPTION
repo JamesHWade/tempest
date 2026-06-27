@@ -82,6 +82,7 @@ Collate:
     'storm-types.R'
     'storm-write.R'
     'storm.R'
+    'suggestions.R'
     'tempest-package.R'
     'tools.R'
     'utils.R'

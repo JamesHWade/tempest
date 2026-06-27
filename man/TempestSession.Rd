@@ -46,6 +46,7 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
     \item \href{#method-TempestSession-update_mindmap}{\code{TempestSession$update_mindmap()}}
     \item \href{#method-TempestSession-mindmap_markdown}{\code{TempestSession$mindmap_markdown()}}
     \item \href{#method-TempestSession-extract_facts}{\code{TempestSession$extract_facts()}}
+    \item \href{#method-TempestSession-suggest_questions}{\code{TempestSession$suggest_questions()}}
     \item \href{#method-TempestSession-find_expert_index}{\code{TempestSession$find_expert_index()}}
     \item \href{#method-TempestSession-step}{\code{TempestSession$step()}}
     \item \href{#method-TempestSession-warmup}{\code{TempestSession$warmup()}}
@@ -213,6 +214,28 @@ personas are generated automatically using \code{tempest_generate_personas()}.}
       \item{\code{text}}{Text containing factual claims.}
     }
     \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-suggest_questions"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-suggest_questions}{}}}
+\subsection{\code{TempestSession$suggest_questions()}}{
+  Suggest follow-up questions for the user based on the conversation so far.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$suggest_questions(n = 4)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{n}}{Maximum number of questions to return.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A character vector of questions (possibly empty).
   }
 }
 
