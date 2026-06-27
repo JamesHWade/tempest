@@ -380,7 +380,7 @@ tempest_run <- function(
                   extractor,
                   ans,
                   store,
-                  module = dsprrr_modules$fact_extraction
+                  module = dsprrr_modules$extract_claims
                 ),
                 error = function(e) {
                   tempest_warn("Fact extraction failed: {conditionMessage(e)}")
@@ -480,7 +480,7 @@ tempest_run <- function(
                 extractor,
                 ans,
                 store,
-                module = dsprrr_modules$fact_extraction
+                module = dsprrr_modules$extract_claims
               ),
               error = function(e) {
                 tempest_warn("Fact extraction failed: {conditionMessage(e)}")
@@ -601,7 +601,7 @@ tempest_run <- function(
         extractor,
         section_result$section_text,
         store,
-        module = dsprrr_modules$fact_extraction
+        module = dsprrr_modules$extract_claims
       )
     }
 

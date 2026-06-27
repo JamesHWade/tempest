@@ -8,7 +8,8 @@ tempest_verify_claims(
   store,
   verifier,
   policy = "claim_verified",
-  verifier_model = NA_character_
+  verifier_model = NA_character_,
+  modules = NULL
 )
 }
 \arguments{

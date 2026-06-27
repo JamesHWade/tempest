@@ -95,7 +95,7 @@ tempest_make_dsprrr_modules <- function(config) {
           ),
           type = "predict"
         ),
-        fact_extraction = dsprrr::module(
+        extract_claims = dsprrr::module(
           dsprrr::signature(
             inputs = list(dsprrr::input("answer_text", "string")),
             output_type = facts_type,
@@ -103,6 +103,21 @@ tempest_make_dsprrr_modules <- function(config) {
               "Extract atomic factual claims from the answer.",
               "Only extract claims explicitly supported by citations like [Sxxxxxxxxxxxx].",
               "Do not infer or invent facts.",
+              sep = "\n"
+            )
+          ),
+          type = "predict"
+        ),
+        verify_claim_support = dsprrr::module(
+          dsprrr::signature(
+            inputs = list(
+              dsprrr::input("claim_text", "string"),
+              dsprrr::input("source_excerpts", "string")
+            ),
+            output_type = tempest_type_verification(),
+            instructions = paste(
+              "Judge whether the cited source excerpts support the claim.",
+              "Return a status, a support score in [0,1], and a short rationale.",
               sep = "\n"
             )
           ),
@@ -360,7 +375,7 @@ tempest_load_dsprrr_modules <- function(path) {
 #'
 #' @param trainsets Named list of training data frames. Names must match module
 #'   names from `tempest_make_dsprrr_modules()`, such as
-#'   `"query_decomposition"`, `"fact_extraction"`, `"section_writing"`, or
+#'   `"query_decomposition"`, `"extract_claims"`, `"section_writing"`, or
 #'   `"lead_section"`.
 #' @param modules Optional named list of modules to optimize. Defaults to fresh
 #'   modules from `tempest_make_dsprrr_modules(config)`.

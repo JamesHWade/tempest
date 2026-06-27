@@ -21,7 +21,7 @@ tempest_optimize_dsprrr_modules(
 \arguments{
 \item{trainsets}{Named list of training data frames. Names must match module
 names from \code{tempest_make_dsprrr_modules()}, such as
-\code{"query_decomposition"}, \code{"fact_extraction"}, \code{"section_writing"}, or
+\code{"query_decomposition"}, \code{"extract_claims"}, \code{"section_writing"}, or
 \code{"lead_section"}.}
 
 \item{modules}{Optional named list of modules to optimize. Defaults to fresh

@@ -15,16 +15,25 @@ tempest_type_verification <- function() {
 }
 
 #' @keywords internal
-tempest_verify_one_claim <- function(claim, store, verifier) {
+tempest_verify_one_claim <- function(claim, store, verifier, module = NULL) {
   excerpts <- purrr::map_chr(claim@source_ids, function(sid) {
     src <- store$get_source(sid)
     if (is.null(src)) return(paste0("[", sid, "]: (source missing)"))
     body <- src$content_text %||% src$snippet %||% ""
     paste0("[", sid, "] ", src$title %||% "", ": ", substr(body, 1, 1500))
   })
+  excerpt_text <- paste(excerpts, collapse = "\n\n")
+  out <- tempest_run_dsprrr_module(
+    module, verifier,
+    inputs = list(claim_text = claim@claim_text, source_excerpts = excerpt_text),
+    step = "claim verification"
+  )
+  if (!is.null(out)) {
+    return(out)
+  }
   prompt <- paste0(
     "Claim:\n", claim@claim_text, "\n\n",
-    "Cited sources:\n", paste(excerpts, collapse = "\n\n"), "\n\n",
+    "Cited sources:\n", excerpt_text, "\n\n",
     "Does the cited evidence support the claim? Reply with a status, a score in [0,1], ",
     "and a short rationale."
   )
@@ -41,7 +50,7 @@ tempest_verify_one_claim <- function(claim, store, verifier) {
 #' @return A `citation_audit` tibble (one row per verified claim).
 #' @export
 tempest_verify_claims <- function(store, verifier, policy = "claim_verified",
-                                  verifier_model = NA_character_) {
+                                  verifier_model = NA_character_, modules = NULL) {
   stopifnot(inherits(store, "SourceStore"))
   if (!policy %in% c("claim_verified", "strict")) {
     return(tibble::tibble(
@@ -53,7 +62,7 @@ tempest_verify_claims <- function(store, verifier, policy = "claim_verified",
   claims <- store$list_claims()
   rows <- purrr::map(claims, function(claim) {
     v <- tryCatch(
-      tempest_verify_one_claim(claim, store, verifier),
+      tempest_verify_one_claim(claim, store, verifier, module = modules[["verify_claim_support"]]),
       error = function(e) list(status = "unverifiable", score = NA_real_,
                                rationale = conditionMessage(e))
     )

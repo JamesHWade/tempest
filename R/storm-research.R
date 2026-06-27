@@ -326,7 +326,7 @@ tempest_research_one_perspective <- function(
             extractor,
             ans,
             local_store,
-            module = modules$fact_extraction
+            module = modules$extract_claims
           ),
           error = function(e) {
             tempest_warn("Fact extraction failed: {conditionMessage(e)}")
