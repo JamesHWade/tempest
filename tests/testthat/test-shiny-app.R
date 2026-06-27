@@ -131,3 +131,18 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
     expect_match(output$n_facts, "^[0-9]+$")
   })
 })
+
+test_that("suggestion_cards builds a shinychat submit-card list", {
+  app <- source_shiny_modules()
+  md <- app$suggestion_cards(c("What is X?", "How does Y work?"))
+  expect_type(md, "character")
+  expect_match(md, "You might ask")
+  expect_match(md, '- <span class="suggestion submit">What is X\\?</span>')
+  expect_match(md, '- <span class="suggestion submit">How does Y work\\?</span>')
+})
+
+test_that("suggestion_cards returns NULL for no questions", {
+  app <- source_shiny_modules()
+  expect_null(app$suggestion_cards(character()))
+  expect_null(app$suggestion_cards(c("", NA_character_)))
+})

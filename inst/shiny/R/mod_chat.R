@@ -308,6 +308,23 @@ chat_input_text <- function(x) {
   as.character(x)
 }
 
+# Build a shinychat suggestion-card block from a vector of questions. shinychat
+# renders a markdown list whose items are all `<span class="suggestion">` as a
+# grid of cards; the `submit` class makes a click send the question immediately.
+# Returns NULL when there are no usable questions.
+suggestion_cards <- function(questions, lead = "**You might ask:**") {
+  questions <- questions[!is.na(questions) & nzchar(questions)]
+  if (length(questions) == 0) {
+    return(NULL)
+  }
+  items <- paste0(
+    "- <span class=\"suggestion submit\">",
+    questions,
+    "</span>"
+  )
+  paste0(lead, "\n\n", paste(items, collapse = "\n"))
+}
+
 warmup_prompt <- function(topic, question) {
   paste0(
     "Topic: ",
