@@ -18,3 +18,12 @@ tempest_facts(store)
 
 A tibble of facts with columns: claim, source_ids, confidence, note,
 tags.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+result <- tempest_run("History of jazz", config = tempest_config())
+tempest_facts(result$store)
+} # }
+```

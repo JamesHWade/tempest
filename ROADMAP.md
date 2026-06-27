@@ -47,7 +47,7 @@ with prioritized improvements organized by urgency and category.
 **Category:** Security \| **File:** `R/retriever.R`
 
 **Resolution:** Added comprehensive SSRF protection in
-[`tempest_normalize_url()`](reference/tempest_normalize_url.md): -
+[`tempest_normalize_url()`](https://jameshwade.github.io/tempest/reference/tempest_normalize_url.md): -
 Blocks dangerous protocols (file, ftp, gopher, data, javascript,
 vbscript) - Blocks local/internal addresses (localhost, 127.0.0.1,
 private IP ranges) - Upgrades HTTP to HTTPS
@@ -98,6 +98,7 @@ truly optional.
 **Fix:** Add to `R/tempest-package.R`:
 
 ``` r
+
 #' @importFrom rlang %||%
 #' @importFrom stats runif setNames
 #' @importFrom utils head read.csv
@@ -144,8 +145,8 @@ variables.
 **Category:** Error Handling \| **File:** `R/cache.R`
 
 **Resolution:** Cache read/write errors now emit warnings via
-[`tempest_warn()`](reference/tempest_warn.md) instead of failing
-silently.
+[`tempest_warn()`](https://jameshwade.github.io/tempest/reference/tempest_warn.md)
+instead of failing silently.
 
 ------------------------------------------------------------------------
 
@@ -199,6 +200,7 @@ LLM structured outputs are used without validation.
 **Fix:** Add schema validation after `chat_structured()` calls:
 
 ``` r
+
 validate_perspectives <- function(plan) {
   if (!is.list(plan$perspectives)) {
     tempest_abort("Invalid structured output: 'perspectives' must be a list")
@@ -363,7 +365,8 @@ Please ensure `R CMD check` passes and test coverage doesn’t decrease.
   semantic fact retrieval, parallel research, discourse manager, dynamic
   expert roster, mind map expansion, unseen source surfacing, mind map
   reorganization, SimulatedUser evaluation. Optional dsprrr integration.
-  Added [`tempest_warn()`](reference/tempest_warn.md) to all
-  error-handling paths.
+  Added
+  [`tempest_warn()`](https://jameshwade.github.io/tempest/reference/tempest_warn.md)
+  to all error-handling paths.
 - **2025-12-29**: Comprehensive analysis with code review, R CMD check,
   and coverage assessment

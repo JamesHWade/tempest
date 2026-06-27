@@ -2,7 +2,9 @@
 
 This solver is designed to evaluate the end-to-end behavior of the
 tempest retrieval + citation discipline. It is intentionally lighter
-than a full [`tempest_run()`](tempest_run.md) call.
+than a full
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+call.
 
 ## Usage
 

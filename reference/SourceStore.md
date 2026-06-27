@@ -1,11 +1,5 @@
 # SourceStore
 
-SourceStore
-
-SourceStore
-
-## Details
-
 A lightweight in-memory store for sources, fact notes, and artifacts.
 This store is designed for both script usage (STORM) and interactive
 usage (Co-STORM).
@@ -28,7 +22,7 @@ usage (Co-STORM).
 
 ### Public methods
 
-- [`SourceStore$new()`](#method-SourceStore-new)
+- [`SourceStore$new()`](#method-SourceStore-initialize)
 
 - [`SourceStore$upsert_source()`](#method-SourceStore-upsert_source)
 
@@ -50,7 +44,7 @@ usage (Co-STORM).
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `SourceStore$new()`
 
 Create a new SourceStore.
 
@@ -60,7 +54,7 @@ Create a new SourceStore.
 
 ------------------------------------------------------------------------
 
-### Method `upsert_source()`
+### `SourceStore$upsert_source()`
 
 Insert or update a source.
 
@@ -76,7 +70,7 @@ Insert or update a source.
 
 ------------------------------------------------------------------------
 
-### Method `get_source()`
+### `SourceStore$get_source()`
 
 Get a source by id.
 
@@ -96,7 +90,7 @@ The source list or NULL.
 
 ------------------------------------------------------------------------
 
-### Method `list_sources()`
+### `SourceStore$list_sources()`
 
 List all sources.
 
@@ -110,7 +104,7 @@ A list of source objects.
 
 ------------------------------------------------------------------------
 
-### Method `add_fact()`
+### `SourceStore$add_fact()`
 
 Add a fact to the store.
 
@@ -126,7 +120,7 @@ Add a fact to the store.
 
 ------------------------------------------------------------------------
 
-### Method `list_facts()`
+### `SourceStore$list_facts()`
 
 List all facts.
 
@@ -140,7 +134,7 @@ A list of fact objects.
 
 ------------------------------------------------------------------------
 
-### Method `set_artifact()`
+### `SourceStore$set_artifact()`
 
 Store an artifact by name.
 
@@ -160,7 +154,7 @@ Store an artifact by name.
 
 ------------------------------------------------------------------------
 
-### Method `get_artifact()`
+### `SourceStore$get_artifact()`
 
 Retrieve an artifact by name.
 
@@ -180,7 +174,7 @@ The artifact value or NULL.
 
 ------------------------------------------------------------------------
 
-### Method `to_tibbles()`
+### `SourceStore$to_tibbles()`
 
 Convert sources and facts to tibbles.
 
@@ -194,7 +188,7 @@ A list with `sources` and `facts` tibbles.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `SourceStore$clone()`
 
 The objects of this class are cloneable with this method.
 

@@ -14,7 +14,7 @@ tempest_create_expert_tool(persona, session_manager, topic)
 - persona:
 
   A persona object from
-  [`tempest_generate_personas()`](tempest_generate_personas.md).
+  [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md).
 
 - session_manager:
 

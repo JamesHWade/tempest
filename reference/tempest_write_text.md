@@ -1,6 +1,7 @@
 # Write text to file
 
-Creates parent directories if needed.
+Creates parent directories if needed. The write is atomic: content is
+written to a temporary file and renamed into place.
 
 ## Usage
 

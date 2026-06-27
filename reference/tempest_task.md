@@ -45,3 +45,13 @@ tempest_task(
 ## Value
 
 A [`vitals::Task`](https://vitals.tidyverse.org/reference/Task.html).
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+scorer_chat <- ellmer::chat("openai/gpt-5-mini")
+task <- tempest_task(scorer_chat = scorer_chat, config = tempest_config())
+task$eval()
+} # }
+```

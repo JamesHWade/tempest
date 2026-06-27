@@ -1,11 +1,5 @@
 # TempestSession
 
-TempestSession
-
-TempestSession
-
-## Details
-
 Maintains state for a Co-STORM session: multi-agent dialog, mind map,
 sources, and report artifacts.
 
@@ -63,7 +57,7 @@ sources, and report artifacts.
 
 ### Public methods
 
-- [`TempestSession$new()`](#method-TempestSession-new)
+- [`TempestSession$new()`](#method-TempestSession-initialize)
 
 - [`TempestSession$add_turn()`](#method-TempestSession-add_turn)
 
@@ -72,8 +66,6 @@ sources, and report artifacts.
 - [`TempestSession$get_persona_names()`](#method-TempestSession-get_persona_names)
 
 - [`TempestSession$get_persona_descriptions()`](#method-TempestSession-get_persona_descriptions)
-
-- [`TempestSession$decide_next()`](#method-TempestSession-decide_next)
 
 - [`TempestSession$update_mindmap()`](#method-TempestSession-update_mindmap)
 
@@ -111,7 +103,7 @@ sources, and report artifacts.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `TempestSession$new()`
 
 Create a new TempestSession.
 
@@ -142,11 +134,11 @@ Create a new TempestSession.
 
   Optional list of pre-generated personas. If NULL, personas are
   generated automatically using
-  [`tempest_generate_personas()`](tempest_generate_personas.md).
+  [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md).
 
 ------------------------------------------------------------------------
 
-### Method `add_turn()`
+### `TempestSession$add_turn()`
 
 Add a turn to the transcript.
 
@@ -170,7 +162,7 @@ Add a turn to the transcript.
 
 ------------------------------------------------------------------------
 
-### Method `transcript_markdown()`
+### `TempestSession$transcript_markdown()`
 
 Get the transcript as markdown.
 
@@ -190,7 +182,7 @@ Markdown string.
 
 ------------------------------------------------------------------------
 
-### Method `get_persona_names()`
+### `TempestSession$get_persona_names()`
 
 Get persona names for agent routing.
 
@@ -204,7 +196,7 @@ Character vector of persona names.
 
 ------------------------------------------------------------------------
 
-### Method `get_persona_descriptions()`
+### `TempestSession$get_persona_descriptions()`
 
 Build persona descriptions for moderator context.
 
@@ -218,27 +210,7 @@ A formatted string describing all personas.
 
 ------------------------------------------------------------------------
 
-### Method `decide_next()`
-
-Decide which agent should respond next.
-
-#### Usage
-
-    TempestSession$decide_next(user_input)
-
-#### Arguments
-
-- `user_input`:
-
-  The user's input.
-
-#### Returns
-
-A decision object with next_agent and instruction.
-
-------------------------------------------------------------------------
-
-### Method `update_mindmap()`
+### `TempestSession$update_mindmap()`
 
 Update the mind map based on new exchange.
 
@@ -254,7 +226,7 @@ Update the mind map based on new exchange.
 
 ------------------------------------------------------------------------
 
-### Method `mindmap_markdown()`
+### `TempestSession$mindmap_markdown()`
 
 Get the mind map as markdown.
 
@@ -268,7 +240,7 @@ Markdown string.
 
 ------------------------------------------------------------------------
 
-### Method `extract_facts()`
+### `TempestSession$extract_facts()`
 
 Extract facts from text into the store.
 
@@ -284,7 +256,7 @@ Extract facts from text into the store.
 
 ------------------------------------------------------------------------
 
-### Method `find_expert_index()`
+### `TempestSession$find_expert_index()`
 
 Find expert index by persona name.
 
@@ -304,7 +276,7 @@ Index of the expert, or NULL if not found.
 
 ------------------------------------------------------------------------
 
-### Method [`step()`](https://rdrr.io/r/stats/step.html)
+### `TempestSession$step()`
 
 Process one step of the conversation.
 
@@ -329,7 +301,7 @@ A list with speaker, answer, and mindmap_md.
 
 ------------------------------------------------------------------------
 
-### Method `warmup()`
+### `TempestSession$warmup()`
 
 Run a warmup phase where each expert researches their initial questions.
 This primes the knowledge base with foundational research before
@@ -351,7 +323,7 @@ A list with results from each expert's warmup.
 
 ------------------------------------------------------------------------
 
-### Method `report()`
+### `TempestSession$report()`
 
 Generate a report from the session.
 
@@ -383,7 +355,7 @@ Markdown report string.
 
 ------------------------------------------------------------------------
 
-### Method `add_expert()`
+### `TempestSession$add_expert()`
 
 Add a new expert to the panel dynamically.
 
@@ -407,7 +379,7 @@ The new persona (invisibly).
 
 ------------------------------------------------------------------------
 
-### Method `retire_expert()`
+### `TempestSession$retire_expert()`
 
 Retire an expert from the panel.
 
@@ -427,7 +399,7 @@ Logical indicating success.
 
 ------------------------------------------------------------------------
 
-### Method `get_active_personas()`
+### `TempestSession$get_active_personas()`
 
 Get active (non-retired) personas.
 
@@ -441,7 +413,7 @@ List of active persona objects.
 
 ------------------------------------------------------------------------
 
-### Method `check_and_expand_nodes()`
+### `TempestSession$check_and_expand_nodes()`
 
 Check and expand oversized mind map nodes.
 
@@ -451,7 +423,7 @@ Check and expand oversized mind map nodes.
 
 ------------------------------------------------------------------------
 
-### Method `get_discussed_source_ids()`
+### `TempestSession$get_discussed_source_ids()`
 
 Get source IDs that have been discussed in the transcript.
 
@@ -465,7 +437,7 @@ Character vector of discussed source IDs.
 
 ------------------------------------------------------------------------
 
-### Method `find_undiscussed_sources()`
+### `TempestSession$find_undiscussed_sources()`
 
 Find sources that haven't been discussed yet.
 
@@ -479,7 +451,7 @@ Character vector of undiscussed source IDs.
 
 ------------------------------------------------------------------------
 
-### Method `surface_unseen_information()`
+### `TempestSession$surface_unseen_information()`
 
 Generate questions about undiscussed sources.
 
@@ -499,7 +471,7 @@ Character vector of questions, or NULL if none.
 
 ------------------------------------------------------------------------
 
-### Method `reorganize_mindmap()`
+### `TempestSession$reorganize_mindmap()`
 
 Reorganize the mind map for clarity.
 
@@ -509,7 +481,7 @@ Reorganize the mind map for clarity.
 
 ------------------------------------------------------------------------
 
-### Method `execute_turn_decision()`
+### `TempestSession$execute_turn_decision()`
 
 Execute a discourse manager turn decision.
 
@@ -529,7 +501,7 @@ A list with speaker, answer, and mindmap_md.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `TempestSession$clone()`
 
 The objects of this class are cloneable with this method.
 

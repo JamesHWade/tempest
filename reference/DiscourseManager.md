@@ -1,11 +1,5 @@
 # DiscourseManager
 
-DiscourseManager
-
-DiscourseManager
-
-## Details
-
 LLM-driven discourse management for Co-STORM sessions. Decides which
 agent should speak next and what action to take.
 
@@ -23,7 +17,7 @@ agent should speak next and what action to take.
 
 ### Public methods
 
-- [`DiscourseManager$new()`](#method-DiscourseManager-new)
+- [`DiscourseManager$new()`](#method-DiscourseManager-initialize)
 
 - [`DiscourseManager$decide_next_turn()`](#method-DiscourseManager-decide_next_turn)
 
@@ -31,7 +25,7 @@ agent should speak next and what action to take.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `DiscourseManager$new()`
 
 Create a new DiscourseManager.
 
@@ -47,7 +41,7 @@ Create a new DiscourseManager.
 
 ------------------------------------------------------------------------
 
-### Method `decide_next_turn()`
+### `DiscourseManager$decide_next_turn()`
 
 Decide the next turn action.
 
@@ -89,7 +83,7 @@ A turn decision list with action, agent_name, instruction, rationale.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `DiscourseManager$clone()`
 
 The objects of this class are cloneable with this method.
 

@@ -1,11 +1,5 @@
 # TempestRetriever
 
-TempestRetriever
-
-TempestRetriever
-
-## Details
-
 Provides web and Wikipedia retrieval with caching, plus helper methods
 to register retrieval tools with ellmer chats. Optionally integrates
 with ragnar for semantic search capabilities.
@@ -32,7 +26,7 @@ with ragnar for semantic search capabilities.
 
 ### Public methods
 
-- [`TempestRetriever$new()`](#method-TempestRetriever-new)
+- [`TempestRetriever$new()`](#method-TempestRetriever-initialize)
 
 - [`TempestRetriever$search()`](#method-TempestRetriever-search)
 
@@ -52,7 +46,7 @@ with ragnar for semantic search capabilities.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `TempestRetriever$new()`
 
 Create a new TempestRetriever.
 
@@ -72,7 +66,7 @@ Create a new TempestRetriever.
 
 ------------------------------------------------------------------------
 
-### Method [`search()`](https://rdrr.io/r/base/search.html)
+### `TempestRetriever$search()`
 
 Search for sources using the configured provider.
 
@@ -100,7 +94,7 @@ A tibble of search results.
 
 ------------------------------------------------------------------------
 
-### Method `fetch()`
+### `TempestRetriever$fetch()`
 
 Fetch and cache content from a URL.
 
@@ -128,7 +122,7 @@ A source object.
 
 ------------------------------------------------------------------------
 
-### Method `ingest_to_ragnar()`
+### `TempestRetriever$ingest_to_ragnar()`
 
 Ingest content into the ragnar store.
 
@@ -176,7 +170,7 @@ Ingest content into the ragnar store.
 
 ------------------------------------------------------------------------
 
-### Method `build_ragnar_index()`
+### `TempestRetriever$build_ragnar_index()`
 
 Build the ragnar store index for faster retrieval.
 
@@ -186,7 +180,7 @@ Build the ragnar store index for faster retrieval.
 
 ------------------------------------------------------------------------
 
-### Method `retrieve()`
+### `TempestRetriever$retrieve()`
 
 Retrieve relevant chunks from the ragnar store.
 
@@ -214,7 +208,7 @@ A data frame of relevant chunks with metadata.
 
 ------------------------------------------------------------------------
 
-### Method `get_source_text()`
+### `TempestRetriever$get_source_text()`
 
 Get the text content for a source by id.
 
@@ -234,7 +228,7 @@ The content text or NA.
 
 ------------------------------------------------------------------------
 
-### Method `list_sources()`
+### `TempestRetriever$list_sources()`
 
 List all sources in the store.
 
@@ -248,7 +242,7 @@ A list of source objects.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `TempestRetriever$clone()`
 
 The objects of this class are cloneable with this method.
 

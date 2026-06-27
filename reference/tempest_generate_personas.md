@@ -11,7 +11,8 @@ tempest_generate_personas(
   topic,
   n = 3,
   config = tempest_config(),
-  verbose = FALSE
+  verbose = FALSE,
+  module = NULL
 )
 ```
 
@@ -33,6 +34,22 @@ tempest_generate_personas(
 
   Print progress.
 
+- module:
+
+  Optional dsprrr module used internally.
+
 ## Value
 
 A list of persona objects.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+personas <- tempest_generate_personas(
+  topic = "Climate change adaptation",
+  n = 3,
+  config = tempest_config()
+)
+} # }
+```

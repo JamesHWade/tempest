@@ -1,11 +1,5 @@
 # TempestConfig
 
-TempestConfig
-
-TempestConfig
-
-## Details
-
 Holds configuration for STORM / Co-STORM sessions: LLM models, prompts,
 retrieval settings, and cache paths.
 
@@ -47,6 +41,14 @@ retrieval settings, and cache paths.
 
   Maximum number of search results to return.
 
+- `max_search_queries_per_turn`:
+
+  Maximum decomposed queries per research turn.
+
+- `retrieve_top_k`:
+
+  Maximum facts/chunks retrieved for each section.
+
 - `max_sources`:
 
   Maximum number of sources to keep.
@@ -76,7 +78,7 @@ retrieval settings, and cache paths.
 
 ### Public methods
 
-- [`TempestConfig$new()`](#method-TempestConfig-new)
+- [`TempestConfig$new()`](#method-TempestConfig-initialize)
 
 - [`TempestConfig$make_chat()`](#method-TempestConfig-make_chat)
 
@@ -84,7 +86,7 @@ retrieval settings, and cache paths.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `TempestConfig$new()`
 
 Create a new TempestConfig.
 
@@ -97,9 +99,11 @@ Create a new TempestConfig.
       tools = NULL,
       embed_fn = NULL,
       ragnar_store = NULL,
-      search_provider = c("native", "wikipedia", "serper", "brave", "tavily"),
+      search_provider = "native",
       cache_dir = NULL,
       max_search_results = 8,
+      max_search_queries_per_turn = 3,
+      retrieve_top_k = 25,
       max_sources = 24,
       user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
       node_expansion_trigger_count = NULL,
@@ -147,9 +151,10 @@ Create a new TempestConfig.
 - `search_provider`:
 
   Search provider: "native" (use provider's built-in web search when
-  available), "wikipedia", "serper", "brave", or "tavily". Default is
-  "native" which uses OpenAI, Anthropic, or Google's native web search
-  capabilities when available, falling back to "wikipedia".
+  available), "wikipedia", "you", "bing", "serper", "brave",
+  "duckduckgo", "tavily", "searxng", "google", or "azure_ai_search".
+  Default is "native" which uses OpenAI, Anthropic, or Google's native
+  web search capabilities when available, falling back to "wikipedia".
 
 - `cache_dir`:
 
@@ -158,6 +163,14 @@ Create a new TempestConfig.
 - `max_search_results`:
 
   Maximum search results to return.
+
+- `max_search_queries_per_turn`:
+
+  Maximum decomposed queries per research turn.
+
+- `retrieve_top_k`:
+
+  Maximum facts/chunks retrieved for each section.
 
 - `max_sources`:
 
@@ -186,7 +199,7 @@ Create a new TempestConfig.
 
 ------------------------------------------------------------------------
 
-### Method `make_chat()`
+### `TempestConfig$make_chat()`
 
 Create a chat object for a given role.
 
@@ -214,7 +227,7 @@ An ellmer-compatible Chat object.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `TempestConfig$clone()`
 
 The objects of this class are cloneable with this method.
 

@@ -13,7 +13,7 @@ tempest_format_persona_details(persona)
 - persona:
 
   A persona object from
-  [`tempest_generate_personas()`](tempest_generate_personas.md).
+  [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md).
 
 ## Value
 

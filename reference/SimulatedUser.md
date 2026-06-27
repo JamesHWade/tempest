@@ -1,11 +1,5 @@
 # SimulatedUser
 
-SimulatedUser
-
-SimulatedUser
-
-## Details
-
 A simulated curious researcher for automated Co-STORM evaluation.
 Generates natural research questions and tracks turn counts.
 
@@ -31,7 +25,7 @@ Generates natural research questions and tracks turn counts.
 
 ### Public methods
 
-- [`SimulatedUser$new()`](#method-SimulatedUser-new)
+- [`SimulatedUser$new()`](#method-SimulatedUser-initialize)
 
 - [`SimulatedUser$generate_question()`](#method-SimulatedUser-generate_question)
 
@@ -41,7 +35,7 @@ Generates natural research questions and tracks turn counts.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `SimulatedUser$new()`
 
 Create a new SimulatedUser.
 
@@ -65,7 +59,7 @@ Create a new SimulatedUser.
 
 ------------------------------------------------------------------------
 
-### Method `generate_question()`
+### `SimulatedUser$generate_question()`
 
 Generate the next question based on session state.
 
@@ -92,7 +86,7 @@ A question string, or NULL if done.
 
 ------------------------------------------------------------------------
 
-### Method `run_session()`
+### `SimulatedUser$run_session()`
 
 Run a full automated session.
 
@@ -120,7 +114,7 @@ The session object (invisibly).
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `SimulatedUser$clone()`
 
 The objects of this class are cloneable with this method.
 

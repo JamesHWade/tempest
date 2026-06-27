@@ -17,3 +17,10 @@ tempest_config(...)
 ## Value
 
 A `TempestConfig` R6 object.
+
+## Examples
+
+``` r
+cfg <- tempest_config()
+cfg <- tempest_config(search_provider = "wikipedia")
+```

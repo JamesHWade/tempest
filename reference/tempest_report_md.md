@@ -26,3 +26,16 @@ tempest_report_md(title, body, store)
 ## Value
 
 Markdown with footnotes.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+result <- tempest_run("History of jazz", config = tempest_config())
+md <- tempest_report_md(
+  title = "History of Jazz",
+  body = result$draft_md,
+  store = result$store
+)
+} # }
+```

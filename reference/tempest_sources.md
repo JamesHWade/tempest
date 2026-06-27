@@ -18,3 +18,12 @@ tempest_sources(store)
 
 A tibble of sources with columns: id, url, title, snippet, content_text,
 fetched_at.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+result <- tempest_run("History of jazz", config = tempest_config())
+tempest_sources(result$store)
+} # }
+```

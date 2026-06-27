@@ -1,11 +1,5 @@
 # Expert Session Manager
 
-Expert Session Manager
-
-Expert Session Manager
-
-## Details
-
 Manages expert chat sessions with session IDs for conversation
 continuity. Each expert persona gets their own chat session that can be
 resumed using the session ID returned from previous interactions.
@@ -36,7 +30,7 @@ resumed using the session ID returned from previous interactions.
 
 ### Public methods
 
-- [`ExpertSessionManager$new()`](#method-ExpertSessionManager-new)
+- [`ExpertSessionManager$new()`](#method-ExpertSessionManager-initialize)
 
 - [`ExpertSessionManager$extract_facts()`](#method-ExpertSessionManager-extract_facts)
 
@@ -50,7 +44,7 @@ resumed using the session ID returned from previous interactions.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `ExpertSessionManager$new()`
 
 Create a new ExpertSessionManager.
 
@@ -78,7 +72,7 @@ Create a new ExpertSessionManager.
 
 ------------------------------------------------------------------------
 
-### Method `extract_facts()`
+### `ExpertSessionManager$extract_facts()`
 
 Extract facts from an expert response.
 
@@ -98,7 +92,7 @@ Invisibly returns NULL.
 
 ------------------------------------------------------------------------
 
-### Method `generate_session_id()`
+### `ExpertSessionManager$generate_session_id()`
 
 Generate a human-readable session ID from a persona name.
 
@@ -118,7 +112,7 @@ Character string session ID like "dr-sarah-chen-abc123".
 
 ------------------------------------------------------------------------
 
-### Method `get_or_create()`
+### `ExpertSessionManager$get_or_create()`
 
 Get an existing session or create a new one.
 
@@ -131,7 +125,7 @@ Get an existing session or create a new one.
 - `persona`:
 
   A persona object from
-  [`tempest_generate_personas()`](tempest_generate_personas.md).
+  [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md).
 
 - `session_id`:
 
@@ -143,7 +137,7 @@ List with `chat`, `session_id`, and `is_new` fields.
 
 ------------------------------------------------------------------------
 
-### Method `list_sessions()`
+### `ExpertSessionManager$list_sessions()`
 
 List all active session IDs.
 
@@ -157,7 +151,7 @@ Character vector of session IDs.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `ExpertSessionManager$clone()`
 
 The objects of this class are cloneable with this method.
 

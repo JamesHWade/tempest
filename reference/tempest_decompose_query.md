@@ -5,7 +5,7 @@ Decompose a research question into targeted search queries
 ## Usage
 
 ``` r
-tempest_decompose_query(chat, question, topic)
+tempest_decompose_query(chat, question, topic, module = NULL, max_queries = 3)
 ```
 
 ## Arguments
@@ -21,6 +21,14 @@ tempest_decompose_query(chat, question, topic)
 - topic:
 
   The overall research topic.
+
+- module:
+
+  Optional dsprrr module for query decomposition.
+
+- max_queries:
+
+  Maximum number of queries to return.
 
 ## Value
 

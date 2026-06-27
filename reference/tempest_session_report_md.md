@@ -17,3 +17,13 @@ tempest_session_report_md(session)
 ## Value
 
 Markdown with footnotes.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+session <- tempest_session("History of jazz", config = tempest_config())
+session$step("Tell me about bebop.")
+md <- tempest_session_report_md(session)
+} # }
+```

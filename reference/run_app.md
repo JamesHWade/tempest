@@ -23,3 +23,11 @@ run_app(...)
 
 A Shiny app object (invisibly, from
 [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html)).
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+run_app()
+} # }
+```

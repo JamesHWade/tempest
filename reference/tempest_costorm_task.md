@@ -34,3 +34,12 @@ tempest_costorm_task(
 ## Value
 
 A [`vitals::Task`](https://vitals.tidyverse.org/reference/Task.html).
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+task <- tempest_costorm_task(config = tempest_config(), max_turns = 5)
+task$eval()
+} # }
+```
