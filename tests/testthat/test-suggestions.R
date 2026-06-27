@@ -41,3 +41,19 @@ test_that("tempest_suggest_questions includes conversation context in the prompt
   prompts <- vapply(chat$.calls(), function(call) call$prompt, character(1))
   expect_true(any(grepl("Conversation so far:", prompts, fixed = TRUE)))
 })
+
+test_that("TempestSession$suggest_questions delegates to the generator", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      fake_chat(structured = list(list(questions = c("Q1", "Q2"))))
+    }
+  )
+  ses <- tempest_session(
+    "Test topic",
+    config = cfg,
+    personas = list(list(id = 1, name = "Dr. A", title = "Sci", perspective = "X"))
+  )
+  out <- ses$suggest_questions(n = 2)
+  expect_equal(out, c("Q1", "Q2"))
+})

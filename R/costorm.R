@@ -352,6 +352,24 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
+    #' Suggest follow-up questions for the user based on the conversation so far.
+    #' @param n Maximum number of questions to return.
+    #' @return A character vector of questions (possibly empty).
+    suggest_questions = function(n = 4) {
+      context <- if (length(self$transcript) > 0) {
+        self$transcript_markdown(max_turns = 12)
+      } else {
+        NULL
+      }
+      tempest_suggest_questions(
+        topic = self$topic,
+        context = context,
+        n = n,
+        config = self$config
+      )
+    },
+
+    #' @description
     #' Find expert index by persona name.
     #' @param name The agent name to look up.
     #' @return Index of the expert, or NULL if not found.
