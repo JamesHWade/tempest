@@ -25,3 +25,24 @@ test_that("tempest_source_record carries fields and meta", {
   expect_true(startsWith(s@id, "S"))
   expect_type(s@meta, "list")
 })
+
+test_that("claim round-trips through list", {
+  cl <- tempest_claim(claim_text = "x", source_ids = c("S1", "S2"), claim_type = "method")
+  lst <- tempest_claim_to_list(cl)
+  expect_equal(lst$claim_text, "x")
+  expect_equal(lst$claim_type, "method")
+  cl2 <- tempest_claim_from_list(lst)
+  expect_equal(cl2@claim_id, cl@claim_id)
+  expect_equal(cl2@source_ids, c("S1", "S2"))
+})
+
+test_that("claims convert to a tibble", {
+  cls <- list(
+    tempest_claim(claim_text = "a", source_ids = "S1"),
+    tempest_claim(claim_text = "b", source_ids = "S2", verification_status = "supported")
+  )
+  tb <- tempest_claims_tibble(cls)
+  expect_s3_class(tb, "tbl_df")
+  expect_equal(nrow(tb), 2)
+  expect_true(all(c("claim_id", "claim_text", "verification_status", "support_score") %in% names(tb)))
+})

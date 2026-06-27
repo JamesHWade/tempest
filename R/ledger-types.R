@@ -213,6 +213,45 @@ tempest_dispute <- S7::new_class(
   }
 )
 
+# --- claim converters ---------------------------------------------------------
+
+#' @keywords internal
+tempest_claim_to_list <- function(claim) {
+  stopifnot(S7::S7_inherits(claim, tempest_claim))
+  props <- S7::prop_names(claim)
+  stats::setNames(lapply(props, function(p) S7::prop(claim, p)), props)
+}
+
+#' @keywords internal
+tempest_claim_from_list <- function(x) {
+  do.call(tempest_claim, c(
+    list(claim_text = x$claim_text %||% ""),
+    x[setdiff(names(x), "claim_text")]
+  ))
+}
+
+#' @keywords internal
+tempest_claims_tibble <- function(claims) {
+  if (length(claims) == 0) {
+    return(tibble::tibble(
+      claim_id = character(), claim_text = character(), claim_type = character(),
+      source_ids = list(), confidence = character(),
+      verification_status = character(), support_score = numeric(),
+      created_at = character()
+    ))
+  }
+  tibble::tibble(
+    claim_id = purrr::map_chr(claims, ~ .x@claim_id),
+    claim_text = purrr::map_chr(claims, ~ .x@claim_text),
+    claim_type = purrr::map_chr(claims, ~ .x@claim_type),
+    source_ids = purrr::map(claims, ~ .x@source_ids),
+    confidence = purrr::map_chr(claims, ~ .x@confidence),
+    verification_status = purrr::map_chr(claims, ~ .x@verification_status),
+    support_score = purrr::map_dbl(claims, ~ .x@support_score),
+    created_at = purrr::map_chr(claims, ~ .x@created_at)
+  )
+}
+
 # --- source record ------------------------------------------------------------
 
 #' Source record (S7) — typed replacement for the plain source list
