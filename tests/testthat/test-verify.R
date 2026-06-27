@@ -19,6 +19,21 @@ test_that("verify_claims labels each claim and returns an audit tibble", {
   expect_true("unsupported" %in% statuses)
 })
 
+test_that("verify_claims enforces min_support_score", {
+  store <- fake_store_with_sources(1)
+  s1 <- store$list_sources()[[1]]$id
+  store$add_claim(tempest_claim(claim_text = "weakly scored claim", source_ids = s1))
+
+  judge <- fake_chat(structured = list(
+    list(status = "supported", score = 0.60, rationale = "weak match")
+  ))
+
+  audit <- tempest_verify_claims(store, verifier = judge, min_support_score = 0.7)
+  expect_equal(audit$verification_status, "unsupported")
+  expect_equal(store$list_claims()[[1]]@verification_status, "unsupported")
+  expect_equal(store$list_claims()[[1]]@support_score, 0.60)
+})
+
 test_that("verify_claims skips when policy is none/source_attributed", {
   store <- fake_store_with_sources(1)
   store$add_claim(tempest_claim(claim_text = "c", source_ids = store$list_sources()[[1]]$id))

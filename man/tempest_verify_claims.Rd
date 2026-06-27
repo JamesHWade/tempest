@@ -9,7 +9,8 @@ tempest_verify_claims(
   verifier,
   policy = "claim_verified",
   verifier_model = NA_character_,
-  modules = NULL
+  modules = NULL,
+  min_support_score = 0.7
 )
 }
 \arguments{
@@ -25,6 +26,9 @@ tempest_verify_claims(
 \item{modules}{Optional named list of dsprrr modules; when it contains
 \code{verify_claim_support}, that module performs the judgement (with an ellmer
 fallback).}
+
+\item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
+considered supported.}
 }
 \value{
 A \code{citation_audit} tibble (one row per verified claim).

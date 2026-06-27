@@ -50,10 +50,13 @@ tempest_verify_one_claim <- function(claim, store, verifier, module = NULL) {
 #' @param modules Optional named list of dsprrr modules; when it contains
 #'   `verify_claim_support`, that module performs the judgement (with an ellmer
 #'   fallback).
+#' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
+#'   considered supported.
 #' @return A `citation_audit` tibble (one row per verified claim).
 #' @export
 tempest_verify_claims <- function(store, verifier, policy = "claim_verified",
-                                  verifier_model = NA_character_, modules = NULL) {
+                                  verifier_model = NA_character_, modules = NULL,
+                                  min_support_score = 0.7) {
   stopifnot(inherits(store, "SourceStore"))
   if (!policy %in% c("claim_verified", "strict")) {
     return(tibble::tibble(
@@ -62,6 +65,7 @@ tempest_verify_claims <- function(store, verifier, policy = "claim_verified",
       rationale = character()
     ))
   }
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
   claims <- store$list_claims()
   rows <- purrr::map(claims, function(claim) {
     v <- tryCatch(
@@ -84,6 +88,11 @@ tempest_verify_claims <- function(store, verifier, policy = "claim_verified",
     } else {
       score <- max(0, min(1, score))
     }
+    status <- tempest_apply_min_support_score(
+      status,
+      score,
+      min_support_score = min_support_score
+    )
     store$verify_claim(claim@claim_id, status = status, score = score,
                        verifier = verifier_model)
     tibble::tibble(

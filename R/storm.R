@@ -30,7 +30,8 @@ tempest_run_verification <- function(store, config, verifier = NULL, modules = N
       verifier = verifier,
       policy = config@citation_policy,
       verifier_model = config@models[["judge"]] %||% NA_character_,
-      modules = modules
+      modules = modules,
+      min_support_score = config@min_support_score
     ),
     error = function(e) {
       tempest_warn("Citation verification failed; report left unverified: {conditionMessage(e)}")
@@ -695,7 +696,8 @@ tempest_run <- function(
       body = polished,
       store = store,
       citation_policy = config@citation_policy,
-      on_unsupported_claim = config@on_unsupported_claim
+      on_unsupported_claim = config@on_unsupported_claim,
+      min_support_score = config@min_support_score
     )
     store$set_artifact("report_md", report_md)
     completed_stages <- tempest_mark_stage_complete(completed_stages, "polish")

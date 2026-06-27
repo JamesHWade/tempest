@@ -45,11 +45,106 @@ tempest_extract_citation_ids <- function(text) {
 }
 
 #' @keywords internal
-tempest_source_status <- function(store, source_id) {
+tempest_normalize_min_support_score <- function(min_support_score) {
+  score <- suppressWarnings(as.numeric(min_support_score %||% 0.7))
+  if (length(score) != 1 || is.na(score) || score < 0 || score > 1) {
+    tempest_abort("min_support_score must be in [0, 1].")
+  }
+  score
+}
+
+#' @keywords internal
+tempest_apply_min_support_score <- function(status, score, min_support_score = 0.7) {
+  score <- suppressWarnings(as.numeric(score))
+  if (length(score) != 1 || is.na(score)) {
+    return(status)
+  }
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
+  if (identical(status, "supported") && score < min_support_score) {
+    return("unsupported")
+  }
+  status
+}
+
+#' @keywords internal
+tempest_citation_matches <- function(text) {
+  rx <- gregexpr("\\[(S[0-9a-f]{12})\\]", text, perl = TRUE)
+  starts <- as.integer(rx[[1]])
+  if (length(starts) == 1 && starts[[1]] == -1L) {
+    return(data.frame(id = character(), start = integer(), end = integer()))
+  }
+  tokens <- regmatches(text, rx)[[1]]
+  lens <- attr(rx[[1]], "match.length")
+  data.frame(
+    id = sub("^\\[(S[0-9a-f]{12})\\]$", "\\1", tokens),
+    start = starts,
+    end = starts + lens - 1L,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' @keywords internal
+tempest_citation_context <- function(text, start, end) {
+  text_len <- nchar(text)
+  before <- if (start > 1L) substr(text, 1L, start - 1L) else ""
+  prev <- gregexpr("[.!?\\n]", before, perl = TRUE)[[1]]
+  left <- if (length(prev) == 1 && prev[[1]] == -1L) 1L else max(prev) + 1L
+
+  after <- if (end < text_len) substr(text, end + 1L, text_len) else ""
+  next_boundary <- regexpr("[.!?\\n]", after, perl = TRUE)[[1]]
+  right <- if (next_boundary == -1L) text_len else end + next_boundary
+
+  trimws(substr(text, left, right))
+}
+
+#' @keywords internal
+tempest_normalize_claim_match_text <- function(text) {
+  text <- gsub("\\[(\\^?S[0-9a-f]{12})\\]", " ", text, perl = TRUE)
+  text <- tolower(text)
+  text <- gsub("[^[:alnum:]]+", " ", text, perl = TRUE)
+  trimws(gsub("\\s+", " ", text))
+}
+
+#' @keywords internal
+tempest_claims_for_citation_context <- function(claims, context = NULL) {
+  if (length(claims) == 0 || is.null(context) || !nzchar(context)) {
+    return(claims)
+  }
+  context_text <- tempest_normalize_claim_match_text(context)
+  if (!nzchar(context_text)) {
+    return(claims)
+  }
+  claim_texts <- vapply(
+    claims,
+    function(claim) tempest_normalize_claim_match_text(claim@claim_text),
+    character(1)
+  )
+  matches <- vapply(claim_texts, function(claim_text) {
+    nzchar(claim_text) && grepl(claim_text, context_text, fixed = TRUE)
+  }, logical(1))
+  matched <- claims[matches]
+  if (length(matched) > 0) matched else claims
+}
+
+#' @keywords internal
+tempest_source_status <- function(store, source_id, min_support_score = 0.7,
+                                  context = NULL) {
   claims <- store$claims_for_source(source_id)
   if (length(claims) == 0) return(NA_character_)
-  statuses <- vapply(claims, function(c) c@verification_status, character(1))
-  # Worst-case wins so a weak citation is not masked by a strong one.
+  claims <- tempest_claims_for_citation_context(claims, context)
+  statuses <- vapply(
+    claims,
+    function(c) {
+      tempest_apply_min_support_score(
+        c@verification_status,
+        c@support_score,
+        min_support_score = min_support_score
+      )
+    },
+    character(1)
+  )
+  # Worst-case wins within the matched citation context so weak evidence is not
+  # masked by strong evidence for the same sentence.
   worst_first <- c("contradicted", "unsupported", "unverifiable",
                    "partially_supported", "supported", "unverified")
   statuses[order(match(statuses, worst_first))][1]
@@ -70,31 +165,56 @@ tempest_status_badge <- function(status) {
 
 #' @keywords internal
 tempest_add_footnotes <- function(text, store, citation_policy = "source_attributed",
-                                  on_unsupported_claim = "flag") {
+                                  on_unsupported_claim = "flag",
+                                  min_support_score = 0.7) {
   stopifnot(inherits(store, "SourceStore"))
-  ids <- tempest_extract_citation_ids(text)
-  if (length(ids) == 0) {
+  if (identical(citation_policy, "none")) {
     return(list(text = text, footnotes = ""))
   }
+  matches <- tempest_citation_matches(text)
+  if (nrow(matches) == 0) {
+    return(list(text = text, footnotes = ""))
+  }
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
   verified <- citation_policy %in% c("claim_verified", "strict")
-  text2 <- gsub("\\[(S[0-9a-f]{12})\\]", "[^\\1]", text, perl = TRUE)
 
-  # Strict mode: act on inline markers for unsupported/contradicted citations.
-  if (identical(citation_policy, "strict")) {
-    for (id in ids) {
-      status <- tempest_source_status(store, id)
+  pieces <- character()
+  retained_ids <- character()
+  cursor <- 1L
+  for (i in seq_len(nrow(matches))) {
+    id <- matches$id[[i]]
+    start <- matches$start[[i]]
+    end <- matches$end[[i]]
+    marker <- paste0("[^", id, "]")
+    replacement <- marker
+
+    if (identical(citation_policy, "strict")) {
+      context <- tempest_citation_context(text, start, end)
+      status <- tempest_source_status(
+        store,
+        id,
+        min_support_score = min_support_score,
+        context = context
+      )
       if (isTRUE(status %in% c("unsupported", "contradicted"))) {
-        pat <- paste0("\\[\\^", id, "\\]")
         if (identical(on_unsupported_claim, "drop")) {
-          text2 <- gsub(pat, "", text2, perl = TRUE)
+          replacement <- ""
         } else if (!identical(on_unsupported_claim, "keep_with_warning")) {
           # flag / revise -> annotate inline (revise has no LLM rewrite in Phase 1)
-          text2 <- gsub(pat, paste0("[^", id, "] [unsupported citation]"),
-                        text2, perl = TRUE)
+          replacement <- paste0(marker, " [unsupported citation]")
         }
       }
     }
+
+    pieces <- c(pieces, substr(text, cursor, start - 1L), replacement)
+    cursor <- end + 1L
+    if (nzchar(replacement)) {
+      retained_ids <- c(retained_ids, id)
+    }
   }
+  pieces <- c(pieces, substr(text, cursor, nchar(text)))
+  text2 <- paste0(pieces, collapse = "")
+  ids <- unique(retained_ids)
 
   notes <- purrr::map_chr(ids, function(id) {
     src <- store$get_source(id)
@@ -104,7 +224,13 @@ tempest_add_footnotes <- function(text, store, citation_policy = "source_attribu
     title <- src$title %||% ""
     url <- src$url %||% ""
     fetched <- src$fetched_at %||% ""
-    badge <- if (verified) tempest_status_badge(tempest_source_status(store, id)) else ""
+    badge <- if (verified) {
+      tempest_status_badge(
+        tempest_source_status(store, id, min_support_score = min_support_score)
+      )
+    } else {
+      ""
+    }
     glue::glue("[^{id}]: {title}. {url} (retrieved {fetched}).{badge}")
   })
   list(text = text2, footnotes = paste(notes, collapse = "\n"))
@@ -116,11 +242,14 @@ tempest_add_footnotes <- function(text, store, citation_policy = "source_attribu
 #' @param body Markdown body text that may include inline citations like `[Sxxxxxxxxxxxx]`.
 #' @param store A `SourceStore` containing sources.
 #' @param citation_policy One of "none", "source_attributed" (default),
-#'   "claim_verified", "strict". Under verified policies, footnotes show a
+#'   "claim_verified", "strict". "none" leaves inline citation ids unchanged
+#'   and omits references. Under verified policies, footnotes show a
 #'   verification badge; under "strict", unsupported/contradicted inline
 #'   citations are handled per `on_unsupported_claim`.
 #' @param on_unsupported_claim One of "flag" (default), "drop",
 #'   "keep_with_warning", "revise". Only used under "strict".
+#' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
+#'   considered supported.
 #' @return Markdown with footnotes.
 #' @examples
 #' \dontrun{
@@ -134,19 +263,23 @@ tempest_add_footnotes <- function(text, store, citation_policy = "source_attribu
 #' @export
 tempest_report_md <- function(title, body, store,
                               citation_policy = "source_attributed",
-                              on_unsupported_claim = "flag") {
+                              on_unsupported_claim = "flag",
+                              min_support_score = 0.7) {
   if (inherits(store, "TempestRetriever")) {
     store <- store$store
   }
   stopifnot(inherits(store, "SourceStore"))
 
   res <- tempest_add_footnotes(body, store, citation_policy = citation_policy,
-                               on_unsupported_claim = on_unsupported_claim)
-  md <- paste0(
-    "# ", title, "\n\n", res$text, "\n\n",
-    "## References\n\n", res$footnotes, "\n"
-  )
-  md
+                               on_unsupported_claim = on_unsupported_claim,
+                               min_support_score = min_support_score)
+  if (nzchar(res$footnotes)) {
+    return(paste0(
+      "# ", title, "\n\n", res$text, "\n\n",
+      "## References\n\n", res$footnotes, "\n"
+    ))
+  }
+  paste0("# ", title, "\n\n", res$text, "\n")
 }
 
 #' Assemble a Markdown report from a Co-STORM session
