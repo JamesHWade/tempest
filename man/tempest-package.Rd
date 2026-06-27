@@ -8,6 +8,26 @@
 \description{
 Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using 'ellmer' for LLM orchestration and 'shinychat' for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on 'vitals'.
 }
+\references{
+tempest ports Stanford's STORM and Co-STORM research workflows to R, with
+optimizable modules built on DSPy (via dsprrr).
+\itemize{
+\item STORM: Shao et al. (2024), \emph{Assisting in Writing Wikipedia-like Articles
+From Scratch with Large Language Models}, NAACL 2024.
+\url{https://arxiv.org/abs/2402.14207}
+\item Co-STORM: Jiang et al. (2024), \emph{Into the Unknown Unknowns: Engaged Human
+Learning through Participation in Language Model Agent Conversations},
+EMNLP 2024. \url{https://arxiv.org/abs/2408.15232}
+\item DSPy: Khattab et al. (2024), \emph{DSPy: Compiling Declarative Language Model
+Calls into Self-Improving Pipelines}, ICLR 2024.
+\url{https://arxiv.org/abs/2310.03714}
+}
+
+Upstream implementations that inspired this package:
+\href{https://github.com/stanford-oval/storm}{stanford-oval/storm},
+\href{https://github.com/stanfordnlp/dspy}{stanfordnlp/dspy}, and
+\href{https://github.com/JamesHWade/dsprrr}{dsprrr}.
+}
 \seealso{
 Useful links:
 \itemize{
