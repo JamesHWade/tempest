@@ -235,12 +235,12 @@ tempest_save_run_artifacts <- function(
     parallel_writing = isTRUE(parallel_writing),
     remove_duplicate = isTRUE(remove_duplicate),
     updated_at = tempest_now_utc(),
-    models = config$models,
-    search_provider = config$search_provider,
-    max_search_results = config$max_search_results,
-    max_search_queries_per_turn = config$max_search_queries_per_turn,
-    retrieve_top_k = config$retrieve_top_k,
-    max_sources = config$max_sources
+    models = config@models,
+    search_provider = config@search_provider,
+    max_search_results = config@max_search_results,
+    max_search_queries_per_turn = config@max_search_queries_per_turn,
+    retrieve_top_k = config@retrieve_top_k,
+    max_sources = config@max_sources
   )
 
   tempest_write_json(paths$sources, store$list_sources())

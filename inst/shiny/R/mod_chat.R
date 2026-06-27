@@ -71,7 +71,8 @@ mod_chat_server <- function(id, config, store) {
     report_ready <- shiny::reactiveVal(0L)
 
     # --- shinychat adapter ---------------------------------------------------
-    initial_chat <- shiny::isolate(config())$make_chat(
+    initial_chat <- tempest_make_chat(
+      shiny::isolate(config()),
       "coordinator",
       system_prompt = paste(
         "You are the tempest chat shell.",

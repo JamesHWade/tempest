@@ -2,7 +2,6 @@
 
 export(SimulatedUser)
 export(SourceStore)
-export(TempestConfig)
 export(TempestRetriever)
 export(TempestSession)
 export(run_app)

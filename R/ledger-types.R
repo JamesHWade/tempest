@@ -31,6 +31,18 @@ prop_chr <- function(default = NA_character_) {
   S7::new_property(S7::class_character, default = default)
 }
 
+#' @keywords internal
+prop_score_default <- function(default) {
+  S7::new_property(
+    S7::class_numeric,
+    default = default,
+    validator = function(value) {
+      if (length(value) != 1) return("must be length 1")
+      if (!is.na(value) && (value < 0 || value > 1)) return("must be in [0, 1]")
+    }
+  )
+}
+
 prop_chr_vec <- function() {
   S7::new_property(S7::class_character, default = character())
 }

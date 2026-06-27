@@ -103,17 +103,24 @@ tempest_run <- function(
     }
   }
 
-  coordinator <- config$make_chat(
+  coordinator <- tempest_make_chat(
+    config,
     "coordinator",
     echo = if (verbose) "output" else "none"
   )
-  writer <- config$make_chat("writer", echo = if (verbose) "output" else "none")
-  polisher <- config$make_chat(
+  writer <- tempest_make_chat(
+    config,
+    "writer",
+    echo = if (verbose) "output" else "none"
+  )
+  polisher <- tempest_make_chat(
+    config,
     "writer",
     system_prompt = tempest_prompt("polisher_system"),
     echo = if (verbose) "output" else "none"
   )
-  extractor <- config$make_chat(
+  extractor <- tempest_make_chat(
+    config,
     "judge",
     system_prompt = tempest_prompt("fact_extractor_system"),
     echo = "none"
@@ -123,8 +130,8 @@ tempest_run <- function(
   tempest_register_default_tools(
     writer,
     retriever,
-    model = config$models[["writer"]],
-    search_provider = config$search_provider
+    model = config@models[["writer"]],
+    search_provider = config@search_provider
   )
 
   title <- store$get_artifact("title") %||% topic
@@ -143,7 +150,7 @@ tempest_run <- function(
     if (verbose) {
       tempest_inform("Discovering perspectives for: {.val {topic}}")
     }
-    seed <- retriever$search(topic, k = min(5, config$max_search_results))
+    seed <- retriever$search(topic, k = min(5, config@max_search_results))
     seed_txt <- paste0(
       "Seed sources:\n",
       paste0(
@@ -276,7 +283,8 @@ tempest_run <- function(
       for (i in seq_along(perspectives)) {
         persona <- if (i <= length(personas)) personas[[i]] else NULL
         sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
-        expert_chats[[i]] <- config$make_chat(
+        expert_chats[[i]] <- tempest_make_chat(
+          config,
           "expert",
           system_prompt = sp,
           echo = if (verbose) "output" else "none"
@@ -284,8 +292,8 @@ tempest_run <- function(
         tempest_register_default_tools(
           expert_chats[[i]],
           retriever,
-          model = config$models[["expert"]],
-          search_provider = config$search_provider
+          model = config@models[["expert"]],
+          search_provider = config@search_provider
         )
       }
 
@@ -324,7 +332,7 @@ tempest_run <- function(
                 q,
                 topic,
                 module = dsprrr_modules$query_decomposition,
-                max_queries = config$max_search_queries_per_turn
+                max_queries = config@max_search_queries_per_turn
               ),
               error = function(e) {
                 tempest_warn(
@@ -417,7 +425,7 @@ tempest_run <- function(
                 q,
                 topic,
                 module = dsprrr_modules$query_decomposition,
-                max_queries = config$max_search_queries_per_turn
+                max_queries = config@max_search_queries_per_turn
               ),
               error = function(e) {
                 tempest_warn(
@@ -575,7 +583,7 @@ tempest_run <- function(
       outline,
       retriever,
       store,
-      retrieve_top_k = config$retrieve_top_k
+      retrieve_top_k = config@retrieve_top_k
     )
     section_results <- tempest_write_section_jobs(
       section_jobs,

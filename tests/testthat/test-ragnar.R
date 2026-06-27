@@ -16,8 +16,8 @@ test_that("TempestConfig creates ragnar_store from embed_fn", {
   mock_embed <- function(x) matrix(stats::rnorm(length(x) * 3), ncol = 3)
   cfg <- tempest_config(embed_fn = mock_embed)
 
-  expect_true(!is.null(cfg$ragnar_store))
-  expect_true(!is.null(cfg$embed_fn))
+  expect_true(!is.null(cfg@ragnar_store))
+  expect_true(!is.null(cfg@embed_fn))
 })
 
 test_that("TempestConfig accepts pre-built ragnar_store", {
@@ -27,7 +27,7 @@ test_that("TempestConfig accepts pre-built ragnar_store", {
   pre_store <- tempest_create_ragnar_store(mock_embed, cache_dir = NULL)
   cfg <- tempest_config(ragnar_store = pre_store)
 
-  expect_identical(cfg$ragnar_store, pre_store)
+  expect_identical(cfg@ragnar_store, pre_store)
 })
 
 test_that("TempestRetriever inherits ragnar_store from config", {
@@ -38,7 +38,7 @@ test_that("TempestRetriever inherits ragnar_store from config", {
   retriever <- tempest_retriever(config = cfg)
 
   expect_true(!is.null(retriever$ragnar_store))
-  expect_identical(retriever$ragnar_store, cfg$ragnar_store)
+  expect_identical(retriever$ragnar_store, cfg@ragnar_store)
 })
 
 test_that("ingest_to_ragnar chunks text and adds metadata", {

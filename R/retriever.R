@@ -403,8 +403,8 @@ TempestRetriever <- R6::R6Class(
     ) {
       self$config <- config
       self$store <- store
-      self$ragnar_store <- config$ragnar_store
-      self$cache_dir <- config$cache_dir
+      self$ragnar_store <- config@ragnar_store
+      self$cache_dir <- config@cache_dir
       invisible(self)
     },
 
@@ -415,8 +415,8 @@ TempestRetriever <- R6::R6Class(
     #' @param provider Search provider override.
     #' @return A tibble of search results.
     search = function(query, k = NULL, provider = NULL) {
-      k <- k %||% self$config$max_search_results
-      provider <- provider %||% self$config$search_provider
+      k <- k %||% self$config@max_search_results
+      provider <- provider %||% self$config@search_provider
       provider <- tempest_normalize_search_provider(provider)
 
       key <- tempest_cache_key("search", provider, query, k)
@@ -483,7 +483,7 @@ TempestRetriever <- R6::R6Class(
         return(cached)
       }
 
-      res <- tempest_fetch_url_text(url, user_agent = self$config$user_agent)
+      res <- tempest_fetch_url_text(url, user_agent = self$config@user_agent)
       fetched_at <- tempest_now_utc()
 
       if (!is.null(res$error)) {

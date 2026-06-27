@@ -89,7 +89,13 @@ tempest_section_facts_text <- function(
 
   paste(
     purrr::map_chr(relevant, function(f) {
-      paste0("- ", f@claim_text, " [", paste(f@source_ids, collapse = ", "), "]")
+      paste0(
+        "- ",
+        f@claim_text,
+        " [",
+        paste(f@source_ids, collapse = ", "),
+        "]"
+      )
     }),
     collapse = "\n"
   )
@@ -240,7 +246,7 @@ tempest_write_sections_parallel <- function(
       seq_along(jobs),
       function(i, jobs, config, dsprrr_modules, run_section_job, make_modules) {
         job <- jobs[[i]]
-        writer <- config$make_chat("writer", echo = "none")
+        writer <- tempest_make_chat(config, "writer", echo = "none")
         modules <- if (is.null(dsprrr_modules)) {
           make_modules(config)
         } else {

@@ -30,7 +30,8 @@ tempest_generate_personas <- function(
 ) {
   tempest_require("ellmer", "Persona generation requires ellmer.")
 
-  chat <- config$make_chat(
+  chat <- tempest_make_chat(
+    config,
     "coordinator",
     system_prompt = tempest_prompt("persona_generator_system"),
     echo = "none"

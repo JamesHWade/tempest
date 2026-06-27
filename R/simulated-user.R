@@ -29,7 +29,8 @@ SimulatedUser <- R6::R6Class(
       self$topic <- tempest_trim(topic)
       self$max_turns <- as.integer(max_turns)
       self$turn_count <- 0L
-      self$chat <- config$make_chat(
+      self$chat <- tempest_make_chat(
+        config,
         "coordinator",
         system_prompt = tempest_prompt("simulated_user_system"),
         echo = "none"

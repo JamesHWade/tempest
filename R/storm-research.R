@@ -244,15 +244,21 @@ tempest_research_one_perspective <- function(
   local_retriever <- tempest_retriever(config = config, store = local_store)
 
   sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
-  expert <- config$make_chat("expert", system_prompt = sp, echo = "none")
+  expert <- tempest_make_chat(
+    config,
+    "expert",
+    system_prompt = sp,
+    echo = "none"
+  )
   tempest_register_default_tools(
     expert,
     local_retriever,
-    model = config$models[["expert"]],
-    search_provider = config$search_provider
+    model = config@models[["expert"]],
+    search_provider = config@search_provider
   )
-  writer <- config$make_chat("writer", echo = "none")
-  extractor <- config$make_chat(
+  writer <- tempest_make_chat(config, "writer", echo = "none")
+  extractor <- tempest_make_chat(
+    config,
     "judge",
     system_prompt = tempest_prompt("fact_extractor_system"),
     echo = "none"
@@ -272,7 +278,7 @@ tempest_research_one_perspective <- function(
           q,
           topic,
           module = modules$query_decomposition,
-          max_queries = config$max_search_queries_per_turn
+          max_queries = config@max_search_queries_per_turn
         ),
         error = function(e) {
           tempest_warn(

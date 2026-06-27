@@ -13,7 +13,7 @@ test_that("tempest_decompose_query returns structured output", {
   )
 
   cfg <- tempest_config()
-  chat <- cfg$make_chat("coordinator", echo = "none")
+  chat <- tempest_make_chat(cfg, "coordinator", echo = "none")
 
   result <- tempest:::tempest_decompose_query(
     chat,

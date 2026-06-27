@@ -72,7 +72,7 @@ tempest_tools_retrieval <- function(retriever) {
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
 
-  web_search <- function(query, k = retriever$config$max_search_results) {
+  web_search <- function(query, k = retriever$config@max_search_results) {
     retriever$search(query = query, k = k)
   }
 
@@ -490,12 +490,17 @@ ExpertSessionManager <- R6::R6Class(
         persona = persona,
         expert_id = persona$id %||% 1L
       )
-      chat <- self$config$make_chat("expert", system_prompt = sp, echo = "none")
+      chat <- tempest_make_chat(
+        self$config,
+        "expert",
+        system_prompt = sp,
+        echo = "none"
+      )
       tempest_register_default_tools(
         chat,
         self$retriever,
-        model = self$config$models[["expert"]],
-        search_provider = self$config$search_provider
+        model = self$config@models[["expert"]],
+        search_provider = self$config@search_provider
       )
 
       new_id <- session_id %||%
@@ -681,7 +686,8 @@ tempest_generate_single_persona <- function(
 ) {
   tempest_require("ellmer", "Generating expert personas requires ellmer.")
 
-  chat <- config$make_chat(
+  chat <- tempest_make_chat(
+    config,
     "coordinator",
     system_prompt = tempest_prompt("expert_generator_system"),
     echo = "none"
