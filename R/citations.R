@@ -59,10 +59,10 @@ tempest_source_status <- function(store, source_id) {
 tempest_status_badge <- function(status) {
   if (length(status) != 1 || is.na(status)) return("")
   switch(status,
-    supported = " ✓",
-    partially_supported = " ⚠",
-    unsupported = " ✗ unsupported",
-    contradicted = " ✗ contradicted",
+    supported = " \u2713",
+    partially_supported = " \u26a0",
+    unsupported = " \u2717 unsupported",
+    contradicted = " \u2717 contradicted",
     unverifiable = " ?",
     ""
   )

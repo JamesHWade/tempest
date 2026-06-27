@@ -255,7 +255,7 @@ threaded through every pipeline stage and Co-STORM turn.
     \describe{
       \item{\code{claim_id}}{Claim id.}
       \item{\code{status}}{One of the verification status labels.}
-      \item{\code{score}}{Support score in \link{0, 1} or NA.}
+      \item{\code{score}}{Support score in \verb{[0, 1]} or NA.}
       \item{\code{verifier}}{Verifier model id.}
     }
     \if{html}{\out{</div>}}

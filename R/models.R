@@ -153,7 +153,7 @@ SourceStore <- R6::R6Class(
     #' @description Update a claim's verification status.
     #' @param claim_id Claim id.
     #' @param status One of the verification status labels.
-    #' @param score Support score in [0, 1] or NA.
+    #' @param score Support score in `[0, 1]` or NA.
     #' @param verifier Verifier model id.
     verify_claim = function(claim_id, status, score = NA_real_, verifier = NA_character_) {
       claim <- self$get_claim(claim_id)

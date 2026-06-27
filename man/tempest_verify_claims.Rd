@@ -21,6 +21,10 @@ tempest_verify_claims(
 "strict". Defaults to "claim_verified".}
 
 \item{verifier_model}{Optional model id recorded on each verified claim.}
+
+\item{modules}{Optional named list of dsprrr modules; when it contains
+\code{verify_claim_support}, that module performs the judgement (with an ellmer
+fallback).}
 }
 \value{
 A \code{citation_audit} tibble (one row per verified claim).

@@ -47,6 +47,9 @@ tempest_verify_one_claim <- function(claim, store, verifier, module = NULL) {
 #' @param policy Citation policy; verification runs only for "claim_verified" or
 #'   "strict". Defaults to "claim_verified".
 #' @param verifier_model Optional model id recorded on each verified claim.
+#' @param modules Optional named list of dsprrr modules; when it contains
+#'   `verify_claim_support`, that module performs the judgement (with an ellmer
+#'   fallback).
 #' @return A `citation_audit` tibble (one row per verified claim).
 #' @export
 tempest_verify_claims <- function(store, verifier, policy = "claim_verified",
