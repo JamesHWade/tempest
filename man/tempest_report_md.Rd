@@ -19,3 +19,13 @@ Markdown with footnotes.
 \description{
 Assemble a Markdown report with footnotes
 }
+\examples{
+\dontrun{
+result <- tempest_run("History of jazz", config = tempest_config())
+md <- tempest_report_md(
+  title = "History of Jazz",
+  body = result$draft_md,
+  store = result$store
+)
+}
+}

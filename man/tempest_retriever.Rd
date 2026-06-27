@@ -17,3 +17,9 @@ A \code{TempestRetriever}.
 \description{
 Create a TempestRetriever
 }
+\examples{
+retriever <- tempest_retriever(config = tempest_config())
+\dontrun{
+results <- retriever$search("history of jazz", provider = "wikipedia")
+}
+}

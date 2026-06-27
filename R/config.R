@@ -14,6 +14,9 @@
 #' @field search_provider Search provider name.
 #' @field cache_dir Path to cache directory.
 #' @field max_search_results Maximum number of search results to return.
+#' @field max_search_queries_per_turn Maximum decomposed queries per research
+#'   turn.
+#' @field retrieve_top_k Maximum facts/chunks retrieved for each section.
 #' @field max_sources Maximum number of sources to keep.
 #' @field user_agent User agent string for HTTP requests.
 #' @field node_expansion_trigger_count Number of notes/sources per node that triggers expansion (NULL = disabled).
@@ -34,6 +37,8 @@ TempestConfig <- R6::R6Class(
     search_provider = NULL,
     cache_dir = NULL,
     max_search_results = NULL,
+    max_search_queries_per_turn = NULL,
+    retrieve_top_k = NULL,
     max_sources = NULL,
     user_agent = NULL,
     node_expansion_trigger_count = NULL,
@@ -59,11 +64,16 @@ TempestConfig <- R6::R6Class(
     #' @param ragnar_store A pre-built ragnar store. If NULL and `embed_fn` is
     #'   provided, a store is created automatically with the tempest metadata schema.
     #' @param search_provider Search provider: "native" (use provider's built-in web
-    #'   search when available), "wikipedia", "serper", "brave", or "tavily".
-    #'   Default is "native" which uses OpenAI, Anthropic, or Google's native
-    #'   web search capabilities when available, falling back to "wikipedia".
+    #'   search when available), "wikipedia", "you", "bing", "serper",
+    #'   "brave", "duckduckgo", "tavily", "searxng", "google", or
+    #'   "azure_ai_search". Default is "native" which uses OpenAI, Anthropic,
+    #'   or Google's native web search capabilities when available, falling
+    #'   back to "wikipedia".
     #' @param cache_dir Path to cache directory.
     #' @param max_search_results Maximum search results to return.
+    #' @param max_search_queries_per_turn Maximum decomposed queries per
+    #'   research turn.
+    #' @param retrieve_top_k Maximum facts/chunks retrieved for each section.
     #' @param max_sources Maximum sources to keep.
     #' @param user_agent User agent string for HTTP requests.
     #' @param node_expansion_trigger_count Number of notes/sources per node that triggers expansion (NULL = disabled).
@@ -77,9 +87,11 @@ TempestConfig <- R6::R6Class(
       tools = NULL,
       embed_fn = NULL,
       ragnar_store = NULL,
-      search_provider = c("native", "wikipedia", "serper", "brave", "tavily"),
+      search_provider = "native",
       cache_dir = NULL,
       max_search_results = 8,
+      max_search_queries_per_turn = 3,
+      retrieve_top_k = 25,
       max_sources = 24,
       user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
       node_expansion_trigger_count = NULL,
@@ -107,9 +119,22 @@ TempestConfig <- R6::R6Class(
       self$chat_fn <- chat_fn
       self$tools <- tools
       self$embed_fn <- embed_fn
-      self$search_provider <- match.arg(search_provider)
+      self$search_provider <- tempest_normalize_search_provider(search_provider)
       self$cache_dir <- tempest_cache_dir(cache_dir)
       self$max_search_results <- max_search_results
+      self$max_search_queries_per_turn <- as.integer(
+        max_search_queries_per_turn
+      )
+      self$retrieve_top_k <- as.integer(retrieve_top_k)
+      if (
+        is.na(self$max_search_queries_per_turn) ||
+          self$max_search_queries_per_turn < 1
+      ) {
+        self$max_search_queries_per_turn <- 3L
+      }
+      if (is.na(self$retrieve_top_k) || self$retrieve_top_k < 1) {
+        self$retrieve_top_k <- 25L
+      }
       self$max_sources <- max_sources
       self$user_agent <- user_agent
       self$node_expansion_trigger_count <- node_expansion_trigger_count
@@ -121,7 +146,10 @@ TempestConfig <- R6::R6Class(
       if (!is.null(ragnar_store)) {
         self$ragnar_store <- ragnar_store
       } else if (!is.null(embed_fn)) {
-        self$ragnar_store <- tempest_create_ragnar_store(embed_fn, self$cache_dir)
+        self$ragnar_store <- tempest_create_ragnar_store(
+          embed_fn,
+          self$cache_dir
+        )
       }
 
       invisible(self)
@@ -186,9 +214,72 @@ TempestConfig <- R6::R6Class(
 #'
 #' @param ... Passed to `TempestConfig$new()`.
 #' @return A `TempestConfig` R6 object.
+#' @examples
+#' cfg <- tempest_config()
+#' cfg <- tempest_config(search_provider = "wikipedia")
 #' @export
 tempest_config <- function(...) {
   TempestConfig$new(...)
+}
+
+#' @keywords internal
+tempest_search_provider_choices <- function() {
+  c(
+    "native",
+    "wikipedia",
+    "you",
+    "bing",
+    "serper",
+    "brave",
+    "duckduckgo",
+    "tavily",
+    "searxng",
+    "google",
+    "azure_ai_search"
+  )
+}
+
+#' @keywords internal
+tempest_normalize_search_provider <- function(search_provider) {
+  if (!rlang::is_string(search_provider)) {
+    tempest_abort(
+      "{.arg search_provider} must be a single string, not {.obj_type_friendly {search_provider}}."
+    )
+  }
+
+  provider <- tolower(tempest_trim(search_provider))
+  provider <- gsub("[.-]+", "_", provider)
+  provider <- switch(
+    provider,
+    "you_com" = "you",
+    "you_search" = "you",
+    "bing_search" = "bing",
+    "bingsearch" = "bing",
+    "ddg" = "duckduckgo",
+    "duck_duck_go" = "duckduckgo",
+    "duckduckgosearch" = "duckduckgo",
+    "searx" = "searxng",
+    "sear_xng" = "searxng",
+    "searx_ng" = "searxng",
+    "google_search" = "google",
+    "google_custom_search" = "google",
+    "googlesearch" = "google",
+    "azure" = "azure_ai_search",
+    "azure_ai" = "azure_ai_search",
+    "azure_search" = "azure_ai_search",
+    "azureaisearch" = "azure_ai_search",
+    provider
+  )
+
+  choices <- tempest_search_provider_choices()
+  if (!provider %in% choices) {
+    tempest_abort(c(
+      "Unknown search provider: {.val {search_provider}}",
+      i = "Available providers: {.val {choices}}"
+    ))
+  }
+
+  provider
 }
 
 #' Create a ragnar store with tempest metadata schema
@@ -215,6 +306,13 @@ tempest_config <- function(...) {
 #'   \item{perspective}{STORM perspective this content relates to (optional)}
 #' }
 #'
+#' @examples
+#' \dontrun{
+#' store <- tempest_create_ragnar_store(
+#'   embed_fn = ragnar::embed_openai(),
+#'   cache_dir = tempfile()
+#' )
+#' }
 #' @export
 tempest_create_ragnar_store <- function(
   embed_fn,

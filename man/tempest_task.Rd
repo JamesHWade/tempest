@@ -32,3 +32,10 @@ A \code{vitals::Task}.
 \description{
 Create a vitals Task for tempest
 }
+\examples{
+\dontrun{
+scorer_chat <- ellmer::chat("openai/gpt-5-mini")
+task <- tempest_task(scorer_chat = scorer_chat, config = tempest_config())
+task$eval()
+}
+}

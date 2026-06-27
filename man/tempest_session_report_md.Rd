@@ -15,3 +15,10 @@ Markdown with footnotes.
 \description{
 Assemble a Markdown report from a Co-STORM session
 }
+\examples{
+\dontrun{
+session <- tempest_session("History of jazz", config = tempest_config())
+session$step("Tell me about bebop.")
+md <- tempest_session_report_md(session)
+}
+}

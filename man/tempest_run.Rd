@@ -13,7 +13,13 @@ tempest_run(
   max_rounds = 3,
   max_questions_per_perspective = 3,
   parallel_research = FALSE,
+  parallel_writing = FALSE,
+  dsprrr_modules = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
+  output_dir = NULL,
+  resume = FALSE,
+  run_id = NULL,
+  remove_duplicate = FALSE,
   verbose = TRUE
 )
 }
@@ -38,12 +44,31 @@ strategy (default 3).}
 \item{parallel_research}{If \code{TRUE}, run research perspectives in parallel using
 the mirai package. Requires mirai to be installed. Default \code{FALSE}.}
 
+\item{parallel_writing}{If \code{TRUE}, write report sections in parallel using
+the mirai package. Failed parallel sections are retried sequentially.}
+
+\item{dsprrr_modules}{Optional named list of dsprrr modules, typically from
+\code{\link[=tempest_optimize_dsprrr_modules]{tempest_optimize_dsprrr_modules()}}. If \code{NULL}, fresh modules are created
+when dsprrr is installed.}
+
 \item{steps}{Character vector controlling which steps to run. Defaults to all.}
+
+\item{output_dir}{Optional directory for persisted STORM run artifacts. When
+supplied, artifacts are written under a topic-specific subdirectory.}
+
+\item{resume}{If \code{TRUE} and \code{output_dir} contains a previous run, load saved
+artifacts and skip stages recorded as complete.}
+
+\item{run_id}{Optional run directory name. Defaults to a slug of \code{topic}.}
+
+\item{remove_duplicate}{If \code{TRUE}, ask the polish step to remove duplicate
+or highly repetitive content while preserving unique cited claims.}
 
 \item{verbose}{If \code{TRUE}, prints progress messages.}
 }
 \value{
-A list with \code{title}, \code{outline}, \code{draft_md}, \code{report_md}, and \code{store}.
+A list with \code{title}, \code{outline}, \code{draft_md}, \code{report_md}, \code{store},
+and \code{output_dir}.
 }
 \description{
 This is a scripted workflow that:
@@ -52,5 +77,12 @@ This is a scripted workflow that:
 \item runs a multi-perspective research loop (search/fetch + expert synthesis),
 \item creates an outline,
 \item writes a cited report in Markdown.
+}
+}
+\examples{
+\dontrun{
+cfg <- tempest_config()
+result <- tempest_run("History of jazz", config = cfg)
+cat(result$report_md)
 }
 }

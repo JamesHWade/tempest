@@ -4,197 +4,211 @@
 \alias{SourceStore}
 \title{SourceStore}
 \description{
-SourceStore
-
-SourceStore
-}
-\details{
 A lightweight in-memory store for sources, fact notes, and artifacts.
 This store is designed for both script usage (STORM) and interactive usage (Co-STORM).
 }
 \section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{sources}}{Environment of source objects keyed by id.}
+  \if{html}{\out{<div class="r6-fields">}}
+  \describe{
+    \item{\code{sources}}{Environment of source objects keyed by id.}
 
-\item{\code{facts}}{List of fact objects.}
+    \item{\code{facts}}{List of fact objects.}
 
-\item{\code{artifacts}}{Environment of arbitrary artifacts.}
-}
-\if{html}{\out{</div>}}
+    \item{\code{artifacts}}{Environment of arbitrary artifacts.}
+  }
+  \if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-SourceStore-new}{\code{SourceStore$new()}}
-\item \href{#method-SourceStore-upsert_source}{\code{SourceStore$upsert_source()}}
-\item \href{#method-SourceStore-get_source}{\code{SourceStore$get_source()}}
-\item \href{#method-SourceStore-list_sources}{\code{SourceStore$list_sources()}}
-\item \href{#method-SourceStore-add_fact}{\code{SourceStore$add_fact()}}
-\item \href{#method-SourceStore-list_facts}{\code{SourceStore$list_facts()}}
-\item \href{#method-SourceStore-set_artifact}{\code{SourceStore$set_artifact()}}
-\item \href{#method-SourceStore-get_artifact}{\code{SourceStore$get_artifact()}}
-\item \href{#method-SourceStore-to_tibbles}{\code{SourceStore$to_tibbles()}}
-\item \href{#method-SourceStore-clone}{\code{SourceStore$clone()}}
-}
+  \itemize{
+    \item \href{#method-SourceStore-initialize}{\code{SourceStore$new()}}
+    \item \href{#method-SourceStore-upsert_source}{\code{SourceStore$upsert_source()}}
+    \item \href{#method-SourceStore-get_source}{\code{SourceStore$get_source()}}
+    \item \href{#method-SourceStore-list_sources}{\code{SourceStore$list_sources()}}
+    \item \href{#method-SourceStore-add_fact}{\code{SourceStore$add_fact()}}
+    \item \href{#method-SourceStore-list_facts}{\code{SourceStore$list_facts()}}
+    \item \href{#method-SourceStore-set_artifact}{\code{SourceStore$set_artifact()}}
+    \item \href{#method-SourceStore-get_artifact}{\code{SourceStore$get_artifact()}}
+    \item \href{#method-SourceStore-to_tibbles}{\code{SourceStore$to_tibbles()}}
+    \item \href{#method-SourceStore-clone}{\code{SourceStore$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-new"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new SourceStore.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$new()}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-SourceStore-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-initialize}{}}}
+\subsection{\code{SourceStore$new()}}{
+  Create a new SourceStore.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$new()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-upsert_source"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-upsert_source}{}}}
-\subsection{Method \code{upsert_source()}}{
-Insert or update a source.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$upsert_source(source)}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$upsert_source()}}{
+  Insert or update a source.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$upsert_source(source)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{source}}{A source list with an \code{id} field.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{source}}{A source list with an \code{id} field.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-get_source"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-get_source}{}}}
-\subsection{Method \code{get_source()}}{
-Get a source by id.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$get_source(source_id)}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$get_source()}}{
+  Get a source by id.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$get_source(source_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{source_id}}{The source id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    The source list or NULL.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{source_id}}{The source id.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The source list or NULL.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-list_sources"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-list_sources}{}}}
-\subsection{Method \code{list_sources()}}{
-List all sources.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$list_sources()}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$list_sources()}}{
+  List all sources.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$list_sources()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list of source objects.
+  }
 }
 
-\subsection{Returns}{
-A list of source objects.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-add_fact"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-add_fact}{}}}
-\subsection{Method \code{add_fact()}}{
-Add a fact to the store.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$add_fact(fact)}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$add_fact()}}{
+  Add a fact to the store.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$add_fact(fact)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{fact}}{A fact list with an \code{id} field.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{fact}}{A fact list with an \code{id} field.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-list_facts"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-list_facts}{}}}
-\subsection{Method \code{list_facts()}}{
-List all facts.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$list_facts()}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$list_facts()}}{
+  List all facts.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$list_facts()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list of fact objects.
+  }
 }
 
-\subsection{Returns}{
-A list of fact objects.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-set_artifact"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-set_artifact}{}}}
-\subsection{Method \code{set_artifact()}}{
-Store an artifact by name.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$set_artifact(name, value)}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$set_artifact()}}{
+  Store an artifact by name.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$set_artifact(name, value)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Artifact name.}
+      \item{\code{value}}{Artifact value.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{name}}{Artifact name.}
-
-\item{\code{value}}{Artifact value.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-get_artifact"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-get_artifact}{}}}
-\subsection{Method \code{get_artifact()}}{
-Retrieve an artifact by name.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$get_artifact(name)}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$get_artifact()}}{
+  Retrieve an artifact by name.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$get_artifact(name)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Artifact name.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    The artifact value or NULL.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{name}}{Artifact name.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The artifact value or NULL.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-to_tibbles"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-to_tibbles}{}}}
-\subsection{Method \code{to_tibbles()}}{
-Convert sources and facts to tibbles.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$to_tibbles()}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$to_tibbles()}}{
+  Convert sources and facts to tibbles.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$to_tibbles()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list with \code{sources} and \code{facts} tibbles.
+  }
 }
 
-\subsection{Returns}{
-A list with \code{sources} and \code{facts} tibbles.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SourceStore$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{SourceStore$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

@@ -5,14 +5,64 @@ test_that("tempest_config creates valid config", {
   expect_true(!is.null(cfg$models))
   expect_true(!is.null(cfg$models$coordinator))
   expect_true(!is.null(cfg$search_provider))
+  expect_equal(cfg$max_search_queries_per_turn, 3L)
+  expect_equal(cfg$retrieve_top_k, 25L)
+})
+
+test_that("tempest_config validates STORM numeric controls", {
+  cfg <- tempest_config(
+    max_search_queries_per_turn = 2,
+    retrieve_top_k = 9
+  )
+  expect_equal(cfg$max_search_queries_per_turn, 2L)
+  expect_equal(cfg$retrieve_top_k, 9L)
+
+  fallback <- tempest_config(
+    max_search_queries_per_turn = 0,
+    retrieve_top_k = NA
+  )
+  expect_equal(fallback$max_search_queries_per_turn, 3L)
+  expect_equal(fallback$retrieve_top_k, 25L)
+})
+
+test_that("tempest_config accepts upstream-style search providers", {
+  providers <- tempest:::tempest_search_provider_choices()
+  for (provider in providers) {
+    cfg <- tempest_config(search_provider = provider)
+    expect_equal(cfg$search_provider, provider)
+  }
+
+  expect_equal(
+    tempest_config(search_provider = "ddg")$search_provider,
+    "duckduckgo"
+  )
+  expect_equal(
+    tempest_config(search_provider = "google_search")$search_provider,
+    "google"
+  )
+  expect_equal(
+    tempest_config(search_provider = "azure")$search_provider,
+    "azure_ai_search"
+  )
+  expect_equal(
+    tempest_config(search_provider = "you.com")$search_provider,
+    "you"
+  )
+
+  expect_error(
+    tempest_config(search_provider = "not-a-provider"),
+    "Unknown search provider"
+  )
 })
 
 test_that("tempest_config accepts custom models as list", {
-  cfg <- tempest_config(models = list(
-    coordinator = "anthropic/claude-sonnet-4-20250514",
-    writer = "anthropic/claude-sonnet-4-20250514",
-    expert = "anthropic/claude-sonnet-4-20250514"
-  ))
+  cfg <- tempest_config(
+    models = list(
+      coordinator = "anthropic/claude-sonnet-4-20250514",
+      writer = "anthropic/claude-sonnet-4-20250514",
+      expert = "anthropic/claude-sonnet-4-20250514"
+    )
+  )
   expect_equal(cfg$models$coordinator, "anthropic/claude-sonnet-4-20250514")
 })
 

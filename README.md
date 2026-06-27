@@ -49,15 +49,22 @@ To use alternative search providers:
 
 ```r
 cfg <- tempest_config(
-  search_provider = "wikipedia"  # or "serper", "brave", "tavily"
+  search_provider = "wikipedia"  # or "you", "bing", "serper", "brave", "duckduckgo", "tavily", "searxng", "google", "azure_ai_search"
 )
 ```
 
 Provider-specific API keys for alternative search:
 - Wikipedia: no API key required (fallback when native not available)
+- You.com: set `YDC_API_KEY`
+- Bing: set `BING_SEARCH_API_KEY`
 - Serper: set `SERPER_API_KEY`
 - Brave: set `BRAVE_API_KEY`
+- DuckDuckGo: no API key required
 - Tavily: set `TAVILY_API_KEY`
+- SearXNG: set `SEARXNG_API_URL`; optionally set `SEARXNG_API_KEY`
+- Google Custom Search: set `GOOGLE_SEARCH_API_KEY` and `GOOGLE_CSE_ID`
+- Azure AI Search: set `AZURE_AI_SEARCH_API_KEY`,
+  `AZURE_AI_SEARCH_ENDPOINT`, and `AZURE_AI_SEARCH_INDEX_NAME`
 
 ## Scripted STORM
 
@@ -80,6 +87,9 @@ res <- tempest_run("Life cycle assessment of lithium-ion batteries", config = cf
 cat(res$report_md)
 ```
 
+Use `remove_duplicate = TRUE` to ask the polishing step to collapse repeated
+content while preserving unique cited claims.
+
 You can also use a single model for all roles:
 
 ```r
@@ -95,20 +105,79 @@ res <- tempest_run(
   "Quantum computing applications",
   config = cfg,
   parallel_research = TRUE,  # requires mirai
+  parallel_writing = TRUE,   # also requires mirai
   verbose = TRUE
 )
 ```
+
+### Persistent Runs
+
+Save intermediate STORM artifacts to disk and resume interrupted runs:
+
+```r
+res <- tempest_run(
+  "Quantum computing applications",
+  config = cfg,
+  output_dir = "storm-runs"
+)
+
+# Later: loads completed stages from storm-runs/quantum-computing-applications
+# and continues from the first incomplete stage.
+res <- tempest_run(
+  "Quantum computing applications",
+  config = cfg,
+  output_dir = "storm-runs",
+  resume = TRUE
+)
+```
+
+Each run directory includes JSON artifacts for perspectives, personas,
+sources, facts, outlines, and references, plus Markdown drafts and the polished
+article.
 
 ### Pipeline Details
 
 `tempest_run()` executes five steps: `perspectives`, `research`, `outline`, `write`, `polish`. Key features:
 
+- **Persistent staged runs** -- pass `output_dir` to save run artifacts after
+  each completed stage; pass `resume = TRUE` to load saved artifacts and skip
+  completed stages.
 - **ToC-enriched perspective discovery** -- seed URLs are fetched and their table-of-contents headings are extracted to give the coordinator richer context for generating expert perspectives.
 - **Query decomposition** -- each expert research question is decomposed into 2-3 targeted search queries before retrieval.
 - **Semantic fact retrieval** -- when ragnar is configured, section writing uses semantic similarity to select the most relevant facts (falls back to keyword matching otherwise).
 - **Two-step outline** -- a draft outline is generated from the LLM's parametric knowledge, then refined with research findings.
 - **Lead section** -- a Wikipedia-style lead (2-3 paragraphs) is generated and prepended to the article.
+- **Parallel section writing** -- pass `parallel_writing = TRUE` to write
+  report sections concurrently with mirai, then extract facts and assemble the
+  article in deterministic outline order.
 - **dsprrr modules** -- when [dsprrr](https://github.com/JamesHWade/dsprrr) is installed, structured extraction steps (query decomposition, fact extraction, outline drafting, section writing) use dsprrr modules for more reliable structured output. Falls back to `chat$chat_structured()` otherwise.
+
+### Optimizing dsprrr Modules
+
+Compile STORM modules with your own labeled examples, then reuse them in a run:
+
+```r
+query_train <- data.frame(
+  question = c("What are battery recycling bottlenecks?"),
+  topic = c("Life cycle assessment of lithium-ion batteries")
+)
+query_train$queries <- I(list(c(
+  "lithium battery recycling bottlenecks",
+  "EV battery recycling capacity constraints"
+)))
+
+optimized_modules <- tempest_optimize_dsprrr_modules(
+  trainsets = list(query_decomposition = query_train),
+  config = cfg,
+  save_dir = "storm-modules"
+)
+
+res <- tempest_run(
+  "Life cycle assessment of lithium-ion batteries",
+  config = cfg,
+  dsprrr_modules = optimized_modules
+)
+```
 
 ### Configuration Options
 
@@ -117,13 +186,15 @@ res <- tempest_run(
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `models` | `"openai/gpt-5-mini"` | Single model string or named list with `coordinator`, `expert`, `writer`, `mindmap`, `judge` |
-| `search_provider` | `"native"` | Search backend: `"native"`, `"wikipedia"`, `"serper"`, `"brave"`, `"tavily"` |
+| `search_provider` | `"native"` | Search backend: `"native"`, `"wikipedia"`, `"you"`, `"bing"`, `"serper"`, `"brave"`, `"duckduckgo"`, `"tavily"`, `"searxng"`, `"google"`, `"azure_ai_search"` |
 | `embed_fn` | `NULL` | Embedding function for RAG (e.g., `ragnar::embed_openai()`) |
 | `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
 | `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
 | `tools` | `NULL` | Additional ellmer tools (e.g., `btw::btw_tools()`) |
 | `cache_dir` | `NULL` | Cache directory; defaults to `tempdir()/tempest-cache` or `TEMPEST_CACHE_DIR` env var |
 | `max_search_results` | `8` | Maximum results per search query |
+| `max_search_queries_per_turn` | `3` | Maximum decomposed search queries per research turn |
+| `retrieve_top_k` | `25` | Maximum facts/chunks retrieved for each section |
 | `max_sources` | `24` | Maximum sources to track per session |
 | `node_expansion_trigger_count` | `NULL` | Co-STORM: auto-split oversized mind map nodes when note count exceeds this (NULL = disabled) |
 | `enable_discourse_manager` | `FALSE` | Co-STORM: use LLM-driven turn management |
@@ -297,7 +368,8 @@ run_app()
 
 The app provides:
 
-- **Chat tab**: Multi-expert conversation with auto-generated personas
+- **Chat tab**: Multi-expert conversation with auto-generated personas,
+  shinychat `chat_server()` streaming, cancellation, and greeting support
 - **Mind Map tab**: Real-time knowledge graph visualization
 - **Sources tab**: Table of all retrieved sources with metadata
 - **Facts tab**: Extracted facts with citations and confidence
@@ -307,6 +379,9 @@ Features:
 - Configurable number of experts and optional warmup phase
 - Report style selection (technical or executive)
 - Dark mode toggle
+
+The app currently depends on the shinychat development branch that introduces
+`chat_server()`, pinned in `DESCRIPTION`.
 
 ## Evaluation
 
@@ -347,6 +422,14 @@ tsk <- tempest_costorm_task(dataset = "qa", max_turns = 5, scorer_chat = judge)
 
 ## References
 
+Papers:
+
 - **STORM**: Shao, Y., et al. (2024). [Assisting in Writing Wikipedia-like Articles From Scratch with Large Language Models](https://arxiv.org/abs/2402.14207). NAACL 2024.
-- **Co-STORM**: Jiang, Y., et al. (2024). [Into the Unknown Unknowns: Engaged Human Learning through Participation in Language Model Agent Conversations](https://arxiv.org/abs/2408.15232). arXiv preprint.
-- **Stanford STORM Project**: <https://storm.genie.stanford.edu/>
+- **Co-STORM**: Jiang, Y., et al. (2024). [Into the Unknown Unknowns: Engaged Human Learning through Participation in Language Model Agent Conversations](https://arxiv.org/abs/2408.15232). EMNLP 2024.
+- **DSPy**: Khattab, O., et al. (2024). [DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines](https://arxiv.org/abs/2310.03714). ICLR 2024.
+
+Code that inspired tempest:
+
+- [stanford-oval/storm](https://github.com/stanford-oval/storm) — the reference STORM and Co-STORM implementation this package ports to R.
+- [stanfordnlp/dspy](https://github.com/stanfordnlp/dspy) — the DSPy framework that [dsprrr](https://github.com/JamesHWade/dsprrr) brings to R for tempest's optimizable modules.
+- [Stanford STORM project](https://storm.genie.stanford.edu/) — live demo and project overview.

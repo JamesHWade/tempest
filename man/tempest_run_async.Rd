@@ -18,6 +18,12 @@ A \code{promises::promise} that resolves with the tempest_run result.
 This is a thin wrapper around \code{\link[=tempest_run]{tempest_run()}} that returns a promise.
 It is useful when calling STORM from a Shiny app without blocking the session.
 }
+\examples{
+\dontrun{
+tempest_run_async("History of jazz", config = tempest_config()) |>
+  promises::then(function(result) cat(result$report_md))
+}
+}
 \seealso{
 \code{\link[=tempest_run]{tempest_run()}} for the synchronous version.
 }

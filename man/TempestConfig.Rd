@@ -4,169 +4,166 @@
 \alias{TempestConfig}
 \title{TempestConfig}
 \description{
-TempestConfig
-
-TempestConfig
-}
-\details{
 Holds configuration for STORM / Co-STORM sessions: LLM models, prompts,
 retrieval settings, and cache paths.
 }
 \section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{models}}{Named list of model identifiers for each role.}
+  \if{html}{\out{<div class="r6-fields">}}
+  \describe{
+    \item{\code{models}}{Named list of model identifiers for each role.}
 
-\item{\code{params}}{Additional parameters passed to chat creation.}
+    \item{\code{params}}{Additional parameters passed to chat creation.}
 
-\item{\code{chat_fn}}{Custom chat factory function (optional).}
+    \item{\code{chat_fn}}{Custom chat factory function (optional).}
 
-\item{\code{tools}}{Additional tools to register with chats (optional).}
+    \item{\code{tools}}{Additional tools to register with chats (optional).}
 
-\item{\code{embed_fn}}{Embedding function for RAG (optional).}
+    \item{\code{embed_fn}}{Embedding function for RAG (optional).}
 
-\item{\code{ragnar_store}}{A ragnar store for semantic retrieval (optional).}
+    \item{\code{ragnar_store}}{A ragnar store for semantic retrieval (optional).}
 
-\item{\code{search_provider}}{Search provider name.}
+    \item{\code{search_provider}}{Search provider name.}
 
-\item{\code{cache_dir}}{Path to cache directory.}
+    \item{\code{cache_dir}}{Path to cache directory.}
 
-\item{\code{max_search_results}}{Maximum number of search results to return.}
+    \item{\code{max_search_results}}{Maximum number of search results to return.}
 
-\item{\code{max_sources}}{Maximum number of sources to keep.}
+    \item{\code{max_search_queries_per_turn}}{Maximum decomposed queries per research
+turn.}
 
-\item{\code{user_agent}}{User agent string for HTTP requests.}
+    \item{\code{retrieve_top_k}}{Maximum facts/chunks retrieved for each section.}
 
-\item{\code{node_expansion_trigger_count}}{Number of notes/sources per node that triggers expansion (NULL = disabled).}
+    \item{\code{max_sources}}{Maximum number of sources to keep.}
 
-\item{\code{enable_discourse_manager}}{Whether to enable LLM-driven discourse management in Co-STORM.}
+    \item{\code{user_agent}}{User agent string for HTTP requests.}
 
-\item{\code{max_active_experts}}{Maximum number of active expert agents in Co-STORM.}
+    \item{\code{node_expansion_trigger_count}}{Number of notes/sources per node that triggers expansion (NULL = disabled).}
 
-\item{\code{enable_unseen_surfacing}}{Whether to surface undiscussed sources in Co-STORM.}
-}
-\if{html}{\out{</div>}}
+    \item{\code{enable_discourse_manager}}{Whether to enable LLM-driven discourse management in Co-STORM.}
+
+    \item{\code{max_active_experts}}{Maximum number of active expert agents in Co-STORM.}
+
+    \item{\code{enable_unseen_surfacing}}{Whether to surface undiscussed sources in Co-STORM.}
+  }
+  \if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-TempestConfig-new}{\code{TempestConfig$new()}}
-\item \href{#method-TempestConfig-make_chat}{\code{TempestConfig$make_chat()}}
-\item \href{#method-TempestConfig-clone}{\code{TempestConfig$clone()}}
-}
+  \itemize{
+    \item \href{#method-TempestConfig-initialize}{\code{TempestConfig$new()}}
+    \item \href{#method-TempestConfig-make_chat}{\code{TempestConfig$make_chat()}}
+    \item \href{#method-TempestConfig-clone}{\code{TempestConfig$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestConfig-new"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestConfig-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new TempestConfig.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestConfig$new(
+\if{html}{\out{<a id="method-TempestConfig-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestConfig-initialize}{}}}
+\subsection{\code{TempestConfig$new()}}{
+  Create a new TempestConfig.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestConfig$new(
   models = NULL,
   params = NULL,
   chat_fn = NULL,
   tools = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
-  search_provider = c("native", "wikipedia", "serper", "brave", "tavily"),
+  search_provider = "native",
   cache_dir = NULL,
   max_search_results = 8,
+  max_search_queries_per_turn = 3,
+  retrieve_top_k = 25,
   max_sources = 24,
   user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
   node_expansion_trigger_count = NULL,
   enable_discourse_manager = FALSE,
   max_active_experts = 5L,
   enable_unseen_surfacing = FALSE
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{models}}{Named list of model identifiers for each role, or a single
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{models}}{Named list of model identifiers for each role, or a single
 string to use for all roles.}
-
-\item{\code{params}}{Additional parameters passed to chat creation.}
-
-\item{\code{chat_fn}}{Custom chat factory function. Should accept \code{role},
+      \item{\code{params}}{Additional parameters passed to chat creation.}
+      \item{\code{chat_fn}}{Custom chat factory function. Should accept \code{role},
 \code{model}, \code{system_prompt}, and \code{echo} arguments and return an
 ellmer-compatible Chat object. Use this for custom providers like
 \code{chat_company()}.}
-
-\item{\code{tools}}{Additional tools to register with each chat. Can be a list
+      \item{\code{tools}}{Additional tools to register with each chat. Can be a list
 of ellmer tools, or a function that returns tools (e.g., \code{btw::btw_tools}).}
-
-\item{\code{embed_fn}}{Embedding function for RAG. Should accept a character
+      \item{\code{embed_fn}}{Embedding function for RAG. Should accept a character
 vector and return a matrix of embeddings. Use \code{ragnar::embed_openai()},
 \code{ragnar::embed_ollama()}, or a custom function. If provided, a ragnar
 store is automatically created.}
-
-\item{\code{ragnar_store}}{A pre-built ragnar store. If NULL and \code{embed_fn} is
+      \item{\code{ragnar_store}}{A pre-built ragnar store. If NULL and \code{embed_fn} is
 provided, a store is created automatically with the tempest metadata schema.}
-
-\item{\code{search_provider}}{Search provider: "native" (use provider's built-in web
-search when available), "wikipedia", "serper", "brave", or "tavily".
-Default is "native" which uses OpenAI, Anthropic, or Google's native
-web search capabilities when available, falling back to "wikipedia".}
-
-\item{\code{cache_dir}}{Path to cache directory.}
-
-\item{\code{max_search_results}}{Maximum search results to return.}
-
-\item{\code{max_sources}}{Maximum sources to keep.}
-
-\item{\code{user_agent}}{User agent string for HTTP requests.}
-
-\item{\code{node_expansion_trigger_count}}{Number of notes/sources per node that triggers expansion (NULL = disabled).}
-
-\item{\code{enable_discourse_manager}}{Whether to enable LLM-driven discourse management in Co-STORM.}
-
-\item{\code{max_active_experts}}{Maximum number of active expert agents in Co-STORM.}
-
-\item{\code{enable_unseen_surfacing}}{Whether to surface undiscussed sources in Co-STORM.}
+      \item{\code{search_provider}}{Search provider: "native" (use provider's built-in web
+search when available), "wikipedia", "you", "bing", "serper",
+"brave", "duckduckgo", "tavily", "searxng", "google", or
+"azure_ai_search". Default is "native" which uses OpenAI, Anthropic,
+or Google's native web search capabilities when available, falling
+back to "wikipedia".}
+      \item{\code{cache_dir}}{Path to cache directory.}
+      \item{\code{max_search_results}}{Maximum search results to return.}
+      \item{\code{max_search_queries_per_turn}}{Maximum decomposed queries per
+research turn.}
+      \item{\code{retrieve_top_k}}{Maximum facts/chunks retrieved for each section.}
+      \item{\code{max_sources}}{Maximum sources to keep.}
+      \item{\code{user_agent}}{User agent string for HTTP requests.}
+      \item{\code{node_expansion_trigger_count}}{Number of notes/sources per node that triggers expansion (NULL = disabled).}
+      \item{\code{enable_discourse_manager}}{Whether to enable LLM-driven discourse management in Co-STORM.}
+      \item{\code{max_active_experts}}{Maximum number of active expert agents in Co-STORM.}
+      \item{\code{enable_unseen_surfacing}}{Whether to surface undiscussed sources in Co-STORM.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
-\if{html}{\out{</div>}}
-}
-}
+
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestConfig-make_chat"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestConfig-make_chat}{}}}
-\subsection{Method \code{make_chat()}}{
-Create a chat object for a given role.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestConfig$make_chat(role, system_prompt = NULL, echo = "none")}\if{html}{\out{</div>}}
+\subsection{\code{TempestConfig$make_chat()}}{
+  Create a chat object for a given role.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestConfig$make_chat(role, system_prompt = NULL, echo = "none")}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{role}}{Role name (e.g., "coordinator", "writer", "expert").}
+      \item{\code{system_prompt}}{Optional system prompt override.}
+      \item{\code{echo}}{Echo setting for the chat.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    An ellmer-compatible Chat object.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{role}}{Role name (e.g., "coordinator", "writer", "expert").}
-
-\item{\code{system_prompt}}{Optional system prompt override.}
-
-\item{\code{echo}}{Echo setting for the chat.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-An ellmer-compatible Chat object.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestConfig-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestConfig-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestConfig$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{TempestConfig$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestConfig$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

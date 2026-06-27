@@ -7,8 +7,15 @@
 #' @keywords internal
 tempest_eval_dataset <- function(name = c("qa")) {
   name <- match.arg(name)
-  path <- system.file("extdata", "evals", paste0(name, ".csv"), package = "tempest")
-  if (identical(path, "")) tempest_abort("Eval dataset not found in installed package.")
+  path <- system.file(
+    "extdata",
+    "evals",
+    paste0(name, ".csv"),
+    package = "tempest"
+  )
+  if (identical(path, "")) {
+    tempest_abort("Eval dataset not found in installed package.")
+  }
   read.csv(path, stringsAsFactors = FALSE) |>
     tibble::as_tibble()
 }
@@ -24,7 +31,11 @@ tempest_eval_dataset <- function(name = c("qa")) {
 #' @param solver_chat Optional (ignored). Present to match vitals conventions.
 #' @return A list with `result` and `solver_chat` (and `solver_metadata`).
 #' @keywords internal
-tempest_solver_cited_answer <- function(input, config = tempest_config(), solver_chat = NULL) {
+tempest_solver_cited_answer <- function(
+  input,
+  config = tempest_config(),
+  solver_chat = NULL
+) {
   tempest_require("ellmer", "tempest_solver_cited_answer() requires ellmer.")
   n <- length(input)
   results <- character(n)
@@ -34,7 +45,11 @@ tempest_solver_cited_answer <- function(input, config = tempest_config(), solver
   for (i in seq_len(n)) {
     store <- SourceStore$new()
     retriever <- tempest_retriever(config = config, store = store)
-    chat <- config$make_chat("expert", system_prompt = tempest_prompt("qa_solver_system"), echo = "none")
+    chat <- config$make_chat(
+      "expert",
+      system_prompt = tempest_prompt("qa_solver_system"),
+      echo = "none"
+    )
     tempest_register_default_tools(
       chat,
       retriever,
@@ -45,7 +60,9 @@ tempest_solver_cited_answer <- function(input, config = tempest_config(), solver
     q <- input[[i]]
     prompt <- paste0(
       "Answer the question using tools.\n\n",
-      "Question: ", q, "\n\n",
+      "Question: ",
+      q,
+      "\n\n",
       "Rules:\n",
       "- Use web_search + fetch_url.\n",
       "- Cite sources using [Sxxxxxxxxxxxx] after factual claims.\n",
@@ -74,6 +91,12 @@ tempest_solver_cited_answer <- function(input, config = tempest_config(), solver
 #' @param config A `TempestConfig` passed to the solver.
 #' @param ... Passed to `vitals::Task$new()`.
 #' @return A `vitals::Task`.
+#' @examples
+#' \dontrun{
+#' scorer_chat <- ellmer::chat("openai/gpt-5-mini")
+#' task <- tempest_task(scorer_chat = scorer_chat, config = tempest_config())
+#' task$eval()
+#' }
 #' @export
 tempest_task <- function(
   dataset = c("qa"),
@@ -90,9 +113,14 @@ tempest_task <- function(
 
   if (is.null(scorer)) {
     if (is.null(scorer_chat)) {
-      tempest_abort("Provide scorer_chat (an ellmer Chat) or set scorer explicitly.")
+      tempest_abort(
+        "Provide scorer_chat (an ellmer Chat) or set scorer explicitly."
+      )
     }
-    scorer <- vitals::model_graded_qa(partial_credit = TRUE, scorer_chat = scorer_chat)
+    scorer <- vitals::model_graded_qa(
+      partial_credit = TRUE,
+      scorer_chat = scorer_chat
+    )
   }
 
   vitals::Task$new(
@@ -113,6 +141,11 @@ tempest_task <- function(
 #' @param max_turns Maximum turns per simulated session.
 #' @param ... Passed to `vitals::Task$new()`.
 #' @return A `vitals::Task`.
+#' @examples
+#' \dontrun{
+#' task <- tempest_costorm_task(config = tempest_config(), max_turns = 5)
+#' task$eval()
+#' }
 #' @export
 tempest_costorm_task <- function(
   dataset = c("qa"),
@@ -134,7 +167,11 @@ tempest_costorm_task <- function(
     for (i in seq_len(n)) {
       topic <- input[[i]]
       session <- tempest_session(topic, config = config, n_experts = 2)
-      sim_user <- SimulatedUser$new(topic, config = config, max_turns = max_turns)
+      sim_user <- SimulatedUser$new(
+        topic,
+        config = config,
+        max_turns = max_turns
+      )
       sim_user$run_session(session, warmup = FALSE, verbose = FALSE)
 
       report <- session$report(style = "technical", include_references = FALSE)
@@ -151,7 +188,10 @@ tempest_costorm_task <- function(
   }
 
   scorer_chat <- config$make_chat("judge", echo = "none")
-  scorer <- vitals::model_graded_qa(partial_credit = TRUE, scorer_chat = scorer_chat)
+  scorer <- vitals::model_graded_qa(
+    partial_credit = TRUE,
+    scorer_chat = scorer_chat
+  )
 
   vitals::Task$new(
     dataset = ds,

@@ -8,7 +8,8 @@ tempest_generate_personas(
   topic,
   n = 3,
   config = tempest_config(),
-  verbose = FALSE
+  verbose = FALSE,
+  module = NULL
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ tempest_generate_personas(
 \item{config}{A \code{TempestConfig} object.}
 
 \item{verbose}{Print progress.}
+
+\item{module}{Optional dsprrr module used internally.}
 }
 \value{
 A list of persona objects.
@@ -26,4 +29,13 @@ A list of persona objects.
 \description{
 Uses an LLM to generate diverse expert personas who would naturally
 approach the topic from different angles, following the STORM methodology.
+}
+\examples{
+\dontrun{
+personas <- tempest_generate_personas(
+  topic = "Climate change adaptation",
+  n = 3,
+  config = tempest_config()
+)
+}
 }

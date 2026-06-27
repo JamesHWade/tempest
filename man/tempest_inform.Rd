@@ -9,11 +9,11 @@ tempest_inform(message, ..., .envir = rlang::caller_env())
 \arguments{
 \item{message}{Message with cli formatting.}
 
-\item{...}{Additional arguments passed to \code{\link[cli:cli_abort]{cli::cli_inform()}}.}
+\item{...}{Additional arguments passed to \code{\link[cli:cli_inform]{cli::cli_inform()}}.}
 
 \item{.envir}{Environment for glue interpolation.}
 }
 \description{
-Wrapper around \code{\link[cli:cli_abort]{cli::cli_inform()}} for consistent messaging.
+Wrapper around \code{\link[cli:cli_inform]{cli::cli_inform()}} for consistent messaging.
 }
 \keyword{internal}

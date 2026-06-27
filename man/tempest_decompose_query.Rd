@@ -4,7 +4,7 @@
 \alias{tempest_decompose_query}
 \title{Decompose a research question into targeted search queries}
 \usage{
-tempest_decompose_query(chat, question, topic)
+tempest_decompose_query(chat, question, topic, module = NULL, max_queries = 3)
 }
 \arguments{
 \item{chat}{An ellmer chat object.}
@@ -12,6 +12,10 @@ tempest_decompose_query(chat, question, topic)
 \item{question}{The research question to decompose.}
 
 \item{topic}{The overall research topic.}
+
+\item{module}{Optional dsprrr module for query decomposition.}
+
+\item{max_queries}{Maximum number of queries to return.}
 }
 \value{
 A list with a \code{queries} character vector.

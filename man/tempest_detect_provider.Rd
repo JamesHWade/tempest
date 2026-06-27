@@ -13,7 +13,7 @@ tempest_detect_provider(model)
 Provider name (e.g., "openai", "anthropic", "google") or NULL if unknown
 }
 \description{
-Parses model names like "openai/gpt-4o-mini" or "anthropic/claude-sonnet"
+Parses model names like "openai/gpt-5-mini" or "anthropic/claude-sonnet"
 to extract the provider.
 }
 \keyword{internal}

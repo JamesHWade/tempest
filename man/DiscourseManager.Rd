@@ -4,98 +4,95 @@
 \alias{DiscourseManager}
 \title{DiscourseManager}
 \description{
-DiscourseManager
-
-DiscourseManager
-}
-\details{
 LLM-driven discourse management for Co-STORM sessions.
 Decides which agent should speak next and what action to take.
 }
 \keyword{internal}
 \section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{chat}}{An ellmer chat object for making decisions.}
+  \if{html}{\out{<div class="r6-fields">}}
+  \describe{
+    \item{\code{chat}}{An ellmer chat object for making decisions.}
 
-\item{\code{config}}{A \code{TempestConfig} object.}
-}
-\if{html}{\out{</div>}}
+    \item{\code{config}}{A \code{TempestConfig} object.}
+  }
+  \if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-DiscourseManager-new}{\code{DiscourseManager$new()}}
-\item \href{#method-DiscourseManager-decide_next_turn}{\code{DiscourseManager$decide_next_turn()}}
-\item \href{#method-DiscourseManager-clone}{\code{DiscourseManager$clone()}}
-}
+  \itemize{
+    \item \href{#method-DiscourseManager-initialize}{\code{DiscourseManager$new()}}
+    \item \href{#method-DiscourseManager-decide_next_turn}{\code{DiscourseManager$decide_next_turn()}}
+    \item \href{#method-DiscourseManager-clone}{\code{DiscourseManager$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-DiscourseManager-new"></a>}}
-\if{latex}{\out{\hypertarget{method-DiscourseManager-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new DiscourseManager.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DiscourseManager$new(config)}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-DiscourseManager-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-DiscourseManager-initialize}{}}}
+\subsection{\code{DiscourseManager$new()}}{
+  Create a new DiscourseManager.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DiscourseManager$new(config)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{config}}{A \code{TempestConfig} object.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{config}}{A \code{TempestConfig} object.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DiscourseManager-decide_next_turn"></a>}}
 \if{latex}{\out{\hypertarget{method-DiscourseManager-decide_next_turn}{}}}
-\subsection{Method \code{decide_next_turn()}}{
-Decide the next turn action.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DiscourseManager$decide_next_turn(
+\subsection{\code{DiscourseManager$decide_next_turn()}}{
+  Decide the next turn action.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DiscourseManager$decide_next_turn(
   topic,
   transcript_md,
   mindmap_md,
   persona_descriptions,
   unseen_sources = character()
-)}\if{html}{\out{</div>}}
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{topic}}{The research topic.}
+      \item{\code{transcript_md}}{Recent transcript as markdown.}
+      \item{\code{mindmap_md}}{Mind map as markdown.}
+      \item{\code{persona_descriptions}}{Formatted persona descriptions.}
+      \item{\code{unseen_sources}}{Character vector of undiscussed source IDs.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A turn decision list with action, agent_name, instruction, rationale.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{topic}}{The research topic.}
-
-\item{\code{transcript_md}}{Recent transcript as markdown.}
-
-\item{\code{mindmap_md}}{Mind map as markdown.}
-
-\item{\code{persona_descriptions}}{Formatted persona descriptions.}
-
-\item{\code{unseen_sources}}{Character vector of undiscussed source IDs.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A turn decision list with action, agent_name, instruction, rationale.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DiscourseManager-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-DiscourseManager-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DiscourseManager$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{DiscourseManager$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DiscourseManager$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

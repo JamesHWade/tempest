@@ -15,3 +15,7 @@ A \code{TempestConfig} R6 object.
 \description{
 Create a STORM configuration
 }
+\examples{
+cfg <- tempest_config()
+cfg <- tempest_config(search_provider = "wikipedia")
+}

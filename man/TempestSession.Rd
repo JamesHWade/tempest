@@ -4,480 +4,489 @@
 \alias{TempestSession}
 \title{TempestSession}
 \description{
-TempestSession
-
-TempestSession
-}
-\details{
 Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, and report artifacts.
 }
 \section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{topic}}{The research topic.}
+  \if{html}{\out{<div class="r6-fields">}}
+  \describe{
+    \item{\code{topic}}{The research topic.}
 
-\item{\code{title}}{The report title.}
+    \item{\code{title}}{The report title.}
 
-\item{\code{config}}{A \code{TempestConfig} object.}
+    \item{\code{config}}{A \code{TempestConfig} object.}
 
-\item{\code{store}}{A \code{SourceStore} object.}
+    \item{\code{store}}{A \code{SourceStore} object.}
 
-\item{\code{retriever}}{A \code{TempestRetriever} object.}
+    \item{\code{retriever}}{A \code{TempestRetriever} object.}
 
-\item{\code{personas}}{List of expert personas.}
+    \item{\code{personas}}{List of expert personas.}
 
-\item{\code{expert_session_manager}}{Manages expert chat sessions.}
+    \item{\code{expert_session_manager}}{Manages expert chat sessions.}
 
-\item{\code{chats}}{List of chat objects for each role.}
+    \item{\code{chats}}{List of chat objects for each role.}
 
-\item{\code{transcript}}{List of dialog turns.}
+    \item{\code{transcript}}{List of dialog turns.}
 
-\item{\code{mindmap}}{The mind map data structure.}
+    \item{\code{mindmap}}{The mind map data structure.}
 
-\item{\code{artifacts}}{Environment of report artifacts.}
+    \item{\code{artifacts}}{Environment of report artifacts.}
 
-\item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
-}
-\if{html}{\out{</div>}}
+    \item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
+  }
+  \if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-TempestSession-new}{\code{TempestSession$new()}}
-\item \href{#method-TempestSession-add_turn}{\code{TempestSession$add_turn()}}
-\item \href{#method-TempestSession-transcript_markdown}{\code{TempestSession$transcript_markdown()}}
-\item \href{#method-TempestSession-get_persona_names}{\code{TempestSession$get_persona_names()}}
-\item \href{#method-TempestSession-get_persona_descriptions}{\code{TempestSession$get_persona_descriptions()}}
-\item \href{#method-TempestSession-decide_next}{\code{TempestSession$decide_next()}}
-\item \href{#method-TempestSession-update_mindmap}{\code{TempestSession$update_mindmap()}}
-\item \href{#method-TempestSession-mindmap_markdown}{\code{TempestSession$mindmap_markdown()}}
-\item \href{#method-TempestSession-extract_facts}{\code{TempestSession$extract_facts()}}
-\item \href{#method-TempestSession-find_expert_index}{\code{TempestSession$find_expert_index()}}
-\item \href{#method-TempestSession-step}{\code{TempestSession$step()}}
-\item \href{#method-TempestSession-warmup}{\code{TempestSession$warmup()}}
-\item \href{#method-TempestSession-report}{\code{TempestSession$report()}}
-\item \href{#method-TempestSession-add_expert}{\code{TempestSession$add_expert()}}
-\item \href{#method-TempestSession-retire_expert}{\code{TempestSession$retire_expert()}}
-\item \href{#method-TempestSession-get_active_personas}{\code{TempestSession$get_active_personas()}}
-\item \href{#method-TempestSession-check_and_expand_nodes}{\code{TempestSession$check_and_expand_nodes()}}
-\item \href{#method-TempestSession-get_discussed_source_ids}{\code{TempestSession$get_discussed_source_ids()}}
-\item \href{#method-TempestSession-find_undiscussed_sources}{\code{TempestSession$find_undiscussed_sources()}}
-\item \href{#method-TempestSession-surface_unseen_information}{\code{TempestSession$surface_unseen_information()}}
-\item \href{#method-TempestSession-reorganize_mindmap}{\code{TempestSession$reorganize_mindmap()}}
-\item \href{#method-TempestSession-execute_turn_decision}{\code{TempestSession$execute_turn_decision()}}
-\item \href{#method-TempestSession-clone}{\code{TempestSession$clone()}}
-}
+  \itemize{
+    \item \href{#method-TempestSession-initialize}{\code{TempestSession$new()}}
+    \item \href{#method-TempestSession-add_turn}{\code{TempestSession$add_turn()}}
+    \item \href{#method-TempestSession-transcript_markdown}{\code{TempestSession$transcript_markdown()}}
+    \item \href{#method-TempestSession-get_persona_names}{\code{TempestSession$get_persona_names()}}
+    \item \href{#method-TempestSession-get_persona_descriptions}{\code{TempestSession$get_persona_descriptions()}}
+    \item \href{#method-TempestSession-update_mindmap}{\code{TempestSession$update_mindmap()}}
+    \item \href{#method-TempestSession-mindmap_markdown}{\code{TempestSession$mindmap_markdown()}}
+    \item \href{#method-TempestSession-extract_facts}{\code{TempestSession$extract_facts()}}
+    \item \href{#method-TempestSession-find_expert_index}{\code{TempestSession$find_expert_index()}}
+    \item \href{#method-TempestSession-step}{\code{TempestSession$step()}}
+    \item \href{#method-TempestSession-warmup}{\code{TempestSession$warmup()}}
+    \item \href{#method-TempestSession-report}{\code{TempestSession$report()}}
+    \item \href{#method-TempestSession-add_expert}{\code{TempestSession$add_expert()}}
+    \item \href{#method-TempestSession-retire_expert}{\code{TempestSession$retire_expert()}}
+    \item \href{#method-TempestSession-get_active_personas}{\code{TempestSession$get_active_personas()}}
+    \item \href{#method-TempestSession-check_and_expand_nodes}{\code{TempestSession$check_and_expand_nodes()}}
+    \item \href{#method-TempestSession-get_discussed_source_ids}{\code{TempestSession$get_discussed_source_ids()}}
+    \item \href{#method-TempestSession-find_undiscussed_sources}{\code{TempestSession$find_undiscussed_sources()}}
+    \item \href{#method-TempestSession-surface_unseen_information}{\code{TempestSession$surface_unseen_information()}}
+    \item \href{#method-TempestSession-reorganize_mindmap}{\code{TempestSession$reorganize_mindmap()}}
+    \item \href{#method-TempestSession-execute_turn_decision}{\code{TempestSession$execute_turn_decision()}}
+    \item \href{#method-TempestSession-clone}{\code{TempestSession$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-new"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new TempestSession.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$new(
+\if{html}{\out{<a id="method-TempestSession-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-initialize}{}}}
+\subsection{\code{TempestSession$new()}}{
+  Create a new TempestSession.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$new(
   topic,
   config = tempest_config(),
   n_experts = 3,
   personas = NULL
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{topic}}{The research topic.}
-
-\item{\code{config}}{A \code{TempestConfig} object.}
-
-\item{\code{n_experts}}{Number of expert agents.}
-
-\item{\code{personas}}{Optional list of pre-generated personas. If NULL,
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{topic}}{The research topic.}
+      \item{\code{config}}{A \code{TempestConfig} object.}
+      \item{\code{n_experts}}{Number of expert agents.}
+      \item{\code{personas}}{Optional list of pre-generated personas. If NULL,
 personas are generated automatically using \code{tempest_generate_personas()}.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
-\if{html}{\out{</div>}}
-}
-}
+
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-add_turn"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-add_turn}{}}}
-\subsection{Method \code{add_turn()}}{
-Add a turn to the transcript.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$add_turn(speaker, role = c("user", "assistant"), text)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$add_turn()}}{
+  Add a turn to the transcript.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$add_turn(speaker, role = c("user", "assistant"), text)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{speaker}}{Speaker name.}
+      \item{\code{role}}{Role: "user" or "assistant".}
+      \item{\code{text}}{The text content.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{speaker}}{Speaker name.}
-
-\item{\code{role}}{Role: "user" or "assistant".}
-
-\item{\code{text}}{The text content.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-transcript_markdown"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-transcript_markdown}{}}}
-\subsection{Method \code{transcript_markdown()}}{
-Get the transcript as markdown.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$transcript_markdown(max_turns = 50)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$transcript_markdown()}}{
+  Get the transcript as markdown.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$transcript_markdown(max_turns = 50)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{max_turns}}{Maximum turns to include.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Markdown string.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{max_turns}}{Maximum turns to include.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Markdown string.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-get_persona_names"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-get_persona_names}{}}}
-\subsection{Method \code{get_persona_names()}}{
-Get persona names for agent routing.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$get_persona_names()}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$get_persona_names()}}{
+  Get persona names for agent routing.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$get_persona_names()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Character vector of persona names.
+  }
 }
 
-\subsection{Returns}{
-Character vector of persona names.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-get_persona_descriptions"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-get_persona_descriptions}{}}}
-\subsection{Method \code{get_persona_descriptions()}}{
-Build persona descriptions for moderator context.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$get_persona_descriptions()}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$get_persona_descriptions()}}{
+  Build persona descriptions for moderator context.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$get_persona_descriptions()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A formatted string describing all personas.
+  }
 }
 
-\subsection{Returns}{
-A formatted string describing all personas.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-decide_next"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-decide_next}{}}}
-\subsection{Method \code{decide_next()}}{
-Decide which agent should respond next.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$decide_next(user_input)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{user_input}}{The user's input.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A decision object with next_agent and instruction.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-update_mindmap"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-update_mindmap}{}}}
-\subsection{Method \code{update_mindmap()}}{
-Update the mind map based on new exchange.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$update_mindmap(last_exchange)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$update_mindmap()}}{
+  Update the mind map based on new exchange.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$update_mindmap(last_exchange)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{last_exchange}}{The latest exchange text.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{last_exchange}}{The latest exchange text.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-mindmap_markdown"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-mindmap_markdown}{}}}
-\subsection{Method \code{mindmap_markdown()}}{
-Get the mind map as markdown.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$mindmap_markdown()}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$mindmap_markdown()}}{
+  Get the mind map as markdown.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$mindmap_markdown()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Markdown string.
+  }
 }
 
-\subsection{Returns}{
-Markdown string.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-extract_facts"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-extract_facts}{}}}
-\subsection{Method \code{extract_facts()}}{
-Extract facts from text into the store.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$extract_facts(text)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$extract_facts()}}{
+  Extract facts from text into the store.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$extract_facts(text)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{text}}{Text containing factual claims.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{text}}{Text containing factual claims.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-find_expert_index"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-find_expert_index}{}}}
-\subsection{Method \code{find_expert_index()}}{
-Find expert index by persona name.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$find_expert_index(name)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$find_expert_index()}}{
+  Find expert index by persona name.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$find_expert_index(name)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{The agent name to look up.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Index of the expert, or NULL if not found.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{name}}{The agent name to look up.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Index of the expert, or NULL if not found.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-step"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-step}{}}}
-\subsection{Method \code{step()}}{
-Process one step of the conversation.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$step(user_input = NULL, auto = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$step()}}{
+  Process one step of the conversation.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$step(user_input = NULL, auto = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{user_input}}{User's input message.}
+      \item{\code{auto}}{If TRUE and discourse manager is enabled, let the discourse manager decide.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list with speaker, answer, and mindmap_md.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{user_input}}{User's input message.}
-
-\item{\code{auto}}{If TRUE and discourse manager is enabled, let the discourse manager decide.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A list with speaker, answer, and mindmap_md.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-warmup"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-warmup}{}}}
-\subsection{Method \code{warmup()}}{
-Run a warmup phase where each expert researches their initial questions.
+\subsection{\code{TempestSession$warmup()}}{
+  Run a warmup phase where each expert researches their initial questions.
 This primes the knowledge base with foundational research before interactive Q&A.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$warmup(verbose = TRUE)}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$warmup(verbose = TRUE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{verbose}}{If TRUE, prints progress messages.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list with results from each expert's warmup.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{verbose}}{If TRUE, prints progress messages.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A list with results from each expert's warmup.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-report"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-report}{}}}
-\subsection{Method \code{report()}}{
-Generate a report from the session.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$report(
+\subsection{\code{TempestSession$report()}}{
+  Generate a report from the session.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$report(
   style = c("technical", "executive"),
   include_references = TRUE,
   reorganize = TRUE
-)}\if{html}{\out{</div>}}
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{style}}{Report style: "technical" or "executive".}
+      \item{\code{include_references}}{Include references section.}
+      \item{\code{reorganize}}{Whether to reorganize mind map before generating.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Markdown report string.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{style}}{Report style: "technical" or "executive".}
-
-\item{\code{include_references}}{Include references section.}
-
-\item{\code{reorganize}}{Whether to reorganize mind map before generating.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Markdown report string.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-add_expert"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-add_expert}{}}}
-\subsection{Method \code{add_expert()}}{
-Add a new expert to the panel dynamically.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$add_expert(area, name = NULL)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$add_expert()}}{
+  Add a new expert to the panel dynamically.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$add_expert(area, name = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{area}}{The area of expertise needed.}
+      \item{\code{name}}{Optional name for the new expert.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    The new persona (invisibly).
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{area}}{The area of expertise needed.}
-
-\item{\code{name}}{Optional name for the new expert.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The new persona (invisibly).
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-retire_expert"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-retire_expert}{}}}
-\subsection{Method \code{retire_expert()}}{
-Retire an expert from the panel.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$retire_expert(name)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$retire_expert()}}{
+  Retire an expert from the panel.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$retire_expert(name)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{The name of the expert to retire.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Logical indicating success.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{name}}{The name of the expert to retire.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Logical indicating success.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-get_active_personas"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-get_active_personas}{}}}
-\subsection{Method \code{get_active_personas()}}{
-Get active (non-retired) personas.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$get_active_personas()}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$get_active_personas()}}{
+  Get active (non-retired) personas.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$get_active_personas()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    List of active persona objects.
+  }
 }
 
-\subsection{Returns}{
-List of active persona objects.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-check_and_expand_nodes"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-check_and_expand_nodes}{}}}
-\subsection{Method \code{check_and_expand_nodes()}}{
-Check and expand oversized mind map nodes.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$check_and_expand_nodes()}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$check_and_expand_nodes()}}{
+  Check and expand oversized mind map nodes.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$check_and_expand_nodes()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-get_discussed_source_ids"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-get_discussed_source_ids}{}}}
-\subsection{Method \code{get_discussed_source_ids()}}{
-Get source IDs that have been discussed in the transcript.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$get_discussed_source_ids()}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$get_discussed_source_ids()}}{
+  Get source IDs that have been discussed in the transcript.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$get_discussed_source_ids()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Character vector of discussed source IDs.
+  }
 }
 
-\subsection{Returns}{
-Character vector of discussed source IDs.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-find_undiscussed_sources"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-find_undiscussed_sources}{}}}
-\subsection{Method \code{find_undiscussed_sources()}}{
-Find sources that haven't been discussed yet.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$find_undiscussed_sources()}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$find_undiscussed_sources()}}{
+  Find sources that haven't been discussed yet.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$find_undiscussed_sources()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Character vector of undiscussed source IDs.
+  }
 }
 
-\subsection{Returns}{
-Character vector of undiscussed source IDs.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-surface_unseen_information"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-surface_unseen_information}{}}}
-\subsection{Method \code{surface_unseen_information()}}{
-Generate questions about undiscussed sources.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$surface_unseen_information(max_questions = 3)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$surface_unseen_information()}}{
+  Generate questions about undiscussed sources.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$surface_unseen_information(max_questions = 3)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{max_questions}}{Maximum questions to generate.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Character vector of questions, or NULL if none.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{max_questions}}{Maximum questions to generate.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Character vector of questions, or NULL if none.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-reorganize_mindmap"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-reorganize_mindmap}{}}}
-\subsection{Method \code{reorganize_mindmap()}}{
-Reorganize the mind map for clarity.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$reorganize_mindmap()}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$reorganize_mindmap()}}{
+  Reorganize the mind map for clarity.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$reorganize_mindmap()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-execute_turn_decision"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-execute_turn_decision}{}}}
-\subsection{Method \code{execute_turn_decision()}}{
-Execute a discourse manager turn decision.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$execute_turn_decision(decision)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$execute_turn_decision()}}{
+  Execute a discourse manager turn decision.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$execute_turn_decision(decision)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{decision}}{A turn decision from the discourse manager.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list with speaker, answer, and mindmap_md.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{decision}}{A turn decision from the discourse manager.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A list with speaker, answer, and mindmap_md.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestSession$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{TempestSession$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

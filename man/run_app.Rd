@@ -19,3 +19,8 @@ Launches an interactive app that provides:
 \item One-click report generation with citations
 }
 }
+\examples{
+\dontrun{
+run_app()
+}
+}

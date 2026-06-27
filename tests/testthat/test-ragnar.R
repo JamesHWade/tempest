@@ -90,7 +90,7 @@ test_that("retrieve returns results from ragnar store", {
 })
 
 test_that("retrieve errors without ragnar store", {
-  cfg <- tempest_config()  # No embed_fn
+  cfg <- tempest_config() # No embed_fn
   retriever <- tempest_retriever(config = cfg)
 
   expect_null(retriever$ragnar_store)

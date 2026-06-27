@@ -8,7 +8,9 @@
 #' @keywords internal
 tempest_has <- function(pkg) {
   if (!rlang::is_string(pkg)) {
-    tempest_abort("{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}.")
+    tempest_abort(
+      "{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}."
+    )
   }
   rlang::is_installed(pkg)
 }
@@ -79,7 +81,13 @@ tempest_trim <- function(x) {
 #' @return Character string identifier.
 #' @keywords internal
 tempest_uuid <- function(prefix = "id") {
-  raw <- paste0(prefix, "-", sprintf("%.0f", runif(1, 1e8, 1e9)), "-", sprintf("%.0f", Sys.time()))
+  raw <- paste0(
+    prefix,
+    "-",
+    sprintf("%.0f", runif(1, 1e8, 1e9)),
+    "-",
+    sprintf("%.0f", Sys.time())
+  )
   paste0(prefix, "_", digest::digest(raw, algo = "xxhash64"))
 }
 
@@ -92,16 +100,22 @@ tempest_uuid <- function(prefix = "id") {
 #' @keywords internal
 tempest_require <- function(pkg, why = NULL) {
   if (!rlang::is_string(pkg)) {
-    tempest_abort("{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}.")
+    tempest_abort(
+      "{.arg pkg} must be a single string, not {.obj_type_friendly {pkg}}."
+    )
   }
 
   if (!tempest_has(pkg)) {
     msg <- if (is.null(why)) {
-      c("Package {.pkg {pkg}} is required but not installed.",
-        i = "Install it with: {.run install.packages(\"{pkg}\")}")
+      c(
+        "Package {.pkg {pkg}} is required but not installed.",
+        i = "Install it with: {.run install.packages(\"{pkg}\")}"
+      )
     } else {
-      c("Package {.pkg {pkg}} is required: {why}",
-        i = "Install it with: {.run install.packages(\"{pkg}\")}")
+      c(
+        "Package {.pkg {pkg}} is required: {why}",
+        i = "Install it with: {.run install.packages(\"{pkg}\")}"
+      )
     }
     tempest_abort(msg)
   }
@@ -124,7 +138,9 @@ tempest_pkg_file <- function(...) {
 #' @keywords internal
 tempest_read_text <- function(path) {
   if (!rlang::is_string(path)) {
-    tempest_abort("{.arg path} must be a single string, not {.obj_type_friendly {path}}.")
+    tempest_abort(
+      "{.arg path} must be a single string, not {.obj_type_friendly {path}}."
+    )
   }
 
   if (!file.exists(path)) {
@@ -133,9 +149,41 @@ tempest_read_text <- function(path) {
   paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 }
 
+#' Atomically write lines to a file
+#'
+#' Writes to a temporary file in the same directory and then renames it into
+#' place. An interrupted or failed write therefore cannot truncate or corrupt
+#' an existing file: the destination is only replaced once the new content is
+#' fully on disk.
+#'
+#' @param lines Character vector of lines to write.
+#' @param path Destination path.
+#' @return Invisibly returns the path.
+#' @keywords internal
+tempest_atomic_write_lines <- function(lines, path) {
+  dir <- dirname(path)
+  if (!dir.exists(dir)) {
+    dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  tmp <- tempfile(tmpdir = dir, fileext = ".tmp")
+  done <- FALSE
+  on.exit(if (!done && file.exists(tmp)) unlink(tmp), add = TRUE)
+  writeLines(lines, con = tmp, useBytes = TRUE)
+  if (!file.rename(tmp, path)) {
+    # Rename can fail across devices or on locked files; fall back to copy.
+    if (!file.copy(tmp, path, overwrite = TRUE)) {
+      tempest_abort("Could not write file: {.path {path}}")
+    }
+    unlink(tmp)
+  }
+  done <- TRUE
+  invisible(path)
+}
+
 #' Write text to file
 #'
-#' Creates parent directories if needed.
+#' Creates parent directories if needed. The write is atomic: content is
+#' written to a temporary file and renamed into place.
 #'
 #' @param path Path to file.
 #' @param text Text content to write.
@@ -143,16 +191,16 @@ tempest_read_text <- function(path) {
 #' @keywords internal
 tempest_write_text <- function(path, text) {
   if (!rlang::is_string(path)) {
-    tempest_abort("{.arg path} must be a single string, not {.obj_type_friendly {path}}.")
+    tempest_abort(
+      "{.arg path} must be a single string, not {.obj_type_friendly {path}}."
+    )
   }
   if (!rlang::is_string(text)) {
-    tempest_abort("{.arg text} must be a single string, not {.obj_type_friendly {text}}.")
+    tempest_abort(
+      "{.arg text} must be a single string, not {.obj_type_friendly {text}}."
+    )
   }
 
-  dir <- dirname(path)
-  if (!dir.exists(dir)) {
-    dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  }
-  writeLines(text, con = path, useBytes = TRUE)
+  tempest_atomic_write_lines(text, path)
   invisible(path)
 }

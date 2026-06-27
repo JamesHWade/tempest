@@ -15,6 +15,7 @@ tempest_write_text(path, text)
 Invisibly returns the path.
 }
 \description{
-Creates parent directories if needed.
+Creates parent directories if needed. The write is atomic: content is
+written to a temporary file and renamed into place.
 }
 \keyword{internal}
