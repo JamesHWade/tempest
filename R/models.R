@@ -35,33 +35,16 @@ tempest_source <- function(
   )
 }
 
-#' Create a Fact note (atomic claim with citations)
-#' @keywords internal
-tempest_fact <- function(
-  claim,
-  source_ids,
-  confidence = NA_character_,
-  note = NA_character_,
-  tags = character()
-) {
-  list(
-    id = tempest_uuid("fact"),
-    claim = claim,
-    source_ids = unique(source_ids),
-    confidence = confidence %||% NA_character_,
-    note = note %||% NA_character_,
-    tags = unique(tags),
-    created_at = tempest_now_utc()
-  )
-}
-
-#' SourceStore
+#' SourceStore (evidence ledger)
 #'
-#' A lightweight in-memory store for sources, fact notes, and artifacts.
-#' This store is designed for both script usage (STORM) and interactive usage (Co-STORM).
+#' In-memory store for sources, claims, evidence spans, disputes, and
+#' artifacts. Stays an R6 reference object: it is the mutable accumulator
+#' threaded through every pipeline stage and Co-STORM turn.
 #'
 #' @field sources Environment of source objects keyed by id.
-#' @field facts List of fact objects.
+#' @field claims Environment of claim records keyed by claim_id.
+#' @field evidence_spans Environment of evidence-span records keyed by id.
+#' @field disputes Environment of dispute records keyed by id.
 #' @field artifacts Environment of arbitrary artifacts.
 #'
 #' @export
@@ -69,20 +52,23 @@ SourceStore <- R6::R6Class(
   "SourceStore",
   public = list(
     sources = NULL,
-    facts = NULL,
+    claims = NULL,
+    evidence_spans = NULL,
+    disputes = NULL,
     artifacts = NULL,
 
-    #' @description
-    #' Create a new SourceStore.
+    #' @description Create a new SourceStore.
     initialize = function() {
       self$sources <- new.env(parent = emptyenv())
-      self$facts <- list()
+      self$claims <- new.env(parent = emptyenv())
+      self$evidence_spans <- new.env(parent = emptyenv())
+      self$disputes <- new.env(parent = emptyenv())
       self$artifacts <- new.env(parent = emptyenv())
+      private$claims_by_source <- new.env(parent = emptyenv())
       invisible(self)
     },
 
-    #' @description
-    #' Insert or update a source.
+    #' @description Insert or update a source.
     #' @param source A source list with an `id` field.
     upsert_source = function(source) {
       stopifnot(is.list(source), !is.null(source$id))
@@ -90,40 +76,114 @@ SourceStore <- R6::R6Class(
       invisible(source$id)
     },
 
-    #' @description
-    #' Get a source by id.
+    #' @description Get a source by id.
     #' @param source_id The source id.
-    #' @return The source list or NULL.
     get_source = function(source_id) {
       self$sources[[source_id]] %||% NULL
     },
 
-    #' @description
-    #' List all sources.
-    #' @return A list of source objects.
+    #' @description List all sources.
     list_sources = function() {
       ids <- ls(self$sources, all.names = TRUE)
       purrr::map(ids, ~ self$sources[[.x]])
     },
 
-    #' @description
-    #' Add a fact to the store.
-    #' @param fact A fact list with an `id` field.
-    add_fact = function(fact) {
-      stopifnot(is.list(fact), !is.null(fact$id))
-      self$facts <- c(self$facts, list(fact))
-      invisible(fact$id)
+    #' @description Add a claim record to the ledger.
+    #' @param claim A `tempest_claim` S7 record.
+    add_claim = function(claim) {
+      stopifnot(S7::S7_inherits(claim, tempest_claim))
+      id <- claim@claim_id
+      self$claims[[id]] <- claim
+      for (sid in claim@source_ids) {
+        existing <- private$claims_by_source[[sid]] %||% character()
+        private$claims_by_source[[sid]] <- unique(c(existing, id))
+      }
+      invisible(id)
     },
 
-    #' @description
-    #' List all facts.
-    #' @return A list of fact objects.
-    list_facts = function() {
-      self$facts
+    #' @description Get a claim by id.
+    #' @param claim_id The claim id.
+    get_claim = function(claim_id) {
+      self$claims[[claim_id]] %||% NULL
     },
 
-    #' @description
-    #' Store an artifact by name.
+    #' @description List all claims.
+    list_claims = function() {
+      ids <- ls(self$claims, all.names = TRUE)
+      purrr::map(ids, ~ self$claims[[.x]])
+    },
+
+    #' @description Claims that cite a given source.
+    #' @param source_id Source id.
+    claims_for_source = function(source_id) {
+      ids <- private$claims_by_source[[source_id]] %||% character()
+      purrr::map(ids, ~ self$claims[[.x]])
+    },
+
+    #' @description Add an evidence span.
+    #' @param span A `tempest_evidence_span` S7 record.
+    add_evidence_span = function(span) {
+      stopifnot(S7::S7_inherits(span, tempest_evidence_span))
+      id <- span@evidence_span_id
+      self$evidence_spans[[id]] <- span
+      invisible(id)
+    },
+
+    #' @description Link an evidence span to a claim.
+    #' @param claim_id Claim id.
+    #' @param span_id Evidence span id.
+    link_evidence = function(claim_id, span_id) {
+      claim <- self$get_claim(claim_id)
+      if (is.null(claim)) tempest_abort("Unknown claim id: {.val {claim_id}}")
+      self$claims[[claim_id]] <- S7::set_props(
+        claim,
+        evidence_span_ids = unique(c(claim@evidence_span_ids, span_id))
+      )
+      invisible(claim_id)
+    },
+
+    #' @description Evidence spans linked to a claim.
+    #' @param claim_id Claim id.
+    get_evidence_for_claim = function(claim_id) {
+      claim <- self$get_claim(claim_id)
+      if (is.null(claim)) return(list())
+      purrr::map(claim@evidence_span_ids, ~ self$evidence_spans[[.x]])
+    },
+
+    #' @description Update a claim's verification status.
+    #' @param claim_id Claim id.
+    #' @param status One of the verification status labels.
+    #' @param score Support score in [0, 1] or NA.
+    #' @param verifier Verifier model id.
+    verify_claim = function(claim_id, status, score = NA_real_, verifier = NA_character_) {
+      claim <- self$get_claim(claim_id)
+      if (is.null(claim)) tempest_abort("Unknown claim id: {.val {claim_id}}")
+      self$claims[[claim_id]] <- S7::set_props(
+        claim,
+        verification_status = status,
+        support_score = score,
+        verifier_model = verifier,
+        verified_at = tempest_now_utc()
+      )
+      invisible(claim_id)
+    },
+
+    #' @description Add a dispute.
+    #' @param dispute A `tempest_dispute` S7 record.
+    add_dispute = function(dispute) {
+      stopifnot(S7::S7_inherits(dispute, tempest_dispute))
+      id <- dispute@dispute_id
+      self$disputes[[id]] <- dispute
+      invisible(id)
+    },
+
+    #' @description List all disputes.
+    list_disputes = function() {
+      ids <- ls(self$disputes, all.names = TRUE)
+      purrr::map(ids, ~ self$disputes[[.x]])
+    },
+
+    #' @description Store an artifact by name.
     #' @param name Artifact name.
     #' @param value Artifact value.
     set_artifact = function(name, value) {
@@ -131,57 +191,39 @@ SourceStore <- R6::R6Class(
       invisible(name)
     },
 
-    #' @description
-    #' Retrieve an artifact by name.
+    #' @description Retrieve an artifact by name.
     #' @param name Artifact name.
-    #' @return The artifact value or NULL.
     get_artifact = function(name) {
       self$artifacts[[name]] %||% NULL
     },
 
-    #' @description
-    #' Convert sources and facts to tibbles.
-    #' @return A list with `sources` and `facts` tibbles.
+    #' @description Convert sources, claims, and disputes to tibbles.
     to_tibbles = function() {
-      # Convenience for analysis/export
       s <- self$list_sources()
-      if (length(s) == 0) {
-        sources <- tibble::tibble(
-          id = character(),
-          url = character(),
-          title = character(),
-          snippet = character(),
-          fetched_at = character()
+      sources <- if (length(s) == 0) {
+        tibble::tibble(
+          id = character(), url = character(), title = character(),
+          snippet = character(), content_text = character(),
+          fetched_at = character(), meta = list()
         )
       } else {
-        sources <- tibble::tibble(
+        tibble::tibble(
           id = purrr::map_chr(s, "id"),
           url = purrr::map_chr(s, "url"),
-          title = purrr::map_chr(s, "title"),
-          snippet = purrr::map_chr(s, "snippet"),
-          fetched_at = purrr::map_chr(s, "fetched_at")
+          title = purrr::map_chr(s, ~ .x$title %||% NA_character_),
+          snippet = purrr::map_chr(s, ~ .x$snippet %||% NA_character_),
+          content_text = purrr::map_chr(s, ~ .x$content_text %||% NA_character_),
+          fetched_at = purrr::map_chr(s, ~ .x$fetched_at %||% NA_character_),
+          meta = purrr::map(s, ~ .x$meta %||% list())
         )
       }
-
-      if (length(self$facts) == 0) {
-        facts <- tibble::tibble(
-          id = character(),
-          claim = character(),
-          source_ids = list(),
-          confidence = character(),
-          created_at = character()
-        )
-      } else {
-        facts <- tibble::tibble(
-          id = purrr::map_chr(self$facts, "id"),
-          claim = purrr::map_chr(self$facts, "claim"),
-          source_ids = purrr::map(self$facts, "source_ids"),
-          confidence = purrr::map_chr(self$facts, "confidence"),
-          created_at = purrr::map_chr(self$facts, "created_at")
-        )
-      }
-
-      list(sources = sources, facts = facts)
+      list(
+        sources = sources,
+        claims = tempest_claims_tibble(self$list_claims())
+      )
     }
+  ),
+  private = list(
+    claims_by_source = NULL
   )
 )
