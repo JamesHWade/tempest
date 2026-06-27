@@ -146,3 +146,20 @@ test_that("suggestion_cards returns NULL for no questions", {
   expect_null(app$suggestion_cards(character()))
   expect_null(app$suggestion_cards(c("", NA_character_)))
 })
+
+test_that("suggestion_cards keeps only valid questions, in order", {
+  app <- source_shiny_modules()
+  md <- app$suggestion_cards(c("Keep this?", "", NA_character_, "And this"))
+  n_items <- length(gregexpr('class="suggestion submit"', md, fixed = TRUE)[[1]])
+  expect_equal(n_items, 2)
+  expect_lt(
+    regexpr("Keep this", md, fixed = TRUE),
+    regexpr("And this", md, fixed = TRUE)
+  )
+})
+
+test_that("suggestion_cards honors a custom lead", {
+  app <- source_shiny_modules()
+  md <- app$suggestion_cards("Q1", lead = "**Try asking:**")
+  expect_match(md, "Try asking", fixed = TRUE)
+})
