@@ -17,21 +17,22 @@ tempest_sources <- function(store) {
   store$to_tibbles()$sources
 }
 
-#' Return fact notes as a tibble
+#' Return claims as a tibble
 #' @param store A `SourceStore` or `TempestRetriever`.
-#' @return A tibble of facts with columns: claim, source_ids, confidence, note, tags.
+#' @return A tibble of claims with columns: claim_id, claim_text, claim_type,
+#'   source_ids, confidence, verification_status, support_score, created_at.
 #' @examples
 #' \dontrun{
 #' result <- tempest_run("History of jazz", config = tempest_config())
-#' tempest_facts(result$store)
+#' tempest_claims(result$store)
 #' }
 #' @export
-tempest_facts <- function(store) {
+tempest_claims <- function(store) {
   if (inherits(store, "TempestRetriever")) {
     store <- store$store
   }
   stopifnot(inherits(store, "SourceStore"))
-  store$to_tibbles()$facts
+  store$to_tibbles()$claims
 }
 
 #' @keywords internal

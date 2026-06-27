@@ -130,15 +130,15 @@ tempest_tools_retrieval <- function(retriever) {
   }
 
   list_facts <- function() {
-    f <- retriever$store$list_facts()
+    f <- retriever$store$list_claims()
     purrr::map(
       f,
       ~ list(
-        fact_id = .x$id,
-        claim = .x$claim,
-        source_ids = .x$source_ids,
-        confidence = .x$confidence,
-        created_at = .x$created_at
+        fact_id = .x@claim_id,
+        claim = .x@claim_text,
+        source_ids = .x@source_ids,
+        confidence = .x@confidence,
+        created_at = .x@created_at
       )
     )
   }
@@ -147,18 +147,17 @@ tempest_tools_retrieval <- function(retriever) {
     if (is.null(source_ids) || length(source_ids) == 0) {
       tempest_abort("add_fact requires at least one source_id.")
     }
-    fact <- tempest_fact(
-      claim = claim,
+    cl <- tempest_claim(
+      claim_text = claim,
       source_ids = source_ids,
-      confidence = confidence,
-      note = note
+      confidence = confidence
     )
-    retriever$store$add_fact(fact)
+    retriever$store$add_claim(cl)
     list(
-      fact_id = fact$id,
-      claim = fact$claim,
-      source_ids = fact$source_ids,
-      confidence = fact$confidence
+      fact_id = cl@claim_id,
+      claim = cl@claim_text,
+      source_ids = cl@source_ids,
+      confidence = cl@confidence
     )
   }
 
@@ -285,15 +284,15 @@ tempest_tools_source_management <- function(retriever) {
   }
 
   list_facts <- function() {
-    f <- retriever$store$list_facts()
+    f <- retriever$store$list_claims()
     purrr::map(
       f,
       ~ list(
-        fact_id = .x$id,
-        claim = .x$claim,
-        source_ids = .x$source_ids,
-        confidence = .x$confidence,
-        created_at = .x$created_at
+        fact_id = .x@claim_id,
+        claim = .x@claim_text,
+        source_ids = .x@source_ids,
+        confidence = .x@confidence,
+        created_at = .x@created_at
       )
     )
   }
@@ -302,18 +301,17 @@ tempest_tools_source_management <- function(retriever) {
     if (is.null(source_ids) || length(source_ids) == 0) {
       tempest_abort("add_fact requires at least one source_id.")
     }
-    fact <- tempest_fact(
-      claim = claim,
+    cl <- tempest_claim(
+      claim_text = claim,
       source_ids = source_ids,
-      confidence = confidence,
-      note = note
+      confidence = confidence
     )
-    retriever$store$add_fact(fact)
+    retriever$store$add_claim(cl)
     list(
-      fact_id = fact$id,
-      claim = fact$claim,
-      source_ids = fact$source_ids,
-      confidence = fact$confidence
+      fact_id = cl@claim_id,
+      claim = cl@claim_text,
+      source_ids = cl@source_ids,
+      confidence = cl@confidence
     )
   }
 

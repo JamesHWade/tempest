@@ -206,14 +206,16 @@ tempest_extract_facts_from_answer <- function(
       ~ .x$source_id %||% NA_character_
     )
     src_ids <- unique(src_ids[nzchar(src_ids) & !is.na(src_ids)])
-    if (length(src_ids) == 0) {
+    # Drop citations to sources that are not in the store (hallucinated ids).
+    known <- src_ids[!purrr::map_lgl(src_ids, ~ is.null(store$get_source(.x)))]
+    if (length(known) == 0) {
       next
     }
-    store$add_fact(tempest_fact(
-      claim = claim,
-      source_ids = src_ids,
-      confidence = f$confidence %||% NA_character_,
-      note = f$note %||% NA_character_
+    store$add_claim(tempest_claim(
+      claim_text = claim,
+      source_ids = known,
+      claim_type = "finding",
+      confidence = f$confidence %||% "medium"
     ))
   }
   invisible(TRUE)
@@ -330,7 +332,7 @@ tempest_research_one_perspective <- function(
 
   list(
     sources = local_store$list_sources(),
-    facts = local_store$list_facts()
+    claims = local_store$list_claims()
   )
 }
 
@@ -454,8 +456,8 @@ tempest_research_parallel <- function(
     for (src in val$sources %||% list()) {
       store$upsert_source(src)
     }
-    for (fact in val$facts %||% list()) {
-      store$add_fact(fact)
+    for (claim in val$claims %||% list()) {
+      store$add_claim(claim)
     }
   }
 

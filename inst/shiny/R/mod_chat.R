@@ -182,7 +182,7 @@ mod_chat_server <- function(id, config, store) {
         append_chat("No session active. Start a session first.")
         return()
       }
-      n_evidence <- length(ses$store$list_facts()) +
+      n_evidence <- length(ses$store$list_claims()) +
         length(ses$store$list_sources())
       if (n_evidence == 0) {
         append_chat(
@@ -346,20 +346,20 @@ record_warmup_turn <- function(ses, name, question, response) {
 }
 
 warmup_summary <- function(ses) {
-  facts <- ses$store$list_facts()
+  facts <- ses$store$list_claims()
   n_facts <- length(facts)
   n_sources <- length(ses$store$list_sources())
 
   highlights <- ""
   if (n_facts > 0) {
-    high <- Filter(function(f) identical(f$confidence, "high"), facts)
+    high <- Filter(function(f) identical(f@confidence, "high"), facts)
     show <- if (length(high) > 0) {
       utils::head(high, 5)
     } else {
       utils::head(facts, 5)
     }
     bullets <- paste(
-      vapply(show, function(f) paste0("- ", f$claim), character(1)),
+      vapply(show, function(f) paste0("- ", f@claim_text), character(1)),
       collapse = "\n"
     )
     highlights <- paste0("\n\n**Key findings so far:**\n", bullets)
@@ -416,7 +416,7 @@ run_warmup <- function(ses, store, append_chat) {
         append_chat(sprintf(
           "**%s** done (%d facts so far)",
           name,
-          length(ses$store$list_facts())
+          length(ses$store$list_claims())
         ))
       })
     }) |>

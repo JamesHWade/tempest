@@ -75,7 +75,7 @@ tempest_solver_cited_answer <- function(
     chats[[i]] <- chat
     meta[[i]] <- list(
       sources = store$to_tibbles()$sources,
-      facts = store$to_tibbles()$facts
+      claims = store$to_tibbles()$claims
     )
   }
 
@@ -180,7 +180,7 @@ tempest_costorm_task <- function(
       meta[[i]] <- list(
         turns = sim_user$turn_count,
         sources = session$store$to_tibbles()$sources,
-        facts = session$store$to_tibbles()$facts
+        claims = session$store$to_tibbles()$claims
       )
     }
 

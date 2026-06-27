@@ -551,7 +551,7 @@ TempestSession <- R6::R6Class(
       }
 
       if (verbose) {
-        total_facts <- length(self$store$list_facts())
+        total_facts <- length(self$store$list_claims())
         total_sources <- length(self$store$list_sources())
         tempest_inform(
           "Warmup complete: {total_facts} facts, {total_sources} sources"

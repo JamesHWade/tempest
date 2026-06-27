@@ -37,7 +37,7 @@ tempest_run_artifact_paths <- function(run_dir) {
     perspectives = file.path(run_dir, "perspectives.json"),
     personas = file.path(run_dir, "personas.json"),
     sources = file.path(run_dir, "sources.json"),
-    facts = file.path(run_dir, "facts.json"),
+    claims = file.path(run_dir, "claims.json"),
     draft_outline = file.path(run_dir, "direct_gen_outline.json"),
     outline = file.path(run_dir, "storm_gen_outline.json"),
     lead_section = file.path(run_dir, "lead_section.md"),
@@ -93,29 +93,24 @@ tempest_restore_sources <- function(store, sources) {
 }
 
 #' @keywords internal
-tempest_restore_facts <- function(store, facts) {
-  if (is.null(facts) || length(facts) == 0) {
+tempest_restore_claims <- function(store, claims) {
+  if (is.null(claims) || length(claims) == 0) {
     return(invisible(NULL))
   }
   existing_ids <- purrr::map_chr(
-    store$list_facts(),
-    ~ .x$id %||% NA_character_
+    store$list_claims(),
+    ~ .x@claim_id
   )
-  for (fact in facts) {
-    if (!is.list(fact) || is.null(fact$claim)) {
+  for (x in claims) {
+    if (!is.list(x) || is.null(x$claim_text)) {
       next
     }
-    fact$id <- fact$id %||% tempest_uuid("fact")
-    if (fact$id %in% existing_ids) {
+    claim <- tempest_claim_from_list(x)
+    if (claim@claim_id %in% existing_ids) {
       next
     }
-    fact$source_ids <- tempest_as_character_vector(fact$source_ids)
-    fact$confidence <- fact$confidence %||% NA_character_
-    fact$note <- fact$note %||% NA_character_
-    fact$tags <- tempest_as_character_vector(fact$tags)
-    fact$created_at <- fact$created_at %||% tempest_now_utc()
-    store$add_fact(fact)
-    existing_ids <- c(existing_ids, fact$id)
+    store$add_claim(claim)
+    existing_ids <- c(existing_ids, claim@claim_id)
   }
   invisible(NULL)
 }
@@ -133,9 +128,9 @@ tempest_load_run_artifacts <- function(run_dir, store) {
   if (file.exists(paths$sources)) {
     tempest_restore_sources(store, tempest_read_json(paths$sources))
   }
-  if (file.exists(paths$facts)) {
-    tempest_restore_facts(store, tempest_read_json(paths$facts))
-    store$set_artifact("facts", store$list_facts())
+  if (file.exists(paths$claims)) {
+    tempest_restore_claims(store, tempest_read_json(paths$claims))
+    store$set_artifact("claims", store$list_claims())
   }
   if (file.exists(paths$references)) {
     references <- tempest_read_json(paths$references)
@@ -196,7 +191,7 @@ tempest_infer_completed_stages <- function(paths) {
   if (file.exists(paths$perspectives) && file.exists(paths$personas)) {
     stages <- c(stages, "perspectives")
   }
-  if (file.exists(paths$sources) && file.exists(paths$facts)) {
+  if (file.exists(paths$sources) && file.exists(paths$claims)) {
     stages <- c(stages, "research")
   }
   if (file.exists(paths$outline)) {
@@ -249,7 +244,10 @@ tempest_save_run_artifacts <- function(
   )
 
   tempest_write_json(paths$sources, store$list_sources())
-  tempest_write_json(paths$facts, store$list_facts())
+  tempest_write_json(
+    paths$claims,
+    lapply(store$list_claims(), tempest_claim_to_list)
+  )
 
   # References are the sources actually cited in the report/draft, not a copy
   # of every collected source.

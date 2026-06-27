@@ -89,7 +89,7 @@ tempest_section_facts_text <- function(
 
   paste(
     purrr::map_chr(relevant, function(f) {
-      paste0("- ", f$claim, " [", paste(f$source_ids, collapse = ", "), "]")
+      paste0("- ", f@claim_text, " [", paste(f@source_ids, collapse = ", "), "]")
     }),
     collapse = "\n"
   )
@@ -375,21 +375,21 @@ tempest_write_lead_section <- function(
 
 tempest_summarize_facts_for_prompt <- function(store, max_items = 60) {
   stopifnot(inherits(store, "SourceStore"))
-  facts <- store$list_facts()
+  facts <- store$list_claims()
   if (length(facts) == 0) {
     return("(no facts yet)")
   }
   facts <- facts[seq_len(min(length(facts), max_items))]
   lines <- purrr::map_chr(facts, function(f) {
-    cites <- paste0("[", paste(f$source_ids, collapse = ", "), "]")
-    glue::glue("- {f$claim} {cites}")
+    cites <- paste0("[", paste(f@source_ids, collapse = ", "), "]")
+    glue::glue("- {f@claim_text} {cites}")
   })
   paste(lines, collapse = "\n")
 }
 
 #' @keywords internal
 tempest_keyword_filter_facts <- function(store, query, max_items = 30) {
-  facts <- store$list_facts()
+  facts <- store$list_claims()
   if (length(facts) == 0) {
     return(list())
   }
@@ -403,7 +403,7 @@ tempest_keyword_filter_facts <- function(store, query, max_items = 30) {
   scored <- vapply(
     facts,
     function(f) {
-      claim <- tolower(f$claim %||% "")
+      claim <- tolower(f@claim_text %||% "")
       sum(vapply(tokens, function(t) grepl(t, claim, fixed = TRUE), logical(1)))
     },
     integer(1)
@@ -437,7 +437,7 @@ tempest_semantic_filter_facts <- function(
     return(tempest_keyword_filter_facts(store, query, max_items = max_items))
   }
 
-  facts <- store$list_facts()
+  facts <- store$list_claims()
   if (length(facts) == 0) {
     return(list())
   }
@@ -470,7 +470,7 @@ tempest_semantic_filter_facts <- function(
   scored <- vapply(
     facts,
     function(f) {
-      sum(f$source_ids %in% chunk_source_ids)
+      sum(f@source_ids %in% chunk_source_ids)
     },
     integer(1)
   )
@@ -481,7 +481,7 @@ tempest_semantic_filter_facts <- function(
   keyword_scores <- vapply(
     facts,
     function(f) {
-      claim <- tolower(f$claim %||% "")
+      claim <- tolower(f@claim_text %||% "")
       sum(vapply(tokens, function(t) grepl(t, claim, fixed = TRUE), logical(1)))
     },
     integer(1)

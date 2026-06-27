@@ -485,7 +485,7 @@ tempest_run <- function(
       }
     }
 
-    store$set_artifact("facts", store$list_facts())
+    store$set_artifact("claims", store$list_claims())
     completed_stages <- tempest_mark_stage_complete(
       completed_stages,
       "research"
