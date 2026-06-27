@@ -70,10 +70,12 @@ Behaviour:
 - Builds a prompt from `topic` + optional `context` and requests a structured result
   with `ellmer::type_array(ellmer::type_string())` via `chat$chat_structured()`.
 - Returns a trimmed, de-duplicated, non-empty character vector (at most `n`).
-- Attaches **no web/retrieval tools** to the chat — this is a plain completion, so it
-  cannot reach the `ragnar::read_as_markdown()` path that has no timeout.
-- The chat is configured with a bounded request timeout (see Error handling).
-- On any error/timeout, returns `character(0)` (caller shows no cards).
+- Builds its chat with `tempest_make_chat(config, "coordinator", ...)`. The Shiny app
+  leaves `config@tools` NULL, so this chat has **no web/retrieval tools** and cannot
+  reach the untimed `ragnar::read_as_markdown()` path.
+- Uses `chat_structured()` (a single constrained completion, no tool loop), matching the
+  existing persona / perspective / mind-map generators.
+- On any error, returns `character(0)` (caller shows no cards).
 
 System prompt: `inst/prompts/question_suggester_system.md` (new). Instructs the model to
 produce `n` concise, specific, **answerable** questions a curious reader would ask next;
@@ -128,12 +130,14 @@ does.)
 This feature adds an LLM call to each turn. Applying the lesson from the warmup hang
 (an untimed `ragnar` call blocking the event loop):
 
-- The suggester chat sets an explicit request **timeout** so a stalled call cannot freeze
-  the app.
-- Generation is wrapped in `tryCatch`; any error or timeout yields **no cards** and never
-  interrupts the answer or the post-turn pipeline — the same quiet-failure pattern used
-  by `extract_facts()` and `update_mindmap()` in `record_warmup_turn()`.
-- The suggester has no retrieval tools, so it cannot enter the untimed fetch path.
+- Primary protection: the suggester has **no retrieval tools** (`config@tools` is NULL in
+  the app) and uses `chat_structured()`, so it cannot enter the untimed `fetch_url` /
+  `ragnar` path that caused the warmup hang.
+- Generation is wrapped in `tryCatch`; any error yields **no cards** and never interrupts
+  the answer or the post-turn pipeline — the same quiet-failure pattern used by
+  `extract_facts()` and `update_mindmap()`.
+- Note: ellmer 0.4.1 exposes no per-request network timeout, so we rely on the tool-free
+  constrained completion (low hang risk) plus quiet failure rather than a hard timeout.
 
 ## Toggle behaviour
 
@@ -167,9 +171,11 @@ Edited:
 
 ## Risks / open items
 
-- Verify the `chat$last_turn()` vs `chat$append()` interaction (covered by the
-  `nzchar(msg)` guard regardless).
-- Confirm `chat$chat_structured()` exists in the installed ellmer; if not, fall back to a
-  plain completion returning one question per line, parsed into a vector.
+- `chat$append(role = "assistant")` does not fire `chat$last_turn()` — confirmed by the
+  existing module, which appends the intro, warmup progress, and report messages without
+  the per-turn observer running on them. The `nzchar(msg)` guard is belt-and-suspenders.
+- `chat$chat_structured()` confirmed present in ellmer 0.4.1 (used by the mind-map and
+  persona generators with `tempest_type_*()` schemas).
 - Per-turn latency: cards appear a beat after the answer finishes streaming. Acceptable
-  per the chosen sync design; revisit async only if it feels slow in practice.
+  per the chosen sync design; revisit async (`chat_structured_async` exists) only if it
+  feels slow in practice.
