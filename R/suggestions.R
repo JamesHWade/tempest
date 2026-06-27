@@ -1,0 +1,99 @@
+# Suggested follow-up questions for the tempest Chat tab.
+
+#' @keywords internal
+tempest_type_suggested_questions <- function() {
+  tempest_require("ellmer")
+  ellmer::type_object(
+    questions = ellmer::type_array(
+      ellmer::type_string(
+        "A concise, self-contained question the user could ask next."
+      )
+    )
+  )
+}
+
+#' @keywords internal
+tempest_suggest_questions_prompt <- function(topic, context = NULL, n = 4) {
+  parts <- c(paste0("Topic: ", topic), "")
+  if (!is.null(context) && nzchar(context)) {
+    parts <- c(
+      parts,
+      "Conversation so far:",
+      context,
+      "",
+      paste0("Suggest ", n, " follow-up questions the user could ask next.")
+    )
+  } else {
+    parts <- c(
+      parts,
+      paste0(
+        "Suggest ",
+        n,
+        " questions a curious newcomer could ask to start exploring this topic."
+      )
+    )
+  }
+  paste(parts, collapse = "\n")
+}
+
+#' Suggest follow-up research questions for a topic
+#'
+#' Generates a short list of concise, user-facing questions to ask next about a
+#' topic, optionally conditioned on the conversation so far. The tempest Shiny
+#' app uses this to render clickable suggestion cards. The call is a single
+#' tool-free structured completion: any error yields an empty result.
+#'
+#' @param topic The research topic.
+#' @param context Optional character string with the recent conversation. When
+#'   `NULL`, questions are generated from the topic alone.
+#' @param n Maximum number of questions to return.
+#' @param chat Optional ellmer Chat to use. When `NULL`, a tool-free chat is
+#'   created from `config` using the coordinator model.
+#' @param config A `TempestConfig` object.
+#' @return A character vector of at most `n` questions (possibly empty).
+#' @examples
+#' \dontrun{
+#' tempest_suggest_questions("History of jazz", n = 4)
+#' }
+#' @export
+tempest_suggest_questions <- function(
+  topic,
+  context = NULL,
+  n = 4,
+  chat = NULL,
+  config = tempest_config()
+) {
+  topic <- tempest_trim(topic %||% "")
+  if (length(topic) != 1L || is.na(topic) || !nzchar(topic)) {
+    return(character())
+  }
+  n <- as.integer(n)
+  if (is.na(n) || n < 1L) {
+    n <- 4L
+  }
+  tryCatch(
+    {
+      if (is.null(chat)) {
+        tempest_require("ellmer", "Question suggestions require ellmer.")
+        chat <- tempest_make_chat(
+          config,
+          "coordinator",
+          system_prompt = tempest_prompt("question_suggester_system"),
+          echo = "none"
+        )
+      }
+      result <- chat$chat_structured(
+        tempest_suggest_questions_prompt(topic, context, n),
+        type = tempest_type_suggested_questions(),
+        echo = "none",
+        convert = FALSE
+      )
+      qs <- tempest_as_character_vector(result$questions %||% character())
+      qs <- tempest_trim(qs)
+      qs <- qs[!is.na(qs) & nzchar(qs)]
+      qs <- unique(qs)
+      utils::head(qs, n)
+    },
+    error = function(e) character()
+  )
+}
