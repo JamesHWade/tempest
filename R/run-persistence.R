@@ -58,14 +58,22 @@ tempest_write_json <- function(path, x) {
     null = "null",
     na = "null"
   )
-  writeLines(json, path, useBytes = TRUE)
+  tempest_atomic_write_lines(json, path)
   invisible(path)
 }
 
 #' @keywords internal
 tempest_read_json <- function(path) {
   tempest_require("jsonlite", "STORM run persistence requires jsonlite.")
-  jsonlite::fromJSON(path, simplifyVector = FALSE)
+  tryCatch(
+    jsonlite::fromJSON(path, simplifyVector = FALSE),
+    error = function(e) {
+      tempest_warn(
+        "Could not read run artifact {.path {path}} ({conditionMessage(e)}); ignoring it."
+      )
+      NULL
+    }
+  )
 }
 
 #' @keywords internal
@@ -117,7 +125,7 @@ tempest_load_run_artifacts <- function(run_dir, store) {
   stopifnot(inherits(store, "SourceStore"))
   paths <- tempest_run_artifact_paths(run_dir)
   metadata <- if (file.exists(paths$run_config)) {
-    tempest_read_json(paths$run_config)
+    tempest_read_json(paths$run_config) %||% list()
   } else {
     list()
   }
@@ -139,10 +147,10 @@ tempest_load_run_artifacts <- function(run_dir, store) {
   for (artifact_name in names(json_artifacts)) {
     path <- paths[[artifact_name]]
     if (file.exists(path)) {
-      store$set_artifact(
-        json_artifacts[[artifact_name]],
-        tempest_read_json(path)
-      )
+      value <- tempest_read_json(path)
+      if (!is.null(value)) {
+        store$set_artifact(json_artifacts[[artifact_name]], value)
+      }
     }
   }
 
@@ -233,7 +241,6 @@ tempest_save_run_artifacts <- function(
     retrieve_top_k = config$retrieve_top_k,
     max_sources = config$max_sources
   )
-  tempest_write_json(paths$run_config, metadata)
 
   tempest_write_json(paths$sources, store$list_sources())
   tempest_write_json(paths$facts, store$list_facts())
@@ -263,6 +270,10 @@ tempest_save_run_artifacts <- function(
       tempest_write_text(paths[[path_name]], value)
     }
   }
+
+  # Write the run manifest last, so a crash mid-save never leaves
+  # `completed_stages` asserting a stage whose artifacts are not yet on disk.
+  tempest_write_json(paths$run_config, metadata)
 
   invisible(run_dir)
 }

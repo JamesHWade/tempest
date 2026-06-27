@@ -18,3 +18,11 @@ Invisibly returns the RDS path.
 \description{
 Save compiled dsprrr modules
 }
+\examples{
+\dontrun{
+modules <- tempest_optimize_dsprrr_modules(
+  trainsets = list(query_decomposition = trainset)
+)
+path <- tempest_save_dsprrr_modules(modules, tempfile(fileext = ".rds"))
+}
+}

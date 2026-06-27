@@ -24,3 +24,9 @@ personas are generated automatically.}
 \description{
 Create a Co-STORM session
 }
+\examples{
+\dontrun{
+session <- tempest_session("History of jazz", config = tempest_config())
+session$step("What styles emerged in the 1950s?")
+}
+}

@@ -3,6 +3,11 @@
 #' Return sources as a tibble
 #' @param store A `SourceStore` or `TempestRetriever`.
 #' @return A tibble of sources with columns: id, url, title, snippet, content_text, fetched_at.
+#' @examples
+#' \dontrun{
+#' result <- tempest_run("History of jazz", config = tempest_config())
+#' tempest_sources(result$store)
+#' }
 #' @export
 tempest_sources <- function(store) {
   if (inherits(store, "TempestRetriever")) {
@@ -15,6 +20,11 @@ tempest_sources <- function(store) {
 #' Return fact notes as a tibble
 #' @param store A `SourceStore` or `TempestRetriever`.
 #' @return A tibble of facts with columns: claim, source_ids, confidence, note, tags.
+#' @examples
+#' \dontrun{
+#' result <- tempest_run("History of jazz", config = tempest_config())
+#' tempest_facts(result$store)
+#' }
 #' @export
 tempest_facts <- function(store) {
   if (inherits(store, "TempestRetriever")) {
@@ -64,6 +74,15 @@ tempest_add_footnotes <- function(text, store) {
 #' @param body Markdown body text that may include inline citations like `[Sxxxxxxxxxxxx]`.
 #' @param store A `SourceStore` containing sources.
 #' @return Markdown with footnotes.
+#' @examples
+#' \dontrun{
+#' result <- tempest_run("History of jazz", config = tempest_config())
+#' md <- tempest_report_md(
+#'   title = "History of Jazz",
+#'   body = result$draft_md,
+#'   store = result$store
+#' )
+#' }
 #' @export
 tempest_report_md <- function(title, body, store) {
   if (inherits(store, "TempestRetriever")) {
@@ -89,6 +108,12 @@ tempest_report_md <- function(title, body, store) {
 #'
 #' @param session A `TempestSession`.
 #' @return Markdown with footnotes.
+#' @examples
+#' \dontrun{
+#' session <- tempest_session("History of jazz", config = tempest_config())
+#' session$step("Tell me about bebop.")
+#' md <- tempest_session_report_md(session)
+#' }
 #' @export
 tempest_session_report_md <- function(session) {
   stopifnot(inherits(session, "TempestSession"))

@@ -79,3 +79,10 @@ This is a scripted workflow that:
 \item writes a cited report in Markdown.
 }
 }
+\examples{
+\dontrun{
+cfg <- tempest_config()
+result <- tempest_run("History of jazz", config = cfg)
+cat(result$report_md)
+}
+}

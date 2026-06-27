@@ -16,11 +16,12 @@ test_that("tempest_extract_toc_from_url handles NA gracefully", {
   expect_length(result, 0)
 })
 
-test_that("tempest_extract_toc_from_url returns character without rvest", {
-  # When rvest is not available, should return empty
-  mockr <- tempest:::tempest_extract_toc_from_url
-  result <- mockr("https://example.com")
-  expect_type(result, "character")
+test_that("tempest_extract_toc_from_url returns empty when xml2 is unavailable", {
+  # Simulate xml2 being absent: the function must short-circuit to an empty
+  # result without making any network request.
+  local_mocked_bindings(tempest_has = function(pkg) FALSE)
+  result <- tempest:::tempest_extract_toc_from_url("https://example.com")
+  expect_identical(result, character())
 })
 
 test_that("tempest_wiki_page_sections returns character vector", {

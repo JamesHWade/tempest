@@ -129,3 +129,58 @@ test_that("completed stage metadata controls resume state", {
     FALSE
   )
 })
+
+test_that("tempest_atomic_write_lines writes content and leaves no temp files", {
+  dir <- withr::local_tempdir()
+  path <- file.path(dir, "out.txt")
+
+  tempest:::tempest_atomic_write_lines(c("a", "b"), path)
+  expect_equal(readLines(path), c("a", "b"))
+
+  tempest:::tempest_atomic_write_lines("c", path)
+  expect_equal(readLines(path), "c")
+
+  expect_length(list.files(dir, pattern = "\\.tmp$"), 0L)
+})
+
+test_that("tempest_infer_completed_stages reads stages from artifact files", {
+  dir <- withr::local_tempdir()
+  paths <- tempest:::tempest_run_artifact_paths(dir)
+
+  expect_length(tempest:::tempest_infer_completed_stages(paths), 0L)
+
+  file.create(paths$perspectives, paths$personas)
+  expect_setequal(
+    tempest:::tempest_infer_completed_stages(paths),
+    "perspectives"
+  )
+
+  file.create(paths$outline)
+  expect_setequal(
+    tempest:::tempest_infer_completed_stages(paths),
+    c("perspectives", "outline")
+  )
+})
+
+test_that("the run manifest is written after the artifacts it certifies", {
+  skip_if_not_installed("jsonlite")
+  dir <- withr::local_tempdir()
+  paths <- tempest:::tempest_run_artifact_paths(dir)
+  store <- SourceStore$new()
+  store$set_artifact("draft_md", "# Draft")
+
+  tempest:::tempest_save_run_artifacts(
+    dir,
+    store,
+    topic = "t",
+    title = "T",
+    config = tempest_config(),
+    completed_stages = c("research", "write"),
+    steps = c("research", "write"),
+    research_strategy = "key_questions"
+  )
+
+  # If the manifest claims "write" is complete, its artifact must exist.
+  expect_true(file.exists(paths$run_config))
+  expect_true(file.exists(paths$draft_md))
+})

@@ -248,7 +248,7 @@ tempest_wikipedia_api <- function(params) {
   req <- httr2::request(base) |>
     httr2::req_url_query(!!!params) |>
     httr2::req_user_agent("tempest (R; Wikipedia API)")
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   httr2::resp_body_json(resp, simplifyVector = TRUE)
 }
 
@@ -451,8 +451,13 @@ TempestRetriever <- R6::R6Class(
         ))
       )
 
-      # Normalize and add deterministic source ids
-      out$url <- purrr::map_chr(out$url, tempest_normalize_url)
+      # Normalize URLs without aborting on missing/unsafe values, then drop
+      # any rows we cannot use. A single bad or blocked URL must not discard
+      # every other (valid) result for the query.
+      out$url <- purrr::map_chr(out$url, function(u) {
+        tryCatch(tempest_normalize_url(u), error = function(e) NA_character_)
+      })
+      out <- out[!is.na(out$url) & nzchar(out$url), , drop = FALSE]
       out$source_id <- purrr::map_chr(out$url, tempest_source_id)
 
       tempest_cache_set(self$cache_dir, key, out)
@@ -662,6 +667,11 @@ TempestRetriever <- R6::R6Class(
 #' @param config A `TempestConfig`.
 #' @param store A `SourceStore`.
 #' @return A `TempestRetriever`.
+#' @examples
+#' retriever <- tempest_retriever(config = tempest_config())
+#' \dontrun{
+#' results <- retriever$search("history of jazz", provider = "wikipedia")
+#' }
 #' @export
 tempest_retriever <- function(
   config = tempest_config(),
@@ -673,6 +683,24 @@ tempest_retriever <- function(
 # --- Provider-specific search helpers ----------------------------------------
 # API keys are retrieved from environment variables inside functions,
 # never as parameters (security: prevents exposure in stack traces)
+
+#' Perform a search-provider request with a timeout and transient-error retry
+#'
+#' Search providers are the hottest network path in the pipeline. Without a
+#' timeout a hung connection stalls the whole run, and without retries a
+#' transient 429/5xx aborts it. This wraps [httr2::req_perform()] with both.
+#' @keywords internal
+tempest_search_perform <- function(req, timeout_s = 30L) {
+  req <- httr2::req_timeout(req, timeout_s)
+  req <- httr2::req_retry(
+    req,
+    max_tries = 3L,
+    is_transient = function(resp) {
+      httr2::resp_status(resp) %in% c(429L, 500L, 502L, 503L, 504L)
+    }
+  )
+  httr2::req_perform(req)
+}
 
 #' Search using You.com API
 #'
@@ -687,7 +715,7 @@ tempest_search_you <- function(query, k = 8L) {
     httr2::req_headers(`X-API-Key` = api_key) |>
     httr2::req_url_query(query = query)
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = FALSE)
   items <- body$hits %||% list()
 
@@ -730,7 +758,7 @@ tempest_search_bing <- function(query, k = 8L) {
       setLang = Sys.getenv("BING_SEARCH_LANGUAGE", unset = "en")
     )
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$webPages$value
 
@@ -761,7 +789,7 @@ tempest_search_serper <- function(query, k = 8L) {
     ) |>
     httr2::req_body_json(list(q = query, num = k))
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$organic
 
@@ -792,7 +820,7 @@ tempest_search_brave <- function(query, k = 8L) {
     ) |>
     httr2::req_url_query(q = query, count = k)
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$web$results
 
@@ -825,7 +853,7 @@ tempest_search_duckduckgo <- function(query, k = 8L) {
     ) |>
     httr2::req_user_agent("tempest (R; DuckDuckGo HTML search)")
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   html <- httr2::resp_body_string(resp)
   doc <- xml2::read_html(html)
   nodes <- rvest::html_elements(doc, ".result")
@@ -863,7 +891,7 @@ tempest_search_tavily <- function(query, k = 8L) {
       max_results = k
     ))
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$results
 
@@ -902,7 +930,7 @@ tempest_search_searxng <- function(query, k = 8L) {
     req <- httr2::req_headers(req, Authorization = paste("Bearer", api_key))
   }
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$results
 
@@ -936,7 +964,7 @@ tempest_search_google <- function(query, k = 8L) {
       num = min(k, 10L)
     )
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   items <- body$items
 
@@ -992,7 +1020,7 @@ tempest_search_azure_ai_search <- function(query, k = 8L) {
     httr2::req_url_query(`api-version` = api_version) |>
     httr2::req_body_json(list(search = query, top = k))
 
-  resp <- httr2::req_perform(req)
+  resp <- tempest_search_perform(req)
   body <- httr2::resp_body_json(resp, simplifyVector = FALSE)
   items <- body$value %||% list()
 

@@ -30,3 +30,12 @@ A list of persona objects.
 Uses an LLM to generate diverse expert personas who would naturally
 approach the topic from different angles, following the STORM methodology.
 }
+\examples{
+\dontrun{
+personas <- tempest_generate_personas(
+  topic = "Climate change adaptation",
+  n = 3,
+  config = tempest_config()
+)
+}
+}

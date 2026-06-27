@@ -43,7 +43,6 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
     \item \href{#method-TempestSession-transcript_markdown}{\code{TempestSession$transcript_markdown()}}
     \item \href{#method-TempestSession-get_persona_names}{\code{TempestSession$get_persona_names()}}
     \item \href{#method-TempestSession-get_persona_descriptions}{\code{TempestSession$get_persona_descriptions()}}
-    \item \href{#method-TempestSession-decide_next}{\code{TempestSession$decide_next()}}
     \item \href{#method-TempestSession-update_mindmap}{\code{TempestSession$update_mindmap()}}
     \item \href{#method-TempestSession-mindmap_markdown}{\code{TempestSession$mindmap_markdown()}}
     \item \href{#method-TempestSession-extract_facts}{\code{TempestSession$extract_facts()}}
@@ -161,28 +160,6 @@ personas are generated automatically using \code{tempest_generate_personas()}.}
   }
   \subsection{Returns}{
     A formatted string describing all personas.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-decide_next"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-decide_next}{}}}
-\subsection{\code{TempestSession$decide_next()}}{
-  Decide which agent should respond next.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$decide_next(user_input)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{user_input}}{The user's input.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    A decision object with next_agent and instruction.
   }
 }
 

@@ -8,6 +8,10 @@
 #'
 #' @param ... Passed to `shiny::runApp()`.
 #' @return A Shiny app object (invisibly, from `shiny::runApp()`).
+#' @examples
+#' \dontrun{
+#' run_app()
+#' }
 #' @export
 run_app <- function(...) {
   tempest_require("shiny", "run_app() launches a Shiny app.")

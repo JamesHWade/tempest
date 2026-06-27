@@ -61,6 +61,14 @@ tempest_type_personas <- function() {
 #' @param module Optional dsprrr module used internally.
 #' @return A list of persona objects.
 #'
+#' @examples
+#' \dontrun{
+#' personas <- tempest_generate_personas(
+#'   topic = "Climate change adaptation",
+#'   n = 3,
+#'   config = tempest_config()
+#' )
+#' }
 #' @export
 tempest_generate_personas <- function(
   topic,
@@ -287,10 +295,8 @@ tempest_generate_perspectives <- function(
     "\n\n",
     seed_context,
     "\n\n",
-    "Propose ",
+    "Propose exactly ",
     n_experts,
-    "-",
-    n_experts + 2,
     " distinct perspectives to cover the topic. Each perspective should have 3-6 research questions.\n",
     "Return structured data."
   )
@@ -605,44 +611,121 @@ tempest_write_sections_sequential <- function(
   })
 }
 
+#' Choose a worker count for parallel execution
+#' @keywords internal
+tempest_parallel_workers <- function(n_items = NULL) {
+  workers <- getOption("tempest.parallel_workers", NULL)
+  if (is.null(workers)) {
+    cores <- tryCatch(parallel::detectCores(), error = function(e) NA_integer_)
+    workers <- if (is.na(cores) || cores < 2L) 2L else min(cores - 1L, 8L)
+  }
+  workers <- as.integer(workers)
+  if (is.na(workers) || workers < 1L) {
+    workers <- 1L
+  }
+  if (!is.null(n_items)) {
+    workers <- min(workers, max(1L, as.integer(n_items)))
+  }
+  as.integer(workers)
+}
+
+#' Ensure mirai daemons are available
+#'
+#' Returns `TRUE` if daemons are ready, with a `started` attribute recording
+#' whether this call created them (so the caller can tear them down). Returns
+#' `FALSE` if mirai daemons could not be started.
+#' @keywords internal
+tempest_setup_daemons <- function(n) {
+  started <- FALSE
+  ok <- tryCatch(
+    {
+      if (mirai::status()$connections < 1L) {
+        mirai::daemons(n)
+        started <- TRUE
+      }
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+  structure(isTRUE(ok), started = started)
+}
+
+#' @keywords internal
+tempest_collect_parallel <- function(value) {
+  # Convert a single mirai_map result element into a value or NULL on failure.
+  if (
+    is.null(value) ||
+      inherits(value, "errorValue") ||
+      inherits(value, "miraiError") ||
+      inherits(value, "condition")
+  ) {
+    return(NULL)
+  }
+  value
+}
+
 #' @keywords internal
 tempest_write_sections_parallel <- function(
   jobs,
   config,
   dsprrr_modules = NULL
 ) {
-  tempest_require("mirai", "Parallel section writing requires mirai.")
+  # On any failure we return a list of NULLs so the caller writes the
+  # affected sections sequentially. Real parallelism requires the installed
+  # 'tempest' package to be available to the mirai workers; in environments
+  # where it is not (e.g. `devtools::load_all()`), this falls back cleanly.
+  fallback <- vector("list", length(jobs))
+  if (!tempest_has("mirai")) {
+    return(fallback)
+  }
 
-  results <- mirai::mirai_map(
-    seq_along(jobs),
-    function(i, jobs, config, dsprrr_modules) {
-      job <- jobs[[i]]
-      writer <- config$make_chat("writer", echo = "none")
-      modules <- dsprrr_modules %||% tempest_make_dsprrr_modules(config)
-      tempest_run_section_job(
-        job,
-        writer,
-        module = modules$section_writing,
-        verbose = FALSE
-      )
-    },
-    .args = list(
-      jobs = jobs,
-      config = config,
-      dsprrr_modules = dsprrr_modules
+  ready <- tempest_setup_daemons(tempest_parallel_workers(length(jobs)))
+  if (!isTRUE(ready)) {
+    tempest_warn(
+      "Could not start mirai daemons; writing sections sequentially."
     )
-  )
+    return(fallback)
+  }
+  if (isTRUE(attr(ready, "started"))) {
+    on.exit(try(mirai::daemons(0), silent = TRUE), add = TRUE)
+  }
 
-  purrr::map(seq_along(results), function(i) {
-    val <- tryCatch(results[[i]]$data, error = function(e) NULL)
-    if (inherits(val, "errorValue") || is.null(val)) {
-      tempest_warn(
-        "Parallel section writing failed for {.val {jobs[[i]]$title}}; retrying sequentially."
+  collected <- tryCatch(
+    mirai::mirai_map(
+      seq_along(jobs),
+      function(i, jobs, config, dsprrr_modules, run_section_job, make_modules) {
+        job <- jobs[[i]]
+        writer <- config$make_chat("writer", echo = "none")
+        modules <- if (is.null(dsprrr_modules)) {
+          make_modules(config)
+        } else {
+          dsprrr_modules
+        }
+        run_section_job(
+          job,
+          writer,
+          module = modules$section_writing,
+          verbose = FALSE
+        )
+      },
+      .args = list(
+        jobs = jobs,
+        config = config,
+        dsprrr_modules = dsprrr_modules,
+        run_section_job = tempest_run_section_job,
+        make_modules = tempest_make_dsprrr_modules
       )
-      return(NULL)
-    }
-    val
-  })
+    )[],
+    error = function(e) e
+  )
+  if (inherits(collected, "condition")) {
+    tempest_warn(
+      "Parallel section writing failed ({conditionMessage(collected)}); writing sections sequentially."
+    )
+    return(fallback)
+  }
+
+  lapply(collected, tempest_collect_parallel)
 }
 
 #' @keywords internal
@@ -1226,7 +1309,7 @@ tempest_make_dsprrr_modules <- function(config) {
             instructions = paste(
               "Plan a comprehensive STORM research report.",
               "Use seed sources and table-of-contents hints to discover distinct perspectives.",
-              "Return a title and n_experts to n_experts + 2 perspectives.",
+              "Return a title and exactly n_experts perspectives.",
               "Each perspective needs 3-6 specific research questions.",
               sep = "\n"
             )
@@ -1486,6 +1569,13 @@ tempest_dsprrr_modules_path <- function(path) {
 #' @param path File path ending in `.rds`, or a directory where
 #'   `dsprrr-modules.rds` will be written.
 #' @return Invisibly returns the RDS path.
+#' @examples
+#' \dontrun{
+#' modules <- tempest_optimize_dsprrr_modules(
+#'   trainsets = list(query_decomposition = trainset)
+#' )
+#' path <- tempest_save_dsprrr_modules(modules, tempfile(fileext = ".rds"))
+#' }
 #' @export
 tempest_save_dsprrr_modules <- function(modules, path) {
   rds_path <- tempest_dsprrr_modules_path(path)
@@ -1499,6 +1589,11 @@ tempest_save_dsprrr_modules <- function(modules, path) {
 #' @param path File path ending in `.rds`, or a directory containing
 #'   `dsprrr-modules.rds`.
 #' @return A named list of dsprrr modules.
+#' @examples
+#' \dontrun{
+#' modules <- tempest_load_dsprrr_modules("path/to/dsprrr-modules.rds")
+#' result <- tempest_run("History of jazz", dsprrr_modules = modules)
+#' }
 #' @export
 tempest_load_dsprrr_modules <- function(path) {
   rds_path <- tempest_dsprrr_modules_path(path)
@@ -1536,6 +1631,18 @@ tempest_load_dsprrr_modules <- function(path) {
 #'   warn and keep the unoptimized module for that step.
 #' @param verbose If `TRUE`, print optimization progress.
 #' @return A named list of dsprrr modules.
+#' @examples
+#' \dontrun{
+#' trainset <- data.frame(
+#'   question = "What are battery recycling bottlenecks?",
+#'   topic = "lithium batteries"
+#' )
+#' trainset$queries <- list(c("battery recycling", "EV battery capacity"))
+#' modules <- tempest_optimize_dsprrr_modules(
+#'   trainsets = list(query_decomposition = trainset),
+#'   config = tempest_config()
+#' )
+#' }
 #' @export
 tempest_optimize_dsprrr_modules <- function(
   trainsets,
@@ -1714,7 +1821,127 @@ tempest_extract_facts_from_answer <- function(
   invisible(TRUE)
 }
 
+#' Research a single perspective (search + expert synthesis)
+#'
+#' Shared by the parallel and sequential research fallbacks so both paths
+#' behave identically. Returns the sources and facts gathered for one
+#' perspective in an isolated store.
+#' @keywords internal
+tempest_research_one_perspective <- function(
+  i,
+  perspectives,
+  personas,
+  config,
+  topic,
+  research_strategy,
+  max_questions_per_perspective,
+  dsprrr_modules = NULL
+) {
+  p <- perspectives[[i]]
+  persona <- if (i <= length(personas)) personas[[i]] else NULL
+
+  local_store <- SourceStore$new()
+  local_retriever <- tempest_retriever(config = config, store = local_store)
+
+  sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
+  expert <- config$make_chat("expert", system_prompt = sp, echo = "none")
+  tempest_register_default_tools(
+    expert,
+    local_retriever,
+    model = config$models[["expert"]],
+    search_provider = config$search_provider
+  )
+  writer <- config$make_chat("writer", echo = "none")
+  extractor <- config$make_chat(
+    "judge",
+    system_prompt = tempest_prompt("fact_extractor_system"),
+    echo = "none"
+  )
+  modules <- dsprrr_modules %||% tempest_make_dsprrr_modules(config)
+
+  p_name <- p$name %||% "Perspective"
+  p_desc <- p$description %||% ""
+  qs <- p$key_questions %||% c(topic)
+
+  if (identical(research_strategy, "key_questions")) {
+    qs_limited <- utils::head(qs, max_questions_per_perspective)
+    for (q in qs_limited) {
+      decomposed <- tryCatch(
+        tempest_decompose_query(
+          writer,
+          q,
+          topic,
+          module = modules$query_decomposition,
+          max_queries = config$max_search_queries_per_turn
+        ),
+        error = function(e) {
+          tempest_warn(
+            "Query decomposition failed, using original query: {conditionMessage(e)}"
+          )
+          list(queries = list(q))
+        }
+      )
+      search_instructions <- paste0(
+        "Suggested search queries:\n",
+        paste0("- ", decomposed$queries %||% q, collapse = "\n"),
+        "\n\n"
+      )
+
+      prompt <- paste0(
+        "Perspective: ",
+        p_name,
+        "\n",
+        "Description: ",
+        p_desc,
+        "\n\n",
+        "Question: ",
+        q,
+        "\n\n",
+        search_instructions,
+        "Instructions:\n",
+        "- Use web_search + fetch_url as needed.\n",
+        "- Only state factual claims that are supported by sources you fetched.\n",
+        "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
+        "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
+        "Answer:"
+      )
+      ans <- tryCatch(
+        expert$chat(prompt, echo = "none"),
+        error = function(e) {
+          tempest_warn(
+            "Expert answer failed for {.val {p_name}}: {conditionMessage(e)}"
+          )
+          NULL
+        }
+      )
+      if (!is.null(ans)) {
+        tryCatch(
+          tempest_extract_facts_from_answer(
+            extractor,
+            ans,
+            local_store,
+            module = modules$fact_extraction
+          ),
+          error = function(e) {
+            tempest_warn("Fact extraction failed: {conditionMessage(e)}")
+          }
+        )
+      }
+    }
+  }
+
+  list(
+    sources = local_store$list_sources(),
+    facts = local_store$list_facts()
+  )
+}
+
 #' Run research in parallel using mirai
+#'
+#' Falls back to sequential research when mirai daemons cannot be started or
+#' the workers fail (for example when the installed 'tempest' package is not
+#' available to the workers). Any perspective that fails in a worker is retried
+#' sequentially so its evidence is never silently dropped.
 #' @keywords internal
 tempest_research_parallel <- function(
   perspectives,
@@ -1729,125 +1956,101 @@ tempest_research_parallel <- function(
   dsprrr_modules = NULL,
   verbose
 ) {
-  tempest_require("mirai", "Parallel research requires the mirai package.")
-
-  # Each perspective gets its own isolated SourceStore + retriever
-  results <- mirai::mirai_map(
-    seq_along(perspectives),
-    function(
+  n <- length(perspectives)
+  run_one <- function(i) {
+    tempest_research_one_perspective(
       i,
-      perspectives,
-      personas,
-      config,
-      topic,
-      research_strategy,
-      max_rounds,
-      max_questions_per_perspective
-    ) {
-      p <- perspectives[[i]]
-      persona <- if (i <= length(personas)) personas[[i]] else NULL
-
-      # Create isolated store and retriever
-      local_store <- tempest::SourceStore$new()
-      local_retriever <- tempest::tempest_retriever(
-        config = config,
-        store = local_store
-      )
-
-      sp <- tempest_render_expert_prompt(
-        persona = persona,
-        expert_id = i
-      )
-      expert <- config$make_chat("expert", system_prompt = sp, echo = "none")
-      tempest_register_default_tools(
-        expert,
-        local_retriever,
-        model = config$models[["expert"]],
-        search_provider = config$search_provider
-      )
-      writer <- config$make_chat("writer", echo = "none")
-      extractor <- config$make_chat(
-        "judge",
-        system_prompt = tempest_prompt("fact_extractor_system"),
-        echo = "none"
-      )
-      modules <- dsprrr_modules %||% tempest_make_dsprrr_modules(config)
-
-      p_name <- p$name %||% "Perspective"
-      p_desc <- p$description %||% ""
-      qs <- p$key_questions %||% c(topic)
-
-      if (identical(research_strategy, "key_questions")) {
-        qs_limited <- utils::head(qs, max_questions_per_perspective)
-        for (q in qs_limited) {
-          decomposed <- tryCatch(
-            tempest_decompose_query(
-              writer,
-              q,
-              topic,
-              module = modules$query_decomposition,
-              max_queries = config$max_search_queries_per_turn
-            ),
-            error = function(e) {
-              list(queries = list(q))
-            }
-          )
-          search_instructions <- paste0(
-            "Suggested search queries:\n",
-            paste0("- ", decomposed$queries %||% q, collapse = "\n"),
-            "\n\n"
-          )
-
-          prompt <- paste0(
-            "Perspective: ",
-            p_name,
-            "\n",
-            "Description: ",
-            p_desc,
-            "\n\n",
-            "Question: ",
-            q,
-            "\n\n",
-            search_instructions,
-            "Instructions:\n",
-            "- Use web_search + fetch_url as needed.\n",
-            "- Only state factual claims that are supported by sources you fetched.\n",
-            "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
-            "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
-            "Answer:"
-          )
-          ans <- expert$chat(prompt, echo = "none")
-          tempest_extract_facts_from_answer(
-            extractor,
-            ans,
-            local_store,
-            module = modules$fact_extraction
-          )
-        }
-      }
-      list(
-        sources = local_store$list_sources(),
-        facts = local_store$list_facts()
-      )
-    },
-    .args = list(
       perspectives = perspectives,
       personas = personas,
       config = config,
       topic = topic,
       research_strategy = research_strategy,
-      max_rounds = max_rounds,
       max_questions_per_perspective = max_questions_per_perspective,
       dsprrr_modules = dsprrr_modules
     )
-  )
+  }
 
-  # Merge results back into main store
-  for (i in seq_along(results)) {
-    val <- tryCatch(results[[i]]$data, error = function(e) NULL)
-    if (inherits(val, "errorValue") || is.null(val)) {
+  collected <- vector("list", n)
+  used_parallel <- FALSE
+  if (tempest_has("mirai")) {
+    ready <- tempest_setup_daemons(tempest_parallel_workers(n))
+    if (isTRUE(ready)) {
+      if (isTRUE(attr(ready, "started"))) {
+        on.exit(try(mirai::daemons(0), silent = TRUE), add = TRUE)
+      }
+      mapped <- tryCatch(
+        mirai::mirai_map(
+          seq_len(n),
+          function(
+            i,
+            perspectives,
+            personas,
+            config,
+            topic,
+            research_strategy,
+            max_questions_per_perspective,
+            dsprrr_modules,
+            research_one
+          ) {
+            research_one(
+              i,
+              perspectives = perspectives,
+              personas = personas,
+              config = config,
+              topic = topic,
+              research_strategy = research_strategy,
+              max_questions_per_perspective = max_questions_per_perspective,
+              dsprrr_modules = dsprrr_modules
+            )
+          },
+          .args = list(
+            perspectives = perspectives,
+            personas = personas,
+            config = config,
+            topic = topic,
+            research_strategy = research_strategy,
+            max_questions_per_perspective = max_questions_per_perspective,
+            dsprrr_modules = dsprrr_modules,
+            research_one = tempest_research_one_perspective
+          )
+        )[],
+        error = function(e) e
+      )
+      if (inherits(mapped, "condition")) {
+        tempest_warn(
+          "Parallel research failed ({conditionMessage(mapped)}); researching sequentially."
+        )
+      } else {
+        collected <- lapply(mapped, tempest_collect_parallel)
+        used_parallel <- TRUE
+      }
+    } else {
+      tempest_warn("Could not start mirai daemons; researching sequentially.")
+    }
+  }
+
+  # Merge results, retrying any failed (or unrun) perspective sequentially so
+  # no perspective's evidence is silently dropped.
+  for (i in seq_len(n)) {
+    val <- collected[[i]]
+    if (is.null(val)) {
       p_name <- perspectives[[i]]$name %||% paste("Perspective", i)
-      tempest_warn("Parallel research failed for {.val {p_name}}")
+      if (used_parallel) {
+        tempest_warn(
+          "Research for {.val {p_name}} failed in parallel; retrying sequentially."
+        )
+      }
+      val <- tryCatch(
+        run_one(i),
+        error = function(e) {
+          tempest_warn(
+            "Research failed for {.val {p_name}}: {conditionMessage(e)}"
+          )
+          NULL
+        }
+      )
+    }
+    if (is.null(val)) {
       next
     }
     for (src in val$sources %||% list()) {
@@ -1897,6 +2100,12 @@ tempest_research_parallel <- function(
 #' @param verbose If `TRUE`, prints progress messages.
 #' @return A list with `title`, `outline`, `draft_md`, `report_md`, `store`,
 #'   and `output_dir`.
+#' @examples
+#' \dontrun{
+#' cfg <- tempest_config()
+#' result <- tempest_run("History of jazz", config = cfg)
+#' cat(result$report_md)
+#' }
 #' @export
 tempest_run <- function(
   topic,
@@ -2197,13 +2406,28 @@ tempest_run <- function(
               "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
               "Answer:"
             )
-            ans <- expert$chat(prompt, echo = if (verbose) "output" else "none")
-            tempest_extract_facts_from_answer(
-              extractor,
-              ans,
-              store,
-              module = dsprrr_modules$fact_extraction
+            ans <- tryCatch(
+              expert$chat(prompt, echo = if (verbose) "output" else "none"),
+              error = function(e) {
+                tempest_warn(
+                  "Expert answer failed for {.val {p_name}}: {conditionMessage(e)}"
+                )
+                NULL
+              }
             )
+            if (!is.null(ans)) {
+              tryCatch(
+                tempest_extract_facts_from_answer(
+                  extractor,
+                  ans,
+                  store,
+                  module = dsprrr_modules$fact_extraction
+                ),
+                error = function(e) {
+                  tempest_warn("Fact extraction failed: {conditionMessage(e)}")
+                }
+              )
+            }
           }
         } else {
           # Conversation-style interviewing: writer proposes the next best question,
@@ -2276,13 +2500,32 @@ tempest_run <- function(
               "Answer:"
             )
 
-            ans <- expert$chat(prompt, echo = if (verbose) "output" else "none")
+            ans <- tryCatch(
+              expert$chat(prompt, echo = if (verbose) "output" else "none"),
+              error = function(e) {
+                tempest_warn(
+                  "Expert answer failed for {.val {p_name}}: {conditionMessage(e)}"
+                )
+                NULL
+              }
+            )
+            if (is.null(ans)) {
+              if (done) {
+                break
+              }
+              next
+            }
             answered <- c(answered, paste0("Q: ", q, "\nA: ", ans))
-            tempest_extract_facts_from_answer(
-              extractor,
-              ans,
-              store,
-              module = dsprrr_modules$fact_extraction
+            tryCatch(
+              tempest_extract_facts_from_answer(
+                extractor,
+                ans,
+                store,
+                module = dsprrr_modules$fact_extraction
+              ),
+              error = function(e) {
+                tempest_warn("Fact extraction failed: {conditionMessage(e)}")
+              }
             )
 
             if (done) break
@@ -2516,6 +2759,11 @@ tempest_run <- function(
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
 #' @return A `promises::promise` that resolves with the tempest_run result.
 #' @seealso [tempest_run()] for the synchronous version.
+#' @examples
+#' \dontrun{
+#' tempest_run_async("History of jazz", config = tempest_config()) |>
+#'   promises::then(function(result) cat(result$report_md))
+#' }
 #' @export
 tempest_run_async <- function(...) {
   tempest_require("promises", "tempest_run_async() uses promises.")

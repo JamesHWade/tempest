@@ -21,11 +21,10 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
     max_items = 10
   )
   expect_type(result, "list")
-  # Should find the quantum-related fact via keyword fallback
-  if (length(result) > 0) {
-    claims <- vapply(result, function(f) f$claim, character(1))
-    expect_true(any(grepl("qubit", claims, ignore.case = TRUE)))
-  }
+  # The keyword fallback must actually find the quantum-related fact.
+  expect_gt(length(result), 0)
+  claims <- vapply(result, function(f) f$claim, character(1))
+  expect_match(claims, "qubit", ignore.case = TRUE, all = FALSE)
 })
 
 test_that("tempest_semantic_filter_facts returns empty for empty store", {

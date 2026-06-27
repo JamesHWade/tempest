@@ -16,3 +16,9 @@ A named list of dsprrr modules.
 \description{
 Load compiled dsprrr modules
 }
+\examples{
+\dontrun{
+modules <- tempest_load_dsprrr_modules("path/to/dsprrr-modules.rds")
+result <- tempest_run("History of jazz", dsprrr_modules = modules)
+}
+}

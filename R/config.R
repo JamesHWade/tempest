@@ -214,6 +214,9 @@ TempestConfig <- R6::R6Class(
 #'
 #' @param ... Passed to `TempestConfig$new()`.
 #' @return A `TempestConfig` R6 object.
+#' @examples
+#' cfg <- tempest_config()
+#' cfg <- tempest_config(search_provider = "wikipedia")
 #' @export
 tempest_config <- function(...) {
   TempestConfig$new(...)
@@ -250,7 +253,6 @@ tempest_normalize_search_provider <- function(search_provider) {
     provider,
     "you_com" = "you",
     "you_search" = "you",
-    "yourm" = "you",
     "bing_search" = "bing",
     "bingsearch" = "bing",
     "ddg" = "duckduckgo",
@@ -304,6 +306,13 @@ tempest_normalize_search_provider <- function(search_provider) {
 #'   \item{perspective}{STORM perspective this content relates to (optional)}
 #' }
 #'
+#' @examples
+#' \dontrun{
+#' store <- tempest_create_ragnar_store(
+#'   embed_fn = ragnar::embed_openai(),
+#'   cache_dir = tempfile()
+#' )
+#' }
 #' @export
 tempest_create_ragnar_store <- function(
   embed_fn,

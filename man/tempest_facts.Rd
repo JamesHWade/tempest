@@ -15,3 +15,9 @@ A tibble of facts with columns: claim, source_ids, confidence, note, tags.
 \description{
 Return fact notes as a tibble
 }
+\examples{
+\dontrun{
+result <- tempest_run("History of jazz", config = tempest_config())
+tempest_facts(result$store)
+}
+}

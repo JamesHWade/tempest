@@ -15,3 +15,9 @@ A tibble of sources with columns: id, url, title, snippet, content_text, fetched
 \description{
 Return sources as a tibble
 }
+\examples{
+\dontrun{
+result <- tempest_run("History of jazz", config = tempest_config())
+tempest_sources(result$store)
+}
+}

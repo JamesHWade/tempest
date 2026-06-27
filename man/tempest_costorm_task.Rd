@@ -26,3 +26,9 @@ A \code{vitals::Task}.
 \description{
 Runs automated Co-STORM sessions with a simulated user for evaluation.
 }
+\examples{
+\dontrun{
+task <- tempest_costorm_task(config = tempest_config(), max_turns = 5)
+task$eval()
+}
+}

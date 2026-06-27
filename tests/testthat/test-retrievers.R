@@ -14,6 +14,28 @@ test_that("search result helpers return the standard retriever shape", {
   expect_true(is.na(results$snippet))
 })
 
+test_that("search() drops missing/unsafe URLs instead of aborting", {
+  cfg <- tempest_config(cache_dir = withr::local_tempdir())
+  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8) {
+      tempest:::tempest_search_results(
+        title = c("Good", "Local", "Missing"),
+        url = c("https://example.com/a", "http://localhost/secret", NA),
+        snippet = c("s1", "s2", "s3")
+      )
+    }
+  )
+
+  result <- retriever$search("anything", provider = "wikipedia")
+
+  expect_equal(nrow(result), 1L)
+  expect_equal(result$url, "https://example.com/a")
+  expect_true("source_id" %in% names(result))
+  expect_false(any(is.na(result$source_id)))
+})
+
 test_that("DuckDuckGo redirect URLs are decoded before normalization", {
   url <- paste0(
     "//duckduckgo.com/l/?uddg=",

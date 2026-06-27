@@ -70,3 +70,72 @@ test_that("tempest_write_sections_sequential preserves job order", {
     c("First body", "Second body")
   )
 })
+
+test_that("tempest_parallel_workers respects option and item cap", {
+  withr::local_options(tempest.parallel_workers = 4)
+  expect_identical(tempest:::tempest_parallel_workers(), 4L)
+  expect_identical(tempest:::tempest_parallel_workers(2), 2L)
+  expect_identical(tempest:::tempest_parallel_workers(10), 4L)
+})
+
+test_that("tempest_parallel_workers defaults to a positive integer", {
+  withr::local_options(tempest.parallel_workers = NULL)
+  workers <- tempest:::tempest_parallel_workers()
+  expect_type(workers, "integer")
+  expect_gte(workers, 1L)
+})
+
+test_that("tempest_collect_parallel keeps values and drops failures", {
+  expect_equal(tempest:::tempest_collect_parallel(list(a = 1)), list(a = 1))
+  expect_null(tempest:::tempest_collect_parallel(NULL))
+  expect_null(tempest:::tempest_collect_parallel(simpleError("boom")))
+  err <- structure(
+    list(message = "x"),
+    class = c("miraiError", "errorValue", "try-error")
+  )
+  expect_null(tempest:::tempest_collect_parallel(err))
+})
+
+test_that("parallel section writing returns NULLs when mirai is unavailable", {
+  local_mocked_bindings(tempest_has = function(pkg) FALSE)
+  jobs <- list(
+    list(index = 1, title = "First", summary = "", subsections = list()),
+    list(index = 2, title = "Second", summary = "", subsections = list())
+  )
+  results <- tempest:::tempest_write_sections_parallel(jobs, tempest_config())
+  expect_length(results, 2)
+  expect_true(all(vapply(results, is.null, logical(1))))
+})
+
+test_that("requesting parallel writing still produces sections via fallback", {
+  local_mocked_bindings(tempest_has = function(pkg) FALSE)
+  writer <- list(chat = function(prompt, echo = "none") "Body")
+  jobs <- list(
+    list(
+      index = 1,
+      title = "First",
+      summary = "",
+      subsections = list(),
+      facts_text = "Facts"
+    ),
+    list(
+      index = 2,
+      title = "Second",
+      summary = "",
+      subsections = list(),
+      facts_text = "Facts"
+    )
+  )
+
+  results <- suppressWarnings(tempest:::tempest_write_section_jobs(
+    jobs,
+    writer,
+    config = tempest_config(),
+    parallel = TRUE
+  ))
+
+  expect_equal(
+    vapply(results, function(result) result$title, character(1)),
+    c("First", "Second")
+  )
+})

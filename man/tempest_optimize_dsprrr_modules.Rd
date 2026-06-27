@@ -57,3 +57,16 @@ Compiles selected STORM dsprrr modules against user-provided training data.
 This is an explicit optimization step: run it with labeled examples, then
 pass the returned module list to \code{\link[=tempest_run]{tempest_run()}} via \code{dsprrr_modules}.
 }
+\examples{
+\dontrun{
+trainset <- data.frame(
+  question = "What are battery recycling bottlenecks?",
+  topic = "lithium batteries"
+)
+trainset$queries <- list(c("battery recycling", "EV battery capacity"))
+modules <- tempest_optimize_dsprrr_modules(
+  trainsets = list(query_decomposition = trainset),
+  config = tempest_config()
+)
+}
+}

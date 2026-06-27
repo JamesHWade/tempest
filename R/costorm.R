@@ -1,30 +1,6 @@
 # Co-STORM (interactive multi-agent)
 
 #' @keywords internal
-tempest_type_decision <- function(persona_names = NULL) {
-  tempest_require("ellmer")
-  example <- if (!is.null(persona_names) && length(persona_names) > 0) {
-    paste0("moderator, ", paste(persona_names, collapse = ", "))
-  } else {
-    "moderator, expert_1, expert_2, expert_3"
-  }
-  ellmer::type_object(
-    next_agent = ellmer::type_string(paste0(
-      "Agent name to respond next (e.g., ",
-      example,
-      ")."
-    )),
-    instruction = ellmer::type_string(
-      "Instruction/prompt for the chosen agent."
-    ),
-    rationale = ellmer::type_string(
-      "Short reason for choosing this agent.",
-      required = FALSE
-    )
-  )
-}
-
-#' @keywords internal
 tempest_type_mindmap <- function() {
   tempest_require("ellmer")
   node <- ellmer::type_object(
@@ -281,7 +257,8 @@ TempestSession <- R6::R6Class(
       if (length(t) == 0) {
         return("(no dialog yet)")
       }
-      t <- t[seq_len(min(length(t), max_turns))]
+      # Turns are appended oldest-first; callers want the most recent ones.
+      t <- utils::tail(t, max_turns)
       lines <- purrr::map_chr(t, function(x) {
         who <- x$speaker %||% x$role
         paste0("- **", who, "**: ", x$text)
@@ -314,42 +291,6 @@ TempestSession <- R6::R6Class(
         )
       })
       paste(descs, collapse = "\n")
-    },
-
-    #' @description
-    #' Decide which agent should respond next.
-    #' @param user_input The user's input.
-    #' @return A decision object with next_agent and instruction.
-    decide_next = function(user_input) {
-      # Moderator chooses which agent to respond next and with what instruction.
-      m <- self$chats$moderator
-      persona_names <- self$get_persona_names()
-      type <- tempest_type_decision(persona_names)
-      prompt <- paste0(
-        "You are routing questions to the appropriate expert.\n\n",
-        "Topic: ",
-        self$topic,
-        "\n\n",
-        "Expert panel (choose one to respond):\n",
-        self$get_persona_descriptions(),
-        "\n\n",
-        "Current mind map:\n",
-        tempest_mindmap_to_markdown(self$mindmap),
-        "\n\n",
-        "Recent dialog:\n",
-        self$transcript_markdown(max_turns = 20),
-        "\n\n",
-        "New user message:\n",
-        user_input,
-        "\n\n",
-        "IMPORTANT: Route to an expert for research questions. Only choose 'moderator' for meta-questions about the session itself.\n",
-        "Choose the expert whose expertise best matches the question.\n\n",
-        "Valid agent names: moderator, ",
-        paste(persona_names, collapse = ", "),
-        ".\n",
-        "Return structured data with next_agent set to the chosen expert's full name."
-      )
-      m$chat_structured(prompt, type = type, echo = "none", convert = FALSE)
     },
 
     #' @description
@@ -430,7 +371,14 @@ TempestSession <- R6::R6Class(
       }
       # Legacy expert_N format
       if (grepl("^expert_\\d+$", name, ignore.case = TRUE)) {
-        return(as.integer(sub("^expert_", "", name, ignore.case = TRUE)))
+        legacy_idx <- as.integer(sub("^expert_", "", name, ignore.case = TRUE))
+        if (
+          !is.na(legacy_idx) &&
+            legacy_idx >= 1L &&
+            legacy_idx <= length(self$personas)
+        ) {
+          return(legacy_idx)
+        }
       }
       NULL
     },
@@ -865,6 +813,19 @@ TempestSession <- R6::R6Class(
 
       if (action == "add_expert") {
         new_persona <- self$add_expert(area = instruction)
+        if (is.null(new_persona)) {
+          msg <- paste0(
+            "Could not add expert: maximum active experts (",
+            self$config$max_active_experts,
+            ") reached."
+          )
+          self$add_turn("System", "assistant", msg)
+          return(list(
+            speaker = "System",
+            answer = msg,
+            mindmap_md = self$mindmap_markdown()
+          ))
+        }
         self$add_turn(
           "System",
           "assistant",
@@ -952,6 +913,11 @@ TempestSession <- R6::R6Class(
 #' @param n_experts Number of expert agents.
 #' @param personas Optional list of pre-generated personas. If NULL,
 #'   personas are generated automatically.
+#' @examples
+#' \dontrun{
+#' session <- tempest_session("History of jazz", config = tempest_config())
+#' session$step("What styles emerged in the 1950s?")
+#' }
 #' @export
 tempest_session <- function(
   topic,

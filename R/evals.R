@@ -91,6 +91,12 @@ tempest_solver_cited_answer <- function(
 #' @param config A `TempestConfig` passed to the solver.
 #' @param ... Passed to `vitals::Task$new()`.
 #' @return A `vitals::Task`.
+#' @examples
+#' \dontrun{
+#' scorer_chat <- ellmer::chat("openai/gpt-5-mini")
+#' task <- tempest_task(scorer_chat = scorer_chat, config = tempest_config())
+#' task$eval()
+#' }
 #' @export
 tempest_task <- function(
   dataset = c("qa"),
@@ -135,6 +141,11 @@ tempest_task <- function(
 #' @param max_turns Maximum turns per simulated session.
 #' @param ... Passed to `vitals::Task$new()`.
 #' @return A `vitals::Task`.
+#' @examples
+#' \dontrun{
+#' task <- tempest_costorm_task(config = tempest_config(), max_turns = 5)
+#' task$eval()
+#' }
 #' @export
 tempest_costorm_task <- function(
   dataset = c("qa"),
