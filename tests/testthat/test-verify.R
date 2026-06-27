@@ -25,3 +25,24 @@ test_that("verify_claims skips when policy is none/source_attributed", {
   audit <- tempest_verify_claims(store, verifier = fake_chat(), policy = "source_attributed")
   expect_equal(nrow(audit), 0)
 })
+
+test_that("verify_claims sanitizes out-of-range, string, and invalid judge output", {
+  store <- fake_store_with_sources(1)
+  s1 <- store$list_sources()[[1]]$id
+  store$add_claim(tempest_claim(claim_text = "a", source_ids = s1))
+  store$add_claim(tempest_claim(claim_text = "b", source_ids = s1))
+  judge <- fake_chat(structured = list(
+    list(status = "supported", score = 1.5, rationale = "over range"),
+    list(status = "weird_status", score = "0.7", rationale = "string score, bad status")
+  ))
+
+  audit <- tempest_verify_claims(store, verifier = judge)  # must not abort
+  expect_equal(nrow(audit), 2)
+
+  cl <- store$list_claims()
+  scores <- vapply(cl, function(c) c@support_score, numeric(1))
+  expect_true(all(is.na(scores) | (scores >= 0 & scores <= 1)))  # clamped
+  statuses <- vapply(cl, function(c) c@verification_status, character(1))
+  valid <- c("supported", "partially_supported", "unsupported", "contradicted", "unverifiable")
+  expect_true(all(statuses %in% valid))  # invalid status coerced to a legal label
+})

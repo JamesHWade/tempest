@@ -22,12 +22,20 @@ tempest_run_verification <- function(store, config, verifier = NULL, modules = N
     return(invisible(NULL))
   }
   verifier <- verifier %||% tempest_make_chat(config, "judge")
-  tempest_verify_claims(
-    store,
-    verifier = verifier,
-    policy = config@citation_policy,
-    verifier_model = config@models[["judge"]] %||% NA_character_,
-    modules = modules
+  # Verification runs after the expensive polish step; never let it abort the
+  # run -- degrade to an unverified report instead.
+  tryCatch(
+    tempest_verify_claims(
+      store,
+      verifier = verifier,
+      policy = config@citation_policy,
+      verifier_model = config@models[["judge"]] %||% NA_character_,
+      modules = modules
+    ),
+    error = function(e) {
+      tempest_warn("Citation verification failed; report left unverified: {conditionMessage(e)}")
+      NULL
+    }
   )
   invisible(NULL)
 }

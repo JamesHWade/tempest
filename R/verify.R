@@ -69,8 +69,21 @@ tempest_verify_claims <- function(store, verifier, policy = "claim_verified",
       error = function(e) list(status = "unverifiable", score = NA_real_,
                                rationale = conditionMessage(e))
     )
+    # The judge's status/score are soft hints, not validator-enforced. Sanitize
+    # them before they reach the S7 claim validators so a misbehaving judge
+    # cannot abort the run.
+    valid_status <- c("supported", "partially_supported", "unsupported",
+                      "contradicted", "unverifiable")
     status <- v$status %||% "unverifiable"
-    score <- v$score %||% NA_real_
+    if (length(status) != 1 || is.na(status) || !status %in% valid_status) {
+      status <- "unverifiable"
+    }
+    score <- suppressWarnings(as.numeric(v$score %||% NA_real_))
+    if (length(score) != 1 || is.na(score)) {
+      score <- NA_real_
+    } else {
+      score <- max(0, min(1, score))
+    }
     store$verify_claim(claim@claim_id, status = status, score = score,
                        verifier = verifier_model)
     tibble::tibble(

@@ -11,3 +11,16 @@ test_that("extraction adds validated claims and rejects unknown sources", {
   expect_true("real claim" %in% texts)
   expect_false("ghost claim" %in% texts)  # unknown source id is dropped, not stored
 })
+
+test_that("extraction keeps claims when the optional confidence is omitted", {
+  store <- fake_store_with_sources(1)
+  s1 <- store$list_sources()[[1]]$id
+  chat <- fake_chat(structured = list(list(facts = list(
+    list(claim = "no-confidence claim", sources = list(list(source_id = s1)))
+  ))))
+  tempest_extract_facts_from_answer(chat, "answer text", store)
+  claims <- store$list_claims()
+  expect_length(claims, 1)
+  expect_equal(claims[[1]]@claim_text, "no-confidence claim")
+  expect_equal(claims[[1]]@confidence, "medium")  # NA confidence defaults, not aborts
+})
