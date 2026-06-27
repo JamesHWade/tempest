@@ -27,7 +27,7 @@ Imports:
     stringi,
     tibble
 Suggests:
-    bslib,
+    bslib (>= 0.6.0),
     commonmark,
     dplyr,
     dsprrr,
@@ -42,7 +42,7 @@ Suggests:
     ragnar,
     rmarkdown,
     rvest,
-    shiny,
+    shiny (>= 1.8.1),
     shinychat,
     testthat (>= 3.0.0),
     tidyr,
