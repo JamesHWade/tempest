@@ -38,6 +38,7 @@ tempest_run_artifact_paths <- function(run_dir) {
     personas = file.path(run_dir, "personas.json"),
     sources = file.path(run_dir, "sources.json"),
     claims = file.path(run_dir, "claims.json"),
+    citation_audit = file.path(run_dir, "citation_audit.json"),
     draft_outline = file.path(run_dir, "direct_gen_outline.json"),
     outline = file.path(run_dir, "storm_gen_outline.json"),
     lead_section = file.path(run_dir, "lead_section.md"),
@@ -248,6 +249,10 @@ tempest_save_run_artifacts <- function(
     paths$claims,
     lapply(store$list_claims(), tempest_claim_to_list)
   )
+  audit <- store$get_artifact("citation_audit")
+  if (!is.null(audit)) {
+    tempest_write_json(paths$citation_audit, audit)
+  }
 
   # References are the sources actually cited in the report/draft, not a copy
   # of every collected source.

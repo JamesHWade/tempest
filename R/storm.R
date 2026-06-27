@@ -16,6 +16,22 @@ tempest_as_character_vector <- function(x) {
   unique(x[nzchar(x) & !is.na(x)])
 }
 
+#' @keywords internal
+tempest_run_verification <- function(store, config, verifier = NULL, modules = NULL) {
+  if (!config@citation_policy %in% c("claim_verified", "strict")) {
+    return(invisible(NULL))
+  }
+  verifier <- verifier %||% tempest_make_chat(config, "judge")
+  tempest_verify_claims(
+    store,
+    verifier = verifier,
+    policy = config@citation_policy,
+    verifier_model = config@models[["judge"]] %||% NA_character_,
+    modules = modules
+  )
+  invisible(NULL)
+}
+
 #' Run the STORM pipeline
 #'
 #' This is a scripted workflow that:
@@ -665,10 +681,13 @@ tempest_run <- function(
       "\n</draft>\n"
     )
     polished <- polisher$chat(prompt, echo = if (verbose) "output" else "none")
+    tempest_run_verification(store, config, modules = dsprrr_modules)
     report_md <- tempest_report_md(
       title = title,
       body = polished,
-      store = store
+      store = store,
+      citation_policy = config@citation_policy,
+      on_unsupported_claim = config@on_unsupported_claim
     )
     store$set_artifact("report_md", report_md)
     completed_stages <- tempest_mark_stage_complete(completed_stages, "polish")
