@@ -218,6 +218,9 @@ tempest_make_dsprrr_modules <- function(config) {
           type = "predict"
         )
       )
+      # Transitional alias: in-flight dsprrr work still references the old
+      # `fact_extraction` module key, which is now `extract_claims`.
+      modules$fact_extraction <- modules$extract_claims
       modules
     },
     error = function(e) {
