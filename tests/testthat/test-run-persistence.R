@@ -184,3 +184,32 @@ test_that("the run manifest is written after the artifacts it certifies", {
   expect_true(file.exists(paths$run_config))
   expect_true(file.exists(paths$draft_md))
 })
+
+test_that("references.json holds only the cited sources and reloads", {
+  skip_if_not_installed("jsonlite")
+  dir <- withr::local_tempdir()
+  store <- SourceStore$new()
+  s1 <- tempest:::tempest_source(url = "https://example.com/a", title = "A")
+  s2 <- tempest:::tempest_source(url = "https://example.com/b", title = "B")
+  store$upsert_source(s1)
+  store$upsert_source(s2)
+  store$set_artifact("report_md", paste0("A cited claim [", s1$id, "]."))
+
+  tempest:::tempest_save_run_artifacts(
+    dir,
+    store,
+    topic = "t",
+    title = "T",
+    config = tempest_config(),
+    completed_stages = "polish",
+    steps = "polish",
+    research_strategy = "key_questions"
+  )
+
+  refs <- tempest:::tempest_read_json(file.path(dir, "references.json"))
+  expect_setequal(vapply(refs, function(r) r$id, character(1)), s1$id)
+
+  store2 <- SourceStore$new()
+  tempest:::tempest_load_run_artifacts(dir, store2)
+  expect_length(store2$get_artifact("references"), 1L)
+})

@@ -338,7 +338,7 @@ tempest_required_env <- function(var, provider) {
   value <- Sys.getenv(var, unset = "")
   if (identical(value, "")) {
     tempest_abort(c(
-      "{.envvar {var}} environment variable is not set.",
+      "The {provider} search provider requires the {.envvar {var}} environment variable.",
       i = "Set it with: {.code Sys.setenv({var} = \"your-key\")}",
       i = "Or use a different provider: {.code tempest_config(search_provider = \"wikipedia\")}"
     ))

@@ -137,6 +137,12 @@ tempest_load_run_artifacts <- function(run_dir, store) {
     tempest_restore_facts(store, tempest_read_json(paths$facts))
     store$set_artifact("facts", store$list_facts())
   }
+  if (file.exists(paths$references)) {
+    references <- tempest_read_json(paths$references)
+    if (!is.null(references)) {
+      store$set_artifact("references", references)
+    }
+  }
 
   json_artifacts <- c(
     perspectives = "perspectives",
@@ -244,7 +250,18 @@ tempest_save_run_artifacts <- function(
 
   tempest_write_json(paths$sources, store$list_sources())
   tempest_write_json(paths$facts, store$list_facts())
-  tempest_write_json(paths$references, store$list_sources())
+
+  # References are the sources actually cited in the report/draft, not a copy
+  # of every collected source.
+  cited_md <- store$get_artifact("report_md") %||%
+    store$get_artifact("draft_md") %||%
+    ""
+  cited_ids <- tempest_extract_citation_ids(cited_md)
+  references <- Filter(
+    Negate(is.null),
+    lapply(cited_ids, function(id) store$get_source(id))
+  )
+  tempest_write_json(paths$references, references)
 
   json_artifacts <- c(
     perspectives = "perspectives",
