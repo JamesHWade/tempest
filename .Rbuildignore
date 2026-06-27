@@ -8,3 +8,5 @@
 ^[.]?air[.]toml$
 ^\.vscode$
 ^ROADMAP\.md$
+^dev$
+^tempest_recommendations\.md$
