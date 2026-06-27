@@ -29,3 +29,15 @@ test_that("tempest_suggest_questions returns empty when 'questions' is missing",
   chat <- fake_chat(structured = list(list(other = "x")))
   expect_equal(tempest_suggest_questions("Topic", chat = chat), character())
 })
+
+test_that("tempest_suggest_questions includes conversation context in the prompt", {
+  chat <- fake_chat(structured = list(list(questions = c("Q1"))))
+  tempest_suggest_questions(
+    "Topic",
+    context = "User: hi\nModerator: hello",
+    chat = chat,
+    n = 1
+  )
+  prompts <- vapply(chat$.calls(), function(call) call$prompt, character(1))
+  expect_true(any(grepl("Conversation so far:", prompts, fixed = TRUE)))
+})

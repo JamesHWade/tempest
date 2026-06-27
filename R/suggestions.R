@@ -47,8 +47,9 @@ tempest_suggest_questions_prompt <- function(topic, context = NULL, n = 4) {
 #' @param context Optional character string with the recent conversation. When
 #'   `NULL`, questions are generated from the topic alone.
 #' @param n Maximum number of questions to return.
-#' @param chat Optional ellmer Chat to use. When `NULL`, a tool-free chat is
-#'   created from `config` using the coordinator model.
+#' @param chat Optional ellmer Chat to use. When `NULL`, a chat is created from
+#'   `config` using the coordinator model; the structured call does not invoke
+#'   tools.
 #' @param config A `TempestConfig` object.
 #' @return A character vector of at most `n` questions (possibly empty).
 #' @examples
@@ -67,8 +68,8 @@ tempest_suggest_questions <- function(
   if (length(topic) != 1L || is.na(topic) || !nzchar(topic)) {
     return(character())
   }
-  n <- as.integer(n)
-  if (is.na(n) || n < 1L) {
+  n <- suppressWarnings(as.integer(n)[1])
+  if (length(n) == 0L || is.na(n) || n < 1L) {
     n <- 4L
   }
   tryCatch(
@@ -89,9 +90,6 @@ tempest_suggest_questions <- function(
         convert = FALSE
       )
       qs <- tempest_as_character_vector(result$questions %||% character())
-      qs <- tempest_trim(qs)
-      qs <- qs[!is.na(qs) & nzchar(qs)]
-      qs <- unique(qs)
       utils::head(qs, n)
     },
     error = function(e) character()
