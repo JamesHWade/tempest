@@ -172,7 +172,12 @@ test_that("transcript_markdown returns the most recent turns", {
     "Test topic",
     config = tempest_config(),
     personas = list(
-      list(id = 1, name = "Dr. Alice", title = "Scientist", perspective = "Tech")
+      list(
+        id = 1,
+        name = "Dr. Alice",
+        title = "Scientist",
+        perspective = "Tech"
+      )
     )
   )
   for (i in seq_len(5)) {
@@ -192,7 +197,12 @@ test_that("retire_expert handles out-of-range legacy ids gracefully", {
     "Test topic",
     config = tempest_config(),
     personas = list(
-      list(id = 1, name = "Dr. Alice", title = "Scientist", perspective = "Tech")
+      list(
+        id = 1,
+        name = "Dr. Alice",
+        title = "Scientist",
+        perspective = "Tech"
+      )
     )
   )
 
@@ -206,7 +216,12 @@ test_that("add_expert returns NULL at the active-expert cap", {
     "Test topic",
     config = tempest_config(max_active_experts = 1),
     personas = list(
-      list(id = 1, name = "Dr. Alice", title = "Scientist", perspective = "Tech")
+      list(
+        id = 1,
+        name = "Dr. Alice",
+        title = "Scientist",
+        perspective = "Tech"
+      )
     )
   )
 
