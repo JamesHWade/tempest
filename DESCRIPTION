@@ -85,3 +85,4 @@ Collate:
     'tempest-package.R'
     'tools.R'
     'utils.R'
+    'verify.R'
