@@ -115,7 +115,9 @@ tempest_cache_clear <- function(cache_dir) {
     files <- list.files(cache_dir, pattern = "\\.rds$", full.names = TRUE)
     if (length(files) > 0L) {
       file.remove(files)
-      tempest_inform("Cleared {length(files)} cached file{?s} from {.path {cache_dir}}")
+      tempest_inform(
+        "Cleared {length(files)} cached file{?s} from {.path {cache_dir}}"
+      )
     }
   }
   invisible(TRUE)

@@ -15,7 +15,10 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
 
   # Without ragnar, should fall back to keyword
   result <- tempest:::tempest_semantic_filter_facts(
-    retriever, "quantum qubits", store, max_items = 10
+    retriever,
+    "quantum qubits",
+    store,
+    max_items = 10
   )
   expect_type(result, "list")
   # Should find the quantum-related fact via keyword fallback
@@ -31,7 +34,10 @@ test_that("tempest_semantic_filter_facts returns empty for empty store", {
   retriever <- tempest_retriever(config = cfg, store = store)
 
   result <- tempest:::tempest_semantic_filter_facts(
-    retriever, "anything", store, max_items = 10
+    retriever,
+    "anything",
+    store,
+    max_items = 10
   )
   expect_type(result, "list")
   expect_length(result, 0)
@@ -75,7 +81,10 @@ test_that("tempest_semantic_filter_facts with ragnar configured", {
   retriever$build_ragnar_index()
 
   result <- suppressWarnings(tempest:::tempest_semantic_filter_facts(
-    retriever, "neural networks", store, max_items = 10
+    retriever,
+    "neural networks",
+    store,
+    max_items = 10
   ))
   expect_type(result, "list")
 })

@@ -8,7 +8,9 @@
 #' @keywords internal
 tempest_mindmap_node_sizes <- function(mindmap) {
   nodes <- mindmap$nodes %||% list()
-  if (length(nodes) == 0) return(list())
+  if (length(nodes) == 0) {
+    return(list())
+  }
 
   sizes <- list()
   for (node in nodes) {
@@ -40,7 +42,9 @@ tempest_mindmap_node_sizes <- function(mindmap) {
 #' @keywords internal
 tempest_mindmap_oversized_nodes <- function(mindmap, trigger_count) {
   sizes <- tempest_mindmap_node_sizes(mindmap)
-  if (length(sizes) == 0) return(character())
+  if (length(sizes) == 0) {
+    return(character())
+  }
 
   oversized <- character()
   for (id in names(sizes)) {
@@ -59,7 +63,10 @@ tempest_type_node_expansion <- function() {
   tempest_require("ellmer")
   child_node <- ellmer::type_object(
     label = ellmer::type_string("Child node label"),
-    notes = ellmer::type_string("Notes assigned to this child node", required = FALSE),
+    notes = ellmer::type_string(
+      "Notes assigned to this child node",
+      required = FALSE
+    ),
     source_ids = ellmer::type_array(
       ellmer::type_string("Source ids assigned to this child"),
       required = FALSE
@@ -90,14 +97,22 @@ tempest_mindmap_expand_node <- function(chat, mindmap, node_id) {
   node_by_id <- setNames(nodes, purrr::map_chr(nodes, "id"))
   target <- node_by_id[[node_id]]
 
-  if (is.null(target)) return(mindmap)
+  if (is.null(target)) {
+    return(mindmap)
+  }
 
   type <- tempest_type_node_expansion()
   prompt <- paste0(
     "A mind map node has grown too large and needs to be split into subtopics.\n\n",
-    "Node label: ", target$label %||% node_id, "\n",
-    "Node notes: ", target$notes %||% "(none)", "\n",
-    "Source IDs: ", paste(target$source_ids %||% character(), collapse = ", "), "\n\n",
+    "Node label: ",
+    target$label %||% node_id,
+    "\n",
+    "Node notes: ",
+    target$notes %||% "(none)",
+    "\n",
+    "Source IDs: ",
+    paste(target$source_ids %||% character(), collapse = ", "),
+    "\n\n",
     "Split this node into 2-4 meaningful subtopic children.\n",
     "Distribute the notes and source_ids to the most relevant children.\n",
     "Keep any general notes with the parent.\n",
@@ -107,12 +122,16 @@ tempest_mindmap_expand_node <- function(chat, mindmap, node_id) {
   result <- tryCatch(
     chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
     error = function(e) {
-      tempest_warn("Failed to expand mind map node {.val {node_id}}: {conditionMessage(e)}")
+      tempest_warn(
+        "Failed to expand mind map node {.val {node_id}}: {conditionMessage(e)}"
+      )
       NULL
     }
   )
 
-  if (is.null(result) || is.null(result$children) || length(result$children) == 0) {
+  if (
+    is.null(result) || is.null(result$children) || length(result$children) == 0
+  ) {
     return(mindmap)
   }
 
@@ -122,7 +141,10 @@ tempest_mindmap_expand_node <- function(chat, mindmap, node_id) {
       mindmap$nodes[[i]]$notes <- result$parent_notes %||% ""
       # Remove source_ids that were distributed to children
       child_sources <- unique(unlist(purrr::map(result$children, "source_ids")))
-      remaining_sources <- setdiff(target$source_ids %||% character(), child_sources)
+      remaining_sources <- setdiff(
+        target$source_ids %||% character(),
+        child_sources
+      )
       mindmap$nodes[[i]]$source_ids <- remaining_sources
       break
     }
@@ -140,11 +162,14 @@ tempest_mindmap_expand_node <- function(chat, mindmap, node_id) {
       source_ids = child$source_ids %||% character()
     )
     mindmap$nodes <- c(mindmap$nodes, list(new_node))
-    mindmap$edges <- c(mindmap$edges, list(list(
-      from = node_id,
-      to = child_id,
-      relation = "subtopic"
-    )))
+    mindmap$edges <- c(
+      mindmap$edges,
+      list(list(
+        from = node_id,
+        to = child_id,
+        relation = "subtopic"
+      ))
+    )
   }
 
   mindmap

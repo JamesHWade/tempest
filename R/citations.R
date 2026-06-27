@@ -5,7 +5,9 @@
 #' @return A tibble of sources with columns: id, url, title, snippet, content_text, fetched_at.
 #' @export
 tempest_sources <- function(store) {
-  if (inherits(store, "TempestRetriever")) store <- store$store
+  if (inherits(store, "TempestRetriever")) {
+    store <- store$store
+  }
   stopifnot(inherits(store, "SourceStore"))
   store$to_tibbles()$sources
 }
@@ -15,14 +17,19 @@ tempest_sources <- function(store) {
 #' @return A tibble of facts with columns: claim, source_ids, confidence, note, tags.
 #' @export
 tempest_facts <- function(store) {
-  if (inherits(store, "TempestRetriever")) store <- store$store
+  if (inherits(store, "TempestRetriever")) {
+    store <- store$store
+  }
   stopifnot(inherits(store, "SourceStore"))
   store$to_tibbles()$facts
 }
 
 #' @keywords internal
 tempest_extract_citation_ids <- function(text) {
-  ids <- unique(unlist(regmatches(text, gregexpr("\\[S[0-9a-f]{12}\\]", text, perl = TRUE))))
+  ids <- unique(unlist(regmatches(
+    text,
+    gregexpr("\\[S[0-9a-f]{12}\\]", text, perl = TRUE)
+  )))
   gsub("\\[|\\]", "", ids)
 }
 
@@ -30,7 +37,9 @@ tempest_extract_citation_ids <- function(text) {
 tempest_add_footnotes <- function(text, store) {
   stopifnot(inherits(store, "SourceStore"))
   ids <- tempest_extract_citation_ids(text)
-  if (length(ids) == 0) return(list(text = text, footnotes = ""))
+  if (length(ids) == 0) {
+    return(list(text = text, footnotes = ""))
+  }
 
   # Replace [Sxxxx] with [^Sxxxx]
   text2 <- gsub("\\[(S[0-9a-f]{12})\\]", "[^\\1]", text, perl = TRUE)
@@ -57,15 +66,21 @@ tempest_add_footnotes <- function(text, store) {
 #' @return Markdown with footnotes.
 #' @export
 tempest_report_md <- function(title, body, store) {
-  if (inherits(store, "TempestRetriever")) store <- store$store
+  if (inherits(store, "TempestRetriever")) {
+    store <- store$store
+  }
   stopifnot(inherits(store, "SourceStore"))
 
   res <- tempest_add_footnotes(body, store)
   md <- paste0(
-    "# ", title, "\n\n",
-    res$text, "\n\n",
+    "# ",
+    title,
+    "\n\n",
+    res$text,
+    "\n\n",
     "## References\n\n",
-    res$footnotes, "\n"
+    res$footnotes,
+    "\n"
   )
   md
 }

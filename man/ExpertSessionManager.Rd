@@ -4,155 +4,158 @@
 \alias{ExpertSessionManager}
 \title{Expert Session Manager}
 \description{
-Expert Session Manager
-
-Expert Session Manager
-}
-\details{
 Manages expert chat sessions with session IDs for conversation continuity.
 Each expert persona gets their own chat session that can be resumed using
 the session ID returned from previous interactions.
 }
 \keyword{internal}
 \section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{sessions}}{Environment storing active chat sessions keyed by session ID.}
+  \if{html}{\out{<div class="r6-fields">}}
+  \describe{
+    \item{\code{sessions}}{Environment storing active chat sessions keyed by session ID.}
 
-\item{\code{config}}{A \code{TempestConfig} object for creating chats.}
+    \item{\code{config}}{A \code{TempestConfig} object for creating chats.}
 
-\item{\code{retriever}}{A \code{TempestRetriever} for registering tools.}
+    \item{\code{retriever}}{A \code{TempestRetriever} for registering tools.}
 
-\item{\code{extractor}}{Chat object for fact extraction (optional).}
+    \item{\code{extractor}}{Chat object for fact extraction (optional).}
 
-\item{\code{store}}{A \code{SourceStore} for storing extracted facts (optional).}
-}
-\if{html}{\out{</div>}}
+    \item{\code{store}}{A \code{SourceStore} for storing extracted facts (optional).}
+  }
+  \if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-ExpertSessionManager-new}{\code{ExpertSessionManager$new()}}
-\item \href{#method-ExpertSessionManager-extract_facts}{\code{ExpertSessionManager$extract_facts()}}
-\item \href{#method-ExpertSessionManager-generate_session_id}{\code{ExpertSessionManager$generate_session_id()}}
-\item \href{#method-ExpertSessionManager-get_or_create}{\code{ExpertSessionManager$get_or_create()}}
-\item \href{#method-ExpertSessionManager-list_sessions}{\code{ExpertSessionManager$list_sessions()}}
-\item \href{#method-ExpertSessionManager-clone}{\code{ExpertSessionManager$clone()}}
-}
+  \itemize{
+    \item \href{#method-ExpertSessionManager-initialize}{\code{ExpertSessionManager$new()}}
+    \item \href{#method-ExpertSessionManager-extract_facts}{\code{ExpertSessionManager$extract_facts()}}
+    \item \href{#method-ExpertSessionManager-generate_session_id}{\code{ExpertSessionManager$generate_session_id()}}
+    \item \href{#method-ExpertSessionManager-get_or_create}{\code{ExpertSessionManager$get_or_create()}}
+    \item \href{#method-ExpertSessionManager-list_sessions}{\code{ExpertSessionManager$list_sessions()}}
+    \item \href{#method-ExpertSessionManager-clone}{\code{ExpertSessionManager$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ExpertSessionManager-new"></a>}}
-\if{latex}{\out{\hypertarget{method-ExpertSessionManager-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new ExpertSessionManager.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$new(config, retriever, extractor = NULL, store = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-ExpertSessionManager-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-initialize}{}}}
+\subsection{\code{ExpertSessionManager$new()}}{
+  Create a new ExpertSessionManager.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$new(config, retriever, extractor = NULL, store = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{config}}{A \code{TempestConfig} object.}
+      \item{\code{retriever}}{A \code{TempestRetriever} object.}
+      \item{\code{extractor}}{Optional chat object for fact extraction.}
+      \item{\code{store}}{Optional \code{SourceStore} for storing extracted facts.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{config}}{A \code{TempestConfig} object.}
-
-\item{\code{retriever}}{A \code{TempestRetriever} object.}
-
-\item{\code{extractor}}{Optional chat object for fact extraction.}
-
-\item{\code{store}}{Optional \code{SourceStore} for storing extracted facts.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-extract_facts"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-extract_facts}{}}}
-\subsection{Method \code{extract_facts()}}{
-Extract facts from an expert response.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$extract_facts(response)}\if{html}{\out{</div>}}
+\subsection{\code{ExpertSessionManager$extract_facts()}}{
+  Extract facts from an expert response.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$extract_facts(response)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{response}}{Character string response from expert.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly returns NULL.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{response}}{Character string response from expert.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Invisibly returns NULL.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-generate_session_id"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-generate_session_id}{}}}
-\subsection{Method \code{generate_session_id()}}{
-Generate a human-readable session ID from a persona name.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$generate_session_id(persona_name)}\if{html}{\out{</div>}}
+\subsection{\code{ExpertSessionManager$generate_session_id()}}{
+  Generate a human-readable session ID from a persona name.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$generate_session_id(persona_name)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{persona_name}}{Name of the persona.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Character string session ID like "dr-sarah-chen-abc123".
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{persona_name}}{Name of the persona.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Character string session ID like "dr-sarah-chen-abc123".
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-get_or_create"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-get_or_create}{}}}
-\subsection{Method \code{get_or_create()}}{
-Get an existing session or create a new one.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$get_or_create(persona, session_id = NULL)}\if{html}{\out{</div>}}
+\subsection{\code{ExpertSessionManager$get_or_create()}}{
+  Get an existing session or create a new one.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$get_or_create(persona, session_id = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{persona}}{A persona object from \code{tempest_generate_personas()}.}
+      \item{\code{session_id}}{Optional session ID to resume.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    List with \code{chat}, \code{session_id}, and \code{is_new} fields.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{persona}}{A persona object from \code{tempest_generate_personas()}.}
-
-\item{\code{session_id}}{Optional session ID to resume.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-List with \code{chat}, \code{session_id}, and \code{is_new} fields.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-list_sessions"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-list_sessions}{}}}
-\subsection{Method \code{list_sessions()}}{
-List all active session IDs.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$list_sessions()}\if{html}{\out{</div>}}
+\subsection{\code{ExpertSessionManager$list_sessions()}}{
+  List all active session IDs.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$list_sessions()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Character vector of session IDs.
+  }
 }
 
-\subsection{Returns}{
-Character vector of session IDs.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExpertSessionManager-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ExpertSessionManager$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{ExpertSessionManager$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

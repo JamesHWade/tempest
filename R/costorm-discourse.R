@@ -6,16 +6,27 @@ tempest_type_turn_policy <- function() {
   tempest_require("ellmer")
   ellmer::type_object(
     action = ellmer::type_enum(
-      c("expert_speaks", "moderator_probes", "add_expert",
-        "retire_expert", "surface_unseen", "end_round"),
+      c(
+        "expert_speaks",
+        "moderator_probes",
+        "add_expert",
+        "retire_expert",
+        "surface_unseen",
+        "end_round"
+      ),
       "What action to take next."
     ),
     agent_name = ellmer::type_string(
       "Name of the agent to act (for expert_speaks/retire_expert).",
       required = FALSE
     ),
-    instruction = ellmer::type_string("Instruction or question for the chosen agent."),
-    rationale = ellmer::type_string("Short reason for this decision.", required = FALSE)
+    instruction = ellmer::type_string(
+      "Instruction or question for the chosen agent."
+    ),
+    rationale = ellmer::type_string(
+      "Short reason for this decision.",
+      required = FALSE
+    )
   )
 }
 
@@ -66,7 +77,9 @@ DiscourseManager <- R6::R6Class(
 
       unseen_txt <- if (length(unseen_sources) > 0) {
         paste0(
-          "\n\nUndiscussed sources (", length(unseen_sources), " total):\n",
+          "\n\nUndiscussed sources (",
+          length(unseen_sources),
+          " total):\n",
           paste0("- ", head(unseen_sources, 10), collapse = "\n")
         )
       } else {
@@ -74,19 +87,35 @@ DiscourseManager <- R6::R6Class(
       }
 
       prompt <- paste0(
-        "Topic: ", topic, "\n\n",
-        "Expert panel:\n", persona_descriptions, "\n\n",
-        "Mind map:\n", mindmap_md, "\n\n",
-        "Recent conversation:\n", transcript_md, "\n",
-        unseen_txt, "\n\n",
+        "Topic: ",
+        topic,
+        "\n\n",
+        "Expert panel:\n",
+        persona_descriptions,
+        "\n\n",
+        "Mind map:\n",
+        mindmap_md,
+        "\n\n",
+        "Recent conversation:\n",
+        transcript_md,
+        "\n",
+        unseen_txt,
+        "\n\n",
         "Decide the next action for the conversation.\n",
         "Return structured data."
       )
 
       tryCatch(
-        self$chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
+        self$chat$chat_structured(
+          prompt,
+          type = type,
+          echo = "none",
+          convert = FALSE
+        ),
         error = function(e) {
-          tempest_warn("Discourse manager decision failed: {conditionMessage(e)}")
+          tempest_warn(
+            "Discourse manager decision failed: {conditionMessage(e)}"
+          )
           list(
             action = "moderator_probes",
             agent_name = "",

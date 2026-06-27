@@ -42,25 +42,44 @@ SimulatedUser <- R6::R6Class(
     #' @param transcript_md Recent transcript as markdown.
     #' @param mindmap_md Mind map as markdown.
     #' @return A question string, or NULL if done.
-    generate_question = function(transcript_md = "(no dialog yet)", mindmap_md = "(empty)") {
-      if (self$turn_count >= self$max_turns) return(NULL)
+    generate_question = function(
+      transcript_md = "(no dialog yet)",
+      mindmap_md = "(empty)"
+    ) {
+      if (self$turn_count >= self$max_turns) {
+        return(NULL)
+      }
 
       prompt <- paste0(
-        "Topic: ", self$topic, "\n\n",
-        "Mind map of current knowledge:\n", mindmap_md, "\n\n",
-        "Conversation so far:\n", transcript_md, "\n\n",
-        "You are turn ", self$turn_count + 1L, " of ", self$max_turns, ".\n\n",
+        "Topic: ",
+        self$topic,
+        "\n\n",
+        "Mind map of current knowledge:\n",
+        mindmap_md,
+        "\n\n",
+        "Conversation so far:\n",
+        transcript_md,
+        "\n\n",
+        "You are turn ",
+        self$turn_count + 1L,
+        " of ",
+        self$max_turns,
+        ".\n\n",
         "Ask your next research question. If the topic is well-covered, respond with exactly: DONE"
       )
 
       response <- tryCatch(
         tempest_trim(self$chat$chat(prompt, echo = "none")),
         error = function(e) {
-          tempest_warn("SimulatedUser question generation failed at turn {self$turn_count}: {conditionMessage(e)}")
+          tempest_warn(
+            "SimulatedUser question generation failed at turn {self$turn_count}: {conditionMessage(e)}"
+          )
           NULL
         }
       )
-      if (is.null(response)) return(NULL)
+      if (is.null(response)) {
+        return(NULL)
+      }
 
       if (grepl("^DONE$", response, ignore.case = TRUE)) {
         return(NULL)
@@ -80,7 +99,9 @@ SimulatedUser <- R6::R6Class(
       stopifnot(inherits(session, "TempestSession"))
 
       if (warmup) {
-        if (verbose) tempest_inform("SimulatedUser: running warmup")
+        if (verbose) {
+          tempest_inform("SimulatedUser: running warmup")
+        }
         session$warmup(verbose = verbose)
       }
 
@@ -90,18 +111,26 @@ SimulatedUser <- R6::R6Class(
 
         question <- self$generate_question(transcript_md, mindmap_md)
         if (is.null(question)) {
-          if (verbose) tempest_inform("SimulatedUser: research complete at turn {self$turn_count}")
+          if (verbose) {
+            tempest_inform(
+              "SimulatedUser: research complete at turn {self$turn_count}"
+            )
+          }
           break
         }
 
-        if (verbose) tempest_inform("SimulatedUser turn {self$turn_count}: {question}")
+        if (verbose) {
+          tempest_inform("SimulatedUser turn {self$turn_count}: {question}")
+        }
         session$step(question)
       }
 
       if (verbose) {
         total_facts <- length(session$store$list_facts())
         total_sources <- length(session$store$list_sources())
-        tempest_inform("SimulatedUser: {self$turn_count} turns, {total_facts} facts, {total_sources} sources")
+        tempest_inform(
+          "SimulatedUser: {self$turn_count} turns, {total_facts} facts, {total_sources} sources"
+        )
       }
 
       invisible(session)

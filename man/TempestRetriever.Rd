@@ -4,116 +4,113 @@
 \alias{TempestRetriever}
 \title{TempestRetriever}
 \description{
-TempestRetriever
-
-TempestRetriever
-}
-\details{
 Provides web and Wikipedia retrieval with caching, plus helper methods to
 register retrieval tools with ellmer chats. Optionally integrates with
 ragnar for semantic search capabilities.
 }
 \section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{config}}{A \code{TempestConfig} object.}
+  \if{html}{\out{<div class="r6-fields">}}
+  \describe{
+    \item{\code{config}}{A \code{TempestConfig} object.}
 
-\item{\code{store}}{A \code{SourceStore} object.}
+    \item{\code{store}}{A \code{SourceStore} object.}
 
-\item{\code{ragnar_store}}{A ragnar store for semantic retrieval (optional).}
+    \item{\code{ragnar_store}}{A ragnar store for semantic retrieval (optional).}
 
-\item{\code{cache_dir}}{Path to cache directory.}
-}
-\if{html}{\out{</div>}}
+    \item{\code{cache_dir}}{Path to cache directory.}
+  }
+  \if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-TempestRetriever-new}{\code{TempestRetriever$new()}}
-\item \href{#method-TempestRetriever-search}{\code{TempestRetriever$search()}}
-\item \href{#method-TempestRetriever-fetch}{\code{TempestRetriever$fetch()}}
-\item \href{#method-TempestRetriever-ingest_to_ragnar}{\code{TempestRetriever$ingest_to_ragnar()}}
-\item \href{#method-TempestRetriever-build_ragnar_index}{\code{TempestRetriever$build_ragnar_index()}}
-\item \href{#method-TempestRetriever-retrieve}{\code{TempestRetriever$retrieve()}}
-\item \href{#method-TempestRetriever-get_source_text}{\code{TempestRetriever$get_source_text()}}
-\item \href{#method-TempestRetriever-list_sources}{\code{TempestRetriever$list_sources()}}
-\item \href{#method-TempestRetriever-clone}{\code{TempestRetriever$clone()}}
-}
+  \itemize{
+    \item \href{#method-TempestRetriever-initialize}{\code{TempestRetriever$new()}}
+    \item \href{#method-TempestRetriever-search}{\code{TempestRetriever$search()}}
+    \item \href{#method-TempestRetriever-fetch}{\code{TempestRetriever$fetch()}}
+    \item \href{#method-TempestRetriever-ingest_to_ragnar}{\code{TempestRetriever$ingest_to_ragnar()}}
+    \item \href{#method-TempestRetriever-build_ragnar_index}{\code{TempestRetriever$build_ragnar_index()}}
+    \item \href{#method-TempestRetriever-retrieve}{\code{TempestRetriever$retrieve()}}
+    \item \href{#method-TempestRetriever-get_source_text}{\code{TempestRetriever$get_source_text()}}
+    \item \href{#method-TempestRetriever-list_sources}{\code{TempestRetriever$list_sources()}}
+    \item \href{#method-TempestRetriever-clone}{\code{TempestRetriever$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestRetriever-new"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestRetriever-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new TempestRetriever.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$new(config = tempest_config(), store = SourceStore$new())}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-TempestRetriever-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestRetriever-initialize}{}}}
+\subsection{\code{TempestRetriever$new()}}{
+  Create a new TempestRetriever.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$new(config = tempest_config(), store = SourceStore$new())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{config}}{A \code{TempestConfig} object.}
+      \item{\code{store}}{A \code{SourceStore} object.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{config}}{A \code{TempestConfig} object.}
-
-\item{\code{store}}{A \code{SourceStore} object.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestRetriever-search"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestRetriever-search}{}}}
-\subsection{Method \code{search()}}{
-Search for sources using the configured provider.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$search(query, k = NULL, provider = NULL)}\if{html}{\out{</div>}}
+\subsection{\code{TempestRetriever$search()}}{
+  Search for sources using the configured provider.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$search(query, k = NULL, provider = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{query}}{Search query string.}
+      \item{\code{k}}{Maximum number of results.}
+      \item{\code{provider}}{Search provider override.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A tibble of search results.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{query}}{Search query string.}
-
-\item{\code{k}}{Maximum number of results.}
-
-\item{\code{provider}}{Search provider override.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A tibble of search results.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestRetriever-fetch"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestRetriever-fetch}{}}}
-\subsection{Method \code{fetch()}}{
-Fetch and cache content from a URL.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$fetch(url, force = FALSE, perspective = NA_character_)}\if{html}{\out{</div>}}
+\subsection{\code{TempestRetriever$fetch()}}{
+  Fetch and cache content from a URL.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$fetch(url, force = FALSE, perspective = NA_character_)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{url}}{The URL to fetch.}
+      \item{\code{force}}{If TRUE, bypass cache.}
+      \item{\code{perspective}}{Optional perspective name for ragnar metadata.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A source object.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{url}}{The URL to fetch.}
-
-\item{\code{force}}{If TRUE, bypass cache.}
-
-\item{\code{perspective}}{Optional perspective name for ragnar metadata.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A source object.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestRetriever-ingest_to_ragnar"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestRetriever-ingest_to_ragnar}{}}}
-\subsection{Method \code{ingest_to_ragnar()}}{
-Ingest content into the ragnar store.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$ingest_to_ragnar(
+\subsection{\code{TempestRetriever$ingest_to_ragnar()}}{
+  Ingest content into the ragnar store.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$ingest_to_ragnar(
   source_id,
   url,
   title,
@@ -121,111 +118,114 @@ Ingest content into the ragnar store.
   fetched_at,
   content_type,
   perspective = NA_character_
-)}\if{html}{\out{</div>}}
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{source_id}}{The tempest source ID.}
+      \item{\code{url}}{The source URL.}
+      \item{\code{title}}{The document title.}
+      \item{\code{text}}{The full text content.}
+      \item{\code{fetched_at}}{Timestamp when fetched.}
+      \item{\code{content_type}}{Content type (html, pdf, etc.).}
+      \item{\code{perspective}}{Optional perspective name.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{source_id}}{The tempest source ID.}
-
-\item{\code{url}}{The source URL.}
-
-\item{\code{title}}{The document title.}
-
-\item{\code{text}}{The full text content.}
-
-\item{\code{fetched_at}}{Timestamp when fetched.}
-
-\item{\code{content_type}}{Content type (html, pdf, etc.).}
-
-\item{\code{perspective}}{Optional perspective name.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestRetriever-build_ragnar_index"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestRetriever-build_ragnar_index}{}}}
-\subsection{Method \code{build_ragnar_index()}}{
-Build the ragnar store index for faster retrieval.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$build_ragnar_index()}\if{html}{\out{</div>}}
+\subsection{\code{TempestRetriever$build_ragnar_index()}}{
+  Build the ragnar store index for faster retrieval.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$build_ragnar_index()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestRetriever-retrieve"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestRetriever-retrieve}{}}}
-\subsection{Method \code{retrieve()}}{
-Retrieve relevant chunks from the ragnar store.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$retrieve(query, k = 10, method = c("hybrid", "vss", "bm25"))}\if{html}{\out{</div>}}
+\subsection{\code{TempestRetriever$retrieve()}}{
+  Retrieve relevant chunks from the ragnar store.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$retrieve(query, k = 10, method = c("hybrid", "vss", "bm25"))}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{query}}{The search query.}
+      \item{\code{k}}{Maximum number of chunks to return.}
+      \item{\code{method}}{Retrieval method: "hybrid", "vss", or "bm25".}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A data frame of relevant chunks with metadata.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{query}}{The search query.}
-
-\item{\code{k}}{Maximum number of chunks to return.}
-
-\item{\code{method}}{Retrieval method: "hybrid", "vss", or "bm25".}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A data frame of relevant chunks with metadata.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestRetriever-get_source_text"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestRetriever-get_source_text}{}}}
-\subsection{Method \code{get_source_text()}}{
-Get the text content for a source by id.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$get_source_text(source_id)}\if{html}{\out{</div>}}
+\subsection{\code{TempestRetriever$get_source_text()}}{
+  Get the text content for a source by id.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$get_source_text(source_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{source_id}}{The source id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    The content text or NA.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{source_id}}{The source id.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The content text or NA.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestRetriever-list_sources"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestRetriever-list_sources}{}}}
-\subsection{Method \code{list_sources()}}{
-List all sources in the store.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$list_sources()}\if{html}{\out{</div>}}
+\subsection{\code{TempestRetriever$list_sources()}}{
+  List all sources in the store.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$list_sources()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list of source objects.
+  }
 }
 
-\subsection{Returns}{
-A list of source objects.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestRetriever-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestRetriever-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{TempestRetriever$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{TempestRetriever$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

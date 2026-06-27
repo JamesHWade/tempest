@@ -8,7 +8,9 @@
 tempest_prompt <- function(name) {
   path <- tempest_pkg_file("prompts", paste0(name, ".md"))
   if (identical(path, "")) {
-    tempest_abort("Unknown prompt {.val {name}}. Prompt file not found in inst/prompts.")
+    tempest_abort(
+      "Unknown prompt {.val {name}}. Prompt file not found in inst/prompts."
+    )
   }
   tempest_read_text(path)
 }

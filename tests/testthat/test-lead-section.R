@@ -13,11 +13,19 @@ test_that("intro/conclusion section skip regex works", {
 
   # These should NOT match
   expect_false(grepl(skip_pattern, "Technical Background", ignore.case = TRUE))
-  expect_false(grepl(skip_pattern, "Introduction to Quantum", ignore.case = TRUE))
+  expect_false(grepl(
+    skip_pattern,
+    "Introduction to Quantum",
+    ignore.case = TRUE
+  ))
   expect_false(grepl(skip_pattern, "Methods and Results", ignore.case = TRUE))
   expect_false(grepl(skip_pattern, "Key Findings", ignore.case = TRUE))
   expect_false(grepl(skip_pattern, "Summary of Findings", ignore.case = TRUE))
-  expect_false(grepl(skip_pattern, "Future Work and Conclusion", ignore.case = TRUE))
+  expect_false(grepl(
+    skip_pattern,
+    "Future Work and Conclusion",
+    ignore.case = TRUE
+  ))
 })
 
 test_that("lead_section_system prompt exists", {

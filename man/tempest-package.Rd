@@ -11,13 +11,19 @@ Implements an R-native clone of the STORM and Co-STORM research-and-writing work
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://jameshwade.github.io/tempest/}
   \item \url{https://github.com/JamesHWade/tempest}
   \item Report bugs at \url{https://github.com/JamesHWade/tempest/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: James Wade \email{james@example.com}
+\strong{Maintainer}: James Wade \email{github@jameshwade.com}
+
+Authors:
+\itemize{
+  \item James Wade \email{github@jameshwade.com}
+}
 
 Other contributors:
 \itemize{

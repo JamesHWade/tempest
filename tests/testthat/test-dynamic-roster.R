@@ -6,12 +6,26 @@ test_that("TempestSession retire_expert marks persona retired", {
   )
 
   mock_personas <- list(
-    list(id = 1, name = "Dr. Alice Smith", title = "Scientist", perspective = "Technical"),
-    list(id = 2, name = "Prof. Bob Jones", title = "Ethicist", perspective = "Ethical")
+    list(
+      id = 1,
+      name = "Dr. Alice Smith",
+      title = "Scientist",
+      perspective = "Technical"
+    ),
+    list(
+      id = 2,
+      name = "Prof. Bob Jones",
+      title = "Ethicist",
+      perspective = "Ethical"
+    )
   )
 
   cfg <- tempest_config()
-  session <- tempest_session("Test topic", config = cfg, personas = mock_personas)
+  session <- tempest_session(
+    "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
 
   # Retire first expert
   result <- session$retire_expert("Dr. Alice Smith")
@@ -28,11 +42,20 @@ test_that("TempestSession retire_expert returns FALSE for unknown", {
   )
 
   mock_personas <- list(
-    list(id = 1, name = "Dr. Alice Smith", title = "Scientist", perspective = "Technical")
+    list(
+      id = 1,
+      name = "Dr. Alice Smith",
+      title = "Scientist",
+      perspective = "Technical"
+    )
   )
 
   cfg <- tempest_config()
-  session <- tempest_session("Test topic", config = cfg, personas = mock_personas)
+  session <- tempest_session(
+    "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
 
   result <- session$retire_expert("Unknown Expert")
   expect_false(result)
@@ -46,13 +69,32 @@ test_that("TempestSession get_active_personas filters retired", {
   )
 
   mock_personas <- list(
-    list(id = 1, name = "Dr. Alice Smith", title = "Scientist", perspective = "Technical"),
-    list(id = 2, name = "Prof. Bob Jones", title = "Ethicist", perspective = "Ethical"),
-    list(id = 3, name = "Dr. Carol Lee", title = "Engineer", perspective = "Applied")
+    list(
+      id = 1,
+      name = "Dr. Alice Smith",
+      title = "Scientist",
+      perspective = "Technical"
+    ),
+    list(
+      id = 2,
+      name = "Prof. Bob Jones",
+      title = "Ethicist",
+      perspective = "Ethical"
+    ),
+    list(
+      id = 3,
+      name = "Dr. Carol Lee",
+      title = "Engineer",
+      perspective = "Applied"
+    )
   )
 
   cfg <- tempest_config()
-  session <- tempest_session("Test topic", config = cfg, personas = mock_personas)
+  session <- tempest_session(
+    "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
 
   # Initially all active
   active <- session$get_active_personas()
@@ -91,8 +133,13 @@ test_that("tempest_register_single_expert_tool works", {
 
   chat <- cfg$make_chat("coordinator")
   # This should not error
-  tempest:::tempest_register_single_expert_tool(chat, persona, mgr, "Test topic")
-  expect_true(TRUE)  # If we got here, it worked
+  tempest:::tempest_register_single_expert_tool(
+    chat,
+    persona,
+    mgr,
+    "Test topic"
+  )
+  expect_true(TRUE) # If we got here, it worked
 })
 
 test_that("tempest_generate_single_persona returns persona structure", {
@@ -108,7 +155,10 @@ test_that("tempest_generate_single_persona returns persona structure", {
   )
 
   persona <- tempest:::tempest_generate_single_persona(
-    "Climate change", "Policy analysis", existing, cfg
+    "Climate change",
+    "Policy analysis",
+    existing,
+    cfg
   )
 
   expect_type(persona, "list")

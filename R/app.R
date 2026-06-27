@@ -12,6 +12,8 @@
 run_app <- function(...) {
   tempest_require("shiny", "run_app() launches a Shiny app.")
   app_dir <- system.file("shiny", package = "tempest")
-  if (identical(app_dir, "")) tempest_abort("Shiny app not found in installed package.")
+  if (identical(app_dir, "")) {
+    tempest_abort("Shiny app not found in installed package.")
+  }
   shiny::runApp(app_dir, ...)
 }

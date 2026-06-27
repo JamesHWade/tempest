@@ -28,11 +28,20 @@ test_that("TempestSession creates discourse manager when enabled", {
   )
 
   mock_personas <- list(
-    list(id = 1, name = "Dr. Alice", title = "Scientist", perspective = "Technical")
+    list(
+      id = 1,
+      name = "Dr. Alice",
+      title = "Scientist",
+      perspective = "Technical"
+    )
   )
 
   cfg <- tempest_config(enable_discourse_manager = TRUE)
-  session <- tempest_session("Test topic", config = cfg, personas = mock_personas)
+  session <- tempest_session(
+    "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
 
   expect_true(!is.null(session$discourse_manager))
   expect_s3_class(session$discourse_manager, "DiscourseManager")
@@ -46,11 +55,20 @@ test_that("TempestSession discourse manager is NULL when disabled", {
   )
 
   mock_personas <- list(
-    list(id = 1, name = "Dr. Alice", title = "Scientist", perspective = "Technical")
+    list(
+      id = 1,
+      name = "Dr. Alice",
+      title = "Scientist",
+      perspective = "Technical"
+    )
   )
 
   cfg <- tempest_config(enable_discourse_manager = FALSE)
-  session <- tempest_session("Test topic", config = cfg, personas = mock_personas)
+  session <- tempest_session(
+    "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
 
   expect_null(session$discourse_manager)
 })
@@ -63,11 +81,20 @@ test_that("execute_turn_decision handles end_round", {
   )
 
   mock_personas <- list(
-    list(id = 1, name = "Dr. Alice", title = "Scientist", perspective = "Technical")
+    list(
+      id = 1,
+      name = "Dr. Alice",
+      title = "Scientist",
+      perspective = "Technical"
+    )
   )
 
   cfg <- tempest_config()
-  session <- tempest_session("Test topic", config = cfg, personas = mock_personas)
+  session <- tempest_session(
+    "Test topic",
+    config = cfg,
+    personas = mock_personas
+  )
 
   decision <- list(action = "end_round", instruction = "", rationale = "test")
   result <- session$execute_turn_decision(decision)

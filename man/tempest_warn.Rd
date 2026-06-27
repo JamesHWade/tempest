@@ -9,11 +9,11 @@ tempest_warn(message, ..., .envir = rlang::caller_env())
 \arguments{
 \item{message}{Warning message with cli formatting.}
 
-\item{...}{Additional arguments passed to \code{\link[cli:cli_abort]{cli::cli_warn()}}.}
+\item{...}{Additional arguments passed to \code{\link[cli:cli_warn]{cli::cli_warn()}}.}
 
 \item{.envir}{Environment for glue interpolation.}
 }
 \description{
-Wrapper around \code{\link[cli:cli_abort]{cli::cli_warn()}} for consistent warning formatting.
+Wrapper around \code{\link[cli:cli_warn]{cli::cli_warn()}} for consistent warning formatting.
 }
 \keyword{internal}

@@ -2,7 +2,7 @@
 
 #' Detect provider from model name
 #'
-#' Parses model names like "openai/gpt-4o-mini" or "anthropic/claude-sonnet"
+#' Parses model names like "openai/gpt-5-mini" or "anthropic/claude-sonnet"
 #' to extract the provider.
 #'
 #' @param model Model name string
@@ -18,7 +18,8 @@ tempest_detect_provider <- function(model) {
     # Normalize provider names
     provider <- tolower(provider)
     # Map common aliases
-    provider <- switch(provider,
+    provider <- switch(
+      provider,
       "claude" = "anthropic",
       "gemini" = "google",
       provider
@@ -39,7 +40,8 @@ tempest_detect_provider <- function(model) {
 tempest_get_native_web_tools <- function(provider) {
   tempest_require("ellmer", "Provider-native web tools require ellmer.")
 
-  tools <- switch(provider,
+  tools <- switch(
+    provider,
     "openai" = list(
       ellmer::openai_tool_web_search()
     ),
@@ -84,13 +86,19 @@ tempest_tools_retrieval <- function(retriever) {
       fetched_at = src$fetched_at,
       kind = src$meta$kind %||% NA_character_,
       error = src$meta$error %||% NA_character_,
-      excerpt = if (!is.na(src$content_text)) substr(src$content_text, 1, 1200) else NA_character_
+      excerpt = if (!is.na(src$content_text)) {
+        substr(src$content_text, 1, 1200)
+      } else {
+        NA_character_
+      }
     )
   }
 
   get_source <- function(source_id) {
     src <- retriever$store$get_source(source_id)
-    if (is.null(src)) return(NULL)
+    if (is.null(src)) {
+      return(NULL)
+    }
     list(
       source_id = src$id,
       url = src$url,
@@ -98,38 +106,60 @@ tempest_tools_retrieval <- function(retriever) {
       fetched_at = src$fetched_at,
       kind = src$meta$kind %||% NA_character_,
       error = src$meta$error %||% NA_character_,
-      excerpt = if (!is.na(src$content_text)) substr(src$content_text, 1, 1200) else NA_character_
+      excerpt = if (!is.na(src$content_text)) {
+        substr(src$content_text, 1, 1200)
+      } else {
+        NA_character_
+      }
     )
   }
 
   list_sources <- function() {
     s <- retriever$store$list_sources()
-    purrr::map(s, ~ list(
-      source_id = .x$id,
-      url = .x$url,
-      title = .x$title,
-      fetched_at = .x$fetched_at,
-      kind = .x$meta$kind %||% NA_character_,
-      error = .x$meta$error %||% NA_character_
-    ))
+    purrr::map(
+      s,
+      ~ list(
+        source_id = .x$id,
+        url = .x$url,
+        title = .x$title,
+        fetched_at = .x$fetched_at,
+        kind = .x$meta$kind %||% NA_character_,
+        error = .x$meta$error %||% NA_character_
+      )
+    )
   }
 
   list_facts <- function() {
     f <- retriever$store$list_facts()
-    purrr::map(f, ~ list(
-      fact_id = .x$id,
-      claim = .x$claim,
-      source_ids = .x$source_ids,
-      confidence = .x$confidence,
-      created_at = .x$created_at
-    ))
+    purrr::map(
+      f,
+      ~ list(
+        fact_id = .x$id,
+        claim = .x$claim,
+        source_ids = .x$source_ids,
+        confidence = .x$confidence,
+        created_at = .x$created_at
+      )
+    )
   }
 
   add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
-    if (is.null(source_ids) || length(source_ids) == 0) tempest_abort("add_fact requires at least one source_id.")
-    fact <- tempest_fact(claim = claim, source_ids = source_ids, confidence = confidence, note = note)
+    if (is.null(source_ids) || length(source_ids) == 0) {
+      tempest_abort("add_fact requires at least one source_id.")
+    }
+    fact <- tempest_fact(
+      claim = claim,
+      source_ids = source_ids,
+      confidence = confidence,
+      note = note
+    )
     retriever$store$add_fact(fact)
-    list(fact_id = fact$id, claim = fact$claim, source_ids = fact$source_ids, confidence = fact$confidence)
+    list(
+      fact_id = fact$id,
+      claim = fact$claim,
+      source_ids = fact$source_ids,
+      confidence = fact$confidence
+    )
   }
 
   tools <- list(
@@ -142,7 +172,10 @@ tempest_tools_retrieval <- function(retriever) {
       ),
       arguments = list(
         query = ellmer::type_string("Search query."),
-        k = ellmer::type_integer("Maximum number of results to return.", required = FALSE)
+        k = ellmer::type_integer(
+          "Maximum number of results to return.",
+          required = FALSE
+        )
       )
     ),
     ellmer::tool(
@@ -185,9 +218,18 @@ tempest_tools_retrieval <- function(retriever) {
       ),
       arguments = list(
         claim = ellmer::type_string("Atomic factual claim."),
-        source_ids = ellmer::type_array(ellmer::type_string("One or more source ids that support the claim.")),
-        confidence = ellmer::type_enum(c("low", "medium", "high"), "Confidence level.", required = FALSE),
-        note = ellmer::type_string("Optional note on nuances/conditions/limitations.", required = FALSE)
+        source_ids = ellmer::type_array(ellmer::type_string(
+          "One or more source ids that support the claim."
+        )),
+        confidence = ellmer::type_enum(
+          c("low", "medium", "high"),
+          "Confidence level.",
+          required = FALSE
+        ),
+        note = ellmer::type_string(
+          "Optional note on nuances/conditions/limitations.",
+          required = FALSE
+        )
       )
     )
   )
@@ -209,7 +251,9 @@ tempest_tools_source_management <- function(retriever) {
 
   get_source <- function(source_id) {
     src <- retriever$store$get_source(source_id)
-    if (is.null(src)) return(NULL)
+    if (is.null(src)) {
+      return(NULL)
+    }
     list(
       source_id = src$id,
       url = src$url,
@@ -217,38 +261,60 @@ tempest_tools_source_management <- function(retriever) {
       fetched_at = src$fetched_at,
       kind = src$meta$kind %||% NA_character_,
       error = src$meta$error %||% NA_character_,
-      excerpt = if (!is.na(src$content_text)) substr(src$content_text, 1, 1200) else NA_character_
+      excerpt = if (!is.na(src$content_text)) {
+        substr(src$content_text, 1, 1200)
+      } else {
+        NA_character_
+      }
     )
   }
 
   list_sources <- function() {
     s <- retriever$store$list_sources()
-    purrr::map(s, ~ list(
-      source_id = .x$id,
-      url = .x$url,
-      title = .x$title,
-      fetched_at = .x$fetched_at,
-      kind = .x$meta$kind %||% NA_character_,
-      error = .x$meta$error %||% NA_character_
-    ))
+    purrr::map(
+      s,
+      ~ list(
+        source_id = .x$id,
+        url = .x$url,
+        title = .x$title,
+        fetched_at = .x$fetched_at,
+        kind = .x$meta$kind %||% NA_character_,
+        error = .x$meta$error %||% NA_character_
+      )
+    )
   }
 
   list_facts <- function() {
     f <- retriever$store$list_facts()
-    purrr::map(f, ~ list(
-      fact_id = .x$id,
-      claim = .x$claim,
-      source_ids = .x$source_ids,
-      confidence = .x$confidence,
-      created_at = .x$created_at
-    ))
+    purrr::map(
+      f,
+      ~ list(
+        fact_id = .x$id,
+        claim = .x$claim,
+        source_ids = .x$source_ids,
+        confidence = .x$confidence,
+        created_at = .x$created_at
+      )
+    )
   }
 
   add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
-    if (is.null(source_ids) || length(source_ids) == 0) tempest_abort("add_fact requires at least one source_id.")
-    fact <- tempest_fact(claim = claim, source_ids = source_ids, confidence = confidence, note = note)
+    if (is.null(source_ids) || length(source_ids) == 0) {
+      tempest_abort("add_fact requires at least one source_id.")
+    }
+    fact <- tempest_fact(
+      claim = claim,
+      source_ids = source_ids,
+      confidence = confidence,
+      note = note
+    )
     retriever$store$add_fact(fact)
-    list(fact_id = fact$id, claim = fact$claim, source_ids = fact$source_ids, confidence = fact$confidence)
+    list(
+      fact_id = fact$id,
+      claim = fact$claim,
+      source_ids = fact$source_ids,
+      confidence = fact$confidence
+    )
   }
 
   list(
@@ -281,9 +347,18 @@ tempest_tools_source_management <- function(retriever) {
       ),
       arguments = list(
         claim = ellmer::type_string("Atomic factual claim."),
-        source_ids = ellmer::type_array(ellmer::type_string("One or more source ids that support the claim.")),
-        confidence = ellmer::type_enum(c("low", "medium", "high"), "Confidence level.", required = FALSE),
-        note = ellmer::type_string("Optional note on nuances/conditions/limitations.", required = FALSE)
+        source_ids = ellmer::type_array(ellmer::type_string(
+          "One or more source ids that support the claim."
+        )),
+        confidence = ellmer::type_enum(
+          c("low", "medium", "high"),
+          "Confidence level.",
+          required = FALSE
+        ),
+        note = ellmer::type_string(
+          "Optional note on nuances/conditions/limitations.",
+          required = FALSE
+        )
       )
     )
   )
@@ -301,9 +376,13 @@ tempest_tools_source_management <- function(retriever) {
 #' @param search_provider Search provider setting from config
 #' @return The chat object (invisibly)
 #' @keywords internal
-tempest_register_default_tools <- function(chat, retriever, model = NULL, search_provider = "native") {
+tempest_register_default_tools <- function(
+  chat,
+  retriever,
+  model = NULL,
+  search_provider = "native"
+) {
   tempest_require("ellmer", "Tool calling for retrieval.")
-
 
   # Determine if we should use native provider tools
   use_native <- FALSE
@@ -417,7 +496,10 @@ ExpertSessionManager <- R6::R6Class(
       }
 
       # Create new session
-      sp <- tempest_render_expert_prompt(persona = persona, expert_id = persona$id %||% 1L)
+      sp <- tempest_render_expert_prompt(
+        persona = persona,
+        expert_id = persona$id %||% 1L
+      )
       chat <- self$config$make_chat("expert", system_prompt = sp, echo = "none")
       tempest_register_default_tools(
         chat,
@@ -426,7 +508,8 @@ ExpertSessionManager <- R6::R6Class(
         search_provider = self$config$search_provider
       )
 
-      new_id <- session_id %||% self$generate_session_id(persona$name %||% "expert")
+      new_id <- session_id %||%
+        self$generate_session_id(persona$name %||% "expert")
       assign(new_id, chat, envir = self$sessions)
 
       list(
@@ -465,7 +548,11 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
 
   # Build description from persona
   desc <- paste0(
-    "Ask ", persona$name %||% "Expert", ", ", persona$title %||% "Research Specialist", ". ",
+    "Ask ",
+    persona$name %||% "Expert",
+    ", ",
+    persona$title %||% "Research Specialist",
+    ". ",
     persona$perspective %||% "General research perspective."
   )
 
@@ -481,8 +568,12 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
 
     # Build prompt with context
     prompt <- paste0(
-      "Topic: ", topic_str, "\n\n",
-      "Question: ", question, "\n\n",
+      "Topic: ",
+      topic_str,
+      "\n\n",
+      "Question: ",
+      question,
+      "\n\n",
       "Instructions:\n",
       "- Use web_search + fetch_url to find and cite sources.\n",
       "- Only state factual claims supported by sources you fetched.\n",
@@ -496,7 +587,9 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     # Extract plain text from the response using ellmer's contents_markdown
     # This properly handles ellmer_output objects and tool call results
     last_turn <- chat$last_turn()
-    response_text <- if (is.null(last_turn) || length(last_turn@contents) == 0) {
+    response_text <- if (
+      is.null(last_turn) || length(last_turn@contents) == 0
+    ) {
       "(Expert completed but returned no message.)"
     } else {
       ellmer::contents_markdown(last_turn)
@@ -517,8 +610,13 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     name = tool_name,
     description = desc,
     arguments = list(
-      question = ellmer::type_string("The question or topic to research. Be specific about what you need."),
-      session_id = ellmer::type_string("Optional: Resume a previous conversation with this expert. Use the session_id from a previous response.", required = FALSE)
+      question = ellmer::type_string(
+        "The question or topic to research. Be specific about what you need."
+      ),
+      session_id = ellmer::type_string(
+        "Optional: Resume a previous conversation with this expert. Use the session_id from a previous response.",
+        required = FALSE
+      )
     )
   )
 }
@@ -547,7 +645,12 @@ tempest_create_expert_tools <- function(personas, session_manager, topic) {
 #' @param topic The research topic.
 #' @return The chat object (invisibly).
 #' @keywords internal
-tempest_register_expert_tools <- function(chat, personas, session_manager, topic) {
+tempest_register_expert_tools <- function(
+  chat,
+  personas,
+  session_manager,
+  topic
+) {
   tools <- tempest_create_expert_tools(personas, session_manager, topic)
   chat$register_tools(tools)
   invisible(chat)
@@ -561,7 +664,12 @@ tempest_register_expert_tools <- function(chat, personas, session_manager, topic
 #' @param topic The research topic.
 #' @return The chat object (invisibly).
 #' @keywords internal
-tempest_register_single_expert_tool <- function(chat, persona, session_manager, topic) {
+tempest_register_single_expert_tool <- function(
+  chat,
+  persona,
+  session_manager,
+  topic
+) {
   tool <- tempest_create_expert_tool(persona, session_manager, topic)
   chat$register_tools(list(tool))
   invisible(chat)
@@ -575,7 +683,12 @@ tempest_register_single_expert_tool <- function(chat, persona, session_manager, 
 #' @param config A `TempestConfig` object.
 #' @return A persona list.
 #' @keywords internal
-tempest_generate_single_persona <- function(topic, area, existing_personas, config) {
+tempest_generate_single_persona <- function(
+  topic,
+  area,
+  existing_personas,
+  config
+) {
   tempest_require("ellmer", "Generating expert personas requires ellmer.")
 
   chat <- config$make_chat(
@@ -585,18 +698,34 @@ tempest_generate_single_persona <- function(topic, area, existing_personas, conf
   )
 
   existing_desc <- if (length(existing_personas) > 0) {
-    paste(purrr::map_chr(existing_personas, function(p) {
-      paste0("- ", p$name %||% "Expert", " (", p$title %||% "", "): ", p$perspective %||% "")
-    }), collapse = "\n")
+    paste(
+      purrr::map_chr(existing_personas, function(p) {
+        paste0(
+          "- ",
+          p$name %||% "Expert",
+          " (",
+          p$title %||% "",
+          "): ",
+          p$perspective %||% ""
+        )
+      }),
+      collapse = "\n"
+    )
   } else {
     "(none)"
   }
 
   type <- tempest_type_personas()
   prompt <- paste0(
-    "Topic: ", topic, "\n\n",
-    "Needed expertise: ", area, "\n\n",
-    "Existing experts (do not duplicate):\n", existing_desc, "\n\n",
+    "Topic: ",
+    topic,
+    "\n\n",
+    "Needed expertise: ",
+    area,
+    "\n\n",
+    "Existing experts (do not duplicate):\n",
+    existing_desc,
+    "\n\n",
     "Generate exactly 1 expert persona to fill this knowledge gap.\n",
     "Return structured data."
   )
@@ -604,7 +733,9 @@ tempest_generate_single_persona <- function(topic, area, existing_personas, conf
   result <- tryCatch(
     chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
     error = function(e) {
-      tempest_warn("Failed to generate expert persona for {.val {area}}: {conditionMessage(e)}")
+      tempest_warn(
+        "Failed to generate expert persona for {.val {area}}: {conditionMessage(e)}"
+      )
       list(personas = list())
     }
   )
@@ -618,7 +749,13 @@ tempest_generate_single_persona <- function(topic, area, existing_personas, conf
       background = paste("Expert in", area),
       focus_areas = list(area),
       perspective = paste("Specializes in", area),
-      initial_questions = list(paste("What are the key aspects of", area, "related to", topic, "?"))
+      initial_questions = list(paste(
+        "What are the key aspects of",
+        area,
+        "related to",
+        topic,
+        "?"
+      ))
     ))
   }
   personas[[1]]

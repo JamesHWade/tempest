@@ -299,6 +299,80 @@ tempest_wiki_page_plaintext <- function(title) {
   page$extract %||% NA_character_
 }
 
+#' @keywords internal
+tempest_empty_search_results <- function() {
+  tibble::tibble(
+    title = character(),
+    url = character(),
+    snippet = character()
+  )
+}
+
+#' @keywords internal
+tempest_search_results <- function(title = NULL, url = NULL, snippet = NULL) {
+  title <- as.character(title %||% character())
+  url <- as.character(url %||% character())
+  snippet <- as.character(snippet %||% character())
+
+  n <- max(length(title), length(url), length(snippet), 0L)
+  if (n == 0L) {
+    return(tempest_empty_search_results())
+  }
+
+  pad <- function(x) {
+    if (length(x) == n) {
+      return(x)
+    }
+    c(x, rep(NA_character_, n - length(x)))
+  }
+
+  tibble::tibble(
+    title = pad(title),
+    url = pad(url),
+    snippet = pad(snippet)
+  )
+}
+
+#' @keywords internal
+tempest_required_env <- function(var, provider) {
+  value <- Sys.getenv(var, unset = "")
+  if (identical(value, "")) {
+    tempest_abort(c(
+      "{.envvar {var}} environment variable is not set.",
+      i = "Set it with: {.code Sys.setenv({var} = \"your-key\")}",
+      i = "Or use a different provider: {.code tempest_config(search_provider = \"wikipedia\")}"
+    ))
+  }
+  value
+}
+
+#' @keywords internal
+tempest_first_field <- function(x, fields, default = NA_character_) {
+  for (field in fields) {
+    value <- x[[field]]
+    if (!is.null(value) && length(value) > 0L && !is.na(value[[1]])) {
+      return(as.character(value[[1]]))
+    }
+  }
+  default
+}
+
+#' @keywords internal
+tempest_duckduckgo_result_url <- function(url) {
+  url <- as.character(url %||% NA_character_)
+  if (is.na(url) || identical(url, "")) {
+    return(NA_character_)
+  }
+  if (!grepl("[?&]uddg=", url)) {
+    return(url)
+  }
+  parsed <- utils::URLdecode(sub("^.*[?&]uddg=([^&]+).*$", "\\1", url))
+  if (identical(parsed, url)) {
+    return(url)
+  }
+  parsed
+}
+
 #' TempestRetriever
 #'
 #' Provides web and Wikipedia retrieval with caching, plus helper methods to
@@ -323,7 +397,10 @@ TempestRetriever <- R6::R6Class(
     #' Create a new TempestRetriever.
     #' @param config A `TempestConfig` object.
     #' @param store A `SourceStore` object.
-    initialize = function(config = tempest_config(), store = SourceStore$new()) {
+    initialize = function(
+      config = tempest_config(),
+      store = SourceStore$new()
+    ) {
       self$config <- config
       self$store <- store
       self$ragnar_store <- config$ragnar_store
@@ -340,6 +417,7 @@ TempestRetriever <- R6::R6Class(
     search = function(query, k = NULL, provider = NULL) {
       k <- k %||% self$config$max_search_results
       provider <- provider %||% self$config$search_provider
+      provider <- tempest_normalize_search_provider(provider)
 
       key <- tempest_cache_key("search", provider, query, k)
       cached <- tempest_cache_get(self$cache_dir, key)
@@ -358,12 +436,18 @@ TempestRetriever <- R6::R6Class(
       out <- switch(
         effective_provider,
         wikipedia = tempest_wiki_search(query, limit = k),
+        you = tempest_search_you(query, k = k),
+        bing = tempest_search_bing(query, k = k),
         serper = tempest_search_serper(query, k = k),
         brave = tempest_search_brave(query, k = k),
+        duckduckgo = tempest_search_duckduckgo(query, k = k),
         tavily = tempest_search_tavily(query, k = k),
+        searxng = tempest_search_searxng(query, k = k),
+        google = tempest_search_google(query, k = k),
+        azure_ai_search = tempest_search_azure_ai_search(query, k = k),
         tempest_abort(c(
           "Unknown search provider: {.val {provider}}",
-          i = "Available providers: native, wikipedia, serper, brave, tavily"
+          i = "Available providers: {.val {tempest_search_provider_choices()}}"
         ))
       )
 
@@ -590,6 +674,77 @@ tempest_retriever <- function(
 # API keys are retrieved from environment variables inside functions,
 # never as parameters (security: prevents exposure in stack traces)
 
+#' Search using You.com API
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
+#' @keywords internal
+tempest_search_you <- function(query, k = 8L) {
+  api_key <- tempest_required_env("YDC_API_KEY", "You.com")
+
+  req <- httr2::request("https://api.ydc-index.io/search") |>
+    httr2::req_headers(`X-API-Key` = api_key) |>
+    httr2::req_url_query(query = query)
+
+  resp <- httr2::req_perform(req)
+  body <- httr2::resp_body_json(resp, simplifyVector = FALSE)
+  items <- body$hits %||% list()
+
+  if (length(items) == 0L) {
+    return(tempest_empty_search_results())
+  }
+
+  items <- utils::head(items, k)
+  tempest_search_results(
+    title = purrr::map_chr(
+      items,
+      ~ tempest_first_field(.x, c("title", "url"), default = "Untitled")
+    ),
+    url = purrr::map_chr(items, ~ tempest_first_field(.x, "url")),
+    snippet = purrr::map_chr(items, function(.x) {
+      snippets <- .x$snippets %||% .x$snippet %||% .x$description %||% ""
+      if (is.list(snippets)) {
+        snippets <- unlist(snippets, use.names = FALSE)
+      }
+      paste(as.character(snippets), collapse = "\n")
+    })
+  )
+}
+
+#' Search using Bing Web Search API
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
+#' @keywords internal
+tempest_search_bing <- function(query, k = 8L) {
+  api_key <- tempest_required_env("BING_SEARCH_API_KEY", "Bing Search")
+
+  req <- httr2::request("https://api.bing.microsoft.com/v7.0/search") |>
+    httr2::req_headers(`Ocp-Apim-Subscription-Key` = api_key) |>
+    httr2::req_url_query(
+      q = query,
+      count = k,
+      mkt = Sys.getenv("BING_SEARCH_MKT", unset = "en-US"),
+      setLang = Sys.getenv("BING_SEARCH_LANGUAGE", unset = "en")
+    )
+
+  resp <- httr2::req_perform(req)
+  body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  items <- body$webPages$value
+
+  if (is.null(items) || length(items) == 0L) {
+    return(tempest_empty_search_results())
+  }
+
+  tempest_search_results(
+    title = items$name %||% character(),
+    url = items$url %||% character(),
+    snippet = items$snippet %||% character()
+  )
+}
+
 #' Search using Serper API
 #'
 #' @param query Search query string.
@@ -597,15 +752,7 @@ tempest_retriever <- function(
 #' @return Tibble with title, url, snippet columns.
 #' @keywords internal
 tempest_search_serper <- function(query, k = 8L) {
-  api_key <- Sys.getenv("SERPER_API_KEY", unset = "")
-
-  if (identical(api_key, "")) {
-    tempest_abort(c(
-      "SERPER_API_KEY environment variable is not set.",
-      i = "Set it with: {.code Sys.setenv(SERPER_API_KEY = \"your-key\")}",
-      i = "Or use a different provider: {.code tempest_config(search_provider = \"wikipedia\")}"
-    ))
-  }
+  api_key <- tempest_required_env("SERPER_API_KEY", "Serper")
 
   req <- httr2::request("https://google.serper.dev/search") |>
     httr2::req_headers(
@@ -619,14 +766,10 @@ tempest_search_serper <- function(query, k = 8L) {
   items <- body$organic
 
   if (is.null(items) || length(items) == 0L) {
-    return(tibble::tibble(
-      title = character(),
-      url = character(),
-      snippet = character()
-    ))
+    return(tempest_empty_search_results())
   }
 
-  tibble::tibble(
+  tempest_search_results(
     title = items$title %||% character(),
     url = items$link %||% character(),
     snippet = items$snippet %||% character()
@@ -640,15 +783,7 @@ tempest_search_serper <- function(query, k = 8L) {
 #' @return Tibble with title, url, snippet columns.
 #' @keywords internal
 tempest_search_brave <- function(query, k = 8L) {
-  api_key <- Sys.getenv("BRAVE_API_KEY", unset = "")
-
-  if (identical(api_key, "")) {
-    tempest_abort(c(
-      "BRAVE_API_KEY environment variable is not set.",
-      i = "Set it with: {.code Sys.setenv(BRAVE_API_KEY = \"your-key\")}",
-      i = "Or use a different provider: {.code tempest_config(search_provider = \"wikipedia\")}"
-    ))
-  }
+  api_key <- tempest_required_env("BRAVE_API_KEY", "Brave Search")
 
   req <- httr2::request("https://api.search.brave.com/res/v1/web/search") |>
     httr2::req_headers(
@@ -662,17 +797,52 @@ tempest_search_brave <- function(query, k = 8L) {
   items <- body$web$results
 
   if (is.null(items) || length(items) == 0L) {
-    return(tibble::tibble(
-      title = character(),
-      url = character(),
-      snippet = character()
-    ))
+    return(tempest_empty_search_results())
   }
 
-  tibble::tibble(
+  tempest_search_results(
     title = items$title %||% character(),
     url = items$url %||% character(),
     snippet = items$description %||% character()
+  )
+}
+
+#' Search using DuckDuckGo HTML results
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
+#' @keywords internal
+tempest_search_duckduckgo <- function(query, k = 8L) {
+  tempest_require("xml2", "DuckDuckGo search requires HTML parsing.")
+  tempest_require("rvest", "DuckDuckGo search requires HTML parsing.")
+
+  req <- httr2::request("https://html.duckduckgo.com/html/") |>
+    httr2::req_url_query(
+      q = query,
+      kl = Sys.getenv("DUCKDUCKGO_REGION", unset = "us-en"),
+      kp = Sys.getenv("DUCKDUCKGO_SAFE_SEARCH", unset = "1")
+    ) |>
+    httr2::req_user_agent("tempest (R; DuckDuckGo HTML search)")
+
+  resp <- httr2::req_perform(req)
+  html <- httr2::resp_body_string(resp)
+  doc <- xml2::read_html(html)
+  nodes <- rvest::html_elements(doc, ".result")
+
+  if (length(nodes) == 0L) {
+    return(tempest_empty_search_results())
+  }
+
+  nodes <- nodes[seq_len(min(length(nodes), k))]
+  title <- rvest::html_text2(rvest::html_element(nodes, ".result__a"))
+  url <- rvest::html_attr(rvest::html_element(nodes, ".result__a"), "href")
+  snippet <- rvest::html_text2(rvest::html_element(nodes, ".result__snippet"))
+
+  tempest_search_results(
+    title = title,
+    url = purrr::map_chr(url, tempest_duckduckgo_result_url),
+    snippet = snippet
   )
 }
 
@@ -683,15 +853,7 @@ tempest_search_brave <- function(query, k = 8L) {
 #' @return Tibble with title, url, snippet columns.
 #' @keywords internal
 tempest_search_tavily <- function(query, k = 8L) {
-  api_key <- Sys.getenv("TAVILY_API_KEY", unset = "")
-
-  if (identical(api_key, "")) {
-    tempest_abort(c(
-      "TAVILY_API_KEY environment variable is not set.",
-      i = "Set it with: {.code Sys.setenv(TAVILY_API_KEY = \"your-key\")}",
-      i = "Or use a different provider: {.code tempest_config(search_provider = \"wikipedia\")}"
-    ))
-  }
+  api_key <- tempest_required_env("TAVILY_API_KEY", "Tavily")
 
   req <- httr2::request("https://api.tavily.com/search") |>
     httr2::req_headers(`Content-Type` = "application/json") |>
@@ -706,17 +868,152 @@ tempest_search_tavily <- function(query, k = 8L) {
   items <- body$results
 
   if (is.null(items) || length(items) == 0L) {
-    return(tibble::tibble(
-      title = character(),
-      url = character(),
-      snippet = character()
-    ))
+    return(tempest_empty_search_results())
   }
 
-  tibble::tibble(
+  tempest_search_results(
     title = items$title %||% character(),
     url = items$url %||% character(),
     snippet = items$content %||% character()
+  )
+}
+
+#' Search using SearXNG API
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
+#' @keywords internal
+tempest_search_searxng <- function(query, k = 8L) {
+  api_url <- Sys.getenv("SEARXNG_API_URL", unset = "")
+  if (identical(api_url, "")) {
+    tempest_abort(c(
+      "{.envvar SEARXNG_API_URL} environment variable is not set.",
+      i = "Set it to your SearXNG search endpoint, e.g. {.url https://search.example.com/search}",
+      i = "Optionally set {.envvar SEARXNG_API_KEY} for bearer-token protected instances."
+    ))
+  }
+
+  req <- httr2::request(api_url) |>
+    httr2::req_url_query(q = query, format = "json")
+
+  api_key <- Sys.getenv("SEARXNG_API_KEY", unset = "")
+  if (!identical(api_key, "")) {
+    req <- httr2::req_headers(req, Authorization = paste("Bearer", api_key))
+  }
+
+  resp <- httr2::req_perform(req)
+  body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  items <- body$results
+
+  if (is.null(items) || length(items) == 0L) {
+    return(tempest_empty_search_results())
+  }
+
+  items <- utils::head(items, k)
+  tempest_search_results(
+    title = items$title %||% character(),
+    url = items$url %||% character(),
+    snippet = items$content %||% items$snippet %||% character()
+  )
+}
+
+#' Search using Google Custom Search API
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
+#' @keywords internal
+tempest_search_google <- function(query, k = 8L) {
+  api_key <- tempest_required_env("GOOGLE_SEARCH_API_KEY", "Google Search")
+  cse_id <- tempest_required_env("GOOGLE_CSE_ID", "Google Search")
+
+  req <- httr2::request("https://www.googleapis.com/customsearch/v1") |>
+    httr2::req_url_query(
+      key = api_key,
+      cx = cse_id,
+      q = query,
+      num = min(k, 10L)
+    )
+
+  resp <- httr2::req_perform(req)
+  body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  items <- body$items
+
+  if (is.null(items) || length(items) == 0L) {
+    return(tempest_empty_search_results())
+  }
+
+  tempest_search_results(
+    title = items$title %||% character(),
+    url = items$link %||% character(),
+    snippet = items$snippet %||% character()
+  )
+}
+
+#' Search using Azure AI Search
+#'
+#' @param query Search query string.
+#' @param k Maximum number of results.
+#' @return Tibble with title, url, snippet columns.
+#' @keywords internal
+tempest_search_azure_ai_search <- function(query, k = 8L) {
+  api_key <- tempest_required_env(
+    "AZURE_AI_SEARCH_API_KEY",
+    "Azure AI Search"
+  )
+  endpoint <- Sys.getenv(
+    "AZURE_AI_SEARCH_ENDPOINT",
+    unset = Sys.getenv("AZURE_AI_SEARCH_URL", unset = "")
+  )
+  if (identical(endpoint, "")) {
+    tempest_abort(c(
+      "{.envvar AZURE_AI_SEARCH_ENDPOINT} environment variable is not set.",
+      i = "Set it to your Azure AI Search endpoint.",
+      i = "{.envvar AZURE_AI_SEARCH_URL} is also accepted for upstream STORM compatibility."
+    ))
+  }
+  index_name <- tempest_required_env(
+    "AZURE_AI_SEARCH_INDEX_NAME",
+    "Azure AI Search"
+  )
+  api_version <- Sys.getenv(
+    "AZURE_AI_SEARCH_API_VERSION",
+    unset = "2023-11-01"
+  )
+
+  endpoint <- sub("/+$", "", endpoint)
+  url <- paste0(endpoint, "/indexes/", index_name, "/docs/search")
+  req <- httr2::request(url) |>
+    httr2::req_headers(
+      `api-key` = api_key,
+      `Content-Type` = "application/json"
+    ) |>
+    httr2::req_url_query(`api-version` = api_version) |>
+    httr2::req_body_json(list(search = query, top = k))
+
+  resp <- httr2::req_perform(req)
+  body <- httr2::resp_body_json(resp, simplifyVector = FALSE)
+  items <- body$value %||% list()
+
+  if (length(items) == 0L) {
+    return(tempest_empty_search_results())
+  }
+
+  items <- utils::head(items, k)
+  tempest_search_results(
+    title = purrr::map_chr(
+      items,
+      ~ tempest_first_field(.x, c("title", "name", "metadata_storage_name"))
+    ),
+    url = purrr::map_chr(
+      items,
+      ~ tempest_first_field(.x, c("url", "metadata_storage_path", "source"))
+    ),
+    snippet = purrr::map_chr(
+      items,
+      ~ tempest_first_field(.x, c("chunk", "content", "text", "description"))
+    )
   )
 }
 
@@ -728,28 +1025,41 @@ tempest_search_tavily <- function(query, k = 8L) {
 #' @return Character vector of indented headings, or `character()` on error.
 #' @keywords internal
 tempest_extract_toc_from_url <- function(url) {
-  tryCatch({
-    if (!tempest_has("xml2")) return(character())
-    url <- tempest_normalize_url(url)
-    if (is.na(url)) return(character())
-    resp <- tempest_http_get(url, timeout_s = 10)
-    html <- httr2::resp_body_string(resp)
-    doc <- xml2::read_html(html)
-    headings <- xml2::xml_find_all(doc, ".//h1|.//h2|.//h3|.//h4")
-    if (length(headings) == 0) return(character())
-    levels <- as.integer(sub("h", "", xml2::xml_name(headings)))
-    texts <- tempest_trim(xml2::xml_text(headings))
-    keep <- nzchar(texts)
-    levels <- levels[keep]
-    texts <- texts[keep]
-    if (length(texts) == 0) return(character())
-    min_level <- min(levels)
-    indents <- strrep("  ", levels - min_level)
-    paste0(indents, "- ", texts)
-  }, error = function(e) {
-    tempest_warn("Failed to extract ToC from {.url {url}}: {conditionMessage(e)}")
-    character()
-  })
+  tryCatch(
+    {
+      if (!tempest_has("xml2")) {
+        return(character())
+      }
+      url <- tempest_normalize_url(url)
+      if (is.na(url)) {
+        return(character())
+      }
+      resp <- tempest_http_get(url, timeout_s = 10)
+      html <- httr2::resp_body_string(resp)
+      doc <- xml2::read_html(html)
+      headings <- xml2::xml_find_all(doc, ".//h1|.//h2|.//h3|.//h4")
+      if (length(headings) == 0) {
+        return(character())
+      }
+      levels <- as.integer(sub("h", "", xml2::xml_name(headings)))
+      texts <- tempest_trim(xml2::xml_text(headings))
+      keep <- nzchar(texts)
+      levels <- levels[keep]
+      texts <- texts[keep]
+      if (length(texts) == 0) {
+        return(character())
+      }
+      min_level <- min(levels)
+      indents <- strrep("  ", levels - min_level)
+      paste0(indents, "- ", texts)
+    },
+    error = function(e) {
+      tempest_warn(
+        "Failed to extract ToC from {.url {url}}: {conditionMessage(e)}"
+      )
+      character()
+    }
+  )
 }
 
 #' Get Wikipedia page sections via Parse API
@@ -760,24 +1070,33 @@ tempest_extract_toc_from_url <- function(url) {
 #' @return Character vector of indented section headings, or `character()` on error.
 #' @keywords internal
 tempest_wiki_page_sections <- function(title) {
-  tryCatch({
-    res <- tempest_wikipedia_api(list(
-      action = "parse",
-      page = title,
-      prop = "sections",
-      format = "json",
-      utf8 = 1
-    ))
-    sections <- res$parse$sections
-    if (is.null(sections) || length(sections) == 0) return(character())
-    # sections is a data.frame with toclevel, line, number columns
-    levels <- as.integer(sections$toclevel)
-    texts <- sections$line
-    if (length(texts) == 0) return(character())
-    indents <- strrep("  ", levels - 1L)
-    paste0(indents, "- ", texts)
-  }, error = function(e) {
-    tempest_warn("Failed to get Wikipedia sections for {.val {title}}: {conditionMessage(e)}")
-    character()
-  })
+  tryCatch(
+    {
+      res <- tempest_wikipedia_api(list(
+        action = "parse",
+        page = title,
+        prop = "sections",
+        format = "json",
+        utf8 = 1
+      ))
+      sections <- res$parse$sections
+      if (is.null(sections) || length(sections) == 0) {
+        return(character())
+      }
+      # sections is a data.frame with toclevel, line, number columns
+      levels <- as.integer(sections$toclevel)
+      texts <- sections$line
+      if (length(texts) == 0) {
+        return(character())
+      }
+      indents <- strrep("  ", levels - 1L)
+      paste0(indents, "- ", texts)
+    },
+    error = function(e) {
+      tempest_warn(
+        "Failed to get Wikipedia sections for {.val {title}}: {conditionMessage(e)}"
+      )
+      character()
+    }
+  )
 }

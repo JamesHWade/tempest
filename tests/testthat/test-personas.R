@@ -31,7 +31,7 @@ test_that("tempest_format_persona_details handles missing fields", {
 
   details <- tempest:::tempest_format_persona_details(persona)
   expect_true(is.character(details))
-  expect_equal(details, "")  # No fields to format
+  expect_equal(details, "") # No fields to format
 })
 
 test_that("tempest_render_expert_prompt creates prompt with persona", {
@@ -44,7 +44,10 @@ test_that("tempest_render_expert_prompt creates prompt with persona", {
     perspective = "Physical science perspective on climate change"
   )
 
-  prompt <- tempest:::tempest_render_expert_prompt(persona = persona, expert_id = 1)
+  prompt <- tempest:::tempest_render_expert_prompt(
+    persona = persona,
+    expert_id = 1
+  )
 
   expect_true(grepl("Dr. Sarah Chen", prompt))
   expect_true(grepl("Climate Scientist", prompt))
@@ -52,7 +55,10 @@ test_that("tempest_render_expert_prompt creates prompt with persona", {
 })
 
 test_that("tempest_render_expert_prompt creates fallback for NULL persona", {
-  prompt <- tempest:::tempest_render_expert_prompt(persona = NULL, expert_id = 3)
+  prompt <- tempest:::tempest_render_expert_prompt(
+    persona = NULL,
+    expert_id = 3
+  )
 
   expect_true(grepl("Expert 3", prompt))
   expect_true(grepl("Research Specialist", prompt))
@@ -143,7 +149,7 @@ test_that("TempestSession find_expert_index matches names", {
   )
 
   # Exact match
- expect_equal(session$find_expert_index("Dr. Alice Smith"), 1)
+  expect_equal(session$find_expert_index("Dr. Alice Smith"), 1)
   expect_equal(session$find_expert_index("Prof. Bob Jones"), 2)
 
   # Case-insensitive
@@ -169,7 +175,12 @@ test_that("TempestSession has expert_session_manager", {
   )
 
   mock_personas <- list(
-    list(id = 1, name = "Dr. Alice Smith", title = "Scientist", perspective = "Technical")
+    list(
+      id = 1,
+      name = "Dr. Alice Smith",
+      title = "Scientist",
+      perspective = "Technical"
+    )
   )
 
   cfg <- tempest_config()

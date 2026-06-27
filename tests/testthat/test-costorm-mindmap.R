@@ -1,9 +1,27 @@
 test_that("tempest_mindmap_node_sizes computes correctly", {
   mindmap <- list(
     nodes = list(
-      list(id = "root", label = "Topic", parent = NULL, notes = "some notes here", source_ids = c("S1", "S2")),
-      list(id = "n1", label = "Sub1", parent = "root", notes = "a", source_ids = c("S3")),
-      list(id = "n2", label = "Sub2", parent = "root", notes = "", source_ids = character())
+      list(
+        id = "root",
+        label = "Topic",
+        parent = NULL,
+        notes = "some notes here",
+        source_ids = c("S1", "S2")
+      ),
+      list(
+        id = "n1",
+        label = "Sub1",
+        parent = "root",
+        notes = "a",
+        source_ids = c("S3")
+      ),
+      list(
+        id = "n2",
+        label = "Sub2",
+        parent = "root",
+        notes = "",
+        source_ids = character()
+      )
     ),
     edges = list()
   )
@@ -37,24 +55,45 @@ test_that("tempest_mindmap_node_sizes handles empty mindmap", {
 test_that("tempest_mindmap_oversized_nodes finds oversized nodes", {
   mindmap <- list(
     nodes = list(
-      list(id = "root", label = "Topic", parent = NULL, notes = "word1 word2 word3", source_ids = c("S1", "S2", "S3")),
-      list(id = "n1", label = "Small", parent = "root", notes = "tiny", source_ids = character())
+      list(
+        id = "root",
+        label = "Topic",
+        parent = NULL,
+        notes = "word1 word2 word3",
+        source_ids = c("S1", "S2", "S3")
+      ),
+      list(
+        id = "n1",
+        label = "Small",
+        parent = "root",
+        notes = "tiny",
+        source_ids = character()
+      )
     ),
     edges = list()
   )
 
   # root total = 3 + 3 = 6, n1 total = 1 + 0 = 1
-  oversized <- tempest:::tempest_mindmap_oversized_nodes(mindmap, trigger_count = 5)
+  oversized <- tempest:::tempest_mindmap_oversized_nodes(
+    mindmap,
+    trigger_count = 5
+  )
   expect_equal(oversized, "root")
 
   # With higher threshold, nothing is oversized
-  oversized2 <- tempest:::tempest_mindmap_oversized_nodes(mindmap, trigger_count = 10)
+  oversized2 <- tempest:::tempest_mindmap_oversized_nodes(
+    mindmap,
+    trigger_count = 10
+  )
   expect_length(oversized2, 0)
 })
 
 test_that("tempest_mindmap_oversized_nodes handles empty mindmap", {
   mindmap <- list(nodes = list(), edges = list())
-  result <- tempest:::tempest_mindmap_oversized_nodes(mindmap, trigger_count = 5)
+  result <- tempest:::tempest_mindmap_oversized_nodes(
+    mindmap,
+    trigger_count = 5
+  )
   expect_type(result, "character")
   expect_length(result, 0)
 })

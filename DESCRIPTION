@@ -13,7 +13,6 @@ Description: Implements an R-native clone of the STORM and Co-STORM
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Depends:
     R (>= 4.1.0)
 Imports:
@@ -32,6 +31,7 @@ Suggests:
     commonmark,
     dplyr,
     dsprrr,
+    DT,
     ellmer,
     jsonlite,
     knitr,
@@ -46,11 +46,15 @@ Suggests:
     shinychat,
     testthat (>= 3.0.0),
     tidyr,
+    visNetwork,
     vitals,
     withr,
     xml2
 Remotes:
-    JamesHWade/dsprrr
+    JamesHWade/dsprrr,
+    posit-dev/shinychat/pkg-r@feat/chat-server
 Config/testthat/edition: 3
-URL: https://github.com/JamesHWade/tempest
+URL: https://jameshwade.github.io/tempest/,
+    https://github.com/JamesHWade/tempest
 BugReports: https://github.com/JamesHWade/tempest/issues
+Config/roxygen2/version: 7.3.3.9000
