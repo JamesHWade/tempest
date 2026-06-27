@@ -26,6 +26,11 @@ mod_chat_ui <- function(id, config_ui) {
           "Run warmup (experts research initial questions)",
           FALSE
         ),
+        shiny::checkboxInput(
+          ns("suggest"),
+          "Suggest follow-up questions",
+          TRUE
+        ),
         bslib::input_task_button(
           ns("start"),
           "Start Session",
@@ -88,6 +93,23 @@ mod_chat_server <- function(id, config, store) {
     )
     append_chat <- function(text) chat$append(text, role = "assistant")
 
+    # Generate + append suggestion cards, gated on the sidebar toggle. Quiet on
+    # failure: a stalled or erroring generator simply shows no cards.
+    maybe_append_suggestions <- function(ses, n = 4) {
+      if (is.null(ses) || !isTRUE(input$suggest)) {
+        return(invisible(NULL))
+      }
+      questions <- tryCatch(
+        ses$suggest_questions(n),
+        error = function(e) character()
+      )
+      cards <- suggestion_cards(questions)
+      if (!is.null(cards)) {
+        append_chat(cards)
+      }
+      invisible(NULL)
+    }
+
     # --- Session lifecycle ---------------------------------------------------
     create_session <- function(topic, n_experts) {
       ses <- tryCatch(
@@ -129,7 +151,12 @@ mod_chat_server <- function(id, config, store) {
         return()
       }
       ses <- create_session(topic, input$n_experts %||% 3)
-      if (is.null(ses) || !isTRUE(input$warmup) || length(ses$personas) == 0) {
+      if (is.null(ses)) {
+        bslib::update_task_button("start", state = "ready")
+        return()
+      }
+      maybe_append_suggestions(ses)
+      if (!isTRUE(input$warmup) || length(ses$personas) == 0) {
         bslib::update_task_button("start", state = "ready")
         return()
       }
@@ -174,6 +201,9 @@ mod_chat_server <- function(id, config, store) {
         }
       )
       store$touch()
+      if (nzchar(msg)) {
+        maybe_append_suggestions(ses)
+      }
     })
 
     # --- Report generation ---------------------------------------------------

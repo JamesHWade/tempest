@@ -163,3 +163,16 @@ test_that("suggestion_cards honors a custom lead", {
   md <- app$suggestion_cards("Q1", lead = "**Try asking:**")
   expect_match(md, "Try asking", fixed = TRUE)
 })
+
+test_that("the chat sidebar offers a follow-up-questions toggle", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("shinychat")
+  app <- source_shiny_modules()
+  html <- paste(
+    as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
+    collapse = ""
+  )
+  expect_match(html, "chat-suggest")
+  expect_match(html, "Suggest follow-up questions")
+})
