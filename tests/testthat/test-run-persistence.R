@@ -23,8 +23,8 @@ test_that("run artifacts save and load store state", {
     snippet = "Snippet"
   )
   store$upsert_source(source)
-  store$add_fact(tempest:::tempest_fact(
-    "Lithium batteries store energy.",
+  store$add_claim(tempest:::tempest_claim(
+    claim_text = "Lithium batteries store energy.",
     source_ids = source$id,
     confidence = "high"
   ))
@@ -83,7 +83,7 @@ test_that("run artifacts save and load store state", {
     c("perspectives", "research", "outline", "write", "polish")
   )
   expect_equal(length(restored$list_sources()), 1)
-  expect_equal(length(restored$list_facts()), 1)
+  expect_equal(length(restored$list_claims()), 1)
   expect_equal(restored$get_artifact("title"), "Lithium Batteries")
   expect_equal(restored$get_artifact("outline")$title, "Lithium Batteries")
   expect_equal(restored$get_artifact("draft_md"), "Draft body")

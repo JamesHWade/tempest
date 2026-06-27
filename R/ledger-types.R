@@ -224,6 +224,37 @@ tempest_claim_to_list <- function(claim) {
 
 #' @keywords internal
 tempest_claim_from_list <- function(x) {
+  # JSON round-trip coercions:
+  # - NA_character_  -> null in JSON -> NULL in R   => restore to NA_character_
+  # - character()    -> []   in JSON -> list() in R => restore to character()
+  # - NA_real_       -> null in JSON -> NULL in R   => restore to NA_real_
+  # - non-empty character vectors come back as list of scalars => unlist
+
+  chr_scalar_fields <- c(
+    "claim_id", "claim_text", "claim_type", "contradiction_note",
+    "retrieval_query", "retrieval_step_id", "perspective_id", "persona_id",
+    "section_id", "created_at", "verified_at", "verifier_model",
+    "confidence", "verification_status"
+  )
+  for (f in chr_scalar_fields) {
+    if (is.null(x[[f]])) x[[f]] <- NA_character_
+  }
+
+  chr_vec_fields <- c("source_ids", "evidence_span_ids", "contradicting_source_ids")
+  for (f in chr_vec_fields) {
+    v <- x[[f]]
+    if (is.null(v) || (is.list(v) && length(v) == 0)) {
+      x[[f]] <- character()
+    } else if (is.list(v)) {
+      x[[f]] <- as.character(unlist(v, use.names = FALSE))
+    }
+  }
+
+  dbl_scalar_fields <- c("support_score", "contradiction_score", "source_quality_score")
+  for (f in dbl_scalar_fields) {
+    if (is.null(x[[f]])) x[[f]] <- NA_real_
+  }
+
   do.call(tempest_claim, c(
     list(claim_text = x$claim_text %||% ""),
     x[setdiff(names(x), "claim_text")]
