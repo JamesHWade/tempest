@@ -347,7 +347,8 @@ TempestSession <- R6::R6Class(
         self$chats$moderator,
         self$retriever,
         model = self$config@models[["coordinator"]],
-        search_provider = self$config@search_provider
+        search_provider = self$config@search_provider,
+        allow_claim_writes = FALSE
       )
       tempest_register_expert_tools(
         self$chats$moderator,
@@ -361,13 +362,15 @@ TempestSession <- R6::R6Class(
         self$chats$mindmap,
         self$retriever,
         model = self$config@models[["mindmap"]],
-        search_provider = self$config@search_provider
+        search_provider = self$config@search_provider,
+        allow_claim_writes = FALSE
       )
       tempest_register_default_tools(
         self$chats$reporter,
         self$retriever,
         model = self$config@models[["writer"]],
-        search_provider = self$config@search_provider
+        search_provider = self$config@search_provider,
+        allow_claim_writes = FALSE
       )
 
       # Initialize discourse manager if enabled

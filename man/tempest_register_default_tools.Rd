@@ -8,7 +8,8 @@ tempest_register_default_tools(
   chat,
   retriever,
   model = NULL,
-  search_provider = "native"
+  search_provider = "native",
+  allow_claim_writes = TRUE
 )
 }
 \arguments{
@@ -19,6 +20,10 @@ tempest_register_default_tools(
 \item{model}{Model name (used to detect provider for native tools)}
 
 \item{search_provider}{Search provider setting from config}
+
+\item{allow_claim_writes}{Whether to register claim-writing tools. Read-heavy
+roles can set this to \code{FALSE} and still inspect sources, claims, evidence,
+and unsupported claims.}
 }
 \value{
 The chat object (invisibly)

@@ -292,14 +292,86 @@ tempest_harvest_native_sources_from_chat <- function(chat, store) {
 }
 
 #' @keywords internal
-tempest_tool_claim_payload <- function(claim) {
+tempest_tool_source_payload <- function(source, excerpt_chars = 1200L) {
+  excerpt_chars <- as.integer(excerpt_chars %||% 1200L)
+  if (is.na(excerpt_chars) || excerpt_chars < 0L) {
+    excerpt_chars <- 1200L
+  }
+  excerpt <- source$content_text %||% NA_character_
+  if (!is.na(excerpt) && nzchar(excerpt)) {
+    excerpt <- substr(excerpt, 1, excerpt_chars)
+  } else {
+    excerpt <- source$snippet %||% NA_character_
+  }
+  list(
+    source_id = source$id,
+    url = source$url,
+    title = source$title,
+    fetched_at = source$fetched_at,
+    kind = source$meta$kind %||% NA_character_,
+    error = source$meta$error %||% NA_character_,
+    excerpt = excerpt
+  )
+}
+
+#' @keywords internal
+tempest_tool_source_summary_payload <- function(source) {
+  list(
+    source_id = source$id,
+    url = source$url,
+    title = source$title,
+    snippet = source$snippet %||% NA_character_,
+    fetched_at = source$fetched_at,
+    kind = source$meta$kind %||% NA_character_,
+    error = source$meta$error %||% NA_character_
+  )
+}
+
+#' @keywords internal
+tempest_tool_evidence_span_payload <- function(span) {
+  list(
+    evidence_span_id = span@evidence_span_id,
+    source_id = span@source_id,
+    quote = span@quote,
+    start_offset = span@start_offset,
+    end_offset = span@end_offset,
+    page = span@page,
+    section_heading = span@section_heading,
+    relevance_score = span@relevance_score,
+    extracted_by = span@extracted_by,
+    created_at = span@created_at
+  )
+}
+
+#' @keywords internal
+tempest_tool_claim_payload <- function(
+  claim,
+  store = NULL,
+  include_sources = FALSE
+) {
+  sources <- list()
+  if (isTRUE(include_sources) && !is.null(store)) {
+    sources <- purrr::map(
+      claim@source_ids,
+      function(source_id) {
+        source <- store$get_source(source_id)
+        if (is.null(source)) {
+          return(list(source_id = source_id, missing = TRUE))
+        }
+        tempest_tool_source_payload(source, excerpt_chars = 500L)
+      }
+    )
+  }
   list(
     claim_id = claim@claim_id,
     claim_text = claim@claim_text,
     source_ids = claim@source_ids,
+    evidence_span_ids = claim@evidence_span_ids,
     confidence = claim@confidence,
     verification_status = claim@verification_status,
-    created_at = claim@created_at
+    support_score = claim@support_score,
+    created_at = claim@created_at,
+    sources = sources
   )
 }
 
@@ -313,6 +385,7 @@ tempest_tool_fact_payload <- function(claim) {
     source_ids = claim@source_ids,
     confidence = claim@confidence,
     verification_status = claim@verification_status,
+    support_score = claim@support_score,
     created_at = claim@created_at
   )
 }
@@ -360,7 +433,221 @@ tempest_add_tool_claim <- function(
 }
 
 #' @keywords internal
-tempest_tools_retrieval <- function(retriever) {
+tempest_tool_review_functions <- function(store) {
+  get_source <- function(source_id, excerpt_chars = 1200L) {
+    src <- store$get_source(source_id)
+    if (is.null(src)) {
+      return(NULL)
+    }
+    tempest_tool_source_payload(src, excerpt_chars = excerpt_chars)
+  }
+
+  list_sources <- function() {
+    purrr::map(store$list_sources(), tempest_tool_source_summary_payload)
+  }
+
+  list_claims <- function() {
+    purrr::map(store$list_claims(), tempest_tool_claim_payload)
+  }
+
+  get_claim <- function(claim_id) {
+    claim <- store$get_claim(claim_id)
+    if (is.null(claim)) {
+      return(NULL)
+    }
+    tempest_tool_claim_payload(claim, store = store, include_sources = TRUE)
+  }
+
+  get_evidence_for_claim <- function(claim_id) {
+    claim <- store$get_claim(claim_id)
+    if (is.null(claim)) {
+      return(NULL)
+    }
+    spans <- store$get_evidence_for_claim(claim_id)
+    list(
+      claim = tempest_tool_claim_payload(
+        claim,
+        store = store,
+        include_sources = FALSE
+      ),
+      evidence_spans = purrr::map(spans, tempest_tool_evidence_span_payload),
+      cited_sources = purrr::map(claim@source_ids, function(source_id) {
+        source <- store$get_source(source_id)
+        if (is.null(source)) {
+          return(list(source_id = source_id, missing = TRUE))
+        }
+        tempest_tool_source_payload(source, excerpt_chars = 500L)
+      })
+    )
+  }
+
+  list_unsupported_claims <- function(limit = 20L) {
+    limit <- as.integer(limit %||% 20L)
+    if (is.na(limit) || limit < 1L) {
+      limit <- 20L
+    }
+    unsupported_statuses <- c(
+      "partially_supported",
+      "unsupported",
+      "contradicted",
+      "unverifiable"
+    )
+    claims <- purrr::keep(
+      store$list_claims(),
+      ~ .x@verification_status %in% unsupported_statuses
+    )
+    claims <- utils::head(claims, limit)
+    purrr::map(claims, tempest_tool_claim_payload)
+  }
+
+  list(
+    get_source = get_source,
+    list_sources = list_sources,
+    list_claims = list_claims,
+    get_claim = get_claim,
+    get_evidence_for_claim = get_evidence_for_claim,
+    list_unsupported_claims = list_unsupported_claims
+  )
+}
+
+#' @keywords internal
+tempest_tool_review_ellmer_tools <- function(review) {
+  list(
+    ellmer::tool(
+      review$get_source,
+      name = "get_source",
+      description = "Get a previously fetched source by source_id. Returns metadata and a compact excerpt.",
+      arguments = list(
+        source_id = ellmer::type_string("Source id, e.g. S123abc..."),
+        excerpt_chars = ellmer::type_integer(
+          "Maximum characters to include in the excerpt.",
+          required = FALSE
+        )
+      )
+    ),
+    ellmer::tool(
+      review$list_sources,
+      name = "list_sources",
+      description = "List compact metadata for sources currently stored in memory for this session.",
+      arguments = list()
+    ),
+    ellmer::tool(
+      review$list_claims,
+      name = "list_claims",
+      description = "List compact source-backed claim records currently stored in memory for this session.",
+      arguments = list()
+    ),
+    ellmer::tool(
+      review$get_claim,
+      name = "get_claim",
+      description = "Get a claim by claim_id, including verification status, support score, and cited source context.",
+      arguments = list(
+        claim_id = ellmer::type_string("Claim id, e.g. C123abc...")
+      )
+    ),
+    ellmer::tool(
+      review$get_evidence_for_claim,
+      name = "get_evidence_for_claim",
+      description = "Get evidence spans and compact cited-source excerpts for a claim.",
+      arguments = list(
+        claim_id = ellmer::type_string("Claim id, e.g. C123abc...")
+      )
+    ),
+    ellmer::tool(
+      review$list_unsupported_claims,
+      name = "list_unsupported_claims",
+      description = "List claims whose verification status indicates weak, missing, or contradictory support.",
+      arguments = list(
+        limit = ellmer::type_integer(
+          "Maximum number of claims to return.",
+          required = FALSE
+        )
+      )
+    )
+  )
+}
+
+#' @keywords internal
+tempest_tool_write_functions <- function(store) {
+  add_claim <- function(claim_text, source_ids, confidence = "medium") {
+    claim <- tempest_add_tool_claim(
+      store,
+      claim_text = claim_text,
+      source_ids = source_ids,
+      confidence = confidence
+    )
+    tempest_tool_claim_payload(claim)
+  }
+
+  # Transitional aliases keep older prompts/tool loops working while new
+  # agent-facing instructions move to claim terminology.
+  list_facts <- function() {
+    purrr::map(store$list_claims(), tempest_tool_fact_payload)
+  }
+
+  add_fact <- function(claim, source_ids, confidence = "medium") {
+    cl <- tempest_add_tool_claim(
+      store,
+      claim_text = claim,
+      source_ids = source_ids,
+      confidence = confidence,
+      tool_name = "add_fact"
+    )
+    tempest_tool_fact_payload(cl)
+  }
+
+  list(add_claim = add_claim, list_facts = list_facts, add_fact = add_fact)
+}
+
+#' @keywords internal
+tempest_tool_write_ellmer_tools <- function(write) {
+  list(
+    ellmer::tool(
+      write$add_claim,
+      name = "add_claim",
+      description = paste(
+        "Add an atomic claim to the session memory with supporting source_ids.",
+        "Use this after inspecting sources so later writing can cite the claim."
+      ),
+      arguments = list(
+        claim_text = ellmer::type_string("Atomic factual claim."),
+        source_ids = ellmer::type_array(ellmer::type_string(
+          "One or more source ids that support the claim."
+        )),
+        confidence = ellmer::type_enum(
+          c("low", "medium", "high"),
+          "Confidence level.",
+          required = FALSE
+        )
+      )
+    ),
+    ellmer::tool(
+      write$list_facts,
+      name = "list_facts",
+      description = "Transitional alias for list_claims.",
+      arguments = list()
+    ),
+    ellmer::tool(
+      write$add_fact,
+      name = "add_fact",
+      description = "Transitional alias for add_claim.",
+      arguments = list(
+        claim = ellmer::type_string("Atomic factual claim."),
+        source_ids = ellmer::type_array(ellmer::type_string(
+          "One or more source ids that support the claim."
+        )),
+        confidence = ellmer::type_enum(
+          c("low", "medium", "high"),
+          "Confidence level.",
+          required = FALSE
+        )
+      )
+    )
+  )
+}
+
+#' @keywords internal
+tempest_tools_retrieval <- function(retriever, allow_claim_writes = TRUE) {
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
 
@@ -386,161 +673,43 @@ tempest_tools_retrieval <- function(retriever) {
     )
   }
 
-  get_source <- function(source_id) {
-    src <- retriever$store$get_source(source_id)
-    if (is.null(src)) {
-      return(NULL)
-    }
+  review <- tempest_tool_review_functions(retriever$store)
+  write <- tempest_tool_write_functions(retriever$store)
+
+  tools <- c(
     list(
-      source_id = src$id,
-      url = src$url,
-      title = src$title,
-      fetched_at = src$fetched_at,
-      kind = src$meta$kind %||% NA_character_,
-      error = src$meta$error %||% NA_character_,
-      excerpt = if (!is.na(src$content_text)) {
-        substr(src$content_text, 1, 1200)
-      } else {
-        NA_character_
-      }
-    )
-  }
-
-  list_sources <- function() {
-    s <- retriever$store$list_sources()
-    purrr::map(
-      s,
-      ~ list(
-        source_id = .x$id,
-        url = .x$url,
-        title = .x$title,
-        fetched_at = .x$fetched_at,
-        kind = .x$meta$kind %||% NA_character_,
-        error = .x$meta$error %||% NA_character_
-      )
-    )
-  }
-
-  list_claims <- function() {
-    purrr::map(retriever$store$list_claims(), tempest_tool_claim_payload)
-  }
-
-  add_claim <- function(claim_text, source_ids, confidence = "medium") {
-    claim <- tempest_add_tool_claim(
-      retriever$store,
-      claim_text = claim_text,
-      source_ids = source_ids,
-      confidence = confidence
-    )
-    tempest_tool_claim_payload(claim)
-  }
-
-  # Transitional aliases keep older prompts/tool loops working while new
-  # agent-facing instructions move to claim terminology.
-  list_facts <- function() {
-    purrr::map(retriever$store$list_claims(), tempest_tool_fact_payload)
-  }
-
-  add_fact <- function(claim, source_ids, confidence = "medium") {
-    cl <- tempest_add_tool_claim(
-      retriever$store,
-      claim_text = claim,
-      source_ids = source_ids,
-      confidence = confidence,
-      tool_name = "add_fact"
-    )
-    tempest_tool_fact_payload(cl)
-  }
-
-  tools <- list(
-    ellmer::tool(
-      web_search,
-      name = "web_search",
-      description = paste(
-        "Search the web (or Wikipedia) for relevant sources. Use this to discover sources to cite.",
-        "Return values include source_id, title, url, and snippet."
+      ellmer::tool(
+        web_search,
+        name = "web_search",
+        description = paste(
+          "Search the web (or Wikipedia) for relevant sources. Use this to discover sources to cite.",
+          "Return values include source_id, title, url, and snippet."
+        ),
+        arguments = list(
+          query = ellmer::type_string("Search query."),
+          k = ellmer::type_integer(
+            "Maximum number of results to return.",
+            required = FALSE
+          )
+        )
       ),
-      arguments = list(
-        query = ellmer::type_string("Search query."),
-        k = ellmer::type_integer(
-          "Maximum number of results to return.",
-          required = FALSE
+      ellmer::tool(
+        fetch_url,
+        name = "fetch_url",
+        description = paste(
+          "Fetch a URL and extract readable plain text. Use this after web_search to read a source.",
+          "Returns source_id, title, and a text excerpt."
+        ),
+        arguments = list(
+          url = ellmer::type_string("The URL to fetch.")
         )
       )
     ),
-    ellmer::tool(
-      fetch_url,
-      name = "fetch_url",
-      description = paste(
-        "Fetch a URL and extract readable plain text. Use this after web_search to read a source.",
-        "Returns source_id, title, and a text excerpt."
-      ),
-      arguments = list(
-        url = ellmer::type_string("The URL to fetch.")
-      )
-    ),
-    ellmer::tool(
-      get_source,
-      name = "get_source",
-      description = "Get a previously fetched source by source_id. Returns an excerpt and metadata.",
-      arguments = list(
-        source_id = ellmer::type_string("Source id, e.g. S123abc...")
-      )
-    ),
-    ellmer::tool(
-      list_sources,
-      name = "list_sources",
-      description = "List all sources currently stored in memory for this session.",
-      arguments = list()
-    ),
-    ellmer::tool(
-      list_claims,
-      name = "list_claims",
-      description = "List all source-backed claim records currently stored in memory for this session.",
-      arguments = list()
-    ),
-    ellmer::tool(
-      add_claim,
-      name = "add_claim",
-      description = paste(
-        "Add an atomic claim to the session memory with supporting source_ids.",
-        "Use this after inspecting sources so later writing can cite the claim."
-      ),
-      arguments = list(
-        claim_text = ellmer::type_string("Atomic factual claim."),
-        source_ids = ellmer::type_array(ellmer::type_string(
-          "One or more source ids that support the claim."
-        )),
-        confidence = ellmer::type_enum(
-          c("low", "medium", "high"),
-          "Confidence level.",
-          required = FALSE
-        )
-      )
-    ),
-    ellmer::tool(
-      list_facts,
-      name = "list_facts",
-      description = "Transitional alias for list_claims.",
-      arguments = list()
-    ),
-    ellmer::tool(
-      add_fact,
-      name = "add_fact",
-      description = "Transitional alias for add_claim.",
-      arguments = list(
-        claim = ellmer::type_string("Atomic factual claim."),
-        source_ids = ellmer::type_array(ellmer::type_string(
-          "One or more source ids that support the claim."
-        )),
-        confidence = ellmer::type_enum(
-          c("low", "medium", "high"),
-          "Confidence level.",
-          required = FALSE
-        )
-      )
-    )
+    tempest_tool_review_ellmer_tools(review)
   )
+  if (isTRUE(allow_claim_writes)) {
+    tools <- c(tools, tempest_tool_write_ellmer_tools(write))
+  }
 
   tools
 }
@@ -551,141 +720,25 @@ tempest_tools_retrieval <- function(retriever) {
 #' Used when provider-native web search is enabled.
 #'
 #' @param retriever A TempestRetriever object
+#' @param allow_claim_writes Whether to include `add_claim` and transitional
+#'   fact-writing aliases.
 #' @return List of ellmer tools for source/claim management
 #' @keywords internal
-tempest_tools_source_management <- function(retriever) {
+tempest_tools_source_management <- function(
+  retriever,
+  allow_claim_writes = TRUE
+) {
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
 
-  get_source <- function(source_id) {
-    src <- retriever$store$get_source(source_id)
-    if (is.null(src)) {
-      return(NULL)
-    }
-    list(
-      source_id = src$id,
-      url = src$url,
-      title = src$title,
-      fetched_at = src$fetched_at,
-      kind = src$meta$kind %||% NA_character_,
-      error = src$meta$error %||% NA_character_,
-      excerpt = if (!is.na(src$content_text)) {
-        substr(src$content_text, 1, 1200)
-      } else {
-        NA_character_
-      }
-    )
-  }
+  review <- tempest_tool_review_functions(retriever$store)
+  write <- tempest_tool_write_functions(retriever$store)
 
-  list_sources <- function() {
-    s <- retriever$store$list_sources()
-    purrr::map(
-      s,
-      ~ list(
-        source_id = .x$id,
-        url = .x$url,
-        title = .x$title,
-        fetched_at = .x$fetched_at,
-        kind = .x$meta$kind %||% NA_character_,
-        error = .x$meta$error %||% NA_character_
-      )
-    )
+  tools <- tempest_tool_review_ellmer_tools(review)
+  if (isTRUE(allow_claim_writes)) {
+    tools <- c(tools, tempest_tool_write_ellmer_tools(write))
   }
-
-  list_claims <- function() {
-    purrr::map(retriever$store$list_claims(), tempest_tool_claim_payload)
-  }
-
-  add_claim <- function(claim_text, source_ids, confidence = "medium") {
-    claim <- tempest_add_tool_claim(
-      retriever$store,
-      claim_text = claim_text,
-      source_ids = source_ids,
-      confidence = confidence
-    )
-    tempest_tool_claim_payload(claim)
-  }
-
-  # Transitional aliases keep older prompts/tool loops working while new
-  # agent-facing instructions move to claim terminology.
-  list_facts <- function() {
-    purrr::map(retriever$store$list_claims(), tempest_tool_fact_payload)
-  }
-
-  add_fact <- function(claim, source_ids, confidence = "medium") {
-    cl <- tempest_add_tool_claim(
-      retriever$store,
-      claim_text = claim,
-      source_ids = source_ids,
-      confidence = confidence,
-      tool_name = "add_fact"
-    )
-    tempest_tool_fact_payload(cl)
-  }
-
-  list(
-    ellmer::tool(
-      get_source,
-      name = "get_source",
-      description = "Get a previously fetched source by source_id. Returns an excerpt and metadata.",
-      arguments = list(
-        source_id = ellmer::type_string("Source id, e.g. S123abc...")
-      )
-    ),
-    ellmer::tool(
-      list_sources,
-      name = "list_sources",
-      description = "List all sources currently stored in memory for this session.",
-      arguments = list()
-    ),
-    ellmer::tool(
-      list_claims,
-      name = "list_claims",
-      description = "List all source-backed claim records currently stored in memory for this session.",
-      arguments = list()
-    ),
-    ellmer::tool(
-      add_claim,
-      name = "add_claim",
-      description = paste(
-        "Add an atomic claim to the session memory with supporting source_ids.",
-        "Use this after inspecting sources so later writing can cite the claim."
-      ),
-      arguments = list(
-        claim_text = ellmer::type_string("Atomic factual claim."),
-        source_ids = ellmer::type_array(ellmer::type_string(
-          "One or more source ids that support the claim."
-        )),
-        confidence = ellmer::type_enum(
-          c("low", "medium", "high"),
-          "Confidence level.",
-          required = FALSE
-        )
-      )
-    ),
-    ellmer::tool(
-      list_facts,
-      name = "list_facts",
-      description = "Transitional alias for list_claims.",
-      arguments = list()
-    ),
-    ellmer::tool(
-      add_fact,
-      name = "add_fact",
-      description = "Transitional alias for add_claim.",
-      arguments = list(
-        claim = ellmer::type_string("Atomic factual claim."),
-        source_ids = ellmer::type_array(ellmer::type_string(
-          "One or more source ids that support the claim."
-        )),
-        confidence = ellmer::type_enum(
-          c("low", "medium", "high"),
-          "Confidence level.",
-          required = FALSE
-        )
-      )
-    )
-  )
+  tools
 }
 
 #' Register default tools on a chat
@@ -698,13 +751,17 @@ tempest_tools_source_management <- function(retriever) {
 #' @param retriever A TempestRetriever object
 #' @param model Model name (used to detect provider for native tools)
 #' @param search_provider Search provider setting from config
+#' @param allow_claim_writes Whether to register claim-writing tools. Read-heavy
+#'   roles can set this to `FALSE` and still inspect sources, claims, evidence,
+#'   and unsupported claims.
 #' @return The chat object (invisibly)
 #' @keywords internal
 tempest_register_default_tools <- function(
   chat,
   retriever,
   model = NULL,
-  search_provider = "native"
+  search_provider = "native",
+  allow_claim_writes = TRUE
 ) {
   tempest_require("ellmer", "Tool calling for retrieval.")
 
@@ -723,11 +780,17 @@ tempest_register_default_tools <- function(
 
   # If not using native tools, register custom web search/fetch tools
   if (!use_native) {
-    tools <- tempest_tools_retrieval(retriever)
+    tools <- tempest_tools_retrieval(
+      retriever,
+      allow_claim_writes = allow_claim_writes
+    )
     chat$register_tools(tools)
   } else {
     # Still register source/claim management tools even with native search
-    mgmt_tools <- tempest_tools_source_management(retriever)
+    mgmt_tools <- tempest_tools_source_management(
+      retriever,
+      allow_claim_writes = allow_claim_writes
+    )
     chat$register_tools(mgmt_tools)
   }
 

@@ -4,10 +4,13 @@
 \alias{tempest_tools_source_management}
 \title{Get source/claim management tools (without web_search/fetch_url)}
 \usage{
-tempest_tools_source_management(retriever)
+tempest_tools_source_management(retriever, allow_claim_writes = TRUE)
 }
 \arguments{
 \item{retriever}{A TempestRetriever object}
+
+\item{allow_claim_writes}{Whether to include \code{add_claim} and transitional
+fact-writing aliases.}
 }
 \value{
 List of ellmer tools for source/claim management

@@ -306,7 +306,8 @@ tempest_run <- function(
         writer,
         retriever,
         model = config@models[["writer"]],
-        search_provider = config@search_provider
+        search_provider = config@search_provider,
+        allow_claim_writes = FALSE
       )
 
       title <- store$get_artifact("title") %||% topic
