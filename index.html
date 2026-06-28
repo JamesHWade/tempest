@@ -92,11 +92,11 @@
 <span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
 <span>  <span class="co"># search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)</span></span>
 <span>  models <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    coordinator <span class="op">=</span> <span class="st">"openai/gpt-4o-mini"</span>,</span>
-<span>    expert <span class="op">=</span> <span class="st">"openai/gpt-4o-mini"</span>,</span>
-<span>    writer <span class="op">=</span> <span class="st">"openai/gpt-4o"</span>,</span>
-<span>    judge <span class="op">=</span> <span class="st">"openai/gpt-4o-mini"</span>,</span>
-<span>    mindmap <span class="op">=</span> <span class="st">"openai/gpt-4o-mini"</span></span>
+<span>    coordinator <span class="op">=</span> <span class="st">"openai/gpt-5.4"</span>,</span>
+<span>    expert <span class="op">=</span> <span class="st">"openai/gpt-5.4-mini"</span>,</span>
+<span>    writer <span class="op">=</span> <span class="st">"openai/gpt-5.4"</span>,</span>
+<span>    judge <span class="op">=</span> <span class="st">"openai/gpt-5.4-mini"</span>,</span>
+<span>    mindmap <span class="op">=</span> <span class="st">"openai/gpt-5.4-mini"</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -208,7 +208,7 @@
 <tbody>
 <tr>
 <td><code>models</code></td>
-<td><code>"openai/gpt-5-mini"</code></td>
+<td>role-specific OpenAI defaults</td>
 <td>Single model string or named list with <code>coordinator</code>, <code>expert</code>, <code>writer</code>, <code>mindmap</code>, <code>judge</code>
 </td>
 </tr>
@@ -292,6 +292,7 @@
 </tr>
 </tbody>
 </table>
+<p>By default, coordinator and writer roles use <code>openai/gpt-5.4</code>; expert, mind map, and judge roles use <code>openai/gpt-5.4-mini</code>.</p>
 </div>
 </div>
 <div class="section level2">
@@ -472,7 +473,7 @@
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">judge</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">chat</a></span><span class="op">(</span><span class="st">"openai/gpt-4o-mini"</span><span class="op">)</span></span>
+<span><span class="va">judge</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">chat</a></span><span class="op">(</span><span class="st">"openai/gpt-5.4-mini"</span><span class="op">)</span></span>
 <span><span class="va">tsk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_task.html">tempest_task</a></span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"qa"</span>, scorer_chat <span class="op">=</span> <span class="va">judge</span><span class="op">)</span></span>
 <span><span class="va">tsk</span><span class="op">$</span><span class="fu">get_samples</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>

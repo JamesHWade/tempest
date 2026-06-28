@@ -50,7 +50,7 @@ A [`vitals::Task`](https://vitals.tidyverse.org/reference/Task.html).
 
 ``` r
 if (FALSE) { # \dontrun{
-scorer_chat <- ellmer::chat("openai/gpt-5-mini")
+scorer_chat <- ellmer::chat("openai/gpt-5.4-mini")
 task <- tempest_task(scorer_chat = scorer_chat, config = tempest_config())
 task$eval()
 } # }

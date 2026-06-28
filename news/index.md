@@ -12,6 +12,9 @@
   now accepts an `artifact_store`, and
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   accepts a shared retriever with a `SourceStore`.
+- [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+  now defaults to `openai/gpt-5.4` for coordinator and writer roles, and
+  `openai/gpt-5.4-mini` for expert, mind map, and judge roles.
 - The Chat tab now suggests follow-up questions as clickable cards. A
   set appears when the expert panel assembles and refreshes after each
   answer; clicking a card sends that question to the Moderator. Toggle

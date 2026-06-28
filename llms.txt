@@ -79,11 +79,11 @@ library(tempest)
 cfg <- tempest_config(
   # search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)
   models = list(
-    coordinator = "openai/gpt-4o-mini",
-    expert = "openai/gpt-4o-mini",
-    writer = "openai/gpt-4o",
-    judge = "openai/gpt-4o-mini",
-    mindmap = "openai/gpt-4o-mini"
+    coordinator = "openai/gpt-5.4",
+    expert = "openai/gpt-5.4-mini",
+    writer = "openai/gpt-5.4",
+    judge = "openai/gpt-5.4-mini",
+    mindmap = "openai/gpt-5.4-mini"
   )
 )
 
@@ -210,7 +210,7 @@ accepts the following parameters:
 
 | Parameter | Default | Description |
 |----|----|----|
-| `models` | `"openai/gpt-5-mini"` | Single model string or named list with `coordinator`, `expert`, `writer`, `mindmap`, `judge` |
+| `models` | role-specific OpenAI defaults | Single model string or named list with `coordinator`, `expert`, `writer`, `mindmap`, `judge` |
 | `search_provider` | `"native"` | Search backend: `"native"`, `"wikipedia"`, `"you"`, `"bing"`, `"serper"`, `"brave"`, `"duckduckgo"`, `"tavily"`, `"searxng"`, `"google"`, `"azure_ai_search"` |
 | `embed_fn` | `NULL` | Embedding function for RAG (e.g., [`ragnar::embed_openai()`](https://ragnar.tidyverse.org/reference/embed_ollama.html)) |
 | `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
@@ -226,6 +226,9 @@ accepts the following parameters:
 | `enable_discourse_manager` | `FALSE` | Co-STORM: use LLM-driven turn management |
 | `max_active_experts` | `5` | Co-STORM: maximum concurrent active experts |
 | `enable_unseen_surfacing` | `FALSE` | Co-STORM: surface undiscussed sources as moderator questions |
+
+By default, coordinator and writer roles use `openai/gpt-5.4`; expert,
+mind map, and judge roles use `openai/gpt-5.4-mini`.
 
 ## RAG with ragnar
 
@@ -444,7 +447,7 @@ library(tempest)
 library(vitals)
 library(ellmer)
 
-judge <- ellmer::chat("openai/gpt-4o-mini")
+judge <- ellmer::chat("openai/gpt-5.4-mini")
 tsk <- tempest_task(dataset = "qa", scorer_chat = judge)
 tsk$get_samples()
 ```
