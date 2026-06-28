@@ -22,6 +22,7 @@
   generation modules.
 * `tempest_run()` now executes STORM structured steps through dsprrr modules,
   with ellmer fallbacks for module creation or runtime failures.
+* `tempest_run()` and `tempest_session()` now pass source context into dsprrr claim extraction for provider-native citations, so optimized extraction works for native web-search turns as well as inline `[S...]` citations (c8jk).
 * `tempest_optimize_dsprrr_modules()`, `tempest_save_dsprrr_modules()`, and
   `tempest_load_dsprrr_modules()` support explicit dsprrr compilation and
   reuse of optimized STORM module sets.

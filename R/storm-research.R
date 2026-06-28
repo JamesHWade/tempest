@@ -225,6 +225,50 @@ tempest_resolve_fact_source_ids <- function(source_refs, store) {
 }
 
 #' @keywords internal
+tempest_claim_extraction_citation_mode <- function(
+  answer_text,
+  source_ids = NULL,
+  source_context = ""
+) {
+  source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
+  has_native <- length(source_ids) > 0
+  has_inline <- length(tempest_extract_citation_ids(answer_text)) > 0
+  has_url <- nzchar(source_context) &&
+    grepl("https?://", answer_text %||% "", ignore.case = TRUE)
+
+  n_modes <- sum(c(has_native, has_inline, has_url))
+  if (n_modes > 1) {
+    return("mixed")
+  }
+  if (has_native) {
+    return("provider_native")
+  }
+  if (has_url) {
+    return("url")
+  }
+  "tempest_inline"
+}
+
+#' @keywords internal
+tempest_claim_extraction_inputs <- function(answer_text, store, source_ids) {
+  source_context <- tempest_answer_source_context(
+    answer_text,
+    store,
+    source_ids = source_ids
+  )
+  list(
+    answer_text = answer_text,
+    source_context = source_context,
+    source_ids = paste(source_ids, collapse = "\n"),
+    citation_mode = tempest_claim_extraction_citation_mode(
+      answer_text,
+      source_ids = source_ids,
+      source_context = source_context
+    )
+  )
+}
+
+#' @keywords internal
 tempest_extract_facts_from_answer <- function(
   chat,
   answer_text,
@@ -232,26 +276,24 @@ tempest_extract_facts_from_answer <- function(
   module = NULL,
   source_ids = NULL
 ) {
-  # Use a separate extraction call to minimize hallucinated facts. Native
-  # provider citations need the prompt path because dsprrr modules only receive
-  # answer text and cannot see the harvested source-id context.
+  # Use a separate extraction call to minimize hallucinated facts. dsprrr gets
+  # the same source context as the fallback prompt so native-provider citations
+  # can still use the optimized module path when available.
   type <- tempest_type_fact_extract()
   source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
-  out <- NULL
-  if (length(source_ids) == 0) {
-    out <- tempest_run_dsprrr_module(
-      module,
-      chat,
-      inputs = list(answer_text = answer_text),
-      step = "fact extraction"
-    )
-  }
+  extraction_inputs <- tempest_claim_extraction_inputs(
+    answer_text,
+    store,
+    source_ids
+  )
+  out <- tempest_run_dsprrr_module(
+    module,
+    chat,
+    inputs = extraction_inputs,
+    step = "fact extraction"
+  )
   if (is.null(out)) {
-    source_context <- tempest_answer_source_context(
-      answer_text,
-      store,
-      source_ids = source_ids
-    )
+    source_context <- extraction_inputs$source_context
     citation_rule <- if (nzchar(source_context) && length(source_ids) > 0) {
       paste0(
         "- Only extract claims explicitly supported by citations in the answer, including Tempest source IDs like [Sxxxxxxxxxxxx] or provider-native citation markers attached to this turn.\n",
