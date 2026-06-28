@@ -14,7 +14,7 @@ tempest_cache_set(cache_dir, key, value)
 \item{value}{Value to cache.}
 }
 \value{
-Invisibly returns the value.
+Invisibly returns \code{TRUE} if the value was written, \code{FALSE} otherwise.
 }
 \description{
 Saves a value to the cache. Creates parent directories if needed.

@@ -67,6 +67,29 @@ test_that("search() caches repeated equivalent searches", {
   expect_equal(search_stats$writes, 2L)
 })
 
+test_that("search() does not count writes when the cache write fails", {
+  cfg <- tempest_config(cache_dir = withr::local_tempdir())
+  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8) {
+      tempest:::tempest_search_results(
+        title = "Result",
+        url = "https://example.com/no-write",
+        snippet = "Snippet"
+      )
+    },
+    tempest_cache_set = function(cache_dir, key, value) invisible(FALSE)
+  )
+
+  retriever$search("no write", provider = "wikipedia")
+  search_stats <- retriever$cache_stats()
+  search_stats <- search_stats[search_stats$kind == "search", ]
+
+  expect_equal(search_stats$writes, 0L)
+  expect_equal(search_stats$misses, 1L)
+})
+
 test_that("search cache respects TTL and can be disabled", {
   cache_dir <- withr::local_tempdir()
   cfg <- tempest_config(cache_dir = cache_dir, cache_ttl = 60)

@@ -522,8 +522,7 @@ TempestRetriever <- R6::R6Class(
       out <- out[!is.na(out$url) & nzchar(out$url), , drop = FALSE]
       out$source_id <- purrr::map_chr(out$url, tempest_source_id)
 
-      if (self$cache_enabled) {
-        tempest_cache_set(self$cache_dir, key, out)
+      if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, out)) {
         private$record_cache("search", "write")
       }
       out
@@ -571,8 +570,7 @@ TempestRetriever <- R6::R6Class(
           meta = list(kind = res$kind, error = res$error)
         )
         self$store$upsert_source(src)
-        if (self$cache_enabled) {
-          tempest_cache_set(self$cache_dir, key, src)
+        if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, src)) {
           private$record_cache("fetch", "write")
         }
         return(src)
@@ -610,8 +608,7 @@ TempestRetriever <- R6::R6Class(
         meta = list(kind = res$kind, error = NULL)
       )
       self$store$upsert_source(src)
-      if (self$cache_enabled) {
-        tempest_cache_set(self$cache_dir, key, src)
+      if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, src)) {
         private$record_cache("fetch", "write")
       }
 
@@ -763,7 +760,6 @@ TempestRetriever <- R6::R6Class(
 
     cache_stats_table = function() {
       kinds <- c("search", "fetch")
-      statuses <- c("hit", "miss", "expired", "read_error", "bypass", "write")
       count <- function(kind, status) {
         private$cache_counts[[paste(kind, status, sep = "_")]] %||% 0L
       }

@@ -11,13 +11,15 @@ tempest_cache_get(cache_dir, key, max_age = Inf)
 
 \item{key}{Cache key.}
 
-\item{max_age}{Maximum cache age in seconds.}
+\item{max_age}{Maximum cache age in seconds. Entries older than this are
+treated as missing. Defaults to \code{Inf} (no expiry).}
 }
 \value{
 Cached value or NULL.
 }
 \description{
-Attempts to read a cached value. Returns NULL if not found or on error.
-Warns on read errors to help diagnose cache corruption.
+Attempts to read a cached value. Returns NULL if the entry is missing, has
+expired (older than \code{max_age}), or could not be read. Warns on read errors
+to help diagnose cache corruption.
 }
 \keyword{internal}

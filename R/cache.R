@@ -50,7 +50,9 @@ tempest_cache_max_age <- function(max_age = Inf) {
       is.na(max_age) ||
       max_age < 0
   ) {
-    tempest_abort("Cache age must be a non-negative number or Inf.")
+    tempest_abort(
+      "Cache age (`cache_ttl`/`max_age`) must be a non-negative number or Inf."
+    )
   }
   max_age
 }
@@ -99,12 +101,14 @@ tempest_cache_lookup <- function(cache_dir, key, max_age = Inf) {
 
 #' Retrieve value from cache
 #'
-#' Attempts to read a cached value. Returns NULL if not found or on error.
-#' Warns on read errors to help diagnose cache corruption.
+#' Attempts to read a cached value. Returns NULL if the entry is missing, has
+#' expired (older than `max_age`), or could not be read. Warns on read errors
+#' to help diagnose cache corruption.
 #'
 #' @param cache_dir Cache directory path.
 #' @param key Cache key.
-#' @param max_age Maximum cache age in seconds.
+#' @param max_age Maximum cache age in seconds. Entries older than this are
+#'   treated as missing. Defaults to `Inf` (no expiry).
 #' @return Cached value or NULL.
 #' @keywords internal
 tempest_cache_get <- function(cache_dir, key, max_age = Inf) {
@@ -119,15 +123,16 @@ tempest_cache_get <- function(cache_dir, key, max_age = Inf) {
 #' @param cache_dir Cache directory path.
 #' @param key Cache key.
 #' @param value Value to cache.
-#' @return Invisibly returns the value.
+#' @return Invisibly returns `TRUE` if the value was written, `FALSE` otherwise.
 #' @keywords internal
 tempest_cache_set <- function(cache_dir, key, value) {
   p <- tempest_cache_path(cache_dir, key)
 
-  tryCatch(
+  ok <- tryCatch(
     {
       fs::dir_create(fs::path_dir(p), recurse = TRUE)
       saveRDS(value, p)
+      TRUE
     },
     error = function(e) {
       tempest_warn(c(
@@ -136,10 +141,11 @@ tempest_cache_set <- function(cache_dir, key, value) {
         x = "Error: {conditionMessage(e)}",
         i = "Continuing without caching this value."
       ))
+      FALSE
     }
   )
 
-  invisible(value)
+  invisible(ok)
 }
 
 #' Clear the Tempest cache
