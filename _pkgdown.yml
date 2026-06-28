@@ -1,3 +1,12 @@
 url: https://jameshwade.github.io/tempest/
 template:
   bootstrap: 5
+reference:
+- title: All functions
+  contents:
+  - starts_with("tempest_")
+  - SimulatedUser
+  - SourceStore
+  - TempestRetriever
+  - TempestSession
+  - run_app
