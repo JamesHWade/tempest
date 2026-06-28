@@ -193,7 +193,7 @@ test_that("extraction uses source ids attached to provider-native turns", {
   expect_match(prompts[[1]], source$id, fixed = TRUE)
 })
 
-test_that("extraction bypasses dsprrr module when native sources are attached", {
+test_that("extraction uses dsprrr module when native sources are attached", {
   store <- fake_store_with_sources(1)
   source <- store$list_sources()[[1]]
   chat <- fake_chat(
@@ -205,8 +205,10 @@ test_that("extraction bypasses dsprrr module when native sources are attached", 
       ))
     ))
   )
+  calls <- list()
   local_mocked_bindings(
-    tempest_run_dsprrr_module = function(...) {
+    tempest_run_dsprrr_module = function(module, chat, inputs, step) {
+      calls[[length(calls) + 1L]] <<- inputs
       list(
         facts = list(list(
           claim = "module-backed claim",
@@ -227,7 +229,44 @@ test_that("extraction bypasses dsprrr module when native sources are attached", 
 
   claims <- store$list_claims()
   expect_length(claims, 1)
+  expect_equal(claims[[1]]@claim_text, "module-backed claim")
+  expect_length(calls, 1)
+  expect_match(calls[[1]]$source_context, source$id, fixed = TRUE)
+  expect_equal(calls[[1]]$source_ids, source$id)
+  expect_equal(calls[[1]]$citation_mode, "provider_native")
+  expect_equal(chat$.calls(), list())
+})
+
+test_that("extraction falls back to prompt when source-aware module fails", {
+  store <- fake_store_with_sources(1)
+  source <- store$list_sources()[[1]]
+  chat <- fake_chat(
+    structured = list(list(
+      facts = list(list(
+        claim = "prompt-backed native claim",
+        sources = list(list(source_id = source$id)),
+        confidence = "high"
+      ))
+    ))
+  )
+  local_mocked_bindings(
+    tempest_run_dsprrr_module = function(...) NULL
+  )
+
+  tempest_extract_facts_from_answer(
+    chat,
+    "prompt-backed native claim.",
+    store,
+    module = list(),
+    source_ids = source$id
+  )
+
+  claims <- store$list_claims()
+  expect_length(claims, 1)
   expect_equal(claims[[1]]@claim_text, "prompt-backed native claim")
+  prompts <- vapply(chat$.calls(), function(call) call$prompt, character(1))
+  expect_match(prompts[[1]], "<known_sources>", fixed = TRUE)
+  expect_match(prompts[[1]], "provider-native citation markers", fixed = TRUE)
 })
 
 test_that("extraction drops claims citing URLs that match no stored source", {

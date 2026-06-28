@@ -994,6 +994,7 @@ TempestSession <- R6::R6Class(
                     "- Use the available web/source tools to find and cite sources.\n",
                     "- If web_search and fetch_url are available, search first and then fetch sources.\n",
                     "- Only state factual claims supported by sources you inspected.\n",
+                    "- If add_claim is available, record key source-backed claims with it.\n",
                     "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
                     "- If evidence is weak or unclear, say so.\n\n",
                     "Respond now:"

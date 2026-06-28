@@ -97,11 +97,32 @@ tempest_make_dsprrr_modules <- function(config) {
         ),
         extract_claims = dsprrr::module(
           dsprrr::signature(
-            inputs = list(dsprrr::input("answer_text", "string")),
+            inputs = list(
+              dsprrr::input("answer_text", "string"),
+              dsprrr::input(
+                "source_context",
+                "string",
+                "Known source ids, titles, and URLs available to cite."
+              ),
+              dsprrr::input(
+                "source_ids",
+                "string",
+                "Source ids attached to this answer turn, one per line."
+              ),
+              dsprrr::input(
+                "citation_mode",
+                "string",
+                "Citation mode: tempest_inline, provider_native, url, or mixed."
+              )
+            ),
             output_type = facts_type,
             instructions = paste(
               "Extract atomic factual claims from the answer.",
-              "Only extract claims explicitly supported by citations like [Sxxxxxxxxxxxx].",
+              "Only extract claims explicitly supported by citations or source annotations.",
+              "When source_context is empty, only use explicit citations like [Sxxxxxxxxxxxx].",
+              "When source_context is present, return only source_id values listed there.",
+              "Use source_ids as the set of provider-native sources attached to this turn.",
+              "Do not use a known source unless the answer text or provider-native turn context supports the claim.",
               "Do not infer or invent facts.",
               sep = "\n"
             )

@@ -292,6 +292,74 @@ tempest_harvest_native_sources_from_chat <- function(chat, store) {
 }
 
 #' @keywords internal
+tempest_tool_claim_payload <- function(claim) {
+  list(
+    claim_id = claim@claim_id,
+    claim_text = claim@claim_text,
+    source_ids = claim@source_ids,
+    confidence = claim@confidence,
+    verification_status = claim@verification_status,
+    created_at = claim@created_at
+  )
+}
+
+#' @keywords internal
+tempest_tool_fact_payload <- function(claim) {
+  list(
+    fact_id = claim@claim_id,
+    claim = claim@claim_text,
+    claim_id = claim@claim_id,
+    claim_text = claim@claim_text,
+    source_ids = claim@source_ids,
+    confidence = claim@confidence,
+    verification_status = claim@verification_status,
+    created_at = claim@created_at
+  )
+}
+
+#' @keywords internal
+tempest_add_tool_claim <- function(
+  store,
+  claim_text,
+  source_ids,
+  confidence = "medium",
+  tool_name = "add_claim"
+) {
+  source_ids <- unlist(
+    source_ids %||% character(),
+    recursive = TRUE,
+    use.names = FALSE
+  )
+  source_ids <- unique(as.character(source_ids))
+  source_ids <- source_ids[!is.na(source_ids) & nzchar(source_ids)]
+  if (length(source_ids) == 0) {
+    tempest_abort(
+      "{tool_name} requires at least one source_id in {.arg source_ids}."
+    )
+  }
+
+  unknown <- source_ids[purrr::map_lgl(
+    source_ids,
+    ~ is.null(store$get_source(.x))
+  )]
+  if (length(unknown) > 0) {
+    tempest_abort(c(
+      "{tool_name} requires source_ids already in the SourceStore.",
+      x = "Unknown source_id(s): {.val {unknown}}",
+      i = "Use web_search and fetch_url, or provider-native search, before recording the claim."
+    ))
+  }
+
+  claim <- tempest_claim(
+    claim_text = claim_text,
+    source_ids = source_ids,
+    confidence = confidence
+  )
+  store$add_claim(claim)
+  claim
+}
+
+#' @keywords internal
 tempest_tools_retrieval <- function(retriever) {
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
@@ -353,36 +421,35 @@ tempest_tools_retrieval <- function(retriever) {
     )
   }
 
-  list_facts <- function() {
-    f <- retriever$store$list_claims()
-    purrr::map(
-      f,
-      ~ list(
-        fact_id = .x@claim_id,
-        claim = .x@claim_text,
-        source_ids = .x@source_ids,
-        confidence = .x@confidence,
-        created_at = .x@created_at
-      )
-    )
+  list_claims <- function() {
+    purrr::map(retriever$store$list_claims(), tempest_tool_claim_payload)
   }
 
-  add_fact <- function(claim, source_ids, confidence = "medium") {
-    if (is.null(source_ids) || length(source_ids) == 0) {
-      tempest_abort("add_fact requires at least one source_id.")
-    }
-    cl <- tempest_claim(
-      claim_text = claim,
+  add_claim <- function(claim_text, source_ids, confidence = "medium") {
+    claim <- tempest_add_tool_claim(
+      retriever$store,
+      claim_text = claim_text,
       source_ids = source_ids,
       confidence = confidence
     )
-    retriever$store$add_claim(cl)
-    list(
-      fact_id = cl@claim_id,
-      claim = cl@claim_text,
-      source_ids = cl@source_ids,
-      confidence = cl@confidence
+    tempest_tool_claim_payload(claim)
+  }
+
+  # Transitional aliases keep older prompts/tool loops working while new
+  # agent-facing instructions move to claim terminology.
+  list_facts <- function() {
+    purrr::map(retriever$store$list_claims(), tempest_tool_fact_payload)
+  }
+
+  add_fact <- function(claim, source_ids, confidence = "medium") {
+    cl <- tempest_add_tool_claim(
+      retriever$store,
+      claim_text = claim,
+      source_ids = source_ids,
+      confidence = confidence,
+      tool_name = "add_fact"
     )
+    tempest_tool_fact_payload(cl)
   }
 
   tools <- list(
@@ -427,18 +494,40 @@ tempest_tools_retrieval <- function(retriever) {
       arguments = list()
     ),
     ellmer::tool(
+      list_claims,
+      name = "list_claims",
+      description = "List all source-backed claim records currently stored in memory for this session.",
+      arguments = list()
+    ),
+    ellmer::tool(
+      add_claim,
+      name = "add_claim",
+      description = paste(
+        "Add an atomic claim to the session memory with supporting source_ids.",
+        "Use this after inspecting sources so later writing can cite the claim."
+      ),
+      arguments = list(
+        claim_text = ellmer::type_string("Atomic factual claim."),
+        source_ids = ellmer::type_array(ellmer::type_string(
+          "One or more source ids that support the claim."
+        )),
+        confidence = ellmer::type_enum(
+          c("low", "medium", "high"),
+          "Confidence level.",
+          required = FALSE
+        )
+      )
+    ),
+    ellmer::tool(
       list_facts,
       name = "list_facts",
-      description = "List all fact notes currently stored in memory for this session.",
+      description = "Transitional alias for list_claims.",
       arguments = list()
     ),
     ellmer::tool(
       add_fact,
       name = "add_fact",
-      description = paste(
-        "Add an atomic fact note to the session memory, with supporting source_ids.",
-        "Use this to store key verified claims for later writing."
-      ),
+      description = "Transitional alias for add_claim.",
       arguments = list(
         claim = ellmer::type_string("Atomic factual claim."),
         source_ids = ellmer::type_array(ellmer::type_string(
@@ -456,13 +545,13 @@ tempest_tools_retrieval <- function(retriever) {
   tools
 }
 
-#' Get source/fact management tools (without web_search/fetch_url)
+#' Get source/claim management tools (without web_search/fetch_url)
 #'
-#' Returns tools for managing sources and facts, but not the web search tools.
+#' Returns tools for managing sources and claims, but not the web search tools.
 #' Used when provider-native web search is enabled.
 #'
 #' @param retriever A TempestRetriever object
-#' @return List of ellmer tools for source/fact management
+#' @return List of ellmer tools for source/claim management
 #' @keywords internal
 tempest_tools_source_management <- function(retriever) {
   tempest_require("ellmer", "Tool calling for retrieval.")
@@ -503,36 +592,35 @@ tempest_tools_source_management <- function(retriever) {
     )
   }
 
-  list_facts <- function() {
-    f <- retriever$store$list_claims()
-    purrr::map(
-      f,
-      ~ list(
-        fact_id = .x@claim_id,
-        claim = .x@claim_text,
-        source_ids = .x@source_ids,
-        confidence = .x@confidence,
-        created_at = .x@created_at
-      )
-    )
+  list_claims <- function() {
+    purrr::map(retriever$store$list_claims(), tempest_tool_claim_payload)
   }
 
-  add_fact <- function(claim, source_ids, confidence = "medium") {
-    if (is.null(source_ids) || length(source_ids) == 0) {
-      tempest_abort("add_fact requires at least one source_id.")
-    }
-    cl <- tempest_claim(
-      claim_text = claim,
+  add_claim <- function(claim_text, source_ids, confidence = "medium") {
+    claim <- tempest_add_tool_claim(
+      retriever$store,
+      claim_text = claim_text,
       source_ids = source_ids,
       confidence = confidence
     )
-    retriever$store$add_claim(cl)
-    list(
-      fact_id = cl@claim_id,
-      claim = cl@claim_text,
-      source_ids = cl@source_ids,
-      confidence = cl@confidence
+    tempest_tool_claim_payload(claim)
+  }
+
+  # Transitional aliases keep older prompts/tool loops working while new
+  # agent-facing instructions move to claim terminology.
+  list_facts <- function() {
+    purrr::map(retriever$store$list_claims(), tempest_tool_fact_payload)
+  }
+
+  add_fact <- function(claim, source_ids, confidence = "medium") {
+    cl <- tempest_add_tool_claim(
+      retriever$store,
+      claim_text = claim,
+      source_ids = source_ids,
+      confidence = confidence,
+      tool_name = "add_fact"
     )
+    tempest_tool_fact_payload(cl)
   }
 
   list(
@@ -551,18 +639,40 @@ tempest_tools_source_management <- function(retriever) {
       arguments = list()
     ),
     ellmer::tool(
+      list_claims,
+      name = "list_claims",
+      description = "List all source-backed claim records currently stored in memory for this session.",
+      arguments = list()
+    ),
+    ellmer::tool(
+      add_claim,
+      name = "add_claim",
+      description = paste(
+        "Add an atomic claim to the session memory with supporting source_ids.",
+        "Use this after inspecting sources so later writing can cite the claim."
+      ),
+      arguments = list(
+        claim_text = ellmer::type_string("Atomic factual claim."),
+        source_ids = ellmer::type_array(ellmer::type_string(
+          "One or more source ids that support the claim."
+        )),
+        confidence = ellmer::type_enum(
+          c("low", "medium", "high"),
+          "Confidence level.",
+          required = FALSE
+        )
+      )
+    ),
+    ellmer::tool(
       list_facts,
       name = "list_facts",
-      description = "List all fact notes currently stored in memory for this session.",
+      description = "Transitional alias for list_claims.",
       arguments = list()
     ),
     ellmer::tool(
       add_fact,
       name = "add_fact",
-      description = paste(
-        "Add an atomic fact note to the session memory, with supporting source_ids.",
-        "Use this to store key verified claims for later writing."
-      ),
+      description = "Transitional alias for add_claim.",
       arguments = list(
         claim = ellmer::type_string("Atomic factual claim."),
         source_ids = ellmer::type_array(ellmer::type_string(
@@ -580,7 +690,7 @@ tempest_tools_source_management <- function(retriever) {
 
 #' Register default tools on a chat
 #'
-#' Registers web search and source/fact management tools on a chat object.
+#' Registers web search and source/claim management tools on a chat object.
 #' When search_provider is "native" and the provider supports it, uses the
 #' provider's built-in web search. Otherwise uses custom tempest tools.
 #'
@@ -616,7 +726,7 @@ tempest_register_default_tools <- function(
     tools <- tempest_tools_retrieval(retriever)
     chat$register_tools(tools)
   } else {
-    # Still register source/fact management tools even with native search
+    # Still register source/claim management tools even with native search
     mgmt_tools <- tempest_tools_source_management(retriever)
     chat$register_tools(mgmt_tools)
   }
@@ -906,6 +1016,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       "- Use the available web/source tools to find and cite sources.\n",
       "- If web_search and fetch_url are available, search first and then fetch sources.\n",
       "- Only state factual claims supported by sources you inspected.\n",
+      "- If add_claim is available, record key source-backed claims with it.\n",
       "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
       "- If evidence is weak or unclear, say so.\n\n",
       "Respond now:"
