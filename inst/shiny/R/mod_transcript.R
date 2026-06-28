@@ -57,7 +57,11 @@ mod_transcript_server <- function(id, store) {
           shiny::div(
             class = "d-flex justify-content-between align-items-center mb-1",
             shiny::span(
-              shiny::icon(if (is_user) "user" else "robot", class = "me-1"),
+              if (is_user) {
+                shiny::icon("user", class = "me-1")
+              } else {
+                tempest_inline_icon("me-1")
+              },
               shiny::strong(speaker)
             ),
             if (nzchar(at)) shiny::tags$small(class = "text-muted", at)

@@ -16,6 +16,7 @@ ui <- page_navbar(
   id = "nav",
   theme = theme,
   fillable = TRUE,
+  header = tempest_app_styles(),
   nav_spacer(),
   about_nav_item(),
   nav_item(input_dark_mode(id = "dark_mode", mode = "light")),

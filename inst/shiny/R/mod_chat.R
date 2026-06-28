@@ -65,7 +65,12 @@ mod_chat_ui <- function(id, config_ui) {
         bslib::card_header(shiny::uiOutput(ns("progress"))),
         bslib::card_body(
           class = "p-0",
-          shinychat::chat_ui(ns("chat"), height = "100%", enable_cancel = TRUE)
+          shinychat::chat_ui(
+            ns("chat"),
+            height = "100%",
+            enable_cancel = TRUE,
+            icon_assistant = tempest_chat_icon()
+          )
         )
       )
     )
@@ -447,10 +452,17 @@ expert_intro <- function(ses) {
 
 expert_card <- function(p) {
   shiny::div(
-    class = "mb-2 p-2 border rounded small",
-    shiny::strong(p$name %||% "Expert"),
-    shiny::br(),
-    shiny::span(class = "text-muted", p$title %||% ""),
+    class = "mb-2 p-2 border small tempest-expert-card",
+    shiny::div(
+      class = "d-flex align-items-center gap-2",
+      persona_icon(p$name, p$id),
+      shiny::div(
+        class = "min-w-0",
+        shiny::strong(p$name %||% "Expert"),
+        shiny::br(),
+        shiny::span(class = "text-muted", p$title %||% "")
+      )
+    ),
     if (!is.null(p$perspective) && nzchar(p$perspective)) {
       shiny::div(class = "mt-1 fst-italic", p$perspective)
     }

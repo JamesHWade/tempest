@@ -109,6 +109,134 @@ empty_state <- function(icon_name, message) {
   )
 }
 
+tempest_app_styles <- function() {
+  shiny::tags$style(shiny::HTML(
+    "
+.tempest-chat-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tempest-inline-icon {
+  width: 1rem;
+  height: 1rem;
+  vertical-align: -0.125em;
+}
+
+.tempest-persona-icon {
+  --tempest-persona-bg: #4a90a4;
+  --tempest-persona-fg: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--tempest-persona-bg);
+  color: var(--tempest-persona-fg);
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.tempest-persona-icon-sm {
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: .55rem;
+}
+
+.tempest-persona-icon-1 { --tempest-persona-bg: #4a90a4; }
+.tempest-persona-icon-2 { --tempest-persona-bg: #6c63a8; }
+.tempest-persona-icon-3 { --tempest-persona-bg: #2f855a; }
+.tempest-persona-icon-4 { --tempest-persona-bg: #b7791f; }
+.tempest-persona-icon-5 { --tempest-persona-bg: #b83280; }
+.tempest-persona-icon-6 { --tempest-persona-bg: #2b6cb0; }
+
+.tempest-expert-card {
+  border-radius: 8px;
+}
+
+.tempest-activity-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-width: 0;
+}
+
+.tempest-activity-label {
+  overflow-wrap: anywhere;
+}
+"
+  ))
+}
+
+tempest_chat_icon <- function() {
+  shiny::tags$img(
+    src = "logos/tempest.svg",
+    alt = "tempest assistant",
+    class = "tempest-chat-icon"
+  )
+}
+
+tempest_inline_icon <- function(class = NULL) {
+  shiny::tags$img(
+    src = "logos/tempest.svg",
+    alt = "",
+    class = paste("tempest-inline-icon", class)
+  )
+}
+
+persona_icon <- function(name = NULL, id = NULL, size = c("md", "sm")) {
+  size <- match.arg(size)
+  label <- persona_icon_label(name, id)
+  shiny::span(
+    class = paste(
+      "tempest-persona-icon",
+      paste0("tempest-persona-icon-", persona_icon_variant(name, id)),
+      if (identical(size, "sm")) "tempest-persona-icon-sm"
+    ),
+    role = "img",
+    `aria-label` = label,
+    title = label,
+    persona_initials(name, id)
+  )
+}
+
+persona_icon_label <- function(name = NULL, id = NULL) {
+  name <- workflow_first_text(name)
+  if (nzchar(name)) {
+    return(paste("Expert", name))
+  }
+  id <- workflow_first_text(id)
+  if (nzchar(id)) {
+    return(paste("Expert", id))
+  }
+  "Expert"
+}
+
+persona_initials <- function(name = NULL, id = NULL) {
+  text <- workflow_first_text(name, id, "Expert")
+  parts <- unlist(strsplit(text, "[^[:alnum:]]+", perl = TRUE))
+  parts <- parts[nzchar(parts)]
+  if (length(parts) == 0L) {
+    return("E")
+  }
+  initials <- paste0(substr(parts, 1, 1), collapse = "")
+  toupper(substr(initials, 1, 2))
+}
+
+persona_icon_variant <- function(name = NULL, id = NULL) {
+  key <- workflow_first_text(id, name, "expert")
+  codepoints <- utf8ToInt(key)
+  if (length(codepoints) == 0L) {
+    return(1L)
+  }
+  (sum(codepoints) %% 6L) + 1L
+}
+
 workflow_progress_ui <- function(state, stage_labels = NULL) {
   if (is.null(state) || is.na(state$workflow)) {
     return(NULL)
@@ -250,19 +378,39 @@ workflow_activity_list <- function(state) {
   if (length(active) == 0L) {
     return(NULL)
   }
-  labels <- vapply(
+  items <- lapply(
     active,
-    function(item) workflow_activity_label(item, state$workflow),
-    character(1)
+    function(item) workflow_activity_item(item, state$workflow)
   )
-  labels <- labels[nzchar(labels)]
-  if (length(labels) == 0L) {
+  items <- Filter(Negate(is.null), items)
+  if (length(items) == 0L) {
     return(NULL)
   }
   shiny::div(
-    class = "small text-muted mt-2",
+    class = "small text-muted mt-2 tempest-progress-activity",
     shiny::icon("arrows-rotate", class = "me-1"),
-    paste(labels, collapse = " · ")
+    shiny::span(class = "visually-hidden", "Active work:"),
+    shiny::div(
+      class = "d-inline-flex flex-wrap align-items-center gap-2",
+      items
+    )
+  )
+}
+
+workflow_activity_item <- function(item, workflow = NULL) {
+  label <- workflow_activity_label(item, workflow)
+  if (is.na(label) || !nzchar(label)) {
+    return(NULL)
+  }
+  expert_name <- item$expert_name %||% NA_character_
+  expert_id <- item$expert_id %||% NA_character_
+  has_expert <- workflow_has_text(expert_name) || workflow_has_text(expert_id)
+  shiny::span(
+    class = "tempest-activity-item",
+    if (has_expert) {
+      persona_icon(expert_name, expert_id, size = "sm")
+    },
+    shiny::span(class = "tempest-activity-label", label)
   )
 }
 
@@ -283,6 +431,10 @@ workflow_activity_label <- function(item, workflow = NULL) {
   } else {
     label
   }
+}
+
+workflow_has_text <- function(value) {
+  !is.na(workflow_first_text(value)) && nzchar(workflow_first_text(value))
 }
 
 workflow_failure_list <- function(state) {

@@ -44,6 +44,22 @@ test_that("module UIs namespace their input ids", {
   expect_match(chat_html, "chat-progress")
 })
 
+test_that("chat UI uses the Tempest assistant icon", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("shinychat")
+  app <- source_shiny_modules()
+  chat_html <- paste(
+    as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
+    collapse = ""
+  )
+
+  expect_match(chat_html, "icon-assistant")
+  expect_match(chat_html, "logos/tempest.svg", fixed = TRUE)
+  expect_match(chat_html, "tempest-chat-icon")
+  expect_no_match(chat_html, "robot")
+})
+
 test_that("config UI uses current OpenAI model defaults", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -72,6 +88,24 @@ test_that("the chat module provides a landing welcome message", {
   expect_length(msg, 1)
   expect_match(msg, "Welcome to tempest")
   expect_match(msg, "Start Session")
+})
+
+test_that("expert cards render deterministic persona icons", {
+  app <- source_shiny_modules()
+  html <- paste(
+    as.character(app$expert_card(list(
+      id = "history",
+      name = "Dr. Ada Flow",
+      title = "Historian",
+      perspective = "Archives and provenance."
+    ))),
+    collapse = ""
+  )
+
+  expect_match(html, "tempest-persona-icon")
+  expect_match(html, "aria-label=\"Expert Dr. Ada Flow\"", fixed = TRUE)
+  expect_match(html, ">DA<", fixed = TRUE)
+  expect_match(html, "Historian")
 })
 
 test_that("nav panels carry explicit string values for nav_select()", {
@@ -171,9 +205,14 @@ test_that("the transcript module shows recent turns from the store", {
   shiny::testServer(app$mod_transcript_server, args = list(store = store), {
     expect_match(as.character(output$body$html), "Start a conversation")
     ses$add_turn("user", "user", "hello world")
+    ses$add_turn("Moderator", "assistant", "answer text")
     store$set(ses)
     session$flushReact()
-    expect_match(as.character(output$body$html), "hello world")
+    body <- as.character(output$body$html)
+    expect_match(body, "hello world")
+    expect_match(body, "answer text")
+    expect_match(body, "tempest-inline-icon")
+    expect_no_match(body, "fa-robot")
   })
 })
 
@@ -463,6 +502,9 @@ test_that("workflow_progress_ui renders reducer state", {
   expect_match(html, "Running")
   expect_match(html, "Warmup")
   expect_match(html, "Dr. Flow")
+  expect_match(html, "tempest-persona-icon")
+  expect_match(html, "aria-label=\"Expert Dr. Flow\"", fixed = TRUE)
+  expect_match(html, ">DF<", fixed = TRUE)
 })
 
 test_that("workflow_progress_ui renders compact Co-STORM answer labels", {
