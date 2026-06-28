@@ -566,6 +566,7 @@ test_that("STORM worker uses a local serializable progress collector", {
   app <- source_shiny_modules()
   collector <- app$storm_worker_progress_collector(include_payload = TRUE)
   event <- tempest_progress_event(
+    event_id = "worker-research-start",
     run_id = "worker-run",
     workflow = "storm",
     event_type = "stage",
@@ -593,6 +594,95 @@ test_that("STORM worker uses a local serializable progress collector", {
     paste(module_source, collapse = "\n"),
     "tempest::tempest_progress_collector",
     fixed = TRUE
+  )
+})
+
+test_that("STORM worker writes progress events to a stream", {
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  event <- tempest_progress_event(
+    event_id = "stream-research-start",
+    run_id = "worker-run",
+    workflow = "storm",
+    event_type = "stage",
+    status = "started",
+    stage = "research",
+    payload = list(expert = "Dr. Flow")
+  )
+  collector <- app$storm_worker_progress_collector(
+    include_payload = TRUE,
+    stream_path = stream_path
+  )
+
+  collector$record(event)
+  streamed <- app$storm_read_progress_stream(stream_path)
+
+  expect_length(streamed, 1L)
+  expect_equal(streamed[[1]]$event_id, "stream-research-start")
+  expect_equal(streamed[[1]]$stage, "research")
+  expect_equal(streamed[[1]]$step, NA_character_)
+  expect_equal(streamed[[1]]$payload$expert, "Dr. Flow")
+  expect_equal(tempest_progress_state(streamed)$current_stage, "research")
+  expect_length(app$storm_merge_progress_events(list(event), streamed), 1L)
+})
+
+test_that("STORM progress stream renders while a task is still active", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("later")
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+
+  progress_server <- function(id, app, stream_path) {
+    shiny::moduleServer(id, function(input, output, session) {
+      active <- TRUE
+      progress_events <- shiny::reactiveVal(list(
+        app$storm_running_event("Topic", "worker-run")
+      ))
+      app$storm_poll_progress_stream(
+        path = stream_path,
+        progress_events = progress_events,
+        session = session,
+        is_current = function() active,
+        interval = 1
+      )
+      stop_polling <- function() {
+        active <<- FALSE
+      }
+    })
+  }
+
+  shiny::testServer(
+    progress_server,
+    args = list(app = app, stream_path = stream_path),
+    {
+      collector <- app$storm_worker_progress_collector(
+        include_payload = TRUE,
+        stream_path = stream_path
+      )
+      collector$record(tempest_progress_event(
+        event_id = "stream-ui-research-start",
+        run_id = "worker-run",
+        workflow = "storm",
+        event_type = "stage",
+        status = "started",
+        stage = "research"
+      ))
+
+      later::run_now(0.05)
+      session$flushReact()
+
+      state <- tempest_progress_state(progress_events())
+      html <- paste(
+        as.character(app$workflow_progress_ui(state, app$storm_stage_labels())),
+        collapse = ""
+      )
+      stop_polling()
+
+      expect_equal(state$current_stage, "research")
+      expect_match(html, "STORM")
+      expect_match(html, "Research")
+      expect_match(html, "fa-spinner")
+    }
   )
 })
 
@@ -626,6 +716,7 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
   expect_equal(intersect("progress", names(calls[[1]])), character())
   expect_length(value$progress, 0L)
 
+  seen_run_id <- NULL
   new_run <- function(
     topic,
     config,
@@ -633,11 +724,13 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
     research_strategy,
     max_rounds,
     parallel_research,
+    run_id,
     progress,
     verbose
   ) {
+    seen_run_id <<- run_id
     progress(tempest_progress_event(
-      run_id = "worker-run",
+      run_id = run_id,
       workflow = "storm",
       event_type = "stage",
       status = "started",
@@ -652,11 +745,86 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
     strategy = "key_questions",
     max_rounds = 1,
     parallel = FALSE,
+    progress_run_id = "shiny-run",
     tempest_run = new_run
   )
 
   expect_equal(value$result$report_md, "new run")
+  expect_equal(seen_run_id, "shiny-run")
+  expect_equal(value$progress[[1]]$run_id, "shiny-run")
   expect_equal(value$progress[[1]]$stage, "research")
+})
+
+test_that("STORM worker streams progress before mirai resolves", {
+  skip_if_not_installed("mirai")
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  event <- tempest_progress_event(
+    event_id = "mirai-research-start",
+    run_id = "worker-run",
+    workflow = "storm",
+    event_type = "stage",
+    status = "started",
+    stage = "research"
+  )
+
+  value <- mirai::mirai(
+    {
+      fake_run <- function(
+        topic,
+        config,
+        n_experts,
+        research_strategy,
+        max_rounds,
+        parallel_research,
+        progress,
+        verbose
+      ) {
+        progress(event)
+        Sys.sleep(0.5)
+        list(report_md = paste("worker run", topic))
+      }
+
+      storm_runner(
+        topic = topic,
+        cfg = cfg,
+        n_experts = n_experts,
+        strategy = strategy,
+        max_rounds = max_rounds,
+        parallel = parallel,
+        progress_stream_path = progress_stream_path,
+        progress_collector = progress_collector,
+        tempest_run = fake_run
+      )
+    },
+    topic = "Topic",
+    cfg = list(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    parallel = FALSE,
+    progress_stream_path = stream_path,
+    progress_collector = app$storm_worker_progress_collector,
+    storm_runner = app$storm_run_with_progress,
+    event = event
+  )
+
+  seen_stream <- FALSE
+  deadline <- Sys.time() + 2
+  while (
+    mirai::unresolved(value) &&
+      !seen_stream &&
+      Sys.time() < deadline
+  ) {
+    seen_stream <- length(app$storm_read_progress_stream(stream_path)) > 0L
+    Sys.sleep(0.02)
+  }
+
+  expect_equal(seen_stream, TRUE)
+  expect_equal(mirai::unresolved(value), TRUE)
+  result <- value[]
+  expect_equal(result$result$report_md, "worker run Topic")
+  expect_equal(result$progress[[1]]$stage, "research")
 })
 
 test_that("STORM worker adapter tolerates older tempest_run signatures in mirai", {

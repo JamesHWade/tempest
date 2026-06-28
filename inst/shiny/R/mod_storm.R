@@ -61,9 +61,22 @@ mod_storm_server <- function(id, config, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     progress_events <- shiny::reactiveVal(list())
+    progress_stream <- new.env(parent = emptyenv())
+    progress_stream$path <- NULL
+    progress_stream$token <- 0L
+    progress_stream$active <- FALSE
 
     storm_task <- shiny::ExtendedTask$new(
-      function(topic, cfg, n_experts, strategy, max_rounds, parallel) {
+      function(
+        topic,
+        cfg,
+        n_experts,
+        strategy,
+        max_rounds,
+        parallel,
+        progress_stream_path,
+        progress_run_id
+      ) {
         mirai::mirai(
           {
             storm_runner(
@@ -74,6 +87,8 @@ mod_storm_server <- function(id, config, store) {
               max_rounds = max_rounds,
               parallel = parallel,
               package_root = package_root,
+              progress_stream_path = progress_stream_path,
+              progress_run_id = progress_run_id,
               progress_collector = progress_collector,
               tempest_run_factory = tempest_run_factory
             )
@@ -84,6 +99,8 @@ mod_storm_server <- function(id, config, store) {
           strategy = strategy,
           max_rounds = max_rounds,
           parallel = parallel,
+          progress_stream_path = progress_stream_path,
+          progress_run_id = progress_run_id,
           package_root = storm_package_root(),
           progress_collector = storm_worker_progress_collector,
           storm_runner = storm_run_with_progress,
@@ -96,22 +113,43 @@ mod_storm_server <- function(id, config, store) {
     shiny::observeEvent(input$run, {
       topic <- stringi::stri_trim_both(input$topic %||% "")
       shiny::req(nzchar(topic))
-      progress_events(list(storm_running_event(topic)))
+      progress_stream$active <- FALSE
+      progress_stream$token <- progress_stream$token + 1L
+      progress_stream$path <- storm_progress_stream_path()
+      run_token <- progress_stream$token
+      progress_stream$active <- TRUE
+      progress_run_id <- storm_progress_run_id()
+      progress_events(list(storm_running_event(topic, progress_run_id)))
+      storm_poll_progress_stream(
+        path = progress_stream$path,
+        progress_events = progress_events,
+        session = session,
+        is_current = function() {
+          isTRUE(progress_stream$active) &&
+            identical(run_token, progress_stream$token)
+        }
+      )
       storm_task$invoke(
         topic = topic,
         cfg = config(),
         n_experts = input$n_experts %||% 3,
         strategy = input$strategy %||% "key_questions",
         max_rounds = input$max_rounds %||% 3,
-        parallel = input$parallel %||% FALSE
+        parallel = input$parallel %||% FALSE,
+        progress_stream_path = progress_stream$path,
+        progress_run_id = progress_run_id
       )
     })
 
     # Share the report once the pipeline succeeds.
     shiny::observeEvent(storm_task$status(), {
       if (identical(storm_task$status(), "success")) {
+        progress_stream$active <- FALSE
         value <- storm_task$result()
-        progress_events(storm_task_progress(value))
+        progress_events(storm_merge_progress_events(
+          shiny::isolate(progress_events()),
+          storm_task_progress(value)
+        ))
         result <- storm_task_result(value)
         if (is.null(result)) {
           return()
@@ -120,7 +158,20 @@ mod_storm_server <- function(id, config, store) {
           result$report_md %||% "",
           shiny::isolate(input$topic) %||% "STORM Report"
         )
+        storm_cleanup_progress_stream(progress_stream$path)
+      } else if (identical(storm_task$status(), "error")) {
+        progress_stream$active <- FALSE
+        progress_events(storm_merge_progress_events(
+          shiny::isolate(progress_events()),
+          storm_read_progress_stream(progress_stream$path)
+        ))
+        storm_cleanup_progress_stream(progress_stream$path)
       }
+    })
+
+    session$onSessionEnded(function() {
+      progress_stream$active <- FALSE
+      storm_cleanup_progress_stream(progress_stream$path)
     })
 
     output$progress <- shiny::renderUI({
@@ -184,12 +235,16 @@ mod_storm_server <- function(id, config, store) {
   })
 }
 
-storm_running_event <- function(topic) {
+storm_progress_run_id <- function() {
+  paste0(
+    "shiny-storm-",
+    format(Sys.time(), "%Y%m%d%H%M%OS3")
+  )
+}
+
+storm_running_event <- function(topic, run_id = storm_progress_run_id()) {
   tempest::tempest_progress_event(
-    run_id = paste0(
-      "shiny-storm-",
-      format(Sys.time(), "%Y%m%d%H%M%OS3")
-    ),
+    run_id = run_id,
     workflow = "storm",
     event_type = "workflow",
     status = "started",
@@ -197,16 +252,15 @@ storm_running_event <- function(topic) {
   )
 }
 
-storm_worker_progress_collector <- function(include_payload = FALSE) {
+storm_worker_progress_collector <- function(
+  include_payload = FALSE,
+  stream_path = NULL
+) {
   include_payload <- isTRUE(include_payload)
   events <- list()
 
   event_data <- function(event) {
-    props <- S7::prop_names(event)
-    data <- stats::setNames(
-      lapply(props, function(prop) S7::prop(event, prop)),
-      props
-    )
+    data <- tempest::tempest_progress_event_data(event)
     if (!include_payload) {
       data$payload <- list()
     }
@@ -215,11 +269,129 @@ storm_worker_progress_collector <- function(include_payload = FALSE) {
 
   list(
     record = function(event) {
-      events[[length(events) + 1L]] <<- event_data(event)
+      data <- event_data(event)
+      events[[length(events) + 1L]] <<- data
+      storm_append_progress_stream(stream_path, data)
       invisible(event)
     },
     data = function() events
   )
+}
+
+storm_progress_stream_path <- function() {
+  path <- tempfile("tempest-storm-progress-", fileext = ".ndjson")
+  file.create(path)
+  path
+}
+
+storm_append_progress_stream <- function(path, event) {
+  if (is.null(path) || !nzchar(path)) {
+    return(invisible(FALSE))
+  }
+  ok <- tryCatch(
+    {
+      json <- jsonlite::toJSON(
+        event,
+        auto_unbox = TRUE,
+        null = "null",
+        na = "null"
+      )
+      cat(json, "\n", file = path, append = TRUE, sep = "")
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+  invisible(ok)
+}
+
+storm_read_progress_stream <- function(path) {
+  if (is.null(path) || !nzchar(path) || !file.exists(path)) {
+    return(list())
+  }
+  lines <- readLines(path, warn = FALSE)
+  lines <- lines[nzchar(lines)]
+  lapply(lines, function(line) {
+    storm_normalize_progress_stream_event(
+      jsonlite::fromJSON(line, simplifyVector = FALSE)
+    )
+  })
+}
+
+storm_normalize_progress_stream_event <- function(event) {
+  for (field in c(
+    "stage",
+    "step",
+    "message",
+    "parent_event_id",
+    "correlation_id"
+  )) {
+    if (is.null(event[[field]])) {
+      event[[field]] <- NA_character_
+    }
+  }
+  if (is.null(event$payload)) {
+    event$payload <- list()
+  }
+  event
+}
+
+storm_poll_progress_stream <- function(
+  path,
+  progress_events,
+  session,
+  is_current,
+  interval = 0.2
+) {
+  poll <- function() {
+    if (!isTRUE(is_current())) {
+      return(invisible(FALSE))
+    }
+    events <- storm_read_progress_stream(path)
+    if (length(events) > 0L) {
+      shiny::withReactiveDomain(session, {
+        progress_events(storm_merge_progress_events(
+          shiny::isolate(progress_events()),
+          events
+        ))
+      })
+    }
+    later::later(poll, delay = interval)
+    invisible(TRUE)
+  }
+
+  later::later(poll, delay = 0)
+  invisible(path)
+}
+
+storm_merge_progress_events <- function(current, incoming) {
+  merged <- c(current %||% list(), incoming %||% list())
+  if (length(merged) == 0L) {
+    return(list())
+  }
+  ids <- vapply(
+    merged,
+    storm_progress_event_id,
+    character(1)
+  )
+  keep <- !duplicated(ids) | is.na(ids)
+  merged[keep]
+}
+
+storm_progress_event_id <- function(event) {
+  if (S7::S7_inherits(event, tempest::tempest_progress_event)) {
+    return(S7::prop(event, "event_id"))
+  }
+  if (is.list(event)) {
+    return(event$event_id %||% NA_character_)
+  }
+  NA_character_
+}
+
+storm_cleanup_progress_stream <- function(path) {
+  if (!is.null(path) && nzchar(path) && file.exists(path)) {
+    unlink(path)
+  }
+  invisible(path)
 }
 
 storm_run_with_progress <- function(
@@ -230,11 +402,16 @@ storm_run_with_progress <- function(
   max_rounds,
   parallel,
   package_root = NULL,
+  progress_stream_path = NULL,
+  progress_run_id = NULL,
   progress_collector = storm_worker_progress_collector,
   tempest_run_factory = storm_worker_tempest_run,
   tempest_run = NULL
 ) {
-  collector <- progress_collector(include_payload = TRUE)
+  collector <- storm_create_worker_progress_collector(
+    progress_collector,
+    progress_stream_path
+  )
   if (is.null(tempest_run)) {
     tempest_run <- tempest_run_factory(package_root)
   }
@@ -245,6 +422,7 @@ storm_run_with_progress <- function(
     research_strategy = strategy,
     max_rounds = max_rounds,
     parallel_research = parallel,
+    run_id = progress_run_id,
     progress = collector$record,
     verbose = FALSE
   )
@@ -256,6 +434,18 @@ storm_run_with_progress <- function(
     result = do.call(tempest_run, args),
     progress = collector$data()
   )
+}
+
+storm_create_worker_progress_collector <- function(
+  progress_collector,
+  progress_stream_path = NULL
+) {
+  args <- list(include_payload = TRUE)
+  fn_args <- names(formals(progress_collector))
+  if ("..." %in% fn_args || "stream_path" %in% fn_args) {
+    args$stream_path <- progress_stream_path
+  }
+  do.call(progress_collector, args)
 }
 
 storm_worker_tempest_run <- function(package_root = NULL) {
