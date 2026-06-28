@@ -56,6 +56,20 @@ test_that("tempest_suggest_questions includes conversation context in the prompt
   )
 })
 
+test_that("suggestion prompts separate cards from generic deliverable offers", {
+  prompt <- tempest:::tempest_suggest_questions_prompt(
+    "Adaptive animatronics",
+    context = "User: What standards apply?\nModerator: ISO sources matter.",
+    n = 3
+  )
+
+  expect_match(prompt, "clickable suggestion cards", fixed = TRUE)
+  expect_match(prompt, "fill evidence gaps", fixed = TRUE)
+  expect_match(prompt, "expand the mind map", fixed = TRUE)
+  expect_match(prompt, "Do not suggest generic artifacts", fixed = TRUE)
+  expect_match(prompt, "gap-analysis tables", fixed = TRUE)
+})
+
 test_that("TempestSession$suggest_questions delegates to the generator", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
@@ -101,4 +115,55 @@ test_that("suggest_questions forwards transcript context when non-empty", {
     "Conversation so far:",
     fixed = TRUE
   )
+})
+
+test_that("Co-STORM moderator prompt suppresses generic next-step menus", {
+  skip_if_not_installed("ellmer")
+  moderator <- fake_chat(text = list("Evidence-grounded answer."))
+  extractor <- fake_chat(structured = list(list(facts = list())))
+  mindmap <- fake_chat(
+    structured = list(list(
+      nodes = list(list(
+        id = "root",
+        label = "Adaptive animatronics",
+        summary = "Root topic",
+        source_ids = character()
+      )),
+      edges = list()
+    ))
+  )
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(system_prompt, tempest_prompt("moderator_system"))) {
+        return(moderator)
+      }
+      if (identical(system_prompt, tempest_prompt("fact_extractor_system"))) {
+        return(extractor)
+      }
+      if (identical(role, "mindmap")) {
+        return(mindmap)
+      }
+      fake_chat()
+    }
+  )
+  ses <- tempest_session(
+    "Adaptive animatronics",
+    config = cfg,
+    personas = list(list(
+      id = 1,
+      name = "Dr. A",
+      title = "Engineer",
+      perspective = "Safety"
+    ))
+  )
+
+  ses$step("What standards apply?")
+
+  prompt <- paste(
+    vapply(moderator$.calls(), function(call) call$prompt, character(1)),
+    collapse = "\n"
+  )
+  expect_match(prompt, "Do not end with a generic menu", fixed = TRUE)
+  expect_match(prompt, "Clickable follow-up cards", fixed = TRUE)
+  expect_match(prompt, "specific evidence gap", fixed = TRUE)
 })

@@ -303,7 +303,10 @@ mod_chat_server <- function(id, config, store) {
               ses,
               ans,
               turn = turn,
-              source_ids = source_ids
+              source_ids = source_ids,
+              session_id = ses$session_id,
+              persona_id = "moderator",
+              correlation_id = turn_id
             ),
             error = function(e) {
               warning("Fact extraction failed: ", conditionMessage(e))
@@ -483,7 +486,7 @@ chat_input_text <- function(x) {
 # renders a markdown list whose items are all `<span class="suggestion">` as a
 # grid of cards; the `submit` class makes a click send the question immediately.
 # Returns NULL when there are no usable questions.
-suggestion_cards <- function(questions, lead = "**You might ask:**") {
+suggestion_cards <- function(questions, lead = "**Research next:**") {
   questions <- trimws(questions)
   questions <- questions[!is.na(questions) & nzchar(questions)]
   if (length(questions) == 0) {
@@ -545,15 +548,7 @@ record_costorm_progress_event <- function(
 }
 
 costorm_stage_labels <- function() {
-  c(
-    session = "Session",
-    warmup = "Warmup",
-    dialogue = "Dialogue",
-    evidence = "Evidence",
-    mindmap = "Mind Map",
-    suggestions = "Suggestions",
-    report = "Report"
-  )
+  tempest::tempest_progress_labels("costorm", kind = "stage")
 }
 
 session_emit_progress <- function(ses, ...) {
@@ -601,7 +596,10 @@ record_warmup_turn <- function(
   name,
   question,
   response,
-  expert_chat = NULL
+  expert_chat = NULL,
+  session_id = NA_character_,
+  persona_id = NA_character_,
+  correlation_id = NA_character_
 ) {
   turn <- tryCatch(expert_chat$last_turn(), error = function(e) NULL)
   source_ids <- harvest_session_sources(ses, turn = turn)
@@ -609,7 +607,10 @@ record_warmup_turn <- function(
     ses$expert_session_manager$extract_facts(
       response,
       turn = turn,
-      source_ids = source_ids
+      source_ids = source_ids,
+      session_id = session_id,
+      persona_id = persona_id,
+      correlation_id = correlation_id
     ),
     error = function(e) NULL
   )
@@ -644,14 +645,24 @@ extract_chat_turn_facts <- function(
   ses,
   answer_text,
   turn = NULL,
-  source_ids = NULL
+  source_ids = NULL,
+  session_id = NULL,
+  persona_id = NA_character_,
+  correlation_id = NA_character_
 ) {
   # Harvest only when the caller has not already done so for this turn; the
   # session's extract_facts also avoids re-harvesting when source_ids are passed.
   if (is.null(source_ids)) {
     source_ids <- harvest_session_sources(ses, turn = turn)
   }
-  ses$extract_facts(answer_text, turn = turn, source_ids = source_ids)
+  ses$extract_facts(
+    answer_text,
+    turn = turn,
+    source_ids = source_ids,
+    session_id = session_id %||% ses$session_id,
+    persona_id = persona_id,
+    correlation_id = correlation_id
+  )
   invisible(source_ids)
 }
 
@@ -870,6 +881,7 @@ run_warmup <- function(
   research_expert <- function(idx) {
     persona <- ses$personas[[idx]]
     name <- persona$name %||% paste("Expert", idx)
+    persona_id <- as.character(persona$id %||% idx)
     expert_event <- NULL
     answered_count <- 0L
     promises::then(promises::promise_resolve(NULL), function(...) {
@@ -889,7 +901,7 @@ run_warmup <- function(
           step = "expert_fanout",
           parent_event_id = progress_event_id(warmup_event),
           payload = list(
-            expert_id = as.character(persona$id %||% idx),
+            expert_id = persona_id,
             expert_name = name,
             reason = "no_initial_questions"
           )
@@ -916,12 +928,19 @@ run_warmup <- function(
         step = "expert_fanout",
         parent_event_id = progress_event_id(warmup_event),
         payload = list(
-          expert_id = as.character(persona$id %||% idx),
+          expert_id = persona_id,
           expert_name = name,
           question_count = length(questions)
         )
       )
-      expert_chat <- ses$expert_session_manager$get_or_create(persona)$chat
+      session_result <- ses$expert_session_manager$get_or_create(persona)
+      expert_chat <- session_result$chat
+      expert_session_id <- session_result$session_id %||% NA_character_
+      provenance <- session_result$provenance
+      if (is.null(provenance)) {
+        provenance <- new.env(parent = emptyenv())
+        provenance$current <- list()
+      }
 
       answered <- Reduce(
         function(acc, question_idx) {
@@ -931,6 +950,7 @@ run_warmup <- function(
             }
 
             question <- questions[[question_idx]]
+            question_correlation_id <- tempest:::tempest_uuid("tool")
             label <- sprintf(
               "%s warmup question %d/%d",
               name,
@@ -950,13 +970,21 @@ run_warmup <- function(
               stage = "warmup",
               step = "expert_question",
               parent_event_id = progress_event_id(expert_event),
+              correlation_id = question_correlation_id,
               payload = list(
-                expert_id = as.character(persona$id %||% idx),
+                expert_id = persona_id,
                 expert_name = name,
+                session_id = expert_session_id,
                 question_index = question_idx
               )
             )
 
+            old_provenance <- provenance$current %||% list()
+            provenance$current <- list(
+              session_id = expert_session_id,
+              persona_id = persona_id,
+              retrieval_step_id = question_correlation_id
+            )
             chat_promise <- warmup_chat_response(
               expert_chat,
               warmup_prompt(ses$topic, question)
@@ -965,6 +993,7 @@ run_warmup <- function(
             warmup_with_timeout(chat_promise, timeout_s, label) |>
               promises::then(function(response) {
                 if (!warmup_is_current(is_current)) {
+                  provenance$current <- old_provenance
                   return(NULL)
                 }
 
@@ -973,8 +1002,12 @@ run_warmup <- function(
                   name,
                   question,
                   response,
-                  expert_chat = expert_chat
+                  expert_chat = expert_chat,
+                  session_id = expert_session_id,
+                  persona_id = persona_id,
+                  correlation_id = question_correlation_id
                 )
+                provenance$current <- old_provenance
                 answered_count <<- answered_count + 1L
                 emit_progress(
                   "tool",
@@ -982,9 +1015,11 @@ run_warmup <- function(
                   stage = "warmup",
                   step = "expert_question",
                   parent_event_id = progress_event_id(question_event),
+                  correlation_id = question_correlation_id,
                   payload = list(
-                    expert_id = as.character(persona$id %||% idx),
+                    expert_id = persona_id,
                     expert_name = name,
+                    session_id = expert_session_id,
                     question_index = question_idx
                   )
                 )
@@ -992,6 +1027,7 @@ run_warmup <- function(
               }) |>
               promises::catch(function(e) {
                 if (!warmup_is_current(is_current)) {
+                  provenance$current <- old_provenance
                   return(NULL)
                 }
 
@@ -1018,19 +1054,25 @@ run_warmup <- function(
                   stage = "warmup",
                   step = "expert_question",
                   parent_event_id = progress_event_id(question_event),
+                  correlation_id = question_correlation_id,
                   payload = c(
                     list(
-                      expert_id = as.character(persona$id %||% idx),
+                      expert_id = persona_id,
                       expert_name = name,
+                      session_id = expert_session_id,
                       question_index = question_idx
                     ),
                     progress_error_payload(e)
                   )
                 )
+                provenance$current <- old_provenance
                 NULL
               })
           }) |>
             promises::catch(function(e) {
+              if (exists("old_provenance", inherits = FALSE)) {
+                provenance$current <- old_provenance
+              }
               if (warmup_is_current(is_current)) {
                 safe_append(sprintf(
                   "**%s** warmup question %d/%d failed: %s",
@@ -1058,8 +1100,9 @@ run_warmup <- function(
           step = "expert_fanout",
           parent_event_id = progress_event_id(expert_event),
           payload = list(
-            expert_id = as.character(persona$id %||% idx),
+            expert_id = persona_id,
             expert_name = name,
+            session_id = expert_session_id,
             questions_answered = answered_count
           )
         )
@@ -1080,8 +1123,9 @@ run_warmup <- function(
             parent_event_id = progress_event_id(expert_event),
             payload = c(
               list(
-                expert_id = as.character(persona$id %||% idx),
-                expert_name = name
+                expert_id = persona_id,
+                expert_name = name,
+                session_id = expert_session_id
               ),
               progress_error_payload(e)
             )

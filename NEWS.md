@@ -23,11 +23,13 @@
 * `tempest_run()` now executes STORM structured steps through dsprrr modules,
   with ellmer fallbacks for module creation or runtime failures.
 * `tempest_run()` and `tempest_session()` now pass source context into dsprrr claim extraction for provider-native citations, so optimized extraction works for native web-search turns as well as inline `[S...]` citations (c8jk).
+* `tempest_run()` and `tempest_session()` now expose evidence review tools for agents to inspect claims, cited sources, evidence spans, and unsupported claims without requiring write access (my3y).
 * `tempest_run()` and `tempest_session()` now expose claim-oriented `add_claim` and `list_claims` agent tools while keeping `add_fact` and `list_facts` as transitional aliases (msg3).
 * `tempest_optimize_dsprrr_modules()`, `tempest_save_dsprrr_modules()`, and
   `tempest_load_dsprrr_modules()` support explicit dsprrr compilation and
   reuse of optimized STORM module sets.
 * `tempest_progress_event()` and `tempest_progress_event_data()` define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).
+* `tempest_progress_labels()` provides compact host-neutral STORM and Co-STORM progress labels for stage chips and current-step displays (a3rg).
 * `tempest_progress_collector()`, `tempest_progress_filter()`, and `tempest_progress_replay()` provide host-neutral in-memory progress sinks with filtering and replay helpers (wpt9).
 * `tempest_progress_state()` reduces recorded STORM and Co-STORM progress events to compact host-neutral workflow state for UI and telemetry adapters (7f9q).
 * `tempest_run()` gains `output_dir`, `resume`, and `run_id` arguments for
@@ -48,12 +50,15 @@
   result URL no longer discards every other result for the query.
 * Co-STORM sessions now route turns, update the mind map, and summarise using
   the most recent dialogue turns instead of the oldest.
+* Co-STORM evidence now records expert session ids, persona ids, and progress correlation ids on claims from expert tools, warmup, chat, and STORM research runs so Facts and Sources can be traced back to the agent turn that produced them (vtz9).
+* Co-STORM moderator answers now avoid generic end-of-answer next-step menus, while suggestion cards focus on topic-specific research questions tied to evidence gaps, uncertainty, and mind-map expansion (svyx).
 * Persisted runs now write artifacts atomically and write the run manifest
   last, so an interrupted save cannot corrupt artifacts or leave `resume`
   pointing at a stage whose output is missing.
 * The bundled Shiny app now targets shinychat's development `chat_server()`
   API for streaming, cancellation, greetings, and client state management.
 * The bundled Shiny app now renders STORM and Co-STORM workflow progress from host-neutral progress events and reducer state (e08d).
+* The bundled Shiny app now streams STORM workflow progress from the background worker so stage chips update while a run is still in flight (1fxn).
 * The bundled Shiny app now carries provider-native source context into Co-STORM fact extraction so warmup and chat turns populate Facts and Sources when sources were attached to the answer turn (b77g).
 * The bundled Shiny app now invalidates Co-STORM progress output from asynchronous warmup callbacks so progress icons render while warmup is still running (2zbg).
 * The bundled Shiny app no longer errors when async chat callbacks refresh the

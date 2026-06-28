@@ -274,7 +274,12 @@ tempest_extract_facts_from_answer <- function(
   answer_text,
   store,
   module = NULL,
-  source_ids = NULL
+  source_ids = NULL,
+  session_id = NA_character_,
+  persona_id = NA_character_,
+  retrieval_step_id = NA_character_,
+  perspective_id = NA_character_,
+  section_id = NA_character_
 ) {
   # Use a separate extraction call to minimize hallucinated facts. dsprrr gets
   # the same source context as the fallback prompt so native-provider citations
@@ -386,7 +391,12 @@ tempest_extract_facts_from_answer <- function(
       claim_text = claim,
       source_ids = known,
       claim_type = "finding",
-      confidence = conf
+      confidence = conf,
+      session_id = session_id,
+      persona_id = persona_id,
+      retrieval_step_id = retrieval_step_id,
+      perspective_id = perspective_id,
+      section_id = section_id
     ))
   }
   invisible(TRUE)
@@ -423,10 +433,13 @@ tempest_research_one_perspective <- function(
   topic,
   research_strategy,
   max_questions_per_perspective,
-  dsprrr_modules = NULL
+  dsprrr_modules = NULL,
+  run_id = NA_character_
 ) {
   p <- perspectives[[i]]
   persona <- if (i <= length(personas)) personas[[i]] else NULL
+  persona_id <- as.character(persona$id %||% i)
+  perspective_id <- as.character(p$id %||% i)
 
   local_store <- SourceStore$new()
   local_retriever <- tempest_retriever(config = config, store = local_store)
@@ -442,7 +455,11 @@ tempest_research_one_perspective <- function(
     expert,
     local_retriever,
     model = config@models[["expert"]],
-    search_provider = config@search_provider
+    search_provider = config@search_provider,
+    claim_provenance = list(
+      session_id = run_id,
+      persona_id = persona_id
+    )
   )
   writer <- tempest_make_chat(config, "writer", echo = "none")
   extractor <- tempest_make_chat(
@@ -517,7 +534,10 @@ tempest_research_one_perspective <- function(
             harvest$answer_text,
             local_store,
             module = modules$extract_claims,
-            source_ids = harvest$source_ids
+            source_ids = harvest$source_ids,
+            session_id = run_id,
+            persona_id = persona_id,
+            perspective_id = perspective_id
           ),
           error = function(e) {
             tempest_warn("Fact extraction failed: {conditionMessage(e)}")
@@ -551,7 +571,8 @@ tempest_research_parallel <- function(
   max_rounds,
   max_questions_per_perspective,
   dsprrr_modules = NULL,
-  verbose
+  verbose,
+  run_id = NA_character_
 ) {
   n <- length(perspectives)
   run_one <- function(i) {
@@ -563,7 +584,8 @@ tempest_research_parallel <- function(
       topic = topic,
       research_strategy = research_strategy,
       max_questions_per_perspective = max_questions_per_perspective,
-      dsprrr_modules = dsprrr_modules
+      dsprrr_modules = dsprrr_modules,
+      run_id = run_id
     )
   }
 
@@ -587,6 +609,7 @@ tempest_research_parallel <- function(
             research_strategy,
             max_questions_per_perspective,
             dsprrr_modules,
+            run_id,
             research_one
           ) {
             research_one(
@@ -597,7 +620,8 @@ tempest_research_parallel <- function(
               topic = topic,
               research_strategy = research_strategy,
               max_questions_per_perspective = max_questions_per_perspective,
-              dsprrr_modules = dsprrr_modules
+              dsprrr_modules = dsprrr_modules,
+              run_id = run_id
             )
           },
           .args = list(
@@ -608,6 +632,7 @@ tempest_research_parallel <- function(
             research_strategy = research_strategy,
             max_questions_per_perspective = max_questions_per_perspective,
             dsprrr_modules = dsprrr_modules,
+            run_id = run_id,
             research_one = tempest_research_one_perspective
           )
         )[],

@@ -293,7 +293,10 @@ test_that("record_warmup_turn populates facts and sources from native turns", {
     "Dr. Native",
     "What did the source say?",
     fixture$claim_text,
-    expert_chat = expert_chat
+    expert_chat = expert_chat,
+    session_id = "expert-session-1",
+    persona_id = "1",
+    correlation_id = "warmup-question-1"
   )
 
   store <- fixture$session$store
@@ -302,6 +305,9 @@ test_that("record_warmup_turn populates facts and sources from native turns", {
   expect_length(claims, 1L)
   expect_equal(claims[[1]]@claim_text, fixture$claim_text)
   expect_equal(claims[[1]]@source_ids, fixture$source_id)
+  expect_equal(claims[[1]]@session_id, "expert-session-1")
+  expect_equal(claims[[1]]@persona_id, "1")
+  expect_equal(claims[[1]]@retrieval_step_id, "warmup-question-1")
 })
 
 test_that("extract_chat_turn_facts populates facts and sources from native turns", {
@@ -312,7 +318,10 @@ test_that("extract_chat_turn_facts populates facts and sources from native turns
   ids <- app$extract_chat_turn_facts(
     fixture$session,
     fixture$claim_text,
-    turn = fixture$turn
+    turn = fixture$turn,
+    session_id = "costorm-session-1",
+    persona_id = "moderator",
+    correlation_id = "chat-turn-1"
   )
 
   expect_equal(ids, fixture$source_id)
@@ -322,13 +331,16 @@ test_that("extract_chat_turn_facts populates facts and sources from native turns
   expect_length(claims, 1L)
   expect_equal(claims[[1]]@claim_text, fixture$claim_text)
   expect_equal(claims[[1]]@source_ids, fixture$source_id)
+  expect_equal(claims[[1]]@session_id, "costorm-session-1")
+  expect_equal(claims[[1]]@persona_id, "moderator")
+  expect_equal(claims[[1]]@retrieval_step_id, "chat-turn-1")
 })
 
 test_that("suggestion_cards builds a shinychat submit-card list", {
   app <- source_shiny_modules()
   md <- app$suggestion_cards(c("What is X?", "How does Y work?"))
   expect_type(md, "character")
-  expect_match(md, "You might ask")
+  expect_match(md, "Research next")
   expect_match(md, '- <span class="suggestion submit">What is X\\?</span>')
   expect_match(
     md,
@@ -453,6 +465,43 @@ test_that("workflow_progress_ui renders reducer state", {
   expect_match(html, "Dr. Flow")
 })
 
+test_that("workflow_progress_ui renders compact Co-STORM answer labels", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  state <- tempest_progress_state(list(
+    tempest_progress_event(
+      run_id = "session-1",
+      workflow = "costorm",
+      event_type = "stage",
+      status = "started",
+      stage = "dialogue",
+      step = "turn",
+      correlation_id = "turn-1"
+    ),
+    tempest_progress_event(
+      run_id = "session-1",
+      workflow = "costorm",
+      event_type = "step",
+      status = "started",
+      stage = "dialogue",
+      step = "moderator_response",
+      correlation_id = "turn-1"
+    )
+  ))
+
+  html <- paste(
+    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    collapse = ""
+  )
+
+  expect_match(html, "Current:")
+  expect_match(html, "Answer")
+  expect_match(html, "Moderator")
+  expect_match(html, "Next")
+  expect_no_match(html, "Dialogue")
+  expect_no_match(html, "Moderator Response")
+})
+
 test_that("async Co-STORM progress renders warmup state before completion", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("later")
@@ -517,6 +566,7 @@ test_that("STORM worker uses a local serializable progress collector", {
   app <- source_shiny_modules()
   collector <- app$storm_worker_progress_collector(include_payload = TRUE)
   event <- tempest_progress_event(
+    event_id = "worker-research-start",
     run_id = "worker-run",
     workflow = "storm",
     event_type = "stage",
@@ -544,6 +594,149 @@ test_that("STORM worker uses a local serializable progress collector", {
     paste(module_source, collapse = "\n"),
     "tempest::tempest_progress_collector",
     fixed = TRUE
+  )
+})
+
+test_that("STORM worker writes progress events to a stream", {
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  event <- tempest_progress_event(
+    event_id = "stream-research-start",
+    run_id = "worker-run",
+    workflow = "storm",
+    event_type = "stage",
+    status = "started",
+    stage = "research",
+    payload = list(expert = "Dr. Flow")
+  )
+  collector <- app$storm_worker_progress_collector(
+    include_payload = TRUE,
+    stream_path = stream_path
+  )
+
+  collector$record(event)
+  streamed <- app$storm_read_progress_stream(stream_path)
+
+  expect_length(streamed, 1L)
+  expect_equal(streamed[[1]]$event_id, "stream-research-start")
+  expect_equal(streamed[[1]]$stage, "research")
+  expect_equal(streamed[[1]]$step, NA_character_)
+  expect_equal(streamed[[1]]$payload$expert, "Dr. Flow")
+  expect_equal(tempest_progress_state(streamed)$current_stage, "research")
+  expect_length(app$storm_merge_progress_events(list(event), streamed), 1L)
+})
+
+test_that("STORM progress stream skips malformed lines", {
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  good <- jsonlite::toJSON(
+    list(event_id = "ok", stage = "research"),
+    auto_unbox = TRUE
+  )
+  writeLines(c(good, "{not valid json", ""), stream_path)
+
+  streamed <- app$storm_read_progress_stream(stream_path)
+
+  expect_length(streamed, 1L)
+  expect_equal(streamed[[1]]$event_id, "ok")
+})
+
+test_that("STORM progress stream reads only newly appended lines", {
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  cursor <- app$storm_progress_stream_cursor()
+  first <- jsonlite::toJSON(list(event_id = "one"), auto_unbox = TRUE)
+  cat(first, "\n", file = stream_path, sep = "")
+
+  initial <- app$storm_read_progress_stream_incremental(stream_path, cursor)
+  expect_length(initial, 1L)
+  expect_equal(initial[[1]]$event_id, "one")
+  expect_length(
+    app$storm_read_progress_stream_incremental(stream_path, cursor),
+    0L
+  )
+
+  second <- jsonlite::toJSON(list(event_id = "two"), auto_unbox = TRUE)
+  cat(second, "\n", file = stream_path, append = TRUE, sep = "")
+  appended <- app$storm_read_progress_stream_incremental(stream_path, cursor)
+  expect_length(appended, 1L)
+  expect_equal(appended[[1]]$event_id, "two")
+})
+
+test_that("STORM progress stream defers a partially-written line", {
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  cursor <- app$storm_progress_stream_cursor()
+  cat('{"event_id":"partial"', file = stream_path, sep = "")
+
+  expect_length(
+    app$storm_read_progress_stream_incremental(stream_path, cursor),
+    0L
+  )
+
+  cat(',"stage":"research"}\n', file = stream_path, append = TRUE, sep = "")
+  completed <- app$storm_read_progress_stream_incremental(stream_path, cursor)
+  expect_length(completed, 1L)
+  expect_equal(completed[[1]]$event_id, "partial")
+})
+
+test_that("STORM progress stream renders while a task is still active", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("later")
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+
+  progress_server <- function(id, app, stream_path) {
+    shiny::moduleServer(id, function(input, output, session) {
+      active <- TRUE
+      progress_events <- shiny::reactiveVal(list(
+        app$storm_running_event("Topic", "worker-run")
+      ))
+      app$storm_poll_progress_stream(
+        path = stream_path,
+        progress_events = progress_events,
+        session = session,
+        is_current = function() active,
+        interval = 1
+      )
+      stop_polling <- function() {
+        active <<- FALSE
+      }
+    })
+  }
+
+  shiny::testServer(
+    progress_server,
+    args = list(app = app, stream_path = stream_path),
+    {
+      collector <- app$storm_worker_progress_collector(
+        include_payload = TRUE,
+        stream_path = stream_path
+      )
+      collector$record(tempest_progress_event(
+        event_id = "stream-ui-research-start",
+        run_id = "worker-run",
+        workflow = "storm",
+        event_type = "stage",
+        status = "started",
+        stage = "research"
+      ))
+
+      later::run_now(0.05)
+      session$flushReact()
+
+      state <- tempest_progress_state(progress_events())
+      html <- paste(
+        as.character(app$workflow_progress_ui(state, app$storm_stage_labels())),
+        collapse = ""
+      )
+      stop_polling()
+
+      expect_equal(state$current_stage, "research")
+      expect_match(html, "STORM")
+      expect_match(html, "Research")
+      expect_match(html, "fa-spinner")
+    }
   )
 })
 
@@ -577,6 +770,7 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
   expect_equal(intersect("progress", names(calls[[1]])), character())
   expect_length(value$progress, 0L)
 
+  seen_run_id <- NULL
   new_run <- function(
     topic,
     config,
@@ -584,11 +778,13 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
     research_strategy,
     max_rounds,
     parallel_research,
+    run_id,
     progress,
     verbose
   ) {
+    seen_run_id <<- run_id
     progress(tempest_progress_event(
-      run_id = "worker-run",
+      run_id = run_id,
       workflow = "storm",
       event_type = "stage",
       status = "started",
@@ -603,11 +799,93 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
     strategy = "key_questions",
     max_rounds = 1,
     parallel = FALSE,
+    progress_run_id = "shiny-run",
     tempest_run = new_run
   )
 
   expect_equal(value$result$report_md, "new run")
+  expect_equal(seen_run_id, "shiny-run")
+  expect_equal(value$progress[[1]]$run_id, "shiny-run")
   expect_equal(value$progress[[1]]$stage, "research")
+})
+
+test_that("STORM worker streams progress before mirai resolves", {
+  skip_if_not_installed("mirai")
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  release_path <- withr::local_tempfile(fileext = ".release")
+  unlink(release_path)
+  event <- tempest_progress_event(
+    event_id = "mirai-research-start",
+    run_id = "worker-run",
+    workflow = "storm",
+    event_type = "stage",
+    status = "started",
+    stage = "research"
+  )
+
+  value <- mirai::mirai(
+    {
+      fake_run <- function(
+        topic,
+        config,
+        n_experts,
+        research_strategy,
+        max_rounds,
+        parallel_research,
+        progress,
+        verbose
+      ) {
+        progress(event)
+        deadline <- Sys.time() + 10
+        while (!file.exists(release_path) && Sys.time() < deadline) {
+          Sys.sleep(0.02)
+        }
+        list(report_md = paste("worker run", topic))
+      }
+
+      storm_runner(
+        topic = topic,
+        cfg = cfg,
+        n_experts = n_experts,
+        strategy = strategy,
+        max_rounds = max_rounds,
+        parallel = parallel,
+        progress_stream_path = progress_stream_path,
+        progress_collector = progress_collector,
+        tempest_run = fake_run
+      )
+    },
+    topic = "Topic",
+    cfg = list(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    parallel = FALSE,
+    progress_stream_path = stream_path,
+    progress_collector = app$storm_worker_progress_collector,
+    storm_runner = app$storm_run_with_progress,
+    event = event,
+    release_path = release_path
+  )
+
+  seen_stream <- FALSE
+  deadline <- Sys.time() + 10
+  while (
+    mirai::unresolved(value) &&
+      !seen_stream &&
+      Sys.time() < deadline
+  ) {
+    seen_stream <- length(app$storm_read_progress_stream(stream_path)) > 0L
+    Sys.sleep(0.02)
+  }
+
+  expect_equal(seen_stream, TRUE)
+  expect_equal(mirai::unresolved(value), TRUE)
+  invisible(file.create(release_path))
+  result <- value[]
+  expect_equal(result$result$report_md, "worker run Topic")
+  expect_equal(result$progress[[1]]$stage, "research")
 })
 
 test_that("STORM worker adapter tolerates older tempest_run signatures in mirai", {

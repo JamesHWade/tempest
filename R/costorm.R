@@ -347,7 +347,8 @@ TempestSession <- R6::R6Class(
         self$chats$moderator,
         self$retriever,
         model = self$config@models[["coordinator"]],
-        search_provider = self$config@search_provider
+        search_provider = self$config@search_provider,
+        allow_claim_writes = FALSE
       )
       tempest_register_expert_tools(
         self$chats$moderator,
@@ -361,13 +362,15 @@ TempestSession <- R6::R6Class(
         self$chats$mindmap,
         self$retriever,
         model = self$config@models[["mindmap"]],
-        search_provider = self$config@search_provider
+        search_provider = self$config@search_provider,
+        allow_claim_writes = FALSE
       )
       tempest_register_default_tools(
         self$chats$reporter,
         self$retriever,
         model = self$config@models[["writer"]],
-        search_provider = self$config@search_provider
+        search_provider = self$config@search_provider,
+        allow_claim_writes = FALSE
       )
 
       # Initialize discourse manager if enabled
@@ -569,12 +572,23 @@ TempestSession <- R6::R6Class(
     #' @param text Text containing factual claims.
     #' @param turn Optional ellmer turn to inspect for provider-native sources.
     #' @param source_ids Optional source ids already harvested for the turn.
-    extract_facts = function(text, turn = NULL, source_ids = NULL) {
+    #' @param session_id Optional Co-STORM or expert session id.
+    #' @param persona_id Optional persona id.
+    #' @param correlation_id Optional progress correlation id for the turn.
+    extract_facts = function(
+      text,
+      turn = NULL,
+      source_ids = NULL,
+      session_id = self$session_id,
+      persona_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
       event <- self$emit_progress(
         "step",
         "started",
         stage = "evidence",
-        step = "fact_extraction"
+        step = "fact_extraction",
+        correlation_id = correlation_id
       )
       tryCatch(
         {
@@ -589,7 +603,10 @@ TempestSession <- R6::R6Class(
             self$chats$extractor,
             text,
             self$store,
-            source_ids = unique(c(source_ids, harvested))
+            source_ids = unique(c(source_ids, harvested)),
+            session_id = session_id,
+            persona_id = persona_id,
+            retrieval_step_id = correlation_id
           )
           self$emit_progress(
             "step",
@@ -811,7 +828,12 @@ TempestSession <- R6::R6Class(
             "You have tools to ask experts (ask_*) for research questions.\n",
             "Use the expert tools to delegate research questions to the appropriate expert.\n",
             "Synthesize their responses into a coherent answer for the user.\n",
-            "Use citations like [Sxxxxxxxxxxxx] for factual claims."
+            "Use citations like [Sxxxxxxxxxxxx] for factual claims.\n",
+            "Do not end with a generic menu of things you can make next.\n",
+            "Clickable follow-up cards, fact/source extraction, mind-map updates, ",
+            "and report generation are handled by the app UI.\n",
+            "If useful, close with one topic-specific research question or a ",
+            "specific evidence gap; otherwise stop after the answer."
           )
 
           # The moderator will use expert tools as needed
@@ -840,7 +862,14 @@ TempestSession <- R6::R6Class(
           )
 
           # Extract facts (best-effort)
-          self$extract_facts(ans, turn = turn, source_ids = source_ids)
+          self$extract_facts(
+            ans,
+            turn = turn,
+            source_ids = source_ids,
+            session_id = self$session_id,
+            persona_id = "moderator",
+            correlation_id = turn_id
+          )
 
           # Update mind map
           self$update_mindmap(
@@ -914,6 +943,7 @@ TempestSession <- R6::R6Class(
           for (i in seq_along(self$personas)) {
             persona <- self$personas[[i]]
             persona_name <- persona$name %||% paste("Expert", i)
+            persona_id <- as.character(persona$id %||% i)
             initial_qs <- persona$initial_questions %||% character()
 
             if (length(initial_qs) == 0) {
@@ -928,7 +958,7 @@ TempestSession <- R6::R6Class(
                 parent_event_id = warmup_event@event_id,
                 correlation_id = warmup_event@correlation_id,
                 payload = list(
-                  expert_id = as.character(persona$id %||% i),
+                  expert_id = persona_id,
                   expert_name = persona_name,
                   reason = "no_initial_questions"
                 )
@@ -946,6 +976,7 @@ TempestSession <- R6::R6Class(
             session_result <- self$expert_session_manager$get_or_create(persona)
             chat <- session_result$chat
             session_id <- session_result$session_id
+            provenance <- session_result$provenance
             expert_event <- self$emit_progress(
               "expert",
               "started",
@@ -954,7 +985,7 @@ TempestSession <- R6::R6Class(
               parent_event_id = warmup_event@event_id,
               correlation_id = warmup_event@correlation_id,
               payload = list(
-                expert_id = as.character(persona$id %||% i),
+                expert_id = persona_id,
                 expert_name = persona_name,
                 session_id = session_id,
                 question_count = length(initial_qs)
@@ -977,7 +1008,7 @@ TempestSession <- R6::R6Class(
                     parent_event_id = expert_event@event_id,
                     correlation_id = expert_event@correlation_id,
                     payload = list(
-                      expert_id = as.character(persona$id %||% i),
+                      expert_id = persona_id,
                       expert_name = persona_name,
                       question_index = q_i
                     )
@@ -1002,7 +1033,18 @@ TempestSession <- R6::R6Class(
 
                   response <- tryCatch(
                     {
-                      response <- chat$chat(prompt, echo = "none")
+                      old_provenance <- provenance$current %||% list()
+                      provenance$current <- list(
+                        session_id = session_id,
+                        persona_id = persona_id,
+                        retrieval_step_id = question_event@correlation_id
+                      )
+                      response <- tryCatch(
+                        chat$chat(prompt, echo = "none"),
+                        finally = {
+                          provenance$current <- old_provenance
+                        }
+                      )
                       turn <- tryCatch(
                         chat$last_turn(),
                         error = function(e) NULL
@@ -1012,7 +1054,10 @@ TempestSession <- R6::R6Class(
                       self$expert_session_manager$extract_facts(
                         response,
                         turn = turn,
-                        source_ids = source_ids
+                        source_ids = source_ids,
+                        session_id = session_id,
+                        persona_id = persona_id,
+                        correlation_id = question_event@correlation_id
                       )
                       self$add_turn(persona_name, "assistant", response)
                       self$update_mindmap(
@@ -1036,7 +1081,7 @@ TempestSession <- R6::R6Class(
                         parent_event_id = question_event@event_id,
                         correlation_id = question_event@correlation_id,
                         payload = list(
-                          expert_id = as.character(persona$id %||% i),
+                          expert_id = persona_id,
                           expert_name = persona_name,
                           question_index = q_i
                         )
@@ -1053,7 +1098,7 @@ TempestSession <- R6::R6Class(
                         correlation_id = question_event@correlation_id,
                         payload = c(
                           list(
-                            expert_id = as.character(persona$id %||% i),
+                            expert_id = persona_id,
                             expert_name = persona_name,
                             question_index = q_i
                           ),
@@ -1083,7 +1128,7 @@ TempestSession <- R6::R6Class(
                   correlation_id = expert_event@correlation_id,
                   payload = c(
                     list(
-                      expert_id = as.character(persona$id %||% i),
+                      expert_id = persona_id,
                       expert_name = persona_name,
                       questions_answered = length(expert_results)
                     ),
@@ -1102,7 +1147,7 @@ TempestSession <- R6::R6Class(
               parent_event_id = expert_event@event_id,
               correlation_id = expert_event@correlation_id,
               payload = list(
-                expert_id = as.character(persona$id %||% i),
+                expert_id = persona_id,
                 expert_name = persona_name,
                 questions_answered = length(expert_results)
               )

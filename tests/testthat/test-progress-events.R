@@ -194,6 +194,31 @@ test_that("tempest_progress_collector strips payloads unless requested", {
   expect_equal(rich_collector$data()[[1]]$payload$secret, "keep out")
 })
 
+test_that("tempest_progress_labels exposes compact workflow labels", {
+  expect_equal(
+    tempest_progress_labels("costorm", "stage"),
+    c(
+      session = "Setup",
+      warmup = "Warmup",
+      dialogue = "Answer",
+      evidence = "Evidence",
+      mindmap = "Map",
+      suggestions = "Next",
+      report = "Report"
+    )
+  )
+  expect_equal(
+    tempest_progress_labels("costorm", "step")[[
+      "moderator_response"
+    ]],
+    "Moderator"
+  )
+  expect_equal(
+    tempest_progress_labels("storm", "stage")[["verification"]],
+    "Verify"
+  )
+})
+
 test_that("tempest_progress_replay sends filtered events to a callback", {
   collector <- tempest_progress_collector(include_payload = TRUE)
   collector$record(tempest_progress_event(
