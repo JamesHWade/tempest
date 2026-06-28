@@ -10,3 +10,6 @@
 ^ROADMAP\.md$
 ^dev$
 ^tempest_recommendations\.md$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.positai$

@@ -11,9 +11,10 @@
   for You.com, Bing, DuckDuckGo, SearXNG, Google Custom Search, and Azure AI
   Search in addition to the existing native, Wikipedia, Serper, Brave, and
   Tavily providers.
-* `tempest_run()` now executes STORM structured steps through dsprrr modules
-  when dsprrr is installed, with ellmer fallbacks for module creation or runtime
-  failures.
+* `tempest` now imports dsprrr directly for STORM structured extraction and
+  generation modules.
+* `tempest_run()` now executes STORM structured steps through dsprrr modules,
+  with ellmer fallbacks for module creation or runtime failures.
 * `tempest_optimize_dsprrr_modules()`, `tempest_save_dsprrr_modules()`, and
   `tempest_load_dsprrr_modules()` support explicit dsprrr compilation and
   reuse of optimized STORM module sets.
@@ -38,6 +39,13 @@
   pointing at a stage whose output is missing.
 * The bundled Shiny app now targets shinychat's development `chat_server()`
   API for streaming, cancellation, greetings, and client state management.
+* The bundled Shiny app no longer errors when async chat callbacks refresh the
+  shared session store outside a reactive consumer.
+* The bundled Shiny app's Co-STORM warmup now runs independent experts in
+  bounded parallel batches, shows compact progress without streaming every
+  warmup answer into the chat, delays suggested questions until warmup finishes,
+  times out stalled research calls, and ignores late callbacks from closed
+  sessions.
 * The bundled Shiny app was rebuilt around Shiny modules (one per tab) with a
   shared reactive store, runs the STORM pipeline as a background `ExtendedTask`
   bound to its task button, and adds a knowledge-stats value-box strip on the

@@ -560,6 +560,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     result <- mgr$get_or_create(p, session_id)
     chat <- result$chat
     sid <- result$session_id
+    expert_name <- p$name %||% "Expert"
 
     # Build prompt with context
     prompt <- paste0(
@@ -570,9 +571,10 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       question,
       "\n\n",
       "Instructions:\n",
-      "- Use web_search + fetch_url to find and cite sources.\n",
-      "- Only state factual claims supported by sources you fetched.\n",
-      "- For each factual sentence, add citations like [Sxxxxxxxxxxxx].\n",
+      "- Use the available web/source tools to find and cite sources.\n",
+      "- If web_search and fetch_url are available, search first and then fetch sources.\n",
+      "- Only state factual claims supported by sources you inspected.\n",
+      "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
       "- If evidence is weak or unclear, say so.\n\n",
       "Respond now:"
     )
@@ -581,11 +583,15 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
 
     # Extract plain text from the response using ellmer's contents_markdown
     # This properly handles ellmer_output objects and tool call results
-    last_turn <- chat$last_turn()
+    last_turn <- tryCatch(chat$last_turn(), error = function(e) NULL)
     response_text <- if (
       is.null(last_turn) || length(last_turn@contents) == 0
     ) {
-      "(Expert completed but returned no message.)"
+      if (is.character(response) && length(response) > 0) {
+        paste(response, collapse = "\n")
+      } else {
+        "(Expert completed but returned no message.)"
+      }
     } else {
       ellmer::contents_markdown(last_turn)
     }
@@ -594,7 +600,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     mgr$extract_facts(response_text)
 
     list(
-      expert = p$name %||% "Expert",
+      expert = expert_name,
       response = response_text,
       session_id = sid
     )

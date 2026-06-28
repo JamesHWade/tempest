@@ -240,3 +240,29 @@ test_that("tempest_create_expert_tool creates valid ellmer tool", {
   expect_true(grepl("Dr. Sarah Chen", tool@description))
   expect_true(grepl("Climate Scientist", tool@description))
 })
+
+test_that("expert tools fall back to returned text", {
+  skip_if_not_installed("ellmer")
+
+  persona <- list(
+    id = 1,
+    name = "Dr. Sarah Chen",
+    title = "Climate Scientist",
+    perspective = "Physical science perspective"
+  )
+  fake <- fake_chat(text = list("Expert answer [S123456789abc]."))
+  cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+    fake
+  })
+  store <- tempest:::SourceStore$new()
+  retriever <- tempest:::tempest_retriever(config = cfg, store = store)
+  mgr <- tempest:::ExpertSessionManager$new(cfg, retriever)
+
+  tool <- tempest:::tempest_create_expert_tool(persona, mgr, "Climate change")
+  result <- tool(question = "What should we know?")
+
+  expect_equal(result$expert, "Dr. Sarah Chen")
+  expect_equal(result$response, "Expert answer [S123456789abc].")
+  prompts <- vapply(fake$.calls(), function(call) call$prompt, character(1))
+  expect_match(prompts[[1]], "available web/source tools", fixed = TRUE)
+})

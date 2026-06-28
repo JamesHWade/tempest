@@ -81,6 +81,17 @@ test_that("the report module renders markdown and an empty state", {
   })
 })
 
+test_that("session store mutations work outside reactive consumers", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  store <- app$new_session_store()
+  ses <- list(topic = "Test topic")
+
+  expect_silent(store$touch())
+  expect_silent(store$set(ses))
+  expect_identical(shiny::isolate(store$get()), ses)
+})
+
 test_that("the transcript module shows recent turns from the store", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("ellmer")
@@ -138,7 +149,10 @@ test_that("suggestion_cards builds a shinychat submit-card list", {
   expect_type(md, "character")
   expect_match(md, "You might ask")
   expect_match(md, '- <span class="suggestion submit">What is X\\?</span>')
-  expect_match(md, '- <span class="suggestion submit">How does Y work\\?</span>')
+  expect_match(
+    md,
+    '- <span class="suggestion submit">How does Y work\\?</span>'
+  )
 })
 
 test_that("suggestion_cards returns NULL for no questions", {
@@ -150,7 +164,9 @@ test_that("suggestion_cards returns NULL for no questions", {
 test_that("suggestion_cards keeps only valid questions, in order", {
   app <- source_shiny_modules()
   md <- app$suggestion_cards(c("Keep this?", "", NA_character_, "And this"))
-  n_items <- length(gregexpr('class="suggestion submit"', md, fixed = TRUE)[[1]])
+  n_items <- length(gregexpr('class="suggestion submit"', md, fixed = TRUE)[[
+    1
+  ]])
   expect_equal(n_items, 2)
   expect_lt(
     regexpr("Keep this", md, fixed = TRUE),
@@ -187,6 +203,20 @@ test_that("append_suggestions gates on the toggle and swallows generator errors"
   expect_length(calls, 0)
 })
 
+test_that("start suggestions wait for warmup when experts are available", {
+  app <- source_shiny_modules()
+
+  expect_equal(
+    app$should_delay_start_suggestions(TRUE, list(list(name = "Dr. A"))),
+    TRUE
+  )
+  expect_equal(
+    app$should_delay_start_suggestions(FALSE, list(list(name = "Dr. A"))),
+    FALSE
+  )
+  expect_equal(app$should_delay_start_suggestions(TRUE, list()), FALSE)
+})
+
 test_that("the chat sidebar offers a follow-up-questions toggle", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -198,4 +228,285 @@ test_that("the chat sidebar offers a follow-up-questions toggle", {
   )
   expect_match(html, "chat-suggest")
   expect_match(html, "Suggest follow-up questions")
+})
+
+await_promise <- function(promise, timeout_s = 2) {
+  done <- FALSE
+  value <- NULL
+  error <- NULL
+  promises::then(
+    promise,
+    onFulfilled = function(x) {
+      value <<- x
+      done <<- TRUE
+    },
+    onRejected = function(e) {
+      error <<- e
+      done <<- TRUE
+    }
+  )
+
+  deadline <- Sys.time() + timeout_s
+  while (!done && Sys.time() < deadline) {
+    later::run_now(0.01)
+  }
+  expect_equal(done, TRUE)
+  if (!is.null(error)) {
+    stop(error)
+  }
+  value
+}
+
+fake_warmup_session <- function(
+  chat_async,
+  stream_async = NULL,
+  personas = NULL
+) {
+  turns <- new.env(parent = emptyenv())
+  turns$n <- 0L
+  if (is.null(personas)) {
+    personas <- list(list(
+      name = "Dr. A",
+      title = "Expert",
+      initial_questions = c("What is X?", "How does Y work?")
+    ))
+  }
+
+  call_chat_async <- function(prompt, persona) {
+    arg_names <- names(formals(chat_async))
+    if ("..." %in% arg_names || length(arg_names) >= 2L) {
+      return(chat_async(prompt, persona))
+    }
+    chat_async(prompt)
+  }
+
+  call_stream_async <- function(prompt, stream, persona) {
+    arg_names <- names(formals(stream_async))
+    if ("..." %in% arg_names || length(arg_names) >= 3L) {
+      return(stream_async(prompt, stream, persona))
+    }
+    if (length(arg_names) >= 2L) {
+      return(stream_async(prompt, stream))
+    }
+    stream_async(prompt)
+  }
+
+  list(
+    topic = "Test topic",
+    personas = personas,
+    expert_session_manager = list(
+      get_or_create = function(persona) {
+        chat <- list(
+          chat_async = function(prompt) call_chat_async(prompt, persona)
+        )
+        if (!is.null(stream_async)) {
+          chat$stream_async <- function(prompt, stream) {
+            call_stream_async(prompt, stream, persona)
+          }
+        }
+        list(chat = chat)
+      },
+      extract_facts = function(response) NULL
+    ),
+    add_turn = function(...) {
+      turns$n <- turns$n + 1L
+      invisible(NULL)
+    },
+    update_mindmap = function(...) invisible(NULL),
+    store = list(
+      list_claims = function() list(),
+      list_sources = function() list()
+    ),
+    turns = turns
+  )
+}
+
+fake_warmup_store <- function() {
+  touches <- new.env(parent = emptyenv())
+  touches$n <- 0L
+  list(
+    touch = function() {
+      touches$n <- touches$n + 1L
+      invisible(NULL)
+    },
+    count = function() touches$n
+  )
+}
+
+test_that("run_warmup reports per-question progress and finishes", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  messages <- character()
+  store <- fake_warmup_store()
+  ses <- fake_warmup_session(function(prompt) {
+    promises::promise_resolve("Supported answer [S123456789abc].")
+  })
+
+  await_promise(app$run_warmup(
+    ses,
+    store,
+    function(x) messages[[length(messages) + 1L]] <<- x,
+    timeout_s = 1,
+    max_questions_per_expert = 1
+  ))
+
+  transcript <- paste(messages, collapse = "\n")
+  expect_match(transcript, "Running warmup phase")
+  expect_match(transcript, "warmup question 1/1")
+  expect_match(transcript, "Warmup complete")
+  expect_equal(store$count(), 2)
+  expect_equal(ses$turns$n, 1)
+})
+
+test_that("run_warmup does not stream warmup answers into the main chat", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  messages <- character()
+  store <- fake_warmup_store()
+  used_stream <- FALSE
+  used_chat <- FALSE
+  ses <- fake_warmup_session(
+    chat_async = function(prompt) {
+      used_chat <<- TRUE
+      promises::promise_resolve("Private answer [S123456789abc].")
+    },
+    stream_async = function(prompt, stream) {
+      used_stream <<- TRUE
+      promises::promise_resolve("Visible streamed answer [S123456789abc].")
+    }
+  )
+
+  await_promise(app$run_warmup(
+    ses,
+    store,
+    function(x) {
+      messages[[length(messages) + 1L]] <<- x
+      x
+    },
+    timeout_s = 1,
+    max_questions_per_expert = 1
+  ))
+
+  transcript <- paste(messages, collapse = "\n")
+  expect_equal(used_chat, TRUE)
+  expect_equal(used_stream, FALSE)
+  expect_no_match(transcript, "Private answer")
+  expect_no_match(transcript, "Visible streamed answer")
+  expect_equal(ses$turns$n, 1)
+})
+
+test_that("run_warmup starts independent experts in parallel", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  messages <- character()
+  store <- fake_warmup_store()
+  resolve_first <- NULL
+  second_started <- FALSE
+  personas <- list(
+    list(name = "Dr. A", title = "Expert", initial_questions = "A?"),
+    list(name = "Dr. B", title = "Expert", initial_questions = "B?")
+  )
+  ses <- fake_warmup_session(
+    function(prompt, persona) {
+      if (identical(persona$name, "Dr. A")) {
+        return(promises::promise(function(resolve, reject) {
+          resolve_first <<- resolve
+        }))
+      }
+      second_started <<- TRUE
+      promises::promise_resolve("Second answer [S123456789abc].")
+    },
+    personas = personas
+  )
+
+  promise <- app$run_warmup(
+    ses,
+    store,
+    function(x) messages[[length(messages) + 1L]] <<- x,
+    timeout_s = 1,
+    max_questions_per_expert = 1,
+    max_parallel_experts = 2
+  )
+  deadline <- Sys.time() + 1
+  while ((is.null(resolve_first) || !second_started) && Sys.time() < deadline) {
+    later::run_now(0.01)
+  }
+
+  expect_equal(is.null(resolve_first), FALSE)
+  expect_equal(second_started, TRUE)
+  if (is.null(resolve_first)) {
+    stop("First expert did not start.")
+  }
+  resolve_first("First answer [S123456789abc].")
+  await_promise(promise)
+
+  transcript <- paste(messages, collapse = "\n")
+  expect_match(transcript, "Dr. A")
+  expect_match(transcript, "Dr. B")
+  expect_equal(ses$turns$n, 2)
+})
+
+test_that("run_warmup times out a stuck question and continues", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  messages <- character()
+  store <- fake_warmup_store()
+  ses <- fake_warmup_session(function(prompt) {
+    promises::promise(function(resolve, reject) {})
+  })
+
+  await_promise(app$run_warmup(
+    ses,
+    store,
+    function(x) messages[[length(messages) + 1L]] <<- x,
+    timeout_s = 0.01,
+    max_questions_per_expert = 1
+  ))
+
+  transcript <- paste(messages, collapse = "\n")
+  expect_match(transcript, "timed out")
+  expect_match(transcript, "Warmup complete")
+  expect_equal(store$count(), 1)
+  expect_equal(ses$turns$n, 0)
+})
+
+test_that("run_warmup ignores stale callbacks after the session is gone", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  messages <- character()
+  store <- fake_warmup_store()
+  resolve_chat <- NULL
+  active <- TRUE
+  ses <- fake_warmup_session(function(prompt) {
+    promises::promise(function(resolve, reject) {
+      resolve_chat <<- resolve
+    })
+  })
+
+  promise <- app$run_warmup(
+    ses,
+    store,
+    function(x) messages[[length(messages) + 1L]] <<- x,
+    is_current = function() active,
+    timeout_s = 1,
+    max_questions_per_expert = 1
+  )
+  while (is.null(resolve_chat)) {
+    later::run_now(0.01)
+  }
+
+  active <- FALSE
+  resolve_chat("Late answer [S123456789abc].")
+  await_promise(promise)
+
+  transcript <- paste(messages, collapse = "\n")
+  expect_match(transcript, "warmup question 1/1")
+  expect_no_match(transcript, "Warmup complete")
+  expect_equal(store$count(), 0)
+  expect_equal(ses$turns$n, 0)
 })

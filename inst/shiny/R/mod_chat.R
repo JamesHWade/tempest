@@ -3,8 +3,8 @@
 # Session creation, the warmup phase, and per-turn fact/mind-map extraction all
 # operate on a live `TempestSession` (which holds ellmer chats and is not
 # serialisable), so they run in the main process rather than as ExtendedTasks.
-# The warmup still streams progress into the chat between steps; it is a
-# functional promise chain (no superassignment).
+# The warmup streams compact progress into the chat while expert calls run as
+# bounded async work; full expert answers are recorded in the session state.
 
 mod_chat_ui <- function(id, config_ui) {
   ns <- shiny::NS(id)
@@ -74,6 +74,23 @@ mod_chat_ui <- function(id, config_ui) {
 mod_chat_server <- function(id, config, store) {
   shiny::moduleServer(id, function(input, output, session) {
     report_ready <- shiny::reactiveVal(0L)
+    warmup_run_id <- 0L
+    active_session_id <- 0L
+    session_ended <- FALSE
+
+    next_warmup_guard <- function() {
+      warmup_run_id <<- warmup_run_id + 1L
+      run_id <- warmup_run_id
+      function() {
+        !isTRUE(session_ended) && identical(run_id, warmup_run_id)
+      }
+    }
+
+    session$onSessionEnded(function() {
+      session_ended <<- TRUE
+      warmup_run_id <<- warmup_run_id + 1L
+      active_session_id <<- active_session_id + 1L
+    })
 
     # --- shinychat adapter ---------------------------------------------------
     initial_chat <- tempest_make_chat(
@@ -92,10 +109,11 @@ mod_chat_server <- function(id, config, store) {
       greeting = shinychat::chat_greeting(welcome_message())
     )
     append_chat <- function(text) chat$append(text, role = "assistant")
-
-    # Gated on the sidebar toggle; delegates to the testable append_suggestions().
-    maybe_append_suggestions <- function(ses, n = 4) {
-      append_suggestions(ses, input$suggest, append_chat, n)
+    append_chat_if_active <- function(text, session_id = active_session_id) {
+      if (!isTRUE(session_ended) && identical(session_id, active_session_id)) {
+        append_chat(text)
+      }
+      invisible(NULL)
     }
 
     # --- Session lifecycle ---------------------------------------------------
@@ -118,6 +136,7 @@ mod_chat_server <- function(id, config, store) {
       if (is.null(ses)) {
         return(NULL)
       }
+      active_session_id <<- active_session_id + 1L
       store$set(ses)
       chat$set_client(ses$chats$moderator, sync = FALSE)
       # Clear the landing greeting; the session intro below replaces it.
@@ -133,24 +152,71 @@ mod_chat_server <- function(id, config, store) {
     }
 
     shiny::observeEvent(input$start, {
+      warmup_is_current <- next_warmup_guard()
       topic <- stringi::stri_trim_both(input$topic %||% "")
       if (!nzchar(topic)) {
-        bslib::update_task_button("start", state = "ready")
+        if (warmup_is_current()) {
+          bslib::update_task_button("start", state = "ready")
+        }
         return()
       }
       ses <- create_session(topic, input$n_experts %||% 3)
       if (is.null(ses)) {
-        bslib::update_task_button("start", state = "ready")
+        if (warmup_is_current()) {
+          bslib::update_task_button("start", state = "ready")
+        }
         return()
       }
-      maybe_append_suggestions(ses)
+      suggest_enabled <- isTRUE(input$suggest)
+      start_session_id <- active_session_id
+      append_start_suggestions <- function() {
+        if (warmup_is_current()) {
+          append_suggestions(
+            ses,
+            suggest_enabled,
+            function(text) {
+              append_chat_if_active(text, session_id = start_session_id)
+            },
+            n = 4
+          )
+        }
+      }
+      delay_suggestions <- should_delay_start_suggestions(
+        input$warmup,
+        ses$personas
+      )
+      if (!delay_suggestions) {
+        append_start_suggestions()
+      }
       if (!isTRUE(input$warmup) || length(ses$personas) == 0) {
-        bslib::update_task_button("start", state = "ready")
+        if (warmup_is_current()) {
+          bslib::update_task_button("start", state = "ready")
+        }
         return()
       }
+      warmup_done <- promises::then(
+        run_warmup(ses, store, append_chat, is_current = warmup_is_current),
+        onFulfilled = function(...) {
+          append_start_suggestions()
+        },
+        onRejected = function(e) {
+          if (warmup_is_current()) {
+            append_chat_if_active(
+              paste0("Warmup failed: ", conditionMessage(e)),
+              session_id = start_session_id
+            )
+            append_start_suggestions()
+          }
+          NULL
+        }
+      )
       promises::finally(
-        run_warmup(ses, store, append_chat),
-        function() bslib::update_task_button("start", state = "ready")
+        warmup_done,
+        function() {
+          if (warmup_is_current()) {
+            bslib::update_task_button("start", state = "ready")
+          }
+        }
       )
     })
 
@@ -174,24 +240,48 @@ mod_chat_server <- function(id, config, store) {
       if (nzchar(ans)) {
         ses$add_turn("Moderator", "assistant", ans)
       }
-      tryCatch(
-        ses$extract_facts(ans),
-        error = function(e) {
-          warning("Fact extraction failed: ", conditionMessage(e))
-        }
+      session_id <- active_session_id
+      suggest_enabled <- isTRUE(input$suggest)
+      later::later(
+        function() {
+          if (
+            isTRUE(session_ended) || !identical(session_id, active_session_id)
+          ) {
+            return()
+          }
+          tryCatch(
+            ses$extract_facts(ans),
+            error = function(e) {
+              warning("Fact extraction failed: ", conditionMessage(e))
+            }
+          )
+          tryCatch(
+            ses$update_mindmap(
+              last_exchange = paste0("User: ", msg, "\n\nModerator: ", ans)
+            ),
+            error = function(e) {
+              warning("Mind map update failed: ", conditionMessage(e))
+            }
+          )
+          if (
+            isTRUE(session_ended) || !identical(session_id, active_session_id)
+          ) {
+            return()
+          }
+          store$touch()
+          if (nzchar(msg)) {
+            append_suggestions(
+              ses,
+              suggest_enabled,
+              function(text) {
+                append_chat_if_active(text, session_id = session_id)
+              },
+              n = 4
+            )
+          }
+        },
+        delay = 0
       )
-      tryCatch(
-        ses$update_mindmap(
-          last_exchange = paste0("User: ", msg, "\n\nModerator: ", ans)
-        ),
-        error = function(e) {
-          warning("Mind map update failed: ", conditionMessage(e))
-        }
-      )
-      store$touch()
-      if (nzchar(msg)) {
-        maybe_append_suggestions(ses)
-      }
     })
 
     # --- Report generation ---------------------------------------------------
@@ -351,12 +441,18 @@ append_suggestions <- function(ses, enabled, append_fn, n = 4) {
   if (is.null(ses) || !isTRUE(enabled)) {
     return(invisible(NULL))
   }
-  questions <- tryCatch(ses$suggest_questions(n), error = function(e) character())
+  questions <- tryCatch(ses$suggest_questions(n), error = function(e) {
+    character()
+  })
   cards <- suggestion_cards(questions)
   if (!is.null(cards)) {
     append_fn(cards)
   }
   invisible(NULL)
+}
+
+should_delay_start_suggestions <- function(warmup_enabled, personas) {
+  isTRUE(warmup_enabled) && length(personas) > 0
 }
 
 warmup_prompt <- function(topic, question) {
@@ -368,9 +464,10 @@ warmup_prompt <- function(topic, question) {
     question,
     "\n\n",
     "Instructions:\n",
-    "- Use web_search + fetch_url to find and cite sources.\n",
-    "- Only state factual claims supported by sources you fetched.\n",
-    "- For each factual sentence, add citations like [Sxxxxxxxxxxxx].\n",
+    "- Use the available web/source tools to find and cite sources.\n",
+    "- If web_search and fetch_url are available, search first and then fetch sources.\n",
+    "- Only state factual claims supported by sources you inspected.\n",
+    "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
     "- If evidence is weak or unclear, say so.\n\n",
     "Respond now:"
   )
@@ -428,44 +525,290 @@ warmup_summary <- function(ses) {
   )
 }
 
-# Research each expert's initial questions in turn, streaming progress into the
-# chat. Returns a promise that resolves when warmup finishes.
-run_warmup <- function(ses, store, append_chat) {
-  append_chat(
+warmup_is_current <- function(is_current) {
+  tryCatch(
+    isTRUE(is_current()),
+    error = function(e) FALSE
+  )
+}
+
+warmup_timeout_condition <- function(label, timeout_s) {
+  structure(
+    list(
+      message = sprintf("%s timed out after %.0f seconds", label, timeout_s),
+      call = NULL,
+      label = label,
+      timeout_s = timeout_s
+    ),
+    class = c("tempest_warmup_timeout", "error", "condition")
+  )
+}
+
+warmup_with_timeout <- function(promise, timeout_s, label = "Warmup step") {
+  if (is.null(timeout_s) || !is.finite(timeout_s) || timeout_s <= 0) {
+    return(promise)
+  }
+
+  promises::promise(function(resolve, reject) {
+    settled <- FALSE
+
+    later::later(
+      function() {
+        if (!settled) {
+          settled <<- TRUE
+          reject(warmup_timeout_condition(label, timeout_s))
+        }
+      },
+      delay = timeout_s
+    )
+
+    promises::then(
+      promise,
+      onFulfilled = function(value) {
+        if (!settled) {
+          settled <<- TRUE
+          resolve(value)
+        }
+      },
+      onRejected = function(err) {
+        if (!settled) {
+          settled <<- TRUE
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+warmup_question_label <- function(question, width = 120) {
+  question <- stringi::stri_trim_both(question %||% "")
+  if (!nzchar(question)) {
+    return("(untitled question)")
+  }
+  if (nchar(question, type = "width") <= width) {
+    return(question)
+  }
+  paste0(substr(question, 1, width - 3), "...")
+}
+
+warmup_chat_response <- function(expert_chat, prompt) {
+  response <- tryCatch(
+    expert_chat$chat_async(prompt),
+    error = function(e) promises::promise_reject(e)
+  )
+  promises::then(
+    promises::promise_resolve(response),
+    function(value) warmup_response_text(expert_chat, value)
+  )
+}
+
+warmup_response_text <- function(expert_chat, response) {
+  turn <- tryCatch(expert_chat$last_turn(), error = function(e) NULL)
+  text <- tryCatch(
+    if (is.null(turn)) "" else ellmer::contents_markdown(turn),
+    error = function(e) ""
+  )
+  if (nzchar(text)) {
+    return(text)
+  }
+  if (is.character(response) && length(response) > 0) {
+    return(paste(response, collapse = ""))
+  }
+  ""
+}
+
+warmup_selected_questions <- function(
+  questions,
+  max_questions_per_expert = Inf
+) {
+  questions <- stringi::stri_trim_both(questions %||% character())
+  questions <- questions[!is.na(questions) & nzchar(questions)]
+
+  if (
+    is.null(max_questions_per_expert) ||
+      !is.finite(max_questions_per_expert)
+  ) {
+    return(questions)
+  }
+
+  limit <- suppressWarnings(as.integer(max_questions_per_expert[[1]]))
+  if (is.na(limit) || limit < 1L) {
+    return(character())
+  }
+  utils::head(questions, limit)
+}
+
+warmup_safe_append <- function(text, append_chat, is_current) {
+  if (warmup_is_current(is_current)) {
+    append_chat(text)
+  }
+  invisible(NULL)
+}
+
+warmup_safe_touch <- function(store, is_current) {
+  if (warmup_is_current(is_current)) {
+    store$touch()
+  }
+  invisible(NULL)
+}
+
+# Research each expert's initial questions, running independent experts in
+# bounded parallel batches. Questions for one expert remain ordered because each
+# expert chat is stateful. Returns a promise that resolves when warmup finishes.
+run_warmup <- function(
+  ses,
+  store,
+  append_chat,
+  is_current = function() TRUE,
+  timeout_s = getOption("tempest.shiny.warmup_timeout_s", 120),
+  max_questions_per_expert = getOption(
+    "tempest.shiny.warmup_max_questions_per_expert",
+    Inf
+  ),
+  max_parallel_experts = getOption(
+    "tempest.shiny.warmup_max_parallel_experts",
+    3L
+  )
+) {
+  if (!warmup_is_current(is_current)) {
+    return(promises::promise_resolve(NULL))
+  }
+
+  safe_append <- function(text) {
+    warmup_safe_append(text, append_chat, is_current)
+  }
+  safe_touch <- function() {
+    warmup_safe_touch(store, is_current)
+  }
+
+  safe_append(
     "**Running warmup phase...** Each expert is researching their initial questions."
   )
 
-  research_expert <- function(prev, idx) {
-    promises::then(prev, function(...) {
+  if (is.null(max_parallel_experts) || length(max_parallel_experts) == 0L) {
+    max_parallel_experts <- 3L
+  } else {
+    max_parallel_experts <- suppressWarnings(
+      as.integer(max_parallel_experts[[1]])
+    )
+  }
+  if (is.na(max_parallel_experts) || max_parallel_experts < 1L) {
+    max_parallel_experts <- 1L
+  }
+
+  research_expert <- function(idx) {
+    promises::then(promises::promise_resolve(NULL), function(...) {
+      if (!warmup_is_current(is_current)) {
+        return(NULL)
+      }
       persona <- ses$personas[[idx]]
       name <- persona$name %||% paste("Expert", idx)
-      questions <- persona$initial_questions %||% character()
+      all_questions <- persona$initial_questions %||% character()
+      questions <- warmup_selected_questions(
+        all_questions,
+        max_questions_per_expert
+      )
       if (length(questions) == 0) {
         return(NULL)
       }
-      append_chat(sprintf(
+      skipped <- max(length(all_questions) - length(questions), 0L)
+      safe_append(sprintf(
         "**%s** researching (%d questions)...",
         name,
         length(questions)
       ))
+      if (skipped > 0L) {
+        safe_append(sprintf(
+          "**%s** skipping %d remaining warmup questions for this run.",
+          name,
+          skipped
+        ))
+      }
       expert_chat <- ses$expert_session_manager$get_or_create(persona)$chat
 
       answered <- Reduce(
-        function(acc, question) {
+        function(acc, question_idx) {
           promises::then(acc, function(...) {
-            expert_chat$chat_async(warmup_prompt(ses$topic, question))
+            if (!warmup_is_current(is_current)) {
+              return(NULL)
+            }
+
+            question <- questions[[question_idx]]
+            label <- sprintf(
+              "%s warmup question %d/%d",
+              name,
+              question_idx,
+              length(questions)
+            )
+            safe_append(sprintf(
+              "**%s** warmup question %d/%d: %s",
+              name,
+              question_idx,
+              length(questions),
+              warmup_question_label(question)
+            ))
+
+            chat_promise <- warmup_chat_response(
+              expert_chat,
+              warmup_prompt(ses$topic, question)
+            )
+
+            warmup_with_timeout(chat_promise, timeout_s, label) |>
+              promises::then(function(response) {
+                if (!warmup_is_current(is_current)) {
+                  return(NULL)
+                }
+
+                record_warmup_turn(ses, name, question, response)
+                safe_touch()
+              }) |>
+              promises::catch(function(e) {
+                if (!warmup_is_current(is_current)) {
+                  return(NULL)
+                }
+
+                if (inherits(e, "tempest_warmup_timeout")) {
+                  safe_append(sprintf(
+                    "**%s** warmup question %d/%d timed out after %.0f seconds; skipping it.",
+                    name,
+                    question_idx,
+                    length(questions),
+                    timeout_s
+                  ))
+                } else {
+                  safe_append(sprintf(
+                    "**%s** warmup question %d/%d failed: %s",
+                    name,
+                    question_idx,
+                    length(questions),
+                    conditionMessage(e)
+                  ))
+                }
+                NULL
+              })
           }) |>
-            promises::then(function(response) {
-              record_warmup_turn(ses, name, question, response)
-              store$touch()
+            promises::catch(function(e) {
+              if (warmup_is_current(is_current)) {
+                safe_append(sprintf(
+                  "**%s** warmup question %d/%d failed: %s",
+                  name,
+                  question_idx,
+                  length(questions),
+                  conditionMessage(e)
+                ))
+              }
+              NULL
             })
         },
-        questions,
+        seq_along(questions),
         promises::promise_resolve(NULL)
       )
 
       promises::then(answered, function(...) {
-        append_chat(sprintf(
+        if (!warmup_is_current(is_current)) {
+          return(NULL)
+        }
+        safe_append(sprintf(
           "**%s** done (%d facts so far)",
           name,
           length(ses$store$list_claims())
@@ -473,18 +816,34 @@ run_warmup <- function(ses, store, append_chat) {
       })
     }) |>
       promises::catch(function(e) {
-        append_chat(paste0("Warmup error: ", conditionMessage(e)))
+        if (warmup_is_current(is_current)) {
+          safe_append(paste0("Warmup error: ", conditionMessage(e)))
+        }
         NULL
       })
   }
 
-  chain <- Reduce(
-    research_expert,
-    seq_along(ses$personas),
-    promises::promise_resolve(NULL)
+  expert_indices <- seq_along(ses$personas)
+  batches <- split(
+    expert_indices,
+    ceiling(seq_along(expert_indices) / max_parallel_experts)
   )
+  run_batch <- function(prev, batch) {
+    promises::then(prev, function(...) {
+      if (!warmup_is_current(is_current)) {
+        return(NULL)
+      }
+      promises::promise_all(.list = lapply(batch, research_expert)) |>
+        promises::then(function(...) NULL)
+    })
+  }
+
+  chain <- Reduce(run_batch, batches, promises::promise_resolve(NULL))
   promises::then(chain, function(...) {
-    append_chat(warmup_summary(ses))
-    store$touch()
+    if (!warmup_is_current(is_current)) {
+      return(NULL)
+    }
+    safe_append(warmup_summary(ses))
+    safe_touch()
   })
 }
