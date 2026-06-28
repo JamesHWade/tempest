@@ -352,6 +352,34 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
+    #' Harvest source metadata from provider-native web tool responses.
+    #' @param chat Optional chat whose last turn should be inspected.
+    #' @param turn Optional explicit ellmer turn.
+    #' @return Character vector of source ids added or updated.
+    harvest_native_sources = function(chat = NULL, turn = NULL) {
+      ids <- character()
+      if (!is.null(turn)) {
+        ids <- c(
+          ids,
+          tempest_harvest_native_sources_from_turn(
+            turn,
+            self$store
+          )
+        )
+      }
+      if (!is.null(chat)) {
+        ids <- c(
+          ids,
+          tempest_harvest_native_sources_from_chat(
+            chat,
+            self$store
+          )
+        )
+      }
+      unique(ids[!is.na(ids) & nzchar(ids)])
+    },
+
+    #' @description
     #' Suggest follow-up questions for the user based on the conversation so far.
     #' @param n Maximum number of questions to return.
     #' @return A character vector of questions (possibly empty).
@@ -459,6 +487,7 @@ TempestSession <- R6::R6Class(
 
       # The moderator will use expert tools as needed
       ans <- self$chats$moderator$chat(prompt, echo = "none")
+      self$harvest_native_sources(chat = self$chats$moderator)
       self$add_turn("Moderator", "assistant", ans)
 
       # Extract facts (best-effort)
@@ -538,6 +567,7 @@ TempestSession <- R6::R6Class(
           )
 
           response <- chat$chat(prompt, echo = "none")
+          self$harvest_native_sources(chat = chat)
 
           # Extract facts from expert response
           self$expert_session_manager$extract_facts(response)

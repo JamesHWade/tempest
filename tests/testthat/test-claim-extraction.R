@@ -42,3 +42,31 @@ test_that("extraction keeps claims when the optional confidence is omitted", {
   expect_equal(claims[[1]]@claim_text, "no-confidence claim")
   expect_equal(claims[[1]]@confidence, "medium") # NA confidence defaults, not aborts
 })
+
+test_that("extraction resolves cited source URLs to stored source ids", {
+  store <- fake_store_with_sources(1)
+  source <- store$list_sources()[[1]]
+  chat <- fake_chat(
+    structured = list(list(
+      facts = list(list(
+        claim = "url-backed claim",
+        sources = list(list(url = source$url)),
+        confidence = "high"
+      ))
+    ))
+  )
+
+  tempest_extract_facts_from_answer(
+    chat,
+    paste("url-backed claim", source$url),
+    store
+  )
+
+  claims <- store$list_claims()
+  expect_length(claims, 1)
+  expect_equal(claims[[1]]@source_ids, source$id)
+
+  prompts <- vapply(chat$.calls(), function(call) call$prompt, character(1))
+  expect_match(prompts[[1]], "<known_sources>", fixed = TRUE)
+  expect_match(prompts[[1]], source$id, fixed = TRUE)
+})

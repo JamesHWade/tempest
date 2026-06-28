@@ -266,3 +266,66 @@ test_that("expert tools fall back to returned text", {
   prompts <- vapply(fake$.calls(), function(call) call$prompt, character(1))
   expect_match(prompts[[1]], "available web/source tools", fixed = TRUE)
 })
+
+test_that("expert tools harvest native search sources before fact extraction", {
+  skip_if_not_installed("ellmer")
+
+  url <- "https://example.org/native-source"
+  source_id <- tempest:::tempest_source_id(url)
+  SearchResponse <- getFromNamespace("ContentToolResponseSearch", "ellmer")
+  turn <- ellmer::AssistantTurn(
+    contents = list(
+      SearchResponse(
+        urls = url,
+        json = list(
+          results = list(list(
+            title = "Native Source",
+            url = url,
+            snippet = "Native source snippet."
+          ))
+        )
+      ),
+      ellmer::ContentText(paste("Native-backed claim", url))
+    )
+  )
+  expert_chat <- list(
+    chat = function(prompt, ...) paste("Native-backed claim", url),
+    last_turn = function() turn,
+    register_tools = function(...) invisible(NULL)
+  )
+  extractor <- fake_chat(
+    structured = list(list(
+      facts = list(list(
+        claim = "Native-backed claim",
+        sources = list(list(url = url)),
+        confidence = "high"
+      ))
+    ))
+  )
+  cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+    if (identical(role, "expert")) expert_chat else fake_chat()
+  })
+  store <- tempest:::SourceStore$new()
+  retriever <- tempest:::tempest_retriever(config = cfg, store = store)
+  mgr <- tempest:::ExpertSessionManager$new(
+    cfg,
+    retriever,
+    extractor = extractor,
+    store = store
+  )
+  persona <- list(
+    id = 1,
+    name = "Dr. Sarah Chen",
+    title = "Climate Scientist",
+    perspective = "Physical science perspective"
+  )
+
+  tool <- tempest:::tempest_create_expert_tool(persona, mgr, "Climate change")
+  result <- tool(question = "What should we know?")
+
+  expect_equal(result$response, paste("Native-backed claim", url))
+  expect_equal(store$get_source(source_id)$title, "Native Source")
+  claims <- store$list_claims()
+  expect_length(claims, 1)
+  expect_equal(claims[[1]]@source_ids, source_id)
+})
