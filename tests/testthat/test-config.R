@@ -3,7 +3,16 @@ test_that("tempest_config creates valid config", {
   expect_true(S7::S7_inherits(cfg, TempestConfig))
 
   expect_true(!is.null(cfg@models))
-  expect_true(!is.null(cfg@models$coordinator))
+  expect_equal(
+    cfg@models,
+    list(
+      coordinator = "openai/gpt-5.4",
+      writer = "openai/gpt-5.4",
+      expert = "openai/gpt-5.4-mini",
+      mindmap = "openai/gpt-5.4-mini",
+      judge = "openai/gpt-5.4-mini"
+    )
+  )
   expect_true(!is.null(cfg@search_provider))
   expect_equal(cfg@max_search_queries_per_turn, 3L)
   expect_equal(cfg@retrieve_top_k, 25L)

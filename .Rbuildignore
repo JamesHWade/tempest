@@ -11,5 +11,8 @@
 ^dev$
 ^tempest_recommendations\.md$
 ^.*\.Rproj$
+^\.git$
 ^\.Rproj\.user$
 ^\.positai$
+^\.kata\.toml$
+^AGENTS\.md$

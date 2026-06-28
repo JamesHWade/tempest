@@ -1,5 +1,7 @@
 # tempest 0.1.0
 
+* `tempest_config()` now defaults to `openai/gpt-5.4` for coordinator and
+  writer roles, and `openai/gpt-5.4-mini` for expert, mind map, and judge roles.
 * The Chat tab now suggests follow-up questions as clickable cards. A set appears
   when the expert panel assembles and refreshes after each answer; clicking a card
   sends that question to the Moderator. Toggle it off with "Suggest follow-up

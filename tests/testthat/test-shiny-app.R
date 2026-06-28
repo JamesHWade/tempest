@@ -39,6 +39,15 @@ test_that("module UIs namespace their input ids", {
   expect_match(paste(html, collapse = ""), "storm-topic")
 })
 
+test_that("config UI uses current OpenAI model defaults", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  app <- source_shiny_modules()
+  html <- paste(as.character(app$mod_config_ui("config")), collapse = "")
+  expect_match(html, "openai/gpt-5.4", fixed = TRUE)
+  expect_match(html, "openai/gpt-5.4-mini", fixed = TRUE)
+})
+
 test_that("the About popover links the papers and upstream repos", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")

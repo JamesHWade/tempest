@@ -122,11 +122,11 @@ tempest_config <- function(
   on_unsupported_claim = "flag"
 ) {
   default_models <- list(
-    coordinator = "openai/gpt-5-mini",
-    writer = "openai/gpt-5-mini",
-    expert = "openai/gpt-5-mini",
-    mindmap = "openai/gpt-5-mini",
-    judge = "openai/gpt-5-mini"
+    coordinator = "openai/gpt-5.4",
+    writer = "openai/gpt-5.4",
+    expert = "openai/gpt-5.4-mini",
+    mindmap = "openai/gpt-5.4-mini",
+    judge = "openai/gpt-5.4-mini"
   )
   models <- if (is.null(models)) {
     default_models
@@ -190,7 +190,7 @@ tempest_make_chat <- function(
 ) {
   model <- config@models[[role]] %||%
     config@models[["coordinator"]] %||%
-    "openai/gpt-5-mini"
+    "openai/gpt-5.4"
   if (is.null(system_prompt)) {
     prompt_name <- paste0(role, "_system")
     system_prompt <- tryCatch(tempest_prompt(prompt_name), error = function(e) {
