@@ -37,6 +37,11 @@ test_that("module UIs namespace their input ids", {
   html <- as.character(app$mod_storm_ui("storm"))
   expect_match(paste(html, collapse = ""), "storm-run")
   expect_match(paste(html, collapse = ""), "storm-topic")
+  chat_html <- paste(
+    as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
+    collapse = ""
+  )
+  expect_match(chat_html, "chat-progress")
 })
 
 test_that("config UI uses current OpenAI model defaults", {
@@ -364,6 +369,94 @@ test_that("the chat sidebar offers a follow-up-questions toggle", {
   expect_match(html, "Suggest follow-up questions")
 })
 
+test_that("workflow_progress_ui renders reducer state", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  state <- tempest_progress_state(list(
+    tempest_progress_event(
+      run_id = "session-1",
+      workflow = "costorm",
+      event_type = "workflow",
+      status = "started",
+      stage = "session",
+      step = "created"
+    ),
+    tempest_progress_event(
+      run_id = "session-1",
+      workflow = "costorm",
+      event_type = "stage",
+      status = "started",
+      stage = "warmup",
+      step = "expert_fanout"
+    ),
+    tempest_progress_event(
+      run_id = "session-1",
+      workflow = "costorm",
+      event_type = "expert",
+      status = "started",
+      stage = "warmup",
+      step = "expert_fanout",
+      payload = list(expert_name = "Dr. Flow")
+    )
+  ))
+
+  html <- paste(
+    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    collapse = ""
+  )
+
+  expect_match(html, "Co-STORM")
+  expect_match(html, "Running")
+  expect_match(html, "Warmup")
+  expect_match(html, "Dr. Flow")
+})
+
+test_that("storm_progress_state renders failed and running states", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  running <- app$storm_progress_state(list(app$storm_running_event("Topic")))
+  failed <- app$storm_progress_state(list(), "error")
+
+  expect_equal(running$status, "running")
+  expect_equal(failed$status, "failed")
+  html <- paste(
+    as.character(app$workflow_progress_ui(failed, app$storm_stage_labels())),
+    collapse = ""
+  )
+  expect_match(html, "Failed")
+  expect_match(html, "STORM pipeline failed")
+})
+
+test_that("workflow_progress_ui hides recorded failures once succeeded", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  state <- tempest_progress_state(list(
+    tempest_progress_event(
+      run_id = "run-1",
+      workflow = "storm",
+      event_type = "tool",
+      status = "failed",
+      stage = "research",
+      step = "web_search",
+      payload = list(error_message = "transient tool error")
+    ),
+    tempest_progress_event(
+      run_id = "run-1",
+      workflow = "storm",
+      event_type = "workflow",
+      status = "succeeded"
+    )
+  ))
+
+  expect_equal(state$status, "succeeded")
+  expect_length(state$failures, 1L)
+  html <- paste(
+    as.character(app$workflow_progress_ui(state, app$storm_stage_labels())),
+    collapse = ""
+  )
+  expect_no_match(html, "transient tool error")
+})
+
 await_promise <- function(promise, timeout_s = 2) {
   done <- FALSE
   value <- NULL
@@ -394,7 +487,8 @@ await_promise <- function(promise, timeout_s = 2) {
 fake_warmup_session <- function(
   chat_async,
   stream_async = NULL,
-  personas = NULL
+  personas = NULL,
+  progress = NULL
 ) {
   turns <- new.env(parent = emptyenv())
   turns$n <- 0L
@@ -451,6 +545,33 @@ fake_warmup_session <- function(
       list_claims = function() list(),
       list_sources = function() list()
     ),
+    emit_progress = function(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
+      event <- tempest_progress_event(
+        run_id = "fake-session",
+        workflow = "costorm",
+        event_type = event_type,
+        status = status,
+        stage = stage,
+        step = step,
+        message = message,
+        payload = payload,
+        parent_event_id = parent_event_id,
+        correlation_id = correlation_id
+      )
+      if (!is.null(progress)) {
+        progress(event)
+      }
+      event
+    },
     turns = turns
   )
 }
@@ -491,6 +612,55 @@ test_that("run_warmup reports per-question progress and finishes", {
   expect_match(transcript, "Warmup complete")
   expect_equal(store$count(), 2)
   expect_equal(ses$turns$n, 1)
+})
+
+test_that("run_warmup records progress events for reducer rendering", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  collector <- tempest_progress_collector(include_payload = TRUE)
+  store <- fake_warmup_store()
+  ses <- fake_warmup_session(
+    function(prompt) promises::promise_resolve("Supported answer."),
+    progress = collector$record
+  )
+
+  await_promise(app$run_warmup(
+    ses,
+    store,
+    function(x) x,
+    timeout_s = 1,
+    max_questions_per_expert = 1
+  ))
+
+  labels <- vapply(
+    collector$data(),
+    function(event) {
+      paste(
+        event$event_type,
+        event$stage,
+        event$step,
+        event$status,
+        sep = ":"
+      )
+    },
+    character(1)
+  )
+  state <- tempest_progress_state(collector$events())
+
+  expect_contains(
+    labels,
+    c(
+      "stage:warmup:expert_fanout:started",
+      "expert:warmup:expert_fanout:started",
+      "tool:warmup:expert_question:started",
+      "tool:warmup:expert_question:succeeded",
+      "expert:warmup:expert_fanout:succeeded",
+      "stage:warmup:expert_fanout:succeeded"
+    )
+  )
+  expect_equal(state$completed_stages, "warmup")
+  expect_length(state$active$tools, 0L)
 })
 
 test_that("run_warmup does not stream warmup answers into the main chat", {

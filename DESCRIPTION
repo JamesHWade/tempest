@@ -71,6 +71,7 @@ Collate:
     'dsprrr.R'
     'evals.R'
     'models.R'
+    'progress-events.R'
     'prompts.R'
     'retriever.R'
     'run-persistence.R'

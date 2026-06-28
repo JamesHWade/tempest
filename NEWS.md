@@ -25,10 +25,14 @@
 * `tempest_optimize_dsprrr_modules()`, `tempest_save_dsprrr_modules()`, and
   `tempest_load_dsprrr_modules()` support explicit dsprrr compilation and
   reuse of optimized STORM module sets.
+* `tempest_progress_event()` and `tempest_progress_event_data()` define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).
+* `tempest_progress_collector()`, `tempest_progress_filter()`, and `tempest_progress_replay()` provide host-neutral in-memory progress sinks with filtering and replay helpers (wpt9).
+* `tempest_progress_state()` reduces recorded STORM and Co-STORM progress events to compact host-neutral workflow state for UI and telemetry adapters (7f9q).
 * `tempest_run()` gains `output_dir`, `resume`, and `run_id` arguments for
   persistent staged runs with JSON and Markdown artifacts.
 * `tempest_run()` gains `parallel_writing` for upstream-style concurrent
   section writing with mirai.
+* `tempest_run()` gains a `progress` callback that emits host-neutral STORM workflow events for stages, persistence, verification, final artifacts, and terminal failures (4fn5).
 * `tempest_run()` gains `remove_duplicate` for upstream-style duplicate
   removal during the polish step.
 * `tempest_run(parallel_research = )` and `parallel_writing` now start and
@@ -36,6 +40,7 @@
   workers are unavailable, and retry any failed perspective or section so no
   research or content is silently dropped. A transient error during sequential
   research is also caught and skipped rather than aborting the whole run.
+* `tempest_session()` gains a `progress` callback that emits Co-STORM session, warmup, expert/tool, dialogue, fact extraction, mind-map, suggestion, report, artifact, and failure events (qngb).
 * `tempest_config(search_provider = )` searches now apply a request timeout
   and retry on transient HTTP errors, and a single missing or non-public
   result URL no longer discards every other result for the query.
@@ -46,6 +51,7 @@
   pointing at a stage whose output is missing.
 * The bundled Shiny app now targets shinychat's development `chat_server()`
   API for streaming, cancellation, greetings, and client state management.
+* The bundled Shiny app now renders STORM and Co-STORM workflow progress from host-neutral progress events and reducer state (e08d).
 * The bundled Shiny app no longer errors when async chat callbacks refresh the
   shared session store outside a reactive consumer.
 * The bundled Shiny app's Co-STORM warmup now runs independent experts in

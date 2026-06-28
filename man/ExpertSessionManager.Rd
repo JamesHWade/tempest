@@ -21,6 +21,10 @@ the session ID returned from previous interactions.
     \item{\code{extractor}}{Chat object for fact extraction (optional).}
 
     \item{\code{store}}{A \code{SourceStore} for storing extracted facts (optional).}
+
+    \item{\code{progress}}{Optional progress callback.}
+
+    \item{\code{run_id}}{Shared Co-STORM session id for progress events.}
   }
   \if{html}{\out{</div>}}
 }
@@ -28,6 +32,7 @@ the session ID returned from previous interactions.
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-ExpertSessionManager-initialize}{\code{ExpertSessionManager$new()}}
+    \item \href{#method-ExpertSessionManager-emit_progress}{\code{ExpertSessionManager$emit_progress()}}
     \item \href{#method-ExpertSessionManager-extract_facts}{\code{ExpertSessionManager$extract_facts()}}
     \item \href{#method-ExpertSessionManager-generate_session_id}{\code{ExpertSessionManager$generate_session_id()}}
     \item \href{#method-ExpertSessionManager-get_or_create}{\code{ExpertSessionManager$get_or_create()}}
@@ -42,7 +47,14 @@ the session ID returned from previous interactions.
   Create a new ExpertSessionManager.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExpertSessionManager$new(config, retriever, extractor = NULL, store = NULL)}
+    \preformatted{ExpertSessionManager$new(
+  config,
+  retriever,
+  extractor = NULL,
+  store = NULL,
+  progress = NULL,
+  run_id = NULL
+)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -52,6 +64,43 @@ the session ID returned from previous interactions.
       \item{\code{retriever}}{A \code{TempestRetriever} object.}
       \item{\code{extractor}}{Optional chat object for fact extraction.}
       \item{\code{store}}{Optional \code{SourceStore} for storing extracted facts.}
+      \item{\code{progress}}{Optional progress callback.}
+      \item{\code{run_id}}{Shared Co-STORM session id for progress events.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExpertSessionManager-emit_progress"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-emit_progress}{}}}
+\subsection{\code{ExpertSessionManager$emit_progress()}}{
+  Emit a Co-STORM expert progress event.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$emit_progress(
+  event_type,
+  status,
+  stage = NA_character_,
+  step = NA_character_,
+  message = NA_character_,
+  payload = list(),
+  parent_event_id = NA_character_,
+  correlation_id = NA_character_
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{event_type}}{Progress event type.}
+      \item{\code{status}}{Progress event status.}
+      \item{\code{stage}}{Optional workflow stage.}
+      \item{\code{step}}{Optional workflow step.}
+      \item{\code{message}}{Optional progress message.}
+      \item{\code{payload}}{Optional progress metadata.}
+      \item{\code{parent_event_id}}{Optional parent event id.}
+      \item{\code{correlation_id}}{Optional correlation id.}
     }
     \if{html}{\out{</div>}}
   }
