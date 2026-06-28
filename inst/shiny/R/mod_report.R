@@ -31,6 +31,17 @@ mod_report_ui <- function(id) {
 mod_report_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     report_md <- shiny::reactive(store$report() %||% "")
+    report_store <- shiny::reactive({
+      source_store <- store$report_store()
+      if (!is.null(source_store)) {
+        return(source_store)
+      }
+      ses <- store$get()
+      if (is.null(ses)) {
+        return(NULL)
+      }
+      citation_source_store(ses$store %||% NULL)
+    })
 
     filename <- function(ext) {
       paste0("tempest-", topic_slug(store$report_topic()), ext)
@@ -41,7 +52,7 @@ mod_report_server <- function(id, store) {
       if (!nzchar(md)) {
         return(empty_state("file-lines", "Generate a report to view it here."))
       }
-      markdown_ui(md)
+      markdown_ui(md, store = report_store(), include_references = TRUE)
     })
 
     output$download_md <- shiny::downloadHandler(
@@ -59,10 +70,15 @@ mod_report_server <- function(id, store) {
       content = function(file) {
         md <- report_md()
         shiny::req(nzchar(md))
+        rendered_md <- citation_markdown(
+          md,
+          store = report_store(),
+          include_references = TRUE
+        )
         body_html <- if (has_pkg("commonmark")) {
-          commonmark::markdown_html(md)
+          commonmark::markdown_html(rendered_md)
         } else {
-          paste0("<pre>", htmltools::htmlEscape(md), "</pre>")
+          paste0("<pre>", htmltools::htmlEscape(rendered_md), "</pre>")
         }
         writeLines(report_html_document(body_html), file)
       },

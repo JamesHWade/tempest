@@ -129,6 +129,90 @@ test_that("the report module renders markdown and an empty state", {
   })
 })
 
+test_that("citation_markdown renders numbered references from cited sources", {
+  app <- source_shiny_modules()
+  source_store <- fake_store_with_sources(2)
+  sources <- source_store$list_sources()
+  first_id <- sources[[1]]$id
+  second_id <- sources[[2]]$id
+  missing_id <- "S000000000000"
+  md <- paste0(
+    "First claim [",
+    first_id,
+    "] and again [",
+    first_id,
+    "]. Second claim [",
+    second_id,
+    "]. Missing claim [",
+    missing_id,
+    "]."
+  )
+
+  rendered <- app$citation_markdown(
+    md,
+    store = source_store,
+    include_references = TRUE
+  )
+
+  expect_match(rendered, "tempest-citation")
+  expect_match(rendered, "tempest-reference-panel")
+  expect_match(rendered, paste0("href=\"#tempest-ref-", first_id, "\""))
+  expect_match(rendered, paste0("id=\"tempest-ref-", first_id, "\""))
+  expect_match(rendered, "[1]", fixed = TRUE)
+  expect_match(rendered, "[2]", fixed = TRUE)
+  expect_match(rendered, "[3?]", fixed = TRUE)
+  expect_match(rendered, "Missing source metadata")
+  expect_no_match(rendered, paste0("[", first_id, "]"), fixed = TRUE)
+})
+
+test_that("citation_markdown replaces Tempest footnotes with a reference panel", {
+  app <- source_shiny_modules()
+  source_store <- fake_store_with_sources(2)
+  sources <- source_store$list_sources()
+  cited_id <- sources[[1]]$id
+  unused_title <- sources[[2]]$title
+  md <- paste0(
+    "# Report\n\nFinding [^",
+    cited_id,
+    "].\n\n## References\n\n[^",
+    cited_id,
+    "]: Old footnote.\n"
+  )
+
+  rendered <- app$citation_markdown(
+    md,
+    store = source_store,
+    include_references = TRUE
+  )
+
+  expect_match(rendered, paste0("href=\"#tempest-ref-", cited_id, "\""))
+  expect_match(rendered, "tempest-reference-panel")
+  expect_no_match(rendered, "Old footnote")
+  expect_no_match(rendered, unused_title, fixed = TRUE)
+})
+
+test_that("the report module renders linked references for cited sources", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  store <- app$new_session_store()
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+
+  shiny::testServer(app$mod_report_server, args = list(store = store), {
+    store$set_report(
+      paste0("# Findings\n\nCited finding [", source_id, "]."),
+      topic = "My Topic",
+      source_store = source_store
+    )
+    session$flushReact()
+    body <- as.character(output$body$html)
+    expect_match(body, "tempest-citation")
+    expect_match(body, "tempest-reference-panel")
+    expect_match(body, paste0("href=\"#tempest-ref-", source_id, "\""))
+    expect_match(body, "Example")
+  })
+})
+
 test_that("sources and facts modules show empty states until data exists", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
@@ -213,6 +297,38 @@ test_that("the transcript module shows recent turns from the store", {
     expect_match(body, "answer text")
     expect_match(body, "tempest-inline-icon")
     expect_no_match(body, "fa-robot")
+  })
+})
+
+test_that("the transcript module renders citations in completed answers", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  store <- app$new_session_store()
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Citation topic",
+    config = cfg,
+    personas = list(),
+    retriever = tempest_retriever(config = cfg, store = source_store)
+  )
+
+  shiny::testServer(app$mod_transcript_server, args = list(store = store), {
+    ses$add_turn(
+      "Moderator",
+      "assistant",
+      paste0("Cited answer [", source_id, "].")
+    )
+    store$set(ses)
+    session$flushReact()
+    body <- as.character(output$body$html)
+    expect_match(body, "tempest-citation")
+    expect_match(body, paste0("href=\"#tempest-ref-", source_id, "\""))
+    expect_no_match(body, paste0("[", source_id, "]"), fixed = TRUE)
   })
 })
 

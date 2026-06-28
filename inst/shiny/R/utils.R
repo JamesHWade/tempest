@@ -26,15 +26,301 @@ search_provider_choices <- function() {
 
 # Render markdown to HTML when commonmark is available, otherwise show the
 # source text in a <pre> block.
-markdown_ui <- function(md) {
+markdown_ui <- function(md, store = NULL, include_references = FALSE) {
   if (!nzchar(md %||% "")) {
     return(NULL)
   }
+  md <- citation_markdown(
+    md,
+    store = store,
+    include_references = include_references
+  )
   if (has_pkg("commonmark")) {
     shiny::HTML(commonmark::markdown_html(md))
   } else {
     shiny::pre(md)
   }
+}
+
+citation_markdown <- function(md, store = NULL, include_references = FALSE) {
+  if (!nzchar(md %||% "")) {
+    return("")
+  }
+  model <- citation_reference_model(md, store = store)
+  if (nrow(model$matches) == 0) {
+    return(model$markdown)
+  }
+  rendered <- citation_render_markers(model)
+  if (isTRUE(include_references)) {
+    rendered <- paste0(
+      rendered,
+      "\n\n",
+      citation_reference_panel_markdown(model$references)
+    )
+  }
+  rendered
+}
+
+citation_reference_model <- function(md, store = NULL) {
+  markdown <- citation_strip_tempest_footnotes(md)
+  matches <- citation_marker_matches(markdown)
+  ids <- unique(matches$id)
+  source_store <- citation_source_store(store)
+  references <- lapply(seq_along(ids), function(i) {
+    citation_reference(ids[[i]], i, source_store)
+  })
+  names(references) <- ids
+  list(markdown = markdown, matches = matches, references = references)
+}
+
+citation_strip_tempest_footnotes <- function(md) {
+  lines <- strsplit(md, "\n", fixed = TRUE)[[1]]
+  footnotes <- grepl("^\\[\\^S[0-9a-f]{12}\\]:", lines, perl = TRUE)
+  if (!any(footnotes)) {
+    return(md)
+  }
+
+  headings <- which(grepl("^##+\\s+References\\s*$", lines, perl = TRUE))
+  if (length(headings) > 0) {
+    heading <- headings[[length(headings)]]
+    meaningful <- integer()
+    if (heading < length(lines)) {
+      after <- seq.int(heading + 1L, length(lines))
+      meaningful <- after[nzchar(trimws(lines[after]))]
+    }
+    if (length(meaningful) > 0 && all(footnotes[meaningful])) {
+      keep <- seq_len(heading - 1L)
+      return(paste(lines[keep], collapse = "\n"))
+    }
+  }
+
+  paste(lines[!footnotes], collapse = "\n")
+}
+
+citation_marker_matches <- function(text) {
+  rx <- gregexpr("\\[\\^?(S[0-9a-f]{12})\\]", text, perl = TRUE)
+  starts <- as.integer(rx[[1]])
+  if (length(starts) == 1 && starts[[1]] == -1L) {
+    return(data.frame(
+      id = character(),
+      start = integer(),
+      end = integer()
+    ))
+  }
+  tokens <- regmatches(text, rx)[[1]]
+  lens <- attr(rx[[1]], "match.length")
+  data.frame(
+    id = sub("^\\[\\^?(S[0-9a-f]{12})\\]$", "\\1", tokens),
+    start = starts,
+    end = starts + lens - 1L,
+    stringsAsFactors = FALSE
+  )
+}
+
+citation_source_store <- function(store = NULL) {
+  if (is.null(store)) {
+    return(NULL)
+  }
+  if (inherits(store, "TempestRetriever")) {
+    store <- store$store
+  }
+  if (inherits(store, "SourceStore")) {
+    return(store)
+  }
+  NULL
+}
+
+citation_reference <- function(id, number, store = NULL) {
+  source <- if (is.null(store)) {
+    NULL
+  } else {
+    tryCatch(store$get_source(id), error = function(e) NULL)
+  }
+  known <- !is.null(source)
+  url <- citation_text(source$url %||% "")
+  title <- citation_text(source$title %||% "")
+  snippet <- citation_snippet(source$snippet %||% source$content_text %||% "")
+  if (!nzchar(title)) {
+    title <- if (known) paste("Source", id) else paste("Unknown source", id)
+  }
+  list(
+    id = id,
+    number = number,
+    known = known,
+    title = title,
+    url = url,
+    domain = citation_domain(url),
+    snippet = snippet,
+    provenance = if (known) "Tempest source" else "Missing source metadata"
+  )
+}
+
+citation_text <- function(x) {
+  x <- x %||% ""
+  if (length(x) == 0 || is.na(x[[1]])) {
+    return("")
+  }
+  trimws(as.character(x[[1]]))
+}
+
+citation_snippet <- function(x, max_chars = 220) {
+  x <- citation_text(x)
+  x <- gsub("\\s+", " ", x, perl = TRUE)
+  if (nchar(x) <= max_chars) {
+    return(x)
+  }
+  paste0(substr(x, 1L, max_chars - 1L), "...")
+}
+
+citation_domain <- function(url) {
+  if (!nzchar(url)) {
+    return("")
+  }
+  domain <- sub("^https?://([^/?#]+).*$", "\\1", url)
+  if (identical(domain, url)) "" else domain
+}
+
+citation_render_markers <- function(model) {
+  matches <- model$matches
+  pieces <- character()
+  cursor <- 1L
+  seen <- list()
+  for (i in seq_len(nrow(matches))) {
+    id <- matches$id[[i]]
+    start <- matches$start[[i]]
+    end <- matches$end[[i]]
+    ref <- model$references[[id]]
+    seen[[id]] <- (seen[[id]] %||% 0L) + 1L
+    pieces <- c(
+      pieces,
+      substr(model$markdown, cursor, start - 1L),
+      citation_marker_html(ref, seen[[id]])
+    )
+    cursor <- end + 1L
+  }
+  pieces <- c(pieces, substr(model$markdown, cursor, nchar(model$markdown)))
+  paste0(pieces, collapse = "")
+}
+
+citation_marker_html <- function(ref, occurrence) {
+  classes <- paste(
+    "tempest-citation",
+    if (!isTRUE(ref$known)) "tempest-citation-missing"
+  )
+  label <- if (isTRUE(ref$known)) {
+    paste0("[", ref$number, "]")
+  } else {
+    paste0("[", ref$number, "?]")
+  }
+  preview <- citation_preview(ref)
+  paste0(
+    '<a id="tempest-cite-',
+    citation_attr(ref$id),
+    "-",
+    occurrence,
+    '" class="',
+    citation_attr(classes),
+    '" href="#tempest-ref-',
+    citation_attr(ref$id),
+    '" title="',
+    citation_attr(preview),
+    '" aria-label="Reference ',
+    citation_attr(ref$number),
+    ": ",
+    citation_attr(preview),
+    '">',
+    citation_html(label),
+    "</a>"
+  )
+}
+
+citation_preview <- function(ref) {
+  parts <- c(ref$title, ref$domain, ref$snippet, ref$provenance)
+  parts <- parts[nzchar(parts)]
+  paste(parts, collapse = " | ")
+}
+
+citation_reference_panel_markdown <- function(references) {
+  if (length(references) == 0) {
+    return("")
+  }
+  items <- vapply(
+    references,
+    citation_reference_item_html,
+    character(1),
+    USE.NAMES = FALSE
+  )
+  paste0(
+    '<section class="tempest-reference-panel" aria-label="Cited references">',
+    '<h2 class="tempest-reference-heading">References</h2>',
+    paste(items, collapse = "\n"),
+    "</section>"
+  )
+}
+
+citation_reference_item_html <- function(ref) {
+  cite_link <- paste0(
+    '<a class="tempest-reference-backlink" href="#tempest-cite-',
+    citation_attr(ref$id),
+    '-1">Cited as [',
+    citation_html(ref$number),
+    "]</a>"
+  )
+  source_link <- if (nzchar(ref$url)) {
+    paste0(
+      '<a class="tempest-reference-open" href="',
+      citation_attr(ref$url),
+      '" target="_blank" rel="noopener noreferrer">Open source</a>'
+    )
+  } else {
+    '<span class="tempest-reference-open text-muted">No URL</span>'
+  }
+  paste0(
+    '<article id="tempest-ref-',
+    citation_attr(ref$id),
+    '" class="tempest-reference-item',
+    if (!isTRUE(ref$known)) " tempest-reference-missing" else "",
+    '" tabindex="-1">',
+    '<div class="tempest-reference-topline">',
+    '<span class="tempest-reference-number">[',
+    citation_html(ref$number),
+    "]</span>",
+    '<strong class="tempest-reference-title">',
+    citation_html(ref$title),
+    "</strong>",
+    "</div>",
+    '<div class="tempest-reference-meta">',
+    citation_html(citation_reference_meta(ref)),
+    "</div>",
+    if (nzchar(ref$snippet)) {
+      paste0(
+        '<p class="tempest-reference-snippet">',
+        citation_html(ref$snippet),
+        "</p>"
+      )
+    } else {
+      ""
+    },
+    '<div class="tempest-reference-actions">',
+    source_link,
+    cite_link,
+    "</div>",
+    "</article>"
+  )
+}
+
+citation_reference_meta <- function(ref) {
+  parts <- c(ref$domain, ref$provenance)
+  parts <- parts[nzchar(parts)]
+  paste(parts, collapse = " | ")
+}
+
+citation_html <- function(x) {
+  htmltools::htmlEscape(as.character(x), attribute = FALSE)
+}
+
+citation_attr <- function(x) {
+  htmltools::htmlEscape(as.character(x), attribute = TRUE)
 }
 
 # Credits shown in the navbar "About" popover: the papers and upstream repos
@@ -168,6 +454,106 @@ tempest_app_styles <- function() {
 
 .tempest-activity-label {
   overflow-wrap: anywhere;
+}
+
+.tempest-citation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.45em;
+  margin: 0 .08rem;
+  padding: .02rem .26rem;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 144, 164, .35);
+  background: rgba(74, 144, 164, .10);
+  color: #285f70;
+  font-size: .72em;
+  font-weight: 700;
+  line-height: 1.35;
+  text-decoration: none;
+  vertical-align: super;
+}
+
+.tempest-citation:hover,
+.tempest-citation:focus {
+  background: rgba(74, 144, 164, .18);
+  color: #1f4d5a;
+  outline: 2px solid rgba(74, 144, 164, .30);
+  outline-offset: 1px;
+}
+
+.tempest-citation-missing {
+  border-color: rgba(176, 42, 55, .35);
+  background: rgba(176, 42, 55, .10);
+  color: #842029;
+}
+
+.tempest-reference-panel {
+  display: grid;
+  gap: .75rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.tempest-reference-heading {
+  margin-bottom: .25rem;
+}
+
+.tempest-reference-item {
+  display: grid;
+  gap: .35rem;
+  padding: .75rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 8px;
+  background: var(--bs-body-bg, #fff);
+}
+
+.tempest-reference-item:target {
+  border-color: #4a90a4;
+  box-shadow: 0 0 0 .2rem rgba(74, 144, 164, .18);
+}
+
+.tempest-reference-missing {
+  border-color: rgba(176, 42, 55, .30);
+  background: rgba(176, 42, 55, .04);
+}
+
+.tempest-reference-topline {
+  display: flex;
+  gap: .5rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.tempest-reference-number {
+  flex: 0 0 auto;
+  color: #285f70;
+  font-weight: 700;
+}
+
+.tempest-reference-title {
+  overflow-wrap: anywhere;
+}
+
+.tempest-reference-meta,
+.tempest-reference-snippet,
+.tempest-reference-actions {
+  font-size: .9rem;
+}
+
+.tempest-reference-meta {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.tempest-reference-snippet {
+  margin-bottom: 0;
+}
+
+.tempest-reference-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
 }
 "
   ))

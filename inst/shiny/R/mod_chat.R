@@ -115,7 +115,19 @@ mod_chat_server <- function(id, config, store) {
       initial_chat,
       greeting = shinychat::chat_greeting(welcome_message())
     )
-    append_chat <- function(text) chat$append(text, role = "assistant")
+    current_source_store <- function() {
+      ses <- tryCatch(shiny::isolate(store$get()), error = function(e) NULL)
+      if (is.null(ses)) {
+        return(NULL)
+      }
+      citation_source_store(ses$store %||% NULL)
+    }
+    append_chat <- function(text) {
+      chat$append(
+        citation_markdown(text, store = current_source_store()),
+        role = "assistant"
+      )
+    }
     append_chat_if_active <- function(text, session_id = active_session_id) {
       if (!isTRUE(session_ended) && identical(session_id, active_session_id)) {
         append_chat(text)
@@ -385,7 +397,7 @@ mod_chat_server <- function(id, config, store) {
         return()
       }
       ses$artifacts[["report_md"]] <- md
-      store$set_report(md, ses$topic)
+      store$set_report(md, ses$topic, source_store = ses$store)
       store$touch()
       append_chat(sprintf(
         "Report generated (%d chars). See the **Report** tab.",
