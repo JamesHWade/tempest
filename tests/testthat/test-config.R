@@ -2,8 +2,7 @@ test_that("tempest_config creates valid config", {
   cfg <- tempest_config()
   expect_true(S7::S7_inherits(cfg, TempestConfig))
 
-  expect_true(!is.null(cfg@models))
-  expect_equal(
+  expect_mapequal(
     cfg@models,
     list(
       coordinator = "openai/gpt-5.4",
