@@ -66,7 +66,7 @@ mod_storm_server <- function(id, config, store) {
       function(topic, cfg, n_experts, strategy, max_rounds, parallel) {
         mirai::mirai(
           {
-            collector <- tempest::tempest_progress_collector(
+            collector <- progress_collector(
               include_payload = TRUE
             )
             result <- tempest::tempest_run(
@@ -86,7 +86,8 @@ mod_storm_server <- function(id, config, store) {
           n_experts = n_experts,
           strategy = strategy,
           max_rounds = max_rounds,
-          parallel = parallel
+          parallel = parallel,
+          progress_collector = storm_worker_progress_collector
         )
       }
     ) |>
@@ -193,6 +194,31 @@ storm_running_event <- function(topic) {
     event_type = "workflow",
     status = "started",
     message = paste("Running STORM pipeline for", topic)
+  )
+}
+
+storm_worker_progress_collector <- function(include_payload = FALSE) {
+  include_payload <- isTRUE(include_payload)
+  events <- list()
+
+  event_data <- function(event) {
+    props <- S7::prop_names(event)
+    data <- stats::setNames(
+      lapply(props, function(prop) S7::prop(event, prop)),
+      props
+    )
+    if (!include_payload) {
+      data$payload <- list()
+    }
+    data
+  }
+
+  list(
+    record = function(event) {
+      events[[length(events) + 1L]] <<- event_data(event)
+      invisible(event)
+    },
+    data = function() events
   )
 }
 

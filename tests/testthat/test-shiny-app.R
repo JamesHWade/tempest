@@ -427,6 +427,40 @@ test_that("storm_progress_state renders failed and running states", {
   expect_match(html, "STORM pipeline failed")
 })
 
+test_that("STORM worker uses a local serializable progress collector", {
+  app <- source_shiny_modules()
+  collector <- app$storm_worker_progress_collector(include_payload = TRUE)
+  event <- tempest_progress_event(
+    run_id = "worker-run",
+    workflow = "storm",
+    event_type = "stage",
+    status = "started",
+    stage = "research",
+    payload = list(expert = "Dr. Flow")
+  )
+
+  collector$record(event)
+  data <- collector$data()
+
+  expect_length(data, 1L)
+  expect_equal(data[[1]]$run_id, "worker-run")
+  expect_equal(data[[1]]$stage, "research")
+  expect_equal(data[[1]]$payload$expert, "Dr. Flow")
+  expect_equal(tempest_progress_state(data)$current_stage, "research")
+
+  module_source <- readLines(system.file(
+    "shiny",
+    "R",
+    "mod_storm.R",
+    package = "tempest"
+  ))
+  expect_no_match(
+    paste(module_source, collapse = "\n"),
+    "tempest::tempest_progress_collector",
+    fixed = TRUE
+  )
+})
+
 test_that("workflow_progress_ui hides recorded failures once succeeded", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
