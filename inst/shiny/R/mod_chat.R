@@ -118,8 +118,7 @@ mod_chat_server <- function(id, config, store) {
       invisible(NULL)
     }
     record_progress <- function(event) {
-      progress_events(c(shiny::isolate(progress_events()), list(event)))
-      invisible(event)
+      record_costorm_progress_event(progress_events, event, session)
     }
 
     output$progress <- shiny::renderUI({
@@ -527,6 +526,22 @@ costorm_progress_state <- function(events) {
     tempest::tempest_progress_state(events),
     error = function(e) NULL
   )
+}
+
+record_costorm_progress_event <- function(
+  progress_events,
+  event,
+  session = NULL
+) {
+  update <- function() {
+    progress_events(c(shiny::isolate(progress_events()), list(event)))
+  }
+  if (is.null(session)) {
+    update()
+  } else {
+    shiny::withReactiveDomain(session, update())
+  }
+  invisible(event)
 }
 
 costorm_stage_labels <- function() {

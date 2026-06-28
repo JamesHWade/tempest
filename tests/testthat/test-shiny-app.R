@@ -453,6 +453,50 @@ test_that("workflow_progress_ui renders reducer state", {
   expect_match(html, "Dr. Flow")
 })
 
+test_that("async Co-STORM progress renders warmup state before completion", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("later")
+  app <- source_shiny_modules()
+
+  progress_server <- function(id, app) {
+    shiny::moduleServer(id, function(input, output, session) {
+      progress_events <- shiny::reactiveVal(list())
+      output$progress <- shiny::renderUI({
+        state <- app$costorm_progress_state(progress_events())
+        app$workflow_progress_ui(state, app$costorm_stage_labels())
+      })
+      record <- function(event) {
+        app$record_costorm_progress_event(progress_events, event, session)
+      }
+    })
+  }
+
+  shiny::testServer(progress_server, args = list(app = app), {
+    event <- tempest_progress_event(
+      run_id = "async-progress",
+      workflow = "costorm",
+      event_type = "stage",
+      status = "started",
+      stage = "warmup",
+      step = "expert_fanout"
+    )
+    later::later(
+      function() {
+        record(event)
+      },
+      delay = 0
+    )
+    later::run_now(0.01)
+    session$flushReact()
+
+    html <- paste(as.character(output$progress$html), collapse = "")
+    expect_match(html, "Co-STORM")
+    expect_match(html, "Running")
+    expect_match(html, "Warmup")
+    expect_match(html, "fa-spinner")
+  })
+})
+
 test_that("storm_progress_state renders failed and running states", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
@@ -737,6 +781,50 @@ test_that("run_warmup records progress events for reducer rendering", {
   )
   expect_equal(state$completed_stages, "warmup")
   expect_length(state$active$tools, 0L)
+})
+
+test_that("run_warmup exposes running progress before expert answers resolve", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  collector <- tempest_progress_collector(include_payload = TRUE)
+  store <- fake_warmup_store()
+  resolve_chat <- NULL
+  ses <- fake_warmup_session(
+    function(prompt) {
+      promises::promise(function(resolve, reject) {
+        resolve_chat <<- resolve
+      })
+    },
+    progress = collector$record
+  )
+
+  promise <- app$run_warmup(
+    ses,
+    store,
+    function(x) x,
+    timeout_s = 1,
+    max_questions_per_expert = 1
+  )
+  deadline <- Sys.time() + 1
+  while (is.null(resolve_chat) && Sys.time() < deadline) {
+    later::run_now(0.01)
+  }
+
+  expect_equal(is.null(resolve_chat), FALSE)
+  running <- tempest_progress_state(collector$events())
+  expect_equal(running$status, "running")
+  expect_equal(running$current_stage, "warmup")
+  expect_length(running$active$tools, 1L)
+  html <- paste(
+    as.character(app$workflow_progress_ui(running, app$costorm_stage_labels())),
+    collapse = ""
+  )
+  expect_match(html, "Warmup")
+  expect_match(html, "fa-spinner")
+
+  resolve_chat("Warmup answer [S123456789abc].")
+  await_promise(promise)
 })
 
 test_that("run_warmup does not stream warmup answers into the main chat", {
