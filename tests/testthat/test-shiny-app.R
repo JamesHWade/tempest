@@ -282,6 +282,48 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
   })
 })
 
+test_that("record_warmup_turn populates facts and sources from native turns", {
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  fixture <- native_evidence_session("native warmup claim")
+  expert_chat <- list(last_turn = function() fixture$turn)
+
+  app$record_warmup_turn(
+    fixture$session,
+    "Dr. Native",
+    "What did the source say?",
+    fixture$claim_text,
+    expert_chat = expert_chat
+  )
+
+  store <- fixture$session$store
+  expect_equal(store$get_source(fixture$source_id)$title, "Native app source")
+  claims <- store$list_claims()
+  expect_length(claims, 1L)
+  expect_equal(claims[[1]]@claim_text, fixture$claim_text)
+  expect_equal(claims[[1]]@source_ids, fixture$source_id)
+})
+
+test_that("extract_chat_turn_facts populates facts and sources from native turns", {
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  fixture <- native_evidence_session("native chat claim")
+
+  ids <- app$extract_chat_turn_facts(
+    fixture$session,
+    fixture$claim_text,
+    turn = fixture$turn
+  )
+
+  expect_equal(ids, fixture$source_id)
+  store <- fixture$session$store
+  expect_equal(store$get_source(fixture$source_id)$title, "Native app source")
+  claims <- store$list_claims()
+  expect_length(claims, 1L)
+  expect_equal(claims[[1]]@claim_text, fixture$claim_text)
+  expect_equal(claims[[1]]@source_ids, fixture$source_id)
+})
+
 test_that("suggestion_cards builds a shinychat submit-card list", {
   app <- source_shiny_modules()
   md <- app$suggestion_cards(c("What is X?", "How does Y work?"))

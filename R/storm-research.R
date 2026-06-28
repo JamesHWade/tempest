@@ -158,17 +158,24 @@ tempest_normalize_fact_output <- function(x) {
 }
 
 #' @keywords internal
-tempest_answer_source_context <- function(answer_text, store) {
+tempest_answer_source_context <- function(
+  answer_text,
+  store,
+  source_ids = NULL
+) {
   sources <- store$list_sources()
   if (length(sources) == 0 || is.null(answer_text) || !nzchar(answer_text)) {
     return("")
   }
+  source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
   cited <- purrr::keep(sources, function(source) {
     source_id <- source$id %||% ""
     url <- source$url %||% ""
-    (!is.na(source_id) &&
-      nzchar(source_id) &&
-      grepl(source_id, answer_text, fixed = TRUE)) ||
+    source_id %in%
+      source_ids ||
+      (!is.na(source_id) &&
+        nzchar(source_id) &&
+        grepl(source_id, answer_text, fixed = TRUE)) ||
       (!is.na(url) && nzchar(url) && grepl(url, answer_text, fixed = TRUE))
   })
   if (length(cited) == 0) {
@@ -222,7 +229,8 @@ tempest_extract_facts_from_answer <- function(
   chat,
   answer_text,
   store,
-  module = NULL
+  module = NULL,
+  source_ids = NULL
 ) {
   # Use a separate extraction call to minimize hallucinated facts.
   # We instruct the model to ONLY extract claims that are explicitly supported
@@ -235,12 +243,23 @@ tempest_extract_facts_from_answer <- function(
     step = "fact extraction"
   )
   if (is.null(out)) {
-    source_context <- tempest_answer_source_context(answer_text, store)
+    source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
+    source_context <- tempest_answer_source_context(
+      answer_text,
+      store,
+      source_ids = source_ids
+    )
     source_rule <- if (nzchar(source_context)) {
-      paste0(
-        "- URL citations listed in <known_sources> count as citations to their source_id; return the matching source_id.\n",
-        "- Do not use a known source unless its URL or source_id appears in the answer text.\n"
-      )
+      if (length(source_ids) > 0) {
+        paste0(
+          "- Sources listed in <known_sources> were attached to this answer turn; return the matching source_id when the answer text directly supports the claim.\n"
+        )
+      } else {
+        paste0(
+          "- URL citations listed in <known_sources> count as citations to their source_id; return the matching source_id.\n",
+          "- Do not use a known source unless its URL or source_id appears in the answer text.\n"
+        )
+      }
     } else {
       ""
     }

@@ -71,6 +71,37 @@ test_that("extraction resolves cited source URLs to stored source ids", {
   expect_match(prompts[[1]], source$id, fixed = TRUE)
 })
 
+test_that("extraction uses source ids attached to provider-native turns", {
+  store <- fake_store_with_sources(1)
+  source <- store$list_sources()[[1]]
+  chat <- list(
+    chat_structured = function(prompt, type = NULL, ...) {
+      if (!grepl(source$id, prompt, fixed = TRUE)) {
+        return(list(facts = list()))
+      }
+      list(
+        facts = list(list(
+          claim = "native-backed claim",
+          sources = list(list(source_id = source$id)),
+          confidence = "high"
+        ))
+      )
+    }
+  )
+
+  tempest_extract_facts_from_answer(
+    chat,
+    "native-backed claim.",
+    store,
+    source_ids = source$id
+  )
+
+  claims <- store$list_claims()
+  expect_length(claims, 1)
+  expect_equal(claims[[1]]@claim_text, "native-backed claim")
+  expect_equal(claims[[1]]@source_ids, source$id)
+})
+
 test_that("extraction drops claims citing URLs that match no stored source", {
   store <- fake_store_with_sources(1)
   unknown_url <- "https://unknown.example/not-in-store"

@@ -697,8 +697,9 @@ ExpertSessionManager <- R6::R6Class(
     #' Extract facts from an expert response.
     #' @param response Character string response from expert.
     #' @param turn Optional ellmer turn to inspect for provider-native sources.
+    #' @param source_ids Optional source ids already harvested for the turn.
     #' @return Invisibly returns NULL.
-    extract_facts = function(response, turn = NULL) {
+    extract_facts = function(response, turn = NULL, source_ids = NULL) {
       if (!is.null(self$extractor) && !is.null(self$store)) {
         event <- self$emit_progress(
           "step",
@@ -708,11 +709,15 @@ ExpertSessionManager <- R6::R6Class(
         )
         tryCatch(
           {
-            tempest_harvest_native_sources_from_turn(turn, self$store)
+            harvested <- tempest_harvest_native_sources_from_turn(
+              turn,
+              self$store
+            )
             tempest_extract_facts_from_answer(
               self$extractor,
               response,
-              self$store
+              self$store,
+              source_ids = unique(c(source_ids, harvested))
             )
             self$emit_progress(
               "step",

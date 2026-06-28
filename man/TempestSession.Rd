@@ -253,13 +253,15 @@ objects as the session makes progress.}
   Extract facts from text into the store.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$extract_facts(text)}
+    \preformatted{TempestSession$extract_facts(text, turn = NULL, source_ids = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{text}}{Text containing factual claims.}
+      \item{\code{turn}}{Optional ellmer turn to inspect for provider-native sources.}
+      \item{\code{source_ids}}{Optional source ids already harvested for the turn.}
     }
     \if{html}{\out{</div>}}
   }

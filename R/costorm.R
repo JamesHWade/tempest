@@ -567,7 +567,9 @@ TempestSession <- R6::R6Class(
     #' @description
     #' Extract facts from text into the store.
     #' @param text Text containing factual claims.
-    extract_facts = function(text) {
+    #' @param turn Optional ellmer turn to inspect for provider-native sources.
+    #' @param source_ids Optional source ids already harvested for the turn.
+    extract_facts = function(text, turn = NULL, source_ids = NULL) {
       event <- self$emit_progress(
         "step",
         "started",
@@ -576,10 +578,15 @@ TempestSession <- R6::R6Class(
       )
       tryCatch(
         {
+          harvested <- tempest_harvest_native_sources_from_turn(
+            turn,
+            self$store
+          )
           tempest_extract_facts_from_answer(
             self$chats$extractor,
             text,
-            self$store
+            self$store,
+            source_ids = unique(c(source_ids, harvested))
           )
           self$emit_progress(
             "step",
