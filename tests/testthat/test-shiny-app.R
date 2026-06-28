@@ -91,6 +91,7 @@ test_that("the chat module provides a landing welcome message", {
 })
 
 test_that("expert cards render deterministic persona icons", {
+  skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   html <- paste(
     as.character(app$expert_card(list(
@@ -130,6 +131,7 @@ test_that("the report module renders markdown and an empty state", {
 })
 
 test_that("citation_markdown renders numbered references from cited sources", {
+  skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(2)
   sources <- source_store$list_sources()
@@ -166,6 +168,7 @@ test_that("citation_markdown renders numbered references from cited sources", {
 })
 
 test_that("citation_markdown replaces Tempest footnotes with a reference panel", {
+  skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(2)
   sources <- source_store$list_sources()

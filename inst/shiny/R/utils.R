@@ -204,8 +204,11 @@ citation_render_markers <- function(model) {
 
 citation_marker_html <- function(ref, occurrence) {
   classes <- paste(
-    "tempest-citation",
-    if (!isTRUE(ref$known)) "tempest-citation-missing"
+    c(
+      "tempest-citation",
+      if (!isTRUE(ref$known)) "tempest-citation-missing"
+    ),
+    collapse = " "
   )
   label <- if (isTRUE(ref$known)) {
     paste0("[", ref$number, "]")
@@ -571,7 +574,7 @@ tempest_inline_icon <- function(class = NULL) {
   shiny::tags$img(
     src = "logos/tempest.svg",
     alt = "",
-    class = paste("tempest-inline-icon", class)
+    class = paste(c("tempest-inline-icon", class), collapse = " ")
   )
 }
 
@@ -580,9 +583,12 @@ persona_icon <- function(name = NULL, id = NULL, size = c("md", "sm")) {
   label <- persona_icon_label(name, id)
   shiny::span(
     class = paste(
-      "tempest-persona-icon",
-      paste0("tempest-persona-icon-", persona_icon_variant(name, id)),
-      if (identical(size, "sm")) "tempest-persona-icon-sm"
+      c(
+        "tempest-persona-icon",
+        paste0("tempest-persona-icon-", persona_icon_variant(name, id)),
+        if (identical(size, "sm")) "tempest-persona-icon-sm"
+      ),
+      collapse = " "
     ),
     role = "img",
     `aria-label` = label,
