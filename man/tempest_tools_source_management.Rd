@@ -2,7 +2,7 @@
 % Please edit documentation in R/tools.R
 \name{tempest_tools_source_management}
 \alias{tempest_tools_source_management}
-\title{Get source/fact management tools (without web_search/fetch_url)}
+\title{Get source/claim management tools (without web_search/fetch_url)}
 \usage{
 tempest_tools_source_management(retriever)
 }
@@ -10,10 +10,10 @@ tempest_tools_source_management(retriever)
 \item{retriever}{A TempestRetriever object}
 }
 \value{
-List of ellmer tools for source/fact management
+List of ellmer tools for source/claim management
 }
 \description{
-Returns tools for managing sources and facts, but not the web search tools.
+Returns tools for managing sources and claims, but not the web search tools.
 Used when provider-native web search is enabled.
 }
 \keyword{internal}

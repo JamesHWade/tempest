@@ -333,7 +333,9 @@ tempest_add_tool_claim <- function(
   source_ids <- unique(as.character(source_ids))
   source_ids <- source_ids[!is.na(source_ids) & nzchar(source_ids)]
   if (length(source_ids) == 0) {
-    tempest_abort("{tool_name} requires at least one source_id.")
+    tempest_abort(
+      "{tool_name} requires at least one source_id in {.arg source_ids}."
+    )
   }
 
   unknown <- source_ids[purrr::map_lgl(
