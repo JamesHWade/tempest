@@ -2,10 +2,21 @@
 # tabs. The UI lives in the Chat sidebar; the server returns a reactive
 # `TempestConfig` that both tabs consume.
 
+shiny_default_models <- function() {
+  list(
+    coordinator = "openai/gpt-5.4",
+    expert = "openai/gpt-5.4-mini",
+    writer = "openai/gpt-5.4",
+    mindmap = "openai/gpt-5.4-mini",
+    judge = "openai/gpt-5.4-mini"
+  )
+}
+
 mod_config_ui <- function(id) {
   ns <- shiny::NS(id)
+  default_models <- shiny_default_models()
   model_input <- function(input_id, label) {
-    shiny::textInput(ns(input_id), label, value = "openai/gpt-5-mini")
+    shiny::textInput(ns(input_id), label, value = default_models[[input_id]])
   }
 
   bslib::accordion(
@@ -50,17 +61,18 @@ mod_config_ui <- function(id) {
 mod_config_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     shiny::reactive({
+      default_models <- shiny_default_models()
       trigger <- input$node_trigger
       if (isTRUE(is.na(trigger))) {
         trigger <- NULL
       }
       tempest::tempest_config(
         models = list(
-          coordinator = input$coordinator %||% "openai/gpt-5-mini",
-          expert = input$expert %||% "openai/gpt-5-mini",
-          writer = input$writer %||% "openai/gpt-5-mini",
-          mindmap = input$mindmap %||% "openai/gpt-5-mini",
-          judge = input$judge %||% "openai/gpt-5-mini"
+          coordinator = input$coordinator %||% default_models$coordinator,
+          expert = input$expert %||% default_models$expert,
+          writer = input$writer %||% default_models$writer,
+          mindmap = input$mindmap %||% default_models$mindmap,
+          judge = input$judge %||% default_models$judge
         ),
         search_provider = input$search_provider %||% "native",
         enable_discourse_manager = input$discourse %||% FALSE,

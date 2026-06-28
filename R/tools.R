@@ -2,7 +2,8 @@
 
 #' Detect provider from model name
 #'
-#' Parses model names like "openai/gpt-5-mini" or "anthropic/claude-sonnet"
+#' Parses model names like "openai/gpt-5.4-mini" or
+#' "anthropic/claude-sonnet"
 #' to extract the provider.
 #'
 #' @param model Model name string
