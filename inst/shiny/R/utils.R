@@ -338,7 +338,11 @@ workflow_stage_label <- function(value, labels = NULL) {
 
 workflow_labels <- function(workflow, kind = c("stage", "step")) {
   kind <- match.arg(kind)
-  if (!workflow %in% c("storm", "costorm")) {
+  if (is.null(workflow) || length(workflow) == 0L) {
+    return(NULL)
+  }
+  workflow <- workflow[[1]]
+  if (is.na(workflow) || !workflow %in% c("storm", "costorm")) {
     return(NULL)
   }
   tryCatch(

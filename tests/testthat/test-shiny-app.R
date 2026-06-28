@@ -626,6 +626,60 @@ test_that("STORM worker writes progress events to a stream", {
   expect_length(app$storm_merge_progress_events(list(event), streamed), 1L)
 })
 
+test_that("STORM progress stream skips malformed lines", {
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  good <- jsonlite::toJSON(
+    list(event_id = "ok", stage = "research"),
+    auto_unbox = TRUE
+  )
+  writeLines(c(good, "{not valid json", ""), stream_path)
+
+  streamed <- app$storm_read_progress_stream(stream_path)
+
+  expect_length(streamed, 1L)
+  expect_equal(streamed[[1]]$event_id, "ok")
+})
+
+test_that("STORM progress stream reads only newly appended lines", {
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  cursor <- app$storm_progress_stream_cursor()
+  first <- jsonlite::toJSON(list(event_id = "one"), auto_unbox = TRUE)
+  cat(first, "\n", file = stream_path, sep = "")
+
+  initial <- app$storm_read_progress_stream_incremental(stream_path, cursor)
+  expect_length(initial, 1L)
+  expect_equal(initial[[1]]$event_id, "one")
+  expect_length(
+    app$storm_read_progress_stream_incremental(stream_path, cursor),
+    0L
+  )
+
+  second <- jsonlite::toJSON(list(event_id = "two"), auto_unbox = TRUE)
+  cat(second, "\n", file = stream_path, append = TRUE, sep = "")
+  appended <- app$storm_read_progress_stream_incremental(stream_path, cursor)
+  expect_length(appended, 1L)
+  expect_equal(appended[[1]]$event_id, "two")
+})
+
+test_that("STORM progress stream defers a partially-written line", {
+  app <- source_shiny_modules()
+  stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  cursor <- app$storm_progress_stream_cursor()
+  cat('{"event_id":"partial"', file = stream_path, sep = "")
+
+  expect_length(
+    app$storm_read_progress_stream_incremental(stream_path, cursor),
+    0L
+  )
+
+  cat(',"stage":"research"}\n', file = stream_path, append = TRUE, sep = "")
+  completed <- app$storm_read_progress_stream_incremental(stream_path, cursor)
+  expect_length(completed, 1L)
+  expect_equal(completed[[1]]$event_id, "partial")
+})
+
 test_that("STORM progress stream renders while a task is still active", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("later")

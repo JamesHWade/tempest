@@ -308,13 +308,57 @@ storm_read_progress_stream <- function(path) {
   if (is.null(path) || !nzchar(path) || !file.exists(path)) {
     return(list())
   }
-  lines <- readLines(path, warn = FALSE)
+  storm_parse_progress_lines(readLines(path, warn = FALSE))
+}
+
+# Parse NDJSON progress lines, skipping blank or unparsable lines so a
+# partially-written or malformed line never breaks progress rendering.
+storm_parse_progress_lines <- function(lines) {
   lines <- lines[nzchar(lines)]
-  lapply(lines, function(line) {
-    storm_normalize_progress_stream_event(
-      jsonlite::fromJSON(line, simplifyVector = FALSE)
+  events <- lapply(lines, function(line) {
+    tryCatch(
+      storm_normalize_progress_stream_event(
+        jsonlite::fromJSON(line, simplifyVector = FALSE)
+      ),
+      error = function(e) NULL
     )
   })
+  events[!vapply(events, is.null, logical(1))]
+}
+
+# A mutable cursor tracking the byte offset already consumed from a stream,
+# so each poll only reads and parses newly appended bytes.
+storm_progress_stream_cursor <- function() {
+  cursor <- new.env(parent = emptyenv())
+  cursor$offset <- 0
+  cursor
+}
+
+# Read only the bytes appended since the cursor's last offset. A trailing
+# partial line (no terminating newline) is left unconsumed for the next poll.
+storm_read_progress_stream_incremental <- function(path, cursor) {
+  if (is.null(path) || !nzchar(path) || !file.exists(path)) {
+    return(list())
+  }
+  size <- file.info(path)$size
+  if (is.na(size) || size <= cursor$offset) {
+    return(list())
+  }
+  con <- file(path, open = "rb")
+  on.exit(close(con))
+  if (cursor$offset > 0) {
+    seek(con, where = cursor$offset, origin = "start")
+  }
+  bytes <- readBin(con, what = "raw", n = size - cursor$offset)
+  newlines <- which(bytes == as.raw(0x0a))
+  if (length(newlines) == 0L) {
+    return(list())
+  }
+  last <- newlines[length(newlines)]
+  complete <- rawToChar(bytes[seq_len(last)])
+  Encoding(complete) <- "UTF-8"
+  cursor$offset <- cursor$offset + last
+  storm_parse_progress_lines(strsplit(complete, "\n", fixed = TRUE)[[1]])
 }
 
 storm_normalize_progress_stream_event <- function(event) {
@@ -342,11 +386,12 @@ storm_poll_progress_stream <- function(
   is_current,
   interval = 0.2
 ) {
+  cursor <- storm_progress_stream_cursor()
   poll <- function() {
     if (!isTRUE(is_current())) {
       return(invisible(FALSE))
     }
-    events <- storm_read_progress_stream(path)
+    events <- storm_read_progress_stream_incremental(path, cursor)
     if (length(events) > 0L) {
       shiny::withReactiveDomain(session, {
         progress_events(storm_merge_progress_events(
