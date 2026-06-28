@@ -30,6 +30,7 @@
   persistent staged runs with JSON and Markdown artifacts.
 * `tempest_run()` gains `parallel_writing` for upstream-style concurrent
   section writing with mirai.
+* `tempest_run()` gains a `progress` callback that emits host-neutral STORM workflow events for stages, persistence, verification, final artifacts, and terminal failures (4fn5).
 * `tempest_run()` gains `remove_duplicate` for upstream-style duplicate
   removal during the polish step.
 * `tempest_run(parallel_research = )` and `parallel_writing` now start and

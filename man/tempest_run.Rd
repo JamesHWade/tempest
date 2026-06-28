@@ -20,6 +20,7 @@ tempest_run(
   resume = FALSE,
   run_id = NULL,
   remove_duplicate = FALSE,
+  progress = NULL,
   verbose = TRUE
 )
 }
@@ -62,6 +63,10 @@ artifacts and skip stages recorded as complete.}
 
 \item{remove_duplicate}{If \code{TRUE}, ask the polish step to remove duplicate
 or highly repetitive content while preserving unique cited claims.}
+
+\item{progress}{Optional function called with a \code{tempest_progress_event}
+object as STORM workflow stages start, finish, fail, persist artifacts, or
+make final artifacts available.}
 
 \item{verbose}{If \code{TRUE}, prints progress messages.}
 }

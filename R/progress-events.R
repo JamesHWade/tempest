@@ -166,3 +166,38 @@ tempest_progress_event_data <- function(event) {
   props <- S7::prop_names(event)
   stats::setNames(lapply(props, function(prop) S7::prop(event, prop)), props)
 }
+
+tempest_progress_callback <- function(progress) {
+  if (is.null(progress)) {
+    return(NULL)
+  }
+  if (!is.function(progress)) {
+    tempest_abort("{.arg progress} must be NULL or a function.")
+  }
+  progress
+}
+
+tempest_progress_error_payload <- function(error) {
+  list(
+    error_class = class(error)[[1]],
+    error_message = conditionMessage(error)
+  )
+}
+
+tempest_emit_progress <- function(progress, ...) {
+  if (is.null(progress)) {
+    return(invisible(NULL))
+  }
+  event <- tempest_progress_event(...)
+  tryCatch(
+    progress(event),
+    error = function(e) {
+      rlang::abort(
+        "Progress callback failed.",
+        class = "tempest_progress_callback_error",
+        parent = e
+      )
+    }
+  )
+  invisible(event)
+}
