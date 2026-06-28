@@ -11,6 +11,77 @@ test_that("tempest_prepare_run_dir creates topic slug directory", {
   expect_equal(dir.exists(run_dir), TRUE)
 })
 
+test_that("SourceStore snapshots restore durable ledger state", {
+  store <- SourceStore$new()
+  source <- tempest:::tempest_source(
+    "https://example.com/snapshot",
+    title = "Snapshot Source",
+    snippet = "Snapshot snippet"
+  )
+  store$upsert_source(source)
+  span_id <- store$add_evidence_span(tempest_evidence_span(
+    source_id = source$id,
+    quote = "snapshot evidence"
+  ))
+  claim_id <- store$add_claim(tempest_claim(
+    claim_text = "Snapshots preserve evidence.",
+    source_ids = source$id,
+    evidence_span_ids = span_id,
+    confidence = "high"
+  ))
+  store$add_dispute(tempest_dispute(
+    topic = "snapshot completeness",
+    claim_ids = claim_id,
+    evidence_balance = "agreement"
+  ))
+  store$set_artifact("report_md", "# Snapshot report")
+  store$set_artifact("ignored", "not selected")
+
+  snapshot <- tempest:::tempest_source_store_snapshot(
+    store,
+    artifacts = c("report_md", "missing")
+  )
+
+  expect_equal(snapshot$schema_version, 1L)
+  expect_type(snapshot$sources, "list")
+  expect_type(snapshot$claims, "list")
+  expect_type(snapshot$evidence_spans, "list")
+  expect_type(snapshot$disputes, "list")
+  expect_equal(names(snapshot$artifacts), "report_md")
+
+  restored <- tempest:::tempest_source_store_restore(snapshot)
+
+  expect_r6_class(restored, "SourceStore")
+  expect_equal(length(restored$list_sources()), 1)
+  expect_equal(
+    restored$get_claim(claim_id)@claim_text,
+    "Snapshots preserve evidence."
+  )
+  expect_equal(restored$claims_for_source(source$id)[[1]]@claim_id, claim_id)
+  expect_equal(
+    restored$get_evidence_for_claim(claim_id)[[1]]@quote,
+    "snapshot evidence"
+  )
+  expect_equal(restored$list_disputes()[[1]]@claim_ids, claim_id)
+  expect_equal(restored$get_artifact("report_md"), "# Snapshot report")
+  expect_null(restored$get_artifact("ignored"))
+})
+
+test_that("SourceStore restore rejects claims with unknown source ids", {
+  snapshot <- list(
+    sources = list(),
+    claims = list(tempest_claim_to_list(tempest_claim(
+      claim_text = "missing source",
+      source_ids = "Smissing"
+    )))
+  )
+
+  expect_error(
+    tempest:::tempest_source_store_restore(snapshot),
+    class = "tempest_source_store_restore_error"
+  )
+})
+
 test_that("run artifacts save and load store state", {
   skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")

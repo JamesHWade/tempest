@@ -78,6 +78,132 @@ tempest_read_json <- function(path) {
 }
 
 #' @keywords internal
+tempest_env_values <- function(env) {
+  ids <- sort(ls(env, all.names = TRUE))
+  unname(lapply(ids, function(id) env[[id]]))
+}
+
+#' @keywords internal
+tempest_source_store_snapshot <- function(store, artifacts = NULL) {
+  stopifnot(inherits(store, "SourceStore"))
+  if (!is.null(artifacts) && !is.character(artifacts)) {
+    tempest_abort("{.arg artifacts} must be NULL or a character vector.")
+  }
+
+  artifact_names <- artifacts %||% sort(ls(store$artifacts, all.names = TRUE))
+  artifact_names <- artifact_names[vapply(
+    artifact_names,
+    exists,
+    logical(1),
+    envir = store$artifacts,
+    inherits = FALSE
+  )]
+
+  list(
+    schema_version = 1L,
+    sources = store$list_sources(),
+    claims = lapply(store$list_claims(), tempest_claim_to_list),
+    evidence_spans = lapply(
+      tempest_env_values(store$evidence_spans),
+      tempest_evidence_span_to_list
+    ),
+    disputes = lapply(store$list_disputes(), tempest_dispute_to_list),
+    artifacts = stats::setNames(
+      lapply(artifact_names, function(name) store$get_artifact(name)),
+      artifact_names
+    )
+  )
+}
+
+#' @keywords internal
+tempest_source_store_restore_abort <- function(message) {
+  tempest_abort(
+    c("Cannot restore SourceStore snapshot.", x = message),
+    class = "tempest_source_store_restore_error"
+  )
+}
+
+#' @keywords internal
+tempest_source_store_restore <- function(snapshot, store = SourceStore$new()) {
+  if (!is.list(snapshot)) {
+    tempest_abort(
+      "{.arg snapshot} must be a list.",
+      class = "tempest_source_store_restore_error"
+    )
+  }
+  if (!inherits(store, "SourceStore")) {
+    tempest_abort(
+      "{.arg store} must be a SourceStore.",
+      class = "tempest_source_store_restore_error"
+    )
+  }
+
+  tempest_restore_sources(store, snapshot$sources %||% list())
+
+  source_ids <- purrr::map_chr(store$list_sources(), "id")
+  spans <- lapply(
+    snapshot$evidence_spans %||% list(),
+    tempest_evidence_span_from_list
+  )
+  for (span in spans) {
+    if (!(span@source_id %in% source_ids)) {
+      tempest_source_store_restore_abort(
+        paste0(
+          "Evidence span ",
+          span@evidence_span_id,
+          " cites unknown source id: ",
+          span@source_id,
+          "."
+        )
+      )
+    }
+    store$add_evidence_span(span)
+  }
+
+  claims <- lapply(snapshot$claims %||% list(), tempest_claim_from_list)
+  for (claim in claims) {
+    missing_source_ids <- setdiff(claim@source_ids, source_ids)
+    if (length(missing_source_ids) > 0) {
+      tempest_source_store_restore_abort(
+        paste0(
+          "Claim ",
+          claim@claim_id,
+          " cites unknown source id(s): ",
+          paste(missing_source_ids, collapse = ", "),
+          "."
+        )
+      )
+    }
+    store$add_claim(claim)
+  }
+
+  claim_ids <- purrr::map_chr(store$list_claims(), ~ .x@claim_id)
+  disputes <- lapply(snapshot$disputes %||% list(), tempest_dispute_from_list)
+  for (dispute in disputes) {
+    missing_claim_ids <- setdiff(dispute@claim_ids, claim_ids)
+    if (length(missing_claim_ids) > 0) {
+      tempest_source_store_restore_abort(
+        paste0(
+          "Dispute ",
+          dispute@dispute_id,
+          " cites unknown claim id(s): ",
+          paste(missing_claim_ids, collapse = ", "),
+          "."
+        )
+      )
+    }
+    store$add_dispute(dispute)
+  }
+
+  artifacts <- snapshot$artifacts %||% list()
+  for (name in names(artifacts)) {
+    store$set_artifact(name, artifacts[[name]])
+  }
+
+  store
+}
+
+#' @keywords internal
 tempest_restore_sources <- function(store, sources) {
   if (is.null(sources) || length(sources) == 0) {
     return(invisible(NULL))
