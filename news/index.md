@@ -39,12 +39,30 @@
   [`tempest_load_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.md)
   support explicit dsprrr compilation and reuse of optimized STORM
   module sets.
+- [`tempest_progress_event()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event.md)
+  and
+  [`tempest_progress_event_data()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event_data.md)
+  define a host-neutral STORM/Co-STORM progress event contract for
+  package and host-app integrations (g7wt).
+- [`tempest_progress_collector()`](https://jameshwade.github.io/tempest/reference/tempest_progress_collector.md),
+  [`tempest_progress_filter()`](https://jameshwade.github.io/tempest/reference/tempest_progress_filter.md),
+  and
+  [`tempest_progress_replay()`](https://jameshwade.github.io/tempest/reference/tempest_progress_replay.md)
+  provide host-neutral in-memory progress sinks with filtering and
+  replay helpers (wpt9).
+- [`tempest_progress_state()`](https://jameshwade.github.io/tempest/reference/tempest_progress_state.md)
+  reduces recorded STORM and Co-STORM progress events to compact
+  host-neutral workflow state for UI and telemetry adapters (7f9q).
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   gains `output_dir`, `resume`, and `run_id` arguments for persistent
   staged runs with JSON and Markdown artifacts.
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   gains `parallel_writing` for upstream-style concurrent section writing
   with mirai.
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  gains a `progress` callback that emits host-neutral STORM workflow
+  events for stages, persistence, verification, final artifacts, and
+  terminal failures (4fn5).
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   gains `remove_duplicate` for upstream-style duplicate removal during
   the polish step.
@@ -54,6 +72,10 @@
   perspective or section so no research or content is silently dropped.
   A transient error during sequential research is also caught and
   skipped rather than aborting the whole run.
+- [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  gains a `progress` callback that emits Co-STORM session, warmup,
+  expert/tool, dialogue, fact extraction, mind-map, suggestion, report,
+  artifact, and failure events (qngb).
 - `tempest_config(search_provider = )` searches now apply a request
   timeout and retry on transient HTTP errors, and a single missing or
   non-public result URL no longer discards every other result for the
@@ -66,6 +88,8 @@
 - The bundled Shiny app now targets shinychat’s development
   `chat_server()` API for streaming, cancellation, greetings, and client
   state management.
+- The bundled Shiny app now renders STORM and Co-STORM workflow progress
+  from host-neutral progress events and reducer state (e08d).
 - The bundled Shiny app no longer errors when async chat callbacks
   refresh the shared session store outside a reactive consumer.
 - The bundled Shiny app’s Co-STORM warmup now runs independent experts

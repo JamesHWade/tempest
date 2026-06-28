@@ -505,16 +505,6 @@ Code that inspired tempest:
 
 ## All functions
 
-- [`SimulatedUser`](https://jameshwade.github.io/tempest/reference/SimulatedUser.md)
-  : SimulatedUser
-- [`SourceStore`](https://jameshwade.github.io/tempest/reference/SourceStore.md)
-  : SourceStore (evidence ledger)
-- [`TempestRetriever`](https://jameshwade.github.io/tempest/reference/TempestRetriever.md)
-  : TempestRetriever
-- [`TempestSession`](https://jameshwade.github.io/tempest/reference/TempestSession.md)
-  : TempestSession
-- [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
-  : Run the tempest Shiny chat application
 - [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
   : Create a Tempest artifact store adapter
 - [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
@@ -535,6 +525,18 @@ Code that inspired tempest:
   : Create an in-memory Tempest artifact store
 - [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md)
   : Optimize STORM dsprrr modules
+- [`tempest_progress_collector()`](https://jameshwade.github.io/tempest/reference/tempest_progress_collector.md)
+  : Create an in-memory Tempest progress event collector
+- [`tempest_progress_event()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event.md)
+  : Create a Tempest progress event
+- [`tempest_progress_event_data()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event_data.md)
+  : Convert a Tempest progress event to a list
+- [`tempest_progress_filter()`](https://jameshwade.github.io/tempest/reference/tempest_progress_filter.md)
+  : Filter Tempest progress events
+- [`tempest_progress_replay()`](https://jameshwade.github.io/tempest/reference/tempest_progress_replay.md)
+  : Replay Tempest progress events to a callback
+- [`tempest_progress_state()`](https://jameshwade.github.io/tempest/reference/tempest_progress_state.md)
+  : Reduce Tempest progress events to workflow state
 - [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
   : Assemble a Markdown report with footnotes
 - [`tempest_retriever()`](https://jameshwade.github.io/tempest/reference/tempest_retriever.md)
@@ -557,4 +559,14 @@ Code that inspired tempest:
   : Create a vitals Task for tempest
 - [`tempest_verify_claims()`](https://jameshwade.github.io/tempest/reference/tempest_verify_claims.md)
   : Verify claim citations against their sources
+- [`SimulatedUser`](https://jameshwade.github.io/tempest/reference/SimulatedUser.md)
+  : SimulatedUser
+- [`SourceStore`](https://jameshwade.github.io/tempest/reference/SourceStore.md)
+  : SourceStore (evidence ledger)
+- [`TempestRetriever`](https://jameshwade.github.io/tempest/reference/TempestRetriever.md)
+  : TempestRetriever
+- [`TempestSession`](https://jameshwade.github.io/tempest/reference/TempestSession.md)
+  : TempestSession
+- [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
+  : Run the tempest Shiny chat application
 

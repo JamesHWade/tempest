@@ -58,6 +58,12 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_parallel_workers.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_pkg_file.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_collector.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_event.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_event_data.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_filter.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_replay.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_state.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_prompt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_provider_has_native_search.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_text.html</loc></url>

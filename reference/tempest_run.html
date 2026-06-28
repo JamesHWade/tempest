@@ -70,6 +70,7 @@ writes a cited report in Markdown.
 <span>  resume <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  run_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  remove_duplicate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -145,6 +146,12 @@ artifacts and skip stages recorded as complete.</p></dd>
 <dt id="arg-remove-duplicate">remove_duplicate<a class="anchor" aria-label="anchor" href="#arg-remove-duplicate"></a></dt>
 <dd><p>If <code>TRUE</code>, ask the polish step to remove duplicate
 or highly repetitive content while preserving unique cited claims.</p></dd>
+
+
+<dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
+<dd><p>Optional function called with a <code>tempest_progress_event</code>
+object as STORM workflow stages start, finish, fail, persist artifacts, or
+make final artifacts available.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>

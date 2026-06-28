@@ -17,6 +17,14 @@ sources, and report artifacts.
 
   A `TempestConfig` object.
 
+- `session_id`:
+
+  Stable identifier shared by progress events for the session.
+
+- `progress`:
+
+  Optional progress callback.
+
 - `store`:
 
   A `SourceStore` object.
@@ -58,6 +66,8 @@ sources, and report artifacts.
 ### Public methods
 
 - [`TempestSession$new()`](#method-TempestSession-initialize)
+
+- [`TempestSession$emit_progress()`](#method-TempestSession-emit_progress)
 
 - [`TempestSession$add_turn()`](#method-TempestSession-add_turn)
 
@@ -118,7 +128,8 @@ Create a new TempestSession.
       config = tempest_config(),
       n_experts = 3,
       personas = NULL,
-      retriever = NULL
+      retriever = NULL,
+      progress = NULL
     )
 
 #### Arguments
@@ -145,6 +156,64 @@ Create a new TempestSession.
 
   Optional `TempestRetriever` or compatible retriever object with a
   `SourceStore` at `$store`.
+
+- `progress`:
+
+  Optional function called with `tempest_progress_event` objects as the
+  session makes progress.
+
+------------------------------------------------------------------------
+
+### `TempestSession$emit_progress()`
+
+Emit a Co-STORM progress event.
+
+#### Usage
+
+    TempestSession$emit_progress(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    )
+
+#### Arguments
+
+- `event_type`:
+
+  Progress event type.
+
+- `status`:
+
+  Progress event status.
+
+- `stage`:
+
+  Optional workflow stage.
+
+- `step`:
+
+  Optional workflow step.
+
+- `message`:
+
+  Optional progress message.
+
+- `payload`:
+
+  Optional progress metadata.
+
+- `parent_event_id`:
+
+  Optional parent event id.
+
+- `correlation_id`:
+
+  Optional correlation id.
 
 ------------------------------------------------------------------------
 

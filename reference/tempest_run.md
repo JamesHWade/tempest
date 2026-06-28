@@ -30,6 +30,7 @@ tempest_run(
   resume = FALSE,
   run_id = NULL,
   remove_duplicate = FALSE,
+  progress = NULL,
   verbose = TRUE
 )
 ```
@@ -106,6 +107,12 @@ tempest_run(
 
   If `TRUE`, ask the polish step to remove duplicate or highly
   repetitive content while preserving unique cited claims.
+
+- progress:
+
+  Optional function called with a `tempest_progress_event` object as
+  STORM workflow stages start, finish, fail, persist artifacts, or make
+  final artifacts available.
 
 - verbose:
 

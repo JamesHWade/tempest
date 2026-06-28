@@ -66,6 +66,14 @@ the session ID returned from previous interactions.</p>
 <dd><p>A <code>SourceStore</code> for storing extracted facts (optional).</p></dd>
 
 
+    <dt><code>progress</code></dt>
+<dd><p>Optional progress callback.</p></dd>
+
+
+    <dt><code>run_id</code></dt>
+<dd><p>Shared Co-STORM session id for progress events.</p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -74,6 +82,7 @@ the session ID returned from previous interactions.</p>
 <div class="section">
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 <p></p><ul><li><p><a href="#method-ExpertSessionManager-initialize"><code>ExpertSessionManager$new()</code></a></p></li>
+<li><p><a href="#method-ExpertSessionManager-emit_progress"><code>ExpertSessionManager$emit_progress()</code></a></p></li>
 <li><p><a href="#method-ExpertSessionManager-extract_facts"><code>ExpertSessionManager$extract_facts()</code></a></p></li>
 <li><p><a href="#method-ExpertSessionManager-generate_session_id"><code>ExpertSessionManager$generate_session_id()</code></a></p></li>
 <li><p><a href="#method-ExpertSessionManager-get_or_create"><code>ExpertSessionManager$get_or_create()</code></a></p></li>
@@ -83,7 +92,14 @@ the session ID returned from previous interactions.</p>
 <h3 id="expertsessionmanager-new-"><code>ExpertSessionManager$new()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-new-"></a></h3>
 <p>Create a new ExpertSessionManager.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/ExpertSessionManager.html">ExpertSessionManager</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">config</span>, <span class="va">retriever</span>, extractor <span class="op">=</span> <span class="cn">NULL</span>, store <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/ExpertSessionManager.html">ExpertSessionManager</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
+<span>  <span class="va">config</span>,</span>
+<span>  <span class="va">retriever</span>,</span>
+<span>  extractor <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  store <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  run_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>config</code></dt>
@@ -98,6 +114,58 @@ the session ID returned from previous interactions.</p>
       <dt><code>store</code></dt>
 <dd><p>Optional <code>SourceStore</code> for storing extracted facts.</p></dd>
 
+      <dt><code>progress</code></dt>
+<dd><p>Optional progress callback.</p></dd>
+
+      <dt><code>run_id</code></dt>
+<dd><p>Shared Co-STORM session id for progress events.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-ExpertSessionManager-emit_progress"></a><div class="section">
+<h3 id="expertsessionmanager-emit-progress-"><code>ExpertSessionManager$emit_progress()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-emit-progress-"></a></h3>
+<p>Emit a Co-STORM expert progress event.</p><div class="section">
+<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">emit_progress</span><span class="op">(</span></span>
+<span>  <span class="va">event_type</span>,</span>
+<span>  <span class="va">status</span>,</span>
+<span>  stage <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  step <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  message <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  payload <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  parent_event_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  correlation_id <span class="op">=</span> <span class="cn">NA_character_</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>event_type</code></dt>
+<dd><p>Progress event type.</p></dd>
+
+      <dt><code>status</code></dt>
+<dd><p>Progress event status.</p></dd>
+
+      <dt><code>stage</code></dt>
+<dd><p>Optional workflow stage.</p></dd>
+
+      <dt><code>step</code></dt>
+<dd><p>Optional workflow step.</p></dd>
+
+      <dt><code>message</code></dt>
+<dd><p>Optional progress message.</p></dd>
+
+      <dt><code>payload</code></dt>
+<dd><p>Optional progress metadata.</p></dd>
+
+      <dt><code>parent_event_id</code></dt>
+<dd><p>Optional parent event id.</p></dd>
+
+      <dt><code>correlation_id</code></dt>
+<dd><p>Optional correlation id.</p></dd>
+
 
 </dl><p></p></div>
 </div>
@@ -107,10 +175,10 @@ the session ID returned from previous interactions.</p>
 <p></p><hr><a id="method-ExpertSessionManager-extract_facts"></a><div class="section">
 <h3 id="expertsessionmanager-extract-facts-"><code>ExpertSessionManager$extract_facts()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-extract-facts-"></a></h3>
 <p>Extract facts from an expert response.</p><div class="section">
-<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">extract_facts</span><span class="op">(</span><span class="va">response</span>, turn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>response</code></dt>
 <dd><p>Character string response from expert.</p></dd>
 
@@ -129,10 +197,10 @@ the session ID returned from previous interactions.</p>
 <p></p><hr><a id="method-ExpertSessionManager-generate_session_id"></a><div class="section">
 <h3 id="expertsessionmanager-generate-session-id-"><code>ExpertSessionManager$generate_session_id()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-generate-session-id-"></a></h3>
 <p>Generate a human-readable session ID from a persona name.</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">generate_session_id</span><span class="op">(</span><span class="va">persona_name</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>persona_name</code></dt>
 <dd><p>Name of the persona.</p></dd>
 
@@ -148,10 +216,10 @@ the session ID returned from previous interactions.</p>
 <p></p><hr><a id="method-ExpertSessionManager-get_or_create"></a><div class="section">
 <h3 id="expertsessionmanager-get-or-create-"><code>ExpertSessionManager$get_or_create()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-get-or-create-"></a></h3>
 <p>Get an existing session or create a new one.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">get_or_create</span><span class="op">(</span><span class="va">persona</span>, session_id <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>persona</code></dt>
 <dd><p>A persona object from <code><a href="tempest_generate_personas.html">tempest_generate_personas()</a></code>.</p></dd>
 
@@ -170,7 +238,7 @@ the session ID returned from previous interactions.</p>
 <p></p><hr><a id="method-ExpertSessionManager-list_sessions"></a><div class="section">
 <h3 id="expertsessionmanager-list-sessions-"><code>ExpertSessionManager$list_sessions()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-list-sessions-"></a></h3>
 <p>List all active session IDs.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">list_sessions</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
@@ -182,10 +250,10 @@ the session ID returned from previous interactions.</p>
 <p></p><hr><a id="method-ExpertSessionManager-clone"></a><div class="section">
 <h3 id="expertsessionmanager-clone-"><code>ExpertSessionManager$clone()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

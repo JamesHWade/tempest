@@ -26,11 +26,21 @@ resumed using the session ID returned from previous interactions.
 
   A `SourceStore` for storing extracted facts (optional).
 
+- `progress`:
+
+  Optional progress callback.
+
+- `run_id`:
+
+  Shared Co-STORM session id for progress events.
+
 ## Methods
 
 ### Public methods
 
 - [`ExpertSessionManager$new()`](#method-ExpertSessionManager-initialize)
+
+- [`ExpertSessionManager$emit_progress()`](#method-ExpertSessionManager-emit_progress)
 
 - [`ExpertSessionManager$extract_facts()`](#method-ExpertSessionManager-extract_facts)
 
@@ -50,7 +60,14 @@ Create a new ExpertSessionManager.
 
 #### Usage
 
-    ExpertSessionManager$new(config, retriever, extractor = NULL, store = NULL)
+    ExpertSessionManager$new(
+      config,
+      retriever,
+      extractor = NULL,
+      store = NULL,
+      progress = NULL,
+      run_id = NULL
+    )
 
 #### Arguments
 
@@ -69,6 +86,67 @@ Create a new ExpertSessionManager.
 - `store`:
 
   Optional `SourceStore` for storing extracted facts.
+
+- `progress`:
+
+  Optional progress callback.
+
+- `run_id`:
+
+  Shared Co-STORM session id for progress events.
+
+------------------------------------------------------------------------
+
+### `ExpertSessionManager$emit_progress()`
+
+Emit a Co-STORM expert progress event.
+
+#### Usage
+
+    ExpertSessionManager$emit_progress(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    )
+
+#### Arguments
+
+- `event_type`:
+
+  Progress event type.
+
+- `status`:
+
+  Progress event status.
+
+- `stage`:
+
+  Optional workflow stage.
+
+- `step`:
+
+  Optional workflow step.
+
+- `message`:
+
+  Optional progress message.
+
+- `payload`:
+
+  Optional progress metadata.
+
+- `parent_event_id`:
+
+  Optional parent event id.
+
+- `correlation_id`:
+
+  Optional correlation id.
 
 ------------------------------------------------------------------------
 

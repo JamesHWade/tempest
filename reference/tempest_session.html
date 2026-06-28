@@ -44,7 +44,8 @@
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  n_experts <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  personas <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  retriever <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  progress <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -72,6 +73,11 @@ personas are generated automatically.</p></dd>
 <dt id="arg-retriever">retriever<a class="anchor" aria-label="anchor" href="#arg-retriever"></a></dt>
 <dd><p>Optional <code>TempestRetriever</code> or compatible retriever object
 with a <code>SourceStore</code> at <code>$store</code>.</p></dd>
+
+
+<dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
+<dd><p>Optional function called with <code>tempest_progress_event</code>
+objects as the session makes progress.</p></dd>
 
 </dl></div>
 

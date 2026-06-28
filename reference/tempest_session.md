@@ -10,7 +10,8 @@ tempest_session(
   config = tempest_config(),
   n_experts = 3,
   personas = NULL,
-  retriever = NULL
+  retriever = NULL,
+  progress = NULL
 )
 ```
 
@@ -37,6 +38,11 @@ tempest_session(
 
   Optional `TempestRetriever` or compatible retriever object with a
   `SourceStore` at `$store`.
+
+- progress:
+
+  Optional function called with `tempest_progress_event` objects as the
+  session makes progress.
 
 ## Examples
 
