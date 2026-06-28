@@ -23,6 +23,13 @@ mod_transcript_server <- function(id, store) {
       ses <- store$get()
       if (is.null(ses)) list() else ses$transcript %||% list()
     })
+    source_store <- shiny::reactive({
+      ses <- store$get()
+      if (is.null(ses)) {
+        return(NULL)
+      }
+      citation_source_store(ses$store %||% NULL)
+    })
 
     output$header <- shiny::renderUI({
       n_turns <- length(turns())
@@ -44,8 +51,8 @@ mod_transcript_server <- function(id, store) {
       at <- turn$at %||% ""
       is_user <- identical(role, "user")
 
-      text_html <- if (has_pkg("commonmark") && nzchar(text)) {
-        shiny::HTML(commonmark::markdown_html(text))
+      text_html <- if (nzchar(text)) {
+        markdown_ui(text, store = source_store())
       } else {
         shiny::p(text)
       }
@@ -57,7 +64,11 @@ mod_transcript_server <- function(id, store) {
           shiny::div(
             class = "d-flex justify-content-between align-items-center mb-1",
             shiny::span(
-              shiny::icon(if (is_user) "user" else "robot", class = "me-1"),
+              if (is_user) {
+                shiny::icon("user", class = "me-1")
+              } else {
+                tempest_inline_icon("me-1")
+              },
               shiny::strong(speaker)
             ),
             if (nzchar(at)) shiny::tags$small(class = "text-muted", at)

@@ -12,7 +12,8 @@ new_session_store <- function() {
     session = NULL,
     version = 0L,
     report_md = NULL,
-    report_topic = NULL
+    report_topic = NULL,
+    report_source_store = NULL
   )
 
   bump_version <- function() {
@@ -47,6 +48,7 @@ new_session_store <- function() {
 
     # Generated report, shared across the Chat and STORM tabs.
     report = shiny::reactive(rv$report_md),
+    report_store = shiny::reactive(rv$report_source_store),
     report_topic = shiny::reactive({
       rv$report_topic %||%
         {
@@ -54,11 +56,12 @@ new_session_store <- function() {
           if (is.null(ses)) NULL else ses$topic
         }
     }),
-    set_report = function(md, topic = NULL) {
+    set_report = function(md, topic = NULL, source_store = NULL) {
       rv$report_md <- md
       if (!is.null(topic)) {
         rv$report_topic <- topic
       }
+      rv$report_source_store <- source_store
       invisible()
     }
   )

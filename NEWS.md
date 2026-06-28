@@ -61,6 +61,8 @@
 * The bundled Shiny app now streams STORM workflow progress from the background worker so stage chips update while a run is still in flight (1fxn).
 * The bundled Shiny app now carries provider-native source context into Co-STORM fact extraction so warmup and chat turns populate Facts and Sources when sources were attached to the answer turn (b77g).
 * The bundled Shiny app now invalidates Co-STORM progress output from asynchronous warmup callbacks so progress icons render while warmup is still running (2zbg).
+* The bundled Shiny app now renders Tempest source citations as numbered inline links with cited-source reference panels in reports, transcript answers, and HTML report downloads (k67p, pgp9, eq7b, dq0v).
+* The bundled Shiny app now uses a Tempest assistant icon in chat and transcript views plus deterministic persona icons for Co-STORM experts in the panel and workflow progress (q8zc, zb9y).
 * The bundled Shiny app no longer errors when async chat callbacks refresh the
   shared session store outside a reactive consumer.
 * The bundled Shiny app's Co-STORM warmup now runs independent experts in

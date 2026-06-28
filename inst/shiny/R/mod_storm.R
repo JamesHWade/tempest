@@ -156,7 +156,8 @@ mod_storm_server <- function(id, config, store) {
         }
         store$set_report(
           result$report_md %||% "",
-          shiny::isolate(input$topic) %||% "STORM Report"
+          shiny::isolate(input$topic) %||% "STORM Report",
+          source_store = result$store %||% NULL
         )
         storm_cleanup_progress_stream(progress_stream$path)
       } else if (identical(storm_task$status(), "error")) {

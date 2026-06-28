@@ -65,7 +65,12 @@ mod_chat_ui <- function(id, config_ui) {
         bslib::card_header(shiny::uiOutput(ns("progress"))),
         bslib::card_body(
           class = "p-0",
-          shinychat::chat_ui(ns("chat"), height = "100%", enable_cancel = TRUE)
+          shinychat::chat_ui(
+            ns("chat"),
+            height = "100%",
+            enable_cancel = TRUE,
+            icon_assistant = tempest_chat_icon()
+          )
         )
       )
     )
@@ -110,7 +115,19 @@ mod_chat_server <- function(id, config, store) {
       initial_chat,
       greeting = shinychat::chat_greeting(welcome_message())
     )
-    append_chat <- function(text) chat$append(text, role = "assistant")
+    current_source_store <- function() {
+      ses <- tryCatch(shiny::isolate(store$get()), error = function(e) NULL)
+      if (is.null(ses)) {
+        return(NULL)
+      }
+      citation_source_store(ses$store %||% NULL)
+    }
+    append_chat <- function(text) {
+      chat$append(
+        citation_markdown(text, store = current_source_store()),
+        role = "assistant"
+      )
+    }
     append_chat_if_active <- function(text, session_id = active_session_id) {
       if (!isTRUE(session_ended) && identical(session_id, active_session_id)) {
         append_chat(text)
@@ -380,7 +397,7 @@ mod_chat_server <- function(id, config, store) {
         return()
       }
       ses$artifacts[["report_md"]] <- md
-      store$set_report(md, ses$topic)
+      store$set_report(md, ses$topic, source_store = ses$store)
       store$touch()
       append_chat(sprintf(
         "Report generated (%d chars). See the **Report** tab.",
@@ -447,10 +464,17 @@ expert_intro <- function(ses) {
 
 expert_card <- function(p) {
   shiny::div(
-    class = "mb-2 p-2 border rounded small",
-    shiny::strong(p$name %||% "Expert"),
-    shiny::br(),
-    shiny::span(class = "text-muted", p$title %||% ""),
+    class = "mb-2 p-2 border small tempest-expert-card",
+    shiny::div(
+      class = "d-flex align-items-center gap-2",
+      persona_icon(p$name, p$id),
+      shiny::div(
+        class = "min-w-0",
+        shiny::strong(p$name %||% "Expert"),
+        shiny::br(),
+        shiny::span(class = "text-muted", p$title %||% "")
+      )
+    ),
     if (!is.null(p$perspective) && nzchar(p$perspective)) {
       shiny::div(class = "mt-1 fst-italic", p$perspective)
     }
