@@ -759,6 +759,8 @@ test_that("STORM worker streams progress before mirai resolves", {
   skip_if_not_installed("mirai")
   app <- source_shiny_modules()
   stream_path <- withr::local_tempfile(fileext = ".ndjson")
+  release_path <- withr::local_tempfile(fileext = ".release")
+  unlink(release_path)
   event <- tempest_progress_event(
     event_id = "mirai-research-start",
     run_id = "worker-run",
@@ -781,7 +783,10 @@ test_that("STORM worker streams progress before mirai resolves", {
         verbose
       ) {
         progress(event)
-        Sys.sleep(0.5)
+        deadline <- Sys.time() + 10
+        while (!file.exists(release_path) && Sys.time() < deadline) {
+          Sys.sleep(0.02)
+        }
         list(report_md = paste("worker run", topic))
       }
 
@@ -806,11 +811,12 @@ test_that("STORM worker streams progress before mirai resolves", {
     progress_stream_path = stream_path,
     progress_collector = app$storm_worker_progress_collector,
     storm_runner = app$storm_run_with_progress,
-    event = event
+    event = event,
+    release_path = release_path
   )
 
   seen_stream <- FALSE
-  deadline <- Sys.time() + 2
+  deadline <- Sys.time() + 10
   while (
     mirai::unresolved(value) &&
       !seen_stream &&
@@ -822,6 +828,7 @@ test_that("STORM worker streams progress before mirai resolves", {
 
   expect_equal(seen_stream, TRUE)
   expect_equal(mirai::unresolved(value), TRUE)
+  invisible(file.create(release_path))
   result <- value[]
   expect_equal(result$result$report_md, "worker run Topic")
   expect_equal(result$progress[[1]]$stage, "research")
