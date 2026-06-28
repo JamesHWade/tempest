@@ -212,6 +212,77 @@ test_that("tempest_run emits ordered STORM progress events", {
   )
 })
 
+test_that("STORM research harvests OpenAI native annotations", {
+  skip_if_not_installed("ellmer")
+
+  url <- "https://example.org/storm-native-source"
+  source_id <- tempest:::tempest_source_id(url)
+  turn <- native_openai_json_turn(
+    claim_text = "STORM native-backed claim.",
+    url = url,
+    title = "STORM Native Source"
+  )
+  expert_chat <- list(
+    chat = function(prompt, ...) "STORM native-backed claim.",
+    last_turn = function() turn,
+    register_tools = function(...) invisible(NULL)
+  )
+  writer_chat <- fake_chat(
+    structured = list(list(queries = "storm native evidence"))
+  )
+  extractor <- fake_chat(
+    structured = list(list(
+      facts = list(list(
+        claim = "STORM native-backed claim",
+        sources = list(list(source_id = source_id)),
+        confidence = "high"
+      ))
+    ))
+  )
+  cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+    if (identical(role, "expert")) {
+      return(expert_chat)
+    }
+    if (
+      identical(role, "judge") &&
+        identical(system_prompt, tempest_prompt("fact_extractor_system"))
+    ) {
+      return(extractor)
+    }
+    if (identical(role, "writer")) {
+      return(writer_chat)
+    }
+    fake_chat()
+  })
+  perspectives <- list(list(
+    name = "Native evidence",
+    description = "Native evidence perspective.",
+    key_questions = c("What does native evidence say?")
+  ))
+  personas <- list(list(
+    id = 1,
+    name = "Dr. Native",
+    title = "Researcher",
+    perspective = "Native evidence"
+  ))
+
+  result <- tempest:::tempest_research_one_perspective(
+    1,
+    perspectives = perspectives,
+    personas = personas,
+    config = cfg,
+    topic = "Native evidence",
+    research_strategy = "key_questions",
+    max_questions_per_perspective = 1,
+    dsprrr_modules = list()
+  )
+
+  expect_equal(result$sources[[1]]$id, source_id)
+  expect_equal(result$sources[[1]]$title, "STORM Native Source")
+  expect_length(result$claims, 1L)
+  expect_equal(result$claims[[1]]@source_ids, source_id)
+})
+
 test_that("tempest_run emits a failed verification stage event", {
   skip_if_not_installed("ellmer")
   local_mocked_bindings(

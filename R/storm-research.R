@@ -232,23 +232,36 @@ tempest_extract_facts_from_answer <- function(
   module = NULL,
   source_ids = NULL
 ) {
-  # Use a separate extraction call to minimize hallucinated facts.
-  # We instruct the model to ONLY extract claims that are explicitly supported
-  # by citations like [Sxxxxxxxxxxxx] in the answer.
+  # Use a separate extraction call to minimize hallucinated facts. Native
+  # provider citations need the prompt path because dsprrr modules only receive
+  # answer text and cannot see the harvested source-id context.
   type <- tempest_type_fact_extract()
-  out <- tempest_run_dsprrr_module(
-    module,
-    chat,
-    inputs = list(answer_text = answer_text),
-    step = "fact extraction"
-  )
+  source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
+  out <- NULL
+  if (length(source_ids) == 0) {
+    out <- tempest_run_dsprrr_module(
+      module,
+      chat,
+      inputs = list(answer_text = answer_text),
+      step = "fact extraction"
+    )
+  }
   if (is.null(out)) {
-    source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
     source_context <- tempest_answer_source_context(
       answer_text,
       store,
       source_ids = source_ids
     )
+    citation_rule <- if (nzchar(source_context) && length(source_ids) > 0) {
+      paste0(
+        "- Only extract claims explicitly supported by citations in the answer, including Tempest source IDs like [Sxxxxxxxxxxxx] or provider-native citation markers attached to this turn.\n",
+        "- When using provider-native citations, return only source_id values listed in <known_sources>.\n"
+      )
+    } else {
+      paste0(
+        "- Only extract claims that are explicitly supported by one or more citations in the form [Sxxxxxxxxxxxx].\n"
+      )
+    }
     source_rule <- if (nzchar(source_context)) {
       if (length(source_ids) > 0) {
         paste0(
@@ -266,7 +279,7 @@ tempest_extract_facts_from_answer <- function(
     prompt <- paste0(
       "Extract atomic factual claims from the following answer.\n\n",
       "Rules:\n",
-      "- Only extract claims that are explicitly supported by one or more citations in the form [Sxxxxxxxxxxxx].\n",
+      citation_rule,
       source_rule,
       "- For each claim, list the source_id(s) that support it.\n",
       "- Do NOT invent or infer new facts.\n\n",
@@ -291,13 +304,26 @@ tempest_extract_facts_from_answer <- function(
     return(invisible(NULL))
   }
   for (f in facts) {
-    claim <- tempest_trim(f$claim %||% "")
+    claim <- tempest_trim(as.character(f$claim %||% ""))
     if (is.na(claim) || !nzchar(claim)) {
       next
     }
-    source_refs <- purrr::map_chr(
-      f$sources %||% list(),
-      ~ .x$source_id %||% .x$id %||% .x$url %||% NA_character_
+    source_refs <- unlist(
+      purrr::map(f$sources %||% list(), function(source) {
+        if (is.null(source)) {
+          return(NA_character_)
+        }
+        if (is.character(source)) {
+          return(source)
+        }
+        ref <- source$source_id %||%
+          source$id %||%
+          source$url %||%
+          NA_character_
+        as.character(ref)
+      }),
+      recursive = TRUE,
+      use.names = FALSE
     )
     src_ids <- tempest_resolve_fact_source_ids(source_refs, store)
     # Drop citations to sources that are not in the store (hallucinated ids).
@@ -308,7 +334,8 @@ tempest_extract_facts_from_answer <- function(
     # The LLM may omit the optional confidence; normalize anything invalid to
     # "medium" so the S7 enum validator never aborts (which would discard the
     # whole answer's claims).
-    conf <- f$confidence
+    conf <- as.character(f$confidence %||% NA_character_)
+    conf <- conf[[1]]
     if (
       length(conf) != 1 || is.na(conf) || !conf %in% c("low", "medium", "high")
     ) {
@@ -424,12 +451,28 @@ tempest_research_one_perspective <- function(
         }
       )
       if (!is.null(ans)) {
+        turn <- tryCatch(expert$last_turn(), error = function(e) NULL)
+        answer_text <- tryCatch(
+          {
+            if (!is.null(turn)) {
+              ellmer::contents_markdown(turn)
+            } else {
+              ans
+            }
+          },
+          error = function(e) ans
+        )
+        source_ids <- tempest_harvest_native_sources_from_turn(
+          turn,
+          local_store
+        )
         tryCatch(
           tempest_extract_facts_from_answer(
             extractor,
-            ans,
+            answer_text,
             local_store,
-            module = modules$extract_claims
+            module = modules$extract_claims,
+            source_ids = source_ids
           ),
           error = function(e) {
             tempest_warn("Fact extraction failed: {conditionMessage(e)}")

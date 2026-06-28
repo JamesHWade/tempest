@@ -572,12 +572,28 @@ tempest_run <- function(
                   }
                 )
                 if (!is.null(ans)) {
+                  turn <- tryCatch(expert$last_turn(), error = function(e) NULL)
+                  answer_text <- tryCatch(
+                    {
+                      if (!is.null(turn)) {
+                        ellmer::contents_markdown(turn)
+                      } else {
+                        ans
+                      }
+                    },
+                    error = function(e) ans
+                  )
+                  source_ids <- tempest_harvest_native_sources_from_turn(
+                    turn,
+                    store
+                  )
                   tryCatch(
                     tempest_extract_facts_from_answer(
                       extractor,
-                      ans,
+                      answer_text,
                       store,
-                      module = dsprrr_modules$extract_claims
+                      module = dsprrr_modules$extract_claims,
+                      source_ids = source_ids
                     ),
                     error = function(e) {
                       tempest_warn(
@@ -673,13 +689,29 @@ tempest_run <- function(
                   }
                   next
                 }
-                answered <- c(answered, paste0("Q: ", q, "\nA: ", ans))
+                turn <- tryCatch(expert$last_turn(), error = function(e) NULL)
+                answer_text <- tryCatch(
+                  {
+                    if (!is.null(turn)) {
+                      ellmer::contents_markdown(turn)
+                    } else {
+                      ans
+                    }
+                  },
+                  error = function(e) ans
+                )
+                source_ids <- tempest_harvest_native_sources_from_turn(
+                  turn,
+                  store
+                )
+                answered <- c(answered, paste0("Q: ", q, "\nA: ", answer_text))
                 tryCatch(
                   tempest_extract_facts_from_answer(
                     extractor,
-                    ans,
+                    answer_text,
                     store,
-                    module = dsprrr_modules$extract_claims
+                    module = dsprrr_modules$extract_claims,
+                    source_ids = source_ids
                   ),
                   error = function(e) {
                     tempest_warn(

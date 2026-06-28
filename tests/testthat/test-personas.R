@@ -327,6 +327,58 @@ test_that("expert tools harvest native search sources before fact extraction", {
   expect_equal(claims[[1]]@source_ids, source_id)
 })
 
+test_that("expert tools harvest OpenAI native citation annotations", {
+  skip_if_not_installed("ellmer")
+
+  url <- "https://example.org/openai-native-source"
+  source_id <- tempest:::tempest_source_id(url)
+  turn <- native_openai_json_turn(
+    claim_text = "OpenAI native-backed claim.",
+    url = url,
+    title = "OpenAI Native Source"
+  )
+  expert_chat <- list(
+    chat = function(prompt, ...) "OpenAI native-backed claim.",
+    last_turn = function() turn,
+    register_tools = function(...) invisible(NULL)
+  )
+  extractor <- fake_chat(
+    structured = list(list(
+      facts = list(list(
+        claim = "OpenAI native-backed claim",
+        sources = list(list(source_id = source_id)),
+        confidence = "high"
+      ))
+    ))
+  )
+  cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+    if (identical(role, "expert")) expert_chat else fake_chat()
+  })
+  store <- tempest:::SourceStore$new()
+  retriever <- tempest:::tempest_retriever(config = cfg, store = store)
+  mgr <- tempest:::ExpertSessionManager$new(
+    cfg,
+    retriever,
+    extractor = extractor,
+    store = store
+  )
+  persona <- list(
+    id = 1,
+    name = "Dr. Sarah Chen",
+    title = "Climate Scientist",
+    perspective = "Physical science perspective"
+  )
+
+  tool <- tempest:::tempest_create_expert_tool(persona, mgr, "Climate change")
+  result <- tool(question = "What should we know?")
+
+  expect_equal(result$response, "OpenAI native-backed claim.")
+  expect_equal(store$get_source(source_id)$title, "OpenAI Native Source")
+  claims <- store$list_claims()
+  expect_length(claims, 1)
+  expect_equal(claims[[1]]@source_ids, source_id)
+})
+
 test_that("merging source records tolerates empty and missing fields", {
   old <- list(
     title = "Old title",

@@ -1,21 +1,42 @@
+native_openai_json_turn <- function(
+  claim_text = "native-backed app claim",
+  url = "https://example.org/native-app-source",
+  title = "Native app source"
+) {
+  ellmer::AssistantTurn(
+    contents = list(
+      ellmer::ContentText(claim_text)
+    ),
+    json = list(
+      output = list(
+        list(
+          type = "web_search_call",
+          action = list(type = "search")
+        ),
+        list(
+          type = "message",
+          content = list(list(
+            type = "output_text",
+            text = claim_text,
+            annotations = list(list(
+              type = "url_citation",
+              title = title,
+              url = url
+            ))
+          ))
+        )
+      )
+    )
+  )
+}
+
 native_evidence_session <- function(claim_text = "native-backed app claim") {
   url <- "https://example.org/native-app-source"
   source_id <- tempest:::tempest_source_id(url)
-  SearchResponse <- getFromNamespace("ContentToolResponseSearch", "ellmer")
-  turn <- ellmer::AssistantTurn(
-    contents = list(
-      SearchResponse(
-        urls = url,
-        json = list(
-          results = list(list(
-            title = "Native app source",
-            url = url,
-            snippet = "Native app source snippet."
-          ))
-        )
-      ),
-      ellmer::ContentText(claim_text)
-    )
+  turn <- native_openai_json_turn(
+    claim_text = claim_text,
+    url = url,
+    title = "Native app source"
   )
   extractor <- list(
     chat_structured = function(prompt, type = NULL, ...) {

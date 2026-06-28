@@ -171,25 +171,43 @@ tempest_upsert_native_source <- function(store, source) {
 }
 
 #' @keywords internal
+tempest_harvest_native_source_candidates <- function(
+  x,
+  store,
+  kind = "native_search"
+) {
+  ids <- character()
+  for (candidate in tempest_native_source_candidates(x)) {
+    ids <- c(
+      ids,
+      tempest_upsert_native_source(
+        store,
+        tempest_native_source_from_url(
+          candidate$url,
+          title = candidate$title,
+          snippet = candidate$snippet,
+          content_text = candidate$content_text,
+          kind = kind
+        )
+      )
+    )
+  }
+  unique(ids[!is.na(ids) & nzchar(ids)])
+}
+
+#' @keywords internal
 tempest_harvest_native_sources_from_content <- function(content, store) {
   ids <- character()
 
   if (inherits(content, "ellmer::ContentToolResponseSearch")) {
-    for (candidate in tempest_native_source_candidates(content@json)) {
-      ids <- c(
-        ids,
-        tempest_upsert_native_source(
-          store,
-          tempest_native_source_from_url(
-            candidate$url,
-            title = candidate$title,
-            snippet = candidate$snippet,
-            content_text = candidate$content_text,
-            kind = "native_search"
-          )
-        )
+    ids <- c(
+      ids,
+      tempest_harvest_native_source_candidates(
+        content@json,
+        store,
+        kind = "native_search"
       )
-    }
+    )
     for (url in content@urls %||% character()) {
       ids <- c(
         ids,
@@ -241,6 +259,15 @@ tempest_harvest_native_sources_from_content <- function(content, store) {
 }
 
 #' @keywords internal
+tempest_harvest_native_sources_from_json <- function(json, store) {
+  tempest_harvest_native_source_candidates(
+    json,
+    store,
+    kind = "native_search"
+  )
+}
+
+#' @keywords internal
 tempest_harvest_native_sources_from_turn <- function(turn, store) {
   if (is.null(turn) || is.null(store)) {
     return(character())
@@ -253,6 +280,8 @@ tempest_harvest_native_sources_from_turn <- function(turn, store) {
     purrr::map(contents, tempest_harvest_native_sources_from_content, store),
     use.names = FALSE
   )
+  json <- tryCatch(turn@json, error = function(e) list())
+  ids <- c(ids, tempest_harvest_native_sources_from_json(json, store))
   unique(ids[!is.na(ids) & nzchar(ids)])
 }
 

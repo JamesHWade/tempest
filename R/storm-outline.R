@@ -110,10 +110,24 @@ tempest_outline_summary <- function(outline) {
   }
   paste(
     purrr::map_chr(sections, function(s) {
-      paste0("- ", s$title %||% "Section", ": ", s$summary %||% "")
+      paste0(
+        "- ",
+        tempest_outline_text(s$title, "Section"),
+        ": ",
+        tempest_outline_text(s$summary, "")
+      )
     }),
     collapse = "\n"
   )
+}
+
+#' @keywords internal
+tempest_outline_text <- function(x, default = "") {
+  values <- tempest_as_character_vector(x)
+  if (length(values) == 0) {
+    return(default)
+  }
+  paste(values, collapse = " ")
 }
 
 #' @keywords internal
@@ -129,7 +143,12 @@ tempest_subsections_markdown <- function(subsections) {
       } else {
         paste0("- ", bullets, collapse = "\n")
       }
-      paste0("### ", s$title %||% "Subsection", "\n", bullet_md)
+      paste0(
+        "### ",
+        tempest_outline_text(s$title, "Subsection"),
+        "\n",
+        bullet_md
+      )
     }),
     collapse = "\n\n"
   )
@@ -154,19 +173,19 @@ tempest_normalize_outline <- function(x, fallback_title) {
     }
     subsections <- purrr::map(subsections, function(sub) {
       list(
-        title = sub$title %||% "Subsection",
+        title = tempest_outline_text(sub$title, "Subsection"),
         bullets = tempest_as_character_vector(sub$bullets %||% character()),
         needed = tempest_as_character_vector(sub$needed %||% character())
       )
     })
     list(
-      title = s$title %||% "Section",
-      summary = s$summary %||% "",
+      title = tempest_outline_text(s$title, "Section"),
+      summary = tempest_outline_text(s$summary, ""),
       subsections = subsections
     )
   })
   list(
-    title = x$title %||% fallback_title,
+    title = tempest_outline_text(x$title, fallback_title),
     sections = sections
   )
 }

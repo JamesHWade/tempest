@@ -116,14 +116,14 @@ test_that("perspective output normalizes and falls back", {
 test_that("outline output normalizes nested subsections", {
   outline <- tempest:::tempest_normalize_outline(
     list(
-      title = "Title",
+      title = c("Title", "Extra"),
       sections = list(
         list(
-          title = "Section",
-          summary = "Summary",
+          title = c("Section", "Variant"),
+          summary = c("Summary", "More detail"),
           subsections = list(
             list(
-              title = "Subsection",
+              title = c("Subsection", "Variant"),
               bullets = list("A", "B"),
               needed = list("C")
             )
@@ -134,7 +134,13 @@ test_that("outline output normalizes nested subsections", {
     fallback_title = "Fallback"
   )
 
-  expect_equal(outline$title, "Title")
+  expect_equal(outline$title, "Title Extra")
+  expect_equal(outline$sections[[1]]$title, "Section Variant")
+  expect_equal(outline$sections[[1]]$summary, "Summary More detail")
+  expect_equal(
+    outline$sections[[1]]$subsections[[1]]$title,
+    "Subsection Variant"
+  )
   expect_equal(outline$sections[[1]]$subsections[[1]]$bullets, c("A", "B"))
   expect_equal(outline$sections[[1]]$subsections[[1]]$needed, "C")
 })
