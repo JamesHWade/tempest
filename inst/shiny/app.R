@@ -7,16 +7,9 @@
 library(shiny)
 library(bslib)
 
-theme <- bs_theme(
-  version = 5,
-  preset = "shiny",
-  primary = "#4A90A4",
-  secondary = "#6C757D",
-  success = "#5CB85C",
-  info = "#5BC0DE",
-  warning = "#F0AD4E",
-  danger = "#D9534F"
-)
+# Colors, typography, and logo are defined in _brand.yml (auto-discovered by
+# bslib from the app directory).
+theme <- bs_theme(version = 5, preset = "shiny", brand = TRUE)
 
 ui <- page_navbar(
   title = tagList(icon("cloud-bolt"), "tempest"),

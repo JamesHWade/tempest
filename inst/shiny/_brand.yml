@@ -1,0 +1,83 @@
+meta:
+  name: tempest
+  link:
+    home: https://jameshwade.github.io/tempest/
+    github: https://github.com/JamesHWade/tempest
+
+logo:
+  images:
+    icon:
+      path: logos/tempest.svg
+      alt: A storm cloud crossed by a lightning bolt
+  small: icon
+  medium: icon
+
+color:
+  palette:
+    white: "#FFFFFF"
+    black: "#0C1722"
+    # Deep storm-slate — the sky before the squall.
+    storm-navy: "#15293A"
+    # Storm-cloud teal — tempest's signature hue.
+    storm-teal: "#4A90A4"
+    deep-teal: "#326B7D"
+    # A break in the clouds.
+    sky-blue: "#5BC0DE"
+    # Lightning — the electric accent.
+    lightning: "#F4B740"
+    rain-gray: "#6C757D"
+    # Cool off-white, like mist.
+    mist: "#EEF3F5"
+    meadow-green: "#5CB85C"
+    crimson: "#D9534F"
+    # Bootstrap color aliases (picked up automatically by bslib).
+    teal: storm-teal
+    blue: sky-blue
+    cyan: sky-blue
+    yellow: lightning
+    orange: lightning
+    green: meadow-green
+    red: crimson
+    gray: rain-gray
+  foreground: storm-navy
+  background: white
+  primary: storm-teal
+  secondary: rain-gray
+  tertiary: deep-teal
+  success: meadow-green
+  info: sky-blue
+  warning: lightning
+  danger: crimson
+  light: mist
+  dark: storm-navy
+
+typography:
+  fonts:
+    - family: Inter
+      source: google
+      weight: [400, 500, 600, 700]
+    - family: Fraunces
+      source: google
+      weight: [400, 500, 600, 700]
+      style: [normal, italic]
+    - family: JetBrains Mono
+      source: google
+      weight: [400, 500]
+  base:
+    family: Inter
+    line-height: 1.5
+  headings:
+    family: Fraunces
+    weight: 600
+    line-height: 1.2
+  monospace: JetBrains Mono
+  link:
+    color: primary
+    weight: 500
+
+defaults:
+  bootstrap:
+    defaults:
+      # A dark, storm-cloud navbar so the tempest identity reads at a glance.
+      navbar-bg: "$brand-storm-navy"
+      border-radius: "0.5rem"
