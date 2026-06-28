@@ -45,7 +45,7 @@ Suggests:
     rvest,
     shiny (>= 1.8.1),
     shinychat,
-    testthat (>= 3.0.0),
+    testthat (>= 3.2.0),
     tidyr,
     visNetwork,
     vitals,

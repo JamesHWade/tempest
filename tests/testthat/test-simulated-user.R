@@ -49,5 +49,5 @@ test_that("SimulatedUser turn_count increments", {
 })
 
 test_that("SimulatedUser class is exported", {
-  expect_no_error(get("SimulatedUser", envir = asNamespace("tempest")))
+  expect_no_error(getExportedValue("tempest", "SimulatedUser"))
 })
