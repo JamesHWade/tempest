@@ -548,15 +548,7 @@ record_costorm_progress_event <- function(
 }
 
 costorm_stage_labels <- function() {
-  c(
-    session = "Session",
-    warmup = "Warmup",
-    dialogue = "Dialogue",
-    evidence = "Evidence",
-    mindmap = "Mind Map",
-    suggestions = "Suggestions",
-    report = "Report"
-  )
+  tempest::tempest_progress_labels("costorm", kind = "stage")
 }
 
 session_emit_progress <- function(ses, ...) {

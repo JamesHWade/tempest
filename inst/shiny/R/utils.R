@@ -168,8 +168,10 @@ workflow_title <- function(workflow) {
 }
 
 workflow_current_label <- function(state) {
-  current <- workflow_stage_label(state$current_stage)
-  step <- workflow_stage_label(state$current_step)
+  stage_labels <- workflow_labels(state$workflow, "stage")
+  step_labels <- workflow_labels(state$workflow, "step")
+  current <- workflow_stage_label(state$current_stage, stage_labels)
+  step <- workflow_stage_label(state$current_step, step_labels)
   if (!is.na(step) && nzchar(step)) {
     current <- if (!is.na(current) && nzchar(current)) {
       paste(current, step, sep = " / ")
@@ -248,7 +250,11 @@ workflow_activity_list <- function(state) {
   if (length(active) == 0L) {
     return(NULL)
   }
-  labels <- vapply(active, workflow_activity_label, character(1))
+  labels <- vapply(
+    active,
+    function(item) workflow_activity_label(item, state$workflow),
+    character(1)
+  )
   labels <- labels[nzchar(labels)]
   if (length(labels) == 0L) {
     return(NULL)
@@ -260,9 +266,15 @@ workflow_activity_list <- function(state) {
   )
 }
 
-workflow_activity_label <- function(item) {
-  label <- workflow_first_text(item$expert_name, item$step, item$stage)
-  label <- workflow_stage_label(label)
+workflow_activity_label <- function(item, workflow = NULL) {
+  step_labels <- workflow_labels(workflow, "step")
+  expert_name <- item$expert_name %||% NA_character_
+  label <- if (!is.na(expert_name) && nzchar(expert_name)) {
+    expert_name
+  } else {
+    workflow_first_text(item$step, item$stage)
+  }
+  label <- workflow_stage_label(label, step_labels)
   if (is.na(label) || !nzchar(label)) {
     return("")
   }
@@ -312,13 +324,27 @@ workflow_artifact_list <- function(state) {
   )
 }
 
-workflow_stage_label <- function(value) {
+workflow_stage_label <- function(value, labels = NULL) {
   if (is.null(value) || length(value) == 0L || is.na(value)) {
     return(NA_character_)
   }
   value <- as.character(value[[1]])
+  if (!is.null(labels) && value %in% names(labels)) {
+    return(labels[[value]])
+  }
   value <- gsub("_", " ", value)
   stringi::stri_trans_totitle(value)
+}
+
+workflow_labels <- function(workflow, kind = c("stage", "step")) {
+  kind <- match.arg(kind)
+  if (!workflow %in% c("storm", "costorm")) {
+    return(NULL)
+  }
+  tryCatch(
+    tempest::tempest_progress_labels(workflow, kind = kind),
+    error = function(e) NULL
+  )
 }
 
 workflow_first_text <- function(...) {

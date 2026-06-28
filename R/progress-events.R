@@ -567,6 +567,70 @@ tempest_progress_event_record <- function(event) {
   event
 }
 
+#' Progress labels for Tempest workflows
+#'
+#' `tempest_progress_labels()` returns compact, host-neutral labels for progress
+#' event stages and steps. Host apps can use these labels with
+#' [tempest_progress_state()] instead of maintaining their own workflow-specific
+#' remapping tables.
+#'
+#' @param workflow Workflow kind, one of `"storm"` or `"costorm"`.
+#' @param kind Label kind, either `"stage"` or `"step"`.
+#' @return A named character vector.
+#' @examples
+#' tempest_progress_labels("costorm")
+#' tempest_progress_labels("costorm", kind = "step")
+#' @export
+tempest_progress_labels <- function(
+  workflow = c("storm", "costorm"),
+  kind = c("stage", "step")
+) {
+  workflow <- match.arg(workflow)
+  kind <- match.arg(kind)
+
+  if (identical(workflow, "storm") && identical(kind, "stage")) {
+    return(c(
+      perspectives = "Perspectives",
+      research = "Research",
+      outline = "Outline",
+      write = "Write",
+      polish = "Polish",
+      verification = "Verify"
+    ))
+  }
+  if (identical(workflow, "storm") && identical(kind, "step")) {
+    return(c(
+      created = "Ready",
+      persist = "Save",
+      report_md = "Report"
+    ))
+  }
+  if (identical(workflow, "costorm") && identical(kind, "stage")) {
+    return(c(
+      session = "Setup",
+      warmup = "Warmup",
+      dialogue = "Answer",
+      evidence = "Evidence",
+      mindmap = "Map",
+      suggestions = "Next",
+      report = "Report"
+    ))
+  }
+  c(
+    created = "Ready",
+    expert_fanout = "Experts",
+    expert_question = "Question",
+    turn = "Turn",
+    user_turn = "User",
+    moderator_response = "Moderator",
+    fact_extraction = "Capture facts",
+    update = "Update map",
+    question_generation = "Questions",
+    generate = "Generate",
+    report_md = "Report"
+  )
+}
+
 tempest_progress_state_step <- function(state, event) {
   if (is.na(state$run_id)) {
     state$run_id <- event$run_id

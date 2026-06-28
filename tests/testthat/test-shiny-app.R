@@ -465,6 +465,43 @@ test_that("workflow_progress_ui renders reducer state", {
   expect_match(html, "Dr. Flow")
 })
 
+test_that("workflow_progress_ui renders compact Co-STORM answer labels", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  state <- tempest_progress_state(list(
+    tempest_progress_event(
+      run_id = "session-1",
+      workflow = "costorm",
+      event_type = "stage",
+      status = "started",
+      stage = "dialogue",
+      step = "turn",
+      correlation_id = "turn-1"
+    ),
+    tempest_progress_event(
+      run_id = "session-1",
+      workflow = "costorm",
+      event_type = "step",
+      status = "started",
+      stage = "dialogue",
+      step = "moderator_response",
+      correlation_id = "turn-1"
+    )
+  ))
+
+  html <- paste(
+    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    collapse = ""
+  )
+
+  expect_match(html, "Current:")
+  expect_match(html, "Answer")
+  expect_match(html, "Moderator")
+  expect_match(html, "Next")
+  expect_no_match(html, "Dialogue")
+  expect_no_match(html, "Moderator Response")
+})
+
 test_that("async Co-STORM progress renders warmup state before completion", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("later")

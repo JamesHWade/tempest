@@ -363,12 +363,5 @@ storm_task_progress <- function(value) {
 }
 
 storm_stage_labels <- function() {
-  c(
-    perspectives = "Perspectives",
-    research = "Research",
-    outline = "Outline",
-    write = "Write",
-    polish = "Polish",
-    verification = "Verify"
-  )
+  tempest::tempest_progress_labels("storm", kind = "stage")
 }
