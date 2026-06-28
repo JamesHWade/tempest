@@ -547,6 +547,112 @@ test_that("STORM worker uses a local serializable progress collector", {
   )
 })
 
+test_that("STORM worker omits progress for older tempest_run signatures", {
+  app <- source_shiny_modules()
+  calls <- list()
+  old_run <- function(
+    topic,
+    config,
+    n_experts,
+    research_strategy,
+    max_rounds,
+    parallel_research,
+    verbose
+  ) {
+    calls[[length(calls) + 1L]] <<- as.list(match.call())[-1]
+    list(report_md = "old run")
+  }
+
+  value <- app$storm_run_with_progress(
+    topic = "Topic",
+    cfg = tempest_config(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    parallel = FALSE,
+    tempest_run = old_run
+  )
+
+  expect_equal(value$result$report_md, "old run")
+  expect_equal(intersect("progress", names(calls[[1]])), character())
+  expect_length(value$progress, 0L)
+
+  new_run <- function(
+    topic,
+    config,
+    n_experts,
+    research_strategy,
+    max_rounds,
+    parallel_research,
+    progress,
+    verbose
+  ) {
+    progress(tempest_progress_event(
+      run_id = "worker-run",
+      workflow = "storm",
+      event_type = "stage",
+      status = "started",
+      stage = "research"
+    ))
+    list(report_md = "new run")
+  }
+  value <- app$storm_run_with_progress(
+    topic = "Topic",
+    cfg = tempest_config(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    parallel = FALSE,
+    tempest_run = new_run
+  )
+
+  expect_equal(value$result$report_md, "new run")
+  expect_equal(value$progress[[1]]$stage, "research")
+})
+
+test_that("STORM worker adapter tolerates older tempest_run signatures in mirai", {
+  skip_if_not_installed("mirai")
+  app <- source_shiny_modules()
+  old_run <- function(
+    topic,
+    config,
+    n_experts,
+    research_strategy,
+    max_rounds,
+    parallel_research,
+    verbose
+  ) {
+    list(report_md = paste("worker run", topic))
+  }
+
+  value <- mirai::mirai(
+    {
+      storm_runner(
+        topic = topic,
+        cfg = cfg,
+        n_experts = n_experts,
+        strategy = strategy,
+        max_rounds = max_rounds,
+        parallel = parallel,
+        progress_collector = progress_collector,
+        tempest_run = old_run
+      )
+    },
+    topic = "Topic",
+    cfg = list(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    parallel = FALSE,
+    progress_collector = app$storm_worker_progress_collector,
+    storm_runner = app$storm_run_with_progress,
+    old_run = old_run
+  )[]
+
+  expect_equal(value$result$report_md, "worker run Topic")
+  expect_length(value$progress, 0L)
+})
+
 test_that("workflow_progress_ui hides recorded failures once succeeded", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()

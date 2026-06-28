@@ -66,20 +66,17 @@ mod_storm_server <- function(id, config, store) {
       function(topic, cfg, n_experts, strategy, max_rounds, parallel) {
         mirai::mirai(
           {
-            collector <- progress_collector(
-              include_payload = TRUE
-            )
-            result <- tempest::tempest_run(
+            storm_runner(
               topic = topic,
-              config = cfg,
+              cfg = cfg,
               n_experts = n_experts,
-              research_strategy = strategy,
+              strategy = strategy,
               max_rounds = max_rounds,
-              parallel_research = parallel,
-              progress = collector$record,
-              verbose = FALSE
+              parallel = parallel,
+              package_root = package_root,
+              progress_collector = progress_collector,
+              tempest_run_factory = tempest_run_factory
             )
-            list(result = result, progress = collector$data())
           },
           topic = topic,
           cfg = cfg,
@@ -87,7 +84,10 @@ mod_storm_server <- function(id, config, store) {
           strategy = strategy,
           max_rounds = max_rounds,
           parallel = parallel,
-          progress_collector = storm_worker_progress_collector
+          package_root = storm_package_root(),
+          progress_collector = storm_worker_progress_collector,
+          storm_runner = storm_run_with_progress,
+          tempest_run_factory = storm_worker_tempest_run
         )
       }
     ) |>
@@ -220,6 +220,94 @@ storm_worker_progress_collector <- function(include_payload = FALSE) {
     },
     data = function() events
   )
+}
+
+storm_run_with_progress <- function(
+  topic,
+  cfg,
+  n_experts,
+  strategy,
+  max_rounds,
+  parallel,
+  package_root = NULL,
+  progress_collector = storm_worker_progress_collector,
+  tempest_run_factory = storm_worker_tempest_run,
+  tempest_run = NULL
+) {
+  collector <- progress_collector(include_payload = TRUE)
+  if (is.null(tempest_run)) {
+    tempest_run <- tempest_run_factory(package_root)
+  }
+  args <- list(
+    topic = topic,
+    config = cfg,
+    n_experts = n_experts,
+    research_strategy = strategy,
+    max_rounds = max_rounds,
+    parallel_research = parallel,
+    progress = collector$record,
+    verbose = FALSE
+  )
+  fn_args <- names(formals(tempest_run))
+  if (!"..." %in% fn_args) {
+    args <- args[names(args) %in% fn_args]
+  }
+  list(
+    result = do.call(tempest_run, args),
+    progress = collector$data()
+  )
+}
+
+storm_worker_tempest_run <- function(package_root = NULL) {
+  storm_worker_load_checkout(package_root)
+  getExportedValue("tempest", "tempest_run")
+}
+
+storm_worker_load_checkout <- function(package_root = NULL) {
+  if (
+    is.null(package_root) ||
+      !nzchar(package_root) ||
+      !file.exists(file.path(package_root, "DESCRIPTION")) ||
+      !requireNamespace("pkgload", quietly = TRUE)
+  ) {
+    return(FALSE)
+  }
+  isTRUE(tryCatch(
+    {
+      pkgload::load_all(
+        package_root,
+        attach = FALSE,
+        export_all = FALSE,
+        helpers = FALSE,
+        attach_testthat = FALSE,
+        quiet = TRUE
+      )
+      TRUE
+    },
+    error = function(e) FALSE
+  ))
+}
+
+storm_package_root <- function() {
+  package_dir <- system.file(package = "tempest")
+  if (!nzchar(package_dir)) {
+    return(NULL)
+  }
+  candidates <- c(package_dir, file.path(package_dir, ".."))
+  for (candidate in candidates) {
+    desc <- file.path(candidate, "DESCRIPTION")
+    if (!file.exists(desc)) {
+      next
+    }
+    package <- tryCatch(
+      read.dcf(desc, fields = "Package")[[1]],
+      error = function(e) NA_character_
+    )
+    if (identical(package, "tempest")) {
+      return(normalizePath(candidate, mustWork = FALSE))
+    }
+  }
+  NULL
 }
 
 storm_progress_state <- function(events, task_status = "initial") {
