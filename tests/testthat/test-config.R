@@ -2,8 +2,16 @@ test_that("tempest_config creates valid config", {
   cfg <- tempest_config()
   expect_identical(S7::S7_inherits(cfg, TempestConfig), TRUE)
 
-  expect_type(cfg@models, "list")
-  expect_type(cfg@models$coordinator, "character")
+  expect_mapequal(
+    cfg@models,
+    list(
+      coordinator = "openai/gpt-5.4",
+      writer = "openai/gpt-5.4",
+      expert = "openai/gpt-5.4-mini",
+      mindmap = "openai/gpt-5.4-mini",
+      judge = "openai/gpt-5.4-mini"
+    )
+  )
   expect_type(cfg@search_provider, "character")
   expect_equal(cfg@max_search_queries_per_turn, 3L)
   expect_equal(cfg@retrieve_top_k, 25L)
