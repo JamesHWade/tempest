@@ -44,14 +44,14 @@ events <- list(tempest_progress_event(
 tempest_progress_filter(events, stage = "research")
 #> [[1]]
 #> <tempest::tempest_progress_event>
-#>  @ event_id       : chr "P_5a802f5c334feeec"
+#>  @ event_id       : chr "P_8f01246db0f31ecf"
 #>  @ run_id         : chr "run-1"
 #>  @ workflow       : chr "storm"
 #>  @ event_type     : chr "stage"
 #>  @ stage          : chr "research"
 #>  @ step           : chr NA
 #>  @ status         : chr "started"
-#>  @ timestamp      : chr "2026-06-28 20:46:00 UTC"
+#>  @ timestamp      : chr "2026-06-28 22:56:44 UTC"
 #>  @ message        : chr NA
 #>  @ payload        : list()
 #>  @ parent_event_id: chr NA
