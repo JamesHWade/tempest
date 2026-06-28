@@ -325,7 +325,14 @@ Extract facts from text into the store.
 
 #### Usage
 
-    TempestSession$extract_facts(text, turn = NULL, source_ids = NULL)
+    TempestSession$extract_facts(
+      text,
+      turn = NULL,
+      source_ids = NULL,
+      session_id = self$session_id,
+      persona_id = NA_character_,
+      correlation_id = NA_character_
+    )
 
 #### Arguments
 
@@ -340,6 +347,18 @@ Extract facts from text into the store.
 - `source_ids`:
 
   Optional source ids already harvested for the turn.
+
+- `session_id`:
+
+  Optional Co-STORM or expert session id.
+
+- `persona_id`:
+
+  Optional persona id.
+
+- `correlation_id`:
+
+  Optional progress correlation id for the turn.
 
 ------------------------------------------------------------------------
 

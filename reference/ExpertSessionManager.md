@@ -34,6 +34,10 @@ resumed using the session ID returned from previous interactions.
 
   Shared Co-STORM session id for progress events.
 
+- `session_provenance`:
+
+  Environments keyed by expert session id for claim-write provenance.
+
 ## Methods
 
 ### Public methods
@@ -156,7 +160,14 @@ Extract facts from an expert response.
 
 #### Usage
 
-    ExpertSessionManager$extract_facts(response, turn = NULL, source_ids = NULL)
+    ExpertSessionManager$extract_facts(
+      response,
+      turn = NULL,
+      source_ids = NULL,
+      session_id = NA_character_,
+      persona_id = NA_character_,
+      correlation_id = NA_character_
+    )
 
 #### Arguments
 
@@ -171,6 +182,18 @@ Extract facts from an expert response.
 - `source_ids`:
 
   Optional source ids already harvested for the turn.
+
+- `session_id`:
+
+  Optional expert session id.
+
+- `persona_id`:
+
+  Optional persona id.
+
+- `correlation_id`:
+
+  Optional progress correlation id for the turn.
 
 #### Returns
 

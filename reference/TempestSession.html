@@ -313,7 +313,14 @@ objects as the session makes progress.</p></dd>
 <h3 id="tempestsession-extract-facts-"><code>TempestSession$extract_facts()</code><a class="anchor" aria-label="anchor" href="#tempestsession-extract-facts-"></a></h3>
 <p>Extract facts from text into the store.</p><div class="section">
 <h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">extract_facts</span><span class="op">(</span><span class="va">text</span>, turn <span class="op">=</span> <span class="cn">NULL</span>, source_ids <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">extract_facts</span><span class="op">(</span></span>
+<span>  <span class="va">text</span>,</span>
+<span>  turn <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  source_ids <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  session_id <span class="op">=</span> <span class="va">self</span><span class="op">$</span><span class="va">session_id</span>,</span>
+<span>  persona_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  correlation_id <span class="op">=</span> <span class="cn">NA_character_</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>text</code></dt>
@@ -324,6 +331,15 @@ objects as the session makes progress.</p></dd>
 
       <dt><code>source_ids</code></dt>
 <dd><p>Optional source ids already harvested for the turn.</p></dd>
+
+      <dt><code>session_id</code></dt>
+<dd><p>Optional Co-STORM or expert session id.</p></dd>
+
+      <dt><code>persona_id</code></dt>
+<dd><p>Optional persona id.</p></dd>
+
+      <dt><code>correlation_id</code></dt>
+<dd><p>Optional progress correlation id for the turn.</p></dd>
 
 
 </dl><p></p></div>

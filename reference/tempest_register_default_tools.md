@@ -11,7 +11,9 @@ tempest_register_default_tools(
   chat,
   retriever,
   model = NULL,
-  search_provider = "native"
+  search_provider = "native",
+  allow_claim_writes = TRUE,
+  claim_provenance = list()
 )
 ```
 
@@ -32,6 +34,16 @@ tempest_register_default_tools(
 - search_provider:
 
   Search provider setting from config
+
+- allow_claim_writes:
+
+  Whether to register claim-writing tools. Read-heavy roles can set this
+  to `FALSE` and still inspect sources, claims, evidence, and
+  unsupported claims.
+
+- claim_provenance:
+
+  Optional provenance recorded on claims written via `add_claim`.
 
 ## Value
 

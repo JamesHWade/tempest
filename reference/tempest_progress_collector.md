@@ -44,7 +44,7 @@ collector$record(tempest_progress_event(
 collector$data(stage = "research")
 #> [[1]]
 #> [[1]]$event_id
-#> [1] "P_f7e95f12675766f9"
+#> [1] "P_05a39824b1b5f1f4"
 #> 
 #> [[1]]$run_id
 #> [1] "run-1"
@@ -65,7 +65,7 @@ collector$data(stage = "research")
 #> [1] "started"
 #> 
 #> [[1]]$timestamp
-#> [1] "2026-06-28 18:28:06 UTC"
+#> [1] "2026-06-28 20:45:59 UTC"
 #> 
 #> [[1]]$message
 #> [1] NA

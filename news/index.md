@@ -42,6 +42,12 @@
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   and
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  now expose evidence review tools for agents to inspect claims, cited
+  sources, evidence spans, and unsupported claims without requiring
+  write access (my3y).
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  and
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   now expose claim-oriented `add_claim` and `list_claims` agent tools
   while keeping `add_fact` and `list_facts` as transitional aliases
   (msg3).
@@ -56,6 +62,9 @@
   [`tempest_progress_event_data()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event_data.md)
   define a host-neutral STORM/Co-STORM progress event contract for
   package and host-app integrations (g7wt).
+- [`tempest_progress_labels()`](https://jameshwade.github.io/tempest/reference/tempest_progress_labels.md)
+  provides compact host-neutral STORM and Co-STORM progress labels for
+  stage chips and current-step displays (a3rg).
 - [`tempest_progress_collector()`](https://jameshwade.github.io/tempest/reference/tempest_progress_collector.md),
   [`tempest_progress_filter()`](https://jameshwade.github.io/tempest/reference/tempest_progress_filter.md),
   and
@@ -94,6 +103,14 @@
   query.
 - Co-STORM sessions now route turns, update the mind map, and summarise
   using the most recent dialogue turns instead of the oldest.
+- Co-STORM evidence now records expert session ids, persona ids, and
+  progress correlation ids on claims from expert tools, warmup, chat,
+  and STORM research runs so Facts and Sources can be traced back to the
+  agent turn that produced them (vtz9).
+- Co-STORM moderator answers now avoid generic end-of-answer next-step
+  menus, while suggestion cards focus on topic-specific research
+  questions tied to evidence gaps, uncertainty, and mind-map expansion
+  (svyx).
 - Persisted runs now write artifacts atomically and write the run
   manifest last, so an interrupted save cannot corrupt artifacts or
   leave `resume` pointing at a stage whose output is missing.
@@ -102,6 +119,9 @@
   state management.
 - The bundled Shiny app now renders STORM and Co-STORM workflow progress
   from host-neutral progress events and reducer state (e08d).
+- The bundled Shiny app now streams STORM workflow progress from the
+  background worker so stage chips update while a run is still in flight
+  (1fxn).
 - The bundled Shiny app now carries provider-native source context into
   Co-STORM fact extraction so warmup and chat turns populate Facts and
   Sources when sources were attached to the answer turn (b77g).

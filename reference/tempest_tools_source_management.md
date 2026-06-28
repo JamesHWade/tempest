@@ -6,7 +6,11 @@ tools. Used when provider-native web search is enabled.
 ## Usage
 
 ``` r
-tempest_tools_source_management(retriever)
+tempest_tools_source_management(
+  retriever,
+  allow_claim_writes = TRUE,
+  claim_provenance = list()
+)
 ```
 
 ## Arguments
@@ -14,6 +18,14 @@ tempest_tools_source_management(retriever)
 - retriever:
 
   A TempestRetriever object
+
+- allow_claim_writes:
+
+  Whether to include `add_claim` and transitional fact-writing aliases.
+
+- claim_provenance:
+
+  Optional provenance recorded on claims written via `add_claim`.
 
 ## Value
 

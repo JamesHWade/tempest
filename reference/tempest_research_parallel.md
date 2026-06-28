@@ -19,6 +19,7 @@ tempest_research_parallel(
   max_rounds,
   max_questions_per_perspective,
   dsprrr_modules = NULL,
-  verbose
+  verbose,
+  run_id = NA_character_
 )
 ```

@@ -50,11 +50,15 @@
 <li>
 <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now pass source context into dsprrr claim extraction for provider-native citations, so optimized extraction works for native web-search turns as well as inline <code>[S...]</code> citations (c8jk).</li>
 <li>
+<code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now expose evidence review tools for agents to inspect claims, cited sources, evidence spans, and unsupported claims without requiring write access (my3y).</li>
+<li>
 <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now expose claim-oriented <code>add_claim</code> and <code>list_claims</code> agent tools while keeping <code>add_fact</code> and <code>list_facts</code> as transitional aliases (msg3).</li>
 <li>
 <code><a href="../reference/tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules()</a></code>, <code><a href="../reference/tempest_save_dsprrr_modules.html">tempest_save_dsprrr_modules()</a></code>, and <code><a href="../reference/tempest_load_dsprrr_modules.html">tempest_load_dsprrr_modules()</a></code> support explicit dsprrr compilation and reuse of optimized STORM module sets.</li>
 <li>
 <code><a href="../reference/tempest_progress_event.html">tempest_progress_event()</a></code> and <code><a href="../reference/tempest_progress_event_data.html">tempest_progress_event_data()</a></code> define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).</li>
+<li>
+<code><a href="../reference/tempest_progress_labels.html">tempest_progress_labels()</a></code> provides compact host-neutral STORM and Co-STORM progress labels for stage chips and current-step displays (a3rg).</li>
 <li>
 <code><a href="../reference/tempest_progress_collector.html">tempest_progress_collector()</a></code>, <code><a href="../reference/tempest_progress_filter.html">tempest_progress_filter()</a></code>, and <code><a href="../reference/tempest_progress_replay.html">tempest_progress_replay()</a></code> provide host-neutral in-memory progress sinks with filtering and replay helpers (wpt9).</li>
 <li>
@@ -74,9 +78,12 @@
 <li>
 <code>tempest_config(search_provider = )</code> searches now apply a request timeout and retry on transient HTTP errors, and a single missing or non-public result URL no longer discards every other result for the query.</li>
 <li>Co-STORM sessions now route turns, update the mind map, and summarise using the most recent dialogue turns instead of the oldest.</li>
+<li>Co-STORM evidence now records expert session ids, persona ids, and progress correlation ids on claims from expert tools, warmup, chat, and STORM research runs so Facts and Sources can be traced back to the agent turn that produced them (vtz9).</li>
+<li>Co-STORM moderator answers now avoid generic end-of-answer next-step menus, while suggestion cards focus on topic-specific research questions tied to evidence gaps, uncertainty, and mind-map expansion (svyx).</li>
 <li>Persisted runs now write artifacts atomically and write the run manifest last, so an interrupted save cannot corrupt artifacts or leave <code>resume</code> pointing at a stage whose output is missing.</li>
 <li>The bundled Shiny app now targets shinychat’s development <code>chat_server()</code> API for streaming, cancellation, greetings, and client state management.</li>
 <li>The bundled Shiny app now renders STORM and Co-STORM workflow progress from host-neutral progress events and reducer state (e08d).</li>
+<li>The bundled Shiny app now streams STORM workflow progress from the background worker so stage chips update while a run is still in flight (1fxn).</li>
 <li>The bundled Shiny app now carries provider-native source context into Co-STORM fact extraction so warmup and chat turns populate Facts and Sources when sources were attached to the answer turn (b77g).</li>
 <li>The bundled Shiny app now invalidates Co-STORM progress output from asynchronous warmup callbacks so progress icons render while warmup is still running (2zbg).</li>
 <li>The bundled Shiny app no longer errors when async chat callbacks refresh the shared session store outside a reactive consumer.</li>

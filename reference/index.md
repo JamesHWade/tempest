@@ -30,6 +30,8 @@
   : Convert a Tempest progress event to a list
 - [`tempest_progress_filter()`](https://jameshwade.github.io/tempest/reference/tempest_progress_filter.md)
   : Filter Tempest progress events
+- [`tempest_progress_labels()`](https://jameshwade.github.io/tempest/reference/tempest_progress_labels.md)
+  : Progress labels for Tempest workflows
 - [`tempest_progress_replay()`](https://jameshwade.github.io/tempest/reference/tempest_progress_replay.md)
   : Replay Tempest progress events to a callback
 - [`tempest_progress_state()`](https://jameshwade.github.io/tempest/reference/tempest_progress_state.md)

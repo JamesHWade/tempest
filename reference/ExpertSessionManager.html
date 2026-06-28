@@ -74,6 +74,11 @@ the session ID returned from previous interactions.</p>
 <dd><p>Shared Co-STORM session id for progress events.</p></dd>
 
 
+    <dt><code>session_provenance</code></dt>
+<dd><p>Environments keyed by expert session id for
+claim-write provenance.</p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -176,7 +181,14 @@ the session ID returned from previous interactions.</p>
 <h3 id="expertsessionmanager-extract-facts-"><code>ExpertSessionManager$extract_facts()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-extract-facts-"></a></h3>
 <p>Extract facts from an expert response.</p><div class="section">
 <h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">extract_facts</span><span class="op">(</span><span class="va">response</span>, turn <span class="op">=</span> <span class="cn">NULL</span>, source_ids <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">extract_facts</span><span class="op">(</span></span>
+<span>  <span class="va">response</span>,</span>
+<span>  turn <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  source_ids <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  session_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  persona_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  correlation_id <span class="op">=</span> <span class="cn">NA_character_</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>response</code></dt>
@@ -187,6 +199,15 @@ the session ID returned from previous interactions.</p>
 
       <dt><code>source_ids</code></dt>
 <dd><p>Optional source ids already harvested for the turn.</p></dd>
+
+      <dt><code>session_id</code></dt>
+<dd><p>Optional expert session id.</p></dd>
+
+      <dt><code>persona_id</code></dt>
+<dd><p>Optional persona id.</p></dd>
+
+      <dt><code>correlation_id</code></dt>
+<dd><p>Optional progress correlation id for the turn.</p></dd>
 
 
 </dl><p></p></div>

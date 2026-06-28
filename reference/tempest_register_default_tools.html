@@ -49,7 +49,9 @@ provider's built-in web search. Otherwise uses custom tempest tools.</p>
 <span>  <span class="va">chat</span>,</span>
 <span>  <span class="va">retriever</span>,</span>
 <span>  model <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  search_provider <span class="op">=</span> <span class="st">"native"</span></span>
+<span>  search_provider <span class="op">=</span> <span class="st">"native"</span>,</span>
+<span>  allow_claim_writes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  claim_provenance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -71,6 +73,17 @@ provider's built-in web search. Otherwise uses custom tempest tools.</p>
 
 <dt id="arg-search-provider">search_provider<a class="anchor" aria-label="anchor" href="#arg-search-provider"></a></dt>
 <dd><p>Search provider setting from config</p></dd>
+
+
+<dt id="arg-allow-claim-writes">allow_claim_writes<a class="anchor" aria-label="anchor" href="#arg-allow-claim-writes"></a></dt>
+<dd><p>Whether to register claim-writing tools. Read-heavy
+roles can set this to <code>FALSE</code> and still inspect sources, claims, evidence,
+and unsupported claims.</p></dd>
+
+
+<dt id="arg-claim-provenance">claim_provenance<a class="anchor" aria-label="anchor" href="#arg-claim-provenance"></a></dt>
+<dd><p>Optional provenance recorded on claims written via
+<code>add_claim</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
