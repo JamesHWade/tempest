@@ -45,7 +45,7 @@ Suggests:
     rvest,
     shiny (>= 1.8.1),
     shinychat,
-    testthat (>= 3.0.0),
+    testthat (>= 3.2.0),
     tidyr,
     visNetwork,
     vitals,
@@ -58,7 +58,7 @@ Config/testthat/edition: 3
 URL: https://jameshwade.github.io/tempest/,
     https://github.com/JamesHWade/tempest
 BugReports: https://github.com/JamesHWade/tempest/issues
-Config/roxygen2/version: 7.3.3.9000
+Config/roxygen2/version: 8.0.0
 Collate: 
     'app.R'
     'cache.R'
@@ -87,3 +87,4 @@ Collate:
     'tools.R'
     'utils.R'
     'verify.R'
+Config/usethis/last-upkeep: 2026-06-27

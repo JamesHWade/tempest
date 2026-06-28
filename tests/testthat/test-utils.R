@@ -2,7 +2,7 @@ test_that("tempest_source_id is deterministic", {
   id1 <- tempest:::tempest_source_id("https://example.com/a")
   id2 <- tempest:::tempest_source_id("https://example.com/a")
   expect_identical(id1, id2)
-  expect_true(grepl("^S[0-9a-f]{12}$", id1))
+  expect_match(id1, "^S[0-9a-f]{12}$")
 })
 
 test_that("citation extraction finds source ids", {

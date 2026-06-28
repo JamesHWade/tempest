@@ -5,7 +5,7 @@ test_that("tempest_claim validates enums and scores", {
   )
   expect_equal(cl@claim_type, "finding")
   expect_equal(cl@verification_status, "unverified")
-  expect_true(startsWith(cl@claim_id, "C"))
+  expect_match(cl@claim_id, "^C")
 
   expect_error(
     tempest_claim(claim_text = "x", claim_type = "nonsense"),
@@ -31,14 +31,14 @@ test_that("tempest_evidence_span and tempest_dispute construct", {
     source_id = "S0123456789ab",
     quote = "boils at 100C"
   )
-  expect_true(startsWith(sp@evidence_span_id, "E"))
+  expect_match(sp@evidence_span_id, "^E")
 
   d <- tempest_dispute(
     topic = "boiling point",
     claim_ids = c("C1", "C2"),
     evidence_balance = "mixed"
   )
-  expect_true(startsWith(d@dispute_id, "D"))
+  expect_match(d@dispute_id, "^D")
   expect_error(
     tempest_dispute(topic = "x", evidence_balance = "weird"),
     "evidence_balance"
@@ -47,7 +47,7 @@ test_that("tempest_evidence_span and tempest_dispute construct", {
 
 test_that("tempest_source_record carries fields and meta", {
   s <- tempest_source_record(url = "https://example.org", title = "Ex")
-  expect_true(startsWith(s@id, "S"))
+  expect_match(s@id, "^S")
   expect_type(s@meta, "list")
 })
 
@@ -77,8 +77,8 @@ test_that("claims convert to a tibble", {
   tb <- tempest_claims_tibble(cls)
   expect_s3_class(tb, "tbl_df")
   expect_equal(nrow(tb), 2)
-  expect_true(all(
-    c("claim_id", "claim_text", "verification_status", "support_score") %in%
-      names(tb)
-  ))
+  expect_contains(
+    names(tb),
+    c("claim_id", "claim_text", "verification_status", "support_score")
+  )
 })

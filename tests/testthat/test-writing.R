@@ -118,7 +118,7 @@ test_that("parallel section writing returns NULLs when mirai is unavailable", {
   )
   results <- tempest:::tempest_write_sections_parallel(jobs, tempest_config())
   expect_length(results, 2)
-  expect_true(all(vapply(results, is.null, logical(1))))
+  expect_equal(vapply(results, is.null, logical(1)), c(TRUE, TRUE))
 })
 
 test_that("requesting parallel writing still produces sections via fallback", {

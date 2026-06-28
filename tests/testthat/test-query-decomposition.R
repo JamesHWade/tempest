@@ -2,7 +2,7 @@ test_that("tempest_type_query_decomposition returns valid type", {
   skip_if_not_installed("ellmer")
 
   type <- tempest:::tempest_type_query_decomposition()
-  expect_true(!is.null(type))
+  expect_s7_class(type, getFromNamespace("TypeObject", "ellmer"))
 })
 
 test_that("tempest_decompose_query returns structured output", {
@@ -22,7 +22,7 @@ test_that("tempest_decompose_query returns structured output", {
   )
 
   expect_type(result, "list")
-  expect_true(!is.null(result$queries))
-  expect_true(length(result$queries) >= 1)
-  expect_true(length(result$queries) <= 4)
+  expect_type(result$queries, "character")
+  expect_gte(length(result$queries), 1)
+  expect_lte(length(result$queries), 4)
 })

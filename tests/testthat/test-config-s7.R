@@ -22,5 +22,5 @@ test_that("config remains usable by make_chat", {
     )
   })
   chat <- tempest_make_chat(cfg, "coordinator")
-  expect_true(chat$mock)
+  expect_identical(chat$mock, TRUE)
 })

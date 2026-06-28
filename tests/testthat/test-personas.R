@@ -2,7 +2,7 @@ test_that("tempest_type_personas returns valid ellmer type", {
   skip_if_not_installed("ellmer")
 
   type <- tempest:::tempest_type_personas()
-  expect_true(!is.null(type))
+  expect_s7_class(type, getFromNamespace("TypeObject", "ellmer"))
 })
 
 test_that("tempest_format_persona_details formats correctly", {
@@ -17,10 +17,10 @@ test_that("tempest_format_persona_details formats correctly", {
 
   details <- tempest:::tempest_format_persona_details(persona)
 
-  expect_true(grepl("Arctic Research Institute", details))
-  expect_true(grepl("20 years", details))
-  expect_true(grepl("Ice sheet modeling", details))
-  expect_true(grepl("Physical science", details))
+  expect_match(details, "Arctic Research Institute", fixed = TRUE)
+  expect_match(details, "20 years", fixed = TRUE)
+  expect_match(details, "Ice sheet modeling", fixed = TRUE)
+  expect_match(details, "Physical science", fixed = TRUE)
 })
 
 test_that("tempest_format_persona_details handles missing fields", {
@@ -30,7 +30,7 @@ test_that("tempest_format_persona_details handles missing fields", {
   )
 
   details <- tempest:::tempest_format_persona_details(persona)
-  expect_true(is.character(details))
+  expect_type(details, "character")
   expect_equal(details, "") # No fields to format
 })
 
@@ -49,9 +49,9 @@ test_that("tempest_render_expert_prompt creates prompt with persona", {
     expert_id = 1
   )
 
-  expect_true(grepl("Dr. Sarah Chen", prompt))
-  expect_true(grepl("Climate Scientist", prompt))
-  expect_true(grepl("Arctic Research Institute", prompt))
+  expect_match(prompt, "Dr. Sarah Chen", fixed = TRUE)
+  expect_match(prompt, "Climate Scientist", fixed = TRUE)
+  expect_match(prompt, "Arctic Research Institute", fixed = TRUE)
 })
 
 test_that("tempest_render_expert_prompt creates fallback for NULL persona", {
@@ -60,8 +60,8 @@ test_that("tempest_render_expert_prompt creates fallback for NULL persona", {
     expert_id = 3
   )
 
-  expect_true(grepl("Expert 3", prompt))
-  expect_true(grepl("Research Specialist", prompt))
+  expect_match(prompt, "Expert 3", fixed = TRUE)
+  expect_match(prompt, "Research Specialist", fixed = TRUE)
 })
 
 test_that("TempestSession stores personas", {
@@ -190,8 +190,7 @@ test_that("TempestSession has expert_session_manager", {
     personas = mock_personas
   )
 
-  # Session has an expert_session_manager
-  expect_true(inherits(session$expert_session_manager, "ExpertSessionManager"))
+  expect_r6_class(session$expert_session_manager, "ExpertSessionManager")
 })
 
 test_that("ExpertSessionManager generates session IDs", {
@@ -206,10 +205,9 @@ test_that("ExpertSessionManager generates session IDs", {
   retriever <- tempest:::tempest_retriever(config = cfg, store = store)
   mgr <- tempest:::ExpertSessionManager$new(cfg, retriever)
 
-  # Generate a session ID
   sid <- mgr$generate_session_id("Dr. Sarah Chen")
-  expect_true(is.character(sid))
-  expect_true(grepl("^dr-sarah-chen-", sid))
+  expect_type(sid, "character")
+  expect_match(sid, "^dr-sarah-chen-")
 })
 
 test_that("tempest_create_expert_tool creates valid ellmer tool", {
@@ -236,9 +234,8 @@ test_that("tempest_create_expert_tool creates valid ellmer tool", {
   # Tool should have the expected name (ellmer tools are S7 objects, use @)
   expect_equal(tool@name, "ask_dr_sarah_chen")
 
-  # Tool should have a description mentioning the persona
-  expect_true(grepl("Dr. Sarah Chen", tool@description))
-  expect_true(grepl("Climate Scientist", tool@description))
+  expect_match(tool@description, "Dr. Sarah Chen", fixed = TRUE)
+  expect_match(tool@description, "Climate Scientist", fixed = TRUE)
 })
 
 test_that("expert tools fall back to returned text", {

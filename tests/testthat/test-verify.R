@@ -24,8 +24,7 @@ test_that("verify_claims labels each claim and returns an audit tibble", {
     function(c) c@verification_status,
     character(1)
   )
-  expect_true("supported" %in% statuses)
-  expect_true("unsupported" %in% statuses)
+  expect_contains(statuses, c("supported", "unsupported"))
 })
 
 test_that("verify_claims enforces min_support_score", {
@@ -89,7 +88,11 @@ test_that("verify_claims sanitizes out-of-range, string, and invalid judge outpu
 
   cl <- store$list_claims()
   scores <- vapply(cl, function(c) c@support_score, numeric(1))
-  expect_true(all(is.na(scores) | (scores >= 0 & scores <= 1))) # clamped
+  bounded_scores <- scores[!is.na(scores)]
+  expect_equal(
+    which(bounded_scores < 0 | bounded_scores > 1),
+    integer()
+  )
   statuses <- vapply(cl, function(c) c@verification_status, character(1))
   valid <- c(
     "supported",
@@ -98,5 +101,5 @@ test_that("verify_claims sanitizes out-of-range, string, and invalid judge outpu
     "contradicted",
     "unverifiable"
   )
-  expect_true(all(statuses %in% valid)) # invalid status coerced to a legal label
+  expect_equal(setdiff(statuses, valid), character())
 })

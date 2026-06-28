@@ -32,7 +32,7 @@ test_that("tempest_wiki_page_sections returns character vector", {
   expect_type(result, "character")
   # Wikipedia should have sections
   if (length(result) > 0) {
-    expect_true(all(grepl("^\\s*- ", result)))
+    expect_match(result, "^\\s*- ")
   }
 })
 
