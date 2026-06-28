@@ -29,9 +29,7 @@ test_that("tempest_mindmap_node_sizes computes correctly", {
   sizes <- tempest:::tempest_mindmap_node_sizes(mindmap)
 
   expect_type(sizes, "list")
-  expect_true("root" %in% names(sizes))
-  expect_true("n1" %in% names(sizes))
-  expect_true("n2" %in% names(sizes))
+  expect_contains(names(sizes), c("root", "n1", "n2"))
 
   # root has 3 words in notes + 2 sources = 5 total
   expect_equal(sizes[["root"]]$n_notes, 3L)
@@ -102,5 +100,5 @@ test_that("tempest_type_node_expansion returns valid type", {
   skip_if_not_installed("ellmer")
 
   type <- tempest:::tempest_type_node_expansion()
-  expect_true(!is.null(type))
+  expect_s7_class(type, getFromNamespace("TypeObject", "ellmer"))
 })

@@ -12,7 +12,7 @@ test_that("SimulatedUser initializes correctly", {
   expect_equal(su$topic, "Quantum computing")
   expect_equal(su$max_turns, 5L)
   expect_equal(su$turn_count, 0L)
-  expect_true(!is.null(su$chat))
+  expect_s3_class(su$chat, "Chat")
 })
 
 test_that("SimulatedUser respects max_turns", {
@@ -43,11 +43,11 @@ test_that("SimulatedUser turn_count increments", {
   question <- su$generate_question()
   if (!is.null(question)) {
     expect_equal(su$turn_count, 1L)
-    expect_true(is.character(question))
-    expect_true(nzchar(question))
+    expect_type(question, "character")
+    expect_gt(nchar(question), 0)
   }
 })
 
 test_that("SimulatedUser class is exported", {
-  expect_true(exists("SimulatedUser", envir = asNamespace("tempest")))
+  expect_no_error(get("SimulatedUser", envir = asNamespace("tempest")))
 })

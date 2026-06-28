@@ -10,7 +10,7 @@ test_that("tempest_run verifies claims before polishing when policy requires it"
   tempest_run_verification(store, cfg, verifier = judge)
 
   expect_equal(store$list_claims()[[1]]@verification_status, "supported")
-  expect_false(is.null(store$get_artifact("citation_audit")))
+  expect_s3_class(store$get_artifact("citation_audit"), "tbl_df")
 })
 
 test_that("tempest_run_verification passes configured min_support_score", {

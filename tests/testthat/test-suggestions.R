@@ -49,7 +49,11 @@ test_that("tempest_suggest_questions includes conversation context in the prompt
     n = 1
   )
   prompts <- vapply(chat$.calls(), function(call) call$prompt, character(1))
-  expect_true(any(grepl("Conversation so far:", prompts, fixed = TRUE)))
+  expect_match(
+    paste(prompts, collapse = "\n"),
+    "Conversation so far:",
+    fixed = TRUE
+  )
 })
 
 test_that("TempestSession$suggest_questions delegates to the generator", {
@@ -92,5 +96,9 @@ test_that("suggest_questions forwards transcript context when non-empty", {
   ses$add_turn("User", "user", "hello there")
   ses$suggest_questions(n = 1)
   prompts <- vapply(fake$.calls(), function(call) call$prompt, character(1))
-  expect_true(any(grepl("Conversation so far:", prompts, fixed = TRUE)))
+  expect_match(
+    paste(prompts, collapse = "\n"),
+    "Conversation so far:",
+    fixed = TRUE
+  )
 })

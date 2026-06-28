@@ -2,7 +2,7 @@ test_that("tempest_type_turn_policy returns valid type", {
   skip_if_not_installed("ellmer")
 
   type <- tempest:::tempest_type_turn_policy()
-  expect_true(!is.null(type))
+  expect_s7_class(type, getFromNamespace("TypeObject", "ellmer"))
 })
 
 test_that("DiscourseManager initializes correctly", {
@@ -16,8 +16,8 @@ test_that("DiscourseManager initializes correctly", {
   dm <- tempest:::DiscourseManager$new(cfg)
 
   expect_s3_class(dm, "DiscourseManager")
-  expect_true(!is.null(dm$chat))
-  expect_true(!is.null(dm$config))
+  expect_s3_class(dm$chat, "Chat")
+  expect_identical(dm$config, cfg)
 })
 
 test_that("TempestSession creates discourse manager when enabled", {
@@ -43,7 +43,6 @@ test_that("TempestSession creates discourse manager when enabled", {
     personas = mock_personas
   )
 
-  expect_true(!is.null(session$discourse_manager))
   expect_s3_class(session$discourse_manager, "DiscourseManager")
 })
 

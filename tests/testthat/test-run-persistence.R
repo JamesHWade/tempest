@@ -193,8 +193,10 @@ test_that("the run manifest is written after the artifacts it certifies", {
   )
 
   # If the manifest claims "write" is complete, its artifact must exist.
-  expect_true(file.exists(paths$run_config))
-  expect_true(file.exists(paths$draft_md))
+  expect_equal(
+    file.exists(c(paths$run_config, paths$draft_md)),
+    c(TRUE, TRUE)
+  )
 })
 
 test_that("references.json holds only the cited sources and reloads", {

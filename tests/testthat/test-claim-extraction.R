@@ -19,8 +19,8 @@ test_that("extraction adds validated claims and rejects unknown sources", {
   tempest_extract_facts_from_answer(chat, "answer text", store)
   claims <- store$list_claims()
   texts <- vapply(claims, function(c) c@claim_text, character(1))
-  expect_true("real claim" %in% texts)
-  expect_false("ghost claim" %in% texts) # unknown source id is dropped, not stored
+  expect_contains(texts, "real claim")
+  expect_equal(intersect(texts, "ghost claim"), character())
 })
 
 test_that("extraction keeps claims when the optional confidence is omitted", {

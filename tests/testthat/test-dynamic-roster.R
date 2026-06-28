@@ -29,9 +29,9 @@ test_that("TempestSession retire_expert marks persona retired", {
 
   # Retire first expert
   result <- session$retire_expert("Dr. Alice Smith")
-  expect_true(result)
-  expect_true(isTRUE(session$personas[[1]]$retired))
-  expect_false(isTRUE(session$personas[[2]]$retired))
+  expect_identical(result, TRUE)
+  expect_identical(isTRUE(session$personas[[1]]$retired), TRUE)
+  expect_identical(isTRUE(session$personas[[2]]$retired), FALSE)
 })
 
 test_that("TempestSession retire_expert returns FALSE for unknown", {
@@ -58,7 +58,7 @@ test_that("TempestSession retire_expert returns FALSE for unknown", {
   )
 
   result <- session$retire_expert("Unknown Expert")
-  expect_false(result)
+  expect_identical(result, FALSE)
 })
 
 test_that("TempestSession get_active_personas filters retired", {
@@ -105,11 +105,8 @@ test_that("TempestSession get_active_personas filters retired", {
   active <- session$get_active_personas()
   expect_equal(length(active), 2)
 
-  # Verify the right ones remain
   active_names <- vapply(active, function(p) p$name, character(1))
-  expect_true("Dr. Alice Smith" %in% active_names)
-  expect_true("Dr. Carol Lee" %in% active_names)
-  expect_false("Prof. Bob Jones" %in% active_names)
+  expect_setequal(active_names, c("Dr. Alice Smith", "Dr. Carol Lee"))
 })
 
 test_that("tempest_register_single_expert_tool works", {
@@ -162,8 +159,8 @@ test_that("tempest_generate_single_persona returns persona structure", {
   )
 
   expect_type(persona, "list")
-  expect_true(!is.null(persona$name))
-  expect_true(!is.null(persona$title))
+  expect_type(persona$name, "character")
+  expect_type(persona$title, "character")
 })
 
 test_that("transcript_markdown returns the most recent turns", {
@@ -206,8 +203,8 @@ test_that("retire_expert handles out-of-range legacy ids gracefully", {
     )
   )
 
-  expect_false(ses$retire_expert("expert_9"))
-  expect_true(ses$retire_expert("expert_1"))
+  expect_identical(ses$retire_expert("expert_9"), FALSE)
+  expect_identical(ses$retire_expert("expert_1"), TRUE)
 })
 
 test_that("add_expert returns NULL at the active-expert cap", {

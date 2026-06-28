@@ -31,14 +31,15 @@ test_that("SourceStore links evidence spans and verifies claims", {
   cl <- store$get_claim(cid)
   expect_equal(cl@verification_status, "supported")
   expect_equal(cl@support_score, 0.8)
-  expect_false(is.na(cl@verified_at))
+  expect_type(cl@verified_at, "character")
+  expect_match(cl@verified_at, "^\\d{4}-\\d{2}-\\d{2}")
 })
 
 test_that("to_tibbles includes claims and keeps content_text/meta on sources", {
   store <- fake_store_with_sources(1)
   store$add_claim(tempest_claim(claim_text = "a", source_ids = "S1"))
   tb <- store$to_tibbles()
-  expect_true("claims" %in% names(tb))
+  expect_contains(names(tb), "claims")
   expect_equal(nrow(tb$claims), 1)
-  expect_true(all(c("content_text", "meta") %in% names(tb$sources)))
+  expect_contains(names(tb$sources), c("content_text", "meta"))
 })

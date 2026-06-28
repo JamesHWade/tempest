@@ -41,10 +41,10 @@ test_that("tempest_optimize_dsprrr_modules compiles named modules", {
     verbose = FALSE
   )
 
-  expect_true(optimized$query_decomposition$is_compiled())
+  expect_identical(optimized$query_decomposition$is_compiled(), TRUE)
   meta <- attr(optimized, "tempest_dsprrr_optimization")
   expect_equal(meta$query_decomposition$n_train, 2L)
-  expect_true(meta$query_decomposition$compiled)
+  expect_identical(meta$query_decomposition$compiled, TRUE)
 })
 
 test_that("compiled dsprrr module sets can be saved and loaded", {
@@ -52,7 +52,7 @@ test_that("compiled dsprrr module sets can be saved and loaded", {
   path <- withr::local_tempdir()
 
   saved_path <- tempest_save_dsprrr_modules(modules, path)
-  expect_true(file.exists(saved_path))
+  expect_equal(file.exists(saved_path), TRUE)
 
   loaded <- tempest_load_dsprrr_modules(path)
   expect_named(loaded, names(modules))

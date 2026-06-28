@@ -11,7 +11,7 @@ test_that("search result helpers return the standard retriever shape", {
   expect_equal(nrow(results), 1L)
   expect_equal(results$title, "Result")
   expect_equal(results$url, "https://example.com")
-  expect_true(is.na(results$snippet))
+  expect_equal(results$snippet, NA_character_)
 })
 
 test_that("search() drops missing/unsafe URLs instead of aborting", {
@@ -32,8 +32,8 @@ test_that("search() drops missing/unsafe URLs instead of aborting", {
 
   expect_equal(nrow(result), 1L)
   expect_equal(result$url, "https://example.com/a")
-  expect_true("source_id" %in% names(result))
-  expect_false(any(is.na(result$source_id)))
+  expect_contains(names(result), "source_id")
+  expect_equal(which(is.na(result$source_id)), integer())
 })
 
 test_that("DuckDuckGo redirect URLs are decoded before normalization", {

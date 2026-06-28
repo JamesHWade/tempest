@@ -1,10 +1,10 @@
 test_that("tempest_config creates valid config", {
   cfg <- tempest_config()
-  expect_true(S7::S7_inherits(cfg, TempestConfig))
+  expect_identical(S7::S7_inherits(cfg, TempestConfig), TRUE)
 
-  expect_true(!is.null(cfg@models))
-  expect_true(!is.null(cfg@models$coordinator))
-  expect_true(!is.null(cfg@search_provider))
+  expect_type(cfg@models, "list")
+  expect_type(cfg@models$coordinator, "character")
+  expect_type(cfg@search_provider, "character")
   expect_equal(cfg@max_search_queries_per_turn, 3L)
   expect_equal(cfg@retrieve_top_k, 25L)
 })
@@ -87,9 +87,9 @@ test_that("tempest_config accepts custom chat_fn", {
   cfg <- tempest_config(chat_fn = mock_chat_fn)
   chat <- tempest_make_chat(cfg, "coordinator")
 
-  expect_true(chat$mock)
+  expect_identical(chat$mock, TRUE)
   expect_equal(chat$role, "coordinator")
-  expect_true(grepl("coordinator", chat$model) || grepl("gpt", chat$model))
+  expect_match(chat$model, "coordinator|gpt")
 })
 
 test_that("tempest_config accepts tools as list or function", {
