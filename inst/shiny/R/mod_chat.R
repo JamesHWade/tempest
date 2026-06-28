@@ -486,7 +486,7 @@ chat_input_text <- function(x) {
 # renders a markdown list whose items are all `<span class="suggestion">` as a
 # grid of cards; the `submit` class makes a click send the question immediately.
 # Returns NULL when there are no usable questions.
-suggestion_cards <- function(questions, lead = "**You might ask:**") {
+suggestion_cards <- function(questions, lead = "**Research next:**") {
   questions <- trimws(questions)
   questions <- questions[!is.na(questions) & nzchar(questions)]
   if (length(questions) == 0) {

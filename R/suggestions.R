@@ -33,6 +33,13 @@ tempest_suggest_questions_prompt <- function(topic, context = NULL, n = 4) {
       )
     )
   }
+  parts <- c(
+    parts,
+    "",
+    "These will be rendered as clickable suggestion cards, separate from the assistant's prose answer.",
+    "Focus on topic-specific research questions that fill evidence gaps, inspect uncertainty, or expand the mind map.",
+    "Do not suggest generic artifacts or transformations such as diagrams, slide decks, outlines, or gap-analysis tables unless the user explicitly asked for that artifact."
+  )
   paste(parts, collapse = "\n")
 }
 

@@ -828,7 +828,12 @@ TempestSession <- R6::R6Class(
             "You have tools to ask experts (ask_*) for research questions.\n",
             "Use the expert tools to delegate research questions to the appropriate expert.\n",
             "Synthesize their responses into a coherent answer for the user.\n",
-            "Use citations like [Sxxxxxxxxxxxx] for factual claims."
+            "Use citations like [Sxxxxxxxxxxxx] for factual claims.\n",
+            "Do not end with a generic menu of things you can make next.\n",
+            "Clickable follow-up cards, fact/source extraction, mind-map updates, ",
+            "and report generation are handled by the app UI.\n",
+            "If useful, close with one topic-specific research question or a ",
+            "specific evidence gap; otherwise stop after the answer."
           )
 
           # The moderator will use expert tools as needed
