@@ -646,7 +646,11 @@ extract_chat_turn_facts <- function(
   turn = NULL,
   source_ids = NULL
 ) {
-  source_ids <- unique(c(source_ids, harvest_session_sources(ses, turn = turn)))
+  # Harvest only when the caller has not already done so for this turn; the
+  # session's extract_facts also avoids re-harvesting when source_ids are passed.
+  if (is.null(source_ids)) {
+    source_ids <- harvest_session_sources(ses, turn = turn)
+  }
   ses$extract_facts(answer_text, turn = turn, source_ids = source_ids)
   invisible(source_ids)
 }

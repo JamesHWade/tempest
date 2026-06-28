@@ -738,10 +738,13 @@ ExpertSessionManager <- R6::R6Class(
         )
         tryCatch(
           {
-            harvested <- tempest_harvest_native_sources_from_turn(
-              turn,
-              self$store
-            )
+            # Only re-harvest when the caller did not already do so; callers that
+            # pass source_ids have harvested the turn into the store already.
+            harvested <- if (is.null(source_ids)) {
+              tempest_harvest_native_sources_from_turn(turn, self$store)
+            } else {
+              character()
+            }
             tempest_extract_facts_from_answer(
               self$extractor,
               response,

@@ -572,28 +572,14 @@ tempest_run <- function(
                   }
                 )
                 if (!is.null(ans)) {
-                  turn <- tryCatch(expert$last_turn(), error = function(e) NULL)
-                  answer_text <- tryCatch(
-                    {
-                      if (!is.null(turn)) {
-                        ellmer::contents_markdown(turn)
-                      } else {
-                        ans
-                      }
-                    },
-                    error = function(e) ans
-                  )
-                  source_ids <- tempest_harvest_native_sources_from_turn(
-                    turn,
-                    store
-                  )
+                  harvest <- tempest_turn_answer_and_sources(expert, ans, store)
                   tryCatch(
                     tempest_extract_facts_from_answer(
                       extractor,
-                      answer_text,
+                      harvest$answer_text,
                       store,
                       module = dsprrr_modules$extract_claims,
-                      source_ids = source_ids
+                      source_ids = harvest$source_ids
                     ),
                     error = function(e) {
                       tempest_warn(
@@ -689,29 +675,18 @@ tempest_run <- function(
                   }
                   next
                 }
-                turn <- tryCatch(expert$last_turn(), error = function(e) NULL)
-                answer_text <- tryCatch(
-                  {
-                    if (!is.null(turn)) {
-                      ellmer::contents_markdown(turn)
-                    } else {
-                      ans
-                    }
-                  },
-                  error = function(e) ans
+                harvest <- tempest_turn_answer_and_sources(expert, ans, store)
+                answered <- c(
+                  answered,
+                  paste0("Q: ", q, "\nA: ", harvest$answer_text)
                 )
-                source_ids <- tempest_harvest_native_sources_from_turn(
-                  turn,
-                  store
-                )
-                answered <- c(answered, paste0("Q: ", q, "\nA: ", answer_text))
                 tryCatch(
                   tempest_extract_facts_from_answer(
                     extractor,
-                    answer_text,
+                    harvest$answer_text,
                     store,
                     module = dsprrr_modules$extract_claims,
-                    source_ids = source_ids
+                    source_ids = harvest$source_ids
                   ),
                   error = function(e) {
                     tempest_warn(

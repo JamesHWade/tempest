@@ -305,7 +305,7 @@ tempest_extract_facts_from_answer <- function(
   }
   for (f in facts) {
     claim <- tempest_trim(as.character(f$claim %||% ""))
-    if (is.na(claim) || !nzchar(claim)) {
+    if (length(claim) != 1 || is.na(claim) || !nzchar(claim)) {
       next
     }
     source_refs <- unlist(
@@ -335,7 +335,6 @@ tempest_extract_facts_from_answer <- function(
     # "medium" so the S7 enum validator never aborts (which would discard the
     # whole answer's claims).
     conf <- as.character(f$confidence %||% NA_character_)
-    conf <- conf[[1]]
     if (
       length(conf) != 1 || is.na(conf) || !conf %in% c("low", "medium", "high")
     ) {
@@ -349,6 +348,23 @@ tempest_extract_facts_from_answer <- function(
     ))
   }
   invisible(TRUE)
+}
+
+#' @keywords internal
+tempest_turn_answer_and_sources <- function(expert, fallback_answer, store) {
+  turn <- tryCatch(expert$last_turn(), error = function(e) NULL)
+  answer_text <- tryCatch(
+    {
+      if (!is.null(turn)) {
+        ellmer::contents_markdown(turn)
+      } else {
+        fallback_answer
+      }
+    },
+    error = function(e) fallback_answer
+  )
+  source_ids <- tempest_harvest_native_sources_from_turn(turn, store)
+  list(answer_text = answer_text, source_ids = source_ids)
 }
 
 #' Research a single perspective (search + expert synthesis)
@@ -451,28 +467,14 @@ tempest_research_one_perspective <- function(
         }
       )
       if (!is.null(ans)) {
-        turn <- tryCatch(expert$last_turn(), error = function(e) NULL)
-        answer_text <- tryCatch(
-          {
-            if (!is.null(turn)) {
-              ellmer::contents_markdown(turn)
-            } else {
-              ans
-            }
-          },
-          error = function(e) ans
-        )
-        source_ids <- tempest_harvest_native_sources_from_turn(
-          turn,
-          local_store
-        )
+        harvest <- tempest_turn_answer_and_sources(expert, ans, local_store)
         tryCatch(
           tempest_extract_facts_from_answer(
             extractor,
-            answer_text,
+            harvest$answer_text,
             local_store,
             module = modules$extract_claims,
-            source_ids = source_ids
+            source_ids = harvest$source_ids
           ),
           error = function(e) {
             tempest_warn("Fact extraction failed: {conditionMessage(e)}")

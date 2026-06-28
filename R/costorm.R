@@ -578,10 +578,13 @@ TempestSession <- R6::R6Class(
       )
       tryCatch(
         {
-          harvested <- tempest_harvest_native_sources_from_turn(
-            turn,
-            self$store
-          )
+          # Only re-harvest when the caller did not already do so; callers that
+          # pass source_ids have harvested the turn into the store already.
+          harvested <- if (is.null(source_ids)) {
+            tempest_harvest_native_sources_from_turn(turn, self$store)
+          } else {
+            character()
+          }
           tempest_extract_facts_from_answer(
             self$chats$extractor,
             text,
@@ -821,7 +824,11 @@ TempestSession <- R6::R6Class(
             correlation_id = turn_id
           )
           ans <- self$chats$moderator$chat(prompt, echo = "none")
-          self$harvest_native_sources(chat = self$chats$moderator)
+          turn <- tryCatch(
+            self$chats$moderator$last_turn(),
+            error = function(e) NULL
+          )
+          source_ids <- self$harvest_native_sources(turn = turn)
           self$add_turn("Moderator", "assistant", ans)
           self$emit_progress(
             "step",
@@ -833,7 +840,7 @@ TempestSession <- R6::R6Class(
           )
 
           # Extract facts (best-effort)
-          self$extract_facts(ans)
+          self$extract_facts(ans, turn = turn, source_ids = source_ids)
 
           # Update mind map
           self$update_mindmap(
@@ -995,9 +1002,17 @@ TempestSession <- R6::R6Class(
                   response <- tryCatch(
                     {
                       response <- chat$chat(prompt, echo = "none")
-                      self$harvest_native_sources(chat = chat)
+                      turn <- tryCatch(
+                        chat$last_turn(),
+                        error = function(e) NULL
+                      )
+                      source_ids <- self$harvest_native_sources(turn = turn)
 
-                      self$expert_session_manager$extract_facts(response)
+                      self$expert_session_manager$extract_facts(
+                        response,
+                        turn = turn,
+                        source_ids = source_ids
+                      )
                       self$add_turn(persona_name, "assistant", response)
                       self$update_mindmap(
                         last_exchange = paste0(

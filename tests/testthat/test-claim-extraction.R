@@ -66,6 +66,53 @@ test_that("extraction normalizes factor confidence values", {
   expect_equal(claims[[1]]@confidence, "high")
 })
 
+test_that("extraction defaults empty confidence instead of erroring", {
+  store <- fake_store_with_sources(1)
+  s1 <- store$list_sources()[[1]]$id
+  chat <- fake_chat(
+    structured = list(list(
+      facts = list(list(
+        claim = "empty-confidence claim",
+        sources = list(list(source_id = s1)),
+        confidence = character()
+      ))
+    ))
+  )
+
+  tempest_extract_facts_from_answer(chat, "answer text", store)
+
+  claims <- store$list_claims()
+  expect_length(claims, 1)
+  expect_equal(claims[[1]]@confidence, "medium")
+})
+
+test_that("extraction skips facts with empty claim text without aborting", {
+  store <- fake_store_with_sources(1)
+  s1 <- store$list_sources()[[1]]$id
+  chat <- fake_chat(
+    structured = list(list(
+      facts = list(
+        list(
+          claim = character(),
+          sources = list(list(source_id = s1)),
+          confidence = "high"
+        ),
+        list(
+          claim = "valid claim",
+          sources = list(list(source_id = s1)),
+          confidence = "high"
+        )
+      )
+    ))
+  )
+
+  tempest_extract_facts_from_answer(chat, "answer text", store)
+
+  claims <- store$list_claims()
+  expect_length(claims, 1)
+  expect_equal(claims[[1]]@claim_text, "valid claim")
+})
+
 test_that("extraction accepts vector source references", {
   store <- fake_store_with_sources(2)
   ids <- vapply(store$list_sources(), `[[`, character(1), "id")
