@@ -93,6 +93,106 @@ tempest_mindmap_to_markdown <- function(m) {
   paste(out, collapse = "\n")
 }
 
+#' Create a Co-STORM expert definition
+#'
+#' Host applications can pass these definitions to [tempest_session()] via the
+#' `personas` argument to control the expert panel without patching
+#' `TempestSession` internals.
+#'
+#' @param name Expert display name.
+#' @param title Short title or area of expertise.
+#' @param perspective Description of the expert's research perspective.
+#' @param initial_questions Character vector of warmup questions for this
+#'   expert.
+#' @param id Optional numeric expert id. Missing ids are assigned by
+#'   [tempest_session()].
+#' @param affiliation Optional affiliation.
+#' @param background Optional background text.
+#' @param focus_areas Optional character vector of focus areas.
+#' @return A list suitable for the `personas` argument of [tempest_session()].
+#' @examples
+#' expert <- tempest_expert(
+#'   name = "Dr. Rivera",
+#'   title = "Battery policy analyst",
+#'   perspective = "Policy and market incentives",
+#'   initial_questions = "Which policies affect battery recycling?"
+#' )
+#' @export
+tempest_expert <- function(
+  name,
+  title = "Research Specialist",
+  perspective = "General research perspective",
+  initial_questions = character(),
+  id = NULL,
+  affiliation = NA_character_,
+  background = NA_character_,
+  focus_areas = character()
+) {
+  for (field in c("name", "title", "perspective")) {
+    value <- get(field, inherits = FALSE)
+    if (!rlang::is_string(value) || !nzchar(tempest_trim(value))) {
+      tempest_abort("{.arg {field}} must be a single non-empty string.")
+    }
+  }
+  expert <- list(
+    name = tempest_trim(name),
+    title = tempest_trim(title),
+    affiliation = affiliation,
+    background = background,
+    focus_areas = as.character(focus_areas %||% character()),
+    perspective = tempest_trim(perspective),
+    initial_questions = tempest_trim(as.character(
+      initial_questions %||% character()
+    ))
+  )
+  if (!is.null(id)) {
+    expert$id <- as.integer(id)
+  }
+  expert
+}
+
+#' @keywords internal
+tempest_validate_personas <- function(personas) {
+  if (is.null(personas)) {
+    return(NULL)
+  }
+  if (!is.list(personas)) {
+    tempest_abort("{.arg personas} must be a list of expert definitions.")
+  }
+  purrr::imap(personas, function(persona, idx) {
+    if (!is.list(persona)) {
+      tempest_abort("Each entry in {.arg personas} must be a list.")
+    }
+    if (
+      !rlang::is_string(persona$name) || !nzchar(tempest_trim(persona$name))
+    ) {
+      tempest_abort("Each expert must include a non-empty {.field name}.")
+    }
+    persona$name <- tempest_trim(persona$name)
+    for (field in c("title", "perspective")) {
+      value <- persona[[field]] %||%
+        if (identical(field, "title")) {
+          "Research Specialist"
+        } else {
+          "General research perspective"
+        }
+      if (!rlang::is_string(value) || !nzchar(tempest_trim(value))) {
+        value <- if (identical(field, "title")) {
+          "Research Specialist"
+        } else {
+          "General research perspective"
+        }
+      }
+      persona[[field]] <- tempest_trim(value)
+    }
+    persona$id <- as.integer(persona$id %||% idx)
+    persona$initial_questions <- tempest_trim(as.character(
+      persona$initial_questions %||% character()
+    ))
+    persona
+  })
+}
+
 #' TempestSession
 #'
 #' Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, and report artifacts.
@@ -134,11 +234,14 @@ TempestSession <- R6::R6Class(
     #' @param n_experts Number of expert agents.
     #' @param personas Optional list of pre-generated personas. If NULL,
     #'   personas are generated automatically using `tempest_generate_personas()`.
+    #' @param retriever Optional `TempestRetriever` or compatible retriever
+    #'   object with a `SourceStore` at `$store`.
     initialize = function(
       topic,
       config = tempest_config(),
       n_experts = 3,
-      personas = NULL
+      personas = NULL,
+      retriever = NULL
     ) {
       tempest_require("ellmer", "TempestSession requires ellmer.")
       self$topic <- tempest_trim(topic)
@@ -147,8 +250,21 @@ TempestSession <- R6::R6Class(
       }
       self$title <- self$topic
       self$config <- config
-      self$store <- SourceStore$new()
-      self$retriever <- tempest_retriever(config = config, store = self$store)
+      if (is.null(retriever)) {
+        self$store <- SourceStore$new()
+        self$retriever <- tempest_retriever(config = config, store = self$store)
+      } else {
+        if (
+          is.null(retriever$store) ||
+            !inherits(retriever$store, "SourceStore")
+        ) {
+          tempest_abort(
+            "{.arg retriever} must expose a SourceStore at {.code retriever$store}."
+          )
+        }
+        self$retriever <- retriever
+        self$store <- retriever$store
+      }
       self$transcript <- list()
       self$mindmap <- tempest_mindmap_init(self$topic)
       self$artifacts <- new.env(parent = emptyenv())
@@ -162,7 +278,7 @@ TempestSession <- R6::R6Class(
           verbose = FALSE
         )
       } else {
-        self$personas <- personas
+        self$personas <- tempest_validate_personas(personas)
       }
 
       # Create chats first (need extractor for session manager)
@@ -352,7 +468,8 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
-    #' Harvest source metadata from provider-native web tool responses.
+    #' Experimental helper for harvesting source metadata from provider-native
+    #' web tool responses.
     #' @param chat Optional chat whose last turn should be inspected.
     #' @param turn Optional explicit ellmer turn.
     #' @return Character vector of source ids added or updated.
@@ -664,6 +781,12 @@ TempestSession <- R6::R6Class(
         body
       }
       self$artifacts[["report_md"]] <- md
+      tempest_artifact_write(
+        self$config@artifact_store,
+        "report_md",
+        md,
+        metadata = list(topic = self$topic, style = style)
+      )
       md
     },
 
@@ -968,6 +1091,8 @@ TempestSession <- R6::R6Class(
 #' @param n_experts Number of expert agents.
 #' @param personas Optional list of pre-generated personas. If NULL,
 #'   personas are generated automatically.
+#' @param retriever Optional `TempestRetriever` or compatible retriever object
+#'   with a `SourceStore` at `$store`.
 #' @examples
 #' \dontrun{
 #' session <- tempest_session("History of jazz", config = tempest_config())
@@ -978,12 +1103,14 @@ tempest_session <- function(
   topic,
   config = tempest_config(),
   n_experts = 3,
-  personas = NULL
+  personas = NULL,
+  retriever = NULL
 ) {
   TempestSession$new(
     topic = topic,
     config = config,
     n_experts = n_experts,
-    personas = personas
+    personas = personas,
+    retriever = retriever
   )
 }

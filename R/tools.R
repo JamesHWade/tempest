@@ -644,6 +644,7 @@ ExpertSessionManager <- R6::R6Class(
     #' @description
     #' Extract facts from an expert response.
     #' @param response Character string response from expert.
+    #' @param turn Optional ellmer turn to inspect for provider-native sources.
     #' @return Invisibly returns NULL.
     extract_facts = function(response, turn = NULL) {
       if (!is.null(self$extractor) && !is.null(self$store)) {

@@ -1,5 +1,92 @@
 # Configuration
 
+#' Create a Tempest artifact store adapter
+#'
+#' Artifact stores let host applications observe or persist Tempest outputs
+#' without replacing the live in-memory `SourceStore`. The default store is a
+#' no-op adapter.
+#'
+#' @param write Function with signature `function(name, value, metadata)` used
+#'   to persist an artifact.
+#' @param read Function with signature `function(name, default)` used to read an
+#'   artifact.
+#' @param list Function with no arguments that returns available artifact names.
+#' @return A list with `write`, `read`, and `list` functions.
+#' @examples
+#' store <- tempest_memory_artifact_store()
+#' store$write("report_md", "# Report", metadata = list(topic = "Demo"))
+#' store$read("report_md")
+#' @export
+tempest_artifact_store <- function(
+  write = NULL,
+  read = NULL,
+  list = NULL
+) {
+  write <- write %||%
+    function(name, value, metadata = list()) {
+      invisible(name)
+    }
+  read <- read %||%
+    function(name, default = NULL) {
+      default
+    }
+  list_fn <- list %||%
+    function() {
+      character()
+    }
+  for (fn in base::list(write = write, read = read, list = list_fn)) {
+    if (!is.function(fn)) {
+      tempest_abort("Artifact store entries must be functions.")
+    }
+  }
+  structure(
+    base::list(write = write, read = read, list = list_fn),
+    class = "tempest_artifact_store"
+  )
+}
+
+#' Create an in-memory Tempest artifact store
+#'
+#' This is useful for tests and host apps that want to capture artifacts before
+#' deciding where to persist them.
+#'
+#' @return A `tempest_artifact_store`.
+#' @examples
+#' store <- tempest_memory_artifact_store()
+#' store$write("summary", "Done")
+#' store$list()
+#' @export
+tempest_memory_artifact_store <- function() {
+  artifacts <- new.env(parent = emptyenv())
+  tempest_artifact_store(
+    write = function(name, value, metadata = list()) {
+      artifacts[[name]] <- list(value = value, metadata = metadata)
+      invisible(name)
+    },
+    read = function(name, default = NULL) {
+      item <- artifacts[[name]] %||% NULL
+      if (is.null(item)) default else item$value
+    },
+    list = function() {
+      sort(ls(artifacts, all.names = TRUE))
+    }
+  )
+}
+
+#' @keywords internal
+tempest_artifact_write <- function(store, name, value, metadata = list()) {
+  if (is.null(store)) {
+    return(invisible(name))
+  }
+  if (!inherits(store, "tempest_artifact_store")) {
+    tempest_abort(
+      "{.arg artifact_store} must be created by tempest_artifact_store()."
+    )
+  }
+  store$write(name, value, metadata)
+  invisible(name)
+}
+
 #' TempestConfig (S7)
 #'
 #' Holds configuration for STORM / Co-STORM sessions: LLM models, prompts,
@@ -16,6 +103,7 @@ TempestConfig <- S7::new_class(
     tools = S7::new_property(S7::class_any, default = NULL),
     embed_fn = S7::new_property(S7::class_function | NULL, default = NULL),
     ragnar_store = S7::new_property(S7::class_any, default = NULL),
+    artifact_store = S7::new_property(S7::class_any, default = NULL),
     search_provider = prop_chr("native"),
     cache_dir = prop_chr(),
     max_search_results = S7::new_property(S7::class_numeric, default = 8),
@@ -69,6 +157,8 @@ TempestConfig <- S7::new_class(
 #'   is automatically created.
 #' @param ragnar_store A pre-built ragnar store. If NULL and `embed_fn` is
 #'   provided, a store is created automatically with the tempest metadata schema.
+#' @param artifact_store Optional artifact-store adapter from
+#'   `tempest_artifact_store()` or `tempest_memory_artifact_store()`.
 #' @param search_provider Search provider: "native" (use provider's built-in web
 #'   search when available), "wikipedia", "you", "bing", "serper", "brave",
 #'   "duckduckgo", "tavily", "searxng", "google", or "azure_ai_search". Default
@@ -106,6 +196,7 @@ tempest_config <- function(
   tools = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
+  artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
   max_search_results = 8,
@@ -149,6 +240,14 @@ tempest_config <- function(
   if (is.null(ragnar_store) && !is.null(embed_fn)) {
     ragnar_store <- tempest_create_ragnar_store(embed_fn, cache_dir)
   }
+  if (
+    !is.null(artifact_store) &&
+      !inherits(artifact_store, "tempest_artifact_store")
+  ) {
+    tempest_abort(
+      "{.arg artifact_store} must be created by tempest_artifact_store()."
+    )
+  }
 
   TempestConfig(
     models = models,
@@ -157,6 +256,7 @@ tempest_config <- function(
     tools = tools,
     embed_fn = embed_fn,
     ragnar_store = ragnar_store,
+    artifact_store = artifact_store,
     search_provider = tempest_normalize_search_provider(search_provider),
     cache_dir = cache_dir %||% NA_character_,
     max_search_results = max_search_results,
