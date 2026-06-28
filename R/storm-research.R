@@ -495,6 +495,7 @@ tempest_research_one_perspective <- function(
         "Instructions:\n",
         "- Use web_search + fetch_url as needed.\n",
         "- Only state factual claims that are supported by sources you fetched.\n",
+        "- If add_claim is available, record key source-backed claims with it.\n",
         "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
         "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
         "Answer:"
