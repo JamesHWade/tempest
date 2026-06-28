@@ -215,6 +215,9 @@ tempest_validate_personas <- function(personas) {
 #' @field topic The research topic.
 #' @field title The report title.
 #' @field config A `TempestConfig` object.
+#' @field session_id Stable identifier shared by progress events for the
+#'   session.
+#' @field progress Optional progress callback.
 #' @field store A `SourceStore` object.
 #' @field retriever A `TempestRetriever` object.
 #' @field personas List of expert personas.
@@ -232,6 +235,8 @@ TempestSession <- R6::R6Class(
     topic = NULL,
     title = NULL,
     config = NULL,
+    session_id = NULL,
+    progress = NULL,
     store = NULL,
     retriever = NULL,
     personas = NULL,
@@ -251,12 +256,15 @@ TempestSession <- R6::R6Class(
     #'   personas are generated automatically using `tempest_generate_personas()`.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
     #'   object with a `SourceStore` at `$store`.
+    #' @param progress Optional function called with `tempest_progress_event`
+    #'   objects as the session makes progress.
     initialize = function(
       topic,
       config = tempest_config(),
       n_experts = 3,
       personas = NULL,
-      retriever = NULL
+      retriever = NULL,
+      progress = NULL
     ) {
       tempest_require("ellmer", "TempestSession requires ellmer.")
       self$topic <- tempest_trim(topic)
@@ -265,6 +273,8 @@ TempestSession <- R6::R6Class(
       }
       self$title <- self$topic
       self$config <- config
+      self$session_id <- tempest_uuid("session")
+      self$progress <- tempest_progress_callback(progress)
       if (is.null(retriever)) {
         self$store <- SourceStore$new()
         self$retriever <- tempest_retriever(config = config, store = self$store)
@@ -327,7 +337,9 @@ TempestSession <- R6::R6Class(
         config,
         self$retriever,
         extractor = self$chats$extractor,
-        store = self$store
+        store = self$store,
+        progress = self$progress,
+        run_id = self$session_id
       )
 
       # Register tools on moderator: default tools + expert subagent tools
@@ -363,7 +375,50 @@ TempestSession <- R6::R6Class(
         self$discourse_manager <- DiscourseManager$new(config)
       }
 
+      self$emit_progress(
+        "workflow",
+        "started",
+        stage = "session",
+        step = "created",
+        payload = list(persona_count = length(self$personas))
+      )
+
       invisible(self)
+    },
+
+    #' @description
+    #' Emit a Co-STORM progress event.
+    #' @param event_type Progress event type.
+    #' @param status Progress event status.
+    #' @param stage Optional workflow stage.
+    #' @param step Optional workflow step.
+    #' @param message Optional progress message.
+    #' @param payload Optional progress metadata.
+    #' @param parent_event_id Optional parent event id.
+    #' @param correlation_id Optional correlation id.
+    emit_progress = function(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
+      tempest_emit_progress(
+        self$progress,
+        run_id = self$session_id,
+        workflow = "costorm",
+        event_type = event_type,
+        status = status,
+        stage = stage,
+        step = step,
+        message = message,
+        payload = payload,
+        parent_event_id = parent_event_id,
+        correlation_id = correlation_id
+      )
     },
 
     #' @description
@@ -434,6 +489,12 @@ TempestSession <- R6::R6Class(
     #' Update the mind map based on new exchange.
     #' @param last_exchange The latest exchange text.
     update_mindmap = function(last_exchange) {
+      event <- self$emit_progress(
+        "step",
+        "started",
+        stage = "mindmap",
+        step = "update"
+      )
       mm <- self$chats$mindmap
       type <- tempest_type_mindmap()
       prompt <- paste0(
@@ -454,18 +515,45 @@ TempestSession <- R6::R6Class(
         "- Do not fabricate sources.\n\n",
         "Return an updated mind map as structured data."
       )
-      new_mm <- mm$chat_structured(
-        prompt,
-        type = type,
-        echo = "none",
-        convert = FALSE
+      tryCatch(
+        {
+          new_mm <- mm$chat_structured(
+            prompt,
+            type = type,
+            echo = "none",
+            convert = FALSE
+          )
+          if (!is.null(new_mm$nodes) && length(new_mm$nodes) > 0) {
+            self$mindmap <- new_mm
+            self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(
+              new_mm
+            )
+            # Check for oversized nodes and split if needed
+            self$check_and_expand_nodes()
+          }
+          self$emit_progress(
+            "step",
+            "succeeded",
+            stage = "mindmap",
+            step = "update",
+            parent_event_id = event@event_id,
+            correlation_id = event@correlation_id,
+            payload = list(node_count = length(self$mindmap$nodes %||% list()))
+          )
+        },
+        error = function(e) {
+          self$emit_progress(
+            "step",
+            "failed",
+            stage = "mindmap",
+            step = "update",
+            parent_event_id = event@event_id,
+            correlation_id = event@correlation_id,
+            payload = tempest_progress_error_payload(e)
+          )
+          stop(e)
+        }
       )
-      if (!is.null(new_mm$nodes) && length(new_mm$nodes) > 0) {
-        self$mindmap <- new_mm
-        self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(new_mm)
-        # Check for oversized nodes and split if needed
-        self$check_and_expand_nodes()
-      }
       invisible(TRUE)
     },
 
@@ -480,7 +568,42 @@ TempestSession <- R6::R6Class(
     #' Extract facts from text into the store.
     #' @param text Text containing factual claims.
     extract_facts = function(text) {
-      tempest_extract_facts_from_answer(self$chats$extractor, text, self$store)
+      event <- self$emit_progress(
+        "step",
+        "started",
+        stage = "evidence",
+        step = "fact_extraction"
+      )
+      tryCatch(
+        {
+          tempest_extract_facts_from_answer(
+            self$chats$extractor,
+            text,
+            self$store
+          )
+          self$emit_progress(
+            "step",
+            "succeeded",
+            stage = "evidence",
+            step = "fact_extraction",
+            parent_event_id = event@event_id,
+            correlation_id = event@correlation_id,
+            payload = list(claim_count = length(self$store$list_claims()))
+          )
+        },
+        error = function(e) {
+          self$emit_progress(
+            "step",
+            "failed",
+            stage = "evidence",
+            step = "fact_extraction",
+            parent_event_id = event@event_id,
+            correlation_id = event@correlation_id,
+            payload = tempest_progress_error_payload(e)
+          )
+          stop(e)
+        }
+      )
       invisible(TRUE)
     },
 
@@ -518,6 +641,12 @@ TempestSession <- R6::R6Class(
     #' @param n Maximum number of questions to return.
     #' @return A character vector of questions (possibly empty).
     suggest_questions = function(n = 4) {
+      event <- self$emit_progress(
+        "step",
+        "started",
+        stage = "suggestions",
+        step = "question_generation"
+      )
       # Pass NULL (not transcript_markdown's "(no dialog yet)" placeholder) so an
       # empty session gets newcomer-style questions rather than follow-ups.
       context <- if (length(self$transcript) > 0) {
@@ -525,11 +654,37 @@ TempestSession <- R6::R6Class(
       } else {
         NULL
       }
-      tempest_suggest_questions(
-        topic = self$topic,
-        context = context,
-        n = n,
-        config = self$config
+      tryCatch(
+        {
+          questions <- tempest_suggest_questions(
+            topic = self$topic,
+            context = context,
+            n = n,
+            config = self$config
+          )
+          self$emit_progress(
+            "step",
+            "succeeded",
+            stage = "suggestions",
+            step = "question_generation",
+            parent_event_id = event@event_id,
+            correlation_id = event@correlation_id,
+            payload = list(question_count = length(questions))
+          )
+          questions
+        },
+        error = function(e) {
+          self$emit_progress(
+            "step",
+            "failed",
+            stage = "suggestions",
+            step = "question_generation",
+            parent_event_id = event@event_id,
+            correlation_id = event@correlation_id,
+            payload = tempest_progress_error_payload(e)
+          )
+          stop(e)
+        }
       )
     },
 
@@ -581,62 +736,131 @@ TempestSession <- R6::R6Class(
         if (!isTRUE(auto)) return(invisible(NULL))
       }
 
-      # Auto mode: let discourse manager decide next turn
-      if (isTRUE(auto) && !is.null(self$discourse_manager)) {
-        decision <- self$discourse_manager$decide_next_turn(
-          topic = self$topic,
-          transcript_md = self$transcript_markdown(max_turns = 20),
-          mindmap_md = tempest_mindmap_to_markdown(self$mindmap),
-          persona_descriptions = self$get_persona_descriptions(),
-          unseen_sources = if (isTRUE(self$config@enable_unseen_surfacing)) {
-            self$find_undiscussed_sources()
-          } else {
-            character()
+      turn_id <- tempest_uuid("turn")
+      turn_event <- self$emit_progress(
+        "stage",
+        "started",
+        stage = "dialogue",
+        step = "turn",
+        correlation_id = turn_id,
+        payload = list(auto = isTRUE(auto))
+      )
+      tryCatch(
+        {
+          # Auto mode: let discourse manager decide next turn
+          if (isTRUE(auto) && !is.null(self$discourse_manager)) {
+            decision <- self$discourse_manager$decide_next_turn(
+              topic = self$topic,
+              transcript_md = self$transcript_markdown(max_turns = 20),
+              mindmap_md = tempest_mindmap_to_markdown(self$mindmap),
+              persona_descriptions = self$get_persona_descriptions(),
+              unseen_sources = if (
+                isTRUE(self$config@enable_unseen_surfacing)
+              ) {
+                self$find_undiscussed_sources()
+              } else {
+                character()
+              }
+            )
+            result <- self$execute_turn_decision(decision)
+            self$emit_progress(
+              "stage",
+              "succeeded",
+              stage = "dialogue",
+              step = "turn",
+              parent_event_id = turn_event@event_id,
+              correlation_id = turn_id
+            )
+            return(result)
           }
-        )
-        return(self$execute_turn_decision(decision))
-      }
 
-      self$add_turn("user", "user", user_input)
+          self$add_turn("user", "user", user_input)
+          self$emit_progress(
+            "step",
+            "succeeded",
+            stage = "dialogue",
+            step = "user_turn",
+            parent_event_id = turn_event@event_id,
+            correlation_id = turn_id
+          )
 
-      # Build context for the moderator
-      prompt <- paste0(
-        "Topic: ",
-        self$topic,
-        "\n\n",
-        "Mind map:\n",
-        tempest_mindmap_to_markdown(self$mindmap),
-        "\n\n",
-        "Recent dialog:\n",
-        self$transcript_markdown(max_turns = 30),
-        "\n\n",
-        "User question:\n",
-        user_input,
-        "\n\n",
-        "You have tools to ask experts (ask_*) for research questions.\n",
-        "Use the expert tools to delegate research questions to the appropriate expert.\n",
-        "Synthesize their responses into a coherent answer for the user.\n",
-        "Use citations like [Sxxxxxxxxxxxx] for factual claims."
-      )
+          # Build context for the moderator
+          prompt <- paste0(
+            "Topic: ",
+            self$topic,
+            "\n\n",
+            "Mind map:\n",
+            tempest_mindmap_to_markdown(self$mindmap),
+            "\n\n",
+            "Recent dialog:\n",
+            self$transcript_markdown(max_turns = 30),
+            "\n\n",
+            "User question:\n",
+            user_input,
+            "\n\n",
+            "You have tools to ask experts (ask_*) for research questions.\n",
+            "Use the expert tools to delegate research questions to the appropriate expert.\n",
+            "Synthesize their responses into a coherent answer for the user.\n",
+            "Use citations like [Sxxxxxxxxxxxx] for factual claims."
+          )
 
-      # The moderator will use expert tools as needed
-      ans <- self$chats$moderator$chat(prompt, echo = "none")
-      self$harvest_native_sources(chat = self$chats$moderator)
-      self$add_turn("Moderator", "assistant", ans)
+          # The moderator will use expert tools as needed
+          moderator_event <- self$emit_progress(
+            "step",
+            "started",
+            stage = "dialogue",
+            step = "moderator_response",
+            parent_event_id = turn_event@event_id,
+            correlation_id = turn_id
+          )
+          ans <- self$chats$moderator$chat(prompt, echo = "none")
+          self$harvest_native_sources(chat = self$chats$moderator)
+          self$add_turn("Moderator", "assistant", ans)
+          self$emit_progress(
+            "step",
+            "succeeded",
+            stage = "dialogue",
+            step = "moderator_response",
+            parent_event_id = moderator_event@event_id,
+            correlation_id = turn_id
+          )
 
-      # Extract facts (best-effort)
-      tempest_extract_facts_from_answer(self$chats$extractor, ans, self$store)
+          # Extract facts (best-effort)
+          self$extract_facts(ans)
 
-      # Update mind map
-      self$update_mindmap(
-        last_exchange = paste0("User: ", user_input, "\n\nModerator: ", ans)
-      )
+          # Update mind map
+          self$update_mindmap(
+            last_exchange = paste0("User: ", user_input, "\n\nModerator: ", ans)
+          )
 
-      list(
-        speaker = "Moderator",
-        answer = ans,
-        mindmap_md = self$artifacts[["mindmap_md"]] %||%
-          tempest_mindmap_to_markdown(self$mindmap)
+          result <- list(
+            speaker = "Moderator",
+            answer = ans,
+            mindmap_md = self$artifacts[["mindmap_md"]] %||%
+              tempest_mindmap_to_markdown(self$mindmap)
+          )
+          self$emit_progress(
+            "stage",
+            "succeeded",
+            stage = "dialogue",
+            step = "turn",
+            parent_event_id = turn_event@event_id,
+            correlation_id = turn_id
+          )
+          result
+        },
+        error = function(e) {
+          self$emit_progress(
+            "stage",
+            "failed",
+            stage = "dialogue",
+            step = "turn",
+            parent_event_id = turn_event@event_id,
+            correlation_id = turn_id,
+            payload = tempest_progress_error_payload(e)
+          )
+          stop(e)
+        }
       )
     },
 
@@ -646,108 +870,263 @@ TempestSession <- R6::R6Class(
     #' @param verbose If TRUE, prints progress messages.
     #' @return A list with results from each expert's warmup.
     warmup = function(verbose = TRUE) {
-      if (length(self$personas) == 0) {
-        if (verbose) {
-          tempest_inform("No personas available for warmup.")
-        }
-        return(invisible(list()))
-      }
-
-      results <- list()
-
-      for (i in seq_along(self$personas)) {
-        persona <- self$personas[[i]]
-        persona_name <- persona$name %||% paste("Expert", i)
-        initial_qs <- persona$initial_questions %||% character()
-
-        if (length(initial_qs) == 0) {
-          if (verbose) {
-            tempest_inform("Skipping {persona_name}: no initial questions")
-          }
-          next
-        }
-
-        if (verbose) {
-          tempest_inform(
-            "Warmup: {persona_name} ({length(initial_qs)} questions)"
-          )
-        }
-
-        # Get or create expert session
-        session_result <- self$expert_session_manager$get_or_create(persona)
-        chat <- session_result$chat
-        session_id <- session_result$session_id
-
-        expert_results <- list()
-        for (q in initial_qs) {
-          if (verbose) {
-            tempest_inform("  Q: {q}")
+      warmup_event <- self$emit_progress(
+        "stage",
+        "started",
+        stage = "warmup",
+        step = "expert_fanout",
+        payload = list(expert_count = length(self$personas))
+      )
+      tryCatch(
+        {
+          if (length(self$personas) == 0) {
+            if (verbose) {
+              tempest_inform("No personas available for warmup.")
+            }
+            self$emit_progress(
+              "stage",
+              "skipped",
+              stage = "warmup",
+              step = "expert_fanout",
+              parent_event_id = warmup_event@event_id,
+              correlation_id = warmup_event@correlation_id,
+              payload = list(reason = "no_personas")
+            )
+            return(invisible(list()))
           }
 
-          prompt <- paste0(
-            "Topic: ",
-            self$topic,
-            "\n\n",
-            "Question: ",
-            q,
-            "\n\n",
-            "Instructions:\n",
-            "- Use the available web/source tools to find and cite sources.\n",
-            "- If web_search and fetch_url are available, search first and then fetch sources.\n",
-            "- Only state factual claims supported by sources you inspected.\n",
-            "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
-            "- If evidence is weak or unclear, say so.\n\n",
-            "Respond now:"
-          )
+          results <- list()
 
-          response <- chat$chat(prompt, echo = "none")
-          self$harvest_native_sources(chat = chat)
+          for (i in seq_along(self$personas)) {
+            persona <- self$personas[[i]]
+            persona_name <- persona$name %||% paste("Expert", i)
+            initial_qs <- persona$initial_questions %||% character()
 
-          # Extract facts from expert response
-          self$expert_session_manager$extract_facts(response)
+            if (length(initial_qs) == 0) {
+              if (verbose) {
+                tempest_inform("Skipping {persona_name}: no initial questions")
+              }
+              self$emit_progress(
+                "expert",
+                "skipped",
+                stage = "warmup",
+                step = "expert_fanout",
+                parent_event_id = warmup_event@event_id,
+                correlation_id = warmup_event@correlation_id,
+                payload = list(
+                  expert_id = as.character(persona$id %||% i),
+                  expert_name = persona_name,
+                  reason = "no_initial_questions"
+                )
+              )
+              next
+            }
 
-          # Add to transcript
-          self$add_turn(persona_name, "assistant", response)
+            if (verbose) {
+              tempest_inform(
+                "Warmup: {persona_name} ({length(initial_qs)} questions)"
+              )
+            }
 
-          expert_results <- c(
-            expert_results,
-            list(list(
-              question = q,
-              response = response
-            ))
-          )
+            # Get or create expert session
+            session_result <- self$expert_session_manager$get_or_create(persona)
+            chat <- session_result$chat
+            session_id <- session_result$session_id
+            expert_event <- self$emit_progress(
+              "expert",
+              "started",
+              stage = "warmup",
+              step = "expert_fanout",
+              parent_event_id = warmup_event@event_id,
+              correlation_id = warmup_event@correlation_id,
+              payload = list(
+                expert_id = as.character(persona$id %||% i),
+                expert_name = persona_name,
+                session_id = session_id,
+                question_count = length(initial_qs)
+              )
+            )
 
-          # Update mind map after each response
-          self$update_mindmap(
-            last_exchange = paste0(
-              "Initial research by ",
-              persona_name,
-              ":\n",
-              "Q: ",
-              q,
-              "\n\n",
-              "A: ",
-              response
+            expert_results <- list()
+            tryCatch(
+              {
+                for (q_i in seq_along(initial_qs)) {
+                  q <- initial_qs[[q_i]]
+                  if (verbose) {
+                    tempest_inform("  Q: {q}")
+                  }
+                  question_event <- self$emit_progress(
+                    "tool",
+                    "started",
+                    stage = "warmup",
+                    step = "expert_question",
+                    parent_event_id = expert_event@event_id,
+                    correlation_id = expert_event@correlation_id,
+                    payload = list(
+                      expert_id = as.character(persona$id %||% i),
+                      expert_name = persona_name,
+                      question_index = q_i
+                    )
+                  )
+
+                  prompt <- paste0(
+                    "Topic: ",
+                    self$topic,
+                    "\n\n",
+                    "Question: ",
+                    q,
+                    "\n\n",
+                    "Instructions:\n",
+                    "- Use the available web/source tools to find and cite sources.\n",
+                    "- If web_search and fetch_url are available, search first and then fetch sources.\n",
+                    "- Only state factual claims supported by sources you inspected.\n",
+                    "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
+                    "- If evidence is weak or unclear, say so.\n\n",
+                    "Respond now:"
+                  )
+
+                  response <- tryCatch(
+                    {
+                      response <- chat$chat(prompt, echo = "none")
+                      self$harvest_native_sources(chat = chat)
+
+                      self$expert_session_manager$extract_facts(response)
+                      self$add_turn(persona_name, "assistant", response)
+                      self$update_mindmap(
+                        last_exchange = paste0(
+                          "Initial research by ",
+                          persona_name,
+                          ":\n",
+                          "Q: ",
+                          q,
+                          "\n\n",
+                          "A: ",
+                          response
+                        )
+                      )
+
+                      self$emit_progress(
+                        "tool",
+                        "succeeded",
+                        stage = "warmup",
+                        step = "expert_question",
+                        parent_event_id = question_event@event_id,
+                        correlation_id = question_event@correlation_id,
+                        payload = list(
+                          expert_id = as.character(persona$id %||% i),
+                          expert_name = persona_name,
+                          question_index = q_i
+                        )
+                      )
+                      response
+                    },
+                    error = function(e) {
+                      self$emit_progress(
+                        "tool",
+                        "failed",
+                        stage = "warmup",
+                        step = "expert_question",
+                        parent_event_id = question_event@event_id,
+                        correlation_id = question_event@correlation_id,
+                        payload = c(
+                          list(
+                            expert_id = as.character(persona$id %||% i),
+                            expert_name = persona_name,
+                            question_index = q_i
+                          ),
+                          tempest_progress_error_payload(e)
+                        )
+                      )
+                      stop(e)
+                    }
+                  )
+
+                  expert_results <- c(
+                    expert_results,
+                    list(list(
+                      question = q,
+                      response = response
+                    ))
+                  )
+                }
+              },
+              error = function(e) {
+                self$emit_progress(
+                  "expert",
+                  "failed",
+                  stage = "warmup",
+                  step = "expert_fanout",
+                  parent_event_id = expert_event@event_id,
+                  correlation_id = expert_event@correlation_id,
+                  payload = c(
+                    list(
+                      expert_id = as.character(persona$id %||% i),
+                      expert_name = persona_name,
+                      questions_answered = length(expert_results)
+                    ),
+                    tempest_progress_error_payload(e)
+                  )
+                )
+                stop(e)
+              }
+            )
+
+            self$emit_progress(
+              "expert",
+              "succeeded",
+              stage = "warmup",
+              step = "expert_fanout",
+              parent_event_id = expert_event@event_id,
+              correlation_id = expert_event@correlation_id,
+              payload = list(
+                expert_id = as.character(persona$id %||% i),
+                expert_name = persona_name,
+                questions_answered = length(expert_results)
+              )
+            )
+            results[[persona_name]] <- list(
+              session_id = session_id,
+              questions_answered = length(expert_results),
+              results = expert_results
+            )
+          }
+
+          if (verbose) {
+            total_facts <- length(self$store$list_claims())
+            total_sources <- length(self$store$list_sources())
+            tempest_inform(
+              "Warmup complete: {total_facts} facts, {total_sources} sources"
+            )
+          }
+
+          self$emit_progress(
+            "stage",
+            "succeeded",
+            stage = "warmup",
+            step = "expert_fanout",
+            parent_event_id = warmup_event@event_id,
+            correlation_id = warmup_event@correlation_id,
+            payload = list(
+              expert_count = length(results),
+              claim_count = length(self$store$list_claims()),
+              source_count = length(self$store$list_sources())
             )
           )
+          invisible(results)
+        },
+        error = function(e) {
+          self$emit_progress(
+            "stage",
+            "failed",
+            stage = "warmup",
+            step = "expert_fanout",
+            parent_event_id = warmup_event@event_id,
+            correlation_id = warmup_event@correlation_id,
+            payload = tempest_progress_error_payload(e)
+          )
+          stop(e)
         }
-
-        results[[persona_name]] <- list(
-          session_id = session_id,
-          questions_answered = length(expert_results),
-          results = expert_results
-        )
-      }
-
-      if (verbose) {
-        total_facts <- length(self$store$list_claims())
-        total_sources <- length(self$store$list_sources())
-        tempest_inform(
-          "Warmup complete: {total_facts} facts, {total_sources} sources"
-        )
-      }
-
-      invisible(results)
+      )
     },
 
     #' @description
@@ -762,49 +1141,89 @@ TempestSession <- R6::R6Class(
       reorganize = TRUE
     ) {
       style <- match.arg(style)
-      # Reorganize mind map before report generation
-      if (isTRUE(reorganize)) {
-        self$reorganize_mindmap()
-      }
-      rep <- self$chats$reporter
-      prompt <- paste0(
-        "Write a comprehensive report based on the session.\n\n",
-        "Topic: ",
-        self$topic,
-        "\n\n",
-        "Mind map:\n",
-        tempest_mindmap_to_markdown(self$mindmap),
-        "\n\n",
-        "Verified facts:\n",
-        tempest_summarize_facts_for_prompt(self$store, max_items = 120),
-        "\n\n",
-        "Conversation (summary):\n",
-        self$transcript_markdown(max_turns = 80),
-        "\n\n",
-        "Style: ",
-        style,
-        "\n\n",
-        "Rules:\n",
-        "- Use only verified facts (with citations).\n",
-        "- Preserve citations like [Sxxxxxxxxxxxx].\n",
-        "- Do not invent facts.\n\n",
-        "Write the report body in Markdown (no title)."
+      report_event <- self$emit_progress(
+        "stage",
+        "started",
+        stage = "report",
+        step = "generate",
+        payload = list(style = style, include_references = include_references)
       )
-      body <- rep$chat(prompt, echo = "none")
-      self$artifacts[["report"]] <- body
-      md <- if (include_references) {
-        tempest_report_md(self$title %||% self$topic, body, self$store)
-      } else {
-        body
-      }
-      self$artifacts[["report_md"]] <- md
-      tempest_artifact_write(
-        self$config@artifact_store,
-        "report_md",
-        md,
-        metadata = list(topic = self$topic, style = style)
+      tryCatch(
+        {
+          # Reorganize mind map before report generation
+          if (isTRUE(reorganize)) {
+            self$reorganize_mindmap()
+          }
+          rep <- self$chats$reporter
+          prompt <- paste0(
+            "Write a comprehensive report based on the session.\n\n",
+            "Topic: ",
+            self$topic,
+            "\n\n",
+            "Mind map:\n",
+            tempest_mindmap_to_markdown(self$mindmap),
+            "\n\n",
+            "Verified facts:\n",
+            tempest_summarize_facts_for_prompt(self$store, max_items = 120),
+            "\n\n",
+            "Conversation (summary):\n",
+            self$transcript_markdown(max_turns = 80),
+            "\n\n",
+            "Style: ",
+            style,
+            "\n\n",
+            "Rules:\n",
+            "- Use only verified facts (with citations).\n",
+            "- Preserve citations like [Sxxxxxxxxxxxx].\n",
+            "- Do not invent facts.\n\n",
+            "Write the report body in Markdown (no title)."
+          )
+          body <- rep$chat(prompt, echo = "none")
+          self$artifacts[["report"]] <- body
+          md <- if (include_references) {
+            tempest_report_md(self$title %||% self$topic, body, self$store)
+          } else {
+            body
+          }
+          self$artifacts[["report_md"]] <- md
+          tempest_artifact_write(
+            self$config@artifact_store,
+            "report_md",
+            md,
+            metadata = list(topic = self$topic, style = style)
+          )
+          self$emit_progress(
+            "artifact",
+            "available",
+            stage = "report",
+            step = "report_md",
+            parent_event_id = report_event@event_id,
+            correlation_id = report_event@correlation_id,
+            payload = list(artifact = "report_md")
+          )
+          self$emit_progress(
+            "stage",
+            "succeeded",
+            stage = "report",
+            step = "generate",
+            parent_event_id = report_event@event_id,
+            correlation_id = report_event@correlation_id
+          )
+          md
+        },
+        error = function(e) {
+          self$emit_progress(
+            "stage",
+            "failed",
+            stage = "report",
+            step = "generate",
+            parent_event_id = report_event@event_id,
+            correlation_id = report_event@correlation_id,
+            payload = tempest_progress_error_payload(e)
+          )
+          stop(e)
+        }
       )
-      md
     },
 
     #' @description
@@ -1110,6 +1529,8 @@ TempestSession <- R6::R6Class(
 #'   personas are generated automatically.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
 #'   with a `SourceStore` at `$store`.
+#' @param progress Optional function called with `tempest_progress_event`
+#'   objects as the session makes progress.
 #' @examples
 #' \dontrun{
 #' session <- tempest_session("History of jazz", config = tempest_config())
@@ -1121,13 +1542,15 @@ tempest_session <- function(
   config = tempest_config(),
   n_experts = 3,
   personas = NULL,
-  retriever = NULL
+  retriever = NULL,
+  progress = NULL
 ) {
   TempestSession$new(
     topic = topic,
     config = config,
     n_experts = n_experts,
     personas = personas,
-    retriever = retriever
+    retriever = retriever,
+    progress = progress
   )
 }

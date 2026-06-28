@@ -617,6 +617,8 @@ tempest_register_default_tools <- function(
 #' @field retriever A `TempestRetriever` for registering tools.
 #' @field extractor Chat object for fact extraction (optional).
 #' @field store A `SourceStore` for storing extracted facts (optional).
+#' @field progress Optional progress callback.
+#' @field run_id Shared Co-STORM session id for progress events.
 #'
 #' @keywords internal
 ExpertSessionManager <- R6::R6Class(
@@ -627,6 +629,8 @@ ExpertSessionManager <- R6::R6Class(
     retriever = NULL,
     extractor = NULL,
     store = NULL,
+    progress = NULL,
+    run_id = NULL,
 
     #' @description
     #' Create a new ExpertSessionManager.
@@ -634,13 +638,59 @@ ExpertSessionManager <- R6::R6Class(
     #' @param retriever A `TempestRetriever` object.
     #' @param extractor Optional chat object for fact extraction.
     #' @param store Optional `SourceStore` for storing extracted facts.
-    initialize = function(config, retriever, extractor = NULL, store = NULL) {
+    #' @param progress Optional progress callback.
+    #' @param run_id Shared Co-STORM session id for progress events.
+    initialize = function(
+      config,
+      retriever,
+      extractor = NULL,
+      store = NULL,
+      progress = NULL,
+      run_id = NULL
+    ) {
       self$sessions <- new.env(parent = emptyenv())
       self$config <- config
       self$retriever <- retriever
       self$extractor <- extractor
       self$store <- store
+      self$progress <- tempest_progress_callback(progress)
+      self$run_id <- run_id %||% tempest_uuid("session")
       invisible(self)
+    },
+
+    #' @description
+    #' Emit a Co-STORM expert progress event.
+    #' @param event_type Progress event type.
+    #' @param status Progress event status.
+    #' @param stage Optional workflow stage.
+    #' @param step Optional workflow step.
+    #' @param message Optional progress message.
+    #' @param payload Optional progress metadata.
+    #' @param parent_event_id Optional parent event id.
+    #' @param correlation_id Optional correlation id.
+    emit_progress = function(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
+      tempest_emit_progress(
+        self$progress,
+        run_id = self$run_id,
+        workflow = "costorm",
+        event_type = event_type,
+        status = status,
+        stage = stage,
+        step = step,
+        message = message,
+        payload = payload,
+        parent_event_id = parent_event_id,
+        correlation_id = correlation_id
+      )
     },
 
     #' @description
@@ -650,8 +700,43 @@ ExpertSessionManager <- R6::R6Class(
     #' @return Invisibly returns NULL.
     extract_facts = function(response, turn = NULL) {
       if (!is.null(self$extractor) && !is.null(self$store)) {
-        tempest_harvest_native_sources_from_turn(turn, self$store)
-        tempest_extract_facts_from_answer(self$extractor, response, self$store)
+        event <- self$emit_progress(
+          "step",
+          "started",
+          stage = "evidence",
+          step = "fact_extraction"
+        )
+        tryCatch(
+          {
+            tempest_harvest_native_sources_from_turn(turn, self$store)
+            tempest_extract_facts_from_answer(
+              self$extractor,
+              response,
+              self$store
+            )
+            self$emit_progress(
+              "step",
+              "succeeded",
+              stage = "evidence",
+              step = "fact_extraction",
+              parent_event_id = event@event_id,
+              correlation_id = event@correlation_id,
+              payload = list(claim_count = length(self$store$list_claims()))
+            )
+          },
+          error = function(e) {
+            self$emit_progress(
+              "step",
+              "failed",
+              stage = "evidence",
+              step = "fact_extraction",
+              parent_event_id = event@event_id,
+              correlation_id = event@correlation_id,
+              payload = tempest_progress_error_payload(e)
+            )
+            stop(e)
+          }
+        )
       }
       invisible(NULL)
     },
@@ -758,6 +843,19 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     chat <- result$chat
     sid <- result$session_id
     expert_name <- p$name %||% "Expert"
+    correlation_id <- tempest_uuid("tool")
+    tool_event <- mgr$emit_progress(
+      "tool",
+      "started",
+      stage = "dialogue",
+      step = tool_name,
+      correlation_id = correlation_id,
+      payload = list(
+        expert_id = as.character(p$id %||% NA_integer_),
+        expert_name = expert_name,
+        session_id = sid
+      )
+    )
 
     # Build prompt with context
     prompt <- paste0(
@@ -776,7 +874,28 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       "Respond now:"
     )
 
-    response <- chat$chat(prompt, echo = "none")
+    response <- tryCatch(
+      chat$chat(prompt, echo = "none"),
+      error = function(e) {
+        mgr$emit_progress(
+          "tool",
+          "failed",
+          stage = "dialogue",
+          step = tool_name,
+          parent_event_id = tool_event@event_id,
+          correlation_id = correlation_id,
+          payload = c(
+            list(
+              expert_id = as.character(p$id %||% NA_integer_),
+              expert_name = expert_name,
+              session_id = sid
+            ),
+            tempest_progress_error_payload(e)
+          )
+        )
+        stop(e)
+      }
+    )
 
     # Extract plain text from the response using ellmer's contents_markdown
     # This properly handles ellmer_output objects and tool call results
@@ -795,6 +914,19 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
 
     # Extract facts from expert response
     mgr$extract_facts(response_text, turn = last_turn)
+    mgr$emit_progress(
+      "tool",
+      "succeeded",
+      stage = "dialogue",
+      step = tool_name,
+      parent_event_id = tool_event@event_id,
+      correlation_id = correlation_id,
+      payload = list(
+        expert_id = as.character(p$id %||% NA_integer_),
+        expert_name = expert_name,
+        session_id = sid
+      )
+    )
 
     list(
       expert = expert_name,

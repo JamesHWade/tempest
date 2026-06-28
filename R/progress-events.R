@@ -185,10 +185,10 @@ tempest_progress_error_payload <- function(error) {
 }
 
 tempest_emit_progress <- function(progress, ...) {
-  if (is.null(progress)) {
-    return(invisible(NULL))
-  }
   event <- tempest_progress_event(...)
+  if (is.null(progress)) {
+    return(invisible(event))
+  }
   tryCatch(
     progress(event),
     error = function(e) {

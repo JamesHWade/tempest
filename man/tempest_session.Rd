@@ -9,7 +9,8 @@ tempest_session(
   config = tempest_config(),
   n_experts = 3,
   personas = NULL,
-  retriever = NULL
+  retriever = NULL,
+  progress = NULL
 )
 }
 \arguments{
@@ -24,6 +25,9 @@ personas are generated automatically.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
 with a \code{SourceStore} at \verb{$store}.}
+
+\item{progress}{Optional function called with \code{tempest_progress_event}
+objects as the session makes progress.}
 }
 \description{
 Create a Co-STORM session

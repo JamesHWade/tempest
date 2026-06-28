@@ -39,6 +39,7 @@
   workers are unavailable, and retry any failed perspective or section so no
   research or content is silently dropped. A transient error during sequential
   research is also caught and skipped rather than aborting the whole run.
+* `tempest_session()` gains a `progress` callback that emits Co-STORM session, warmup, expert/tool, dialogue, fact extraction, mind-map, suggestion, report, artifact, and failure events (qngb).
 * `tempest_config(search_provider = )` searches now apply a request timeout
   and retry on transient HTTP errors, and a single missing or non-public
   result URL no longer discards every other result for the query.

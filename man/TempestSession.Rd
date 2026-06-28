@@ -15,6 +15,11 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
 
     \item{\code{config}}{A \code{TempestConfig} object.}
 
+    \item{\code{session_id}}{Stable identifier shared by progress events for the
+session.}
+
+    \item{\code{progress}}{Optional progress callback.}
+
     \item{\code{store}}{A \code{SourceStore} object.}
 
     \item{\code{retriever}}{A \code{TempestRetriever} object.}
@@ -39,6 +44,7 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-TempestSession-initialize}{\code{TempestSession$new()}}
+    \item \href{#method-TempestSession-emit_progress}{\code{TempestSession$emit_progress()}}
     \item \href{#method-TempestSession-add_turn}{\code{TempestSession$add_turn()}}
     \item \href{#method-TempestSession-transcript_markdown}{\code{TempestSession$transcript_markdown()}}
     \item \href{#method-TempestSession-get_persona_names}{\code{TempestSession$get_persona_names()}}
@@ -76,7 +82,8 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
   config = tempest_config(),
   n_experts = 3,
   personas = NULL,
-  retriever = NULL
+  retriever = NULL,
+  progress = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -90,6 +97,43 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
 personas are generated automatically using \code{tempest_generate_personas()}.}
       \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
 object with a \code{SourceStore} at \verb{$store}.}
+      \item{\code{progress}}{Optional function called with \code{tempest_progress_event}
+objects as the session makes progress.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-emit_progress"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-emit_progress}{}}}
+\subsection{\code{TempestSession$emit_progress()}}{
+  Emit a Co-STORM progress event.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$emit_progress(
+  event_type,
+  status,
+  stage = NA_character_,
+  step = NA_character_,
+  message = NA_character_,
+  payload = list(),
+  parent_event_id = NA_character_,
+  correlation_id = NA_character_
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{event_type}}{Progress event type.}
+      \item{\code{status}}{Progress event status.}
+      \item{\code{stage}}{Optional workflow stage.}
+      \item{\code{step}}{Optional workflow step.}
+      \item{\code{message}}{Optional progress message.}
+      \item{\code{payload}}{Optional progress metadata.}
+      \item{\code{parent_event_id}}{Optional parent event id.}
+      \item{\code{correlation_id}}{Optional correlation id.}
     }
     \if{html}{\out{</div>}}
   }
