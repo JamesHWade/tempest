@@ -1,5 +1,10 @@
 # tempest 0.1.0
 
+* `tempest_artifact_store()`, `tempest_memory_artifact_store()`, and
+  `tempest_expert()` provide initial host-app extension points for capturing
+  report artifacts and supplying validated Co-STORM experts. `tempest_config()`
+  now accepts an `artifact_store`, and `tempest_session()` accepts a shared
+  retriever with a `SourceStore`.
 * The Chat tab now suggests follow-up questions as clickable cards. A set appears
   when the expert panel assembles and refreshes after each answer; clicking a card
   sends that question to the Moderator. Toggle it off with "Suggest follow-up

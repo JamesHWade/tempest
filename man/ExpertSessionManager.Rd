@@ -64,13 +64,14 @@ the session ID returned from previous interactions.
   Extract facts from an expert response.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExpertSessionManager$extract_facts(response)}
+    \preformatted{ExpertSessionManager$extract_facts(response, turn = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{response}}{Character string response from expert.}
+      \item{\code{turn}}{Optional ellmer turn to inspect for provider-native sources.}
     }
     \if{html}{\out{</div>}}
   }

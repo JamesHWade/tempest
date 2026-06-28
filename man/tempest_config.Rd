@@ -11,6 +11,7 @@ tempest_config(
   tools = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
+  artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
   max_search_results = 8,
@@ -47,6 +48,9 @@ is automatically created.}
 
 \item{ragnar_store}{A pre-built ragnar store. If NULL and \code{embed_fn} is
 provided, a store is created automatically with the tempest metadata schema.}
+
+\item{artifact_store}{Optional artifact-store adapter from
+\code{tempest_artifact_store()} or \code{tempest_memory_artifact_store()}.}
 
 \item{search_provider}{Search provider: "native" (use provider's built-in web
 search when available), "wikipedia", "you", "bing", "serper", "brave",

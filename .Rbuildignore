@@ -13,3 +13,5 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.positai$
+^\.kata\.toml$
+^AGENTS\.md$

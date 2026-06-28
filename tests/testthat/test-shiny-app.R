@@ -81,6 +81,52 @@ test_that("the report module renders markdown and an empty state", {
   })
 })
 
+test_that("sources and facts modules show empty states until data exists", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  store <- app$new_session_store()
+
+  shiny::testServer(app$mod_sources_server, args = list(store = store), {
+    expect_match(as.character(output$body$html), "Start a session")
+
+    empty_session <- list(store = SourceStore$new())
+    store$set(empty_session)
+    session$flushReact()
+    expect_match(as.character(output$body$html), "No sources collected yet")
+
+    populated_session <- list(store = fake_store_with_sources(1))
+    store$set(populated_session)
+    session$flushReact()
+    sources_body <- as.character(output$body$html)
+    expect_match(sources_body, "<div")
+    expect_no_match(sources_body, "No sources collected yet")
+  })
+
+  shiny::testServer(app$mod_facts_server, args = list(store = store), {
+    store$set(NULL)
+    session$flushReact()
+    expect_match(as.character(output$body$html), "Start a session")
+
+    empty_session <- list(store = SourceStore$new())
+    store$set(empty_session)
+    session$flushReact()
+    expect_match(as.character(output$body$html), "No facts extracted yet")
+
+    populated_store <- fake_store_with_sources(1)
+    source_id <- populated_store$list_sources()[[1]]$id
+    populated_store$add_claim(tempest_claim(
+      claim_text = "Example evidence exists.",
+      source_ids = source_id
+    ))
+    populated_session <- list(store = populated_store)
+    store$set(populated_session)
+    session$flushReact()
+    facts_body <- as.character(output$body$html)
+    expect_match(facts_body, "<div")
+    expect_no_match(facts_body, "No facts extracted yet")
+  })
+})
+
 test_that("session store mutations work outside reactive consumers", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
@@ -140,6 +186,85 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
     expect_equal(output$n_turns, "1")
     expect_match(output$n_sources, "^[0-9]+$")
     expect_match(output$n_facts, "^[0-9]+$")
+  })
+})
+
+test_that("shared fake Co-STORM session populates evidence tabs", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  shared <- app$new_session_store()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  source_store$add_claim(tempest_claim(
+    claim_text = "Integrated evidence is available.",
+    source_ids = source_id,
+    confidence = "high"
+  ))
+  retriever <- tempest_retriever(config = cfg, store = source_store)
+  ses <- tempest_session(
+    "Integration topic",
+    config = cfg,
+    personas = list(tempest_expert(
+      name = "Integration Expert",
+      title = "Researcher",
+      perspective = "End-to-end app behavior"
+    )),
+    retriever = retriever
+  )
+  ses$mindmap <- list(
+    nodes = list(
+      list(
+        id = "root",
+        label = "Integration topic",
+        parent = NULL,
+        notes = "",
+        source_ids = character()
+      ),
+      list(
+        id = "evidence",
+        label = "Evidence",
+        parent = "root",
+        notes = "Integrated evidence node.",
+        source_ids = source_id
+      )
+    ),
+    edges = list(list(from = "root", to = "evidence", relation = "supports"))
+  )
+  ses$add_turn("user", "user", "What evidence exists?")
+  ses$add_turn(
+    "Moderator",
+    "assistant",
+    paste0("Integrated evidence is available [", source_id, "].")
+  )
+  shared$set(ses)
+  shared$set_report("# Integrated report", topic = ses$topic)
+
+  shiny::testServer(app$mod_sources_server, args = list(store = shared), {
+    session$flushReact()
+    expect_no_match(as.character(output$body$html), "No sources collected yet")
+  })
+  shiny::testServer(app$mod_facts_server, args = list(store = shared), {
+    session$flushReact()
+    expect_no_match(as.character(output$body$html), "No facts extracted yet")
+  })
+  shiny::testServer(app$mod_mindmap_server, args = list(store = shared), {
+    session$flushReact()
+    expect_equal(output$n_nodes, "2")
+    expect_equal(output$n_sources, "1")
+    expect_equal(output$n_facts, "1")
+    expect_equal(output$n_turns, "2")
+  })
+  shiny::testServer(app$mod_transcript_server, args = list(store = shared), {
+    session$flushReact()
+    expect_match(as.character(output$body$html), "Integrated evidence")
+  })
+  shiny::testServer(app$mod_report_server, args = list(store = shared), {
+    session$flushReact()
+    expect_match(as.character(output$body$html), "Integrated report")
   })
 })
 

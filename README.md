@@ -189,6 +189,7 @@ res <- tempest_run(
 | `search_provider` | `"native"` | Search backend: `"native"`, `"wikipedia"`, `"you"`, `"bing"`, `"serper"`, `"brave"`, `"duckduckgo"`, `"tavily"`, `"searxng"`, `"google"`, `"azure_ai_search"` |
 | `embed_fn` | `NULL` | Embedding function for RAG (e.g., `ragnar::embed_openai()`) |
 | `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
+| `artifact_store` | `NULL` | Optional host-app artifact store from `tempest_artifact_store()` |
 | `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
 | `tools` | `NULL` | Additional ellmer tools (e.g., `btw::btw_tools()`) |
 | `cache_dir` | `NULL` | Cache directory; defaults to `tempdir()/tempest-cache` or `TEMPEST_CACHE_DIR` env var |
