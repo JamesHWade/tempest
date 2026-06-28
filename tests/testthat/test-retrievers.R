@@ -36,6 +36,124 @@ test_that("search() drops missing/unsafe URLs instead of aborting", {
   expect_equal(which(is.na(result$source_id)), integer())
 })
 
+test_that("search() caches repeated equivalent searches", {
+  cfg <- tempest_config(cache_dir = withr::local_tempdir())
+  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  calls <- 0L
+
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8) {
+      calls <<- calls + 1L
+      tempest:::tempest_search_results(
+        title = paste("Result", calls),
+        url = paste0("https://example.com/", calls),
+        snippet = paste("Snippet", calls)
+      )
+    }
+  )
+
+  first <- retriever$search(" cache me ", provider = "wikipedia")
+  second <- retriever$search("cache me", provider = "wikipedia")
+  forced <- retriever$search("cache me", provider = "wikipedia", force = TRUE)
+  stats <- retriever$cache_stats()
+  search_stats <- stats[stats$kind == "search", ]
+
+  expect_equal(calls, 2L)
+  expect_equal(second$url, first$url)
+  expect_equal(forced$url, "https://example.com/2")
+  expect_equal(search_stats$misses, 1L)
+  expect_equal(search_stats$hits, 1L)
+  expect_equal(search_stats$bypasses, 1L)
+  expect_equal(search_stats$writes, 2L)
+})
+
+test_that("search cache respects TTL and can be disabled", {
+  cache_dir <- withr::local_tempdir()
+  cfg <- tempest_config(cache_dir = cache_dir, cache_ttl = 60)
+  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  calls <- 0L
+
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8) {
+      calls <<- calls + 1L
+      tempest:::tempest_search_results(
+        title = paste("Result", calls),
+        url = paste0("https://example.com/ttl-", calls),
+        snippet = paste("Snippet", calls)
+      )
+    }
+  )
+
+  retriever$search("ttl", provider = "wikipedia")
+  cache_file <- list.files(cache_dir, pattern = "\\.rds$", full.names = TRUE)
+  expect_length(cache_file, 1L)
+  Sys.setFileTime(cache_file, Sys.time() - 3600)
+  retriever$search("ttl", provider = "wikipedia")
+
+  disabled <- tempest_retriever(
+    config = tempest_config(
+      cache_dir = withr::local_tempdir(),
+      cache_enabled = FALSE
+    ),
+    store = SourceStore$new()
+  )
+  disabled$search("ttl", provider = "wikipedia")
+  disabled$search("ttl", provider = "wikipedia")
+
+  stats <- retriever$cache_stats()
+  search_stats <- stats[stats$kind == "search", ]
+  disabled_stats <- disabled$cache_stats()
+  disabled_search_stats <- disabled_stats[disabled_stats$kind == "search", ]
+
+  expect_equal(calls, 4L)
+  expect_equal(search_stats$misses, 1L)
+  expect_equal(search_stats$expired, 1L)
+  expect_equal(search_stats$writes, 2L)
+  expect_equal(disabled_search_stats$bypasses, 2L)
+  expect_equal(disabled_search_stats$writes, 0L)
+})
+
+test_that("search cache keys include provider options", {
+  withr::local_envvar(DUCKDUCKGO_REGION = "us-en")
+  us_key <- tempest:::tempest_search_cache_key("duckduckgo", "topic", 8)
+  withr::local_envvar(DUCKDUCKGO_REGION = "uk-en")
+  uk_key <- tempest:::tempest_search_cache_key("duckduckgo", "topic", 8)
+
+  expect_equal(identical(us_key, uk_key), FALSE)
+})
+
+test_that("fetch() caches content and force refreshes", {
+  cfg <- tempest_config(cache_dir = withr::local_tempdir())
+  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  calls <- 0L
+
+  local_mocked_bindings(
+    tempest_fetch_url_text = function(url, user_agent = NULL) {
+      calls <<- calls + 1L
+      list(
+        kind = "html",
+        text = paste("Body", calls),
+        title = paste("Title", calls),
+        error = NULL
+      )
+    }
+  )
+
+  first <- retriever$fetch("https://example.com/page")
+  second <- retriever$fetch("https://example.com/page")
+  forced <- retriever$fetch("https://example.com/page", force = TRUE)
+  stats <- retriever$cache_stats()
+  fetch_stats <- stats[stats$kind == "fetch", ]
+
+  expect_equal(calls, 2L)
+  expect_equal(second$title, first$title)
+  expect_equal(forced$title, "Title 2")
+  expect_equal(fetch_stats$misses, 1L)
+  expect_equal(fetch_stats$hits, 1L)
+  expect_equal(fetch_stats$bypasses, 1L)
+  expect_equal(fetch_stats$writes, 2L)
+})
+
 test_that("DuckDuckGo redirect URLs are decoded before normalization", {
   url <- paste0(
     "//duckduckgo.com/l/?uddg=",

@@ -14,6 +14,8 @@ tempest_config(
   artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
+  cache_enabled = TRUE,
+  cache_ttl = Inf,
   max_search_results = 8,
   max_search_queries_per_turn = 3,
   retrieve_top_k = 25,
@@ -59,6 +61,12 @@ is "native" which uses OpenAI, Anthropic, or Google's native web search
 capabilities when available, falling back to "wikipedia".}
 
 \item{cache_dir}{Path to cache directory.}
+
+\item{cache_enabled}{Whether retriever search/fetch calls should read from
+and write to the on-disk cache.}
+
+\item{cache_ttl}{Maximum cache age in seconds. Defaults to \code{Inf}, which keeps
+cached search/fetch entries valid until explicitly cleared.}
 
 \item{max_search_results}{Maximum search results to return.}
 

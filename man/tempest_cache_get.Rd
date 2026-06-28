@@ -4,12 +4,14 @@
 \alias{tempest_cache_get}
 \title{Retrieve value from cache}
 \usage{
-tempest_cache_get(cache_dir, key)
+tempest_cache_get(cache_dir, key, max_age = Inf)
 }
 \arguments{
 \item{cache_dir}{Cache directory path.}
 
 \item{key}{Cache key.}
+
+\item{max_age}{Maximum cache age in seconds.}
 }
 \value{
 Cached value or NULL.

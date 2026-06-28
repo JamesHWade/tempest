@@ -373,6 +373,51 @@ tempest_duckduckgo_result_url <- function(url) {
   parsed
 }
 
+#' @keywords internal
+tempest_search_cache_key <- function(provider, query, k) {
+  tempest_cache_key(
+    "search-v2",
+    provider,
+    tempest_trim(query),
+    as.integer(k),
+    tempest_search_cache_options(provider)
+  )
+}
+
+#' @keywords internal
+tempest_search_cache_options <- function(provider) {
+  switch(
+    provider,
+    bing = list(
+      market = Sys.getenv("BING_SEARCH_MKT", unset = "en-US"),
+      language = Sys.getenv("BING_SEARCH_LANGUAGE", unset = "en")
+    ),
+    duckduckgo = list(
+      region = Sys.getenv("DUCKDUCKGO_REGION", unset = "us-en"),
+      safe_search = Sys.getenv("DUCKDUCKGO_SAFE_SEARCH", unset = "1")
+    ),
+    searxng = list(
+      api_url = Sys.getenv("SEARXNG_API_URL", unset = "")
+    ),
+    google = list(
+      cse_id = Sys.getenv("GOOGLE_CSE_ID", unset = "")
+    ),
+    azure_ai_search = list(
+      endpoint = Sys.getenv(
+        "AZURE_AI_SEARCH_ENDPOINT",
+        unset = Sys.getenv("AZURE_AI_SEARCH_URL", unset = "")
+      ),
+      index = Sys.getenv("AZURE_AI_SEARCH_INDEX_NAME", unset = "")
+    ),
+    list()
+  )
+}
+
+#' @keywords internal
+tempest_fetch_cache_key <- function(url, user_agent = NULL) {
+  tempest_cache_key("fetch-v2", url, user_agent %||% "")
+}
+
 #' TempestRetriever
 #'
 #' Provides web and Wikipedia retrieval with caching, plus helper methods to
@@ -383,6 +428,8 @@ tempest_duckduckgo_result_url <- function(url) {
 #' @field store A `SourceStore` object.
 #' @field ragnar_store A ragnar store for semantic retrieval (optional).
 #' @field cache_dir Path to cache directory.
+#' @field cache_enabled Whether retriever calls use the on-disk cache.
+#' @field cache_ttl Maximum cache age in seconds.
 #'
 #' @export
 TempestRetriever <- R6::R6Class(
@@ -392,6 +439,8 @@ TempestRetriever <- R6::R6Class(
     store = NULL,
     ragnar_store = NULL,
     cache_dir = NULL,
+    cache_enabled = NULL,
+    cache_ttl = NULL,
 
     #' @description
     #' Create a new TempestRetriever.
@@ -405,6 +454,9 @@ TempestRetriever <- R6::R6Class(
       self$store <- store
       self$ragnar_store <- config@ragnar_store
       self$cache_dir <- config@cache_dir
+      self$cache_enabled <- isTRUE(config@cache_enabled)
+      self$cache_ttl <- config@cache_ttl
+      private$cache_counts <- new.env(parent = emptyenv())
       invisible(self)
     },
 
@@ -413,16 +465,26 @@ TempestRetriever <- R6::R6Class(
     #' @param query Search query string.
     #' @param k Maximum number of results.
     #' @param provider Search provider override.
+    #' @param force If TRUE, bypass any cached result and refresh the cache.
     #' @return A tibble of search results.
-    search = function(query, k = NULL, provider = NULL) {
+    search = function(query, k = NULL, provider = NULL, force = FALSE) {
       k <- k %||% self$config@max_search_results
       provider <- provider %||% self$config@search_provider
       provider <- tempest_normalize_search_provider(provider)
 
-      key <- tempest_cache_key("search", provider, query, k)
-      cached <- tempest_cache_get(self$cache_dir, key)
-      if (!is.null(cached)) {
-        return(cached)
+      key <- tempest_search_cache_key(provider, query, k)
+      if (self$cache_enabled && !isTRUE(force)) {
+        cached <- tempest_cache_lookup(
+          self$cache_dir,
+          key,
+          max_age = self$cache_ttl
+        )
+        private$record_cache("search", cached$status)
+        if (!is.null(cached$value)) {
+          return(cached$value)
+        }
+      } else {
+        private$record_cache("search", "bypass")
       }
 
       # Handle "native" provider - falls back to Wikipedia for direct search() calls
@@ -460,7 +522,10 @@ TempestRetriever <- R6::R6Class(
       out <- out[!is.na(out$url) & nzchar(out$url), , drop = FALSE]
       out$source_id <- purrr::map_chr(out$url, tempest_source_id)
 
-      tempest_cache_set(self$cache_dir, key, out)
+      if (self$cache_enabled) {
+        tempest_cache_set(self$cache_dir, key, out)
+        private$record_cache("search", "write")
+      }
       out
     },
 
@@ -476,11 +541,20 @@ TempestRetriever <- R6::R6Class(
         tempest_abort("Invalid URL.")
       }
 
-      key <- tempest_cache_key("fetch", url)
-      cached <- if (!force) tempest_cache_get(self$cache_dir, key) else NULL
-      if (!is.null(cached)) {
-        self$store$upsert_source(cached)
-        return(cached)
+      key <- tempest_fetch_cache_key(url, self$config@user_agent)
+      if (self$cache_enabled && !isTRUE(force)) {
+        cached <- tempest_cache_lookup(
+          self$cache_dir,
+          key,
+          max_age = self$cache_ttl
+        )
+        private$record_cache("fetch", cached$status)
+        if (!is.null(cached$value)) {
+          self$store$upsert_source(cached$value)
+          return(cached$value)
+        }
+      } else {
+        private$record_cache("fetch", "bypass")
       }
 
       res <- tempest_fetch_url_text(url, user_agent = self$config@user_agent)
@@ -497,7 +571,10 @@ TempestRetriever <- R6::R6Class(
           meta = list(kind = res$kind, error = res$error)
         )
         self$store$upsert_source(src)
-        tempest_cache_set(self$cache_dir, key, src)
+        if (self$cache_enabled) {
+          tempest_cache_set(self$cache_dir, key, src)
+          private$record_cache("fetch", "write")
+        }
         return(src)
       }
 
@@ -533,7 +610,10 @@ TempestRetriever <- R6::R6Class(
         meta = list(kind = res$kind, error = NULL)
       )
       self$store$upsert_source(src)
-      tempest_cache_set(self$cache_dir, key, src)
+      if (self$cache_enabled) {
+        tempest_cache_set(self$cache_dir, key, src)
+        private$record_cache("fetch", "write")
+      }
 
       # Ingest into ragnar store if available
       if (!is.null(self$ragnar_store) && !is.na(txt) && nzchar(txt)) {
@@ -658,6 +738,49 @@ TempestRetriever <- R6::R6Class(
     #' @return A list of source objects.
     list_sources = function() {
       self$store$list_sources()
+    },
+
+    #' @description
+    #' Return cache hit/miss counters for this retriever.
+    #' @param reset Whether to reset counters after reading them.
+    #' @return A tibble with one row each for search and fetch cache counters.
+    cache_stats = function(reset = FALSE) {
+      out <- private$cache_stats_table()
+      if (isTRUE(reset)) {
+        private$cache_counts <- new.env(parent = emptyenv())
+      }
+      out
+    }
+  ),
+  private = list(
+    cache_counts = NULL,
+
+    record_cache = function(kind, status) {
+      key <- paste(kind, status, sep = "_")
+      private$cache_counts[[key]] <- (private$cache_counts[[key]] %||% 0L) + 1L
+      invisible(key)
+    },
+
+    cache_stats_table = function() {
+      kinds <- c("search", "fetch")
+      statuses <- c("hit", "miss", "expired", "read_error", "bypass", "write")
+      count <- function(kind, status) {
+        private$cache_counts[[paste(kind, status, sep = "_")]] %||% 0L
+      }
+      tibble::tibble(
+        kind = kinds,
+        hits = unname(vapply(kinds, count, integer(1), status = "hit")),
+        misses = unname(vapply(kinds, count, integer(1), status = "miss")),
+        expired = unname(vapply(kinds, count, integer(1), status = "expired")),
+        read_errors = unname(vapply(
+          kinds,
+          count,
+          integer(1),
+          status = "read_error"
+        )),
+        bypasses = unname(vapply(kinds, count, integer(1), status = "bypass")),
+        writes = unname(vapply(kinds, count, integer(1), status = "write"))
+      )
     }
   )
 )
