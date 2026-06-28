@@ -158,6 +158,66 @@ tempest_normalize_fact_output <- function(x) {
 }
 
 #' @keywords internal
+tempest_answer_source_context <- function(answer_text, store) {
+  sources <- store$list_sources()
+  if (length(sources) == 0 || is.null(answer_text) || !nzchar(answer_text)) {
+    return("")
+  }
+  cited <- purrr::keep(sources, function(source) {
+    source_id <- source$id %||% ""
+    url <- source$url %||% ""
+    (!is.na(source_id) &&
+      nzchar(source_id) &&
+      grepl(source_id, answer_text, fixed = TRUE)) ||
+      (!is.na(url) && nzchar(url) && grepl(url, answer_text, fixed = TRUE))
+  })
+  if (length(cited) == 0) {
+    return("")
+  }
+  lines <- purrr::map_chr(cited, function(source) {
+    title <- source$title %||% ""
+    if (is.na(title)) {
+      title <- ""
+    }
+    paste0(
+      "- [",
+      source$id,
+      "] ",
+      title,
+      " ",
+      source$url %||% ""
+    )
+  })
+  paste(
+    "Known source IDs for citations found in the answer:",
+    paste(lines, collapse = "\n"),
+    sep = "\n"
+  )
+}
+
+#' @keywords internal
+tempest_resolve_fact_source_ids <- function(source_refs, store) {
+  source_refs <- unique(source_refs[!is.na(source_refs) & nzchar(source_refs)])
+  if (length(source_refs) == 0) {
+    return(character())
+  }
+  ids <- purrr::map_chr(source_refs, function(ref) {
+    if (!is.null(store$get_source(ref))) {
+      return(ref)
+    }
+    url <- tryCatch(tempest_normalize_url(ref), error = function(e) {
+      NA_character_
+    })
+    if (is.na(url) || !nzchar(url)) {
+      return(NA_character_)
+    }
+    id <- tempest_source_id(url)
+    if (!is.null(store$get_source(id))) id else NA_character_
+  })
+  unique(ids[!is.na(ids) & nzchar(ids)])
+}
+
+#' @keywords internal
 tempest_extract_facts_from_answer <- function(
   chat,
   answer_text,
@@ -175,15 +235,30 @@ tempest_extract_facts_from_answer <- function(
     step = "fact extraction"
   )
   if (is.null(out)) {
+    source_context <- tempest_answer_source_context(answer_text, store)
+    source_rule <- if (nzchar(source_context)) {
+      paste0(
+        "- URL citations listed in <known_sources> count as citations to their source_id; return the matching source_id.\n",
+        "- Do not use a known source unless its URL or source_id appears in the answer text.\n"
+      )
+    } else {
+      ""
+    }
     prompt <- paste0(
       "Extract atomic factual claims from the following answer.\n\n",
       "Rules:\n",
       "- Only extract claims that are explicitly supported by one or more citations in the form [Sxxxxxxxxxxxx].\n",
+      source_rule,
       "- For each claim, list the source_id(s) that support it.\n",
       "- Do NOT invent or infer new facts.\n\n",
       "<answer>\n",
       answer_text,
-      "\n</answer>\n"
+      "\n</answer>\n",
+      if (nzchar(source_context)) {
+        paste0("\n<known_sources>\n", source_context, "\n</known_sources>\n")
+      } else {
+        ""
+      }
     )
     out <- chat$chat_structured(
       prompt,
@@ -201,11 +276,11 @@ tempest_extract_facts_from_answer <- function(
     if (is.na(claim) || !nzchar(claim)) {
       next
     }
-    src_ids <- purrr::map_chr(
+    source_refs <- purrr::map_chr(
       f$sources %||% list(),
-      ~ .x$source_id %||% NA_character_
+      ~ .x$source_id %||% .x$id %||% .x$url %||% NA_character_
     )
-    src_ids <- unique(src_ids[nzchar(src_ids) & !is.na(src_ids)])
+    src_ids <- tempest_resolve_fact_source_ids(source_refs, store)
     # Drop citations to sources that are not in the store (hallucinated ids).
     known <- src_ids[!purrr::map_lgl(src_ids, ~ is.null(store$get_source(.x)))]
     if (length(known) == 0) {

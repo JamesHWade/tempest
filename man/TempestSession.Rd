@@ -46,6 +46,7 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
     \item \href{#method-TempestSession-update_mindmap}{\code{TempestSession$update_mindmap()}}
     \item \href{#method-TempestSession-mindmap_markdown}{\code{TempestSession$mindmap_markdown()}}
     \item \href{#method-TempestSession-extract_facts}{\code{TempestSession$extract_facts()}}
+    \item \href{#method-TempestSession-harvest_native_sources}{\code{TempestSession$harvest_native_sources()}}
     \item \href{#method-TempestSession-suggest_questions}{\code{TempestSession$suggest_questions()}}
     \item \href{#method-TempestSession-find_expert_index}{\code{TempestSession$find_expert_index()}}
     \item \href{#method-TempestSession-step}{\code{TempestSession$step()}}
@@ -74,7 +75,8 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
   topic,
   config = tempest_config(),
   n_experts = 3,
-  personas = NULL
+  personas = NULL,
+  retriever = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -86,6 +88,8 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
       \item{\code{n_experts}}{Number of expert agents.}
       \item{\code{personas}}{Optional list of pre-generated personas. If NULL,
 personas are generated automatically using \code{tempest_generate_personas()}.}
+      \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
+object with a \code{SourceStore} at \verb{$store}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -214,6 +218,30 @@ personas are generated automatically using \code{tempest_generate_personas()}.}
       \item{\code{text}}{Text containing factual claims.}
     }
     \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-harvest_native_sources"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-harvest_native_sources}{}}}
+\subsection{\code{TempestSession$harvest_native_sources()}}{
+  Experimental helper for harvesting source metadata from provider-native
+web tool responses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$harvest_native_sources(chat = NULL, turn = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{chat}}{Optional chat whose last turn should be inspected.}
+      \item{\code{turn}}{Optional explicit ellmer turn.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Character vector of source ids added or updated.
   }
 }
 

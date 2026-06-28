@@ -8,7 +8,8 @@ tempest_session(
   topic,
   config = tempest_config(),
   n_experts = 3,
-  personas = NULL
+  personas = NULL,
+  retriever = NULL
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ tempest_session(
 
 \item{personas}{Optional list of pre-generated personas. If NULL,
 personas are generated automatically.}
+
+\item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
+with a \code{SourceStore} at \verb{$store}.}
 }
 \description{
 Create a Co-STORM session

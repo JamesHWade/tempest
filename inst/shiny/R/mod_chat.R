@@ -228,6 +228,9 @@ mod_chat_server <- function(id, config, store) {
       }
       msg <- chat_input_text(chat$last_input())
       turn <- chat$last_turn()
+      if (!is.null(ses$harvest_native_sources)) {
+        ses$harvest_native_sources(turn = turn)
+      }
       ans <- tryCatch(
         ellmer::contents_markdown(turn),
         error = function(e) {
@@ -473,7 +476,16 @@ warmup_prompt <- function(topic, question) {
   )
 }
 
-record_warmup_turn <- function(ses, name, question, response) {
+record_warmup_turn <- function(
+  ses,
+  name,
+  question,
+  response,
+  expert_chat = NULL
+) {
+  if (!is.null(ses$harvest_native_sources)) {
+    ses$harvest_native_sources(chat = expert_chat)
+  }
   tryCatch(
     ses$expert_session_manager$extract_facts(response),
     error = function(e) NULL
@@ -759,7 +771,13 @@ run_warmup <- function(
                   return(NULL)
                 }
 
-                record_warmup_turn(ses, name, question, response)
+                record_warmup_turn(
+                  ses,
+                  name,
+                  question,
+                  response,
+                  expert_chat = expert_chat
+                )
                 safe_touch()
               }) |>
               promises::catch(function(e) {

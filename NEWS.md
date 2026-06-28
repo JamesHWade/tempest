@@ -1,5 +1,10 @@
 # tempest 0.1.0
 
+* `tempest_artifact_store()`, `tempest_memory_artifact_store()`, and
+  `tempest_expert()` provide initial host-app extension points for capturing
+  report artifacts and supplying validated Co-STORM experts. `tempest_config()`
+  now accepts an `artifact_store`, and `tempest_session()` accepts a shared
+  retriever with a `SourceStore`.
 * `tempest_config()` now defaults to `openai/gpt-5.4` for coordinator and
   writer roles, and `openai/gpt-5.4-mini` for expert, mind map, and judge roles.
 * The Chat tab now suggests follow-up questions as clickable cards. A set appears

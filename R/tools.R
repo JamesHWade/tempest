@@ -69,6 +69,200 @@ tempest_provider_has_native_search <- function(provider) {
 }
 
 #' @keywords internal
+tempest_native_scalar <- function(...) {
+  values <- list(...)
+  for (value in values) {
+    if (is.null(value) || length(value) == 0) {
+      next
+    }
+    value <- as.character(value[[1]])
+    if (!is.na(value) && nzchar(value)) {
+      return(value)
+    }
+  }
+  NA_character_
+}
+
+#' @keywords internal
+tempest_native_source_candidates <- function(x) {
+  candidates <- list()
+
+  visit <- function(value) {
+    if (is.data.frame(value)) {
+      rows <- split(value, seq_len(nrow(value)))
+      for (row in rows) {
+        visit(as.list(row))
+      }
+      return(invisible(NULL))
+    }
+    if (!is.list(value)) {
+      return(invisible(NULL))
+    }
+
+    url <- value$url %||% value$link %||% value$uri
+    if (is.character(url) && length(url) > 0 && !is.na(url[[1]])) {
+      candidates[[length(candidates) + 1L]] <<- list(
+        url = url[[1]],
+        title = tempest_native_scalar(value$title, value$name),
+        snippet = tempest_native_scalar(
+          value$snippet,
+          value$description,
+          value$summary
+        ),
+        content_text = tempest_native_scalar(value$content, value$text)
+      )
+    }
+
+    for (child in value) {
+      visit(child)
+    }
+    invisible(NULL)
+  }
+
+  visit(x)
+  candidates
+}
+
+#' @keywords internal
+tempest_native_source_from_url <- function(
+  url,
+  title = NA_character_,
+  snippet = NA_character_,
+  content_text = NA_character_,
+  kind = "native_search"
+) {
+  url <- tryCatch(tempest_normalize_url(url), error = function(e) NA_character_)
+  if (is.na(url) || !nzchar(url)) {
+    return(NULL)
+  }
+  tempest_source(
+    url = url,
+    title = title,
+    snippet = snippet,
+    content_text = content_text,
+    fetched_at = tempest_now_utc(),
+    meta = list(kind = kind, provider_tool = "native")
+  )
+}
+
+#' @keywords internal
+tempest_merge_source_record <- function(old, new) {
+  if (is.null(old)) {
+    return(new)
+  }
+  for (field in c("title", "snippet", "content_text", "fetched_at")) {
+    value <- new[[field]]
+    if (length(value) != 1L || is.na(value) || !nzchar(value)) {
+      new[[field]] <- old[[field]] %||% new[[field]]
+    }
+  }
+  new$meta <- utils::modifyList(old$meta %||% list(), new$meta %||% list())
+  new
+}
+
+#' @keywords internal
+tempest_upsert_native_source <- function(store, source) {
+  if (is.null(source)) {
+    return(NA_character_)
+  }
+  source <- tempest_merge_source_record(store$get_source(source$id), source)
+  store$upsert_source(source)
+  source$id
+}
+
+#' @keywords internal
+tempest_harvest_native_sources_from_content <- function(content, store) {
+  ids <- character()
+
+  if (inherits(content, "ellmer::ContentToolResponseSearch")) {
+    for (candidate in tempest_native_source_candidates(content@json)) {
+      ids <- c(
+        ids,
+        tempest_upsert_native_source(
+          store,
+          tempest_native_source_from_url(
+            candidate$url,
+            title = candidate$title,
+            snippet = candidate$snippet,
+            content_text = candidate$content_text,
+            kind = "native_search"
+          )
+        )
+      )
+    }
+    for (url in content@urls %||% character()) {
+      ids <- c(
+        ids,
+        tempest_upsert_native_source(
+          store,
+          tempest_native_source_from_url(url, kind = "native_search")
+        )
+      )
+    }
+  } else if (inherits(content, "ellmer::ContentToolResponseFetch")) {
+    json <- content@json %||% list()
+    ids <- c(
+      ids,
+      tempest_upsert_native_source(
+        store,
+        tempest_native_source_from_url(
+          content@url,
+          title = tempest_native_scalar(json$title, json$name),
+          snippet = tempest_native_scalar(
+            json$snippet,
+            json$description,
+            json$summary
+          ),
+          content_text = tempest_native_scalar(json$content, json$text),
+          kind = "native_fetch"
+        )
+      )
+    )
+  }
+
+  if (S7::S7_inherits(content)) {
+    for (property in S7::prop_names(content)) {
+      value <- S7::prop(content, property)
+      if (is.list(value)) {
+        for (child in value) {
+          ids <- c(
+            ids,
+            tempest_harvest_native_sources_from_content(
+              child,
+              store
+            )
+          )
+        }
+      }
+    }
+  }
+
+  unique(ids[!is.na(ids) & nzchar(ids)])
+}
+
+#' @keywords internal
+tempest_harvest_native_sources_from_turn <- function(turn, store) {
+  if (is.null(turn) || is.null(store)) {
+    return(character())
+  }
+  if (!inherits(store, "SourceStore")) {
+    return(character())
+  }
+  contents <- tryCatch(turn@contents, error = function(e) list())
+  ids <- unlist(
+    purrr::map(contents, tempest_harvest_native_sources_from_content, store),
+    use.names = FALSE
+  )
+  unique(ids[!is.na(ids) & nzchar(ids)])
+}
+
+#' @keywords internal
+tempest_harvest_native_sources_from_chat <- function(chat, store) {
+  turn <- tryCatch(chat$last_turn(), error = function(e) NULL)
+  tempest_harvest_native_sources_from_turn(turn, store)
+}
+
+#' @keywords internal
 tempest_tools_retrieval <- function(retriever) {
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
@@ -452,9 +646,11 @@ ExpertSessionManager <- R6::R6Class(
     #' @description
     #' Extract facts from an expert response.
     #' @param response Character string response from expert.
+    #' @param turn Optional ellmer turn to inspect for provider-native sources.
     #' @return Invisibly returns NULL.
-    extract_facts = function(response) {
+    extract_facts = function(response, turn = NULL) {
       if (!is.null(self$extractor) && !is.null(self$store)) {
+        tempest_harvest_native_sources_from_turn(turn, self$store)
         tempest_extract_facts_from_answer(self$extractor, response, self$store)
       }
       invisible(NULL)
@@ -598,7 +794,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     }
 
     # Extract facts from expert response
-    mgr$extract_facts(response_text)
+    mgr$extract_facts(response_text, turn = last_turn)
 
     list(
       expert = expert_name,

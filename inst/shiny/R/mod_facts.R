@@ -11,11 +11,7 @@ mod_facts_ui <- function(id) {
       bslib::card_header("Extracted Facts"),
       bslib::card_body(
         class = "p-2",
-        if (has_pkg("DT")) {
-          DT::DTOutput(ns("table"))
-        } else {
-          shiny::tableOutput(ns("table_basic"))
-        }
+        shiny::uiOutput(ns("body"))
       )
     )
   )
@@ -29,6 +25,21 @@ mod_facts_server <- function(id, store) {
         return(NULL)
       }
       tempest::tempest_claims(ses$store)
+    })
+
+    output$body <- shiny::renderUI({
+      df <- facts()
+      if (is.null(df)) {
+        return(empty_state("check-circle", "Start a session to collect facts."))
+      }
+      if (nrow(df) == 0) {
+        return(empty_state("check-circle", "No facts extracted yet."))
+      }
+      if (has_pkg("DT")) {
+        DT::DTOutput(session$ns("table"))
+      } else {
+        shiny::tableOutput(session$ns("table_basic"))
+      }
     })
 
     confidence_badge <- function(values) {
