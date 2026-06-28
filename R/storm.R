@@ -473,13 +473,15 @@ tempest_run <- function(
             max_rounds,
             max_questions_per_perspective,
             dsprrr_modules,
-            verbose
+            verbose,
+            run_id = progress_run_id
           )
         } else {
           # Sequential research loop
           # Create expert chats with personas (one per perspective)
           for (i in seq_along(perspectives)) {
             persona <- if (i <= length(personas)) personas[[i]] else NULL
+            persona_id <- as.character(persona$id %||% i)
             sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
             expert_chats[[i]] <- tempest_make_chat(
               config,
@@ -491,7 +493,11 @@ tempest_run <- function(
               expert_chats[[i]],
               retriever,
               model = config@models[["expert"]],
-              search_provider = config@search_provider
+              search_provider = config@search_provider,
+              claim_provenance = list(
+                session_id = progress_run_id,
+                persona_id = persona_id
+              )
             )
           }
 
@@ -504,6 +510,8 @@ tempest_run <- function(
             expert <- expert_chats[[i]]
             persona <- if (i <= length(personas)) personas[[i]] else NULL
             persona_name <- persona$name %||% paste("Expert", i)
+            persona_id <- as.character(persona$id %||% i)
+            perspective_id <- as.character(p$id %||% i)
 
             if (verbose) {
               tempest_inform("Perspective: {.val {p_name}}")
@@ -580,7 +588,10 @@ tempest_run <- function(
                       harvest$answer_text,
                       store,
                       module = dsprrr_modules$extract_claims,
-                      source_ids = harvest$source_ids
+                      source_ids = harvest$source_ids,
+                      session_id = progress_run_id,
+                      persona_id = persona_id,
+                      perspective_id = perspective_id
                     ),
                     error = function(e) {
                       tempest_warn(
@@ -687,7 +698,10 @@ tempest_run <- function(
                     harvest$answer_text,
                     store,
                     module = dsprrr_modules$extract_claims,
-                    source_ids = harvest$source_ids
+                    source_ids = harvest$source_ids,
+                    session_id = progress_run_id,
+                    persona_id = persona_id,
+                    perspective_id = perspective_id
                   ),
                   error = function(e) {
                     tempest_warn(
@@ -836,7 +850,9 @@ tempest_run <- function(
             extractor,
             section_result$section_text,
             store,
-            module = dsprrr_modules$extract_claims
+            module = dsprrr_modules$extract_claims,
+            session_id = progress_run_id,
+            section_id = section_result$title %||% NA_character_
           )
         }
 

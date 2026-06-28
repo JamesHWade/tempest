@@ -130,6 +130,40 @@ test_that("source-management tools expose claim tools without web tools", {
   expect_equal(claims[[1]]$claim_id, added$claim_id)
 })
 
+test_that("claim write tools record dynamic provenance", {
+  skip_if_not_installed("ellmer")
+  store <- fake_store_with_sources(1)
+  source_id <- store$list_sources()[[1]]$id
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir()),
+    store = store
+  )
+  current <- list(
+    session_id = "expert-session-1",
+    persona_id = "7",
+    retrieval_step_id = "tool-turn-1"
+  )
+  tools <- tempest:::tempest_tools_source_management(
+    retriever,
+    claim_provenance = function() current
+  )
+  tool_names <- vapply(tools, function(tool) tool@name, character(1))
+  by_name <- function(name) tools[[match(name, tool_names)]]
+
+  added <- by_name("add_claim")(
+    claim_text = "Dynamic provenance is recorded.",
+    source_ids = source_id
+  )
+
+  expect_equal(added$session_id, "expert-session-1")
+  expect_equal(added$persona_id, "7")
+  expect_equal(added$retrieval_step_id, "tool-turn-1")
+  claim <- store$list_claims()[[1]]
+  expect_equal(claim@session_id, "expert-session-1")
+  expect_equal(claim@persona_id, "7")
+  expect_equal(claim@retrieval_step_id, "tool-turn-1")
+})
+
 test_that("source-management tools can be registered read-only", {
   skip_if_not_installed("ellmer")
   retriever <- tempest_retriever(

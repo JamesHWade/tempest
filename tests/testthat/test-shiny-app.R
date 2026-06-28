@@ -293,7 +293,10 @@ test_that("record_warmup_turn populates facts and sources from native turns", {
     "Dr. Native",
     "What did the source say?",
     fixture$claim_text,
-    expert_chat = expert_chat
+    expert_chat = expert_chat,
+    session_id = "expert-session-1",
+    persona_id = "1",
+    correlation_id = "warmup-question-1"
   )
 
   store <- fixture$session$store
@@ -302,6 +305,9 @@ test_that("record_warmup_turn populates facts and sources from native turns", {
   expect_length(claims, 1L)
   expect_equal(claims[[1]]@claim_text, fixture$claim_text)
   expect_equal(claims[[1]]@source_ids, fixture$source_id)
+  expect_equal(claims[[1]]@session_id, "expert-session-1")
+  expect_equal(claims[[1]]@persona_id, "1")
+  expect_equal(claims[[1]]@retrieval_step_id, "warmup-question-1")
 })
 
 test_that("extract_chat_turn_facts populates facts and sources from native turns", {
@@ -312,7 +318,10 @@ test_that("extract_chat_turn_facts populates facts and sources from native turns
   ids <- app$extract_chat_turn_facts(
     fixture$session,
     fixture$claim_text,
-    turn = fixture$turn
+    turn = fixture$turn,
+    session_id = "costorm-session-1",
+    persona_id = "moderator",
+    correlation_id = "chat-turn-1"
   )
 
   expect_equal(ids, fixture$source_id)
@@ -322,6 +331,9 @@ test_that("extract_chat_turn_facts populates facts and sources from native turns
   expect_length(claims, 1L)
   expect_equal(claims[[1]]@claim_text, fixture$claim_text)
   expect_equal(claims[[1]]@source_ids, fixture$source_id)
+  expect_equal(claims[[1]]@session_id, "costorm-session-1")
+  expect_equal(claims[[1]]@persona_id, "moderator")
+  expect_equal(claims[[1]]@retrieval_step_id, "chat-turn-1")
 })
 
 test_that("suggestion_cards builds a shinychat submit-card list", {

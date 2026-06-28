@@ -49,6 +49,7 @@
   result URL no longer discards every other result for the query.
 * Co-STORM sessions now route turns, update the mind map, and summarise using
   the most recent dialogue turns instead of the oldest.
+* Co-STORM evidence now records expert session ids, persona ids, and progress correlation ids on claims from expert tools, warmup, chat, and STORM research runs so Facts and Sources can be traced back to the agent turn that produced them (vtz9).
 * Persisted runs now write artifacts atomically and write the run manifest
   last, so an interrupted save cannot corrupt artifacts or leave `resume`
   pointing at a stage whose output is missing.

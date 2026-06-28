@@ -370,6 +370,9 @@ tempest_tool_claim_payload <- function(
     confidence = claim@confidence,
     verification_status = claim@verification_status,
     support_score = claim@support_score,
+    session_id = claim@session_id,
+    persona_id = claim@persona_id,
+    retrieval_step_id = claim@retrieval_step_id,
     created_at = claim@created_at,
     sources = sources
   )
@@ -386,6 +389,9 @@ tempest_tool_fact_payload <- function(claim) {
     confidence = claim@confidence,
     verification_status = claim@verification_status,
     support_score = claim@support_score,
+    session_id = claim@session_id,
+    persona_id = claim@persona_id,
+    retrieval_step_id = claim@retrieval_step_id,
     created_at = claim@created_at
   )
 }
@@ -396,8 +402,10 @@ tempest_add_tool_claim <- function(
   claim_text,
   source_ids,
   confidence = "medium",
-  tool_name = "add_claim"
+  tool_name = "add_claim",
+  provenance = list()
 ) {
+  provenance <- tempest_resolve_claim_provenance(provenance)
   source_ids <- unlist(
     source_ids %||% character(),
     recursive = TRUE,
@@ -426,10 +434,24 @@ tempest_add_tool_claim <- function(
   claim <- tempest_claim(
     claim_text = claim_text,
     source_ids = source_ids,
-    confidence = confidence
+    confidence = confidence,
+    session_id = provenance$session_id %||% NA_character_,
+    persona_id = provenance$persona_id %||% NA_character_,
+    retrieval_step_id = provenance$retrieval_step_id %||% NA_character_
   )
   store$add_claim(claim)
   claim
+}
+
+#' @keywords internal
+tempest_resolve_claim_provenance <- function(provenance) {
+  if (is.null(provenance)) {
+    return(list())
+  }
+  if (is.function(provenance)) {
+    return(provenance() %||% list())
+  }
+  provenance
 }
 
 #' @keywords internal
@@ -568,13 +590,14 @@ tempest_tool_review_ellmer_tools <- function(review) {
 }
 
 #' @keywords internal
-tempest_tool_write_functions <- function(store) {
+tempest_tool_write_functions <- function(store, provenance = list()) {
   add_claim <- function(claim_text, source_ids, confidence = "medium") {
     claim <- tempest_add_tool_claim(
       store,
       claim_text = claim_text,
       source_ids = source_ids,
-      confidence = confidence
+      confidence = confidence,
+      provenance = tempest_resolve_claim_provenance(provenance)
     )
     tempest_tool_claim_payload(claim)
   }
@@ -591,7 +614,8 @@ tempest_tool_write_functions <- function(store) {
       claim_text = claim,
       source_ids = source_ids,
       confidence = confidence,
-      tool_name = "add_fact"
+      tool_name = "add_fact",
+      provenance = tempest_resolve_claim_provenance(provenance)
     )
     tempest_tool_fact_payload(cl)
   }
@@ -647,7 +671,11 @@ tempest_tool_write_ellmer_tools <- function(write) {
 }
 
 #' @keywords internal
-tempest_tools_retrieval <- function(retriever, allow_claim_writes = TRUE) {
+tempest_tools_retrieval <- function(
+  retriever,
+  allow_claim_writes = TRUE,
+  claim_provenance = list()
+) {
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
 
@@ -674,7 +702,10 @@ tempest_tools_retrieval <- function(retriever, allow_claim_writes = TRUE) {
   }
 
   review <- tempest_tool_review_functions(retriever$store)
-  write <- tempest_tool_write_functions(retriever$store)
+  write <- tempest_tool_write_functions(
+    retriever$store,
+    provenance = claim_provenance
+  )
 
   tools <- c(
     list(
@@ -722,17 +753,23 @@ tempest_tools_retrieval <- function(retriever, allow_claim_writes = TRUE) {
 #' @param retriever A TempestRetriever object
 #' @param allow_claim_writes Whether to include `add_claim` and transitional
 #'   fact-writing aliases.
+#' @param claim_provenance Optional provenance recorded on claims written via
+#'   `add_claim`.
 #' @return List of ellmer tools for source/claim management
 #' @keywords internal
 tempest_tools_source_management <- function(
   retriever,
-  allow_claim_writes = TRUE
+  allow_claim_writes = TRUE,
+  claim_provenance = list()
 ) {
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
 
   review <- tempest_tool_review_functions(retriever$store)
-  write <- tempest_tool_write_functions(retriever$store)
+  write <- tempest_tool_write_functions(
+    retriever$store,
+    provenance = claim_provenance
+  )
 
   tools <- tempest_tool_review_ellmer_tools(review)
   if (isTRUE(allow_claim_writes)) {
@@ -754,6 +791,8 @@ tempest_tools_source_management <- function(
 #' @param allow_claim_writes Whether to register claim-writing tools. Read-heavy
 #'   roles can set this to `FALSE` and still inspect sources, claims, evidence,
 #'   and unsupported claims.
+#' @param claim_provenance Optional provenance recorded on claims written via
+#'   `add_claim`.
 #' @return The chat object (invisibly)
 #' @keywords internal
 tempest_register_default_tools <- function(
@@ -761,7 +800,8 @@ tempest_register_default_tools <- function(
   retriever,
   model = NULL,
   search_provider = "native",
-  allow_claim_writes = TRUE
+  allow_claim_writes = TRUE,
+  claim_provenance = list()
 ) {
   tempest_require("ellmer", "Tool calling for retrieval.")
 
@@ -782,14 +822,16 @@ tempest_register_default_tools <- function(
   if (!use_native) {
     tools <- tempest_tools_retrieval(
       retriever,
-      allow_claim_writes = allow_claim_writes
+      allow_claim_writes = allow_claim_writes,
+      claim_provenance = claim_provenance
     )
     chat$register_tools(tools)
   } else {
     # Still register source/claim management tools even with native search
     mgmt_tools <- tempest_tools_source_management(
       retriever,
-      allow_claim_writes = allow_claim_writes
+      allow_claim_writes = allow_claim_writes,
+      claim_provenance = claim_provenance
     )
     chat$register_tools(mgmt_tools)
   }
@@ -821,6 +863,8 @@ tempest_register_default_tools <- function(
 #' @field store A `SourceStore` for storing extracted facts (optional).
 #' @field progress Optional progress callback.
 #' @field run_id Shared Co-STORM session id for progress events.
+#' @field session_provenance Environments keyed by expert session id for
+#'   claim-write provenance.
 #'
 #' @keywords internal
 ExpertSessionManager <- R6::R6Class(
@@ -833,6 +877,7 @@ ExpertSessionManager <- R6::R6Class(
     store = NULL,
     progress = NULL,
     run_id = NULL,
+    session_provenance = NULL,
 
     #' @description
     #' Create a new ExpertSessionManager.
@@ -851,6 +896,7 @@ ExpertSessionManager <- R6::R6Class(
       run_id = NULL
     ) {
       self$sessions <- new.env(parent = emptyenv())
+      self$session_provenance <- new.env(parent = emptyenv())
       self$config <- config
       self$retriever <- retriever
       self$extractor <- extractor
@@ -900,14 +946,25 @@ ExpertSessionManager <- R6::R6Class(
     #' @param response Character string response from expert.
     #' @param turn Optional ellmer turn to inspect for provider-native sources.
     #' @param source_ids Optional source ids already harvested for the turn.
+    #' @param session_id Optional expert session id.
+    #' @param persona_id Optional persona id.
+    #' @param correlation_id Optional progress correlation id for the turn.
     #' @return Invisibly returns NULL.
-    extract_facts = function(response, turn = NULL, source_ids = NULL) {
+    extract_facts = function(
+      response,
+      turn = NULL,
+      source_ids = NULL,
+      session_id = NA_character_,
+      persona_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
       if (!is.null(self$extractor) && !is.null(self$store)) {
         event <- self$emit_progress(
           "step",
           "started",
           stage = "evidence",
-          step = "fact_extraction"
+          step = "fact_extraction",
+          correlation_id = correlation_id
         )
         tryCatch(
           {
@@ -922,7 +979,10 @@ ExpertSessionManager <- R6::R6Class(
               self$extractor,
               response,
               self$store,
-              source_ids = unique(c(source_ids, harvested))
+              source_ids = unique(c(source_ids, harvested)),
+              session_id = session_id,
+              persona_id = persona_id,
+              retrieval_step_id = correlation_id
             )
             self$emit_progress(
               "step",
@@ -973,7 +1033,12 @@ ExpertSessionManager <- R6::R6Class(
         return(list(
           chat = get(session_id, envir = self$sessions),
           session_id = session_id,
-          is_new = FALSE
+          is_new = FALSE,
+          provenance = get(
+            session_id,
+            envir = self$session_provenance,
+            inherits = FALSE
+          )
         ))
       }
 
@@ -982,6 +1047,15 @@ ExpertSessionManager <- R6::R6Class(
         persona = persona,
         expert_id = persona$id %||% 1L
       )
+      new_id <- session_id %||%
+        self$generate_session_id(persona$name %||% "expert")
+      persona_id <- as.character(persona$id %||% NA_integer_)
+      provenance <- new.env(parent = emptyenv())
+      provenance$base <- list(
+        session_id = new_id,
+        persona_id = persona_id
+      )
+      provenance$current <- list()
       chat <- tempest_make_chat(
         self$config,
         "expert",
@@ -992,17 +1066,20 @@ ExpertSessionManager <- R6::R6Class(
         chat,
         self$retriever,
         model = self$config@models[["expert"]],
-        search_provider = self$config@search_provider
+        search_provider = self$config@search_provider,
+        claim_provenance = function() {
+          utils::modifyList(provenance$base, provenance$current %||% list())
+        }
       )
 
-      new_id <- session_id %||%
-        self$generate_session_id(persona$name %||% "expert")
       assign(new_id, chat, envir = self$sessions)
+      assign(new_id, provenance, envir = self$session_provenance)
 
       list(
         chat = chat,
         session_id = new_id,
-        is_new = TRUE
+        is_new = TRUE,
+        provenance = provenance
       )
     },
 
@@ -1052,6 +1129,8 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     result <- mgr$get_or_create(p, session_id)
     chat <- result$chat
     sid <- result$session_id
+    provenance <- result$provenance
+    persona_id <- as.character(p$id %||% NA_integer_)
     expert_name <- p$name %||% "Expert"
     correlation_id <- tempest_uuid("tool")
     tool_event <- mgr$emit_progress(
@@ -1061,7 +1140,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       step = tool_name,
       correlation_id = correlation_id,
       payload = list(
-        expert_id = as.character(p$id %||% NA_integer_),
+        expert_id = persona_id,
         expert_name = expert_name,
         session_id = sid
       )
@@ -1085,6 +1164,12 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       "Respond now:"
     )
 
+    old_provenance <- provenance$current %||% list()
+    provenance$current <- list(
+      session_id = sid,
+      persona_id = persona_id,
+      retrieval_step_id = correlation_id
+    )
     response <- tryCatch(
       chat$chat(prompt, echo = "none"),
       error = function(e) {
@@ -1097,7 +1182,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
           correlation_id = correlation_id,
           payload = c(
             list(
-              expert_id = as.character(p$id %||% NA_integer_),
+              expert_id = persona_id,
               expert_name = expert_name,
               session_id = sid
             ),
@@ -1105,6 +1190,9 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
           )
         )
         stop(e)
+      },
+      finally = {
+        provenance$current <- old_provenance
       }
     )
 
@@ -1124,7 +1212,13 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     }
 
     # Extract facts from expert response
-    mgr$extract_facts(response_text, turn = last_turn)
+    mgr$extract_facts(
+      response_text,
+      turn = last_turn,
+      session_id = sid,
+      persona_id = persona_id,
+      correlation_id = correlation_id
+    )
     mgr$emit_progress(
       "tool",
       "succeeded",
@@ -1133,7 +1227,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       parent_event_id = tool_event@event_id,
       correlation_id = correlation_id,
       payload = list(
-        expert_id = as.character(p$id %||% NA_integer_),
+        expert_id = persona_id,
         expert_name = expert_name,
         session_id = sid
       )

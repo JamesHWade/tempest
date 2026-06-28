@@ -9,7 +9,8 @@ tempest_register_default_tools(
   retriever,
   model = NULL,
   search_provider = "native",
-  allow_claim_writes = TRUE
+  allow_claim_writes = TRUE,
+  claim_provenance = list()
 )
 }
 \arguments{
@@ -24,6 +25,9 @@ tempest_register_default_tools(
 \item{allow_claim_writes}{Whether to register claim-writing tools. Read-heavy
 roles can set this to \code{FALSE} and still inspect sources, claims, evidence,
 and unsupported claims.}
+
+\item{claim_provenance}{Optional provenance recorded on claims written via
+\code{add_claim}.}
 }
 \value{
 The chat object (invisibly)

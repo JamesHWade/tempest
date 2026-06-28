@@ -55,14 +55,17 @@ test_that("claim round-trips through list", {
   cl <- tempest_claim(
     claim_text = "x",
     source_ids = c("S1", "S2"),
-    claim_type = "method"
+    claim_type = "method",
+    session_id = "session-1"
   )
   lst <- tempest_claim_to_list(cl)
   expect_equal(lst$claim_text, "x")
   expect_equal(lst$claim_type, "method")
+  expect_equal(lst$session_id, "session-1")
   cl2 <- tempest_claim_from_list(lst)
   expect_equal(cl2@claim_id, cl@claim_id)
   expect_equal(cl2@source_ids, c("S1", "S2"))
+  expect_equal(cl2@session_id, "session-1")
 })
 
 test_that("claims convert to a tibble", {
@@ -79,6 +82,12 @@ test_that("claims convert to a tibble", {
   expect_equal(nrow(tb), 2)
   expect_contains(
     names(tb),
-    c("claim_id", "claim_text", "verification_status", "support_score")
+    c(
+      "claim_id",
+      "claim_text",
+      "verification_status",
+      "support_score",
+      "session_id"
+    )
   )
 })

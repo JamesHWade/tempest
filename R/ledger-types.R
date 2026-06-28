@@ -98,6 +98,7 @@ tempest_claim <- S7::new_class(
     retrieval_step_id = prop_chr(),
     perspective_id = prop_chr(),
     persona_id = prop_chr(),
+    session_id = prop_chr(),
     section_id = prop_chr(),
     created_at = prop_chr(),
     verified_at = prop_chr(),
@@ -124,6 +125,7 @@ tempest_claim <- S7::new_class(
     retrieval_step_id = NA_character_,
     perspective_id = NA_character_,
     persona_id = NA_character_,
+    session_id = NA_character_,
     section_id = NA_character_,
     verified_at = NA_character_,
     verifier_model = NA_character_,
@@ -148,6 +150,7 @@ tempest_claim <- S7::new_class(
       retrieval_step_id = retrieval_step_id,
       perspective_id = perspective_id,
       persona_id = persona_id,
+      session_id = session_id,
       section_id = section_id,
       created_at = created_at %||% tempest_now_utc(),
       verified_at = verified_at,
@@ -281,6 +284,7 @@ tempest_claim_from_list <- function(x) {
     "retrieval_step_id",
     "perspective_id",
     "persona_id",
+    "session_id",
     "section_id",
     "created_at",
     "verified_at",
@@ -335,6 +339,7 @@ tempest_claims_tibble <- function(claims) {
       confidence = character(),
       verification_status = character(),
       support_score = numeric(),
+      session_id = character(),
       created_at = character()
     ))
   }
@@ -346,6 +351,7 @@ tempest_claims_tibble <- function(claims) {
     confidence = purrr::map_chr(claims, ~ .x@confidence),
     verification_status = purrr::map_chr(claims, ~ .x@verification_status),
     support_score = purrr::map_dbl(claims, ~ .x@support_score),
+    session_id = purrr::map_chr(claims, ~ .x@session_id),
     created_at = purrr::map_chr(claims, ~ .x@created_at)
   )
 }

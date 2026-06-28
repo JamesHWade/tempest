@@ -253,6 +253,84 @@ test_that("expert tools emit correlated progress events", {
   expect_equal(tool_events[[1]]$payload$expert_name, "Dr. Tool")
   expect_null(tool_events[[2]]$payload$response)
   expect_equal(result$expert, "Dr. Tool")
+
+  claims <- store$list_claims()
+  expect_length(claims, 1)
+  expect_equal(claims[[1]]@session_id, result$session_id)
+  expect_equal(claims[[1]]@persona_id, "7")
+  expect_equal(claims[[1]]@retrieval_step_id, tool_events[[1]]$correlation_id)
+  fact_events <- collector$data(event_type = "step", stage = "evidence")
+  fact_events <- Filter(
+    function(event) identical(event$step, "fact_extraction"),
+    fact_events
+  )
+  expect_equal(
+    unique(vapply(fact_events, `[[`, character(1), "correlation_id")),
+    tool_events[[1]]$correlation_id
+  )
+})
+
+test_that("expert tools reuse sessions and provenance", {
+  skip_if_not_installed("ellmer")
+  source <- fake_source(url = "https://example.org/expert-reuse")
+  store <- SourceStore$new()
+  store$upsert_source(source)
+  expert_chat <- fake_chat(
+    text = list(
+      paste0("First expert answer cites [", source$id, "]."),
+      paste0("Second expert answer cites [", source$id, "].")
+    )
+  )
+  extractor <- fake_chat(
+    structured = list(
+      list(
+        facts = list(list(
+          claim = "First expert claim is recorded.",
+          sources = list(list(source_id = source$id)),
+          confidence = "high"
+        ))
+      ),
+      list(
+        facts = list(list(
+          claim = "Second expert claim is recorded.",
+          sources = list(list(source_id = source$id)),
+          confidence = "high"
+        ))
+      )
+    )
+  )
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "expert")) expert_chat else fake_chat()
+    }
+  )
+  retriever <- tempest_retriever(config = cfg, store = store)
+  mgr <- tempest:::ExpertSessionManager$new(
+    cfg,
+    retriever,
+    extractor = extractor,
+    store = store,
+    run_id = "session-1"
+  )
+  persona <- list(id = 7, name = "Dr. Reuse", title = "Tool specialist")
+  tool <- tempest:::tempest_create_expert_tool(persona, mgr, "Progress")
+
+  first <- tool(question = "First?")
+  second <- tool(question = "Second?", session_id = first$session_id)
+
+  expect_equal(second$session_id, first$session_id)
+  expect_length(mgr$list_sessions(), 1)
+  expect_equal(length(expert_chat$.calls()), 2)
+  claims <- store$list_claims()
+  expect_length(claims, 2)
+  expect_equal(
+    vapply(claims, function(claim) claim@session_id, character(1)),
+    rep(first$session_id, 2)
+  )
+  expect_equal(
+    vapply(claims, function(claim) claim@persona_id, character(1)),
+    rep("7", 2)
+  )
 })
 
 test_that("expert tools emit failed progress events", {

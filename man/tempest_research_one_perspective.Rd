@@ -12,7 +12,8 @@ tempest_research_one_perspective(
   topic,
   research_strategy,
   max_questions_per_perspective,
-  dsprrr_modules = NULL
+  dsprrr_modules = NULL,
+  run_id = NA_character_
 )
 }
 \description{
