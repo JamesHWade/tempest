@@ -258,25 +258,3 @@ storm_stage_labels <- function() {
     verification = "Verify"
   )
 }
-
-# The pipeline's stages, shown as a checklist from reducer state.
-storm_stage_list <- function(complete) {
-  events <- list(tempest::tempest_progress_event(
-    run_id = "storm-stage-list",
-    workflow = "storm",
-    event_type = "workflow",
-    status = if (isTRUE(complete)) "succeeded" else "started",
-    payload = list(
-      completed_stages = if (isTRUE(complete)) {
-        names(storm_stage_labels())
-      } else {
-        character()
-      }
-    )
-  ))
-  state <- tempest::tempest_progress_state(events)
-  if (isTRUE(complete)) {
-    state$completed_stages <- names(storm_stage_labels())
-  }
-  workflow_stage_list(state, storm_stage_labels())
-}

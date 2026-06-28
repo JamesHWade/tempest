@@ -212,6 +212,58 @@ test_that("tempest_run emits ordered STORM progress events", {
   )
 })
 
+test_that("tempest_run emits a failed verification stage event", {
+  skip_if_not_installed("ellmer")
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8L) {
+      tibble::tibble(
+        title = character(),
+        url = character(),
+        snippet = character()
+      )
+    },
+    tempest_extract_toc_from_url = function(url) character(),
+    tempest_wiki_page_sections = function(title) character(),
+    tempest_run_verification = function(...) {
+      stop("verification module unavailable")
+    }
+  )
+  fixture <- storm_progress_fixture()
+  collector <- tempest_progress_collector()
+
+  expect_error(
+    tempest_run(
+      "Progress events",
+      config = fixture$config,
+      retriever = fixture$retriever,
+      n_experts = 1,
+      max_questions_per_perspective = 1,
+      dsprrr_modules = list(),
+      output_dir = withr::local_tempdir(),
+      run_id = "progress-verify-fail",
+      progress = collector$record,
+      verbose = FALSE
+    ),
+    "verification module unavailable"
+  )
+
+  labels <- vapply(
+    collector$data(),
+    function(event) {
+      paste(event$event_type, event$stage, event$status, sep = ":")
+    },
+    character(1)
+  )
+  expect_contains(
+    labels,
+    c(
+      "stage:verification:started",
+      "stage:verification:failed",
+      "workflow:NA:failed"
+    )
+  )
+})
+
 test_that("tempest_run emits terminal progress events on failure", {
   skip_if_not_installed("ellmer")
   collector <- tempest_progress_collector()

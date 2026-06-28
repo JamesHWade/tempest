@@ -912,7 +912,19 @@ tempest_run <- function(
             stage = "verification",
             message = "Verifying cited claims."
           )
-          tempest_run_verification(store, config, modules = dsprrr_modules)
+          tryCatch(
+            tempest_run_verification(store, config, modules = dsprrr_modules),
+            error = function(e) {
+              emit_progress(
+                "stage",
+                "failed",
+                stage = "verification",
+                message = "Citation verification failed.",
+                payload = tempest_progress_error_payload(e)
+              )
+              stop(e)
+            }
+          )
           emit_progress(
             "stage",
             "succeeded",

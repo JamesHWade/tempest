@@ -427,6 +427,36 @@ test_that("storm_progress_state renders failed and running states", {
   expect_match(html, "STORM pipeline failed")
 })
 
+test_that("workflow_progress_ui hides recorded failures once succeeded", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  state <- tempest_progress_state(list(
+    tempest_progress_event(
+      run_id = "run-1",
+      workflow = "storm",
+      event_type = "tool",
+      status = "failed",
+      stage = "research",
+      step = "web_search",
+      payload = list(error_message = "transient tool error")
+    ),
+    tempest_progress_event(
+      run_id = "run-1",
+      workflow = "storm",
+      event_type = "workflow",
+      status = "succeeded"
+    )
+  ))
+
+  expect_equal(state$status, "succeeded")
+  expect_length(state$failures, 1L)
+  html <- paste(
+    as.character(app$workflow_progress_ui(state, app$storm_stage_labels())),
+    collapse = ""
+  )
+  expect_no_match(html, "transient tool error")
+})
+
 await_promise <- function(promise, timeout_s = 2) {
   done <- FALSE
   value <- NULL

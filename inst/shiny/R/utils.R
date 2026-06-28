@@ -277,6 +277,12 @@ workflow_failure_list <- function(state) {
   if (length(state$failures) == 0L) {
     return(NULL)
   }
+  # Don't surface recorded failures once the workflow has succeeded; the
+  # reducer keeps transient tool/expert failures in `state$failures`, which
+  # would otherwise contradict the "Done" status badge.
+  if (identical(state$status, "succeeded")) {
+    return(NULL)
+  }
   latest <- state$failures[[length(state$failures)]]
   msg <- workflow_first_text(
     latest$error_message,
