@@ -1,10 +1,14 @@
 test_that("tempest_suggest_questions trims, drops empties, and de-duplicates", {
-  chat <- fake_chat(structured = list(list(questions = c(
-    " What is animatronics? ",
-    "What is animatronics?",
-    "How do servos work?",
-    ""
-  ))))
+  chat <- fake_chat(
+    structured = list(list(
+      questions = c(
+        " What is animatronics? ",
+        "What is animatronics?",
+        "How do servos work?",
+        ""
+      )
+    ))
+  )
   out <- tempest_suggest_questions("Animatronics", chat = chat, n = 4)
   expect_equal(out, c("What is animatronics?", "How do servos work?"))
 })
@@ -17,12 +21,18 @@ test_that("tempest_suggest_questions caps the result at n", {
 
 test_that("tempest_suggest_questions returns empty for a blank topic", {
   expect_equal(tempest_suggest_questions("", chat = fake_chat()), character())
-  expect_equal(tempest_suggest_questions("   ", chat = fake_chat()), character())
+  expect_equal(
+    tempest_suggest_questions("   ", chat = fake_chat()),
+    character()
+  )
 })
 
 test_that("tempest_suggest_questions returns empty when the chat errors", {
   # fake_chat with an empty structured queue stops() on chat_structured()
-  expect_equal(tempest_suggest_questions("Topic", chat = fake_chat()), character())
+  expect_equal(
+    tempest_suggest_questions("Topic", chat = fake_chat()),
+    character()
+  )
 })
 
 test_that("tempest_suggest_questions returns empty when 'questions' is missing", {
@@ -52,7 +62,12 @@ test_that("TempestSession$suggest_questions delegates to the generator", {
   ses <- tempest_session(
     "Test topic",
     config = cfg,
-    personas = list(list(id = 1, name = "Dr. A", title = "Sci", perspective = "X"))
+    personas = list(list(
+      id = 1,
+      name = "Dr. A",
+      title = "Sci",
+      perspective = "X"
+    ))
   )
   out <- ses$suggest_questions(n = 2)
   expect_equal(out, c("Q1", "Q2"))
@@ -67,7 +82,12 @@ test_that("suggest_questions forwards transcript context when non-empty", {
   ses <- tempest_session(
     "Test topic",
     config = cfg,
-    personas = list(list(id = 1, name = "Dr. A", title = "Sci", perspective = "X"))
+    personas = list(list(
+      id = 1,
+      name = "Dr. A",
+      title = "Sci",
+      perspective = "X"
+    ))
   )
   ses$add_turn("User", "user", "hello there")
   ses$suggest_questions(n = 1)
