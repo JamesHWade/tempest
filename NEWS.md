@@ -26,6 +26,7 @@
   `tempest_load_dsprrr_modules()` support explicit dsprrr compilation and
   reuse of optimized STORM module sets.
 * `tempest_progress_event()` and `tempest_progress_event_data()` define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).
+* `tempest_progress_collector()`, `tempest_progress_filter()`, and `tempest_progress_replay()` provide host-neutral in-memory progress sinks with filtering and replay helpers (wpt9).
 * `tempest_run()` gains `output_dir`, `resume`, and `run_id` arguments for
   persistent staged runs with JSON and Markdown artifacts.
 * `tempest_run()` gains `parallel_writing` for upstream-style concurrent

@@ -20,10 +20,7 @@ test_that("tempest_run emits ordered STORM progress events", {
   source_id <- source$id
   store <- SourceStore$new()
   store$upsert_source(source)
-  events <- list()
-  collect <- function(event) {
-    events[[length(events) + 1L]] <<- event
-  }
+  collector <- tempest_progress_collector(include_payload = TRUE)
   outline <- list(
     title = "Progress report",
     sections = list(list(
@@ -144,11 +141,11 @@ test_that("tempest_run emits ordered STORM progress events", {
     dsprrr_modules = list(),
     output_dir = withr::local_tempdir(),
     run_id = "progress-run",
-    progress = collect,
+    progress = collector$record,
     verbose = FALSE
   )
 
-  event_data <- lapply(events, tempest_progress_event_data)
+  event_data <- collector$data()
   labels <- vapply(
     event_data,
     function(event) {
@@ -202,6 +199,10 @@ test_that("tempest_run emits ordered STORM progress events", {
   )
   expect_match(result$report_md, "Polished report")
   expect_equal(
+    collector$data(event_type = "artifact")[[1]]$payload$artifact,
+    "report_md"
+  )
+  expect_equal(
     unique(vapply(event_data, `[[`, character(1), "run_id")),
     "progress-run"
   )
@@ -213,10 +214,7 @@ test_that("tempest_run emits ordered STORM progress events", {
 
 test_that("tempest_run emits terminal progress events on failure", {
   skip_if_not_installed("ellmer")
-  events <- list()
-  collect <- function(event) {
-    events[[length(events) + 1L]] <<- event
-  }
+  collector <- tempest_progress_collector()
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -228,14 +226,14 @@ test_that("tempest_run emits terminal progress events on failure", {
       retriever = tempest_retriever(config = cfg, store = SourceStore$new()),
       steps = "write",
       dsprrr_modules = list(),
-      progress = collect,
+      progress = collector$record,
       verbose = FALSE
     ),
     "No outline available"
   )
 
   labels <- vapply(
-    lapply(events, tempest_progress_event_data),
+    collector$data(),
     function(event) {
       paste(event$event_type, event$stage, event$status, sep = ":")
     },
