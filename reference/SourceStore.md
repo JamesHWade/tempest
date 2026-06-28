@@ -1,8 +1,8 @@
-# SourceStore
+# SourceStore (evidence ledger)
 
-A lightweight in-memory store for sources, fact notes, and artifacts.
-This store is designed for both script usage (STORM) and interactive
-usage (Co-STORM).
+In-memory store for sources, claims, evidence spans, disputes, and
+artifacts. Stays an R6 reference object: it is the mutable accumulator
+threaded through every pipeline stage and Co-STORM turn.
 
 ## Public fields
 
@@ -10,9 +10,17 @@ usage (Co-STORM).
 
   Environment of source objects keyed by id.
 
-- `facts`:
+- `claims`:
 
-  List of fact objects.
+  Environment of claim records keyed by claim_id.
+
+- `evidence_spans`:
+
+  Environment of evidence-span records keyed by id.
+
+- `disputes`:
+
+  Environment of dispute records keyed by id.
 
 - `artifacts`:
 
@@ -30,9 +38,25 @@ usage (Co-STORM).
 
 - [`SourceStore$list_sources()`](#method-SourceStore-list_sources)
 
-- [`SourceStore$add_fact()`](#method-SourceStore-add_fact)
+- [`SourceStore$add_claim()`](#method-SourceStore-add_claim)
 
-- [`SourceStore$list_facts()`](#method-SourceStore-list_facts)
+- [`SourceStore$get_claim()`](#method-SourceStore-get_claim)
+
+- [`SourceStore$list_claims()`](#method-SourceStore-list_claims)
+
+- [`SourceStore$claims_for_source()`](#method-SourceStore-claims_for_source)
+
+- [`SourceStore$add_evidence_span()`](#method-SourceStore-add_evidence_span)
+
+- [`SourceStore$link_evidence()`](#method-SourceStore-link_evidence)
+
+- [`SourceStore$get_evidence_for_claim()`](#method-SourceStore-get_evidence_for_claim)
+
+- [`SourceStore$verify_claim()`](#method-SourceStore-verify_claim)
+
+- [`SourceStore$add_dispute()`](#method-SourceStore-add_dispute)
+
+- [`SourceStore$list_disputes()`](#method-SourceStore-list_disputes)
 
 - [`SourceStore$set_artifact()`](#method-SourceStore-set_artifact)
 
@@ -84,10 +108,6 @@ Get a source by id.
 
   The source id.
 
-#### Returns
-
-The source list or NULL.
-
 ------------------------------------------------------------------------
 
 ### `SourceStore$list_sources()`
@@ -98,39 +118,174 @@ List all sources.
 
     SourceStore$list_sources()
 
-#### Returns
-
-A list of source objects.
-
 ------------------------------------------------------------------------
 
-### `SourceStore$add_fact()`
+### `SourceStore$add_claim()`
 
-Add a fact to the store.
+Add a claim record to the ledger.
 
 #### Usage
 
-    SourceStore$add_fact(fact)
+    SourceStore$add_claim(claim)
 
 #### Arguments
 
-- `fact`:
+- `claim`:
 
-  A fact list with an `id` field.
+  A `tempest_claim` S7 record.
 
 ------------------------------------------------------------------------
 
-### `SourceStore$list_facts()`
+### `SourceStore$get_claim()`
 
-List all facts.
+Get a claim by id.
 
 #### Usage
 
-    SourceStore$list_facts()
+    SourceStore$get_claim(claim_id)
 
-#### Returns
+#### Arguments
 
-A list of fact objects.
+- `claim_id`:
+
+  The claim id.
+
+------------------------------------------------------------------------
+
+### `SourceStore$list_claims()`
+
+List all claims.
+
+#### Usage
+
+    SourceStore$list_claims()
+
+------------------------------------------------------------------------
+
+### `SourceStore$claims_for_source()`
+
+Claims that cite a given source.
+
+#### Usage
+
+    SourceStore$claims_for_source(source_id)
+
+#### Arguments
+
+- `source_id`:
+
+  Source id.
+
+------------------------------------------------------------------------
+
+### `SourceStore$add_evidence_span()`
+
+Add an evidence span.
+
+#### Usage
+
+    SourceStore$add_evidence_span(span)
+
+#### Arguments
+
+- `span`:
+
+  A `tempest_evidence_span` S7 record.
+
+------------------------------------------------------------------------
+
+### `SourceStore$link_evidence()`
+
+Link an evidence span to a claim.
+
+#### Usage
+
+    SourceStore$link_evidence(claim_id, span_id)
+
+#### Arguments
+
+- `claim_id`:
+
+  Claim id.
+
+- `span_id`:
+
+  Evidence span id.
+
+------------------------------------------------------------------------
+
+### `SourceStore$get_evidence_for_claim()`
+
+Evidence spans linked to a claim.
+
+#### Usage
+
+    SourceStore$get_evidence_for_claim(claim_id)
+
+#### Arguments
+
+- `claim_id`:
+
+  Claim id.
+
+------------------------------------------------------------------------
+
+### `SourceStore$verify_claim()`
+
+Update a claim's verification status.
+
+#### Usage
+
+    SourceStore$verify_claim(
+      claim_id,
+      status,
+      score = NA_real_,
+      verifier = NA_character_
+    )
+
+#### Arguments
+
+- `claim_id`:
+
+  Claim id.
+
+- `status`:
+
+  One of the verification status labels.
+
+- `score`:
+
+  Support score in `[0, 1]` or NA.
+
+- `verifier`:
+
+  Verifier model id.
+
+------------------------------------------------------------------------
+
+### `SourceStore$add_dispute()`
+
+Add a dispute.
+
+#### Usage
+
+    SourceStore$add_dispute(dispute)
+
+#### Arguments
+
+- `dispute`:
+
+  A `tempest_dispute` S7 record.
+
+------------------------------------------------------------------------
+
+### `SourceStore$list_disputes()`
+
+List all disputes.
+
+#### Usage
+
+    SourceStore$list_disputes()
 
 ------------------------------------------------------------------------
 
@@ -168,23 +323,15 @@ Retrieve an artifact by name.
 
   Artifact name.
 
-#### Returns
-
-The artifact value or NULL.
-
 ------------------------------------------------------------------------
 
 ### `SourceStore$to_tibbles()`
 
-Convert sources and facts to tibbles.
+Convert sources, claims, and disputes to tibbles.
 
 #### Usage
 
     SourceStore$to_tibbles()
-
-#### Returns
-
-A list with `sources` and `facts` tibbles.
 
 ------------------------------------------------------------------------
 

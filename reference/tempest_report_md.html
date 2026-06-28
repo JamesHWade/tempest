@@ -39,7 +39,14 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_report_md</span><span class="op">(</span><span class="va">title</span>, <span class="va">body</span>, <span class="va">store</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_report_md</span><span class="op">(</span></span>
+<span>  <span class="va">title</span>,</span>
+<span>  <span class="va">body</span>,</span>
+<span>  <span class="va">store</span>,</span>
+<span>  citation_policy <span class="op">=</span> <span class="st">"source_attributed"</span>,</span>
+<span>  on_unsupported_claim <span class="op">=</span> <span class="st">"flag"</span>,</span>
+<span>  min_support_score <span class="op">=</span> <span class="fl">0.7</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -56,6 +63,24 @@
 
 <dt id="arg-store">store<a class="anchor" aria-label="anchor" href="#arg-store"></a></dt>
 <dd><p>A <code>SourceStore</code> containing sources.</p></dd>
+
+
+<dt id="arg-citation-policy">citation_policy<a class="anchor" aria-label="anchor" href="#arg-citation-policy"></a></dt>
+<dd><p>One of "none", "source_attributed" (default),
+"claim_verified", "strict". "none" leaves inline citation ids unchanged
+and omits references. Under verified policies, footnotes show a
+verification badge; under "strict", unsupported/contradicted inline
+citations are handled per <code>on_unsupported_claim</code>.</p></dd>
+
+
+<dt id="arg-on-unsupported-claim">on_unsupported_claim<a class="anchor" aria-label="anchor" href="#arg-on-unsupported-claim"></a></dt>
+<dd><p>One of "flag" (default), "drop",
+"keep_with_warning", "revise". Only used under "strict".</p></dd>
+
+
+<dt id="arg-min-support-score">min_support_score<a class="anchor" aria-label="anchor" href="#arg-min-support-score"></a></dt>
+<dd><p>Minimum support score in <code>[0, 1]</code> for a claim to be
+considered supported.</p></dd>
 
 </dl></div>
     <div class="section level2">

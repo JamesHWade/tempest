@@ -82,7 +82,7 @@ tempest_run(
 
   Optional named list of dsprrr modules, typically from
   [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md).
-  If `NULL`, fresh modules are created when dsprrr is installed.
+  If `NULL`, fresh modules are created.
 
 - steps:
 

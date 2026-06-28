@@ -39,20 +39,136 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_config</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_config</span><span class="op">(</span></span>
+<span>  models <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  chat_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tools <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  embed_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ragnar_store <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  search_provider <span class="op">=</span> <span class="st">"native"</span>,</span>
+<span>  cache_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max_search_results <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  max_search_queries_per_turn <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  retrieve_top_k <span class="op">=</span> <span class="fl">25</span>,</span>
+<span>  max_sources <span class="op">=</span> <span class="fl">24</span>,</span>
+<span>  user_agent <span class="op">=</span> <span class="st">"tempest (R; +https://github.com/JamesHWade/tempest)"</span>,</span>
+<span>  node_expansion_trigger_count <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  enable_discourse_manager <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  max_active_experts <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  enable_unseen_surfacing <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  citation_policy <span class="op">=</span> <span class="st">"source_attributed"</span>,</span>
+<span>  min_support_score <span class="op">=</span> <span class="fl">0.7</span>,</span>
+<span>  on_unsupported_claim <span class="op">=</span> <span class="st">"flag"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Passed to <code>TempestConfig$new()</code>.</p></dd>
+<dl><dt id="arg-models">models<a class="anchor" aria-label="anchor" href="#arg-models"></a></dt>
+<dd><p>Named list of model identifiers for each role, or a single
+string to use for all roles.</p></dd>
+
+
+<dt id="arg-params">params<a class="anchor" aria-label="anchor" href="#arg-params"></a></dt>
+<dd><p>Additional parameters passed to chat creation.</p></dd>
+
+
+<dt id="arg-chat-fn">chat_fn<a class="anchor" aria-label="anchor" href="#arg-chat-fn"></a></dt>
+<dd><p>Custom chat factory function. Should accept <code>role</code>, <code>model</code>,
+<code>system_prompt</code>, and <code>echo</code> arguments and return an ellmer-compatible Chat
+object. Use this for custom providers like <code>chat_company()</code>.</p></dd>
+
+
+<dt id="arg-tools">tools<a class="anchor" aria-label="anchor" href="#arg-tools"></a></dt>
+<dd><p>Additional tools to register with each chat. Can be a list of
+ellmer tools, or a function that returns tools (e.g., <code>btw::btw_tools</code>).</p></dd>
+
+
+<dt id="arg-embed-fn">embed_fn<a class="anchor" aria-label="anchor" href="#arg-embed-fn"></a></dt>
+<dd><p>Embedding function for RAG. Should accept a character vector
+and return a matrix of embeddings. Use <code><a href="https://ragnar.tidyverse.org/reference/embed_ollama.html" class="external-link">ragnar::embed_openai()</a></code>,
+<code><a href="https://ragnar.tidyverse.org/reference/embed_ollama.html" class="external-link">ragnar::embed_ollama()</a></code>, or a custom function. If provided, a ragnar store
+is automatically created.</p></dd>
+
+
+<dt id="arg-ragnar-store">ragnar_store<a class="anchor" aria-label="anchor" href="#arg-ragnar-store"></a></dt>
+<dd><p>A pre-built ragnar store. If NULL and <code>embed_fn</code> is
+provided, a store is created automatically with the tempest metadata schema.</p></dd>
+
+
+<dt id="arg-search-provider">search_provider<a class="anchor" aria-label="anchor" href="#arg-search-provider"></a></dt>
+<dd><p>Search provider: "native" (use provider's built-in web
+search when available), "wikipedia", "you", "bing", "serper", "brave",
+"duckduckgo", "tavily", "searxng", "google", or "azure_ai_search". Default
+is "native" which uses OpenAI, Anthropic, or Google's native web search
+capabilities when available, falling back to "wikipedia".</p></dd>
+
+
+<dt id="arg-cache-dir">cache_dir<a class="anchor" aria-label="anchor" href="#arg-cache-dir"></a></dt>
+<dd><p>Path to cache directory.</p></dd>
+
+
+<dt id="arg-max-search-results">max_search_results<a class="anchor" aria-label="anchor" href="#arg-max-search-results"></a></dt>
+<dd><p>Maximum search results to return.</p></dd>
+
+
+<dt id="arg-max-search-queries-per-turn">max_search_queries_per_turn<a class="anchor" aria-label="anchor" href="#arg-max-search-queries-per-turn"></a></dt>
+<dd><p>Maximum decomposed queries per research
+turn.</p></dd>
+
+
+<dt id="arg-retrieve-top-k">retrieve_top_k<a class="anchor" aria-label="anchor" href="#arg-retrieve-top-k"></a></dt>
+<dd><p>Maximum facts/chunks retrieved for each section.</p></dd>
+
+
+<dt id="arg-max-sources">max_sources<a class="anchor" aria-label="anchor" href="#arg-max-sources"></a></dt>
+<dd><p>Maximum sources to keep.</p></dd>
+
+
+<dt id="arg-user-agent">user_agent<a class="anchor" aria-label="anchor" href="#arg-user-agent"></a></dt>
+<dd><p>User agent string for HTTP requests.</p></dd>
+
+
+<dt id="arg-node-expansion-trigger-count">node_expansion_trigger_count<a class="anchor" aria-label="anchor" href="#arg-node-expansion-trigger-count"></a></dt>
+<dd><p>Number of notes/sources per node that
+triggers expansion (NULL = disabled).</p></dd>
+
+
+<dt id="arg-enable-discourse-manager">enable_discourse_manager<a class="anchor" aria-label="anchor" href="#arg-enable-discourse-manager"></a></dt>
+<dd><p>Whether to enable LLM-driven discourse
+management in Co-STORM.</p></dd>
+
+
+<dt id="arg-max-active-experts">max_active_experts<a class="anchor" aria-label="anchor" href="#arg-max-active-experts"></a></dt>
+<dd><p>Maximum number of active expert agents in Co-STORM.</p></dd>
+
+
+<dt id="arg-enable-unseen-surfacing">enable_unseen_surfacing<a class="anchor" aria-label="anchor" href="#arg-enable-unseen-surfacing"></a></dt>
+<dd><p>Whether to surface undiscussed sources in
+Co-STORM.</p></dd>
+
+
+<dt id="arg-citation-policy">citation_policy<a class="anchor" aria-label="anchor" href="#arg-citation-policy"></a></dt>
+<dd><p>Citation enforcement policy: one of "none",
+"source_attributed", "claim_verified", or "strict".</p></dd>
+
+
+<dt id="arg-min-support-score">min_support_score<a class="anchor" aria-label="anchor" href="#arg-min-support-score"></a></dt>
+<dd><p>Minimum support score in <code>[0, 1]</code> for a claim to be
+considered supported.</p></dd>
+
+
+<dt id="arg-on-unsupported-claim">on_unsupported_claim<a class="anchor" aria-label="anchor" href="#arg-on-unsupported-claim"></a></dt>
+<dd><p>Action for unsupported claims: one of "flag",
+"drop", "revise", or "keep_with_warning".</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>TempestConfig</code> R6 object.</p>
+    <p>A <code>TempestConfig</code> S7 object.</p>
     </div>
 
     <div class="section level2">

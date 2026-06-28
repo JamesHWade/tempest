@@ -34,12 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="tempest-010">tempest 0.1.0<a class="anchor" aria-label="anchor" href="#tempest-010"></a></h2>
-<ul><li>
+<ul><li>The Chat tab now suggests follow-up questions as clickable cards. A set appears when the expert panel assembles and refreshes after each answer; clicking a card sends that question to the Moderator. Toggle it off with “Suggest follow-up questions” in the sidebar. New exported helper <code><a href="../reference/tempest_suggest_questions.html">tempest_suggest_questions()</a></code>.</li>
+<li>
 <code><a href="../reference/tempest_config.html">tempest_config()</a></code> gains <code>max_search_queries_per_turn</code> and <code>retrieve_top_k</code> controls to mirror the upstream STORM runner’s query and section-retrieval limits.</li>
 <li>
 <code>tempest_config(search_provider = )</code> now accepts upstream-style retrievers for You.com, Bing, DuckDuckGo, SearXNG, Google Custom Search, and Azure AI Search in addition to the existing native, Wikipedia, Serper, Brave, and Tavily providers.</li>
 <li>
-<code><a href="../reference/tempest_run.html">tempest_run()</a></code> now executes STORM structured steps through dsprrr modules when dsprrr is installed, with ellmer fallbacks for module creation or runtime failures.</li>
+<code>tempest</code> now imports dsprrr directly for STORM structured extraction and generation modules.</li>
+<li>
+<code><a href="../reference/tempest_run.html">tempest_run()</a></code> now executes STORM structured steps through dsprrr modules, with ellmer fallbacks for module creation or runtime failures.</li>
 <li>
 <code><a href="../reference/tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules()</a></code>, <code><a href="../reference/tempest_save_dsprrr_modules.html">tempest_save_dsprrr_modules()</a></code>, and <code><a href="../reference/tempest_load_dsprrr_modules.html">tempest_load_dsprrr_modules()</a></code> support explicit dsprrr compilation and reuse of optimized STORM module sets.</li>
 <li>
@@ -55,6 +58,8 @@
 <li>Co-STORM sessions now route turns, update the mind map, and summarise using the most recent dialogue turns instead of the oldest.</li>
 <li>Persisted runs now write artifacts atomically and write the run manifest last, so an interrupted save cannot corrupt artifacts or leave <code>resume</code> pointing at a stage whose output is missing.</li>
 <li>The bundled Shiny app now targets shinychat’s development <code>chat_server()</code> API for streaming, cancellation, greetings, and client state management.</li>
+<li>The bundled Shiny app no longer errors when async chat callbacks refresh the shared session store outside a reactive consumer.</li>
+<li>The bundled Shiny app’s Co-STORM warmup now runs independent experts in bounded parallel batches, shows compact progress without streaming every warmup answer into the chat, delays suggested questions until warmup finishes, times out stalled research calls, and ignores late callbacks from closed sessions.</li>
 <li>The bundled Shiny app was rebuilt around Shiny modules (one per tab) with a shared reactive store, runs the STORM pipeline as a background <code>ExtendedTask</code> bound to its task button, and adds a knowledge-stats value-box strip on the Mind Map tab, a landing welcome message, and an “About” popover linking the STORM, Co-STORM, and DSPy papers and upstream repositories.</li>
 </ul></div>
   </main></div>

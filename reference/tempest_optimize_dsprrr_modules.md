@@ -30,7 +30,7 @@ tempest_optimize_dsprrr_modules(
 
   Named list of training data frames. Names must match module names from
   [`tempest_make_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_make_dsprrr_modules.md),
-  such as `"query_decomposition"`, `"fact_extraction"`,
+  such as `"query_decomposition"`, `"extract_claims"`,
   `"section_writing"`, or `"lead_section"`.
 
 - modules:

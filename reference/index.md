@@ -5,23 +5,21 @@
 - [`SimulatedUser`](https://jameshwade.github.io/tempest/reference/SimulatedUser.md)
   : SimulatedUser
 - [`SourceStore`](https://jameshwade.github.io/tempest/reference/SourceStore.md)
-  : SourceStore
-- [`TempestConfig`](https://jameshwade.github.io/tempest/reference/TempestConfig.md)
-  : TempestConfig
+  : SourceStore (evidence ledger)
 - [`TempestRetriever`](https://jameshwade.github.io/tempest/reference/TempestRetriever.md)
   : TempestRetriever
 - [`TempestSession`](https://jameshwade.github.io/tempest/reference/TempestSession.md)
   : TempestSession
 - [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
   : Run the tempest Shiny chat application
+- [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
+  : Return claims as a tibble
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
   : Create a STORM configuration
 - [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
   : Create a Co-STORM evaluation task using SimulatedUser
 - [`tempest_create_ragnar_store()`](https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.md)
   : Create a ragnar store with tempest metadata schema
-- [`tempest_facts()`](https://jameshwade.github.io/tempest/reference/tempest_facts.md)
-  : Return fact notes as a tibble
 - [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md)
   : Generate Expert Personas for a Topic
 - [`tempest_load_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.md)
@@ -44,5 +42,9 @@
   : Assemble a Markdown report from a Co-STORM session
 - [`tempest_sources()`](https://jameshwade.github.io/tempest/reference/tempest_sources.md)
   : Return sources as a tibble
+- [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md)
+  : Suggest follow-up research questions for a topic
 - [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
   : Create a vitals Task for tempest
+- [`tempest_verify_claims()`](https://jameshwade.github.io/tempest/reference/tempest_verify_claims.md)
+  : Verify claim citations against their sources

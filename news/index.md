@@ -2,6 +2,12 @@
 
 ## tempest 0.1.0
 
+- The Chat tab now suggests follow-up questions as clickable cards. A
+  set appears when the expert panel assembles and refreshes after each
+  answer; clicking a card sends that question to the Moderator. Toggle
+  it off with “Suggest follow-up questions” in the sidebar. New exported
+  helper
+  [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md).
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
   gains `max_search_queries_per_turn` and `retrieve_top_k` controls to
   mirror the upstream STORM runner’s query and section-retrieval limits.
@@ -9,10 +15,11 @@
   retrievers for You.com, Bing, DuckDuckGo, SearXNG, Google Custom
   Search, and Azure AI Search in addition to the existing native,
   Wikipedia, Serper, Brave, and Tavily providers.
+- `tempest` now imports dsprrr directly for STORM structured extraction
+  and generation modules.
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
-  now executes STORM structured steps through dsprrr modules when dsprrr
-  is installed, with ellmer fallbacks for module creation or runtime
-  failures.
+  now executes STORM structured steps through dsprrr modules, with
+  ellmer fallbacks for module creation or runtime failures.
 - [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md),
   [`tempest_save_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_save_dsprrr_modules.md),
   and
@@ -46,6 +53,13 @@
 - The bundled Shiny app now targets shinychat’s development
   `chat_server()` API for streaming, cancellation, greetings, and client
   state management.
+- The bundled Shiny app no longer errors when async chat callbacks
+  refresh the shared session store outside a reactive consumer.
+- The bundled Shiny app’s Co-STORM warmup now runs independent experts
+  in bounded parallel batches, shows compact progress without streaming
+  every warmup answer into the chat, delays suggested questions until
+  warmup finishes, times out stalled research calls, and ignores late
+  callbacks from closed sessions.
 - The bundled Shiny app was rebuilt around Shiny modules (one per tab)
   with a shared reactive store, runs the STORM pipeline as a background
   `ExtendedTask` bound to its task button, and adds a knowledge-stats

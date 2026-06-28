@@ -73,6 +73,8 @@ sources, and report artifacts.
 
 - [`TempestSession$extract_facts()`](#method-TempestSession-extract_facts)
 
+- [`TempestSession$suggest_questions()`](#method-TempestSession-suggest_questions)
+
 - [`TempestSession$find_expert_index()`](#method-TempestSession-find_expert_index)
 
 - [`TempestSession$step()`](#method-TempestSession-step)
@@ -253,6 +255,27 @@ Extract facts from text into the store.
 - `text`:
 
   Text containing factual claims.
+
+------------------------------------------------------------------------
+
+### `TempestSession$suggest_questions()`
+
+Suggest follow-up questions for the user based on the conversation so
+far.
+
+#### Usage
+
+    TempestSession$suggest_questions(n = 4)
+
+#### Arguments
+
+- `n`:
+
+  Maximum number of questions to return.
+
+#### Returns
+
+A character vector of questions (possibly empty).
 
 ------------------------------------------------------------------------
 

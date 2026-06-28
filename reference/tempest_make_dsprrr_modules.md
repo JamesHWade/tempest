@@ -1,7 +1,6 @@
 # Create dsprrr modules for structured steps
 
-Creates dsprrr modules for STORM structured extraction/generation steps
-when dsprrr is available. Returns NULL otherwise.
+Creates dsprrr modules for STORM structured extraction/generation steps.
 
 ## Usage
 
@@ -17,4 +16,4 @@ tempest_make_dsprrr_modules(config)
 
 ## Value
 
-A named list of dsprrr modules, or NULL.
+A named list of dsprrr modules, or `NULL` if module creation fails.

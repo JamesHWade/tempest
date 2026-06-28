@@ -1,8 +1,8 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://jameshwade.github.io/tempest/404.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/AGENTS.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/LICENSE-text.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/LICENSE.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/ROADMAP.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/authors.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/index.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/news/index.html</loc></url>
@@ -24,6 +24,8 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_cache_key.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_cache_path.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_cache_set.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_claim.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_claims.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_config.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_costorm_task.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_create_expert_tool.html</loc></url>
@@ -31,19 +33,19 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_decompose_query.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_detect_provider.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_dispute.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_eval_dataset.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_evidence_span.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_extract_toc_from_url.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_fact.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_facts.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_fetch_url_markdown.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_format_persona_details.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_generate_personas.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_generate_single_persona.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_get_native_web_tools.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_has.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_has_dsprrr.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_inform.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_chat.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_mindmap_expand_node.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_mindmap_node_sizes.html</loc></url>
@@ -85,7 +87,9 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_solver_cited_answer.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_source.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_source_id.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_source_record.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_sources.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_task.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_tools_source_management.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_trim.html</loc></url>
@@ -93,8 +97,10 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_type_turn_policy.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_url_is_safe.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_uuid.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_verify_claims.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_warn.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_wiki_page_sections.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_write_text.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/tempest_recommendations.html</loc></url>
 </urlset>
 

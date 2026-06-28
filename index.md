@@ -21,7 +21,7 @@ calling, structured output, streaming -
 [ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking,
 embedding, semantic retrieval -
 [dsprrr](https://github.com/JamesHWade/dsprrr) — structured
-extraction/generation modules (optional) -
+extraction/generation modules -
 [shinychat](https://github.com/posit-dev/shinychat) — interactive chat
 UI - [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
 
@@ -168,12 +168,11 @@ executes five steps: `perspectives`, `research`, `outline`, `write`,
 - **Parallel section writing** – pass `parallel_writing = TRUE` to write
   report sections concurrently with mirai, then extract facts and
   assemble the article in deterministic outline order.
-- **dsprrr modules** – when
-  [dsprrr](https://github.com/JamesHWade/dsprrr) is installed,
-  structured extraction steps (query decomposition, fact extraction,
-  outline drafting, section writing) use dsprrr modules for more
-  reliable structured output. Falls back to `chat$chat_structured()`
-  otherwise.
+- **dsprrr modules** – structured extraction steps (query decomposition,
+  fact extraction, outline drafting, section writing) use
+  [dsprrr](https://github.com/JamesHWade/dsprrr) modules for more
+  reliable structured output. Optimized module sets can be passed
+  through `dsprrr_modules`.
 
 ### Optimizing dsprrr Modules
 

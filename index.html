@@ -53,7 +53,7 @@
 
 <p>An R-native implementation of <a href="https://storm.genie.stanford.edu/" class="external-link">STORM</a> (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and <a href="https://co-storm.genie.stanford.edu/" class="external-link">Co-STORM</a> from Stanford’s STORM project.</p>
 <p>This package reproduces the core workflow primitives: - <strong>Multi-perspective research</strong> with automatically generated expert personas - <strong>Evidence tracking</strong> with citations and source attribution - <strong>Two-step outline refinement</strong> and <strong>lead section generation</strong> - <strong>Query decomposition</strong> and <strong>semantic fact retrieval</strong> - <strong>Parallel research</strong> across perspectives (optional) - <strong>Interactive multi-agent moderation</strong> with mind map (Co-STORM) - <strong>LLM-driven discourse management</strong> with dynamic expert roster (Co-STORM) - <strong>Automated evaluation</strong> with simulated users</p>
-<p>Built on the R AI ecosystem: - <a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> — LLM orchestration: tool calling, structured output, streaming - <a href="https://github.com/tidyverse/ragnar" class="external-link">ragnar</a> — RAG: chunking, embedding, semantic retrieval - <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> — structured extraction/generation modules (optional) - <a href="https://github.com/posit-dev/shinychat" class="external-link">shinychat</a> — interactive chat UI - <a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a> — evaluation tasks</p>
+<p>Built on the R AI ecosystem: - <a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> — LLM orchestration: tool calling, structured output, streaming - <a href="https://github.com/tidyverse/ragnar" class="external-link">ragnar</a> — RAG: chunking, embedding, semantic retrieval - <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> — structured extraction/generation modules - <a href="https://github.com/posit-dev/shinychat" class="external-link">shinychat</a> — interactive chat UI - <a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a> — evaluation tasks</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -161,7 +161,7 @@
 <li>
 <strong>Parallel section writing</strong> – pass <code>parallel_writing = TRUE</code> to write report sections concurrently with mirai, then extract facts and assemble the article in deterministic outline order.</li>
 <li>
-<strong>dsprrr modules</strong> – when <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> is installed, structured extraction steps (query decomposition, fact extraction, outline drafting, section writing) use dsprrr modules for more reliable structured output. Falls back to <code>chat$chat_structured()</code> otherwise.</li>
+<strong>dsprrr modules</strong> – structured extraction steps (query decomposition, fact extraction, outline drafting, section writing) use <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> modules for more reliable structured output. Optimized module sets can be passed through <code>dsprrr_modules</code>.</li>
 </ul>
 </div>
 <div class="section level3">

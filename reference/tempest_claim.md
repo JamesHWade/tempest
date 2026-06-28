@@ -1,0 +1,31 @@
+# Evidence ledger claim record (S7)
+
+Evidence ledger claim record (S7)
+
+## Usage
+
+``` r
+tempest_claim(
+  claim_text,
+  source_ids = character(),
+  claim_type = "finding",
+  confidence = "medium",
+  verification_status = "unverified",
+  support_score = NA_real_,
+  contradiction_score = NA_real_,
+  source_quality_score = NA_real_,
+  evidence_span_ids = character(),
+  supporting_quotes = list(),
+  contradicting_source_ids = character(),
+  contradiction_note = NA_character_,
+  retrieval_query = NA_character_,
+  retrieval_step_id = NA_character_,
+  perspective_id = NA_character_,
+  persona_id = NA_character_,
+  section_id = NA_character_,
+  verified_at = NA_character_,
+  verifier_model = NA_character_,
+  claim_id = NULL,
+  created_at = NULL
+)
+```
