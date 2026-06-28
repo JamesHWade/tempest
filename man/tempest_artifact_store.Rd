@@ -4,7 +4,7 @@
 \alias{tempest_artifact_store}
 \title{Create a Tempest artifact store adapter}
 \usage{
-tempest_artifact_store(write = NULL, read = NULL, list = NULL)
+tempest_artifact_store(write = NULL, read = NULL, list_names = NULL)
 }
 \arguments{
 \item{write}{Function with signature \verb{function(name, value, metadata)} used
@@ -13,7 +13,8 @@ to persist an artifact.}
 \item{read}{Function with signature \verb{function(name, default)} used to read an
 artifact.}
 
-\item{list}{Function with no arguments that returns available artifact names.}
+\item{list_names}{Function with no arguments that returns available artifact
+names.}
 }
 \value{
 A list with \code{write}, \code{read}, and \code{list} functions.

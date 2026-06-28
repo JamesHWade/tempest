@@ -10,7 +10,8 @@
 #'   to persist an artifact.
 #' @param read Function with signature `function(name, default)` used to read an
 #'   artifact.
-#' @param list Function with no arguments that returns available artifact names.
+#' @param list_names Function with no arguments that returns available artifact
+#'   names.
 #' @return A list with `write`, `read`, and `list` functions.
 #' @examples
 #' store <- tempest_memory_artifact_store()
@@ -20,7 +21,7 @@
 tempest_artifact_store <- function(
   write = NULL,
   read = NULL,
-  list = NULL
+  list_names = NULL
 ) {
   write <- write %||%
     function(name, value, metadata = list()) {
@@ -30,17 +31,17 @@ tempest_artifact_store <- function(
     function(name, default = NULL) {
       default
     }
-  list_fn <- list %||%
+  list_fn <- list_names %||%
     function() {
       character()
     }
-  for (fn in base::list(write = write, read = read, list = list_fn)) {
+  for (fn in list(write = write, read = read, list = list_fn)) {
     if (!is.function(fn)) {
       tempest_abort("Artifact store entries must be functions.")
     }
   }
   structure(
-    base::list(write = write, read = read, list = list_fn),
+    list(write = write, read = read, list = list_fn),
     class = "tempest_artifact_store"
   )
 }
@@ -64,10 +65,10 @@ tempest_memory_artifact_store <- function() {
       invisible(name)
     },
     read = function(name, default = NULL) {
-      item <- artifacts[[name]] %||% NULL
+      item <- artifacts[[name]]
       if (is.null(item)) default else item$value
     },
-    list = function() {
+    list_names = function() {
       sort(ls(artifacts, all.names = TRUE))
     }
   )

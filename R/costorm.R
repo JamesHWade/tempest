@@ -146,9 +146,20 @@ tempest_expert <- function(
     ))
   )
   if (!is.null(id)) {
-    expert$id <- as.integer(id)
+    expert$id <- tempest_as_expert_id(id)
   }
   expert
+}
+
+#' @keywords internal
+tempest_as_expert_id <- function(id, arg = "id") {
+  coerced <- suppressWarnings(as.integer(id))
+  if (length(coerced) != 1L || is.na(coerced)) {
+    tempest_abort(
+      "{.arg {arg}} must be a single value coercible to an integer."
+    )
+  }
+  coerced
 }
 
 #' @keywords internal
@@ -159,7 +170,11 @@ tempest_validate_personas <- function(personas) {
   if (!is.list(personas)) {
     tempest_abort("{.arg personas} must be a list of expert definitions.")
   }
-  purrr::imap(personas, function(persona, idx) {
+  defaults <- list(
+    title = "Research Specialist",
+    perspective = "General research perspective"
+  )
+  validated <- purrr::imap(personas, function(persona, idx) {
     if (!is.list(persona)) {
       tempest_abort("Each entry in {.arg personas} must be a list.")
     }
@@ -170,27 +185,27 @@ tempest_validate_personas <- function(personas) {
     }
     persona$name <- tempest_trim(persona$name)
     for (field in c("title", "perspective")) {
-      value <- persona[[field]] %||%
-        if (identical(field, "title")) {
-          "Research Specialist"
-        } else {
-          "General research perspective"
-        }
+      value <- persona[[field]] %||% defaults[[field]]
       if (!rlang::is_string(value) || !nzchar(tempest_trim(value))) {
-        value <- if (identical(field, "title")) {
-          "Research Specialist"
-        } else {
-          "General research perspective"
-        }
+        value <- defaults[[field]]
       }
       persona[[field]] <- tempest_trim(value)
     }
-    persona$id <- as.integer(persona$id %||% idx)
+    persona$id <- tempest_as_expert_id(persona$id %||% idx)
     persona$initial_questions <- tempest_trim(as.character(
       persona$initial_questions %||% character()
     ))
     persona
   })
+  ids <- vapply(validated, function(persona) persona$id, integer(1))
+  if (anyDuplicated(ids) > 0) {
+    dupes <- unique(ids[duplicated(ids)])
+    tempest_abort(c(
+      "Expert ids must be unique.",
+      x = "Duplicated id{?s}: {dupes}."
+    ))
+  }
+  validated
 }
 
 #' TempestSession
@@ -254,16 +269,18 @@ TempestSession <- R6::R6Class(
         self$store <- SourceStore$new()
         self$retriever <- tempest_retriever(config = config, store = self$store)
       } else {
-        if (
-          is.null(retriever$store) ||
-            !inherits(retriever$store, "SourceStore")
-        ) {
+        store <- if (is.list(retriever) || is.environment(retriever)) {
+          retriever$store
+        } else {
+          NULL
+        }
+        if (is.null(store) || !inherits(store, "SourceStore")) {
           tempest_abort(
             "{.arg retriever} must expose a SourceStore at {.code retriever$store}."
           )
         }
         self$retriever <- retriever
-        self$store <- retriever$store
+        self$store <- store
       }
       self$transcript <- list()
       self$mindmap <- tempest_mindmap_init(self$topic)

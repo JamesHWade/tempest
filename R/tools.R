@@ -150,7 +150,8 @@ tempest_merge_source_record <- function(old, new) {
     return(new)
   }
   for (field in c("title", "snippet", "content_text", "fetched_at")) {
-    if (is.null(new[[field]]) || is.na(new[[field]]) || !nzchar(new[[field]])) {
+    value <- new[[field]]
+    if (length(value) != 1L || is.na(value) || !nzchar(value)) {
       new[[field]] <- old[[field]] %||% new[[field]]
     }
   }

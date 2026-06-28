@@ -70,3 +70,25 @@ test_that("extraction resolves cited source URLs to stored source ids", {
   expect_match(prompts[[1]], "<known_sources>", fixed = TRUE)
   expect_match(prompts[[1]], source$id, fixed = TRUE)
 })
+
+test_that("extraction drops claims citing URLs that match no stored source", {
+  store <- fake_store_with_sources(1)
+  unknown_url <- "https://unknown.example/not-in-store"
+  chat <- fake_chat(
+    structured = list(list(
+      facts = list(list(
+        claim = "unverifiable claim",
+        sources = list(list(url = unknown_url)),
+        confidence = "high"
+      ))
+    ))
+  )
+
+  tempest_extract_facts_from_answer(
+    chat,
+    paste("unverifiable claim", unknown_url),
+    store
+  )
+
+  expect_length(store$list_claims(), 0)
+})
