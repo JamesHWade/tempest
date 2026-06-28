@@ -18,6 +18,10 @@ ragnar for semantic search capabilities.
     \item{\code{ragnar_store}}{A ragnar store for semantic retrieval (optional).}
 
     \item{\code{cache_dir}}{Path to cache directory.}
+
+    \item{\code{cache_enabled}}{Whether retriever calls use the on-disk cache.}
+
+    \item{\code{cache_ttl}}{Maximum cache age in seconds.}
   }
   \if{html}{\out{</div>}}
 }
@@ -32,6 +36,7 @@ ragnar for semantic search capabilities.
     \item \href{#method-TempestRetriever-retrieve}{\code{TempestRetriever$retrieve()}}
     \item \href{#method-TempestRetriever-get_source_text}{\code{TempestRetriever$get_source_text()}}
     \item \href{#method-TempestRetriever-list_sources}{\code{TempestRetriever$list_sources()}}
+    \item \href{#method-TempestRetriever-cache_stats}{\code{TempestRetriever$cache_stats()}}
     \item \href{#method-TempestRetriever-clone}{\code{TempestRetriever$clone()}}
   }
 }
@@ -62,7 +67,7 @@ ragnar for semantic search capabilities.
   Search for sources using the configured provider.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestRetriever$search(query, k = NULL, provider = NULL)}
+    \preformatted{TempestRetriever$search(query, k = NULL, provider = NULL, force = FALSE)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -71,6 +76,7 @@ ragnar for semantic search capabilities.
       \item{\code{query}}{Search query string.}
       \item{\code{k}}{Maximum number of results.}
       \item{\code{provider}}{Search provider override.}
+      \item{\code{force}}{If TRUE, bypass any cached result and refresh the cache.}
     }
     \if{html}{\out{</div>}}
   }
@@ -206,6 +212,28 @@ ragnar for semantic search capabilities.
   }
   \subsection{Returns}{
     A list of source objects.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestRetriever-cache_stats"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestRetriever-cache_stats}{}}}
+\subsection{\code{TempestRetriever$cache_stats()}}{
+  Return cache hit/miss counters for this retriever.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestRetriever$cache_stats(reset = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{reset}}{Whether to reset counters after reading them.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A tibble with one row each for search and fetch cache counters.
   }
 }
 

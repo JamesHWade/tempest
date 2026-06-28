@@ -107,6 +107,8 @@ TempestConfig <- S7::new_class(
     artifact_store = S7::new_property(S7::class_any, default = NULL),
     search_provider = prop_chr("native"),
     cache_dir = prop_chr(),
+    cache_enabled = S7::new_property(S7::class_logical, default = TRUE),
+    cache_ttl = S7::new_property(S7::class_numeric, default = Inf),
     max_search_results = S7::new_property(S7::class_numeric, default = 8),
     max_search_queries_per_turn = S7::new_property(
       S7::class_integer,
@@ -166,6 +168,10 @@ TempestConfig <- S7::new_class(
 #'   is "native" which uses OpenAI, Anthropic, or Google's native web search
 #'   capabilities when available, falling back to "wikipedia".
 #' @param cache_dir Path to cache directory.
+#' @param cache_enabled Whether retriever search/fetch calls should read from
+#'   and write to the on-disk cache.
+#' @param cache_ttl Maximum cache age in seconds. Defaults to `Inf`, which keeps
+#'   cached search/fetch entries valid until explicitly cleared.
 #' @param max_search_results Maximum search results to return.
 #' @param max_search_queries_per_turn Maximum decomposed queries per research
 #'   turn.
@@ -200,6 +206,8 @@ tempest_config <- function(
   artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
+  cache_enabled = TRUE,
+  cache_ttl = Inf,
   max_search_results = 8,
   max_search_queries_per_turn = 3,
   retrieve_top_k = 25,
@@ -238,6 +246,7 @@ tempest_config <- function(
   }
 
   cache_dir <- tempest_cache_dir(cache_dir)
+  cache_ttl <- tempest_cache_max_age(cache_ttl)
   if (is.null(ragnar_store) && !is.null(embed_fn)) {
     ragnar_store <- tempest_create_ragnar_store(embed_fn, cache_dir)
   }
@@ -260,6 +269,8 @@ tempest_config <- function(
     artifact_store = artifact_store,
     search_provider = tempest_normalize_search_provider(search_provider),
     cache_dir = cache_dir %||% NA_character_,
+    cache_enabled = isTRUE(cache_enabled),
+    cache_ttl = cache_ttl,
     max_search_results = max_search_results,
     max_search_queries_per_turn = mq,
     retrieve_top_k = rk,

@@ -13,8 +13,23 @@ test_that("tempest_config creates valid config", {
     )
   )
   expect_type(cfg@search_provider, "character")
+  expect_equal(cfg@cache_enabled, TRUE)
+  expect_equal(cfg@cache_ttl, Inf)
   expect_equal(cfg@max_search_queries_per_turn, 3L)
   expect_equal(cfg@retrieve_top_k, 25L)
+})
+
+test_that("tempest_config accepts cache controls", {
+  cfg <- tempest_config(
+    cache_dir = withr::local_tempdir(),
+    cache_enabled = FALSE,
+    cache_ttl = 60
+  )
+
+  expect_equal(cfg@cache_enabled, FALSE)
+  expect_equal(cfg@cache_ttl, 60)
+
+  expect_error(tempest_config(cache_ttl = -1), class = "rlang_error")
 })
 
 test_that("tempest_config validates STORM numeric controls", {

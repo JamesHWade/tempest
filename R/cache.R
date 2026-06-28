@@ -42,24 +42,51 @@ tempest_cache_path <- function(cache_dir, key) {
   fs::path(cache_dir, paste0(key, ".rds"))
 }
 
-#' Retrieve value from cache
-#'
-#' Attempts to read a cached value. Returns NULL if not found or on error.
-#' Warns on read errors to help diagnose cache corruption.
-#'
-#' @param cache_dir Cache directory path.
-#' @param key Cache key.
-#' @return Cached value or NULL.
-#' @keywords internal
-tempest_cache_get <- function(cache_dir, key) {
+# Normalize a cache age value.
+tempest_cache_max_age <- function(max_age = Inf) {
+  max_age <- suppressWarnings(as.numeric(max_age))
+  if (
+    length(max_age) != 1L ||
+      is.na(max_age) ||
+      max_age < 0
+  ) {
+    tempest_abort(
+      "Cache age (`cache_ttl`/`max_age`) must be a non-negative number or Inf."
+    )
+  }
+  max_age
+}
+
+# Check whether a cache file is expired.
+tempest_cache_expired <- function(path, max_age = Inf, now = Sys.time()) {
+  max_age <- tempest_cache_max_age(max_age)
+  if (is.infinite(max_age)) {
+    return(FALSE)
+  }
+  if (max_age <= 0) {
+    return(TRUE)
+  }
+  mtime <- file.info(path)$mtime
+  if (is.na(mtime)) {
+    return(TRUE)
+  }
+  age <- as.numeric(difftime(now, mtime, units = "secs"))
+  is.na(age) || age > max_age
+}
+
+# Look up a cached value and report why it missed.
+tempest_cache_lookup <- function(cache_dir, key, max_age = Inf) {
   p <- tempest_cache_path(cache_dir, key)
 
   if (!fs::file_exists(p)) {
-    return(NULL)
+    return(list(value = NULL, status = "miss"))
+  }
+  if (tempest_cache_expired(p, max_age = max_age)) {
+    return(list(value = NULL, status = "expired"))
   }
 
   tryCatch(
-    readRDS(p),
+    list(value = readRDS(p), status = "hit"),
     error = function(e) {
       tempest_warn(c(
         "Failed to read from cache.",
@@ -67,9 +94,25 @@ tempest_cache_get <- function(cache_dir, key) {
         x = "Error: {conditionMessage(e)}",
         i = "Returning NULL and continuing without cached value."
       ))
-      NULL
+      list(value = NULL, status = "read_error")
     }
   )
+}
+
+#' Retrieve value from cache
+#'
+#' Attempts to read a cached value. Returns NULL if the entry is missing, has
+#' expired (older than `max_age`), or could not be read. Warns on read errors
+#' to help diagnose cache corruption.
+#'
+#' @param cache_dir Cache directory path.
+#' @param key Cache key.
+#' @param max_age Maximum cache age in seconds. Entries older than this are
+#'   treated as missing. Defaults to `Inf` (no expiry).
+#' @return Cached value or NULL.
+#' @keywords internal
+tempest_cache_get <- function(cache_dir, key, max_age = Inf) {
+  tempest_cache_lookup(cache_dir, key, max_age = max_age)$value
 }
 
 #' Store value in cache
@@ -80,15 +123,16 @@ tempest_cache_get <- function(cache_dir, key) {
 #' @param cache_dir Cache directory path.
 #' @param key Cache key.
 #' @param value Value to cache.
-#' @return Invisibly returns the value.
+#' @return Invisibly returns `TRUE` if the value was written, `FALSE` otherwise.
 #' @keywords internal
 tempest_cache_set <- function(cache_dir, key, value) {
   p <- tempest_cache_path(cache_dir, key)
 
-  tryCatch(
+  ok <- tryCatch(
     {
       fs::dir_create(fs::path_dir(p), recurse = TRUE)
       saveRDS(value, p)
+      TRUE
     },
     error = function(e) {
       tempest_warn(c(
@@ -97,22 +141,37 @@ tempest_cache_set <- function(cache_dir, key, value) {
         x = "Error: {conditionMessage(e)}",
         i = "Continuing without caching this value."
       ))
+      FALSE
     }
   )
 
-  invisible(value)
+  invisible(ok)
 }
 
-#' Clear cache directory
+#' Clear the Tempest cache
 #'
-#' Removes all cached files from the specified directory.
+#' Removes cached search and fetch results from the specified cache directory.
+#' This is useful when a host app wants to force fresh web retrieval without
+#' changing the configured cache path.
 #'
-#' @param cache_dir Cache directory path.
+#' @param cache_dir Cache directory path. If `NULL`, uses
+#'   `TEMPEST_CACHE_DIR` or the default Tempest cache under `tempdir()`.
+#' @param max_age Optional maximum cache age in seconds. When supplied, only
+#'   files older than `max_age` are removed.
 #' @return Invisibly returns TRUE.
-#' @keywords internal
-tempest_cache_clear <- function(cache_dir) {
+#' @export
+tempest_cache_clear <- function(cache_dir = NULL, max_age = NULL) {
+  cache_dir <- tempest_cache_dir(cache_dir)
   if (dir.exists(cache_dir)) {
     files <- list.files(cache_dir, pattern = "\\.rds$", full.names = TRUE)
+    if (!is.null(max_age)) {
+      files <- files[vapply(
+        files,
+        tempest_cache_expired,
+        logical(1),
+        max_age = max_age
+      )]
+    }
     if (length(files) > 0L) {
       file.remove(files)
       tempest_inform(

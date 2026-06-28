@@ -14,6 +14,8 @@ TempestConfig(
   artifact_store = NULL,
   search_provider = "native",
   cache_dir = NA_character_,
+  cache_enabled = TRUE,
+  cache_ttl = Inf,
   max_search_results = 8,
   max_search_queries_per_turn = 3L,
   retrieve_top_k = 25L,

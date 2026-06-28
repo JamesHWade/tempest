@@ -2,17 +2,22 @@
 % Please edit documentation in R/cache.R
 \name{tempest_cache_clear}
 \alias{tempest_cache_clear}
-\title{Clear cache directory}
+\title{Clear the Tempest cache}
 \usage{
-tempest_cache_clear(cache_dir)
+tempest_cache_clear(cache_dir = NULL, max_age = NULL)
 }
 \arguments{
-\item{cache_dir}{Cache directory path.}
+\item{cache_dir}{Cache directory path. If \code{NULL}, uses
+\code{TEMPEST_CACHE_DIR} or the default Tempest cache under \code{tempdir()}.}
+
+\item{max_age}{Optional maximum cache age in seconds. When supplied, only
+files older than \code{max_age} are removed.}
 }
 \value{
 Invisibly returns TRUE.
 }
 \description{
-Removes all cached files from the specified directory.
+Removes cached search and fetch results from the specified cache directory.
+This is useful when a host app wants to force fresh web retrieval without
+changing the configured cache path.
 }
-\keyword{internal}

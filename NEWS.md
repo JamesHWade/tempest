@@ -18,6 +18,7 @@
   for You.com, Bing, DuckDuckGo, SearXNG, Google Custom Search, and Azure AI
   Search in addition to the existing native, Wikipedia, Serper, Brave, and
   Tavily providers.
+* `tempest_config()` gains `cache_enabled` and `cache_ttl` controls for retriever search/fetch caching, `TempestRetriever$cache_stats()` reports local cache counters, and `tempest_cache_clear()` clears all or stale cache entries (ryfx).
 * `tempest` now imports dsprrr directly for STORM structured extraction and
   generation modules.
 * `tempest_run()` now executes STORM structured steps through dsprrr modules,
