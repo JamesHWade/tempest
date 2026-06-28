@@ -30,7 +30,7 @@ event <- tempest_progress_event(
 )
 tempest_progress_event_data(event)
 #> $event_id
-#> [1] "P_2acf8b01b7f45ef3"
+#> [1] "P_353cf46063079649"
 #> 
 #> $run_id
 #> [1] "session-1"
@@ -51,7 +51,7 @@ tempest_progress_event_data(event)
 #> [1] "started"
 #> 
 #> $timestamp
-#> [1] "2026-06-28 12:56:42 UTC"
+#> [1] "2026-06-28 17:45:58 UTC"
 #> 
 #> $message
 #> [1] NA

@@ -325,13 +325,21 @@ Extract facts from text into the store.
 
 #### Usage
 
-    TempestSession$extract_facts(text)
+    TempestSession$extract_facts(text, turn = NULL, source_ids = NULL)
 
 #### Arguments
 
 - `text`:
 
   Text containing factual claims.
+
+- `turn`:
+
+  Optional ellmer turn to inspect for provider-native sources.
+
+- `source_ids`:
+
+  Optional source ids already harvested for the turn.
 
 ------------------------------------------------------------------------
 

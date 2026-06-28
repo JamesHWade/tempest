@@ -156,7 +156,7 @@ Extract facts from an expert response.
 
 #### Usage
 
-    ExpertSessionManager$extract_facts(response, turn = NULL)
+    ExpertSessionManager$extract_facts(response, turn = NULL, source_ids = NULL)
 
 #### Arguments
 
@@ -167,6 +167,10 @@ Extract facts from an expert response.
 - `turn`:
 
   Optional ellmer turn to inspect for provider-native sources.
+
+- `source_ids`:
+
+  Optional source ids already harvested for the turn.
 
 #### Returns
 
