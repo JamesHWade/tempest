@@ -171,25 +171,43 @@ tempest_upsert_native_source <- function(store, source) {
 }
 
 #' @keywords internal
+tempest_harvest_native_source_candidates <- function(
+  x,
+  store,
+  kind = "native_search"
+) {
+  ids <- character()
+  for (candidate in tempest_native_source_candidates(x)) {
+    ids <- c(
+      ids,
+      tempest_upsert_native_source(
+        store,
+        tempest_native_source_from_url(
+          candidate$url,
+          title = candidate$title,
+          snippet = candidate$snippet,
+          content_text = candidate$content_text,
+          kind = kind
+        )
+      )
+    )
+  }
+  unique(ids[!is.na(ids) & nzchar(ids)])
+}
+
+#' @keywords internal
 tempest_harvest_native_sources_from_content <- function(content, store) {
   ids <- character()
 
   if (inherits(content, "ellmer::ContentToolResponseSearch")) {
-    for (candidate in tempest_native_source_candidates(content@json)) {
-      ids <- c(
-        ids,
-        tempest_upsert_native_source(
-          store,
-          tempest_native_source_from_url(
-            candidate$url,
-            title = candidate$title,
-            snippet = candidate$snippet,
-            content_text = candidate$content_text,
-            kind = "native_search"
-          )
-        )
+    ids <- c(
+      ids,
+      tempest_harvest_native_source_candidates(
+        content@json,
+        store,
+        kind = "native_search"
       )
-    }
+    )
     for (url in content@urls %||% character()) {
       ids <- c(
         ids,
@@ -241,6 +259,15 @@ tempest_harvest_native_sources_from_content <- function(content, store) {
 }
 
 #' @keywords internal
+tempest_harvest_native_sources_from_json <- function(json, store) {
+  tempest_harvest_native_source_candidates(
+    json,
+    store,
+    kind = "native_search"
+  )
+}
+
+#' @keywords internal
 tempest_harvest_native_sources_from_turn <- function(turn, store) {
   if (is.null(turn) || is.null(store)) {
     return(character())
@@ -253,6 +280,8 @@ tempest_harvest_native_sources_from_turn <- function(turn, store) {
     purrr::map(contents, tempest_harvest_native_sources_from_content, store),
     use.names = FALSE
   )
+  json <- tryCatch(turn@json, error = function(e) list())
+  ids <- c(ids, tempest_harvest_native_sources_from_json(json, store))
   unique(ids[!is.na(ids) & nzchar(ids)])
 }
 
@@ -697,8 +726,9 @@ ExpertSessionManager <- R6::R6Class(
     #' Extract facts from an expert response.
     #' @param response Character string response from expert.
     #' @param turn Optional ellmer turn to inspect for provider-native sources.
+    #' @param source_ids Optional source ids already harvested for the turn.
     #' @return Invisibly returns NULL.
-    extract_facts = function(response, turn = NULL) {
+    extract_facts = function(response, turn = NULL, source_ids = NULL) {
       if (!is.null(self$extractor) && !is.null(self$store)) {
         event <- self$emit_progress(
           "step",
@@ -708,11 +738,18 @@ ExpertSessionManager <- R6::R6Class(
         )
         tryCatch(
           {
-            tempest_harvest_native_sources_from_turn(turn, self$store)
+            # Only re-harvest when the caller did not already do so; callers that
+            # pass source_ids have harvested the turn into the store already.
+            harvested <- if (is.null(source_ids)) {
+              tempest_harvest_native_sources_from_turn(turn, self$store)
+            } else {
+              character()
+            }
             tempest_extract_facts_from_answer(
               self$extractor,
               response,
-              self$store
+              self$store,
+              source_ids = unique(c(source_ids, harvested))
             )
             self$emit_progress(
               "step",

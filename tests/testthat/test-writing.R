@@ -52,6 +52,27 @@ test_that("tempest_run_section_job wraps section text as markdown", {
   )
 })
 
+test_that("section prompts collapse vector subsection titles", {
+  writer <- list(chat = function(prompt, echo = "none") {
+    expect_match(prompt, "### Setup Details", fixed = TRUE)
+    "Section body [S123456789abc]"
+  })
+  job <- list(
+    index = 1,
+    title = "Mechanisms",
+    summary = "How it works",
+    subsections = list(list(
+      title = c("Setup", "Details"),
+      bullets = c("Fact A", "Fact B")
+    )),
+    facts_text = "- Fact [S123456789abc]"
+  )
+
+  result <- tempest:::tempest_run_section_job(job, writer)
+
+  expect_equal(result$section_text, "Section body [S123456789abc]")
+})
+
 test_that("tempest_write_sections_sequential preserves job order", {
   writer <- list(chat = function(prompt, echo = "none") {
     if (grepl("First", prompt, fixed = TRUE)) "First body" else "Second body"

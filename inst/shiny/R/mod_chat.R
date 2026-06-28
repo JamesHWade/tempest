@@ -118,8 +118,7 @@ mod_chat_server <- function(id, config, store) {
       invisible(NULL)
     }
     record_progress <- function(event) {
-      progress_events(c(shiny::isolate(progress_events()), list(event)))
-      invisible(event)
+      record_costorm_progress_event(progress_events, event, session)
     }
 
     output$progress <- shiny::renderUI({
@@ -241,9 +240,7 @@ mod_chat_server <- function(id, config, store) {
       }
       msg <- chat_input_text(chat$last_input())
       turn <- chat$last_turn()
-      if (!is.null(ses$harvest_native_sources)) {
-        ses$harvest_native_sources(turn = turn)
-      }
+      source_ids <- harvest_session_sources(ses, turn = turn)
       ans <- tryCatch(
         ellmer::contents_markdown(turn),
         error = function(e) {
@@ -302,7 +299,12 @@ mod_chat_server <- function(id, config, store) {
             return()
           }
           tryCatch(
-            ses$extract_facts(ans),
+            extract_chat_turn_facts(
+              ses,
+              ans,
+              turn = turn,
+              source_ids = source_ids
+            ),
             error = function(e) {
               warning("Fact extraction failed: ", conditionMessage(e))
             }
@@ -526,6 +528,22 @@ costorm_progress_state <- function(events) {
   )
 }
 
+record_costorm_progress_event <- function(
+  progress_events,
+  event,
+  session = NULL
+) {
+  update <- function() {
+    progress_events(c(shiny::isolate(progress_events()), list(event)))
+  }
+  if (is.null(session)) {
+    update()
+  } else {
+    shiny::withReactiveDomain(session, update())
+  }
+  invisible(event)
+}
+
 costorm_stage_labels <- function() {
   c(
     session = "Session",
@@ -585,11 +603,14 @@ record_warmup_turn <- function(
   response,
   expert_chat = NULL
 ) {
-  if (!is.null(ses$harvest_native_sources)) {
-    ses$harvest_native_sources(chat = expert_chat)
-  }
+  turn <- tryCatch(expert_chat$last_turn(), error = function(e) NULL)
+  source_ids <- harvest_session_sources(ses, turn = turn)
   tryCatch(
-    ses$expert_session_manager$extract_facts(response),
+    ses$expert_session_manager$extract_facts(
+      response,
+      turn = turn,
+      source_ids = source_ids
+    ),
     error = function(e) NULL
   )
   ses$add_turn(name, "assistant", response)
@@ -606,6 +627,32 @@ record_warmup_turn <- function(
     ),
     error = function(e) NULL
   )
+}
+
+harvest_session_sources <- function(ses, turn = NULL, chat = NULL) {
+  if (is.null(ses) || is.null(ses$harvest_native_sources)) {
+    return(character())
+  }
+  ids <- tryCatch(
+    ses$harvest_native_sources(turn = turn, chat = chat),
+    error = function(e) character()
+  )
+  unique(ids[!is.na(ids) & nzchar(ids)])
+}
+
+extract_chat_turn_facts <- function(
+  ses,
+  answer_text,
+  turn = NULL,
+  source_ids = NULL
+) {
+  # Harvest only when the caller has not already done so for this turn; the
+  # session's extract_facts also avoids re-harvesting when source_ids are passed.
+  if (is.null(source_ids)) {
+    source_ids <- harvest_session_sources(ses, turn = turn)
+  }
+  ses$extract_facts(answer_text, turn = turn, source_ids = source_ids)
+  invisible(source_ids)
 }
 
 warmup_summary <- function(ses) {

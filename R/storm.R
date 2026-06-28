@@ -572,12 +572,14 @@ tempest_run <- function(
                   }
                 )
                 if (!is.null(ans)) {
+                  harvest <- tempest_turn_answer_and_sources(expert, ans, store)
                   tryCatch(
                     tempest_extract_facts_from_answer(
                       extractor,
-                      ans,
+                      harvest$answer_text,
                       store,
-                      module = dsprrr_modules$extract_claims
+                      module = dsprrr_modules$extract_claims,
+                      source_ids = harvest$source_ids
                     ),
                     error = function(e) {
                       tempest_warn(
@@ -673,13 +675,18 @@ tempest_run <- function(
                   }
                   next
                 }
-                answered <- c(answered, paste0("Q: ", q, "\nA: ", ans))
+                harvest <- tempest_turn_answer_and_sources(expert, ans, store)
+                answered <- c(
+                  answered,
+                  paste0("Q: ", q, "\nA: ", harvest$answer_text)
+                )
                 tryCatch(
                   tempest_extract_facts_from_answer(
                     extractor,
-                    ans,
+                    harvest$answer_text,
                     store,
-                    module = dsprrr_modules$extract_claims
+                    module = dsprrr_modules$extract_claims,
+                    source_ids = harvest$source_ids
                   ),
                   error = function(e) {
                     tempest_warn(

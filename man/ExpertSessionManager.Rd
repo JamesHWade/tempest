@@ -113,7 +113,7 @@ the session ID returned from previous interactions.
   Extract facts from an expert response.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExpertSessionManager$extract_facts(response, turn = NULL)}
+    \preformatted{ExpertSessionManager$extract_facts(response, turn = NULL, source_ids = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -121,6 +121,7 @@ the session ID returned from previous interactions.
     \describe{
       \item{\code{response}}{Character string response from expert.}
       \item{\code{turn}}{Optional ellmer turn to inspect for provider-native sources.}
+      \item{\code{source_ids}}{Optional source ids already harvested for the turn.}
     }
     \if{html}{\out{</div>}}
   }

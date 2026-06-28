@@ -282,6 +282,48 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
   })
 })
 
+test_that("record_warmup_turn populates facts and sources from native turns", {
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  fixture <- native_evidence_session("native warmup claim")
+  expert_chat <- list(last_turn = function() fixture$turn)
+
+  app$record_warmup_turn(
+    fixture$session,
+    "Dr. Native",
+    "What did the source say?",
+    fixture$claim_text,
+    expert_chat = expert_chat
+  )
+
+  store <- fixture$session$store
+  expect_equal(store$get_source(fixture$source_id)$title, "Native app source")
+  claims <- store$list_claims()
+  expect_length(claims, 1L)
+  expect_equal(claims[[1]]@claim_text, fixture$claim_text)
+  expect_equal(claims[[1]]@source_ids, fixture$source_id)
+})
+
+test_that("extract_chat_turn_facts populates facts and sources from native turns", {
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  fixture <- native_evidence_session("native chat claim")
+
+  ids <- app$extract_chat_turn_facts(
+    fixture$session,
+    fixture$claim_text,
+    turn = fixture$turn
+  )
+
+  expect_equal(ids, fixture$source_id)
+  store <- fixture$session$store
+  expect_equal(store$get_source(fixture$source_id)$title, "Native app source")
+  claims <- store$list_claims()
+  expect_length(claims, 1L)
+  expect_equal(claims[[1]]@claim_text, fixture$claim_text)
+  expect_equal(claims[[1]]@source_ids, fixture$source_id)
+})
+
 test_that("suggestion_cards builds a shinychat submit-card list", {
   app <- source_shiny_modules()
   md <- app$suggestion_cards(c("What is X?", "How does Y work?"))
@@ -411,6 +453,50 @@ test_that("workflow_progress_ui renders reducer state", {
   expect_match(html, "Dr. Flow")
 })
 
+test_that("async Co-STORM progress renders warmup state before completion", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("later")
+  app <- source_shiny_modules()
+
+  progress_server <- function(id, app) {
+    shiny::moduleServer(id, function(input, output, session) {
+      progress_events <- shiny::reactiveVal(list())
+      output$progress <- shiny::renderUI({
+        state <- app$costorm_progress_state(progress_events())
+        app$workflow_progress_ui(state, app$costorm_stage_labels())
+      })
+      record <- function(event) {
+        app$record_costorm_progress_event(progress_events, event, session)
+      }
+    })
+  }
+
+  shiny::testServer(progress_server, args = list(app = app), {
+    event <- tempest_progress_event(
+      run_id = "async-progress",
+      workflow = "costorm",
+      event_type = "stage",
+      status = "started",
+      stage = "warmup",
+      step = "expert_fanout"
+    )
+    later::later(
+      function() {
+        record(event)
+      },
+      delay = 0
+    )
+    later::run_now(0.01)
+    session$flushReact()
+
+    html <- paste(as.character(output$progress$html), collapse = "")
+    expect_match(html, "Co-STORM")
+    expect_match(html, "Running")
+    expect_match(html, "Warmup")
+    expect_match(html, "fa-spinner")
+  })
+})
+
 test_that("storm_progress_state renders failed and running states", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
@@ -425,6 +511,146 @@ test_that("storm_progress_state renders failed and running states", {
   )
   expect_match(html, "Failed")
   expect_match(html, "STORM pipeline failed")
+})
+
+test_that("STORM worker uses a local serializable progress collector", {
+  app <- source_shiny_modules()
+  collector <- app$storm_worker_progress_collector(include_payload = TRUE)
+  event <- tempest_progress_event(
+    run_id = "worker-run",
+    workflow = "storm",
+    event_type = "stage",
+    status = "started",
+    stage = "research",
+    payload = list(expert = "Dr. Flow")
+  )
+
+  collector$record(event)
+  data <- collector$data()
+
+  expect_length(data, 1L)
+  expect_equal(data[[1]]$run_id, "worker-run")
+  expect_equal(data[[1]]$stage, "research")
+  expect_equal(data[[1]]$payload$expert, "Dr. Flow")
+  expect_equal(tempest_progress_state(data)$current_stage, "research")
+
+  module_source <- readLines(system.file(
+    "shiny",
+    "R",
+    "mod_storm.R",
+    package = "tempest"
+  ))
+  expect_no_match(
+    paste(module_source, collapse = "\n"),
+    "tempest::tempest_progress_collector",
+    fixed = TRUE
+  )
+})
+
+test_that("STORM worker omits progress for older tempest_run signatures", {
+  app <- source_shiny_modules()
+  calls <- list()
+  old_run <- function(
+    topic,
+    config,
+    n_experts,
+    research_strategy,
+    max_rounds,
+    parallel_research,
+    verbose
+  ) {
+    calls[[length(calls) + 1L]] <<- as.list(match.call())[-1]
+    list(report_md = "old run")
+  }
+
+  value <- app$storm_run_with_progress(
+    topic = "Topic",
+    cfg = tempest_config(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    parallel = FALSE,
+    tempest_run = old_run
+  )
+
+  expect_equal(value$result$report_md, "old run")
+  expect_equal(intersect("progress", names(calls[[1]])), character())
+  expect_length(value$progress, 0L)
+
+  new_run <- function(
+    topic,
+    config,
+    n_experts,
+    research_strategy,
+    max_rounds,
+    parallel_research,
+    progress,
+    verbose
+  ) {
+    progress(tempest_progress_event(
+      run_id = "worker-run",
+      workflow = "storm",
+      event_type = "stage",
+      status = "started",
+      stage = "research"
+    ))
+    list(report_md = "new run")
+  }
+  value <- app$storm_run_with_progress(
+    topic = "Topic",
+    cfg = tempest_config(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    parallel = FALSE,
+    tempest_run = new_run
+  )
+
+  expect_equal(value$result$report_md, "new run")
+  expect_equal(value$progress[[1]]$stage, "research")
+})
+
+test_that("STORM worker adapter tolerates older tempest_run signatures in mirai", {
+  skip_if_not_installed("mirai")
+  app <- source_shiny_modules()
+  old_run <- function(
+    topic,
+    config,
+    n_experts,
+    research_strategy,
+    max_rounds,
+    parallel_research,
+    verbose
+  ) {
+    list(report_md = paste("worker run", topic))
+  }
+
+  value <- mirai::mirai(
+    {
+      storm_runner(
+        topic = topic,
+        cfg = cfg,
+        n_experts = n_experts,
+        strategy = strategy,
+        max_rounds = max_rounds,
+        parallel = parallel,
+        progress_collector = progress_collector,
+        tempest_run = old_run
+      )
+    },
+    topic = "Topic",
+    cfg = list(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    parallel = FALSE,
+    progress_collector = app$storm_worker_progress_collector,
+    storm_runner = app$storm_run_with_progress,
+    old_run = old_run
+  )[]
+
+  expect_equal(value$result$report_md, "worker run Topic")
+  expect_length(value$progress, 0L)
 })
 
 test_that("workflow_progress_ui hides recorded failures once succeeded", {
@@ -661,6 +887,50 @@ test_that("run_warmup records progress events for reducer rendering", {
   )
   expect_equal(state$completed_stages, "warmup")
   expect_length(state$active$tools, 0L)
+})
+
+test_that("run_warmup exposes running progress before expert answers resolve", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  collector <- tempest_progress_collector(include_payload = TRUE)
+  store <- fake_warmup_store()
+  resolve_chat <- NULL
+  ses <- fake_warmup_session(
+    function(prompt) {
+      promises::promise(function(resolve, reject) {
+        resolve_chat <<- resolve
+      })
+    },
+    progress = collector$record
+  )
+
+  promise <- app$run_warmup(
+    ses,
+    store,
+    function(x) x,
+    timeout_s = 1,
+    max_questions_per_expert = 1
+  )
+  deadline <- Sys.time() + 1
+  while (is.null(resolve_chat) && Sys.time() < deadline) {
+    later::run_now(0.01)
+  }
+
+  expect_equal(is.null(resolve_chat), FALSE)
+  running <- tempest_progress_state(collector$events())
+  expect_equal(running$status, "running")
+  expect_equal(running$current_stage, "warmup")
+  expect_length(running$active$tools, 1L)
+  html <- paste(
+    as.character(app$workflow_progress_ui(running, app$costorm_stage_labels())),
+    collapse = ""
+  )
+  expect_match(html, "Warmup")
+  expect_match(html, "fa-spinner")
+
+  resolve_chat("Warmup answer [S123456789abc].")
+  await_promise(promise)
 })
 
 test_that("run_warmup does not stream warmup answers into the main chat", {
