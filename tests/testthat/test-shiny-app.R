@@ -81,6 +81,52 @@ test_that("the report module renders markdown and an empty state", {
   })
 })
 
+test_that("sources and facts modules show empty states until data exists", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  store <- app$new_session_store()
+
+  shiny::testServer(app$mod_sources_server, args = list(store = store), {
+    expect_match(as.character(output$body$html), "Start a session")
+
+    empty_session <- list(store = SourceStore$new())
+    store$set(empty_session)
+    session$flushReact()
+    expect_match(as.character(output$body$html), "No sources collected yet")
+
+    populated_session <- list(store = fake_store_with_sources(1))
+    store$set(populated_session)
+    session$flushReact()
+    sources_body <- as.character(output$body$html)
+    expect_match(sources_body, "<div")
+    expect_no_match(sources_body, "No sources collected yet")
+  })
+
+  shiny::testServer(app$mod_facts_server, args = list(store = store), {
+    store$set(NULL)
+    session$flushReact()
+    expect_match(as.character(output$body$html), "Start a session")
+
+    empty_session <- list(store = SourceStore$new())
+    store$set(empty_session)
+    session$flushReact()
+    expect_match(as.character(output$body$html), "No facts extracted yet")
+
+    populated_store <- fake_store_with_sources(1)
+    source_id <- populated_store$list_sources()[[1]]$id
+    populated_store$add_claim(tempest_claim(
+      claim_text = "Example evidence exists.",
+      source_ids = source_id
+    ))
+    populated_session <- list(store = populated_store)
+    store$set(populated_session)
+    session$flushReact()
+    facts_body <- as.character(output$body$html)
+    expect_match(facts_body, "<div")
+    expect_no_match(facts_body, "No facts extracted yet")
+  })
+})
+
 test_that("session store mutations work outside reactive consumers", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
