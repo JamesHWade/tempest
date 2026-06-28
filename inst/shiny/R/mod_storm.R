@@ -60,19 +60,27 @@ mod_storm_ui <- function(id) {
 mod_storm_server <- function(id, config, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    progress_events <- shiny::reactiveVal(list())
 
     storm_task <- shiny::ExtendedTask$new(
       function(topic, cfg, n_experts, strategy, max_rounds, parallel) {
         mirai::mirai(
-          tempest::tempest_run(
-            topic = topic,
-            config = cfg,
-            n_experts = n_experts,
-            research_strategy = strategy,
-            max_rounds = max_rounds,
-            parallel_research = parallel,
-            verbose = FALSE
-          ),
+          {
+            collector <- tempest::tempest_progress_collector(
+              include_payload = TRUE
+            )
+            result <- tempest::tempest_run(
+              topic = topic,
+              config = cfg,
+              n_experts = n_experts,
+              research_strategy = strategy,
+              max_rounds = max_rounds,
+              parallel_research = parallel,
+              progress = collector$record,
+              verbose = FALSE
+            )
+            list(result = result, progress = collector$data())
+          },
           topic = topic,
           cfg = cfg,
           n_experts = n_experts,
@@ -87,6 +95,7 @@ mod_storm_server <- function(id, config, store) {
     shiny::observeEvent(input$run, {
       topic <- stringi::stri_trim_both(input$topic %||% "")
       shiny::req(nzchar(topic))
+      progress_events(list(storm_running_event(topic)))
       storm_task$invoke(
         topic = topic,
         cfg = config(),
@@ -100,7 +109,12 @@ mod_storm_server <- function(id, config, store) {
     # Share the report once the pipeline succeeds.
     shiny::observeEvent(storm_task$status(), {
       if (identical(storm_task$status(), "success")) {
-        result <- storm_task$result()
+        value <- storm_task$result()
+        progress_events(storm_task_progress(value))
+        result <- storm_task_result(value)
+        if (is.null(result)) {
+          return()
+        }
         store$set_report(
           result$report_md %||% "",
           shiny::isolate(input$topic) %||% "STORM Report"
@@ -109,29 +123,17 @@ mod_storm_server <- function(id, config, store) {
     })
 
     output$progress <- shiny::renderUI({
+      status <- storm_task$status()
+      state <- storm_progress_state(progress_events(), status)
       switch(
-        storm_task$status(),
+        status,
         initial = empty_state(
           "bolt",
           "Configure settings and click 'Run STORM Pipeline' to begin."
         ),
-        running = shiny::div(
-          shiny::div(
-            class = "d-flex align-items-center mb-3 text-primary",
-            shiny::icon("spinner", class = "fa-spin fa-lg me-2"),
-            shiny::strong("Running STORM pipeline...")
-          ),
-          shiny::p(
-            class = "text-muted small",
-            "Runs in the background — the app stays responsive."
-          ),
-          storm_stage_list(complete = FALSE)
-        ),
-        success = storm_stage_list(complete = TRUE),
-        error = empty_state(
-          "triangle-exclamation",
-          "The pipeline failed — see details below."
-        )
+        running = workflow_progress_ui(state, storm_stage_labels()),
+        success = workflow_progress_ui(state, storm_stage_labels()),
+        error = workflow_progress_ui(state, storm_stage_labels())
       )
     })
 
@@ -155,7 +157,10 @@ mod_storm_server <- function(id, config, store) {
       if (!identical(status, "success")) {
         return(NULL)
       }
-      result <- storm_task$result()
+      result <- storm_task_result(storm_task$result())
+      if (is.null(result)) {
+        return(NULL)
+      }
       chars <- nchar(result$report_md %||% "")
       shiny::div(
         class = "alert alert-success mt-3",
@@ -178,28 +183,100 @@ mod_storm_server <- function(id, config, store) {
   })
 }
 
-# The pipeline's stages, shown as a checklist (pending while running, all
-# complete on success).
-storm_stage_list <- function(complete) {
-  stages <- list(
-    c("Perspectives", "users"),
-    c("Research", "magnifying-glass"),
-    c("Outline", "list-ol"),
-    c("Write", "pen-nib"),
-    c("Polish", "wand-magic-sparkles")
+storm_running_event <- function(topic) {
+  tempest::tempest_progress_event(
+    run_id = paste0(
+      "shiny-storm-",
+      format(Sys.time(), "%Y%m%d%H%M%OS3")
+    ),
+    workflow = "storm",
+    event_type = "workflow",
+    status = "started",
+    message = paste("Running STORM pipeline for", topic)
   )
-  items <- lapply(stages, function(stage) {
-    mark <- if (complete) {
-      shiny::icon("circle-check", class = "text-success")
-    } else {
-      shiny::icon("circle", class = "text-muted")
-    }
-    shiny::div(
-      class = "d-flex align-items-center mb-2",
-      shiny::span(class = "me-2", mark),
-      shiny::icon(stage[2], class = "me-2"),
-      shiny::strong(stage[1])
+}
+
+storm_progress_state <- function(events, task_status = "initial") {
+  if (length(events) > 0L) {
+    state <- tryCatch(
+      tempest::tempest_progress_state(events),
+      error = function(e) NULL
     )
-  })
-  shiny::div(class = "py-3 px-2", items)
+    if (!is.null(state) && !identical(task_status, "error")) {
+      return(state)
+    }
+  }
+  status <- switch(
+    task_status,
+    error = "failed",
+    success = "succeeded",
+    "started"
+  )
+  tempest::tempest_progress_state(list(
+    tempest::tempest_progress_event(
+      run_id = "shiny-storm",
+      workflow = "storm",
+      event_type = "workflow",
+      status = status,
+      message = if (identical(status, "failed")) {
+        "The STORM pipeline failed."
+      } else {
+        "Running STORM pipeline."
+      },
+      payload = if (identical(status, "failed")) {
+        list(error_message = "The STORM pipeline failed.")
+      } else {
+        list()
+      }
+    )
+  ))
+}
+
+storm_task_result <- function(value) {
+  if (is.list(value) && "result" %in% names(value)) {
+    value$result
+  } else {
+    value
+  }
+}
+
+storm_task_progress <- function(value) {
+  if (is.list(value) && "progress" %in% names(value)) {
+    value$progress %||% list()
+  } else {
+    list()
+  }
+}
+
+storm_stage_labels <- function() {
+  c(
+    perspectives = "Perspectives",
+    research = "Research",
+    outline = "Outline",
+    write = "Write",
+    polish = "Polish",
+    verification = "Verify"
+  )
+}
+
+# The pipeline's stages, shown as a checklist from reducer state.
+storm_stage_list <- function(complete) {
+  events <- list(tempest::tempest_progress_event(
+    run_id = "storm-stage-list",
+    workflow = "storm",
+    event_type = "workflow",
+    status = if (isTRUE(complete)) "succeeded" else "started",
+    payload = list(
+      completed_stages = if (isTRUE(complete)) {
+        names(storm_stage_labels())
+      } else {
+        character()
+      }
+    )
+  ))
+  state <- tempest::tempest_progress_state(events)
+  if (isTRUE(complete)) {
+    state$completed_stages <- names(storm_stage_labels())
+  }
+  workflow_stage_list(state, storm_stage_labels())
 }

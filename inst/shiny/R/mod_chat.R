@@ -62,6 +62,7 @@ mod_chat_ui <- function(id, config_ui) {
       ),
       bslib::card(
         full_screen = TRUE,
+        bslib::card_header(shiny::uiOutput(ns("progress"))),
         bslib::card_body(
           class = "p-0",
           shinychat::chat_ui(ns("chat"), height = "100%", enable_cancel = TRUE)
@@ -74,6 +75,7 @@ mod_chat_ui <- function(id, config_ui) {
 mod_chat_server <- function(id, config, store) {
   shiny::moduleServer(id, function(input, output, session) {
     report_ready <- shiny::reactiveVal(0L)
+    progress_events <- shiny::reactiveVal(list())
     warmup_run_id <- 0L
     active_session_id <- 0L
     session_ended <- FALSE
@@ -115,6 +117,15 @@ mod_chat_server <- function(id, config, store) {
       }
       invisible(NULL)
     }
+    record_progress <- function(event) {
+      progress_events(c(shiny::isolate(progress_events()), list(event)))
+      invisible(event)
+    }
+
+    output$progress <- shiny::renderUI({
+      state <- costorm_progress_state(progress_events())
+      workflow_progress_ui(state, costorm_stage_labels())
+    })
 
     # --- Session lifecycle ---------------------------------------------------
     create_session <- function(topic, n_experts) {
@@ -122,7 +133,8 @@ mod_chat_server <- function(id, config, store) {
         tempest::tempest_session(
           topic,
           config = config(),
-          n_experts = n_experts
+          n_experts = n_experts,
+          progress = record_progress
         ),
         error = function(e) {
           shiny::showNotification(
@@ -153,6 +165,7 @@ mod_chat_server <- function(id, config, store) {
 
     shiny::observeEvent(input$start, {
       warmup_is_current <- next_warmup_guard()
+      progress_events(list())
       topic <- stringi::stri_trim_both(input$topic %||% "")
       if (!nzchar(topic)) {
         if (warmup_is_current()) {
@@ -243,6 +256,42 @@ mod_chat_server <- function(id, config, store) {
       if (nzchar(ans)) {
         ses$add_turn("Moderator", "assistant", ans)
       }
+      turn_id <- paste0(
+        "chat-turn-",
+        active_session_id,
+        "-",
+        length(ses$transcript)
+      )
+      turn_event <- session_emit_progress(
+        ses,
+        "stage",
+        "started",
+        stage = "dialogue",
+        step = "turn",
+        correlation_id = turn_id
+      )
+      if (nzchar(msg)) {
+        session_emit_progress(
+          ses,
+          "step",
+          "succeeded",
+          stage = "dialogue",
+          step = "user_turn",
+          parent_event_id = progress_event_id(turn_event),
+          correlation_id = turn_id
+        )
+      }
+      if (nzchar(ans)) {
+        session_emit_progress(
+          ses,
+          "step",
+          "succeeded",
+          stage = "dialogue",
+          step = "moderator_response",
+          parent_event_id = progress_event_id(turn_event),
+          correlation_id = turn_id
+        )
+      }
       session_id <- active_session_id
       suggest_enabled <- isTRUE(input$suggest)
       later::later(
@@ -271,6 +320,15 @@ mod_chat_server <- function(id, config, store) {
           ) {
             return()
           }
+          session_emit_progress(
+            ses,
+            "stage",
+            "succeeded",
+            stage = "dialogue",
+            step = "turn",
+            parent_event_id = progress_event_id(turn_event),
+            correlation_id = turn_id
+          )
           store$touch()
           if (nzchar(msg)) {
             append_suggestions(
@@ -456,6 +514,50 @@ append_suggestions <- function(ses, enabled, append_fn, n = 4) {
 
 should_delay_start_suggestions <- function(warmup_enabled, personas) {
   isTRUE(warmup_enabled) && length(personas) > 0
+}
+
+costorm_progress_state <- function(events) {
+  if (length(events) == 0L) {
+    return(NULL)
+  }
+  tryCatch(
+    tempest::tempest_progress_state(events),
+    error = function(e) NULL
+  )
+}
+
+costorm_stage_labels <- function() {
+  c(
+    session = "Session",
+    warmup = "Warmup",
+    dialogue = "Dialogue",
+    evidence = "Evidence",
+    mindmap = "Mind Map",
+    suggestions = "Suggestions",
+    report = "Report"
+  )
+}
+
+session_emit_progress <- function(ses, ...) {
+  if (is.null(ses) || is.null(ses$emit_progress)) {
+    return(NULL)
+  }
+  tryCatch(ses$emit_progress(...), error = function(e) NULL)
+}
+
+progress_event_id <- function(event) {
+  if (S7::S7_inherits(event, tempest::tempest_progress_event)) {
+    event@event_id
+  } else {
+    NA_character_
+  }
+}
+
+progress_error_payload <- function(error) {
+  list(
+    error_class = class(error)[[1]],
+    error_message = conditionMessage(error)
+  )
 }
 
 warmup_prompt <- function(topic, question) {
@@ -692,9 +794,19 @@ run_warmup <- function(
   safe_touch <- function() {
     warmup_safe_touch(store, is_current)
   }
+  emit_progress <- function(...) {
+    session_emit_progress(ses, ...)
+  }
 
   safe_append(
     "**Running warmup phase...** Each expert is researching their initial questions."
+  )
+  warmup_event <- emit_progress(
+    "stage",
+    "started",
+    stage = "warmup",
+    step = "expert_fanout",
+    payload = list(expert_count = length(ses$personas))
   )
 
   if (is.null(max_parallel_experts) || length(max_parallel_experts) == 0L) {
@@ -709,18 +821,32 @@ run_warmup <- function(
   }
 
   research_expert <- function(idx) {
+    persona <- ses$personas[[idx]]
+    name <- persona$name %||% paste("Expert", idx)
+    expert_event <- NULL
+    answered_count <- 0L
     promises::then(promises::promise_resolve(NULL), function(...) {
       if (!warmup_is_current(is_current)) {
         return(NULL)
       }
-      persona <- ses$personas[[idx]]
-      name <- persona$name %||% paste("Expert", idx)
       all_questions <- persona$initial_questions %||% character()
       questions <- warmup_selected_questions(
         all_questions,
         max_questions_per_expert
       )
       if (length(questions) == 0) {
+        emit_progress(
+          "expert",
+          "skipped",
+          stage = "warmup",
+          step = "expert_fanout",
+          parent_event_id = progress_event_id(warmup_event),
+          payload = list(
+            expert_id = as.character(persona$id %||% idx),
+            expert_name = name,
+            reason = "no_initial_questions"
+          )
+        )
         return(NULL)
       }
       skipped <- max(length(all_questions) - length(questions), 0L)
@@ -736,6 +862,18 @@ run_warmup <- function(
           skipped
         ))
       }
+      expert_event <<- emit_progress(
+        "expert",
+        "started",
+        stage = "warmup",
+        step = "expert_fanout",
+        parent_event_id = progress_event_id(warmup_event),
+        payload = list(
+          expert_id = as.character(persona$id %||% idx),
+          expert_name = name,
+          question_count = length(questions)
+        )
+      )
       expert_chat <- ses$expert_session_manager$get_or_create(persona)$chat
 
       answered <- Reduce(
@@ -759,6 +897,18 @@ run_warmup <- function(
               length(questions),
               warmup_question_label(question)
             ))
+            question_event <- emit_progress(
+              "tool",
+              "started",
+              stage = "warmup",
+              step = "expert_question",
+              parent_event_id = progress_event_id(expert_event),
+              payload = list(
+                expert_id = as.character(persona$id %||% idx),
+                expert_name = name,
+                question_index = question_idx
+              )
+            )
 
             chat_promise <- warmup_chat_response(
               expert_chat,
@@ -777,6 +927,19 @@ run_warmup <- function(
                   question,
                   response,
                   expert_chat = expert_chat
+                )
+                answered_count <<- answered_count + 1L
+                emit_progress(
+                  "tool",
+                  "succeeded",
+                  stage = "warmup",
+                  step = "expert_question",
+                  parent_event_id = progress_event_id(question_event),
+                  payload = list(
+                    expert_id = as.character(persona$id %||% idx),
+                    expert_name = name,
+                    question_index = question_idx
+                  )
                 )
                 safe_touch()
               }) |>
@@ -802,6 +965,21 @@ run_warmup <- function(
                     conditionMessage(e)
                   ))
                 }
+                emit_progress(
+                  "tool",
+                  "failed",
+                  stage = "warmup",
+                  step = "expert_question",
+                  parent_event_id = progress_event_id(question_event),
+                  payload = c(
+                    list(
+                      expert_id = as.character(persona$id %||% idx),
+                      expert_name = name,
+                      question_index = question_idx
+                    ),
+                    progress_error_payload(e)
+                  )
+                )
                 NULL
               })
           }) |>
@@ -826,6 +1004,18 @@ run_warmup <- function(
         if (!warmup_is_current(is_current)) {
           return(NULL)
         }
+        emit_progress(
+          "expert",
+          "succeeded",
+          stage = "warmup",
+          step = "expert_fanout",
+          parent_event_id = progress_event_id(expert_event),
+          payload = list(
+            expert_id = as.character(persona$id %||% idx),
+            expert_name = name,
+            questions_answered = answered_count
+          )
+        )
         safe_append(sprintf(
           "**%s** done (%d facts so far)",
           name,
@@ -835,6 +1025,20 @@ run_warmup <- function(
     }) |>
       promises::catch(function(e) {
         if (warmup_is_current(is_current)) {
+          emit_progress(
+            "expert",
+            "failed",
+            stage = "warmup",
+            step = "expert_fanout",
+            parent_event_id = progress_event_id(expert_event),
+            payload = c(
+              list(
+                expert_id = as.character(persona$id %||% idx),
+                expert_name = name
+              ),
+              progress_error_payload(e)
+            )
+          )
           safe_append(paste0("Warmup error: ", conditionMessage(e)))
         }
         NULL
@@ -862,6 +1066,18 @@ run_warmup <- function(
       return(NULL)
     }
     safe_append(warmup_summary(ses))
+    emit_progress(
+      "stage",
+      "succeeded",
+      stage = "warmup",
+      step = "expert_fanout",
+      parent_event_id = progress_event_id(warmup_event),
+      payload = list(
+        expert_count = length(ses$personas),
+        claim_count = length(ses$store$list_claims()),
+        source_count = length(ses$store$list_sources())
+      )
+    )
     safe_touch()
   })
 }
