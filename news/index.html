@@ -48,6 +48,10 @@
 <li>
 <code><a href="../reference/tempest_run.html">tempest_run()</a></code> now executes STORM structured steps through dsprrr modules, with ellmer fallbacks for module creation or runtime failures.</li>
 <li>
+<code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now pass source context into dsprrr claim extraction for provider-native citations, so optimized extraction works for native web-search turns as well as inline <code>[S...]</code> citations (c8jk).</li>
+<li>
+<code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now expose claim-oriented <code>add_claim</code> and <code>list_claims</code> agent tools while keeping <code>add_fact</code> and <code>list_facts</code> as transitional aliases (msg3).</li>
+<li>
 <code><a href="../reference/tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules()</a></code>, <code><a href="../reference/tempest_save_dsprrr_modules.html">tempest_save_dsprrr_modules()</a></code>, and <code><a href="../reference/tempest_load_dsprrr_modules.html">tempest_load_dsprrr_modules()</a></code> support explicit dsprrr compilation and reuse of optimized STORM module sets.</li>
 <li>
 <code><a href="../reference/tempest_progress_event.html">tempest_progress_event()</a></code> and <code><a href="../reference/tempest_progress_event_data.html">tempest_progress_event_data()</a></code> define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).</li>

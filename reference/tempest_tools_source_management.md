@@ -1,6 +1,6 @@
-# Get source/fact management tools (without web_search/fetch_url)
+# Get source/claim management tools (without web_search/fetch_url)
 
-Returns tools for managing sources and facts, but not the web search
+Returns tools for managing sources and claims, but not the web search
 tools. Used when provider-native web search is enabled.
 
 ## Usage
@@ -17,4 +17,4 @@ tempest_tools_source_management(retriever)
 
 ## Value
 
-List of ellmer tools for source/fact management
+List of ellmer tools for source/claim management

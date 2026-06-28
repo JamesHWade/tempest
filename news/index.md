@@ -33,6 +33,18 @@
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   now executes STORM structured steps through dsprrr modules, with
   ellmer fallbacks for module creation or runtime failures.
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  and
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  now pass source context into dsprrr claim extraction for
+  provider-native citations, so optimized extraction works for native
+  web-search turns as well as inline `[S...]` citations (c8jk).
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  and
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  now expose claim-oriented `add_claim` and `list_claims` agent tools
+  while keeping `add_fact` and `list_facts` as transitional aliases
+  (msg3).
 - [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md),
   [`tempest_save_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_save_dsprrr_modules.md),
   and
