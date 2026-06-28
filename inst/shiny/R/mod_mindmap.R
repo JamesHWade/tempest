@@ -52,7 +52,7 @@ mod_mindmap_server <- function(id, store) {
     })
     output$n_facts <- shiny::renderText({
       ses <- store$get()
-      if (is.null(ses)) 0L else length(ses$store$list_facts())
+      if (is.null(ses)) 0L else length(ses$store$list_claims())
     })
     output$n_turns <- shiny::renderText({
       ses <- store$get()

@@ -28,7 +28,7 @@ mod_facts_server <- function(id, store) {
       if (is.null(ses)) {
         return(NULL)
       }
-      tempest::tempest_facts(ses$store)
+      tempest::tempest_claims(ses$store)
     })
 
     confidence_badge <- function(values) {

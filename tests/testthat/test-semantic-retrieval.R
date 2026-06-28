@@ -3,13 +3,13 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
   cfg <- tempest_config()
   retriever <- tempest_retriever(config = cfg, store = store)
 
-  # Add some facts
-  store$add_fact(tempest:::tempest_fact(
-    claim = "Quantum computing uses qubits",
+  # Add some claims
+  store$add_claim(tempest:::tempest_claim(
+    claim_text = "Quantum computing uses qubits",
     source_ids = "S123abc123abc"
   ))
-  store$add_fact(tempest:::tempest_fact(
-    claim = "Classical computers use bits",
+  store$add_claim(tempest:::tempest_claim(
+    claim_text = "Classical computers use bits",
     source_ids = "Sdeadbeefdead"
   ))
 
@@ -23,7 +23,7 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
   expect_type(result, "list")
   # The keyword fallback must actually find the quantum-related fact.
   expect_gt(length(result), 0)
-  claims <- vapply(result, function(f) f$claim, character(1))
+  claims <- vapply(result, function(f) f@claim_text, character(1))
   expect_match(claims, "qubit", ignore.case = TRUE, all = FALSE)
 })
 
@@ -44,8 +44,8 @@ test_that("tempest_semantic_filter_facts returns empty for empty store", {
 
 test_that("tempest_keyword_filter_facts handles empty query", {
   store <- SourceStore$new()
-  store$add_fact(tempest:::tempest_fact(
-    claim = "Test fact",
+  store$add_claim(tempest:::tempest_claim(
+    claim_text = "Test fact",
     source_ids = "S123abc123abc"
   ))
 
@@ -62,9 +62,9 @@ test_that("tempest_semantic_filter_facts with ragnar configured", {
   store <- SourceStore$new()
   retriever <- tempest_retriever(config = cfg, store = store)
 
-  # Add facts with source IDs
-  store$add_fact(tempest:::tempest_fact(
-    claim = "Neural networks learn patterns",
+  # Add claims with source IDs
+  store$add_claim(tempest:::tempest_claim(
+    claim_text = "Neural networks learn patterns",
     source_ids = "S123abc123abc"
   ))
 

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="tempest">
+  <title>tempest</title>
+  <!-- Storm cloud -->
+  <g fill="#4A90A4">
+    <circle cx="22" cy="30" r="12"/>
+    <circle cx="41" cy="25" r="15"/>
+    <circle cx="48" cy="33" r="10"/>
+    <rect x="16" y="30" width="36" height="14" rx="7"/>
+  </g>
+  <!-- Lightning bolt -->
+  <path d="M36 29 L26 45 L33 45 L29 59 L45 39 L37 39 L41 29 Z"
+        fill="#F4B740" stroke="#15293A" stroke-width="1" stroke-linejoin="round"/>
+</svg>

@@ -50,7 +50,8 @@ DiscourseManager <- R6::R6Class(
     #' @param config A `TempestConfig` object.
     initialize = function(config) {
       self$config <- config
-      self$chat <- config$make_chat(
+      self$chat <- tempest_make_chat(
+        config,
         "coordinator",
         system_prompt = tempest_prompt("discourse_manager_system"),
         echo = "none"

@@ -48,8 +48,7 @@ the mirai package. Requires mirai to be installed. Default \code{FALSE}.}
 the mirai package. Failed parallel sections are retried sequentially.}
 
 \item{dsprrr_modules}{Optional named list of dsprrr modules, typically from
-\code{\link[=tempest_optimize_dsprrr_modules]{tempest_optimize_dsprrr_modules()}}. If \code{NULL}, fresh modules are created
-when dsprrr is installed.}
+\code{\link[=tempest_optimize_dsprrr_modules]{tempest_optimize_dsprrr_modules()}}. If \code{NULL}, fresh modules are created.}
 
 \item{steps}{Character vector controlling which steps to run. Defaults to all.}
 

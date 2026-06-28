@@ -2,17 +2,22 @@
 % Please edit documentation in R/models.R
 \name{SourceStore}
 \alias{SourceStore}
-\title{SourceStore}
+\title{SourceStore (evidence ledger)}
 \description{
-A lightweight in-memory store for sources, fact notes, and artifacts.
-This store is designed for both script usage (STORM) and interactive usage (Co-STORM).
+In-memory store for sources, claims, evidence spans, disputes, and
+artifacts. Stays an R6 reference object: it is the mutable accumulator
+threaded through every pipeline stage and Co-STORM turn.
 }
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
   \describe{
     \item{\code{sources}}{Environment of source objects keyed by id.}
 
-    \item{\code{facts}}{List of fact objects.}
+    \item{\code{claims}}{Environment of claim records keyed by claim_id.}
+
+    \item{\code{evidence_spans}}{Environment of evidence-span records keyed by id.}
+
+    \item{\code{disputes}}{Environment of dispute records keyed by id.}
 
     \item{\code{artifacts}}{Environment of arbitrary artifacts.}
   }
@@ -25,8 +30,16 @@ This store is designed for both script usage (STORM) and interactive usage (Co-S
     \item \href{#method-SourceStore-upsert_source}{\code{SourceStore$upsert_source()}}
     \item \href{#method-SourceStore-get_source}{\code{SourceStore$get_source()}}
     \item \href{#method-SourceStore-list_sources}{\code{SourceStore$list_sources()}}
-    \item \href{#method-SourceStore-add_fact}{\code{SourceStore$add_fact()}}
-    \item \href{#method-SourceStore-list_facts}{\code{SourceStore$list_facts()}}
+    \item \href{#method-SourceStore-add_claim}{\code{SourceStore$add_claim()}}
+    \item \href{#method-SourceStore-get_claim}{\code{SourceStore$get_claim()}}
+    \item \href{#method-SourceStore-list_claims}{\code{SourceStore$list_claims()}}
+    \item \href{#method-SourceStore-claims_for_source}{\code{SourceStore$claims_for_source()}}
+    \item \href{#method-SourceStore-add_evidence_span}{\code{SourceStore$add_evidence_span()}}
+    \item \href{#method-SourceStore-link_evidence}{\code{SourceStore$link_evidence()}}
+    \item \href{#method-SourceStore-get_evidence_for_claim}{\code{SourceStore$get_evidence_for_claim()}}
+    \item \href{#method-SourceStore-verify_claim}{\code{SourceStore$verify_claim()}}
+    \item \href{#method-SourceStore-add_dispute}{\code{SourceStore$add_dispute()}}
+    \item \href{#method-SourceStore-list_disputes}{\code{SourceStore$list_disputes()}}
     \item \href{#method-SourceStore-set_artifact}{\code{SourceStore$set_artifact()}}
     \item \href{#method-SourceStore-get_artifact}{\code{SourceStore$get_artifact()}}
     \item \href{#method-SourceStore-to_tibbles}{\code{SourceStore$to_tibbles()}}
@@ -81,9 +94,6 @@ This store is designed for both script usage (STORM) and interactive usage (Co-S
     }
     \if{html}{\out{</div>}}
   }
-  \subsection{Returns}{
-    The source list or NULL.
-  }
 }
 
 \if{html}{\out{<hr>}}
@@ -96,42 +106,190 @@ This store is designed for both script usage (STORM) and interactive usage (Co-S
     \preformatted{SourceStore$list_sources()}
     \if{html}{\out{</div>}}
   }
-  \subsection{Returns}{
-    A list of source objects.
-  }
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-add_fact"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-add_fact}{}}}
-\subsection{\code{SourceStore$add_fact()}}{
-  Add a fact to the store.
+\if{html}{\out{<a id="method-SourceStore-add_claim"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-add_claim}{}}}
+\subsection{\code{SourceStore$add_claim()}}{
+  Add a claim record to the ledger.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$add_fact(fact)}
+    \preformatted{SourceStore$add_claim(claim)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{fact}}{A fact list with an \code{id} field.}
+      \item{\code{claim}}{A \code{tempest_claim} S7 record.}
     }
     \if{html}{\out{</div>}}
   }
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-list_facts"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-list_facts}{}}}
-\subsection{\code{SourceStore$list_facts()}}{
-  List all facts.
+\if{html}{\out{<a id="method-SourceStore-get_claim"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-get_claim}{}}}
+\subsection{\code{SourceStore$get_claim()}}{
+  Get a claim by id.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$list_facts()}
+    \preformatted{SourceStore$get_claim(claim_id)}
     \if{html}{\out{</div>}}
   }
-  \subsection{Returns}{
-    A list of fact objects.
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{claim_id}}{The claim id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-list_claims"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-list_claims}{}}}
+\subsection{\code{SourceStore$list_claims()}}{
+  List all claims.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$list_claims()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-claims_for_source"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-claims_for_source}{}}}
+\subsection{\code{SourceStore$claims_for_source()}}{
+  Claims that cite a given source.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$claims_for_source(source_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{source_id}}{Source id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-add_evidence_span"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-add_evidence_span}{}}}
+\subsection{\code{SourceStore$add_evidence_span()}}{
+  Add an evidence span.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$add_evidence_span(span)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{span}}{A \code{tempest_evidence_span} S7 record.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-link_evidence"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-link_evidence}{}}}
+\subsection{\code{SourceStore$link_evidence()}}{
+  Link an evidence span to a claim.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$link_evidence(claim_id, span_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{claim_id}}{Claim id.}
+      \item{\code{span_id}}{Evidence span id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-get_evidence_for_claim"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-get_evidence_for_claim}{}}}
+\subsection{\code{SourceStore$get_evidence_for_claim()}}{
+  Evidence spans linked to a claim.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$get_evidence_for_claim(claim_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{claim_id}}{Claim id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-verify_claim"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-verify_claim}{}}}
+\subsection{\code{SourceStore$verify_claim()}}{
+  Update a claim's verification status.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$verify_claim(
+  claim_id,
+  status,
+  score = NA_real_,
+  verifier = NA_character_
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{claim_id}}{Claim id.}
+      \item{\code{status}}{One of the verification status labels.}
+      \item{\code{score}}{Support score in \verb{[0, 1]} or NA.}
+      \item{\code{verifier}}{Verifier model id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-add_dispute"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-add_dispute}{}}}
+\subsection{\code{SourceStore$add_dispute()}}{
+  Add a dispute.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$add_dispute(dispute)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{dispute}}{A \code{tempest_dispute} S7 record.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-list_disputes"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-list_disputes}{}}}
+\subsection{\code{SourceStore$list_disputes()}}{
+  List all disputes.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$list_disputes()}
+    \if{html}{\out{</div>}}
   }
 }
 
@@ -172,23 +330,17 @@ This store is designed for both script usage (STORM) and interactive usage (Co-S
     }
     \if{html}{\out{</div>}}
   }
-  \subsection{Returns}{
-    The artifact value or NULL.
-  }
 }
 
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-to_tibbles"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-to_tibbles}{}}}
 \subsection{\code{SourceStore$to_tibbles()}}{
-  Convert sources and facts to tibbles.
+  Convert sources, claims, and disputes to tibbles.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{SourceStore$to_tibbles()}
     \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    A list with \code{sources} and \code{facts} tibbles.
   }
 }
 

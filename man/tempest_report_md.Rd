@@ -4,7 +4,14 @@
 \alias{tempest_report_md}
 \title{Assemble a Markdown report with footnotes}
 \usage{
-tempest_report_md(title, body, store)
+tempest_report_md(
+  title,
+  body,
+  store,
+  citation_policy = "source_attributed",
+  on_unsupported_claim = "flag",
+  min_support_score = 0.7
+)
 }
 \arguments{
 \item{title}{Document title.}
@@ -12,6 +19,18 @@ tempest_report_md(title, body, store)
 \item{body}{Markdown body text that may include inline citations like \verb{[Sxxxxxxxxxxxx]}.}
 
 \item{store}{A \code{SourceStore} containing sources.}
+
+\item{citation_policy}{One of "none", "source_attributed" (default),
+"claim_verified", "strict". "none" leaves inline citation ids unchanged
+and omits references. Under verified policies, footnotes show a
+verification badge; under "strict", unsupported/contradicted inline
+citations are handled per \code{on_unsupported_claim}.}
+
+\item{on_unsupported_claim}{One of "flag" (default), "drop",
+"keep_with_warning", "revise". Only used under "strict".}
+
+\item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
+considered supported.}
 }
 \value{
 Markdown with footnotes.

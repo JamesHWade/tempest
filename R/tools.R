@@ -72,7 +72,7 @@ tempest_tools_retrieval <- function(retriever) {
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
 
-  web_search <- function(query, k = retriever$config$max_search_results) {
+  web_search <- function(query, k = retriever$config@max_search_results) {
     retriever$search(query = query, k = k)
   }
 
@@ -130,35 +130,34 @@ tempest_tools_retrieval <- function(retriever) {
   }
 
   list_facts <- function() {
-    f <- retriever$store$list_facts()
+    f <- retriever$store$list_claims()
     purrr::map(
       f,
       ~ list(
-        fact_id = .x$id,
-        claim = .x$claim,
-        source_ids = .x$source_ids,
-        confidence = .x$confidence,
-        created_at = .x$created_at
+        fact_id = .x@claim_id,
+        claim = .x@claim_text,
+        source_ids = .x@source_ids,
+        confidence = .x@confidence,
+        created_at = .x@created_at
       )
     )
   }
 
-  add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
+  add_fact <- function(claim, source_ids, confidence = "medium") {
     if (is.null(source_ids) || length(source_ids) == 0) {
       tempest_abort("add_fact requires at least one source_id.")
     }
-    fact <- tempest_fact(
-      claim = claim,
+    cl <- tempest_claim(
+      claim_text = claim,
       source_ids = source_ids,
-      confidence = confidence,
-      note = note
+      confidence = confidence
     )
-    retriever$store$add_fact(fact)
+    retriever$store$add_claim(cl)
     list(
-      fact_id = fact$id,
-      claim = fact$claim,
-      source_ids = fact$source_ids,
-      confidence = fact$confidence
+      fact_id = cl@claim_id,
+      claim = cl@claim_text,
+      source_ids = cl@source_ids,
+      confidence = cl@confidence
     )
   }
 
@@ -225,10 +224,6 @@ tempest_tools_retrieval <- function(retriever) {
           c("low", "medium", "high"),
           "Confidence level.",
           required = FALSE
-        ),
-        note = ellmer::type_string(
-          "Optional note on nuances/conditions/limitations.",
-          required = FALSE
         )
       )
     )
@@ -285,35 +280,34 @@ tempest_tools_source_management <- function(retriever) {
   }
 
   list_facts <- function() {
-    f <- retriever$store$list_facts()
+    f <- retriever$store$list_claims()
     purrr::map(
       f,
       ~ list(
-        fact_id = .x$id,
-        claim = .x$claim,
-        source_ids = .x$source_ids,
-        confidence = .x$confidence,
-        created_at = .x$created_at
+        fact_id = .x@claim_id,
+        claim = .x@claim_text,
+        source_ids = .x@source_ids,
+        confidence = .x@confidence,
+        created_at = .x@created_at
       )
     )
   }
 
-  add_fact <- function(claim, source_ids, confidence = "medium", note = "") {
+  add_fact <- function(claim, source_ids, confidence = "medium") {
     if (is.null(source_ids) || length(source_ids) == 0) {
       tempest_abort("add_fact requires at least one source_id.")
     }
-    fact <- tempest_fact(
-      claim = claim,
+    cl <- tempest_claim(
+      claim_text = claim,
       source_ids = source_ids,
-      confidence = confidence,
-      note = note
+      confidence = confidence
     )
-    retriever$store$add_fact(fact)
+    retriever$store$add_claim(cl)
     list(
-      fact_id = fact$id,
-      claim = fact$claim,
-      source_ids = fact$source_ids,
-      confidence = fact$confidence
+      fact_id = cl@claim_id,
+      claim = cl@claim_text,
+      source_ids = cl@source_ids,
+      confidence = cl@confidence
     )
   }
 
@@ -353,10 +347,6 @@ tempest_tools_source_management <- function(retriever) {
         confidence = ellmer::type_enum(
           c("low", "medium", "high"),
           "Confidence level.",
-          required = FALSE
-        ),
-        note = ellmer::type_string(
-          "Optional note on nuances/conditions/limitations.",
           required = FALSE
         )
       )
@@ -500,12 +490,17 @@ ExpertSessionManager <- R6::R6Class(
         persona = persona,
         expert_id = persona$id %||% 1L
       )
-      chat <- self$config$make_chat("expert", system_prompt = sp, echo = "none")
+      chat <- tempest_make_chat(
+        self$config,
+        "expert",
+        system_prompt = sp,
+        echo = "none"
+      )
       tempest_register_default_tools(
         chat,
         self$retriever,
-        model = self$config$models[["expert"]],
-        search_provider = self$config$search_provider
+        model = self$config@models[["expert"]],
+        search_provider = self$config@search_provider
       )
 
       new_id <- session_id %||%
@@ -565,6 +560,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     result <- mgr$get_or_create(p, session_id)
     chat <- result$chat
     sid <- result$session_id
+    expert_name <- p$name %||% "Expert"
 
     # Build prompt with context
     prompt <- paste0(
@@ -575,9 +571,10 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       question,
       "\n\n",
       "Instructions:\n",
-      "- Use web_search + fetch_url to find and cite sources.\n",
-      "- Only state factual claims supported by sources you fetched.\n",
-      "- For each factual sentence, add citations like [Sxxxxxxxxxxxx].\n",
+      "- Use the available web/source tools to find and cite sources.\n",
+      "- If web_search and fetch_url are available, search first and then fetch sources.\n",
+      "- Only state factual claims supported by sources you inspected.\n",
+      "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
       "- If evidence is weak or unclear, say so.\n\n",
       "Respond now:"
     )
@@ -586,11 +583,15 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
 
     # Extract plain text from the response using ellmer's contents_markdown
     # This properly handles ellmer_output objects and tool call results
-    last_turn <- chat$last_turn()
+    last_turn <- tryCatch(chat$last_turn(), error = function(e) NULL)
     response_text <- if (
       is.null(last_turn) || length(last_turn@contents) == 0
     ) {
-      "(Expert completed but returned no message.)"
+      if (is.character(response) && length(response) > 0) {
+        paste(response, collapse = "\n")
+      } else {
+        "(Expert completed but returned no message.)"
+      }
     } else {
       ellmer::contents_markdown(last_turn)
     }
@@ -599,7 +600,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     mgr$extract_facts(response_text)
 
     list(
-      expert = p$name %||% "Expert",
+      expert = expert_name,
       response = response_text,
       session_id = sid
     )
@@ -691,7 +692,8 @@ tempest_generate_single_persona <- function(
 ) {
   tempest_require("ellmer", "Generating expert personas requires ellmer.")
 
-  chat <- config$make_chat(
+  chat <- tempest_make_chat(
+    config,
     "coordinator",
     system_prompt = tempest_prompt("expert_generator_system"),
     echo = "none"

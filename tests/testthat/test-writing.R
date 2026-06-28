@@ -16,6 +16,20 @@ test_that("tempest_sections_to_write skips lead-style sections", {
   )
 })
 
+test_that("empty section fact context does not tell the writer to call tools", {
+  local_mocked_bindings(tempest_semantic_filter_facts = function(...) list())
+
+  facts <- tempest:::tempest_section_facts_text(
+    retriever = NULL,
+    store = SourceStore$new(),
+    section_title = "Mechanisms",
+    max_items = 5
+  )
+
+  expect_match(facts, "no directly matched facts")
+  expect_no_match(facts, "call tools")
+})
+
 test_that("tempest_run_section_job wraps section text as markdown", {
   writer <- list(chat = function(prompt, echo = "none") {
     "Section body [S123456789abc]"

@@ -5,3 +5,7 @@
 .DS_Store
 .quarto
 docs
+# roborev snapshots
+/.roborev/
+.kata.local.toml
+.positai

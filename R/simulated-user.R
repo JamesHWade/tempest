@@ -29,7 +29,8 @@ SimulatedUser <- R6::R6Class(
       self$topic <- tempest_trim(topic)
       self$max_turns <- as.integer(max_turns)
       self$turn_count <- 0L
-      self$chat <- config$make_chat(
+      self$chat <- tempest_make_chat(
+        config,
         "coordinator",
         system_prompt = tempest_prompt("simulated_user_system"),
         echo = "none"
@@ -126,7 +127,7 @@ SimulatedUser <- R6::R6Class(
       }
 
       if (verbose) {
-        total_facts <- length(session$store$list_facts())
+        total_facts <- length(session$store$list_claims())
         total_sources <- length(session$store$list_sources())
         tempest_inform(
           "SimulatedUser: {self$turn_count} turns, {total_facts} facts, {total_sources} sources"

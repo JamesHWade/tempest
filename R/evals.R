@@ -45,7 +45,8 @@ tempest_solver_cited_answer <- function(
   for (i in seq_len(n)) {
     store <- SourceStore$new()
     retriever <- tempest_retriever(config = config, store = store)
-    chat <- config$make_chat(
+    chat <- tempest_make_chat(
+      config,
       "expert",
       system_prompt = tempest_prompt("qa_solver_system"),
       echo = "none"
@@ -53,8 +54,8 @@ tempest_solver_cited_answer <- function(
     tempest_register_default_tools(
       chat,
       retriever,
-      model = config$models[["expert"]],
-      search_provider = config$search_provider
+      model = config@models[["expert"]],
+      search_provider = config@search_provider
     )
 
     q <- input[[i]]
@@ -75,7 +76,7 @@ tempest_solver_cited_answer <- function(
     chats[[i]] <- chat
     meta[[i]] <- list(
       sources = store$to_tibbles()$sources,
-      facts = store$to_tibbles()$facts
+      claims = store$to_tibbles()$claims
     )
   }
 
@@ -180,14 +181,14 @@ tempest_costorm_task <- function(
       meta[[i]] <- list(
         turns = sim_user$turn_count,
         sources = session$store$to_tibbles()$sources,
-        facts = session$store$to_tibbles()$facts
+        claims = session$store$to_tibbles()$claims
       )
     }
 
     list(result = results, solver_chat = chats, solver_metadata = meta)
   }
 
-  scorer_chat <- config$make_chat("judge", echo = "none")
+  scorer_chat <- tempest_make_chat(config, "judge", echo = "none")
   scorer <- vitals::model_graded_qa(
     partial_credit = TRUE,
     scorer_chat = scorer_chat

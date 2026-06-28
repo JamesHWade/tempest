@@ -1,225 +1,228 @@
 # Configuration
 
-#' TempestConfig
+#' TempestConfig (S7)
 #'
 #' Holds configuration for STORM / Co-STORM sessions: LLM models, prompts,
-#' retrieval settings, and cache paths.
+#' retrieval settings, cache paths, and citation policy.
 #'
-#' @field models Named list of model identifiers for each role.
-#' @field params Additional parameters passed to chat creation.
-#' @field chat_fn Custom chat factory function (optional).
-#' @field tools Additional tools to register with chats (optional).
-#' @field embed_fn Embedding function for RAG (optional).
-#' @field ragnar_store A ragnar store for semantic retrieval (optional).
-#' @field search_provider Search provider name.
-#' @field cache_dir Path to cache directory.
-#' @field max_search_results Maximum number of search results to return.
-#' @field max_search_queries_per_turn Maximum decomposed queries per research
-#'   turn.
-#' @field retrieve_top_k Maximum facts/chunks retrieved for each section.
-#' @field max_sources Maximum number of sources to keep.
-#' @field user_agent User agent string for HTTP requests.
-#' @field node_expansion_trigger_count Number of notes/sources per node that triggers expansion (NULL = disabled).
-#' @field enable_discourse_manager Whether to enable LLM-driven discourse management in Co-STORM.
-#' @field max_active_experts Maximum number of active expert agents in Co-STORM.
-#' @field enable_unseen_surfacing Whether to surface undiscussed sources in Co-STORM.
-#'
-#' @export
-TempestConfig <- R6::R6Class(
+#' @include ledger-types.R
+#' @keywords internal
+TempestConfig <- S7::new_class(
   "TempestConfig",
-  public = list(
-    models = NULL,
-    params = NULL,
-    chat_fn = NULL,
-    tools = NULL,
-    embed_fn = NULL,
-    ragnar_store = NULL,
-    search_provider = NULL,
-    cache_dir = NULL,
-    max_search_results = NULL,
-    max_search_queries_per_turn = NULL,
-    retrieve_top_k = NULL,
-    max_sources = NULL,
-    user_agent = NULL,
-    node_expansion_trigger_count = NULL,
-    enable_discourse_manager = NULL,
-    max_active_experts = NULL,
-    enable_unseen_surfacing = NULL,
-
-    #' @description
-    #' Create a new TempestConfig.
-    #' @param models Named list of model identifiers for each role, or a single
-    #'   string to use for all roles.
-    #' @param params Additional parameters passed to chat creation.
-    #' @param chat_fn Custom chat factory function. Should accept `role`,
-    #'   `model`, `system_prompt`, and `echo` arguments and return an
-    #'   ellmer-compatible Chat object. Use this for custom providers like
-    #'   `chat_company()`.
-    #' @param tools Additional tools to register with each chat. Can be a list
-    #'   of ellmer tools, or a function that returns tools (e.g., `btw::btw_tools`).
-    #' @param embed_fn Embedding function for RAG. Should accept a character
-    #'   vector and return a matrix of embeddings. Use `ragnar::embed_openai()`,
-    #'   `ragnar::embed_ollama()`, or a custom function. If provided, a ragnar
-    #'   store is automatically created.
-    #' @param ragnar_store A pre-built ragnar store. If NULL and `embed_fn` is
-    #'   provided, a store is created automatically with the tempest metadata schema.
-    #' @param search_provider Search provider: "native" (use provider's built-in web
-    #'   search when available), "wikipedia", "you", "bing", "serper",
-    #'   "brave", "duckduckgo", "tavily", "searxng", "google", or
-    #'   "azure_ai_search". Default is "native" which uses OpenAI, Anthropic,
-    #'   or Google's native web search capabilities when available, falling
-    #'   back to "wikipedia".
-    #' @param cache_dir Path to cache directory.
-    #' @param max_search_results Maximum search results to return.
-    #' @param max_search_queries_per_turn Maximum decomposed queries per
-    #'   research turn.
-    #' @param retrieve_top_k Maximum facts/chunks retrieved for each section.
-    #' @param max_sources Maximum sources to keep.
-    #' @param user_agent User agent string for HTTP requests.
-    #' @param node_expansion_trigger_count Number of notes/sources per node that triggers expansion (NULL = disabled).
-    #' @param enable_discourse_manager Whether to enable LLM-driven discourse management in Co-STORM.
-    #' @param max_active_experts Maximum number of active expert agents in Co-STORM.
-    #' @param enable_unseen_surfacing Whether to surface undiscussed sources in Co-STORM.
-    initialize = function(
-      models = NULL,
-      params = NULL,
-      chat_fn = NULL,
-      tools = NULL,
-      embed_fn = NULL,
-      ragnar_store = NULL,
-      search_provider = "native",
-      cache_dir = NULL,
-      max_search_results = 8,
-      max_search_queries_per_turn = 3,
-      retrieve_top_k = 25,
-      max_sources = 24,
-      user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
-      node_expansion_trigger_count = NULL,
-      enable_discourse_manager = FALSE,
-      max_active_experts = 5L,
-      enable_unseen_surfacing = FALSE
-    ) {
-      default_models <- list(
-        coordinator = "openai/gpt-5-mini",
-        writer = "openai/gpt-5-mini",
-        expert = "openai/gpt-5-mini",
-        mindmap = "openai/gpt-5-mini",
-        judge = "openai/gpt-5-mini"
-      )
-
-      if (is.null(models)) {
-        self$models <- default_models
-      } else if (is.character(models) && length(models) == 1) {
-        self$models <- lapply(default_models, function(x) models)
-      } else {
-        self$models <- models
-      }
-
-      self$params <- params %||% list()
-      self$chat_fn <- chat_fn
-      self$tools <- tools
-      self$embed_fn <- embed_fn
-      self$search_provider <- tempest_normalize_search_provider(search_provider)
-      self$cache_dir <- tempest_cache_dir(cache_dir)
-      self$max_search_results <- max_search_results
-      self$max_search_queries_per_turn <- as.integer(
-        max_search_queries_per_turn
-      )
-      self$retrieve_top_k <- as.integer(retrieve_top_k)
-      if (
-        is.na(self$max_search_queries_per_turn) ||
-          self$max_search_queries_per_turn < 1
-      ) {
-        self$max_search_queries_per_turn <- 3L
-      }
-      if (is.na(self$retrieve_top_k) || self$retrieve_top_k < 1) {
-        self$retrieve_top_k <- 25L
-      }
-      self$max_sources <- max_sources
-      self$user_agent <- user_agent
-      self$node_expansion_trigger_count <- node_expansion_trigger_count
-      self$enable_discourse_manager <- enable_discourse_manager
-      self$max_active_experts <- as.integer(max_active_experts)
-      self$enable_unseen_surfacing <- enable_unseen_surfacing
-
-      # Create or use ragnar store
-      if (!is.null(ragnar_store)) {
-        self$ragnar_store <- ragnar_store
-      } else if (!is.null(embed_fn)) {
-        self$ragnar_store <- tempest_create_ragnar_store(
-          embed_fn,
-          self$cache_dir
-        )
-      }
-
-      invisible(self)
-    },
-
-    #' @description
-    #' Create a chat object for a given role.
-    #' @param role Role name (e.g., "coordinator", "writer", "expert").
-    #' @param system_prompt Optional system prompt override.
-    #' @param echo Echo setting for the chat.
-    #' @return An ellmer-compatible Chat object.
-    make_chat = function(role, system_prompt = NULL, echo = "none") {
-      model <- self$models[[role]] %||%
-        self$models[["coordinator"]] %||%
-        "openai/gpt-5-mini"
-
-      if (is.null(system_prompt)) {
-        prompt_name <- paste0(role, "_system")
-        system_prompt <- tryCatch(
-          tempest_prompt(prompt_name),
-          error = function(e) NULL
-        )
-        if (is.null(system_prompt)) {
-          system_prompt <- "You are a helpful assistant."
-        }
-      }
-
-      # Use custom chat function if provided
-      if (!is.null(self$chat_fn)) {
-        chat <- self$chat_fn(
-          role = role,
-          model = model,
-          system_prompt = system_prompt,
-          echo = echo
-        )
-      } else {
-        tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
-        chat <- ellmer::chat(
-          name = model,
-          system_prompt = system_prompt,
-          params = self$params,
-          echo = echo
-        )
-      }
-
-      # Register additional tools if provided
-      if (!is.null(self$tools)) {
-        tools_to_register <- if (is.function(self$tools)) {
-          self$tools()
-        } else {
-          self$tools
-        }
-        chat$register_tools(tools_to_register)
-      }
-
-      chat
-    }
+  properties = list(
+    models = S7::new_property(S7::class_list, default = list()),
+    params = S7::new_property(S7::class_list, default = list()),
+    chat_fn = S7::new_property(S7::class_function | NULL, default = NULL),
+    tools = S7::new_property(S7::class_any, default = NULL),
+    embed_fn = S7::new_property(S7::class_function | NULL, default = NULL),
+    ragnar_store = S7::new_property(S7::class_any, default = NULL),
+    search_provider = prop_chr("native"),
+    cache_dir = prop_chr(),
+    max_search_results = S7::new_property(S7::class_numeric, default = 8),
+    max_search_queries_per_turn = S7::new_property(
+      S7::class_integer,
+      default = 3L
+    ),
+    retrieve_top_k = S7::new_property(S7::class_integer, default = 25L),
+    max_sources = S7::new_property(S7::class_numeric, default = 24),
+    user_agent = prop_chr(
+      "tempest (R; +https://github.com/JamesHWade/tempest)"
+    ),
+    node_expansion_trigger_count = S7::new_property(
+      S7::class_any,
+      default = NULL
+    ),
+    enable_discourse_manager = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
+    max_active_experts = S7::new_property(S7::class_integer, default = 5L),
+    enable_unseen_surfacing = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
+    citation_policy = prop_enum(
+      c("none", "source_attributed", "claim_verified", "strict"),
+      "source_attributed"
+    ),
+    min_support_score = prop_score_default(0.7),
+    on_unsupported_claim = prop_enum(
+      c("flag", "drop", "revise", "keep_with_warning"),
+      "flag"
+    )
   )
 )
 
 #' Create a STORM configuration
 #'
-#' @param ... Passed to `TempestConfig$new()`.
-#' @return A `TempestConfig` R6 object.
+#' @param models Named list of model identifiers for each role, or a single
+#'   string to use for all roles.
+#' @param params Additional parameters passed to chat creation.
+#' @param chat_fn Custom chat factory function. Should accept `role`, `model`,
+#'   `system_prompt`, and `echo` arguments and return an ellmer-compatible Chat
+#'   object. Use this for custom providers like `chat_company()`.
+#' @param tools Additional tools to register with each chat. Can be a list of
+#'   ellmer tools, or a function that returns tools (e.g., `btw::btw_tools`).
+#' @param embed_fn Embedding function for RAG. Should accept a character vector
+#'   and return a matrix of embeddings. Use `ragnar::embed_openai()`,
+#'   `ragnar::embed_ollama()`, or a custom function. If provided, a ragnar store
+#'   is automatically created.
+#' @param ragnar_store A pre-built ragnar store. If NULL and `embed_fn` is
+#'   provided, a store is created automatically with the tempest metadata schema.
+#' @param search_provider Search provider: "native" (use provider's built-in web
+#'   search when available), "wikipedia", "you", "bing", "serper", "brave",
+#'   "duckduckgo", "tavily", "searxng", "google", or "azure_ai_search". Default
+#'   is "native" which uses OpenAI, Anthropic, or Google's native web search
+#'   capabilities when available, falling back to "wikipedia".
+#' @param cache_dir Path to cache directory.
+#' @param max_search_results Maximum search results to return.
+#' @param max_search_queries_per_turn Maximum decomposed queries per research
+#'   turn.
+#' @param retrieve_top_k Maximum facts/chunks retrieved for each section.
+#' @param max_sources Maximum sources to keep.
+#' @param user_agent User agent string for HTTP requests.
+#' @param node_expansion_trigger_count Number of notes/sources per node that
+#'   triggers expansion (NULL = disabled).
+#' @param enable_discourse_manager Whether to enable LLM-driven discourse
+#'   management in Co-STORM.
+#' @param max_active_experts Maximum number of active expert agents in Co-STORM.
+#' @param enable_unseen_surfacing Whether to surface undiscussed sources in
+#'   Co-STORM.
+#' @param citation_policy Citation enforcement policy: one of "none",
+#'   "source_attributed", "claim_verified", or "strict".
+#' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
+#'   considered supported.
+#' @param on_unsupported_claim Action for unsupported claims: one of "flag",
+#'   "drop", "revise", or "keep_with_warning".
+#' @return A `TempestConfig` S7 object.
 #' @examples
 #' cfg <- tempest_config()
 #' cfg <- tempest_config(search_provider = "wikipedia")
 #' @export
-tempest_config <- function(...) {
-  TempestConfig$new(...)
+tempest_config <- function(
+  models = NULL,
+  params = NULL,
+  chat_fn = NULL,
+  tools = NULL,
+  embed_fn = NULL,
+  ragnar_store = NULL,
+  search_provider = "native",
+  cache_dir = NULL,
+  max_search_results = 8,
+  max_search_queries_per_turn = 3,
+  retrieve_top_k = 25,
+  max_sources = 24,
+  user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
+  node_expansion_trigger_count = NULL,
+  enable_discourse_manager = FALSE,
+  max_active_experts = 5L,
+  enable_unseen_surfacing = FALSE,
+  citation_policy = "source_attributed",
+  min_support_score = 0.7,
+  on_unsupported_claim = "flag"
+) {
+  default_models <- list(
+    coordinator = "openai/gpt-5-mini",
+    writer = "openai/gpt-5-mini",
+    expert = "openai/gpt-5-mini",
+    mindmap = "openai/gpt-5-mini",
+    judge = "openai/gpt-5-mini"
+  )
+  models <- if (is.null(models)) {
+    default_models
+  } else if (is.character(models) && length(models) == 1) {
+    lapply(default_models, function(x) models)
+  } else {
+    models
+  }
+
+  mq <- as.integer(max_search_queries_per_turn)
+  if (is.na(mq) || mq < 1) {
+    mq <- 3L
+  }
+  rk <- as.integer(retrieve_top_k)
+  if (is.na(rk) || rk < 1) {
+    rk <- 25L
+  }
+
+  cache_dir <- tempest_cache_dir(cache_dir)
+  if (is.null(ragnar_store) && !is.null(embed_fn)) {
+    ragnar_store <- tempest_create_ragnar_store(embed_fn, cache_dir)
+  }
+
+  TempestConfig(
+    models = models,
+    params = params %||% list(),
+    chat_fn = chat_fn,
+    tools = tools,
+    embed_fn = embed_fn,
+    ragnar_store = ragnar_store,
+    search_provider = tempest_normalize_search_provider(search_provider),
+    cache_dir = cache_dir %||% NA_character_,
+    max_search_results = max_search_results,
+    max_search_queries_per_turn = mq,
+    retrieve_top_k = rk,
+    max_sources = max_sources,
+    user_agent = user_agent,
+    node_expansion_trigger_count = node_expansion_trigger_count,
+    enable_discourse_manager = enable_discourse_manager,
+    max_active_experts = as.integer(max_active_experts),
+    enable_unseen_surfacing = enable_unseen_surfacing,
+    citation_policy = citation_policy,
+    min_support_score = min_support_score,
+    on_unsupported_claim = on_unsupported_claim
+  )
+}
+
+#' Create a chat object for a given role.
+#'
+#' @param config A `TempestConfig` object.
+#' @param role Role name (e.g., "coordinator", "writer", "expert").
+#' @param system_prompt Optional system prompt override.
+#' @param echo Echo setting for the chat.
+#' @return An ellmer-compatible Chat object.
+#' @keywords internal
+tempest_make_chat <- function(
+  config,
+  role,
+  system_prompt = NULL,
+  echo = "none"
+) {
+  model <- config@models[[role]] %||%
+    config@models[["coordinator"]] %||%
+    "openai/gpt-5-mini"
+  if (is.null(system_prompt)) {
+    prompt_name <- paste0(role, "_system")
+    system_prompt <- tryCatch(tempest_prompt(prompt_name), error = function(e) {
+      NULL
+    }) %||%
+      "You are a helpful assistant."
+  }
+  if (!is.null(config@chat_fn)) {
+    chat <- config@chat_fn(
+      role = role,
+      model = model,
+      system_prompt = system_prompt,
+      echo = echo
+    )
+  } else {
+    tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
+    chat <- ellmer::chat(
+      name = model,
+      system_prompt = system_prompt,
+      params = config@params,
+      echo = echo
+    )
+  }
+  if (!is.null(config@tools)) {
+    tools_to_register <- if (is.function(config@tools)) {
+      config@tools()
+    } else {
+      config@tools
+    }
+    chat$register_tools(tools_to_register)
+  }
+  chat
 }
 
 #' @keywords internal

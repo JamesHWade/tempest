@@ -167,19 +167,23 @@ TempestSession <- R6::R6Class(
 
       # Create chats first (need extractor for session manager)
       self$chats <- list(
-        moderator = config$make_chat(
+        moderator = tempest_make_chat(
+          config,
           "coordinator",
           system_prompt = tempest_prompt("moderator_system")
         ),
-        mindmap = config$make_chat(
+        mindmap = tempest_make_chat(
+          config,
           "mindmap",
           system_prompt = tempest_prompt("mindmap_system")
         ),
-        reporter = config$make_chat(
+        reporter = tempest_make_chat(
+          config,
           "writer",
           system_prompt = tempest_prompt("reporter_system")
         ),
-        extractor = config$make_chat(
+        extractor = tempest_make_chat(
+          config,
           "judge",
           system_prompt = tempest_prompt("fact_extractor_system")
         )
@@ -197,8 +201,8 @@ TempestSession <- R6::R6Class(
       tempest_register_default_tools(
         self$chats$moderator,
         self$retriever,
-        model = self$config$models[["coordinator"]],
-        search_provider = self$config$search_provider
+        model = self$config@models[["coordinator"]],
+        search_provider = self$config@search_provider
       )
       tempest_register_expert_tools(
         self$chats$moderator,
@@ -211,18 +215,18 @@ TempestSession <- R6::R6Class(
       tempest_register_default_tools(
         self$chats$mindmap,
         self$retriever,
-        model = self$config$models[["mindmap"]],
-        search_provider = self$config$search_provider
+        model = self$config@models[["mindmap"]],
+        search_provider = self$config@search_provider
       )
       tempest_register_default_tools(
         self$chats$reporter,
         self$retriever,
-        model = self$config$models[["writer"]],
-        search_provider = self$config$search_provider
+        model = self$config@models[["writer"]],
+        search_provider = self$config@search_provider
       )
 
       # Initialize discourse manager if enabled
-      if (isTRUE(config$enable_discourse_manager)) {
+      if (isTRUE(config@enable_discourse_manager)) {
         self$discourse_manager <- DiscourseManager$new(config)
       }
 
@@ -348,6 +352,26 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
+    #' Suggest follow-up questions for the user based on the conversation so far.
+    #' @param n Maximum number of questions to return.
+    #' @return A character vector of questions (possibly empty).
+    suggest_questions = function(n = 4) {
+      # Pass NULL (not transcript_markdown's "(no dialog yet)" placeholder) so an
+      # empty session gets newcomer-style questions rather than follow-ups.
+      context <- if (length(self$transcript) > 0) {
+        self$transcript_markdown(max_turns = 12)
+      } else {
+        NULL
+      }
+      tempest_suggest_questions(
+        topic = self$topic,
+        context = context,
+        n = n,
+        config = self$config
+      )
+    },
+
+    #' @description
     #' Find expert index by persona name.
     #' @param name The agent name to look up.
     #' @return Index of the expert, or NULL if not found.
@@ -402,7 +426,7 @@ TempestSession <- R6::R6Class(
           transcript_md = self$transcript_markdown(max_turns = 20),
           mindmap_md = tempest_mindmap_to_markdown(self$mindmap),
           persona_descriptions = self$get_persona_descriptions(),
-          unseen_sources = if (isTRUE(self$config$enable_unseen_surfacing)) {
+          unseen_sources = if (isTRUE(self$config@enable_unseen_surfacing)) {
             self$find_undiscussed_sources()
           } else {
             character()
@@ -505,9 +529,10 @@ TempestSession <- R6::R6Class(
             q,
             "\n\n",
             "Instructions:\n",
-            "- Use web_search + fetch_url to find and cite sources.\n",
-            "- Only state factual claims supported by sources you fetched.\n",
-            "- For each factual sentence, add citations like [Sxxxxxxxxxxxx].\n",
+            "- Use the available web/source tools to find and cite sources.\n",
+            "- If web_search and fetch_url are available, search first and then fetch sources.\n",
+            "- Only state factual claims supported by sources you inspected.\n",
+            "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
             "- If evidence is weak or unclear, say so.\n\n",
             "Respond now:"
           )
@@ -551,7 +576,7 @@ TempestSession <- R6::R6Class(
       }
 
       if (verbose) {
-        total_facts <- length(self$store$list_facts())
+        total_facts <- length(self$store$list_claims())
         total_sources <- length(self$store$list_sources())
         tempest_inform(
           "Warmup complete: {total_facts} facts, {total_sources} sources"
@@ -619,9 +644,9 @@ TempestSession <- R6::R6Class(
     #' @return The new persona (invisibly).
     add_expert = function(area, name = NULL) {
       active <- self$get_active_personas()
-      if (length(active) >= self$config$max_active_experts) {
+      if (length(active) >= self$config@max_active_experts) {
         tempest_warn(
-          "Maximum active experts ({self$config$max_active_experts}) reached."
+          "Maximum active experts ({self$config@max_active_experts}) reached."
         )
         return(invisible(NULL))
       }
@@ -670,7 +695,7 @@ TempestSession <- R6::R6Class(
     #' @description
     #' Check and expand oversized mind map nodes.
     check_and_expand_nodes = function() {
-      trigger <- self$config$node_expansion_trigger_count
+      trigger <- self$config@node_expansion_trigger_count
       if (is.null(trigger)) {
         return(invisible(NULL))
       }
@@ -816,7 +841,7 @@ TempestSession <- R6::R6Class(
         if (is.null(new_persona)) {
           msg <- paste0(
             "Could not add expert: maximum active experts (",
-            self$config$max_active_experts,
+            self$config@max_active_experts,
             ") reached."
           )
           self$add_turn("System", "assistant", msg)

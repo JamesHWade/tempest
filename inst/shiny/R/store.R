@@ -15,6 +15,16 @@ new_session_store <- function() {
     report_topic = NULL
   )
 
+  bump_version <- function() {
+    version <- shiny::isolate(rv$version)
+    if (is.null(version) || is.na(version)) {
+      version <- 0L
+    }
+    version <- version + 1L
+    rv$version <- version
+    invisible(version)
+  }
+
   list(
     # Version-aware read of the current session. Re-fires on set()/touch().
     get = shiny::reactive({
@@ -25,13 +35,13 @@ new_session_store <- function() {
     # Replace the session (e.g. on session start).
     set = function(session) {
       rv$session <- session
-      rv$version <- rv$version + 1L
+      bump_version()
       invisible(session)
     },
 
     # Signal that the current session was mutated in place.
     touch = function() {
-      rv$version <- rv$version + 1L
+      bump_version()
       invisible()
     },
 

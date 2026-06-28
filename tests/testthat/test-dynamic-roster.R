@@ -131,7 +131,7 @@ test_that("tempest_register_single_expert_tool works", {
   retriever <- tempest_retriever(config = cfg, store = store)
   mgr <- tempest:::ExpertSessionManager$new(cfg, retriever)
 
-  chat <- cfg$make_chat("coordinator")
+  chat <- tempest_make_chat(cfg, "coordinator")
   expect_length(chat$get_tools(), 0)
   tempest:::tempest_register_single_expert_tool(
     chat,

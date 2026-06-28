@@ -18,21 +18,22 @@ Depends:
 Imports:
     cli,
     digest,
+    dsprrr,
+    ellmer,
     fs,
     glue,
     httr2,
     purrr,
     R6,
     rlang (>= 1.0.0),
+    S7,
     stringi,
     tibble
 Suggests:
     bslib (>= 0.6.0),
     commonmark,
     dplyr,
-    dsprrr,
     DT,
-    ellmer,
     jsonlite,
     knitr,
     later,
@@ -58,3 +59,31 @@ URL: https://jameshwade.github.io/tempest/,
     https://github.com/JamesHWade/tempest
 BugReports: https://github.com/JamesHWade/tempest/issues
 Config/roxygen2/version: 7.3.3.9000
+Collate: 
+    'app.R'
+    'cache.R'
+    'citations.R'
+    'ledger-types.R'
+    'config.R'
+    'costorm-discourse.R'
+    'costorm-mindmap.R'
+    'costorm.R'
+    'dsprrr.R'
+    'evals.R'
+    'models.R'
+    'prompts.R'
+    'retriever.R'
+    'run-persistence.R'
+    'simulated-user.R'
+    'storm-outline.R'
+    'storm-perspectives.R'
+    'storm-polish.R'
+    'storm-research.R'
+    'storm-types.R'
+    'storm-write.R'
+    'storm.R'
+    'suggestions.R'
+    'tempest-package.R'
+    'tools.R'
+    'utils.R'
+    'verify.R'
