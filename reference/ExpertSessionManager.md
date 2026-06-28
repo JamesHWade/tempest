@@ -78,13 +78,17 @@ Extract facts from an expert response.
 
 #### Usage
 
-    ExpertSessionManager$extract_facts(response)
+    ExpertSessionManager$extract_facts(response, turn = NULL)
 
 #### Arguments
 
 - `response`:
 
   Character string response from expert.
+
+- `turn`:
+
+  Optional ellmer turn to inspect for provider-native sources.
 
 #### Returns
 

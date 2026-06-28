@@ -12,6 +12,8 @@
   : TempestSession
 - [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
   : Run the tempest Shiny chat application
+- [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
+  : Create a Tempest artifact store adapter
 - [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
   : Return claims as a tibble
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
@@ -20,10 +22,14 @@
   : Create a Co-STORM evaluation task using SimulatedUser
 - [`tempest_create_ragnar_store()`](https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.md)
   : Create a ragnar store with tempest metadata schema
+- [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
+  : Create a Co-STORM expert definition
 - [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md)
   : Generate Expert Personas for a Topic
 - [`tempest_load_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.md)
   : Load compiled dsprrr modules
+- [`tempest_memory_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.md)
+  : Create an in-memory Tempest artifact store
 - [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md)
   : Optimize STORM dsprrr modules
 - [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)

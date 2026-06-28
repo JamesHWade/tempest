@@ -2,6 +2,16 @@
 
 ## tempest 0.1.0
 
+- [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),
+  [`tempest_memory_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.md),
+  and
+  [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
+  provide initial host-app extension points for capturing report
+  artifacts and supplying validated Co-STORM experts.
+  [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+  now accepts an `artifact_store`, and
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  accepts a shared retriever with a `SourceStore`.
 - The Chat tab now suggests follow-up questions as clickable cards. A
   set appears when the expert panel assembles and refreshes after each
   answer; clicking a card sends that question to the Moderator. Toggle

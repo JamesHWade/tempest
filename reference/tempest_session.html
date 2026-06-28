@@ -43,7 +43,8 @@
 <span>  <span class="va">topic</span>,</span>
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  n_experts <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>  personas <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  personas <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  retriever <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -66,6 +67,11 @@
 <dt id="arg-personas">personas<a class="anchor" aria-label="anchor" href="#arg-personas"></a></dt>
 <dd><p>Optional list of pre-generated personas. If NULL,
 personas are generated automatically.</p></dd>
+
+
+<dt id="arg-retriever">retriever<a class="anchor" aria-label="anchor" href="#arg-retriever"></a></dt>
+<dd><p>Optional <code>TempestRetriever</code> or compatible retriever object
+with a <code>SourceStore</code> at <code>$store</code>.</p></dd>
 
 </dl></div>
 

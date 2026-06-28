@@ -9,7 +9,8 @@ tempest_session(
   topic,
   config = tempest_config(),
   n_experts = 3,
-  personas = NULL
+  personas = NULL,
+  retriever = NULL
 )
 ```
 
@@ -31,6 +32,11 @@ tempest_session(
 
   Optional list of pre-generated personas. If NULL, personas are
   generated automatically.
+
+- retriever:
+
+  Optional `TempestRetriever` or compatible retriever object with a
+  `SourceStore` at `$store`.
 
 ## Examples
 

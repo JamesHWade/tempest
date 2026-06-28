@@ -103,6 +103,7 @@
 <li><p><a href="#method-TempestSession-update_mindmap"><code>TempestSession$update_mindmap()</code></a></p></li>
 <li><p><a href="#method-TempestSession-mindmap_markdown"><code>TempestSession$mindmap_markdown()</code></a></p></li>
 <li><p><a href="#method-TempestSession-extract_facts"><code>TempestSession$extract_facts()</code></a></p></li>
+<li><p><a href="#method-TempestSession-harvest_native_sources"><code>TempestSession$harvest_native_sources()</code></a></p></li>
 <li><p><a href="#method-TempestSession-suggest_questions"><code>TempestSession$suggest_questions()</code></a></p></li>
 <li><p><a href="#method-TempestSession-find_expert_index"><code>TempestSession$find_expert_index()</code></a></p></li>
 <li><p><a href="#method-TempestSession-step"><code>TempestSession$step()</code></a></p></li>
@@ -126,7 +127,8 @@
 <span>  <span class="va">topic</span>,</span>
 <span>  config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  n_experts <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>  personas <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  personas <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  retriever <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
@@ -142,6 +144,10 @@
       <dt><code>personas</code></dt>
 <dd><p>Optional list of pre-generated personas. If NULL,
 personas are generated automatically using <code><a href="tempest_generate_personas.html">tempest_generate_personas()</a></code>.</p></dd>
+
+      <dt><code>retriever</code></dt>
+<dd><p>Optional <code>TempestRetriever</code> or compatible retriever
+object with a <code>SourceStore</code> at <code>$store</code>.</p></dd>
 
 
 </dl><p></p></div>
@@ -258,20 +264,43 @@ personas are generated automatically using <code><a href="tempest_generate_perso
 
 </div>
 
+<p></p><hr><a id="method-TempestSession-harvest_native_sources"></a><div class="section">
+<h3 id="tempestsession-harvest-native-sources-"><code>TempestSession$harvest_native_sources()</code><a class="anchor" aria-label="anchor" href="#tempestsession-harvest-native-sources-"></a></h3>
+<p>Experimental helper for harvesting source metadata from provider-native
+web tool responses.</p><div class="section">
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">harvest_native_sources</span><span class="op">(</span>chat <span class="op">=</span> <span class="cn">NULL</span>, turn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>chat</code></dt>
+<dd><p>Optional chat whose last turn should be inspected.</p></dd>
+
+      <dt><code>turn</code></dt>
+<dd><p>Optional explicit ellmer turn.</p></dd>
+
+
+</dl><p></p></div>
+</div><p></p><div class="section">
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<p>Character vector of source ids added or updated.</p>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-TempestSession-suggest_questions"></a><div class="section">
 <h3 id="tempestsession-suggest-questions-"><code>TempestSession$suggest_questions()</code><a class="anchor" aria-label="anchor" href="#tempestsession-suggest-questions-"></a></h3>
 <p>Suggest follow-up questions for the user based on the conversation so far.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">suggest_questions</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>n</code></dt>
 <dd><p>Maximum number of questions to return.</p></dd>
 
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>A character vector of questions (possibly empty).</p>
 </div>
 
@@ -280,17 +309,17 @@ personas are generated automatically using <code><a href="tempest_generate_perso
 <p></p><hr><a id="method-TempestSession-find_expert_index"></a><div class="section">
 <h3 id="tempestsession-find-expert-index-"><code>TempestSession$find_expert_index()</code><a class="anchor" aria-label="anchor" href="#tempestsession-find-expert-index-"></a></h3>
 <p>Find expert index by persona name.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">find_expert_index</span><span class="op">(</span><span class="va">name</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>name</code></dt>
 <dd><p>The agent name to look up.</p></dd>
 
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>Index of the expert, or NULL if not found.</p>
 </div>
 
@@ -299,10 +328,10 @@ personas are generated automatically using <code><a href="tempest_generate_perso
 <p></p><hr><a id="method-TempestSession-step"></a><div class="section">
 <h3 id="tempestsession-step-"><code>TempestSession$step()</code><a class="anchor" aria-label="anchor" href="#tempestsession-step-"></a></h3>
 <p>Process one step of the conversation.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">step</span><span class="op">(</span>user_input <span class="op">=</span> <span class="cn">NULL</span>, auto <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>user_input</code></dt>
 <dd><p>User's input message.</p></dd>
 
@@ -312,7 +341,7 @@ personas are generated automatically using <code><a href="tempest_generate_perso
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>A list with speaker, answer, and mindmap_md.</p>
 </div>
 
@@ -322,17 +351,17 @@ personas are generated automatically using <code><a href="tempest_generate_perso
 <h3 id="tempestsession-warmup-"><code>TempestSession$warmup()</code><a class="anchor" aria-label="anchor" href="#tempestsession-warmup-"></a></h3>
 <p>Run a warmup phase where each expert researches their initial questions.
 This primes the knowledge base with foundational research before interactive Q&amp;A.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">warmup</span><span class="op">(</span>verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>verbose</code></dt>
 <dd><p>If TRUE, prints progress messages.</p></dd>
 
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>A list with results from each expert's warmup.</p>
 </div>
 
@@ -341,14 +370,14 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-report"></a><div class="section">
 <h3 id="tempestsession-report-"><code>TempestSession$report()</code><a class="anchor" aria-label="anchor" href="#tempestsession-report-"></a></h3>
 <p>Generate a report from the session.</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">report</span><span class="op">(</span></span>
 <span>  style <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"technical"</span>, <span class="st">"executive"</span><span class="op">)</span>,</span>
 <span>  include_references <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  reorganize <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>style</code></dt>
 <dd><p>Report style: "technical" or "executive".</p></dd>
 
@@ -361,7 +390,7 @@ This primes the knowledge base with foundational research before interactive Q&a
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
+<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
 <p>Markdown report string.</p>
 </div>
 
@@ -370,10 +399,10 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-add_expert"></a><div class="section">
 <h3 id="tempestsession-add-expert-"><code>TempestSession$add_expert()</code><a class="anchor" aria-label="anchor" href="#tempestsession-add-expert-"></a></h3>
 <p>Add a new expert to the panel dynamically.</p><div class="section">
-<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">add_expert</span><span class="op">(</span><span class="va">area</span>, name <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>area</code></dt>
 <dd><p>The area of expertise needed.</p></dd>
 
@@ -383,7 +412,7 @@ This primes the knowledge base with foundational research before interactive Q&a
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
+<h4 id="returns-10">Returns<a class="anchor" aria-label="anchor" href="#returns-10"></a></h4>
 <p>The new persona (invisibly).</p>
 </div>
 
@@ -392,17 +421,17 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-retire_expert"></a><div class="section">
 <h3 id="tempestsession-retire-expert-"><code>TempestSession$retire_expert()</code><a class="anchor" aria-label="anchor" href="#tempestsession-retire-expert-"></a></h3>
 <p>Retire an expert from the panel.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">retire_expert</span><span class="op">(</span><span class="va">name</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>name</code></dt>
 <dd><p>The name of the expert to retire.</p></dd>
 
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-10">Returns<a class="anchor" aria-label="anchor" href="#returns-10"></a></h4>
+<h4 id="returns-11">Returns<a class="anchor" aria-label="anchor" href="#returns-11"></a></h4>
 <p>Logical indicating success.</p>
 </div>
 
@@ -411,10 +440,10 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-get_active_personas"></a><div class="section">
 <h3 id="tempestsession-get-active-personas-"><code>TempestSession$get_active_personas()</code><a class="anchor" aria-label="anchor" href="#tempestsession-get-active-personas-"></a></h3>
 <p>Get active (non-retired) personas.</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">get_active_personas</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-11">Returns<a class="anchor" aria-label="anchor" href="#returns-11"></a></h4>
+<h4 id="returns-12">Returns<a class="anchor" aria-label="anchor" href="#returns-12"></a></h4>
 <p>List of active persona objects.</p>
 </div>
 
@@ -423,7 +452,7 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-check_and_expand_nodes"></a><div class="section">
 <h3 id="tempestsession-check-and-expand-nodes-"><code>TempestSession$check_and_expand_nodes()</code><a class="anchor" aria-label="anchor" href="#tempestsession-check-and-expand-nodes-"></a></h3>
 <p>Check and expand oversized mind map nodes.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">check_and_expand_nodes</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -432,10 +461,10 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-get_discussed_source_ids"></a><div class="section">
 <h3 id="tempestsession-get-discussed-source-ids-"><code>TempestSession$get_discussed_source_ids()</code><a class="anchor" aria-label="anchor" href="#tempestsession-get-discussed-source-ids-"></a></h3>
 <p>Get source IDs that have been discussed in the transcript.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">get_discussed_source_ids</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-12">Returns<a class="anchor" aria-label="anchor" href="#returns-12"></a></h4>
+<h4 id="returns-13">Returns<a class="anchor" aria-label="anchor" href="#returns-13"></a></h4>
 <p>Character vector of discussed source IDs.</p>
 </div>
 
@@ -444,10 +473,10 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-find_undiscussed_sources"></a><div class="section">
 <h3 id="tempestsession-find-undiscussed-sources-"><code>TempestSession$find_undiscussed_sources()</code><a class="anchor" aria-label="anchor" href="#tempestsession-find-undiscussed-sources-"></a></h3>
 <p>Find sources that haven't been discussed yet.</p><div class="section">
-<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
+<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">find_undiscussed_sources</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-13">Returns<a class="anchor" aria-label="anchor" href="#returns-13"></a></h4>
+<h4 id="returns-14">Returns<a class="anchor" aria-label="anchor" href="#returns-14"></a></h4>
 <p>Character vector of undiscussed source IDs.</p>
 </div>
 
@@ -456,17 +485,17 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-surface_unseen_information"></a><div class="section">
 <h3 id="tempestsession-surface-unseen-information-"><code>TempestSession$surface_unseen_information()</code><a class="anchor" aria-label="anchor" href="#tempestsession-surface-unseen-information-"></a></h3>
 <p>Generate questions about undiscussed sources.</p><div class="section">
-<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
+<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">surface_unseen_information</span><span class="op">(</span>max_questions <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>max_questions</code></dt>
 <dd><p>Maximum questions to generate.</p></dd>
 
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-14">Returns<a class="anchor" aria-label="anchor" href="#returns-14"></a></h4>
+<h4 id="returns-15">Returns<a class="anchor" aria-label="anchor" href="#returns-15"></a></h4>
 <p>Character vector of questions, or NULL if none.</p>
 </div>
 
@@ -475,7 +504,7 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-reorganize_mindmap"></a><div class="section">
 <h3 id="tempestsession-reorganize-mindmap-"><code>TempestSession$reorganize_mindmap()</code><a class="anchor" aria-label="anchor" href="#tempestsession-reorganize-mindmap-"></a></h3>
 <p>Reorganize the mind map for clarity.</p><div class="section">
-<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
+<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">reorganize_mindmap</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -484,17 +513,17 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-execute_turn_decision"></a><div class="section">
 <h3 id="tempestsession-execute-turn-decision-"><code>TempestSession$execute_turn_decision()</code><a class="anchor" aria-label="anchor" href="#tempestsession-execute-turn-decision-"></a></h3>
 <p>Execute a discourse manager turn decision.</p><div class="section">
-<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
+<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">execute_turn_decision</span><span class="op">(</span><span class="va">decision</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>decision</code></dt>
 <dd><p>A turn decision from the discourse manager.</p></dd>
 
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-15">Returns<a class="anchor" aria-label="anchor" href="#returns-15"></a></h4>
+<h4 id="returns-16">Returns<a class="anchor" aria-label="anchor" href="#returns-16"></a></h4>
 <p>A list with speaker, answer, and mindmap_md.</p>
 </div>
 
@@ -503,10 +532,10 @@ This primes the knowledge base with foundational research before interactive Q&a
 <p></p><hr><a id="method-TempestSession-clone"></a><div class="section">
 <h3 id="tempestsession-clone-"><code>TempestSession$clone()</code><a class="anchor" aria-label="anchor" href="#tempestsession-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
+<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestSession</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
+<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

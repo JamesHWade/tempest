@@ -17,6 +17,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/run_app.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest-package.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_abort.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_artifact_store.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_atomic_write_lines.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_cache_clear.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_cache_dir.html</loc></url>
@@ -36,6 +37,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_dispute.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_eval_dataset.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_evidence_span.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_expert.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_extract_toc_from_url.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_fetch_url_markdown.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_format_persona_details.html</loc></url>
@@ -47,6 +49,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_chat.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_dsprrr_modules.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_mindmap_expand_node.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_mindmap_node_sizes.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_mindmap_oversized_nodes.html</loc></url>

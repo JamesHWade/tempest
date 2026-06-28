@@ -73,6 +73,8 @@ sources, and report artifacts.
 
 - [`TempestSession$extract_facts()`](#method-TempestSession-extract_facts)
 
+- [`TempestSession$harvest_native_sources()`](#method-TempestSession-harvest_native_sources)
+
 - [`TempestSession$suggest_questions()`](#method-TempestSession-suggest_questions)
 
 - [`TempestSession$find_expert_index()`](#method-TempestSession-find_expert_index)
@@ -115,7 +117,8 @@ Create a new TempestSession.
       topic,
       config = tempest_config(),
       n_experts = 3,
-      personas = NULL
+      personas = NULL,
+      retriever = NULL
     )
 
 #### Arguments
@@ -137,6 +140,11 @@ Create a new TempestSession.
   Optional list of pre-generated personas. If NULL, personas are
   generated automatically using
   [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md).
+
+- `retriever`:
+
+  Optional `TempestRetriever` or compatible retriever object with a
+  `SourceStore` at `$store`.
 
 ------------------------------------------------------------------------
 
@@ -255,6 +263,31 @@ Extract facts from text into the store.
 - `text`:
 
   Text containing factual claims.
+
+------------------------------------------------------------------------
+
+### `TempestSession$harvest_native_sources()`
+
+Experimental helper for harvesting source metadata from provider-native
+web tool responses.
+
+#### Usage
+
+    TempestSession$harvest_native_sources(chat = NULL, turn = NULL)
+
+#### Arguments
+
+- `chat`:
+
+  Optional chat whose last turn should be inspected.
+
+- `turn`:
+
+  Optional explicit ellmer turn.
+
+#### Returns
+
+Character vector of source ids added or updated.
 
 ------------------------------------------------------------------------
 

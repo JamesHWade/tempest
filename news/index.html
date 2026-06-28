@@ -34,7 +34,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="tempest-010">tempest 0.1.0<a class="anchor" aria-label="anchor" href="#tempest-010"></a></h2>
-<ul><li>The Chat tab now suggests follow-up questions as clickable cards. A set appears when the expert panel assembles and refreshes after each answer; clicking a card sends that question to the Moderator. Toggle it off with “Suggest follow-up questions” in the sidebar. New exported helper <code><a href="../reference/tempest_suggest_questions.html">tempest_suggest_questions()</a></code>.</li>
+<ul><li>
+<code><a href="../reference/tempest_artifact_store.html">tempest_artifact_store()</a></code>, <code><a href="../reference/tempest_memory_artifact_store.html">tempest_memory_artifact_store()</a></code>, and <code><a href="../reference/tempest_expert.html">tempest_expert()</a></code> provide initial host-app extension points for capturing report artifacts and supplying validated Co-STORM experts. <code><a href="../reference/tempest_config.html">tempest_config()</a></code> now accepts an <code>artifact_store</code>, and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> accepts a shared retriever with a <code>SourceStore</code>.</li>
+<li>The Chat tab now suggests follow-up questions as clickable cards. A set appears when the expert panel assembles and refreshes after each answer; clicking a card sends that question to the Moderator. Toggle it off with “Suggest follow-up questions” in the sidebar. New exported helper <code><a href="../reference/tempest_suggest_questions.html">tempest_suggest_questions()</a></code>.</li>
 <li>
 <code><a href="../reference/tempest_config.html">tempest_config()</a></code> gains <code>max_search_queries_per_turn</code> and <code>retrieve_top_k</code> controls to mirror the upstream STORM runner’s query and section-retrieval limits.</li>
 <li>

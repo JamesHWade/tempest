@@ -12,6 +12,7 @@ tempest_config(
   tools = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
+  artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
   max_search_results = 8,
@@ -64,6 +65,13 @@ tempest_config(
 
   A pre-built ragnar store. If NULL and `embed_fn` is provided, a store
   is created automatically with the tempest metadata schema.
+
+- artifact_store:
+
+  Optional artifact-store adapter from
+  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
+  or
+  [`tempest_memory_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.md).
 
 - search_provider:
 

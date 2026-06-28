@@ -13,6 +13,7 @@ TempestConfig(
   tools = NULL,
   embed_fn = function() NULL,
   ragnar_store = NULL,
+  artifact_store = NULL,
   search_provider = "native",
   cache_dir = NA_character_,
   max_search_results = 8,

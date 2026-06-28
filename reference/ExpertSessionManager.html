@@ -108,11 +108,14 @@ the session ID returned from previous interactions.</p>
 <h3 id="expertsessionmanager-extract-facts-"><code>ExpertSessionManager$extract_facts()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-extract-facts-"></a></h3>
 <p>Extract facts from an expert response.</p><div class="section">
 <h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">extract_facts</span><span class="op">(</span><span class="va">response</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">extract_facts</span><span class="op">(</span><span class="va">response</span>, turn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>response</code></dt>
 <dd><p>Character string response from expert.</p></dd>
+
+      <dt><code>turn</code></dt>
+<dd><p>Optional ellmer turn to inspect for provider-native sources.</p></dd>
 
 
 </dl><p></p></div>

@@ -46,6 +46,7 @@
 <span>  tools <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  embed_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ragnar_store <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  artifact_store <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  search_provider <span class="op">=</span> <span class="st">"native"</span>,</span>
 <span>  cache_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  max_search_results <span class="op">=</span> <span class="fl">8</span>,</span>
@@ -97,6 +98,11 @@ is automatically created.</p></dd>
 <dt id="arg-ragnar-store">ragnar_store<a class="anchor" aria-label="anchor" href="#arg-ragnar-store"></a></dt>
 <dd><p>A pre-built ragnar store. If NULL and <code>embed_fn</code> is
 provided, a store is created automatically with the tempest metadata schema.</p></dd>
+
+
+<dt id="arg-artifact-store">artifact_store<a class="anchor" aria-label="anchor" href="#arg-artifact-store"></a></dt>
+<dd><p>Optional artifact-store adapter from
+<code><a href="tempest_artifact_store.html">tempest_artifact_store()</a></code> or <code><a href="tempest_memory_artifact_store.html">tempest_memory_artifact_store()</a></code>.</p></dd>
 
 
 <dt id="arg-search-provider">search_provider<a class="anchor" aria-label="anchor" href="#arg-search-provider"></a></dt>
