@@ -84,6 +84,12 @@ tempest_env_values <- function(env) {
 }
 
 #' @keywords internal
+tempest_env_snapshot <- function(env) {
+  ids <- sort(ls(env, all.names = TRUE))
+  stats::setNames(lapply(ids, function(id) env[[id]]), ids)
+}
+
+#' @keywords internal
 tempest_source_store_snapshot <- function(store, artifacts = NULL) {
   stopifnot(inherits(store, "SourceStore"))
   if (!is.null(artifacts) && !is.character(artifacts)) {
@@ -201,6 +207,184 @@ tempest_source_store_restore <- function(snapshot, store = SourceStore$new()) {
   }
 
   store
+}
+
+#' @keywords internal
+tempest_session_restore_abort <- function(message) {
+  tempest_abort(
+    c("Cannot restore TempestSession snapshot.", x = message),
+    class = "tempest_session_restore_error"
+  )
+}
+
+#' @keywords internal
+tempest_expert_sessions_snapshot <- function(session) {
+  manager <- session$expert_session_manager
+  if (is.null(manager)) {
+    return(list())
+  }
+
+  session_ids <- sort(manager$list_sessions())
+  personas <- session$personas %||% list()
+  persona_ids <- purrr::map_chr(
+    personas,
+    ~ as.character(.x$id %||% NA_integer_)
+  )
+  persona_names <- purrr::map_chr(personas, ~ .x$name %||% NA_character_)
+
+  lapply(session_ids, function(session_id) {
+    provenance <- if (
+      exists(session_id, envir = manager$session_provenance, inherits = FALSE)
+    ) {
+      get(session_id, envir = manager$session_provenance, inherits = FALSE)
+    } else {
+      NULL
+    }
+    base <- if (is.environment(provenance)) {
+      provenance$base %||% list()
+    } else {
+      list()
+    }
+    persona_id <- as.character(base$persona_id %||% NA_character_)
+    persona_name <- NA_character_
+    persona_idx <- match(persona_id, persona_ids)
+    if (!is.na(persona_idx)) {
+      persona_name <- persona_names[[persona_idx]]
+    }
+    list(
+      session_id = session_id,
+      persona_id = persona_id,
+      persona_name = persona_name
+    )
+  })
+}
+
+#' @keywords internal
+tempest_session_snapshot <- function(session) {
+  stopifnot(inherits(session, "TempestSession"))
+  artifacts <- tempest_env_snapshot(session$artifacts)
+
+  list(
+    schema_version = 1L,
+    topic = session$topic,
+    title = session$title,
+    session_id = session$session_id,
+    personas = session$personas,
+    transcript = session$transcript,
+    mindmap = session$mindmap,
+    artifacts = artifacts,
+    suggested_questions = artifacts$suggested_questions %||% character(),
+    store = tempest_source_store_snapshot(session$store),
+    expert_sessions = tempest_expert_sessions_snapshot(session)
+  )
+}
+
+#' @keywords internal
+tempest_session_persona_for_expert_session <- function(
+  session,
+  expert_session
+) {
+  personas <- session$personas %||% list()
+  persona_id <- expert_session$persona_id %||% NA_character_
+  persona_id <- as.character(persona_id)
+  persona_id <- if (length(persona_id) == 0) NA_character_ else persona_id[[1]]
+  if (!is.na(persona_id) && nzchar(persona_id)) {
+    ids <- purrr::map_chr(personas, ~ as.character(.x$id %||% NA_integer_))
+    idx <- match(persona_id, ids)
+    if (!is.na(idx)) {
+      return(personas[[idx]])
+    }
+  }
+
+  persona_name <- expert_session$persona_name %||% NA_character_
+  if (rlang::is_string(persona_name) && !is.na(persona_name)) {
+    idx <- session$find_expert_index(persona_name)
+    if (!is.null(idx)) {
+      return(personas[[idx]])
+    }
+  }
+
+  NULL
+}
+
+#' @keywords internal
+tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
+  for (expert_session in expert_sessions %||% list()) {
+    if (!is.list(expert_session) || is.null(expert_session$session_id)) {
+      next
+    }
+    persona <- tempest_session_persona_for_expert_session(
+      session,
+      expert_session
+    )
+    if (is.null(persona)) {
+      tempest_session_restore_abort(
+        paste0(
+          "Expert session ",
+          expert_session$session_id,
+          " does not match a restored persona."
+        )
+      )
+    }
+    session$expert_session_manager$get_or_create(
+      persona,
+      session_id = expert_session$session_id
+    )
+  }
+  invisible(session)
+}
+
+#' @keywords internal
+tempest_session_restore <- function(
+  snapshot,
+  config = tempest_config(),
+  progress = NULL
+) {
+  if (!is.list(snapshot)) {
+    tempest_session_restore_abort("{.arg snapshot} must be a list.")
+  }
+  if (
+    !rlang::is_string(snapshot$topic) || !nzchar(tempest_trim(snapshot$topic))
+  ) {
+    tempest_session_restore_abort("Snapshot must include a non-empty topic.")
+  }
+
+  store <- tempest_source_store_restore(snapshot$store %||% list())
+  retriever <- tempest_retriever(config = config, store = store)
+  session <- tempest_session(
+    topic = snapshot$topic,
+    config = config,
+    personas = snapshot$personas %||% list(),
+    retriever = retriever,
+    progress = NULL
+  )
+
+  session$title <- snapshot$title %||% session$topic
+  session$session_id <- snapshot$session_id %||% session$session_id
+  session$progress <- tempest_progress_callback(progress)
+  session$expert_session_manager$run_id <- session$session_id
+  session$expert_session_manager$progress <- session$progress
+  session$transcript <- snapshot$transcript %||% list()
+  session$mindmap <- snapshot$mindmap %||% tempest_mindmap_init(session$topic)
+  session$artifacts <- new.env(parent = emptyenv())
+
+  artifacts <- snapshot$artifacts %||% list()
+  for (name in names(artifacts)) {
+    session$artifacts[[name]] <- artifacts[[name]]
+  }
+  if (
+    !is.null(snapshot$suggested_questions) &&
+      is.null(session$artifacts[["suggested_questions"]])
+  ) {
+    session$artifacts[["suggested_questions"]] <- snapshot$suggested_questions
+  }
+
+  tempest_session_restore_expert_sessions(
+    session,
+    snapshot$expert_sessions %||% list()
+  )
+
+  session
 }
 
 #' @keywords internal

@@ -82,6 +82,93 @@ test_that("SourceStore restore rejects claims with unknown source ids", {
   )
 })
 
+test_that("TempestSession snapshots restore durable session state", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  store <- SourceStore$new()
+  source <- tempest:::tempest_source(
+    "https://example.com/session-snapshot",
+    title = "Session Snapshot Source"
+  )
+  store$upsert_source(source)
+  claim_id <- store$add_claim(tempest_claim(
+    claim_text = "Session snapshots preserve claims.",
+    source_ids = source$id,
+    session_id = "session_snapshot"
+  ))
+  persona <- list(
+    id = 1,
+    name = "Dr. Snapshot",
+    title = "Persistence expert",
+    perspective = "Durable session state",
+    initial_questions = "What should be persisted?"
+  )
+  session <- tempest_session(
+    "Session persistence",
+    config = cfg,
+    personas = list(persona),
+    retriever = tempest_retriever(config = cfg, store = store)
+  )
+  session$title <- "Session persistence report"
+  session$session_id <- "session_snapshot"
+  session$expert_session_manager$run_id <- session$session_id
+  session$add_turn("User", "user", "What is durable?")
+  session$mindmap <- list(
+    nodes = list(list(
+      id = "root",
+      label = "Session persistence",
+      notes = "Durable state"
+    )),
+    edges = list()
+  )
+  session$artifacts[["report_md"]] <- "# Restored report"
+  session$artifacts[["suggested_questions"]] <- c("Q1", "Q2")
+  session$expert_session_manager$get_or_create(
+    session$personas[[1]],
+    session_id = "expert-session-1"
+  )
+
+  snapshot <- tempest:::tempest_session_snapshot(session)
+  collector <- tempest_progress_collector(include_payload = TRUE)
+  restored <- tempest:::tempest_session_restore(
+    snapshot,
+    config = cfg,
+    progress = collector$record
+  )
+
+  expect_r6_class(restored, "TempestSession")
+  expect_equal(restored$session_id, "session_snapshot")
+  expect_equal(restored$title, "Session persistence report")
+  expect_equal(restored$transcript[[1]]$text, "What is durable?")
+  expect_equal(restored$mindmap$nodes[[1]]$notes, "Durable state")
+  expect_equal(restored$artifacts[["report_md"]], "# Restored report")
+  expect_equal(restored$artifacts[["suggested_questions"]], c("Q1", "Q2"))
+  expect_equal(
+    restored$store$get_claim(claim_id)@claim_text,
+    "Session snapshots preserve claims."
+  )
+  expect_equal(
+    restored$expert_session_manager$list_sessions(),
+    "expert-session-1"
+  )
+  expert <- restored$expert_session_manager$get_or_create(
+    restored$personas[[1]],
+    session_id = "expert-session-1"
+  )
+  expect_equal(expert$is_new, FALSE)
+
+  expect_length(collector$events(), 0)
+  restored$emit_progress(
+    "workflow",
+    "succeeded",
+    stage = "session",
+    step = "test"
+  )
+  expect_equal(collector$data()[[1]]$run_id, "session_snapshot")
+})
+
 test_that("run artifacts save and load store state", {
   skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")
