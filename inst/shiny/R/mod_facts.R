@@ -65,29 +65,19 @@ mod_facts_server <- function(id, store) {
       )
     }
 
-    collapse_ids <- function(ids_list) {
-      vapply(
-        ids_list,
-        function(ids) paste(unlist(ids), collapse = ", "),
-        character(1)
-      )
-    }
-
     if (has_pkg("DT")) {
       output$table <- DT::renderDT({
         df <- facts()
         shiny::req(df, nrow(df) > 0)
+        df <- facts_table_data(df)
         if ("confidence" %in% names(df)) {
           df$confidence <- confidence_badge(df$confidence)
-        }
-        if ("source_ids" %in% names(df)) {
-          df$source_ids <- collapse_ids(df$source_ids)
         }
         styled_datatable(df)
       })
     } else {
       output$table_basic <- shiny::renderTable(
-        facts(),
+        facts_table_data(facts()),
         striped = TRUE,
         hover = TRUE,
         bordered = TRUE,

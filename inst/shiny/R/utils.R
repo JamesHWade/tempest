@@ -1004,6 +1004,94 @@ workflow_first_text <- function(...) {
   ""
 }
 
+table_missing_text <- function(x) {
+  is.na(x) | !nzchar(trimws(as.character(x)))
+}
+
+table_compact_text <- function(x, max_chars = 300L, missing = "Not available") {
+  vapply(
+    as.character(x),
+    function(value) {
+      if (length(value) == 0L || is.na(value) || !nzchar(trimws(value))) {
+        return(missing)
+      }
+      value <- gsub("\\s+", " ", trimws(value), perl = TRUE)
+      if (nchar(value) <= max_chars) {
+        return(value)
+      }
+      paste0(substr(value, 1L, max_chars - 3L), "...")
+    },
+    character(1)
+  )
+}
+
+sources_table_data <- function(df) {
+  if (is.null(df)) {
+    return(NULL)
+  }
+  n <- nrow(df)
+  if (!"context_text" %in% names(df)) {
+    df$context_text <- rep(NA_character_, n)
+  }
+  if (!"snippet" %in% names(df)) {
+    df$snippet <- rep(NA_character_, n)
+  }
+
+  context <- as.character(df$context_text)
+  snippet <- as.character(df$snippet)
+  content <- if ("content_text" %in% names(df)) {
+    as.character(df$content_text)
+  } else {
+    rep(NA_character_, n)
+  }
+
+  missing_context <- table_missing_text(context)
+  context[missing_context] <- content[missing_context]
+  missing_context <- table_missing_text(context)
+  context[missing_context] <- snippet[missing_context]
+
+  missing_snippet <- table_missing_text(snippet)
+  snippet[missing_snippet] <- table_compact_text(
+    context[missing_snippet],
+    missing = NA_character_
+  )
+
+  df$snippet <- table_compact_text(snippet)
+  df$context_text <- table_compact_text(context, max_chars = 600L)
+  df
+}
+
+facts_table_data <- function(df) {
+  if (is.null(df)) {
+    return(NULL)
+  }
+  n <- nrow(df)
+  if ("source_ids" %in% names(df)) {
+    df$source_ids <- vapply(
+      df$source_ids,
+      function(ids) {
+        ids <- as.character(unlist(ids, use.names = FALSE))
+        ids <- ids[!table_missing_text(ids)]
+        if (length(ids) == 0L) {
+          return("Not available")
+        }
+        paste(ids, collapse = ", ")
+      },
+      character(1)
+    )
+  }
+  if (!"support_score" %in% names(df)) {
+    df$support_score <- rep(NA_real_, n)
+  }
+  score <- suppressWarnings(as.numeric(df$support_score))
+  df$support_score <- ifelse(
+    is.na(score),
+    "Not scored",
+    format(round(score, 2), nsmall = 2, trim = TRUE)
+  )
+  df
+}
+
 # A DT datatable with the app's standard export options.
 styled_datatable <- function(df) {
   DT::datatable(

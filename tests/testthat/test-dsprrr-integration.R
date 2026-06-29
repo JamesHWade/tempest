@@ -151,14 +151,28 @@ test_that("fact output normalizes source_ids shorthand", {
       list(
         claim = "Claim",
         source_ids = c("Sabc", "Sdef"),
-        confidence = "high"
+        confidence = "high",
+        support_score = 0.84
       )
     )
   ))
 
   expect_equal(facts[[1]]$claim, "Claim")
+  expect_equal(facts[[1]]$support_score, 0.84)
   expect_equal(
     vapply(facts[[1]]$sources, function(x) x$source_id, character(1)),
     c("Sabc", "Sdef")
   )
+})
+
+test_that("fact output clamps invalid support scores and leaves missing explicit", {
+  facts <- tempest:::tempest_normalize_fact_output(list(
+    facts = list(
+      list(claim = "High", source_ids = "Sabc", score = 2),
+      list(claim = "Missing", source_ids = "Sdef")
+    )
+  ))
+
+  expect_equal(facts[[1]]$support_score, 1)
+  expect_equal(facts[[2]]$support_score, NA_real_)
 })

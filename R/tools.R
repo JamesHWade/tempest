@@ -87,6 +87,25 @@ tempest_native_scalar <- function(...) {
 tempest_native_source_candidates <- function(x) {
   candidates <- list()
 
+  add_candidate <- function(
+    url,
+    title = NA_character_,
+    snippet = NA_character_,
+    content_text = NA_character_,
+    context_text = NA_character_
+  ) {
+    if (is.character(url) && length(url) > 0 && !is.na(url[[1]])) {
+      candidates[[length(candidates) + 1L]] <<- list(
+        url = url[[1]],
+        title = title,
+        snippet = snippet,
+        content_text = content_text,
+        context_text = context_text
+      )
+    }
+    invisible(NULL)
+  }
+
   visit <- function(value) {
     if (is.data.frame(value)) {
       rows <- split(value, seq_len(nrow(value)))
@@ -99,19 +118,52 @@ tempest_native_source_candidates <- function(x) {
       return(invisible(NULL))
     }
 
-    url <- value$url %||% value$link %||% value$uri
-    if (is.character(url) && length(url) > 0 && !is.na(url[[1]])) {
-      candidates[[length(candidates) + 1L]] <<- list(
-        url = url[[1]],
-        title = tempest_native_scalar(value$title, value$name),
-        snippet = tempest_native_scalar(
-          value$snippet,
-          value$description,
-          value$summary
-        ),
-        content_text = tempest_native_scalar(value$content, value$text)
-      )
+    context_text <- tempest_native_scalar(
+      value$context_text,
+      value$citation_context,
+      value$context
+    )
+    annotations <- value$annotations %||% value$citations
+    if (is.data.frame(annotations)) {
+      annotations <- split(annotations, seq_len(nrow(annotations)))
     }
+    if (is.list(annotations) && length(annotations) > 0L) {
+      parent_text <- tempest_native_scalar(value$text)
+      annotation_context <- tempest_native_scalar(context_text, parent_text)
+      for (annotation in annotations) {
+        if (!is.list(annotation)) {
+          next
+        }
+        url <- annotation$url %||% annotation$link %||% annotation$uri
+        add_candidate(
+          url,
+          title = tempest_native_scalar(annotation$title, annotation$name),
+          snippet = tempest_native_scalar(
+            annotation$snippet,
+            annotation$description,
+            annotation$summary
+          ),
+          content_text = tempest_native_scalar(
+            annotation$content,
+            annotation$text
+          ),
+          context_text = annotation_context
+        )
+      }
+    }
+
+    url <- value$url %||% value$link %||% value$uri
+    add_candidate(
+      url,
+      title = tempest_native_scalar(value$title, value$name),
+      snippet = tempest_native_scalar(
+        value$snippet,
+        value$description,
+        value$summary
+      ),
+      content_text = tempest_native_scalar(value$content, value$text),
+      context_text = context_text
+    )
 
     for (child in value) {
       visit(child)
@@ -129,11 +181,17 @@ tempest_native_source_from_url <- function(
   title = NA_character_,
   snippet = NA_character_,
   content_text = NA_character_,
+  context_text = NA_character_,
   kind = "native_search"
 ) {
   url <- tryCatch(tempest_normalize_url(url), error = function(e) NA_character_)
   if (is.na(url) || !nzchar(url)) {
     return(NULL)
+  }
+  meta <- list(kind = kind, provider_tool = "native")
+  context_text <- tempest_source_scalar(context_text)
+  if (!is.na(context_text) && nzchar(context_text)) {
+    meta$context_text <- context_text
   }
   tempest_source(
     url = url,
@@ -141,7 +199,7 @@ tempest_native_source_from_url <- function(
     snippet = snippet,
     content_text = content_text,
     fetched_at = tempest_now_utc(),
-    meta = list(kind = kind, provider_tool = "native")
+    meta = meta
   )
 }
 
@@ -187,6 +245,7 @@ tempest_harvest_native_source_candidates <- function(
           title = candidate$title,
           snippet = candidate$snippet,
           content_text = candidate$content_text,
+          context_text = candidate$context_text,
           kind = kind
         )
       )
@@ -232,6 +291,10 @@ tempest_harvest_native_sources_from_content <- function(content, store) {
             json$summary
           ),
           content_text = tempest_native_scalar(json$content, json$text),
+          context_text = tempest_native_scalar(
+            json$context_text,
+            json$citation_context
+          ),
           kind = "native_fetch"
         )
       )

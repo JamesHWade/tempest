@@ -92,6 +92,10 @@ tempest_type_fact_extract <- function() {
       "Confidence",
       required = FALSE
     ),
+    support_score = ellmer::type_number(
+      "Degree in [0,1] to which cited sources support this claim.",
+      required = FALSE
+    ),
     note = ellmer::type_string(
       "Nuance, scope conditions, or caveats.",
       required = FALSE

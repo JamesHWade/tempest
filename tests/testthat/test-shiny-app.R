@@ -305,6 +305,39 @@ test_that("sources and facts modules show empty states until data exists", {
   })
 })
 
+test_that("sources and facts table data populate explicit display values", {
+  app <- source_shiny_modules()
+
+  source_rows <- tibble::tibble(
+    id = c("Swithcontent", "Smissing"),
+    url = c("https://example.org/with-content", "https://example.org/missing"),
+    title = c("With content", "Missing"),
+    snippet = c(NA_character_, NA_character_),
+    content_text = c("Source content backs the table row.", NA_character_)
+  )
+  source_display <- app$sources_table_data(source_rows)
+  expect_equal(
+    source_display$snippet[[1]],
+    "Source content backs the table row."
+  )
+  expect_equal(
+    source_display$context_text[[1]],
+    "Source content backs the table row."
+  )
+  expect_equal(source_display$snippet[[2]], "Not available")
+  expect_equal(source_display$context_text[[2]], "Not available")
+
+  fact_rows <- tibble::tibble(
+    claim_id = c("Cscored", "Cmissing"),
+    claim_text = c("Scored fact", "Unscored fact"),
+    source_ids = list("Swithcontent", character()),
+    support_score = c(0.823, NA_real_)
+  )
+  fact_display <- app$facts_table_data(fact_rows)
+  expect_equal(fact_display$source_ids, c("Swithcontent", "Not available"))
+  expect_equal(fact_display$support_score, c("0.82", "Not scored"))
+})
+
 test_that("session store mutations work outside reactive consumers", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
