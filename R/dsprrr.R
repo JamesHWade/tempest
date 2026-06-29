@@ -351,6 +351,8 @@ tempest_dsprrr_modules_path <- function(path) {
 
 #' Save compiled dsprrr modules
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' @param modules A named list of dsprrr modules.
 #' @param path File path ending in `.rds`, or a directory where
 #'   `dsprrr-modules.rds` will be written.
@@ -372,6 +374,8 @@ tempest_save_dsprrr_modules <- function(modules, path) {
 
 #' Load compiled dsprrr modules
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' @param path File path ending in `.rds`, or a directory containing
 #'   `dsprrr-modules.rds`.
 #' @return A named list of dsprrr modules.
@@ -392,6 +396,8 @@ tempest_load_dsprrr_modules <- function(path) {
 }
 
 #' Optimize STORM dsprrr modules
+#'
+#' `r lifecycle::badge("experimental")`
 #'
 #' Compiles selected STORM dsprrr modules against user-provided training data.
 #' This is an explicit optimization step: run it with labeled examples, then

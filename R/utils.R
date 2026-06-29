@@ -117,7 +117,12 @@ tempest_require <- function(pkg, why = NULL) {
         i = "Install it with: {.run install.packages(\"{pkg}\")}"
       )
     }
-    tempest_abort(msg)
+    tempest_abort(
+      msg,
+      class = c("tempest_missing_package_error", "tempest_error"),
+      package = pkg,
+      reason = why
+    )
   }
   invisible(TRUE)
 }

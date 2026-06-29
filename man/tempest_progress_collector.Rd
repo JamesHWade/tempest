@@ -15,11 +15,13 @@ A \code{tempest_progress_collector} list with \code{record()}, \code{events()},
 \code{data()}, \code{replay()}, and \code{clear()} methods.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 \code{tempest_progress_collector()} returns a small host-neutral sink for Tempest
 progress events. Use \code{collector$record} as a \code{progress} callback, then read
 events back with filtering or replay them to another callback.
-}
-\details{
+
 By default, the collector strips event payloads before storing them. Set
 \code{include_payload = TRUE} when tests or trusted host adapters need to assert
 or replay structured payload metadata.

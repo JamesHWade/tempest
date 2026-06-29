@@ -25,7 +25,7 @@ scalar filters. \code{NULL} leaves that field unfiltered.}
 A list of matching \code{tempest_progress_event} objects.
 }
 \description{
-Filter Tempest progress events
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \examples{
 events <- list(tempest_progress_event(

@@ -10,7 +10,8 @@ tempest_session(
   n_experts = 3,
   personas = NULL,
   retriever = NULL,
-  progress = NULL
+  progress = NULL,
+  session_id = NULL
 )
 }
 \arguments{
@@ -28,6 +29,9 @@ with a \code{SourceStore} at \verb{$store}.}
 
 \item{progress}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}
+
+\item{session_id}{Optional stable session identifier. If \code{NULL}, a new
+identifier is generated.}
 }
 \description{
 Create a Co-STORM session

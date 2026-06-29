@@ -16,7 +16,7 @@ tempest_progress_replay(events, progress)
 The input events, invisibly.
 }
 \description{
-Replay Tempest progress events to a callback
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \examples{
 events <- list(tempest_progress_event(

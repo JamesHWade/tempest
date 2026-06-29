@@ -23,6 +23,7 @@ Imports:
     fs,
     glue,
     httr2,
+    lifecycle,
     purrr,
     R6,
     rlang (>= 1.0.0),
@@ -75,6 +76,7 @@ Collate:
     'prompts.R'
     'retriever.R'
     'run-persistence.R'
+    'shiny-adapter.R'
     'simulated-user.R'
     'storm-outline.R'
     'storm-perspectives.R'

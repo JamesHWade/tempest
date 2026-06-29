@@ -20,6 +20,9 @@ names.}
 A list with \code{write}, \code{read}, and \code{list} functions.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 Artifact stores let host applications observe or persist Tempest outputs
 without replacing the live in-memory \code{SourceStore}. The default store is a
 no-op adapter.

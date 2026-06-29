@@ -38,6 +38,9 @@ expert.}
 A list suitable for the \code{personas} argument of \code{\link[=tempest_session]{tempest_session()}}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 Host applications can pass these definitions to \code{\link[=tempest_session]{tempest_session()}} via the
 \code{personas} argument to control the expert panel without patching
 \code{TempestSession} internals.

@@ -11,22 +11,61 @@ new_session_store <- function() {
   rv <- shiny::reactiveValues(
     session = NULL,
     version = 0L,
+    # Separate counter for autosave. It tracks in-place content changes (`set()`
+    # and `touch()`) but not `restore()`, so loading a bundle re-renders outputs
+    # without immediately writing the just-loaded session back to disk and
+    # clobbering the "restored" status.
+    autosave_version = 0L,
     report_md = NULL,
     report_topic = NULL,
-    report_source_store = NULL
+    report_source_store = NULL,
+    persistence_status = "idle",
+    persistence_message = NULL,
+    persistence_path = NULL
   )
 
-  bump_version <- function() {
+  bump_version <- function(autosave = TRUE) {
     version <- shiny::isolate(rv$version)
     if (is.null(version) || is.na(version)) {
       version <- 0L
     }
     version <- version + 1L
     rv$version <- version
+    if (isTRUE(autosave)) {
+      autosave_version <- shiny::isolate(rv$autosave_version)
+      if (is.null(autosave_version) || is.na(autosave_version)) {
+        autosave_version <- 0L
+      }
+      rv$autosave_version <- autosave_version + 1L
+    }
     invisible(version)
   }
 
+  set_persistence <- function(status, path = NULL, message = NULL) {
+    rv$persistence_status <- status
+    rv$persistence_path <- path
+    rv$persistence_message <- message
+    invisible(NULL)
+  }
+
+  set_report_from_session <- function(session) {
+    report_md <- session$artifacts[["report_md"]] %||% NULL
+    rv$report_md <- report_md
+    rv$report_topic <- if (is.null(report_md)) NULL else session$topic
+    rv$report_source_store <- if (is.null(report_md)) NULL else session$store
+    invisible(report_md)
+  }
+
   list(
+    # Non-reactive read for observers that should not take a dependency.
+    peek = function() {
+      shiny::isolate(rv$session)
+    },
+
+    # Change counter for debounced autosave observers. Excludes `restore()` so
+    # loading a bundle does not trigger an immediate write-back.
+    autosave_trigger = shiny::reactive(rv$autosave_version),
+
     # Version-aware read of the current session. Re-fires on set()/touch().
     get = shiny::reactive({
       rv$version
@@ -46,6 +85,57 @@ new_session_store <- function() {
       invisible()
     },
 
+    save = function(path, overwrite = TRUE, status = "saved") {
+      session <- shiny::isolate(rv$session)
+      if (is.null(session)) {
+        stop("No Co-STORM session is active.", call. = FALSE)
+      }
+      saved <- tempest::tempest_session_save(
+        session,
+        path = path,
+        overwrite = overwrite
+      )
+      set_persistence(
+        status,
+        path = saved,
+        message = paste0(
+          if (identical(status, "autosaved")) "Autosaved" else "Saved",
+          " session bundle."
+        )
+      )
+      saved
+    },
+
+    restore = function(path, config, progress = NULL) {
+      session <- tempest::tempest_session_resume(
+        path,
+        config = config,
+        progress = progress
+      )
+      rv$session <- session
+      set_report_from_session(session)
+      set_persistence(
+        "restored",
+        path = normalizePath(
+          path.expand(path),
+          winslash = "/",
+          mustWork = FALSE
+        ),
+        message = "Loaded session bundle."
+      )
+      bump_version(autosave = FALSE)
+      session
+    },
+
+    persistence = shiny::reactive({
+      list(
+        status = rv$persistence_status,
+        message = rv$persistence_message,
+        path = rv$persistence_path
+      )
+    }),
+    set_persistence = set_persistence,
+
     # Generated report, shared across the Chat and STORM tabs.
     report = shiny::reactive(rv$report_md),
     report_store = shiny::reactive(rv$report_source_store),
@@ -58,7 +148,9 @@ new_session_store <- function() {
     }),
     set_report = function(md, topic = NULL, source_store = NULL) {
       rv$report_md <- md
-      if (!is.null(topic)) {
+      if (is.null(md) && is.null(topic)) {
+        rv$report_topic <- NULL
+      } else if (!is.null(topic)) {
         rv$report_topic <- topic
       }
       rv$report_source_store <- source_store

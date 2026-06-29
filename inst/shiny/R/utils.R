@@ -459,6 +459,63 @@ tempest_app_styles <- function() {
   overflow-wrap: anywhere;
 }
 
+.tempest-chat-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  width: 100%;
+}
+
+.tempest-chat-footer-status {
+  min-width: 0;
+  flex: 1 1 18rem;
+}
+
+.tempest-chat-runtime,
+.tempest-chat-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+}
+
+.tempest-chat-runtime {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.tempest-chat-runtime > span {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  white-space: nowrap;
+}
+
+.tempest-runtime-pill {
+  padding: .12rem .45rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 999px;
+  color: var(--bs-body-color, #212529);
+  background: var(--bs-body-bg, #fff);
+}
+
+.tempest-footer-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+.tempest-footer-button > .fa,
+.tempest-footer-button > .fas,
+.tempest-footer-button > .far,
+.tempest-footer-button > .fab {
+  margin-right: 0;
+}
+
 .tempest-citation {
   display: inline-flex;
   align-items: center;
@@ -564,7 +621,7 @@ tempest_app_styles <- function() {
 
 tempest_chat_icon <- function() {
   shiny::tags$img(
-    src = "logos/tempest.svg",
+    src = tempest_logo_src(),
     alt = "tempest assistant",
     class = "tempest-chat-icon"
   )
@@ -572,10 +629,48 @@ tempest_chat_icon <- function() {
 
 tempest_inline_icon <- function(class = NULL) {
   shiny::tags$img(
-    src = "logos/tempest.svg",
+    src = tempest_logo_src(),
     alt = "",
     class = paste(c("tempest-inline-icon", class), collapse = " ")
   )
+}
+
+tempest_logo_src <- function() {
+  paste0(tempest_logo_resource_path(), "/tempest.svg")
+}
+
+tempest_logo_resource_path <- function(prefix = "tempest-logos") {
+  logo_dir <- system.file("shiny", "logos", package = "tempest")
+  if (!nzchar(logo_dir) || !dir.exists(logo_dir)) {
+    return("logos")
+  }
+
+  target <- normalizePath(logo_dir, winslash = "/", mustWork = TRUE)
+  paths <- shiny::resourcePaths()
+  current <- if (prefix %in% names(paths)) {
+    unname(paths[[prefix]])
+  } else {
+    NULL
+  }
+  if (!is.null(current)) {
+    current <- normalizePath(current, winslash = "/", mustWork = FALSE)
+  }
+  if (!is.null(current) && !identical(current, target)) {
+    suffix <- sum(utf8ToInt(target)) %% 100000L
+    prefix <- paste0(prefix, "-", suffix)
+    current <- if (prefix %in% names(paths)) {
+      unname(paths[[prefix]])
+    } else {
+      NULL
+    }
+    if (!is.null(current)) {
+      current <- normalizePath(current, winslash = "/", mustWork = FALSE)
+    }
+  }
+  if (is.null(current)) {
+    shiny::addResourcePath(prefix, target)
+  }
+  prefix
 }
 
 persona_icon <- function(name = NULL, id = NULL, size = c("md", "sm")) {

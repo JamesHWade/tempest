@@ -95,6 +95,8 @@ tempest_mindmap_to_markdown <- function(m) {
 
 #' Create a Co-STORM expert definition
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' Host applications can pass these definitions to [tempest_session()] via the
 #' `personas` argument to control the expert panel without patching
 #' `TempestSession` internals.
@@ -258,13 +260,16 @@ TempestSession <- R6::R6Class(
     #'   object with a `SourceStore` at `$store`.
     #' @param progress Optional function called with `tempest_progress_event`
     #'   objects as the session makes progress.
+    #' @param session_id Optional stable session identifier. If `NULL`, a new
+    #'   identifier is generated.
     initialize = function(
       topic,
       config = tempest_config(),
       n_experts = 3,
       personas = NULL,
       retriever = NULL,
-      progress = NULL
+      progress = NULL,
+      session_id = NULL
     ) {
       tempest_require("ellmer", "TempestSession requires ellmer.")
       self$topic <- tempest_trim(topic)
@@ -273,7 +278,19 @@ TempestSession <- R6::R6Class(
       }
       self$title <- self$topic
       self$config <- config
-      self$session_id <- tempest_uuid("session")
+      if (is.null(session_id)) {
+        session_id <- tempest_uuid("session")
+      } else if (
+        !rlang::is_string(session_id) || !nzchar(tempest_trim(session_id))
+      ) {
+        tempest_abort(
+          "{.arg session_id} must be a single non-empty string or {.code NULL}.",
+          class = c("tempest_session_error", "tempest_error")
+        )
+      } else {
+        session_id <- tempest_trim(session_id)
+      }
+      self$session_id <- session_id
       self$progress <- tempest_progress_callback(progress)
       if (is.null(retriever)) {
         self$store <- SourceStore$new()
@@ -409,7 +426,7 @@ TempestSession <- R6::R6Class(
       parent_event_id = NA_character_,
       correlation_id = NA_character_
     ) {
-      tempest_emit_progress(
+      event <- tempest_emit_progress(
         self$progress,
         run_id = self$session_id,
         workflow = "costorm",
@@ -422,6 +439,14 @@ TempestSession <- R6::R6Class(
         parent_event_id = parent_event_id,
         correlation_id = correlation_id
       )
+      if (!is.null(self$artifacts)) {
+        events <- self$artifacts[["progress_events"]] %||% list()
+        self$artifacts[["progress_events"]] <- c(
+          events,
+          list(tempest_progress_event_data(event))
+        )
+      }
+      invisible(event)
     },
 
     #' @description
@@ -1599,6 +1624,8 @@ TempestSession <- R6::R6Class(
 #'   with a `SourceStore` at `$store`.
 #' @param progress Optional function called with `tempest_progress_event`
 #'   objects as the session makes progress.
+#' @param session_id Optional stable session identifier. If `NULL`, a new
+#'   identifier is generated.
 #' @examples
 #' \dontrun{
 #' session <- tempest_session("History of jazz", config = tempest_config())
@@ -1611,7 +1638,8 @@ tempest_session <- function(
   n_experts = 3,
   personas = NULL,
   retriever = NULL,
-  progress = NULL
+  progress = NULL,
+  session_id = NULL
 ) {
   TempestSession$new(
     topic = topic,
@@ -1619,6 +1647,7 @@ tempest_session <- function(
     n_experts = n_experts,
     personas = personas,
     retriever = retriever,
-    progress = progress
+    progress = progress,
+    session_id = session_id
   )
 }

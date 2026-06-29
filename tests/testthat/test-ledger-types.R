@@ -68,6 +68,35 @@ test_that("claim round-trips through list", {
   expect_equal(cl2@session_id, "session-1")
 })
 
+test_that("evidence spans and disputes round-trip through lists", {
+  span <- tempest_evidence_span(
+    source_id = "S0123456789ab",
+    quote = "supporting quote",
+    start_offset = 2L,
+    end_offset = 18L,
+    relevance_score = 0.8
+  )
+  span2 <- tempest_evidence_span_from_list(tempest_evidence_span_to_list(span))
+  expect_equal(span2@evidence_span_id, span@evidence_span_id)
+  expect_equal(span2@source_id, "S0123456789ab")
+  expect_equal(span2@quote, "supporting quote")
+  expect_equal(span2@start_offset, 2L)
+  expect_equal(span2@relevance_score, 0.8)
+
+  dispute <- tempest_dispute(
+    topic = "evidence conflict",
+    claim_ids = c("C1", "C2"),
+    axis_of_disagreement = "measurement",
+    unresolved_questions = c("Which sample?"),
+    evidence_balance = "conflict"
+  )
+  dispute2 <- tempest_dispute_from_list(tempest_dispute_to_list(dispute))
+  expect_equal(dispute2@dispute_id, dispute@dispute_id)
+  expect_equal(dispute2@claim_ids, c("C1", "C2"))
+  expect_equal(dispute2@unresolved_questions, "Which sample?")
+  expect_equal(dispute2@evidence_balance, "conflict")
+})
+
 test_that("claims convert to a tibble", {
   cls <- list(
     tempest_claim(claim_text = "a", source_ids = "S1"),

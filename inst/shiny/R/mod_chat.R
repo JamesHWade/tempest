@@ -40,6 +40,34 @@ mod_chat_ui <- function(id, config_ui) {
           class = "w-100"
         ),
         shiny::hr(),
+        shiny::h6("Session"),
+        shiny::textInput(
+          ns("session_bundle"),
+          "Bundle directory",
+          value = session_bundle_default_path()
+        ),
+        shiny::div(
+          class = "d-flex gap-2",
+          shiny::actionButton(
+            ns("save_session"),
+            "Save",
+            icon = shiny::icon("floppy-disk"),
+            class = "btn-outline-primary btn-sm flex-fill"
+          ),
+          shiny::actionButton(
+            ns("load_session"),
+            "Load",
+            icon = shiny::icon("folder-open"),
+            class = "btn-outline-secondary btn-sm flex-fill"
+          )
+        ),
+        shiny::checkboxInput(
+          ns("autosave_session"),
+          "Autosave after changes",
+          FALSE
+        ),
+        shiny::uiOutput(ns("session_persistence")),
+        shiny::hr(),
         shiny::selectInput(
           ns("report_style"),
           "Report Style",
@@ -69,7 +97,8 @@ mod_chat_ui <- function(id, config_ui) {
             ns("chat"),
             height = "100%",
             enable_cancel = TRUE,
-            icon_assistant = tempest_chat_icon()
+            icon_assistant = tempest_chat_icon(),
+            footer = chat_footer_ui(ns)
           )
         )
       )
@@ -77,7 +106,13 @@ mod_chat_ui <- function(id, config_ui) {
   )
 }
 
-mod_chat_server <- function(id, config, store) {
+mod_chat_server <- function(
+  id,
+  config,
+  store,
+  personas = NULL,
+  session_id = NULL
+) {
   shiny::moduleServer(id, function(input, output, session) {
     report_ready <- shiny::reactiveVal(0L)
     progress_events <- shiny::reactiveVal(list())
@@ -138,18 +173,127 @@ mod_chat_server <- function(id, config, store) {
       record_costorm_progress_event(progress_events, event, session)
     }
 
+    restore_progress_history <- function(ses) {
+      progress_events(ses$artifacts[["progress_events"]] %||% list())
+      invisible(NULL)
+    }
+
+    replace_chat_with_session <- function(ses) {
+      chat$set_client(ses$chats$moderator, sync = FALSE)
+      chat$clear(greeting = FALSE)
+      append_restored_session_chat(
+        chat = chat,
+        session = ses,
+        source_store = citation_source_store(ses$store %||% NULL)
+      )
+      invisible(NULL)
+    }
+
+    restore_session_bundle <- function(path) {
+      warmup_run_id <<- warmup_run_id + 1L
+      active_session_id <<- active_session_id + 1L
+      ses <- store$restore(path, config = config(), progress = record_progress)
+      shiny::updateTextInput(session, "topic", value = ses$topic %||% "")
+      shiny::updateSliderInput(
+        session,
+        "n_experts",
+        value = max(1L, min(5L, length(ses$personas %||% list())))
+      )
+      restore_progress_history(ses)
+      replace_chat_with_session(ses)
+      ses
+    }
+
+    session_autosave_server(
+      store = store,
+      path = shiny::reactive(input$session_bundle),
+      enabled = shiny::reactive(input$autosave_session),
+      on_error = function(error) {
+        store$set_persistence(
+          "error",
+          path = input$session_bundle %||% "",
+          message = paste0("Autosave failed: ", conditionMessage(error))
+        )
+        shiny::showNotification(
+          paste0("Autosave failed: ", conditionMessage(error)),
+          type = "error",
+          duration = 10
+        )
+      }
+    )
+
+    output$session_persistence <- shiny::renderUI({
+      session_persistence_status_ui(store$persistence())
+    })
+
     output$progress <- shiny::renderUI({
       state <- costorm_progress_state(progress_events())
       workflow_progress_ui(state, costorm_stage_labels())
     })
 
     # --- Session lifecycle ---------------------------------------------------
+    shiny::observeEvent(input$save_session, {
+      path <- input$session_bundle %||% ""
+      tryCatch(
+        {
+          saved <- store$save(path, overwrite = TRUE)
+          shiny::showNotification(
+            paste0("Session saved to ", saved),
+            type = "message",
+            duration = 5
+          )
+        },
+        error = function(e) {
+          store$set_persistence(
+            "error",
+            path = path,
+            message = paste0("Save failed: ", conditionMessage(e))
+          )
+          shiny::showNotification(
+            paste0("Save failed: ", conditionMessage(e)),
+            type = "error",
+            duration = 10
+          )
+        }
+      )
+    })
+
+    shiny::observeEvent(input$load_session, {
+      path <- input$session_bundle %||% ""
+      tryCatch(
+        {
+          restored <- restore_session_bundle(path)
+          shiny::showNotification(
+            paste0("Loaded session: ", restored$topic),
+            type = "message",
+            duration = 5
+          )
+        },
+        error = function(e) {
+          store$set_persistence(
+            "error",
+            path = path,
+            message = paste0("Load failed: ", conditionMessage(e))
+          )
+          shiny::showNotification(
+            paste0("Load failed: ", conditionMessage(e)),
+            type = "error",
+            duration = 10
+          )
+        }
+      )
+    })
+
     create_session <- function(topic, n_experts) {
+      session_personas <- reactive_or_value(personas)
+      session_id_value <- reactive_or_value(session_id)
       ses <- tryCatch(
         tempest::tempest_session(
           topic,
           config = config(),
           n_experts = n_experts,
+          personas = session_personas,
+          session_id = session_id_value,
           progress = record_progress
         ),
         error = function(e) {
@@ -178,6 +322,131 @@ mod_chat_server <- function(id, config, store) {
       ))
       ses
     }
+
+    clear_session <- function() {
+      warmup_run_id <<- warmup_run_id + 1L
+      active_session_id <<- active_session_id + 1L
+      progress_events(list())
+      store$set(NULL)
+      store$set_report(NULL)
+      chat$set_client(initial_chat, sync = FALSE)
+      chat$clear(
+        messages = list(list(
+          role = "assistant",
+          content = paste(
+            "Session cleared.",
+            "Enter a topic in the sidebar and start a new Co-STORM session."
+          )
+        )),
+        greeting = FALSE,
+        client_history = "clear"
+      )
+      invisible(NULL)
+    }
+
+    run_report_generation <- function() {
+      ses <- store$get()
+      generate_report_for_chat(
+        ses = ses,
+        store = store,
+        append_chat = append_chat,
+        report_ready = report_ready,
+        style = input$report_style %||% "technical"
+      )
+    }
+
+    run_chat_command <- function(command) {
+      command <- chat_command_normalize(command)
+      if (identical(command, "new")) {
+        clear_session()
+        return(invisible(NULL))
+      }
+      if (identical(command, "report")) {
+        run_report_generation()
+        return(invisible(NULL))
+      }
+      append_chat(chat_command_message(command, store$get(), config = config()))
+      invisible(NULL)
+    }
+
+    register_chat_commands <- function() {
+      chat$slash_command(
+        "new",
+        "Clear the current Co-STORM session.",
+        function() run_chat_command("new")
+      )
+      chat$slash_command(
+        "new-session",
+        "Clear the current Co-STORM session.",
+        function() run_chat_command("new")
+      )
+      chat$slash_command(
+        "experts",
+        "Show the current expert panel.",
+        function() run_chat_command("experts")
+      )
+      chat$slash_command(
+        "sources",
+        "Summarize collected sources.",
+        function() run_chat_command("sources")
+      )
+      chat$slash_command(
+        "facts",
+        "Summarize collected facts.",
+        function() run_chat_command("facts")
+      )
+      chat$slash_command(
+        "claims",
+        "Summarize collected claims.",
+        function() run_chat_command("facts")
+      )
+      chat$slash_command(
+        "report",
+        "Generate a report from collected evidence.",
+        function() run_chat_command("report")
+      )
+      chat$slash_command(
+        "system",
+        "Show the moderator system prompt.",
+        function() run_chat_command("system")
+      )
+      chat$slash_command(
+        "tools",
+        "Show runtime tools and command status.",
+        function() run_chat_command("tools")
+      )
+    }
+    register_chat_commands()
+
+    output$runtime_footer <- shiny::renderUI({
+      chat_runtime_footer_ui(
+        ses = store$get(),
+        progress_state = costorm_progress_state(progress_events()),
+        chat_status = chat$status()
+      )
+    })
+
+    shiny::observeEvent(input$footer_new, {
+      run_chat_command("new")
+    })
+    shiny::observeEvent(input$footer_experts, {
+      run_chat_command("experts")
+    })
+    shiny::observeEvent(input$footer_sources, {
+      run_chat_command("sources")
+    })
+    shiny::observeEvent(input$footer_facts, {
+      run_chat_command("facts")
+    })
+    shiny::observeEvent(input$footer_report, {
+      run_chat_command("report")
+    })
+    shiny::observeEvent(input$footer_system, {
+      run_chat_command("system")
+    })
+    shiny::observeEvent(input$footer_tools, {
+      run_chat_command("tools")
+    })
 
     shiny::observeEvent(input$start, {
       warmup_is_current <- next_warmup_guard()
@@ -369,41 +638,7 @@ mod_chat_server <- function(id, config, store) {
 
     # --- Report generation ---------------------------------------------------
     shiny::observeEvent(input$generate_report, {
-      ses <- store$get()
-      if (is.null(ses)) {
-        append_chat("No session active. Start a session first.")
-        return()
-      }
-      n_evidence <- length(ses$store$list_claims()) +
-        length(ses$store$list_sources())
-      if (n_evidence == 0) {
-        append_chat(
-          "No facts or sources collected yet. Ask some questions first to gather research."
-        )
-        return()
-      }
-      append_chat("Generating report...")
-      md <- tryCatch(
-        ses$report(style = input$report_style %||% "technical"),
-        error = function(e) {
-          append_chat(paste0("Report generation failed: ", conditionMessage(e)))
-          NULL
-        }
-      )
-      if (is.null(md) || !nzchar(md)) {
-        append_chat(
-          "Report generation returned empty. Try asking more questions first."
-        )
-        return()
-      }
-      ses$artifacts[["report_md"]] <- md
-      store$set_report(md, ses$topic, source_store = ses$store)
-      store$touch()
-      append_chat(sprintf(
-        "Report generated (%d chars). See the **Report** tab.",
-        nchar(md)
-      ))
-      report_ready(report_ready() + 1L)
+      run_report_generation()
     })
 
     # --- Expert panel --------------------------------------------------------
@@ -440,6 +675,409 @@ welcome_message <- function() {
     "For a one-shot run without the back-and-forth, use the **STORM** tab.",
     sep = "\n"
   )
+}
+
+session_bundle_default_path <- function() {
+  file.path("~", "tempest-session")
+}
+
+reactive_or_value <- function(x) {
+  if (shiny::is.reactive(x)) {
+    x()
+  } else if (is.function(x)) {
+    x()
+  } else {
+    x
+  }
+}
+
+chat_footer_ui <- function(ns) {
+  button <- function(id, icon, label) {
+    shiny::actionButton(
+      ns(id),
+      label = shiny::span(label, class = "visually-hidden"),
+      icon = shiny::icon(icon),
+      title = label,
+      `aria-label` = label,
+      class = "btn-outline-secondary btn-sm tempest-footer-button"
+    )
+  }
+  shiny::div(
+    class = "tempest-chat-footer",
+    shiny::uiOutput(ns("runtime_footer"), class = "tempest-chat-footer-status"),
+    shiny::div(
+      class = "tempest-chat-footer-actions",
+      button("footer_new", "plus", "New session"),
+      button("footer_experts", "users", "Show experts"),
+      button("footer_sources", "link", "Show sources"),
+      button("footer_facts", "clipboard-check", "Show facts"),
+      button("footer_report", "file-lines", "Generate report"),
+      button("footer_system", "terminal", "Show system prompt"),
+      button("footer_tools", "wrench", "Show tools")
+    )
+  )
+}
+
+chat_runtime_counts <- function(ses) {
+  if (is.null(ses)) {
+    return(list(experts = 0L, sources = 0L, facts = 0L, report = FALSE))
+  }
+  sources <- tryCatch(ses$store$list_sources(), error = function(e) list())
+  claims <- tryCatch(ses$store$list_claims(), error = function(e) list())
+  report <- tryCatch(
+    nzchar(ses$artifacts[["report_md"]] %||% ""),
+    error = function(e) FALSE
+  )
+  list(
+    experts = length(ses$personas %||% list()),
+    sources = length(sources),
+    facts = length(claims),
+    report = isTRUE(report)
+  )
+}
+
+chat_runtime_footer_ui <- function(
+  ses,
+  progress_state = NULL,
+  chat_status = "idle"
+) {
+  counts <- chat_runtime_counts(ses)
+  session_label <- if (is.null(ses)) {
+    "No session"
+  } else if (identical(chat_status, "streaming")) {
+    "Answering"
+  } else if (
+    !is.null(progress_state) &&
+      !is.na(progress_state$current_stage) &&
+      nzchar(progress_state$current_stage)
+  ) {
+    paste("Running", progress_state$current_stage)
+  } else {
+    "Ready"
+  }
+  report_label <- if (isTRUE(counts$report)) "report ready" else "no report"
+  shiny::div(
+    class = "tempest-chat-runtime",
+    shiny::span(class = "tempest-runtime-pill", session_label),
+    shiny::span(shiny::icon("users"), counts$experts),
+    shiny::span(shiny::icon("link"), counts$sources),
+    shiny::span(shiny::icon("clipboard-check"), counts$facts),
+    shiny::span(class = "tempest-runtime-report", report_label)
+  )
+}
+
+chat_command_parse <- function(text) {
+  text <- trimws(chat_input_text(text))
+  if (!nzchar(text) || !startsWith(text, "/")) {
+    return(NULL)
+  }
+  command <- sub("^/([A-Za-z0-9_-]+).*$", "\\1", text)
+  if (!nzchar(command) || identical(command, text)) {
+    return(NULL)
+  }
+  user_text <- sub("^/[A-Za-z0-9_-]+\\s*", "", text)
+  if (identical(user_text, text)) {
+    user_text <- ""
+  }
+  list(command = chat_command_normalize(command), user_text = trimws(user_text))
+}
+
+chat_command_normalize <- function(command) {
+  command <- tolower(trimws(command %||% ""))
+  switch(
+    command,
+    "new-session" = "new",
+    claims = "facts",
+    command
+  )
+}
+
+chat_command_message <- function(command, ses = NULL, config = NULL) {
+  command <- chat_command_normalize(command)
+  switch(
+    command,
+    experts = chat_command_experts(ses),
+    sources = chat_command_sources(ses),
+    facts = chat_command_facts(ses),
+    system = chat_command_system_prompt(),
+    tools = chat_command_tools(ses, config),
+    paste0(
+      "Unknown command `/",
+      command,
+      "`.\n\nTry `/experts`, `/sources`, `/facts`, `/report`, `/system`, or `/tools`."
+    )
+  )
+}
+
+chat_command_experts <- function(ses) {
+  if (is.null(ses) || length(ses$personas %||% list()) == 0L) {
+    return("No expert panel is active. Start a session first.")
+  }
+  lines <- vapply(
+    ses$personas,
+    function(p) {
+      paste0(
+        "- **",
+        p$name %||% "Expert",
+        "**: ",
+        p$title %||% "Research Specialist",
+        if (nzchar(p$perspective %||% "")) {
+          paste0(" - ", p$perspective)
+        } else {
+          ""
+        }
+      )
+    },
+    character(1)
+  )
+  paste(c("**Expert panel**", "", lines), collapse = "\n")
+}
+
+chat_command_sources <- function(ses, n = 5L) {
+  sources <- if (is.null(ses)) {
+    list()
+  } else {
+    tryCatch(ses$store$list_sources(), error = function(e) list())
+  }
+  if (length(sources) == 0L) {
+    return("No sources collected yet. Ask a research question first.")
+  }
+  shown <- head(sources, n)
+  lines <- vapply(
+    shown,
+    function(source) {
+      title <- source$title %||%
+        source$url %||%
+        source$id %||%
+        "Untitled source"
+      if (length(title) == 0L || is.na(title) || !nzchar(title)) {
+        title <- "Untitled source"
+      }
+      paste0("- **", title, "** (", source$id %||% "source", ")")
+    },
+    character(1)
+  )
+  more <- length(sources) - length(shown)
+  if (more > 0L) {
+    lines <- c(lines, paste0("- ...and ", more, " more."))
+  }
+  paste(c("**Collected sources**", "", lines), collapse = "\n")
+}
+
+chat_command_facts <- function(ses, n = 5L) {
+  claims <- if (is.null(ses)) {
+    list()
+  } else {
+    tryCatch(ses$store$list_claims(), error = function(e) list())
+  }
+  if (length(claims) == 0L) {
+    return("No facts collected yet. Ask a research question first.")
+  }
+  shown <- head(claims, n)
+  lines <- vapply(
+    shown,
+    function(claim) {
+      score <- if (!is.na(claim@support_score)) {
+        paste0(", support ", round(claim@support_score, 2))
+      } else {
+        ""
+      }
+      paste0(
+        "- ",
+        claim@claim_text,
+        " (",
+        claim@verification_status,
+        score,
+        ")"
+      )
+    },
+    character(1)
+  )
+  more <- length(claims) - length(shown)
+  if (more > 0L) {
+    lines <- c(lines, paste0("- ...and ", more, " more."))
+  }
+  paste(c("**Collected facts**", "", lines), collapse = "\n")
+}
+
+chat_command_system_prompt <- function() {
+  prompt <- tryCatch(tempest_prompt("moderator_system"), error = function(e) "")
+  if (!nzchar(prompt)) {
+    return("The moderator system prompt is not available.")
+  }
+  paste0("**Moderator system prompt**\n\n```text\n", prompt, "\n```")
+}
+
+chat_command_tools <- function(ses, config = NULL) {
+  config <- if (is.null(ses)) config else ses$config %||% config
+  provider <- tryCatch(config@search_provider, error = function(e) "unknown")
+  tools <- tryCatch(config@tools, error = function(e) NULL)
+  tool_status <- if (is.null(tools)) {
+    "default Tempest tools"
+  } else if (is.function(tools)) {
+    "custom tool factory"
+  } else {
+    paste(length(tools), "custom tool(s)")
+  }
+  paste(
+    "**Tools and commands**",
+    "",
+    paste0("- Search provider: `", provider, "`."),
+    paste0("- Tool configuration: ", tool_status, "."),
+    "- Commands: `/new`, `/experts`, `/sources`, `/facts`, `/report`, `/system`, `/tools`.",
+    sep = "\n"
+  )
+}
+
+generate_report_for_chat <- function(
+  ses,
+  store,
+  append_chat,
+  report_ready,
+  style = "technical"
+) {
+  if (is.null(ses)) {
+    append_chat("No session active. Start a session first.")
+    return(invisible(FALSE))
+  }
+  n_evidence <- length(ses$store$list_claims()) +
+    length(ses$store$list_sources())
+  if (n_evidence == 0) {
+    append_chat(
+      "No facts or sources collected yet. Ask some questions first to gather research."
+    )
+    return(invisible(FALSE))
+  }
+  append_chat("Generating report...")
+  md <- tryCatch(
+    ses$report(style = style),
+    error = function(e) {
+      append_chat(paste0("Report generation failed: ", conditionMessage(e)))
+      NULL
+    }
+  )
+  if (is.null(md) || !nzchar(md)) {
+    append_chat(
+      "Report generation returned empty. Try asking more questions first."
+    )
+    return(invisible(FALSE))
+  }
+  ses$artifacts[["report_md"]] <- md
+  store$set_report(md, ses$topic, source_store = ses$store)
+  store$touch()
+  append_chat(sprintf(
+    "Report generated (%d chars). See the **Report** tab.",
+    nchar(md)
+  ))
+  report_ready(report_ready() + 1L)
+  invisible(TRUE)
+}
+
+session_autosave_server <- function(
+  store,
+  path,
+  enabled,
+  delay_ms = 1000,
+  on_saved = NULL,
+  on_error = NULL
+) {
+  trigger <- shiny::debounce(
+    shiny::reactive(store$autosave_trigger()),
+    delay_ms
+  )
+  shiny::observeEvent(
+    trigger(),
+    {
+      if (!isTRUE(enabled()) || is.null(store$peek())) {
+        return()
+      }
+      bundle_path <- path() %||% ""
+      if (!rlang::is_string(bundle_path) || !nzchar(trimws(bundle_path))) {
+        return()
+      }
+      tryCatch(
+        {
+          saved <- store$save(
+            bundle_path,
+            overwrite = TRUE,
+            status = "autosaved"
+          )
+          if (is.function(on_saved)) {
+            on_saved(saved)
+          }
+        },
+        error = function(e) {
+          if (is.function(on_error)) {
+            on_error(e)
+          }
+        }
+      )
+    },
+    ignoreInit = TRUE
+  )
+}
+
+session_persistence_status_ui <- function(state) {
+  if (is.null(state) || identical(state$status, "idle")) {
+    return(NULL)
+  }
+  status_class <- switch(
+    state$status,
+    saved = "text-success",
+    autosaved = "text-success",
+    restored = "text-info",
+    "text-danger"
+  )
+  status_icon <- switch(
+    state$status,
+    saved = "circle-check",
+    autosaved = "clock-rotate-left",
+    restored = "folder-open",
+    "triangle-exclamation"
+  )
+  shiny::div(
+    class = paste("small mt-2", status_class),
+    shiny::span(shiny::icon(status_icon), class = "me-1"),
+    shiny::span(state$message %||% ""),
+    if (!is.null(state$path) && nzchar(state$path)) {
+      shiny::span(class = "d-block text-truncate", state$path)
+    }
+  )
+}
+
+append_restored_session_chat <- function(chat, session, source_store = NULL) {
+  topic <- session$topic %||% "Untitled topic"
+  chat$append(
+    citation_markdown(
+      paste0("Resumed Co-STORM session for: **", topic, "**"),
+      store = source_store
+    ),
+    role = "assistant"
+  )
+
+  for (turn in session$transcript %||% list()) {
+    text <- turn$text %||% ""
+    if (!nzchar(text)) {
+      next
+    }
+    role <- tolower(turn$role %||% "")
+    speaker <- turn$speaker %||%
+      if (identical(role, "user")) "User" else "Moderator"
+    display_role <- if (identical(role, "user")) "user" else "assistant"
+    markdown <- paste0("**", speaker, ":**\n\n", text)
+    chat$append(
+      citation_markdown(markdown, store = source_store),
+      role = display_role
+    )
+  }
+
+  if (nzchar(session$artifacts[["report_md"]] %||% "")) {
+    chat$append(
+      "Restored report artifact. See the **Report** tab.",
+      role = "assistant"
+    )
+  }
+  invisible(chat)
 }
 
 expert_intro <- function(ses) {
@@ -776,17 +1414,6 @@ warmup_with_timeout <- function(promise, timeout_s, label = "Warmup step") {
   })
 }
 
-warmup_question_label <- function(question, width = 120) {
-  question <- stringi::stri_trim_both(question %||% "")
-  if (!nzchar(question)) {
-    return("(untitled question)")
-  }
-  if (nchar(question, type = "width") <= width) {
-    return(question)
-  }
-  paste0(substr(question, 1, width - 3), "...")
-}
-
 warmup_chat_response <- function(expert_chat, prompt) {
   response <- tryCatch(
     expert_chat$chat_async(prompt),
@@ -880,9 +1507,6 @@ run_warmup <- function(
     session_emit_progress(ses, ...)
   }
 
-  safe_append(
-    "**Running warmup phase...** Each expert is researching their initial questions."
-  )
   warmup_event <- emit_progress(
     "stage",
     "started",
@@ -933,18 +1557,6 @@ run_warmup <- function(
         return(NULL)
       }
       skipped <- max(length(all_questions) - length(questions), 0L)
-      safe_append(sprintf(
-        "**%s** researching (%d questions)...",
-        name,
-        length(questions)
-      ))
-      if (skipped > 0L) {
-        safe_append(sprintf(
-          "**%s** skipping %d remaining warmup questions for this run.",
-          name,
-          skipped
-        ))
-      }
       expert_event <<- emit_progress(
         "expert",
         "started",
@@ -981,13 +1593,6 @@ run_warmup <- function(
               question_idx,
               length(questions)
             )
-            safe_append(sprintf(
-              "**%s** warmup question %d/%d: %s",
-              name,
-              question_idx,
-              length(questions),
-              warmup_question_label(question)
-            ))
             question_event <- emit_progress(
               "tool",
               "started",
@@ -1130,11 +1735,6 @@ run_warmup <- function(
             questions_answered = answered_count
           )
         )
-        safe_append(sprintf(
-          "**%s** done (%d facts so far)",
-          name,
-          length(ses$store$list_claims())
-        ))
       })
     }) |>
       promises::catch(function(e) {

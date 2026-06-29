@@ -329,6 +329,96 @@ tempest_claim_from_list <- function(x) {
 }
 
 #' @keywords internal
+tempest_evidence_span_to_list <- function(span) {
+  stopifnot(S7::S7_inherits(span, tempest_evidence_span))
+  props <- S7::prop_names(span)
+  stats::setNames(lapply(props, function(p) S7::prop(span, p)), props)
+}
+
+#' @keywords internal
+tempest_evidence_span_from_list <- function(x) {
+  chr_scalar_fields <- c(
+    "evidence_span_id",
+    "source_id",
+    "chunk_id",
+    "quote",
+    "section_heading",
+    "extracted_by",
+    "created_at"
+  )
+  for (f in chr_scalar_fields) {
+    if (is.null(x[[f]])) x[[f]] <- NA_character_
+  }
+  if (is.na(x$extracted_by)) {
+    x$extracted_by <- "expert"
+  }
+
+  int_scalar_fields <- c("start_offset", "end_offset", "page")
+  for (f in int_scalar_fields) {
+    if (is.null(x[[f]])) {
+      x[[f]] <- NA_integer_
+    } else {
+      x[[f]] <- as.integer(x[[f]])
+    }
+  }
+
+  if (is.null(x$relevance_score)) {
+    x$relevance_score <- NA_real_
+  }
+
+  do.call(
+    tempest_evidence_span,
+    c(
+      list(source_id = x$source_id %||% NA_character_),
+      x[setdiff(names(x), "source_id")]
+    )
+  )
+}
+
+#' @keywords internal
+tempest_dispute_to_list <- function(dispute) {
+  stopifnot(S7::S7_inherits(dispute, tempest_dispute))
+  props <- S7::prop_names(dispute)
+  stats::setNames(lapply(props, function(p) S7::prop(dispute, p)), props)
+}
+
+#' @keywords internal
+tempest_dispute_from_list <- function(x) {
+  chr_scalar_fields <- c(
+    "dispute_id",
+    "topic",
+    "axis_of_disagreement",
+    "likely_explanation",
+    "evidence_balance",
+    "created_at"
+  )
+  for (f in chr_scalar_fields) {
+    if (is.null(x[[f]])) x[[f]] <- NA_character_
+  }
+  if (is.na(x$evidence_balance)) {
+    x$evidence_balance <- "mixed"
+  }
+
+  chr_vec_fields <- c("claim_ids", "unresolved_questions")
+  for (f in chr_vec_fields) {
+    v <- x[[f]]
+    if (is.null(v) || (is.list(v) && length(v) == 0)) {
+      x[[f]] <- character()
+    } else if (is.list(v)) {
+      x[[f]] <- as.character(unlist(v, use.names = FALSE))
+    }
+  }
+
+  do.call(
+    tempest_dispute,
+    c(
+      list(topic = x$topic %||% NA_character_),
+      x[setdiff(names(x), "topic")]
+    )
+  )
+}
+
+#' @keywords internal
 tempest_claims_tibble <- function(claims) {
   if (length(claims) == 0) {
     return(tibble::tibble(

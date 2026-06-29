@@ -42,6 +42,29 @@ test_that("module UIs namespace their input ids", {
     collapse = ""
   )
   expect_match(chat_html, "chat-progress")
+  expect_match(chat_html, "shiny-chat-footer")
+  expect_match(chat_html, "chat-runtime_footer")
+  expect_match(chat_html, "chat-footer_sources")
+})
+
+test_that("tempest_shiny_ui builds namespaced host panels", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("shinychat")
+  html <- paste(
+    as.character(tempest_shiny_ui(
+      "host",
+      panels = c("chat", "sources", "report"),
+      show_config = TRUE
+    )),
+    collapse = ""
+  )
+
+  expect_match(html, "host-chat-topic")
+  expect_match(html, "host-chat-save_session")
+  expect_match(html, "host-sources-body")
+  expect_match(html, "host-report-body")
+  expect_match(html, "host-config-coordinator")
 })
 
 test_that("chat UI uses the Tempest assistant icon", {
@@ -55,9 +78,15 @@ test_that("chat UI uses the Tempest assistant icon", {
   )
 
   expect_match(chat_html, "icon-assistant")
-  expect_match(chat_html, "logos/tempest.svg", fixed = TRUE)
+  expect_match(chat_html, "tempest-logos")
+  expect_match(chat_html, "tempest.svg", fixed = TRUE)
   expect_match(chat_html, "tempest-chat-icon")
   expect_no_match(chat_html, "robot")
+
+  logo_resource <- app$tempest_logo_resource_path()
+  logo_dir <- shiny::resourcePaths()[[logo_resource]]
+  expect_equal(file.exists(file.path(logo_dir, "tempest.svg")), TRUE)
+  expect_match(app$tempest_logo_src(), paste0("^", logo_resource, "/"))
 })
 
 test_that("config UI uses current OpenAI model defaults", {
@@ -88,6 +117,20 @@ test_that("the chat module provides a landing welcome message", {
   expect_length(msg, 1)
   expect_match(msg, "Welcome to tempest")
   expect_match(msg, "Start Session")
+})
+
+test_that("chat footer renders accessible command controls", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  html <- paste(
+    as.character(app$chat_footer_ui(shiny::NS("chat"))),
+    collapse = ""
+  )
+
+  expect_match(html, "tempest-chat-footer")
+  expect_match(html, "chat-footer_experts")
+  expect_match(html, "aria-label=\"Show sources\"", fixed = TRUE)
+  expect_match(html, "aria-label=\"Generate report\"", fixed = TRUE)
 })
 
 test_that("expert cards render deterministic persona icons", {
@@ -506,6 +549,55 @@ test_that("suggestion_cards builds a shinychat submit-card list", {
   )
 })
 
+test_that("chat slash command parsing normalizes aliases", {
+  app <- source_shiny_modules()
+
+  parsed <- app$chat_command_parse("/sources recent evidence")
+  expect_equal(parsed$command, "sources")
+  expect_equal(parsed$user_text, "recent evidence")
+  expect_equal(app$chat_command_parse("/claims")$command, "facts")
+  expect_equal(app$chat_command_parse("/new-session")$command, "new")
+  expect_null(app$chat_command_parse("plain question"))
+})
+
+test_that("chat command messages summarize active session state", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  source_store$add_claim(tempest_claim(
+    claim_text = "Command summaries include facts.",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.82
+  ))
+  artifacts <- new.env(parent = emptyenv())
+  artifacts[["report_md"]] <- "# Command report"
+  ses <- list(
+    topic = "Command topic",
+    personas = list(list(
+      name = "Dr. Command",
+      title = "Interaction specialist",
+      perspective = "Runtime controls"
+    )),
+    store = source_store,
+    artifacts = artifacts,
+    config = tempest_config(search_provider = "wikipedia")
+  )
+
+  expect_match(app$chat_command_message("experts", ses), "Dr. Command")
+  expect_match(app$chat_command_message("sources", ses), "Example 1")
+  expect_match(app$chat_command_message("facts", ses), "support 0.82")
+  expect_match(app$chat_command_message("tools", ses), "wikipedia")
+
+  footer <- paste(
+    as.character(app$chat_runtime_footer_ui(ses, chat_status = "streaming")),
+    collapse = ""
+  )
+  expect_match(footer, "Answering")
+  expect_match(footer, "report ready")
+})
+
 test_that("suggestion_cards returns NULL for no questions", {
   app <- source_shiny_modules()
   expect_null(app$suggestion_cards(character()))
@@ -579,6 +671,321 @@ test_that("the chat sidebar offers a follow-up-questions toggle", {
   )
   expect_match(html, "chat-suggest")
   expect_match(html, "Suggest follow-up questions")
+})
+
+test_that("the chat sidebar offers session persistence controls", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("shinychat")
+  app <- source_shiny_modules()
+  html <- paste(
+    as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
+    collapse = ""
+  )
+
+  expect_match(html, "chat-session_bundle")
+  expect_match(html, "chat-save_session")
+  expect_match(html, "chat-load_session")
+  expect_match(html, "chat-autosave_session")
+})
+
+test_that("session store saves and restores bundles for shared app tabs", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  source_store$add_claim(tempest_claim(
+    claim_text = "Shiny restore preserves cited evidence.",
+    source_ids = source_id,
+    confidence = "high"
+  ))
+  ses <- tempest_session(
+    "Shiny persistence",
+    config = cfg,
+    personas = list(tempest_expert(
+      name = "Dr. Persist",
+      title = "Researcher",
+      perspective = "Session durability"
+    )),
+    retriever = tempest_retriever(config = cfg, store = source_store)
+  )
+  ses$mindmap <- list(
+    nodes = list(
+      list(
+        id = "root",
+        label = "Shiny persistence",
+        parent = NULL,
+        notes = "",
+        source_ids = character()
+      ),
+      list(
+        id = "evidence",
+        label = "Evidence",
+        parent = "root",
+        notes = "Cited evidence.",
+        source_ids = source_id
+      )
+    ),
+    edges = list(list(from = "root", to = "evidence", relation = "supports"))
+  )
+  ses$add_turn("User", "user", "What survives restore?")
+  ses$add_turn(
+    "Moderator",
+    "assistant",
+    paste0("Cited evidence survives [", source_id, "].")
+  )
+  ses$artifacts[["report_md"]] <- paste0(
+    "# Restored report\n\nCited evidence survives [",
+    source_id,
+    "]."
+  )
+  ses$emit_progress(
+    "stage",
+    "succeeded",
+    stage = "dialogue",
+    step = "turn"
+  )
+
+  store <- app$new_session_store()
+  bundle_dir <- file.path(withr::local_tempdir(), "session-bundle")
+  store$set(ses)
+  saved <- store$save(bundle_dir)
+  store$set(NULL)
+
+  restored <- store$restore(saved, config = cfg)
+
+  expect_r6_class(restored, "TempestSession")
+  expect_equal(restored$topic, "Shiny persistence")
+  expect_equal(shiny::isolate(store$report()), ses$artifacts[["report_md"]])
+  expect_equal(shiny::isolate(store$persistence())$status, "restored")
+  expect_equal(
+    tempest_progress_state(restored$artifacts[["progress_events"]])$run_id,
+    restored$session_id
+  )
+
+  chat_calls <- list()
+  fake_chat_ui <- list(
+    append = function(text, role = "assistant") {
+      chat_calls[[length(chat_calls) + 1L]] <<- list(text = text, role = role)
+    }
+  )
+  app$append_restored_session_chat(fake_chat_ui, restored, restored$store)
+  chat_text <- paste(
+    vapply(chat_calls, `[[`, character(1), "text"),
+    collapse = "\n"
+  )
+  chat_roles <- vapply(chat_calls, `[[`, character(1), "role")
+  expect_match(chat_text, "Resumed Co-STORM session")
+  expect_match(chat_text, "Cited evidence survives")
+  expect_contains(chat_roles, c("assistant", "user"))
+
+  shiny::testServer(app$mod_sources_server, args = list(store = store), {
+    session$flushReact()
+    expect_no_match(as.character(output$body$html), "No sources collected yet")
+  })
+  shiny::testServer(app$mod_mindmap_server, args = list(store = store), {
+    session$flushReact()
+    expect_equal(output$n_nodes, "2")
+    expect_equal(output$n_sources, "1")
+    expect_equal(output$n_facts, "1")
+    expect_equal(output$n_turns, "2")
+  })
+  shiny::testServer(app$mod_report_server, args = list(store = store), {
+    session$flushReact()
+    expect_match(as.character(output$body$html), "Restored report")
+    expect_match(as.character(output$body$html), "tempest-reference-panel")
+  })
+})
+
+test_that("session autosave debounces store mutations", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Autosave topic",
+    config = cfg,
+    personas = list(tempest_expert(
+      name = "Dr. Autosave",
+      title = "Researcher",
+      perspective = "Persistence"
+    ))
+  )
+  store <- app$new_session_store()
+  bundle_dir <- file.path(withr::local_tempdir(), "autosave-bundle")
+  saved_paths <- character()
+  errors <- list()
+
+  autosave_server <- function(id, app, store, bundle_dir) {
+    shiny::moduleServer(id, function(input, output, session) {
+      app$session_autosave_server(
+        store = store,
+        path = shiny::reactive(bundle_dir),
+        enabled = shiny::reactive(TRUE),
+        delay_ms = 1,
+        on_saved = function(path) {
+          saved_paths <<- c(saved_paths, path)
+        },
+        on_error = function(error) {
+          errors[[length(errors) + 1L]] <<- error
+        }
+      )
+    })
+  }
+
+  shiny::testServer(
+    autosave_server,
+    args = list(app = app, store = store, bundle_dir = bundle_dir),
+    {
+      session$flushReact()
+      store$set(ses)
+      store$touch()
+      store$touch()
+      session$flushReact()
+      session$elapse(10)
+      session$flushReact()
+
+      expect_length(errors, 0L)
+      expect_length(saved_paths, 1L)
+      expect_true(file.exists(file.path(bundle_dir, "session.json")))
+      expect_equal(shiny::isolate(store$persistence())$status, "autosaved")
+    }
+  )
+})
+
+test_that("session autosave does not fire after restoring a bundle", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Restore autosave topic",
+    config = cfg,
+    personas = list(tempest_expert(name = "Dr. Restore"))
+  )
+  store <- app$new_session_store()
+  bundle_dir <- file.path(withr::local_tempdir(), "restore-bundle")
+  tempest_session_save(ses, bundle_dir)
+  saved_paths <- character()
+
+  autosave_server <- function(id, app, store, bundle_dir) {
+    shiny::moduleServer(id, function(input, output, session) {
+      app$session_autosave_server(
+        store = store,
+        path = shiny::reactive(bundle_dir),
+        enabled = shiny::reactive(TRUE),
+        delay_ms = 1,
+        on_saved = function(path) {
+          saved_paths <<- c(saved_paths, path)
+        }
+      )
+    })
+  }
+
+  shiny::testServer(
+    autosave_server,
+    args = list(app = app, store = store, bundle_dir = bundle_dir),
+    {
+      session$flushReact()
+      store$restore(bundle_dir, config = cfg)
+      session$flushReact()
+      session$elapse(10)
+      session$flushReact()
+
+      expect_length(saved_paths, 0L)
+      expect_equal(shiny::isolate(store$persistence())$status, "restored")
+    }
+  )
+})
+
+test_that("tempest_shiny_server renders host-managed shared state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  source_store$add_claim(tempest_claim(
+    claim_text = "Host adapter evidence renders.",
+    source_ids = source_id
+  ))
+  store <- tempest_shiny_store()
+  ses <- tempest_session(
+    "Embedded host topic",
+    config = cfg,
+    personas = list(tempest_expert(name = "Host Expert")),
+    retriever = tempest_retriever(config = cfg, store = source_store),
+    session_id = "host-session-1"
+  )
+  ses$mindmap <- list(
+    nodes = list(list(
+      id = "root",
+      label = "Embedded host topic",
+      parent = NULL,
+      notes = "",
+      source_ids = source_id
+    )),
+    edges = list()
+  )
+  ses$add_turn("User", "user", "Show embedded state.")
+
+  shiny::testServer(
+    tempest_shiny_server,
+    args = list(
+      config = cfg,
+      store = store,
+      panels = c("sources", "facts", "mindmap", "transcript", "report")
+    ),
+    {
+      expect_identical(shared_store, store)
+      shared_store$set(ses)
+      shared_store$set_report(
+        "# Host report",
+        topic = ses$topic,
+        source_store = ses$store
+      )
+      session$flushReact()
+
+      expect_equal(
+        shiny::isolate(shared_store$get())$session_id,
+        "host-session-1"
+      )
+      expect_no_match(
+        as.character(output[["sources-body"]]$html),
+        "No sources collected yet"
+      )
+      expect_no_match(
+        as.character(output[["facts-body"]]$html),
+        "No facts extracted yet"
+      )
+      expect_equal(output[["mindmap-n_nodes"]], "1")
+      expect_match(
+        as.character(output[["transcript-body"]]$html),
+        "embedded state"
+      )
+      expect_match(as.character(output[["report-body"]]$html), "Host report")
+    }
+  )
+})
+
+test_that("the example host app parses", {
+  path <- system.file(
+    "examples",
+    "shiny-host",
+    "app.R",
+    package = "tempest"
+  )
+  skip_if(identical(path, ""), "example host app not installed")
+  expect_no_error(parse(path))
 })
 
 test_that("workflow_progress_ui renders reducer state", {
@@ -1253,7 +1660,7 @@ fake_warmup_store <- function() {
   )
 }
 
-test_that("run_warmup reports per-question progress and finishes", {
+test_that("run_warmup finishes with a summary without transcript progress spam", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   app <- source_shiny_modules()
@@ -1272,9 +1679,9 @@ test_that("run_warmup reports per-question progress and finishes", {
   ))
 
   transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "Running warmup phase")
-  expect_match(transcript, "warmup question 1/1")
   expect_match(transcript, "Warmup complete")
+  expect_no_match(transcript, "Running warmup phase")
+  expect_no_match(transcript, "warmup question 1/1")
   expect_equal(store$count(), 2)
   expect_equal(ses$turns$n, 1)
 })
@@ -1410,6 +1817,49 @@ test_that("run_warmup does not stream warmup answers into the main chat", {
   expect_equal(ses$turns$n, 1)
 })
 
+test_that("run_warmup keeps routine progress in events, not chat text", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  collector <- tempest_progress_collector(include_payload = TRUE)
+  messages <- character()
+  store <- fake_warmup_store()
+  resolve_chat <- NULL
+  ses <- fake_warmup_session(
+    function(prompt) {
+      promises::promise(function(resolve, reject) {
+        resolve_chat <<- resolve
+      })
+    },
+    progress = collector$record
+  )
+
+  promise <- app$run_warmup(
+    ses,
+    store,
+    function(x) messages[[length(messages) + 1L]] <<- x,
+    timeout_s = 1,
+    max_questions_per_expert = 1
+  )
+  deadline <- Sys.time() + 1
+  while (is.null(resolve_chat) && Sys.time() < deadline) {
+    later::run_now(0.01)
+  }
+
+  running <- tempest_progress_state(collector$events())
+  transcript <- paste(messages, collapse = "\n")
+  expect_equal(running$status, "running")
+  expect_equal(running$current_stage, "warmup")
+  expect_length(running$active$tools, 1L)
+  expect_equal(nzchar(transcript), FALSE)
+
+  resolve_chat("Warmup answer [S123456789abc].")
+  await_promise(promise)
+  transcript <- paste(messages, collapse = "\n")
+  expect_match(transcript, "Warmup complete")
+  expect_no_match(transcript, "warmup question")
+})
+
 test_that("run_warmup starts independent experts in parallel", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
@@ -1457,8 +1907,7 @@ test_that("run_warmup starts independent experts in parallel", {
   await_promise(promise)
 
   transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "Dr. A")
-  expect_match(transcript, "Dr. B")
+  expect_match(transcript, "Warmup complete")
   expect_equal(ses$turns$n, 2)
 })
 
@@ -1518,7 +1967,7 @@ test_that("run_warmup ignores stale callbacks after the session is gone", {
   await_promise(promise)
 
   transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "warmup question 1/1")
+  expect_equal(nzchar(transcript), FALSE)
   expect_no_match(transcript, "Warmup complete")
   expect_equal(store$count(), 0)
   expect_equal(ses$turns$n, 0)

@@ -46,6 +46,8 @@ tempest_progress_chr <- function(required = FALSE, default = NA_character_) {
 
 #' Create a Tempest progress event
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' `tempest_progress_event()` creates a small host-neutral event record for
 #' STORM and Co-STORM workflow progress. Events are designed for package code,
 #' host apps, tests, and future telemetry adapters that need lifecycle,
@@ -210,6 +212,8 @@ tempest_progress_without_payload <- function(event) {
 
 #' Create an in-memory Tempest progress event collector
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' `tempest_progress_collector()` returns a small host-neutral sink for Tempest
 #' progress events. Use `collector$record` as a `progress` callback, then read
 #' events back with filtering or replay them to another callback.
@@ -317,6 +321,8 @@ tempest_progress_collector <- function(include_payload = FALSE) {
 
 #' Filter Tempest progress events
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' @param events A list of `tempest_progress_event` objects, or a
 #'   `tempest_progress_collector`.
 #' @param run_id,workflow,event_type,stage,status,correlation_id Optional
@@ -386,6 +392,8 @@ tempest_progress_filter <- function(
 
 #' Replay Tempest progress events to a callback
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' @param events A list of `tempest_progress_event` objects, or a
 #'   `tempest_progress_collector`.
 #' @param progress Function called once for each event.
@@ -417,6 +425,8 @@ tempest_progress_replay <- function(events, progress) {
 }
 
 #' Reduce Tempest progress events to workflow state
+#'
+#' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_progress_state()` consumes recorded Tempest progress events and
 #' returns a compact, serializable state object that host apps can poll or

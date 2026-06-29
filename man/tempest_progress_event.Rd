@@ -50,13 +50,15 @@ tempest_progress_event(
 A \code{tempest_progress_event} S7 object.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 \code{tempest_progress_event()} creates a small host-neutral event record for
 STORM and Co-STORM workflow progress. Events are designed for package code,
 host apps, tests, and future telemetry adapters that need lifecycle,
 stage, step, expert/tool, cancellation, and artifact status without
 importing Shiny.
-}
-\details{
+
 Core fields are validated at construction. Payloads should stay small and
 privacy-aware: use them for progress metadata and references, not full raw
 expert answers or source bodies by default.

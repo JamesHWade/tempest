@@ -14,7 +14,7 @@ tempest_load_dsprrr_modules(path)
 A named list of dsprrr modules.
 }
 \description{
-Load compiled dsprrr modules
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \examples{
 \dontrun{

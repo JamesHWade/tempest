@@ -10,6 +10,9 @@ tempest_memory_artifact_store()
 A \code{tempest_artifact_store}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 This is useful for tests and host apps that want to capture artifacts before
 deciding where to persist them.
 }

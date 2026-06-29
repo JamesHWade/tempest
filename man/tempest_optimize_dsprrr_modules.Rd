@@ -53,6 +53,9 @@ warn and keep the unoptimized module for that step.}
 A named list of dsprrr modules.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 Compiles selected STORM dsprrr modules against user-provided training data.
 This is an explicit optimization step: run it with labeled examples, then
 pass the returned module list to \code{\link[=tempest_run]{tempest_run()}} via \code{dsprrr_modules}.

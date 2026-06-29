@@ -210,7 +210,10 @@ test_that("API-backed search providers fail before network calls without configu
     AZURE_AI_SEARCH_INDEX_NAME = ""
   ))
 
-  expect_error(tempest:::tempest_search_you("test"), "YDC_API_KEY")
+  expect_error(
+    tempest:::tempest_search_you("test"),
+    class = "tempest_missing_envvar_error"
+  )
   expect_error(tempest:::tempest_search_bing("test"), "BING_SEARCH_API_KEY")
   expect_error(tempest:::tempest_search_serper("test"), "SERPER_API_KEY")
   expect_error(tempest:::tempest_search_brave("test"), "BRAVE_API_KEY")
@@ -223,6 +226,21 @@ test_that("API-backed search providers fail before network calls without configu
   expect_error(
     tempest:::tempest_search_azure_ai_search("test"),
     "AZURE_AI_SEARCH_API_KEY"
+  )
+})
+
+test_that("URL safety errors are classed", {
+  expect_error(
+    tempest:::tempest_normalize_url("file:///etc/passwd"),
+    class = "tempest_retriever_url_error"
+  )
+  expect_error(
+    tempest:::tempest_normalize_url("http://localhost/private"),
+    class = "tempest_retriever_url_error"
+  )
+  expect_error(
+    tempest:::tempest_fetch_url_text(""),
+    class = "tempest_retriever_url_error"
   )
 })
 
