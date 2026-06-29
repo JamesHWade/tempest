@@ -1419,6 +1419,7 @@ costorm_starting_event <- function(session_id) {
 }
 
 costorm_session_ready_event <- function(session_id, ses = NULL) {
+  personas <- if (!is.null(ses)) ses$personas else NULL
   tempest::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
@@ -1427,7 +1428,7 @@ costorm_session_ready_event <- function(session_id, ses = NULL) {
     stage = "session",
     step = "created",
     message = "Co-STORM session ready.",
-    payload = list(persona_count = length(ses$personas %||% list()))
+    payload = list(persona_count = length(personas %||% list()))
   )
 }
 

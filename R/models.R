@@ -44,6 +44,9 @@ tempest_source_scalar <- function(...) {
     }
     if (is.list(value) && !is.data.frame(value)) {
       value <- unlist(value, use.names = FALSE)
+      if (is.null(value) || length(value) == 0L) {
+        next
+      }
     }
     value <- as.character(value[[1]])
     if (!is.na(value)) {
