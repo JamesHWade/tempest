@@ -5,8 +5,10 @@
   report artifacts and supplying validated Co-STORM experts. `tempest_config()`
   now accepts an `artifact_store`, and `tempest_session()` accepts a shared
   retriever with a `SourceStore`.
+* `tempest_artifact_store()`, `tempest_expert()`, `tempest_progress_event()`, `tempest_session_save()`, `tempest_shiny_ui()`, and related host-app APIs now carry explicit experimental lifecycle badges, and the pkgdown reference groups separate core workflows, evidence, host extension points, persistence, progress, and dsprrr modules (2nzw).
 * `tempest_config()` now defaults to `openai/gpt-5.4` for coordinator and
   writer roles, and `openai/gpt-5.4-mini` for expert, mind map, and judge roles.
+* `tempest_config()`, `tempest_retriever()`, and session persistence now use catchable cli/rlang condition classes for invalid providers, missing search-provider environment variables, unsafe URLs, chat setup failures, invalid artifact stores, and invalid session objects (9c6a).
 * The Chat tab now suggests follow-up questions as clickable cards. A set appears
   when the expert panel assembles and refreshes after each answer; clicking a card
   sends that question to the Moderator. Toggle it off with "Suggest follow-up
@@ -66,7 +68,9 @@
 * The bundled Shiny app now streams STORM workflow progress from the background worker so stage chips update while a run is still in flight (1fxn).
 * The bundled Shiny app now carries provider-native source context into Co-STORM fact extraction so warmup and chat turns populate Facts and Sources when sources were attached to the answer turn (b77g).
 * The bundled Shiny app now invalidates Co-STORM progress output from asynchronous warmup callbacks so progress icons render while warmup is still running (2zbg).
+* The bundled Shiny app now includes a compact chat footer with runtime status and icon actions for new sessions, experts, sources, facts, reports, system prompts, and tools (pkd5).
 * The bundled Shiny app now renders Tempest source citations as numbered inline links with cited-source reference panels in reports, transcript answers, and HTML report downloads (k67p, pgp9, eq7b, dq0v).
+* The bundled Shiny app now registers slash commands for `/new`, `/new-session`, `/experts`, `/sources`, `/facts`, `/claims`, `/report`, `/system`, and `/tools`, backed by normal chat-visible responses (t5zn).
 * The bundled Shiny app now uses a Tempest assistant icon in chat and transcript views plus deterministic persona icons for Co-STORM experts in the panel and workflow progress (q8zc, zb9y).
 * The bundled Shiny app no longer errors when async chat callbacks refresh the
   shared session store outside a reactive consumer.

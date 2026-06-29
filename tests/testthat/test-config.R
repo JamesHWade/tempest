@@ -74,7 +74,18 @@ test_that("tempest_config accepts upstream-style search providers", {
 
   expect_error(
     tempest_config(search_provider = "not-a-provider"),
-    "Unknown search provider"
+    class = "tempest_search_provider_error"
+  )
+})
+
+test_that("tempest_config reports classed provider errors", {
+  expect_snapshot(
+    tempest_config(search_provider = "not-a-provider"),
+    error = TRUE
+  )
+  expect_error(
+    tempest_config(search_provider = "not-a-provider"),
+    class = "tempest_config_error"
   )
 })
 
@@ -115,6 +126,20 @@ test_that("tempest_config accepts custom chat_fn", {
   expect_match(chat$model, "coordinator|gpt")
 })
 
+test_that("tempest_make_chat wraps custom chat factory failures", {
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      stop("factory unavailable")
+    }
+  )
+
+  err <- expect_error(
+    tempest_make_chat(cfg, "coordinator"),
+    class = "tempest_chat_error"
+  )
+  expect_match(conditionMessage(err$parent), "factory unavailable")
+})
+
 test_that("tempest_config accepts tools as list or function", {
   cfg_list <- tempest_config(tools = list())
   expect_type(cfg_list@tools, "list")
@@ -133,4 +158,11 @@ test_that("make_chat creates ellmer chat object", {
   cfg <- tempest_config()
   chat <- tempest_make_chat(cfg, "coordinator")
   expect_s3_class(chat, "Chat")
+})
+
+test_that("missing optional packages are classed", {
+  expect_error(
+    tempest:::tempest_require("tempestDefinitelyMissingPackage"),
+    class = "tempest_missing_package_error"
+  )
 })

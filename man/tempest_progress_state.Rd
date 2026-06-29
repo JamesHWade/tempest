@@ -17,6 +17,9 @@ stages, failures, cancellation details, artifact references, and terminal
 status.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 \code{tempest_progress_state()} consumes recorded Tempest progress events and
 returns a compact, serializable state object that host apps can poll or
 render. The reducer is host-neutral: it does not import Shiny and it works

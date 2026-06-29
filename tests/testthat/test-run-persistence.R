@@ -331,6 +331,14 @@ test_that("Tempest session bundles save and resume durable state", {
     tempest_session_save(session, bundle_dir),
     class = "tempest_session_save_error"
   )
+  expect_error(
+    tempest_session_save(list(), bundle_dir, overwrite = TRUE),
+    class = "tempest_session_save_error"
+  )
+  expect_error(
+    tempest_session_snapshot(list()),
+    class = "tempest_session_snapshot_error"
+  )
   expect_no_error(tempest_session_save(session, bundle_dir, overwrite = TRUE))
 })
 

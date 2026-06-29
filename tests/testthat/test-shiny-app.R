@@ -42,6 +42,9 @@ test_that("module UIs namespace their input ids", {
     collapse = ""
   )
   expect_match(chat_html, "chat-progress")
+  expect_match(chat_html, "shiny-chat-footer")
+  expect_match(chat_html, "chat-runtime_footer")
+  expect_match(chat_html, "chat-footer_sources")
 })
 
 test_that("tempest_shiny_ui builds namespaced host panels", {
@@ -75,9 +78,15 @@ test_that("chat UI uses the Tempest assistant icon", {
   )
 
   expect_match(chat_html, "icon-assistant")
-  expect_match(chat_html, "logos/tempest.svg", fixed = TRUE)
+  expect_match(chat_html, "tempest-logos")
+  expect_match(chat_html, "tempest.svg", fixed = TRUE)
   expect_match(chat_html, "tempest-chat-icon")
   expect_no_match(chat_html, "robot")
+
+  logo_resource <- app$tempest_logo_resource_path()
+  logo_dir <- shiny::resourcePaths()[[logo_resource]]
+  expect_equal(file.exists(file.path(logo_dir, "tempest.svg")), TRUE)
+  expect_match(app$tempest_logo_src(), paste0("^", logo_resource, "/"))
 })
 
 test_that("config UI uses current OpenAI model defaults", {
@@ -108,6 +117,20 @@ test_that("the chat module provides a landing welcome message", {
   expect_length(msg, 1)
   expect_match(msg, "Welcome to tempest")
   expect_match(msg, "Start Session")
+})
+
+test_that("chat footer renders accessible command controls", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  html <- paste(
+    as.character(app$chat_footer_ui(shiny::NS("chat"))),
+    collapse = ""
+  )
+
+  expect_match(html, "tempest-chat-footer")
+  expect_match(html, "chat-footer_experts")
+  expect_match(html, "aria-label=\"Show sources\"", fixed = TRUE)
+  expect_match(html, "aria-label=\"Generate report\"", fixed = TRUE)
 })
 
 test_that("expert cards render deterministic persona icons", {
@@ -524,6 +547,55 @@ test_that("suggestion_cards builds a shinychat submit-card list", {
     md,
     '- <span class="suggestion submit">How does Y work\\?</span>'
   )
+})
+
+test_that("chat slash command parsing normalizes aliases", {
+  app <- source_shiny_modules()
+
+  parsed <- app$chat_command_parse("/sources recent evidence")
+  expect_equal(parsed$command, "sources")
+  expect_equal(parsed$user_text, "recent evidence")
+  expect_equal(app$chat_command_parse("/claims")$command, "facts")
+  expect_equal(app$chat_command_parse("/new-session")$command, "new")
+  expect_null(app$chat_command_parse("plain question"))
+})
+
+test_that("chat command messages summarize active session state", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  source_store$add_claim(tempest_claim(
+    claim_text = "Command summaries include facts.",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.82
+  ))
+  artifacts <- new.env(parent = emptyenv())
+  artifacts[["report_md"]] <- "# Command report"
+  ses <- list(
+    topic = "Command topic",
+    personas = list(list(
+      name = "Dr. Command",
+      title = "Interaction specialist",
+      perspective = "Runtime controls"
+    )),
+    store = source_store,
+    artifacts = artifacts,
+    config = tempest_config(search_provider = "wikipedia")
+  )
+
+  expect_match(app$chat_command_message("experts", ses), "Dr. Command")
+  expect_match(app$chat_command_message("sources", ses), "Example 1")
+  expect_match(app$chat_command_message("facts", ses), "support 0.82")
+  expect_match(app$chat_command_message("tools", ses), "wikipedia")
+
+  footer <- paste(
+    as.character(app$chat_runtime_footer_ui(ses, chat_status = "streaming")),
+    collapse = ""
+  )
+  expect_match(footer, "Answering")
+  expect_match(footer, "report ready")
 })
 
 test_that("suggestion_cards returns NULL for no questions", {
@@ -1541,7 +1613,7 @@ fake_warmup_store <- function() {
   )
 }
 
-test_that("run_warmup reports per-question progress and finishes", {
+test_that("run_warmup finishes with a summary without transcript progress spam", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   app <- source_shiny_modules()
@@ -1560,9 +1632,9 @@ test_that("run_warmup reports per-question progress and finishes", {
   ))
 
   transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "Running warmup phase")
-  expect_match(transcript, "warmup question 1/1")
   expect_match(transcript, "Warmup complete")
+  expect_no_match(transcript, "Running warmup phase")
+  expect_no_match(transcript, "warmup question 1/1")
   expect_equal(store$count(), 2)
   expect_equal(ses$turns$n, 1)
 })
@@ -1698,6 +1770,49 @@ test_that("run_warmup does not stream warmup answers into the main chat", {
   expect_equal(ses$turns$n, 1)
 })
 
+test_that("run_warmup keeps routine progress in events, not chat text", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  collector <- tempest_progress_collector(include_payload = TRUE)
+  messages <- character()
+  store <- fake_warmup_store()
+  resolve_chat <- NULL
+  ses <- fake_warmup_session(
+    function(prompt) {
+      promises::promise(function(resolve, reject) {
+        resolve_chat <<- resolve
+      })
+    },
+    progress = collector$record
+  )
+
+  promise <- app$run_warmup(
+    ses,
+    store,
+    function(x) messages[[length(messages) + 1L]] <<- x,
+    timeout_s = 1,
+    max_questions_per_expert = 1
+  )
+  deadline <- Sys.time() + 1
+  while (is.null(resolve_chat) && Sys.time() < deadline) {
+    later::run_now(0.01)
+  }
+
+  running <- tempest_progress_state(collector$events())
+  transcript <- paste(messages, collapse = "\n")
+  expect_equal(running$status, "running")
+  expect_equal(running$current_stage, "warmup")
+  expect_length(running$active$tools, 1L)
+  expect_equal(nzchar(transcript), FALSE)
+
+  resolve_chat("Warmup answer [S123456789abc].")
+  await_promise(promise)
+  transcript <- paste(messages, collapse = "\n")
+  expect_match(transcript, "Warmup complete")
+  expect_no_match(transcript, "warmup question")
+})
+
 test_that("run_warmup starts independent experts in parallel", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
@@ -1745,8 +1860,7 @@ test_that("run_warmup starts independent experts in parallel", {
   await_promise(promise)
 
   transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "Dr. A")
-  expect_match(transcript, "Dr. B")
+  expect_match(transcript, "Warmup complete")
   expect_equal(ses$turns$n, 2)
 })
 
@@ -1806,7 +1920,7 @@ test_that("run_warmup ignores stale callbacks after the session is gone", {
   await_promise(promise)
 
   transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "warmup question 1/1")
+  expect_equal(nzchar(transcript), FALSE)
   expect_no_match(transcript, "Warmup complete")
   expect_equal(store$count(), 0)
   expect_equal(ses$turns$n, 0)

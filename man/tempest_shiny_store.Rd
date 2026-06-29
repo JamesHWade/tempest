@@ -10,13 +10,14 @@ tempest_shiny_store()
 A Tempest Shiny store handle.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 \code{tempest_shiny_store()} creates the small reactive store used by the
 embeddable Tempest Shiny adapter. Host apps can pass the returned store to
 \code{\link[=tempest_shiny_server]{tempest_shiny_server()}} when they want to share state across adapter
 instances or inspect the current \code{TempestSession}.
-}
-\details{
-This API is experimental. The returned object should be treated as an
-adapter handle; prefer its public methods over relying on its internal
-representation.
+
+The returned object should be treated as an adapter handle; prefer its
+public methods over relying on its internal representation.
 }

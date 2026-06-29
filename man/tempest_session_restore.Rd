@@ -20,12 +20,14 @@ objects.}
 A restored \link{TempestSession}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 \code{tempest_session_restore()} rebuilds a \link{TempestSession} from a structured
 snapshot created by \code{\link[=tempest_session_snapshot]{tempest_session_snapshot()}} or read by
 \code{\link[=tempest_session_resume]{tempest_session_resume()}}. It restores durable research state and creates
 fresh chat/tool handles using the supplied runtime \code{config}.
-}
-\details{
+
 Historical progress events are restored as session artifact data and can be
 reduced with \code{\link[=tempest_progress_state]{tempest_progress_state()}}. They are not replayed into the new
 \code{progress} callback; future calls on the restored session use that callback.

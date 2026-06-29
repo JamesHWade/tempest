@@ -2,6 +2,8 @@
 
 #' Create a Tempest artifact store adapter
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' Artifact stores let host applications observe or persist Tempest outputs
 #' without replacing the live in-memory `SourceStore`. The default store is a
 #' no-op adapter.
@@ -37,7 +39,17 @@ tempest_artifact_store <- function(
     }
   for (fn in list(write = write, read = read, list = list_fn)) {
     if (!is.function(fn)) {
-      tempest_abort("Artifact store entries must be functions.")
+      tempest_abort(
+        c(
+          "Artifact store entries must be functions.",
+          i = "Use {.fn tempest_artifact_store} with function values for {.arg write}, {.arg read}, and {.arg list_names}."
+        ),
+        class = c(
+          "tempest_artifact_store_error",
+          "tempest_config_error",
+          "tempest_error"
+        )
+      )
     }
   }
   structure(
@@ -47,6 +59,8 @@ tempest_artifact_store <- function(
 }
 
 #' Create an in-memory Tempest artifact store
+#'
+#' `r lifecycle::badge("experimental")`
 #'
 #' This is useful for tests and host apps that want to capture artifacts before
 #' deciding where to persist them.
@@ -81,7 +95,15 @@ tempest_artifact_write <- function(store, name, value, metadata = list()) {
   }
   if (!inherits(store, "tempest_artifact_store")) {
     tempest_abort(
-      "{.arg artifact_store} must be created by tempest_artifact_store()."
+      c(
+        "{.arg artifact_store} must be created by {.fn tempest_artifact_store}.",
+        i = "Use {.fn tempest_memory_artifact_store} for a simple in-memory adapter."
+      ),
+      class = c(
+        "tempest_artifact_store_error",
+        "tempest_config_error",
+        "tempest_error"
+      )
     )
   }
   store$write(name, value, metadata)
@@ -255,7 +277,15 @@ tempest_config <- function(
       !inherits(artifact_store, "tempest_artifact_store")
   ) {
     tempest_abort(
-      "{.arg artifact_store} must be created by tempest_artifact_store()."
+      c(
+        "{.arg artifact_store} must be created by {.fn tempest_artifact_store}.",
+        i = "Use {.fn tempest_memory_artifact_store} for a simple in-memory adapter."
+      ),
+      class = c(
+        "tempest_artifact_store_error",
+        "tempest_config_error",
+        "tempest_error"
+      )
     )
   }
 
@@ -311,28 +341,86 @@ tempest_make_chat <- function(
       "You are a helpful assistant."
   }
   if (!is.null(config@chat_fn)) {
-    chat <- config@chat_fn(
-      role = role,
-      model = model,
-      system_prompt = system_prompt,
-      echo = echo
+    chat <- tryCatch(
+      config@chat_fn(
+        role = role,
+        model = model,
+        system_prompt = system_prompt,
+        echo = echo
+      ),
+      error = function(e) {
+        tempest_abort(
+          c(
+            "Failed to create a Tempest chat client.",
+            i = "Role: {.val {role}}.",
+            i = "Model: {.val {model}}."
+          ),
+          class = c(
+            "tempest_chat_error",
+            "tempest_config_error",
+            "tempest_error"
+          ),
+          parent = e,
+          role = role,
+          model = model
+        )
+      }
     )
   } else {
     tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
-    chat <- ellmer::chat(
-      name = model,
-      system_prompt = system_prompt,
-      params = config@params,
-      echo = echo
+    chat <- tryCatch(
+      ellmer::chat(
+        name = model,
+        system_prompt = system_prompt,
+        params = config@params,
+        echo = echo
+      ),
+      error = function(e) {
+        tempest_abort(
+          c(
+            "Failed to create a Tempest chat client.",
+            i = "Role: {.val {role}}.",
+            i = "Model: {.val {model}}."
+          ),
+          class = c(
+            "tempest_chat_error",
+            "tempest_config_error",
+            "tempest_error"
+          ),
+          parent = e,
+          role = role,
+          model = model
+        )
+      }
     )
   }
   if (!is.null(config@tools)) {
-    tools_to_register <- if (is.function(config@tools)) {
-      config@tools()
-    } else {
-      config@tools
-    }
-    chat$register_tools(tools_to_register)
+    tryCatch(
+      {
+        tools_to_register <- if (is.function(config@tools)) {
+          config@tools()
+        } else {
+          config@tools
+        }
+        chat$register_tools(tools_to_register)
+      },
+      error = function(e) {
+        tempest_abort(
+          c(
+            "Failed to register tools on a Tempest chat client.",
+            i = "Role: {.val {role}}."
+          ),
+          class = c(
+            "tempest_chat_error",
+            "tempest_config_error",
+            "tempest_error"
+          ),
+          parent = e,
+          role = role,
+          model = model
+        )
+      }
+    )
   }
   chat
 }
@@ -358,7 +446,13 @@ tempest_search_provider_choices <- function() {
 tempest_normalize_search_provider <- function(search_provider) {
   if (!rlang::is_string(search_provider)) {
     tempest_abort(
-      "{.arg search_provider} must be a single string, not {.obj_type_friendly {search_provider}}."
+      "{.arg search_provider} must be a single string, not {.obj_type_friendly {search_provider}}.",
+      class = c(
+        "tempest_search_provider_error",
+        "tempest_config_error",
+        "tempest_error"
+      ),
+      search_provider = search_provider
     )
   }
 
@@ -388,10 +482,19 @@ tempest_normalize_search_provider <- function(search_provider) {
 
   choices <- tempest_search_provider_choices()
   if (!provider %in% choices) {
-    tempest_abort(c(
-      "Unknown search provider: {.val {search_provider}}",
-      i = "Available providers: {.val {choices}}"
-    ))
+    tempest_abort(
+      c(
+        "Unknown search provider: {.val {search_provider}}",
+        i = "Available providers: {.val {choices}}"
+      ),
+      class = c(
+        "tempest_search_provider_error",
+        "tempest_config_error",
+        "tempest_error"
+      ),
+      search_provider = search_provider,
+      choices = choices
+    )
   }
 
   provider

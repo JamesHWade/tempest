@@ -139,7 +139,11 @@ test_that("default artifact store is a no-op adapter", {
   expect_equal(store$list(), character())
   expect_error(
     tempest_config(artifact_store = list()),
-    "artifact_store"
+    class = "tempest_artifact_store_error"
+  )
+  expect_error(
+    tempest_artifact_store(write = "not a function"),
+    class = "tempest_artifact_store_error"
   )
 })
 

@@ -312,6 +312,8 @@ tempest_config_snapshot <- function(config) {
 
 #' Snapshot a Co-STORM session
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' `tempest_session_snapshot()` returns a structured, in-memory representation
 #' of the durable state in a [TempestSession]. It includes the session identity,
 #' personas, transcript, mind map, report artifacts, progress-event history,
@@ -327,7 +329,16 @@ tempest_config_snapshot <- function(config) {
 #' @return A list containing a schema-versioned session snapshot.
 #' @export
 tempest_session_snapshot <- function(session) {
-  stopifnot(inherits(session, "TempestSession"))
+  if (!inherits(session, "TempestSession")) {
+    tempest_abort(
+      "{.arg session} must be a {.cls TempestSession} object.",
+      class = c(
+        "tempest_session_snapshot_error",
+        "tempest_session_error",
+        "tempest_error"
+      )
+    )
+  }
   artifacts <- tempest_env_snapshot(session$artifacts)
 
   list(
@@ -407,6 +418,8 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 }
 
 #' Restore a Co-STORM session from a snapshot
+#'
+#' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_restore()` rebuilds a [TempestSession] from a structured
 #' snapshot created by [tempest_session_snapshot()] or read by
@@ -552,6 +565,8 @@ tempest_session_prepare_bundle_dir <- function(path, overwrite = FALSE) {
 
 #' Save a Co-STORM session bundle
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' `tempest_session_save()` writes a schema-versioned directory bundle for a
 #' [TempestSession]. The bundle stores durable research state as JSON and
 #' Markdown files and writes the `session.json` manifest last. Live chat
@@ -567,7 +582,16 @@ tempest_session_prepare_bundle_dir <- function(path, overwrite = FALSE) {
 #' @return Invisibly returns the normalized bundle directory.
 #' @export
 tempest_session_save <- function(session, path, overwrite = FALSE) {
-  stopifnot(inherits(session, "TempestSession"))
+  if (!inherits(session, "TempestSession")) {
+    tempest_abort(
+      "{.arg session} must be a {.cls TempestSession} object.",
+      class = c(
+        "tempest_session_save_error",
+        "tempest_session_error",
+        "tempest_error"
+      )
+    )
+  }
   tempest_require("jsonlite", "Tempest session persistence requires jsonlite.")
 
   bundle_dir <- tempest_session_prepare_bundle_dir(path, overwrite = overwrite)

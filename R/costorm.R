@@ -95,6 +95,8 @@ tempest_mindmap_to_markdown <- function(m) {
 
 #' Create a Co-STORM expert definition
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' Host applications can pass these definitions to [tempest_session()] via the
 #' `personas` argument to control the expert panel without patching
 #' `TempestSession` internals.

@@ -17,13 +17,15 @@ tempest_session_save(session, path, overwrite = FALSE)
 Invisibly returns the normalized bundle directory.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 \code{tempest_session_save()} writes a schema-versioned directory bundle for a
 \link{TempestSession}. The bundle stores durable research state as JSON and
 Markdown files and writes the \code{session.json} manifest last. Live chat
 handles, registered tool closures, Shiny reactive state, credentials, and
 raw provider request bodies are not serialized.
-}
-\details{
+
 Use \code{\link[=tempest_session_resume]{tempest_session_resume()}} to load the bundle with a fresh runtime
 \link{TempestConfig}.
 }

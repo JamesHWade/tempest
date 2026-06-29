@@ -89,14 +89,15 @@ tempest_shiny_as_reactive <- function(value) {
 
 #' Create a shared Tempest Shiny store
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' `tempest_shiny_store()` creates the small reactive store used by the
 #' embeddable Tempest Shiny adapter. Host apps can pass the returned store to
 #' [tempest_shiny_server()] when they want to share state across adapter
 #' instances or inspect the current `TempestSession`.
 #'
-#' This API is experimental. The returned object should be treated as an
-#' adapter handle; prefer its public methods over relying on its internal
-#' representation.
+#' The returned object should be treated as an adapter handle; prefer its
+#' public methods over relying on its internal representation.
 #'
 #' @return A Tempest Shiny store handle.
 #' @export
@@ -106,6 +107,8 @@ tempest_shiny_store <- function() {
 }
 
 #' Embed Tempest panels in a Shiny UI
+#'
+#' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_shiny_ui()` is a compact Shiny module UI for host applications that
 #' want to embed Tempest without sourcing files from `inst/shiny/R`. It reuses
@@ -160,6 +163,8 @@ tempest_shiny_ui <- function(
 }
 
 #' Run embedded Tempest Shiny panels
+#'
+#' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_shiny_server()` pairs with [tempest_shiny_ui()] and lets a host app
 #' provide a runtime [TempestConfig], optional expert personas, a stable session

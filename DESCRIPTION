@@ -23,6 +23,7 @@ Imports:
     fs,
     glue,
     httr2,
+    lifecycle,
     purrr,
     R6,
     rlang (>= 1.0.0),

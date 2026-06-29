@@ -24,6 +24,9 @@ the Chat sidebar. Hosts that provide their own config should leave this as
 A Shiny tag object.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 \code{tempest_shiny_ui()} is a compact Shiny module UI for host applications that
 want to embed Tempest without sourcing files from \code{inst/shiny/R}. It reuses
 the bundled app's panels while letting the host provide the page shell,

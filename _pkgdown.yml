@@ -2,11 +2,58 @@ url: https://jameshwade.github.io/tempest/
 template:
   bootstrap: 5
 reference:
-- title: All functions
+- title: Core workflows
   contents:
-  - starts_with("tempest_")
-  - SimulatedUser
-  - SourceStore
-  - TempestRetriever
+  - tempest_run
+  - tempest_run_async
+  - tempest_task
+  - tempest_costorm_task
+  - tempest_session
   - TempestSession
+  - SimulatedUser
   - run_app
+- title: Configuration and retrieval
+  contents:
+  - tempest_config
+  - tempest_generate_personas
+  - tempest_retriever
+  - TempestRetriever
+  - tempest_create_ragnar_store
+  - tempest_cache_clear
+  - SourceStore
+- title: Evidence and reports
+  contents:
+  - tempest_claims
+  - tempest_sources
+  - tempest_verify_claims
+  - tempest_report_md
+  - tempest_session_report_md
+  - tempest_suggest_questions
+- title: Host app extension points
+  contents:
+  - tempest_artifact_store
+  - tempest_memory_artifact_store
+  - tempest_expert
+  - tempest_shiny_store
+  - tempest_shiny_ui
+  - tempest_shiny_server
+- title: Session persistence
+  contents:
+  - tempest_session_snapshot
+  - tempest_session_restore
+  - tempest_session_save
+  - tempest_session_resume
+- title: Progress events
+  contents:
+  - tempest_progress_event
+  - tempest_progress_event_data
+  - tempest_progress_collector
+  - tempest_progress_filter
+  - tempest_progress_replay
+  - tempest_progress_state
+  - tempest_progress_labels
+- title: dsprrr modules
+  contents:
+  - tempest_load_dsprrr_modules
+  - tempest_optimize_dsprrr_modules
+  - tempest_save_dsprrr_modules

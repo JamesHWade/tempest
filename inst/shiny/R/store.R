@@ -135,7 +135,9 @@ new_session_store <- function() {
     }),
     set_report = function(md, topic = NULL, source_store = NULL) {
       rv$report_md <- md
-      if (!is.null(topic)) {
+      if (is.null(md) && is.null(topic)) {
+        rv$report_topic <- NULL
+      } else if (!is.null(topic)) {
         rv$report_topic <- topic
       }
       rv$report_source_store <- source_store

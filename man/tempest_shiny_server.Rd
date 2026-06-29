@@ -34,6 +34,9 @@ for new Co-STORM sessions. May be a value, function, or reactive.}
 A list with \code{store}, \code{session}, \code{report}, and \code{report_ready}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 \code{tempest_shiny_server()} pairs with \code{\link[=tempest_shiny_ui]{tempest_shiny_ui()}} and lets a host app
 provide a runtime \link{TempestConfig}, optional expert personas, a stable session
 id, and an optional shared store. The returned handle exposes the shared

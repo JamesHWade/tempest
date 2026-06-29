@@ -16,7 +16,7 @@ tempest_save_dsprrr_modules(modules, path)
 Invisibly returns the RDS path.
 }
 \description{
-Save compiled dsprrr modules
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \examples{
 \dontrun{

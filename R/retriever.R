@@ -11,6 +11,17 @@
 #' @return Normalized URL or `NA_character_` if invalid.
 #' @keywords internal
 tempest_normalize_url <- function(url) {
+  if (!is.character(url) || length(url) != 1L) {
+    tempest_abort(
+      "{.arg url} must be a single string, not {.obj_type_friendly {url}}.",
+      class = c(
+        "tempest_retriever_url_error",
+        "tempest_retriever_error",
+        "tempest_error"
+      ),
+      url = url
+    )
+  }
   url <- tempest_trim(url)
 
   if (is.na(url) || identical(url, "")) {
@@ -26,11 +37,19 @@ tempest_normalize_url <- function(url) {
       case_insensitive = TRUE
     )
   ) {
-    tempest_abort(c(
-      "URL protocol not allowed for security reasons.",
-      x = "Blocked URL: {.url {url}}",
-      i = "Only HTTP/HTTPS URLs are permitted."
-    ))
+    tempest_abort(
+      c(
+        "URL protocol not allowed for security reasons.",
+        x = "Blocked URL: {.url {url}}",
+        i = "Only HTTP/HTTPS URLs are permitted."
+      ),
+      class = c(
+        "tempest_retriever_url_error",
+        "tempest_retriever_error",
+        "tempest_error"
+      ),
+      url = url
+    )
   }
 
   # Block local/internal addresses (SSRF prevention)
@@ -48,11 +67,19 @@ tempest_normalize_url <- function(url) {
   if (
     stringi::stri_detect_regex(url, local_patterns, case_insensitive = TRUE)
   ) {
-    tempest_abort(c(
-      "Local network URLs not allowed for security reasons.",
-      x = "Blocked URL: {.url {url}}",
-      i = "Only public URLs are permitted."
-    ))
+    tempest_abort(
+      c(
+        "Local network URLs not allowed for security reasons.",
+        x = "Blocked URL: {.url {url}}",
+        i = "Only public URLs are permitted."
+      ),
+      class = c(
+        "tempest_retriever_url_error",
+        "tempest_retriever_error",
+        "tempest_error"
+      ),
+      url = url
+    )
   }
 
   # Upgrade HTTP to HTTPS
@@ -129,7 +156,17 @@ tempest_html_to_text <- function(html) {
 tempest_fetch_url_markdown <- function(url) {
   url <- tempest_normalize_url(url)
   if (is.na(url)) {
-    tempest_abort("Invalid URL.")
+    tempest_abort(
+      c(
+        "Invalid URL.",
+        i = "Provide a non-empty HTTP or HTTPS URL."
+      ),
+      class = c(
+        "tempest_retriever_url_error",
+        "tempest_retriever_error",
+        "tempest_error"
+      )
+    )
   }
 
   # Determine content type from URL extension
@@ -189,7 +226,17 @@ tempest_fetch_url_markdown <- function(url) {
 tempest_fetch_url_text <- function(url, user_agent = NULL) {
   url <- tempest_normalize_url(url)
   if (is.na(url)) {
-    tempest_abort("Invalid URL.")
+    tempest_abort(
+      c(
+        "Invalid URL.",
+        i = "Provide a non-empty HTTP or HTTPS URL."
+      ),
+      class = c(
+        "tempest_retriever_url_error",
+        "tempest_retriever_error",
+        "tempest_error"
+      )
+    )
   }
 
   # Use ragnar's read_as_markdown when available (preferred)
@@ -337,11 +384,20 @@ tempest_search_results <- function(title = NULL, url = NULL, snippet = NULL) {
 tempest_required_env <- function(var, provider) {
   value <- Sys.getenv(var, unset = "")
   if (identical(value, "")) {
-    tempest_abort(c(
-      "The {provider} search provider requires the {.envvar {var}} environment variable.",
-      i = "Set it with: {.code Sys.setenv({var} = \"your-key\")}",
-      i = "Or use a different provider: {.code tempest_config(search_provider = \"wikipedia\")}"
-    ))
+    tempest_abort(
+      c(
+        "The {provider} search provider requires the {.envvar {var}} environment variable.",
+        i = "Set it with: {.code Sys.setenv({var} = \"your-key\")}",
+        i = "Or use a different provider: {.code tempest_config(search_provider = \"wikipedia\")}"
+      ),
+      class = c(
+        "tempest_missing_envvar_error",
+        "tempest_retriever_error",
+        "tempest_error"
+      ),
+      envvar = var,
+      provider = provider
+    )
   }
   value
 }
@@ -537,7 +593,17 @@ TempestRetriever <- R6::R6Class(
     fetch = function(url, force = FALSE, perspective = NA_character_) {
       url <- tempest_normalize_url(url)
       if (is.na(url)) {
-        tempest_abort("Invalid URL.")
+        tempest_abort(
+          c(
+            "Invalid URL.",
+            i = "Provide a non-empty HTTP or HTTPS URL."
+          ),
+          class = c(
+            "tempest_retriever_url_error",
+            "tempest_retriever_error",
+            "tempest_error"
+          )
+        )
       }
 
       key <- tempest_fetch_cache_key(url, self$config@user_agent)
