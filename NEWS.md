@@ -6,6 +6,7 @@
   now accepts an `artifact_store`, and `tempest_session()` accepts a shared
   retriever with a `SourceStore`.
 * `tempest_artifact_store()`, `tempest_expert()`, `tempest_progress_event()`, `tempest_session_save()`, `tempest_shiny_ui()`, and related host-app APIs now carry explicit experimental lifecycle badges, and the pkgdown reference groups separate core workflows, evidence, host extension points, persistence, progress, and dsprrr modules (2nzw).
+* `tempest_claims()` now preserves support scores from structured fact extraction, and `tempest_sources()` now includes derived `context_text` plus fallback snippets for source rows backed by content or provider-native citation context (w3fm, fmbv).
 * `tempest_config()` now defaults to `openai/gpt-5.4` for coordinator and
   writer roles, and `openai/gpt-5.4-mini` for expert, mind map, and judge roles.
 * `tempest_config()`, `tempest_retriever()`, and session persistence now use catchable cli/rlang condition classes for invalid providers, missing search-provider environment variables, unsafe URLs, chat setup failures, invalid artifact stores, and invalid session objects, all sharing a common `tempest_error` base class (and a `tempest_persistence_error` base for save/load failures) so callers can catch them with a single handler (9c6a).

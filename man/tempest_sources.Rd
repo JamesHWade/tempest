@@ -10,7 +10,8 @@ tempest_sources(store)
 \item{store}{A \code{SourceStore} or \code{TempestRetriever}.}
 }
 \value{
-A tibble of sources with columns: id, url, title, snippet, content_text, fetched_at.
+A tibble of sources with columns: id, url, title, snippet,
+content_text, context_text, fetched_at.
 }
 \description{
 Return sources as a tibble

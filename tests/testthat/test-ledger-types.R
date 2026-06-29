@@ -51,6 +51,37 @@ test_that("tempest_source_record carries fields and meta", {
   expect_type(s@meta, "list")
 })
 
+test_that("source tibbles derive snippets and context text", {
+  store <- SourceStore$new()
+  source <- tempest_source(
+    url = "https://example.org/context",
+    title = "Context",
+    content_text = "Full source body gives the table context."
+  )
+  store$upsert_source(source)
+  native <- tempest_source(
+    url = "https://example.org/native",
+    title = "Native",
+    meta = list(context_text = "Native citation context supports the answer.")
+  )
+  store$upsert_source(native)
+
+  sources <- tempest_sources(store)
+  expect_contains(names(sources), c("snippet", "content_text", "context_text"))
+  expect_equal(
+    sources$snippet[sources$id == source$id],
+    "Full source body gives the table context."
+  )
+  expect_equal(
+    sources$context_text[sources$id == native$id],
+    "Native citation context supports the answer."
+  )
+  expect_equal(
+    sources$snippet[sources$id == native$id],
+    "Native citation context supports the answer."
+  )
+})
+
 test_that("claim round-trips through list", {
   cl <- tempest_claim(
     claim_text = "x",

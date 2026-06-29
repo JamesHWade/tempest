@@ -123,6 +123,7 @@ tempest_make_dsprrr_modules <- function(config) {
               "When source_context is present, return only source_id values listed there.",
               "Use source_ids as the set of provider-native sources attached to this turn.",
               "Do not use a known source unless the answer text or provider-native turn context supports the claim.",
+              "Include support_score in [0,1] when source support is clear; omit it when unscored.",
               "Do not infer or invent facts.",
               sep = "\n"
             )

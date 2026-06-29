@@ -59,6 +59,7 @@ mod_sources_server <- function(id, store) {
       output$table <- DT::renderDT({
         df <- sources()
         shiny::req(df, nrow(df) > 0)
+        df <- sources_table_data(df)
         if ("url" %in% names(df)) {
           df$url <- linkify(df$url)
         }
@@ -66,7 +67,7 @@ mod_sources_server <- function(id, store) {
       })
     } else {
       output$table_basic <- shiny::renderTable(
-        sources(),
+        sources_table_data(sources()),
         striped = TRUE,
         hover = TRUE,
         bordered = TRUE,

@@ -235,7 +235,8 @@ test_that("STORM research harvests OpenAI native annotations", {
       facts = list(list(
         claim = "STORM native-backed claim",
         sources = list(list(source_id = source_id)),
-        confidence = "high"
+        confidence = "high",
+        support_score = 0.87
       ))
     ))
   )
@@ -279,8 +280,14 @@ test_that("STORM research harvests OpenAI native annotations", {
 
   expect_equal(result$sources[[1]]$id, source_id)
   expect_equal(result$sources[[1]]$title, "STORM Native Source")
+  result_store <- SourceStore$new()
+  result_store$upsert_source(result$sources[[1]])
+  sources <- tempest_sources(result_store)
+  expect_match(sources$snippet[[1]], "STORM native-backed claim")
+  expect_match(sources$context_text[[1]], "STORM native-backed claim")
   expect_length(result$claims, 1L)
   expect_equal(result$claims[[1]]@source_ids, source_id)
+  expect_equal(result$claims[[1]]@support_score, 0.87)
 })
 
 test_that("tempest_run emits a failed verification stage event", {

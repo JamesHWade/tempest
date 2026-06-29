@@ -2,7 +2,8 @@
 
 #' Return sources as a tibble
 #' @param store A `SourceStore` or `TempestRetriever`.
-#' @return A tibble of sources with columns: id, url, title, snippet, content_text, fetched_at.
+#' @return A tibble of sources with columns: id, url, title, snippet,
+#'   content_text, context_text, fetched_at.
 #' @examples
 #' \dontrun{
 #' result <- tempest_run("History of jazz", config = tempest_config())

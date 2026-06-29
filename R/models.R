@@ -35,6 +35,65 @@ tempest_source <- function(
   )
 }
 
+#' @keywords internal
+tempest_source_scalar <- function(...) {
+  values <- list(...)
+  for (value in values) {
+    if (is.null(value) || length(value) == 0L) {
+      next
+    }
+    if (is.list(value) && !is.data.frame(value)) {
+      value <- unlist(value, use.names = FALSE)
+      if (is.null(value) || length(value) == 0L) {
+        next
+      }
+    }
+    value <- as.character(value[[1]])
+    if (!is.na(value)) {
+      value <- tempest_trim(value)
+    }
+    if (!is.na(value) && nzchar(value)) {
+      return(value)
+    }
+  }
+  NA_character_
+}
+
+#' @keywords internal
+tempest_source_context_text <- function(source) {
+  meta <- source$meta %||% list()
+  tempest_source_scalar(
+    source$context_text,
+    meta$context_text,
+    meta$citation_context,
+    meta$answer_context,
+    source$content_text,
+    source$snippet
+  )
+}
+
+#' @keywords internal
+tempest_source_snippet_text <- function(source, max_chars = 300L) {
+  meta <- source$meta %||% list()
+  text <- tempest_source_scalar(
+    source$snippet,
+    source$context_text,
+    meta$context_text,
+    meta$citation_context,
+    meta$answer_context,
+    source$content_text
+  )
+  if (is.na(text) || !nzchar(text)) {
+    return(NA_character_)
+  }
+  text <- gsub("\\s+", " ", text, perl = TRUE)
+  max_chars <- as.integer(max_chars %||% 300L)
+  if (is.na(max_chars) || max_chars < 4L || nchar(text) <= max_chars) {
+    return(text)
+  }
+  paste0(substr(text, 1L, max_chars - 3L), "...")
+}
+
 #' SourceStore (evidence ledger)
 #'
 #' In-memory store for sources, claims, evidence spans, disputes, and
@@ -218,6 +277,7 @@ SourceStore <- R6::R6Class(
           title = character(),
           snippet = character(),
           content_text = character(),
+          context_text = character(),
           fetched_at = character(),
           meta = list()
         )
@@ -226,11 +286,12 @@ SourceStore <- R6::R6Class(
           id = purrr::map_chr(s, "id"),
           url = purrr::map_chr(s, "url"),
           title = purrr::map_chr(s, ~ .x$title %||% NA_character_),
-          snippet = purrr::map_chr(s, ~ .x$snippet %||% NA_character_),
+          snippet = purrr::map_chr(s, tempest_source_snippet_text),
           content_text = purrr::map_chr(
             s,
             ~ .x$content_text %||% NA_character_
           ),
+          context_text = purrr::map_chr(s, tempest_source_context_text),
           fetched_at = purrr::map_chr(s, ~ .x$fetched_at %||% NA_character_),
           meta = purrr::map(s, ~ .x$meta %||% list())
         )

@@ -46,6 +46,7 @@ citation_markdown <- function(md, store = NULL, include_references = FALSE) {
   if (!nzchar(md %||% "")) {
     return("")
   }
+  md <- sanitize_external_citation_markers(md)
   model <- citation_reference_model(md, store = store)
   if (nrow(model$matches) == 0) {
     return(model$markdown)
@@ -59,6 +60,59 @@ citation_markdown <- function(md, store = NULL, include_references = FALSE) {
     )
   }
   rendered
+}
+
+sanitize_external_citation_markers <- function(text) {
+  if (is.null(text)) {
+    return("")
+  }
+  text <- as.character(text)
+  has_text <- !is.na(text) & nzchar(text)
+  if (!any(has_text)) {
+    return(text)
+  }
+  out <- text
+  text <- text[has_text]
+  pua_open <- intToUtf8(0xE200)
+  pua_sep <- intToUtf8(0xE202)
+  pua_close <- intToUtf8(0xE201)
+  pua_range <- paste0("[", intToUtf8(0xE000), "-", intToUtf8(0xF8FF), "]*")
+  text <- gsub(
+    paste0(
+      pua_open,
+      "cite",
+      pua_sep,
+      "[^",
+      pua_close,
+      "\n]*(",
+      pua_close,
+      ")?"
+    ),
+    "",
+    text,
+    perl = TRUE
+  )
+  text <- gsub(
+    paste0(
+      pua_range,
+      "cite",
+      pua_range,
+      "turn[0-9]+(search|view|fetch|image|news|source)[0-9]+",
+      "(",
+      pua_range,
+      "turn[0-9]+",
+      "(search|view|fetch|image|news|source)[0-9]+)*",
+      pua_range
+    ),
+    "",
+    text,
+    perl = TRUE
+  )
+  text <- gsub("[ \t]+([.,;:!?])", "\\1", text, perl = TRUE)
+  text <- gsub("([^\n])[ \t]{2,}([^\n])", "\\1 \\2", text, perl = TRUE)
+  text <- gsub("[ \t]+\n", "\n", text, perl = TRUE)
+  out[has_text] <- gsub("\n{3,}", "\n\n", text, perl = TRUE)
+  out
 }
 
 citation_reference_model <- function(md, store = NULL) {
@@ -728,6 +782,7 @@ workflow_progress_ui <- function(state, stage_labels = NULL) {
   if (is.null(state) || is.na(state$workflow)) {
     return(NULL)
   }
+  status <- workflow_display_status(state)
   shiny::div(
     class = "tempest-progress py-2",
     shiny::div(
@@ -735,9 +790,9 @@ workflow_progress_ui <- function(state, stage_labels = NULL) {
       shiny::span(
         class = paste(
           "badge rounded-pill",
-          workflow_status_class(state$status)
+          workflow_status_class(status)
         ),
-        workflow_status_label(state$status)
+        workflow_status_label(status)
       ),
       shiny::strong(workflow_title(state$workflow)),
       workflow_current_label(state)
@@ -749,10 +804,32 @@ workflow_progress_ui <- function(state, stage_labels = NULL) {
   )
 }
 
+workflow_display_status <- function(state) {
+  if (
+    identical(state$workflow, "costorm") &&
+      identical(state$status, "running") &&
+      !workflow_state_has_active(state)
+  ) {
+    return("ready")
+  }
+  state$status
+}
+
+workflow_state_has_active <- function(state) {
+  active <- c(
+    state$active$stages,
+    state$active$steps,
+    state$active$experts,
+    state$active$tools
+  )
+  length(active) > 0L
+}
+
 workflow_status_label <- function(status) {
   switch(
     status %||% "pending",
     pending = "Queued",
+    ready = "Ready",
     running = "Running",
     succeeded = "Done",
     failed = "Failed",
@@ -765,6 +842,7 @@ workflow_status_class <- function(status) {
   switch(
     status %||% "pending",
     pending = "text-bg-secondary",
+    ready = "text-bg-secondary",
     running = "text-bg-primary",
     succeeded = "text-bg-success",
     failed = "text-bg-danger",
@@ -928,10 +1006,13 @@ workflow_failure_list <- function(state) {
   if (length(state$failures) == 0L) {
     return(NULL)
   }
-  # Don't surface recorded failures once the workflow has succeeded; the
-  # reducer keeps transient tool/expert failures in `state$failures`, which
-  # would otherwise contradict the "Done" status badge.
-  if (identical(state$status, "succeeded")) {
+  # Don't surface recorded transient failures once the workflow has no active
+  # work; the reducer keeps tool/expert failures in `state$failures`, which
+  # would otherwise make a ready session look failed or stuck.
+  if (
+    identical(state$status, "succeeded") ||
+      (!identical(state$status, "failed") && !workflow_state_has_active(state))
+  ) {
     return(NULL)
   }
   latest <- state$failures[[length(state$failures)]]
@@ -1002,6 +1083,94 @@ workflow_first_text <- function(...) {
     }
   }
   ""
+}
+
+table_missing_text <- function(x) {
+  is.na(x) | !nzchar(trimws(as.character(x)))
+}
+
+table_compact_text <- function(x, max_chars = 300L, missing = "Not available") {
+  vapply(
+    as.character(x),
+    function(value) {
+      if (length(value) == 0L || is.na(value) || !nzchar(trimws(value))) {
+        return(missing)
+      }
+      value <- gsub("\\s+", " ", trimws(value), perl = TRUE)
+      if (nchar(value) <= max_chars) {
+        return(value)
+      }
+      paste0(substr(value, 1L, max_chars - 3L), "...")
+    },
+    character(1)
+  )
+}
+
+sources_table_data <- function(df) {
+  if (is.null(df)) {
+    return(NULL)
+  }
+  n <- nrow(df)
+  if (!"context_text" %in% names(df)) {
+    df$context_text <- rep(NA_character_, n)
+  }
+  if (!"snippet" %in% names(df)) {
+    df$snippet <- rep(NA_character_, n)
+  }
+
+  context <- as.character(df$context_text)
+  snippet <- as.character(df$snippet)
+  content <- if ("content_text" %in% names(df)) {
+    as.character(df$content_text)
+  } else {
+    rep(NA_character_, n)
+  }
+
+  missing_context <- table_missing_text(context)
+  context[missing_context] <- content[missing_context]
+  missing_context <- table_missing_text(context)
+  context[missing_context] <- snippet[missing_context]
+
+  missing_snippet <- table_missing_text(snippet)
+  snippet[missing_snippet] <- table_compact_text(
+    context[missing_snippet],
+    missing = NA_character_
+  )
+
+  df$snippet <- table_compact_text(snippet)
+  df$context_text <- table_compact_text(context, max_chars = 600L)
+  df
+}
+
+facts_table_data <- function(df) {
+  if (is.null(df)) {
+    return(NULL)
+  }
+  n <- nrow(df)
+  if ("source_ids" %in% names(df)) {
+    df$source_ids <- vapply(
+      df$source_ids,
+      function(ids) {
+        ids <- as.character(unlist(ids, use.names = FALSE))
+        ids <- ids[!table_missing_text(ids)]
+        if (length(ids) == 0L) {
+          return("Not available")
+        }
+        paste(ids, collapse = ", ")
+      },
+      character(1)
+    )
+  }
+  if (!"support_score" %in% names(df)) {
+    df$support_score <- rep(NA_real_, n)
+  }
+  score <- suppressWarnings(as.numeric(df$support_score))
+  df$support_score <- ifelse(
+    is.na(score),
+    "Not scored",
+    format(round(score, 2), nsmall = 2, trim = TRUE)
+  )
+  df
 }
 
 # A DT datatable with the app's standard export options.

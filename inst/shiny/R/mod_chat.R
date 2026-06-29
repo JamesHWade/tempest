@@ -99,7 +99,8 @@ mod_chat_ui <- function(id, config_ui) {
             enable_cancel = TRUE,
             icon_assistant = tempest_chat_icon(),
             footer = chat_footer_ui(ns)
-          )
+          ),
+          chat_citation_sanitizer_script(ns)
         )
       )
     )
@@ -284,19 +285,28 @@ mod_chat_server <- function(
       )
     })
 
-    create_session <- function(topic, n_experts) {
-      session_personas <- reactive_or_value(personas)
-      session_id_value <- reactive_or_value(session_id)
+    create_session <- function(
+      topic,
+      n_experts,
+      config_value,
+      session_personas,
+      session_id_value,
+      on_error = NULL
+    ) {
       ses <- tryCatch(
         tempest::tempest_session(
           topic,
-          config = config(),
+          config = config_value,
           n_experts = n_experts,
           personas = session_personas,
           session_id = session_id_value,
           progress = record_progress
         ),
         error = function(e) {
+          costorm_log("session setup failed: %s", conditionMessage(e))
+          if (is.function(on_error)) {
+            on_error(e)
+          }
           shiny::showNotification(
             paste0("Failed to create session: ", conditionMessage(e)),
             type = "error",
@@ -310,7 +320,7 @@ mod_chat_server <- function(
       }
       active_session_id <<- active_session_id + 1L
       store$set(ses)
-      chat$set_client(ses$chats$moderator, sync = FALSE)
+      shiny::isolate(chat$set_client(ses$chats$moderator, sync = FALSE))
       # Clear the landing greeting; the session intro below replaces it.
       chat$clear(greeting = FALSE)
       append_chat(paste0(
@@ -320,6 +330,11 @@ mod_chat_server <- function(
         expert_intro(ses),
         "\n\nAsk questions, request sources, or ask for a report.\n"
       ))
+      costorm_log(
+        "session ready: %s with %d experts",
+        ses$session_id,
+        length(ses$personas)
+      )
       ses
     }
 
@@ -454,67 +469,168 @@ mod_chat_server <- function(
       topic <- stringi::stri_trim_both(input$topic %||% "")
       if (!nzchar(topic)) {
         if (warmup_is_current()) {
-          bslib::update_task_button("start", state = "ready")
+          bslib::update_task_button("start", state = "ready", session = session)
         }
         return()
       }
-      ses <- create_session(topic, input$n_experts %||% 3)
-      if (is.null(ses)) {
-        if (warmup_is_current()) {
-          bslib::update_task_button("start", state = "ready")
-        }
-        return()
-      }
+      config_value <- shiny::isolate(config())
+      session_personas <- shiny::isolate(reactive_or_value(personas))
+      session_id_value <- shiny::isolate(reactive_or_value(session_id))
+      session_id_value <- session_id_value %||%
+        tempest:::tempest_uuid("session")
+      n_experts <- input$n_experts %||% 3
       suggest_enabled <- isTRUE(input$suggest)
-      start_session_id <- active_session_id
-      append_start_suggestions <- function() {
-        if (warmup_is_current()) {
-          append_suggestions(
-            ses,
-            suggest_enabled,
-            function(text) {
-              append_chat_if_active(text, session_id = start_session_id)
-            },
-            n = 4
-          )
-        }
-      }
-      delay_suggestions <- should_delay_start_suggestions(
-        input$warmup,
-        ses$personas
-      )
-      if (!delay_suggestions) {
-        append_start_suggestions()
-      }
-      if (!isTRUE(input$warmup) || length(ses$personas) == 0) {
-        if (warmup_is_current()) {
-          bslib::update_task_button("start", state = "ready")
-        }
-        return()
-      }
-      warmup_done <- promises::then(
-        run_warmup(ses, store, append_chat, is_current = warmup_is_current),
-        onFulfilled = function(...) {
-          append_start_suggestions()
-        },
-        onRejected = function(e) {
-          if (warmup_is_current()) {
-            append_chat_if_active(
-              paste0("Warmup failed: ", conditionMessage(e)),
-              session_id = start_session_id
-            )
-            append_start_suggestions()
-          }
-          NULL
-        }
-      )
-      promises::finally(
-        warmup_done,
+      warmup_enabled <- isTRUE(input$warmup)
+
+      record_progress(costorm_starting_event(session_id_value))
+      costorm_log("start requested: %s", topic)
+
+      later::later(
         function() {
-          if (warmup_is_current()) {
-            bslib::update_task_button("start", state = "ready")
-          }
-        }
+          shiny::withReactiveDomain(session, {
+            if (!warmup_is_current()) {
+              return()
+            }
+
+            reset_start_button <- function() {
+              if (warmup_is_current()) {
+                bslib::update_task_button(
+                  "start",
+                  state = "ready",
+                  session = session
+                )
+              }
+            }
+
+            tryCatch(
+              {
+                schedule_start_suggestions <- function(ses, start_session_id) {
+                  if (!warmup_is_current() || !isTRUE(suggest_enabled)) {
+                    return(invisible(NULL))
+                  }
+                  delay_s <- getOption("tempest.shiny.suggestion_delay_s", 0.05)
+                  later::later(
+                    function() {
+                      shiny::withReactiveDomain(session, {
+                        if (!warmup_is_current()) {
+                          return()
+                        }
+                        costorm_log(
+                          "suggestions started: %s",
+                          ses$session_id %||% session_id_value
+                        )
+                        append_suggestions(
+                          ses,
+                          suggest_enabled,
+                          function(text) {
+                            append_chat_if_active(
+                              text,
+                              session_id = start_session_id
+                            )
+                          },
+                          n = 4,
+                          on_error = function(error) {
+                            costorm_log(
+                              "suggestions failed: %s",
+                              conditionMessage(error)
+                            )
+                          }
+                        )
+                        costorm_log(
+                          "suggestions finished: %s",
+                          ses$session_id %||% session_id_value
+                        )
+                      })
+                    },
+                    delay = delay_s
+                  )
+                  invisible(NULL)
+                }
+
+                session_error <- NULL
+                ses <- create_session(
+                  topic,
+                  n_experts,
+                  config_value = config_value,
+                  session_personas = session_personas,
+                  session_id_value = session_id_value,
+                  on_error = function(error) {
+                    session_error <<- error
+                  }
+                )
+                if (is.null(ses)) {
+                  record_progress(costorm_session_failed_event(
+                    session_id_value,
+                    session_error
+                  ))
+                  reset_start_button()
+                  return()
+                }
+                record_progress(costorm_session_ready_event(
+                  session_id_value,
+                  ses
+                ))
+
+                start_session_id <- active_session_id
+                delay_suggestions <- should_delay_start_suggestions(
+                  warmup_enabled,
+                  ses$personas
+                )
+                if (!warmup_enabled || length(ses$personas) == 0) {
+                  reset_start_button()
+                  schedule_start_suggestions(ses, start_session_id)
+                  return()
+                }
+
+                costorm_log("warmup started: %s", ses$session_id)
+                warmup_done <- promises::then(
+                  run_warmup(
+                    ses,
+                    store,
+                    append_chat,
+                    is_current = warmup_is_current
+                  ),
+                  onFulfilled = function(...) {
+                    costorm_log("warmup finished: %s", ses$session_id)
+                    NULL
+                  },
+                  onRejected = function(e) {
+                    costorm_log("warmup failed: %s", conditionMessage(e))
+                    if (warmup_is_current()) {
+                      append_chat_if_active(
+                        paste0("Warmup failed: ", conditionMessage(e)),
+                        session_id = start_session_id
+                      )
+                    }
+                    NULL
+                  }
+                )
+                promises::finally(
+                  warmup_done,
+                  function() {
+                    shiny::withReactiveDomain(session, {
+                      if (warmup_is_current()) {
+                        reset_start_button()
+                        if (delay_suggestions) {
+                          schedule_start_suggestions(ses, start_session_id)
+                        }
+                      }
+                    })
+                  }
+                )
+              },
+              error = function(error) {
+                costorm_log("start flow failed: %s", conditionMessage(error))
+                record_progress(costorm_session_failed_event(
+                  session_id_value,
+                  error
+                ))
+                reset_start_button()
+              }
+            )
+          })
+        },
+        delay = getOption("tempest.shiny.start_delay_s", 0.05)
       )
     })
 
@@ -533,6 +649,7 @@ mod_chat_server <- function(
           if (is.character(turn)) paste(turn, collapse = "\n") else ""
         }
       )
+      ans <- sanitize_external_citation_markers(ans)
       if (nzchar(msg)) {
         ses$add_turn("user", "user", msg)
       }
@@ -716,6 +833,88 @@ chat_footer_ui <- function(ns) {
       button("footer_tools", "wrench", "Show tools")
     )
   )
+}
+
+chat_citation_sanitizer_script <- function(ns) {
+  root_id <- ns("chat")
+  root_id <- gsub("\\", "\\\\", root_id, fixed = TRUE)
+  root_id <- gsub("'", "\\'", root_id, fixed = TRUE)
+  shiny::tags$script(shiny::HTML(sprintf(
+    "
+(function(rootId) {
+  function clean(value) {
+    if (!value || value.indexOf('cite') === -1) {
+      return value;
+    }
+    return value
+      .replace(/\\uE200cite\\uE202[^\\uE201\\n]*(?:\\uE201)?/g, '')
+      .replace(/[\\uE000-\\uF8FF]*cite[\\uE000-\\uF8FF]*turn\\d+(?:search|view|fetch|image|news|source)\\d+(?:[\\uE000-\\uF8FF]*turn\\d+(?:search|view|fetch|image|news|source)\\d+)*[\\uE000-\\uF8FF]*/g, '')
+      .replace(/[ \\t]+([.,;:!?])/g, '$1');
+  }
+  function cleanTree(root) {
+    if (!root) {
+      return;
+    }
+    if (root.nodeType === Node.TEXT_NODE) {
+      var cleaned = clean(root.nodeValue);
+      if (cleaned !== root.nodeValue) {
+        root.nodeValue = cleaned;
+      }
+      return;
+    }
+    if (
+      root.nodeType !== Node.ELEMENT_NODE &&
+      root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE
+    ) {
+      return;
+    }
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    var node;
+    while ((node = walker.nextNode())) {
+      cleanTree(node);
+    }
+  }
+  function observe(root) {
+    if (!root || root.dataset.tempestCitationSanitizer === 'true') {
+      return;
+    }
+    root.dataset.tempestCitationSanitizer = 'true';
+    cleanTree(root);
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.type === 'characterData') {
+          cleanTree(mutation.target);
+        }
+        mutation.addedNodes.forEach(cleanTree);
+      });
+    });
+    observer.observe(root, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+    if (root.shadowRoot) {
+      cleanTree(root.shadowRoot);
+      observer.observe(root.shadowRoot, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    }
+  }
+  function start() {
+    observe(document.getElementById(rootId));
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+  document.addEventListener('shiny:connected', start);
+})('%s');
+",
+    root_id
+  )))
 }
 
 chat_runtime_counts <- function(ses) {
@@ -1149,6 +1348,7 @@ chat_input_text <- function(x) {
 # grid of cards; the `submit` class makes a click send the question immediately.
 # Returns NULL when there are no usable questions.
 suggestion_cards <- function(questions, lead = "**Research next:**") {
+  questions <- sanitize_external_citation_markers(questions)
   questions <- trimws(questions)
   questions <- questions[!is.na(questions) & nzchar(questions)]
   if (length(questions) == 0) {
@@ -1165,11 +1365,20 @@ suggestion_cards <- function(questions, lead = "**Research next:**") {
 # Generate suggestion cards and append them, gated on `enabled`. Quiet on
 # failure: a stalled or erroring generator simply shows no cards. Pure of Shiny
 # reactives (deps injected) so it can be unit-tested directly.
-append_suggestions <- function(ses, enabled, append_fn, n = 4) {
+append_suggestions <- function(
+  ses,
+  enabled,
+  append_fn,
+  n = 4,
+  on_error = NULL
+) {
   if (is.null(ses) || !isTRUE(enabled)) {
     return(invisible(NULL))
   }
   questions <- tryCatch(ses$suggest_questions(n), error = function(e) {
+    if (is.function(on_error)) {
+      on_error(e)
+    }
     character()
   })
   cards <- suggestion_cards(questions)
@@ -1183,13 +1392,75 @@ should_delay_start_suggestions <- function(warmup_enabled, personas) {
   isTRUE(warmup_enabled) && length(personas) > 0
 }
 
+costorm_log <- function(format, ...) {
+  if (!isTRUE(getOption("tempest.shiny.log", TRUE))) {
+    return(invisible(NULL))
+  }
+  args <- list(...)
+  text <- if (length(args) == 0L) {
+    format
+  } else {
+    sprintf(format, ...)
+  }
+  message("[tempest:chat] ", text)
+  invisible(NULL)
+}
+
+costorm_starting_event <- function(session_id) {
+  tempest::tempest_progress_event(
+    run_id = session_id,
+    workflow = "costorm",
+    event_type = "stage",
+    status = "started",
+    stage = "session",
+    step = "created",
+    message = "Starting Co-STORM session."
+  )
+}
+
+costorm_session_ready_event <- function(session_id, ses = NULL) {
+  personas <- if (!is.null(ses)) ses$personas else NULL
+  tempest::tempest_progress_event(
+    run_id = session_id,
+    workflow = "costorm",
+    event_type = "stage",
+    status = "succeeded",
+    stage = "session",
+    step = "created",
+    message = "Co-STORM session ready.",
+    payload = list(persona_count = length(personas %||% list()))
+  )
+}
+
+costorm_session_failed_event <- function(session_id, error = NULL) {
+  message <- "Session setup failed."
+  payload <- list(error_message = message)
+  if (!is.null(error)) {
+    message <- paste0(message, " ", conditionMessage(error))
+    payload <- progress_error_payload(error)
+  }
+  tempest::tempest_progress_event(
+    run_id = session_id,
+    workflow = "costorm",
+    event_type = "stage",
+    status = "failed",
+    stage = "session",
+    step = "created",
+    message = message,
+    payload = payload
+  )
+}
+
 costorm_progress_state <- function(events) {
   if (length(events) == 0L) {
     return(NULL)
   }
   tryCatch(
     tempest::tempest_progress_state(events),
-    error = function(e) NULL
+    error = function(e) {
+      costorm_log("progress reducer failed: %s", conditionMessage(e))
+      NULL
+    }
   )
 }
 
@@ -1530,6 +1801,7 @@ run_warmup <- function(
     persona <- ses$personas[[idx]]
     name <- persona$name %||% paste("Expert", idx)
     persona_id <- as.character(persona$id %||% idx)
+    expert_correlation_id <- paste("warmup-expert", persona_id, sep = "-")
     expert_event <- NULL
     answered_count <- 0L
     promises::then(promises::promise_resolve(NULL), function(...) {
@@ -1548,6 +1820,7 @@ run_warmup <- function(
           stage = "warmup",
           step = "expert_fanout",
           parent_event_id = progress_event_id(warmup_event),
+          correlation_id = expert_correlation_id,
           payload = list(
             expert_id = persona_id,
             expert_name = name,
@@ -1563,6 +1836,7 @@ run_warmup <- function(
         stage = "warmup",
         step = "expert_fanout",
         parent_event_id = progress_event_id(warmup_event),
+        correlation_id = expert_correlation_id,
         payload = list(
           expert_id = persona_id,
           expert_name = name,
@@ -1728,6 +2002,7 @@ run_warmup <- function(
           stage = "warmup",
           step = "expert_fanout",
           parent_event_id = progress_event_id(expert_event),
+          correlation_id = expert_correlation_id,
           payload = list(
             expert_id = persona_id,
             expert_name = name,
@@ -1745,6 +2020,7 @@ run_warmup <- function(
             stage = "warmup",
             step = "expert_fanout",
             parent_event_id = progress_event_id(expert_event),
+            correlation_id = expert_correlation_id,
             payload = c(
               list(
                 expert_id = persona_id,

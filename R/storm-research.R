@@ -132,6 +132,15 @@ tempest_normalize_query_decomposition <- function(
 }
 
 #' @keywords internal
+tempest_normalize_optional_score <- function(x) {
+  score <- suppressWarnings(as.numeric(x %||% NA_real_))
+  if (length(score) != 1L || is.na(score)) {
+    return(NA_real_)
+  }
+  max(0, min(1, score))
+}
+
+#' @keywords internal
 tempest_normalize_fact_output <- function(x) {
   facts <- if (is.list(x) && !is.null(x$facts)) x$facts else x
   if (is.null(facts) || length(facts) == 0 || !is.list(facts)) {
@@ -152,6 +161,9 @@ tempest_normalize_fact_output <- function(x) {
       claim = f$claim %||% "",
       sources = sources,
       confidence = f$confidence %||% NA_character_,
+      support_score = tempest_normalize_optional_score(
+        f$support_score %||% f$score
+      ),
       note = f$note %||% NA_character_
     )
   })
@@ -329,6 +341,7 @@ tempest_extract_facts_from_answer <- function(
       citation_rule,
       source_rule,
       "- For each claim, list the source_id(s) that support it.\n",
+      "- Include support_score in [0,1] when source support is clear; omit it when unscored.\n",
       "- Do NOT invent or infer new facts.\n\n",
       "<answer>\n",
       answer_text,
@@ -392,6 +405,7 @@ tempest_extract_facts_from_answer <- function(
       source_ids = known,
       claim_type = "finding",
       confidence = conf,
+      support_score = f$support_score,
       session_id = session_id,
       persona_id = persona_id,
       retrieval_step_id = retrieval_step_id,
