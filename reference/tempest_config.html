@@ -49,6 +49,8 @@
 <span>  artifact_store <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  search_provider <span class="op">=</span> <span class="st">"native"</span>,</span>
 <span>  cache_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cache_enabled <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  cache_ttl <span class="op">=</span> <span class="cn">Inf</span>,</span>
 <span>  max_search_results <span class="op">=</span> <span class="fl">8</span>,</span>
 <span>  max_search_queries_per_turn <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  retrieve_top_k <span class="op">=</span> <span class="fl">25</span>,</span>
@@ -115,6 +117,16 @@ capabilities when available, falling back to "wikipedia".</p></dd>
 
 <dt id="arg-cache-dir">cache_dir<a class="anchor" aria-label="anchor" href="#arg-cache-dir"></a></dt>
 <dd><p>Path to cache directory.</p></dd>
+
+
+<dt id="arg-cache-enabled">cache_enabled<a class="anchor" aria-label="anchor" href="#arg-cache-enabled"></a></dt>
+<dd><p>Whether retriever search/fetch calls should read from
+and write to the on-disk cache.</p></dd>
+
+
+<dt id="arg-cache-ttl">cache_ttl<a class="anchor" aria-label="anchor" href="#arg-cache-ttl"></a></dt>
+<dd><p>Maximum cache age in seconds. Defaults to <code>Inf</code>, which keeps
+cached search/fetch entries valid until explicitly cleared.</p></dd>
 
 
 <dt id="arg-max-search-results">max_search_results<a class="anchor" aria-label="anchor" href="#arg-max-search-results"></a></dt>

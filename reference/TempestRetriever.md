@@ -22,6 +22,14 @@ with ragnar for semantic search capabilities.
 
   Path to cache directory.
 
+- `cache_enabled`:
+
+  Whether retriever calls use the on-disk cache.
+
+- `cache_ttl`:
+
+  Maximum cache age in seconds.
+
 ## Methods
 
 ### Public methods
@@ -41,6 +49,8 @@ with ragnar for semantic search capabilities.
 - [`TempestRetriever$get_source_text()`](#method-TempestRetriever-get_source_text)
 
 - [`TempestRetriever$list_sources()`](#method-TempestRetriever-list_sources)
+
+- [`TempestRetriever$cache_stats()`](#method-TempestRetriever-cache_stats)
 
 - [`TempestRetriever$clone()`](#method-TempestRetriever-clone)
 
@@ -72,7 +82,7 @@ Search for sources using the configured provider.
 
 #### Usage
 
-    TempestRetriever$search(query, k = NULL, provider = NULL)
+    TempestRetriever$search(query, k = NULL, provider = NULL, force = FALSE)
 
 #### Arguments
 
@@ -87,6 +97,10 @@ Search for sources using the configured provider.
 - `provider`:
 
   Search provider override.
+
+- `force`:
+
+  If TRUE, bypass any cached result and refresh the cache.
 
 #### Returns
 
@@ -239,6 +253,26 @@ List all sources in the store.
 #### Returns
 
 A list of source objects.
+
+------------------------------------------------------------------------
+
+### `TempestRetriever$cache_stats()`
+
+Return cache hit/miss counters for this retriever.
+
+#### Usage
+
+    TempestRetriever$cache_stats(reset = FALSE)
+
+#### Arguments
+
+- `reset`:
+
+  Whether to reset counters after reading them.
+
+#### Returns
+
+A tibble with one row each for search and fetch cache counters.
 
 ------------------------------------------------------------------------
 

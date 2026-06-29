@@ -251,6 +251,16 @@
 <td>Cache directory; defaults to <code>tempdir()/tempest-cache</code> or <code>TEMPEST_CACHE_DIR</code> env var</td>
 </tr>
 <tr>
+<td><code>cache_enabled</code></td>
+<td><code>TRUE</code></td>
+<td>Whether search and fetch calls read from and write to the cache</td>
+</tr>
+<tr>
+<td><code>cache_ttl</code></td>
+<td><code>Inf</code></td>
+<td>Maximum cache age in seconds before search/fetch entries are refreshed</td>
+</tr>
+<tr>
 <td><code>max_search_results</code></td>
 <td><code>8</code></td>
 <td>Maximum results per search query</td>

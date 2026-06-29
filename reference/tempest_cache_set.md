@@ -25,4 +25,4 @@ tempest_cache_set(cache_dir, key, value)
 
 ## Value
 
-Invisibly returns the value.
+Invisibly returns `TRUE` if the value was written, `FALSE` otherwise.

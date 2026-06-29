@@ -218,6 +218,8 @@ accepts the following parameters:
 | `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
 | `tools` | `NULL` | Additional ellmer tools (e.g., `btw::btw_tools()`) |
 | `cache_dir` | `NULL` | Cache directory; defaults to `tempdir()/tempest-cache` or `TEMPEST_CACHE_DIR` env var |
+| `cache_enabled` | `TRUE` | Whether search and fetch calls read from and write to the cache |
+| `cache_ttl` | `Inf` | Maximum cache age in seconds before search/fetch entries are refreshed |
 | `max_search_results` | `8` | Maximum results per search query |
 | `max_search_queries_per_turn` | `3` | Maximum decomposed search queries per research turn |
 | `retrieve_top_k` | `25` | Maximum facts/chunks retrieved for each section |
@@ -507,6 +509,8 @@ Code that inspired tempest:
 
 - [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
   : Create a Tempest artifact store adapter
+- [`tempest_cache_clear()`](https://jameshwade.github.io/tempest/reference/tempest_cache_clear.md)
+  : Clear the Tempest cache
 - [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
   : Return claims as a tibble
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)

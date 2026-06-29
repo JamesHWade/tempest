@@ -15,6 +15,8 @@ tempest_config(
   artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
+  cache_enabled = TRUE,
+  cache_ttl = Inf,
   max_search_results = 8,
   max_search_queries_per_turn = 3,
   retrieve_top_k = 25,
@@ -84,6 +86,16 @@ tempest_config(
 - cache_dir:
 
   Path to cache directory.
+
+- cache_enabled:
+
+  Whether retriever search/fetch calls should read from and write to the
+  on-disk cache.
+
+- cache_ttl:
+
+  Maximum cache age in seconds. Defaults to `Inf`, which keeps cached
+  search/fetch entries valid until explicitly cleared.
 
 - max_search_results:
 

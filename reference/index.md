@@ -4,6 +4,8 @@
 
 - [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
   : Create a Tempest artifact store adapter
+- [`tempest_cache_clear()`](https://jameshwade.github.io/tempest/reference/tempest_cache_clear.md)
+  : Clear the Tempest cache
 - [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
   : Return claims as a tibble
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
