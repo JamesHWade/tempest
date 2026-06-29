@@ -169,6 +169,64 @@ test_that("TempestSession snapshots restore durable session state", {
   expect_equal(collector$data()[[1]]$run_id, "session_snapshot")
 })
 
+test_that("TempestSession restores progress history without replaying it", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  collector <- tempest_progress_collector(include_payload = TRUE)
+  session <- tempest_session(
+    "Progress history",
+    config = cfg,
+    personas = list(list(
+      id = 1,
+      name = "Dr. History",
+      title = "Progress expert",
+      perspective = "Event replay"
+    )),
+    progress = collector$record
+  )
+  session$emit_progress(
+    "stage",
+    "started",
+    stage = "dialogue",
+    step = "turn"
+  )
+  history <- session$artifacts[["progress_events"]]
+  snapshot <- tempest:::tempest_session_snapshot(session)
+
+  expect_equal(length(history), 2)
+  expect_equal(tempest_progress_state(history)$run_id, session$session_id)
+  expect_equal(length(snapshot$progress_events), length(history))
+
+  restore_collector <- tempest_progress_collector(include_payload = TRUE)
+  restored <- tempest:::tempest_session_restore(
+    snapshot,
+    config = cfg,
+    progress = restore_collector$record
+  )
+
+  expect_length(restore_collector$events(), 0)
+  restored_history <- restored$artifacts[["progress_events"]]
+  expect_equal(length(restored_history), length(history))
+  expect_equal(
+    tempest_progress_state(restored_history)$run_id,
+    session$session_id
+  )
+
+  restored$emit_progress(
+    "stage",
+    "succeeded",
+    stage = "dialogue",
+    step = "turn"
+  )
+  expect_length(restore_collector$events(), 1)
+  expect_equal(
+    length(restored$artifacts[["progress_events"]]),
+    length(history) + 1
+  )
+})
+
 test_that("run artifacts save and load store state", {
   skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")

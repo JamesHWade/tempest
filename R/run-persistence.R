@@ -274,6 +274,7 @@ tempest_session_snapshot <- function(session) {
     mindmap = session$mindmap,
     artifacts = artifacts,
     suggested_questions = artifacts$suggested_questions %||% character(),
+    progress_events = artifacts$progress_events %||% list(),
     store = tempest_source_store_snapshot(session$store),
     expert_sessions = tempest_expert_sessions_snapshot(session)
   )
@@ -377,6 +378,12 @@ tempest_session_restore <- function(
       is.null(session$artifacts[["suggested_questions"]])
   ) {
     session$artifacts[["suggested_questions"]] <- snapshot$suggested_questions
+  }
+  if (
+    !is.null(snapshot$progress_events) &&
+      is.null(session$artifacts[["progress_events"]])
+  ) {
+    session$artifacts[["progress_events"]] <- snapshot$progress_events
   }
 
   tempest_session_restore_expert_sessions(

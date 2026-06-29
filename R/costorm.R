@@ -409,7 +409,7 @@ TempestSession <- R6::R6Class(
       parent_event_id = NA_character_,
       correlation_id = NA_character_
     ) {
-      tempest_emit_progress(
+      event <- tempest_emit_progress(
         self$progress,
         run_id = self$session_id,
         workflow = "costorm",
@@ -422,6 +422,14 @@ TempestSession <- R6::R6Class(
         parent_event_id = parent_event_id,
         correlation_id = correlation_id
       )
+      if (!is.null(self$artifacts)) {
+        events <- self$artifacts[["progress_events"]] %||% list()
+        self$artifacts[["progress_events"]] <- c(
+          events,
+          list(tempest_progress_event_data(event))
+        )
+      }
+      invisible(event)
     },
 
     #' @description
