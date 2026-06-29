@@ -981,7 +981,10 @@ session_autosave_server <- function(
   on_saved = NULL,
   on_error = NULL
 ) {
-  trigger <- shiny::debounce(shiny::reactive(store$version()), delay_ms)
+  trigger <- shiny::debounce(
+    shiny::reactive(store$autosave_trigger()),
+    delay_ms
+  )
   shiny::observeEvent(
     trigger(),
     {

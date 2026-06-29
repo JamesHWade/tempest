@@ -8,7 +8,7 @@
 * `tempest_artifact_store()`, `tempest_expert()`, `tempest_progress_event()`, `tempest_session_save()`, `tempest_shiny_ui()`, and related host-app APIs now carry explicit experimental lifecycle badges, and the pkgdown reference groups separate core workflows, evidence, host extension points, persistence, progress, and dsprrr modules (2nzw).
 * `tempest_config()` now defaults to `openai/gpt-5.4` for coordinator and
   writer roles, and `openai/gpt-5.4-mini` for expert, mind map, and judge roles.
-* `tempest_config()`, `tempest_retriever()`, and session persistence now use catchable cli/rlang condition classes for invalid providers, missing search-provider environment variables, unsafe URLs, chat setup failures, invalid artifact stores, and invalid session objects (9c6a).
+* `tempest_config()`, `tempest_retriever()`, and session persistence now use catchable cli/rlang condition classes for invalid providers, missing search-provider environment variables, unsafe URLs, chat setup failures, invalid artifact stores, and invalid session objects, all sharing a common `tempest_error` base class (and a `tempest_persistence_error` base for save/load failures) so callers can catch them with a single handler (9c6a).
 * The Chat tab now suggests follow-up questions as clickable cards. A set appears
   when the expert panel assembles and refreshes after each answer; clicking a card
   sends that question to the Moderator. Toggle it off with "Suggest follow-up
@@ -49,7 +49,7 @@
   research is also caught and skipped rather than aborting the whole run.
 * `tempest_session()` gains a `progress` callback that emits Co-STORM session, warmup, expert/tool, dialogue, fact extraction, mind-map, suggestion, report, artifact, and failure events (qngb).
 * `tempest_session()` now accepts `session_id` so host apps can align Co-STORM progress, persistence, and artifacts with their own project/session identity (z0e0).
-* `tempest_session_save()`, `tempest_session_resume()`, `tempest_session_snapshot()`, and `tempest_session_restore()` provide schema-versioned Co-STORM session persistence bundles and in-memory snapshot/restore helpers (zj62).
+* `tempest_session_save()`, `tempest_session_resume()`, `tempest_session_snapshot()`, and `tempest_session_restore()` provide schema-versioned Co-STORM session persistence bundles and in-memory snapshot/restore helpers (zj62). `tempest_session_save(overwrite = TRUE)` only replaces directories that already look like a Tempest session bundle, so a mistyped path cannot recursively delete unrelated files.
 * `tempest_shiny_ui()`, `tempest_shiny_server()`, and `tempest_shiny_store()` provide an experimental embeddable Shiny adapter for host apps, with fake-chat example code under `inst/examples/shiny-host` (z0e0).
 * `tempest_config(search_provider = )` searches now apply a request timeout
   and retry on transient HTTP errors, and a single missing or non-public

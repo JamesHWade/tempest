@@ -284,7 +284,8 @@ TempestSession <- R6::R6Class(
         !rlang::is_string(session_id) || !nzchar(tempest_trim(session_id))
       ) {
         tempest_abort(
-          "{.arg session_id} must be a single non-empty string or {.code NULL}."
+          "{.arg session_id} must be a single non-empty string or {.code NULL}.",
+          class = c("tempest_session_error", "tempest_error")
         )
       } else {
         session_id <- tempest_trim(session_id)

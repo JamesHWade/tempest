@@ -100,7 +100,7 @@ test_that("tempest_session accepts a host session id", {
       personas = list(tempest_expert(name = "Host Expert")),
       session_id = ""
     ),
-    "session_id"
+    class = "tempest_session_error"
   )
 })
 

@@ -77,11 +77,31 @@ tempest_read_json <- function(path) {
   )
 }
 
+# Condition-class hierarchy for Tempest persistence errors. Every persistence
+# failure carries the `tempest_persistence_error` and `tempest_error` base
+# classes so callers can catch any save/load failure with a single handler.
+# Session persistence errors additionally carry `tempest_session_error`, which
+# is shared with non-persistence session errors raised by `TempestSession`.
+#' @keywords internal
+tempest_persistence_error_class <- function(specific = character()) {
+  c(specific, "tempest_persistence_error", "tempest_error")
+}
+
+#' @keywords internal
+tempest_session_persistence_error_class <- function(specific = character()) {
+  c(
+    specific,
+    "tempest_session_error",
+    "tempest_persistence_error",
+    "tempest_error"
+  )
+}
+
 #' @keywords internal
 tempest_read_json_strict <- function(
   path,
   what = "JSON file",
-  class = "tempest_persistence_error"
+  class = tempest_persistence_error_class()
 ) {
   tempest_require("jsonlite", "Tempest persistence requires jsonlite.")
   if (!file.exists(path)) {
@@ -153,7 +173,9 @@ tempest_source_store_snapshot <- function(store, artifacts = NULL) {
 tempest_source_store_restore_abort <- function(message) {
   tempest_abort(
     c("Cannot restore SourceStore snapshot.", x = message),
-    class = "tempest_source_store_restore_error"
+    class = tempest_persistence_error_class(
+      "tempest_source_store_restore_error"
+    )
   )
 }
 
@@ -162,17 +184,40 @@ tempest_source_store_restore <- function(snapshot, store = SourceStore$new()) {
   if (!is.list(snapshot)) {
     tempest_abort(
       "{.arg snapshot} must be a list.",
-      class = "tempest_source_store_restore_error"
+      class = tempest_persistence_error_class(
+        "tempest_source_store_restore_error"
+      )
     )
   }
   if (!inherits(store, "SourceStore")) {
     tempest_abort(
       "{.arg store} must be a SourceStore.",
-      class = "tempest_source_store_restore_error"
+      class = tempest_persistence_error_class(
+        "tempest_source_store_restore_error"
+      )
+    )
+  }
+  store_schema <- snapshot$schema_version %||% 1L
+  if (!identical(as.integer(store_schema), 1L)) {
+    tempest_source_store_restore_abort(
+      paste0("Unsupported store schema version: ", store_schema, ".")
     )
   }
 
-  tempest_restore_sources(store, snapshot$sources %||% list())
+  snapshot_sources <- snapshot$sources %||% list()
+  # Validate the source ledger up front. The shared `tempest_restore_sources()`
+  # helper silently skips malformed entries for lenient STORM run loading, but a
+  # Co-STORM session bundle must flag dropped sources explicitly so that later
+  # "cites unknown source id" failures cannot mask a malformed source record.
+  for (i in seq_along(snapshot_sources)) {
+    source <- snapshot_sources[[i]]
+    if (!is.list(source) || is.null(source$url)) {
+      tempest_source_store_restore_abort(
+        paste0("Source entry ", i, " is missing a {.field url}.")
+      )
+    }
+  }
+  tempest_restore_sources(store, snapshot_sources)
 
   source_ids <- purrr::map_chr(store$list_sources(), "id")
   spans <- lapply(
@@ -241,7 +286,9 @@ tempest_source_store_restore <- function(snapshot, store = SourceStore$new()) {
 tempest_session_restore_abort <- function(message) {
   tempest_abort(
     c("Cannot restore TempestSession snapshot.", x = message),
-    class = "tempest_session_restore_error"
+    class = tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
   )
 }
 
@@ -275,7 +322,7 @@ tempest_expert_sessions_snapshot <- function(session) {
     }
     persona_id <- as.character(base$persona_id %||% NA_character_)
     persona_name <- NA_character_
-    persona_idx <- match(persona_id, persona_ids)
+    persona_idx <- match(persona_id, persona_ids, incomparables = NA)
     if (!is.na(persona_idx)) {
       persona_name <- persona_names[[persona_idx]]
     }
@@ -332,10 +379,8 @@ tempest_session_snapshot <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_abort(
       "{.arg session} must be a {.cls TempestSession} object.",
-      class = c(
-        "tempest_session_snapshot_error",
-        "tempest_session_error",
-        "tempest_error"
+      class = tempest_session_persistence_error_class(
+        "tempest_session_snapshot_error"
       )
     )
   }
@@ -487,6 +532,14 @@ tempest_session_restore <- function(
   ) {
     session$artifacts[["suggested_questions"]] <- snapshot$suggested_questions
   }
+  # JSON read with `simplifyVector = FALSE` returns a multi-element question list
+  # as an R list; coerce back to the character vector the in-memory artifact uses
+  # so the type is stable across save and resume.
+  if (!is.null(session$artifacts[["suggested_questions"]])) {
+    session$artifacts[["suggested_questions"]] <- as.character(unlist(
+      session$artifacts[["suggested_questions"]]
+    ))
+  }
   if (
     !is.null(snapshot$progress_events) &&
       is.null(session$artifacts[["progress_events"]])
@@ -527,7 +580,9 @@ tempest_session_prepare_bundle_dir <- function(path, overwrite = FALSE) {
   if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
     tempest_abort(
       "{.arg path} must be a single non-empty path string.",
-      class = "tempest_session_save_error"
+      class = tempest_session_persistence_error_class(
+        "tempest_session_save_error"
+      )
     )
   }
 
@@ -540,21 +595,43 @@ tempest_session_prepare_bundle_dir <- function(path, overwrite = FALSE) {
     if (!dir.exists(bundle_dir)) {
       tempest_abort(
         "{.arg path} must point to a directory.",
-        class = "tempest_session_save_error"
+        class = tempest_session_persistence_error_class(
+          "tempest_session_save_error"
+        )
       )
     }
     entries <- list.files(bundle_dir, all.files = TRUE, no.. = TRUE)
-    if (length(entries) > 0 && !isTRUE(overwrite)) {
-      tempest_abort(
-        c(
-          "Session bundle directory already exists.",
-          i = "Use {.code overwrite = TRUE} to replace it.",
-          x = "Path: {.path {bundle_dir}}."
-        ),
-        class = "tempest_session_save_error"
-      )
-    }
-    if (isTRUE(overwrite)) {
+    if (length(entries) > 0) {
+      if (!isTRUE(overwrite)) {
+        tempest_abort(
+          c(
+            "Session bundle directory already exists.",
+            i = "Use {.code overwrite = TRUE} to replace it.",
+            x = "Path: {.path {bundle_dir}}."
+          ),
+          class = tempest_session_persistence_error_class(
+            "tempest_session_save_error"
+          )
+        )
+      }
+      # Only overwrite a non-empty directory that already looks like a Tempest
+      # session bundle. This keeps a mistyped or misconfigured path from
+      # recursively deleting unrelated files (for example, when autosave writes
+      # with `overwrite = TRUE` to a user-supplied location).
+      if (
+        !file.exists(tempest_session_bundle_path(bundle_dir, "session.json"))
+      ) {
+        tempest_abort(
+          c(
+            "Refusing to overwrite a non-empty directory that is not a Tempest session bundle.",
+            i = "Expected a {.path session.json} manifest in the directory.",
+            x = "Path: {.path {bundle_dir}}."
+          ),
+          class = tempest_session_persistence_error_class(
+            "tempest_session_save_error"
+          )
+        )
+      }
       unlink(bundle_dir, recursive = TRUE, force = TRUE)
     }
   }
@@ -585,10 +662,8 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
   if (!inherits(session, "TempestSession")) {
     tempest_abort(
       "{.arg session} must be a {.cls TempestSession} object.",
-      class = c(
-        "tempest_session_save_error",
-        "tempest_session_error",
-        "tempest_error"
+      class = tempest_session_persistence_error_class(
+        "tempest_session_save_error"
       )
     )
   }
@@ -725,7 +800,9 @@ tempest_session_bundle_optional_json <- function(path, default = NULL, what) {
   tempest_read_json_strict(
     path,
     what = what,
-    class = "tempest_session_restore_error"
+    class = tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
   )
 }
 
@@ -739,7 +816,9 @@ tempest_session_bundle_optional_text <- function(path, default = NULL, what) {
     error = function(e) {
       tempest_abort(
         c("Cannot read {what}.", x = "Path: {.path {path}}."),
-        class = "tempest_session_restore_error",
+        class = tempest_session_persistence_error_class(
+          "tempest_session_restore_error"
+        ),
         parent = e
       )
     }
@@ -775,7 +854,9 @@ tempest_session_bundle_require_files <- function(bundle_dir, files) {
         "Cannot resume Tempest session bundle.",
         x = "Missing required file{?s}: {.path {missing}}."
       ),
-      class = "tempest_session_restore_error"
+      class = tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
     )
   }
 }
@@ -802,7 +883,9 @@ tempest_session_resume <- function(
   if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
     tempest_abort(
       "{.arg path} must be a single non-empty path string.",
-      class = "tempest_session_restore_error"
+      class = tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
     )
   }
   bundle_dir <- normalizePath(
@@ -818,7 +901,9 @@ tempest_session_resume <- function(
   manifest <- tempest_read_json_strict(
     file.path(bundle_dir, "session.json"),
     what = "session bundle manifest",
-    class = "tempest_session_restore_error"
+    class = tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
   )
   if (!identical(as.integer(manifest$schema_version %||% NA_integer_), 1L)) {
     tempest_session_restore_abort(
@@ -867,7 +952,9 @@ tempest_session_resume <- function(
     personas = tempest_read_json_strict(
       file.path(bundle_dir, "personas.json"),
       what = "session personas",
-      class = "tempest_session_restore_error"
+      class = tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
     ),
     transcript = tempest_session_bundle_optional_json(
       file.path(bundle_dir, "transcript.json"),
@@ -914,7 +1001,9 @@ tempest_session_resume <- function(
       sources = tempest_read_json_strict(
         file.path(bundle_dir, "store/sources.json"),
         what = "session source ledger",
-        class = "tempest_session_restore_error"
+        class = tempest_session_persistence_error_class(
+          "tempest_session_restore_error"
+        )
       ),
       claims = tempest_session_bundle_optional_json(
         file.path(bundle_dir, "store/claims.json"),

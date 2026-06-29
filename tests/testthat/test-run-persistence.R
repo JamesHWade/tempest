@@ -82,6 +82,22 @@ test_that("SourceStore restore rejects claims with unknown source ids", {
   )
 })
 
+test_that("SourceStore restore flags malformed sources and bad schemas", {
+  expect_error(
+    tempest:::tempest_source_store_restore(list(
+      sources = list(list(title = "No url here"))
+    )),
+    class = "tempest_source_store_restore_error"
+  )
+  expect_error(
+    tempest:::tempest_source_store_restore(list(
+      schema_version = 2L,
+      sources = list()
+    )),
+    class = "tempest_source_store_restore_error"
+  )
+})
+
 test_that("TempestSession snapshots restore durable session state", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
@@ -267,7 +283,7 @@ test_that("Tempest session bundles save and resume durable state", {
   session_id <- session$session_id
   session$add_turn("User", "user", "Save this session.")
   session$artifacts[["report_md"]] <- "# Bundle report"
-  session$artifacts[["suggested_questions"]] <- "What next?"
+  session$artifacts[["suggested_questions"]] <- c("What next?", "And then?")
   session$emit_progress(
     "stage",
     "started",
@@ -315,7 +331,10 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_equal(restored$session_id, session_id)
   expect_equal(restored$transcript[[1]]$text, "Save this session.")
   expect_equal(restored$artifacts[["report_md"]], "# Bundle report")
-  expect_equal(restored$artifacts[["suggested_questions"]], "What next?")
+  expect_equal(
+    restored$artifacts[["suggested_questions"]],
+    c("What next?", "And then?")
+  )
   expect_equal(
     restored$store$get_claim(claim_id)@claim_text,
     "Bundles preserve claims."
@@ -340,6 +359,30 @@ test_that("Tempest session bundles save and resume durable state", {
     class = "tempest_session_snapshot_error"
   )
   expect_no_error(tempest_session_save(session, bundle_dir, overwrite = TRUE))
+})
+
+test_that("session save refuses to overwrite a non-bundle directory", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Guarded save",
+    config = cfg,
+    personas = list(tempest_expert(name = "Guard Expert"))
+  )
+
+  not_a_bundle <- file.path(withr::local_tempdir(), "important")
+  dir.create(not_a_bundle)
+  keep <- file.path(not_a_bundle, "keep.txt")
+  writeLines("do not delete", keep)
+
+  expect_error(
+    tempest_session_save(session, not_a_bundle, overwrite = TRUE),
+    class = "tempest_session_save_error"
+  )
+  expect_true(file.exists(keep))
 })
 
 test_that("Tempest session bundle resume reports classed file errors", {

@@ -859,6 +859,53 @@ test_that("session autosave debounces store mutations", {
   )
 })
 
+test_that("session autosave does not fire after restoring a bundle", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Restore autosave topic",
+    config = cfg,
+    personas = list(tempest_expert(name = "Dr. Restore"))
+  )
+  store <- app$new_session_store()
+  bundle_dir <- file.path(withr::local_tempdir(), "restore-bundle")
+  tempest_session_save(ses, bundle_dir)
+  saved_paths <- character()
+
+  autosave_server <- function(id, app, store, bundle_dir) {
+    shiny::moduleServer(id, function(input, output, session) {
+      app$session_autosave_server(
+        store = store,
+        path = shiny::reactive(bundle_dir),
+        enabled = shiny::reactive(TRUE),
+        delay_ms = 1,
+        on_saved = function(path) {
+          saved_paths <<- c(saved_paths, path)
+        }
+      )
+    })
+  }
+
+  shiny::testServer(
+    autosave_server,
+    args = list(app = app, store = store, bundle_dir = bundle_dir),
+    {
+      session$flushReact()
+      store$restore(bundle_dir, config = cfg)
+      session$flushReact()
+      session$elapse(10)
+      session$flushReact()
+
+      expect_length(saved_paths, 0L)
+      expect_equal(shiny::isolate(store$persistence())$status, "restored")
+    }
+  )
+})
+
 test_that("tempest_shiny_server renders host-managed shared state", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("ellmer")

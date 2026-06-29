@@ -11,6 +11,11 @@ new_session_store <- function() {
   rv <- shiny::reactiveValues(
     session = NULL,
     version = 0L,
+    # Separate counter for autosave. It tracks in-place content changes (`set()`
+    # and `touch()`) but not `restore()`, so loading a bundle re-renders outputs
+    # without immediately writing the just-loaded session back to disk and
+    # clobbering the "restored" status.
+    autosave_version = 0L,
     report_md = NULL,
     report_topic = NULL,
     report_source_store = NULL,
@@ -19,13 +24,20 @@ new_session_store <- function() {
     persistence_path = NULL
   )
 
-  bump_version <- function() {
+  bump_version <- function(autosave = TRUE) {
     version <- shiny::isolate(rv$version)
     if (is.null(version) || is.na(version)) {
       version <- 0L
     }
     version <- version + 1L
     rv$version <- version
+    if (isTRUE(autosave)) {
+      autosave_version <- shiny::isolate(rv$autosave_version)
+      if (is.null(autosave_version) || is.na(autosave_version)) {
+        autosave_version <- 0L
+      }
+      rv$autosave_version <- autosave_version + 1L
+    }
     invisible(version)
   }
 
@@ -50,8 +62,9 @@ new_session_store <- function() {
       shiny::isolate(rv$session)
     },
 
-    # Version counter for debounced autosave observers.
-    version = shiny::reactive(rv$version),
+    # Change counter for debounced autosave observers. Excludes `restore()` so
+    # loading a bundle does not trigger an immediate write-back.
+    autosave_trigger = shiny::reactive(rv$autosave_version),
 
     # Version-aware read of the current session. Re-fires on set()/touch().
     get = shiny::reactive({
@@ -110,7 +123,7 @@ new_session_store <- function() {
         ),
         message = "Loaded session bundle."
       )
-      bump_version()
+      bump_version(autosave = FALSE)
       session
     },
 
