@@ -45,6 +45,7 @@ test_that("module UIs namespace their input ids", {
   expect_match(chat_html, "shiny-chat-footer")
   expect_match(chat_html, "chat-runtime_footer")
   expect_match(chat_html, "chat-footer_sources")
+  expect_match(chat_html, "tempestCitationSanitizer")
 })
 
 test_that("tempest_shiny_ui builds namespaced host panels", {
@@ -208,6 +209,42 @@ test_that("citation_markdown renders numbered references from cited sources", {
   expect_match(rendered, "[3?]", fixed = TRUE)
   expect_match(rendered, "Missing source metadata")
   expect_no_match(rendered, paste0("[", first_id, "]"), fixed = TRUE)
+})
+
+test_that("citation_markdown strips private external citation markers", {
+  app <- source_shiny_modules()
+  marker <- paste0(
+    intToUtf8(0xE200),
+    "cite",
+    intToUtf8(0xE202),
+    "turn0search0",
+    intToUtf8(0xE201)
+  )
+  compound_marker <- paste0(
+    intToUtf8(0xE200),
+    "cite",
+    intToUtf8(0xE202),
+    "turn0search1",
+    intToUtf8(0xE202),
+    "turn0search0",
+    intToUtf8(0xE201)
+  )
+  md <- paste0(
+    "Visible claim ",
+    marker,
+    " still reads well. Another ",
+    compound_marker,
+    " sentence cites [S123456789abc]."
+  )
+
+  expect_equal(
+    app$sanitize_external_citation_markers(md),
+    "Visible claim still reads well. Another sentence cites [S123456789abc]."
+  )
+  rendered <- app$citation_markdown(md)
+  expect_no_match(rendered, "turn0search")
+  expect_match(rendered, "tempest-citation")
+  expect_match(rendered, "[1?]", fixed = TRUE)
 })
 
 test_that("citation_markdown replaces Tempest footnotes with a reference panel", {
@@ -1066,6 +1103,46 @@ test_that("workflow_progress_ui renders reducer state", {
   expect_match(html, ">DF<", fixed = TRUE)
 })
 
+test_that("Co-STORM startup progress renders before warmup starts", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  event <- app$costorm_starting_event("session-startup")
+  state <- app$costorm_progress_state(list(event))
+  html <- paste(
+    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    collapse = ""
+  )
+
+  expect_equal(state$status, "running")
+  expect_equal(state$current_stage, "session")
+  expect_match(html, "Co-STORM")
+  expect_match(html, "Running")
+  expect_match(html, "Setup")
+  expect_match(html, "fa-spinner")
+})
+
+test_that("Co-STORM startup progress closes when the session is ready", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  state <- app$costorm_progress_state(list(
+    app$costorm_starting_event("session-startup"),
+    app$costorm_session_ready_event(
+      "session-startup",
+      list(personas = list("one"))
+    )
+  ))
+  html <- paste(
+    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    collapse = ""
+  )
+
+  expect_equal(state$completed_stages, "session")
+  expect_equal(state$current_stage, NA_character_)
+  expect_length(state$active$stages, 0L)
+  expect_match(html, "Setup")
+  expect_no_match(html, "fa-spinner")
+})
+
 test_that("workflow_progress_ui renders compact Co-STORM answer labels", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
@@ -1562,6 +1639,52 @@ test_that("workflow_progress_ui hides recorded failures once succeeded", {
   expect_no_match(html, "transient tool error")
 })
 
+test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  run_id <- "session-1"
+  state <- app$costorm_progress_state(list(
+    app$costorm_starting_event(run_id),
+    app$costorm_session_ready_event(run_id, list(personas = list("one"))),
+    tempest_progress_event(
+      run_id = run_id,
+      workflow = "costorm",
+      event_type = "stage",
+      status = "started",
+      stage = "warmup",
+      step = "expert_fanout"
+    ),
+    tempest_progress_event(
+      run_id = run_id,
+      workflow = "costorm",
+      event_type = "tool",
+      status = "failed",
+      stage = "warmup",
+      step = "expert_question",
+      correlation_id = "question-1",
+      payload = list(error_message = "timed out")
+    ),
+    tempest_progress_event(
+      run_id = run_id,
+      workflow = "costorm",
+      event_type = "stage",
+      status = "succeeded",
+      stage = "warmup",
+      step = "expert_fanout"
+    )
+  ))
+  html <- paste(
+    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    collapse = ""
+  )
+
+  expect_equal(state$status, "running")
+  expect_equal(state$current_stage, NA_character_)
+  expect_match(html, "Ready")
+  expect_no_match(html, "fa-spinner")
+  expect_no_match(html, "timed out")
+})
+
 await_promise <- function(promise, timeout_s = 2) {
   done <- FALSE
   value <- NULL
@@ -1948,11 +2071,15 @@ test_that("run_warmup times out a stuck question and continues", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   app <- source_shiny_modules()
+  collector <- tempest_progress_collector(include_payload = TRUE)
   messages <- character()
   store <- fake_warmup_store()
-  ses <- fake_warmup_session(function(prompt) {
-    promises::promise(function(resolve, reject) {})
-  })
+  ses <- fake_warmup_session(
+    function(prompt) {
+      promises::promise(function(resolve, reject) {})
+    },
+    progress = collector$record
+  )
 
   await_promise(app$run_warmup(
     ses,
@@ -1967,6 +2094,10 @@ test_that("run_warmup times out a stuck question and continues", {
   expect_match(transcript, "Warmup complete")
   expect_equal(store$count(), 1)
   expect_equal(ses$turns$n, 0)
+  state <- tempest_progress_state(collector$events())
+  expect_equal(state$completed_stages, "warmup")
+  expect_length(state$active$experts, 0L)
+  expect_length(state$active$tools, 0L)
 })
 
 test_that("run_warmup ignores stale callbacks after the session is gone", {
