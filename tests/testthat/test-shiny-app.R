@@ -44,6 +44,26 @@ test_that("module UIs namespace their input ids", {
   expect_match(chat_html, "chat-progress")
 })
 
+test_that("tempest_shiny_ui builds namespaced host panels", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("shinychat")
+  html <- paste(
+    as.character(tempest_shiny_ui(
+      "host",
+      panels = c("chat", "sources", "report"),
+      show_config = TRUE
+    )),
+    collapse = ""
+  )
+
+  expect_match(html, "host-chat-topic")
+  expect_match(html, "host-chat-save_session")
+  expect_match(html, "host-sources-body")
+  expect_match(html, "host-report-body")
+  expect_match(html, "host-config-coordinator")
+})
+
 test_that("chat UI uses the Tempest assistant icon", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -765,6 +785,88 @@ test_that("session autosave debounces store mutations", {
       expect_equal(shiny::isolate(store$persistence())$status, "autosaved")
     }
   )
+})
+
+test_that("tempest_shiny_server renders host-managed shared state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  source_store$add_claim(tempest_claim(
+    claim_text = "Host adapter evidence renders.",
+    source_ids = source_id
+  ))
+  store <- tempest_shiny_store()
+  ses <- tempest_session(
+    "Embedded host topic",
+    config = cfg,
+    personas = list(tempest_expert(name = "Host Expert")),
+    retriever = tempest_retriever(config = cfg, store = source_store),
+    session_id = "host-session-1"
+  )
+  ses$mindmap <- list(
+    nodes = list(list(
+      id = "root",
+      label = "Embedded host topic",
+      parent = NULL,
+      notes = "",
+      source_ids = source_id
+    )),
+    edges = list()
+  )
+  ses$add_turn("User", "user", "Show embedded state.")
+
+  shiny::testServer(
+    tempest_shiny_server,
+    args = list(
+      config = cfg,
+      store = store,
+      panels = c("sources", "facts", "mindmap", "transcript", "report")
+    ),
+    {
+      expect_identical(shared_store, store)
+      shared_store$set(ses)
+      shared_store$set_report(
+        "# Host report",
+        topic = ses$topic,
+        source_store = ses$store
+      )
+      session$flushReact()
+
+      expect_equal(
+        shiny::isolate(shared_store$get())$session_id,
+        "host-session-1"
+      )
+      expect_no_match(
+        as.character(output[["sources-body"]]$html),
+        "No sources collected yet"
+      )
+      expect_no_match(
+        as.character(output[["facts-body"]]$html),
+        "No facts extracted yet"
+      )
+      expect_equal(output[["mindmap-n_nodes"]], "1")
+      expect_match(
+        as.character(output[["transcript-body"]]$html),
+        "embedded state"
+      )
+      expect_match(as.character(output[["report-body"]]$html), "Host report")
+    }
+  )
+})
+
+test_that("the example host app parses", {
+  path <- system.file(
+    "examples",
+    "shiny-host",
+    "app.R",
+    package = "tempest"
+  )
+  skip_if(identical(path, ""), "example host app not installed")
+  expect_no_error(parse(path))
 })
 
 test_that("workflow_progress_ui renders reducer state", {

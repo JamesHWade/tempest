@@ -105,7 +105,13 @@ mod_chat_ui <- function(id, config_ui) {
   )
 }
 
-mod_chat_server <- function(id, config, store) {
+mod_chat_server <- function(
+  id,
+  config,
+  store,
+  personas = NULL,
+  session_id = NULL
+) {
   shiny::moduleServer(id, function(input, output, session) {
     report_ready <- shiny::reactiveVal(0L)
     progress_events <- shiny::reactiveVal(list())
@@ -278,11 +284,15 @@ mod_chat_server <- function(id, config, store) {
     })
 
     create_session <- function(topic, n_experts) {
+      session_personas <- reactive_or_value(personas)
+      session_id_value <- reactive_or_value(session_id)
       ses <- tryCatch(
         tempest::tempest_session(
           topic,
           config = config(),
           n_experts = n_experts,
+          personas = session_personas,
+          session_id = session_id_value,
           progress = record_progress
         ),
         error = function(e) {
@@ -577,6 +587,16 @@ welcome_message <- function() {
 
 session_bundle_default_path <- function() {
   file.path("~", "tempest-session")
+}
+
+reactive_or_value <- function(x) {
+  if (shiny::is.reactive(x)) {
+    x()
+  } else if (is.function(x)) {
+    x()
+  } else {
+    x
+  }
 }
 
 session_autosave_server <- function(

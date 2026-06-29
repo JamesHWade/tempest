@@ -83,7 +83,8 @@ session.}
   n_experts = 3,
   personas = NULL,
   retriever = NULL,
-  progress = NULL
+  progress = NULL,
+  session_id = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -99,6 +100,8 @@ personas are generated automatically using \code{tempest_generate_personas()}.}
 object with a \code{SourceStore} at \verb{$store}.}
       \item{\code{progress}}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}
+      \item{\code{session_id}}{Optional stable session identifier. If \code{NULL}, a new
+identifier is generated.}
     }
     \if{html}{\out{</div>}}
   }

@@ -46,7 +46,9 @@
   research or content is silently dropped. A transient error during sequential
   research is also caught and skipped rather than aborting the whole run.
 * `tempest_session()` gains a `progress` callback that emits Co-STORM session, warmup, expert/tool, dialogue, fact extraction, mind-map, suggestion, report, artifact, and failure events (qngb).
+* `tempest_session()` now accepts `session_id` so host apps can align Co-STORM progress, persistence, and artifacts with their own project/session identity (z0e0).
 * `tempest_session_save()`, `tempest_session_resume()`, `tempest_session_snapshot()`, and `tempest_session_restore()` provide schema-versioned Co-STORM session persistence bundles and in-memory snapshot/restore helpers (zj62).
+* `tempest_shiny_ui()`, `tempest_shiny_server()`, and `tempest_shiny_store()` provide an experimental embeddable Shiny adapter for host apps, with fake-chat example code under `inst/examples/shiny-host` (z0e0).
 * `tempest_config(search_provider = )` searches now apply a request timeout
   and retry on transient HTTP errors, and a single missing or non-public
   result URL no longer discards every other result for the query.

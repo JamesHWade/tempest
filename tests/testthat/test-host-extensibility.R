@@ -80,6 +80,30 @@ test_that("tempest_session accepts host experts and a shared retriever", {
   expect_equal(session$personas[[1]]$name, "Host Expert")
 })
 
+test_that("tempest_session accepts a host session id", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Host topic",
+    config = cfg,
+    personas = list(tempest_expert(name = "Host Expert")),
+    session_id = "project-123"
+  )
+
+  expect_equal(session$session_id, "project-123")
+  expect_error(
+    tempest_session(
+      "Host topic",
+      config = cfg,
+      personas = list(tempest_expert(name = "Host Expert")),
+      session_id = ""
+    ),
+    "session_id"
+  )
+})
+
 test_that("artifact stores can capture report artifacts", {
   skip_if_not_installed("ellmer")
   artifacts <- tempest_memory_artifact_store()

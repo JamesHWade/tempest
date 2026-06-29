@@ -75,6 +75,7 @@ Collate:
     'prompts.R'
     'retriever.R'
     'run-persistence.R'
+    'shiny-adapter.R'
     'simulated-user.R'
     'storm-outline.R'
     'storm-perspectives.R'
