@@ -40,6 +40,34 @@ mod_chat_ui <- function(id, config_ui) {
           class = "w-100"
         ),
         shiny::hr(),
+        shiny::h6("Session"),
+        shiny::textInput(
+          ns("session_bundle"),
+          "Bundle directory",
+          value = session_bundle_default_path()
+        ),
+        shiny::div(
+          class = "d-flex gap-2",
+          shiny::actionButton(
+            ns("save_session"),
+            "Save",
+            icon = shiny::icon("floppy-disk"),
+            class = "btn-outline-primary btn-sm flex-fill"
+          ),
+          shiny::actionButton(
+            ns("load_session"),
+            "Load",
+            icon = shiny::icon("folder-open"),
+            class = "btn-outline-secondary btn-sm flex-fill"
+          )
+        ),
+        shiny::checkboxInput(
+          ns("autosave_session"),
+          "Autosave after changes",
+          FALSE
+        ),
+        shiny::uiOutput(ns("session_persistence")),
+        shiny::hr(),
         shiny::selectInput(
           ns("report_style"),
           "Report Style",
@@ -138,12 +166,117 @@ mod_chat_server <- function(id, config, store) {
       record_costorm_progress_event(progress_events, event, session)
     }
 
+    restore_progress_history <- function(ses) {
+      progress_events(ses$artifacts[["progress_events"]] %||% list())
+      invisible(NULL)
+    }
+
+    replace_chat_with_session <- function(ses) {
+      chat$set_client(ses$chats$moderator, sync = FALSE)
+      chat$clear(greeting = FALSE)
+      append_restored_session_chat(
+        chat = chat,
+        session = ses,
+        source_store = citation_source_store(ses$store %||% NULL)
+      )
+      invisible(NULL)
+    }
+
+    restore_session_bundle <- function(path) {
+      warmup_run_id <<- warmup_run_id + 1L
+      active_session_id <<- active_session_id + 1L
+      ses <- store$restore(path, config = config(), progress = record_progress)
+      shiny::updateTextInput(session, "topic", value = ses$topic %||% "")
+      shiny::updateSliderInput(
+        session,
+        "n_experts",
+        value = max(1L, min(5L, length(ses$personas %||% list())))
+      )
+      restore_progress_history(ses)
+      replace_chat_with_session(ses)
+      ses
+    }
+
+    session_autosave_server(
+      store = store,
+      path = shiny::reactive(input$session_bundle),
+      enabled = shiny::reactive(input$autosave_session),
+      on_error = function(error) {
+        store$set_persistence(
+          "error",
+          path = input$session_bundle %||% "",
+          message = paste0("Autosave failed: ", conditionMessage(error))
+        )
+        shiny::showNotification(
+          paste0("Autosave failed: ", conditionMessage(error)),
+          type = "error",
+          duration = 10
+        )
+      }
+    )
+
+    output$session_persistence <- shiny::renderUI({
+      session_persistence_status_ui(store$persistence())
+    })
+
     output$progress <- shiny::renderUI({
       state <- costorm_progress_state(progress_events())
       workflow_progress_ui(state, costorm_stage_labels())
     })
 
     # --- Session lifecycle ---------------------------------------------------
+    shiny::observeEvent(input$save_session, {
+      path <- input$session_bundle %||% ""
+      tryCatch(
+        {
+          saved <- store$save(path, overwrite = TRUE)
+          shiny::showNotification(
+            paste0("Session saved to ", saved),
+            type = "message",
+            duration = 5
+          )
+        },
+        error = function(e) {
+          store$set_persistence(
+            "error",
+            path = path,
+            message = paste0("Save failed: ", conditionMessage(e))
+          )
+          shiny::showNotification(
+            paste0("Save failed: ", conditionMessage(e)),
+            type = "error",
+            duration = 10
+          )
+        }
+      )
+    })
+
+    shiny::observeEvent(input$load_session, {
+      path <- input$session_bundle %||% ""
+      tryCatch(
+        {
+          restored <- restore_session_bundle(path)
+          shiny::showNotification(
+            paste0("Loaded session: ", restored$topic),
+            type = "message",
+            duration = 5
+          )
+        },
+        error = function(e) {
+          store$set_persistence(
+            "error",
+            path = path,
+            message = paste0("Load failed: ", conditionMessage(e))
+          )
+          shiny::showNotification(
+            paste0("Load failed: ", conditionMessage(e)),
+            type = "error",
+            duration = 10
+          )
+        }
+      )
+    })
+
     create_session <- function(topic, n_experts) {
       ses <- tryCatch(
         tempest::tempest_session(
@@ -440,6 +573,114 @@ welcome_message <- function() {
     "For a one-shot run without the back-and-forth, use the **STORM** tab.",
     sep = "\n"
   )
+}
+
+session_bundle_default_path <- function() {
+  file.path("~", "tempest-session")
+}
+
+session_autosave_server <- function(
+  store,
+  path,
+  enabled,
+  delay_ms = 1000,
+  on_saved = NULL,
+  on_error = NULL
+) {
+  trigger <- shiny::debounce(shiny::reactive(store$version()), delay_ms)
+  shiny::observeEvent(
+    trigger(),
+    {
+      if (!isTRUE(enabled()) || is.null(store$peek())) {
+        return()
+      }
+      bundle_path <- path() %||% ""
+      if (!rlang::is_string(bundle_path) || !nzchar(trimws(bundle_path))) {
+        return()
+      }
+      tryCatch(
+        {
+          saved <- store$save(
+            bundle_path,
+            overwrite = TRUE,
+            status = "autosaved"
+          )
+          if (is.function(on_saved)) {
+            on_saved(saved)
+          }
+        },
+        error = function(e) {
+          if (is.function(on_error)) {
+            on_error(e)
+          }
+        }
+      )
+    },
+    ignoreInit = TRUE
+  )
+}
+
+session_persistence_status_ui <- function(state) {
+  if (is.null(state) || identical(state$status, "idle")) {
+    return(NULL)
+  }
+  status_class <- switch(
+    state$status,
+    saved = "text-success",
+    autosaved = "text-success",
+    restored = "text-info",
+    "text-danger"
+  )
+  status_icon <- switch(
+    state$status,
+    saved = "circle-check",
+    autosaved = "clock-rotate-left",
+    restored = "folder-open",
+    "triangle-exclamation"
+  )
+  shiny::div(
+    class = paste("small mt-2", status_class),
+    shiny::span(shiny::icon(status_icon), class = "me-1"),
+    shiny::span(state$message %||% ""),
+    if (!is.null(state$path) && nzchar(state$path)) {
+      shiny::span(class = "d-block text-truncate", state$path)
+    }
+  )
+}
+
+append_restored_session_chat <- function(chat, session, source_store = NULL) {
+  topic <- session$topic %||% "Untitled topic"
+  chat$append(
+    citation_markdown(
+      paste0("Resumed Co-STORM session for: **", topic, "**"),
+      store = source_store
+    ),
+    role = "assistant"
+  )
+
+  for (turn in session$transcript %||% list()) {
+    text <- turn$text %||% ""
+    if (!nzchar(text)) {
+      next
+    }
+    role <- tolower(turn$role %||% "")
+    speaker <- turn$speaker %||%
+      if (identical(role, "user")) "User" else "Moderator"
+    display_role <- if (identical(role, "user")) "user" else "assistant"
+    markdown <- paste0("**", speaker, ":**\n\n", text)
+    chat$append(
+      citation_markdown(markdown, store = source_store),
+      role = display_role
+    )
+  }
+
+  if (nzchar(session$artifacts[["report_md"]] %||% "")) {
+    chat$append(
+      "Restored report artifact. See the **Report** tab.",
+      role = "assistant"
+    )
+  }
+  invisible(chat)
 }
 
 expert_intro <- function(ses) {

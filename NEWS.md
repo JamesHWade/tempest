@@ -59,6 +59,7 @@
   pointing at a stage whose output is missing.
 * The bundled Shiny app now targets shinychat's development `chat_server()`
   API for streaming, cancellation, greetings, and client state management.
+* The bundled Shiny app now saves, loads, and autosaves Co-STORM session bundles from the Chat sidebar so restored sessions repopulate the chat, sources, mind map, transcript, and report views (n64q).
 * The bundled Shiny app now renders STORM and Co-STORM workflow progress from host-neutral progress events and reducer state (e08d).
 * The bundled Shiny app now streams STORM workflow progress from the background worker so stage chips update while a run is still in flight (1fxn).
 * The bundled Shiny app now carries provider-native source context into Co-STORM fact extraction so warmup and chat turns populate Facts and Sources when sources were attached to the answer turn (b77g).

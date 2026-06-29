@@ -581,6 +581,192 @@ test_that("the chat sidebar offers a follow-up-questions toggle", {
   expect_match(html, "Suggest follow-up questions")
 })
 
+test_that("the chat sidebar offers session persistence controls", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("shinychat")
+  app <- source_shiny_modules()
+  html <- paste(
+    as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
+    collapse = ""
+  )
+
+  expect_match(html, "chat-session_bundle")
+  expect_match(html, "chat-save_session")
+  expect_match(html, "chat-load_session")
+  expect_match(html, "chat-autosave_session")
+})
+
+test_that("session store saves and restores bundles for shared app tabs", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  source_store$add_claim(tempest_claim(
+    claim_text = "Shiny restore preserves cited evidence.",
+    source_ids = source_id,
+    confidence = "high"
+  ))
+  ses <- tempest_session(
+    "Shiny persistence",
+    config = cfg,
+    personas = list(tempest_expert(
+      name = "Dr. Persist",
+      title = "Researcher",
+      perspective = "Session durability"
+    )),
+    retriever = tempest_retriever(config = cfg, store = source_store)
+  )
+  ses$mindmap <- list(
+    nodes = list(
+      list(
+        id = "root",
+        label = "Shiny persistence",
+        parent = NULL,
+        notes = "",
+        source_ids = character()
+      ),
+      list(
+        id = "evidence",
+        label = "Evidence",
+        parent = "root",
+        notes = "Cited evidence.",
+        source_ids = source_id
+      )
+    ),
+    edges = list(list(from = "root", to = "evidence", relation = "supports"))
+  )
+  ses$add_turn("User", "user", "What survives restore?")
+  ses$add_turn(
+    "Moderator",
+    "assistant",
+    paste0("Cited evidence survives [", source_id, "].")
+  )
+  ses$artifacts[["report_md"]] <- paste0(
+    "# Restored report\n\nCited evidence survives [",
+    source_id,
+    "]."
+  )
+  ses$emit_progress(
+    "stage",
+    "succeeded",
+    stage = "dialogue",
+    step = "turn"
+  )
+
+  store <- app$new_session_store()
+  bundle_dir <- file.path(withr::local_tempdir(), "session-bundle")
+  store$set(ses)
+  saved <- store$save(bundle_dir)
+  store$set(NULL)
+
+  restored <- store$restore(saved, config = cfg)
+
+  expect_r6_class(restored, "TempestSession")
+  expect_equal(restored$topic, "Shiny persistence")
+  expect_equal(shiny::isolate(store$report()), ses$artifacts[["report_md"]])
+  expect_equal(shiny::isolate(store$persistence())$status, "restored")
+  expect_equal(
+    tempest_progress_state(restored$artifacts[["progress_events"]])$run_id,
+    restored$session_id
+  )
+
+  chat_calls <- list()
+  fake_chat_ui <- list(
+    append = function(text, role = "assistant") {
+      chat_calls[[length(chat_calls) + 1L]] <<- list(text = text, role = role)
+    }
+  )
+  app$append_restored_session_chat(fake_chat_ui, restored, restored$store)
+  chat_text <- paste(
+    vapply(chat_calls, `[[`, character(1), "text"),
+    collapse = "\n"
+  )
+  chat_roles <- vapply(chat_calls, `[[`, character(1), "role")
+  expect_match(chat_text, "Resumed Co-STORM session")
+  expect_match(chat_text, "Cited evidence survives")
+  expect_contains(chat_roles, c("assistant", "user"))
+
+  shiny::testServer(app$mod_sources_server, args = list(store = store), {
+    session$flushReact()
+    expect_no_match(as.character(output$body$html), "No sources collected yet")
+  })
+  shiny::testServer(app$mod_mindmap_server, args = list(store = store), {
+    session$flushReact()
+    expect_equal(output$n_nodes, "2")
+    expect_equal(output$n_sources, "1")
+    expect_equal(output$n_facts, "1")
+    expect_equal(output$n_turns, "2")
+  })
+  shiny::testServer(app$mod_report_server, args = list(store = store), {
+    session$flushReact()
+    expect_match(as.character(output$body$html), "Restored report")
+    expect_match(as.character(output$body$html), "tempest-reference-panel")
+  })
+})
+
+test_that("session autosave debounces store mutations", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Autosave topic",
+    config = cfg,
+    personas = list(tempest_expert(
+      name = "Dr. Autosave",
+      title = "Researcher",
+      perspective = "Persistence"
+    ))
+  )
+  store <- app$new_session_store()
+  bundle_dir <- file.path(withr::local_tempdir(), "autosave-bundle")
+  saved_paths <- character()
+  errors <- list()
+
+  autosave_server <- function(id, app, store, bundle_dir) {
+    shiny::moduleServer(id, function(input, output, session) {
+      app$session_autosave_server(
+        store = store,
+        path = shiny::reactive(bundle_dir),
+        enabled = shiny::reactive(TRUE),
+        delay_ms = 1,
+        on_saved = function(path) {
+          saved_paths <<- c(saved_paths, path)
+        },
+        on_error = function(error) {
+          errors[[length(errors) + 1L]] <<- error
+        }
+      )
+    })
+  }
+
+  shiny::testServer(
+    autosave_server,
+    args = list(app = app, store = store, bundle_dir = bundle_dir),
+    {
+      session$flushReact()
+      store$set(ses)
+      store$touch()
+      store$touch()
+      session$flushReact()
+      session$elapse(10)
+      session$flushReact()
+
+      expect_length(errors, 0L)
+      expect_length(saved_paths, 1L)
+      expect_true(file.exists(file.path(bundle_dir, "session.json")))
+      expect_equal(shiny::isolate(store$persistence())$status, "autosaved")
+    }
+  )
+})
+
 test_that("workflow_progress_ui renders reducer state", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
