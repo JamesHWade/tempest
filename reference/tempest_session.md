@@ -11,7 +11,8 @@ tempest_session(
   n_experts = 3,
   personas = NULL,
   retriever = NULL,
-  progress = NULL
+  progress = NULL,
+  session_id = NULL
 )
 ```
 
@@ -43,6 +44,11 @@ tempest_session(
 
   Optional function called with `tempest_progress_event` objects as the
   session makes progress.
+
+- session_id:
+
+  Optional stable session identifier. If `NULL`, a new identifier is
+  generated.
 
 ## Examples
 

@@ -1,10 +1,6 @@
 # Reduce Tempest progress events to workflow state
 
-`tempest_progress_state()` consumes recorded Tempest progress events and
-returns a compact, serializable state object that host apps can poll or
-render. The reducer is host-neutral: it does not import Shiny and it
-works with raw event lists, collector objects, or stored event data
-lists.
+**\[experimental\]**
 
 ## Usage
 
@@ -25,6 +21,14 @@ tempest_progress_state(events)
 A named list with run/workflow ids, current active work, completed
 stages, failures, cancellation details, artifact references, and
 terminal status.
+
+## Details
+
+`tempest_progress_state()` consumes recorded Tempest progress events and
+returns a compact, serializable state object that host apps can poll or
+render. The reducer is host-neutral: it does not import Shiny and it
+works with raw event lists, collector objects, or stored event data
+lists.
 
 ## Examples
 
@@ -71,47 +75,47 @@ tempest_progress_state(events)
 #> 
 #> $active
 #> $active$stages
-#> $active$stages$P_01af4a34123ec2c7
-#> $active$stages$P_01af4a34123ec2c7$event_id
-#> [1] "P_01af4a34123ec2c7"
+#> $active$stages$P_cedff75333de8573
+#> $active$stages$P_cedff75333de8573$event_id
+#> [1] "P_cedff75333de8573"
 #> 
-#> $active$stages$P_01af4a34123ec2c7$event_type
+#> $active$stages$P_cedff75333de8573$event_type
 #> [1] "stage"
 #> 
-#> $active$stages$P_01af4a34123ec2c7$stage
+#> $active$stages$P_cedff75333de8573$stage
 #> [1] "research"
 #> 
-#> $active$stages$P_01af4a34123ec2c7$step
+#> $active$stages$P_cedff75333de8573$step
 #> [1] NA
 #> 
-#> $active$stages$P_01af4a34123ec2c7$status
+#> $active$stages$P_cedff75333de8573$status
 #> [1] "started"
 #> 
-#> $active$stages$P_01af4a34123ec2c7$message
+#> $active$stages$P_cedff75333de8573$message
 #> [1] NA
 #> 
-#> $active$stages$P_01af4a34123ec2c7$started_at
-#> [1] "2026-06-29 01:03:59 UTC"
+#> $active$stages$P_cedff75333de8573$started_at
+#> [1] "2026-06-29 10:44:22 UTC"
 #> 
-#> $active$stages$P_01af4a34123ec2c7$updated_at
-#> [1] "2026-06-29 01:03:59 UTC"
+#> $active$stages$P_cedff75333de8573$updated_at
+#> [1] "2026-06-29 10:44:22 UTC"
 #> 
-#> $active$stages$P_01af4a34123ec2c7$parent_event_id
+#> $active$stages$P_cedff75333de8573$parent_event_id
 #> [1] NA
 #> 
-#> $active$stages$P_01af4a34123ec2c7$correlation_id
+#> $active$stages$P_cedff75333de8573$correlation_id
 #> [1] NA
 #> 
-#> $active$stages$P_01af4a34123ec2c7$expert_id
+#> $active$stages$P_cedff75333de8573$expert_id
 #> [1] NA
 #> 
-#> $active$stages$P_01af4a34123ec2c7$expert_name
+#> $active$stages$P_cedff75333de8573$expert_name
 #> [1] NA
 #> 
-#> $active$stages$P_01af4a34123ec2c7$session_id
+#> $active$stages$P_cedff75333de8573$session_id
 #> [1] NA
 #> 
-#> $active$stages$P_01af4a34123ec2c7$question_index
+#> $active$stages$P_cedff75333de8573$question_index
 #> [1] NA
 #> 
 #> 
@@ -139,9 +143,9 @@ tempest_progress_state(events)
 #> [1] 2
 #> 
 #> $latest_event_id
-#> [1] "P_01af4a34123ec2c7"
+#> [1] "P_cedff75333de8573"
 #> 
 #> $updated_at
-#> [1] "2026-06-29 01:03:59 UTC"
+#> [1] "2026-06-29 10:44:22 UTC"
 #> 
 ```

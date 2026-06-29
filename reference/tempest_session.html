@@ -45,7 +45,8 @@
 <span>  n_experts <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  personas <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  progress <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  session_id <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -78,6 +79,11 @@ with a <code>SourceStore</code> at <code>$store</code>.</p></dd>
 <dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
 <dd><p>Optional function called with <code>tempest_progress_event</code>
 objects as the session makes progress.</p></dd>
+
+
+<dt id="arg-session-id">session_id<a class="anchor" aria-label="anchor" href="#arg-session-id"></a></dt>
+<dd><p>Optional stable session identifier. If <code>NULL</code>, a new
+identifier is generated.</p></dd>
 
 </dl></div>
 

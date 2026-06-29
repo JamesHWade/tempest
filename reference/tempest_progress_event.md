@@ -1,10 +1,6 @@
 # Create a Tempest progress event
 
-`tempest_progress_event()` creates a small host-neutral event record for
-STORM and Co-STORM workflow progress. Events are designed for package
-code, host apps, tests, and future telemetry adapters that need
-lifecycle, stage, step, expert/tool, cancellation, and artifact status
-without importing Shiny.
+**\[experimental\]**
 
 ## Usage
 
@@ -83,6 +79,12 @@ tempest_progress_event(
 A `tempest_progress_event` S7 object.
 
 ## Details
+
+`tempest_progress_event()` creates a small host-neutral event record for
+STORM and Co-STORM workflow progress. Events are designed for package
+code, host apps, tests, and future telemetry adapters that need
+lifecycle, stage, step, expert/tool, cancellation, and artifact status
+without importing Shiny.
 
 Core fields are validated at construction. Payloads should stay small
 and privacy-aware: use them for progress metadata and references, not

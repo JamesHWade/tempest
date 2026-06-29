@@ -1,10 +1,6 @@
 # Optimize STORM dsprrr modules
 
-Compiles selected STORM dsprrr modules against user-provided training
-data. This is an explicit optimization step: run it with labeled
-examples, then pass the returned module list to
-[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
-via `dsprrr_modules`.
+**\[experimental\]**
 
 ## Usage
 
@@ -80,6 +76,14 @@ tempest_optimize_dsprrr_modules(
 ## Value
 
 A named list of dsprrr modules.
+
+## Details
+
+Compiles selected STORM dsprrr modules against user-provided training
+data. This is an explicit optimization step: run it with labeled
+examples, then pass the returned module list to
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+via `dsprrr_modules`.
 
 ## Examples
 

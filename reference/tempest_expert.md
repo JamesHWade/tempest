@@ -1,9 +1,6 @@
 # Create a Co-STORM expert definition
 
-Host applications can pass these definitions to
-[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
-via the `personas` argument to control the expert panel without patching
-`TempestSession` internals.
+**\[experimental\]**
 
 ## Usage
 
@@ -59,6 +56,13 @@ tempest_expert(
 
 A list suitable for the `personas` argument of
 [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
+
+## Details
+
+Host applications can pass these definitions to
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+via the `personas` argument to control the expert panel without patching
+`TempestSession` internals.
 
 ## Examples
 

@@ -1,6 +1,6 @@
 # Filter Tempest progress events
 
-Filter Tempest progress events
+**\[experimental\]**
 
 ## Usage
 
@@ -44,14 +44,14 @@ events <- list(tempest_progress_event(
 tempest_progress_filter(events, stage = "research")
 #> [[1]]
 #> <tempest::tempest_progress_event>
-#>  @ event_id       : chr "P_1f7a741c618b1e12"
+#>  @ event_id       : chr "P_fe1476ec197a6de7"
 #>  @ run_id         : chr "run-1"
 #>  @ workflow       : chr "storm"
 #>  @ event_type     : chr "stage"
 #>  @ stage          : chr "research"
 #>  @ step           : chr NA
 #>  @ status         : chr "started"
-#>  @ timestamp      : chr "2026-06-29 01:03:58 UTC"
+#>  @ timestamp      : chr "2026-06-29 10:44:22 UTC"
 #>  @ message        : chr NA
 #>  @ payload        : list()
 #>  @ parent_event_id: chr NA

@@ -1,9 +1,6 @@
 # Create an in-memory Tempest progress event collector
 
-`tempest_progress_collector()` returns a small host-neutral sink for
-Tempest progress events. Use `collector$record` as a `progress`
-callback, then read events back with filtering or replay them to another
-callback.
+**\[experimental\]**
 
 ## Usage
 
@@ -26,6 +23,11 @@ methods.
 
 ## Details
 
+`tempest_progress_collector()` returns a small host-neutral sink for
+Tempest progress events. Use `collector$record` as a `progress`
+callback, then read events back with filtering or replay them to another
+callback.
+
 By default, the collector strips event payloads before storing them. Set
 `include_payload = TRUE` when tests or trusted host adapters need to
 assert or replay structured payload metadata.
@@ -44,7 +46,7 @@ collector$record(tempest_progress_event(
 collector$data(stage = "research")
 #> [[1]]
 #> [[1]]$event_id
-#> [1] "P_836c3954d6b74898"
+#> [1] "P_a1b63406798b47cf"
 #> 
 #> [[1]]$run_id
 #> [1] "run-1"
@@ -65,7 +67,7 @@ collector$data(stage = "research")
 #> [1] "started"
 #> 
 #> [[1]]$timestamp
-#> [1] "2026-06-29 01:03:58 UTC"
+#> [1] "2026-06-29 10:44:21 UTC"
 #> 
 #> [[1]]$message
 #> [1] NA

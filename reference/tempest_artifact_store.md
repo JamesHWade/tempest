@@ -1,8 +1,6 @@
 # Create a Tempest artifact store adapter
 
-Artifact stores let host applications observe or persist Tempest outputs
-without replacing the live in-memory `SourceStore`. The default store is
-a no-op adapter.
+**\[experimental\]**
 
 ## Usage
 
@@ -29,6 +27,12 @@ tempest_artifact_store(write = NULL, read = NULL, list_names = NULL)
 ## Value
 
 A list with `write`, `read`, and `list` functions.
+
+## Details
+
+Artifact stores let host applications observe or persist Tempest outputs
+without replacing the live in-memory `SourceStore`. The default store is
+a no-op adapter.
 
 ## Examples
 
