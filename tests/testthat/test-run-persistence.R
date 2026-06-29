@@ -227,6 +227,156 @@ test_that("TempestSession restores progress history without replaying it", {
   )
 })
 
+test_that("Tempest session bundles save and resume durable state", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  store <- SourceStore$new()
+  source <- tempest:::tempest_source(
+    "https://example.com/session-bundle",
+    title = "Session Bundle Source"
+  )
+  store$upsert_source(source)
+  claim_id <- store$add_claim(tempest_claim(
+    claim_text = "Bundles preserve claims.",
+    source_ids = source$id
+  ))
+  store$set_artifact(
+    "citation_audit",
+    tibble::tibble(
+      claim_id = claim_id,
+      claim_text = "Bundles preserve claims.",
+      verification_status = "supported",
+      support_score = 0.95,
+      rationale = "test"
+    )
+  )
+  session <- tempest_session(
+    "Session bundle",
+    config = cfg,
+    personas = list(list(
+      id = 1,
+      name = "Dr. Bundle",
+      title = "Persistence expert",
+      perspective = "Bundle state"
+    )),
+    retriever = tempest_retriever(config = cfg, store = store)
+  )
+  session_id <- session$session_id
+  session$add_turn("User", "user", "Save this session.")
+  session$artifacts[["report_md"]] <- "# Bundle report"
+  session$artifacts[["suggested_questions"]] <- "What next?"
+  session$emit_progress(
+    "stage",
+    "started",
+    stage = "dialogue",
+    step = "turn"
+  )
+
+  bundle_dir <- file.path(withr::local_tempdir(), "bundle")
+  saved <- tempest_session_save(session, bundle_dir)
+  manifest <- tempest:::tempest_read_json_strict(
+    file.path(bundle_dir, "session.json")
+  )
+  config_summary <- tempest:::tempest_read_json_strict(
+    file.path(bundle_dir, "config.json")
+  )
+
+  expect_equal(
+    saved,
+    normalizePath(bundle_dir, winslash = "/", mustWork = TRUE)
+  )
+  expect_equal(manifest$status, "complete")
+  expect_contains(
+    manifest$files,
+    c(
+      "config.json",
+      "personas.json",
+      "progress_events.json",
+      "store/sources.json",
+      "store/claims.json",
+      "artifacts/report.md",
+      "artifacts/suggested_questions.json",
+      "artifacts/citation_audit.json"
+    )
+  )
+  expect_null(config_summary$chat_fn)
+
+  restore_collector <- tempest_progress_collector(include_payload = TRUE)
+  restored <- tempest_session_resume(
+    bundle_dir,
+    config = cfg,
+    progress = restore_collector$record
+  )
+
+  expect_r6_class(restored, "TempestSession")
+  expect_equal(restored$session_id, session_id)
+  expect_equal(restored$transcript[[1]]$text, "Save this session.")
+  expect_equal(restored$artifacts[["report_md"]], "# Bundle report")
+  expect_equal(restored$artifacts[["suggested_questions"]], "What next?")
+  expect_equal(
+    restored$store$get_claim(claim_id)@claim_text,
+    "Bundles preserve claims."
+  )
+  expect_equal(nrow(restored$store$get_artifact("citation_audit")), 1)
+  expect_length(restore_collector$events(), 0)
+  expect_equal(
+    tempest_progress_state(restored$artifacts[["progress_events"]])$run_id,
+    session_id
+  )
+
+  expect_error(
+    tempest_session_save(session, bundle_dir),
+    class = "tempest_session_save_error"
+  )
+  expect_no_error(tempest_session_save(session, bundle_dir, overwrite = TRUE))
+})
+
+test_that("Tempest session bundle resume reports classed file errors", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Broken bundle",
+    config = cfg,
+    personas = list(list(
+      id = 1,
+      name = "Dr. Broken",
+      title = "Persistence expert",
+      perspective = "Failure handling"
+    ))
+  )
+  bundle_dir <- file.path(withr::local_tempdir(), "bundle")
+  tempest_session_save(session, bundle_dir)
+
+  unlink(file.path(bundle_dir, "personas.json"))
+  expect_error(
+    tempest_session_resume(bundle_dir, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  writeLines("{", file.path(bundle_dir, "store/claims.json"))
+  expect_error(
+    tempest_session_resume(bundle_dir, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  manifest_path <- file.path(bundle_dir, "session.json")
+  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest$schema_version <- 999L
+  tempest:::tempest_write_json(manifest_path, manifest)
+  expect_error(
+    tempest_session_resume(bundle_dir, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+})
+
 test_that("run artifacts save and load store state", {
   skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")
