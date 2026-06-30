@@ -82,13 +82,9 @@ Implemented or already present:
 - Shiny app work already in the local tree for pipeline controls, progress UI,
   source/fact tables, mind-map visualization, transcript, downloads, and the
   shinychat development `chat_server()` API for automatic streaming,
-  cancellation, greetings, and client state management.
-
-## Current caveat
-
-- `chat_server()` currently lives on the upstream shinychat `feat/chat-server`
-  branch / PR #264 rather than `main`, so the package pins that dev branch for
-  now.
+  cancellation, greetings, and client state management. The required upstream
+  shinychat PR #264 has merged, so `DESCRIPTION` pins the development package
+  without a feature-branch suffix.
 
 ## Implementation note
 
