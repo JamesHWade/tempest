@@ -810,13 +810,16 @@ reactive_or_value <- function(x) {
 
 chat_footer_ui <- function(ns) {
   button <- function(id, icon, label) {
-    shiny::actionButton(
-      ns(id),
-      label = shiny::span(label, class = "visually-hidden"),
-      icon = shiny::icon(icon),
-      title = label,
-      `aria-label` = label,
-      class = "btn-outline-secondary btn-sm tempest-footer-button"
+    chat_footer_tooltip(
+      shiny::actionButton(
+        ns(id),
+        label = shiny::span(label, class = "visually-hidden"),
+        icon = shiny::icon(icon),
+        title = label,
+        `aria-label` = label,
+        class = "btn-outline-secondary btn-sm tempest-footer-button"
+      ),
+      label
     )
   }
   shiny::div(
@@ -832,6 +835,14 @@ chat_footer_ui <- function(ns) {
       button("footer_system", "terminal", "Show system prompt"),
       button("footer_tools", "wrench", "Show tools")
     )
+  )
+}
+
+chat_footer_tooltip <- function(trigger, label) {
+  bslib::tooltip(
+    trigger,
+    label,
+    placement = "top"
   )
 }
 
@@ -957,11 +968,51 @@ chat_runtime_footer_ui <- function(
   report_label <- if (isTRUE(counts$report)) "report ready" else "no report"
   shiny::div(
     class = "tempest-chat-runtime",
-    shiny::span(class = "tempest-runtime-pill", session_label),
-    shiny::span(shiny::icon("users"), counts$experts),
-    shiny::span(shiny::icon("link"), counts$sources),
-    shiny::span(shiny::icon("clipboard-check"), counts$facts),
-    shiny::span(class = "tempest-runtime-report", report_label)
+    chat_footer_tooltip(
+      shiny::span(
+        class = "tempest-runtime-pill",
+        title = paste("Session status:", session_label),
+        `aria-label` = paste("Session status:", session_label),
+        session_label
+      ),
+      paste("Session status:", session_label)
+    ),
+    chat_footer_tooltip(
+      shiny::span(
+        title = paste("Experts:", counts$experts),
+        `aria-label` = paste("Experts:", counts$experts),
+        shiny::icon("users"),
+        counts$experts
+      ),
+      paste("Experts:", counts$experts)
+    ),
+    chat_footer_tooltip(
+      shiny::span(
+        title = paste("Sources:", counts$sources),
+        `aria-label` = paste("Sources:", counts$sources),
+        shiny::icon("link"),
+        counts$sources
+      ),
+      paste("Sources:", counts$sources)
+    ),
+    chat_footer_tooltip(
+      shiny::span(
+        title = paste("Facts:", counts$facts),
+        `aria-label` = paste("Facts:", counts$facts),
+        shiny::icon("clipboard-check"),
+        counts$facts
+      ),
+      paste("Facts:", counts$facts)
+    ),
+    chat_footer_tooltip(
+      shiny::span(
+        class = "tempest-runtime-report",
+        title = paste("Report status:", report_label),
+        `aria-label` = paste("Report status:", report_label),
+        report_label
+      ),
+      paste("Report status:", report_label)
+    )
   )
 }
 

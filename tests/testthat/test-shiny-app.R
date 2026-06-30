@@ -132,6 +132,9 @@ test_that("chat footer renders accessible command controls", {
   expect_match(html, "chat-footer_experts")
   expect_match(html, "aria-label=\"Show sources\"", fixed = TRUE)
   expect_match(html, "aria-label=\"Generate report\"", fixed = TRUE)
+  expect_match(html, "<bslib-tooltip", fixed = TRUE)
+  expect_match(html, "<template>Show sources</template>", fixed = TRUE)
+  expect_match(html, "<template>Generate report</template>", fixed = TRUE)
 })
 
 test_that("expert cards render deterministic persona icons", {
@@ -666,6 +669,19 @@ test_that("chat command messages summarize active session state", {
   )
   expect_match(footer, "Answering")
   expect_match(footer, "report ready")
+  expect_match(
+    footer,
+    "<template>Session status: Answering</template>",
+    fixed = TRUE
+  )
+  expect_match(footer, "<template>Experts: 1</template>", fixed = TRUE)
+  expect_match(footer, "<template>Sources: 1</template>", fixed = TRUE)
+  expect_match(footer, "<template>Facts: 1</template>", fixed = TRUE)
+  expect_match(
+    footer,
+    "<template>Report status: report ready</template>",
+    fixed = TRUE
+  )
 })
 
 test_that("suggestion_cards returns NULL for no questions", {
