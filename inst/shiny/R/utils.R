@@ -539,7 +539,19 @@ tempest_app_styles <- function() {
   color: var(--bs-secondary-color, #6c757d);
 }
 
+.tempest-chat-runtime > bslib-tooltip,
+.tempest-chat-footer-actions > bslib-tooltip {
+  display: inline-flex;
+}
+
 .tempest-chat-runtime > span {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  white-space: nowrap;
+}
+
+.tempest-chat-runtime > bslib-tooltip > span {
   display: inline-flex;
   align-items: center;
   gap: .25rem;
