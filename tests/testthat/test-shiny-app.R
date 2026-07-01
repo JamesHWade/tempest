@@ -122,6 +122,7 @@ test_that("the chat module provides a landing welcome message", {
 
 test_that("chat footer renders accessible command controls", {
   skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
   app <- source_shiny_modules()
   html <- paste(
     as.character(app$chat_footer_ui(shiny::NS("chat"))),
@@ -635,6 +636,7 @@ test_that("chat slash command parsing normalizes aliases", {
 
 test_that("chat command messages summarize active session state", {
   skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(1)
   source_id <- source_store$list_sources()[[1]]$id
