@@ -54,7 +54,7 @@ Suggests:
     xml2
 Remotes:
     JamesHWade/dsprrr,
-    posit-dev/shinychat/pkg-r@feat/chat-server
+    posit-dev/shinychat/pkg-r
 Config/testthat/edition: 3
 URL: https://jameshwade.github.io/tempest/,
     https://github.com/JamesHWade/tempest

@@ -122,6 +122,7 @@ test_that("the chat module provides a landing welcome message", {
 
 test_that("chat footer renders accessible command controls", {
   skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
   app <- source_shiny_modules()
   html <- paste(
     as.character(app$chat_footer_ui(shiny::NS("chat"))),
@@ -132,6 +133,9 @@ test_that("chat footer renders accessible command controls", {
   expect_match(html, "chat-footer_experts")
   expect_match(html, "aria-label=\"Show sources\"", fixed = TRUE)
   expect_match(html, "aria-label=\"Generate report\"", fixed = TRUE)
+  expect_match(html, "<bslib-tooltip", fixed = TRUE)
+  expect_match(html, "<template>Show sources</template>", fixed = TRUE)
+  expect_match(html, "<template>Generate report</template>", fixed = TRUE)
 })
 
 test_that("expert cards render deterministic persona icons", {
@@ -632,6 +636,7 @@ test_that("chat slash command parsing normalizes aliases", {
 
 test_that("chat command messages summarize active session state", {
   skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(1)
   source_id <- source_store$list_sources()[[1]]$id
@@ -666,6 +671,19 @@ test_that("chat command messages summarize active session state", {
   )
   expect_match(footer, "Answering")
   expect_match(footer, "report ready")
+  expect_match(
+    footer,
+    "<template>Session status: Answering</template>",
+    fixed = TRUE
+  )
+  expect_match(footer, "<template>Experts: 1</template>", fixed = TRUE)
+  expect_match(footer, "<template>Sources: 1</template>", fixed = TRUE)
+  expect_match(footer, "<template>Facts: 1</template>", fixed = TRUE)
+  expect_match(
+    footer,
+    "<template>Report status: report ready</template>",
+    fixed = TRUE
+  )
 })
 
 test_that("suggestion_cards returns NULL for no questions", {

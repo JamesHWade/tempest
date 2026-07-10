@@ -386,7 +386,7 @@ Features:
 - Report style selection (technical or executive)
 - Dark mode toggle
 
-The app currently depends on the shinychat development branch that introduces
+The app currently depends on the shinychat development version that provides
 `chat_server()`, pinned in `DESCRIPTION`.
 
 ## Evaluation
