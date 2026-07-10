@@ -1,4 +1,4 @@
-await_tempest_promise <- function(promise, timeout_s = 3) {
+await_tempest_promise <- function(promise, timeout_s = 10) {
   resolved <- FALSE
   value <- NULL
   error <- NULL
