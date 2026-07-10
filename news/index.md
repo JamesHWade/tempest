@@ -21,6 +21,12 @@
   badges, and the pkgdown reference groups separate core workflows,
   evidence, host extension points, persistence, progress, and dsprrr
   modules (2nzw).
+- [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
+  now preserves support scores from structured fact extraction, and
+  [`tempest_sources()`](https://jameshwade.github.io/tempest/reference/tempest_sources.md)
+  now includes derived `context_text` plus fallback snippets for source
+  rows backed by content or provider-native citation context (w3fm,
+  fmbv).
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
   now defaults to `openai/gpt-5.4` for coordinator and writer roles, and
   `openai/gpt-5.4-mini` for expert, mind map, and judge roles.

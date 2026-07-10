@@ -17,7 +17,7 @@ tempest_sources(store)
 ## Value
 
 A tibble of sources with columns: id, url, title, snippet, content_text,
-fetched_at.
+context_text, fetched_at.
 
 ## Examples
 

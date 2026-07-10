@@ -436,8 +436,8 @@ The app provides:
 Features: - Configurable number of experts and optional warmup phase -
 Report style selection (technical or executive) - Dark mode toggle
 
-The app currently depends on the shinychat development branch that
-introduces `chat_server()`, pinned in `DESCRIPTION`.
+The app currently depends on the shinychat development version that
+provides `chat_server()`, pinned in `DESCRIPTION`.
 
 ## Evaluation
 
