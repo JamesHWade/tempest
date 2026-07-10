@@ -8,7 +8,8 @@ tempest_create_ragnar_store(
   embed_fn,
   cache_dir = NULL,
   name = "tempest_knowledge",
-  title = "STORM Knowledge Base"
+  title = "STORM Knowledge Base",
+  reset = FALSE
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ creates an in-memory store.}
 \item{name}{Store name for tool registration.}
 
 \item{title}{Human-readable store title.}
+
+\item{reset}{Whether to replace an existing persistent store. Destructive
+replacement is never performed unless this is \code{TRUE}.}
 }
 \value{
 A ragnar store object.

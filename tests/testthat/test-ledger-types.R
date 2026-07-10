@@ -45,10 +45,11 @@ test_that("tempest_evidence_span and tempest_dispute construct", {
   )
 })
 
-test_that("tempest_source_record carries fields and meta", {
-  s <- tempest_source_record(url = "https://example.org", title = "Ex")
-  expect_match(s@id, "^S")
-  expect_type(s@meta, "list")
+test_that("tempest_source creates the canonical source record", {
+  source <- tempest_source(url = "https://example.org", title = "Ex")
+  expect_match(source$id, "^S")
+  expect_type(source$meta, "list")
+  expect_no_error(tempest:::tempest_validate_source(source))
 })
 
 test_that("source tibbles derive snippets and context text", {

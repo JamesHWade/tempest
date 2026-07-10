@@ -281,6 +281,117 @@ tempest_claim_extraction_inputs <- function(answer_text, store, source_ids) {
 }
 
 #' @keywords internal
+tempest_fact_extraction_prompt <- function(extraction_inputs, source_ids) {
+  source_context <- extraction_inputs$source_context
+  citation_rule <- if (nzchar(source_context) && length(source_ids) > 0) {
+    paste0(
+      "- Only extract claims explicitly supported by citations in the answer, including Tempest source IDs like [Sxxxxxxxxxxxx] or provider-native citation markers attached to this turn.\n",
+      "- When using provider-native citations, return only source_id values listed in <known_sources>.\n"
+    )
+  } else {
+    paste0(
+      "- Only extract claims that are explicitly supported by one or more citations in the form [Sxxxxxxxxxxxx].\n"
+    )
+  }
+  source_rule <- if (nzchar(source_context)) {
+    if (length(source_ids) > 0) {
+      paste0(
+        "- Sources listed in <known_sources> were attached to this answer turn; return the matching source_id when the answer text directly supports the claim.\n"
+      )
+    } else {
+      paste0(
+        "- URL citations listed in <known_sources> count as citations to their source_id; return the matching source_id.\n",
+        "- Do not use a known source unless its URL or source_id appears in the answer text.\n"
+      )
+    }
+  } else {
+    ""
+  }
+  paste0(
+    "Extract atomic factual claims from the following answer.\n\n",
+    "Rules:\n",
+    citation_rule,
+    source_rule,
+    "- For each claim, list the source_id(s) that support it.\n",
+    "- Include support_score in [0,1] when source support is clear; omit it when unscored.\n",
+    "- Do NOT invent or infer new facts.\n\n",
+    "<answer>\n",
+    extraction_inputs$answer_text,
+    "\n</answer>\n",
+    if (nzchar(source_context)) {
+      paste0("\n<known_sources>\n", source_context, "\n</known_sources>\n")
+    } else {
+      ""
+    }
+  )
+}
+
+#' @keywords internal
+tempest_commit_extracted_facts <- function(
+  out,
+  store,
+  session_id = NA_character_,
+  persona_id = NA_character_,
+  retrieval_step_id = NA_character_,
+  perspective_id = NA_character_,
+  section_id = NA_character_
+) {
+  facts <- tempest_normalize_fact_output(out)
+  if (length(facts) == 0) {
+    return(invisible(NULL))
+  }
+  for (f in facts) {
+    claim <- tempest_trim(as.character(f$claim %||% ""))
+    if (length(claim) != 1 || is.na(claim) || !nzchar(claim)) {
+      next
+    }
+    source_refs <- unlist(
+      purrr::map(f$sources %||% list(), function(source) {
+        if (is.null(source)) {
+          return(NA_character_)
+        }
+        if (is.character(source)) {
+          return(source)
+        }
+        ref <- source$source_id %||%
+          source$id %||%
+          source$url %||%
+          NA_character_
+        as.character(ref)
+      }),
+      recursive = TRUE,
+      use.names = FALSE
+    )
+    src_ids <- tempest_resolve_fact_source_ids(source_refs, store)
+    known <- src_ids[!purrr::map_lgl(src_ids, ~ is.null(store$get_source(.x)))]
+    if (length(known) == 0) {
+      next
+    }
+    conf <- as.character(f$confidence %||% NA_character_)
+    if (
+      length(conf) != 1 ||
+        is.na(conf) ||
+        !conf %in% c("low", "medium", "high")
+    ) {
+      conf <- "medium"
+    }
+    store$add_claim(tempest_claim(
+      claim_text = claim,
+      source_ids = known,
+      claim_type = "finding",
+      confidence = conf,
+      support_score = f$support_score,
+      session_id = session_id,
+      persona_id = persona_id,
+      retrieval_step_id = retrieval_step_id,
+      perspective_id = perspective_id,
+      section_id = section_id
+    ))
+  }
+  invisible(TRUE)
+}
+
+#' @keywords internal
 tempest_extract_facts_from_answer <- function(
   chat,
   answer_text,
@@ -310,110 +421,60 @@ tempest_extract_facts_from_answer <- function(
     step = "fact extraction"
   )
   if (is.null(out)) {
-    source_context <- extraction_inputs$source_context
-    citation_rule <- if (nzchar(source_context) && length(source_ids) > 0) {
-      paste0(
-        "- Only extract claims explicitly supported by citations in the answer, including Tempest source IDs like [Sxxxxxxxxxxxx] or provider-native citation markers attached to this turn.\n",
-        "- When using provider-native citations, return only source_id values listed in <known_sources>.\n"
-      )
-    } else {
-      paste0(
-        "- Only extract claims that are explicitly supported by one or more citations in the form [Sxxxxxxxxxxxx].\n"
-      )
-    }
-    source_rule <- if (nzchar(source_context)) {
-      if (length(source_ids) > 0) {
-        paste0(
-          "- Sources listed in <known_sources> were attached to this answer turn; return the matching source_id when the answer text directly supports the claim.\n"
-        )
-      } else {
-        paste0(
-          "- URL citations listed in <known_sources> count as citations to their source_id; return the matching source_id.\n",
-          "- Do not use a known source unless its URL or source_id appears in the answer text.\n"
-        )
-      }
-    } else {
-      ""
-    }
-    prompt <- paste0(
-      "Extract atomic factual claims from the following answer.\n\n",
-      "Rules:\n",
-      citation_rule,
-      source_rule,
-      "- For each claim, list the source_id(s) that support it.\n",
-      "- Include support_score in [0,1] when source support is clear; omit it when unscored.\n",
-      "- Do NOT invent or infer new facts.\n\n",
-      "<answer>\n",
-      answer_text,
-      "\n</answer>\n",
-      if (nzchar(source_context)) {
-        paste0("\n<known_sources>\n", source_context, "\n</known_sources>\n")
-      } else {
-        ""
-      }
-    )
     out <- chat$chat_structured(
-      prompt,
+      tempest_fact_extraction_prompt(extraction_inputs, source_ids),
       type = type,
       echo = "none",
       convert = FALSE
     )
   }
-  facts <- tempest_normalize_fact_output(out)
-  if (length(facts) == 0) {
-    return(invisible(NULL))
-  }
-  for (f in facts) {
-    claim <- tempest_trim(as.character(f$claim %||% ""))
-    if (length(claim) != 1 || is.na(claim) || !nzchar(claim)) {
-      next
+  tempest_commit_extracted_facts(
+    out,
+    store,
+    session_id = session_id,
+    persona_id = persona_id,
+    retrieval_step_id = retrieval_step_id,
+    perspective_id = perspective_id,
+    section_id = section_id
+  )
+}
+
+#' @keywords internal
+tempest_extract_facts_from_answer_async <- function(
+  chat,
+  answer_text,
+  store,
+  source_ids = NULL,
+  session_id = NA_character_,
+  persona_id = NA_character_,
+  retrieval_step_id = NA_character_,
+  perspective_id = NA_character_,
+  section_id = NA_character_,
+  commit_if = function() TRUE
+) {
+  tempest_require("promises", "Async fact extraction requires promises.")
+  source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
+  inputs <- tempest_claim_extraction_inputs(answer_text, store, source_ids)
+  request <- chat$chat_structured_async(
+    tempest_fact_extraction_prompt(inputs, source_ids),
+    type = tempest_type_fact_extract(),
+    echo = "none",
+    convert = FALSE
+  )
+  promises::then(request, function(out) {
+    if (!tempest_async_is_current(commit_if)) {
+      return(NULL)
     }
-    source_refs <- unlist(
-      purrr::map(f$sources %||% list(), function(source) {
-        if (is.null(source)) {
-          return(NA_character_)
-        }
-        if (is.character(source)) {
-          return(source)
-        }
-        ref <- source$source_id %||%
-          source$id %||%
-          source$url %||%
-          NA_character_
-        as.character(ref)
-      }),
-      recursive = TRUE,
-      use.names = FALSE
-    )
-    src_ids <- tempest_resolve_fact_source_ids(source_refs, store)
-    # Drop citations to sources that are not in the store (hallucinated ids).
-    known <- src_ids[!purrr::map_lgl(src_ids, ~ is.null(store$get_source(.x)))]
-    if (length(known) == 0) {
-      next
-    }
-    # The LLM may omit the optional confidence; normalize anything invalid to
-    # "medium" so the S7 enum validator never aborts (which would discard the
-    # whole answer's claims).
-    conf <- as.character(f$confidence %||% NA_character_)
-    if (
-      length(conf) != 1 || is.na(conf) || !conf %in% c("low", "medium", "high")
-    ) {
-      conf <- "medium"
-    }
-    store$add_claim(tempest_claim(
-      claim_text = claim,
-      source_ids = known,
-      claim_type = "finding",
-      confidence = conf,
-      support_score = f$support_score,
+    tempest_commit_extracted_facts(
+      out,
+      store,
       session_id = session_id,
       persona_id = persona_id,
       retrieval_step_id = retrieval_step_id,
       perspective_id = perspective_id,
       section_id = section_id
-    ))
-  }
-  invisible(TRUE)
+    )
+  })
 }
 
 #' @keywords internal

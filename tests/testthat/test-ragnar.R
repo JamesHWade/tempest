@@ -46,6 +46,52 @@ test_that("TempestRetriever inherits ragnar_store from config", {
   expect_identical(retriever$ragnar_store, cfg@ragnar_store)
 })
 
+test_that("persistent Ragnar stores are reused unless reset is explicit", {
+  skip_if_not_installed("ragnar")
+
+  cache_dir <- withr::local_tempdir()
+  mock_embed <- function(x) matrix(seq_len(length(x) * 3), ncol = 3)
+  first <- tempest_create_ragnar_store(mock_embed, cache_dir = cache_dir)
+  retriever <- tempest_retriever(
+    config = tempest_config(ragnar_store = first)
+  )
+  retriever$ingest_to_ragnar(
+    source_id = "S123abc123abc",
+    url = "https://example.org/persistent",
+    title = "Persistent",
+    text = "Persistent knowledge remains available after reconnecting.",
+    fetched_at = "2026-01-01T00:00:00Z",
+    content_type = "html"
+  )
+  before <- DBI::dbGetQuery(first@con, "SELECT COUNT(*) AS n FROM documents")$n
+  DBI::dbDisconnect(first@con, shutdown = TRUE)
+
+  reopened <- tempest_create_ragnar_store(mock_embed, cache_dir = cache_dir)
+  expect_s7_class(
+    reopened,
+    getFromNamespace("DuckDBRagnarStore", "ragnar")
+  )
+  after <- DBI::dbGetQuery(
+    reopened@con,
+    "SELECT COUNT(*) AS n FROM documents"
+  )$n
+  expect_equal(after, before)
+  DBI::dbDisconnect(reopened@con, shutdown = TRUE)
+  expect_error(
+    tempest_create_ragnar_store(
+      function(x) matrix(seq_len(length(x) * 4), ncol = 4),
+      cache_dir = cache_dir
+    ),
+    class = "tempest_config_error"
+  )
+  reset <- tempest_create_ragnar_store(
+    mock_embed,
+    cache_dir = cache_dir,
+    reset = TRUE
+  )
+  expect_s7_class(reset, getFromNamespace("DuckDBRagnarStore", "ragnar"))
+})
+
 test_that("ingest_to_ragnar chunks text and adds metadata", {
   skip_if_not_installed("ragnar")
 

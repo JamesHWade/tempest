@@ -562,7 +562,33 @@ tempest_session_bundle_path <- function(path, ...) {
 
 #' @keywords internal
 tempest_session_bundle_write_json <- function(path, rel_path, value) {
-  tempest_write_json(tempest_session_bundle_path(path, rel_path), value)
+  tryCatch(
+    tempest_write_json(tempest_session_bundle_path(path, rel_path), value),
+    error = function(error) {
+      tempest_abort(
+        "Could not write session bundle file {.path {rel_path}}.",
+        class = tempest_session_persistence_error_class(
+          "tempest_session_save_error"
+        ),
+        parent = error
+      )
+    }
+  )
+  hook <- getOption("tempest.session_write_hook")
+  if (is.function(hook)) {
+    tryCatch(
+      hook(rel_path),
+      error = function(error) {
+        tempest_abort(
+          "Session bundle write was interrupted after {.path {rel_path}}.",
+          class = tempest_session_persistence_error_class(
+            "tempest_session_save_error"
+          ),
+          parent = error
+        )
+      }
+    )
+  }
   rel_path
 }
 
@@ -571,7 +597,33 @@ tempest_session_bundle_write_text <- function(path, rel_path, value) {
   if (!rlang::is_string(value)) {
     return(character())
   }
-  tempest_write_text(tempest_session_bundle_path(path, rel_path), value)
+  tryCatch(
+    tempest_write_text(tempest_session_bundle_path(path, rel_path), value),
+    error = function(error) {
+      tempest_abort(
+        "Could not write session bundle file {.path {rel_path}}.",
+        class = tempest_session_persistence_error_class(
+          "tempest_session_save_error"
+        ),
+        parent = error
+      )
+    }
+  )
+  hook <- getOption("tempest.session_write_hook")
+  if (is.function(hook)) {
+    tryCatch(
+      hook(rel_path),
+      error = function(error) {
+        tempest_abort(
+          "Session bundle write was interrupted after {.path {rel_path}}.",
+          class = tempest_session_persistence_error_class(
+            "tempest_session_save_error"
+          ),
+          parent = error
+        )
+      }
+    )
+  }
   rel_path
 }
 
@@ -632,11 +684,55 @@ tempest_session_prepare_bundle_dir <- function(path, overwrite = FALSE) {
           )
         )
       }
-      unlink(bundle_dir, recursive = TRUE, force = TRUE)
     }
   }
 
-  dir.create(bundle_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(bundle_dir), recursive = TRUE, showWarnings = FALSE)
+  normalizePath(bundle_dir, winslash = "/", mustWork = FALSE)
+}
+
+#' @keywords internal
+tempest_session_bundle_checksum <- function(bundle_dir, rel_path) {
+  digest::digest(
+    file.path(bundle_dir, rel_path),
+    algo = "sha256",
+    file = TRUE,
+    serialize = FALSE
+  )
+}
+
+#' @keywords internal
+tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
+  backup_dir <- NULL
+  if (file.exists(bundle_dir)) {
+    backup_dir <- tempfile(
+      pattern = paste0(".", basename(bundle_dir), "-backup-"),
+      tmpdir = dirname(bundle_dir)
+    )
+    if (!file.rename(bundle_dir, backup_dir)) {
+      tempest_abort(
+        "Could not stage the previous session bundle for replacement.",
+        class = tempest_session_persistence_error_class(
+          "tempest_session_save_error"
+        )
+      )
+    }
+  }
+
+  if (!file.rename(staging_dir, bundle_dir)) {
+    if (!is.null(backup_dir)) {
+      file.rename(backup_dir, bundle_dir)
+    }
+    tempest_abort(
+      "Could not atomically install the completed session bundle.",
+      class = tempest_session_persistence_error_class(
+        "tempest_session_save_error"
+      )
+    )
+  }
+  if (!is.null(backup_dir)) {
+    unlink(backup_dir, recursive = TRUE, force = TRUE)
+  }
   normalizePath(bundle_dir, winslash = "/", mustWork = TRUE)
 }
 
@@ -670,58 +766,64 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
   tempest_require("jsonlite", "Tempest session persistence requires jsonlite.")
 
   bundle_dir <- tempest_session_prepare_bundle_dir(path, overwrite = overwrite)
+  staging_dir <- tempfile(
+    pattern = paste0(".", basename(bundle_dir), "-staging-"),
+    tmpdir = dirname(bundle_dir)
+  )
+  dir.create(staging_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(staging_dir, recursive = TRUE, force = TRUE), add = TRUE)
   snapshot <- tempest_session_snapshot(session)
   files <- character()
 
   files <- c(
     files,
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "config.json",
       snapshot$config
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "personas.json",
       snapshot$personas
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "expert_sessions.json",
       snapshot$expert_sessions
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "transcript.json",
       snapshot$transcript
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "mindmap.json",
       snapshot$mindmap
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "progress_events.json",
       snapshot$progress_events
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "store/sources.json",
       snapshot$store$sources
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "store/claims.json",
       snapshot$store$claims
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "store/evidence_spans.json",
       snapshot$store$evidence_spans
     ),
     tempest_session_bundle_write_json(
-      bundle_dir,
+      staging_dir,
       "store/disputes.json",
       snapshot$store$disputes
     )
@@ -730,17 +832,17 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
   files <- c(
     files,
     tempest_session_bundle_write_text(
-      bundle_dir,
+      staging_dir,
       "artifacts/report.md",
       snapshot$artifacts$report_md
     ),
     tempest_session_bundle_write_text(
-      bundle_dir,
+      staging_dir,
       "artifacts/report_body.md",
       snapshot$artifacts$report
     ),
     tempest_session_bundle_write_text(
-      bundle_dir,
+      staging_dir,
       "artifacts/mindmap.md",
       snapshot$artifacts$mindmap_md
     )
@@ -750,7 +852,7 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
     files <- c(
       files,
       tempest_session_bundle_write_json(
-        bundle_dir,
+        staging_dir,
         "artifacts/suggested_questions.json",
         snapshot$artifacts$suggested_questions
       )
@@ -760,7 +862,7 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
     files <- c(
       files,
       tempest_session_bundle_write_json(
-        bundle_dir,
+        staging_dir,
         "artifacts/citation_audit.json",
         snapshot$store$artifacts$citation_audit
       )
@@ -770,13 +872,20 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
     files <- c(
       files,
       tempest_session_bundle_write_json(
-        bundle_dir,
+        staging_dir,
         "artifacts/references.json",
         snapshot$store$artifacts$references
       )
     )
   }
 
+  files <- sort(unique(files))
+  checksums <- stats::setNames(
+    lapply(files, function(file) {
+      tempest_session_bundle_checksum(staging_dir, file)
+    }),
+    files
+  )
   manifest <- list(
     schema_version = snapshot$schema_version,
     package_version = snapshot$package_version,
@@ -785,11 +894,12 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
     title = snapshot$title,
     saved_at = tempest_now_utc(),
     status = "complete",
-    files = sort(unique(files))
+    files = files,
+    checksums = checksums
   )
-  tempest_session_bundle_write_json(bundle_dir, "session.json", manifest)
+  tempest_session_bundle_write_json(staging_dir, "session.json", manifest)
 
-  invisible(bundle_dir)
+  invisible(tempest_session_commit_bundle(staging_dir, bundle_dir))
 }
 
 #' @keywords internal
@@ -797,12 +907,21 @@ tempest_session_bundle_optional_json <- function(path, default = NULL, what) {
   if (!file.exists(path)) {
     return(default)
   }
-  tempest_read_json_strict(
-    path,
-    what = what,
-    class = tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
+  tryCatch(
+    tempest_read_json_strict(
+      path,
+      what = what,
+      class = tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
+    ),
+    error = function(error) {
+      if (!isTRUE(getOption("tempest.session_partial_recovery", FALSE))) {
+        stop(error)
+      }
+      tempest_warn("Skipping malformed {what} during partial recovery.")
+      default
+    }
   )
 }
 
@@ -814,6 +933,10 @@ tempest_session_bundle_optional_text <- function(path, default = NULL, what) {
   tryCatch(
     tempest_read_text(path),
     error = function(e) {
+      if (isTRUE(getOption("tempest.session_partial_recovery", FALSE))) {
+        tempest_warn("Skipping malformed {what} during partial recovery.")
+        return(default)
+      }
       tempest_abort(
         c("Cannot read {what}.", x = "Path: {.path {path}}."),
         class = tempest_session_persistence_error_class(
@@ -861,6 +984,99 @@ tempest_session_bundle_require_files <- function(bundle_dir, files) {
   }
 }
 
+#' @keywords internal
+tempest_session_bundle_validate_manifest <- function(
+  bundle_dir,
+  manifest,
+  partial_recovery = FALSE
+) {
+  if (!identical(manifest$status %||% "", "complete")) {
+    tempest_session_restore_abort("Session bundle manifest is not complete.")
+  }
+  files <- as.character(unlist(manifest$files %||% character()))
+  required <- c(
+    "config.json",
+    "personas.json",
+    "expert_sessions.json",
+    "transcript.json",
+    "mindmap.json",
+    "progress_events.json",
+    "store/sources.json",
+    "store/claims.json",
+    "store/evidence_spans.json",
+    "store/disputes.json"
+  )
+  unsafe <- grepl("^(/|~|[A-Za-z]:)", files) |
+    vapply(
+      strsplit(files, "/", fixed = TRUE),
+      function(parts) {
+        ".." %in% parts
+      },
+      logical(1)
+    )
+  undeclared_required <- setdiff(required, files)
+  missing <- files[!file.exists(file.path(bundle_dir, files))]
+  checksums <- unlist(manifest$checksums %||% list(), use.names = TRUE)
+  missing_checksums <- setdiff(files, names(checksums))
+  available <- setdiff(files, missing)
+  mismatched <- available[vapply(
+    available,
+    function(file) {
+      expected <- if (file %in% names(checksums)) {
+        checksums[[file]]
+      } else {
+        NA_character_
+      }
+      is.na(expected) ||
+        !identical(tempest_session_bundle_checksum(bundle_dir, file), expected)
+    },
+    logical(1)
+  )]
+
+  problems <- c(
+    if (length(files) == 0L) "Manifest declares no files.",
+    if (any(unsafe)) "Manifest contains unsafe file paths.",
+    if (length(undeclared_required) > 0L) {
+      paste0(
+        "Manifest omits required files: ",
+        paste(undeclared_required, collapse = ", "),
+        "."
+      )
+    },
+    if (length(missing) > 0L) {
+      paste0(
+        "Declared files are missing: ",
+        paste(missing, collapse = ", "),
+        "."
+      )
+    },
+    if (length(missing_checksums) > 0L) {
+      paste0(
+        "Declared files have no checksum: ",
+        paste(missing_checksums, collapse = ", "),
+        "."
+      )
+    },
+    if (length(mismatched) > 0L) {
+      paste0(
+        "Declared files failed checksum validation: ",
+        paste(mismatched, collapse = ", "),
+        "."
+      )
+    }
+  )
+  if (length(problems) > 0L && !isTRUE(partial_recovery)) {
+    tempest_session_restore_abort(paste(problems, collapse = " "))
+  }
+  if (length(problems) > 0L) {
+    tempest_warn(c(
+      "Recovering an incomplete Tempest session bundle.",
+      i = paste(problems, collapse = " ")
+    ))
+  }
+  invisible(files)
+}
+
 #' Resume a saved Co-STORM session bundle
 #'
 #' `tempest_session_resume()` reads a directory bundle written by
@@ -873,13 +1089,23 @@ tempest_session_bundle_require_files <- function(bundle_dir, files) {
 #'   tools.
 #' @param progress Optional callback for future `tempest_progress_event`
 #'   objects.
+#' @param partial_recovery Whether to allow explicitly requested recovery when
+#'   declared optional files are missing or fail integrity checks. Required
+#'   source and persona data must still be readable.
 #' @return A restored [TempestSession].
 #' @export
 tempest_session_resume <- function(
   path,
   config = tempest_config(),
-  progress = NULL
+  progress = NULL,
+  partial_recovery = FALSE
 ) {
+  previous_partial <- getOption("tempest.session_partial_recovery")
+  options(tempest.session_partial_recovery = isTRUE(partial_recovery))
+  on.exit(
+    options(tempest.session_partial_recovery = previous_partial),
+    add = TRUE
+  )
   if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
     tempest_abort(
       "{.arg path} must be a single non-empty path string.",
@@ -914,6 +1140,11 @@ tempest_session_resume <- function(
       )
     )
   }
+  tempest_session_bundle_validate_manifest(
+    bundle_dir,
+    manifest,
+    partial_recovery = partial_recovery
+  )
 
   citation_audit <- tempest_session_bundle_optional_json(
     file.path(bundle_dir, "artifacts/citation_audit.json"),

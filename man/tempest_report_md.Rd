@@ -27,7 +27,8 @@ verification badge; under "strict", unsupported/contradicted inline
 citations are handled per \code{on_unsupported_claim}.}
 
 \item{on_unsupported_claim}{One of "flag" (default), "drop",
-"keep_with_warning", "revise". Only used under "strict".}
+"keep_with_warning", or "revise". Under strict policy, \code{drop} removes the
+unsupported assertion and \code{revise} replaces it with a revision notice.}
 
 \item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
 considered supported.}

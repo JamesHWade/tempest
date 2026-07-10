@@ -40,6 +40,7 @@ claim-write provenance.}
     \item \href{#method-ExpertSessionManager-generate_session_id}{\code{ExpertSessionManager$generate_session_id()}}
     \item \href{#method-ExpertSessionManager-get_or_create}{\code{ExpertSessionManager$get_or_create()}}
     \item \href{#method-ExpertSessionManager-list_sessions}{\code{ExpertSessionManager$list_sessions()}}
+    \item \href{#method-ExpertSessionManager-retire_session}{\code{ExpertSessionManager$retire_session()}}
     \item \href{#method-ExpertSessionManager-clone}{\code{ExpertSessionManager$clone()}}
   }
 }
@@ -200,6 +201,30 @@ claim-write provenance.}
   }
   \subsection{Returns}{
     Character vector of session IDs.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExpertSessionManager-retire_session"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-retire_session}{}}}
+\subsection{\code{ExpertSessionManager$retire_session()}}{
+  Retire a stateful expert chat so it cannot be reused after timeout or
+cancellation.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$retire_session(session_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{session_id}}{Session id returned by \code{get_or_create()}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list describing whether the session existed and whether a
+provider cancellation method was available.
   }
 }
 

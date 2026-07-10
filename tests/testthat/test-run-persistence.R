@@ -305,6 +305,7 @@ test_that("Tempest session bundles save and resume durable state", {
     normalizePath(bundle_dir, winslash = "/", mustWork = TRUE)
   )
   expect_equal(manifest$status, "complete")
+  expect_setequal(names(manifest$checksums), manifest$files)
   expect_contains(
     manifest$files,
     c(
@@ -418,6 +419,13 @@ test_that("Tempest session bundle resume reports classed file errors", {
   )
 
   tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  unlink(file.path(bundle_dir, "transcript.json"))
+  expect_error(
+    tempest_session_resume(bundle_dir, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  tempest_session_save(session, bundle_dir, overwrite = TRUE)
   manifest_path <- file.path(bundle_dir, "session.json")
   manifest <- tempest:::tempest_read_json_strict(manifest_path)
   manifest$schema_version <- 999L
@@ -426,6 +434,80 @@ test_that("Tempest session bundle resume reports classed file errors", {
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
   )
+})
+
+test_that("failed session replacement preserves the previous bundle", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Original bundle",
+    config = cfg,
+    personas = list(tempest_expert(name = "Dr. Atomic"))
+  )
+  root <- withr::local_tempdir()
+  bundle_dir <- file.path(root, "bundle")
+  tempest_session_save(session, bundle_dir)
+  session$topic <- "Replacement bundle"
+  withr::local_options(
+    tempest.session_write_hook = function(file) {
+      if (identical(file, "store/claims.json")) {
+        stop("injected write failure")
+      }
+    }
+  )
+
+  expect_error(
+    tempest_session_save(session, bundle_dir, overwrite = TRUE),
+    class = "tempest_session_save_error"
+  )
+  restored <- tempest_session_resume(bundle_dir, config = cfg)
+
+  expect_equal(restored$topic, "Original bundle")
+  expect_equal(
+    list.files(root, pattern = "staging", all.files = TRUE),
+    character()
+  )
+})
+
+test_that("partial session recovery is explicit and skips corrupt optional data", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Partial recovery",
+    config = cfg,
+    personas = list(tempest_expert(name = "Dr. Recovery"))
+  )
+  bundle_dir <- file.path(withr::local_tempdir(), "bundle")
+  tempest_session_save(session, bundle_dir)
+  writeLines("{", file.path(bundle_dir, "store/claims.json"))
+
+  expect_error(
+    tempest_session_resume(bundle_dir, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+  warnings <- character()
+  restored <- withCallingHandlers(
+    tempest_session_resume(
+      bundle_dir,
+      config = cfg,
+      partial_recovery = TRUE
+    ),
+    warning = function(warning) {
+      warnings <<- c(warnings, conditionMessage(warning))
+      invokeRestart("muffleWarning")
+    }
+  )
+
+  expect_r6_class(restored, "TempestSession")
+  expect_length(restored$store$list_claims(), 0L)
+  expect_match(paste(warnings, collapse = "\n"), "incomplete", fixed = TRUE)
+  expect_match(paste(warnings, collapse = "\n"), "malformed", fixed = TRUE)
 })
 
 test_that("run artifacts save and load store state", {

@@ -14,7 +14,13 @@ mod_mindmap_ui <- function(id) {
   }
 
   graph <- if (has_pkg("visNetwork")) {
-    visNetwork::visNetworkOutput(ns("graph"), height = "100%")
+    shiny::div(
+      class = "tempest-mindmap-visualization",
+      role = "region",
+      `aria-label` = "Interactive mind map visualization",
+      `aria-describedby` = ns("graph_description"),
+      visNetwork::visNetworkOutput(ns("graph"), height = "520px")
+    )
   } else {
     shiny::verbatimTextOutput(ns("graph_text"))
   }
@@ -34,6 +40,22 @@ mod_mindmap_ui <- function(id) {
       full_screen = TRUE,
       bslib::card_header(shiny::uiOutput(ns("header"))),
       bslib::card_body(graph)
+    ),
+    shiny::tags$section(
+      class = "mt-3 tempest-mindmap-outline",
+      `aria-labelledby` = ns("outline_heading"),
+      shiny::h3(
+        id = ns("outline_heading"),
+        class = "h5",
+        "Mind map outline"
+      ),
+      shiny::p(
+        id = ns("graph_description"),
+        class = "text-muted small",
+        "Use this structured view to inspect nodes, relationships, notes, and sources without the interactive canvas."
+      ),
+      shiny::uiOutput(ns("graph_status")),
+      shiny::uiOutput(ns("graph_accessible"))
     )
   )
 }
@@ -76,6 +98,35 @@ mod_mindmap_server <- function(id, store) {
           )
         )
       )
+    })
+
+    output$graph_status <- shiny::renderUI({
+      mm <- mindmap()
+      counts <- if (is.null(mm)) {
+        "No mind map is available."
+      } else {
+        paste(
+          length(mm$nodes %||% list()),
+          "nodes and",
+          length(mm$edges %||% list()),
+          "relationships available."
+        )
+      }
+      shiny::p(
+        class = "visually-hidden",
+        role = "status",
+        `aria-live` = "polite",
+        `aria-atomic` = "true",
+        counts
+      )
+    })
+
+    output$graph_accessible <- shiny::renderUI({
+      ses <- store$get()
+      if (is.null(ses)) {
+        return(shiny::p("Start a session to see the mind map."))
+      }
+      mindmap_accessible_tree(ses$mindmap, source_store = ses$store)
     })
 
     if (has_pkg("visNetwork")) {
@@ -185,4 +236,104 @@ node_modal <- function(node, node_id) {
     easyClose = TRUE,
     footer = shiny::modalButton("Close")
   )
+}
+
+mindmap_accessible_tree <- function(mindmap, source_store = NULL) {
+  nodes <- mindmap$nodes %||% list()
+  edges <- mindmap$edges %||% list()
+  if (length(nodes) == 0L) {
+    return(shiny::p("No mind map nodes yet."))
+  }
+  labels <- stats::setNames(
+    vapply(nodes, function(node) node$label %||% node$id, character(1)),
+    vapply(nodes, `[[`, character(1), "id")
+  )
+  node_items <- lapply(nodes, function(node) {
+    node_id <- node$id
+    parent <- node$parent %||% NULL
+    children <- vapply(
+      nodes,
+      function(candidate) {
+        identical(candidate$parent %||% NULL, node_id)
+      },
+      logical(1)
+    )
+    relationships <- Filter(
+      function(edge) {
+        identical(edge$from %||% "", node_id) ||
+          identical(edge$to %||% "", node_id)
+      },
+      edges
+    )
+    relationship_items <- lapply(relationships, function(edge) {
+      direction <- if (identical(edge$from %||% "", node_id)) {
+        paste("to", labels[[edge$to]] %||% edge$to)
+      } else {
+        paste("from", labels[[edge$from]] %||% edge$from)
+      }
+      shiny::tags$li(paste(edge$relation %||% "related", direction))
+    })
+    sources <- lapply(node$source_ids %||% character(), function(source_id) {
+      source <- if (is.null(source_store)) {
+        NULL
+      } else {
+        source_store$get_source(source_id)
+      }
+      url <- citation_safe_url(source$url %||% "")
+      label <- source$title %||% source_id
+      if (is.na(label) || !nzchar(label)) {
+        label <- source_id
+      }
+      shiny::tags$li(
+        if (nzchar(url)) {
+          shiny::tags$a(
+            href = url,
+            target = "_blank",
+            rel = "noopener noreferrer",
+            paste(label, paste0("(", source_id, ")"))
+          )
+        } else {
+          paste(label, paste0("(", source_id, ")"))
+        }
+      )
+    })
+    shiny::tags$li(
+      shiny::tags$details(
+        shiny::tags$summary(node$label %||% node_id),
+        shiny::tags$dl(
+          if (!is.null(parent)) {
+            shiny::tagList(
+              shiny::tags$dt("Parent"),
+              shiny::tags$dd(labels[[parent]] %||% parent)
+            )
+          },
+          shiny::tags$dt("Children"),
+          shiny::tags$dd(
+            if (any(children)) {
+              paste(unname(labels[children]), collapse = ", ")
+            } else {
+              "None"
+            }
+          ),
+          shiny::tags$dt("Notes"),
+          shiny::tags$dd(
+            if (nzchar(node$notes %||% "")) node$notes else "No notes"
+          )
+        ),
+        if (length(relationship_items) > 0L) {
+          shiny::tagList(
+            shiny::tags$h4(class = "h6", "Relationships"),
+            shiny::tags$ul(relationship_items)
+          )
+        },
+        shiny::tags$h4(class = "h6", "Sources"),
+        if (length(sources) > 0L) {
+          shiny::tags$ul(sources)
+        } else {
+          shiny::p("No sources linked.")
+        }
+      )
+    )
+  })
+  shiny::tags$ul(class = "list-unstyled d-grid gap-2", node_items)
 }

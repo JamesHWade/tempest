@@ -54,6 +54,7 @@ tempest_shiny_require_ui <- function(panels) {
   tempest_require("bslib", "tempest_shiny_ui() builds a bslib tabset.")
   if ("chat" %in% panels) {
     tempest_require("shinychat", "the Tempest chat panel requires shinychat.")
+    tempest_require("zip", "Tempest session downloads require zip.")
   }
   invisible(NULL)
 }

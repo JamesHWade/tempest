@@ -110,6 +110,80 @@ tempest_artifact_write <- function(store, name, value, metadata = list()) {
   invisible(name)
 }
 
+#' @keywords internal
+tempest_config_abort <- function(message, ..., parent = NULL) {
+  tempest_abort(
+    message,
+    ...,
+    class = c("tempest_config_error", "tempest_error"),
+    parent = parent,
+    .envir = rlang::caller_env()
+  )
+}
+
+#' @keywords internal
+tempest_config_count <- function(value, arg, allow_zero = FALSE) {
+  if (
+    !is.numeric(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !is.finite(value) ||
+      value != as.integer(value) ||
+      value < if (allow_zero) 0L else 1L
+  ) {
+    qualifier <- if (allow_zero) "non-negative" else "positive"
+    tempest_config_abort(
+      "{.arg {arg}} must be a {qualifier} whole number."
+    )
+  }
+  as.integer(value)
+}
+
+#' @keywords internal
+tempest_config_flag <- function(value, arg) {
+  if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+    tempest_config_abort("{.arg {arg}} must be `TRUE` or `FALSE`.")
+  }
+  value
+}
+
+#' @keywords internal
+tempest_config_string <- function(value, arg) {
+  if (
+    !is.character(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !nzchar(value)
+  ) {
+    tempest_config_abort("{.arg {arg}} must be a non-empty string.")
+  }
+  value
+}
+
+#' @keywords internal
+tempest_config_models <- function(models) {
+  valid <- is.list(models) &&
+    length(models) > 0L &&
+    !is.null(names(models)) &&
+    all(nzchar(names(models))) &&
+    all(vapply(
+      models,
+      function(model) {
+        is.character(model) &&
+          length(model) == 1L &&
+          !is.na(model) &&
+          nzchar(model)
+      },
+      logical(1)
+    ))
+  if (!valid) {
+    tempest_config_abort(
+      "{.arg models} must be a named list of non-empty model strings."
+    )
+  }
+  models
+}
+
 #' TempestConfig (S7)
 #'
 #' Holds configuration for STORM / Co-STORM sessions: LLM models, prompts,
@@ -212,7 +286,8 @@ TempestConfig <- S7::new_class(
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
 #' @param on_unsupported_claim Action for unsupported claims: one of "flag",
-#'   "drop", "revise", or "keep_with_warning".
+#'   "drop", "revise", or "keep_with_warning". `drop` removes the complete
+#'   unsupported assertion; `revise` replaces it with a revision notice.
 #' @return A `TempestConfig` S7 object.
 #' @examples
 #' cfg <- tempest_config()
@@ -257,20 +332,85 @@ tempest_config <- function(
   } else {
     models
   }
-
-  mq <- as.integer(max_search_queries_per_turn)
-  if (is.na(mq) || mq < 1) {
-    mq <- 3L
+  models <- tempest_config_models(models)
+  if (!is.list(params %||% list())) {
+    tempest_config_abort("{.arg params} must be a list.")
   }
-  rk <- as.integer(retrieve_top_k)
-  if (is.na(rk) || rk < 1) {
-    rk <- 25L
+  for (arg in c("chat_fn", "embed_fn")) {
+    value <- get(arg)
+    if (!is.null(value) && !is.function(value)) {
+      tempest_config_abort("{.arg {arg}} must be a function or `NULL`.")
+    }
   }
+  cache_enabled <- tempest_config_flag(cache_enabled, "cache_enabled")
+  max_search_results <- tempest_config_count(
+    max_search_results,
+    "max_search_results"
+  )
+  mq <- tempest_config_count(
+    max_search_queries_per_turn,
+    "max_search_queries_per_turn"
+  )
+  rk <- tempest_config_count(retrieve_top_k, "retrieve_top_k")
+  max_sources <- tempest_config_count(max_sources, "max_sources")
+  user_agent <- tempest_config_string(user_agent, "user_agent")
+  if (!is.null(node_expansion_trigger_count)) {
+    node_expansion_trigger_count <- tempest_config_count(
+      node_expansion_trigger_count,
+      "node_expansion_trigger_count"
+    )
+  }
+  enable_discourse_manager <- tempest_config_flag(
+    enable_discourse_manager,
+    "enable_discourse_manager"
+  )
+  max_active_experts <- tempest_config_count(
+    max_active_experts,
+    "max_active_experts"
+  )
+  enable_unseen_surfacing <- tempest_config_flag(
+    enable_unseen_surfacing,
+    "enable_unseen_surfacing"
+  )
+  if (
+    !is.character(citation_policy) ||
+      length(citation_policy) != 1L ||
+      is.na(citation_policy) ||
+      !citation_policy %in%
+        c(
+          "none",
+          "source_attributed",
+          "claim_verified",
+          "strict"
+        )
+  ) {
+    tempest_config_abort(
+      "Invalid {.arg citation_policy}: {.val {citation_policy}}."
+    )
+  }
+  if (
+    !is.character(on_unsupported_claim) ||
+      length(on_unsupported_claim) != 1L ||
+      is.na(on_unsupported_claim) ||
+      !on_unsupported_claim %in%
+        c(
+          "flag",
+          "drop",
+          "revise",
+          "keep_with_warning"
+        )
+  ) {
+    tempest_config_abort(
+      "Invalid {.arg on_unsupported_claim}: {.val {on_unsupported_claim}}."
+    )
+  }
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
 
+  ragnar_cache_dir <- cache_dir
   cache_dir <- tempest_cache_dir(cache_dir)
   cache_ttl <- tempest_cache_max_age(cache_ttl)
   if (is.null(ragnar_store) && !is.null(embed_fn)) {
-    ragnar_store <- tempest_create_ragnar_store(embed_fn, cache_dir)
+    ragnar_store <- tempest_create_ragnar_store(embed_fn, ragnar_cache_dir)
   }
   if (
     !is.null(artifact_store) &&
@@ -299,7 +439,7 @@ tempest_config <- function(
     artifact_store = artifact_store,
     search_provider = tempest_normalize_search_provider(search_provider),
     cache_dir = cache_dir %||% NA_character_,
-    cache_enabled = isTRUE(cache_enabled),
+    cache_enabled = cache_enabled,
     cache_ttl = cache_ttl,
     max_search_results = max_search_results,
     max_search_queries_per_turn = mq,
@@ -308,7 +448,7 @@ tempest_config <- function(
     user_agent = user_agent,
     node_expansion_trigger_count = node_expansion_trigger_count,
     enable_discourse_manager = enable_discourse_manager,
-    max_active_experts = as.integer(max_active_experts),
+    max_active_experts = max_active_experts,
     enable_unseen_surfacing = enable_unseen_surfacing,
     citation_policy = citation_policy,
     min_support_score = min_support_score,
@@ -511,6 +651,8 @@ tempest_normalize_search_provider <- function(search_provider) {
 #'   creates an in-memory store.
 #' @param name Store name for tool registration.
 #' @param title Human-readable store title.
+#' @param reset Whether to replace an existing persistent store. Destructive
+#'   replacement is never performed unless this is `TRUE`.
 #' @return A ragnar store object.
 #'
 #' @details
@@ -536,9 +678,14 @@ tempest_create_ragnar_store <- function(
   embed_fn,
   cache_dir = NULL,
   name = "tempest_knowledge",
-  title = "STORM Knowledge Base"
+  title = "STORM Knowledge Base",
+  reset = FALSE
 ) {
   tempest_require("ragnar", "RAG capabilities require the ragnar package.")
+  if (!is.function(embed_fn)) {
+    tempest_config_abort("{.arg embed_fn} must be a function.")
+  }
+  reset <- tempest_config_flag(reset, "reset")
 
   # Determine storage location
   location <- if (!is.null(cache_dir)) {
@@ -558,12 +705,63 @@ tempest_create_ragnar_store <- function(
     stringsAsFactors = FALSE
   )
 
+  if (!identical(location, ":memory:") && file.exists(location) && !reset) {
+    store <- tryCatch(
+      ragnar::ragnar_store_connect(location, read_only = FALSE),
+      error = function(error) {
+        tempest_config_abort(
+          c(
+            "Existing Ragnar store is not compatible.",
+            i = "Use {.code reset = TRUE} only when replacement is intended."
+          ),
+          parent = error
+        )
+      }
+    )
+    required <- names(extra_cols)
+    store_fields <- unique(c(
+      tryCatch(
+        DBI::dbListFields(store@con, "embeddings"),
+        error = function(error) character()
+      ),
+      tryCatch(DBI::dbListFields(store@con, "chunks"), error = function(error) {
+        character()
+      })
+    ))
+    missing <- setdiff(required, store_fields)
+    embedding_size <- tryCatch(
+      ncol(embed_fn("tempest schema check")),
+      error = function(error) NA_integer_
+    )
+    stored_size <- tryCatch(
+      DBI::dbGetQuery(
+        store@con,
+        "SELECT embedding_size FROM metadata"
+      )$embedding_size[[1]],
+      error = function(error) NA_integer_
+    )
+    if (
+      length(missing) > 0L ||
+        is.na(embedding_size) ||
+        !identical(as.integer(embedding_size), as.integer(stored_size))
+    ) {
+      try(DBI::dbDisconnect(store@con, shutdown = TRUE), silent = TRUE)
+      tempest_config_abort(
+        c(
+          "Existing Ragnar store schema is incompatible.",
+          i = "Use a compatible embedding function or opt in to {.code reset = TRUE}."
+        )
+      )
+    }
+    return(store)
+  }
+
   ragnar::ragnar_store_create(
     location = location,
     embed = embed_fn,
     extra_cols = extra_cols,
     name = name,
     title = title,
-    overwrite = TRUE
+    overwrite = reset
   )
 }

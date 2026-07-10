@@ -37,6 +37,7 @@ test_that("module UIs namespace their input ids", {
   html <- as.character(app$mod_storm_ui("storm"))
   expect_match(paste(html, collapse = ""), "storm-run")
   expect_match(paste(html, collapse = ""), "storm-topic")
+  expect_match(paste(html, collapse = ""), "storm-cancel_control")
   chat_html <- paste(
     as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
     collapse = ""
@@ -46,6 +47,84 @@ test_that("module UIs namespace their input ids", {
   expect_match(chat_html, "chat-runtime_footer")
   expect_match(chat_html, "chat-footer_sources")
   expect_match(chat_html, "tempestCitationSanitizer")
+})
+
+test_that("STORM worker cancellation stops Mirai work and records progress", {
+  skip_if_not_installed("mirai")
+  app <- source_shiny_modules()
+  job <- mirai::mirai({
+    Sys.sleep(5)
+    "completed"
+  })
+
+  expect_equal(app$storm_cancel_worker(job), TRUE)
+  deadline <- Sys.time() + 2
+  while (mirai::unresolved(job) && Sys.time() < deadline) {
+    Sys.sleep(0.01)
+  }
+  expect_equal(mirai::unresolved(job), FALSE)
+  expect_equal(app$storm_cancel_worker(job), FALSE)
+
+  event <- app$storm_cancelled_event("Topic", "run-1")
+  expect_equal(event@event_type, "cancellation")
+  expect_equal(event@status, "cancelled")
+})
+
+test_that("Co-STORM async queue serializes work and cancels stale commits", {
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+  app <- source_shiny_modules()
+  queue <- app$costorm_async_queue()
+  resolve_first <- NULL
+  order <- character()
+  heartbeat <- FALSE
+
+  first <- queue$enqueue(function(is_current) {
+    order <<- c(order, "first-start")
+    promises::promise(function(resolve, reject) {
+      resolve_first <<- function() {
+        if (is_current()) {
+          order <<- c(order, "first-commit")
+        }
+        resolve(NULL)
+      }
+    })
+  })
+  second <- queue$enqueue(function(is_current) {
+    order <<- c(order, "second-start")
+    if (is_current()) {
+      order <<- c(order, "second-commit")
+    }
+    NULL
+  })
+  later::later(function() heartbeat <<- TRUE, delay = 0)
+  later::run_now(0.02)
+
+  expect_equal(heartbeat, TRUE)
+  expect_equal(order, "first-start")
+  resolve_first()
+  expect_null(await_tempest_promise(first)$error)
+  expect_null(await_tempest_promise(second)$error)
+  expect_equal(
+    order,
+    c("first-start", "first-commit", "second-start", "second-commit")
+  )
+
+  stale_commit <- FALSE
+  resolve_stale <- NULL
+  stale <- queue$enqueue(function(is_current) {
+    promises::promise(function(resolve, reject) {
+      resolve_stale <<- function() {
+        stale_commit <<- is_current()
+        resolve(NULL)
+      }
+    })
+  })
+  later::run_now(0.02)
+  queue$cancel()
+  resolve_stale()
+  expect_null(await_tempest_promise(stale)$error)
+  expect_equal(stale_commit, FALSE)
 })
 
 test_that("tempest_shiny_ui builds namespaced host panels", {
@@ -379,6 +458,43 @@ test_that("sources and facts table data populate explicit display values", {
   expect_equal(fact_display$support_score, c("0.82", "Not scored"))
 })
 
+test_that("Shiny rendering escapes untrusted HTML and unsafe links", {
+  skip_if_not_installed("commonmark")
+  skip_if_not_installed("DT")
+  app <- source_shiny_modules()
+  source_store <- fake_store_with_sources(1)
+  source_id <- source_store$list_sources()[[1]]$id
+  malicious <- paste0(
+    "<script>globalThis.tempestXss = true</script>",
+    "<img src=x onerror=alert(1)>",
+    " Supported claim [",
+    source_id,
+    "]."
+  )
+
+  rendered <- as.character(app$markdown_ui(malicious, store = source_store))
+  expect_no_match(rendered, "<script", fixed = TRUE)
+  expect_no_match(rendered, "<img", fixed = TRUE)
+  expect_match(rendered, "&lt;script&gt;", fixed = TRUE)
+  expect_match(rendered, "&lt;img src=x onerror=alert(1)&gt;", fixed = TRUE)
+  expect_match(rendered, "tempest-citation", fixed = TRUE)
+  expect_equal(app$citation_safe_url("javascript:alert(1)"), "")
+  expect_equal(
+    app$citation_safe_url("https://example.org/source"),
+    "https://example.org/source"
+  )
+
+  widget <- app$styled_datatable(
+    data.frame(title = "<img onerror=alert(1)>", url = "<a>safe</a>"),
+    html_columns = "url"
+  )
+  expect_equal(attr(widget$x$options, "escapeIdx"), '"1"')
+
+  document <- app$report_html_document("<p>Safe body</p>")
+  expect_match(document, "Content-Security-Policy", fixed = TRUE)
+  expect_match(document, "default-src 'none'", fixed = TRUE)
+})
+
 test_that("session store mutations work outside reactive consumers", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
@@ -475,7 +591,46 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
     expect_equal(output$n_turns, "1")
     expect_match(output$n_sources, "^[0-9]+$")
     expect_match(output$n_facts, "^[0-9]+$")
+    accessible <- as.character(output$graph_accessible)[[1]]
+    expect_match(accessible, "Test topic", fixed = TRUE)
+    expect_match(accessible, "<details>", fixed = TRUE)
+    expect_match(as.character(output$graph_status)[[1]], "role=\"status\"")
   })
+})
+
+test_that("mind map accessible view exposes relationships, notes, and sources", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  source_store <- fake_store_with_sources(1)
+  source <- source_store$list_sources()[[1]]
+  mindmap <- list(
+    nodes = list(
+      list(
+        id = "root",
+        label = "Root topic",
+        parent = NULL,
+        notes = "Root notes",
+        source_ids = character()
+      ),
+      list(
+        id = "child",
+        label = "Child finding",
+        parent = "root",
+        notes = "Finding notes",
+        source_ids = source$id
+      )
+    ),
+    edges = list(list(from = "root", to = "child", relation = "supports"))
+  )
+
+  html <- as.character(app$mindmap_accessible_tree(mindmap, source_store))
+
+  expect_match(html, "Root topic", fixed = TRUE)
+  expect_match(html, "Child finding", fixed = TRUE)
+  expect_match(html, "Finding notes", fixed = TRUE)
+  expect_match(html, "supports to Child finding", fixed = TRUE)
+  expect_match(html, source$url, fixed = TRUE)
+  expect_match(html, "<summary>", fixed = TRUE)
 })
 
 test_that("shared fake Co-STORM session populates evidence tabs", {
@@ -771,10 +926,96 @@ test_that("the chat sidebar offers session persistence controls", {
     collapse = ""
   )
 
-  expect_match(html, "chat-session_bundle")
   expect_match(html, "chat-save_session")
   expect_match(html, "chat-load_session")
   expect_match(html, "chat-autosave_session")
+  expect_no_match(html, "Bundle directory", fixed = TRUE)
+})
+
+test_that("session archives round-trip through the upload boundary", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("zip")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Downloadable session",
+    config = cfg,
+    personas = list(tempest_expert(name = "Dr. Archive"))
+  )
+  store <- app$new_session_store()
+  store$set(ses)
+  archive <- tempfile(fileext = ".zip")
+  extract_root <- file.path(withr::local_tempdir(), "archive")
+
+  expect_no_error(app$session_archive_write(store, archive))
+  bundle <- app$session_archive_extract(archive, extract_root)
+  restored <- tempest_session_resume(bundle, config = cfg)
+
+  expect_r6_class(restored, "TempestSession")
+  expect_equal(restored$topic, "Downloadable session")
+  archive_files <- utils::unzip(archive, list = TRUE)$Name
+  expect_setequal(
+    intersect(archive_files, app$session_archive_files()),
+    archive_files
+  )
+  expect_contains(archive_files, "session.json")
+})
+
+test_that("session archive validation rejects unsafe entries and large files", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+
+  expect_equal(
+    app$session_archive_listing_is_safe("session.json", 100),
+    TRUE
+  )
+  expect_equal(
+    app$session_archive_listing_is_safe("../session.json", 100),
+    FALSE
+  )
+  expect_equal(
+    app$session_archive_listing_is_safe(
+      c("session.json", "session.json"),
+      c(100, 100)
+    ),
+    FALSE
+  )
+  expect_equal(
+    app$session_archive_listing_is_safe("session.json", 51 * 1024^2),
+    FALSE
+  )
+  expect_equal(
+    app$session_archive_listing_is_safe("unexpected.txt", 100),
+    FALSE
+  )
+})
+
+test_that("Shiny session storage is isolated, private, and quota-bound", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  first <- app$session_storage_root(list(token = "session-one"))
+  second <- app$session_storage_root(list(token = "../session-two"))
+  on.exit(unlink(c(first, second), recursive = TRUE, force = TRUE), add = TRUE)
+  writeLines("private", file.path(first, "private.txt"))
+  app$session_secure_permissions(first)
+
+  expect_false(identical(first, second))
+  expect_equal(file.exists(file.path(second, "private.txt")), FALSE)
+  expect_equal(dirname(first), dirname(second))
+  expect_no_match(basename(second), "[.][.]", perl = TRUE)
+  expect_equal(as.character(file.info(first)$mode), "700")
+  expect_equal(
+    as.character(file.info(file.path(first, "private.txt"))$mode),
+    "600"
+  )
+  expect_error(
+    app$session_bundle_enforce_quota(first, max_bytes = 1),
+    "storage quota"
+  )
+  expect_equal(dir.exists(first), FALSE)
 })
 
 test_that("session store saves and restores bundles for shared app tabs", {
@@ -1746,8 +1987,11 @@ fake_warmup_session <- function(
     ))
   }
 
-  call_chat_async <- function(prompt, persona) {
+  call_chat_async <- function(prompt, persona, generation) {
     arg_names <- names(formals(chat_async))
+    if ("..." %in% arg_names || length(arg_names) >= 3L) {
+      return(chat_async(prompt, persona, generation))
+    }
     if ("..." %in% arg_names || length(arg_names) >= 2L) {
       return(chat_async(prompt, persona))
     }
@@ -1765,23 +2009,53 @@ fake_warmup_session <- function(
     stream_async(prompt)
   }
 
-  list(
+  manager_state <- new.env(parent = emptyenv())
+  manager_state$chats <- new.env(parent = emptyenv())
+  manager_state$generations <- new.env(parent = emptyenv())
+  manager_state$session_keys <- new.env(parent = emptyenv())
+  manager_state$retired <- 0L
+  manager <- list()
+  manager$get_or_create <- function(persona) {
+    key <- as.character(persona$id %||% persona$name %||% "expert")
+    chat <- manager_state$chats[[key]]
+    if (is.null(chat)) {
+      generation <- (manager_state$generations[[key]] %||% 0L) + 1L
+      manager_state$generations[[key]] <- generation
+      chat <- list(
+        chat_async = function(prompt) {
+          call_chat_async(prompt, persona, generation)
+        }
+      )
+      if (!is.null(stream_async)) {
+        chat$stream_async <- function(prompt, stream) {
+          call_stream_async(prompt, stream, persona)
+        }
+      }
+      manager_state$chats[[key]] <- chat
+    }
+    generation <- manager_state$generations[[key]]
+    session_id <- paste0("fake-", key, "-", generation)
+    manager_state$session_keys[[session_id]] <- key
+    list(
+      chat = manager_state$chats[[key]],
+      session_id = session_id
+    )
+  }
+  manager$retire_session <- function(session_id) {
+    key <- manager_state$session_keys[[session_id]]
+    if (!is.null(key)) {
+      rm(list = key, envir = manager_state$chats)
+      rm(list = session_id, envir = manager_state$session_keys)
+    }
+    manager_state$retired <- manager_state$retired + 1L
+    list(retired = TRUE, cancellation_supported = FALSE)
+  }
+  manager$extract_facts <- function(response) NULL
+
+  session <- list(
     topic = "Test topic",
     personas = personas,
-    expert_session_manager = list(
-      get_or_create = function(persona) {
-        chat <- list(
-          chat_async = function(prompt) call_chat_async(prompt, persona)
-        )
-        if (!is.null(stream_async)) {
-          chat$stream_async <- function(prompt, stream) {
-            call_stream_async(prompt, stream, persona)
-          }
-        }
-        list(chat = chat)
-      },
-      extract_facts = function(response) NULL
-    ),
+    expert_session_manager = manager,
     add_turn = function(...) {
       turns$n <- turns$n + 1L
       invisible(NULL)
@@ -1820,6 +2094,8 @@ fake_warmup_session <- function(
     },
     turns = turns
   )
+  session$manager_state <- manager_state
+  session
 }
 
 fake_warmup_store <- function() {
@@ -2116,6 +2392,62 @@ test_that("run_warmup times out a stuck question and continues", {
   expect_equal(state$completed_stages, "warmup")
   expect_length(state$active$experts, 0L)
   expect_length(state$active$tools, 0L)
+})
+
+test_that("warmup quarantines timed-out chats before the next question", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  app <- source_shiny_modules()
+  collector <- tempest_progress_collector(include_payload = TRUE)
+  store <- fake_warmup_store()
+  late_resolve <- NULL
+  generations <- integer()
+  ses <- fake_warmup_session(
+    function(prompt, persona, generation) {
+      generations <<- c(generations, generation)
+      if (generation == 1L) {
+        return(promises::promise(function(resolve, reject) {
+          late_resolve <<- resolve
+        }))
+      }
+      promises::promise_resolve("Fresh chat answer [S123456789abc].")
+    },
+    personas = list(list(
+      name = "Dr. Timeout",
+      title = "Expert",
+      initial_questions = c("First?", "Second?")
+    )),
+    progress = collector$record
+  )
+
+  await_promise(app$run_warmup(
+    ses,
+    store,
+    function(x) invisible(x),
+    timeout_s = 0.02,
+    max_questions_per_expert = 2
+  ))
+
+  expect_equal(generations, c(1L, 2L))
+  expect_equal(ses$manager_state$retired, 1L)
+  expect_equal(ses$turns$n, 1L)
+  expect_equal(is.null(late_resolve), FALSE)
+  late_resolve("Late answer must be ignored [S123456789abc].")
+  later::run_now(0.05)
+  expect_equal(ses$turns$n, 1L)
+
+  events <- collector$events()
+  timeout_events <- Filter(
+    function(event) {
+      identical(event@event_type, "tool") &&
+        identical(event@status, "failed") &&
+        identical(event@payload$failure_kind, "timeout")
+    },
+    events
+  )
+  expect_length(timeout_events, 1L)
+  expect_equal(timeout_events[[1]]@payload$chat_retired, TRUE)
+  expect_equal(timeout_events[[1]]@payload$cancellation_supported, FALSE)
 })
 
 test_that("run_warmup ignores stale callbacks after the session is gone", {

@@ -113,16 +113,54 @@ tempest_run <- function(
   verbose = TRUE
 ) {
   tempest_require("ellmer", "tempest_run() requires ellmer.")
+  if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
+    tempest_config_abort("{.arg topic} must be a single non-empty string.")
+  }
   topic <- tempest_trim(topic)
-  if (is.na(topic) || topic == "") {
-    tempest_abort("topic must be a non-empty string.")
+  if (!nzchar(topic)) {
+    tempest_config_abort("{.arg topic} must be a single non-empty string.")
+  }
+  if (!S7::S7_inherits(config, TempestConfig)) {
+    tempest_config_abort(
+      "{.arg config} must be created by {.fn tempest_config}."
+    )
   }
 
   research_strategy <- match.arg(research_strategy)
-  max_rounds <- as.integer(max_rounds %||% 6)
-  if (is.na(max_rounds) || max_rounds < 1) {
-    max_rounds <- 6L
+  n_experts <- tempest_config_count(n_experts, "n_experts")
+  if (n_experts > config@max_active_experts) {
+    tempest_config_abort(
+      c(
+        "Expert request exceeds the configured budget.",
+        x = "Requested {n_experts}; maximum is {config@max_active_experts}."
+      )
+    )
   }
+  max_rounds <- tempest_config_count(max_rounds, "max_rounds")
+  max_questions_per_perspective <- tempest_config_count(
+    max_questions_per_perspective,
+    "max_questions_per_perspective"
+  )
+  parallel_research <- tempest_config_flag(
+    parallel_research,
+    "parallel_research"
+  )
+  parallel_writing <- tempest_config_flag(parallel_writing, "parallel_writing")
+  resume <- tempest_config_flag(resume, "resume")
+  remove_duplicate <- tempest_config_flag(remove_duplicate, "remove_duplicate")
+  verbose <- tempest_config_flag(verbose, "verbose")
+  allowed_steps <- c("perspectives", "research", "outline", "write", "polish")
+  if (
+    !is.character(steps) ||
+      length(steps) == 0L ||
+      anyNA(steps) ||
+      length(setdiff(steps, allowed_steps)) > 0L
+  ) {
+    tempest_config_abort(
+      "{.arg steps} must contain only: {.val {allowed_steps}}."
+    )
+  }
+  steps <- unique(steps)
 
   retriever <- retriever %||%
     tempest_retriever(config = config, store = SourceStore$new())
@@ -1071,13 +1109,14 @@ tempest_run <- function(
 
 #' Run STORM asynchronously (Shiny-friendly)
 #'
-#' This is a thin wrapper around [tempest_run()] that returns a promise.
-#' It is useful when calling STORM from a Shiny app without blocking the session.
+#' This runs [tempest_run()] in a Mirai worker and returns a promise immediately.
+#' Use [tempest_run_cancel()] to stop a run that is no longer needed.
 #'
 #' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for details
 #'   on available parameters including `topic`, `config`, `retriever`,
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
-#' @return A `promises::promise` that resolves with the tempest_run result.
+#' @return A `tempest_async_run` promise that resolves with the
+#'   [tempest_run()] result.
 #' @seealso [tempest_run()] for the synchronous version.
 #' @examples
 #' \dontrun{
@@ -1087,7 +1126,86 @@ tempest_run <- function(
 #' @export
 tempest_run_async <- function(...) {
   tempest_require("promises", "tempest_run_async() uses promises.")
-  promises::promise(function(resolve, reject) {
-    tryCatch(resolve(tempest_run(...)), error = reject)
-  })
+  tempest_require("mirai", "tempest_run_async() uses a Mirai worker.")
+  args <- list(...)
+  runner <- getOption("tempest.async_runner", tempest_run)
+  if (!is.function(runner)) {
+    tempest_abort(
+      "The configured async runner must be a function.",
+      class = c("tempest_async_error", "tempest_error")
+    )
+  }
+  job <- mirai::mirai(
+    {
+      tryCatch(
+        list(ok = TRUE, value = do.call(runner, args)),
+        error = function(error) list(ok = FALSE, condition = error)
+      )
+    },
+    runner = runner,
+    args = args
+  )
+  promise <- promises::then(
+    promises::as.promise(job),
+    function(result) {
+      if (inherits(result, "errorValue")) {
+        tempest_abort(
+          "Asynchronous STORM run was cancelled.",
+          class = c(
+            "tempest_async_cancelled",
+            "tempest_async_error",
+            "tempest_error"
+          )
+        )
+      }
+      if (!is.list(result) || !isTRUE(result$ok)) {
+        condition <- result$condition %||%
+          simpleError(
+            "Asynchronous STORM worker returned an invalid result."
+          )
+        stop(condition)
+      }
+      result$value
+    },
+    onRejected = function(error) {
+      if (grepl("Operation canceled", conditionMessage(error), fixed = TRUE)) {
+        tempest_abort(
+          "Asynchronous STORM run was cancelled.",
+          class = c(
+            "tempest_async_cancelled",
+            "tempest_async_error",
+            "tempest_error"
+          )
+        )
+      }
+      stop(error)
+    }
+  )
+  attr(promise, "tempest_mirai") <- job
+  class(promise) <- c("tempest_async_run", class(promise))
+  promise
+}
+
+#' Cancel an asynchronous STORM run
+#'
+#' Stops the Mirai worker owned by a promise returned from
+#' [tempest_run_async()]. Cancellation is idempotent after a run has settled.
+#'
+#' @param run A `tempest_async_run` returned by [tempest_run_async()].
+#' @return Invisibly returns `TRUE` when cancellation was requested and
+#'   `FALSE` when the run had already settled.
+#' @export
+tempest_run_cancel <- function(run) {
+  if (!inherits(run, "tempest_async_run")) {
+    tempest_abort(
+      "{.arg run} must be returned by {.fn tempest_run_async}.",
+      class = c("tempest_async_error", "tempest_error")
+    )
+  }
+  job <- attr(run, "tempest_mirai", exact = TRUE)
+  if (is.null(job) || !mirai::unresolved(job)) {
+    return(invisible(FALSE))
+  }
+  mirai::stop_mirai(job)
+  invisible(TRUE)
 }

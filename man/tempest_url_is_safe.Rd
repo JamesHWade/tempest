@@ -11,6 +11,7 @@ tempest_url_is_safe(url)
 }
 \value{
 Logical indicating if URL passes security checks.
+Perform a bounded HTTP fetch
 }
 \description{
 Check if URL is safe (non-throwing version)

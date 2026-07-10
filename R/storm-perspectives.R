@@ -29,6 +29,13 @@ tempest_generate_personas <- function(
   module = NULL
 ) {
   tempest_require("ellmer", "Persona generation requires ellmer.")
+  topic <- tempest_config_string(topic, "topic")
+  n <- tempest_config_count(n, "n")
+  if (n > config@max_active_experts) {
+    tempest_config_abort(
+      "{.arg n} cannot exceed {.arg max_active_experts}."
+    )
+  }
 
   chat <- tempest_make_chat(
     config,
@@ -96,6 +103,55 @@ tempest_generate_personas <- function(
   }
 
   personas
+}
+
+#' @keywords internal
+tempest_generate_personas_async <- function(
+  topic,
+  n = 3,
+  config = tempest_config()
+) {
+  tempest_require("ellmer", "Persona generation requires ellmer.")
+  tempest_require("promises", "Async persona generation requires promises.")
+  topic <- tempest_config_string(topic, "topic")
+  n <- tempest_config_count(n, "n")
+  if (n > config@max_active_experts) {
+    tempest_config_abort(
+      "{.arg n} cannot exceed {.arg max_active_experts}."
+    )
+  }
+  chat <- tempest_make_chat(
+    config,
+    "coordinator",
+    system_prompt = tempest_prompt("persona_generator_system"),
+    echo = "none"
+  )
+  prompt <- paste0(
+    "Topic: ",
+    topic,
+    "\n\nGenerate exactly ",
+    n,
+    " diverse expert personas who would research this topic.\n\n",
+    "Requirements:\n",
+    "- Each persona should have a distinct professional background\n",
+    "- Personas should complement each other, covering different angles\n",
+    "- Include a mix of academic, industry, and practitioner perspectives where appropriate\n",
+    "- Each persona's focus areas should be specific and non-overlapping\n",
+    "- Initial questions should reflect their unique expertise and concerns\n"
+  )
+  request <- chat$chat_structured_async(
+    prompt,
+    type = tempest_type_personas(),
+    echo = "none",
+    convert = FALSE
+  )
+  promises::then(request, function(result) {
+    personas <- tempest_normalize_personas(result, n = n)
+    for (i in seq_along(personas)) {
+      personas[[i]]$id <- i
+    }
+    personas
+  })
 }
 
 #' Format Persona Details for Prompt

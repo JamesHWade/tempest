@@ -8,6 +8,9 @@ tempest_costorm_task(
   dataset = c("qa"),
   config = tempest_config(),
   max_turns = 5L,
+  solver = NULL,
+  scorer = NULL,
+  scorer_chat = NULL,
   ...
 )
 }
@@ -17,6 +20,15 @@ tempest_costorm_task(
 \item{config}{A \code{TempestConfig}.}
 
 \item{max_turns}{Maximum turns per simulated session.}
+
+\item{solver}{Optional vitals-compatible solver. When \code{NULL}, uses the
+built-in simulated Co-STORM session solver.}
+
+\item{scorer}{Optional vitals-compatible scorer. When \code{NULL}, uses
+\code{vitals::model_graded_qa()}.}
+
+\item{scorer_chat}{Optional chat for the default model-graded scorer. When
+\code{NULL}, a judge chat is created from \code{config}.}
 
 \item{...}{Passed to \code{vitals::Task$new()}.}
 }

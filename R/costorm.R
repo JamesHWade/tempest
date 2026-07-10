@@ -210,6 +210,11 @@ tempest_validate_personas <- function(personas) {
   validated
 }
 
+#' @keywords internal
+tempest_async_is_current <- function(is_current) {
+  tryCatch(isTRUE(is_current()), error = function(error) FALSE)
+}
+
 #' TempestSession
 #'
 #' Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, and report artifacts.
@@ -272,9 +277,28 @@ TempestSession <- R6::R6Class(
       session_id = NULL
     ) {
       tempest_require("ellmer", "TempestSession requires ellmer.")
+      if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
+        tempest_config_abort("{.arg topic} must be a single non-empty string.")
+      }
       self$topic <- tempest_trim(topic)
-      if (is.na(self$topic) || self$topic == "") {
-        tempest_abort("topic must be a non-empty string.")
+      if (!nzchar(self$topic)) {
+        tempest_config_abort("{.arg topic} must be a single non-empty string.")
+      }
+      if (!S7::S7_inherits(config, TempestConfig)) {
+        tempest_config_abort(
+          "{.arg config} must be created by {.fn tempest_config}."
+        )
+      }
+      if (is.null(personas)) {
+        n_experts <- tempest_config_count(n_experts, "n_experts")
+        if (n_experts > config@max_active_experts) {
+          tempest_config_abort(
+            c(
+              "Expert request exceeds the configured budget.",
+              x = "Requested {n_experts}; maximum is {config@max_active_experts}."
+            )
+          )
+        }
       }
       self$title <- self$topic
       self$config <- config
@@ -323,6 +347,11 @@ TempestSession <- R6::R6Class(
         )
       } else {
         self$personas <- tempest_validate_personas(personas)
+      }
+      if (length(self$personas) > config@max_active_experts) {
+        tempest_config_abort(
+          "{.arg personas} exceeds {.arg max_active_experts}."
+        )
       }
 
       # Create chats first (need extractor for session manager)

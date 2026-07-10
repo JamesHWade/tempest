@@ -42,11 +42,19 @@ markdown_ui <- function(md, store = NULL, include_references = FALSE) {
   }
 }
 
+markdown_escape_raw_html <- function(md) {
+  if (is.null(md)) {
+    return("")
+  }
+  htmltools::htmlEscape(as.character(md), attribute = FALSE)
+}
+
 citation_markdown <- function(md, store = NULL, include_references = FALSE) {
   if (!nzchar(md %||% "")) {
     return("")
   }
   md <- sanitize_external_citation_markers(md)
+  md <- markdown_escape_raw_html(md)
   model <- citation_reference_model(md, store = store)
   if (nrow(model$matches) == 0) {
     return(model$markdown)
@@ -191,7 +199,7 @@ citation_reference <- function(id, number, store = NULL) {
     tryCatch(store$get_source(id), error = function(e) NULL)
   }
   known <- !is.null(source)
-  url <- citation_text(source$url %||% "")
+  url <- citation_safe_url(source$url %||% "")
   title <- citation_text(source$title %||% "")
   snippet <- citation_snippet(source$snippet %||% source$content_text %||% "")
   if (!nzchar(title)) {
@@ -207,6 +215,17 @@ citation_reference <- function(id, number, store = NULL) {
     snippet = snippet,
     provenance = if (known) "Tempest source" else "Missing source metadata"
   )
+}
+
+citation_safe_url <- function(url) {
+  url <- citation_text(url)
+  if (!nzchar(url) || grepl("[[:cntrl:]]", url)) {
+    return("")
+  }
+  if (!grepl("^https?://", url, ignore.case = TRUE)) {
+    return("")
+  }
+  url
 }
 
 citation_text <- function(x) {
@@ -1186,10 +1205,16 @@ facts_table_data <- function(df) {
 }
 
 # A DT datatable with the app's standard export options.
-styled_datatable <- function(df) {
+styled_datatable <- function(df, html_columns = character()) {
+  html_columns <- intersect(html_columns, names(df))
+  escape <- if (length(html_columns) == 0L) {
+    TRUE
+  } else {
+    setdiff(names(df), html_columns)
+  }
   DT::datatable(
     df,
-    escape = FALSE,
+    escape = escape,
     extensions = "Buttons",
     options = list(
       dom = "Bfrtip",
@@ -1221,6 +1246,9 @@ report_html_document <- function(body_html, title = "tempest Report") {
     '<!DOCTYPE html>\n<html lang="en">\n<head>\n',
     '<meta charset="UTF-8">\n',
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n',
+    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; ',
+    "style-src 'unsafe-inline'; img-src https: data:; base-uri 'none'; ",
+    "form-action 'none'\">\n",
     "<title>",
     htmltools::htmlEscape(title),
     "</title>\n",

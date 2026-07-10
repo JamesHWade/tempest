@@ -40,12 +40,38 @@ test_that("tempest_config validates STORM numeric controls", {
   expect_equal(cfg@max_search_queries_per_turn, 2L)
   expect_equal(cfg@retrieve_top_k, 9L)
 
-  fallback <- tempest_config(
-    max_search_queries_per_turn = 0,
-    retrieve_top_k = NA
+  invalid <- list(
+    list(max_search_results = 0),
+    list(max_search_results = -1),
+    list(max_search_results = NA_real_),
+    list(max_search_results = Inf),
+    list(max_search_results = c(1, 2)),
+    list(max_search_queries_per_turn = 0),
+    list(retrieve_top_k = NA_real_),
+    list(max_sources = c(1, 2)),
+    list(max_active_experts = NA_integer_)
   )
-  expect_equal(fallback@max_search_queries_per_turn, 3L)
-  expect_equal(fallback@retrieve_top_k, 25L)
+  for (args in invalid) {
+    expect_error(
+      do.call(tempest_config, args),
+      class = "tempest_config_error"
+    )
+  }
+})
+
+test_that("tempest_config validates logical and model controls", {
+  expect_error(
+    tempest_config(cache_enabled = NA),
+    class = "tempest_config_error"
+  )
+  expect_error(
+    tempest_config(enable_discourse_manager = c(TRUE, FALSE)),
+    class = "tempest_config_error"
+  )
+  expect_error(
+    tempest_config(models = list(coordinator = NA_character_)),
+    class = "tempest_config_error"
+  )
 })
 
 test_that("tempest_config accepts upstream-style search providers", {

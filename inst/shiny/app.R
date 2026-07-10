@@ -31,7 +31,7 @@ ui <- page_navbar(
 
 server <- function(input, output, session) {
   rlang::check_installed(
-    c("promises", "shinychat", "ellmer", "later", "mirai"),
+    c("promises", "shinychat", "ellmer", "later", "mirai", "zip"),
     reason = "to run the tempest app."
   )
   if (!"chat_server" %in% getNamespaceExports("shinychat")) {

@@ -17,6 +17,8 @@ Depends:
     R (>= 4.1.0)
 Imports:
     cli,
+    curl,
+    DBI,
     digest,
     dsprrr,
     ellmer,
@@ -51,10 +53,10 @@ Suggests:
     visNetwork,
     vitals,
     withr,
-    xml2
+    xml2,
+    zip
 Remotes:
-    JamesHWade/dsprrr,
-    posit-dev/shinychat/pkg-r
+    JamesHWade/dsprrr
 Config/testthat/edition: 3
 URL: https://jameshwade.github.io/tempest/,
     https://github.com/JamesHWade/tempest
@@ -66,6 +68,7 @@ Collate:
     'citations.R'
     'ledger-types.R'
     'config.R'
+    'costorm-async.R'
     'costorm-discourse.R'
     'costorm-mindmap.R'
     'costorm.R'

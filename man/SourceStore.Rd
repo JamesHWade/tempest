@@ -20,6 +20,8 @@ threaded through every pipeline stage and Co-STORM turn.
     \item{\code{disputes}}{Environment of dispute records keyed by id.}
 
     \item{\code{artifacts}}{Environment of arbitrary artifacts.}
+
+    \item{\code{max_sources}}{Maximum number of unique sources admitted by the store.}
   }
   \if{html}{\out{</div>}}
 }
@@ -27,6 +29,7 @@ threaded through every pipeline stage and Co-STORM turn.
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-SourceStore-initialize}{\code{SourceStore$new()}}
+    \item \href{#method-SourceStore-set_max_sources}{\code{SourceStore$set_max_sources()}}
     \item \href{#method-SourceStore-upsert_source}{\code{SourceStore$upsert_source()}}
     \item \href{#method-SourceStore-get_source}{\code{SourceStore$get_source()}}
     \item \href{#method-SourceStore-list_sources}{\code{SourceStore$list_sources()}}
@@ -53,7 +56,34 @@ threaded through every pipeline stage and Co-STORM turn.
   Create a new SourceStore.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$new()}
+    \preformatted{SourceStore$new(max_sources = Inf)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{max_sources}}{Maximum number of unique sources. New sources are
+refused once the limit is reached.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-set_max_sources"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-set_max_sources}{}}}
+\subsection{\code{SourceStore$set_max_sources()}}{
+  Set the maximum number of unique sources.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$set_max_sources(max_sources)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{max_sources}}{A positive whole number or \code{Inf}.}
+    }
     \if{html}{\out{</div>}}
   }
 }

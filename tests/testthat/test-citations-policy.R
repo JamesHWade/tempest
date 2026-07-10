@@ -2,7 +2,7 @@ test_that("report renders verification badges under claim_verified", {
   store <- fake_store_with_sources(1)
   s1 <- store$list_sources()[[1]]$id
   store$add_claim(tempest_claim(
-    claim_text = "c",
+    claim_text = "A questionable sentence",
     source_ids = s1,
     verification_status = "supported",
     support_score = 0.9
@@ -71,6 +71,7 @@ test_that("strict drop suppresses footnotes for dropped citations", {
   expect_no_match(md, paste0("\\[\\^", s1, "\\]"))
   expect_no_match(md, paste0("\\[\\^", s1, "\\]:"))
   expect_no_match(md, "## References")
+  expect_no_match(md, "Unsupported claim", fixed = TRUE)
 })
 
 test_that("strict policy applies status to the matching cited claim", {
@@ -99,8 +100,32 @@ test_that("strict policy applies status to the matching cited claim", {
   )
 
   expect_match(md, paste0("Supported claim \\[\\^", s1, "\\]\\."))
-  expect_no_match(md, paste0("Unsupported claim \\[\\^", s1, "\\]"))
+  expect_no_match(md, "Unsupported claim", fixed = TRUE)
   expect_match(md, paste0("\\[\\^", s1, "\\]:"))
+})
+
+test_that("strict revise replaces unsupported assertions distinctly", {
+  store <- fake_store_with_sources(1)
+  source_id <- store$list_sources()[[1]]$id
+  store$add_claim(tempest_claim(
+    claim_text = "Unsupported assertion",
+    source_ids = source_id,
+    verification_status = "unsupported",
+    support_score = 0.1
+  ))
+  body <- paste0("Unsupported assertion [", source_id, "].")
+
+  revised <- tempest_report_md(
+    "Title",
+    body,
+    store,
+    citation_policy = "strict",
+    on_unsupported_claim = "revise"
+  )
+
+  expect_no_match(revised, "Unsupported assertion", fixed = TRUE)
+  expect_match(revised, "withheld pending revision", fixed = TRUE)
+  expect_no_match(revised, "## References", fixed = TRUE)
 })
 
 test_that("default policy is unchanged source-attributed output", {

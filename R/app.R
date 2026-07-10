@@ -14,10 +14,18 @@
 #' }
 #' @export
 run_app <- function(...) {
-  tempest_require("shiny", "run_app() launches a Shiny app.")
+  tempest_shiny_require_ui(tempest_shiny_panel_choices())
+  tempest_shiny_require_server(tempest_shiny_panel_choices())
   app_dir <- system.file("shiny", package = "tempest")
   if (identical(app_dir, "")) {
     tempest_abort("Shiny app not found in installed package.")
   }
-  shiny::runApp(app_dir, ...)
+  runner <- getOption("tempest.app_runner", shiny::runApp)
+  if (!is.function(runner)) {
+    tempest_abort(
+      "The configured Shiny app runner must be a function.",
+      class = c("tempest_shiny_error", "tempest_error")
+    )
+  }
+  runner(app_dir, ...)
 }
