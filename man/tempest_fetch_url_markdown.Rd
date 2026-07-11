@@ -4,7 +4,7 @@
 \alias{tempest_fetch_url_markdown}
 \title{Fetch URL as markdown using ragnar}
 \usage{
-tempest_fetch_url_markdown(url)
+tempest_fetch_url_markdown(url, user_agent = NULL)
 }
 \arguments{
 \item{url}{The URL to fetch.}

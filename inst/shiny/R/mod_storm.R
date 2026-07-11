@@ -43,7 +43,8 @@ mod_storm_ui <- function(id) {
           icon = shiny::icon("bolt"),
           label_busy = "Running...",
           class = "w-100"
-        )
+        ),
+        shiny::uiOutput(ns("cancel_control"))
       ),
       bslib::card(
         full_screen = TRUE,
@@ -65,6 +66,11 @@ mod_storm_server <- function(id, config, store) {
     progress_stream$path <- NULL
     progress_stream$token <- 0L
     progress_stream$active <- FALSE
+    worker_state <- new.env(parent = emptyenv())
+    worker_state$job <- NULL
+    worker_state$cancelled <- FALSE
+    worker_state$topic <- NULL
+    worker_state$run_id <- NULL
 
     storm_task <- shiny::ExtendedTask$new(
       function(
@@ -77,7 +83,7 @@ mod_storm_server <- function(id, config, store) {
         progress_stream_path,
         progress_run_id
       ) {
-        mirai::mirai(
+        job <- mirai::mirai(
           {
             storm_runner(
               topic = topic,
@@ -106,6 +112,8 @@ mod_storm_server <- function(id, config, store) {
           storm_runner = storm_run_with_progress,
           tempest_run_factory = storm_worker_tempest_run
         )
+        worker_state$job <- job
+        job
       }
     ) |>
       bslib::bind_task_button("run")
@@ -114,11 +122,15 @@ mod_storm_server <- function(id, config, store) {
       topic <- stringi::stri_trim_both(input$topic %||% "")
       shiny::req(nzchar(topic))
       progress_stream$active <- FALSE
+      worker_state$cancelled <- FALSE
+      worker_state$job <- NULL
+      worker_state$topic <- topic
       progress_stream$token <- progress_stream$token + 1L
       progress_stream$path <- storm_progress_stream_path()
       run_token <- progress_stream$token
       progress_stream$active <- TRUE
       progress_run_id <- storm_progress_run_id()
+      worker_state$run_id <- progress_run_id
       progress_events(list(storm_running_event(topic, progress_run_id)))
       storm_poll_progress_stream(
         path = progress_stream$path,
@@ -141,10 +153,27 @@ mod_storm_server <- function(id, config, store) {
       )
     })
 
+    shiny::observeEvent(input$cancel, {
+      if (!storm_cancel_worker(worker_state$job)) {
+        return()
+      }
+      worker_state$cancelled <- TRUE
+      progress_stream$active <- FALSE
+      progress_events(storm_merge_progress_events(
+        shiny::isolate(progress_events()),
+        list(storm_cancelled_event(
+          worker_state$topic %||% "STORM run",
+          worker_state$run_id %||% storm_progress_run_id()
+        ))
+      ))
+      storm_cleanup_progress_stream(progress_stream$path)
+    })
+
     # Share the report once the pipeline succeeds.
     shiny::observeEvent(storm_task$status(), {
       if (identical(storm_task$status(), "success")) {
         progress_stream$active <- FALSE
+        worker_state$job <- NULL
         value <- storm_task$result()
         progress_events(storm_merge_progress_events(
           shiny::isolate(progress_events()),
@@ -162,6 +191,7 @@ mod_storm_server <- function(id, config, store) {
         storm_cleanup_progress_stream(progress_stream$path)
       } else if (identical(storm_task$status(), "error")) {
         progress_stream$active <- FALSE
+        worker_state$job <- NULL
         progress_events(storm_merge_progress_events(
           shiny::isolate(progress_events()),
           storm_read_progress_stream(progress_stream$path)
@@ -172,7 +202,21 @@ mod_storm_server <- function(id, config, store) {
 
     session$onSessionEnded(function() {
       progress_stream$active <- FALSE
+      storm_cancel_worker(worker_state$job)
+      worker_state$job <- NULL
       storm_cleanup_progress_stream(progress_stream$path)
+    })
+
+    output$cancel_control <- shiny::renderUI({
+      if (!identical(storm_task$status(), "running")) {
+        return(NULL)
+      }
+      shiny::actionButton(
+        ns("cancel"),
+        "Cancel STORM run",
+        icon = shiny::icon("stop"),
+        class = "btn-outline-danger w-100 mt-2"
+      )
     })
 
     output$progress <- shiny::renderUI({
@@ -193,6 +237,13 @@ mod_storm_server <- function(id, config, store) {
     output$result <- shiny::renderUI({
       status <- storm_task$status()
       if (identical(status, "error")) {
+        if (isTRUE(worker_state$cancelled)) {
+          return(shiny::div(
+            class = "alert alert-warning mt-3",
+            shiny::icon("ban"),
+            " STORM run cancelled."
+          ))
+        }
         msg <- tryCatch(
           {
             storm_task$result()
@@ -596,6 +647,25 @@ storm_task_progress <- function(value) {
   } else {
     list()
   }
+}
+
+storm_cancel_worker <- function(job) {
+  if (is.null(job) || !mirai::unresolved(job)) {
+    return(FALSE)
+  }
+  mirai::stop_mirai(job)
+  TRUE
+}
+
+storm_cancelled_event <- function(topic, run_id) {
+  tempest::tempest_progress_event(
+    run_id = run_id,
+    workflow = "storm",
+    event_type = "cancellation",
+    status = "cancelled",
+    message = paste("Cancelled STORM research for", topic),
+    payload = list(topic = topic)
+  )
 }
 
 storm_stage_labels <- function() {

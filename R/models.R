@@ -94,6 +94,103 @@ tempest_source_snippet_text <- function(source, max_chars = 300L) {
   paste0(substr(text, 1L, max_chars - 3L), "...")
 }
 
+#' @keywords internal
+tempest_source_store_abort <- function(message, ..., parent = NULL) {
+  tempest_abort(
+    message,
+    ...,
+    class = c(
+      "tempest_source_store_integrity_error",
+      "tempest_source_store_error",
+      "tempest_error"
+    ),
+    parent = parent,
+    .envir = rlang::caller_env()
+  )
+}
+
+#' @keywords internal
+tempest_validate_source <- function(source) {
+  if (!is.list(source) || is.data.frame(source)) {
+    tempest_source_store_abort("{.arg source} must be a source record list.")
+  }
+  required <- c(
+    "id",
+    "url",
+    "title",
+    "snippet",
+    "content_text",
+    "fetched_at",
+    "content_hash",
+    "meta"
+  )
+  missing <- required[!required %in% names(source)]
+  if (length(missing) > 0L) {
+    tempest_source_store_abort(
+      "{.arg source} is missing required field{?s}: {.field {missing}}."
+    )
+  }
+  for (field in c("id", "url")) {
+    value <- source[[field]]
+    if (
+      !is.character(value) ||
+        length(value) != 1L ||
+        is.na(value) ||
+        !nzchar(value)
+    ) {
+      tempest_source_store_abort(
+        "Source field {.field {field}} must be a non-empty string."
+      )
+    }
+  }
+  text_fields <- c(
+    "title",
+    "snippet",
+    "content_text",
+    "fetched_at",
+    "content_hash"
+  )
+  if ("context_text" %in% names(source)) {
+    text_fields <- c(text_fields, "context_text")
+  }
+  for (field in text_fields) {
+    value <- source[[field]]
+    if (is.null(value)) {
+      source[[field]] <- NA_character_
+      value <- source[[field]]
+    }
+    if (!is.character(value) || length(value) != 1L) {
+      tempest_source_store_abort(
+        "Source field {.field {field}} must be a single string or `NA`."
+      )
+    }
+  }
+  if (is.null(source$meta)) {
+    source$meta <- list()
+  }
+  if (!is.list(source$meta) || is.data.frame(source$meta)) {
+    tempest_source_store_abort("Source field {.field meta} must be a list.")
+  }
+  expected_id <- tryCatch(
+    tempest_source_id(source$url),
+    error = function(error) {
+      tempest_source_store_abort(
+        "Source field {.field url} is invalid.",
+        parent = error
+      )
+    }
+  )
+  if (!identical(source$id, expected_id)) {
+    tempest_source_store_abort(
+      c(
+        "Source id does not match its URL.",
+        x = "Expected {.val {expected_id}}, not {.val {source$id}}."
+      )
+    )
+  }
+  source
+}
+
 #' SourceStore (evidence ledger)
 #'
 #' In-memory store for sources, claims, evidence spans, disputes, and
@@ -105,6 +202,7 @@ tempest_source_snippet_text <- function(source, max_chars = 300L) {
 #' @field evidence_spans Environment of evidence-span records keyed by id.
 #' @field disputes Environment of dispute records keyed by id.
 #' @field artifacts Environment of arbitrary artifacts.
+#' @field max_sources Maximum number of unique sources admitted by the store.
 #'
 #' @export
 SourceStore <- R6::R6Class(
@@ -115,22 +213,58 @@ SourceStore <- R6::R6Class(
     evidence_spans = NULL,
     disputes = NULL,
     artifacts = NULL,
+    max_sources = NULL,
 
     #' @description Create a new SourceStore.
-    initialize = function() {
+    #' @param max_sources Maximum number of unique sources. New sources are
+    #'   refused once the limit is reached.
+    initialize = function(max_sources = Inf) {
       self$sources <- new.env(parent = emptyenv())
       self$claims <- new.env(parent = emptyenv())
       self$evidence_spans <- new.env(parent = emptyenv())
       self$disputes <- new.env(parent = emptyenv())
       self$artifacts <- new.env(parent = emptyenv())
       private$claims_by_source <- new.env(parent = emptyenv())
+      self$set_max_sources(max_sources)
+      invisible(self)
+    },
+
+    #' @description Set the maximum number of unique sources.
+    #' @param max_sources A positive whole number or `Inf`.
+    set_max_sources = function(max_sources) {
+      if (
+        !is.numeric(max_sources) ||
+          length(max_sources) != 1L ||
+          is.na(max_sources) ||
+          max_sources <= 0 ||
+          (!is.infinite(max_sources) && max_sources != as.integer(max_sources))
+      ) {
+        tempest_source_store_abort(
+          "{.arg max_sources} must be a positive whole number or Inf."
+        )
+      }
+      if (is.finite(max_sources) && length(self$list_sources()) > max_sources) {
+        tempest_source_store_abort(
+          "{.arg max_sources} cannot be lower than the current source count."
+        )
+      }
+      self$max_sources <- max_sources
       invisible(self)
     },
 
     #' @description Insert or update a source.
     #' @param source A source list with an `id` field.
     upsert_source = function(source) {
-      stopifnot(is.list(source), !is.null(source$id))
+      source <- tempest_validate_source(source)
+      is_new <- is.null(self$sources[[source$id]])
+      if (is_new && length(self$list_sources()) >= self$max_sources) {
+        tempest_source_store_abort(
+          c(
+            "SourceStore source limit reached.",
+            i = "Increase {.arg max_sources} to admit more sources."
+          )
+        )
+      }
       self$sources[[source$id]] <- source
       invisible(source$id)
     },
@@ -150,8 +284,39 @@ SourceStore <- R6::R6Class(
     #' @description Add a claim record to the ledger.
     #' @param claim A `tempest_claim` S7 record.
     add_claim = function(claim) {
-      stopifnot(S7::S7_inherits(claim, tempest_claim))
+      if (!S7::S7_inherits(claim, tempest_claim)) {
+        tempest_source_store_abort(
+          "{.arg claim} must be a {.cls tempest_claim} record."
+        )
+      }
+      missing_sources <- setdiff(
+        claim@source_ids,
+        ls(self$sources, all.names = TRUE)
+      )
+      if (length(missing_sources) > 0L) {
+        tempest_source_store_abort(
+          "Claim cites unknown source id{?s}: {.val {missing_sources}}."
+        )
+      }
+      missing_spans <- setdiff(
+        claim@evidence_span_ids,
+        ls(self$evidence_spans, all.names = TRUE)
+      )
+      if (length(missing_spans) > 0L) {
+        tempest_source_store_abort(
+          "Claim cites unknown evidence span id{?s}: {.val {missing_spans}}."
+        )
+      }
       id <- claim@claim_id
+      previous <- self$claims[[id]]
+      if (!is.null(previous)) {
+        for (sid in previous@source_ids) {
+          private$claims_by_source[[sid]] <- setdiff(
+            private$claims_by_source[[sid]] %||% character(),
+            id
+          )
+        }
+      }
       self$claims[[id]] <- claim
       for (sid in claim@source_ids) {
         existing <- private$claims_by_source[[sid]] %||% character()
@@ -182,7 +347,16 @@ SourceStore <- R6::R6Class(
     #' @description Add an evidence span.
     #' @param span A `tempest_evidence_span` S7 record.
     add_evidence_span = function(span) {
-      stopifnot(S7::S7_inherits(span, tempest_evidence_span))
+      if (!S7::S7_inherits(span, tempest_evidence_span)) {
+        tempest_source_store_abort(
+          "{.arg span} must be a {.cls tempest_evidence_span} record."
+        )
+      }
+      if (is.null(self$get_source(span@source_id))) {
+        tempest_source_store_abort(
+          "Evidence span cites unknown source id: {.val {span@source_id}}."
+        )
+      }
       id <- span@evidence_span_id
       self$evidence_spans[[id]] <- span
       invisible(id)
@@ -194,7 +368,23 @@ SourceStore <- R6::R6Class(
     link_evidence = function(claim_id, span_id) {
       claim <- self$get_claim(claim_id)
       if (is.null(claim)) {
-        tempest_abort("Unknown claim id: {.val {claim_id}}")
+        tempest_source_store_abort("Unknown claim id: {.val {claim_id}}.")
+      }
+      span <- self$evidence_spans[[span_id]]
+      if (is.null(span)) {
+        tempest_source_store_abort(
+          "Unknown evidence span id: {.val {span_id}}."
+        )
+      }
+      if (is.null(self$get_source(span@source_id))) {
+        tempest_source_store_abort(
+          "Evidence span cites unknown source id: {.val {span@source_id}}."
+        )
+      }
+      if (!span@source_id %in% claim@source_ids) {
+        tempest_source_store_abort(
+          "Evidence span source is not cited by claim {.val {claim_id}}."
+        )
       }
       self$claims[[claim_id]] <- S7::set_props(
         claim,
@@ -241,7 +431,20 @@ SourceStore <- R6::R6Class(
     #' @description Add a dispute.
     #' @param dispute A `tempest_dispute` S7 record.
     add_dispute = function(dispute) {
-      stopifnot(S7::S7_inherits(dispute, tempest_dispute))
+      if (!S7::S7_inherits(dispute, tempest_dispute)) {
+        tempest_source_store_abort(
+          "{.arg dispute} must be a {.cls tempest_dispute} record."
+        )
+      }
+      missing_claims <- setdiff(
+        dispute@claim_ids,
+        ls(self$claims, all.names = TRUE)
+      )
+      if (length(missing_claims) > 0L) {
+        tempest_source_store_abort(
+          "Dispute cites unknown claim id{?s}: {.val {missing_claims}}."
+        )
+      }
       id <- dispute@dispute_id
       self$disputes[[id]] <- dispute
       invisible(id)

@@ -1,3 +1,24 @@
+test_that("tempest_run rejects invalid runtime budgets before provider work", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(max_active_experts = 2L)
+  invalid <- list(
+    list(topic = character()),
+    list(topic = "Topic", n_experts = 0),
+    list(topic = "Topic", n_experts = 3),
+    list(topic = "Topic", max_rounds = NA_real_),
+    list(topic = "Topic", max_questions_per_perspective = Inf),
+    list(topic = "Topic", parallel_research = NA),
+    list(topic = "Topic", steps = "unknown")
+  )
+
+  for (args in invalid) {
+    expect_error(
+      do.call(tempest_run, c(args, list(config = cfg))),
+      class = "tempest_config_error"
+    )
+  }
+})
+
 test_that("tempest_run emits ordered STORM progress events", {
   skip_if_not_installed("ellmer")
   local_mocked_bindings(

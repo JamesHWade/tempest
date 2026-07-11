@@ -102,3 +102,38 @@ tempest_suggest_questions <- function(
     error = function(e) character()
   )
 }
+
+#' @keywords internal
+tempest_suggest_questions_async <- function(
+  topic,
+  context = NULL,
+  n = 4,
+  chat = NULL,
+  config = tempest_config()
+) {
+  tempest_require("promises", "Async question suggestions require promises.")
+  topic <- tempest_trim(topic %||% "")
+  if (length(topic) != 1L || is.na(topic) || !nzchar(topic)) {
+    return(promises::promise_resolve(character()))
+  }
+  n <- tempest_config_count(n, "n")
+  if (is.null(chat)) {
+    tempest_require("ellmer", "Question suggestions require ellmer.")
+    chat <- tempest_make_chat(
+      config,
+      "coordinator",
+      system_prompt = tempest_prompt("question_suggester_system"),
+      echo = "none"
+    )
+  }
+  request <- chat$chat_structured_async(
+    tempest_suggest_questions_prompt(topic, context, n),
+    type = tempest_type_suggested_questions(),
+    echo = "none",
+    convert = FALSE
+  )
+  promises::then(request, function(result) {
+    questions <- tempest_as_character_vector(result$questions %||% character())
+    utils::head(questions, n)
+  })
+}

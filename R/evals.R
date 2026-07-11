@@ -140,6 +140,12 @@ tempest_task <- function(
 #' @param dataset Which built-in dataset to use. Currently "qa".
 #' @param config A `TempestConfig`.
 #' @param max_turns Maximum turns per simulated session.
+#' @param solver Optional vitals-compatible solver. When `NULL`, uses the
+#'   built-in simulated Co-STORM session solver.
+#' @param scorer Optional vitals-compatible scorer. When `NULL`, uses
+#'   `vitals::model_graded_qa()`.
+#' @param scorer_chat Optional chat for the default model-graded scorer. When
+#'   `NULL`, a judge chat is created from `config`.
 #' @param ... Passed to `vitals::Task$new()`.
 #' @return A `vitals::Task`.
 #' @examples
@@ -152,47 +158,59 @@ tempest_costorm_task <- function(
   dataset = c("qa"),
   config = tempest_config(),
   max_turns = 5L,
+  solver = NULL,
+  scorer = NULL,
+  scorer_chat = NULL,
   ...
 ) {
   tempest_require("vitals", "tempest_costorm_task() requires vitals.")
   tempest_require("ellmer", "tempest_costorm_task() requires ellmer.")
   dataset <- match.arg(dataset)
   ds <- tempest_eval_dataset(dataset)
+  max_turns <- tempest_config_count(max_turns, "max_turns")
 
-  solver <- function(input, ...) {
-    n <- length(input)
-    results <- character(n)
-    chats <- vector("list", n)
-    meta <- vector("list", n)
+  if (is.null(solver)) {
+    solver <- function(input, ...) {
+      n <- length(input)
+      results <- character(n)
+      chats <- vector("list", n)
+      meta <- vector("list", n)
 
-    for (i in seq_len(n)) {
-      topic <- input[[i]]
-      session <- tempest_session(topic, config = config, n_experts = 2)
-      sim_user <- SimulatedUser$new(
-        topic,
-        config = config,
-        max_turns = max_turns
-      )
-      sim_user$run_session(session, warmup = FALSE, verbose = FALSE)
+      for (i in seq_len(n)) {
+        topic <- input[[i]]
+        session <- tempest_session(topic, config = config, n_experts = 2)
+        sim_user <- SimulatedUser$new(
+          topic,
+          config = config,
+          max_turns = max_turns
+        )
+        sim_user$run_session(session, warmup = FALSE, verbose = FALSE)
 
-      report <- session$report(style = "technical", include_references = FALSE)
-      results[[i]] <- report
-      chats[[i]] <- session$chats$moderator
-      meta[[i]] <- list(
-        turns = sim_user$turn_count,
-        sources = session$store$to_tibbles()$sources,
-        claims = session$store$to_tibbles()$claims
-      )
+        report <- session$report(
+          style = "technical",
+          include_references = FALSE
+        )
+        results[[i]] <- report
+        chats[[i]] <- session$chats$moderator
+        meta[[i]] <- list(
+          turns = sim_user$turn_count,
+          sources = session$store$to_tibbles()$sources,
+          claims = session$store$to_tibbles()$claims
+        )
+      }
+
+      list(result = results, solver_chat = chats, solver_metadata = meta)
     }
-
-    list(result = results, solver_chat = chats, solver_metadata = meta)
   }
 
-  scorer_chat <- tempest_make_chat(config, "judge", echo = "none")
-  scorer <- vitals::model_graded_qa(
-    partial_credit = TRUE,
-    scorer_chat = scorer_chat
-  )
+  if (is.null(scorer)) {
+    scorer_chat <- scorer_chat %||%
+      tempest_make_chat(config, "judge", echo = "none")
+    scorer <- vitals::model_graded_qa(
+      partial_credit = TRUE,
+      scorer_chat = scorer_chat
+    )
+  }
 
   vitals::Task$new(
     dataset = ds,

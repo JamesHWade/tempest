@@ -12,11 +12,12 @@ on available parameters including \code{topic}, \code{config}, \code{retriever},
 \code{n_experts}, \code{research_strategy}, \code{max_rounds}, \code{steps}, and \code{verbose}.}
 }
 \value{
-A \code{promises::promise} that resolves with the tempest_run result.
+A \code{tempest_async_run} promise that resolves with the
+\code{\link[=tempest_run]{tempest_run()}} result.
 }
 \description{
-This is a thin wrapper around \code{\link[=tempest_run]{tempest_run()}} that returns a promise.
-It is useful when calling STORM from a Shiny app without blocking the session.
+This runs \code{\link[=tempest_run]{tempest_run()}} in a Mirai worker and returns a promise immediately.
+Use \code{\link[=tempest_run_cancel]{tempest_run_cancel()}} to stop a run that is no longer needed.
 }
 \examples{
 \dontrun{

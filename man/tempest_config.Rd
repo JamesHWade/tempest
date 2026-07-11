@@ -97,7 +97,8 @@ Co-STORM.}
 considered supported.}
 
 \item{on_unsupported_claim}{Action for unsupported claims: one of "flag",
-"drop", "revise", or "keep_with_warning".}
+"drop", "revise", or "keep_with_warning". \code{drop} removes the complete
+unsupported assertion; \code{revise} replaces it with a revision notice.}
 }
 \value{
 A \code{TempestConfig} S7 object.

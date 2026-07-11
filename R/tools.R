@@ -743,6 +743,15 @@ tempest_tools_retrieval <- function(
   stopifnot(inherits(retriever, "TempestRetriever"))
 
   web_search <- function(query, k = retriever$config@max_search_results) {
+    k <- tempest_config_count(k, "k")
+    if (k > retriever$config@max_search_results) {
+      tempest_config_abort(
+        c(
+          "Search result request exceeds the configured budget.",
+          x = "Requested {k}; maximum is {retriever$config@max_search_results}."
+        )
+      )
+    }
     retriever$search(query = query, k = k)
   }
 
@@ -1151,6 +1160,37 @@ ExpertSessionManager <- R6::R6Class(
     #' @return Character vector of session IDs.
     list_sessions = function() {
       ls(envir = self$sessions)
+    },
+
+    #' @description
+    #' Retire a stateful expert chat so it cannot be reused after timeout or
+    #' cancellation.
+    #' @param session_id Session id returned by `get_or_create()`.
+    #' @return A list describing whether the session existed and whether a
+    #'   provider cancellation method was available.
+    retire_session = function(session_id) {
+      if (
+        is.null(session_id) ||
+          !exists(session_id, envir = self$sessions, inherits = FALSE)
+      ) {
+        return(list(retired = FALSE, cancellation_supported = FALSE))
+      }
+      chat <- get(session_id, envir = self$sessions, inherits = FALSE)
+      cancel <- chat$cancel %||% chat$stop %||% NULL
+      cancellation_supported <- is.function(cancel)
+      if (cancellation_supported) {
+        try(cancel(), silent = TRUE)
+      }
+      rm(list = session_id, envir = self$sessions)
+      if (
+        exists(session_id, envir = self$session_provenance, inherits = FALSE)
+      ) {
+        rm(list = session_id, envir = self$session_provenance)
+      }
+      list(
+        retired = TRUE,
+        cancellation_supported = cancellation_supported
+      )
     }
   )
 )

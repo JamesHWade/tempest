@@ -45,11 +45,18 @@ mod_sources_server <- function(id, store) {
       vapply(
         urls,
         function(u) {
-          if (is.na(u) || !nzchar(u)) {
+          safe <- citation_safe_url(u)
+          if (!nzchar(safe)) {
             return("")
           }
-          escaped <- htmltools::htmlEscape(u)
-          paste0('<a href="', escaped, '" target="_blank">', escaped, "</a>")
+          escaped <- htmltools::htmlEscape(safe)
+          paste0(
+            '<a href="',
+            escaped,
+            '" target="_blank" rel="noopener noreferrer">',
+            escaped,
+            "</a>"
+          )
         },
         character(1)
       )
@@ -63,7 +70,7 @@ mod_sources_server <- function(id, store) {
         if ("url" %in% names(df)) {
           df$url <- linkify(df$url)
         }
-        styled_datatable(df)
+        styled_datatable(df, html_columns = "url")
       })
     } else {
       output$table_basic <- shiny::renderTable(

@@ -6,6 +6,7 @@ reference:
   contents:
   - tempest_run
   - tempest_run_async
+  - tempest_run_cancel
   - tempest_task
   - tempest_costorm_task
   - tempest_session

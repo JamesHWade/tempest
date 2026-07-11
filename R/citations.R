@@ -132,7 +132,84 @@ tempest_claims_for_citation_context <- function(claims, context = NULL) {
     logical(1)
   )
   matched <- claims[matches]
-  if (length(matched) > 0) matched else claims
+  matched
+}
+
+#' @keywords internal
+tempest_citation_context_range <- function(text, start, end) {
+  text_len <- nchar(text)
+  before <- if (start > 1L) substr(text, 1L, start - 1L) else ""
+  previous <- gregexpr("[.!?\\n]", before, perl = TRUE)[[1]]
+  left <- if (length(previous) == 1L && previous[[1]] == -1L) {
+    1L
+  } else {
+    max(previous) + 1L
+  }
+  after <- if (end < text_len) substr(text, end + 1L, text_len) else ""
+  next_boundary <- regexpr("[.!?\\n]", after, perl = TRUE)[[1]]
+  right <- if (next_boundary == -1L) text_len else end + next_boundary
+  c(start = left, end = right)
+}
+
+#' @keywords internal
+tempest_apply_strict_claim_action <- function(
+  text,
+  store,
+  action,
+  min_support_score
+) {
+  if (!action %in% c("drop", "revise")) {
+    return(text)
+  }
+  matches <- tempest_citation_matches(text)
+  ranges <- list()
+  for (i in seq_len(nrow(matches))) {
+    context <- tempest_citation_context(
+      text,
+      matches$start[[i]],
+      matches$end[[i]]
+    )
+    status <- tempest_source_status(
+      store,
+      matches$id[[i]],
+      min_support_score = min_support_score,
+      context = context
+    )
+    if (isTRUE(status %in% c("unsupported", "contradicted"))) {
+      range <- tempest_citation_context_range(
+        text,
+        matches$start[[i]],
+        matches$end[[i]]
+      )
+      ranges[[paste(range, collapse = ":")]] <- range
+    }
+  }
+  if (length(ranges) == 0L) {
+    return(text)
+  }
+  ranges <- ranges[order(
+    vapply(ranges, `[[`, integer(1), "start"),
+    decreasing = TRUE
+  )]
+  replacement <- if (identical(action, "revise")) {
+    " [Claim withheld pending revision.]"
+  } else {
+    ""
+  }
+  for (range in ranges) {
+    prefix <- if (range[["start"]] > 1L) {
+      substr(text, 1L, range[["start"]] - 1L)
+    } else {
+      ""
+    }
+    suffix <- if (range[["end"]] < nchar(text)) {
+      substr(text, range[["end"]] + 1L, nchar(text))
+    } else {
+      ""
+    }
+    text <- paste0(prefix, replacement, suffix)
+  }
+  text
 }
 
 #' @keywords internal
@@ -199,11 +276,19 @@ tempest_add_footnotes <- function(
   if (identical(citation_policy, "none")) {
     return(list(text = text, footnotes = ""))
   }
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
+  if (identical(citation_policy, "strict")) {
+    text <- tempest_apply_strict_claim_action(
+      text,
+      store,
+      action = on_unsupported_claim,
+      min_support_score = min_support_score
+    )
+  }
   matches <- tempest_citation_matches(text)
   if (nrow(matches) == 0) {
     return(list(text = text, footnotes = ""))
   }
-  min_support_score <- tempest_normalize_min_support_score(min_support_score)
   verified <- citation_policy %in% c("claim_verified", "strict")
 
   pieces <- character()
@@ -225,10 +310,7 @@ tempest_add_footnotes <- function(
         context = context
       )
       if (isTRUE(status %in% c("unsupported", "contradicted"))) {
-        if (identical(on_unsupported_claim, "drop")) {
-          replacement <- ""
-        } else if (!identical(on_unsupported_claim, "keep_with_warning")) {
-          # flag / revise -> annotate inline (revise has no LLM rewrite in Phase 1)
+        if (identical(on_unsupported_claim, "flag")) {
           replacement <- paste0(marker, " [unsupported citation]")
         }
       }
@@ -275,7 +357,8 @@ tempest_add_footnotes <- function(
 #'   verification badge; under "strict", unsupported/contradicted inline
 #'   citations are handled per `on_unsupported_claim`.
 #' @param on_unsupported_claim One of "flag" (default), "drop",
-#'   "keep_with_warning", "revise". Only used under "strict".
+#'   "keep_with_warning", or "revise". Under strict policy, `drop` removes the
+#'   unsupported assertion and `revise` replaces it with a revision notice.
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
 #' @return Markdown with footnotes.

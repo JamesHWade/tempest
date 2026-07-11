@@ -73,7 +73,7 @@ mod_facts_server <- function(id, store) {
         if ("confidence" %in% names(df)) {
           df$confidence <- confidence_badge(df$confidence)
         }
-        styled_datatable(df)
+        styled_datatable(df, html_columns = "confidence")
       })
     } else {
       output$table_basic <- shiny::renderTable(

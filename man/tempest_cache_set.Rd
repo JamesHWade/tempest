@@ -4,7 +4,7 @@
 \alias{tempest_cache_set}
 \title{Store value in cache}
 \usage{
-tempest_cache_set(cache_dir, key, value)
+tempest_cache_set(cache_dir, key, value, writer = saveRDS)
 }
 \arguments{
 \item{cache_dir}{Cache directory path.}
@@ -12,6 +12,8 @@ tempest_cache_set(cache_dir, key, value)
 \item{key}{Cache key.}
 
 \item{value}{Value to cache.}
+
+\item{writer}{Serialization function used to write the staged entry.}
 }
 \value{
 Invisibly returns \code{TRUE} if the value was written, \code{FALSE} otherwise.

@@ -51,7 +51,8 @@ tempest_cache_max_age <- function(max_age = Inf) {
       max_age < 0
   ) {
     tempest_abort(
-      "Cache age (`cache_ttl`/`max_age`) must be a non-negative number or Inf."
+      "Cache age (`cache_ttl`/`max_age`) must be a non-negative number or Inf.",
+      class = c("tempest_config_error", "tempest_error")
     )
   }
   max_age
@@ -88,6 +89,14 @@ tempest_cache_lookup <- function(cache_dir, key, max_age = Inf) {
   tryCatch(
     list(value = readRDS(p), status = "hit"),
     error = function(e) {
+      quarantine <- paste0(
+        p,
+        ".corrupt-",
+        format(Sys.time(), "%Y%m%d%H%M%S", tz = "UTC")
+      )
+      if (!file.rename(p, quarantine)) {
+        unlink(p)
+      }
       tempest_warn(c(
         "Failed to read from cache.",
         x = "Key: {.val {key}}",
@@ -123,15 +132,26 @@ tempest_cache_get <- function(cache_dir, key, max_age = Inf) {
 #' @param cache_dir Cache directory path.
 #' @param key Cache key.
 #' @param value Value to cache.
+#' @param writer Serialization function used to write the staged entry.
 #' @return Invisibly returns `TRUE` if the value was written, `FALSE` otherwise.
 #' @keywords internal
-tempest_cache_set <- function(cache_dir, key, value) {
+tempest_cache_set <- function(cache_dir, key, value, writer = saveRDS) {
   p <- tempest_cache_path(cache_dir, key)
 
   ok <- tryCatch(
     {
       fs::dir_create(fs::path_dir(p), recurse = TRUE)
-      saveRDS(value, p)
+      staged <- tempfile(
+        pattern = paste0(".", basename(p), "-"),
+        tmpdir = fs::path_dir(p)
+      )
+      on.exit(unlink(staged), add = TRUE)
+      writer(value, staged)
+      if (!file.rename(staged, p)) {
+        tempest_abort(
+          "Could not atomically replace cache entry {.path {p}}."
+        )
+      }
       TRUE
     },
     error = function(e) {
