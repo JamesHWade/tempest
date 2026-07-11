@@ -177,7 +177,6 @@ tempest_validate_fetch_url <- function(url, resolver = tempest_resolve_host) {
 #'
 #' @param url URL to check.
 #' @return Logical indicating if URL passes security checks.
-#' Perform a bounded HTTP fetch
 #' @keywords internal
 tempest_url_is_safe <- function(url) {
   tryCatch(
