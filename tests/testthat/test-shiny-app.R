@@ -1006,11 +1006,13 @@ test_that("Shiny session storage is isolated, private, and quota-bound", {
   expect_equal(file.exists(file.path(second, "private.txt")), FALSE)
   expect_equal(dirname(first), dirname(second))
   expect_no_match(basename(second), "[.][.]", perl = TRUE)
-  expect_equal(as.character(file.info(first)$mode), "700")
-  expect_equal(
-    as.character(file.info(file.path(first, "private.txt"))$mode),
-    "600"
-  )
+  if (.Platform$OS.type != "windows") {
+    expect_equal(as.character(file.info(first)$mode), "700")
+    expect_equal(
+      as.character(file.info(file.path(first, "private.txt"))$mode),
+      "600"
+    )
+  }
   expect_error(
     app$session_bundle_enforce_quota(first, max_bytes = 1),
     "storage quota"
