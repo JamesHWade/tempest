@@ -6,7 +6,7 @@ on write errors but doesn't abort.
 ## Usage
 
 ``` r
-tempest_cache_set(cache_dir, key, value)
+tempest_cache_set(cache_dir, key, value, writer = saveRDS)
 ```
 
 ## Arguments
@@ -22,6 +22,10 @@ tempest_cache_set(cache_dir, key, value)
 - value:
 
   Value to cache.
+
+- writer:
+
+  Serialization function used to write the staged entry.
 
 ## Value
 

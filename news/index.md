@@ -2,6 +2,50 @@
 
 ## tempest 0.1.0
 
+- The bundled Shiny app now escapes untrusted model and source content,
+  rejects unsafe links, isolates browser session storage behind
+  upload/download archives with quotas and private permissions, provides
+  cancellable STORM workers, runs Co-STORM persona generation,
+  enrichment, suggestions, and reports asynchronously with ordered
+  stale-safe commits, quarantines timed-out expert chats, and exposes an
+  accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q,
+  t593, gcg1).
+- `SourceStore` now validates source, claim, evidence-span, and dispute
+  mutations, rejects orphan references and source-budget overflow, and
+  keeps reverse indexes correct when claims are replaced; the unused
+  parallel S7 source representation was removed (67h9, y2kw).
+- [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+  now validates scalar model, logical, search, source, expert, query,
+  and retrieval budgets immediately with classed errors, and provider
+  tools cannot exceed configured search limits (y2kw).
+- [`tempest_create_ragnar_store()`](https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.md)
+  preserves and validates compatible persistent stores by default;
+  destructive replacement now requires `reset = TRUE` (yb8s).
+- [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
+  now applies strict citation actions to complete matched assertions,
+  removes unsupported assertions under `drop`, gives `revise` distinct
+  behavior, and no longer lets unrelated claims sharing a source
+  determine sentence status (e9kn).
+- [`tempest_run_async()`](https://jameshwade.github.io/tempest/reference/tempest_run_async.md)
+  now executes in a real Mirai worker, preserves result and error
+  semantics, returns without blocking, and can be stopped with
+  [`tempest_run_cancel()`](https://jameshwade.github.io/tempest/reference/tempest_run_cancel.md)
+  (4303).
+- [`tempest_session_save()`](https://jameshwade.github.io/tempest/reference/tempest_session_save.md)
+  now replaces bundles atomically from a complete sibling staging
+  directory, records SHA-256 checksums for every declared file, and
+  [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md)
+  verifies manifest completeness and integrity with explicit
+  `partial_recovery` support (arqh).
+- Retriever URL fetching now parses and resolves destinations
+  structurally, rejects non-public and obfuscated IPv4/IPv6 targets,
+  revalidates redirects, and enforces timeout, redirect, content-type,
+  and body-size limits; cache writes are atomic, corrupt entries are
+  quarantined, and transient fetch failures are retried instead of
+  cached indefinitely (vbg7, cax6).
+- Search-provider, evaluation-task, app-startup, asynchronous-run, and
+  UI integration boundaries now have deterministic fixture-based
+  contract coverage without API keys or network access (kqgx).
 - [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),
   [`tempest_memory_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.md),
   and
@@ -163,9 +207,8 @@
 - Persisted runs now write artifacts atomically and write the run
   manifest last, so an interrupted save cannot corrupt artifacts or
   leave `resume` pointing at a stage whose output is missing.
-- The bundled Shiny app now targets shinychat’s development
-  `chat_server()` API for streaming, cancellation, greetings, and client
-  state management.
+- The bundled Shiny app now targets shinychat’s `chat_server()` API for
+  streaming, cancellation, greetings, and client state management.
 - The bundled Shiny app now saves, loads, and autosaves Co-STORM session
   bundles from the Chat sidebar so restored sessions repopulate the
   chat, sources, mind map, transcript, and report views (n64q).

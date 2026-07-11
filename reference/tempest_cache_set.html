@@ -42,7 +42,7 @@ Warns on write errors but doesn't abort.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_cache_set</span><span class="op">(</span><span class="va">cache_dir</span>, <span class="va">key</span>, <span class="va">value</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_cache_set</span><span class="op">(</span><span class="va">cache_dir</span>, <span class="va">key</span>, <span class="va">value</span>, writer <span class="op">=</span> <span class="va">saveRDS</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -59,6 +59,10 @@ Warns on write errors but doesn't abort.</p>
 
 <dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
 <dd><p>Value to cache.</p></dd>
+
+
+<dt id="arg-writer">writer<a class="anchor" aria-label="anchor" href="#arg-writer"></a></dt>
+<dd><p>Serialization function used to write the staged entry.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -66,6 +66,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <dd><p>Environment of arbitrary artifacts.</p></dd>
 
 
+    <dt><code>max_sources</code></dt>
+<dd><p>Maximum number of unique sources admitted by the store.</p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -74,6 +78,7 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <div class="section">
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 <p></p><ul><li><p><a href="#method-SourceStore-initialize"><code>SourceStore$new()</code></a></p></li>
+<li><p><a href="#method-SourceStore-set_max_sources"><code>SourceStore$set_max_sources()</code></a></p></li>
 <li><p><a href="#method-SourceStore-upsert_source"><code>SourceStore$upsert_source()</code></a></p></li>
 <li><p><a href="#method-SourceStore-get_source"><code>SourceStore$get_source()</code></a></p></li>
 <li><p><a href="#method-SourceStore-list_sources"><code>SourceStore$list_sources()</code></a></p></li>
@@ -95,7 +100,31 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <h3 id="sourcestore-new-"><code>SourceStore$new()</code><a class="anchor" aria-label="anchor" href="#sourcestore-new-"></a></h3>
 <p>Create a new SourceStore.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/SourceStore.html">SourceStore</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/SourceStore.html">SourceStore</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>max_sources <span class="op">=</span> <span class="cn">Inf</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>max_sources</code></dt>
+<dd><p>Maximum number of unique sources. New sources are
+refused once the limit is reached.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-SourceStore-set_max_sources"></a><div class="section">
+<h3 id="sourcestore-set-max-sources-"><code>SourceStore$set_max_sources()</code><a class="anchor" aria-label="anchor" href="#sourcestore-set-max-sources-"></a></h3>
+<p>Set the maximum number of unique sources.</p><div class="section">
+<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">set_max_sources</span><span class="op">(</span><span class="va">max_sources</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>max_sources</code></dt>
+<dd><p>A positive whole number or <code>Inf</code>.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -103,10 +132,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-upsert_source"></a><div class="section">
 <h3 id="sourcestore-upsert-source-"><code>SourceStore$upsert_source()</code><a class="anchor" aria-label="anchor" href="#sourcestore-upsert-source-"></a></h3>
 <p>Insert or update a source.</p><div class="section">
-<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">upsert_source</span><span class="op">(</span><span class="va">source</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>source</code></dt>
 <dd><p>A source list with an <code>id</code> field.</p></dd>
 
@@ -119,10 +148,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-get_source"></a><div class="section">
 <h3 id="sourcestore-get-source-"><code>SourceStore$get_source()</code><a class="anchor" aria-label="anchor" href="#sourcestore-get-source-"></a></h3>
 <p>Get a source by id.</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">get_source</span><span class="op">(</span><span class="va">source_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>source_id</code></dt>
 <dd><p>The source id.</p></dd>
 
@@ -135,7 +164,7 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-list_sources"></a><div class="section">
 <h3 id="sourcestore-list-sources-"><code>SourceStore$list_sources()</code><a class="anchor" aria-label="anchor" href="#sourcestore-list-sources-"></a></h3>
 <p>List all sources.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">list_sources</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -144,10 +173,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-add_claim"></a><div class="section">
 <h3 id="sourcestore-add-claim-"><code>SourceStore$add_claim()</code><a class="anchor" aria-label="anchor" href="#sourcestore-add-claim-"></a></h3>
 <p>Add a claim record to the ledger.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">add_claim</span><span class="op">(</span><span class="va">claim</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim</code></dt>
 <dd><p>A <code>tempest_claim</code> S7 record.</p></dd>
 
@@ -160,10 +189,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-get_claim"></a><div class="section">
 <h3 id="sourcestore-get-claim-"><code>SourceStore$get_claim()</code><a class="anchor" aria-label="anchor" href="#sourcestore-get-claim-"></a></h3>
 <p>Get a claim by id.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">get_claim</span><span class="op">(</span><span class="va">claim_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim_id</code></dt>
 <dd><p>The claim id.</p></dd>
 
@@ -176,7 +205,7 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-list_claims"></a><div class="section">
 <h3 id="sourcestore-list-claims-"><code>SourceStore$list_claims()</code><a class="anchor" aria-label="anchor" href="#sourcestore-list-claims-"></a></h3>
 <p>List all claims.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">list_claims</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -185,10 +214,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-claims_for_source"></a><div class="section">
 <h3 id="sourcestore-claims-for-source-"><code>SourceStore$claims_for_source()</code><a class="anchor" aria-label="anchor" href="#sourcestore-claims-for-source-"></a></h3>
 <p>Claims that cite a given source.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">claims_for_source</span><span class="op">(</span><span class="va">source_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>source_id</code></dt>
 <dd><p>Source id.</p></dd>
 
@@ -201,10 +230,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-add_evidence_span"></a><div class="section">
 <h3 id="sourcestore-add-evidence-span-"><code>SourceStore$add_evidence_span()</code><a class="anchor" aria-label="anchor" href="#sourcestore-add-evidence-span-"></a></h3>
 <p>Add an evidence span.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">add_evidence_span</span><span class="op">(</span><span class="va">span</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>span</code></dt>
 <dd><p>A <code>tempest_evidence_span</code> S7 record.</p></dd>
 
@@ -217,10 +246,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-link_evidence"></a><div class="section">
 <h3 id="sourcestore-link-evidence-"><code>SourceStore$link_evidence()</code><a class="anchor" aria-label="anchor" href="#sourcestore-link-evidence-"></a></h3>
 <p>Link an evidence span to a claim.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">link_evidence</span><span class="op">(</span><span class="va">claim_id</span>, <span class="va">span_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim_id</code></dt>
 <dd><p>Claim id.</p></dd>
 
@@ -236,10 +265,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-get_evidence_for_claim"></a><div class="section">
 <h3 id="sourcestore-get-evidence-for-claim-"><code>SourceStore$get_evidence_for_claim()</code><a class="anchor" aria-label="anchor" href="#sourcestore-get-evidence-for-claim-"></a></h3>
 <p>Evidence spans linked to a claim.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">get_evidence_for_claim</span><span class="op">(</span><span class="va">claim_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim_id</code></dt>
 <dd><p>Claim id.</p></dd>
 
@@ -252,7 +281,7 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-verify_claim"></a><div class="section">
 <h3 id="sourcestore-verify-claim-"><code>SourceStore$verify_claim()</code><a class="anchor" aria-label="anchor" href="#sourcestore-verify-claim-"></a></h3>
 <p>Update a claim's verification status.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">verify_claim</span><span class="op">(</span></span>
 <span>  <span class="va">claim_id</span>,</span>
 <span>  <span class="va">status</span>,</span>
@@ -260,7 +289,7 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <span>  verifier <span class="op">=</span> <span class="cn">NA_character_</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim_id</code></dt>
 <dd><p>Claim id.</p></dd>
 
@@ -282,10 +311,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-add_dispute"></a><div class="section">
 <h3 id="sourcestore-add-dispute-"><code>SourceStore$add_dispute()</code><a class="anchor" aria-label="anchor" href="#sourcestore-add-dispute-"></a></h3>
 <p>Add a dispute.</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">add_dispute</span><span class="op">(</span><span class="va">dispute</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>dispute</code></dt>
 <dd><p>A <code>tempest_dispute</code> S7 record.</p></dd>
 
@@ -298,7 +327,7 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-list_disputes"></a><div class="section">
 <h3 id="sourcestore-list-disputes-"><code>SourceStore$list_disputes()</code><a class="anchor" aria-label="anchor" href="#sourcestore-list-disputes-"></a></h3>
 <p>List all disputes.</p><div class="section">
-<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">list_disputes</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -307,10 +336,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-set_artifact"></a><div class="section">
 <h3 id="sourcestore-set-artifact-"><code>SourceStore$set_artifact()</code><a class="anchor" aria-label="anchor" href="#sourcestore-set-artifact-"></a></h3>
 <p>Store an artifact by name.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">set_artifact</span><span class="op">(</span><span class="va">name</span>, <span class="va">value</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>name</code></dt>
 <dd><p>Artifact name.</p></dd>
 
@@ -326,10 +355,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-get_artifact"></a><div class="section">
 <h3 id="sourcestore-get-artifact-"><code>SourceStore$get_artifact()</code><a class="anchor" aria-label="anchor" href="#sourcestore-get-artifact-"></a></h3>
 <p>Retrieve an artifact by name.</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">get_artifact</span><span class="op">(</span><span class="va">name</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>name</code></dt>
 <dd><p>Artifact name.</p></dd>
 
@@ -342,7 +371,7 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-to_tibbles"></a><div class="section">
 <h3 id="sourcestore-to-tibbles-"><code>SourceStore$to_tibbles()</code><a class="anchor" aria-label="anchor" href="#sourcestore-to-tibbles-"></a></h3>
 <p>Convert sources, claims, and disputes to tibbles.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">to_tibbles</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -351,10 +380,10 @@ threaded through every pipeline stage and Co-STORM turn.</p>
 <p></p><hr><a id="method-SourceStore-clone"></a><div class="section">
 <h3 id="sourcestore-clone-"><code>SourceStore$clone()</code><a class="anchor" aria-label="anchor" href="#sourcestore-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">SourceStore</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

@@ -6,7 +6,7 @@ Handles HTML, PDFs, and many other document types.
 ## Usage
 
 ``` r
-tempest_fetch_url_markdown(url)
+tempest_fetch_url_markdown(url, user_agent = NULL)
 ```
 
 ## Arguments

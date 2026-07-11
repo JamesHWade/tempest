@@ -147,7 +147,8 @@ tempest_config(
 - on_unsupported_claim:
 
   Action for unsupported claims: one of "flag", "drop", "revise", or
-  "keep_with_warning".
+  "keep_with_warning". `drop` removes the complete unsupported
+  assertion; `revise` replaces it with a revision notice.
 
 ## Value
 

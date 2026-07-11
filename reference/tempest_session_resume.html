@@ -48,7 +48,12 @@ reduction, but they are not replayed into <code>progress</code>.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_session_resume</span><span class="op">(</span><span class="va">path</span>, config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>, progress <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_session_resume</span><span class="op">(</span></span>
+<span>  <span class="va">path</span>,</span>
+<span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  partial_recovery <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -67,6 +72,12 @@ tools.</p></dd>
 <dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
 <dd><p>Optional callback for future <code>tempest_progress_event</code>
 objects.</p></dd>
+
+
+<dt id="arg-partial-recovery">partial_recovery<a class="anchor" aria-label="anchor" href="#arg-partial-recovery"></a></dt>
+<dd><p>Whether to allow explicitly requested recovery when
+declared optional files are missing or fail integrity checks. Required
+source and persona data must still be readable.</p></dd>
 
 </dl></div>
     <div class="section level2">

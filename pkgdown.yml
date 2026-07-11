@@ -2,7 +2,7 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles: {}
-last_built: 2026-07-10T00:59Z
+last_built: 2026-07-11T01:13Z
 urls:
   reference: https://jameshwade.github.io/tempest/reference
   article: https://jameshwade.github.io/tempest/articles

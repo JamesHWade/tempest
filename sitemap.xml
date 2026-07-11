@@ -45,6 +45,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_generate_single_persona.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_get_native_web_tools.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_has.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_http_get.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_inform.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_chat.html</loc></url>
@@ -79,13 +80,14 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_retriever.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_async.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_cancel.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_save_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_azure_ai_search.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_bing.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_brave.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_duckduckgo.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_google.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_perform.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_request_policy.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_searxng.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_serper.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_tavily.html</loc></url>
@@ -104,7 +106,6 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_solver_cited_answer.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_source.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_source_id.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_source_record.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_sources.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_task.html</loc></url>

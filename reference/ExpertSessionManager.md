@@ -54,6 +54,8 @@ resumed using the session ID returned from previous interactions.
 
 - [`ExpertSessionManager$list_sessions()`](#method-ExpertSessionManager-list_sessions)
 
+- [`ExpertSessionManager$retire_session()`](#method-ExpertSessionManager-retire_session)
+
 - [`ExpertSessionManager$clone()`](#method-ExpertSessionManager-clone)
 
 ------------------------------------------------------------------------
@@ -257,6 +259,28 @@ List all active session IDs.
 #### Returns
 
 Character vector of session IDs.
+
+------------------------------------------------------------------------
+
+### `ExpertSessionManager$retire_session()`
+
+Retire a stateful expert chat so it cannot be reused after timeout or
+cancellation.
+
+#### Usage
+
+    ExpertSessionManager$retire_session(session_id)
+
+#### Arguments
+
+- `session_id`:
+
+  Session id returned by `get_or_create()`.
+
+#### Returns
+
+A list describing whether the session existed and whether a provider
+cancellation method was available.
 
 ------------------------------------------------------------------------
 

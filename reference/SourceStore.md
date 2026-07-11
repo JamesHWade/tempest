@@ -26,11 +26,17 @@ threaded through every pipeline stage and Co-STORM turn.
 
   Environment of arbitrary artifacts.
 
+- `max_sources`:
+
+  Maximum number of unique sources admitted by the store.
+
 ## Methods
 
 ### Public methods
 
 - [`SourceStore$new()`](#method-SourceStore-initialize)
+
+- [`SourceStore$set_max_sources()`](#method-SourceStore-set_max_sources)
 
 - [`SourceStore$upsert_source()`](#method-SourceStore-upsert_source)
 
@@ -74,7 +80,30 @@ Create a new SourceStore.
 
 #### Usage
 
-    SourceStore$new()
+    SourceStore$new(max_sources = Inf)
+
+#### Arguments
+
+- `max_sources`:
+
+  Maximum number of unique sources. New sources are refused once the
+  limit is reached.
+
+------------------------------------------------------------------------
+
+### `SourceStore$set_max_sources()`
+
+Set the maximum number of unique sources.
+
+#### Usage
+
+    SourceStore$set_max_sources(max_sources)
+
+#### Arguments
+
+- `max_sources`:
+
+  A positive whole number or `Inf`.
 
 ------------------------------------------------------------------------
 

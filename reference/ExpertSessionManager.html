@@ -92,6 +92,7 @@ claim-write provenance.</p></dd>
 <li><p><a href="#method-ExpertSessionManager-generate_session_id"><code>ExpertSessionManager$generate_session_id()</code></a></p></li>
 <li><p><a href="#method-ExpertSessionManager-get_or_create"><code>ExpertSessionManager$get_or_create()</code></a></p></li>
 <li><p><a href="#method-ExpertSessionManager-list_sessions"><code>ExpertSessionManager$list_sessions()</code></a></p></li>
+<li><p><a href="#method-ExpertSessionManager-retire_session"><code>ExpertSessionManager$retire_session()</code></a></p></li>
 <li><p><a href="#method-ExpertSessionManager-clone"><code>ExpertSessionManager$clone()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-ExpertSessionManager-initialize"></a><div class="section">
 <h3 id="expertsessionmanager-new-"><code>ExpertSessionManager$new()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-new-"></a></h3>
@@ -271,13 +272,34 @@ claim-write provenance.</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-ExpertSessionManager-retire_session"></a><div class="section">
+<h3 id="expertsessionmanager-retire-session-"><code>ExpertSessionManager$retire_session()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-retire-session-"></a></h3>
+<p>Retire a stateful expert chat so it cannot be reused after timeout or
+cancellation.</p><div class="section">
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">retire_session</span><span class="op">(</span><span class="va">session_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>session_id</code></dt>
+<dd><p>Session id returned by <code>get_or_create()</code>.</p></dd>
+
+
+</dl><p></p></div>
+</div><p></p><div class="section">
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<p>A list describing whether the session existed and whether a
+provider cancellation method was available.</p>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-ExpertSessionManager-clone"></a><div class="section">
 <h3 id="expertsessionmanager-clone-"><code>ExpertSessionManager$clone()</code><a class="anchor" aria-label="anchor" href="#expertsessionmanager-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ExpertSessionManager</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

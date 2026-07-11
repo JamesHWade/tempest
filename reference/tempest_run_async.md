@@ -1,9 +1,10 @@
 # Run STORM asynchronously (Shiny-friendly)
 
-This is a thin wrapper around
+This runs
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
-that returns a promise. It is useful when calling STORM from a Shiny app
-without blocking the session.
+in a Mirai worker and returns a promise immediately. Use
+[`tempest_run_cancel()`](https://jameshwade.github.io/tempest/reference/tempest_run_cancel.md)
+to stop a run that is no longer needed.
 
 ## Usage
 
@@ -25,9 +26,9 @@ tempest_run_async(...)
 
 ## Value
 
-A
-[`promises::promise`](https://rstudio.github.io/promises/reference/promise.html)
-that resolves with the tempest_run result.
+A `tempest_async_run` promise that resolves with the
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+result.
 
 ## See also
 

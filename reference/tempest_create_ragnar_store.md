@@ -11,7 +11,8 @@ tempest_create_ragnar_store(
   embed_fn,
   cache_dir = NULL,
   name = "tempest_knowledge",
-  title = "STORM Knowledge Base"
+  title = "STORM Knowledge Base",
+  reset = FALSE
 )
 ```
 
@@ -34,6 +35,11 @@ tempest_create_ragnar_store(
 - title:
 
   Human-readable store title.
+
+- reset:
+
+  Whether to replace an existing persistent store. Destructive
+  replacement is never performed unless this is `TRUE`.
 
 ## Value
 

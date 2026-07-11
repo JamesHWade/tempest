@@ -43,6 +43,9 @@
 <span>  dataset <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"qa"</span><span class="op">)</span>,</span>
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  max_turns <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  solver <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  scorer <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  scorer_chat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -61,6 +64,21 @@
 
 <dt id="arg-max-turns">max_turns<a class="anchor" aria-label="anchor" href="#arg-max-turns"></a></dt>
 <dd><p>Maximum turns per simulated session.</p></dd>
+
+
+<dt id="arg-solver">solver<a class="anchor" aria-label="anchor" href="#arg-solver"></a></dt>
+<dd><p>Optional vitals-compatible solver. When <code>NULL</code>, uses the
+built-in simulated Co-STORM session solver.</p></dd>
+
+
+<dt id="arg-scorer">scorer<a class="anchor" aria-label="anchor" href="#arg-scorer"></a></dt>
+<dd><p>Optional vitals-compatible scorer. When <code>NULL</code>, uses
+<code><a href="https://vitals.tidyverse.org/reference/scorer_model.html" class="external-link">vitals::model_graded_qa()</a></code>.</p></dd>
+
+
+<dt id="arg-scorer-chat">scorer_chat<a class="anchor" aria-label="anchor" href="#arg-scorer-chat"></a></dt>
+<dd><p>Optional chat for the default model-graded scorer. When
+<code>NULL</code>, a judge chat is created from <code>config</code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

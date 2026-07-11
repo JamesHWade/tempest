@@ -40,8 +40,9 @@ tempest_report_md(
 
 - on_unsupported_claim:
 
-  One of "flag" (default), "drop", "keep_with_warning", "revise". Only
-  used under "strict".
+  One of "flag" (default), "drop", "keep_with_warning", or "revise".
+  Under strict policy, `drop` removes the unsupported assertion and
+  `revise` replaces it with a revision notice.
 
 - min_support_score:
 

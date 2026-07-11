@@ -6,6 +6,8 @@
   : Run the STORM pipeline
 - [`tempest_run_async()`](https://jameshwade.github.io/tempest/reference/tempest_run_async.md)
   : Run STORM asynchronously (Shiny-friendly)
+- [`tempest_run_cancel()`](https://jameshwade.github.io/tempest/reference/tempest_run_cancel.md)
+  : Cancel an asynchronous STORM run
 - [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
   : Create a vitals Task for tempest
 - [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)

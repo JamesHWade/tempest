@@ -12,7 +12,12 @@ they are not replayed into `progress`.
 ## Usage
 
 ``` r
-tempest_session_resume(path, config = tempest_config(), progress = NULL)
+tempest_session_resume(
+  path,
+  config = tempest_config(),
+  progress = NULL,
+  partial_recovery = FALSE
+)
 ```
 
 ## Arguments
@@ -30,6 +35,12 @@ tempest_session_resume(path, config = tempest_config(), progress = NULL)
 - progress:
 
   Optional callback for future `tempest_progress_event` objects.
+
+- partial_recovery:
+
+  Whether to allow explicitly requested recovery when declared optional
+  files are missing or fail integrity checks. Required source and
+  persona data must still be readable.
 
 ## Value
 
