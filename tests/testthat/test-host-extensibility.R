@@ -129,6 +129,14 @@ test_that("artifact stores can capture report artifacts", {
   expect_equal(report, "Report body.")
   expect_equal(artifacts$read("report_md"), "Report body.")
   expect_equal(artifacts$list(), "report_md")
+  expect_equal(
+    session$artifact_catalog$get("report_md")@content,
+    "Report body."
+  )
+  expect_equal(
+    reporter$.calls()[[1]]$prompt,
+    tempest:::tempest_costorm_report_prompt(session, "technical")
+  )
 })
 
 test_that("default artifact store is a no-op adapter", {

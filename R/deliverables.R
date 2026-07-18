@@ -677,6 +677,121 @@ tempest_markdown_report_prompt <- function(deliverable, context) {
   )
 }
 
+tempest_costorm_report_spec <- function(session) {
+  tempest_deliverable_spec(
+    "costorm-report",
+    title = session$title %||% session$topic %||% "Co-STORM Report",
+    purpose = "Synthesize the Co-STORM session into an evidence-backed report.",
+    instructions = paste(
+      "Use only verified facts, preserve Tempest source citations,",
+      "and do not invent facts."
+    ),
+    evidence_policy = session$config@citation_policy,
+    generator_id = "tempest.generator.markdown_report",
+    validator_ids = "tempest.validator.required_fields",
+    renderer_ids = "tempest.renderer.markdown_report",
+    operation_versions = c(
+      "tempest.generator.markdown_report" = "1",
+      "tempest.validator.required_fields" = "1",
+      "tempest.renderer.markdown_report" = "1"
+    ),
+    filename_policy = list(filename = "report.md"),
+    metadata = list(workflow = "costorm")
+  )
+}
+
+tempest_costorm_report_prompt <- function(session, style) {
+  paste0(
+    "Write a comprehensive report based on the session.\n\n",
+    "Topic: ",
+    session$topic,
+    "\n\n",
+    "Mind map:\n",
+    tempest_mindmap_to_markdown(session$mindmap),
+    "\n\n",
+    "Verified facts:\n",
+    tempest_summarize_facts_for_prompt(session$store, max_items = 120),
+    "\n\n",
+    "Conversation (summary):\n",
+    session$transcript_markdown(max_turns = 80),
+    "\n\n",
+    "Style: ",
+    style,
+    "\n\n",
+    "Rules:\n",
+    "- Use only verified facts (with citations).\n",
+    "- Preserve citations like [Sxxxxxxxxxxxx].\n",
+    "- Do not invent facts.\n\n",
+    "Write the report body in Markdown (no title)."
+  )
+}
+
+tempest_costorm_report_context <- function(
+  session,
+  style,
+  include_references
+) {
+  list(
+    prompt = tempest_costorm_report_prompt(session, style),
+    title = session$title %||% session$topic,
+    store = session$store,
+    include_references = include_references,
+    citation_policy = session$config@citation_policy,
+    on_unsupported_claim = session$config@on_unsupported_claim,
+    min_support_score = session$config@min_support_score,
+    style = style
+  )
+}
+
+tempest_costorm_artifact_catalog <- function(session) {
+  catalog <- session$artifact_catalog %||% NULL
+  if (!is.null(catalog)) {
+    return(catalog)
+  }
+  tempest_artifact_catalog(store = session$config@artifact_store)
+}
+
+tempest_costorm_report_plan <- function(
+  session,
+  style,
+  include_references,
+  generate_text
+) {
+  tempest_deliverable_plan(
+    deliverable = tempest_costorm_report_spec(session),
+    context = tempest_costorm_report_context(
+      session,
+      style,
+      include_references
+    ),
+    catalog = tempest_costorm_artifact_catalog(session),
+    runtime = list(generate_text = generate_text),
+    provenance = list(
+      artifact_id = "report_md",
+      run_id = session$session_id %||% NA_character_,
+      step_id = "report",
+      metadata = list(topic = session$topic, style = style)
+    )
+  )
+}
+
+tempest_deliverable_primary_artifact <- function(result) {
+  primary <- Filter(
+    function(artifact) identical(artifact@artifact_kind, "primary"),
+    result$artifacts
+  )
+  if (length(primary) == 0L) {
+    primary <- result$artifacts
+  }
+  if (length(primary) == 0L) {
+    tempest_deliverable_abort(
+      "The deliverable did not produce an artifact.",
+      phase = "rendering"
+    )
+  }
+  primary[[1]]
+}
+
 tempest_builtin_markdown_report_generator <- function(
   deliverable,
   context,

@@ -230,26 +230,16 @@ tempest_session_report_async <- function(
     step = "generate",
     payload = list(style = style, include_references = include_references)
   )
-  prompt <- paste0(
-    "Write a comprehensive report based on the session.\n\n",
-    "Topic: ",
-    session$topic,
-    "\n\nMind map:\n",
-    tempest_mindmap_to_markdown(session$mindmap),
-    "\n\nVerified facts:\n",
-    tempest_summarize_facts_for_prompt(session$store, max_items = 120),
-    "\n\nConversation (summary):\n",
-    session$transcript_markdown(max_turns = 80),
-    "\n\nStyle: ",
+  plan <- tempest_costorm_report_plan(
+    session,
     style,
-    "\n\nRules:\n",
-    "- Use only verified facts (with citations).\n",
-    "- Preserve citations like [Sxxxxxxxxxxxx].\n",
-    "- Do not invent facts.\n\n",
-    "Write the report body in Markdown (no title)."
+    include_references,
+    generate_text = function(prompt) {
+      session$chats$reporter$chat_async(prompt, echo = "none")
+    }
   )
-  request <- session$chats$reporter$chat_async(prompt, echo = "none")
-  promises::then(
+  request <- tempest_deliverable_generate(plan)
+  completed <- promises::then(
     request,
     onFulfilled = function(body) {
       if (!tempest_async_is_current(is_current)) {
@@ -264,26 +254,11 @@ tempest_session_report_async <- function(
         )
         return(NULL)
       }
+      result <- tempest_deliverable_finalize(plan, body)
+      artifact <- tempest_deliverable_primary_artifact(result)
+      markdown <- artifact@content
       session$artifacts[["report"]] <- body
-      markdown <- if (include_references) {
-        tempest_report_md(
-          session$title %||% session$topic,
-          body,
-          session$store,
-          citation_policy = session$config@citation_policy,
-          on_unsupported_claim = session$config@on_unsupported_claim,
-          min_support_score = session$config@min_support_score
-        )
-      } else {
-        body
-      }
       session$artifacts[["report_md"]] <- markdown
-      tempest_artifact_write(
-        session$config@artifact_store,
-        "report_md",
-        markdown,
-        metadata = list(topic = session$topic, style = style)
-      )
       session$emit_progress(
         "artifact",
         "available",
@@ -302,7 +277,10 @@ tempest_session_report_async <- function(
         correlation_id = event@correlation_id
       )
       markdown
-    },
+    }
+  )
+  promises::catch(
+    completed,
     onRejected = function(error) {
       session$emit_progress(
         "stage",

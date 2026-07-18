@@ -484,7 +484,7 @@ sequenceDiagram
 - [x] Add a runtime operation registry with classed resolution errors.
 - [x] Implement the shared deliverable lifecycle and built-in Markdown report
   generator, validator, renderer, and exporter operations.
-- [ ] Replace sync and async Co-STORM report generation with the shared
+- [x] Replace sync and async Co-STORM report generation with the shared
   lifecycle.
 - [ ] Route STORM final output through the shared deliverable lifecycle.
 - [ ] Add typed artifact catalog operations and use them consistently from

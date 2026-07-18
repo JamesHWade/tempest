@@ -252,6 +252,7 @@ TempestSession <- R6::R6Class(
     transcript = NULL,
     mindmap = NULL,
     artifacts = NULL,
+    artifact_catalog = NULL,
     discourse_manager = NULL,
 
     #' @description
@@ -336,6 +337,9 @@ TempestSession <- R6::R6Class(
       self$transcript <- list()
       self$mindmap <- tempest_mindmap_init(self$topic)
       self$artifacts <- new.env(parent = emptyenv())
+      self$artifact_catalog <- tempest_artifact_catalog(
+        store = config@artifact_store
+      )
 
       # Generate or use provided personas
       if (is.null(personas)) {
@@ -1277,43 +1281,20 @@ TempestSession <- R6::R6Class(
             self$reorganize_mindmap()
           }
           rep <- self$chats$reporter
-          prompt <- paste0(
-            "Write a comprehensive report based on the session.\n\n",
-            "Topic: ",
-            self$topic,
-            "\n\n",
-            "Mind map:\n",
-            tempest_mindmap_to_markdown(self$mindmap),
-            "\n\n",
-            "Verified facts:\n",
-            tempest_summarize_facts_for_prompt(self$store, max_items = 120),
-            "\n\n",
-            "Conversation (summary):\n",
-            self$transcript_markdown(max_turns = 80),
-            "\n\n",
-            "Style: ",
+          plan <- tempest_costorm_report_plan(
+            self,
             style,
-            "\n\n",
-            "Rules:\n",
-            "- Use only verified facts (with citations).\n",
-            "- Preserve citations like [Sxxxxxxxxxxxx].\n",
-            "- Do not invent facts.\n\n",
-            "Write the report body in Markdown (no title)."
+            include_references,
+            generate_text = function(prompt) {
+              rep$chat(prompt, echo = "none")
+            }
           )
-          body <- rep$chat(prompt, echo = "none")
+          body <- tempest_deliverable_generate(plan)
+          result <- tempest_deliverable_finalize(plan, body)
+          artifact <- tempest_deliverable_primary_artifact(result)
+          md <- artifact@content
           self$artifacts[["report"]] <- body
-          md <- if (include_references) {
-            tempest_report_md(self$title %||% self$topic, body, self$store)
-          } else {
-            body
-          }
           self$artifacts[["report_md"]] <- md
-          tempest_artifact_write(
-            self$config@artifact_store,
-            "report_md",
-            md,
-            metadata = list(topic = self$topic, style = style)
-          )
           self$emit_progress(
             "artifact",
             "available",
