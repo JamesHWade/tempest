@@ -76,6 +76,8 @@ Collate:
     'evals.R'
     'models.R'
     'progress-events.R'
+    'workflow-types.R'
+    'operation-registry.R'
     'prompts.R'
     'retriever.R'
     'run-persistence.R'

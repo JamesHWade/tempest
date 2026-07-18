@@ -479,9 +479,9 @@ sequenceDiagram
 
 ### Phase 1: Objective, deliverable, and artifact kernel
 
-- [ ] Add S7 objective, deliverable-specification, validation-result, and
+- [x] Add S7 objective, deliverable-specification, validation-result, and
   artifact records with exported constructors.
-- [ ] Add a runtime operation registry with classed resolution errors.
+- [x] Add a runtime operation registry with classed resolution errors.
 - [ ] Implement the shared deliverable lifecycle and built-in Markdown report
   generator, validator, renderer, and exporter operations.
 - [ ] Replace sync and async Co-STORM report generation with the shared
