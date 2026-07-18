@@ -1,14 +1,16 @@
 # Expert Session Manager
 
-Manages expert chat sessions with session IDs for conversation
-continuity. Each expert persona gets their own chat session that can be
-resumed using the session ID returned from previous interactions.
+Manages capability-scoped chats for validated expert profiles.
 
 ## Public fields
 
 - `sessions`:
 
   Environment storing active chat sessions keyed by session ID.
+
+- `session_profiles`:
+
+  Environment storing serializable session bindings.
 
 - `config`:
 
@@ -17,6 +19,18 @@ resumed using the session ID returned from previous interactions.
 - `retriever`:
 
   A `TempestRetriever` for registering tools.
+
+- `runtime`:
+
+  A `TempestRuntime` used to resolve skills and capabilities.
+
+- `experts`:
+
+  Environment of expert profiles keyed by stable expert id.
+
+- `expert_connection_ref_ids`:
+
+  Environment of allowed connection ids by expert.
 
 - `extractor`:
 
@@ -48,9 +62,19 @@ resumed using the session ID returned from previous interactions.
 
 - [`ExpertSessionManager$extract_facts()`](#method-ExpertSessionManager-extract_facts)
 
-- [`ExpertSessionManager$generate_session_id()`](#method-ExpertSessionManager-generate_session_id)
+- [`ExpertSessionManager$add_expert()`](#method-ExpertSessionManager-add_expert)
+
+- [`ExpertSessionManager$retire_expert()`](#method-ExpertSessionManager-retire_expert)
+
+- [`ExpertSessionManager$profile()`](#method-ExpertSessionManager-profile)
+
+- [`ExpertSessionManager$list_experts()`](#method-ExpertSessionManager-list_experts)
 
 - [`ExpertSessionManager$get_or_create()`](#method-ExpertSessionManager-get_or_create)
+
+- [`ExpertSessionManager$restore_session()`](#method-ExpertSessionManager-restore_session)
+
+- [`ExpertSessionManager$session_profile()`](#method-ExpertSessionManager-session_profile)
 
 - [`ExpertSessionManager$list_sessions()`](#method-ExpertSessionManager-list_sessions)
 
@@ -67,8 +91,11 @@ Create a new ExpertSessionManager.
 #### Usage
 
     ExpertSessionManager$new(
+      experts,
+      runtime,
       config,
       retriever,
+      allowed_connection_ref_ids = list(),
       extractor = NULL,
       store = NULL,
       progress = NULL,
@@ -77,6 +104,14 @@ Create a new ExpertSessionManager.
 
 #### Arguments
 
+- `experts`:
+
+  Validated `tempest_expert` profiles.
+
+- `runtime`:
+
+  A `TempestRuntime`.
+
 - `config`:
 
   A `TempestConfig` object.
@@ -84,6 +119,10 @@ Create a new ExpertSessionManager.
 - `retriever`:
 
   A `TempestRetriever` object.
+
+- `allowed_connection_ref_ids`:
+
+  Named list of allowed connection ids by expert id.
 
 - `extractor`:
 
@@ -167,7 +206,7 @@ Extract facts from an expert response.
       turn = NULL,
       source_ids = NULL,
       session_id = NA_character_,
-      persona_id = NA_character_,
+      expert_id = NA_character_,
       correlation_id = NA_character_
     )
 
@@ -189,9 +228,9 @@ Extract facts from an expert response.
 
   Optional expert session id.
 
-- `persona_id`:
+- `expert_id`:
 
-  Optional persona id.
+  Optional stable expert id.
 
 - `correlation_id`:
 
@@ -203,48 +242,164 @@ Invisibly returns NULL.
 
 ------------------------------------------------------------------------
 
-### `ExpertSessionManager$generate_session_id()`
+### `ExpertSessionManager$add_expert()`
 
-Generate a human-readable session ID from a persona name.
+Add an active expert profile to the live roster.
 
 #### Usage
 
-    ExpertSessionManager$generate_session_id(persona_name)
+    ExpertSessionManager$add_expert(
+      expert,
+      allowed_connection_ref_ids = character(),
+      replace = FALSE
+    )
 
 #### Arguments
 
-- `persona_name`:
+- `expert`:
 
-  Name of the persona.
+  A validated `tempest_expert`.
+
+- `allowed_connection_ref_ids`:
+
+  Connection ids granted to this expert.
+
+- `replace`:
+
+  Whether to replace an existing profile with the same id.
 
 #### Returns
 
-Character string session ID like "dr-sarah-chen-abc123".
+The stable expert id, invisibly.
+
+------------------------------------------------------------------------
+
+### `ExpertSessionManager$retire_expert()`
+
+Retire an expert and all chats bound to that profile.
+
+#### Usage
+
+    ExpertSessionManager$retire_expert(expert_id)
+
+#### Arguments
+
+- `expert_id`:
+
+  Stable expert id.
+
+#### Returns
+
+Whether the expert was present.
+
+------------------------------------------------------------------------
+
+### `ExpertSessionManager$profile()`
+
+Look up an expert by exact stable id.
+
+#### Usage
+
+    ExpertSessionManager$profile(expert_id, active_only = TRUE)
+
+#### Arguments
+
+- `expert_id`:
+
+  Stable expert id.
+
+- `active_only`:
+
+  Whether retired profiles should be rejected.
+
+#### Returns
+
+A validated expert profile.
+
+------------------------------------------------------------------------
+
+### `ExpertSessionManager$list_experts()`
+
+List expert profiles in stable-id order.
+
+#### Usage
+
+    ExpertSessionManager$list_experts(active_only = TRUE)
+
+#### Arguments
+
+- `active_only`:
+
+  Whether to omit retired profiles.
+
+#### Returns
+
+A list of validated expert profiles.
 
 ------------------------------------------------------------------------
 
 ### `ExpertSessionManager$get_or_create()`
 
-Get an existing session or create a new one.
+Get an expert's existing session or create a scoped chat.
 
 #### Usage
 
-    ExpertSessionManager$get_or_create(persona, session_id = NULL)
+    ExpertSessionManager$get_or_create(expert_id, session_id = NULL)
 
 #### Arguments
 
-- `persona`:
+- `expert_id`:
 
-  A persona object from
-  [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md).
+  Stable expert id or matching expert profile.
 
 - `session_id`:
 
-  Optional session ID to resume.
+  Optional existing, manager-owned session id to resume.
 
 #### Returns
 
-List with `chat`, `session_id`, and `is_new` fields.
+Chat, session binding, grants, provenance, and creation status.
+
+------------------------------------------------------------------------
+
+### `ExpertSessionManager$restore_session()`
+
+Restore a saved session binding through fresh runtime authorization.
+
+#### Usage
+
+    ExpertSessionManager$restore_session(binding)
+
+#### Arguments
+
+- `binding`:
+
+  Serializable session profile containing the opaque session id and
+  exact expert identity fields.
+
+#### Returns
+
+The same result shape as `get_or_create()`.
+
+------------------------------------------------------------------------
+
+### `ExpertSessionManager$session_profile()`
+
+Return the serializable binding for an active session.
+
+#### Usage
+
+    ExpertSessionManager$session_profile(session_id)
+
+#### Arguments
+
+- `session_id`:
+
+  Manager-owned expert session id.
+
+#### Returns
+
+Session binding including expert fingerprint and grants.
 
 ------------------------------------------------------------------------
 

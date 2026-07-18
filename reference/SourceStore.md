@@ -6,9 +6,14 @@ threaded through every pipeline stage and Co-STORM turn.
 
 ## Public fields
 
+- `resources`:
+
+  Environment of typed resources and built-in web-source records keyed
+  by resource id.
+
 - `sources`:
 
-  Environment of source objects keyed by id.
+  Alias of `resources` retained for built-in web adapters.
 
 - `claims`:
 
@@ -43,6 +48,12 @@ threaded through every pipeline stage and Co-STORM turn.
 - [`SourceStore$get_source()`](#method-SourceStore-get_source)
 
 - [`SourceStore$list_sources()`](#method-SourceStore-list_sources)
+
+- [`SourceStore$upsert_resource()`](#method-SourceStore-upsert_resource)
+
+- [`SourceStore$get_resource()`](#method-SourceStore-get_resource)
+
+- [`SourceStore$list_resources()`](#method-SourceStore-list_resources)
 
 - [`SourceStore$add_claim()`](#method-SourceStore-add_claim)
 
@@ -119,7 +130,8 @@ Insert or update a source.
 
 - `source`:
 
-  A source list with an `id` field.
+  A built-in web-source list or a typed resource created by
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
 
 ------------------------------------------------------------------------
 
@@ -146,6 +158,49 @@ List all sources.
 #### Usage
 
     SourceStore$list_sources()
+
+------------------------------------------------------------------------
+
+### `SourceStore$upsert_resource()`
+
+Insert or update a typed evidence resource.
+
+#### Usage
+
+    SourceStore$upsert_resource(resource)
+
+#### Arguments
+
+- `resource`:
+
+  A resource created by
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
+
+------------------------------------------------------------------------
+
+### `SourceStore$get_resource()`
+
+Get a typed evidence resource by id.
+
+#### Usage
+
+    SourceStore$get_resource(resource_id)
+
+#### Arguments
+
+- `resource_id`:
+
+  Resource id.
+
+------------------------------------------------------------------------
+
+### `SourceStore$list_resources()`
+
+List all evidence as typed resources.
+
+#### Usage
+
+    SourceStore$list_resources()
 
 ------------------------------------------------------------------------
 

@@ -1,11 +1,13 @@
-# Return sources as a tibble
+# Return evidence resources as a tibble
 
-Return sources as a tibble
+Return evidence resources as a tibble
 
 ## Usage
 
 ``` r
 tempest_sources(store)
+
+tempest_resources(store)
 ```
 
 ## Arguments
@@ -16,8 +18,8 @@ tempest_sources(store)
 
 ## Value
 
-A tibble of sources with columns: id, url, title, snippet, content_text,
-context_text, fetched_at.
+A tibble with resource identity, kind, opaque locator, optional web URL,
+title, media type, content context, retrieval time, and metadata.
 
 ## Examples
 

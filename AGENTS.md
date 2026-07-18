@@ -43,7 +43,7 @@ Package-specific conventions:
 - Prefer public adapters and constructors
   ([`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md),
   [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),
-  `tempest_expert_session_manager()`,
+  [`tempest_expert_session_manager()`](https://jameshwade.github.io/tempest/reference/tempest_expert_session_manager.md),
   [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md))
   over reaching into R6 internals from host apps.
 - Keep Co-STORM evidence claim-centered. Unknown source IDs, weak

@@ -1,4 +1,4 @@
-# Create a Co-STORM expert definition
+# Create a Tempest expert profile
 
 **\[experimental\]**
 
@@ -6,18 +6,33 @@
 
 ``` r
 tempest_expert(
+  expert_id,
   name,
-  title = "Research Specialist",
-  perspective = "General research perspective",
+  title,
+  description,
+  instructions,
+  version = "1",
+  focus_areas = character(),
+  skill_ids = character(),
+  skill_versions = character(),
+  required_capability_ids = character(),
+  optional_capability_ids = character(),
+  model_role = "expert",
+  model_policy_ref = NA_character_,
+  selection_metadata = list(),
+  initial_work_items = character(),
   initial_questions = character(),
-  id = NULL,
-  affiliation = NA_character_,
-  background = NA_character_,
-  focus_areas = character()
+  state = "active",
+  metadata = list(),
+  schema_version = 1L
 )
 ```
 
 ## Arguments
+
+- expert_id:
+
+  Stable expert identifier.
 
 - name:
 
@@ -27,50 +42,88 @@ tempest_expert(
 
   Short title or area of expertise.
 
-- perspective:
+- description:
 
-  Description of the expert's research perspective.
+  Description of the expert's perspective and scope.
 
-- initial_questions:
+- instructions:
 
-  Character vector of warmup questions for this expert.
+  Instructions the expert should follow.
 
-- id:
+- version:
 
-  Optional numeric expert id. Missing ids are assigned by
-  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
-
-- affiliation:
-
-  Optional affiliation.
-
-- background:
-
-  Optional background text.
+  Stable expert-profile version.
 
 - focus_areas:
 
-  Optional character vector of focus areas.
+  Character vector of focus areas.
+
+- skill_ids:
+
+  Skill identifiers assigned to the expert.
+
+- skill_versions:
+
+  Optional named character vector mapping assigned skill identifiers to
+  required versions.
+
+- required_capability_ids:
+
+  Capabilities that must be granted before the expert can run.
+
+- optional_capability_ids:
+
+  Capabilities the expert may use when granted.
+
+- model_role:
+
+  Default model role.
+
+- model_policy_ref:
+
+  Optional host model-policy reference.
+
+- selection_metadata:
+
+  Serializable metadata for host-side expert selection.
+
+- initial_work_items, initial_questions:
+
+  Optional startup work.
+
+- state:
+
+  Definition state, either `"active"` or `"retired"`.
+
+- metadata:
+
+  Canonical JSON-compatible host metadata. Metadata cannot contain
+  credentials or executable values.
+
+- schema_version:
+
+  Serializable record schema version.
 
 ## Value
 
-A list suitable for the `personas` argument of
-[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
+A `tempest_expert` S7 object.
 
 ## Details
 
-Host applications can pass these definitions to
-[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
-via the `personas` argument to control the expert panel without patching
-`TempestSession` internals.
+Expert profiles are serializable definitions of identity, procedure, and
+permission requirements. Runtime chats, tools, clients, and credentials
+are resolved separately for each execution context.
 
 ## Examples
 
 ``` r
 expert <- tempest_expert(
+  expert_id = "expert.battery-policy",
   name = "Dr. Rivera",
   title = "Battery policy analyst",
-  perspective = "Policy and market incentives",
-  initial_questions = "Which policies affect battery recycling?"
+  description = "Policy and market incentives",
+  instructions = "Compare policy mechanisms and preserve uncertainty.",
+  skill_ids = "evidence-synthesis",
+  required_capability_ids = "evidence.search"
 )
 ```

@@ -19,6 +19,10 @@ tempest_run(
   config = tempest_config(),
   retriever = NULL,
   n_experts = 3,
+  experts = NULL,
+  runtime = tempest_runtime(),
+  runtime_factory = function() tempest_runtime(),
+  connection_permissions = list(),
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
@@ -31,7 +35,9 @@ tempest_run(
   run_id = NULL,
   remove_duplicate = FALSE,
   progress = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  artifact_catalog = NULL,
+  workflow_run = NULL
 )
 ```
 
@@ -51,7 +57,32 @@ tempest_run(
 
 - n_experts:
 
-  Number of expert personas to use (default 3).
+  Number of expert profiles to generate when `experts` is `NULL`
+  (default 3).
+
+- experts:
+
+  Optional list of active profiles created by
+  [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md).
+  When supplied, STORM uses this selected team and does not generate
+  experts.
+
+- runtime:
+
+  A
+  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+  containing scoped skill, capability, and connection adapters.
+
+- runtime_factory:
+
+  Function that recreates `runtime` inside parallel workers. The default
+  recreates the built-in runtime. Hosts using custom capabilities with
+  `parallel_research = TRUE` must provide a matching factory.
+
+- connection_permissions:
+
+  Named list mapping expert or model-role ids to opaque connection ids
+  allowed for this run.
 
 - research_strategy:
 
@@ -118,9 +149,20 @@ tempest_run(
 
   If `TRUE`, prints progress messages.
 
+- artifact_catalog:
+
+  Optional shared `TempestArtifactCatalog`. This is used by the built-in
+  generic STORM workflow adapter.
+
+- workflow_run:
+
+  Optional owning `TempestRun`. When supplied, the result exposes it as
+  `workflow_run`.
+
 ## Value
 
-A list with `title`, `outline`, `draft_md`, `report_md`, `store`, and
+A list with `title`, `perspectives`, `experts`, `outline`, `draft_md`,
+`report_md`, `store`, `artifact_catalog`, `workflow_run`, and
 `output_dir`.
 
 ## Examples

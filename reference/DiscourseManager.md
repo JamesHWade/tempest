@@ -51,7 +51,7 @@ Decide the next turn action.
       topic,
       transcript_md,
       mindmap_md,
-      persona_descriptions,
+      expert_descriptions,
       unseen_sources = character()
     )
 
@@ -69,9 +69,9 @@ Decide the next turn action.
 
   Mind map as markdown.
 
-- `persona_descriptions`:
+- `expert_descriptions`:
 
-  Formatted persona descriptions.
+  Formatted expert descriptions with stable ids.
 
 - `unseen_sources`:
 
@@ -79,7 +79,7 @@ Decide the next turn action.
 
 #### Returns
 
-A turn decision list with action, agent_name, instruction, rationale.
+A turn decision list with action, expert_id, instruction, rationale.
 
 ------------------------------------------------------------------------
 

@@ -15,7 +15,12 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -58,10 +63,13 @@
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_session_snapshot()</code> returns a structured, in-memory representation
 of the durable state in a <a href="TempestSession.html">TempestSession</a>. It includes the session identity,
-personas, transcript, mind map, report artifacts, progress-event history,
-expert-session metadata, and the underlying <code>SourceStore</code> ledger. Live chat
-handles, tools, Shiny reactive state, credentials, and provider request
-bodies are not included.</p>
+expert profiles, transcript, mind map, typed deliverable specifications and
+artifacts, auxiliary session state, progress-event history, expert-session
+metadata, serializable skill and connection-reference records, capability
+decisions, an attached generic workflow run, and the underlying
+<code>SourceStore</code> ledger. Live chat handles, runtime clients, tools, closures,
+Shiny reactive state, credentials, and provider request bodies are not
+included.</p>
 <p>Use <code><a href="tempest_session_restore.html">tempest_session_restore()</a></code> to rebuild a session from the returned list,
 or <code><a href="tempest_session_save.html">tempest_session_save()</a></code> to write the same durable state to a directory
 bundle.</p>

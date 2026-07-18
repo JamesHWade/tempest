@@ -21,7 +21,7 @@ tempest_claim(
   retrieval_query = NA_character_,
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   session_id = NA_character_,
   section_id = NA_character_,
   verified_at = NA_character_,

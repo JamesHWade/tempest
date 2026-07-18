@@ -27,7 +27,12 @@ writes a cited report in Markdown.
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -59,6 +64,10 @@ writes a cited report in Markdown.
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  n_experts <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  experts <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  runtime <span class="op">=</span> <span class="fu"><a href="tempest_runtime.html">tempest_runtime</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  runtime_factory <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="tempest_runtime.html">tempest_runtime</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  connection_permissions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  research_strategy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"key_questions"</span>, <span class="st">"conversation"</span><span class="op">)</span>,</span>
 <span>  max_rounds <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  max_questions_per_perspective <span class="op">=</span> <span class="fl">3</span>,</span>
@@ -71,7 +80,9 @@ writes a cited report in Markdown.
 <span>  run_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  remove_duplicate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  artifact_catalog <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  workflow_run <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -92,7 +103,31 @@ writes a cited report in Markdown.
 
 
 <dt id="arg-n-experts">n_experts<a class="anchor" aria-label="anchor" href="#arg-n-experts"></a></dt>
-<dd><p>Number of expert personas to use (default 3).</p></dd>
+<dd><p>Number of expert profiles to generate when <code>experts</code> is
+<code>NULL</code> (default 3).</p></dd>
+
+
+<dt id="arg-experts">experts<a class="anchor" aria-label="anchor" href="#arg-experts"></a></dt>
+<dd><p>Optional list of active profiles created by
+<code><a href="tempest_expert.html">tempest_expert()</a></code>. When supplied, STORM uses this selected team and does
+not generate experts.</p></dd>
+
+
+<dt id="arg-runtime">runtime<a class="anchor" aria-label="anchor" href="#arg-runtime"></a></dt>
+<dd><p>A <code><a href="tempest_runtime.html">tempest_runtime()</a></code> containing scoped skill, capability, and
+connection adapters.</p></dd>
+
+
+<dt id="arg-runtime-factory">runtime_factory<a class="anchor" aria-label="anchor" href="#arg-runtime-factory"></a></dt>
+<dd><p>Function that recreates <code>runtime</code> inside parallel
+workers. The default recreates the built-in runtime. Hosts using custom
+capabilities with <code>parallel_research = TRUE</code> must provide a matching
+factory.</p></dd>
+
+
+<dt id="arg-connection-permissions">connection_permissions<a class="anchor" aria-label="anchor" href="#arg-connection-permissions"></a></dt>
+<dd><p>Named list mapping expert or model-role ids to
+opaque connection ids allowed for this run.</p></dd>
 
 
 <dt id="arg-research-strategy">research_strategy<a class="anchor" aria-label="anchor" href="#arg-research-strategy"></a></dt>
@@ -157,11 +192,22 @@ make final artifacts available.</p></dd>
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>If <code>TRUE</code>, prints progress messages.</p></dd>
 
+
+<dt id="arg-artifact-catalog">artifact_catalog<a class="anchor" aria-label="anchor" href="#arg-artifact-catalog"></a></dt>
+<dd><p>Optional shared <code>TempestArtifactCatalog</code>. This is
+used by the built-in generic STORM workflow adapter.</p></dd>
+
+
+<dt id="arg-workflow-run">workflow_run<a class="anchor" aria-label="anchor" href="#arg-workflow-run"></a></dt>
+<dd><p>Optional owning <code>TempestRun</code>. When supplied, the result
+exposes it as <code>workflow_run</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with <code>title</code>, <code>outline</code>, <code>draft_md</code>, <code>report_md</code>, <code>store</code>,
-and <code>output_dir</code>.</p>
+    <p>A list with <code>title</code>, <code>perspectives</code>, <code>experts</code>, <code>outline</code>,
+<code>draft_md</code>, <code>report_md</code>, <code>store</code>, <code>artifact_catalog</code>, <code>workflow_run</code>, and
+<code>output_dir</code>.</p>
     </div>
 
     <div class="section level2">

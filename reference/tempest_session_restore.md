@@ -5,7 +5,13 @@
 ## Usage
 
 ``` r
-tempest_session_restore(snapshot, config = tempest_config(), progress = NULL)
+tempest_session_restore(
+  snapshot,
+  config = tempest_config(),
+  runtime = tempest_runtime(),
+  connection_permissions = NULL,
+  progress = NULL
+)
 ```
 
 ## Arguments
@@ -22,6 +28,19 @@ tempest_session_restore(snapshot, config = tempest_config(), progress = NULL)
   used to recreate chats, retrievers, and tools. Functions, credentials,
   and host-specific stores should be supplied here rather than read from
   the snapshot.
+
+- runtime:
+
+  A fresh
+  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+  supplying process-local skill, capability, and connection
+  implementations.
+
+- connection_permissions:
+
+  Optional named connection-permission override that may only remove
+  saved contexts or connection ids. When `NULL`, the saved opaque
+  connection ids are reused.
 
 - progress:
 
@@ -41,7 +60,7 @@ from a structured snapshot created by
 or read by
 [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md).
 It restores durable research state and creates fresh chat/tool handles
-using the supplied runtime `config`.
+using the supplied runtime and `config`.
 
 Historical progress events are restored as session artifact data and can
 be reduced with

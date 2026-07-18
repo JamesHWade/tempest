@@ -10,8 +10,11 @@ retried sequentially so its evidence is never silently dropped.
 ``` r
 tempest_research_parallel(
   perspectives,
-  personas,
+  experts,
   config,
+  runtime,
+  runtime_factory,
+  connection_permissions,
   retriever,
   store,
   topic,

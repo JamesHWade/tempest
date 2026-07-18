@@ -15,7 +15,12 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -78,6 +83,62 @@
 
         <dt>
 
+          <code><a href="tempest_run_workflow.html">tempest_run_workflow()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Execute an application-neutral Tempest workflow</dd>
+
+        <dt>
+
+          <code><a href="tempest_storm_workflow_run.html">tempest_storm_workflow_run()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Run STORM through the generic Tempest workflow kernel</dd>
+
+        <dt>
+
+          <code><a href="tempest_costorm_workflow_run.html">tempest_costorm_workflow_run()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Attach and start the generic workflow for a Co-STORM session</dd>
+
+        <dt>
+
+          <code><a href="tempest_run_accessors.html">tempest_run_status()</a></code> <code><a href="tempest_run_accessors.html">tempest_run_events()</a></code> <code><a href="tempest_run_accessors.html">tempest_run_approvals()</a></code> <code><a href="tempest_run_accessors.html">tempest_run_artifacts()</a></code> <code><a href="tempest_run_accessors.html">tempest_run_capability_grants()</a></code> <code><a href="tempest_run_accessors.html">tempest_run_artifact()</a></code> <code><a href="tempest_run_accessors.html">tempest_run_record_approval()</a></code> <code><a href="tempest_run_accessors.html">tempest_run_request_cancel()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Inspect and control a generic Tempest run</dd>
+
+        <dt>
+
+          <code><a href="tempest_run_snapshot.html">tempest_run_snapshot()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Snapshot generic Tempest run state</dd>
+
+        <dt>
+
+          <code><a href="tempest_run_restore.html">tempest_run_restore()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Restore generic Tempest run state</dd>
+
+        <dt>
+
+          <code><a href="tempest_run_save.html">tempest_run_save()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Save a generic Tempest run bundle</dd>
+
+        <dt>
+
+          <code><a href="tempest_run_resume.html">tempest_run_resume()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Resume a generic Tempest run bundle</dd>
+
+        <dt>
+
           <code><a href="tempest_session.html">tempest_session()</a></code>
 
         </dt>
@@ -119,13 +180,6 @@
 
         </dt>
         <dd>Create a STORM configuration</dd>
-
-        <dt>
-
-          <code><a href="tempest_generate_personas.html">tempest_generate_personas()</a></code>
-
-        </dt>
-        <dd>Generate Expert Personas for a Topic</dd>
 
         <dt>
 
@@ -180,10 +234,17 @@
 
         <dt>
 
-          <code><a href="tempest_sources.html">tempest_sources()</a></code>
+          <code><a href="tempest_sources.html">tempest_sources()</a></code> <code><a href="tempest_sources.html">tempest_resources()</a></code>
 
         </dt>
-        <dd>Return sources as a tibble</dd>
+        <dd>Return evidence resources as a tibble</dd>
+
+        <dt>
+
+          <code><a href="tempest_resource.html">tempest_resource()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a typed evidence resource</dd>
 
         <dt>
 
@@ -213,6 +274,213 @@
         </dt>
         <dd>Suggest follow-up research questions for a topic</dd>
       </dl></div><div class="section level2">
+      <h2 id="workflow-contracts-and-artifacts">Workflow contracts and artifacts<a class="anchor" aria-label="anchor" href="#workflow-contracts-and-artifacts"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="tempest_objective.html">tempest_objective()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest objective</dd>
+
+        <dt>
+
+          <code><a href="tempest_deliverable_spec.html">tempest_deliverable_spec()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest deliverable specification</dd>
+
+        <dt>
+
+          <code><a href="tempest_validation_result.html">tempest_validation_result()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest validation result</dd>
+
+        <dt>
+
+          <code><a href="tempest_artifact.html">tempest_artifact()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a typed Tempest artifact</dd>
+
+        <dt>
+
+          <code><a href="tempest_artifact_representation.html">tempest_artifact_representation()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Describe one renderer-produced artifact representation</dd>
+
+        <dt>
+
+          <code><a href="tempest_operation_registry.html">tempest_operation_registry()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest runtime operation registry</dd>
+
+        <dt>
+
+          <code><a href="tempest_builtin_operation_registry.html">tempest_builtin_operation_registry()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a registry containing Tempest's built-in deliverable operations</dd>
+
+        <dt>
+
+          <code><a href="tempest_workflow_step.html">tempest_workflow_step()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest workflow step</dd>
+
+        <dt>
+
+          <code><a href="tempest_workflow_spec.html">tempest_workflow_spec()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest workflow specification</dd>
+
+        <dt>
+
+          <code><a href="tempest_storm_workflow_spec.html">tempest_storm_workflow_spec()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create the built-in STORM workflow specification</dd>
+
+        <dt>
+
+          <code><a href="tempest_costorm_workflow_spec.html">tempest_costorm_workflow_spec()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create the built-in Co-STORM workflow specification</dd>
+
+        <dt>
+
+          <code><a href="tempest_builtin_workflow_operation_registry.html">tempest_builtin_workflow_operation_registry()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a registry for Tempest's built-in research workflows</dd>
+
+        <dt>
+
+          <code><a href="tempest_generate_deliverable.html">tempest_generate_deliverable()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Generate and finalize a Tempest deliverable</dd>
+
+        <dt>
+
+          <code><a href="tempest_artifact_catalog.html">tempest_artifact_catalog()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a typed Tempest artifact catalog</dd>
+
+        <dt>
+
+          <code><a href="tempest_artifact_catalog_restore.html">tempest_artifact_catalog_restore()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Restore a typed Tempest artifact catalog</dd>
+
+        <dt>
+
+          <code><a href="tempest_artifact_codec_definition.html">tempest_artifact_codec_definition()</a></code> <code><a href="tempest_artifact_codec_definition.html">tempest_artifact_codec()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Define a typed artifact codec</dd>
+
+        <dt>
+
+          <code><a href="tempest_artifact_codec_registry.html">tempest_artifact_codec_registry()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a typed artifact codec registry</dd>
+      </dl></div><div class="section level2">
+      <h2 id="experts-and-scoped-runtime">Experts and scoped runtime<a class="anchor" aria-label="anchor" href="#experts-and-scoped-runtime"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="tempest_expert.html">tempest_expert()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest expert profile</dd>
+
+        <dt>
+
+          <code><a href="tempest_generate_experts.html">tempest_generate_experts()</a></code>
+
+        </dt>
+        <dd>Generate expert profiles for a topic</dd>
+
+        <dt>
+
+          <code><a href="tempest_skill.html">tempest_skill()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest skill specification</dd>
+
+        <dt>
+
+          <code><a href="tempest_skill_registry.html">tempest_skill_registry()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest skill registry</dd>
+
+        <dt>
+
+          <code><a href="tempest_capability_spec.html">tempest_capability_spec()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest capability specification</dd>
+
+        <dt>
+
+          <code><a href="tempest_capability_resolver.html">tempest_capability_resolver()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest capability resolver</dd>
+
+        <dt>
+
+          <code><a href="tempest_connection_ref.html">tempest_connection_ref()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create an opaque Tempest connection reference</dd>
+
+        <dt>
+
+          <code><a href="tempest_connection_provider.html">tempest_connection_provider()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest runtime connection provider</dd>
+
+        <dt>
+
+          <code><a href="tempest_runtime.html">tempest_runtime()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a Tempest runtime</dd>
+
+        <dt>
+
+          <code><a href="tempest_expert_session_manager.html">tempest_expert_session_manager()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a scoped Tempest expert-session manager</dd>
+      </dl></div><div class="section level2">
       <h2 id="host-app-extension-points">Host app extension points<a class="anchor" aria-label="anchor" href="#host-app-extension-points"></a></h2>
 
 
@@ -238,13 +506,6 @@
 
         <dt>
 
-          <code><a href="tempest_expert.html">tempest_expert()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Create a Co-STORM expert definition</dd>
-
-        <dt>
-
           <code><a href="tempest_shiny_store.html">tempest_shiny_store()</a></code>
           <span class="badge lifecycle lifecycle-experimental">experimental</span>
         </dt>
@@ -263,6 +524,20 @@
           <span class="badge lifecycle lifecycle-experimental">experimental</span>
         </dt>
         <dd>Run embedded Tempest Shiny panels</dd>
+
+        <dt>
+
+          <code><a href="tempest_storm_workflow_adapter.html">tempest_storm_workflow_adapter()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create an adapter for the built-in STORM workflow</dd>
+
+        <dt>
+
+          <code><a href="tempest_costorm_workflow_adapter.html">tempest_costorm_workflow_adapter()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create an adapter for the built-in Co-STORM workflow</dd>
       </dl></div><div class="section level2">
       <h2 id="session-persistence">Session persistence<a class="anchor" aria-label="anchor" href="#session-persistence"></a></h2>
 

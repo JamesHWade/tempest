@@ -2,10 +2,15 @@
 
 ## tempest 0.1.0
 
+- Persistence bundles from before the reusable workflow-kernel cutover
+  are intentionally unsupported: Co-STORM restore requires schema
+  version 4, and staged STORM restore requires schema version 3 with
+  typed artifact indexes; completed perspective stages persist
+  fingerprinted expert profiles (vtvt, wgr8).
 - The bundled Shiny app now escapes untrusted model and source content,
   rejects unsafe links, isolates browser session storage behind
   upload/download archives with quotas and private permissions, provides
-  cancellable STORM workers, runs Co-STORM persona generation,
+  cancellable STORM workers, runs Co-STORM expert generation,
   enrichment, suggestions, and reports asynchronously with ordered
   stale-safe commits, quarantines timed-out expert chats, and exposes an
   accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q,
@@ -14,6 +19,31 @@
   mutations, rejects orphan references and source-budget overflow, and
   keeps reverse indexes correct when claims are replaced; the unused
   parallel S7 source representation was removed (67h9, y2kw).
+- `SourceStore` and
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
+  now support fingerprinted web, file, message, database, and
+  host-defined evidence resources with opaque locators, connection
+  provenance, redaction and retention metadata, and durable claim
+  lineage without requiring public URLs (fr54).
+- [`tempest_artifact()`](https://jameshwade.github.io/tempest/reference/tempest_artifact.md),
+  [`tempest_artifact_catalog()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_catalog.md),
+  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),
+  [`tempest_deliverable_spec()`](https://jameshwade.github.io/tempest/reference/tempest_deliverable_spec.md),
+  [`tempest_generate_deliverable()`](https://jameshwade.github.io/tempest/reference/tempest_generate_deliverable.md),
+  [`tempest_objective()`](https://jameshwade.github.io/tempest/reference/tempest_objective.md),
+  and
+  [`tempest_operation_registry()`](https://jameshwade.github.io/tempest/reference/tempest_operation_registry.md)
+  add an application-neutral output lifecycle with versioned operation
+  references, validation, evidence lineage, typed multi-format
+  artifacts, approval-before-export enforcement, safe invalid-output
+  retries, host storage adapters, and checksummed persistence shared by
+  STORM, Co-STORM, and host-defined outcomes (xbwy).
+- [`tempest_artifact_codec_registry()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_codec_registry.md)
+  and
+  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
+  provide versioned runtime codecs and complete typed storage adapters
+  for inline or external custom artifact representations without
+  serializing executable codec functions (fr54).
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
   now validates scalar model, logical, search, source, expert, query,
   and retrieval budgets immediately with classed errors, and provider
@@ -21,6 +51,13 @@
 - [`tempest_create_ragnar_store()`](https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.md)
   preserves and validates compatible persistent stores by default;
   destructive replacement now requires `reset = TRUE` (yb8s).
+- [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_run.md)
+  and
+  [`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_run.md)
+  expose the built-in research workflows as executable `TempestRun`
+  specifications with shared evidence, typed checkpoints, selected
+  expert teams, scoped connections, and an approval-gated Co-STORM
+  dialogue boundary (vtvt).
 - [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
   now applies strict citation actions to complete matched assertions,
   removes unsupported assertions under `drop`, gives `revise` distinct
@@ -46,16 +83,19 @@
 - Search-provider, evaluation-task, app-startup, asynchronous-run, and
   UI integration boundaries now have deterministic fixture-based
   contract coverage without API keys or network access (kqgx).
-- [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),
-  [`tempest_memory_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.md),
+- [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md),
+  [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md),
+  [`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest_capability_spec.md),
+  [`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest_connection_ref.md),
   and
-  [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
-  provide initial host-app extension points for capturing report
-  artifacts and supplying validated Co-STORM experts.
-  [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
-  now accepts an `artifact_store`, and
-  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
-  accepts a shared retriever with a `SourceStore`.
+  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+  add stable expert profiles, reusable skill contracts, per-context
+  least-privilege capability resolution, opaque host connection
+  bindings, exact expert-session restoration, and durable per-step grant
+  records; global all-chat tool registration and the
+  `tempest_config(tools = )` argument have been removed, so hosts should
+  attach tool implementations through scoped runtime capabilities
+  (wgr8).
 - [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),
   [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md),
   [`tempest_progress_event()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event.md),
@@ -106,6 +146,22 @@
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   now executes STORM structured steps through dsprrr modules, with
   ellmer fallbacks for module creation or runtime failures.
+- [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md),
+  [`tempest_run_resume()`](https://jameshwade.github.io/tempest/reference/tempest_run_resume.md),
+  and the `tempest_run_*()` accessors give host applications checksummed
+  generic run bundles plus stable status, event, approval, per-attempt
+  capability-grant, artifact, cancellation, strict restore-integrity,
+  permission-narrowing, and explicit partial-recovery controls without
+  reaching into mutable R6 internals (vtvt).
+- [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest_run_workflow.md),
+  [`tempest_workflow_spec()`](https://jameshwade.github.io/tempest/reference/tempest_workflow_spec.md),
+  and
+  [`tempest_workflow_step()`](https://jameshwade.github.io/tempest/reference/tempest_workflow_step.md)
+  add a generic deterministic run shell with expert assignments, bounded
+  retry history, ordered events, typed artifacts, requested-output
+  completion checks, pre-execution policy gates, post-generation output
+  approvals, cooperative cancellation, process-local runtime services,
+  and explicit runtime snapshot restoration (vtvt).
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   and
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
@@ -190,13 +246,18 @@
   [`tempest_shiny_store()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_store.md)
   provide an experimental embeddable Shiny adapter for host apps, with
   fake-chat example code under `inst/examples/shiny-host` (z0e0).
+- [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
+  now exposes reactive generic run, event, approval, assignment,
+  capability-grant, artifact, and evidence state; the example host app
+  demonstrates a custom objective, selected expert, scoped connection
+  policy, approval checkpoint, and non-report JSON deliverable (fr54).
 - `tempest_config(search_provider = )` searches now apply a request
   timeout and retry on transient HTTP errors, and a single missing or
   non-public result URL no longer discards every other result for the
   query.
 - Co-STORM sessions now route turns, update the mind map, and summarise
   using the most recent dialogue turns instead of the oldest.
-- Co-STORM evidence now records expert session ids, persona ids, and
+- Co-STORM evidence now records expert session ids, expert ids, and
   progress correlation ids on claims from expert tools, warmup, chat,
   and STORM research runs so Facts and Sources can be traced back to the
   agent turn that produced them (vtz9).
@@ -234,7 +295,7 @@
   `/report`, `/system`, and `/tools`, backed by normal chat-visible
   responses (t5zn).
 - The bundled Shiny app now uses a Tempest assistant icon in chat and
-  transcript views plus deterministic persona icons for Co-STORM experts
+  transcript views plus deterministic expert icons for Co-STORM experts
   in the panel and workflow progress (q8zc, zb9y).
 - The bundled Shiny app no longer errors when async chat callbacks
   refresh the shared session store outside a reactive consumer.

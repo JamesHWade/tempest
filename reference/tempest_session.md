@@ -8,8 +8,10 @@ Create a Co-STORM session
 tempest_session(
   topic,
   config = tempest_config(),
+  runtime = tempest_runtime(),
   n_experts = 3,
-  personas = NULL,
+  experts = NULL,
+  connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
   session_id = NULL
@@ -26,14 +28,24 @@ tempest_session(
 
   A `TempestConfig`.
 
+- runtime:
+
+  A
+  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+  containing process-local adapters.
+
 - n_experts:
 
   Number of expert agents.
 
-- personas:
+- experts:
 
-  Optional list of pre-generated personas. If NULL, personas are
+  Optional list of validated expert profiles. If `NULL`, experts are
   generated automatically.
+
+- connection_permissions:
+
+  Named per-role or per-expert connection allow-lists.
 
 - retriever:
 

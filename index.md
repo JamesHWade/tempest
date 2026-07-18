@@ -6,14 +6,16 @@ Question Asking) and [Co-STORM](https://co-storm.genie.stanford.edu/)
 from Stanford’s STORM project.
 
 This package reproduces the core workflow primitives: -
-**Multi-perspective research** with automatically generated expert
-personas - **Evidence tracking** with citations and source attribution -
-**Two-step outline refinement** and **lead section generation** -
-**Query decomposition** and **semantic fact retrieval** - **Parallel
-research** across perspectives (optional) - **Interactive multi-agent
-moderation** with mind map (Co-STORM) - **LLM-driven discourse
-management** with dynamic expert roster (Co-STORM) - **Automated
-evaluation** with simulated users
+**Multi-perspective research** with selected or automatically generated
+expert profiles - **Evidence tracking** with citations and source
+attribution - **Reusable objectives and deliverables** with versioned
+output contracts, validation, typed artifacts, and runtime operation
+adapters - **Two-step outline refinement** and **lead section
+generation** - **Query decomposition** and **semantic fact retrieval** -
+**Parallel research** across perspectives (optional) - **Interactive
+multi-agent moderation** with mind map (Co-STORM) - **LLM-driven
+discourse management** with dynamic expert roster (Co-STORM) -
+**Automated evaluation** with simulated users
 
 Built on the R AI ecosystem: -
 [ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration: tool
@@ -32,6 +34,10 @@ UI - [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
 # install.packages("pak")
 pak::pak("JamesHWade/tempest")
 ```
+
+After installation, run
+[`vignette("tempest", package = "tempest")`](https://jameshwade.github.io/tempest/articles/tempest.md)
+for the package tour and a first STORM workflow.
 
 ## Setup
 
@@ -69,6 +75,210 @@ required - Tavily: set `TAVILY_API_KEY` - SearXNG: set
 Search: set `GOOGLE_SEARCH_API_KEY` and `GOOGLE_CSE_ID` - Azure AI
 Search: set `AZURE_AI_SEARCH_API_KEY`, `AZURE_AI_SEARCH_ENDPOINT`, and
 `AZURE_AI_SEARCH_INDEX_NAME`
+
+## Reusable deliverables
+
+Tempest’s output kernel is independent of STORM and Co-STORM. A host
+application can define an objective, versioned output contract, and
+runtime operations without adding its business model to the package:
+
+``` r
+
+objective <- tempest_objective(
+  "Turn the supplied request into a concise action brief",
+  constraints = "Do not invent unsupported commitments",
+  acceptance_criteria = c(
+    "The brief includes a summary",
+    "The brief includes explicit actions"
+  ),
+  deliverable_ids = "action-brief"
+)
+
+registry <- tempest_builtin_operation_registry()
+registry$register(
+  "example.generator.action_brief",
+  kind = "generator",
+  version = "1",
+  implementation = function(context) {
+    list(
+      summary = context$objective@description,
+      actions = context$actions
+    )
+  }
+)
+registry$register(
+  "example.renderer.action_brief",
+  kind = "renderer",
+  version = "1",
+  implementation = function(content) {
+    list(
+      tempest_artifact_representation(
+        content = paste0(
+          "# Action brief\n\n",
+          content$summary,
+          "\n\n## Actions\n\n- ",
+          paste(content$actions, collapse = "\n- ")
+        ),
+        artifact_kind = "brief",
+        media_type = "text/markdown"
+      ),
+      tempest_artifact_representation(
+        content = content,
+        artifact_kind = "structured",
+        media_type = "application/json"
+      )
+    )
+  }
+)
+
+spec <- tempest_deliverable_spec(
+  "action-brief",
+  version = "1",
+  title = "Action brief",
+  purpose = "Make the requested outcome actionable",
+  instructions = "Preserve constraints and uncertainty.",
+  required_fields = c("summary", "actions"),
+  generator_id = "example.generator.action_brief",
+  validator_ids = "tempest.validator.required_fields",
+  renderer_ids = "example.renderer.action_brief",
+  operation_versions = c(
+    "example.generator.action_brief" = "1",
+    "tempest.validator.required_fields" = "1",
+    "example.renderer.action_brief" = "1"
+  ),
+  media_types = c("text/markdown", "application/json")
+)
+
+catalog <- tempest_artifact_catalog(
+  store = tempest_memory_artifact_store()
+)
+result <- tempest_generate_deliverable(
+  spec,
+  context = list(
+    objective = objective,
+    actions = c("Confirm scope", "Prepare evidence", "Review outcome")
+  ),
+  registry = registry,
+  catalog = catalog
+)
+
+catalog$list()
+```
+
+Specifications contain only serializable values and stable operation
+ids. Runtime functions stay in the operation registry, while artifacts
+retain their specification fingerprint, validation state, provenance,
+and content checksum. When `requires_approval = TRUE`, a `TempestRun`
+publishes the validated artifact as `awaiting_approval`, pauses without
+rerunning its producer, and invokes exporters only after the host
+approves the output. Invalid output stays inspectable and is never
+exported. A retry can explicitly replace a stable invalid artifact from
+the same run, step, and specification while retaining the prior
+validation diagnostics. Inline structured content uses canonical JSON
+semantics: objects and arrays restore as lists, while classed R objects,
+missing values, and binary content should use an external `storage_ref`.
+Session bundles persist every registered artifact representation instead
+of relying on a fixed report filename. Hosts with custom inline content
+codecs reattach the same `codec_registry` when saving and resuming;
+generic run snapshots use canonical JSON content or external storage
+references.
+
+## Reusable workflows and selected experts
+
+Hosts can execute application-specific work through the same run model
+without adding customer, CRM, or opportunity concepts to Tempest.
+Workflow specifications are serializable; executable operations stay in
+the runtime:
+
+``` r
+
+expert <- tempest_expert(
+  expert_id = "expert.delivery",
+  name = "Delivery Analyst",
+  title = "Implementation specialist",
+  description = "Turns evidence into executable plans.",
+  instructions = "Surface dependencies, risks, and unresolved decisions."
+)
+
+objective <- tempest_objective(
+  "Prepare a reviewable implementation plan",
+  acceptance_criteria = "Every action has an owner and completion signal"
+)
+
+operations <- tempest_operation_registry()
+operations$register(
+  "host.step.plan",
+  kind = "step",
+  implementation = function(objective, expert_ids) {
+    list(
+      objective = objective@description,
+      assigned_experts = expert_ids,
+      actions = c("Confirm scope", "Collect evidence", "Review outcome")
+    )
+  }
+)
+
+workflow <- tempest_workflow_spec(
+  "host.action-plan",
+  title = "Action plan",
+  purpose = "Turn an objective into an actionable outcome",
+  steps = list(tempest_workflow_step(
+    "plan",
+    title = "Plan",
+    purpose = "Create the action plan",
+    operation_id = "host.step.plan",
+    assignment_rule = "expert.delivery"
+  ))
+)
+
+run <- tempest_run_workflow(
+  objective,
+  workflow,
+  runtime = operations,
+  experts = list(expert)
+)
+tempest_run_status(run)
+tempest_run_events(run)
+```
+
+[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+adds least-privilege skills, capabilities, and opaque connection
+references. An expert profile declares what it needs; the host grants
+connection IDs for that run; a connection provider rehydrates
+authenticated clients only after authorization. Profiles, snapshots, and
+events never contain tool closures, clients, or credentials.
+
+Hosts can pass process-local services through `runtime_context` and
+reattach them explicitly after restore. Tempest records the resulting
+per-step and per-expert authorization decisions for inspection with
+[`tempest_run_capability_grants()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md),
+including per-attempt grant history for retries, while leaving the live
+services themselves out of snapshots and run bundles. Side-effecting
+capabilities pass through policy and approval before their factories or
+step operation can execute.
+
+Use
+[`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_run.md)
+or
+[`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_run.md)
+when a host wants the built-in research workflows behind the same run
+interface.
+[`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md)
+and
+[`tempest_run_resume()`](https://jameshwade.github.io/tempest/reference/tempest_run_resume.md)
+persist generic runs while requiring the host to reattach process-local
+operations and connections. Restored permission overrides may only
+narrow saved grants, and recovering an in-flight snapshot requires the
+explicit `partial_recovery = TRUE` mode. Classed execution errors retain
+the failed run in `condition$run`, so a host can inspect its events,
+grants, validation results, and artifacts before deciding whether to
+retry or present the failure.
+
+Run
+[`vignette("reusable-workflows", package = "tempest")`](https://jameshwade.github.io/tempest/articles/reusable-workflows.md)
+for a complete, offline example that combines a selected expert, output
+template, workflow, approval, typed artifact, audit trail, and
+save/restore cycle.
 
 ## Scripted STORM
 
@@ -140,9 +350,10 @@ res <- tempest_run(
 )
 ```
 
-Each run directory includes JSON artifacts for perspectives, personas,
-sources, facts, outlines, and references, plus Markdown drafts and the
-polished article.
+Each run directory includes checksummed JSON artifacts for perspectives,
+experts, sources, claims, outlines, and references; Markdown drafts; and
+a typed artifact catalog containing all final deliverable
+representations.
 
 ### Pipeline Details
 
@@ -216,7 +427,6 @@ accepts the following parameters:
 | `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
 | `artifact_store` | `NULL` | Optional host-app artifact store from [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md) |
 | `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
-| `tools` | `NULL` | Additional ellmer tools (e.g., `btw::btw_tools()`) |
 | `cache_dir` | `NULL` | Cache directory; defaults to `tempdir()/tempest-cache` or `TEMPEST_CACHE_DIR` env var |
 | `cache_enabled` | `TRUE` | Whether search and fetch calls read from and write to the cache |
 | `cache_ttl` | `Inf` | Maximum cache age in seconds before search/fetch entries are refreshed |
@@ -284,22 +494,32 @@ cfg <- tempest_config(
 )
 ```
 
-## Additional Tools
+## Scoped skills, capabilities, and connections
 
-Register additional tools (e.g., from btw) with chat agents:
-
-``` r
-
-cfg <- tempest_config(
-  tools = btw::btw_tools()
-  # or: tools = list(my_custom_tool1, my_custom_tool2)
-)
-```
+Tools are resolved for one role or expert execution context rather than
+registered globally on every chat. Use
+[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md)
+for reusable procedures,
+[`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest_capability_spec.md)
+for permissioned behavior,
+[`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest_connection_ref.md)
+for durable non-secret connection identities, and
+[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+for process-local implementations and authenticated bindings. Selected
+experts can then declare exact skill and capability IDs. Code that
+previously passed `tools =` to
+[`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+should instead define a named
+[`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest_capability_spec.md),
+pass it to `tempest_runtime(capability_specs = )`, register a same-ID
+factory that returns `list(tools = )` through
+`capability_implementations =`, and grant that capability ID to the
+relevant expert or workflow step.
 
 ## Interactive Co-STORM
 
 Co-STORM provides an interactive multi-expert research experience with
-automatically generated expert personas.
+selected or automatically generated expert profiles.
 
 ### Console Usage
 
@@ -307,11 +527,11 @@ automatically generated expert personas.
 
 library(tempest)
 
-# Create a session - personas are generated automatically
+# Create a session - expert profiles are generated automatically
 session <- tempest_session("AI safety and alignment", n_experts = 3)
 
 # See who's on the panel
-session$get_persona_names()
+session$get_expert_names()
 #> [1] "Dr. Sarah Chen" "Prof. Marcus Webb" "Dr. Aisha Patel"
 
 # Optional: Run warmup phase (experts research their initial questions)
@@ -331,16 +551,19 @@ report <- session$report(style = "technical", include_references = TRUE)
 cat(report)
 ```
 
-### Expert Tools (Subagent Pattern)
+### Expert delegation
 
-The moderator has access to expert tools (`ask_dr_sarah_chen`,
-`ask_prof_marcus_webb`, etc.) that delegate research questions to
-specialized experts. Each expert:
+The moderator receives one scoped
+`delegate_to_expert(expert_id, question)` tool. It resolves the active
+roster by stable expert id, so display-name changes cannot redirect
+work. Each expert:
 
 - Has their own chat session with conversation continuity
-- Can use `web_search` and `fetch_url` to find and cite sources
-- Extracts facts automatically after each response
-- Returns session IDs for follow-up questions
+- Receives only the skills, capabilities, and connections granted for
+  that run
+- Can use granted web or evidence tools to find and cite sources
+- Extracts claims automatically after each response
+- Keeps an opaque, host-inaccessible chat session binding for continuity
 
 This pattern provides clean separation of concerns and leverages
 ellmer’s native tool calling.
@@ -389,8 +612,8 @@ Experts can be added or retired during a session:
 ``` r
 
 session$add_expert("quantum error correction")
-session$retire_expert("Dr. Sarah Chen")
-session$get_active_personas()
+session$retire_expert("expert.sarah-chen")
+session$get_active_experts()
 ```
 
 The roster respects `max_active_experts` (default 5). Retired experts’
@@ -425,9 +648,9 @@ run_app()
 
 The app provides:
 
-- **Chat tab**: Multi-expert conversation with auto-generated personas,
-  shinychat `chat_server()` streaming, cancellation, and greeting
-  support
+- **Chat tab**: Multi-expert conversation with selected or generated
+  experts, shinychat `chat_server()` streaming, cancellation, and
+  greeting support
 - **Mind Map tab**: Real-time knowledge graph visualization
 - **Sources tab**: Table of all retrieved sources with metadata
 - **Facts tab**: Extracted facts with citations and confidence

@@ -9,7 +9,6 @@ tempest_config(
   models = NULL,
   params = NULL,
   chat_fn = NULL,
-  tools = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
   artifact_store = NULL,
@@ -48,11 +47,6 @@ tempest_config(
   Custom chat factory function. Should accept `role`, `model`,
   `system_prompt`, and `echo` arguments and return an ellmer-compatible
   Chat object. Use this for custom providers like `chat_company()`.
-
-- tools:
-
-  Additional tools to register with each chat. Can be a list of ellmer
-  tools, or a function that returns tools (e.g., `btw::btw_tools`).
 
 - embed_fn:
 

@@ -15,7 +15,12 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -44,8 +49,11 @@
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  store <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  panels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"chat"</span>, <span class="st">"sources"</span>, <span class="st">"facts"</span>, <span class="st">"mindmap"</span>, <span class="st">"transcript"</span>, <span class="st">"report"</span><span class="op">)</span>,</span>
-<span>  personas <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  session_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  experts <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  runtime <span class="op">=</span> <span class="fu"><a href="tempest_runtime.html">tempest_runtime</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  connection_permissions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  run <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -71,27 +79,46 @@ store is created.</p></dd>
 <dd><p>Character vector matching the UI panels.</p></dd>
 
 
-<dt id="arg-personas">personas<a class="anchor" aria-label="anchor" href="#arg-personas"></a></dt>
-<dd><p>Optional expert definitions passed to <code><a href="tempest_session.html">tempest_session()</a></code> for
+<dt id="arg-experts">experts<a class="anchor" aria-label="anchor" href="#arg-experts"></a></dt>
+<dd><p>Optional expert profiles passed to <code><a href="tempest_session.html">tempest_session()</a></code> for
 new Co-STORM sessions. May be a value, function, or reactive.</p></dd>
+
+
+<dt id="arg-runtime">runtime<a class="anchor" aria-label="anchor" href="#arg-runtime"></a></dt>
+<dd><p>A <code><a href="tempest_runtime.html">tempest_runtime()</a></code>, function, or reactive used to resolve
+process-local operations, capabilities, and connections.</p></dd>
+
+
+<dt id="arg-connection-permissions">connection_permissions<a class="anchor" aria-label="anchor" href="#arg-connection-permissions"></a></dt>
+<dd><p>Named per-role or per-expert connection
+allow-lists passed to <code><a href="tempest_session.html">tempest_session()</a></code>.</p></dd>
 
 
 <dt id="arg-session-id">session_id<a class="anchor" aria-label="anchor" href="#arg-session-id"></a></dt>
 <dd><p>Optional stable session id passed to <code><a href="tempest_session.html">tempest_session()</a></code>
 for new Co-STORM sessions. May be a value, function, or reactive.</p></dd>
 
+
+<dt id="arg-run">run<a class="anchor" aria-label="anchor" href="#arg-run"></a></dt>
+<dd><p>Optional <code>TempestRun</code>, function, or reactive. This lets a host
+expose a custom headless workflow through the same generic adapter
+reactives as built-in workflows.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with <code>store</code>, <code>session</code>, <code>report</code>, and <code>report_ready</code>.</p>
+    <p>A list with the shared <code>store</code>; reactive <code>run</code>, <code>status</code>, <code>events</code>,
+<code>approvals</code>, <code>assignments</code>, <code>artifacts</code>, <code>evidence</code>, <code>grants</code>, <code>session</code>,
+<code>report</code>, and <code>report_ready</code> accessors; and <code>approve()</code>, <code>cancel()</code>, and
+<code>touch()</code> controls.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_shiny_server()</code> pairs with <code><a href="tempest_shiny_ui.html">tempest_shiny_ui()</a></code> and lets a host app
-provide a runtime <a href="TempestConfig.html">TempestConfig</a>, optional expert personas, a stable session
-id, and an optional shared store. The returned handle exposes the shared
-store and reactive accessors for the current session, report, and report
-readiness signal.</p>
+provide a <a href="TempestConfig.html">TempestConfig</a>, process-local <code><a href="tempest_runtime.html">tempest_runtime()</a></code>, optional expert
+profiles, a stable session id, and an optional shared store. The returned
+handle exposes the shared store and reactive accessors for generic run,
+event, approval, capability-grant, artifact, session, and report state.</p>
     </div>
 
     <div class="section level2">

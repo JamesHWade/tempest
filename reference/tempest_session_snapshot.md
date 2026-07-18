@@ -25,11 +25,13 @@ A list containing a schema-versioned session snapshot.
 `tempest_session_snapshot()` returns a structured, in-memory
 representation of the durable state in a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
-It includes the session identity, personas, transcript, mind map, report
-artifacts, progress-event history, expert-session metadata, and the
-underlying `SourceStore` ledger. Live chat handles, tools, Shiny
-reactive state, credentials, and provider request bodies are not
-included.
+It includes the session identity, expert profiles, transcript, mind map,
+typed deliverable specifications and artifacts, auxiliary session state,
+progress-event history, expert-session metadata, serializable skill and
+connection-reference records, capability decisions, an attached generic
+workflow run, and the underlying `SourceStore` ledger. Live chat
+handles, runtime clients, tools, closures, Shiny reactive state,
+credentials, and provider request bodies are not included.
 
 Use
 [`tempest_session_restore()`](https://jameshwade.github.io/tempest/reference/tempest_session_restore.md)

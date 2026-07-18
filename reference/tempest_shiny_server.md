@@ -10,8 +10,11 @@ tempest_shiny_server(
   config = tempest_config(),
   store = NULL,
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
-  personas = NULL,
-  session_id = NULL
+  experts = NULL,
+  runtime = tempest_runtime(),
+  connection_permissions = list(),
+  session_id = NULL,
+  run = NULL
 )
 ```
 
@@ -36,11 +39,23 @@ tempest_shiny_server(
 
   Character vector matching the UI panels.
 
-- personas:
+- experts:
 
-  Optional expert definitions passed to
+  Optional expert profiles passed to
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   for new Co-STORM sessions. May be a value, function, or reactive.
+
+- runtime:
+
+  A
+  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md),
+  function, or reactive used to resolve process-local operations,
+  capabilities, and connections.
+
+- connection_permissions:
+
+  Named per-role or per-expert connection allow-lists passed to
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
 
 - session_id:
 
@@ -48,19 +63,31 @@ tempest_shiny_server(
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   for new Co-STORM sessions. May be a value, function, or reactive.
 
+- run:
+
+  Optional `TempestRun`, function, or reactive. This lets a host expose
+  a custom headless workflow through the same generic adapter reactives
+  as built-in workflows.
+
 ## Value
 
-A list with `store`, `session`, `report`, and `report_ready`.
+A list with the shared `store`; reactive `run`, `status`, `events`,
+`approvals`, `assignments`, `artifacts`, `evidence`, `grants`,
+`session`, `report`, and `report_ready` accessors; and `approve()`,
+`cancel()`, and `touch()` controls.
 
 ## Details
 
 `tempest_shiny_server()` pairs with
 [`tempest_shiny_ui()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_ui.md)
-and lets a host app provide a runtime
+and lets a host app provide a
 [TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md),
-optional expert personas, a stable session id, and an optional shared
+process-local
+[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md),
+optional expert profiles, a stable session id, and an optional shared
 store. The returned handle exposes the shared store and reactive
-accessors for the current session, report, and report readiness signal.
+accessors for generic run, event, approval, capability-grant, artifact,
+session, and report state.
 
 ## Examples
 

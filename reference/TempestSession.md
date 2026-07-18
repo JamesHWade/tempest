@@ -1,7 +1,7 @@
 # TempestSession
 
 Maintains state for a Co-STORM session: multi-agent dialog, mind map,
-sources, and report artifacts.
+sources, auxiliary session state, and typed deliverable artifacts.
 
 ## Public fields
 
@@ -16,6 +16,14 @@ sources, and report artifacts.
 - `config`:
 
   A `TempestConfig` object.
+
+- `runtime`:
+
+  A `TempestRuntime` containing process-local adapters.
+
+- `connection_permissions`:
+
+  Named per-role or per-expert connection allow-lists.
 
 - `session_id`:
 
@@ -33,9 +41,9 @@ sources, and report artifacts.
 
   A `TempestRetriever` object.
 
-- `personas`:
+- `experts`:
 
-  List of expert personas.
+  List of validated `tempest_expert` profiles.
 
 - `expert_session_manager`:
 
@@ -55,7 +63,21 @@ sources, and report artifacts.
 
 - `artifacts`:
 
-  Environment of report artifacts.
+  Environment of auxiliary and legacy-compatible session state.
+
+- `artifact_catalog`:
+
+  Typed deliverable specifications and artifacts produced by the
+  session.
+
+- `workflow_run`:
+
+  Optional generic `TempestRun` that owns the session workflow
+  lifecycle.
+
+- `capability_grants`:
+
+  Serializable capability decisions by execution context.
 
 - `discourse_manager`:
 
@@ -73,9 +95,9 @@ sources, and report artifacts.
 
 - [`TempestSession$transcript_markdown()`](#method-TempestSession-transcript_markdown)
 
-- [`TempestSession$get_persona_names()`](#method-TempestSession-get_persona_names)
+- [`TempestSession$get_expert_names()`](#method-TempestSession-get_expert_names)
 
-- [`TempestSession$get_persona_descriptions()`](#method-TempestSession-get_persona_descriptions)
+- [`TempestSession$get_expert_descriptions()`](#method-TempestSession-get_expert_descriptions)
 
 - [`TempestSession$update_mindmap()`](#method-TempestSession-update_mindmap)
 
@@ -87,7 +109,7 @@ sources, and report artifacts.
 
 - [`TempestSession$suggest_questions()`](#method-TempestSession-suggest_questions)
 
-- [`TempestSession$find_expert_index()`](#method-TempestSession-find_expert_index)
+- [`TempestSession$find_expert()`](#method-TempestSession-find_expert)
 
 - [`TempestSession$step()`](#method-TempestSession-step)
 
@@ -99,7 +121,7 @@ sources, and report artifacts.
 
 - [`TempestSession$retire_expert()`](#method-TempestSession-retire_expert)
 
-- [`TempestSession$get_active_personas()`](#method-TempestSession-get_active_personas)
+- [`TempestSession$get_active_experts()`](#method-TempestSession-get_active_experts)
 
 - [`TempestSession$check_and_expand_nodes()`](#method-TempestSession-check_and_expand_nodes)
 
@@ -126,8 +148,10 @@ Create a new TempestSession.
     TempestSession$new(
       topic,
       config = tempest_config(),
+      runtime = tempest_runtime(),
       n_experts = 3,
-      personas = NULL,
+      experts = NULL,
+      connection_permissions = list(),
       retriever = NULL,
       progress = NULL,
       session_id = NULL
@@ -143,15 +167,26 @@ Create a new TempestSession.
 
   A `TempestConfig` object.
 
+- `runtime`:
+
+  A
+  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+  containing process-local adapters.
+
 - `n_experts`:
 
   Number of expert agents.
 
-- `personas`:
+- `experts`:
 
-  Optional list of pre-generated personas. If NULL, personas are
+  Optional list of validated expert profiles. If `NULL`, experts are
   generated automatically using
-  [`tempest_generate_personas()`](https://jameshwade.github.io/tempest/reference/tempest_generate_personas.md).
+  [`tempest_generate_experts()`](https://jameshwade.github.io/tempest/reference/tempest_generate_experts.md).
+
+- `connection_permissions`:
+
+  Named list mapping role or expert ids to opaque connection ids allowed
+  for this session.
 
 - `retriever`:
 
@@ -267,31 +302,31 @@ Markdown string.
 
 ------------------------------------------------------------------------
 
-### `TempestSession$get_persona_names()`
+### `TempestSession$get_expert_names()`
 
-Get persona names for agent routing.
+Get expert names for agent routing.
 
 #### Usage
 
-    TempestSession$get_persona_names()
+    TempestSession$get_expert_names()
 
 #### Returns
 
-Character vector of persona names.
+Character vector of expert names.
 
 ------------------------------------------------------------------------
 
-### `TempestSession$get_persona_descriptions()`
+### `TempestSession$get_expert_descriptions()`
 
-Build persona descriptions for moderator context.
+Build expert descriptions for moderator context.
 
 #### Usage
 
-    TempestSession$get_persona_descriptions()
+    TempestSession$get_expert_descriptions()
 
 #### Returns
 
-A formatted string describing all personas.
+A formatted string describing all experts.
 
 ------------------------------------------------------------------------
 
@@ -336,7 +371,7 @@ Extract facts from text into the store.
       turn = NULL,
       source_ids = NULL,
       session_id = self$session_id,
-      persona_id = NA_character_,
+      expert_id = NA_character_,
       correlation_id = NA_character_
     )
 
@@ -358,9 +393,9 @@ Extract facts from text into the store.
 
   Optional Co-STORM or expert session id.
 
-- `persona_id`:
+- `expert_id`:
 
-  Optional persona id.
+  Optional expert id.
 
 - `correlation_id`:
 
@@ -414,19 +449,19 @@ A character vector of questions (possibly empty).
 
 ------------------------------------------------------------------------
 
-### `TempestSession$find_expert_index()`
+### `TempestSession$find_expert()`
 
-Find expert index by persona name.
+Find an expert index by stable id.
 
 #### Usage
 
-    TempestSession$find_expert_index(name)
+    TempestSession$find_expert(expert_id)
 
 #### Arguments
 
-- `name`:
+- `expert_id`:
 
-  The agent name to look up.
+  The stable expert id to look up.
 
 #### Returns
 
@@ -533,7 +568,7 @@ Add a new expert to the panel dynamically.
 
 #### Returns
 
-The new persona (invisibly).
+The new expert profile (invisibly).
 
 ------------------------------------------------------------------------
 
@@ -543,13 +578,13 @@ Retire an expert from the panel.
 
 #### Usage
 
-    TempestSession$retire_expert(name)
+    TempestSession$retire_expert(expert_id)
 
 #### Arguments
 
-- `name`:
+- `expert_id`:
 
-  The name of the expert to retire.
+  The stable id of the expert to retire.
 
 #### Returns
 
@@ -557,17 +592,17 @@ Logical indicating success.
 
 ------------------------------------------------------------------------
 
-### `TempestSession$get_active_personas()`
+### `TempestSession$get_active_experts()`
 
-Get active (non-retired) personas.
+Get active expert profiles.
 
 #### Usage
 
-    TempestSession$get_active_personas()
+    TempestSession$get_active_experts()
 
 #### Returns
 
-List of active persona objects.
+List of active `tempest_expert` profiles.
 
 ------------------------------------------------------------------------
 
