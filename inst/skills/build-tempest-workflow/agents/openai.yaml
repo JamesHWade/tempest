@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Tempest Workflow"
+  short_description: "Implement custom Tempest workflows in R"
+  default_prompt: "Use $build-tempest-workflow to implement this custom Tempest workflow with tests."

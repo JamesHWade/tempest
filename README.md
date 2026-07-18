@@ -261,6 +261,34 @@ Run `vignette("reusable-workflows", package = "tempest")` for a complete,
 offline example that combines a selected expert, output template, workflow,
 approval, typed artifact, audit trail, and save/restore cycle.
 
+## Agent skills for custom workflows
+
+Tempest ships three portable Agent Skills that help a coding agent design,
+implement, and audit host-defined workflows against the public workflow
+kernel:
+
+- `design-tempest-workflow` defines contracts, graph, permissions, approvals,
+  and acceptance tests.
+- `build-tempest-workflow` turns that design into public Tempest API calls and
+  deterministic R tests.
+- `verify-tempest-workflow` audits runtime, approval, artifact, failure, and
+  restore integrity.
+
+List the bundled skill directories or install them into the directory used by
+your agent:
+
+```r
+tempest_agent_skills()
+
+# Install all three for user-level Codex sessions.
+tempest_install_agent_skills("~/.codex/skills")
+```
+
+Pass `skills = ` to install a subset. Existing copies are preserved unless
+`overwrite = TRUE`. These Agent Skills are distinct from `tempest_skill()`,
+which defines a serializable procedure assigned to an expert inside a Tempest
+workflow.
+
 ## Scripted STORM
 
 ```r

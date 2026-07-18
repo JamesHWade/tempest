@@ -68,6 +68,7 @@ URL: https://jameshwade.github.io/tempest/,
 BugReports: https://github.com/JamesHWade/tempest/issues
 Config/roxygen2/version: 8.0.0
 Collate: 
+    'agent-skills.R'
     'app.R'
     'artifact-bundle.R'
     'artifact-catalog.R'
