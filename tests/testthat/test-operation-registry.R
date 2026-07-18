@@ -13,8 +13,15 @@ test_that("operation registries resolve functions by id", {
     version = "2",
     kind = "generator"
   )
+  descriptor <- registry$describe(
+    "generator.summary",
+    version = "2",
+    kind = "generator"
+  )
 
   expect_equal(implementation("content"), "Summary: content")
+  expect_equal(descriptor$metadata$owner, "tempest")
+  expect_false("implementation" %in% names(descriptor))
   expect_identical(
     registry$has("generator.summary", kind = "generator"),
     TRUE

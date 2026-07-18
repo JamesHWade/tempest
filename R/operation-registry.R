@@ -153,6 +153,16 @@ TempestOperationRegistry <- R6::R6Class(
       descriptor$implementation
     },
 
+    describe = function(id, version = NULL, kind = NULL) {
+      descriptor <- private$resolve_descriptor(
+        id,
+        version = version,
+        kind = kind,
+        error = TRUE
+      )
+      descriptor[c("id", "version", "kind", "metadata")]
+    },
+
     has = function(id, version = NULL, kind = NULL) {
       !is.null(private$resolve_descriptor(
         id,
@@ -272,8 +282,8 @@ TempestOperationRegistry <- R6::R6Class(
 #' @param operations Optional list of named function shorthand entries or
 #'   descriptor lists. A descriptor contains `id`, `implementation`, `version`,
 #'   `kind`, and optional serializable `metadata`.
-#' @return A mutable runtime registry with `register()`, `resolve()`, `has()`,
-#'   and `list()` methods.
+#' @return A mutable runtime registry with `register()`, `resolve()`,
+#'   `describe()`, `has()`, and `list()` methods.
 #' @examples
 #' registry <- tempest_operation_registry(list(
 #'   summarize = list(

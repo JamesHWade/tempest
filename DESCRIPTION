@@ -78,6 +78,8 @@ Collate:
     'progress-events.R'
     'workflow-types.R'
     'operation-registry.R'
+    'artifact-catalog.R'
+    'deliverables.R'
     'prompts.R'
     'retriever.R'
     'run-persistence.R'

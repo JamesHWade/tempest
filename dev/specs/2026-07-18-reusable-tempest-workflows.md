@@ -482,7 +482,7 @@ sequenceDiagram
 - [x] Add S7 objective, deliverable-specification, validation-result, and
   artifact records with exported constructors.
 - [x] Add a runtime operation registry with classed resolution errors.
-- [ ] Implement the shared deliverable lifecycle and built-in Markdown report
+- [x] Implement the shared deliverable lifecycle and built-in Markdown report
   generator, validator, renderer, and exporter operations.
 - [ ] Replace sync and async Co-STORM report generation with the shared
   lifecycle.

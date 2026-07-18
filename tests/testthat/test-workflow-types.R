@@ -45,6 +45,10 @@ test_that("deliverable specifications are serializable and fingerprinted", {
     generator_id = "generator.response",
     validator_ids = "validator.required",
     renderer_ids = c("renderer.markdown", "renderer.json"),
+    operation_versions = c(
+      "generator.response" = "2",
+      "renderer.markdown" = "2026.1"
+    ),
     media_types = c("text/markdown", "application/json"),
     filename_policy = list(stem = "response")
   )
@@ -59,6 +63,10 @@ test_that("deliverable specifications are serializable and fingerprinted", {
     generator_id = "generator.response",
     validator_ids = "validator.required",
     renderer_ids = c("renderer.markdown", "renderer.json"),
+    operation_versions = c(
+      "generator.response" = "2",
+      "renderer.markdown" = "2026.1"
+    ),
     media_types = c("text/markdown", "application/json"),
     filename_policy = list(stem = "response")
   )
@@ -73,6 +81,10 @@ test_that("deliverable specifications are serializable and fingerprinted", {
     generator_id = "generator.response",
     validator_ids = "validator.required",
     renderer_ids = c("renderer.markdown", "renderer.json"),
+    operation_versions = c(
+      "generator.response" = "2",
+      "renderer.markdown" = "2026.1"
+    ),
     media_types = c("text/markdown", "application/json"),
     filename_policy = list(stem = "response")
   )
@@ -82,6 +94,7 @@ test_that("deliverable specifications are serializable and fingerprinted", {
     TRUE
   )
   expect_equal(spec@media_types, c("text/markdown", "application/json"))
+  expect_equal(spec@operation_versions[["generator.response"]], "2")
   expect_equal(
     tempest_deliverable_fingerprint(spec),
     tempest_deliverable_fingerprint(copy)
@@ -122,6 +135,18 @@ test_that("deliverable specifications reject invalid operations and policies", {
   )
   expect_error(
     make_spec(version = "bad version"),
+    class = "tempest_workflow_spec_error"
+  )
+  expect_error(
+    tempest_deliverable_spec(
+      "response",
+      title = "Response",
+      purpose = "Answer the request",
+      instructions = "Use evidence.",
+      generator_id = "generator.response",
+      renderer_ids = "renderer.markdown",
+      operation_versions = c("unknown" = "1")
+    ),
     class = "tempest_workflow_spec_error"
   )
 })

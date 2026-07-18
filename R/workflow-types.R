@@ -123,6 +123,7 @@ TempestDeliverableSpec <- S7::new_class(
     validator_ids = tempest_workflow_prop_chr_vec(),
     renderer_ids = tempest_workflow_prop_chr_vec(),
     exporter_ids = tempest_workflow_prop_chr_vec(),
+    operation_versions = tempest_workflow_prop_chr_vec(),
     content_type = tempest_workflow_prop_chr("text"),
     media_types = tempest_workflow_prop_chr_vec(),
     filename_policy = tempest_workflow_prop_list(),
@@ -296,6 +297,8 @@ tempest_objective <- function(
 #' @param validator_ids Runtime validator operation identifiers.
 #' @param renderer_ids Runtime renderer operation identifiers.
 #' @param exporter_ids Runtime exporter operation identifiers.
+#' @param operation_versions Optional named character vector mapping operation
+#'   identifiers to required versions.
 #' @param content_type Canonical content type.
 #' @param media_types Artifact media types this specification may produce.
 #' @param filename_policy Serializable filename policy.
@@ -326,6 +329,7 @@ tempest_deliverable_spec <- function(
   validator_ids = character(),
   renderer_ids,
   exporter_ids = character(),
+  operation_versions = character(),
   content_type = "text",
   media_types = "text/markdown",
   filename_policy = list(),
@@ -369,6 +373,50 @@ tempest_deliverable_spec <- function(
     )
   }
   exporter_ids <- tempest_workflow_character(exporter_ids, "exporter_ids")
+  if (!is.character(operation_versions) || anyNA(operation_versions)) {
+    tempest_workflow_abort(
+      "{.arg operation_versions} must be a named character vector without missing values."
+    )
+  }
+  version_ids <- names(operation_versions)
+  operation_versions <- tempest_trim(operation_versions)
+  names(operation_versions) <- version_ids
+  if (any(!nzchar(operation_versions))) {
+    tempest_workflow_abort(
+      "{.arg operation_versions} cannot contain empty versions."
+    )
+  }
+  operation_ids <- c(
+    generator_id,
+    validator_ids,
+    renderer_ids,
+    exporter_ids
+  )
+  if (length(operation_versions) > 0L) {
+    if (
+      is.null(version_ids) ||
+        anyNA(version_ids) ||
+        any(!nzchar(tempest_trim(version_ids))) ||
+        anyDuplicated(version_ids) ||
+        any(!version_ids %in% operation_ids)
+    ) {
+      tempest_workflow_abort(
+        c(
+          "{.arg operation_versions} must be named by operation id.",
+          i = "Every name must identify an operation in this specification."
+        )
+      )
+    }
+    operation_versions <- stats::setNames(
+      vapply(
+        operation_versions,
+        tempest_workflow_version,
+        character(1),
+        arg = "operation_versions"
+      ),
+      version_ids
+    )
+  }
   content_type <- tempest_workflow_scalar(content_type, "content_type")
   media_types <- tempest_workflow_character(media_types, "media_types")
   if (length(media_types) == 0L) {
@@ -399,6 +447,7 @@ tempest_deliverable_spec <- function(
     validator_ids = validator_ids,
     renderer_ids = renderer_ids,
     exporter_ids = exporter_ids,
+    operation_versions = operation_versions,
     content_type = content_type,
     media_types = media_types,
     filename_policy = filename_policy,
