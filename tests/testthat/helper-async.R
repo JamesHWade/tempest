@@ -23,3 +23,13 @@ await_tempest_promise <- function(promise, timeout_s = 10) {
   }
   list(value = value, error = error)
 }
+
+local_mirai_coverage_dir <- function(.local_envir = parent.frame()) {
+  if (identical(Sys.getenv("R_COVR"), "true")) {
+    withr::local_envvar(
+      COVERAGE_DIR = tempdir(),
+      .local_envir = .local_envir
+    )
+  }
+  invisible(NULL)
+}

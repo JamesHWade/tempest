@@ -2,6 +2,7 @@ test_that("tempest_run_async returns before background work completes", {
   skip_if_not_installed("promises")
   skip_if_not_installed("mirai")
   skip_if_not_installed("later")
+  local_mirai_coverage_dir()
   withr::local_options(tempest.async_runner = function(topic) {
     Sys.sleep(0.4)
     list(topic = topic, worker_pid = Sys.getpid())
@@ -24,6 +25,7 @@ test_that("tempest_run_async preserves classed worker errors", {
   skip_if_not_installed("promises")
   skip_if_not_installed("mirai")
   skip_if_not_installed("later")
+  local_mirai_coverage_dir()
   withr::local_options(tempest.async_runner = function(topic) {
     rlang::abort("worker failed", class = "tempest_test_worker_error")
   })
@@ -38,6 +40,7 @@ test_that("tempest_run_cancel stops unresolved workers", {
   skip_if_not_installed("promises")
   skip_if_not_installed("mirai")
   skip_if_not_installed("later")
+  local_mirai_coverage_dir()
   withr::local_options(tempest.async_runner = function(topic) {
     Sys.sleep(5)
     topic

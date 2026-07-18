@@ -51,6 +51,7 @@ test_that("module UIs namespace their input ids", {
 
 test_that("STORM worker cancellation stops Mirai work and records progress", {
   skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
   app <- source_shiny_modules()
   job <- mirai::mirai({
     Sys.sleep(5)
@@ -1994,6 +1995,7 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
 
 test_that("STORM worker streams progress before mirai resolves", {
   skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
   app <- source_shiny_modules()
   stream_path <- withr::local_tempfile(fileext = ".ndjson")
   release_path <- withr::local_tempfile(fileext = ".release")
@@ -2073,6 +2075,7 @@ test_that("STORM worker streams progress before mirai resolves", {
 
 test_that("STORM worker adapter tolerates older tempest_run signatures in mirai", {
   skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
   app <- source_shiny_modules()
   old_run <- function(
     topic,
