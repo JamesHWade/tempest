@@ -125,7 +125,9 @@ TempestWorkflowSpec <- S7::new_class(
 #' @param produced_artifact_ids Artifact ids the step promises to publish.
 #' @param assignment_rule `"none"`, `"all"`, an exact character vector of
 #'   expert ids, or a list with `type` and `expert_ids`.
-#' @param required_capability_ids,optional_capability_ids Scoped capabilities.
+#' @param required_capability_ids,optional_capability_ids Capabilities resolved
+#'   once for the shared step context. Experts assigned to a step with scoped
+#'   capabilities must share the same `model_role`.
 #' @param retry_policy A serializable list with positive `max_attempts`.
 #' @param failure_policy Either `"stop"` or `"continue"`.
 #' @param approval_checkpoint Whether approval is required before execution.

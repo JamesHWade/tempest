@@ -26,6 +26,15 @@ test_that("skill registry resolves exact capabilities and instructions", {
     operations = operations
   )
 
+  expect_error(
+    registry$resolve(
+      "compare",
+      required_capability_ids = "evidence.read",
+      optional_capability_ids = "evidence.read"
+    ),
+    class = "tempest_skill_registry_error"
+  )
+
   resolved <- registry$resolve(
     c("compare", "summarize"),
     versions = c(compare = "3"),
@@ -306,6 +315,25 @@ test_that("capabilities receive only allowed runtime connections", {
   expect_equal(capability_calls, 1L)
 })
 
+test_that("connection factories cannot resolve to NULL", {
+  reference <- tempest_connection_ref(
+    "documents",
+    provider_id = "test.host",
+    connection_type = "search",
+    title = "Documents",
+    description = "Approved documents"
+  )
+  provider <- tempest_connection_provider(
+    list(reference),
+    bindings = list(documents = \(...) NULL)
+  )
+
+  expect_error(
+    provider$resolve("documents", allowed_ref_ids = "documents"),
+    class = "tempest_connection_provider_error"
+  )
+})
+
 test_that("factory and authorization failures follow required policy", {
   specification <- tempest_capability_spec(
     "browser.open",
@@ -332,6 +360,13 @@ test_that("factory and authorization failures follow required policy", {
     optional$grants[["browser.open"]]$reason_code,
     "factory_failed"
   )
+  expect_error(
+    failing$resolve(
+      required_capability_ids = "browser.open",
+      optional_capability_ids = "browser.open"
+    ),
+    class = "tempest_capability_resolution_error"
+  )
 
   denied <- tempest_capability_resolver(
     list(specification),
@@ -350,6 +385,27 @@ test_that("factory and authorization failures follow required policy", {
   expect_equal(
     resolution$grants[["browser.open"]]$reason_code,
     "authorization_denied"
+  )
+})
+
+test_that("capability grant metadata excludes secrets and runtime values", {
+  expect_error(
+    tempest:::tempest_capability_grant_record(
+      capability_id = "documents.search",
+      required = TRUE,
+      status = "granted",
+      metadata = list(api_key = "must-not-persist")
+    ),
+    class = "tempest_capability_resolution_error"
+  )
+  expect_error(
+    tempest:::tempest_capability_grant_record(
+      capability_id = "documents.search",
+      required = TRUE,
+      status = "granted",
+      metadata = list(client = \() NULL)
+    ),
+    class = "tempest_capability_resolution_error"
   )
 })
 

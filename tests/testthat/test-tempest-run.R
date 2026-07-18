@@ -371,6 +371,8 @@ test_that("run snapshots exclude runtime and restore with explicit bindings", {
   )
   expect_identical(restored$runtime_context$client, runtime_client)
   expect_identical(restored$status, "awaiting_approval")
+  expect_identical(restored$events, snapshot$events)
+  expect_identical(restored$approvals, snapshot$approvals)
   expect_identical(
     tempest_workflow_fingerprint(restored$workflow),
     tempest_workflow_fingerprint(workflow)
@@ -552,6 +554,157 @@ test_that("run connection permissions are durable opaque allow-lists", {
     ),
     class = "tempest_run_preflight_error"
   )
+})
+
+test_that("step capabilities require a common assigned model role", {
+  factory_calls <- 0L
+  operation_calls <- 0L
+  operations <- tempest_operation_registry(list(
+    act = list(
+      kind = "step",
+      implementation = function(capability_resolution) {
+        operation_calls <<- operation_calls + 1L
+        expect_equal(
+          capability_resolution$grants$documents.search$status,
+          "granted"
+        )
+        "complete"
+      }
+    )
+  ))
+  connection <- tempest_connection_ref(
+    "connection.shared-documents",
+    provider_id = "test.host",
+    connection_type = "document-search",
+    title = "Shared documents",
+    description = "Approved shared documents"
+  )
+  capability <- tempest_capability_spec(
+    "documents.search",
+    purpose = "Search approved documents",
+    instructions = "Use only the shared connection.",
+    operation_id = "capability.documents.search",
+    connection_ref_ids = connection@connection_id,
+    model_roles = "expert"
+  )
+  runtime <- tempest_runtime(
+    operations = operations,
+    capability_specs = list(capability),
+    capability_implementations = list(
+      "documents.search" = function(connections, ...) {
+        factory_calls <<- factory_calls + 1L
+        expect_named(connections, connection@connection_id)
+        list(tools = list())
+      }
+    ),
+    connection_refs = list(connection),
+    connection_bindings = list(
+      "connection.shared-documents" = list(scope = "read")
+    ),
+    include_builtins = FALSE
+  )
+  make_expert <- function(expert_id, model_role) {
+    tempest_expert(
+      expert_id,
+      name = expert_id,
+      title = "Expert",
+      description = "Exercises collective capability scope.",
+      instructions = "Use only granted capabilities.",
+      model_role = model_role
+    )
+  }
+  make_workflow <- function(
+    required_capability_ids = character(),
+    optional_capability_ids = character()
+  ) {
+    tempest_workflow_spec(
+      "collective-capability-workflow",
+      title = "Collective capability workflow",
+      purpose = "Exercise shared step capability scope",
+      steps = list(tempest_workflow_step(
+        "act",
+        title = "Act",
+        purpose = "Use a shared capability",
+        operation_id = "act",
+        assignment_rule = list(type = "all"),
+        required_capability_ids = required_capability_ids,
+        optional_capability_ids = optional_capability_ids
+      ))
+    )
+  }
+  objective <- tempest_objective("Exercise shared capability scope")
+  mixed_roles <- list(
+    make_expert("expert.writer", "writer"),
+    make_expert("expert.researcher", "expert")
+  )
+
+  expect_error(
+    tempest_run_workflow(
+      objective,
+      make_workflow(required_capability_ids = "documents.search"),
+      runtime,
+      experts = mixed_roles,
+      connection_permissions = list(
+        expert = connection@connection_id,
+        writer = connection@connection_id
+      )
+    ),
+    class = "tempest_run_preflight_error"
+  )
+  expect_error(
+    tempest_run_workflow(
+      objective,
+      make_workflow(optional_capability_ids = "documents.search"),
+      runtime,
+      experts = rev(mixed_roles),
+      connection_permissions = list(
+        expert = connection@connection_id,
+        writer = connection@connection_id
+      )
+    ),
+    class = "tempest_run_preflight_error"
+  )
+  policy_expert <- tempest_expert(
+    "expert.policy",
+    name = "Policy expert",
+    title = "Expert",
+    description = "Exercises a host-managed model policy.",
+    instructions = "Use only granted capabilities.",
+    model_role = NA_character_,
+    model_policy_ref = "policy.customer-research"
+  )
+  expect_error(
+    tempest_run_workflow(
+      objective,
+      make_workflow(required_capability_ids = "documents.search"),
+      runtime,
+      experts = list(policy_expert),
+      connection_permissions = list(
+        "expert.policy" = connection@connection_id
+      )
+    ),
+    class = "tempest_run_preflight_error"
+  )
+  expect_identical(factory_calls, 0L)
+  expect_identical(operation_calls, 0L)
+
+  common_role <- list(
+    make_expert("expert.two", "expert"),
+    make_expert("expert.one", "expert")
+  )
+  run <- tempest_run_workflow(
+    objective,
+    make_workflow(required_capability_ids = "documents.search"),
+    runtime,
+    experts = common_role,
+    connection_permissions = list(
+      expert = connection@connection_id
+    )
+  )
+
+  expect_identical(run$status, "succeeded")
+  expect_identical(factory_calls, 1L)
+  expect_identical(operation_calls, 1L)
 })
 
 test_that("side-effecting capabilities require approval before resolution", {

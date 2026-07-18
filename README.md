@@ -483,6 +483,11 @@ procedures, `tempest_capability_spec()` for permissioned behavior,
 `tempest_connection_ref()` for durable non-secret connection identities, and
 `tempest_runtime()` for process-local implementations and authenticated
 bindings. Selected experts can then declare exact skill and capability IDs.
+Code that previously passed `tools = ` to `tempest_config()` should instead
+define a named `tempest_capability_spec()`, pass it to
+`tempest_runtime(capability_specs = )`, register a same-ID factory that returns
+`list(tools = )` through `capability_implementations = `, and grant that
+capability ID to the relevant expert or workflow step.
 
 ## Interactive Co-STORM
 

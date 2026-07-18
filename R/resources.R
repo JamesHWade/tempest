@@ -35,6 +35,7 @@ tempest_resource_content <- function(content) {
   if (is.null(content)) {
     return(NULL)
   }
+  # Validate canonical encodability without rewriting caller-visible content.
   tryCatch(
     tempest_canonical_value(content),
     error = function(error) {

@@ -45,7 +45,9 @@ tempest_workflow_step(
 \item{assignment_rule}{\code{"none"}, \code{"all"}, an exact character vector of
 expert ids, or a list with \code{type} and \code{expert_ids}.}
 
-\item{required_capability_ids, optional_capability_ids}{Scoped capabilities.}
+\item{required_capability_ids, optional_capability_ids}{Capabilities resolved
+once for the shared step context. Experts assigned to a step with scoped
+capabilities must share the same \code{model_role}.}
 
 \item{retry_policy}{A serializable list with positive \code{max_attempts}.}
 
