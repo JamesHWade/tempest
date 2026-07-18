@@ -18,8 +18,10 @@ operations.}
 \value{
 A mutable registry with \code{register()}, \code{get()}, \code{has()}, \code{list()},
 \code{resolve()}, and \code{resolve_for_expert()} methods. Resolution combines skill
-instructions with the exact required and optional capability sets supplied
-by the caller or declared by the expert.
+instructions with the required and optional capability sets supplied by
+the caller or declared by the expert. Caller-supplied sets must be
+disjoint. When a selected skill requires an otherwise optional capability,
+the requirement is promoted and the returned sets remain disjoint.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}

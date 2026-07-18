@@ -261,6 +261,8 @@ tempest_builtin_workflow_adapter <- function(
       logical(1)
     )
     missing_ids <- expected_ids[!present]
+    # Intermediate stages may return legacy values rather than typed artifacts.
+    # Preserve their output ids as checkpoints; the final report is mandatory.
     missing_reports <- intersect(missing_ids, "report_md")
     if (length(missing_reports) > 0L) {
       tempest_builtin_workflow_abort(

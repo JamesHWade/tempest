@@ -581,7 +581,9 @@ TempestRun <- R6::R6Class(
       policy_adapter = NULL,
       run_id = NULL,
       progress = NULL,
-      restored = FALSE
+      restored = FALSE,
+      restore_snapshot = NULL,
+      partial_recovery = FALSE
     ) {
       if (!S7::S7_inherits(objective, TempestObjective)) {
         tempest_run_abort(
@@ -687,7 +689,44 @@ TempestRun <- R6::R6Class(
         }),
         vapply(workflow@steps, \(step) step@step_id, character(1))
       )
-      if (!isTRUE(restored)) {
+      if (isTRUE(restored)) {
+        if (!is.list(restore_snapshot) || is.data.frame(restore_snapshot)) {
+          tempest_run_abort(
+            "Restored runs require a validated snapshot.",
+            class = "tempest_run_restore_error"
+          )
+        }
+        if (
+          !identical(
+            names(self$step_states),
+            names(restore_snapshot$step_states)
+          )
+        ) {
+          tempest_run_abort(
+            "Run snapshot step state does not match the workflow.",
+            class = "tempest_run_restore_error"
+          )
+        }
+        if (!identical(self$assignments, restore_snapshot$assignments)) {
+          tempest_run_abort(
+            "Run snapshot expert assignments do not match the workflow.",
+            class = "tempest_run_restore_error"
+          )
+        }
+        private$restore_state(
+          restore_snapshot,
+          partial_recovery = tempest_workflow_flag(
+            partial_recovery,
+            "partial_recovery"
+          )
+        )
+      } else {
+        if (!is.null(restore_snapshot) || isTRUE(partial_recovery)) {
+          tempest_run_abort(
+            "Restore state can only be supplied for a restored run.",
+            class = "tempest_run_restore_error"
+          )
+        }
         private$emit("workflow.created", "pending")
       }
       invisible(self)
@@ -1133,6 +1172,14 @@ TempestRun <- R6::R6Class(
           class = "tempest_run_preflight_error"
         )
       }
+      for (step in self$workflow@steps) {
+        if (
+          length(step@required_capability_ids) > 0L ||
+            length(step@optional_capability_ids) > 0L
+        ) {
+          private$step_model_role(step)
+        }
+      }
       invisible(self)
     },
 
@@ -1397,6 +1444,40 @@ TempestRun <- R6::R6Class(
       ))
     },
 
+    step_model_role = function(step) {
+      expert_ids <- self$assignments[[step@step_id]]
+      experts <- self$experts[expert_ids]
+      if (length(experts) == 0L) {
+        return(NULL)
+      }
+      roles <- vapply(
+        experts,
+        \(expert) expert@model_role,
+        character(1)
+      )
+      if (anyNA(roles)) {
+        tempest_run_abort(
+          c(
+            "Step-scoped capabilities require one concrete shared model role.",
+            x = "Step {.val {step@step_id}} assigns an expert whose host model policy has not been resolved.",
+            i = "Resolve every {.arg model_policy_ref} to the same {.arg model_role} before starting the run."
+          ),
+          class = "tempest_run_preflight_error"
+        )
+      }
+      if (length(unique(roles)) > 1L) {
+        tempest_run_abort(
+          c(
+            "Step-scoped capabilities require one shared model role.",
+            x = "Step {.val {step@step_id}} assigns experts with heterogeneous model roles.",
+            i = "Split the step or assign experts with the same model role."
+          ),
+          class = "tempest_run_preflight_error"
+        )
+      }
+      roles[[1]]
+    },
+
     record_capability_grants = function(
       step_id,
       attempt,
@@ -1477,14 +1558,7 @@ TempestRun <- R6::R6Class(
           length(step@required_capability_ids) > 0L ||
             length(step@optional_capability_ids) > 0L
         ) {
-          model_role <- if (length(experts) > 0L) {
-            experts[[1]]@model_role
-          } else {
-            NULL
-          }
-          if (length(model_role) == 1L && is.na(model_role)) {
-            model_role <- NULL
-          }
+          model_role <- private$step_model_role(step)
           capability_resolution <- tryCatch(
             self$runtime$capabilities$resolve(
               required_capability_ids = step@required_capability_ids,
@@ -2122,7 +2196,9 @@ TempestRun <- R6::R6Class(
 #'   containing an operation registry.
 #' @param experts Exact pool of selected [tempest_expert()] profiles.
 #' @param connection_permissions Named list mapping expert or model-role ids to
-#'   opaque connection ids allowed for this run.
+#'   opaque connection ids allowed for this run. Step-scoped capabilities use
+#'   the union of assigned expert-id permissions and their one shared model-role
+#'   permission.
 #' @param deliverables Deliverable specifications available to the run.
 #' @param artifact_catalog Optional typed artifact catalog.
 #' @param source_store Optional `SourceStore` evidence ledger.
@@ -3406,23 +3482,8 @@ tempest_run_restore <- function(
     policy_adapter = policy_adapter,
     run_id = snapshot$run_id,
     progress = progress,
-    restored = TRUE
-  )
-  expected_assignments <- run$assignments
-  if (!identical(names(run$step_states), names(snapshot$step_states))) {
-    tempest_run_abort(
-      "Run snapshot step state does not match the workflow.",
-      class = "tempest_run_restore_error"
-    )
-  }
-  if (!identical(expected_assignments, snapshot$assignments)) {
-    tempest_run_abort(
-      "Run snapshot expert assignments do not match the workflow.",
-      class = "tempest_run_restore_error"
-    )
-  }
-  run$.__enclos_env__$private$restore_state(
-    snapshot,
+    restored = TRUE,
+    restore_snapshot = snapshot,
     partial_recovery = partial_recovery
   )
   tempest_run_validate_restored_outputs(run)

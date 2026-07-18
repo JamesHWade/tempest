@@ -30,7 +30,9 @@ containing an operation registry.}
 \item{experts}{Exact pool of selected \code{\link[=tempest_expert]{tempest_expert()}} profiles.}
 
 \item{connection_permissions}{Named list mapping expert or model-role ids to
-opaque connection ids allowed for this run.}
+opaque connection ids allowed for this run. Step-scoped capabilities use
+the union of assigned expert-id permissions and their one shared model-role
+permission.}
 
 \item{deliverables}{Deliverable specifications available to the run.}
 

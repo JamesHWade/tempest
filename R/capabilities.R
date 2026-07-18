@@ -190,6 +190,16 @@ TempestSkillRegistry <- R6::R6Class(
         optional_capability_ids,
         "optional_capability_ids"
       )
+      caller_overlap <- intersect(
+        required_capability_ids,
+        optional_capability_ids
+      )
+      if (length(caller_overlap) > 0L) {
+        tempest_skill_registry_abort(c(
+          "Required and optional capability requests must be disjoint.",
+          x = "Duplicated capability: {.val {caller_overlap[[1]]}}."
+        ))
+      }
 
       skills <- lapply(skill_ids, function(skill_id) {
         version <- if (skill_id %in% names(versions)) {
@@ -213,6 +223,8 @@ TempestSkillRegistry <- R6::R6Class(
       )
       skill_required <- skill_required %||% character()
       required <- unique(c(required_capability_ids, skill_required))
+      # A selected skill can strengthen an enclosing optional request. The
+      # returned capability sets remain disjoint, with required taking priority.
       optional <- setdiff(optional_capability_ids, required)
       instructions <- stats::setNames(
         vapply(skills, \(skill) skill@instructions, character(1)),
@@ -361,8 +373,10 @@ TempestSkillRegistry <- R6::R6Class(
 #'   operations.
 #' @return A mutable registry with `register()`, `get()`, `has()`, `list()`,
 #'   `resolve()`, and `resolve_for_expert()` methods. Resolution combines skill
-#'   instructions with the exact required and optional capability sets supplied
-#'   by the caller or declared by the expert.
+#'   instructions with the required and optional capability sets supplied by
+#'   the caller or declared by the expert. Caller-supplied sets must be
+#'   disjoint. When a selected skill requires an otherwise optional capability,
+#'   the requirement is promoted and the returned sets remain disjoint.
 #' @examples
 #' operations <- tempest_operation_registry()
 #' operations$register(
