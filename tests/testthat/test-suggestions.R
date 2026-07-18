@@ -80,11 +80,11 @@ test_that("TempestSession$suggest_questions delegates to the generator", {
   ses <- tempest_session(
     "Test topic",
     config = cfg,
-    personas = list(list(
-      id = 1,
+    experts = list(test_expert(
+      expert_id = "expert.a",
       name = "Dr. A",
       title = "Sci",
-      perspective = "X"
+      description = "X"
     ))
   )
   out <- ses$suggest_questions(n = 2)
@@ -100,11 +100,11 @@ test_that("suggest_questions forwards transcript context when non-empty", {
   ses <- tempest_session(
     "Test topic",
     config = cfg,
-    personas = list(list(
-      id = 1,
+    experts = list(test_expert(
+      expert_id = "expert.a",
       name = "Dr. A",
       title = "Sci",
-      perspective = "X"
+      description = "X"
     ))
   )
   ses$add_turn("User", "user", "hello there")
@@ -149,11 +149,11 @@ test_that("Co-STORM moderator prompt suppresses generic next-step menus", {
   ses <- tempest_session(
     "Adaptive animatronics",
     config = cfg,
-    personas = list(list(
-      id = 1,
+    experts = list(test_expert(
+      expert_id = "expert.a",
       name = "Dr. A",
       title = "Engineer",
-      perspective = "Safety"
+      description = "Safety"
     ))
   )
 

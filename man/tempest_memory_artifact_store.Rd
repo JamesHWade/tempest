@@ -18,6 +18,6 @@ deciding where to persist them.
 }
 \examples{
 store <- tempest_memory_artifact_store()
-store$write("summary", "Done")
+# Stores accept typed artifacts produced by a deliverable lifecycle.
 store$list()
 }

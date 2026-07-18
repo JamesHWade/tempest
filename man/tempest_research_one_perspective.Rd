@@ -7,8 +7,10 @@
 tempest_research_one_perspective(
   i,
   perspectives,
-  personas,
+  experts,
   config,
+  runtime = tempest_runtime(),
+  connection_permissions = list(),
   topic,
   research_strategy,
   max_questions_per_perspective,

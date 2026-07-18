@@ -19,6 +19,153 @@ test_that("tempest_run rejects invalid runtime budgets before provider work", {
   }
 })
 
+test_that("generated experts normalize to stable S7 profiles", {
+  provider_result <- list(
+    personas = list(
+      list(
+        name = "Dr. Flow",
+        title = "Workflow analyst",
+        affiliation = "Systems Lab",
+        background = "Studies orchestration systems.",
+        focus_areas = c("Progress", "Recovery"),
+        perspective = "Reliable workflow execution",
+        initial_questions = c("How is progress recorded?")
+      )
+    )
+  )
+
+  first <- tempest:::tempest_normalize_experts(provider_result)
+  second <- tempest:::tempest_normalize_experts(provider_result)
+
+  expect_length(first, 1L)
+  expect_s7_class(first[[1]], TempestExpertProfile)
+  expect_equal(first[[1]]@version, "1")
+  expect_equal(first[[1]]@name, "Dr. Flow")
+  expect_equal(first[[1]]@description, "Reliable workflow execution")
+  expect_match(first[[1]]@instructions, "Reliable workflow execution")
+  expect_equal(first[[1]]@focus_areas, c("Progress", "Recovery"))
+  expect_equal(
+    first[[1]]@initial_questions,
+    "How is progress recorded?"
+  )
+  expect_identical(first[[1]]@expert_id, second[[1]]@expert_id)
+  expect_match(first[[1]]@expert_id, "^expert\\.generated-")
+})
+
+test_that("tempest_generate_experts returns validated profiles", {
+  skip_if_not_installed("ellmer")
+  provider_result <- list(
+    personas = list(list(
+      name = "Dr. Scope",
+      title = "Scope analyst",
+      affiliation = "",
+      background = "",
+      focus_areas = "Boundaries",
+      perspective = "Integration boundaries",
+      initial_questions = "What belongs in the package?"
+    ))
+  )
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      fake_chat(structured = list(provider_result))
+    }
+  )
+
+  experts <- tempest_generate_experts(
+    "Reusable workflows",
+    n = 1,
+    config = cfg
+  )
+
+  expect_length(experts, 1L)
+  expect_s7_class(experts[[1]], TempestExpertProfile)
+  expect_equal(experts[[1]]@name, "Dr. Scope")
+})
+
+test_that("tempest_run uses the selected expert team", {
+  skip_if_not_installed("ellmer")
+  expert <- tempest_expert(
+    expert_id = "expert.selected",
+    name = "Selected Expert",
+    title = "Domain specialist",
+    description = "Host-selected expertise",
+    instructions = "Use the host-selected perspective."
+  )
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  store <- SourceStore$new()
+  retriever <- tempest_retriever(config = cfg, store = store)
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8L) {
+      tibble::tibble(
+        title = "Seed",
+        url = "https://example.org/seed",
+        snippet = "Seed"
+      )
+    },
+    tempest_extract_toc_from_url = function(url) character(),
+    tempest_generate_perspectives = function(
+      chat,
+      topic,
+      seed_context,
+      n_experts,
+      module = NULL
+    ) {
+      list(
+        title = topic,
+        perspectives = list(list(
+          name = "Selected perspective",
+          description = "Uses the selected expert.",
+          key_questions = "What matters?"
+        ))
+      )
+    },
+    tempest_generate_experts = function(...) {
+      stop("selected experts must not trigger generation")
+    }
+  )
+
+  result <- tempest_run(
+    "Selected team",
+    config = cfg,
+    retriever = retriever,
+    experts = list(expert),
+    dsprrr_modules = list(),
+    steps = "perspectives",
+    verbose = FALSE
+  )
+
+  expect_identical(result$experts[[1]], expert)
+  expect_identical(store$get_artifact("experts")[[1]], expert)
+  expect_null(result$personas)
+})
+
+test_that("tempest_run resume starts fresh when no manifest exists", {
+  loader_called <- FALSE
+  local_mocked_bindings(
+    tempest_load_run_artifacts = function(...) {
+      loader_called <<- TRUE
+      stop("unexpected loader call")
+    },
+    tempest_make_chat = function(...) {
+      stop("continued with a fresh run")
+    }
+  )
+
+  expect_error(
+    tempest_run(
+      "New resumable run",
+      output_dir = withr::local_tempdir(),
+      resume = TRUE,
+      steps = "perspectives",
+      verbose = FALSE
+    ),
+    "continued with a fresh run"
+  )
+  expect_identical(loader_called, FALSE)
+})
+
 test_that("tempest_run emits ordered STORM progress events", {
   skip_if_not_installed("ellmer")
   local_mocked_bindings(
@@ -220,6 +367,14 @@ test_that("tempest_run emits ordered STORM progress events", {
   )
   expect_match(result$report_md, "Polished report")
   expect_equal(
+    result$artifact_catalog$get("report_md")@content,
+    result$report_md
+  )
+  expect_equal(
+    result$artifact_catalog$get("report_md")@run_id,
+    "progress-run"
+  )
+  expect_equal(
     collector$data(event_type = "artifact")[[1]]$payload$artifact,
     "report_md"
   )
@@ -281,17 +436,18 @@ test_that("STORM research harvests OpenAI native annotations", {
     description = "Native evidence perspective.",
     key_questions = c("What does native evidence say?")
   ))
-  personas <- list(list(
-    id = 1,
+  experts <- list(tempest_expert(
+    expert_id = "expert.native",
     name = "Dr. Native",
     title = "Researcher",
-    perspective = "Native evidence"
+    description = "Native evidence",
+    instructions = "Research native evidence."
   ))
 
   result <- tempest:::tempest_research_one_perspective(
     1,
     perspectives = perspectives,
-    personas = personas,
+    experts = experts,
     config = cfg,
     topic = "Native evidence",
     research_strategy = "key_questions",

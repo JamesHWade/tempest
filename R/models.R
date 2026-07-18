@@ -197,7 +197,9 @@ tempest_validate_source <- function(source) {
 #' artifacts. Stays an R6 reference object: it is the mutable accumulator
 #' threaded through every pipeline stage and Co-STORM turn.
 #'
-#' @field sources Environment of source objects keyed by id.
+#' @field resources Environment of typed resources and built-in web-source
+#'   records keyed by resource id.
+#' @field sources Alias of `resources` retained for built-in web adapters.
 #' @field claims Environment of claim records keyed by claim_id.
 #' @field evidence_spans Environment of evidence-span records keyed by id.
 #' @field disputes Environment of dispute records keyed by id.
@@ -208,6 +210,7 @@ tempest_validate_source <- function(source) {
 SourceStore <- R6::R6Class(
   "SourceStore",
   public = list(
+    resources = NULL,
     sources = NULL,
     claims = NULL,
     evidence_spans = NULL,
@@ -219,7 +222,8 @@ SourceStore <- R6::R6Class(
     #' @param max_sources Maximum number of unique sources. New sources are
     #'   refused once the limit is reached.
     initialize = function(max_sources = Inf) {
-      self$sources <- new.env(parent = emptyenv())
+      self$resources <- new.env(parent = emptyenv())
+      self$sources <- self$resources
       self$claims <- new.env(parent = emptyenv())
       self$evidence_spans <- new.env(parent = emptyenv())
       self$disputes <- new.env(parent = emptyenv())
@@ -253,10 +257,14 @@ SourceStore <- R6::R6Class(
     },
 
     #' @description Insert or update a source.
-    #' @param source A source list with an `id` field.
+    #' @param source A built-in web-source list or a typed resource created by
+    #'   [tempest_resource()].
     upsert_source = function(source) {
+      if (S7::S7_inherits(source, TempestResource)) {
+        return(self$upsert_resource(source))
+      }
       source <- tempest_validate_source(source)
-      is_new <- is.null(self$sources[[source$id]])
+      is_new <- is.null(self$resources[[source$id]])
       if (is_new && length(self$list_sources()) >= self$max_sources) {
         tempest_source_store_abort(
           c(
@@ -265,20 +273,65 @@ SourceStore <- R6::R6Class(
           )
         )
       }
-      self$sources[[source$id]] <- source
+      self$resources[[source$id]] <- source
       invisible(source$id)
     },
 
     #' @description Get a source by id.
     #' @param source_id The source id.
     get_source = function(source_id) {
-      self$sources[[source_id]] %||% NULL
+      resource <- self$resources[[source_id]] %||% NULL
+      if (is.null(resource)) {
+        return(NULL)
+      }
+      tempest_resource_as_source(resource)
     },
 
     #' @description List all sources.
     list_sources = function() {
-      ids <- ls(self$sources, all.names = TRUE)
-      purrr::map(ids, ~ self$sources[[.x]])
+      ids <- ls(self$resources, all.names = TRUE)
+      purrr::map(ids, self$get_source)
+    },
+
+    #' @description Insert or update a typed evidence resource.
+    #' @param resource A resource created by [tempest_resource()].
+    upsert_resource = function(resource) {
+      if (!S7::S7_inherits(resource, TempestResource)) {
+        tempest_source_store_abort(
+          "{.arg resource} must be created by {.fn tempest_resource}."
+        )
+      }
+      resource_id <- resource@resource_id
+      is_new <- is.null(self$resources[[resource_id]])
+      if (is_new && length(self$list_resources()) >= self$max_sources) {
+        tempest_source_store_abort(
+          c(
+            "SourceStore resource limit reached.",
+            i = "Increase {.arg max_sources} to admit more resources."
+          )
+        )
+      }
+      self$resources[[resource_id]] <- resource
+      invisible(resource_id)
+    },
+
+    #' @description Get a typed evidence resource by id.
+    #' @param resource_id Resource id.
+    get_resource = function(resource_id) {
+      resource <- self$resources[[resource_id]] %||% NULL
+      if (is.null(resource)) {
+        return(NULL)
+      }
+      if (S7::S7_inherits(resource, TempestResource)) {
+        return(resource)
+      }
+      tempest_source_as_resource(resource)
+    },
+
+    #' @description List all evidence as typed resources.
+    list_resources = function() {
+      ids <- ls(self$resources, all.names = TRUE)
+      purrr::map(ids, self$get_resource)
     },
 
     #' @description Add a claim record to the ledger.
@@ -291,7 +344,7 @@ SourceStore <- R6::R6Class(
       }
       missing_sources <- setdiff(
         claim@source_ids,
-        ls(self$sources, all.names = TRUE)
+        ls(self$resources, all.names = TRUE)
       )
       if (length(missing_sources) > 0L) {
         tempest_source_store_abort(
@@ -476,8 +529,11 @@ SourceStore <- R6::R6Class(
       sources <- if (length(s) == 0) {
         tibble::tibble(
           id = character(),
+          resource_kind = character(),
+          locator = character(),
           url = character(),
           title = character(),
+          media_type = character(),
           snippet = character(),
           content_text = character(),
           context_text = character(),
@@ -487,8 +543,26 @@ SourceStore <- R6::R6Class(
       } else {
         tibble::tibble(
           id = purrr::map_chr(s, "id"),
+          resource_kind = purrr::map_chr(
+            s,
+            function(source) {
+              source$meta$resource_kind %||% "web"
+            }
+          ),
+          locator = purrr::map_chr(
+            s,
+            function(source) {
+              source$meta$locator %||% source$url %||% NA_character_
+            }
+          ),
           url = purrr::map_chr(s, "url"),
           title = purrr::map_chr(s, ~ .x$title %||% NA_character_),
+          media_type = purrr::map_chr(
+            s,
+            function(source) {
+              source$meta$media_type %||% "text/html"
+            }
+          ),
           snippet = purrr::map_chr(s, tempest_source_snippet_text),
           content_text = purrr::map_chr(
             s,

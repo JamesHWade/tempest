@@ -5,7 +5,10 @@
 .DS_Store
 .quarto
 docs
+inst/doc
+vignettes/*.html
 # roborev snapshots
 /.roborev/
 .kata.local.toml
 .positai
+**/.dsprrr_cache/

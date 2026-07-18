@@ -434,7 +434,7 @@ tempest_tool_claim_payload <- function(
     verification_status = claim@verification_status,
     support_score = claim@support_score,
     session_id = claim@session_id,
-    persona_id = claim@persona_id,
+    expert_id = claim@expert_id,
     retrieval_step_id = claim@retrieval_step_id,
     created_at = claim@created_at,
     sources = sources
@@ -453,7 +453,7 @@ tempest_tool_fact_payload <- function(claim) {
     verification_status = claim@verification_status,
     support_score = claim@support_score,
     session_id = claim@session_id,
-    persona_id = claim@persona_id,
+    expert_id = claim@expert_id,
     retrieval_step_id = claim@retrieval_step_id,
     created_at = claim@created_at
   )
@@ -499,7 +499,7 @@ tempest_add_tool_claim <- function(
     source_ids = source_ids,
     confidence = confidence,
     session_id = provenance$session_id %||% NA_character_,
-    persona_id = provenance$persona_id %||% NA_character_,
+    expert_id = provenance$expert_id %||% NA_character_,
     retrieval_step_id = provenance$retrieval_step_id %||% NA_character_
   )
   store$add_claim(claim)
@@ -734,13 +734,23 @@ tempest_tool_write_ellmer_tools <- function(write) {
 }
 
 #' @keywords internal
-tempest_tools_retrieval <- function(
+tempest_tools_web <- function(
   retriever,
-  allow_claim_writes = TRUE,
-  claim_provenance = list()
+  model = NULL,
+  search_provider = "native"
 ) {
-  tempest_require("ellmer", "Tool calling for retrieval.")
+  tempest_require("ellmer", "Tool calling for web research.")
   stopifnot(inherits(retriever, "TempestRetriever"))
+
+  if (identical(search_provider, "native") && !is.null(model)) {
+    provider <- tempest_detect_provider(model)
+    if (!is.null(provider) && tempest_provider_has_native_search(provider)) {
+      native_tools <- tempest_get_native_web_tools(provider)
+      if (!is.null(native_tools)) {
+        return(native_tools)
+      }
+    }
+  }
 
   web_search <- function(query, k = retriever$config@max_search_results) {
     k <- tempest_config_count(k, "k")
@@ -756,62 +766,108 @@ tempest_tools_retrieval <- function(
   }
 
   fetch_url <- function(url) {
-    src <- retriever$fetch(url)
-    # return a compact payload to the model
+    source <- retriever$fetch(url)
     list(
-      source_id = src$id,
-      url = src$url,
-      title = src$title,
-      fetched_at = src$fetched_at,
-      kind = src$meta$kind %||% NA_character_,
-      error = src$meta$error %||% NA_character_,
-      excerpt = if (!is.na(src$content_text)) {
-        substr(src$content_text, 1, 1200)
+      source_id = source$id,
+      url = source$url,
+      title = source$title,
+      fetched_at = source$fetched_at,
+      kind = source$meta$kind %||% NA_character_,
+      error = source$meta$error %||% NA_character_,
+      excerpt = if (!is.na(source$content_text)) {
+        substr(source$content_text, 1L, 1200L)
       } else {
         NA_character_
       }
     )
   }
 
-  review <- tempest_tool_review_functions(retriever$store)
-  write <- tempest_tool_write_functions(
-    retriever$store,
-    provenance = claim_provenance
-  )
-
-  tools <- c(
-    list(
-      ellmer::tool(
-        web_search,
-        name = "web_search",
-        description = paste(
-          "Search the web (or Wikipedia) for relevant sources. Use this to discover sources to cite.",
-          "Return values include source_id, title, url, and snippet."
-        ),
-        arguments = list(
-          query = ellmer::type_string("Search query."),
-          k = ellmer::type_integer(
-            "Maximum number of results to return.",
-            required = FALSE
-          )
-        )
+  list(
+    ellmer::tool(
+      web_search,
+      name = "web_search",
+      description = paste(
+        "Search the web for relevant sources.",
+        "Results include source ids, titles, URLs, and snippets."
       ),
-      ellmer::tool(
-        fetch_url,
-        name = "fetch_url",
-        description = paste(
-          "Fetch a URL and extract readable plain text. Use this after web_search to read a source.",
-          "Returns source_id, title, and a text excerpt."
-        ),
-        arguments = list(
-          url = ellmer::type_string("The URL to fetch.")
+      arguments = list(
+        query = ellmer::type_string("Search query."),
+        k = ellmer::type_integer(
+          "Maximum number of results to return.",
+          required = FALSE
         )
       )
     ),
-    tempest_tool_review_ellmer_tools(review)
+    ellmer::tool(
+      fetch_url,
+      name = "fetch_url",
+      description = paste(
+        "Fetch a URL and extract readable plain text.",
+        "Use this after web_search to inspect a source."
+      ),
+      arguments = list(
+        url = ellmer::type_string("The URL to fetch.")
+      )
+    )
+  )
+}
+
+#' @keywords internal
+tempest_tools_evidence_read <- function(retriever) {
+  tempest_require("ellmer", "Tool calling for evidence review.")
+  stopifnot(inherits(retriever, "TempestRetriever"))
+  retriever$store |>
+    tempest_tool_review_functions() |>
+    tempest_tool_review_ellmer_tools()
+}
+
+#' @keywords internal
+tempest_tools_evidence_write <- function(
+  retriever,
+  claim_provenance = list()
+) {
+  tempest_require("ellmer", "Tool calling for evidence writing.")
+  stopifnot(inherits(retriever, "TempestRetriever"))
+  tempest_tool_write_functions(
+    retriever$store,
+    provenance = claim_provenance
+  ) |>
+    tempest_tool_write_ellmer_tools()
+}
+
+#' @keywords internal
+tempest_semantic_retrieval_registrar <- function(retriever) {
+  stopifnot(inherits(retriever, "TempestRetriever"))
+  if (is.null(retriever$ragnar_store) || !tempest_has("ragnar")) {
+    return(NULL)
+  }
+  function(chat, context = list()) {
+    ragnar::ragnar_register_tool_retrieve(
+      chat,
+      retriever$ragnar_store,
+      store_description = paste(
+        "the Tempest knowledge base containing approved evidence resources"
+      )
+    )
+    invisible(chat)
+  }
+}
+
+#' @keywords internal
+tempest_tools_retrieval <- function(
+  retriever,
+  allow_claim_writes = TRUE,
+  claim_provenance = list()
+) {
+  tools <- c(
+    tempest_tools_web(retriever, search_provider = "custom"),
+    tempest_tools_evidence_read(retriever)
   )
   if (isTRUE(allow_claim_writes)) {
-    tools <- c(tools, tempest_tool_write_ellmer_tools(write))
+    tools <- c(
+      tools,
+      tempest_tools_evidence_write(retriever, claim_provenance)
+    )
   }
 
   tools
@@ -837,15 +893,12 @@ tempest_tools_source_management <- function(
   tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
 
-  review <- tempest_tool_review_functions(retriever$store)
-  write <- tempest_tool_write_functions(
-    retriever$store,
-    provenance = claim_provenance
-  )
-
-  tools <- tempest_tool_review_ellmer_tools(review)
+  tools <- tempest_tools_evidence_read(retriever)
   if (isTRUE(allow_claim_writes)) {
-    tools <- c(tools, tempest_tool_write_ellmer_tools(write))
+    tools <- c(
+      tools,
+      tempest_tools_evidence_write(retriever, claim_provenance)
+    )
   }
   tools
 }
@@ -922,15 +975,102 @@ tempest_register_default_tools <- function(
 
 # Expert Subagent Pattern (inspired by btw)
 
+tempest_expert_session_abort <- function(message, ..., parent = NULL) {
+  tempest_abort(
+    message,
+    ...,
+    class = c("tempest_expert_session_error", "tempest_error"),
+    parent = parent,
+    .envir = rlang::caller_env()
+  )
+}
+
+tempest_expert_connection_grants <- function(
+  experts,
+  allowed_connection_ref_ids,
+  runtime
+) {
+  allowed_connection_ref_ids <- allowed_connection_ref_ids %||% list()
+  if (
+    !is.list(allowed_connection_ref_ids) ||
+      is.data.frame(allowed_connection_ref_ids)
+  ) {
+    tempest_expert_session_abort(
+      "{.arg allowed_connection_ref_ids} must be a named list."
+    )
+  }
+  expert_ids <- purrr::map_chr(experts, \(expert) expert@expert_id)
+  if (length(allowed_connection_ref_ids) > 0L) {
+    grant_ids <- names(allowed_connection_ref_ids)
+    if (
+      is.null(grant_ids) ||
+        anyNA(grant_ids) ||
+        any(!nzchar(grant_ids)) ||
+        anyDuplicated(grant_ids)
+    ) {
+      tempest_expert_session_abort(
+        "{.arg allowed_connection_ref_ids} must be named by expert id."
+      )
+    }
+    unknown <- setdiff(grant_ids, expert_ids)
+    if (length(unknown) > 0L) {
+      tempest_expert_session_abort(
+        "Connection grants identify unknown expert {.val {unknown[[1]]}}."
+      )
+    }
+  }
+  grants <- stats::setNames(
+    lapply(expert_ids, function(expert_id) {
+      connection_ids <- tempest_contract_ids(
+        allowed_connection_ref_ids[[expert_id]] %||% character(),
+        paste0("allowed_connection_ref_ids$", expert_id)
+      )
+      unavailable <- connection_ids[
+        !vapply(
+          connection_ids,
+          runtime$connections$has,
+          logical(1)
+        )
+      ]
+      if (length(unavailable) > 0L) {
+        tempest_expert_session_abort(c(
+          "Expert {.val {expert_id}} has an unavailable connection grant.",
+          x = "Connection {.val {unavailable[[1]]}} is not registered."
+        ))
+      }
+      connection_ids
+    }),
+    expert_ids
+  )
+  grants
+}
+
+tempest_expert_system_prompt <- function(expert, resolution) {
+  parts <- c(
+    tempest_render_expert_prompt(expert, expert_id = expert@expert_id),
+    paste0("Expert instructions:\n", expert@instructions)
+  )
+  if (nzchar(resolution$instructions %||% "")) {
+    parts <- c(
+      parts,
+      paste0("Assigned skill instructions:\n", resolution$instructions)
+    )
+  }
+  paste(parts, collapse = "\n\n")
+}
+
 #' Expert Session Manager
 #'
-#' Manages expert chat sessions with session IDs for conversation continuity.
-#' Each expert persona gets their own chat session that can be resumed using
-#' the session ID returned from previous interactions.
+#' Manages capability-scoped chats for validated expert profiles.
 #'
 #' @field sessions Environment storing active chat sessions keyed by session ID.
+#' @field session_profiles Environment storing serializable session bindings.
 #' @field config A `TempestConfig` object for creating chats.
 #' @field retriever A `TempestRetriever` for registering tools.
+#' @field runtime A `TempestRuntime` used to resolve skills and capabilities.
+#' @field experts Environment of expert profiles keyed by stable expert id.
+#' @field expert_connection_ref_ids Environment of allowed connection ids by
+#'   expert.
 #' @field extractor Chat object for fact extraction (optional).
 #' @field store A `SourceStore` for storing extracted facts (optional).
 #' @field progress Optional progress callback.
@@ -943,8 +1083,12 @@ ExpertSessionManager <- R6::R6Class(
   "ExpertSessionManager",
   public = list(
     sessions = NULL,
+    session_profiles = NULL,
     config = NULL,
     retriever = NULL,
+    runtime = NULL,
+    experts = NULL,
+    expert_connection_ref_ids = NULL,
     extractor = NULL,
     store = NULL,
     progress = NULL,
@@ -953,26 +1097,75 @@ ExpertSessionManager <- R6::R6Class(
 
     #' @description
     #' Create a new ExpertSessionManager.
+    #' @param experts Validated `tempest_expert` profiles.
+    #' @param runtime A `TempestRuntime`.
     #' @param config A `TempestConfig` object.
     #' @param retriever A `TempestRetriever` object.
+    #' @param allowed_connection_ref_ids Named list of allowed connection ids by
+    #'   expert id.
     #' @param extractor Optional chat object for fact extraction.
     #' @param store Optional `SourceStore` for storing extracted facts.
     #' @param progress Optional progress callback.
     #' @param run_id Shared Co-STORM session id for progress events.
     initialize = function(
+      experts,
+      runtime,
       config,
       retriever,
+      allowed_connection_ref_ids = list(),
       extractor = NULL,
       store = NULL,
       progress = NULL,
       run_id = NULL
     ) {
+      experts <- tryCatch(
+        tempest_validate_experts(experts, active_only = FALSE),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "{.arg experts} must contain validated expert profiles.",
+            parent = error
+          )
+        }
+      )
+      if (!inherits(runtime, "TempestRuntime")) {
+        tempest_expert_session_abort(
+          "{.arg runtime} must be created by {.fn tempest_runtime}."
+        )
+      }
+      if (!S7::S7_inherits(config, TempestConfig)) {
+        tempest_expert_session_abort(
+          "{.arg config} must be created by {.fn tempest_config}."
+        )
+      }
+      if (!inherits(retriever, "TempestRetriever")) {
+        tempest_expert_session_abort(
+          "{.arg retriever} must be a {.cls TempestRetriever}."
+        )
+      }
       self$sessions <- new.env(parent = emptyenv())
+      self$session_profiles <- new.env(parent = emptyenv())
       self$session_provenance <- new.env(parent = emptyenv())
+      self$experts <- new.env(parent = emptyenv())
+      self$expert_connection_ref_ids <- new.env(parent = emptyenv())
+      grants <- tempest_expert_connection_grants(
+        experts,
+        allowed_connection_ref_ids,
+        runtime
+      )
+      for (expert in experts) {
+        expert_id <- expert@expert_id
+        assign(expert_id, expert, envir = self$experts)
+        assign(
+          expert_id,
+          grants[[expert_id]],
+          envir = self$expert_connection_ref_ids
+        )
+      }
+      self$runtime <- runtime
       self$config <- config
       self$retriever <- retriever
       self$extractor <- extractor
-      self$store <- store
+      self$store <- store %||% retriever$store
       self$progress <- tempest_progress_callback(progress)
       self$run_id <- run_id %||% tempest_uuid("session")
       invisible(self)
@@ -1019,7 +1212,7 @@ ExpertSessionManager <- R6::R6Class(
     #' @param turn Optional ellmer turn to inspect for provider-native sources.
     #' @param source_ids Optional source ids already harvested for the turn.
     #' @param session_id Optional expert session id.
-    #' @param persona_id Optional persona id.
+    #' @param expert_id Optional stable expert id.
     #' @param correlation_id Optional progress correlation id for the turn.
     #' @return Invisibly returns NULL.
     extract_facts = function(
@@ -1027,7 +1220,7 @@ ExpertSessionManager <- R6::R6Class(
       turn = NULL,
       source_ids = NULL,
       session_id = NA_character_,
-      persona_id = NA_character_,
+      expert_id = NA_character_,
       correlation_id = NA_character_
     ) {
       if (!is.null(self$extractor) && !is.null(self$store)) {
@@ -1053,7 +1246,7 @@ ExpertSessionManager <- R6::R6Class(
               self$store,
               source_ids = unique(c(source_ids, harvested)),
               session_id = session_id,
-              persona_id = persona_id,
+              expert_id = expert_id,
               retrieval_step_id = correlation_id
             )
             self$emit_progress(
@@ -1084,74 +1277,258 @@ ExpertSessionManager <- R6::R6Class(
     },
 
     #' @description
-    #' Generate a human-readable session ID from a persona name.
-    #' @param persona_name Name of the persona.
-    #' @return Character string session ID like "dr-sarah-chen-abc123".
-    generate_session_id = function(persona_name) {
-      base <- tolower(gsub("[^a-zA-Z0-9]+", "-", persona_name))
-      base <- gsub("^-|-$", "", base)
-      suffix <- substr(digest::digest(runif(1), algo = "xxhash64"), 1, 7)
-      paste0(base, "-", suffix)
+    #' Add an active expert profile to the live roster.
+    #' @param expert A validated `tempest_expert`.
+    #' @param allowed_connection_ref_ids Connection ids granted to this expert.
+    #' @param replace Whether to replace an existing profile with the same id.
+    #' @return The stable expert id, invisibly.
+    add_expert = function(
+      expert,
+      allowed_connection_ref_ids = character(),
+      replace = FALSE
+    ) {
+      tryCatch(
+        tempest_validate_experts(list(expert), active_only = TRUE),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "{.arg expert} must be an active validated expert profile.",
+            parent = error
+          )
+        }
+      )
+      replace <- tempest_workflow_flag(replace, "replace")
+      expert_id <- expert@expert_id
+      present <- exists(expert_id, envir = self$experts, inherits = FALSE)
+      if (present && !replace) {
+        tempest_expert_session_abort(c(
+          "Expert {.val {expert_id}} is already in the live roster.",
+          i = "Set {.arg replace} to `TRUE` to replace it explicitly."
+        ))
+      }
+      grant <- tempest_expert_connection_grants(
+        list(expert),
+        stats::setNames(
+          list(allowed_connection_ref_ids),
+          expert_id
+        ),
+        self$runtime
+      )[[expert_id]]
+      if (present) {
+        private$retire_expert_sessions(expert_id)
+      }
+      assign(expert_id, expert, envir = self$experts)
+      assign(
+        expert_id,
+        grant,
+        envir = self$expert_connection_ref_ids
+      )
+      invisible(expert_id)
     },
 
     #' @description
-    #' Get an existing session or create a new one.
-    #' @param persona A persona object from `tempest_generate_personas()`.
-    #' @param session_id Optional session ID to resume.
-    #' @return List with `chat`, `session_id`, and `is_new` fields.
-    get_or_create = function(persona, session_id = NULL) {
-      # If session_id provided and exists, return it
-      if (!is.null(session_id) && exists(session_id, envir = self$sessions)) {
-        return(list(
-          chat = get(session_id, envir = self$sessions),
-          session_id = session_id,
-          is_new = FALSE,
-          provenance = get(
+    #' Retire an expert and all chats bound to that profile.
+    #' @param expert_id Stable expert id.
+    #' @return Whether the expert was present.
+    retire_expert = function(expert_id) {
+      expert_id <- private$expert_id(expert_id)
+      if (!exists(expert_id, envir = self$experts, inherits = FALSE)) {
+        return(FALSE)
+      }
+      expert <- get(expert_id, envir = self$experts, inherits = FALSE)
+      if (!identical(expert@state, "retired")) {
+        expert <- tempest_expert_update(expert, state = "retired")
+        assign(expert_id, expert, envir = self$experts)
+      }
+      private$retire_expert_sessions(expert_id)
+      TRUE
+    },
+
+    #' @description
+    #' Look up an expert by exact stable id.
+    #' @param expert_id Stable expert id.
+    #' @param active_only Whether retired profiles should be rejected.
+    #' @return A validated expert profile.
+    profile = function(expert_id, active_only = TRUE) {
+      expert_id <- private$expert_id(expert_id)
+      active_only <- tempest_workflow_flag(active_only, "active_only")
+      if (!exists(expert_id, envir = self$experts, inherits = FALSE)) {
+        tempest_expert_session_abort(
+          "Expert {.val {expert_id}} is not in the live roster."
+        )
+      }
+      expert <- get(expert_id, envir = self$experts, inherits = FALSE)
+      if (active_only && !identical(expert@state, "active")) {
+        tempest_expert_session_abort(
+          "Expert {.val {expert_id}} is retired and cannot run."
+        )
+      }
+      expert
+    },
+
+    #' @description
+    #' List expert profiles in stable-id order.
+    #' @param active_only Whether to omit retired profiles.
+    #' @return A list of validated expert profiles.
+    list_experts = function(active_only = TRUE) {
+      active_only <- tempest_workflow_flag(active_only, "active_only")
+      expert_ids <- sort(ls(self$experts, all.names = TRUE))
+      experts <- lapply(
+        expert_ids,
+        \(expert_id) get(expert_id, envir = self$experts, inherits = FALSE)
+      )
+      if (active_only) {
+        experts <- Filter(
+          \(expert) identical(expert@state, "active"),
+          experts
+        )
+      }
+      unname(experts)
+    },
+
+    #' @description
+    #' Get an expert's existing session or create a scoped chat.
+    #' @param expert_id Stable expert id or matching expert profile.
+    #' @param session_id Optional existing, manager-owned session id to resume.
+    #' @return Chat, session binding, grants, provenance, and creation status.
+    get_or_create = function(expert_id, session_id = NULL) {
+      expert <- private$resolve_expert(expert_id)
+      if (is.null(session_id)) {
+        session_id <- private$session_for_expert(expert@expert_id)
+        if (!is.null(session_id)) {
+          return(private$resume(expert, session_id))
+        }
+        return(private$create(expert))
+      }
+      session_id <- private$session_id(session_id)
+      if (!exists(session_id, envir = self$sessions, inherits = FALSE)) {
+        tempest_expert_session_abort(c(
+          "Expert session {.val {session_id}} is not active.",
+          i = "Only manager-owned session ids can be resumed."
+        ))
+      }
+      private$resume(expert, session_id)
+    },
+
+    #' @description
+    #' Restore a saved session binding through fresh runtime authorization.
+    #' @param binding Serializable session profile containing the opaque
+    #'   session id and exact expert identity fields.
+    #' @return The same result shape as `get_or_create()`.
+    restore_session = function(binding) {
+      binding <- tryCatch(
+        tempest_contract_serializable_list(binding, "binding"),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "{.arg binding} must be a serializable session profile.",
+            parent = error
+          )
+        }
+      )
+      required_fields <- c(
+        "session_id",
+        "expert_id",
+        "expert_version",
+        "expert_fingerprint"
+      )
+      missing_fields <- setdiff(required_fields, names(binding))
+      if (length(missing_fields) > 0L) {
+        tempest_expert_session_abort(
+          "Session binding is missing {.field {missing_fields[[1]]}}."
+        )
+      }
+      session_id <- private$session_id(binding$session_id)
+      if (!grepl("^expert-session_[a-f0-9]{16}$", session_id)) {
+        tempest_expert_session_abort(
+          "Restored session ids must be opaque Tempest expert-session ids."
+        )
+      }
+      if (
+        exists(session_id, envir = self$sessions, inherits = FALSE) ||
+          exists(
             session_id,
-            envir = self$session_provenance,
+            envir = self$session_profiles,
             inherits = FALSE
+          )
+      ) {
+        tempest_expert_session_abort(
+          "Expert session {.val {session_id}} is already active."
+        )
+      }
+      expert <- self$profile(binding$expert_id)
+      expert_version <- tryCatch(
+        tempest_workflow_version(
+          binding$expert_version,
+          "expert_version"
+        ),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "Session binding has an invalid expert version.",
+            parent = error
+          )
+        }
+      )
+      fingerprint <- binding$expert_fingerprint
+      if (
+        !rlang::is_string(fingerprint) ||
+          !grepl("^[a-f0-9]{64}$", fingerprint)
+      ) {
+        tempest_expert_session_abort(
+          "Session binding has an invalid expert fingerprint."
+        )
+      }
+      current_fingerprint <- tempest_expert_profile_fingerprint(expert)
+      if (
+        !identical(expert_version, expert@version) ||
+          !identical(fingerprint, current_fingerprint)
+      ) {
+        tempest_expert_session_abort(c(
+          "Expert session {.val {session_id}} cannot be restored.",
+          x = paste0(
+            "The saved expert version or fingerprint does not match the ",
+            "live profile."
           )
         ))
       }
-
-      # Create new session
-      sp <- tempest_render_expert_prompt(
-        persona = persona,
-        expert_id = persona$id %||% 1L
-      )
-      new_id <- session_id %||%
-        self$generate_session_id(persona$name %||% "expert")
-      persona_id <- as.character(persona$id %||% NA_integer_)
-      provenance <- new.env(parent = emptyenv())
-      provenance$base <- list(
-        session_id = new_id,
-        persona_id = persona_id
-      )
-      provenance$current <- list()
-      chat <- tempest_make_chat(
-        self$config,
-        "expert",
-        system_prompt = sp,
-        echo = "none"
-      )
-      tempest_register_default_tools(
-        chat,
-        self$retriever,
-        model = self$config@models[["expert"]],
-        search_provider = self$config@search_provider,
-        claim_provenance = function() {
-          utils::modifyList(provenance$base, provenance$current %||% list())
+      prior_grants <- tryCatch(
+        tempest_contract_serializable_list(
+          binding$grants %||% list(),
+          "binding$grants"
+        ),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "Saved capability grants must be serializable audit data.",
+            parent = error
+          )
         }
       )
+      private$create(
+        expert,
+        session_id = session_id,
+        prior_grants = prior_grants
+      )
+    },
 
-      assign(new_id, chat, envir = self$sessions)
-      assign(new_id, provenance, envir = self$session_provenance)
-
-      list(
-        chat = chat,
-        session_id = new_id,
-        is_new = TRUE,
-        provenance = provenance
+    #' @description
+    #' Return the serializable binding for an active session.
+    #' @param session_id Manager-owned expert session id.
+    #' @return Session binding including expert fingerprint and grants.
+    session_profile = function(session_id) {
+      session_id <- private$session_id(session_id)
+      if (
+        !exists(
+          session_id,
+          envir = self$session_profiles,
+          inherits = FALSE
+        )
+      ) {
+        tempest_expert_session_abort(
+          "Expert session {.val {session_id}} is not active."
+        )
+      }
+      get(
+        session_id,
+        envir = self$session_profiles,
+        inherits = FALSE
       )
     },
 
@@ -1159,7 +1536,7 @@ ExpertSessionManager <- R6::R6Class(
     #' List all active session IDs.
     #' @return Character vector of session IDs.
     list_sessions = function() {
-      ls(envir = self$sessions)
+      sort(ls(envir = self$sessions, all.names = TRUE))
     },
 
     #' @description
@@ -1169,100 +1546,398 @@ ExpertSessionManager <- R6::R6Class(
     #' @return A list describing whether the session existed and whether a
     #'   provider cancellation method was available.
     retire_session = function(session_id) {
-      if (
-        is.null(session_id) ||
-          !exists(session_id, envir = self$sessions, inherits = FALSE)
-      ) {
+      if (is.null(session_id)) {
+        return(list(retired = FALSE, cancellation_supported = FALSE))
+      }
+      session_id <- private$session_id(session_id)
+      if (!exists(session_id, envir = self$sessions, inherits = FALSE)) {
         return(list(retired = FALSE, cancellation_supported = FALSE))
       }
       chat <- get(session_id, envir = self$sessions, inherits = FALSE)
-      cancel <- chat$cancel %||% chat$stop %||% NULL
+      cancel <- tryCatch(
+        chat$cancel %||% chat$stop %||% NULL,
+        error = \(error) NULL
+      )
       cancellation_supported <- is.function(cancel)
       if (cancellation_supported) {
         try(cancel(), silent = TRUE)
       }
       rm(list = session_id, envir = self$sessions)
-      if (
-        exists(session_id, envir = self$session_provenance, inherits = FALSE)
-      ) {
-        rm(list = session_id, envir = self$session_provenance)
+      for (records in list(
+        self$session_profiles,
+        self$session_provenance
+      )) {
+        if (exists(session_id, envir = records, inherits = FALSE)) {
+          rm(list = session_id, envir = records)
+        }
       }
       list(
         retired = TRUE,
         cancellation_supported = cancellation_supported
       )
     }
+  ),
+  private = list(
+    expert_id = function(expert_id) {
+      tryCatch(
+        tempest_contract_id(expert_id, "expert_id"),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "{.arg expert_id} must be a valid stable expert id.",
+            parent = error
+          )
+        }
+      )
+    },
+
+    session_id = function(session_id) {
+      tryCatch(
+        tempest_workflow_scalar(session_id, "session_id"),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "{.arg session_id} must be a manager-owned session id.",
+            parent = error
+          )
+        }
+      )
+    },
+
+    resolve_expert = function(expert_or_id) {
+      if (S7::S7_inherits(expert_or_id, TempestExpertProfile)) {
+        tryCatch(
+          tempest_validate_experts(list(expert_or_id), active_only = TRUE),
+          error = function(error) {
+            tempest_expert_session_abort(
+              "{.arg expert_id} identifies an invalid expert profile.",
+              parent = error
+            )
+          }
+        )
+        current <- self$profile(expert_or_id@expert_id)
+        matches <- identical(current@version, expert_or_id@version) &&
+          identical(
+            tempest_expert_profile_fingerprint(current),
+            tempest_expert_profile_fingerprint(expert_or_id)
+          )
+        if (!matches) {
+          tempest_expert_session_abort(
+            paste0(
+              "Expert {.val {expert_or_id@expert_id}} does not match the ",
+              "profile in the live roster."
+            )
+          )
+        }
+        return(current)
+      }
+      self$profile(expert_or_id)
+    },
+
+    session_for_expert = function(expert_id) {
+      session_ids <- sort(ls(self$session_profiles, all.names = TRUE))
+      for (session_id in session_ids) {
+        binding <- get(
+          session_id,
+          envir = self$session_profiles,
+          inherits = FALSE
+        )
+        if (identical(binding$expert_id, expert_id)) {
+          return(session_id)
+        }
+      }
+      NULL
+    },
+
+    result = function(session_id, is_new) {
+      list(
+        chat = get(session_id, envir = self$sessions, inherits = FALSE),
+        session_id = session_id,
+        is_new = is_new,
+        provenance = get(
+          session_id,
+          envir = self$session_provenance,
+          inherits = FALSE
+        ),
+        profile = get(
+          session_id,
+          envir = self$session_profiles,
+          inherits = FALSE
+        ),
+        grants = get(
+          session_id,
+          envir = self$session_profiles,
+          inherits = FALSE
+        )$grants
+      )
+    },
+
+    create = function(
+      expert,
+      session_id = NULL,
+      prior_grants = list()
+    ) {
+      supplied_session_id <- !is.null(session_id)
+      session_id <- session_id %||% tempest_uuid("expert-session")
+      while (
+        exists(session_id, envir = self$sessions, inherits = FALSE) ||
+          exists(
+            session_id,
+            envir = self$session_profiles,
+            inherits = FALSE
+          )
+      ) {
+        if (supplied_session_id) {
+          tempest_expert_session_abort(
+            "Expert session {.val {session_id}} is already active."
+          )
+        }
+        session_id <- tempest_uuid("expert-session")
+      }
+      provenance <- new.env(parent = emptyenv())
+      provenance$base <- list(
+        session_id = session_id,
+        expert_id = expert@expert_id
+      )
+      provenance$current <- list()
+      model_role <- expert@model_role
+      if (is.na(model_role)) {
+        tempest_expert_session_abort(
+          paste0(
+            "Expert {.val {expert@expert_id}} requires a host model-policy ",
+            "resolver before chat creation."
+          )
+        )
+      }
+      model <- tempest_runtime_model(self$config, model_role)
+      context <- list(
+        retriever = self$retriever,
+        expert = expert,
+        expert_id = expert@expert_id,
+        model = model,
+        search_provider = self$config@search_provider,
+        claim_provenance = function() {
+          utils::modifyList(
+            provenance$base,
+            provenance$current %||% list()
+          )
+        }
+      )
+      allowed_connection_ref_ids <- get(
+        expert@expert_id,
+        envir = self$expert_connection_ref_ids,
+        inherits = FALSE
+      )
+      resolution <- tryCatch(
+        self$runtime$resolve_expert(
+          expert,
+          allowed_connection_ref_ids = allowed_connection_ref_ids,
+          context = context
+        ),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "Expert {.val {expert@expert_id}} could not be resolved.",
+            parent = error
+          )
+        }
+      )
+      system_prompt <- tempest_expert_system_prompt(expert, resolution)
+      chat <- tempest_make_chat(
+        self$config,
+        model_role,
+        system_prompt = system_prompt,
+        echo = "none"
+      )
+      tryCatch(
+        self$runtime$attach(chat, resolution, context = context),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "Expert {.val {expert@expert_id}} tools could not be attached.",
+            parent = error
+          )
+        }
+      )
+      binding <- list(
+        session_id = session_id,
+        expert_id = expert@expert_id,
+        expert_version = expert@version,
+        expert_fingerprint = resolution$expert_fingerprint,
+        model_role = model_role,
+        allowed_connection_ref_ids = allowed_connection_ref_ids,
+        grants = resolution$grants,
+        prior_grants = prior_grants,
+        created_at = tempest_now_utc()
+      )
+      assign(session_id, chat, envir = self$sessions)
+      assign(
+        session_id,
+        binding,
+        envir = self$session_profiles
+      )
+      assign(
+        session_id,
+        provenance,
+        envir = self$session_provenance
+      )
+      private$result(session_id, is_new = TRUE)
+    },
+
+    resume = function(expert, session_id) {
+      binding <- self$session_profile(session_id)
+      current_fingerprint <- tempest_expert_profile_fingerprint(expert)
+      if (
+        !identical(binding$expert_id, expert@expert_id) ||
+          !identical(binding$expert_version, expert@version) ||
+          !identical(binding$expert_fingerprint, current_fingerprint)
+      ) {
+        tempest_expert_session_abort(c(
+          "Expert session {.val {session_id}} cannot be resumed.",
+          x = paste0(
+            "The session is bound to a different expert id, version, ",
+            "or profile fingerprint."
+          )
+        ))
+      }
+      private$result(session_id, is_new = FALSE)
+    },
+
+    retire_expert_sessions = function(expert_id) {
+      session_ids <- ls(self$session_profiles, all.names = TRUE)
+      for (session_id in session_ids) {
+        binding <- get(
+          session_id,
+          envir = self$session_profiles,
+          inherits = FALSE
+        )
+        if (identical(binding$expert_id, expert_id)) {
+          self$retire_session(session_id)
+        }
+      }
+      invisible(NULL)
+    }
   )
 )
 
-#' Create an Expert Subagent Tool
+#' Create a scoped Tempest expert-session manager
 #'
-#' Creates an ellmer tool for a specific expert persona that can be called
-#' by the moderator to delegate questions.
+#' `r lifecycle::badge("experimental")`
 #'
-#' @param persona A persona object from `tempest_generate_personas()`.
+#' The manager owns a validated live expert roster and creates one
+#' capability-scoped chat per expert. Runtime tools and authenticated
+#' connections are resolved before chat creation and are never inferred from
+#' display names.
+#'
+#' @param experts List of [tempest_expert()] profiles.
+#' @param runtime A [tempest_runtime()].
+#' @param config A [tempest_config()].
+#' @param retriever A `TempestRetriever`.
+#' @param allowed_connection_ref_ids Named list of allowed connection ids by
+#'   stable expert id.
+#' @param extractor Optional fact-extraction chat.
+#' @param store Optional `SourceStore`; defaults to the retriever store.
+#' @param progress Optional progress callback.
+#' @param run_id Optional shared workflow run id.
+#' @return An `ExpertSessionManager`.
+#' @export
+tempest_expert_session_manager <- function(
+  experts,
+  runtime,
+  config,
+  retriever,
+  allowed_connection_ref_ids = list(),
+  extractor = NULL,
+  store = NULL,
+  progress = NULL,
+  run_id = NULL
+) {
+  ExpertSessionManager$new(
+    experts = experts,
+    runtime = runtime,
+    config = config,
+    retriever = retriever,
+    allowed_connection_ref_ids = allowed_connection_ref_ids,
+    extractor = extractor,
+    store = store,
+    progress = progress,
+    run_id = run_id
+  )
+}
+
+#' Create the expert delegation tool
+#'
+#' Creates one generic tool that resolves the manager's live roster by exact
+#' stable expert id.
+#'
 #' @param session_manager An `ExpertSessionManager` instance.
 #' @param topic The research topic (for context).
+#' @param experts Optional selected expert profiles. These are validated for
+#'   runtime composition, while calls resolve the manager's live roster.
 #' @return An ellmer tool.
 #' @keywords internal
-tempest_create_expert_tool <- function(persona, session_manager, topic) {
+tempest_create_expert_delegation_tool <- function(
+  session_manager,
+  topic,
+  experts = NULL
+) {
   tempest_require("ellmer", "Expert tools require ellmer.")
-
-  # Sanitize name for tool name (e.g., "Dr. Sarah Chen" -> "ask_dr_sarah_chen")
-  safe_name <- tolower(gsub("[^a-zA-Z0-9]+", "_", persona$name %||% "expert"))
-  safe_name <- gsub("^_|_$", "", safe_name)
-  tool_name <- paste0("ask_", safe_name)
-
-  # Build description from persona
-  desc <- paste0(
-    "Ask ",
-    persona$name %||% "Expert",
-    ", ",
-    persona$title %||% "Research Specialist",
-    ". ",
-    persona$perspective %||% "General research perspective."
+  if (!inherits(session_manager, "ExpertSessionManager")) {
+    tempest_expert_session_abort(
+      "{.arg session_manager} must be an {.cls ExpertSessionManager}."
+    )
+  }
+  topic <- tryCatch(
+    tempest_workflow_scalar(topic, "topic"),
+    error = function(error) {
+      tempest_expert_session_abort(
+        "{.arg topic} must be a single non-empty string.",
+        parent = error
+      )
+    }
   )
-
-  # Capture persona in closure
-  p <- persona
-  topic_str <- topic
+  if (!is.null(experts)) {
+    tryCatch(
+      tempest_validate_experts(experts, active_only = FALSE),
+      error = function(error) {
+        tempest_expert_session_abort(
+          "{.arg experts} must contain validated expert profiles.",
+          parent = error
+        )
+      }
+    )
+  }
   mgr <- session_manager
 
-  ask_expert <- function(question, session_id = NULL) {
-    result <- mgr$get_or_create(p, session_id)
+  ask_expert <- function(expert_id, question) {
+    expert <- mgr$profile(expert_id)
+    result <- mgr$get_or_create(expert@expert_id)
     chat <- result$chat
     sid <- result$session_id
     provenance <- result$provenance
-    persona_id <- as.character(p$id %||% NA_integer_)
-    expert_name <- p$name %||% "Expert"
+    expert_name <- expert@name
     correlation_id <- tempest_uuid("tool")
     tool_event <- mgr$emit_progress(
       "tool",
       "started",
       stage = "dialogue",
-      step = tool_name,
+      step = "delegate_to_expert",
       correlation_id = correlation_id,
       payload = list(
-        expert_id = persona_id,
+        expert_id = expert@expert_id,
         expert_name = expert_name,
         session_id = sid
       )
     )
 
-    # Build prompt with context
     prompt <- paste0(
       "Topic: ",
-      topic_str,
+      topic,
       "\n\n",
       "Question: ",
       question,
       "\n\n",
       "Instructions:\n",
-      "- Use the available web/source tools to find and cite sources.\n",
-      "- If web_search and fetch_url are available, search first and then fetch sources.\n",
+      "- Follow your expert profile and assigned skill instructions.\n",
+      "- Use only the capabilities and connections granted to this session.\n",
       "- Only state factual claims supported by sources you inspected.\n",
-      "- If add_claim is available, record key source-backed claims with it.\n",
-      "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
+      "- Cite source IDs like [Sxxxxxxxxxxxx] when evidence is available.\n",
       "- If evidence is weak or unclear, say so.\n\n",
       "Respond now:"
     )
@@ -1270,7 +1945,7 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
     old_provenance <- provenance$current %||% list()
     provenance$current <- list(
       session_id = sid,
-      persona_id = persona_id,
+      expert_id = expert@expert_id,
       retrieval_step_id = correlation_id
     )
     response <- tryCatch(
@@ -1280,12 +1955,12 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
           "tool",
           "failed",
           stage = "dialogue",
-          step = tool_name,
+          step = "delegate_to_expert",
           parent_event_id = tool_event@event_id,
           correlation_id = correlation_id,
           payload = c(
             list(
-              expert_id = persona_id,
+              expert_id = expert@expert_id,
               expert_name = expert_name,
               session_id = sid
             ),
@@ -1299,8 +1974,6 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       }
     )
 
-    # Extract plain text from the response using ellmer's contents_markdown
-    # This properly handles ellmer_output objects and tool call results
     last_turn <- tryCatch(chat$last_turn(), error = function(e) NULL)
     response_text <- if (
       is.null(last_turn) || length(last_turn@contents) == 0
@@ -1314,29 +1987,29 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
       ellmer::contents_markdown(last_turn)
     }
 
-    # Extract facts from expert response
     mgr$extract_facts(
       response_text,
       turn = last_turn,
       session_id = sid,
-      persona_id = persona_id,
+      expert_id = expert@expert_id,
       correlation_id = correlation_id
     )
     mgr$emit_progress(
       "tool",
       "succeeded",
       stage = "dialogue",
-      step = tool_name,
+      step = "delegate_to_expert",
       parent_event_id = tool_event@event_id,
       correlation_id = correlation_id,
       payload = list(
-        expert_id = persona_id,
+        expert_id = expert@expert_id,
         expert_name = expert_name,
         session_id = sid
       )
     )
 
     list(
+      expert_id = expert@expert_id,
       expert = expert_name,
       response = response_text,
       session_id = sid
@@ -1345,89 +2018,44 @@ tempest_create_expert_tool <- function(persona, session_manager, topic) {
 
   ellmer::tool(
     ask_expert,
-    name = tool_name,
-    description = desc,
+    name = "delegate_to_expert",
+    description = paste(
+      "Delegate a question to one active expert from the live roster.",
+      "Use the expert's exact stable expert_id."
+    ),
     arguments = list(
+      expert_id = ellmer::type_string(
+        "Exact stable id of an active expert in the live roster."
+      ),
       question = ellmer::type_string(
         "The question or topic to research. Be specific about what you need."
-      ),
-      session_id = ellmer::type_string(
-        "Optional: Resume a previous conversation with this expert. Use the session_id from a previous response.",
-        required = FALSE
       )
     )
   )
 }
 
-#' Create Expert Tools for All Personas
-#'
-#' Creates ellmer tools for each expert persona and returns them as a list.
-#'
-#' @param personas List of persona objects.
-#' @param session_manager An `ExpertSessionManager` instance.
-#' @param topic The research topic.
-#' @return A list of ellmer tools.
-#' @keywords internal
-tempest_create_expert_tools <- function(personas, session_manager, topic) {
-  purrr::map(personas, ~ tempest_create_expert_tool(.x, session_manager, topic))
-}
-
-#' Register Expert Tools on a Chat
-#'
-#' Registers expert subagent tools on a moderator chat, allowing it to
-#' delegate questions to specialized experts.
-#'
-#' @param chat An ellmer chat object (the moderator).
-#' @param personas List of persona objects.
-#' @param session_manager An `ExpertSessionManager` instance.
-#' @param topic The research topic.
-#' @return The chat object (invisibly).
-#' @keywords internal
-tempest_register_expert_tools <- function(
-  chat,
-  personas,
-  session_manager,
-  topic
-) {
-  tools <- tempest_create_expert_tools(personas, session_manager, topic)
-  chat$register_tools(tools)
-  invisible(chat)
-}
-
-#' Register a single expert tool on a chat
-#'
-#' @param chat An ellmer chat object.
-#' @param persona A persona object.
-#' @param session_manager An `ExpertSessionManager` instance.
-#' @param topic The research topic.
-#' @return The chat object (invisibly).
-#' @keywords internal
-tempest_register_single_expert_tool <- function(
-  chat,
-  persona,
-  session_manager,
-  topic
-) {
-  tool <- tempest_create_expert_tool(persona, session_manager, topic)
-  chat$register_tools(list(tool))
-  invisible(chat)
-}
-
-#' Generate a single expert persona for a specific area
+#' Generate a single expert profile for a specific area
 #'
 #' @param topic The research topic.
 #' @param area The area of expertise needed.
-#' @param existing_personas List of existing personas to avoid duplication.
+#' @param existing_experts Existing expert profiles to avoid duplicating.
 #' @param config A `TempestConfig` object.
-#' @return A persona list.
+#' @return A validated `tempest_expert` profile.
 #' @keywords internal
-tempest_generate_single_persona <- function(
+tempest_generate_single_expert <- function(
   topic,
   area,
-  existing_personas,
+  existing_experts,
   config
 ) {
   tempest_require("ellmer", "Generating expert personas requires ellmer.")
+  topic <- tempest_workflow_scalar(topic, "topic")
+  area <- tempest_workflow_scalar(area, "area")
+  existing_experts <- tempest_validate_experts(
+    existing_experts,
+    "existing_experts",
+    active_only = FALSE
+  )
 
   chat <- tempest_make_chat(
     config,
@@ -1436,16 +2064,19 @@ tempest_generate_single_persona <- function(
     echo = "none"
   )
 
-  existing_desc <- if (length(existing_personas) > 0) {
+  existing_desc <- if (length(existing_experts) > 0) {
     paste(
-      purrr::map_chr(existing_personas, function(p) {
+      purrr::map_chr(existing_experts, function(expert) {
         paste0(
           "- ",
-          p$name %||% "Expert",
+          expert@name,
+          " [",
+          expert@expert_id,
+          "]",
           " (",
-          p$title %||% "",
+          expert@title,
           "): ",
-          p$perspective %||% ""
+          expert@description
         )
       }),
       collapse = "\n"
@@ -1473,29 +2104,88 @@ tempest_generate_single_persona <- function(
     chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
     error = function(e) {
       tempest_warn(
-        "Failed to generate expert persona for {.val {area}}: {conditionMessage(e)}"
+        "Failed to generate expert profile for {.val {area}}: {conditionMessage(e)}"
       )
       list(personas = list())
     }
   )
   personas <- result$personas %||% list()
-  if (length(personas) == 0) {
-    tempest_warn("Using generic fallback persona for {.val {area}}.")
-    return(list(
-      name = paste("Expert in", area),
-      title = area,
-      affiliation = "Independent",
-      background = paste("Expert in", area),
-      focus_areas = list(area),
-      perspective = paste("Specializes in", area),
-      initial_questions = list(paste(
-        "What are the key aspects of",
-        area,
-        "related to",
-        topic,
-        "?"
-      ))
-    ))
+  if (length(personas) == 0L || !is.list(personas[[1]])) {
+    tempest_warn("Using generic fallback expert for {.val {area}}.")
+    persona <- list()
+  } else {
+    persona <- personas[[1]]
   }
-  personas[[1]]
+  scalar <- function(value, default) {
+    if (
+      !rlang::is_string(value) ||
+        is.na(value) ||
+        !nzchar(tempest_trim(value))
+    ) {
+      return(default)
+    }
+    tempest_trim(value)
+  }
+  characters <- function(value, default = character()) {
+    value <- unlist(value %||% character(), use.names = FALSE)
+    value <- as.character(value)
+    value <- unique(tempest_trim(value[!is.na(value)]))
+    value <- value[nzchar(value)]
+    if (length(value) == 0L) default else value
+  }
+  name <- scalar(persona$name, paste("Expert in", area))
+  title <- scalar(persona$title, area)
+  description <- scalar(
+    persona$perspective %||% persona$background,
+    paste("Specializes in", area)
+  )
+  background <- scalar(
+    persona$background,
+    paste("Expert in", area)
+  )
+  affiliation <- scalar(persona$affiliation, "Independent")
+  focus_areas <- characters(persona$focus_areas, area)
+  initial_questions <- characters(
+    persona$initial_questions,
+    paste(
+      "What are the key aspects of",
+      area,
+      "related to",
+      topic,
+      "?"
+    )
+  )
+  expert_id <- tempest_generated_expert_id(
+    list(
+      kind = "dynamic",
+      topic = topic,
+      area = area
+    )
+  )
+
+  tempest_expert(
+    expert_id = expert_id,
+    name = name,
+    title = title,
+    description = description,
+    instructions = paste(
+      "Investigate the assigned question from the perspective of",
+      area,
+      "and preserve uncertainty and conflicting evidence."
+    ),
+    focus_areas = focus_areas,
+    required_capability_ids = c(
+      "tempest.research.web",
+      "tempest.evidence.read",
+      "tempest.evidence.write"
+    ),
+    optional_capability_ids = "tempest.retrieval.semantic",
+    model_role = "expert",
+    initial_questions = initial_questions,
+    metadata = list(
+      affiliation = affiliation,
+      background = background,
+      generated_for = list(topic = topic, area = area)
+    )
+  )
 }

@@ -166,12 +166,11 @@ test_that("tempest_make_chat wraps custom chat factory failures", {
   expect_match(conditionMessage(err$parent), "factory unavailable")
 })
 
-test_that("tempest_config accepts tools as list or function", {
-  cfg_list <- tempest_config(tools = list())
-  expect_type(cfg_list@tools, "list")
-
-  cfg_fn <- tempest_config(tools = function() list())
-  expect_type(cfg_fn@tools, "closure")
+test_that("tempest_config does not accept globally registered tools", {
+  expect_error(
+    tempest_config(tools = list()),
+    regexp = "unused argument"
+  )
 })
 
 test_that("make_chat creates ellmer chat object", {

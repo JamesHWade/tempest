@@ -4,9 +4,7 @@
 \alias{ExpertSessionManager}
 \title{Expert Session Manager}
 \description{
-Manages expert chat sessions with session IDs for conversation continuity.
-Each expert persona gets their own chat session that can be resumed using
-the session ID returned from previous interactions.
+Manages capability-scoped chats for validated expert profiles.
 }
 \keyword{internal}
 \section{Public fields}{
@@ -14,9 +12,18 @@ the session ID returned from previous interactions.
   \describe{
     \item{\code{sessions}}{Environment storing active chat sessions keyed by session ID.}
 
+    \item{\code{session_profiles}}{Environment storing serializable session bindings.}
+
     \item{\code{config}}{A \code{TempestConfig} object for creating chats.}
 
     \item{\code{retriever}}{A \code{TempestRetriever} for registering tools.}
+
+    \item{\code{runtime}}{A \code{TempestRuntime} used to resolve skills and capabilities.}
+
+    \item{\code{experts}}{Environment of expert profiles keyed by stable expert id.}
+
+    \item{\code{expert_connection_ref_ids}}{Environment of allowed connection ids by
+expert.}
 
     \item{\code{extractor}}{Chat object for fact extraction (optional).}
 
@@ -37,8 +44,13 @@ claim-write provenance.}
     \item \href{#method-ExpertSessionManager-initialize}{\code{ExpertSessionManager$new()}}
     \item \href{#method-ExpertSessionManager-emit_progress}{\code{ExpertSessionManager$emit_progress()}}
     \item \href{#method-ExpertSessionManager-extract_facts}{\code{ExpertSessionManager$extract_facts()}}
-    \item \href{#method-ExpertSessionManager-generate_session_id}{\code{ExpertSessionManager$generate_session_id()}}
+    \item \href{#method-ExpertSessionManager-add_expert}{\code{ExpertSessionManager$add_expert()}}
+    \item \href{#method-ExpertSessionManager-retire_expert}{\code{ExpertSessionManager$retire_expert()}}
+    \item \href{#method-ExpertSessionManager-profile}{\code{ExpertSessionManager$profile()}}
+    \item \href{#method-ExpertSessionManager-list_experts}{\code{ExpertSessionManager$list_experts()}}
     \item \href{#method-ExpertSessionManager-get_or_create}{\code{ExpertSessionManager$get_or_create()}}
+    \item \href{#method-ExpertSessionManager-restore_session}{\code{ExpertSessionManager$restore_session()}}
+    \item \href{#method-ExpertSessionManager-session_profile}{\code{ExpertSessionManager$session_profile()}}
     \item \href{#method-ExpertSessionManager-list_sessions}{\code{ExpertSessionManager$list_sessions()}}
     \item \href{#method-ExpertSessionManager-retire_session}{\code{ExpertSessionManager$retire_session()}}
     \item \href{#method-ExpertSessionManager-clone}{\code{ExpertSessionManager$clone()}}
@@ -52,8 +64,11 @@ claim-write provenance.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ExpertSessionManager$new(
+  experts,
+  runtime,
   config,
   retriever,
+  allowed_connection_ref_ids = list(),
   extractor = NULL,
   store = NULL,
   progress = NULL,
@@ -64,8 +79,12 @@ claim-write provenance.}
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
+      \item{\code{experts}}{Validated \code{tempest_expert} profiles.}
+      \item{\code{runtime}}{A \code{TempestRuntime}.}
       \item{\code{config}}{A \code{TempestConfig} object.}
       \item{\code{retriever}}{A \code{TempestRetriever} object.}
+      \item{\code{allowed_connection_ref_ids}}{Named list of allowed connection ids by
+expert id.}
       \item{\code{extractor}}{Optional chat object for fact extraction.}
       \item{\code{store}}{Optional \code{SourceStore} for storing extracted facts.}
       \item{\code{progress}}{Optional progress callback.}
@@ -122,7 +141,7 @@ claim-write provenance.}
   turn = NULL,
   source_ids = NULL,
   session_id = NA_character_,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   correlation_id = NA_character_
 )}
     \if{html}{\out{</div>}}
@@ -134,7 +153,7 @@ claim-write provenance.}
       \item{\code{turn}}{Optional ellmer turn to inspect for provider-native sources.}
       \item{\code{source_ids}}{Optional source ids already harvested for the turn.}
       \item{\code{session_id}}{Optional expert session id.}
-      \item{\code{persona_id}}{Optional persona id.}
+      \item{\code{expert_id}}{Optional stable expert id.}
       \item{\code{correlation_id}}{Optional progress correlation id for the turn.}
     }
     \if{html}{\out{</div>}}
@@ -145,24 +164,97 @@ claim-write provenance.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ExpertSessionManager-generate_session_id"></a>}}
-\if{latex}{\out{\hypertarget{method-ExpertSessionManager-generate_session_id}{}}}
-\subsection{\code{ExpertSessionManager$generate_session_id()}}{
-  Generate a human-readable session ID from a persona name.
+\if{html}{\out{<a id="method-ExpertSessionManager-add_expert"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-add_expert}{}}}
+\subsection{\code{ExpertSessionManager$add_expert()}}{
+  Add an active expert profile to the live roster.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExpertSessionManager$generate_session_id(persona_name)}
+    \preformatted{ExpertSessionManager$add_expert(
+  expert,
+  allowed_connection_ref_ids = character(),
+  replace = FALSE
+)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{persona_name}}{Name of the persona.}
+      \item{\code{expert}}{A validated \code{tempest_expert}.}
+      \item{\code{allowed_connection_ref_ids}}{Connection ids granted to this expert.}
+      \item{\code{replace}}{Whether to replace an existing profile with the same id.}
     }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    Character string session ID like "dr-sarah-chen-abc123".
+    The stable expert id, invisibly.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExpertSessionManager-retire_expert"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-retire_expert}{}}}
+\subsection{\code{ExpertSessionManager$retire_expert()}}{
+  Retire an expert and all chats bound to that profile.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$retire_expert(expert_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{expert_id}}{Stable expert id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Whether the expert was present.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExpertSessionManager-profile"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-profile}{}}}
+\subsection{\code{ExpertSessionManager$profile()}}{
+  Look up an expert by exact stable id.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$profile(expert_id, active_only = TRUE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{expert_id}}{Stable expert id.}
+      \item{\code{active_only}}{Whether retired profiles should be rejected.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A validated expert profile.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExpertSessionManager-list_experts"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-list_experts}{}}}
+\subsection{\code{ExpertSessionManager$list_experts()}}{
+  List expert profiles in stable-id order.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$list_experts(active_only = TRUE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{active_only}}{Whether to omit retired profiles.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A list of validated expert profiles.
   }
 }
 
@@ -170,22 +262,67 @@ claim-write provenance.}
 \if{html}{\out{<a id="method-ExpertSessionManager-get_or_create"></a>}}
 \if{latex}{\out{\hypertarget{method-ExpertSessionManager-get_or_create}{}}}
 \subsection{\code{ExpertSessionManager$get_or_create()}}{
-  Get an existing session or create a new one.
+  Get an expert's existing session or create a scoped chat.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ExpertSessionManager$get_or_create(persona, session_id = NULL)}
+    \preformatted{ExpertSessionManager$get_or_create(expert_id, session_id = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{persona}}{A persona object from \code{tempest_generate_personas()}.}
-      \item{\code{session_id}}{Optional session ID to resume.}
+      \item{\code{expert_id}}{Stable expert id or matching expert profile.}
+      \item{\code{session_id}}{Optional existing, manager-owned session id to resume.}
     }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    List with \code{chat}, \code{session_id}, and \code{is_new} fields.
+    Chat, session binding, grants, provenance, and creation status.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExpertSessionManager-restore_session"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-restore_session}{}}}
+\subsection{\code{ExpertSessionManager$restore_session()}}{
+  Restore a saved session binding through fresh runtime authorization.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$restore_session(binding)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{binding}}{Serializable session profile containing the opaque
+session id and exact expert identity fields.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    The same result shape as \code{get_or_create()}.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExpertSessionManager-session_profile"></a>}}
+\if{latex}{\out{\hypertarget{method-ExpertSessionManager-session_profile}{}}}
+\subsection{\code{ExpertSessionManager$session_profile()}}{
+  Return the serializable binding for an active session.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ExpertSessionManager$session_profile(session_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{session_id}}{Manager-owned expert session id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Session binding including expert fingerprint and grants.
   }
 }
 

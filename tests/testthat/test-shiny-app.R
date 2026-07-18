@@ -51,6 +51,7 @@ test_that("module UIs namespace their input ids", {
 
 test_that("STORM worker cancellation stops Mirai work and records progress", {
   skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
   app <- source_shiny_modules()
   job <- mirai::mirai({
     Sys.sleep(5)
@@ -217,15 +218,15 @@ test_that("chat footer renders accessible command controls", {
   expect_match(html, "<template>Generate report</template>", fixed = TRUE)
 })
 
-test_that("expert cards render deterministic persona icons", {
+test_that("expert cards render deterministic expert icons", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   html <- paste(
-    as.character(app$expert_card(list(
-      id = "history",
+    as.character(app$expert_card(test_expert(
+      expert_id = "expert.history",
       name = "Dr. Ada Flow",
       title = "Historian",
-      perspective = "Archives and provenance."
+      description = "Archives and provenance."
     ))),
     collapse = ""
   )
@@ -425,6 +426,82 @@ test_that("sources and facts modules show empty states until data exists", {
   })
 })
 
+test_that("sources and facts modules consume generic run evidence", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  store <- app$new_session_store()
+  evidence <- fake_store_with_sources(1)
+  source_id <- evidence$list_sources()[[1]]$id
+  evidence$add_claim(tempest_claim(
+    claim_text = "Generic workflow evidence is available.",
+    source_ids = source_id,
+    confidence = "high"
+  ))
+  objective <- tempest_objective(
+    "Review generic workflow evidence",
+    objective_id = "objective-shiny-panels",
+    created_at = "2026-07-18 UTC"
+  )
+  registry <- tempest_operation_registry(list(
+    review = list(
+      kind = "step",
+      implementation = function() "reviewed"
+    )
+  ))
+  workflow <- tempest_workflow_spec(
+    "shiny-panel-review",
+    title = "Shiny panel review",
+    purpose = "Exercise bundled evidence panels",
+    steps = list(tempest_workflow_step(
+      "review",
+      title = "Review",
+      purpose = "Review generic workflow evidence",
+      operation_id = "review"
+    ))
+  )
+  run <- TempestRun$new(
+    objective = objective,
+    workflow = workflow,
+    runtime = registry,
+    source_store = evidence
+  )
+  store$set_run(run)
+
+  shiny::testServer(app$mod_sources_server, args = list(store = store), {
+    session$flushReact()
+    expect_equal(nrow(shiny::isolate(sources())), 1L)
+    expect_no_match(as.character(output$body$html), "Start a session")
+    expect_no_match(as.character(output$body$html), "No sources collected yet")
+
+    store$set(list(store = SourceStore$new()))
+    session$flushReact()
+    expect_equal(nrow(shiny::isolate(sources())), 0L)
+    expect_match(as.character(output$body$html), "No sources collected yet")
+
+    store$set(NULL)
+    session$flushReact()
+    expect_equal(nrow(shiny::isolate(sources())), 1L)
+    expect_no_match(as.character(output$body$html), "No sources collected yet")
+  })
+
+  shiny::testServer(app$mod_facts_server, args = list(store = store), {
+    session$flushReact()
+    expect_equal(nrow(shiny::isolate(facts())), 1L)
+    expect_no_match(as.character(output$body$html), "Start a session")
+    expect_no_match(as.character(output$body$html), "No facts extracted yet")
+
+    store$set(list(store = SourceStore$new()))
+    session$flushReact()
+    expect_equal(nrow(shiny::isolate(facts())), 0L)
+    expect_match(as.character(output$body$html), "No facts extracted yet")
+
+    store$set(NULL)
+    session$flushReact()
+    expect_equal(nrow(shiny::isolate(facts())), 1L)
+    expect_no_match(as.character(output$body$html), "No facts extracted yet")
+  })
+})
+
 test_that("sources and facts table data populate explicit display values", {
   app <- source_shiny_modules()
 
@@ -511,14 +588,17 @@ test_that("the transcript module shows recent turns from the store", {
   skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   store <- app$new_session_store()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
   ses <- tempest_session(
     "Test topic",
-    config = tempest_config(),
-    personas = list(list(
-      id = 1,
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.a",
       name = "Dr. A",
       title = "Sci",
-      perspective = "X"
+      description = "X"
     ))
   )
 
@@ -549,7 +629,10 @@ test_that("the transcript module renders citations in completed answers", {
   ses <- tempest_session(
     "Citation topic",
     config = cfg,
-    personas = list(),
+    experts = list(test_expert(
+      expert_id = "expert.citations",
+      name = "Dr. Citations"
+    )),
     retriever = tempest_retriever(config = cfg, store = source_store)
   )
 
@@ -573,14 +656,17 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
   skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   store <- app$new_session_store()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
   ses <- tempest_session(
     "Test topic",
-    config = tempest_config(),
-    personas = list(list(
-      id = 1,
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.a",
       name = "Dr. A",
       title = "Sci",
-      perspective = "X"
+      description = "X"
     ))
   )
   ses$add_turn("user", "user", "q1")
@@ -652,10 +738,12 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
   ses <- tempest_session(
     "Integration topic",
     config = cfg,
-    personas = list(tempest_expert(
+    experts = list(tempest_expert(
+      expert_id = "expert.integration",
       name = "Integration Expert",
       title = "Researcher",
-      perspective = "End-to-end app behavior"
+      description = "End-to-end app behavior",
+      instructions = "Inspect the integrated application behavior."
     )),
     retriever = retriever
   )
@@ -725,7 +813,7 @@ test_that("record_warmup_turn populates facts and sources from native turns", {
     fixture$claim_text,
     expert_chat = expert_chat,
     session_id = "expert-session-1",
-    persona_id = "1",
+    expert_id = "expert.native",
     correlation_id = "warmup-question-1"
   )
 
@@ -736,7 +824,7 @@ test_that("record_warmup_turn populates facts and sources from native turns", {
   expect_equal(claims[[1]]@claim_text, fixture$claim_text)
   expect_equal(claims[[1]]@source_ids, fixture$source_id)
   expect_equal(claims[[1]]@session_id, "expert-session-1")
-  expect_equal(claims[[1]]@persona_id, "1")
+  expect_equal(claims[[1]]@expert_id, "expert.native")
   expect_equal(claims[[1]]@retrieval_step_id, "warmup-question-1")
 })
 
@@ -750,7 +838,7 @@ test_that("extract_chat_turn_facts populates facts and sources from native turns
     fixture$claim_text,
     turn = fixture$turn,
     session_id = "costorm-session-1",
-    persona_id = "moderator",
+    expert_id = "moderator",
     correlation_id = "chat-turn-1"
   )
 
@@ -762,7 +850,7 @@ test_that("extract_chat_turn_facts populates facts and sources from native turns
   expect_equal(claims[[1]]@claim_text, fixture$claim_text)
   expect_equal(claims[[1]]@source_ids, fixture$source_id)
   expect_equal(claims[[1]]@session_id, "costorm-session-1")
-  expect_equal(claims[[1]]@persona_id, "moderator")
+  expect_equal(claims[[1]]@expert_id, "moderator")
   expect_equal(claims[[1]]@retrieval_step_id, "chat-turn-1")
 })
 
@@ -805,20 +893,32 @@ test_that("chat command messages summarize active session state", {
   artifacts[["report_md"]] <- "# Command report"
   ses <- list(
     topic = "Command topic",
-    personas = list(list(
+    experts = list(test_expert(
+      expert_id = "expert.command",
       name = "Dr. Command",
       title = "Interaction specialist",
-      perspective = "Runtime controls"
+      description = "Runtime controls"
     )),
     store = source_store,
     artifacts = artifacts,
-    config = tempest_config(search_provider = "wikipedia")
+    config = tempest_config(search_provider = "wikipedia"),
+    capability_grants = list(
+      moderator = list(list(
+        capability_id = "tempest.evidence.read",
+        status = "granted"
+      ))
+    )
   )
 
   expect_match(app$chat_command_message("experts", ses), "Dr. Command")
   expect_match(app$chat_command_message("sources", ses), "Example 1")
   expect_match(app$chat_command_message("facts", ses), "support 0.82")
   expect_match(app$chat_command_message("tools", ses), "wikipedia")
+  expect_match(
+    app$chat_command_message("tools", ses),
+    "tempest.evidence.read",
+    fixed = TRUE
+  )
 
   footer <- paste(
     as.character(app$chat_runtime_footer_ui(ses, chat_status = "streaming")),
@@ -943,8 +1043,28 @@ test_that("session archives round-trip through the upload boundary", {
   ses <- tempest_session(
     "Downloadable session",
     config = cfg,
-    personas = list(tempest_expert(name = "Dr. Archive"))
+    experts = list(test_expert(
+      expert_id = "expert.archive",
+      name = "Dr. Archive"
+    ))
   )
+  custom_spec <- tempest_deliverable_spec(
+    "custom-output",
+    title = "Custom output",
+    purpose = "Exercise dynamic artifact paths",
+    instructions = "Return structured content.",
+    generator_id = "generator.custom",
+    renderer_ids = "renderer.custom",
+    media_types = "application/json"
+  )
+  ses$artifact_catalog$register(custom_spec)
+  ses$artifact_catalog$add(tempest_artifact(
+    custom_spec,
+    content = list(result = "restored"),
+    artifact_id = "custom-output",
+    media_type = "application/json",
+    status = "valid"
+  ))
   store <- app$new_session_store()
   store$set(ses)
   archive <- tempfile(fileext = ".zip")
@@ -956,10 +1076,17 @@ test_that("session archives round-trip through the upload boundary", {
 
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$topic, "Downloadable session")
+  expect_equal(
+    restored$artifact_catalog$get("custom-output")@content$result,
+    "restored"
+  )
   archive_files <- utils::unzip(archive, list = TRUE)$Name
+  manifest <- tempest:::tempest_read_json_strict(
+    file.path(bundle, "session.json")
+  )
   expect_setequal(
-    intersect(archive_files, app$session_archive_files()),
-    archive_files
+    archive_files,
+    c("session.json", as.character(unlist(manifest$files)))
   )
   expect_contains(archive_files, "session.json")
 })
@@ -989,8 +1116,107 @@ test_that("session archive validation rejects unsafe entries and large files", {
   )
   expect_equal(
     app$session_archive_listing_is_safe("unexpected.txt", 100),
+    TRUE
+  )
+  expect_equal(
+    app$session_archive_listing_is_safe(
+      c("session.json", "unexpected.txt"),
+      c(100, 100),
+      declared_files = "config.json"
+    ),
     FALSE
   )
+  expect_equal(
+    app$session_archive_listing_is_safe("/session.json", 100),
+    FALSE
+  )
+  expect_equal(
+    app$session_archive_listing_is_safe("a/./session.json", 100),
+    FALSE
+  )
+})
+
+test_that("session archive extraction rejects undeclared and tampered files", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("zip")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Archive integrity",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.integrity",
+      name = "Dr. Integrity"
+    ))
+  )
+  spec <- tempest_deliverable_spec(
+    "integrity-output",
+    title = "Integrity output",
+    purpose = "Exercise archive validation",
+    instructions = "Return text.",
+    generator_id = "generator",
+    renderer_ids = "renderer"
+  )
+  ses$artifact_catalog$register(spec)
+  ses$artifact_catalog$add(tempest_artifact(
+    spec,
+    content = "Trusted content",
+    artifact_id = "integrity-output"
+  ))
+  root <- withr::local_tempdir()
+  bundle <- file.path(root, "bundle")
+  tempest_session_save(ses, bundle)
+  manifest <- tempest:::tempest_read_json_strict(
+    file.path(bundle, "session.json")
+  )
+  content_file <- as.character(unlist(manifest$artifact_files))[[1]]
+  writeLines("tampered", file.path(bundle, content_file))
+  tampered_archive <- file.path(root, "tampered.zip")
+  zip::zip(
+    tampered_archive,
+    files = list.files(
+      bundle,
+      recursive = TRUE,
+      all.files = TRUE,
+      no.. = TRUE
+    ),
+    include_directories = FALSE,
+    root = bundle,
+    mode = "mirror"
+  )
+  tampered_extract <- file.path(root, "tampered-extract")
+
+  expect_error(
+    app$session_archive_extract(tampered_archive, tampered_extract),
+    class = "tempest_session_restore_error"
+  )
+  expect_false(dir.exists(tampered_extract))
+
+  tempest_session_save(ses, bundle, overwrite = TRUE)
+  writeLines("undeclared", file.path(bundle, "extra.txt"))
+  extra_archive <- file.path(root, "extra.zip")
+  zip::zip(
+    extra_archive,
+    files = list.files(
+      bundle,
+      recursive = TRUE,
+      all.files = TRUE,
+      no.. = TRUE
+    ),
+    include_directories = FALSE,
+    root = bundle,
+    mode = "mirror"
+  )
+  extra_extract <- file.path(root, "extra-extract")
+
+  expect_error(
+    app$session_archive_extract(extra_archive, extra_extract),
+    "do not match"
+  )
+  expect_false(dir.exists(extra_extract))
 })
 
 test_that("Shiny session storage is isolated, private, and quota-bound", {
@@ -1037,10 +1263,12 @@ test_that("session store saves and restores bundles for shared app tabs", {
   ses <- tempest_session(
     "Shiny persistence",
     config = cfg,
-    personas = list(tempest_expert(
+    experts = list(tempest_expert(
+      expert_id = "expert.persist",
       name = "Dr. Persist",
       title = "Researcher",
-      perspective = "Session durability"
+      description = "Session durability",
+      instructions = "Inspect session durability."
     )),
     retriever = tempest_retriever(config = cfg, store = source_store)
   )
@@ -1074,6 +1302,15 @@ test_that("session store saves and restores bundles for shared app tabs", {
     source_id,
     "]."
   )
+  report_spec <- tempest:::tempest_costorm_report_spec(ses)
+  ses$artifact_catalog$register(report_spec)
+  ses$artifact_catalog$add(tempest_artifact(
+    report_spec,
+    content = ses$artifacts[["report_md"]],
+    artifact_id = "report_md",
+    resource_ids = source_id,
+    status = "valid"
+  ))
   ses$emit_progress(
     "stage",
     "succeeded",
@@ -1142,10 +1379,12 @@ test_that("session autosave debounces store mutations", {
   ses <- tempest_session(
     "Autosave topic",
     config = cfg,
-    personas = list(tempest_expert(
+    experts = list(tempest_expert(
+      expert_id = "expert.autosave",
       name = "Dr. Autosave",
       title = "Researcher",
-      perspective = "Persistence"
+      description = "Persistence",
+      instructions = "Inspect autosave persistence."
     ))
   )
   store <- app$new_session_store()
@@ -1200,7 +1439,10 @@ test_that("session autosave does not fire after restoring a bundle", {
   ses <- tempest_session(
     "Restore autosave topic",
     config = cfg,
-    personas = list(tempest_expert(name = "Dr. Restore"))
+    experts = list(test_expert(
+      expert_id = "expert.restore",
+      name = "Dr. Restore"
+    ))
   )
   store <- app$new_session_store()
   bundle_dir <- file.path(withr::local_tempdir(), "restore-bundle")
@@ -1253,7 +1495,10 @@ test_that("tempest_shiny_server renders host-managed shared state", {
   ses <- tempest_session(
     "Embedded host topic",
     config = cfg,
-    personas = list(tempest_expert(name = "Host Expert")),
+    experts = list(test_expert(
+      expert_id = "expert.host",
+      name = "Host Expert"
+    )),
     retriever = tempest_retriever(config = cfg, store = source_store),
     session_id = "host-session-1"
   )
@@ -1389,7 +1634,7 @@ test_that("Co-STORM startup progress closes when the session is ready", {
     app$costorm_starting_event("session-startup"),
     app$costorm_session_ready_event(
       "session-startup",
-      list(personas = list("one"))
+      list(experts = list("one"))
     )
   ))
   html <- paste(
@@ -1750,6 +1995,7 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
 
 test_that("STORM worker streams progress before mirai resolves", {
   skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
   app <- source_shiny_modules()
   stream_path <- withr::local_tempfile(fileext = ".ndjson")
   release_path <- withr::local_tempfile(fileext = ".release")
@@ -1829,6 +2075,7 @@ test_that("STORM worker streams progress before mirai resolves", {
 
 test_that("STORM worker adapter tolerates older tempest_run signatures in mirai", {
   skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
   app <- source_shiny_modules()
   old_run <- function(
     topic,
@@ -1906,7 +2153,7 @@ test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
   run_id <- "session-1"
   state <- app$costorm_progress_state(list(
     app$costorm_starting_event(run_id),
-    app$costorm_session_ready_event(run_id, list(personas = list("one"))),
+    app$costorm_session_ready_event(run_id, list(experts = list("one"))),
     tempest_progress_event(
       run_id = run_id,
       workflow = "costorm",
@@ -1976,34 +2223,35 @@ await_promise <- function(promise, timeout_s = 2) {
 fake_warmup_session <- function(
   chat_async,
   stream_async = NULL,
-  personas = NULL,
+  experts = NULL,
   progress = NULL
 ) {
   turns <- new.env(parent = emptyenv())
   turns$n <- 0L
-  if (is.null(personas)) {
-    personas <- list(list(
+  if (is.null(experts)) {
+    experts <- list(test_expert(
+      expert_id = "expert.a",
       name = "Dr. A",
       title = "Expert",
       initial_questions = c("What is X?", "How does Y work?")
     ))
   }
 
-  call_chat_async <- function(prompt, persona, generation) {
+  call_chat_async <- function(prompt, expert, generation) {
     arg_names <- names(formals(chat_async))
     if ("..." %in% arg_names || length(arg_names) >= 3L) {
-      return(chat_async(prompt, persona, generation))
+      return(chat_async(prompt, expert, generation))
     }
     if ("..." %in% arg_names || length(arg_names) >= 2L) {
-      return(chat_async(prompt, persona))
+      return(chat_async(prompt, expert))
     }
     chat_async(prompt)
   }
 
-  call_stream_async <- function(prompt, stream, persona) {
+  call_stream_async <- function(prompt, stream, expert) {
     arg_names <- names(formals(stream_async))
     if ("..." %in% arg_names || length(arg_names) >= 3L) {
-      return(stream_async(prompt, stream, persona))
+      return(stream_async(prompt, stream, expert))
     }
     if (length(arg_names) >= 2L) {
       return(stream_async(prompt, stream))
@@ -2017,20 +2265,28 @@ fake_warmup_session <- function(
   manager_state$session_keys <- new.env(parent = emptyenv())
   manager_state$retired <- 0L
   manager <- list()
-  manager$get_or_create <- function(persona) {
-    key <- as.character(persona$id %||% persona$name %||% "expert")
+  manager$get_or_create <- function(expert_id) {
+    idx <- match(
+      expert_id,
+      vapply(experts, \(expert) expert@expert_id, character(1))
+    )
+    if (is.na(idx)) {
+      stop("Unknown expert id: ", expert_id)
+    }
+    expert <- experts[[idx]]
+    key <- expert@expert_id
     chat <- manager_state$chats[[key]]
     if (is.null(chat)) {
       generation <- (manager_state$generations[[key]] %||% 0L) + 1L
       manager_state$generations[[key]] <- generation
       chat <- list(
         chat_async = function(prompt) {
-          call_chat_async(prompt, persona, generation)
+          call_chat_async(prompt, expert, generation)
         }
       )
       if (!is.null(stream_async)) {
         chat$stream_async <- function(prompt, stream) {
-          call_stream_async(prompt, stream, persona)
+          call_stream_async(prompt, stream, expert)
         }
       }
       manager_state$chats[[key]] <- chat
@@ -2038,9 +2294,12 @@ fake_warmup_session <- function(
     generation <- manager_state$generations[[key]]
     session_id <- paste0("fake-", key, "-", generation)
     manager_state$session_keys[[session_id]] <- key
+    provenance <- new.env(parent = emptyenv())
+    provenance$current <- list()
     list(
       chat = manager_state$chats[[key]],
-      session_id = session_id
+      session_id = session_id,
+      provenance = provenance
     )
   }
   manager$retire_session <- function(session_id) {
@@ -2056,7 +2315,7 @@ fake_warmup_session <- function(
 
   session <- list(
     topic = "Test topic",
-    personas = personas,
+    experts = experts,
     expert_session_manager = manager,
     add_turn = function(...) {
       turns$n <- turns$n + 1L
@@ -2320,13 +2579,23 @@ test_that("run_warmup starts independent experts in parallel", {
   store <- fake_warmup_store()
   resolve_first <- NULL
   second_started <- FALSE
-  personas <- list(
-    list(name = "Dr. A", title = "Expert", initial_questions = "A?"),
-    list(name = "Dr. B", title = "Expert", initial_questions = "B?")
+  experts <- list(
+    test_expert(
+      expert_id = "expert.a",
+      name = "Dr. A",
+      title = "Expert",
+      initial_questions = "A?"
+    ),
+    test_expert(
+      expert_id = "expert.b",
+      name = "Dr. B",
+      title = "Expert",
+      initial_questions = "B?"
+    )
   )
   ses <- fake_warmup_session(
-    function(prompt, persona) {
-      if (identical(persona$name, "Dr. A")) {
+    function(prompt, expert) {
+      if (identical(expert@name, "Dr. A")) {
         return(promises::promise(function(resolve, reject) {
           resolve_first <<- resolve
         }))
@@ -2334,7 +2603,7 @@ test_that("run_warmup starts independent experts in parallel", {
       second_started <<- TRUE
       promises::promise_resolve("Second answer [S123456789abc].")
     },
-    personas = personas
+    experts = experts
   )
 
   promise <- app$run_warmup(
@@ -2405,7 +2674,7 @@ test_that("warmup quarantines timed-out chats before the next question", {
   late_resolve <- NULL
   generations <- integer()
   ses <- fake_warmup_session(
-    function(prompt, persona, generation) {
+    function(prompt, expert, generation) {
       generations <<- c(generations, generation)
       if (generation == 1L) {
         return(promises::promise(function(resolve, reject) {
@@ -2414,7 +2683,8 @@ test_that("warmup quarantines timed-out chats before the next question", {
       }
       promises::promise_resolve("Fresh chat answer [S123456789abc].")
     },
-    personas = list(list(
+    experts = list(test_expert(
+      expert_id = "expert.timeout",
       name = "Dr. Timeout",
       title = "Expert",
       initial_questions = c("First?", "Second?")

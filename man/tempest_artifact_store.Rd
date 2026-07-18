@@ -4,31 +4,52 @@
 \alias{tempest_artifact_store}
 \title{Create a Tempest artifact store adapter}
 \usage{
-tempest_artifact_store(write = NULL, read = NULL, list_names = NULL)
+tempest_artifact_store(
+  write = NULL,
+  read = NULL,
+  list_metadata = NULL,
+  exists = NULL,
+  version = NULL
+)
 }
 \arguments{
-\item{write}{Function with signature \verb{function(name, value, metadata)} used
-to persist an artifact.}
+\item{write}{Function with signature \verb{function(artifact)} used to persist a
+typed artifact.}
 
-\item{read}{Function with signature \verb{function(name, default)} used to read an
-artifact.}
+\item{read}{Function with signature \verb{function(artifact_id, default)} that
+returns a typed artifact.}
 
-\item{list_names}{Function with no arguments that returns available artifact
-names.}
+\item{list_metadata}{Function with no arguments that returns a named list of
+artifact metadata records without inline content.}
+
+\item{exists}{Function with signature \verb{function(artifact_id, version)} used
+to test artifact identity and optional deliverable version.}
+
+\item{version}{Function with signature \verb{function(artifact_id, default)} that
+returns the persisted deliverable version.}
 }
 \value{
-A list with \code{write}, \code{read}, and \code{list} functions.
+A typed artifact-store adapter.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
-Artifact stores let host applications observe or persist Tempest outputs
-without replacing the live in-memory \code{SourceStore}. The default store is a
-no-op adapter.
+Artifact stores let host applications observe or persist typed Tempest
+outputs without replacing the live in-memory artifact catalog. The default
+store is a no-op adapter.
 }
 \examples{
 store <- tempest_memory_artifact_store()
-store$write("report_md", "# Report", metadata = list(topic = "Demo"))
-store$read("report_md")
+spec <- tempest_deliverable_spec(
+  "report",
+  title = "Report",
+  purpose = "Explain the result",
+  instructions = "Be concise.",
+  generator_id = "tempest.generator.provided_content",
+  renderer_ids = "tempest.renderer.markdown"
+)
+artifact <- tempest_artifact(spec, content = "# Report")
+store$write(artifact)
+store$read(artifact@artifact_id)
 }

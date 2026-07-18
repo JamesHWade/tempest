@@ -4,7 +4,8 @@
 \alias{TempestSession}
 \title{TempestSession}
 \description{
-Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, and report artifacts.
+Maintains state for a Co-STORM session: multi-agent dialog, mind map,
+sources, auxiliary session state, and typed deliverable artifacts.
 }
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
@@ -15,6 +16,11 @@ Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, a
 
     \item{\code{config}}{A \code{TempestConfig} object.}
 
+    \item{\code{runtime}}{A \code{TempestRuntime} containing process-local adapters.}
+
+    \item{\code{connection_permissions}}{Named per-role or per-expert connection
+allow-lists.}
+
     \item{\code{session_id}}{Stable identifier shared by progress events for the
 session.}
 
@@ -24,7 +30,7 @@ session.}
 
     \item{\code{retriever}}{A \code{TempestRetriever} object.}
 
-    \item{\code{personas}}{List of expert personas.}
+    \item{\code{experts}}{List of validated \code{tempest_expert} profiles.}
 
     \item{\code{expert_session_manager}}{Manages expert chat sessions.}
 
@@ -34,7 +40,17 @@ session.}
 
     \item{\code{mindmap}}{The mind map data structure.}
 
-    \item{\code{artifacts}}{Environment of report artifacts.}
+    \item{\code{artifacts}}{Environment of auxiliary and legacy-compatible session
+state.}
+
+    \item{\code{artifact_catalog}}{Typed deliverable specifications and artifacts
+produced by the session.}
+
+    \item{\code{workflow_run}}{Optional generic \code{TempestRun} that owns the session
+workflow lifecycle.}
+
+    \item{\code{capability_grants}}{Serializable capability decisions by execution
+context.}
 
     \item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
   }
@@ -47,20 +63,20 @@ session.}
     \item \href{#method-TempestSession-emit_progress}{\code{TempestSession$emit_progress()}}
     \item \href{#method-TempestSession-add_turn}{\code{TempestSession$add_turn()}}
     \item \href{#method-TempestSession-transcript_markdown}{\code{TempestSession$transcript_markdown()}}
-    \item \href{#method-TempestSession-get_persona_names}{\code{TempestSession$get_persona_names()}}
-    \item \href{#method-TempestSession-get_persona_descriptions}{\code{TempestSession$get_persona_descriptions()}}
+    \item \href{#method-TempestSession-get_expert_names}{\code{TempestSession$get_expert_names()}}
+    \item \href{#method-TempestSession-get_expert_descriptions}{\code{TempestSession$get_expert_descriptions()}}
     \item \href{#method-TempestSession-update_mindmap}{\code{TempestSession$update_mindmap()}}
     \item \href{#method-TempestSession-mindmap_markdown}{\code{TempestSession$mindmap_markdown()}}
     \item \href{#method-TempestSession-extract_facts}{\code{TempestSession$extract_facts()}}
     \item \href{#method-TempestSession-harvest_native_sources}{\code{TempestSession$harvest_native_sources()}}
     \item \href{#method-TempestSession-suggest_questions}{\code{TempestSession$suggest_questions()}}
-    \item \href{#method-TempestSession-find_expert_index}{\code{TempestSession$find_expert_index()}}
+    \item \href{#method-TempestSession-find_expert}{\code{TempestSession$find_expert()}}
     \item \href{#method-TempestSession-step}{\code{TempestSession$step()}}
     \item \href{#method-TempestSession-warmup}{\code{TempestSession$warmup()}}
     \item \href{#method-TempestSession-report}{\code{TempestSession$report()}}
     \item \href{#method-TempestSession-add_expert}{\code{TempestSession$add_expert()}}
     \item \href{#method-TempestSession-retire_expert}{\code{TempestSession$retire_expert()}}
-    \item \href{#method-TempestSession-get_active_personas}{\code{TempestSession$get_active_personas()}}
+    \item \href{#method-TempestSession-get_active_experts}{\code{TempestSession$get_active_experts()}}
     \item \href{#method-TempestSession-check_and_expand_nodes}{\code{TempestSession$check_and_expand_nodes()}}
     \item \href{#method-TempestSession-get_discussed_source_ids}{\code{TempestSession$get_discussed_source_ids()}}
     \item \href{#method-TempestSession-find_undiscussed_sources}{\code{TempestSession$find_undiscussed_sources()}}
@@ -80,8 +96,10 @@ session.}
     \preformatted{TempestSession$new(
   topic,
   config = tempest_config(),
+  runtime = tempest_runtime(),
   n_experts = 3,
-  personas = NULL,
+  experts = NULL,
+  connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
   session_id = NULL
@@ -93,9 +111,12 @@ session.}
     \describe{
       \item{\code{topic}}{The research topic.}
       \item{\code{config}}{A \code{TempestConfig} object.}
+      \item{\code{runtime}}{A \code{\link[=tempest_runtime]{tempest_runtime()}} containing process-local adapters.}
       \item{\code{n_experts}}{Number of expert agents.}
-      \item{\code{personas}}{Optional list of pre-generated personas. If NULL,
-personas are generated automatically using \code{tempest_generate_personas()}.}
+      \item{\code{experts}}{Optional list of validated expert profiles. If \code{NULL},
+experts are generated automatically using \code{tempest_generate_experts()}.}
+      \item{\code{connection_permissions}}{Named list mapping role or expert ids to
+opaque connection ids allowed for this session.}
       \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
 object with a \code{SourceStore} at \verb{$store}.}
       \item{\code{progress}}{Optional function called with \code{tempest_progress_event}
@@ -186,32 +207,32 @@ identifier is generated.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-get_persona_names"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-get_persona_names}{}}}
-\subsection{\code{TempestSession$get_persona_names()}}{
-  Get persona names for agent routing.
+\if{html}{\out{<a id="method-TempestSession-get_expert_names"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-get_expert_names}{}}}
+\subsection{\code{TempestSession$get_expert_names()}}{
+  Get expert names for agent routing.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$get_persona_names()}
+    \preformatted{TempestSession$get_expert_names()}
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    Character vector of persona names.
+    Character vector of expert names.
   }
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-get_persona_descriptions"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-get_persona_descriptions}{}}}
-\subsection{\code{TempestSession$get_persona_descriptions()}}{
-  Build persona descriptions for moderator context.
+\if{html}{\out{<a id="method-TempestSession-get_expert_descriptions"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-get_expert_descriptions}{}}}
+\subsection{\code{TempestSession$get_expert_descriptions()}}{
+  Build expert descriptions for moderator context.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$get_persona_descriptions()}
+    \preformatted{TempestSession$get_expert_descriptions()}
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    A formatted string describing all personas.
+    A formatted string describing all experts.
   }
 }
 
@@ -261,7 +282,7 @@ identifier is generated.}
   turn = NULL,
   source_ids = NULL,
   session_id = self$session_id,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   correlation_id = NA_character_
 )}
     \if{html}{\out{</div>}}
@@ -273,7 +294,7 @@ identifier is generated.}
       \item{\code{turn}}{Optional ellmer turn to inspect for provider-native sources.}
       \item{\code{source_ids}}{Optional source ids already harvested for the turn.}
       \item{\code{session_id}}{Optional Co-STORM or expert session id.}
-      \item{\code{persona_id}}{Optional persona id.}
+      \item{\code{expert_id}}{Optional expert id.}
       \item{\code{correlation_id}}{Optional progress correlation id for the turn.}
     }
     \if{html}{\out{</div>}}
@@ -327,19 +348,19 @@ web tool responses.
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-find_expert_index"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-find_expert_index}{}}}
-\subsection{\code{TempestSession$find_expert_index()}}{
-  Find expert index by persona name.
+\if{html}{\out{<a id="method-TempestSession-find_expert"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-find_expert}{}}}
+\subsection{\code{TempestSession$find_expert()}}{
+  Find an expert index by stable id.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$find_expert_index(name)}
+    \preformatted{TempestSession$find_expert(expert_id)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{name}}{The agent name to look up.}
+      \item{\code{expert_id}}{The stable expert id to look up.}
     }
     \if{html}{\out{</div>}}
   }
@@ -441,7 +462,7 @@ This primes the knowledge base with foundational research before interactive Q&A
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    The new persona (invisibly).
+    The new expert profile (invisibly).
   }
 }
 
@@ -452,13 +473,13 @@ This primes the knowledge base with foundational research before interactive Q&A
   Retire an expert from the panel.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$retire_expert(name)}
+    \preformatted{TempestSession$retire_expert(expert_id)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{name}}{The name of the expert to retire.}
+      \item{\code{expert_id}}{The stable id of the expert to retire.}
     }
     \if{html}{\out{</div>}}
   }
@@ -468,17 +489,17 @@ This primes the knowledge base with foundational research before interactive Q&A
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-get_active_personas"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-get_active_personas}{}}}
-\subsection{\code{TempestSession$get_active_personas()}}{
-  Get active (non-retired) personas.
+\if{html}{\out{<a id="method-TempestSession-get_active_experts"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-get_active_experts}{}}}
+\subsection{\code{TempestSession$get_active_experts()}}{
+  Get active expert profiles.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$get_active_personas()}
+    \preformatted{TempestSession$get_active_experts()}
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    List of active persona objects.
+    List of active \code{tempest_expert} profiles.
   }
 }
 

@@ -10,7 +10,10 @@
 new_session_store <- function() {
   rv <- shiny::reactiveValues(
     session = NULL,
+    run = NULL,
+    prefer_run_evidence = FALSE,
     version = 0L,
+    run_version = 0L,
     # Separate counter for autosave. It tracks in-place content changes (`set()`
     # and `touch()`) but not `restore()`, so loading a bundle re-renders outputs
     # without immediately writing the just-loaded session back to disk and
@@ -49,7 +52,14 @@ new_session_store <- function() {
   }
 
   set_report_from_session <- function(session) {
-    report_md <- session$artifacts[["report_md"]] %||% NULL
+    report_md <- if (
+      !is.null(session$artifact_catalog) &&
+        session$artifact_catalog$has("report_md")
+    ) {
+      session$artifact_catalog$get("report_md")@content
+    } else {
+      session$artifacts[["report_md"]] %||% NULL
+    }
     rv$report_md <- report_md
     rv$report_topic <- if (is.null(report_md)) NULL else session$topic
     rv$report_source_store <- if (is.null(report_md)) NULL else session$store
@@ -72,11 +82,77 @@ new_session_store <- function() {
       rv$session
     }),
 
+    # Version-aware read of a generic TempestRun supplied by the host or owned
+    # by a built-in workflow.
+    get_run = shiny::reactive({
+      rv$run_version
+      rv$run
+    }),
+
+    # Prefer Co-STORM session evidence when a session is active. Otherwise,
+    # expose the evidence ledger owned by a generic workflow run.
+    evidence_store = shiny::reactive({
+      rv$run_version
+      current_run <- rv$run
+      if (
+        isTRUE(rv$prefer_run_evidence) &&
+          !is.null(current_run)
+      ) {
+        return(current_run$source_store)
+      }
+
+      rv$version
+      current_session <- rv$session
+      if (!is.null(current_session)) {
+        return(current_session$store)
+      }
+
+      if (is.null(current_run)) {
+        return(NULL)
+      }
+      current_run$source_store
+    }),
+
+    peek_run = function() {
+      shiny::isolate(rv$run)
+    },
+
     # Replace the session (e.g. on session start).
     set = function(session) {
       rv$session <- session
+      workflow_run <- tryCatch(
+        session$workflow_run,
+        error = function(error) NULL
+      )
+      if (inherits(workflow_run, "TempestRun")) {
+        rv$run <- workflow_run
+        rv$prefer_run_evidence <- FALSE
+        rv$run_version <- shiny::isolate(rv$run_version) + 1L
+      }
       bump_version()
       invisible(session)
+    },
+
+    set_run = function(run, prefer_evidence = FALSE) {
+      if (!is.null(run) && !inherits(run, "TempestRun")) {
+        stop("run must be NULL or a TempestRun.", call. = FALSE)
+      }
+      if (
+        !is.logical(prefer_evidence) ||
+          length(prefer_evidence) != 1L ||
+          is.na(prefer_evidence)
+      ) {
+        stop("prefer_evidence must be TRUE or FALSE.", call. = FALSE)
+      }
+      rv$run <- run
+      rv$prefer_run_evidence <- prefer_evidence
+      rv$run_version <- shiny::isolate(rv$run_version) + 1L
+      invisible(run)
+    },
+
+    touch_run = function() {
+      rv$run_version <- shiny::isolate(rv$run_version) + 1L
+      invisible()
     },
 
     # Signal that the current session was mutated in place.
@@ -106,13 +182,30 @@ new_session_store <- function() {
       saved
     },
 
-    restore = function(path, config, progress = NULL) {
+    restore = function(
+      path,
+      config,
+      runtime = tempest::tempest_runtime(),
+      connection_permissions = list(),
+      progress = NULL
+    ) {
       session <- tempest::tempest_session_resume(
         path,
         config = config,
+        runtime = runtime,
+        connection_permissions = connection_permissions,
         progress = progress
       )
       rv$session <- session
+      workflow_run <- tryCatch(
+        session$workflow_run,
+        error = function(error) NULL
+      )
+      if (inherits(workflow_run, "TempestRun")) {
+        rv$run <- workflow_run
+        rv$prefer_run_evidence <- FALSE
+        rv$run_version <- shiny::isolate(rv$run_version) + 1L
+      }
       set_report_from_session(session)
       set_persistence(
         "restored",

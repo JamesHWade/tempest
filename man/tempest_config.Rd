@@ -8,7 +8,6 @@ tempest_config(
   models = NULL,
   params = NULL,
   chat_fn = NULL,
-  tools = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
   artifact_store = NULL,
@@ -39,9 +38,6 @@ string to use for all roles.}
 \item{chat_fn}{Custom chat factory function. Should accept \code{role}, \code{model},
 \code{system_prompt}, and \code{echo} arguments and return an ellmer-compatible Chat
 object. Use this for custom providers like \code{chat_company()}.}
-
-\item{tools}{Additional tools to register with each chat. Can be a list of
-ellmer tools, or a function that returns tools (e.g., \code{btw::btw_tools}).}
 
 \item{embed_fn}{Embedding function for RAG. Should accept a character vector
 and return a matrix of embeddings. Use \code{ragnar::embed_openai()},

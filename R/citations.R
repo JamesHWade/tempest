@@ -1,9 +1,9 @@
 # Citations and report assembly
 
-#' Return sources as a tibble
+#' Return evidence resources as a tibble
 #' @param store A `SourceStore` or `TempestRetriever`.
-#' @return A tibble of sources with columns: id, url, title, snippet,
-#'   content_text, context_text, fetched_at.
+#' @return A tibble with resource identity, kind, opaque locator, optional web
+#'   URL, title, media type, content context, retrieval time, and metadata.
 #' @examples
 #' \dontrun{
 #' result <- tempest_run("History of jazz", config = tempest_config())
@@ -16,6 +16,12 @@ tempest_sources <- function(store) {
   }
   stopifnot(inherits(store, "SourceStore"))
   store$to_tibbles()$sources
+}
+
+#' @rdname tempest_sources
+#' @export
+tempest_resources <- function(store) {
+  tempest_sources(store)
 }
 
 #' Return claims as a tibble
@@ -422,5 +428,18 @@ tempest_session_report_md <- function(session) {
   stopifnot(inherits(session, "TempestSession"))
   title <- session$title %||% "Co-STORM Report"
   body <- session$artifacts$report %||% ""
-  tempest_report_md(title = title, body = body, store = session$store)
+  plan <- tempest_deliverable_plan(
+    deliverable = tempest_costorm_report_spec(session),
+    context = list(
+      title = title,
+      store = session$store,
+      include_references = TRUE,
+      citation_policy = session$config@citation_policy,
+      on_unsupported_claim = session$config@on_unsupported_claim,
+      min_support_score = session$config@min_support_score
+    )
+  )
+  result <- tempest_deliverable_finalize(plan, body)
+  artifact <- tempest_deliverable_primary_artifact(result)
+  artifact@content
 }

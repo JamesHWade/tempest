@@ -16,8 +16,8 @@ tempest_type_turn_policy <- function() {
       ),
       "What action to take next."
     ),
-    agent_name = ellmer::type_string(
-      "Name of the agent to act (for expert_speaks/retire_expert).",
+    expert_id = ellmer::type_string(
+      "Stable expert id to act (for expert_speaks/retire_expert).",
       required = FALSE
     ),
     instruction = ellmer::type_string(
@@ -64,14 +64,14 @@ DiscourseManager <- R6::R6Class(
     #' @param topic The research topic.
     #' @param transcript_md Recent transcript as markdown.
     #' @param mindmap_md Mind map as markdown.
-    #' @param persona_descriptions Formatted persona descriptions.
+    #' @param expert_descriptions Formatted expert descriptions with stable ids.
     #' @param unseen_sources Character vector of undiscussed source IDs.
-    #' @return A turn decision list with action, agent_name, instruction, rationale.
+    #' @return A turn decision list with action, expert_id, instruction, rationale.
     decide_next_turn = function(
       topic,
       transcript_md,
       mindmap_md,
-      persona_descriptions,
+      expert_descriptions,
       unseen_sources = character()
     ) {
       type <- tempest_type_turn_policy()
@@ -92,7 +92,7 @@ DiscourseManager <- R6::R6Class(
         topic,
         "\n\n",
         "Expert panel:\n",
-        persona_descriptions,
+        expert_descriptions,
         "\n\n",
         "Mind map:\n",
         mindmap_md,
@@ -119,7 +119,7 @@ DiscourseManager <- R6::R6Class(
           )
           list(
             action = "moderator_probes",
-            agent_name = "",
+            expert_id = "",
             instruction = "Continue exploring the topic.",
             rationale = "Fallback due to discourse manager error."
           )

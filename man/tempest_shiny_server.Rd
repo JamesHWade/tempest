@@ -9,8 +9,11 @@ tempest_shiny_server(
   config = tempest_config(),
   store = NULL,
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
-  personas = NULL,
-  session_id = NULL
+  experts = NULL,
+  runtime = tempest_runtime(),
+  connection_permissions = list(),
+  session_id = NULL,
+  run = NULL
 )
 }
 \arguments{
@@ -24,24 +27,37 @@ store is created.}
 
 \item{panels}{Character vector matching the UI panels.}
 
-\item{personas}{Optional expert definitions passed to \code{\link[=tempest_session]{tempest_session()}} for
+\item{experts}{Optional expert profiles passed to \code{\link[=tempest_session]{tempest_session()}} for
 new Co-STORM sessions. May be a value, function, or reactive.}
+
+\item{runtime}{A \code{\link[=tempest_runtime]{tempest_runtime()}}, function, or reactive used to resolve
+process-local operations, capabilities, and connections.}
+
+\item{connection_permissions}{Named per-role or per-expert connection
+allow-lists passed to \code{\link[=tempest_session]{tempest_session()}}.}
 
 \item{session_id}{Optional stable session id passed to \code{\link[=tempest_session]{tempest_session()}}
 for new Co-STORM sessions. May be a value, function, or reactive.}
+
+\item{run}{Optional \code{TempestRun}, function, or reactive. This lets a host
+expose a custom headless workflow through the same generic adapter
+reactives as built-in workflows.}
 }
 \value{
-A list with \code{store}, \code{session}, \code{report}, and \code{report_ready}.
+A list with the shared \code{store}; reactive \code{run}, \code{status}, \code{events},
+\code{approvals}, \code{assignments}, \code{artifacts}, \code{evidence}, \code{grants}, \code{session},
+\code{report}, and \code{report_ready} accessors; and \code{approve()}, \code{cancel()}, and
+\code{touch()} controls.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
 \code{tempest_shiny_server()} pairs with \code{\link[=tempest_shiny_ui]{tempest_shiny_ui()}} and lets a host app
-provide a runtime \link{TempestConfig}, optional expert personas, a stable session
-id, and an optional shared store. The returned handle exposes the shared
-store and reactive accessors for the current session, report, and report
-readiness signal.
+provide a \link{TempestConfig}, process-local \code{\link[=tempest_runtime]{tempest_runtime()}}, optional expert
+profiles, a stable session id, and an optional shared store. The returned
+handle exposes the shared store and reactive accessors for generic run,
+event, approval, capability-grant, artifact, session, and report state.
 }
 \examples{
 \dontrun{

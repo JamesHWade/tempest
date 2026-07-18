@@ -83,11 +83,11 @@ test_that("TempestSession emits Co-STORM progress events", {
     "Co-STORM progress",
     config = cfg,
     retriever = tempest_retriever(config = cfg, store = store),
-    personas = list(list(
-      id = 1,
+    experts = list(test_expert(
+      expert_id = "expert.flow",
       name = "Dr. Flow",
       title = "Workflow analyst",
-      perspective = "Progress metadata",
+      description = "Progress metadata",
       initial_questions = "How should progress be exposed?"
     )),
     progress = collector$record
@@ -162,11 +162,11 @@ test_that("warmup failure emits failed expert and tool events", {
   session <- tempest_session(
     "Co-STORM progress",
     config = cfg,
-    personas = list(list(
-      id = 2,
+    experts = list(test_expert(
+      expert_id = "expert.warmup",
       name = "Dr. Warmup",
       title = "Warmup specialist",
-      perspective = "Warmup progress",
+      description = "Warmup progress",
       initial_questions = "Will warmup report failures?"
     )),
     progress = collector$record
@@ -225,23 +225,30 @@ test_that("expert tools emit correlated progress events", {
     }
   )
   retriever <- tempest_retriever(config = cfg, store = store)
+  expert <- test_expert(
+    expert_id = "expert.tool",
+    name = "Dr. Tool",
+    title = "Tool specialist"
+  )
   mgr <- tempest:::ExpertSessionManager$new(
-    cfg,
-    retriever,
+    experts = list(expert),
+    runtime = tempest_runtime(),
+    config = cfg,
+    retriever = retriever,
     extractor = extractor,
     store = store,
     progress = collector$record,
     run_id = "session-1"
   )
-  persona <- list(
-    id = 7,
-    name = "Dr. Tool",
-    title = "Tool specialist",
-    perspective = "Expert tools"
+  tool <- tempest:::tempest_create_expert_delegation_tool(
+    mgr,
+    "Progress"
   )
 
-  tool <- tempest:::tempest_create_expert_tool(persona, mgr, "Progress")
-  result <- tool(question = "What should we know?")
+  result <- tool(
+    expert_id = "expert.tool",
+    question = "What should we know?"
+  )
 
   tool_events <- collector$data(event_type = "tool", stage = "dialogue")
   expect_equal(
@@ -257,7 +264,7 @@ test_that("expert tools emit correlated progress events", {
   claims <- store$list_claims()
   expect_length(claims, 1)
   expect_equal(claims[[1]]@session_id, result$session_id)
-  expect_equal(claims[[1]]@persona_id, "7")
+  expect_equal(claims[[1]]@expert_id, "expert.tool")
   expect_equal(claims[[1]]@retrieval_step_id, tool_events[[1]]$correlation_id)
   fact_events <- collector$data(event_type = "step", stage = "evidence")
   fact_events <- Filter(
@@ -305,18 +312,24 @@ test_that("expert tools reuse sessions and provenance", {
     }
   )
   retriever <- tempest_retriever(config = cfg, store = store)
+  expert <- test_expert(
+    expert_id = "expert.reuse",
+    name = "Dr. Reuse",
+    title = "Tool specialist"
+  )
   mgr <- tempest:::ExpertSessionManager$new(
-    cfg,
-    retriever,
+    experts = list(expert),
+    runtime = tempest_runtime(),
+    config = cfg,
+    retriever = retriever,
     extractor = extractor,
     store = store,
     run_id = "session-1"
   )
-  persona <- list(id = 7, name = "Dr. Reuse", title = "Tool specialist")
-  tool <- tempest:::tempest_create_expert_tool(persona, mgr, "Progress")
+  tool <- tempest:::tempest_create_expert_delegation_tool(mgr, "Progress")
 
-  first <- tool(question = "First?")
-  second <- tool(question = "Second?", session_id = first$session_id)
+  first <- tool(expert_id = "expert.reuse", question = "First?")
+  second <- tool(expert_id = "expert.reuse", question = "Second?")
 
   expect_equal(second$session_id, first$session_id)
   expect_length(mgr$list_sessions(), 1)
@@ -328,8 +341,8 @@ test_that("expert tools reuse sessions and provenance", {
     rep(first$session_id, 2)
   )
   expect_equal(
-    vapply(claims, function(claim) claim@persona_id, character(1)),
-    rep("7", 2)
+    vapply(claims, function(claim) claim@expert_id, character(1)),
+    rep("expert.reuse", 2)
   )
 })
 
@@ -347,16 +360,28 @@ test_that("expert tools emit failed progress events", {
     }
   )
   retriever <- tempest_retriever(config = cfg, store = store)
+  expert <- test_expert(
+    expert_id = "expert.failure",
+    name = "Dr. Failure",
+    title = "Specialist"
+  )
   mgr <- tempest:::ExpertSessionManager$new(
-    cfg,
-    retriever,
+    experts = list(expert),
+    runtime = tempest_runtime(),
+    config = cfg,
+    retriever = retriever,
     progress = collector$record,
     run_id = "session-1"
   )
-  persona <- list(id = 1, name = "Dr. Failure", title = "Specialist")
-  tool <- tempest:::tempest_create_expert_tool(persona, mgr, "Progress")
+  tool <- tempest:::tempest_create_expert_delegation_tool(mgr, "Progress")
 
-  expect_error(tool(question = "Will this fail?"), "expert unavailable")
+  expect_error(
+    tool(
+      expert_id = "expert.failure",
+      question = "Will this fail?"
+    ),
+    "expert unavailable"
+  )
 
   failed <- collector$data(event_type = "tool", status = "failed")[[1]]
   expect_equal(failed$payload$expert_name, "Dr. Failure")

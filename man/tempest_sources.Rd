@@ -2,19 +2,22 @@
 % Please edit documentation in R/citations.R
 \name{tempest_sources}
 \alias{tempest_sources}
-\title{Return sources as a tibble}
+\alias{tempest_resources}
+\title{Return evidence resources as a tibble}
 \usage{
 tempest_sources(store)
+
+tempest_resources(store)
 }
 \arguments{
 \item{store}{A \code{SourceStore} or \code{TempestRetriever}.}
 }
 \value{
-A tibble of sources with columns: id, url, title, snippet,
-content_text, context_text, fetched_at.
+A tibble with resource identity, kind, opaque locator, optional web
+URL, title, media type, content context, retrieval time, and metadata.
 }
 \description{
-Return sources as a tibble
+Return evidence resources as a tibble
 }
 \examples{
 \dontrun{

@@ -7,8 +7,11 @@
 tempest_session_resume(
   path,
   config = tempest_config(),
+  runtime = tempest_runtime(),
+  connection_permissions = NULL,
   progress = NULL,
-  partial_recovery = FALSE
+  partial_recovery = FALSE,
+  codec_registry = NULL
 )
 }
 \arguments{
@@ -17,12 +20,23 @@ tempest_session_resume(
 \item{config}{Runtime \link{TempestConfig} used to recreate chats, retrievers, and
 tools.}
 
+\item{runtime}{A fresh \code{\link[=tempest_runtime]{tempest_runtime()}} supplying process-local skill,
+capability, and connection implementations.}
+
+\item{connection_permissions}{Optional named connection-permission override
+that may only remove saved contexts or connection ids. When \code{NULL}, the
+saved opaque connection ids are reused.}
+
 \item{progress}{Optional callback for future \code{tempest_progress_event}
 objects.}
 
 \item{partial_recovery}{Whether to allow explicitly requested recovery when
-declared optional files are missing or fail integrity checks. Required
-source and persona data must still be readable.}
+allowlisted presentation files are missing or fail integrity checks. All
+other declared files, including workflow, permission, grant, expert,
+runtime, store, and typed-artifact state, must pass integrity checks.}
+
+\item{codec_registry}{Optional \code{\link[=tempest_artifact_codec_registry]{tempest_artifact_codec_registry()}} containing
+host-defined codecs needed to decode typed artifact content.}
 }
 \value{
 A restored \link{TempestSession}.
@@ -30,6 +44,6 @@ A restored \link{TempestSession}.
 \description{
 \code{tempest_session_resume()} reads a directory bundle written by
 \code{\link[=tempest_session_save]{tempest_session_save()}} and rebuilds a \link{TempestSession} with a fresh runtime
-\link{TempestConfig}. Historical progress events are loaded for display and
-reduction, but they are not replayed into \code{progress}.
+\link{TempestConfig} and \code{\link[=tempest_runtime]{tempest_runtime()}}. Historical progress events are
+loaded for display and reduction, but they are not replayed into \code{progress}.
 }

@@ -1,6 +1,17 @@
 url: https://jameshwade.github.io/tempest/
 template:
   bootstrap: 5
+articles:
+- title: Get started
+  desc: Install Tempest and run your first workflow.
+  navbar: ~
+  contents:
+  - tempest
+- title: Build with Tempest
+  desc: Define application-neutral workflows, experts, permissions, and outputs.
+  navbar: ~
+  contents:
+  - reusable-workflows
 reference:
 - title: Core workflows
   contents:
@@ -9,6 +20,14 @@ reference:
   - tempest_run_cancel
   - tempest_task
   - tempest_costorm_task
+  - tempest_run_workflow
+  - tempest_storm_workflow_run
+  - tempest_costorm_workflow_run
+  - tempest_run_accessors
+  - tempest_run_snapshot
+  - tempest_run_restore
+  - tempest_run_save
+  - tempest_run_resume
   - tempest_session
   - TempestSession
   - SimulatedUser
@@ -16,7 +35,6 @@ reference:
 - title: Configuration and retrieval
   contents:
   - tempest_config
-  - tempest_generate_personas
   - tempest_retriever
   - TempestRetriever
   - tempest_create_ragnar_store
@@ -26,18 +44,51 @@ reference:
   contents:
   - tempest_claims
   - tempest_sources
+  - tempest_resource
   - tempest_verify_claims
   - tempest_report_md
   - tempest_session_report_md
   - tempest_suggest_questions
+- title: Workflow contracts and artifacts
+  contents:
+  - tempest_objective
+  - tempest_deliverable_spec
+  - tempest_validation_result
+  - tempest_artifact
+  - tempest_artifact_representation
+  - tempest_operation_registry
+  - tempest_builtin_operation_registry
+  - tempest_workflow_step
+  - tempest_workflow_spec
+  - tempest_storm_workflow_spec
+  - tempest_costorm_workflow_spec
+  - tempest_builtin_workflow_operation_registry
+  - tempest_generate_deliverable
+  - tempest_artifact_catalog
+  - tempest_artifact_catalog_restore
+  - tempest_artifact_codec_definition
+  - tempest_artifact_codec_registry
+- title: Experts and scoped runtime
+  contents:
+  - tempest_expert
+  - tempest_generate_experts
+  - tempest_skill
+  - tempest_skill_registry
+  - tempest_capability_spec
+  - tempest_capability_resolver
+  - tempest_connection_ref
+  - tempest_connection_provider
+  - tempest_runtime
+  - tempest_expert_session_manager
 - title: Host app extension points
   contents:
   - tempest_artifact_store
   - tempest_memory_artifact_store
-  - tempest_expert
   - tempest_shiny_store
   - tempest_shiny_ui
   - tempest_shiny_server
+  - tempest_storm_workflow_adapter
+  - tempest_costorm_workflow_adapter
 - title: Session persistence
   contents:
   - tempest_session_snapshot

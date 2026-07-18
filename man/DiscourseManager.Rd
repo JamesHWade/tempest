@@ -55,7 +55,7 @@ Decides which agent should speak next and what action to take.
   topic,
   transcript_md,
   mindmap_md,
-  persona_descriptions,
+  expert_descriptions,
   unseen_sources = character()
 )}
     \if{html}{\out{</div>}}
@@ -66,13 +66,13 @@ Decides which agent should speak next and what action to take.
       \item{\code{topic}}{The research topic.}
       \item{\code{transcript_md}}{Recent transcript as markdown.}
       \item{\code{mindmap_md}}{Mind map as markdown.}
-      \item{\code{persona_descriptions}}{Formatted persona descriptions.}
+      \item{\code{expert_descriptions}}{Formatted expert descriptions with stable ids.}
       \item{\code{unseen_sources}}{Character vector of undiscussed source IDs.}
     }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    A turn decision list with action, agent_name, instruction, rationale.
+    A turn decision list with action, expert_id, instruction, rationale.
   }
 }
 
