@@ -215,3 +215,111 @@ test_that("catalog snapshots restore specifications, artifacts, and lineage", {
     class = "tempest_artifact_catalog_error"
   )
 })
+
+test_that("artifact store adapters cover typed inline and external artifacts", {
+  spec <- tempest_deliverable_spec(
+    "stored",
+    title = "Stored",
+    purpose = "Exercise the adapter",
+    instructions = "Preserve content.",
+    version = "3",
+    generator_id = "generator",
+    renderer_ids = "renderer",
+    media_types = c("text/plain", "application/octet-stream")
+  )
+  inline <- tempest_artifact(
+    spec,
+    content = "Body",
+    artifact_id = "inline",
+    media_type = "text/plain"
+  )
+  external <- tempest_artifact(
+    spec,
+    storage_ref = "host://objects/external",
+    artifact_id = "external",
+    media_type = "application/octet-stream"
+  )
+  store <- tempest_memory_artifact_store()
+
+  store$write(inline)
+  store$write(external)
+  listing <- store$list()
+
+  expect_identical(store$read("inline"), inline)
+  expect_null(store$read("missing"))
+  expect_identical(store$exists("external", "3"), TRUE)
+  expect_equal(store$version("inline"), "3")
+  expect_null(store$version("missing"))
+  expect_named(listing, c("external", "inline"))
+  expect_null(listing$inline$content)
+  expect_null(listing$external$content)
+})
+
+test_that("artifact store adapter failures and invalid listings are classed", {
+  failing <- tempest_artifact_store(
+    read = function(artifact_id, default) stop("read failed"),
+    list_metadata = function() stop("list failed"),
+    exists = function(artifact_id, version) stop("exists failed"),
+    version = function(artifact_id, default) stop("version failed")
+  )
+
+  expect_error(
+    failing$read("artifact"),
+    class = "tempest_artifact_store_error"
+  )
+  expect_error(
+    failing$list(),
+    class = "tempest_artifact_store_error"
+  )
+  expect_error(
+    failing$exists("artifact"),
+    class = "tempest_artifact_store_error"
+  )
+  expect_error(
+    failing$version("artifact"),
+    class = "tempest_artifact_store_error"
+  )
+
+  invalid <- tempest_artifact_store(
+    list_metadata = function() {
+      list(
+        artifact = list(
+          artifact_id = "artifact",
+          callback = function() NULL
+        )
+      )
+    }
+  )
+  expect_error(
+    invalid$list(),
+    class = "tempest_artifact_store_error"
+  )
+})
+
+test_that("artifact store reads enforce artifact identity", {
+  spec <- tempest_deliverable_spec(
+    "stored",
+    title = "Stored",
+    purpose = "Exercise read identity",
+    instructions = "Return the requested artifact.",
+    generator_id = "generator",
+    renderer_ids = "renderer"
+  )
+  wrong_artifact <- tempest_artifact(
+    spec,
+    content = "Wrong artifact",
+    artifact_id = "artifact-b"
+  )
+  store <- tempest_artifact_store(
+    read = function(artifact_id, default) wrong_artifact
+  )
+
+  expect_error(
+    store$read("artifact-a"),
+    class = "tempest_artifact_store_error"
+  )
+  expect_error(
+    store$version("artifact-a"),
+    class = "tempest_artifact_store_error"
+  )
+})

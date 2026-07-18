@@ -7,7 +7,7 @@
 tempest_format_persona_details(persona)
 }
 \arguments{
-\item{persona}{A persona object from \code{tempest_generate_personas()}.}
+\item{persona}{A plain runtime expert record.}
 }
 \value{
 A formatted string with persona details.

@@ -1,16 +1,19 @@
 # tempest 0.1.0
 
-* The bundled Shiny app now escapes untrusted model and source content, rejects unsafe links, isolates browser session storage behind upload/download archives with quotas and private permissions, provides cancellable STORM workers, runs Co-STORM persona generation, enrichment, suggestions, and reports asynchronously with ordered stale-safe commits, quarantines timed-out expert chats, and exposes an accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
+* The bundled Shiny app now escapes untrusted model and source content, rejects unsafe links, isolates browser session storage behind upload/download archives with quotas and private permissions, provides cancellable STORM workers, runs Co-STORM expert generation, enrichment, suggestions, and reports asynchronously with ordered stale-safe commits, quarantines timed-out expert chats, and exposes an accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
 * `SourceStore` now validates source, claim, evidence-span, and dispute mutations, rejects orphan references and source-budget overflow, and keeps reverse indexes correct when claims are replaced; the unused parallel S7 source representation was removed (67h9, y2kw).
-* `tempest_artifact()`, `tempest_artifact_catalog()`, `tempest_artifact_store()`, `tempest_deliverable_spec()`, `tempest_generate_deliverable()`, `tempest_objective()`, and `tempest_operation_registry()` add an application-neutral output lifecycle with versioned operation references, validation, evidence lineage, typed multi-format artifacts, host storage adapters, and checksummed persistence shared by STORM, Co-STORM, and host-defined outcomes (xbwy).
+* `SourceStore` and `tempest_resource()` now support fingerprinted web, file, message, database, and host-defined evidence resources with opaque locators, connection provenance, redaction and retention metadata, and durable claim lineage without requiring public URLs (fr54).
+* `tempest_artifact()`, `tempest_artifact_catalog()`, `tempest_artifact_store()`, `tempest_deliverable_spec()`, `tempest_generate_deliverable()`, `tempest_objective()`, and `tempest_operation_registry()` add an application-neutral output lifecycle with versioned operation references, validation, evidence lineage, typed multi-format artifacts, approval-before-export enforcement, safe invalid-output retries, host storage adapters, and checksummed persistence shared by STORM, Co-STORM, and host-defined outcomes (xbwy).
+* `tempest_artifact_codec_registry()` and `tempest_artifact_store()` provide versioned runtime codecs and complete typed storage adapters for inline or external custom artifact representations without serializing executable codec functions (fr54).
 * `tempest_config()` now validates scalar model, logical, search, source, expert, query, and retrieval budgets immediately with classed errors, and provider tools cannot exceed configured search limits (y2kw).
 * `tempest_create_ragnar_store()` preserves and validates compatible persistent stores by default; destructive replacement now requires `reset = TRUE` (yb8s).
+* `tempest_costorm_workflow_run()` and `tempest_storm_workflow_run()` expose the built-in research workflows as executable `TempestRun` specifications with shared evidence, typed checkpoints, selected expert teams, scoped connections, and an approval-gated Co-STORM dialogue boundary (vtvt).
 * `tempest_report_md()` now applies strict citation actions to complete matched assertions, removes unsupported assertions under `drop`, gives `revise` distinct behavior, and no longer lets unrelated claims sharing a source determine sentence status (e9kn).
 * `tempest_run_async()` now executes in a real Mirai worker, preserves result and error semantics, returns without blocking, and can be stopped with `tempest_run_cancel()` (4303).
 * `tempest_session_save()` now replaces bundles atomically from a complete sibling staging directory, records SHA-256 checksums for every declared file, and `tempest_session_resume()` verifies manifest completeness and integrity with explicit `partial_recovery` support (arqh).
 * Retriever URL fetching now parses and resolves destinations structurally, rejects non-public and obfuscated IPv4/IPv6 targets, revalidates redirects, and enforces timeout, redirect, content-type, and body-size limits; cache writes are atomic, corrupt entries are quarantined, and transient fetch failures are retried instead of cached indefinitely (vbg7, cax6).
 * Search-provider, evaluation-task, app-startup, asynchronous-run, and UI integration boundaries now have deterministic fixture-based contract coverage without API keys or network access (kqgx).
-* `tempest_expert()` provides an initial host-app extension point for supplying validated Co-STORM experts, while `tempest_config()` accepts an `artifact_store` and `tempest_session()` accepts a shared retriever with a `SourceStore`.
+* `tempest_expert()`, `tempest_skill()`, `tempest_capability_spec()`, `tempest_connection_ref()`, and `tempest_runtime()` add stable expert profiles, reusable skill contracts, per-context least-privilege capability resolution, opaque host connection bindings, exact expert-session restoration, and durable per-step grant records; global all-chat tool registration has been removed (wgr8).
 * `tempest_artifact_store()`, `tempest_expert()`, `tempest_progress_event()`, `tempest_session_save()`, `tempest_shiny_ui()`, and related host-app APIs now carry explicit experimental lifecycle badges, and the pkgdown reference groups separate core workflows, evidence, host extension points, persistence, progress, and dsprrr modules (2nzw).
 * `tempest_claims()` now preserves support scores from structured fact extraction, and `tempest_sources()` now includes derived `context_text` plus fallback snippets for source rows backed by content or provider-native citation context (w3fm, fmbv).
 * `tempest_config()` now defaults to `openai/gpt-5.4` for coordinator and
@@ -32,6 +35,8 @@
   generation modules.
 * `tempest_run()` now executes STORM structured steps through dsprrr modules,
   with ellmer fallbacks for module creation or runtime failures.
+* `tempest_run_save()`, `tempest_run_resume()`, and the `tempest_run_*()` accessors give host applications checksummed generic run bundles plus stable status, event, approval, per-attempt capability-grant, artifact, cancellation, strict restore-integrity, permission-narrowing, and explicit partial-recovery controls without reaching into mutable R6 internals (vtvt).
+* `tempest_run_workflow()`, `tempest_workflow_spec()`, and `tempest_workflow_step()` add a generic deterministic run shell with expert assignments, bounded retry history, ordered events, typed artifacts, requested-output completion checks, pre-execution policy gates, post-generation output approvals, cooperative cancellation, process-local runtime services, and explicit runtime snapshot restoration (vtvt).
 * `tempest_run()` and `tempest_session()` now pass source context into dsprrr claim extraction for provider-native citations, so optimized extraction works for native web-search turns as well as inline `[S...]` citations (c8jk).
 * `tempest_run()` and `tempest_session()` now expose evidence review tools for agents to inspect claims, cited sources, evidence spans, and unsupported claims without requiring write access (my3y).
 * `tempest_run()` and `tempest_session()` now expose claim-oriented `add_claim` and `list_claims` agent tools while keeping `add_fact` and `list_facts` as transitional aliases (msg3).
@@ -58,12 +63,13 @@
 * `tempest_session()` now accepts `session_id` so host apps can align Co-STORM progress, persistence, and artifacts with their own project/session identity (z0e0).
 * `tempest_session_save()`, `tempest_session_resume()`, `tempest_session_snapshot()`, and `tempest_session_restore()` provide schema-versioned Co-STORM session persistence bundles and in-memory snapshot/restore helpers (zj62). `tempest_session_save(overwrite = TRUE)` only replaces directories that already look like a Tempest session bundle, so a mistyped path cannot recursively delete unrelated files.
 * `tempest_shiny_ui()`, `tempest_shiny_server()`, and `tempest_shiny_store()` provide an experimental embeddable Shiny adapter for host apps, with fake-chat example code under `inst/examples/shiny-host` (z0e0).
+* `tempest_shiny_server()` now exposes reactive generic run, event, approval, assignment, capability-grant, artifact, and evidence state; the example host app demonstrates a custom objective, selected expert, scoped connection policy, approval checkpoint, and non-report JSON deliverable (fr54).
 * `tempest_config(search_provider = )` searches now apply a request timeout
   and retry on transient HTTP errors, and a single missing or non-public
   result URL no longer discards every other result for the query.
 * Co-STORM sessions now route turns, update the mind map, and summarise using
   the most recent dialogue turns instead of the oldest.
-* Co-STORM evidence now records expert session ids, persona ids, and progress correlation ids on claims from expert tools, warmup, chat, and STORM research runs so Facts and Sources can be traced back to the agent turn that produced them (vtz9).
+* Co-STORM evidence now records expert session ids, expert ids, and progress correlation ids on claims from expert tools, warmup, chat, and STORM research runs so Facts and Sources can be traced back to the agent turn that produced them (vtz9).
 * Co-STORM moderator answers now avoid generic end-of-answer next-step menus, while suggestion cards focus on topic-specific research questions tied to evidence gaps, uncertainty, and mind-map expansion (svyx).
 * Persisted runs now write artifacts atomically and write the run manifest
   last, so an interrupted save cannot corrupt artifacts or leave `resume`
@@ -78,7 +84,7 @@
 * The bundled Shiny app now includes a compact chat footer with runtime status and icon actions for new sessions, experts, sources, facts, reports, system prompts, and tools (pkd5).
 * The bundled Shiny app now renders Tempest source citations as numbered inline links with cited-source reference panels in reports, transcript answers, and HTML report downloads (k67p, pgp9, eq7b, dq0v).
 * The bundled Shiny app now registers slash commands for `/new`, `/new-session`, `/experts`, `/sources`, `/facts`, `/claims`, `/report`, `/system`, and `/tools`, backed by normal chat-visible responses (t5zn).
-* The bundled Shiny app now uses a Tempest assistant icon in chat and transcript views plus deterministic persona icons for Co-STORM experts in the panel and workflow progress (q8zc, zb9y).
+* The bundled Shiny app now uses a Tempest assistant icon in chat and transcript views plus deterministic expert icons for Co-STORM experts in the panel and workflow progress (q8zc, zb9y).
 * The bundled Shiny app no longer errors when async chat callbacks refresh the
   shared session store outside a reactive consumer.
 * The bundled Shiny app's Co-STORM warmup now runs independent experts in

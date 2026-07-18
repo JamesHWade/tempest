@@ -19,11 +19,11 @@ mod_sources_ui <- function(id) {
 mod_sources_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     sources <- shiny::reactive({
-      ses <- store$get()
-      if (is.null(ses)) {
+      evidence <- store$evidence_store()
+      if (is.null(evidence)) {
         return(NULL)
       }
-      tempest::tempest_sources(ses$store)
+      tempest::tempest_sources(evidence)
     })
 
     output$body <- shiny::renderUI({

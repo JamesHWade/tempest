@@ -1,5 +1,22 @@
 # STORM research stage
 
+tempest_storm_allowed_connection_ref_ids <- function(
+  connection_permissions,
+  expert_id,
+  model_role
+) {
+  permission_ids <- unique(c(expert_id, model_role))
+  permission_ids <- permission_ids[
+    !is.na(permission_ids) & nzchar(permission_ids)
+  ]
+  unique(unlist(
+    connection_permissions[
+      intersect(permission_ids, names(connection_permissions))
+    ],
+    use.names = FALSE
+  ))
+}
+
 #' @keywords internal
 tempest_generate_next_question <- function(
   writer_chat,
@@ -331,7 +348,7 @@ tempest_commit_extracted_facts <- function(
   out,
   store,
   session_id = NA_character_,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
   section_id = NA_character_
@@ -382,7 +399,7 @@ tempest_commit_extracted_facts <- function(
       confidence = conf,
       support_score = f$support_score,
       session_id = session_id,
-      persona_id = persona_id,
+      expert_id = expert_id,
       retrieval_step_id = retrieval_step_id,
       perspective_id = perspective_id,
       section_id = section_id
@@ -399,7 +416,7 @@ tempest_extract_facts_from_answer <- function(
   module = NULL,
   source_ids = NULL,
   session_id = NA_character_,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
   section_id = NA_character_
@@ -432,7 +449,7 @@ tempest_extract_facts_from_answer <- function(
     out,
     store,
     session_id = session_id,
-    persona_id = persona_id,
+    expert_id = expert_id,
     retrieval_step_id = retrieval_step_id,
     perspective_id = perspective_id,
     section_id = section_id
@@ -446,7 +463,7 @@ tempest_extract_facts_from_answer_async <- function(
   store,
   source_ids = NULL,
   session_id = NA_character_,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
   section_id = NA_character_,
@@ -469,7 +486,7 @@ tempest_extract_facts_from_answer_async <- function(
       out,
       store,
       session_id = session_id,
-      persona_id = persona_id,
+      expert_id = expert_id,
       retrieval_step_id = retrieval_step_id,
       perspective_id = perspective_id,
       section_id = section_id
@@ -503,37 +520,71 @@ tempest_turn_answer_and_sources <- function(expert, fallback_answer, store) {
 tempest_research_one_perspective <- function(
   i,
   perspectives,
-  personas,
+  experts,
   config,
+  runtime = tempest_runtime(),
+  connection_permissions = list(),
   topic,
   research_strategy,
   max_questions_per_perspective,
   dsprrr_modules = NULL,
   run_id = NA_character_
 ) {
+  connection_permissions <- tempest_run_connection_permissions(
+    connection_permissions,
+    runtime
+  )
   p <- perspectives[[i]]
-  persona <- if (i <= length(personas)) personas[[i]] else NULL
-  persona_id <- as.character(persona$id %||% i)
+  expert_profile <- if (i <= length(experts)) {
+    experts[[i]]
+  } else {
+    tempest_fallback_expert_profile(i)
+  }
+  expert_record <- tempest_expert_runtime_record(expert_profile)
+  expert_id <- expert_record$expert_id
   perspective_id <- as.character(p$id %||% i)
 
   local_store <- SourceStore$new()
   local_retriever <- tempest_retriever(config = config, store = local_store)
 
-  sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
-  expert <- tempest_make_chat(
+  sp <- tempest_render_expert_prompt(
+    persona = expert_profile,
+    expert_id = expert_id
+  )
+  model_role <- expert_record$model_role
+  if (is.na(model_role)) {
+    model_role <- "expert"
+  }
+  model <- tempest_runtime_model(config, model_role)
+  expert_chat <- tempest_make_chat(
     config,
-    "expert",
+    model_role,
     system_prompt = sp,
     echo = "none"
   )
-  tempest_register_default_tools(
-    expert,
-    local_retriever,
-    model = config@models[["expert"]],
-    search_provider = config@search_provider,
-    claim_provenance = list(
-      session_id = run_id,
-      persona_id = persona_id
+  capability_resolution <- runtime$resolve_expert(
+    expert_profile,
+    allowed_connection_ref_ids = tempest_storm_allowed_connection_ref_ids(
+      connection_permissions,
+      expert_id,
+      model_role
+    ),
+    context = list(
+      retriever = local_retriever,
+      model = model,
+      search_provider = config@search_provider,
+      claim_provenance = list(
+        session_id = run_id,
+        expert_id = expert_id
+      )
+    )
+  )
+  runtime$attach(
+    expert_chat,
+    capability_resolution,
+    context = list(
+      run_id = run_id,
+      expert_id = expert_id
     )
   )
   writer <- tempest_make_chat(config, "writer", echo = "none")
@@ -593,7 +644,7 @@ tempest_research_one_perspective <- function(
         "Answer:"
       )
       ans <- tryCatch(
-        expert$chat(prompt, echo = "none"),
+        expert_chat$chat(prompt, echo = "none"),
         error = function(e) {
           tempest_warn(
             "Expert answer failed for {.val {p_name}}: {conditionMessage(e)}"
@@ -602,7 +653,11 @@ tempest_research_one_perspective <- function(
         }
       )
       if (!is.null(ans)) {
-        harvest <- tempest_turn_answer_and_sources(expert, ans, local_store)
+        harvest <- tempest_turn_answer_and_sources(
+          expert_chat,
+          ans,
+          local_store
+        )
         tryCatch(
           tempest_extract_facts_from_answer(
             extractor,
@@ -611,7 +666,7 @@ tempest_research_one_perspective <- function(
             module = modules$extract_claims,
             source_ids = harvest$source_ids,
             session_id = run_id,
-            persona_id = persona_id,
+            expert_id = expert_id,
             perspective_id = perspective_id
           ),
           error = function(e) {
@@ -637,8 +692,11 @@ tempest_research_one_perspective <- function(
 #' @keywords internal
 tempest_research_parallel <- function(
   perspectives,
-  personas,
+  experts,
   config,
+  runtime,
+  runtime_factory,
+  connection_permissions,
   retriever,
   store,
   topic,
@@ -654,8 +712,10 @@ tempest_research_parallel <- function(
     tempest_research_one_perspective(
       i,
       perspectives = perspectives,
-      personas = personas,
+      experts = experts,
       config = config,
+      runtime = runtime,
+      connection_permissions = connection_permissions,
       topic = topic,
       research_strategy = research_strategy,
       max_questions_per_perspective = max_questions_per_perspective,
@@ -678,8 +738,10 @@ tempest_research_parallel <- function(
           function(
             i,
             perspectives,
-            personas,
+            experts,
             config,
+            runtime_factory,
+            connection_permissions,
             topic,
             research_strategy,
             max_questions_per_perspective,
@@ -690,8 +752,10 @@ tempest_research_parallel <- function(
             research_one(
               i,
               perspectives = perspectives,
-              personas = personas,
+              experts = experts,
               config = config,
+              runtime = runtime_factory(),
+              connection_permissions = connection_permissions,
               topic = topic,
               research_strategy = research_strategy,
               max_questions_per_perspective = max_questions_per_perspective,
@@ -701,8 +765,10 @@ tempest_research_parallel <- function(
           },
           .args = list(
             perspectives = perspectives,
-            personas = personas,
+            experts = experts,
             config = config,
+            runtime_factory = runtime_factory,
+            connection_permissions = connection_permissions,
             topic = topic,
             research_strategy = research_strategy,
             max_questions_per_perspective = max_questions_per_perspective,

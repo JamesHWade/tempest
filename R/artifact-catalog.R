@@ -473,7 +473,10 @@ tempest_artifact_catalog_validate_lineage <- function(
       "{.arg evidence_store} must be a SourceStore."
     )
   }
-  source_ids <- purrr::map_chr(evidence_store$list_sources(), "id")
+  source_ids <- purrr::map_chr(
+    evidence_store$list_resources(),
+    tempest_resource_identity
+  )
   claim_ids <- purrr::map_chr(
     evidence_store$list_claims(),
     function(claim) claim@claim_id

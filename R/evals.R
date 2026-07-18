@@ -51,11 +51,25 @@ tempest_solver_cited_answer <- function(
       system_prompt = tempest_prompt("qa_solver_system"),
       echo = "none"
     )
-    tempest_register_default_tools(
+    runtime <- tempest_runtime()
+    resolution <- runtime$resolve_role(
+      "expert",
+      required_capability_ids = c(
+        "tempest.research.web",
+        "tempest.evidence.read",
+        "tempest.evidence.write"
+      ),
+      optional_capability_ids = "tempest.retrieval.semantic",
+      context = list(
+        retriever = retriever,
+        model = tempest_runtime_model(config, "expert"),
+        search_provider = config@search_provider
+      )
+    )
+    runtime$attach(
       chat,
-      retriever,
-      model = config@models[["expert"]],
-      search_provider = config@search_provider
+      resolution,
+      context = list(retriever = retriever)
     )
 
     q <- input[[i]]

@@ -1,7 +1,7 @@
 # Reusable Tempest workflow architecture
 
 Date: 2026-07-18
-Status: Approved; implementation in progress
+Status: Implemented
 Audience: Tempest maintainers, host-application developers, and coding agents
 
 ## Overview
@@ -446,7 +446,7 @@ sequenceDiagram
     R->>O: Generate and validate deliverable
     O->>A: Render and store typed artifacts
     R-->>H: Emit ordered events and approval requests
-    H->>R: Record approval or request revision
+    H->>R: Approve or reject the output
     R-->>H: Return validated deliverables
 ```
 
@@ -496,33 +496,33 @@ sequenceDiagram
 
 ### Phase 2: Experts, skills, and scoped capabilities
 
-- [ ] Replace persona lists with validated expert profiles using stable string
+- [x] Replace persona lists with validated expert profiles using stable string
   ids and versions.
-- [ ] Add skill specifications and an operation-backed skill registry.
-- [ ] Add per-role and per-expert capability resolution.
-- [ ] Convert default retrieval and evidence tools into built-in capabilities.
-- [ ] Add connection references and runtime connection-provider adapters.
-- [ ] Remove global all-chat tool registration.
+- [x] Add skill specifications and an operation-backed skill registry.
+- [x] Add per-role and per-expert capability resolution.
+- [x] Convert default retrieval and evidence tools into built-in capabilities.
+- [x] Add connection references and runtime connection-provider adapters.
+- [x] Remove global all-chat tool registration.
 
 ### Phase 3: Generic workflow and run state
 
-- [ ] Add workflow-step and workflow specifications.
-- [ ] Add `TempestRun` with step state, assignments, ordered events, and
+- [x] Add workflow-step and workflow specifications.
+- [x] Add `TempestRun` with step state, assignments, ordered events, and
   artifact access.
-- [ ] Implement built-in STORM and Co-STORM specifications over `TempestRun`.
-- [ ] Add policy decisions, approval requests, and resumable approval state.
-- [ ] Add unified cooperative cancellation.
-- [ ] Consolidate STORM and Co-STORM snapshots into a generic run bundle.
+- [x] Implement built-in STORM and Co-STORM specifications over `TempestRun`.
+- [x] Add policy decisions, approval requests, and resumable approval state.
+- [x] Add unified cooperative cancellation.
+- [x] Consolidate STORM and Co-STORM snapshots into a generic run bundle.
 
 ### Phase 4: General resources and host adapters
 
-- [ ] Generalize URL-bound sources into typed evidence resources.
-- [ ] Add a typed artifact-store adapter and codec registry for inline and
+- [x] Generalize URL-bound sources into typed evidence resources.
+- [x] Add a typed artifact-store adapter and codec registry for inline and
   external content.
-- [ ] Expose generic run, event, approval, and artifact reactives from the
+- [x] Expose generic run, event, approval, and artifact reactives from the
   Shiny adapter.
-- [ ] Convert bundled panels into default consumers of generic contracts.
-- [ ] Expand the example host app with a custom objective, expert team,
+- [x] Convert bundled panels into default consumers of generic contracts.
+- [x] Expand the example host app with a custom objective, expert team,
   capability policy, and non-report deliverable.
 
 ## Code references

@@ -59,7 +59,19 @@ tempest_run_verification <- function(
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from `config`.
-#' @param n_experts Number of expert personas to use (default 3).
+#' @param n_experts Number of expert profiles to generate when `experts` is
+#'   `NULL` (default 3).
+#' @param experts Optional list of active profiles created by
+#'   [tempest_expert()]. When supplied, STORM uses this selected team and does
+#'   not generate experts.
+#' @param runtime A [tempest_runtime()] containing scoped skill, capability, and
+#'   connection adapters.
+#' @param runtime_factory Function that recreates `runtime` inside parallel
+#'   workers. The default recreates the built-in runtime. Hosts using custom
+#'   capabilities with `parallel_research = TRUE` must provide a matching
+#'   factory.
+#' @param connection_permissions Named list mapping expert or model-role ids to
+#'   opaque connection ids allowed for this run.
 #' @param research_strategy Either "key_questions" (default, faster) or "conversation"
 #'   (more thorough but slower). Key questions uses predefined questions; conversation
 #'   dynamically generates follow-up questions.
@@ -84,8 +96,13 @@ tempest_run_verification <- function(
 #'   object as STORM workflow stages start, finish, fail, persist artifacts, or
 #'   make final artifacts available.
 #' @param verbose If `TRUE`, prints progress messages.
-#' @return A list with `title`, `outline`, `draft_md`, `report_md`, `store`,
-#'   `artifact_catalog`, and `output_dir`.
+#' @param artifact_catalog Optional shared `TempestArtifactCatalog`. This is
+#'   used by the built-in generic STORM workflow adapter.
+#' @param workflow_run Optional owning `TempestRun`. When supplied, the result
+#'   exposes it as `workflow_run`.
+#' @return A list with `title`, `perspectives`, `experts`, `outline`,
+#'   `draft_md`, `report_md`, `store`, `artifact_catalog`, `workflow_run`, and
+#'   `output_dir`.
 #' @examples
 #' \dontrun{
 #' cfg <- tempest_config()
@@ -98,6 +115,10 @@ tempest_run <- function(
   config = tempest_config(),
   retriever = NULL,
   n_experts = 3,
+  experts = NULL,
+  runtime = tempest_runtime(),
+  runtime_factory = function() tempest_runtime(),
+  connection_permissions = list(),
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
@@ -110,7 +131,9 @@ tempest_run <- function(
   run_id = NULL,
   remove_duplicate = FALSE,
   progress = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  artifact_catalog = NULL,
+  workflow_run = NULL
 ) {
   tempest_require("ellmer", "tempest_run() requires ellmer.")
   if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
@@ -125,9 +148,44 @@ tempest_run <- function(
       "{.arg config} must be created by {.fn tempest_config}."
     )
   }
+  if (!inherits(runtime, "TempestRuntime")) {
+    tempest_runtime_abort(
+      "{.arg runtime} must be created by {.fn tempest_runtime}."
+    )
+  }
+  if (!is.function(runtime_factory)) {
+    tempest_runtime_abort("{.arg runtime_factory} must be a function.")
+  }
+  connection_permissions <- tempest_run_connection_permissions(
+    connection_permissions,
+    runtime
+  )
+  if (
+    !is.null(artifact_catalog) &&
+      !inherits(artifact_catalog, "TempestArtifactCatalog")
+  ) {
+    tempest_config_abort(
+      "{.arg artifact_catalog} must be a TempestArtifactCatalog or NULL."
+    )
+  }
+  if (!is.null(workflow_run) && !inherits(workflow_run, "TempestRun")) {
+    tempest_config_abort(
+      "{.arg workflow_run} must be a TempestRun or NULL."
+    )
+  }
 
   research_strategy <- match.arg(research_strategy)
-  n_experts <- tempest_config_count(n_experts, "n_experts")
+  if (is.null(experts)) {
+    n_experts <- tempest_config_count(n_experts, "n_experts")
+  } else {
+    experts <- tempest_validate_experts(experts)
+    if (length(experts) == 0L) {
+      tempest_config_abort(
+        "{.arg experts} must contain at least one active expert profile."
+      )
+    }
+    n_experts <- length(experts)
+  }
   if (n_experts > config@max_active_experts) {
     tempest_config_abort(
       c(
@@ -165,6 +223,9 @@ tempest_run <- function(
   retriever <- retriever %||%
     tempest_retriever(config = config, store = SourceStore$new())
   store <- retriever$store
+  if (!is.null(experts)) {
+    store$set_artifact("experts", experts)
+  }
   run_dir <- tempest_prepare_run_dir(output_dir, topic, run_id = run_id)
   progress <- tempest_progress_callback(progress)
   progress_run_id <- if (
@@ -177,9 +238,20 @@ tempest_run <- function(
   } else {
     tempest_uuid("run")
   }
-  artifact_catalog <- tempest_artifact_catalog(
-    store = config@artifact_store
-  )
+  artifact_catalog <- artifact_catalog %||%
+    tempest_artifact_catalog(store = config@artifact_store)
+  if (
+    !is.null(workflow_run) &&
+      (!identical(workflow_run$source_store, store) ||
+        !identical(workflow_run$artifact_catalog, artifact_catalog))
+  ) {
+    tempest_config_abort(
+      paste0(
+        "{.arg workflow_run} must own the same evidence store and artifact ",
+        "catalog used by {.fn tempest_run}."
+      )
+    )
+  }
   current_progress_stage <- NA_character_
   emit_progress <- function(
     event_type,
@@ -357,17 +429,29 @@ tempest_run <- function(
       )
       dsprrr_modules <- dsprrr_modules %||% tempest_make_dsprrr_modules(config)
 
-      tempest_register_default_tools(
+      writer_resolution <- runtime$resolve_role(
+        "writer",
+        required_capability_ids = "tempest.evidence.read",
+        optional_capability_ids = "tempest.retrieval.semantic",
+        context = list(
+          retriever = retriever,
+          model = tempest_runtime_model(config, "writer"),
+          search_provider = config@search_provider,
+          run_id = progress_run_id
+        )
+      )
+      runtime$attach(
         writer,
-        retriever,
-        model = config@models[["writer"]],
-        search_provider = config@search_provider,
-        allow_claim_writes = FALSE
+        writer_resolution,
+        context = list(
+          retriever = retriever,
+          run_id = progress_run_id
+        )
       )
 
       title <- store$get_artifact("title") %||% topic
       perspectives <- NULL
-      personas <- NULL
+      experts <- experts %||% list()
       expert_chats <- list() # Created per-perspective
       outline <- NULL
       draft_md <- NULL
@@ -380,7 +464,7 @@ tempest_run <- function(
       ) {
         emit_stage_started(
           "perspectives",
-          message = "Discovering perspectives and personas.",
+          message = "Discovering perspectives and experts.",
           payload = list(n_experts = n_experts)
         )
         if (verbose) {
@@ -435,18 +519,19 @@ tempest_run <- function(
         store$set_artifact("perspectives", perspectives)
         store$set_artifact("title", title)
 
-        # Generate personas aligned with perspectives
-        if (verbose) {
-          tempest_inform("Generating {n_experts} expert personas")
+        if (length(experts) == 0L) {
+          if (verbose) {
+            tempest_inform("Generating {n_experts} expert profiles")
+          }
+          experts <- tempest_generate_experts(
+            topic = topic,
+            n = n_experts,
+            config = config,
+            verbose = verbose,
+            module = dsprrr_modules$personas
+          )
         }
-        personas <- tempest_generate_personas(
-          topic = topic,
-          n = n_experts,
-          config = config,
-          verbose = verbose,
-          module = dsprrr_modules$personas
-        )
-        store$set_artifact("personas", personas)
+        store$set_artifact("experts", experts)
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "perspectives"
@@ -454,10 +539,10 @@ tempest_run <- function(
         save_run_artifacts("perspectives")
         emit_stage_succeeded(
           "perspectives",
-          message = "Finished perspectives and personas.",
+          message = "Finished perspectives and expert selection.",
           payload = list(
             perspective_count = length(perspectives),
-            persona_count = length(personas)
+            expert_count = length(experts)
           )
         )
       } else {
@@ -470,7 +555,8 @@ tempest_run <- function(
         }
         title <- store$get_artifact("title") %||% title
         perspectives <- store$get_artifact("perspectives") %||% list()
-        personas <- store$get_artifact("personas") %||% list()
+        experts <- store$get_artifact("experts") %||% experts
+        experts <- tempest_validate_experts(experts)
         if ("perspectives" %in% steps) {
           emit_stage_skipped(
             "perspectives",
@@ -519,8 +605,11 @@ tempest_run <- function(
           }
           tempest_research_parallel(
             perspectives,
-            personas,
+            experts,
             config,
+            runtime,
+            runtime_factory,
+            connection_permissions,
             retriever,
             store,
             topic,
@@ -533,25 +622,53 @@ tempest_run <- function(
           )
         } else {
           # Sequential research loop
-          # Create expert chats with personas (one per perspective)
+          # Create one chat per selected expert/perspective pair.
           for (i in seq_along(perspectives)) {
-            persona <- if (i <= length(personas)) personas[[i]] else NULL
-            persona_id <- as.character(persona$id %||% i)
-            sp <- tempest_render_expert_prompt(persona = persona, expert_id = i)
+            expert_profile <- if (i <= length(experts)) {
+              experts[[i]]
+            } else {
+              tempest_fallback_expert_profile(i)
+            }
+            expert_record <- tempest_expert_runtime_record(expert_profile)
+            expert_id <- expert_record$expert_id
+            model_role <- expert_record$model_role
+            if (is.na(model_role)) {
+              model_role <- "expert"
+            }
+            model <- tempest_runtime_model(config, model_role)
+            sp <- tempest_render_expert_prompt(
+              persona = expert_profile,
+              expert_id = expert_id
+            )
             expert_chats[[i]] <- tempest_make_chat(
               config,
-              "expert",
+              model_role,
               system_prompt = sp,
               echo = if (verbose) "output" else "none"
             )
-            tempest_register_default_tools(
+            capability_resolution <- runtime$resolve_expert(
+              expert_profile,
+              allowed_connection_ref_ids = tempest_storm_allowed_connection_ref_ids(
+                connection_permissions,
+                expert_id,
+                model_role
+              ),
+              context = list(
+                retriever = retriever,
+                model = model,
+                search_provider = config@search_provider,
+                claim_provenance = list(
+                  session_id = progress_run_id,
+                  expert_id = expert_id
+                )
+              )
+            )
+            runtime$attach(
               expert_chats[[i]],
-              retriever,
-              model = config@models[["expert"]],
-              search_provider = config@search_provider,
-              claim_provenance = list(
-                session_id = progress_run_id,
-                persona_id = persona_id
+              capability_resolution,
+              context = list(
+                run_id = progress_run_id,
+                expert_id = expert_id
               )
             )
           }
@@ -563,16 +680,21 @@ tempest_run <- function(
             qs <- p$key_questions %||% c(topic)
 
             expert <- expert_chats[[i]]
-            persona <- if (i <= length(personas)) personas[[i]] else NULL
-            persona_name <- persona$name %||% paste("Expert", i)
-            persona_id <- as.character(persona$id %||% i)
+            expert_profile <- if (i <= length(experts)) {
+              experts[[i]]
+            } else {
+              tempest_fallback_expert_profile(i)
+            }
+            expert_record <- tempest_expert_runtime_record(expert_profile)
+            expert_name <- expert_record$name
+            expert_id <- expert_record$expert_id
             perspective_id <- as.character(p$id %||% i)
 
             if (verbose) {
               tempest_inform("Perspective: {.val {p_name}}")
-              if (!is.null(persona)) {
+              if (!is.null(expert_profile)) {
                 tempest_inform(
-                  "  Expert: {persona_name} ({persona$title %||% 'Research Specialist'})"
+                  "  Expert: {expert_name} ({expert_record$title})"
                 )
               }
             }
@@ -645,7 +767,7 @@ tempest_run <- function(
                       module = dsprrr_modules$extract_claims,
                       source_ids = harvest$source_ids,
                       session_id = progress_run_id,
-                      persona_id = persona_id,
+                      expert_id = expert_id,
                       perspective_id = perspective_id
                     ),
                     error = function(e) {
@@ -755,7 +877,7 @@ tempest_run <- function(
                     module = dsprrr_modules$extract_claims,
                     source_ids = harvest$source_ids,
                     session_id = progress_run_id,
-                    persona_id = persona_id,
+                    expert_id = expert_id,
                     perspective_id = perspective_id
                   ),
                   error = function(e) {
@@ -1094,13 +1216,14 @@ tempest_run <- function(
       list(
         title = title,
         perspectives = perspectives,
-        personas = personas,
+        experts = experts,
         outline = outline,
         draft_md = draft_md,
         report_md = report_md,
         store = store,
         artifact_catalog = artifact_catalog,
         retriever = retriever,
+        workflow_run = workflow_run,
         output_dir = run_dir
       )
     },

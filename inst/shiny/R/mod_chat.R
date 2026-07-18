@@ -107,7 +107,9 @@ mod_chat_server <- function(
   id,
   config,
   store,
-  personas = NULL,
+  experts = NULL,
+  runtime = tempest::tempest_runtime(),
+  connection_permissions = list(),
   session_id = NULL
 ) {
   shiny::moduleServer(id, function(input, output, session) {
@@ -197,12 +199,18 @@ mod_chat_server <- function(
       warmup_run_id <<- warmup_run_id + 1L
       active_session_id <<- active_session_id + 1L
       work_queue$cancel()
-      ses <- store$restore(path, config = config(), progress = record_progress)
+      ses <- store$restore(
+        path,
+        config = config(),
+        runtime = reactive_or_value(runtime),
+        connection_permissions = reactive_or_value(connection_permissions),
+        progress = record_progress
+      )
       shiny::updateTextInput(session, "topic", value = ses$topic %||% "")
       shiny::updateSliderInput(
         session,
         "n_experts",
-        value = max(1L, min(5L, length(ses$personas %||% list())))
+        value = max(1L, min(5L, length(ses$experts %||% list())))
       )
       restore_progress_history(ses)
       replace_chat_with_session(ses)
@@ -288,7 +296,9 @@ mod_chat_server <- function(
       topic,
       n_experts,
       config_value,
-      session_personas,
+      runtime_value,
+      session_experts,
+      session_connection_permissions,
       session_id_value,
       on_error = NULL
     ) {
@@ -296,8 +306,10 @@ mod_chat_server <- function(
         tempest::tempest_session(
           topic,
           config = config_value,
+          runtime = runtime_value,
           n_experts = n_experts,
-          personas = session_personas,
+          experts = session_experts,
+          connection_permissions = session_connection_permissions,
           session_id = session_id_value,
           progress = record_progress
         ),
@@ -332,7 +344,7 @@ mod_chat_server <- function(
       costorm_log(
         "session ready: %s with %d experts",
         ses$session_id,
-        length(ses$personas)
+        length(ses$experts)
       )
       ses
     }
@@ -481,7 +493,11 @@ mod_chat_server <- function(
         return()
       }
       config_value <- shiny::isolate(config())
-      session_personas <- shiny::isolate(reactive_or_value(personas))
+      runtime_value <- shiny::isolate(reactive_or_value(runtime))
+      session_experts <- shiny::isolate(reactive_or_value(experts))
+      session_connection_permissions <- shiny::isolate(
+        reactive_or_value(connection_permissions)
+      )
       session_id_value <- shiny::isolate(reactive_or_value(session_id))
       session_id_value <- session_id_value %||%
         tempest:::tempest_uuid("session")
@@ -491,14 +507,14 @@ mod_chat_server <- function(
 
       record_progress(costorm_starting_event(session_id_value))
       costorm_log("start requested: %s", topic)
-      personas_ready <- if (is.null(session_personas)) {
-        tempest:::tempest_generate_personas_async(
+      experts_ready <- if (is.null(session_experts)) {
+        tempest:::tempest_generate_experts_async(
           topic,
           n = n_experts,
           config = config_value
         )
       } else {
-        promises::promise_resolve(session_personas)
+        promises::promise_resolve(session_experts)
       }
 
       later::later(
@@ -519,12 +535,12 @@ mod_chat_server <- function(
             }
 
             promises::then(
-              personas_ready,
-              onFulfilled = function(generated_personas) {
+              experts_ready,
+              onFulfilled = function(generated_experts) {
                 if (!warmup_is_current()) {
                   return(NULL)
                 }
-                session_personas <- generated_personas
+                session_experts <- generated_experts
                 tryCatch(
                   {
                     schedule_start_suggestions <- function(
@@ -586,7 +602,9 @@ mod_chat_server <- function(
                       topic,
                       n_experts,
                       config_value = config_value,
-                      session_personas = session_personas,
+                      runtime_value = runtime_value,
+                      session_experts = session_experts,
+                      session_connection_permissions = session_connection_permissions,
                       session_id_value = session_id_value,
                       on_error = function(error) {
                         session_error <<- error
@@ -608,9 +626,9 @@ mod_chat_server <- function(
                     start_session_id <- active_session_id
                     delay_suggestions <- should_delay_start_suggestions(
                       warmup_enabled,
-                      ses$personas
+                      ses$experts
                     )
-                    if (!warmup_enabled || length(ses$personas) == 0) {
+                    if (!warmup_enabled || length(ses$experts) == 0) {
                       reset_start_button()
                       schedule_start_suggestions(ses, start_session_id)
                       return()
@@ -671,7 +689,7 @@ mod_chat_server <- function(
               promises::catch(function(error) {
                 if (warmup_is_current()) {
                   costorm_log(
-                    "persona generation failed: %s",
+                    "expert generation failed: %s",
                     conditionMessage(error)
                   )
                   record_progress(costorm_session_failed_event(
@@ -759,7 +777,7 @@ mod_chat_server <- function(
           turn = turn,
           source_ids = source_ids,
           session_id = ses$session_id,
-          persona_id = "moderator",
+          expert_id = "moderator",
           correlation_id = turn_id,
           is_current = is_current
         )
@@ -842,13 +860,13 @@ mod_chat_server <- function(
     # --- Expert panel --------------------------------------------------------
     output$expert_panel <- shiny::renderUI({
       ses <- store$get()
-      if (is.null(ses) || length(ses$personas) == 0) {
+      if (is.null(ses) || length(ses$experts) == 0) {
         return(shiny::p(
           class = "text-muted small",
           "Start a session to see experts."
         ))
       }
-      shiny::tagList(lapply(ses$personas, expert_card))
+      shiny::tagList(lapply(ses$experts, expert_card))
     })
 
     shiny::reactive(report_ready())
@@ -1016,7 +1034,7 @@ chat_runtime_counts <- function(ses) {
     error = function(e) FALSE
   )
   list(
-    experts = length(ses$personas %||% list()),
+    experts = length(ses$experts %||% list()),
     sources = length(sources),
     facts = length(claims),
     report = isTRUE(report)
@@ -1137,19 +1155,21 @@ chat_command_message <- function(command, ses = NULL, config = NULL) {
 }
 
 chat_command_experts <- function(ses) {
-  if (is.null(ses) || length(ses$personas %||% list()) == 0L) {
+  if (is.null(ses) || length(ses$experts %||% list()) == 0L) {
     return("No expert panel is active. Start a session first.")
   }
   lines <- vapply(
-    ses$personas,
-    function(p) {
+    ses$experts,
+    function(expert) {
       paste0(
         "- **",
-        p$name %||% "Expert",
-        "**: ",
-        p$title %||% "Research Specialist",
-        if (nzchar(p$perspective %||% "")) {
-          paste0(" - ", p$perspective)
+        expert@name,
+        "** [",
+        expert@expert_id,
+        "]: ",
+        expert@title,
+        if (nzchar(expert@description)) {
+          paste0(" - ", expert@description)
         } else {
           ""
         }
@@ -1238,19 +1258,36 @@ chat_command_system_prompt <- function() {
 chat_command_tools <- function(ses, config = NULL) {
   config <- if (is.null(ses)) config else ses$config %||% config
   provider <- tryCatch(config@search_provider, error = function(e) "unknown")
-  tools <- tryCatch(config@tools, error = function(e) NULL)
-  tool_status <- if (is.null(tools)) {
-    "default Tempest tools"
-  } else if (is.function(tools)) {
-    "custom tool factory"
-  } else {
-    paste(length(tools), "custom tool(s)")
+  grants <- if (is.null(ses)) list() else ses$capability_grants %||% list()
+  grant_lines <- unlist(
+    lapply(names(grants), function(context_id) {
+      records <- grants[[context_id]] %||% list()
+      vapply(
+        records,
+        function(grant) {
+          paste0(
+            "- `",
+            context_id,
+            "` / `",
+            grant$capability_id,
+            "`: ",
+            grant$status
+          )
+        },
+        character(1)
+      )
+    }),
+    use.names = FALSE
+  )
+  if (length(grant_lines) == 0L) {
+    grant_lines <- "- No session capability grants are active."
   }
   paste(
     "**Tools and commands**",
     "",
     paste0("- Search provider: `", provider, "`."),
-    paste0("- Tool configuration: ", tool_status, "."),
+    "**Scoped capability grants**",
+    paste(grant_lines, collapse = "\n"),
     "- Commands: `/new`, `/experts`, `/sources`, `/facts`, `/report`, `/system`, `/tools`.",
     sep = "\n"
   )
@@ -1688,7 +1725,7 @@ session_archive_read_manifest <- function(archive, listing) {
 session_archive_manifest_files <- function(manifest) {
   if (
     !is.list(manifest) ||
-      !identical(as.integer(manifest$schema_version %||% NA_integer_), 2L) ||
+      !identical(as.integer(manifest$schema_version %||% NA_integer_), 4L) ||
       !identical(manifest$status %||% "", "complete")
   ) {
     stop(
@@ -1807,17 +1844,17 @@ append_restored_session_chat <- function(chat, session, source_store = NULL) {
 }
 
 expert_intro <- function(ses) {
-  if (length(ses$personas) == 0) {
+  if (length(ses$experts) == 0) {
     return("")
   }
   lines <- vapply(
-    ses$personas,
-    function(p) {
+    ses$experts,
+    function(expert) {
       paste0(
         "- **",
-        p$name %||% "Expert",
+        expert@name,
         "** (",
-        p$title %||% "Specialist",
+        expert@title,
         ")"
       )
     },
@@ -1826,21 +1863,21 @@ expert_intro <- function(ses) {
   paste0("\n\n**Expert Panel:**\n", paste(lines, collapse = "\n"))
 }
 
-expert_card <- function(p) {
+expert_card <- function(expert) {
   shiny::div(
     class = "mb-2 p-2 border small tempest-expert-card",
     shiny::div(
       class = "d-flex align-items-center gap-2",
-      persona_icon(p$name, p$id),
+      persona_icon(expert@name, expert@expert_id),
       shiny::div(
         class = "min-w-0",
-        shiny::strong(p$name %||% "Expert"),
+        shiny::strong(expert@name),
         shiny::br(),
-        shiny::span(class = "text-muted", p$title %||% "")
+        shiny::span(class = "text-muted", expert@title)
       )
     ),
-    if (!is.null(p$perspective) && nzchar(p$perspective)) {
-      shiny::div(class = "mt-1 fst-italic", p$perspective)
+    if (nzchar(expert@description)) {
+      shiny::div(class = "mt-1 fst-italic", expert@description)
     }
   )
 }
@@ -1915,8 +1952,8 @@ append_suggestions <- function(
   invisible(NULL)
 }
 
-should_delay_start_suggestions <- function(warmup_enabled, personas) {
-  isTRUE(warmup_enabled) && length(personas) > 0
+should_delay_start_suggestions <- function(warmup_enabled, experts) {
+  isTRUE(warmup_enabled) && length(experts) > 0
 }
 
 costorm_log <- function(format, ...) {
@@ -1946,7 +1983,7 @@ costorm_starting_event <- function(session_id) {
 }
 
 costorm_session_ready_event <- function(session_id, ses = NULL) {
-  personas <- if (!is.null(ses)) ses$personas else NULL
+  experts <- if (!is.null(ses)) ses$experts else NULL
   tempest::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
@@ -1955,7 +1992,7 @@ costorm_session_ready_event <- function(session_id, ses = NULL) {
     stage = "session",
     step = "created",
     message = "Co-STORM session ready.",
-    payload = list(persona_count = length(personas %||% list()))
+    payload = list(expert_count = length(experts %||% list()))
   )
 }
 
@@ -2058,7 +2095,7 @@ record_warmup_turn <- function(
   response,
   expert_chat = NULL,
   session_id = NA_character_,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   correlation_id = NA_character_
 ) {
   turn <- tryCatch(expert_chat$last_turn(), error = function(e) NULL)
@@ -2069,7 +2106,7 @@ record_warmup_turn <- function(
       turn = turn,
       source_ids = source_ids,
       session_id = session_id,
-      persona_id = persona_id,
+      expert_id = expert_id,
       correlation_id = correlation_id
     ),
     error = function(e) NULL
@@ -2097,7 +2134,7 @@ record_warmup_turn_async <- function(
   response,
   expert_chat = NULL,
   session_id = NA_character_,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   correlation_id = NA_character_,
   queue = costorm_async_queue(),
   is_current = function() TRUE
@@ -2110,7 +2147,7 @@ record_warmup_turn_async <- function(
       response,
       expert_chat = expert_chat,
       session_id = session_id,
-      persona_id = persona_id,
+      expert_id = expert_id,
       correlation_id = correlation_id
     )
     return(promises::promise_resolve(NULL))
@@ -2129,7 +2166,7 @@ record_warmup_turn_async <- function(
       turn = turn,
       source_ids = source_ids,
       session_id = session_id,
-      persona_id = persona_id,
+      expert_id = expert_id,
       correlation_id = correlation_id,
       is_current = current
     )
@@ -2169,7 +2206,7 @@ extract_chat_turn_facts <- function(
   turn = NULL,
   source_ids = NULL,
   session_id = NULL,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   correlation_id = NA_character_
 ) {
   # Harvest only when the caller has not already done so for this turn; the
@@ -2182,7 +2219,7 @@ extract_chat_turn_facts <- function(
     turn = turn,
     source_ids = source_ids,
     session_id = session_id %||% ses$session_id,
-    persona_id = persona_id,
+    expert_id = expert_id,
     correlation_id = correlation_id
   )
   invisible(source_ids)
@@ -2373,7 +2410,7 @@ run_warmup <- function(
     "started",
     stage = "warmup",
     step = "expert_fanout",
-    payload = list(expert_count = length(ses$personas))
+    payload = list(expert_count = length(ses$experts))
   )
 
   if (is.null(max_parallel_experts) || length(max_parallel_experts) == 0L) {
@@ -2388,17 +2425,20 @@ run_warmup <- function(
   }
 
   research_expert <- function(idx) {
-    persona <- ses$personas[[idx]]
-    name <- persona$name %||% paste("Expert", idx)
-    persona_id <- as.character(persona$id %||% idx)
-    expert_correlation_id <- paste("warmup-expert", persona_id, sep = "-")
+    expert <- ses$experts[[idx]]
+    name <- expert@name
+    expert_id <- expert@expert_id
+    expert_correlation_id <- paste("warmup-expert", expert_id, sep = "-")
     expert_event <- NULL
     answered_count <- 0L
     promises::then(promises::promise_resolve(NULL), function(...) {
       if (!warmup_is_current(is_current)) {
         return(NULL)
       }
-      all_questions <- persona$initial_questions %||% character()
+      all_questions <- unique(c(
+        expert@initial_questions,
+        expert@initial_work_items
+      ))
       questions <- warmup_selected_questions(
         all_questions,
         max_questions_per_expert
@@ -2412,7 +2452,7 @@ run_warmup <- function(
           parent_event_id = progress_event_id(warmup_event),
           correlation_id = expert_correlation_id,
           payload = list(
-            expert_id = persona_id,
+            expert_id = expert_id,
             expert_name = name,
             reason = "no_initial_questions"
           )
@@ -2428,12 +2468,12 @@ run_warmup <- function(
         parent_event_id = progress_event_id(warmup_event),
         correlation_id = expert_correlation_id,
         payload = list(
-          expert_id = persona_id,
+          expert_id = expert_id,
           expert_name = name,
           question_count = length(questions)
         )
       )
-      session_result <- ses$expert_session_manager$get_or_create(persona)
+      session_result <- ses$expert_session_manager$get_or_create(expert_id)
       expert_chat <- session_result$chat
       expert_session_id <- session_result$session_id %||% NA_character_
       provenance <- session_result$provenance
@@ -2465,7 +2505,7 @@ run_warmup <- function(
               parent_event_id = progress_event_id(expert_event),
               correlation_id = question_correlation_id,
               payload = list(
-                expert_id = persona_id,
+                expert_id = expert_id,
                 expert_name = name,
                 session_id = expert_session_id,
                 question_index = question_idx
@@ -2475,7 +2515,7 @@ run_warmup <- function(
             old_provenance <- provenance$current %||% list()
             provenance$current <- list(
               session_id = expert_session_id,
-              persona_id = persona_id,
+              expert_id = expert_id,
               retrieval_step_id = question_correlation_id
             )
             chat_promise <- warmup_chat_response(
@@ -2497,7 +2537,7 @@ run_warmup <- function(
                   response,
                   expert_chat = expert_chat,
                   session_id = expert_session_id,
-                  persona_id = persona_id,
+                  expert_id = expert_id,
                   correlation_id = question_correlation_id,
                   queue = queue,
                   is_current = is_current
@@ -2513,7 +2553,7 @@ run_warmup <- function(
                     parent_event_id = progress_event_id(question_event),
                     correlation_id = question_correlation_id,
                     payload = list(
-                      expert_id = persona_id,
+                      expert_id = expert_id,
                       expert_name = name,
                       session_id = expert_session_id,
                       question_index = question_idx
@@ -2543,7 +2583,7 @@ run_warmup <- function(
                     retirement <- retire(expert_session_id)
                   }
                   replacement <- ses$expert_session_manager$get_or_create(
-                    persona
+                    expert_id
                   )
                   expert_chat <<- replacement$chat
                   expert_session_id <<- replacement$session_id %||%
@@ -2581,7 +2621,7 @@ run_warmup <- function(
                   correlation_id = question_correlation_id,
                   payload = c(
                     list(
-                      expert_id = persona_id,
+                      expert_id = expert_id,
                       expert_name = name,
                       session_id = failed_session_id,
                       question_index = question_idx,
@@ -2632,7 +2672,7 @@ run_warmup <- function(
           parent_event_id = progress_event_id(expert_event),
           correlation_id = expert_correlation_id,
           payload = list(
-            expert_id = persona_id,
+            expert_id = expert_id,
             expert_name = name,
             session_id = expert_session_id,
             questions_answered = answered_count
@@ -2651,7 +2691,7 @@ run_warmup <- function(
             correlation_id = expert_correlation_id,
             payload = c(
               list(
-                expert_id = persona_id,
+                expert_id = expert_id,
                 expert_name = name,
                 session_id = expert_session_id
               ),
@@ -2664,7 +2704,7 @@ run_warmup <- function(
       })
   }
 
-  expert_indices <- seq_along(ses$personas)
+  expert_indices <- seq_along(ses$experts)
   batches <- split(
     expert_indices,
     ceiling(seq_along(expert_indices) / max_parallel_experts)
@@ -2692,7 +2732,7 @@ run_warmup <- function(
       step = "expert_fanout",
       parent_event_id = progress_event_id(warmup_event),
       payload = list(
-        expert_count = length(ses$personas),
+        expert_count = length(ses$experts),
         claim_count = length(ses$store$list_claims()),
         source_count = length(ses$store$list_sources())
       )

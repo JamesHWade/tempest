@@ -35,7 +35,7 @@ tempest_run_artifact_paths <- function(run_dir) {
   list(
     run_config = file.path(run_dir, "run_config.json"),
     perspectives = file.path(run_dir, "perspectives.json"),
-    personas = file.path(run_dir, "personas.json"),
+    experts = file.path(run_dir, "experts.json"),
     sources = file.path(run_dir, "sources.json"),
     claims = file.path(run_dir, "claims.json"),
     citation_audit = file.path(run_dir, "citation_audit.json"),
@@ -154,8 +154,16 @@ tempest_source_store_snapshot <- function(store, artifacts = NULL) {
   )]
 
   list(
-    schema_version = 1L,
-    sources = store$list_sources(),
+    schema_version = 2L,
+    resources = lapply(
+      store$list_resources(),
+      tempest_resource_record,
+      include_content = TRUE
+    ),
+    sources = Filter(
+      function(source) !is.na(source$url),
+      store$list_sources()
+    ),
     claims = lapply(store$list_claims(), tempest_claim_to_list),
     evidence_spans = lapply(
       tempest_env_values(store$evidence_spans),
@@ -198,28 +206,48 @@ tempest_source_store_restore <- function(snapshot, store = SourceStore$new()) {
     )
   }
   store_schema <- snapshot$schema_version %||% 1L
-  if (!identical(as.integer(store_schema), 1L)) {
+  if (!as.integer(store_schema) %in% c(1L, 2L)) {
     tempest_source_store_restore_abort(
       paste0("Unsupported store schema version: ", store_schema, ".")
     )
   }
 
-  snapshot_sources <- snapshot$sources %||% list()
-  # Validate the source ledger up front. The shared `tempest_restore_sources()`
-  # helper silently skips malformed entries for lenient STORM run loading, but a
-  # Co-STORM session bundle must flag dropped sources explicitly so that later
-  # "cites unknown source id" failures cannot mask a malformed source record.
-  for (i in seq_along(snapshot_sources)) {
-    source <- snapshot_sources[[i]]
-    if (!is.list(source) || is.null(source$url)) {
+  if (identical(as.integer(store_schema), 2L)) {
+    records <- snapshot$resources %||% list()
+    if (!is.list(records) || is.data.frame(records)) {
       tempest_source_store_restore_abort(
-        paste0("Source entry ", i, " is missing a {.field url}.")
+        "Typed evidence resources must be a list of resource records."
       )
     }
+    for (i in seq_along(records)) {
+      resource <- tryCatch(
+        tempest_resource_from_data(records[[i]]),
+        error = function(error) {
+          tempest_source_store_restore_abort(
+            paste0("Resource entry ", i, " is invalid.")
+          )
+        }
+      )
+      store$upsert_resource(resource)
+    }
+  } else {
+    snapshot_sources <- snapshot$sources %||% list()
+    # Schema 1 restoration is retained only for existing development bundles.
+    for (i in seq_along(snapshot_sources)) {
+      source <- snapshot_sources[[i]]
+      if (!is.list(source) || is.null(source$url)) {
+        tempest_source_store_restore_abort(
+          paste0("Source entry ", i, " is missing a {.field url}.")
+        )
+      }
+    }
+    tempest_restore_sources(store, snapshot_sources)
   }
-  tempest_restore_sources(store, snapshot_sources)
 
-  source_ids <- purrr::map_chr(store$list_sources(), "id")
+  source_ids <- purrr::map_chr(
+    store$list_resources(),
+    tempest_resource_identity
+  )
   spans <- lapply(
     snapshot$evidence_spans %||% list(),
     tempest_evidence_span_from_list
@@ -293,6 +321,257 @@ tempest_session_restore_abort <- function(message) {
 }
 
 #' @keywords internal
+tempest_expert_records <- function(experts) {
+  experts <- tempest_validate_experts(experts, active_only = FALSE)
+  unname(lapply(experts, tempest_expert_profile_record))
+}
+
+#' @keywords internal
+tempest_experts_from_records <- function(
+  records,
+  what = "expert profiles",
+  class = tempest_persistence_error_class()
+) {
+  if (!is.list(records) || is.data.frame(records)) {
+    tempest_abort(
+      "Cannot restore {what}; expected a list of expert-profile records.",
+      class = class
+    )
+  }
+  tryCatch(
+    {
+      experts <- lapply(records, tempest_expert_profile_from_data)
+      tempest_validate_experts(experts, active_only = FALSE)
+    },
+    error = function(error) {
+      tempest_abort(
+        "Cannot restore {what}; an expert-profile record is invalid.",
+        class = class,
+        parent = error
+      )
+    }
+  )
+}
+
+#' @keywords internal
+tempest_session_runtime_records <- function(runtime) {
+  if (!inherits(runtime, "TempestRuntime")) {
+    tempest_abort(
+      "{.arg runtime} must be created by {.fn tempest_runtime}.",
+      class = tempest_session_persistence_error_class(
+        "tempest_session_snapshot_error"
+      )
+    )
+  }
+  list(
+    skills = unname(runtime$skills$list()),
+    connection_refs = unname(runtime$connections$list())
+  )
+}
+
+#' @keywords internal
+tempest_session_verify_runtime_records <- function(
+  records,
+  runtime_records,
+  decoder,
+  id_property,
+  type
+) {
+  if (!is.list(records) || is.data.frame(records)) {
+    tempest_session_restore_abort(
+      paste0("Snapshot ", type, " records must be a list.")
+    )
+  }
+  restored <- tryCatch(
+    lapply(records, decoder),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0("Snapshot contains an invalid ", type, " record.")
+      )
+    }
+  )
+  ids <- vapply(restored, \(value) S7::prop(value, id_property), character(1))
+  if (anyDuplicated(ids)) {
+    tempest_session_restore_abort(
+      paste0("Snapshot contains duplicate ", type, " ids.")
+    )
+  }
+  runtime_records <- runtime_records %||% list()
+  for (i in seq_along(records)) {
+    id <- ids[[i]]
+    runtime_record <- runtime_records[[id]] %||% NULL
+    if (is.null(runtime_record)) {
+      tempest_session_restore_abort(
+        paste0(
+          "Runtime does not provide the saved ",
+          type,
+          " ",
+          id,
+          "."
+        )
+      )
+    }
+    if (
+      !identical(records[[i]]$version, runtime_record$version) ||
+        !identical(records[[i]]$fingerprint, runtime_record$fingerprint)
+    ) {
+      tempest_session_restore_abort(
+        paste0(
+          "Runtime ",
+          type,
+          " ",
+          id,
+          " does not match the saved version and fingerprint."
+        )
+      )
+    }
+  }
+  invisible(restored)
+}
+
+#' @keywords internal
+tempest_session_connection_permissions <- function(
+  connection_permissions,
+  runtime,
+  action = c("snapshot", "restore")
+) {
+  action <- match.arg(action)
+  abort_permissions <- function(message, parent = NULL) {
+    if (identical(action, "restore")) {
+      tempest_session_restore_abort(message)
+    }
+    tempest_abort(
+      message,
+      class = tempest_session_persistence_error_class(
+        "tempest_session_snapshot_error"
+      ),
+      parent = parent
+    )
+  }
+  connection_permissions <- connection_permissions %||% list()
+  if (
+    !is.list(connection_permissions) ||
+      is.data.frame(connection_permissions) ||
+      (length(connection_permissions) > 0L &&
+        (is.null(names(connection_permissions)) ||
+          any(!nzchar(names(connection_permissions))) ||
+          anyDuplicated(names(connection_permissions))))
+  ) {
+    abort_permissions(
+      "Connection permissions must be a uniquely named list."
+    )
+  }
+  permissions <- tryCatch(
+    stats::setNames(
+      lapply(connection_permissions, function(ids) {
+        tempest_contract_ids(
+          unname(unlist(ids, use.names = FALSE)),
+          "connection_permissions"
+        )
+      }),
+      names(connection_permissions)
+    ),
+    error = function(error) {
+      abort_permissions(
+        "Connection permissions contain an invalid connection id.",
+        parent = error
+      )
+    }
+  )
+  runtime_connection_ids <- names(runtime$connections$list())
+  requested <- unique(unlist(permissions, use.names = FALSE))
+  missing <- setdiff(requested, runtime_connection_ids)
+  if (length(missing) > 0L) {
+    abort_permissions(
+      paste0(
+        "Runtime does not provide permitted connection ",
+        missing[[1]],
+        "."
+      )
+    )
+  }
+  permissions
+}
+
+#' @keywords internal
+tempest_session_restore_connection_permissions <- function(
+  saved_permissions,
+  connection_permissions,
+  runtime
+) {
+  saved_permissions <- tempest_session_connection_permissions(
+    saved_permissions,
+    runtime,
+    action = "restore"
+  )
+  if (is.null(connection_permissions)) {
+    return(saved_permissions)
+  }
+
+  connection_permissions <- tempest_session_connection_permissions(
+    connection_permissions,
+    runtime,
+    action = "restore"
+  )
+  added_contexts <- setdiff(
+    names(connection_permissions),
+    names(saved_permissions)
+  )
+  if (length(added_contexts) > 0L) {
+    tempest_session_restore_abort(
+      paste0(
+        "Connection-permission override adds unsaved context ",
+        added_contexts[[1]],
+        "."
+      )
+    )
+  }
+  for (context_id in names(connection_permissions)) {
+    added_connections <- setdiff(
+      connection_permissions[[context_id]],
+      saved_permissions[[context_id]]
+    )
+    if (length(added_connections) > 0L) {
+      tempest_session_restore_abort(
+        paste0(
+          "Connection-permission override adds unsaved connection ",
+          added_connections[[1]],
+          " for context ",
+          context_id,
+          "."
+        )
+      )
+    }
+  }
+
+  connection_permissions
+}
+
+#' @keywords internal
+tempest_capability_grants_record <- function(grants, action = "snapshot") {
+  tryCatch(
+    tempest_contract_serializable_list(
+      grants %||% list(),
+      "capability_grants"
+    ),
+    error = function(error) {
+      if (identical(action, "restore")) {
+        tempest_session_restore_abort(
+          "Saved capability grants are not serializable grant records."
+        )
+      }
+      tempest_abort(
+        "Cannot snapshot non-serializable capability grants.",
+        class = tempest_session_persistence_error_class(
+          "tempest_session_snapshot_error"
+        ),
+        parent = error
+      )
+    }
+  )
+}
+
+#' @keywords internal
 tempest_expert_sessions_snapshot <- function(session) {
   manager <- session$expert_session_manager
   if (is.null(manager)) {
@@ -300,36 +579,21 @@ tempest_expert_sessions_snapshot <- function(session) {
   }
 
   session_ids <- sort(manager$list_sessions())
-  personas <- session$personas %||% list()
-  persona_ids <- purrr::map_chr(
-    personas,
-    ~ as.character(.x$id %||% NA_integer_)
-  )
-  persona_names <- purrr::map_chr(personas, ~ .x$name %||% NA_character_)
-
   lapply(session_ids, function(session_id) {
-    provenance <- if (
-      exists(session_id, envir = manager$session_provenance, inherits = FALSE)
-    ) {
-      get(session_id, envir = manager$session_provenance, inherits = FALSE)
-    } else {
-      NULL
-    }
-    base <- if (is.environment(provenance)) {
-      provenance$base %||% list()
-    } else {
-      list()
-    }
-    persona_id <- as.character(base$persona_id %||% NA_character_)
-    persona_name <- NA_character_
-    persona_idx <- match(persona_id, persona_ids, incomparables = NA)
-    if (!is.na(persona_idx)) {
-      persona_name <- persona_names[[persona_idx]]
-    }
-    list(
-      session_id = session_id,
-      persona_id = persona_id,
-      persona_name = persona_name
+    binding <- manager$session_profile(session_id)
+    tempest_contract_serializable_list(
+      list(
+        session_id = binding$session_id,
+        expert_id = binding$expert_id,
+        expert_version = binding$expert_version,
+        expert_fingerprint = binding$expert_fingerprint,
+        model_role = binding$model_role,
+        allowed_connection_ref_ids = binding$allowed_connection_ref_ids %||%
+          character(),
+        grants = binding$grants %||% list(),
+        created_at = binding$created_at
+      ),
+      "expert_session"
     )
   })
 }
@@ -363,9 +627,11 @@ tempest_config_snapshot <- function(config) {
 #'
 #' `tempest_session_snapshot()` returns a structured, in-memory representation
 #' of the durable state in a [TempestSession]. It includes the session identity,
-#' personas, transcript, mind map, typed deliverable specifications and
+#' expert profiles, transcript, mind map, typed deliverable specifications and
 #' artifacts, auxiliary session state, progress-event history, expert-session
-#' metadata, and the underlying `SourceStore` ledger. Live chat handles, tools,
+#' metadata, serializable skill and connection-reference records, capability
+#' decisions, an attached generic workflow run, and the underlying
+#' `SourceStore` ledger. Live chat handles, runtime clients, tools, closures,
 #' Shiny reactive state, credentials, and provider request bodies are not
 #' included.
 #'
@@ -386,9 +652,10 @@ tempest_session_snapshot <- function(session) {
     )
   }
   artifacts <- tempest_env_snapshot(session$artifacts)
+  runtime_records <- tempest_session_runtime_records(session$runtime)
 
   list(
-    schema_version = 2L,
+    schema_version = 4L,
     package_version = tryCatch(
       as.character(utils::packageVersion("tempest")),
       error = function(e) NA_character_
@@ -397,7 +664,16 @@ tempest_session_snapshot <- function(session) {
     title = session$title,
     session_id = session$session_id,
     config = tempest_config_snapshot(session$config),
-    personas = session$personas,
+    experts = tempest_expert_records(session$experts),
+    skills = runtime_records$skills,
+    connection_refs = runtime_records$connection_refs,
+    connection_permissions = tempest_session_connection_permissions(
+      session$connection_permissions,
+      session$runtime
+    ),
+    capability_grants = tempest_capability_grants_record(
+      session$capability_grants
+    ),
     transcript = session$transcript,
     mindmap = session$mindmap,
     artifacts = artifacts,
@@ -407,62 +683,168 @@ tempest_session_snapshot <- function(session) {
     suggested_questions = artifacts$suggested_questions %||% character(),
     progress_events = artifacts$progress_events %||% list(),
     store = tempest_source_store_snapshot(session$store),
-    expert_sessions = tempest_expert_sessions_snapshot(session)
+    expert_sessions = tempest_expert_sessions_snapshot(session),
+    workflow_run = if (inherits(session$workflow_run, "TempestRun")) {
+      tempest_run_snapshot(session$workflow_run)
+    } else {
+      NULL
+    }
   )
-}
-
-#' @keywords internal
-tempest_session_persona_for_expert_session <- function(
-  session,
-  expert_session
-) {
-  personas <- session$personas %||% list()
-  persona_id <- expert_session$persona_id %||% NA_character_
-  persona_id <- as.character(persona_id)
-  persona_id <- if (length(persona_id) == 0) NA_character_ else persona_id[[1]]
-  if (!is.na(persona_id) && nzchar(persona_id)) {
-    ids <- purrr::map_chr(personas, ~ as.character(.x$id %||% NA_integer_))
-    idx <- match(persona_id, ids)
-    if (!is.na(idx)) {
-      return(personas[[idx]])
-    }
-  }
-
-  persona_name <- expert_session$persona_name %||% NA_character_
-  if (rlang::is_string(persona_name) && !is.na(persona_name)) {
-    idx <- session$find_expert_index(persona_name)
-    if (!is.null(idx)) {
-      return(personas[[idx]])
-    }
-  }
-
-  NULL
 }
 
 #' @keywords internal
 tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
   for (expert_session in expert_sessions %||% list()) {
-    if (!is.list(expert_session) || is.null(expert_session$session_id)) {
-      next
-    }
-    persona <- tempest_session_persona_for_expert_session(
-      session,
-      expert_session
+    required <- c(
+      "session_id",
+      "expert_id",
+      "expert_version",
+      "expert_fingerprint",
+      "grants"
     )
-    if (is.null(persona)) {
+    if (
+      !is.list(expert_session) ||
+        is.data.frame(expert_session) ||
+        length(setdiff(required, names(expert_session))) > 0L
+    ) {
+      tempest_session_restore_abort(
+        "Snapshot contains malformed expert-session metadata."
+      )
+    }
+    expert_ids <- vapply(
+      session$experts,
+      \(expert) expert@expert_id,
+      character(1)
+    )
+    idx <- match(expert_session$expert_id, expert_ids)
+    if (is.na(idx)) {
       tempest_session_restore_abort(
         paste0(
           "Expert session ",
           expert_session$session_id,
-          " does not match a restored persona."
+          " does not match a restored expert."
         )
       )
     }
-    session$expert_session_manager$get_or_create(
-      persona,
-      session_id = expert_session$session_id
+    expert <- session$experts[[idx]]
+    if (
+      !identical(expert@version, expert_session$expert_version) ||
+        !identical(
+          tempest_expert_profile_fingerprint(expert),
+          expert_session$expert_fingerprint
+        )
+    ) {
+      tempest_session_restore_abort(
+        paste0(
+          "Expert session ",
+          expert_session$session_id,
+          " does not match the restored expert version and fingerprint."
+        )
+      )
+    }
+    tempest_capability_grants_record(
+      expert_session$grants,
+      action = "restore"
+    )
+    tryCatch(
+      session$expert_session_manager$restore_session(expert_session),
+      error = function(error) {
+        tempest_session_restore_abort(
+          paste0(
+            "Expert session ",
+            expert_session$session_id,
+            " could not be rehydrated through the supplied runtime."
+          )
+        )
+      }
+    )
+    restored <- session$expert_session_manager$session_profile(
+      expert_session$session_id
+    )
+    for (field in c(
+      "session_id",
+      "expert_id",
+      "expert_version",
+      "expert_fingerprint"
+    )) {
+      if (!identical(restored[[field]], expert_session[[field]])) {
+        tempest_session_restore_abort(
+          paste0(
+            "Rehydrated expert session ",
+            expert_session$session_id,
+            " changed its pinned profile binding."
+          )
+        )
+      }
+    }
+  }
+  invisible(session)
+}
+
+#' @keywords internal
+tempest_session_restore_workflow_run <- function(session, snapshot) {
+  workflow_snapshot <- snapshot$workflow_run %||% NULL
+  if (is.null(workflow_snapshot)) {
+    return(invisible(session))
+  }
+  workflow_snapshot <- tempest_generic_run_snapshot_from_json(
+    workflow_snapshot
+  )
+  workflow_id <- workflow_snapshot$workflow$workflow_id %||% NULL
+  if (!identical(workflow_id, "tempest.costorm")) {
+    tempest_session_restore_abort(
+      "Attached workflow state must use the built-in Co-STORM specification."
     )
   }
+  options <- workflow_snapshot$objective$metadata$costorm_options %||% list()
+  adapter <- tryCatch(
+    tempest_costorm_workflow_adapter(
+      session = session,
+      style = options$style %||% "technical",
+      include_references = options$include_references %||% TRUE,
+      reorganize = options$reorganize %||% TRUE,
+      verbose = options$verbose %||% TRUE
+    ),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Attached Co-STORM workflow options are invalid: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
+  registry <- tempest_builtin_workflow_operation_registry(
+    costorm_adapter = adapter
+  )
+  workflow_runtime <- tempest_builtin_workflow_runtime(
+    session$runtime,
+    registry
+  )
+  run <- tryCatch(
+    tempest_run_restore(
+      workflow_snapshot,
+      runtime = workflow_runtime,
+      artifact_catalog = session$artifact_catalog,
+      source_store = session$store,
+      runtime_context = list(
+        config = session$config,
+        retriever = session$retriever,
+        expert_session_manager = session$expert_session_manager,
+        topic = session$topic
+      ),
+      connection_permissions = session$connection_permissions
+    ),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Attached Co-STORM workflow state could not be restored: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
+  session$workflow_run <- run
   invisible(session)
 }
 
@@ -473,7 +855,7 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #' `tempest_session_restore()` rebuilds a [TempestSession] from a structured
 #' snapshot created by [tempest_session_snapshot()] or read by
 #' [tempest_session_resume()]. It restores durable research state and creates
-#' fresh chat/tool handles using the supplied runtime `config`.
+#' fresh chat/tool handles using the supplied runtime and `config`.
 #'
 #' Historical progress events are restored as session artifact data and can be
 #' reduced with [tempest_progress_state()]. They are not replayed into the new
@@ -483,6 +865,11 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #' @param config Runtime [TempestConfig] used to recreate chats, retrievers, and
 #'   tools. Functions, credentials, and host-specific stores should be supplied
 #'   here rather than read from the snapshot.
+#' @param runtime A fresh [tempest_runtime()] supplying process-local skill,
+#'   capability, and connection implementations.
+#' @param connection_permissions Optional named connection-permission override
+#'   that may only remove saved contexts or connection ids. When `NULL`, the
+#'   saved opaque connection ids are reused.
 #' @param progress Optional callback for future `tempest_progress_event`
 #'   objects.
 #' @return A restored [TempestSession].
@@ -490,13 +877,15 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 tempest_session_restore <- function(
   snapshot,
   config = tempest_config(),
+  runtime = tempest_runtime(),
+  connection_permissions = NULL,
   progress = NULL
 ) {
   if (!is.list(snapshot)) {
     tempest_session_restore_abort("{.arg snapshot} must be a list.")
   }
   schema_version <- snapshot$schema_version %||% NA_integer_
-  if (!identical(as.integer(schema_version), 2L)) {
+  if (!identical(as.integer(schema_version), 4L)) {
     tempest_session_restore_abort(
       paste0("Unsupported snapshot schema version: ", schema_version, ".")
     )
@@ -507,18 +896,56 @@ tempest_session_restore <- function(
     tempest_session_restore_abort("Snapshot must include a non-empty topic.")
   }
 
+  experts <- tempest_experts_from_records(
+    snapshot$experts %||% list(),
+    what = "session expert profiles",
+    class = tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  if (!inherits(runtime, "TempestRuntime")) {
+    tempest_session_restore_abort(
+      "{.arg runtime} must be created by {.fn tempest_runtime}."
+    )
+  }
+  tempest_session_verify_runtime_records(
+    snapshot$skills %||% list(),
+    runtime$skills$list(),
+    tempest_skill_from_data,
+    "skill_id",
+    "skill"
+  )
+  tempest_session_verify_runtime_records(
+    snapshot$connection_refs %||% list(),
+    runtime$connections$list(),
+    tempest_connection_ref_from_data,
+    "connection_id",
+    "connection reference"
+  )
+  connection_permissions <- tempest_session_restore_connection_permissions(
+    snapshot$connection_permissions %||% list(),
+    connection_permissions,
+    runtime
+  )
+  capability_grants <- tempest_capability_grants_record(
+    snapshot$capability_grants %||% list(),
+    action = "restore"
+  )
   store <- tempest_source_store_restore(snapshot$store %||% list())
   retriever <- tempest_retriever(config = config, store = store)
   session <- tempest_session(
     topic = snapshot$topic,
     config = config,
-    personas = snapshot$personas %||% list(),
+    runtime = runtime,
+    experts = experts,
+    connection_permissions = connection_permissions,
     retriever = retriever,
-    progress = NULL
+    progress = NULL,
+    session_id = snapshot$session_id
   )
 
   session$title <- snapshot$title %||% session$topic
-  session$session_id <- snapshot$session_id %||% session$session_id
+  session$capability_grants <- capability_grants
   session$progress <- tempest_progress_callback(progress)
   session$expert_session_manager$run_id <- session$session_id
   session$expert_session_manager$progress <- session$progress
@@ -572,6 +999,7 @@ tempest_session_restore <- function(
     session,
     snapshot$expert_sessions %||% list()
   )
+  tempest_session_restore_workflow_run(session, snapshot)
 
   session
 }
@@ -769,14 +1197,21 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' state, credentials, and raw provider request bodies are not serialized.
 #'
 #' Use [tempest_session_resume()] to load the bundle with a fresh runtime
-#' [TempestConfig].
+#' [TempestConfig] and [tempest_runtime()].
 #'
 #' @param session A [TempestSession] object.
 #' @param path Directory where the session bundle should be written.
 #' @param overwrite If `TRUE`, replace an existing bundle directory.
+#' @param codec_registry Optional [tempest_artifact_codec_registry()] containing
+#'   host-defined codecs needed to encode typed artifact content.
 #' @return Invisibly returns the normalized bundle directory.
 #' @export
-tempest_session_save <- function(session, path, overwrite = FALSE) {
+tempest_session_save <- function(
+  session,
+  path,
+  overwrite = FALSE,
+  codec_registry = NULL
+) {
   if (!inherits(session, "TempestSession")) {
     tempest_abort(
       "{.arg session} must be a {.cls TempestSession} object.",
@@ -806,8 +1241,28 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
     ),
     tempest_session_bundle_write_json(
       staging_dir,
-      "personas.json",
-      snapshot$personas
+      "experts.json",
+      snapshot$experts
+    ),
+    tempest_session_bundle_write_json(
+      staging_dir,
+      "skills.json",
+      snapshot$skills
+    ),
+    tempest_session_bundle_write_json(
+      staging_dir,
+      "connection_refs.json",
+      snapshot$connection_refs
+    ),
+    tempest_session_bundle_write_json(
+      staging_dir,
+      "connection_permissions.json",
+      snapshot$connection_permissions
+    ),
+    tempest_session_bundle_write_json(
+      staging_dir,
+      "capability_grants.json",
+      snapshot$capability_grants
     ),
     tempest_session_bundle_write_json(
       staging_dir,
@@ -831,6 +1286,11 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
     ),
     tempest_session_bundle_write_json(
       staging_dir,
+      "store/resources.json",
+      snapshot$store$resources
+    ),
+    tempest_session_bundle_write_json(
+      staging_dir,
       "store/sources.json",
       snapshot$store$sources
     ),
@@ -850,6 +1310,16 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
       snapshot$store$disputes
     )
   )
+  if (!is.null(snapshot$workflow_run)) {
+    files <- c(
+      files,
+      tempest_session_bundle_write_json(
+        staging_dir,
+        "workflow_run.json",
+        snapshot$workflow_run
+      )
+    )
+  }
 
   files <- c(
     files,
@@ -867,7 +1337,8 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
 
   typed_bundle <- tempest_artifact_bundle_write(
     session$artifact_catalog,
-    staging_dir
+    staging_dir,
+    codec_registry = codec_registry
   )
   files <- c(files, typed_bundle$files)
 
@@ -1011,6 +1482,15 @@ tempest_session_bundle_require_files <- function(bundle_dir, files) {
 }
 
 #' @keywords internal
+tempest_session_bundle_optional_presentation_files <- function() {
+  c(
+    "artifacts/report_body.md",
+    "artifacts/mindmap.md",
+    "artifacts/suggested_questions.json"
+  )
+}
+
+#' @keywords internal
 tempest_session_bundle_validate_manifest <- function(
   bundle_dir,
   manifest,
@@ -1020,13 +1500,18 @@ tempest_session_bundle_validate_manifest <- function(
     tempest_session_restore_abort("Session bundle manifest is not complete.")
   }
   files <- as.character(unlist(manifest$files %||% character()))
-  required <- c(
+  core_required <- c(
     "config.json",
-    "personas.json",
+    "experts.json",
+    "skills.json",
+    "connection_refs.json",
+    "connection_permissions.json",
+    "capability_grants.json",
     "expert_sessions.json",
     "transcript.json",
     "mindmap.json",
     "progress_events.json",
+    "store/resources.json",
     "store/sources.json",
     "store/claims.json",
     "store/evidence_spans.json",
@@ -1034,6 +1519,7 @@ tempest_session_bundle_validate_manifest <- function(
     "artifacts/typed/deliverables.json",
     "artifacts/typed/index.json"
   )
+  optional_presentation <- tempest_session_bundle_optional_presentation_files()
   normalized_files <- gsub("\\\\", "/", files)
   parts <- strsplit(normalized_files, "/", fixed = TRUE)
   unsafe <- grepl("^(/|~|[A-Za-z]:)", normalized_files) |
@@ -1044,12 +1530,11 @@ tempest_session_bundle_validate_manifest <- function(
       },
       logical(1)
     )
-  undeclared_required <- setdiff(required, files)
   missing <- files[!file.exists(file.path(bundle_dir, files))]
   checksums <- unlist(manifest$checksums %||% list(), use.names = TRUE)
   missing_checksums <- setdiff(files, names(checksums))
   extra_checksums <- setdiff(names(checksums), files)
-  available <- setdiff(files, missing)
+  available <- setdiff(files[!unsafe], missing)
   bundle_root <- paste0(
     normalizePath(bundle_dir, winslash = "/", mustWork = TRUE),
     "/"
@@ -1085,6 +1570,8 @@ tempest_session_bundle_validate_manifest <- function(
   ))
   artifact_index <- manifest$artifact_index %||% NA_character_
   deliverable_index <- manifest$deliverable_index %||% NA_character_
+  required <- unique(c(core_required, artifact_files))
+  undeclared_required <- setdiff(required, files)
   invalid_artifact_files <- artifact_files[
     !startsWith(artifact_files, "artifacts/typed/content/") |
       !vapply(
@@ -1094,7 +1581,7 @@ tempest_session_bundle_validate_manifest <- function(
       )
   ]
 
-  problems <- c(
+  structural_problems <- c(
     if (length(files) == 0L) "Manifest declares no files.",
     if (anyDuplicated(normalized_files)) {
       "Manifest declares duplicate file paths."
@@ -1107,38 +1594,10 @@ tempest_session_bundle_validate_manifest <- function(
         "."
       )
     },
-    if (length(missing) > 0L) {
-      paste0(
-        "Declared files are missing: ",
-        paste(missing, collapse = ", "),
-        "."
-      )
-    },
-    if (length(missing_checksums) > 0L) {
-      paste0(
-        "Declared files have no checksum: ",
-        paste(missing_checksums, collapse = ", "),
-        "."
-      )
-    },
     if (length(extra_checksums) > 0L) {
       paste0(
         "Manifest contains checksums for undeclared files: ",
         paste(extra_checksums, collapse = ", "),
-        "."
-      )
-    },
-    if (length(escaping) > 0L) {
-      paste0(
-        "Declared files resolve outside the bundle: ",
-        paste(escaping, collapse = ", "),
-        "."
-      )
-    },
-    if (length(mismatched) > 0L) {
-      paste0(
-        "Declared files failed checksum validation: ",
-        paste(mismatched, collapse = ", "),
         "."
       )
     },
@@ -1159,41 +1618,105 @@ tempest_session_bundle_validate_manifest <- function(
       "Manifest contains invalid typed-artifact content paths."
     }
   )
-  if (length(problems) > 0L && !isTRUE(partial_recovery)) {
-    tempest_session_restore_abort(paste(problems, collapse = " "))
+
+  invalid_files <- unique(c(
+    missing,
+    missing_checksums,
+    escaping,
+    mismatched
+  ))
+  invalid_optional <- intersect(invalid_files, optional_presentation)
+  invalid_required <- setdiff(invalid_files, optional_presentation)
+  required_problems <- c(
+    if (length(intersect(missing, invalid_required)) > 0L) {
+      paste0(
+        "Required files are missing: ",
+        paste(intersect(missing, invalid_required), collapse = ", "),
+        "."
+      )
+    },
+    if (length(intersect(missing_checksums, invalid_required)) > 0L) {
+      paste0(
+        "Required files have no checksum: ",
+        paste(
+          intersect(missing_checksums, invalid_required),
+          collapse = ", "
+        ),
+        "."
+      )
+    },
+    if (length(intersect(escaping, invalid_required)) > 0L) {
+      paste0(
+        "Required files resolve outside the bundle: ",
+        paste(intersect(escaping, invalid_required), collapse = ", "),
+        "."
+      )
+    },
+    if (length(intersect(mismatched, invalid_required)) > 0L) {
+      paste0(
+        "Required files failed checksum validation: ",
+        paste(intersect(mismatched, invalid_required), collapse = ", "),
+        "."
+      )
+    }
+  )
+  fatal_problems <- c(structural_problems, required_problems)
+  if (length(fatal_problems) > 0L) {
+    tempest_session_restore_abort(paste(fatal_problems, collapse = " "))
   }
-  if (length(problems) > 0L) {
-    tempest_warn(c(
-      "Recovering an incomplete Tempest session bundle.",
-      i = paste(problems, collapse = " ")
+  if (length(invalid_optional) > 0L && !isTRUE(partial_recovery)) {
+    tempest_session_restore_abort(paste0(
+      "Optional presentation files failed integrity validation: ",
+      paste(invalid_optional, collapse = ", "),
+      "."
     ))
   }
-  invisible(files)
+  if (length(invalid_optional) > 0L) {
+    tempest_warn(c(
+      "Recovering an incomplete Tempest session bundle.",
+      i = paste0(
+        "Skipping optional presentation files: ",
+        paste(invalid_optional, collapse = ", "),
+        "."
+      )
+    ))
+  }
+  invisible(setdiff(files, invalid_optional))
 }
 
 #' Resume a saved Co-STORM session bundle
 #'
 #' `tempest_session_resume()` reads a directory bundle written by
 #' [tempest_session_save()] and rebuilds a [TempestSession] with a fresh runtime
-#' [TempestConfig]. Historical progress events are loaded for display and
-#' reduction, but they are not replayed into `progress`.
+#' [TempestConfig] and [tempest_runtime()]. Historical progress events are
+#' loaded for display and reduction, but they are not replayed into `progress`.
 #'
 #' @param path Directory containing a session bundle.
 #' @param config Runtime [TempestConfig] used to recreate chats, retrievers, and
 #'   tools.
+#' @param runtime A fresh [tempest_runtime()] supplying process-local skill,
+#'   capability, and connection implementations.
+#' @param connection_permissions Optional named connection-permission override
+#'   that may only remove saved contexts or connection ids. When `NULL`, the
+#'   saved opaque connection ids are reused.
 #' @param progress Optional callback for future `tempest_progress_event`
 #'   objects.
 #' @param partial_recovery Whether to allow explicitly requested recovery when
-#'   declared optional files are missing or fail integrity checks. Required
-#'   source and persona data, typed-artifact indexes, and declared typed content
-#'   must still pass integrity checks.
+#'   allowlisted presentation files are missing or fail integrity checks. All
+#'   other declared files, including workflow, permission, grant, expert,
+#'   runtime, store, and typed-artifact state, must pass integrity checks.
+#' @param codec_registry Optional [tempest_artifact_codec_registry()] containing
+#'   host-defined codecs needed to decode typed artifact content.
 #' @return A restored [TempestSession].
 #' @export
 tempest_session_resume <- function(
   path,
   config = tempest_config(),
+  runtime = tempest_runtime(),
+  connection_permissions = NULL,
   progress = NULL,
-  partial_recovery = FALSE
+  partial_recovery = FALSE,
+  codec_registry = NULL
 ) {
   previous_partial <- getOption("tempest.session_partial_recovery")
   options(tempest.session_partial_recovery = isTRUE(partial_recovery))
@@ -1216,7 +1739,16 @@ tempest_session_resume <- function(
   )
   tempest_session_bundle_require_files(
     bundle_dir,
-    c("session.json", "personas.json", "store/sources.json")
+    c(
+      "session.json",
+      "experts.json",
+      "skills.json",
+      "connection_refs.json",
+      "connection_permissions.json",
+      "capability_grants.json",
+      "store/resources.json",
+      "store/sources.json"
+    )
   )
 
   manifest <- tempest_read_json_strict(
@@ -1226,7 +1758,7 @@ tempest_session_resume <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(as.integer(manifest$schema_version %||% NA_integer_), 2L)) {
+  if (!identical(as.integer(manifest$schema_version %||% NA_integer_), 4L)) {
     tempest_session_restore_abort(
       paste0(
         "Unsupported session bundle schema version: ",
@@ -1240,6 +1772,21 @@ tempest_session_resume <- function(
     manifest,
     partial_recovery = partial_recovery
   )
+  strict_json <- function(rel_path, what) {
+    tempest_read_json_strict(
+      file.path(bundle_dir, rel_path),
+      what = what,
+      class = tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
+    )
+  }
+  declared_json <- function(rel_path, default = NULL, what) {
+    if (!rel_path %in% declared_files) {
+      return(default)
+    }
+    strict_json(rel_path, what)
+  }
   optional_json <- function(rel_path, default = NULL, what) {
     if (!rel_path %in% declared_files) {
       return(default)
@@ -1262,10 +1809,11 @@ tempest_session_resume <- function(
   }
   typed_catalog <- tempest_artifact_bundle_read(
     bundle_dir,
-    declared_files = declared_files
+    declared_files = declared_files,
+    codec_registry = codec_registry
   )
 
-  citation_audit <- optional_json(
+  citation_audit <- declared_json(
     "artifacts/citation_audit.json",
     what = "citation audit artifact"
   )
@@ -1275,7 +1823,7 @@ tempest_session_resume <- function(
     } else {
       tempest_restore_citation_audit(citation_audit)
     },
-    references = optional_json(
+    references = declared_json(
       "artifacts/references.json",
       what = "references artifact"
     )
@@ -1294,26 +1842,36 @@ tempest_session_resume <- function(
     topic = manifest$topic,
     title = manifest$title,
     session_id = manifest$session_id,
-    config = optional_json(
+    config = strict_json(
       "config.json",
-      default = list(),
       what = "session config summary"
     ),
-    personas = tempest_read_json_strict(
-      file.path(bundle_dir, "personas.json"),
-      what = "session personas",
-      class = tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      )
+    experts = strict_json(
+      "experts.json",
+      what = "session expert profiles"
     ),
-    transcript = optional_json(
+    skills = strict_json(
+      "skills.json",
+      what = "session skill records"
+    ),
+    connection_refs = strict_json(
+      "connection_refs.json",
+      what = "session connection-reference records"
+    ),
+    connection_permissions = strict_json(
+      "connection_permissions.json",
+      what = "session connection permissions"
+    ),
+    capability_grants = strict_json(
+      "capability_grants.json",
+      what = "session capability grants"
+    ),
+    transcript = strict_json(
       "transcript.json",
-      default = list(),
       what = "session transcript"
     ),
-    mindmap = optional_json(
+    mindmap = strict_json(
       "mindmap.json",
-      default = NULL,
       what = "session mind map"
     ),
     artifacts = list(
@@ -1337,42 +1895,43 @@ tempest_session_resume <- function(
       what = "suggested questions artifact"
     ),
     progress_events = tempest_session_restore_progress_events(
-      optional_json(
+      strict_json(
         "progress_events.json",
-        default = list(),
         what = "progress-event history"
       )
     ),
     store = list(
-      schema_version = 1L,
-      sources = tempest_read_json_strict(
-        file.path(bundle_dir, "store/sources.json"),
-        what = "session source ledger",
-        class = tempest_session_persistence_error_class(
-          "tempest_session_restore_error"
-        )
+      schema_version = 2L,
+      resources = strict_json(
+        "store/resources.json",
+        what = "session typed resource ledger"
       ),
-      claims = optional_json(
+      sources = strict_json(
+        "store/sources.json",
+        what = "session source ledger"
+      ),
+      claims = strict_json(
         "store/claims.json",
-        default = list(),
         what = "session claim ledger"
       ),
-      evidence_spans = optional_json(
+      evidence_spans = strict_json(
         "store/evidence_spans.json",
-        default = list(),
         what = "session evidence-span ledger"
       ),
-      disputes = optional_json(
+      disputes = strict_json(
         "store/disputes.json",
-        default = list(),
         what = "session dispute ledger"
       ),
       artifacts = store_artifacts
     ),
-    expert_sessions = optional_json(
+    expert_sessions = strict_json(
       "expert_sessions.json",
-      default = list(),
       what = "expert-session metadata"
+    ),
+    workflow_run = declared_json(
+      "workflow_run.json",
+      default = NULL,
+      what = "generic Co-STORM workflow state"
     )
   )
   snapshot$artifacts <- snapshot$artifacts[
@@ -1383,7 +1942,13 @@ tempest_session_resume <- function(
     )
   ]
 
-  tempest_session_restore(snapshot, config = config, progress = progress)
+  tempest_session_restore(
+    snapshot,
+    config = config,
+    runtime = runtime,
+    connection_permissions = connection_permissions,
+    progress = progress
+  )
 }
 
 #' @keywords internal
@@ -1463,7 +2028,7 @@ tempest_restore_citation_audit <- function(citation_audit) {
 #' @keywords internal
 tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
   if (
-    !identical(as.integer(manifest$schema_version %||% NA_integer_), 2L) ||
+    !identical(as.integer(manifest$schema_version %||% NA_integer_), 3L) ||
       !identical(manifest$status %||% "", "complete")
   ) {
     tempest_abort(
@@ -1629,7 +2194,6 @@ tempest_load_run_artifacts <- function(
 
   json_artifacts <- c(
     perspectives = "perspectives",
-    personas = "personas",
     draft_outline = "draft_outline",
     outline = "outline"
   )
@@ -1641,6 +2205,23 @@ tempest_load_run_artifacts <- function(
         store$set_artifact(json_artifacts[[artifact_name]], value)
       }
     }
+  }
+  if (path_is_declared(paths$experts) && file.exists(paths$experts)) {
+    expert_records <- tempest_read_json_strict(
+      paths$experts,
+      what = "STORM expert profiles",
+      class = tempest_persistence_error_class(
+        "tempest_run_restore_error"
+      )
+    )
+    experts <- tempest_experts_from_records(
+      expert_records,
+      what = "STORM expert profiles",
+      class = tempest_persistence_error_class(
+        "tempest_run_restore_error"
+      )
+    )
+    store$set_artifact("experts", experts)
   }
 
   text_artifacts <- c(
@@ -1680,7 +2261,7 @@ tempest_load_run_artifacts <- function(
 #' @keywords internal
 tempest_infer_completed_stages <- function(paths) {
   stages <- character()
-  if (file.exists(paths$perspectives) && file.exists(paths$personas)) {
+  if (file.exists(paths$perspectives) && file.exists(paths$experts)) {
     stages <- c(stages, "perspectives")
   }
   if (file.exists(paths$sources) && file.exists(paths$claims)) {
@@ -1765,7 +2346,6 @@ tempest_save_run_artifacts <- function(
 
   json_artifacts <- c(
     perspectives = "perspectives",
-    personas = "personas",
     draft_outline = "draft_outline",
     outline = "outline"
   )
@@ -1774,6 +2354,10 @@ tempest_save_run_artifacts <- function(
     if (!is.null(value)) {
       tempest_write_json(paths[[path_name]], value)
     }
+  }
+  experts <- store$get_artifact("experts")
+  if (!is.null(experts)) {
+    tempest_write_json(paths$experts, tempest_expert_records(experts))
   }
 
   text_artifacts <- c(
@@ -1810,7 +2394,7 @@ tempest_save_run_artifacts <- function(
     ),
     files
   )
-  metadata$schema_version <- 2L
+  metadata$schema_version <- 3L
   metadata$status <- "complete"
   metadata$files <- files
   metadata$checksums <- checksums

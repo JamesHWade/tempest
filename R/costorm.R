@@ -93,123 +93,6 @@ tempest_mindmap_to_markdown <- function(m) {
   paste(out, collapse = "\n")
 }
 
-#' Create a Co-STORM expert definition
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' Host applications can pass these definitions to [tempest_session()] via the
-#' `personas` argument to control the expert panel without patching
-#' `TempestSession` internals.
-#'
-#' @param name Expert display name.
-#' @param title Short title or area of expertise.
-#' @param perspective Description of the expert's research perspective.
-#' @param initial_questions Character vector of warmup questions for this
-#'   expert.
-#' @param id Optional numeric expert id. Missing ids are assigned by
-#'   [tempest_session()].
-#' @param affiliation Optional affiliation.
-#' @param background Optional background text.
-#' @param focus_areas Optional character vector of focus areas.
-#' @return A list suitable for the `personas` argument of [tempest_session()].
-#' @examples
-#' expert <- tempest_expert(
-#'   name = "Dr. Rivera",
-#'   title = "Battery policy analyst",
-#'   perspective = "Policy and market incentives",
-#'   initial_questions = "Which policies affect battery recycling?"
-#' )
-#' @export
-tempest_expert <- function(
-  name,
-  title = "Research Specialist",
-  perspective = "General research perspective",
-  initial_questions = character(),
-  id = NULL,
-  affiliation = NA_character_,
-  background = NA_character_,
-  focus_areas = character()
-) {
-  for (field in c("name", "title", "perspective")) {
-    value <- get(field, inherits = FALSE)
-    if (!rlang::is_string(value) || !nzchar(tempest_trim(value))) {
-      tempest_abort("{.arg {field}} must be a single non-empty string.")
-    }
-  }
-  expert <- list(
-    name = tempest_trim(name),
-    title = tempest_trim(title),
-    affiliation = affiliation,
-    background = background,
-    focus_areas = as.character(focus_areas %||% character()),
-    perspective = tempest_trim(perspective),
-    initial_questions = tempest_trim(as.character(
-      initial_questions %||% character()
-    ))
-  )
-  if (!is.null(id)) {
-    expert$id <- tempest_as_expert_id(id)
-  }
-  expert
-}
-
-#' @keywords internal
-tempest_as_expert_id <- function(id, arg = "id") {
-  coerced <- suppressWarnings(as.integer(id))
-  if (length(coerced) != 1L || is.na(coerced)) {
-    tempest_abort(
-      "{.arg {arg}} must be a single value coercible to an integer."
-    )
-  }
-  coerced
-}
-
-#' @keywords internal
-tempest_validate_personas <- function(personas) {
-  if (is.null(personas)) {
-    return(NULL)
-  }
-  if (!is.list(personas)) {
-    tempest_abort("{.arg personas} must be a list of expert definitions.")
-  }
-  defaults <- list(
-    title = "Research Specialist",
-    perspective = "General research perspective"
-  )
-  validated <- purrr::imap(personas, function(persona, idx) {
-    if (!is.list(persona)) {
-      tempest_abort("Each entry in {.arg personas} must be a list.")
-    }
-    if (
-      !rlang::is_string(persona$name) || !nzchar(tempest_trim(persona$name))
-    ) {
-      tempest_abort("Each expert must include a non-empty {.field name}.")
-    }
-    persona$name <- tempest_trim(persona$name)
-    for (field in c("title", "perspective")) {
-      value <- persona[[field]] %||% defaults[[field]]
-      if (!rlang::is_string(value) || !nzchar(tempest_trim(value))) {
-        value <- defaults[[field]]
-      }
-      persona[[field]] <- tempest_trim(value)
-    }
-    persona$id <- tempest_as_expert_id(persona$id %||% idx)
-    persona$initial_questions <- tempest_trim(as.character(
-      persona$initial_questions %||% character()
-    ))
-    persona
-  })
-  ids <- vapply(validated, function(persona) persona$id, integer(1))
-  if (anyDuplicated(ids) > 0) {
-    dupes <- unique(ids[duplicated(ids)])
-    tempest_abort(c(
-      "Expert ids must be unique.",
-      x = "Duplicated id{?s}: {dupes}."
-    ))
-  }
-  validated
-}
-
 #' @keywords internal
 tempest_async_is_current <- function(is_current) {
   tryCatch(isTRUE(is_current()), error = function(error) FALSE)
@@ -223,12 +106,15 @@ tempest_async_is_current <- function(is_current) {
 #' @field topic The research topic.
 #' @field title The report title.
 #' @field config A `TempestConfig` object.
+#' @field runtime A `TempestRuntime` containing process-local adapters.
+#' @field connection_permissions Named per-role or per-expert connection
+#'   allow-lists.
 #' @field session_id Stable identifier shared by progress events for the
 #'   session.
 #' @field progress Optional progress callback.
 #' @field store A `SourceStore` object.
 #' @field retriever A `TempestRetriever` object.
-#' @field personas List of expert personas.
+#' @field experts List of validated `tempest_expert` profiles.
 #' @field expert_session_manager Manages expert chat sessions.
 #' @field chats List of chat objects for each role.
 #' @field transcript List of dialog turns.
@@ -237,6 +123,10 @@ tempest_async_is_current <- function(is_current) {
 #'   state.
 #' @field artifact_catalog Typed deliverable specifications and artifacts
 #'   produced by the session.
+#' @field workflow_run Optional generic `TempestRun` that owns the session
+#'   workflow lifecycle.
+#' @field capability_grants Serializable capability decisions by execution
+#'   context.
 #' @field discourse_manager A `DiscourseManager` object (NULL when disabled).
 #'
 #' @export
@@ -246,26 +136,33 @@ TempestSession <- R6::R6Class(
     topic = NULL,
     title = NULL,
     config = NULL,
+    runtime = NULL,
+    connection_permissions = NULL,
     session_id = NULL,
     progress = NULL,
     store = NULL,
     retriever = NULL,
-    personas = NULL,
+    experts = NULL,
     expert_session_manager = NULL,
     chats = NULL,
     transcript = NULL,
     mindmap = NULL,
     artifacts = NULL,
     artifact_catalog = NULL,
+    workflow_run = NULL,
+    capability_grants = NULL,
     discourse_manager = NULL,
 
     #' @description
     #' Create a new TempestSession.
     #' @param topic The research topic.
     #' @param config A `TempestConfig` object.
+    #' @param runtime A [tempest_runtime()] containing process-local adapters.
     #' @param n_experts Number of expert agents.
-    #' @param personas Optional list of pre-generated personas. If NULL,
-    #'   personas are generated automatically using `tempest_generate_personas()`.
+    #' @param experts Optional list of validated expert profiles. If `NULL`,
+    #'   experts are generated automatically using `tempest_generate_experts()`.
+    #' @param connection_permissions Named list mapping role or expert ids to
+    #'   opaque connection ids allowed for this session.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
     #'   object with a `SourceStore` at `$store`.
     #' @param progress Optional function called with `tempest_progress_event`
@@ -275,8 +172,10 @@ TempestSession <- R6::R6Class(
     initialize = function(
       topic,
       config = tempest_config(),
+      runtime = tempest_runtime(),
       n_experts = 3,
-      personas = NULL,
+      experts = NULL,
+      connection_permissions = list(),
       retriever = NULL,
       progress = NULL,
       session_id = NULL
@@ -294,7 +193,35 @@ TempestSession <- R6::R6Class(
           "{.arg config} must be created by {.fn tempest_config}."
         )
       }
-      if (is.null(personas)) {
+      if (!inherits(runtime, "TempestRuntime")) {
+        tempest_runtime_abort(
+          "{.arg runtime} must be created by {.fn tempest_runtime}."
+        )
+      }
+      if (
+        !is.list(connection_permissions) ||
+          is.data.frame(connection_permissions)
+      ) {
+        tempest_runtime_abort(
+          "{.arg connection_permissions} must be a named list."
+        )
+      }
+      if (
+        length(connection_permissions) > 0L &&
+          (is.null(names(connection_permissions)) ||
+            any(!nzchar(names(connection_permissions))) ||
+            anyDuplicated(names(connection_permissions)))
+      ) {
+        tempest_runtime_abort(
+          "{.arg connection_permissions} must be uniquely named."
+        )
+      }
+      connection_permissions <- lapply(
+        connection_permissions,
+        tempest_contract_ids,
+        arg = "connection_permissions"
+      )
+      if (is.null(experts)) {
         n_experts <- tempest_config_count(n_experts, "n_experts")
         if (n_experts > config@max_active_experts) {
           tempest_config_abort(
@@ -307,6 +234,8 @@ TempestSession <- R6::R6Class(
       }
       self$title <- self$topic
       self$config <- config
+      self$runtime <- runtime
+      self$connection_permissions <- connection_permissions
       if (is.null(session_id)) {
         session_id <- tempest_uuid("session")
       } else if (
@@ -344,21 +273,23 @@ TempestSession <- R6::R6Class(
       self$artifact_catalog <- tempest_artifact_catalog(
         store = config@artifact_store
       )
+      self$workflow_run <- NULL
+      self$capability_grants <- list()
 
-      # Generate or use provided personas
-      if (is.null(personas)) {
-        self$personas <- tempest_generate_personas(
+      # Generate or use selected expert profiles.
+      if (is.null(experts)) {
+        self$experts <- tempest_generate_experts(
           topic = self$topic,
           n = n_experts,
           config = config,
           verbose = FALSE
         )
       } else {
-        self$personas <- tempest_validate_personas(personas)
+        self$experts <- tempest_validate_experts(experts)
       }
-      if (length(self$personas) > config@max_active_experts) {
+      if (length(self$experts) > config@max_active_experts) {
         tempest_config_abort(
-          "{.arg personas} exceeds {.arg max_active_experts}."
+          "{.arg experts} exceeds {.arg max_active_experts}."
         )
       }
 
@@ -387,45 +318,80 @@ TempestSession <- R6::R6Class(
       )
 
       # Create expert session manager for subagent pattern (with extractor for fact extraction)
+      expert_ids <- purrr::map_chr(
+        self$experts,
+        \(expert) expert@expert_id
+      )
+      expert_connection_permissions <- self$connection_permissions[
+        intersect(names(self$connection_permissions), expert_ids)
+      ]
       self$expert_session_manager <- ExpertSessionManager$new(
-        config,
-        self$retriever,
+        experts = self$experts,
+        runtime = self$runtime,
+        config = config,
+        retriever = self$retriever,
+        allowed_connection_ref_ids = expert_connection_permissions,
         extractor = self$chats$extractor,
         store = self$store,
         progress = self$progress,
         run_id = self$session_id
       )
 
-      # Register tools on moderator: default tools + expert subagent tools
-      tempest_register_default_tools(
-        self$chats$moderator,
-        self$retriever,
-        model = self$config@models[["coordinator"]],
-        search_provider = self$config@search_provider,
-        allow_claim_writes = FALSE
+      moderator_resolution <- self$runtime$resolve_role(
+        "coordinator",
+        required_capability_ids = c(
+          "tempest.evidence.read",
+          "tempest.expert.delegate"
+        ),
+        allowed_connection_ref_ids = self$connection_permissions$moderator %||%
+          self$connection_permissions$coordinator %||%
+          character(),
+        context = list(
+          retriever = self$retriever,
+          model = tempest_runtime_model(self$config, "coordinator"),
+          search_provider = self$config@search_provider,
+          expert_session_manager = self$expert_session_manager,
+          experts = self$experts,
+          topic = self$topic,
+          run_id = self$session_id
+        )
       )
-      tempest_register_expert_tools(
+      self$runtime$attach(
         self$chats$moderator,
-        self$personas,
-        self$expert_session_manager,
-        self$topic
+        moderator_resolution,
+        context = list(run_id = self$session_id, role = "moderator")
       )
+      self$capability_grants$moderator <- moderator_resolution$grants
 
-      # Register tools on other chats that may need them
-      tempest_register_default_tools(
-        self$chats$mindmap,
-        self$retriever,
-        model = self$config@models[["mindmap"]],
-        search_provider = self$config@search_provider,
-        allow_claim_writes = FALSE
-      )
-      tempest_register_default_tools(
-        self$chats$reporter,
-        self$retriever,
-        model = self$config@models[["writer"]],
-        search_provider = self$config@search_provider,
-        allow_claim_writes = FALSE
-      )
+      for (role_context in list(
+        list(name = "mindmap", role = "mindmap"),
+        list(name = "reporter", role = "writer")
+      )) {
+        resolution <- self$runtime$resolve_role(
+          role_context$role,
+          required_capability_ids = "tempest.evidence.read",
+          allowed_connection_ref_ids = self$connection_permissions[[
+            role_context$name
+          ]] %||%
+            self$connection_permissions[[role_context$role]] %||%
+            character(),
+          context = list(
+            retriever = self$retriever,
+            model = tempest_runtime_model(self$config, role_context$role),
+            search_provider = self$config@search_provider,
+            run_id = self$session_id
+          )
+        )
+        self$runtime$attach(
+          self$chats[[role_context$name]],
+          resolution,
+          context = list(
+            run_id = self$session_id,
+            role = role_context$name
+          )
+        )
+        self$capability_grants[[role_context$name]] <- resolution$grants
+      }
 
       # Initialize discourse manager if enabled
       if (isTRUE(config@enable_discourse_manager)) {
@@ -437,7 +403,7 @@ TempestSession <- R6::R6Class(
         "started",
         stage = "session",
         step = "created",
-        payload = list(persona_count = length(self$personas))
+        payload = list(expert_count = length(self$experts))
       )
 
       invisible(self)
@@ -524,27 +490,29 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
-    #' Get persona names for agent routing.
-    #' @return Character vector of persona names.
-    get_persona_names = function() {
+    #' Get expert names for agent routing.
+    #' @return Character vector of expert names.
+    get_expert_names = function() {
       purrr::map_chr(
-        self$personas,
-        ~ .x$name %||% paste0("Expert ", .x$id %||% 1)
+        self$experts,
+        \(expert) expert@name
       )
     },
 
     #' @description
-    #' Build persona descriptions for moderator context.
-    #' @return A formatted string describing all personas.
-    get_persona_descriptions = function() {
-      descs <- purrr::imap_chr(self$personas, function(p, i) {
+    #' Build expert descriptions for moderator context.
+    #' @return A formatted string describing all experts.
+    get_expert_descriptions = function() {
+      descs <- purrr::map_chr(self$experts, function(expert) {
         paste0(
           "- **",
-          p$name %||% paste0("Expert ", i),
-          "** (",
-          p$title %||% "Research Specialist",
+          expert@name,
+          "** [",
+          expert@expert_id,
+          "] (",
+          expert@title,
           "): ",
-          p$perspective %||% "General research perspective"
+          expert@description
         )
       })
       paste(descs, collapse = "\n")
@@ -635,14 +603,14 @@ TempestSession <- R6::R6Class(
     #' @param turn Optional ellmer turn to inspect for provider-native sources.
     #' @param source_ids Optional source ids already harvested for the turn.
     #' @param session_id Optional Co-STORM or expert session id.
-    #' @param persona_id Optional persona id.
+    #' @param expert_id Optional expert id.
     #' @param correlation_id Optional progress correlation id for the turn.
     extract_facts = function(
       text,
       turn = NULL,
       source_ids = NULL,
       session_id = self$session_id,
-      persona_id = NA_character_,
+      expert_id = NA_character_,
       correlation_id = NA_character_
     ) {
       event <- self$emit_progress(
@@ -667,7 +635,7 @@ TempestSession <- R6::R6Class(
             self$store,
             source_ids = unique(c(source_ids, harvested)),
             session_id = session_id,
-            persona_id = persona_id,
+            expert_id = expert_id,
             retrieval_step_id = correlation_id
           )
           self$emit_progress(
@@ -778,39 +746,13 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
-    #' Find expert index by persona name.
-    #' @param name The agent name to look up.
+    #' Find an expert index by stable id.
+    #' @param expert_id The stable expert id to look up.
     #' @return Index of the expert, or NULL if not found.
-    find_expert_index = function(name) {
-      persona_names <- self$get_persona_names()
-      # Exact match
-      idx <- match(name, persona_names)
-      if (!is.na(idx)) {
-        return(idx)
-      }
-      # Case-insensitive match
-      idx <- match(tolower(name), tolower(persona_names))
-      if (!is.na(idx)) {
-        return(idx)
-      }
-      # Partial match (first name only)
-      first_names <- purrr::map_chr(persona_names, ~ strsplit(.x, " ")[[1]][1])
-      idx <- match(tolower(name), tolower(first_names))
-      if (!is.na(idx)) {
-        return(idx)
-      }
-      # Legacy expert_N format
-      if (grepl("^expert_\\d+$", name, ignore.case = TRUE)) {
-        legacy_idx <- as.integer(sub("^expert_", "", name, ignore.case = TRUE))
-        if (
-          !is.na(legacy_idx) &&
-            legacy_idx >= 1L &&
-            legacy_idx <= length(self$personas)
-        ) {
-          return(legacy_idx)
-        }
-      }
-      NULL
+    find_expert = function(expert_id) {
+      expert_ids <- purrr::map_chr(self$experts, \(expert) expert@expert_id)
+      index <- match(expert_id, expert_ids)
+      if (is.na(index)) NULL else index
     },
 
     #' @description
@@ -842,7 +784,7 @@ TempestSession <- R6::R6Class(
               topic = self$topic,
               transcript_md = self$transcript_markdown(max_turns = 20),
               mindmap_md = tempest_mindmap_to_markdown(self$mindmap),
-              persona_descriptions = self$get_persona_descriptions(),
+              expert_descriptions = self$get_expert_descriptions(),
               unseen_sources = if (
                 isTRUE(self$config@enable_unseen_surfacing)
               ) {
@@ -887,8 +829,8 @@ TempestSession <- R6::R6Class(
             "User question:\n",
             user_input,
             "\n\n",
-            "You have tools to ask experts (ask_*) for research questions.\n",
-            "Use the expert tools to delegate research questions to the appropriate expert.\n",
+            "Use ask_expert(expert_id, question) to delegate research.\n",
+            "Choose only an active expert id from the selected panel.\n",
             "Synthesize their responses into a coherent answer for the user.\n",
             "Use citations like [Sxxxxxxxxxxxx] for factual claims.\n",
             "Do not end with a generic menu of things you can make next.\n",
@@ -929,7 +871,7 @@ TempestSession <- R6::R6Class(
             turn = turn,
             source_ids = source_ids,
             session_id = self$session_id,
-            persona_id = "moderator",
+            expert_id = "moderator",
             correlation_id = turn_id
           )
 
@@ -980,13 +922,13 @@ TempestSession <- R6::R6Class(
         "started",
         stage = "warmup",
         step = "expert_fanout",
-        payload = list(expert_count = length(self$personas))
+        payload = list(expert_count = length(self$experts))
       )
       tryCatch(
         {
-          if (length(self$personas) == 0) {
+          if (length(self$experts) == 0) {
             if (verbose) {
-              tempest_inform("No personas available for warmup.")
+              tempest_inform("No experts available for warmup.")
             }
             self$emit_progress(
               "stage",
@@ -995,22 +937,24 @@ TempestSession <- R6::R6Class(
               step = "expert_fanout",
               parent_event_id = warmup_event@event_id,
               correlation_id = warmup_event@correlation_id,
-              payload = list(reason = "no_personas")
+              payload = list(reason = "no_experts")
             )
             return(invisible(list()))
           }
 
           results <- list()
 
-          for (i in seq_along(self$personas)) {
-            persona <- self$personas[[i]]
-            persona_name <- persona$name %||% paste("Expert", i)
-            persona_id <- as.character(persona$id %||% i)
-            initial_qs <- persona$initial_questions %||% character()
+          for (expert in self$experts) {
+            expert_name <- expert@name
+            expert_id <- expert@expert_id
+            initial_work <- unique(c(
+              expert@initial_questions,
+              expert@initial_work_items
+            ))
 
-            if (length(initial_qs) == 0) {
+            if (length(initial_work) == 0) {
               if (verbose) {
-                tempest_inform("Skipping {persona_name}: no initial questions")
+                tempest_inform("Skipping {expert_name}: no initial work")
               }
               self$emit_progress(
                 "expert",
@@ -1020,9 +964,9 @@ TempestSession <- R6::R6Class(
                 parent_event_id = warmup_event@event_id,
                 correlation_id = warmup_event@correlation_id,
                 payload = list(
-                  expert_id = persona_id,
-                  expert_name = persona_name,
-                  reason = "no_initial_questions"
+                  expert_id = expert_id,
+                  expert_name = expert_name,
+                  reason = "no_initial_work"
                 )
               )
               next
@@ -1030,12 +974,14 @@ TempestSession <- R6::R6Class(
 
             if (verbose) {
               tempest_inform(
-                "Warmup: {persona_name} ({length(initial_qs)} questions)"
+                "Warmup: {expert_name} ({length(initial_work)} work items)"
               )
             }
 
             # Get or create expert session
-            session_result <- self$expert_session_manager$get_or_create(persona)
+            session_result <- self$expert_session_manager$get_or_create(
+              expert@expert_id
+            )
             chat <- session_result$chat
             session_id <- session_result$session_id
             provenance <- session_result$provenance
@@ -1047,20 +993,20 @@ TempestSession <- R6::R6Class(
               parent_event_id = warmup_event@event_id,
               correlation_id = warmup_event@correlation_id,
               payload = list(
-                expert_id = persona_id,
-                expert_name = persona_name,
+                expert_id = expert_id,
+                expert_name = expert_name,
                 session_id = session_id,
-                question_count = length(initial_qs)
+                work_item_count = length(initial_work)
               )
             )
 
             expert_results <- list()
             tryCatch(
               {
-                for (q_i in seq_along(initial_qs)) {
-                  q <- initial_qs[[q_i]]
+                for (work_index in seq_along(initial_work)) {
+                  work_item <- initial_work[[work_index]]
                   if (verbose) {
-                    tempest_inform("  Q: {q}")
+                    tempest_inform("  Work item: {work_item}")
                   }
                   question_event <- self$emit_progress(
                     "tool",
@@ -1070,9 +1016,9 @@ TempestSession <- R6::R6Class(
                     parent_event_id = expert_event@event_id,
                     correlation_id = expert_event@correlation_id,
                     payload = list(
-                      expert_id = persona_id,
-                      expert_name = persona_name,
-                      question_index = q_i
+                      expert_id = expert_id,
+                      expert_name = expert_name,
+                      work_item_index = work_index
                     )
                   )
 
@@ -1081,7 +1027,7 @@ TempestSession <- R6::R6Class(
                     self$topic,
                     "\n\n",
                     "Question: ",
-                    q,
+                    work_item,
                     "\n\n",
                     "Instructions:\n",
                     "- Use the available web/source tools to find and cite sources.\n",
@@ -1098,7 +1044,7 @@ TempestSession <- R6::R6Class(
                       old_provenance <- provenance$current %||% list()
                       provenance$current <- list(
                         session_id = session_id,
-                        persona_id = persona_id,
+                        expert_id = expert_id,
                         retrieval_step_id = question_event@correlation_id
                       )
                       response <- tryCatch(
@@ -1118,17 +1064,17 @@ TempestSession <- R6::R6Class(
                         turn = turn,
                         source_ids = source_ids,
                         session_id = session_id,
-                        persona_id = persona_id,
+                        expert_id = expert_id,
                         correlation_id = question_event@correlation_id
                       )
-                      self$add_turn(persona_name, "assistant", response)
+                      self$add_turn(expert_name, "assistant", response)
                       self$update_mindmap(
                         last_exchange = paste0(
                           "Initial research by ",
-                          persona_name,
+                          expert_name,
                           ":\n",
                           "Q: ",
-                          q,
+                          work_item,
                           "\n\n",
                           "A: ",
                           response
@@ -1143,9 +1089,9 @@ TempestSession <- R6::R6Class(
                         parent_event_id = question_event@event_id,
                         correlation_id = question_event@correlation_id,
                         payload = list(
-                          expert_id = persona_id,
-                          expert_name = persona_name,
-                          question_index = q_i
+                          expert_id = expert_id,
+                          expert_name = expert_name,
+                          work_item_index = work_index
                         )
                       )
                       response
@@ -1160,9 +1106,9 @@ TempestSession <- R6::R6Class(
                         correlation_id = question_event@correlation_id,
                         payload = c(
                           list(
-                            expert_id = persona_id,
-                            expert_name = persona_name,
-                            question_index = q_i
+                            expert_id = expert_id,
+                            expert_name = expert_name,
+                            work_item_index = work_index
                           ),
                           tempest_progress_error_payload(e)
                         )
@@ -1174,7 +1120,7 @@ TempestSession <- R6::R6Class(
                   expert_results <- c(
                     expert_results,
                     list(list(
-                      question = q,
+                      work_item = work_item,
                       response = response
                     ))
                   )
@@ -1190,9 +1136,9 @@ TempestSession <- R6::R6Class(
                   correlation_id = expert_event@correlation_id,
                   payload = c(
                     list(
-                      expert_id = persona_id,
-                      expert_name = persona_name,
-                      questions_answered = length(expert_results)
+                      expert_id = expert_id,
+                      expert_name = expert_name,
+                      work_items_completed = length(expert_results)
                     ),
                     tempest_progress_error_payload(e)
                   )
@@ -1209,14 +1155,15 @@ TempestSession <- R6::R6Class(
               parent_event_id = expert_event@event_id,
               correlation_id = expert_event@correlation_id,
               payload = list(
-                expert_id = persona_id,
-                expert_name = persona_name,
-                questions_answered = length(expert_results)
+                expert_id = expert_id,
+                expert_name = expert_name,
+                work_items_completed = length(expert_results)
               )
             )
-            results[[persona_name]] <- list(
+            results[[expert_id]] <- list(
+              expert_name = expert_name,
               session_id = session_id,
-              questions_answered = length(expert_results),
+              work_items_completed = length(expert_results),
               results = expert_results
             )
           }
@@ -1337,55 +1284,54 @@ TempestSession <- R6::R6Class(
     #' Add a new expert to the panel dynamically.
     #' @param area The area of expertise needed.
     #' @param name Optional name for the new expert.
-    #' @return The new persona (invisibly).
+    #' @return The new expert profile (invisibly).
     add_expert = function(area, name = NULL) {
-      active <- self$get_active_personas()
+      active <- self$get_active_experts()
       if (length(active) >= self$config@max_active_experts) {
         tempest_warn(
           "Maximum active experts ({self$config@max_active_experts}) reached."
         )
         return(invisible(NULL))
       }
-      new_persona <- tempest_generate_single_persona(
+      new_expert <- tempest_generate_single_expert(
         self$topic,
         area,
-        self$personas,
+        self$experts,
         self$config
       )
       if (!is.null(name)) {
-        new_persona$name <- name
+        new_expert <- tempest_expert_update(new_expert, name = name)
       }
-      new_persona$id <- length(self$personas) + 1L
-      self$personas <- c(self$personas, list(new_persona))
-
-      # Register new expert tool on moderator
-      tempest_register_single_expert_tool(
-        self$chats$moderator,
-        new_persona,
-        self$expert_session_manager,
-        self$topic
-      )
-      invisible(new_persona)
+      self$experts <- c(self$experts, list(new_expert))
+      self$expert_session_manager$add_expert(new_expert)
+      invisible(new_expert)
     },
 
     #' @description
     #' Retire an expert from the panel.
-    #' @param name The name of the expert to retire.
+    #' @param expert_id The stable id of the expert to retire.
     #' @return Logical indicating success.
-    retire_expert = function(name) {
-      idx <- self$find_expert_index(name)
+    retire_expert = function(expert_id) {
+      idx <- self$find_expert(expert_id)
       if (is.null(idx)) {
         return(FALSE)
       }
-      self$personas[[idx]]$retired <- TRUE
+      self$experts[[idx]] <- tempest_expert_update(
+        self$experts[[idx]],
+        state = "retired"
+      )
+      self$expert_session_manager$retire_expert(expert_id)
       TRUE
     },
 
     #' @description
-    #' Get active (non-retired) personas.
-    #' @return List of active persona objects.
-    get_active_personas = function() {
-      purrr::keep(self$personas, ~ !isTRUE(.x$retired))
+    #' Get active expert profiles.
+    #' @return List of active `tempest_expert` profiles.
+    get_active_experts = function() {
+      purrr::keep(
+        self$experts,
+        \(expert) identical(expert@state, "active")
+      )
     },
 
     #' @description
@@ -1530,11 +1476,11 @@ TempestSession <- R6::R6Class(
     execute_turn_decision = function(decision) {
       action <- decision$action %||% "moderator_probes"
       instruction <- decision$instruction %||% ""
-      agent_name <- decision$agent_name %||% ""
+      expert_id <- decision$expert_id %||% ""
 
       if (action == "add_expert") {
-        new_persona <- self$add_expert(area = instruction)
-        if (is.null(new_persona)) {
+        new_expert <- self$add_expert(area = instruction)
+        if (is.null(new_expert)) {
           msg <- paste0(
             "Could not add expert: maximum active experts (",
             self$config@max_active_experts,
@@ -1552,44 +1498,44 @@ TempestSession <- R6::R6Class(
           "assistant",
           paste0(
             "Added new expert: ",
-            new_persona$name,
+            new_expert@name,
             " (",
-            new_persona$title,
+            new_expert@title,
             ")"
           )
         )
         return(list(
           speaker = "System",
-          answer = paste0("Added expert: ", new_persona$name),
+          answer = paste0("Added expert: ", new_expert@name),
           mindmap_md = self$mindmap_markdown()
         ))
       }
 
       if (action == "retire_expert") {
-        success <- self$retire_expert(agent_name)
+        success <- self$retire_expert(expert_id)
         if (success) {
           self$add_turn(
             "System",
             "assistant",
-            paste0("Retired expert: ", agent_name)
+            paste0("Retired expert: ", expert_id)
           )
           return(list(
             speaker = "System",
-            answer = paste0("Retired expert: ", agent_name),
+            answer = paste0("Retired expert: ", expert_id),
             mindmap_md = self$mindmap_markdown()
           ))
         } else {
           tempest_warn(
-            "Discourse manager tried to retire unknown expert: {.val {agent_name}}"
+            "Discourse manager tried to retire unknown expert: {.val {expert_id}}"
           )
           self$add_turn(
             "System",
             "assistant",
-            paste0("Expert not found: ", agent_name)
+            paste0("Expert not found: ", expert_id)
           )
           return(list(
             speaker = "System",
-            answer = paste0("Expert not found: ", agent_name),
+            answer = paste0("Expert not found: ", expert_id),
             mindmap_md = self$mindmap_markdown()
           ))
         }
@@ -1631,9 +1577,12 @@ TempestSession <- R6::R6Class(
 #'
 #' @param topic Topic string.
 #' @param config A `TempestConfig`.
+#' @param runtime A [tempest_runtime()] containing process-local adapters.
 #' @param n_experts Number of expert agents.
-#' @param personas Optional list of pre-generated personas. If NULL,
-#'   personas are generated automatically.
+#' @param experts Optional list of validated expert profiles. If `NULL`,
+#'   experts are generated automatically.
+#' @param connection_permissions Named per-role or per-expert connection
+#'   allow-lists.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
 #'   with a `SourceStore` at `$store`.
 #' @param progress Optional function called with `tempest_progress_event`
@@ -1649,8 +1598,10 @@ TempestSession <- R6::R6Class(
 tempest_session <- function(
   topic,
   config = tempest_config(),
+  runtime = tempest_runtime(),
   n_experts = 3,
-  personas = NULL,
+  experts = NULL,
+  connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
   session_id = NULL
@@ -1658,8 +1609,10 @@ tempest_session <- function(
   TempestSession$new(
     topic = topic,
     config = config,
+    runtime = runtime,
     n_experts = n_experts,
-    personas = personas,
+    experts = experts,
+    connection_permissions = connection_permissions,
     retriever = retriever,
     progress = progress,
     session_id = session_id

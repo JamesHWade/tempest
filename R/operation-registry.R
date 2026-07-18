@@ -1,7 +1,15 @@
 # Runtime operation registry
 
 tempest_operation_kinds <- function() {
-  c("step", "generator", "validator", "renderer", "exporter", "skill")
+  c(
+    "step",
+    "generator",
+    "validator",
+    "renderer",
+    "exporter",
+    "skill",
+    "capability"
+  )
 }
 
 tempest_operation_abort <- function(message, ..., parent = NULL) {

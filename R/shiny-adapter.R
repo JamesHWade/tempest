@@ -168,10 +168,10 @@ tempest_shiny_ui <- function(
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_shiny_server()` pairs with [tempest_shiny_ui()] and lets a host app
-#' provide a runtime [TempestConfig], optional expert personas, a stable session
-#' id, and an optional shared store. The returned handle exposes the shared
-#' store and reactive accessors for the current session, report, and report
-#' readiness signal.
+#' provide a [TempestConfig], process-local [tempest_runtime()], optional expert
+#' profiles, a stable session id, and an optional shared store. The returned
+#' handle exposes the shared store and reactive accessors for generic run,
+#' event, approval, capability-grant, artifact, session, and report state.
 #'
 #' @param id Shiny module id.
 #' @param config A `TempestConfig`, a reactive returning one, a function
@@ -179,11 +179,21 @@ tempest_shiny_ui <- function(
 #' @param store Optional store from [tempest_shiny_store()]. If `NULL`, a new
 #'   store is created.
 #' @param panels Character vector matching the UI panels.
-#' @param personas Optional expert definitions passed to [tempest_session()] for
+#' @param experts Optional expert profiles passed to [tempest_session()] for
 #'   new Co-STORM sessions. May be a value, function, or reactive.
+#' @param runtime A [tempest_runtime()], function, or reactive used to resolve
+#'   process-local operations, capabilities, and connections.
+#' @param connection_permissions Named per-role or per-expert connection
+#'   allow-lists passed to [tempest_session()].
 #' @param session_id Optional stable session id passed to [tempest_session()]
 #'   for new Co-STORM sessions. May be a value, function, or reactive.
-#' @return A list with `store`, `session`, `report`, and `report_ready`.
+#' @param run Optional `TempestRun`, function, or reactive. This lets a host
+#'   expose a custom headless workflow through the same generic adapter
+#'   reactives as built-in workflows.
+#' @return A list with the shared `store`; reactive `run`, `status`, `events`,
+#'   `approvals`, `assignments`, `artifacts`, `evidence`, `grants`, `session`,
+#'   `report`, and `report_ready` accessors; and `approve()`, `cancel()`, and
+#'   `touch()` controls.
 #' @examples
 #' \dontrun{
 #' server <- function(input, output, session) {
@@ -196,8 +206,11 @@ tempest_shiny_server <- function(
   config = tempest_config(),
   store = NULL,
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
-  personas = NULL,
-  session_id = NULL
+  experts = NULL,
+  runtime = tempest_runtime(),
+  connection_permissions = list(),
+  session_id = NULL,
+  run = NULL
 ) {
   panels <- tempest_shiny_panels(panels)
   tempest_shiny_require_server(panels)
@@ -217,7 +230,9 @@ tempest_shiny_server <- function(
         "chat",
         config = config_reactive,
         store = shared_store,
-        personas = personas,
+        experts = experts,
+        runtime = runtime,
+        connection_permissions = connection_permissions,
         session_id = session_id
       )
     }
@@ -254,8 +269,152 @@ tempest_shiny_server <- function(
       ))
     })
 
+    run_version <- shiny::reactiveVal(0L)
+    supplied_run <- if (is.null(run)) {
+      shared_store$get_run
+    } else {
+      tempest_shiny_as_reactive(run)
+    }
+    if (!is.null(run)) {
+      shiny::observe({
+        candidate <- supplied_run()
+        if (!is.null(candidate) && !inherits(candidate, "TempestRun")) {
+          tempest_abort(
+            "{.arg run} must resolve to a TempestRun or `NULL`.",
+            class = c("tempest_shiny_adapter_error", "tempest_error")
+          )
+        }
+        shared_store$set_run(candidate, prefer_evidence = TRUE)
+      })
+    }
+    run_reactive <- shiny::reactive({
+      run_version()
+      supplied_run()
+    })
+    current_run <- function() {
+      candidate <- run_reactive()
+      if (is.null(candidate)) {
+        return(NULL)
+      }
+      if (!inherits(candidate, "TempestRun")) {
+        tempest_abort(
+          "{.arg run} must resolve to a TempestRun or `NULL`.",
+          class = c("tempest_shiny_adapter_error", "tempest_error")
+        )
+      }
+      candidate
+    }
+    run_status <- shiny::reactive({
+      active <- current_run()
+      if (is.null(active)) NULL else tempest_run_status(active)
+    })
+    run_events <- shiny::reactive({
+      active <- current_run()
+      if (is.null(active)) list() else tempest_run_events(active)
+    })
+    run_approvals <- shiny::reactive({
+      active <- current_run()
+      if (is.null(active)) {
+        return(list())
+      }
+      tempest_run_approvals(active, status = "pending")
+    })
+    run_assignments <- shiny::reactive({
+      active <- current_run()
+      if (is.null(active)) list() else active$assignments
+    })
+    run_artifacts <- shiny::reactive({
+      active <- current_run()
+      if (is.null(active)) {
+        return(list())
+      }
+      tempest_run_artifacts(active, include_content = FALSE)
+    })
+    run_grants <- shiny::reactive({
+      active <- current_run()
+      if (is.null(active)) {
+        return(list())
+      }
+      tempest_run_capability_grants(active)
+    })
+    run_evidence <- shiny::reactive({
+      active <- current_run()
+      if (is.null(active) || is.null(active$source_store)) {
+        return(list(resources = list(), claims = list(), disputes = list()))
+      }
+      list(
+        resources = lapply(
+          active$source_store$list_resources(),
+          tempest_resource_record,
+          include_content = FALSE
+        ),
+        claims = lapply(
+          active$source_store$list_claims(),
+          tempest_claim_to_list
+        ),
+        disputes = lapply(
+          active$source_store$list_disputes(),
+          tempest_dispute_to_list
+        )
+      )
+    })
+    touch_run <- function() {
+      run_version(shiny::isolate(run_version()) + 1L)
+      shared_store$touch_run()
+      invisible(NULL)
+    }
+    approve <- function(
+      approval_id,
+      decision = c("approved", "rejected"),
+      note = NULL,
+      metadata = list(),
+      resume = TRUE
+    ) {
+      active <- shiny::isolate(current_run())
+      if (is.null(active)) {
+        tempest_abort(
+          "No TempestRun is available for approval.",
+          class = c("tempest_shiny_adapter_error", "tempest_error")
+        )
+      }
+      decision <- match.arg(decision)
+      tempest_run_record_approval(
+        active,
+        approval_id = approval_id,
+        decision = decision,
+        note = note,
+        metadata = metadata,
+        resume = resume
+      )
+      touch_run()
+      invisible(active)
+    }
+    cancel <- function(reason = "Cancelled by host.") {
+      active <- shiny::isolate(current_run())
+      if (is.null(active)) {
+        tempest_abort(
+          "No TempestRun is available for cancellation.",
+          class = c("tempest_shiny_adapter_error", "tempest_error")
+        )
+      }
+      tempest_run_request_cancel(active, reason)
+      touch_run()
+      invisible(active)
+    }
+
     list(
       store = shared_store,
+      run = run_reactive,
+      status = run_status,
+      events = run_events,
+      approvals = run_approvals,
+      assignments = run_assignments,
+      artifacts = run_artifacts,
+      evidence = run_evidence,
+      grants = run_grants,
+      approve = approve,
+      cancel = cancel,
+      touch = touch_run,
       session = shared_store$get,
       report = shared_store$report,
       report_ready = report_ready

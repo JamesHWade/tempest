@@ -1,34 +1,35 @@
-# STORM perspectives & personas stage
+# STORM perspectives and expert-profile stage
 
-#' Generate Expert Personas for a Topic
+#' Generate expert profiles for a topic
 #'
-#' Uses an LLM to generate diverse expert personas who would naturally
-#' approach the topic from different angles, following the STORM methodology.
+#' Uses an LLM to propose diverse experts who would naturally approach the
+#' topic from different angles, then normalizes the provider response into
+#' validated, versioned [tempest_expert()] profiles.
 #'
 #' @param topic The research topic.
-#' @param n Number of personas to generate.
+#' @param n Number of experts to generate.
 #' @param config A `TempestConfig` object.
 #' @param verbose Print progress.
 #' @param module Optional dsprrr module used internally.
-#' @return A list of persona objects.
+#' @return A list of `tempest_expert` profiles.
 #'
 #' @examples
 #' \dontrun{
-#' personas <- tempest_generate_personas(
+#' experts <- tempest_generate_experts(
 #'   topic = "Climate change adaptation",
 #'   n = 3,
 #'   config = tempest_config()
 #' )
 #' }
 #' @export
-tempest_generate_personas <- function(
+tempest_generate_experts <- function(
   topic,
   n = 3,
   config = tempest_config(),
   verbose = FALSE,
   module = NULL
 ) {
-  tempest_require("ellmer", "Persona generation requires ellmer.")
+  tempest_require("ellmer", "Expert generation requires ellmer.")
   topic <- tempest_config_string(topic, "topic")
   n <- tempest_config_count(n, "n")
   if (n > config@max_active_experts) {
@@ -60,7 +61,7 @@ tempest_generate_personas <- function(
   )
 
   if (verbose) {
-    tempest_inform("Generating {n} expert personas for: {.val {topic}}")
+    tempest_inform("Generating {n} expert profiles for: {.val {topic}}")
   }
 
   result <- tempest_run_dsprrr_module(
@@ -78,7 +79,7 @@ tempest_generate_personas <- function(
         sep = "\n"
       )
     ),
-    step = "persona generation"
+    step = "expert generation"
   )
   if (is.null(result)) {
     result <- chat$chat_structured(
@@ -89,30 +90,25 @@ tempest_generate_personas <- function(
     )
   }
 
-  personas <- tempest_normalize_personas(result, n = n)
-
-  # Add an id to each persona
-  for (i in seq_along(personas)) {
-    personas[[i]]$id <- i
-  }
+  experts <- tempest_normalize_experts(result, n = n)
 
   if (verbose) {
-    for (p in personas) {
-      tempest_inform("  - {p$name}, {p$title}")
+    for (expert in experts) {
+      tempest_inform("  - {expert@name}, {expert@title}")
     }
   }
 
-  personas
+  experts
 }
 
 #' @keywords internal
-tempest_generate_personas_async <- function(
+tempest_generate_experts_async <- function(
   topic,
   n = 3,
   config = tempest_config()
 ) {
-  tempest_require("ellmer", "Persona generation requires ellmer.")
-  tempest_require("promises", "Async persona generation requires promises.")
+  tempest_require("ellmer", "Expert generation requires ellmer.")
+  tempest_require("promises", "Async expert generation requires promises.")
   topic <- tempest_config_string(topic, "topic")
   n <- tempest_config_count(n, "n")
   if (n > config@max_active_experts) {
@@ -146,17 +142,13 @@ tempest_generate_personas_async <- function(
     convert = FALSE
   )
   promises::then(request, function(result) {
-    personas <- tempest_normalize_personas(result, n = n)
-    for (i in seq_along(personas)) {
-      personas[[i]]$id <- i
-    }
-    personas
+    tempest_normalize_experts(result, n = n)
   })
 }
 
 #' Format Persona Details for Prompt
 #'
-#' @param persona A persona object from `tempest_generate_personas()`.
+#' @param persona A plain runtime expert record.
 #' @return A formatted string with persona details.
 #' @keywords internal
 tempest_format_persona_details <- function(persona) {
@@ -189,6 +181,12 @@ tempest_format_persona_details <- function(persona) {
 #' @return A rendered system prompt string.
 #' @keywords internal
 tempest_render_expert_prompt <- function(persona = NULL, expert_id = 1) {
+  if (
+    !is.null(persona) &&
+      S7::S7_inherits(persona, TempestExpertProfile)
+  ) {
+    persona <- tempest_expert_runtime_record(persona)
+  }
   if (is.null(persona)) {
     # Fallback to generic expert
     tempest_prompt_render(
@@ -255,31 +253,127 @@ tempest_generate_perspectives <- function(
 }
 
 #' @keywords internal
-tempest_normalize_personas <- function(x, n = NULL) {
-  personas <- if (is.list(x) && !is.null(x$personas)) x$personas else x
-  if (is.null(personas) || length(personas) == 0 || !is.list(personas)) {
+tempest_generated_expert_scalar <- function(value, default) {
+  if (is.null(value) || length(value) == 0L) {
+    return(default)
+  }
+  value <- as.character(value[[1]])
+  if (length(value) != 1L || is.na(value)) {
+    return(default)
+  }
+  value <- tempest_trim(value)
+  if (!nzchar(value)) default else value
+}
+
+#' @keywords internal
+tempest_generated_expert_profile <- function(value, index) {
+  name <- tempest_generated_expert_scalar(value$name, "Expert")
+  title <- tempest_generated_expert_scalar(
+    value$title,
+    "Research Specialist"
+  )
+  affiliation <- tempest_generated_expert_scalar(value$affiliation, "")
+  background <- tempest_generated_expert_scalar(value$background, "")
+  focus_areas <- tempest_as_character_vector(
+    value$focus_areas %||% character()
+  )
+  description <- tempest_generated_expert_scalar(
+    value$perspective,
+    tempest_generated_expert_scalar(
+      value$description,
+      if (nzchar(background)) background else "General research perspective"
+    )
+  )
+  instructions <- tempest_generated_expert_scalar(
+    value$instructions,
+    paste0("Research the topic from this perspective: ", description)
+  )
+  initial_questions <- tempest_as_character_vector(
+    value$initial_questions %||% character()
+  )
+  initial_work_items <- tempest_as_character_vector(
+    value$initial_work_items %||% character()
+  )
+  normalized <- list(
+    name = name,
+    title = title,
+    affiliation = affiliation,
+    background = background,
+    focus_areas = focus_areas,
+    description = description,
+    instructions = instructions,
+    initial_questions = initial_questions,
+    initial_work_items = initial_work_items
+  )
+  metadata <- list()
+  if (nzchar(affiliation)) {
+    metadata$affiliation <- affiliation
+  }
+  if (nzchar(background)) {
+    metadata$background <- background
+  }
+
+  tempest_expert(
+    expert_id = tempest_generated_expert_id(normalized, index = index),
+    version = "1",
+    name = name,
+    title = title,
+    description = description,
+    instructions = instructions,
+    focus_areas = focus_areas,
+    required_capability_ids = c(
+      "tempest.research.web",
+      "tempest.evidence.read",
+      "tempest.evidence.write"
+    ),
+    optional_capability_ids = "tempest.retrieval.semantic",
+    selection_metadata = list(
+      origin = "tempest.generated",
+      position = as.integer(index)
+    ),
+    initial_work_items = initial_work_items,
+    initial_questions = initial_questions,
+    metadata = metadata
+  )
+}
+
+#' @keywords internal
+tempest_fallback_expert_profile <- function(index) {
+  tempest_expert(
+    expert_id = paste0("expert.fallback-", as.integer(index)),
+    name = paste("Expert", as.integer(index)),
+    title = "Research Specialist",
+    description = "General evidence-backed research perspective.",
+    instructions = paste(
+      "Inspect evidence, distinguish inference from sourced claims,",
+      "and preserve uncertainty."
+    ),
+    required_capability_ids = c(
+      "tempest.research.web",
+      "tempest.evidence.read",
+      "tempest.evidence.write"
+    ),
+    optional_capability_ids = "tempest.retrieval.semantic"
+  )
+}
+
+#' @keywords internal
+tempest_normalize_experts <- function(x, n = NULL) {
+  values <- if (is.list(x) && !is.null(x$personas)) x$personas else x
+  if (is.null(values) || length(values) == 0 || !is.list(values)) {
     return(list())
   }
-  if (is.data.frame(personas)) {
-    personas <- split(personas, seq_len(nrow(personas)))
+  if (is.data.frame(values)) {
+    values <- split(values, seq_len(nrow(values)))
   }
-  personas <- purrr::map(personas, function(p) {
-    list(
-      name = p$name %||% "Expert",
-      title = p$title %||% "Research Specialist",
-      affiliation = p$affiliation %||% "",
-      background = p$background %||% "",
-      focus_areas = tempest_as_character_vector(p$focus_areas %||% character()),
-      perspective = p$perspective %||% "",
-      initial_questions = tempest_as_character_vector(
-        p$initial_questions %||% character()
-      )
-    )
-  })
-  if (!is.null(n) && length(personas) > n) {
-    personas <- personas[seq_len(n)]
+  if (!is.null(n) && length(values) > n) {
+    values <- values[seq_len(n)]
   }
-  personas
+  purrr::map2(
+    values,
+    seq_along(values),
+    tempest_generated_expert_profile
+  )
 }
 
 #' @keywords internal

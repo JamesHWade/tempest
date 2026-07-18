@@ -26,7 +26,10 @@ default.}
 
 \item{runtime}{Runtime-only clients and callbacks.}
 
-\item{provenance}{Run, step, expert, evidence, and artifact identifiers.}
+\item{provenance}{Run, step, expert, evidence, and artifact identifiers.
+A retry may set \code{replace_invalid_artifacts = TRUE} to replace only a draft
+or invalid artifact from the same run, step, and specification while
+retaining its validation diagnostics in artifact metadata.}
 }
 \value{
 A \code{tempest_deliverable_result} containing canonical content,
@@ -39,13 +42,19 @@ metadata.
 \details{
 This is the application-neutral output lifecycle used by built-in and
 host-defined workflows. It resolves all operations before generation, runs
-validators, renders typed artifacts, invokes exporters, and publishes the
-artifacts to a catalog. Failed validation produces inspectable invalid
-artifacts rather than dropping output.
+validators, renders typed artifacts, invokes exporters only for \code{valid} or
+\code{approved} output, and publishes the artifacts to a catalog. Failed
+validation produces inspectable invalid artifacts rather than dropping
+output. Approval-required output is exported by its owning \code{TempestRun}
+after the host approves it.
 
 Generator, validator, renderer, and exporter operations receive named
 arguments and may declare only those they use. See
 \code{\link[=tempest_artifact_representation]{tempest_artifact_representation()}} for the renderer return contract.
+Exporters may return \code{NULL} or the same artifact with only \code{storage_ref},
+\code{updated_at}, and \code{metadata} changed. All other finalized artifact fields,
+including content, checksum, validation, provenance, and status, are
+immutable.
 }
 \examples{
 registry <- tempest_operation_registry(list(

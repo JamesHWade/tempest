@@ -140,7 +140,7 @@ test_that("claim write tools record dynamic provenance", {
   )
   current <- list(
     session_id = "expert-session-1",
-    persona_id = "7",
+    expert_id = "expert.climate",
     retrieval_step_id = "tool-turn-1"
   )
   tools <- tempest:::tempest_tools_source_management(
@@ -156,11 +156,11 @@ test_that("claim write tools record dynamic provenance", {
   )
 
   expect_equal(added$session_id, "expert-session-1")
-  expect_equal(added$persona_id, "7")
+  expect_equal(added$expert_id, "expert.climate")
   expect_equal(added$retrieval_step_id, "tool-turn-1")
   claim <- store$list_claims()[[1]]
   expect_equal(claim@session_id, "expert-session-1")
-  expect_equal(claim@persona_id, "7")
+  expect_equal(claim@expert_id, "expert.climate")
   expect_equal(claim@retrieval_step_id, "tool-turn-1")
 })
 
@@ -218,4 +218,542 @@ test_that("default tool registration respects read-only evidence roles", {
     c("web_search", "fetch_url", "get_claim", "list_unsupported_claims")
   )
   expect_equal(intersect(tool_names, c("add_claim", "add_fact")), character())
+})
+
+test_that("expert sessions resolve scoped capabilities before chat creation", {
+  events <- character()
+  registered <- list()
+  prompts <- character()
+  roles <- character()
+  chat <- list(
+    register_tools = function(tools) {
+      events <<- c(events, "register")
+      registered <<- tools
+      invisible(NULL)
+    }
+  )
+  config <- tempest_config(
+    models = list(
+      coordinator = "test/coordinator",
+      expert = "test/expert"
+    ),
+    chat_fn = function(role, model, system_prompt, echo) {
+      events <<- c(events, "chat")
+      roles <<- c(roles, role)
+      prompts <<- c(prompts, system_prompt)
+      chat
+    }
+  )
+  capability <- tempest_capability_spec(
+    "test.documents.read",
+    purpose = "Read test documents",
+    instructions = "Read only the test documents.",
+    operation_id = "test.capability.documents.read",
+    model_roles = "expert"
+  )
+  skill <- tempest_skill(
+    "test.synthesize",
+    purpose = "Synthesize test evidence",
+    instructions = "Compare the available test evidence.",
+    required_capability_ids = "test.documents.read"
+  )
+  runtime <- tempest_runtime(
+    skill_specs = list(skill),
+    capability_specs = list(capability),
+    capability_implementations = list(
+      "test.documents.read" = function(
+        capability_spec,
+        connections,
+        context
+      ) {
+        events <<- c(events, "factory")
+        list(
+          tools = list("scoped-document-tool"),
+          metadata = list(scope = "documents.read")
+        )
+      }
+    ),
+    include_builtins = FALSE
+  )
+  expert <- tempest_expert(
+    expert_id = "expert.synthesis",
+    name = "Synthesis expert",
+    title = "Evidence synthesist",
+    description = "Compares approved evidence.",
+    instructions = "Preserve uncertainty.",
+    skill_ids = "test.synthesize",
+    model_role = "expert"
+  )
+  store <- SourceStore$new()
+  retriever <- tempest_retriever(config = config, store = store)
+  manager <- tempest_expert_session_manager(
+    experts = list(expert),
+    runtime = runtime,
+    config = config,
+    retriever = retriever
+  )
+
+  session <- manager$get_or_create("expert.synthesis")
+
+  expect_equal(events, c("factory", "chat", "register"))
+  expect_equal(roles, "expert")
+  expect_equal(registered, list("scoped-document-tool"))
+  expect_match(prompts, "Preserve uncertainty", fixed = TRUE)
+  expect_match(prompts, "Compare the available test evidence", fixed = TRUE)
+  expect_match(session$session_id, "^expert-session_[a-f0-9]{16}$")
+  expect_identical(session$is_new, TRUE)
+  expect_equal(
+    session$grants[["test.documents.read"]]$status,
+    "granted"
+  )
+  expect_equal(session$profile$expert_id, "expert.synthesis")
+  expect_equal(session$profile$expert_version, expert@version)
+  expect_equal(
+    session$profile$expert_fingerprint,
+    tempest:::tempest_expert_profile_fingerprint(expert)
+  )
+
+  resumed <- manager$get_or_create("expert.synthesis")
+  expect_identical(resumed$is_new, FALSE)
+  expect_equal(resumed$session_id, session$session_id)
+  expect_equal(events, c("factory", "chat", "register"))
+})
+
+test_that("expert sessions validate skills and capabilities before chat", {
+  chat_calls <- 0L
+  config <- tempest_config(
+    models = list(
+      coordinator = "test/coordinator",
+      expert = "test/expert"
+    ),
+    chat_fn = function(role, model, system_prompt, echo) {
+      chat_calls <<- chat_calls + 1L
+      list(register_tools = function(...) invisible(NULL))
+    }
+  )
+  expert <- tempest_expert(
+    expert_id = "expert.invalid-skill",
+    name = "Invalid skill expert",
+    title = "Tester",
+    description = "Declares an unavailable skill.",
+    instructions = "Test validation.",
+    skill_ids = "missing.skill",
+    model_role = "expert"
+  )
+  runtime <- tempest_runtime(include_builtins = FALSE)
+  retriever <- tempest_retriever(
+    config = config,
+    store = SourceStore$new()
+  )
+  manager <- tempest_expert_session_manager(
+    experts = list(expert),
+    runtime = runtime,
+    config = config,
+    retriever = retriever
+  )
+
+  expect_error(
+    manager$get_or_create("expert.invalid-skill"),
+    class = "tempest_expert_session_error"
+  )
+  expect_equal(chat_calls, 0L)
+  expect_length(manager$list_sessions(), 0L)
+})
+
+test_that("expert connection grants are exact and runtime-only", {
+  connection_calls <- 0L
+  chat_calls <- 0L
+  config <- tempest_config(
+    models = list(
+      coordinator = "test/coordinator",
+      expert = "test/expert"
+    ),
+    chat_fn = function(role, model, system_prompt, echo) {
+      chat_calls <<- chat_calls + 1L
+      list(register_tools = function(...) invisible(NULL))
+    }
+  )
+  reference <- tempest_connection_ref(
+    "customer.documents",
+    provider_id = "test.host",
+    connection_type = "documents",
+    title = "Customer documents",
+    description = "Approved customer documents"
+  )
+  capability <- tempest_capability_spec(
+    "test.customer.search",
+    purpose = "Search customer documents",
+    instructions = "Search the granted customer documents.",
+    operation_id = "test.capability.customer.search",
+    connection_ref_ids = "customer.documents",
+    model_roles = "expert"
+  )
+  runtime <- tempest_runtime(
+    capability_specs = list(capability),
+    capability_implementations = list(
+      "test.customer.search" = function(
+        capability_spec,
+        connections,
+        context
+      ) {
+        expect_named(connections, "customer.documents")
+        list(tools = list())
+      }
+    ),
+    connection_refs = list(reference),
+    connection_bindings = list(
+      "customer.documents" = function(connection_ref, context) {
+        connection_calls <<- connection_calls + 1L
+        list(client = "runtime-only")
+      }
+    ),
+    include_builtins = FALSE
+  )
+  expert <- tempest_expert(
+    expert_id = "expert.customer",
+    name = "Customer expert",
+    title = "Customer researcher",
+    description = "Uses approved customer evidence.",
+    instructions = "Respect customer scope.",
+    required_capability_ids = "test.customer.search",
+    model_role = "expert"
+  )
+  retriever <- tempest_retriever(
+    config = config,
+    store = SourceStore$new()
+  )
+  denied <- tempest_expert_session_manager(
+    experts = list(expert),
+    runtime = runtime,
+    config = config,
+    retriever = retriever
+  )
+
+  expect_error(
+    denied$get_or_create("expert.customer"),
+    class = "tempest_expert_session_error"
+  )
+  expect_equal(connection_calls, 0L)
+  expect_equal(chat_calls, 0L)
+
+  allowed <- tempest_expert_session_manager(
+    experts = list(expert),
+    runtime = runtime,
+    config = config,
+    retriever = retriever,
+    allowed_connection_ref_ids = list(
+      "expert.customer" = "customer.documents"
+    )
+  )
+  session <- allowed$get_or_create("expert.customer")
+  expect_equal(connection_calls, 1L)
+  expect_equal(chat_calls, 1L)
+  expect_equal(
+    session$profile$allowed_connection_ref_ids,
+    "customer.documents"
+  )
+  expect_identical(
+    grepl(
+      "runtime-only",
+      tempest:::tempest_canonical_json(session$profile)
+    ),
+    FALSE
+  )
+})
+
+test_that("expert sessions bind resumes and reject retired profiles", {
+  config <- tempest_config(
+    models = list(
+      coordinator = "test/coordinator",
+      expert = "test/expert"
+    ),
+    chat_fn = function(role, model, system_prompt, echo) {
+      list(register_tools = function(...) invisible(NULL))
+    }
+  )
+  first <- tempest_expert(
+    expert_id = "expert.first",
+    name = "First expert",
+    title = "First",
+    description = "First perspective.",
+    instructions = "Act as the first expert.",
+    model_role = "expert"
+  )
+  second <- tempest_expert(
+    expert_id = "expert.second",
+    name = "Second expert",
+    title = "Second",
+    description = "Second perspective.",
+    instructions = "Act as the second expert.",
+    model_role = "expert"
+  )
+  runtime <- tempest_runtime(include_builtins = FALSE)
+  retriever <- tempest_retriever(
+    config = config,
+    store = SourceStore$new()
+  )
+  manager <- tempest_expert_session_manager(
+    experts = list(first, second),
+    runtime = runtime,
+    config = config,
+    retriever = retriever
+  )
+  session <- manager$get_or_create("expert.first")
+
+  expect_error(
+    manager$get_or_create(
+      "expert.second",
+      session_id = session$session_id
+    ),
+    class = "tempest_expert_session_error"
+  )
+  expect_error(
+    manager$get_or_create(
+      "expert.first",
+      session_id = "expert-session_0000000000000000"
+    ),
+    class = "tempest_expert_session_error"
+  )
+  expect_identical(manager$retire_expert("expert.first"), TRUE)
+  expect_length(manager$list_sessions(), 0L)
+  expect_error(
+    manager$profile("expert.first"),
+    class = "tempest_expert_session_error"
+  )
+  expect_equal(
+    manager$profile("expert.first", active_only = FALSE)@state,
+    "retired"
+  )
+  expect_error(
+    manager$get_or_create("expert.first"),
+    class = "tempest_expert_session_error"
+  )
+
+  third <- tempest_expert(
+    expert_id = "expert.third",
+    name = "Third expert",
+    title = "Third",
+    description = "Third perspective.",
+    instructions = "Act as the third expert.",
+    model_role = "expert"
+  )
+  manager$add_expert(third)
+  expect_equal(manager$profile("expert.third")@name, "Third expert")
+  expect_equal(
+    purrr::map_chr(manager$list_experts(), \(expert) expert@expert_id),
+    c("expert.second", "expert.third")
+  )
+})
+
+test_that("saved expert sessions reauthorize under exact bindings", {
+  capability_calls <- 0L
+  chat_calls <- 0L
+  config <- tempest_config(
+    models = list(
+      coordinator = "test/coordinator",
+      expert = "test/expert"
+    ),
+    chat_fn = function(role, model, system_prompt, echo) {
+      chat_calls <<- chat_calls + 1L
+      list(register_tools = function(...) invisible(NULL))
+    }
+  )
+  capability <- tempest_capability_spec(
+    "test.restore",
+    purpose = "Test restored authorization",
+    instructions = "Authorize each fresh chat.",
+    operation_id = "test.capability.restore",
+    model_roles = "expert"
+  )
+  runtime <- tempest_runtime(
+    capability_specs = list(capability),
+    capability_implementations = list(
+      "test.restore" = function(capability_spec, connections, context) {
+        capability_calls <<- capability_calls + 1L
+        list(tools = list(), metadata = list(call = capability_calls))
+      }
+    ),
+    include_builtins = FALSE
+  )
+  expert <- tempest_expert(
+    expert_id = "expert.restore",
+    name = "Restore expert",
+    title = "Restore tester",
+    description = "Tests restored sessions.",
+    instructions = "Reauthorize every restored session.",
+    required_capability_ids = "test.restore",
+    model_role = "expert"
+  )
+  retriever <- tempest_retriever(
+    config = config,
+    store = SourceStore$new()
+  )
+  first_manager <- tempest_expert_session_manager(
+    experts = list(expert),
+    runtime = runtime,
+    config = config,
+    retriever = retriever
+  )
+  first <- first_manager$get_or_create("expert.restore")
+  binding <- first_manager$session_profile(first$session_id)
+
+  second_manager <- tempest_expert_session_manager(
+    experts = list(expert),
+    runtime = runtime,
+    config = config,
+    retriever = retriever
+  )
+  restored <- second_manager$restore_session(binding)
+
+  expect_equal(restored$session_id, first$session_id)
+  expect_identical(restored$is_new, TRUE)
+  expect_equal(capability_calls, 2L)
+  expect_equal(chat_calls, 2L)
+  expect_equal(restored$profile$prior_grants, binding$grants)
+  expect_equal(
+    restored$profile$grants[["test.restore"]]$metadata$call,
+    2L
+  )
+  expect_error(
+    second_manager$restore_session(binding),
+    class = "tempest_expert_session_error"
+  )
+
+  tampered <- binding
+  tampered$session_id <- "expert-session_0000000000000000"
+  tampered$expert_fingerprint <- paste(rep("0", 64L), collapse = "")
+  expect_error(
+    second_manager$restore_session(tampered),
+    class = "tempest_expert_session_error"
+  )
+  expect_equal(capability_calls, 2L)
+  expect_equal(chat_calls, 2L)
+})
+
+test_that("one delegation tool resolves the live roster by exact expert id", {
+  skip_if_not_installed("ellmer")
+  expert_chat <- fake_chat(text = list("First answer.", "Second answer."))
+  config <- tempest_config(
+    models = list(
+      coordinator = "test/coordinator",
+      expert = "test/expert"
+    ),
+    chat_fn = function(role, model, system_prompt, echo) expert_chat
+  )
+  expert <- tempest_expert(
+    expert_id = "expert.policy",
+    name = "Policy expert",
+    title = "Policy analyst",
+    description = "Analyzes policy.",
+    instructions = "Compare policy mechanisms.",
+    model_role = "expert"
+  )
+  runtime <- tempest_runtime(include_builtins = FALSE)
+  retriever <- tempest_retriever(
+    config = config,
+    store = SourceStore$new()
+  )
+  manager <- tempest_expert_session_manager(
+    experts = list(expert),
+    runtime = runtime,
+    config = config,
+    retriever = retriever
+  )
+  tool <- tempest:::tempest_create_expert_delegation_tool(
+    session_manager = manager,
+    topic = "Policy outcomes",
+    experts = list(expert)
+  )
+
+  expect_equal(tool@name, "delegate_to_expert")
+  expect_named(
+    tool@arguments@properties,
+    c("expert_id", "question")
+  )
+  first <- tool(
+    expert_id = "expert.policy",
+    question = "What matters?"
+  )
+  second <- tool(
+    expert_id = "expert.policy",
+    question = "What else?"
+  )
+  expect_equal(first$expert_id, "expert.policy")
+  expect_equal(first$response, "First answer.")
+  expect_equal(second$response, "Second answer.")
+  expect_equal(second$session_id, first$session_id)
+  expect_length(manager$list_sessions(), 1L)
+  expect_error(
+    tool(expert_id = "Expert.Policy", question = "Wrong case"),
+    class = "tempest_expert_session_error"
+  )
+  manager$retire_expert("expert.policy")
+  expect_error(
+    tool(expert_id = "expert.policy", question = "Retired"),
+    class = "tempest_expert_session_error"
+  )
+  expect_identical(
+    exists(
+      "tempest_create_expert_tool",
+      envir = asNamespace("tempest"),
+      inherits = FALSE
+    ),
+    FALSE
+  )
+})
+
+test_that("single expert generation returns deterministic scoped profiles", {
+  skip_if_not_installed("ellmer")
+  generated <- list(
+    personas = list(list(
+      name = "Dr. Rivera",
+      title = "Battery policy analyst",
+      affiliation = "Independent",
+      background = "Studies battery policy.",
+      focus_areas = list("recycling", "incentives"),
+      perspective = "Policy and market incentives",
+      initial_questions = list("Which incentives affect recycling?")
+    ))
+  )
+  chat <- fake_chat(structured = list(generated, generated))
+  config <- tempest_config(
+    models = list(
+      coordinator = "test/coordinator",
+      expert = "test/expert"
+    ),
+    chat_fn = function(role, model, system_prompt, echo) chat
+  )
+
+  first <- tempest:::tempest_generate_single_expert(
+    "Battery circularity",
+    "Policy analysis",
+    list(),
+    config
+  )
+  second <- tempest:::tempest_generate_single_expert(
+    "Battery circularity",
+    "Policy analysis",
+    list(),
+    config
+  )
+
+  expect_identical(
+    S7::S7_inherits(first, tempest:::TempestExpertProfile),
+    TRUE
+  )
+  expect_equal(first@expert_id, second@expert_id)
+  expect_match(first@expert_id, "^expert.generated-")
+  expect_equal(
+    first@required_capability_ids,
+    c(
+      "tempest.research.web",
+      "tempest.evidence.read",
+      "tempest.evidence.write"
+    )
+  )
+  expect_equal(
+    first@optional_capability_ids,
+    "tempest.retrieval.semantic"
+  )
+  expect_equal(first@model_role, "expert")
 })

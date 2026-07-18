@@ -9,3 +9,4 @@ docs
 /.roborev/
 .kata.local.toml
 .positai
+**/.dsprrr_cache/

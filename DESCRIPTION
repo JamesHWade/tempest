@@ -10,12 +10,13 @@ Description: Implements an R-native clone of the STORM and Co-STORM
     'shinychat' for an interactive Shiny UI. Includes web retrieval tools,
     evidence tracking with citations, mind-map style topic planning, and
     evaluation helpers built on 'vitals'. Application-neutral contracts for
-    objectives, versioned deliverables, runtime operations, and typed artifacts
-    let host applications customize generated outcomes without embedding
-    business-domain logic in the package.
+    objectives, selected expert teams, scoped skills and capabilities, generic
+    workflow runs, versioned deliverables, typed evidence resources, and typed
+    artifacts let host applications customize generated outcomes without
+    embedding business-domain logic in the package.
 License: MIT + file LICENSE
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
+Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd"))
 Depends:
     R (>= 4.1.0)
 Imports:
@@ -102,4 +103,12 @@ Collate:
     'utils.R'
     'verify.R'
     'workflow-types.R'
+    'expert-types.R'
+    'capabilities.R'
+    'runtime.R'
+    'resources.R'
+    'workflow-spec.R'
+    'tempest-run.R'
+    'run-accessors.R'
+    'builtin-workflows.R'
 Config/usethis/last-upkeep: 2026-06-27

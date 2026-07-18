@@ -18,9 +18,11 @@ A list containing a schema-versioned session snapshot.
 \details{
 \code{tempest_session_snapshot()} returns a structured, in-memory representation
 of the durable state in a \link{TempestSession}. It includes the session identity,
-personas, transcript, mind map, typed deliverable specifications and
+expert profiles, transcript, mind map, typed deliverable specifications and
 artifacts, auxiliary session state, progress-event history, expert-session
-metadata, and the underlying \code{SourceStore} ledger. Live chat handles, tools,
+metadata, serializable skill and connection-reference records, capability
+decisions, an attached generic workflow run, and the underlying
+\code{SourceStore} ledger. Live chat handles, runtime clients, tools, closures,
 Shiny reactive state, credentials, and provider request bodies are not
 included.
 

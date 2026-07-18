@@ -8,7 +8,8 @@ tempest_artifact_store(
   write = NULL,
   read = NULL,
   list_metadata = NULL,
-  exists = NULL
+  exists = NULL,
+  version = NULL
 )
 }
 \arguments{
@@ -23,6 +24,9 @@ artifact metadata records without inline content.}
 
 \item{exists}{Function with signature \verb{function(artifact_id, version)} used
 to test artifact identity and optional deliverable version.}
+
+\item{version}{Function with signature \verb{function(artifact_id, default)} that
+returns the persisted deliverable version.}
 }
 \value{
 A typed artifact-store adapter.

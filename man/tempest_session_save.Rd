@@ -4,7 +4,7 @@
 \alias{tempest_session_save}
 \title{Save a Co-STORM session bundle}
 \usage{
-tempest_session_save(session, path, overwrite = FALSE)
+tempest_session_save(session, path, overwrite = FALSE, codec_registry = NULL)
 }
 \arguments{
 \item{session}{A \link{TempestSession} object.}
@@ -12,6 +12,9 @@ tempest_session_save(session, path, overwrite = FALSE)
 \item{path}{Directory where the session bundle should be written.}
 
 \item{overwrite}{If \code{TRUE}, replace an existing bundle directory.}
+
+\item{codec_registry}{Optional \code{\link[=tempest_artifact_codec_registry]{tempest_artifact_codec_registry()}} containing
+host-defined codecs needed to encode typed artifact content.}
 }
 \value{
 Invisibly returns the normalized bundle directory.
@@ -28,5 +31,5 @@ is written last. Live chat handles, registered tool closures, Shiny reactive
 state, credentials, and raw provider request bodies are not serialized.
 
 Use \code{\link[=tempest_session_resume]{tempest_session_resume()}} to load the bundle with a fresh runtime
-\link{TempestConfig}.
+\link{TempestConfig} and \code{\link[=tempest_runtime]{tempest_runtime()}}.
 }

@@ -40,6 +40,19 @@ test_that("UTF-8 text codecs preserve exact bytes", {
   expect_match(encoded$sha256, "^[a-f0-9]{64}$")
 })
 
+test_that("artifact codec alias creates runtime definitions", {
+  codec <- tempest_artifact_codec(
+    "host.plain",
+    encode = function(content, media_type) charToRaw(content),
+    decode = function(bytes) rawToChar(bytes),
+    media_types = "text/plain",
+    extension = "txt"
+  )
+
+  expect_s3_class(codec, "tempest_artifact_codec_definition")
+  expect_identical(codec$codec_id, "host.plain")
+})
+
 test_that("canonical JSON codecs round-trip structured content", {
   content <- list(
     response = "Done",
@@ -210,4 +223,76 @@ test_that("external references restore without dereferencing", {
 
   expect_null(restored@content)
   expect_equal(restored@storage_ref, "/path/that/does/not/exist")
+})
+
+test_that("codec registries expose durable metadata without functions", {
+  registry <- tempest_artifact_codec_registry()
+  listing <- registry$list()
+  contains_function <- function(value) {
+    is.function(value) ||
+      (is.list(value) &&
+        any(vapply(value, contains_function, logical(1))))
+  }
+
+  expect_named(
+    listing,
+    c(
+      "tempest.external.reference",
+      "tempest.json.canonical",
+      "tempest.text.utf8"
+    )
+  )
+  expect_identical(contains_function(listing), FALSE)
+  expect_identical(
+    listing[["tempest.external.reference"]]$external,
+    TRUE
+  )
+})
+
+test_that("custom codecs resolve by id, version, and media type", {
+  reverse_codec <- tempest_artifact_codec_definition(
+    "host.text.reverse",
+    version = "2026.1",
+    media_types = "application/x-reverse-text",
+    extension = "rev",
+    encode = function(content) rev(charToRaw(enc2utf8(content))),
+    decode = function(bytes) rawToChar(rev(bytes)),
+    supports = function(content) {
+      is.character(content) && length(content) == 1L
+    }
+  )
+  registry <- tempest_artifact_codec_registry(
+    list(reverse_codec),
+    include_builtins = FALSE
+  )
+  encoded <- tempest:::tempest_artifact_codec_encode(
+    "Custom body",
+    "application/x-reverse-text",
+    registry = registry
+  )
+  decoded <- tempest:::tempest_artifact_codec_decode(
+    encoded,
+    encoded$bytes,
+    registry = registry
+  )
+
+  expect_equal(encoded$codec_id, "host.text.reverse")
+  expect_equal(encoded$codec_version, "2026.1")
+  expect_equal(encoded$extension, "rev")
+  expect_equal(decoded, "Custom body")
+  expect_error(
+    registry$resolve("missing.codec"),
+    class = "tempest_artifact_codec_missing_error"
+  )
+  expect_error(
+    registry$resolve("host.text.reverse", version = "2"),
+    class = "tempest_artifact_codec_version_error"
+  )
+  expect_error(
+    registry$resolve(
+      "host.text.reverse",
+      media_type = "text/plain"
+    ),
+    class = "tempest_artifact_codec_media_error"
+  )
 })

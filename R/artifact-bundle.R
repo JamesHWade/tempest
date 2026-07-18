@@ -87,7 +87,8 @@ tempest_artifact_bundle_record_map <- function(value, what) {
 tempest_artifact_bundle_write <- function(
   catalog,
   bundle_dir,
-  prefix = "artifacts/typed"
+  prefix = "artifacts/typed",
+  codec_registry = NULL
 ) {
   if (!inherits(catalog, "TempestArtifactCatalog")) {
     tempest_artifact_codec_abort(
@@ -99,6 +100,9 @@ tempest_artifact_bundle_write <- function(
       "{.arg bundle_dir} must be a single path string."
     )
   }
+  codec_registry <- tempest_artifact_codec_registry_validate(
+    codec_registry
+  )
   prefix <- sub("/+$", "", gsub("\\\\", "/", prefix))
   if (!tempest_artifact_bundle_path_is_safe(prefix)) {
     tempest_artifact_codec_abort(
@@ -126,9 +130,29 @@ tempest_artifact_bundle_write <- function(
         artifact,
         include_content = FALSE
       )
+      codec_preference <- artifact@metadata$codec %||% list()
+      if (!is.list(codec_preference) || is.data.frame(codec_preference)) {
+        tempest_artifact_codec_abort(
+          "Artifact codec preferences must be a list."
+        )
+      }
       if (is.null(artifact@content)) {
-        record$codec_id <- "tempest.external.reference"
-        record$codec_version <- "1"
+        external_codec <- if (is.null(codec_preference$codec_id)) {
+          codec_registry$select(
+            artifact@storage_ref,
+            artifact@media_type,
+            external = TRUE
+          )
+        } else {
+          codec_registry$resolve(
+            codec_preference$codec_id,
+            version = codec_preference$codec_version %||% NULL,
+            media_type = artifact@media_type,
+            external = TRUE
+          )
+        }
+        record$codec_id <- external_codec$codec_id
+        record$codec_version <- external_codec$version
         record$content_path <- NULL
         record$byte_size <- 0L
         record$content_sha256 <- artifact@checksum
@@ -136,13 +160,11 @@ tempest_artifact_bundle_write <- function(
       }
       encoded <- tempest_artifact_codec_encode(
         artifact@content,
-        artifact@media_type
+        artifact@media_type,
+        registry = codec_registry,
+        codec_id = codec_preference$codec_id %||% NULL,
+        codec_version = codec_preference$codec_version %||% NULL
       )
-      if (!identical(encoded$sha256, artifact@checksum)) {
-        tempest_artifact_codec_abort(
-          "Artifact {.val {artifact_id}} checksum does not match its encoded content."
-        )
-      }
       content_name <- paste0(
         digest::digest(
           enc2utf8(artifact_id),
@@ -169,7 +191,11 @@ tempest_artifact_bundle_write <- function(
   )
   tempest_write_json(
     file.path(bundle_dir, index_path),
-    list(schema_version = 1L, artifacts = artifact_records)
+    list(
+      schema_version = 1L,
+      codecs = codec_registry$list(),
+      artifacts = artifact_records
+    )
   )
   files <- c(files, index_path, content_files)
   list(
@@ -185,8 +211,12 @@ tempest_artifact_bundle_read <- function(
   prefix = "artifacts/typed",
   store = NULL,
   evidence_store = NULL,
-  declared_files = NULL
+  declared_files = NULL,
+  codec_registry = NULL
 ) {
+  codec_registry <- tempest_artifact_codec_registry_validate(
+    codec_registry
+  )
   prefix <- sub("/+$", "", gsub("\\\\", "/", prefix))
   deliverables_path <- paste0(prefix, "/deliverables.json")
   index_path <- paste0(prefix, "/index.json")
@@ -249,10 +279,6 @@ tempest_artifact_bundle_read <- function(
       )
     }
   }
-  catalog <- tempest_artifact_catalog(
-    store = store,
-    deliverables = deliverables
-  )
   records <- tempest_artifact_bundle_record_map(
     artifact_index$artifacts,
     "The artifact index"
@@ -294,28 +320,67 @@ tempest_artifact_bundle_read <- function(
     )
   }
 
+  resolved_codecs <- stats::setNames(
+    lapply(names(records), function(artifact_id) {
+      record <- records[[artifact_id]]
+      if (!identical(record$artifact_id, artifact_id)) {
+        tempest_artifact_codec_abort(
+          "Typed artifact index key does not match artifact identity."
+        )
+      }
+      codec <- codec_registry$resolve(
+        record$codec_id,
+        version = record$codec_version,
+        media_type = record$media_type
+      )
+      content_path <- record$content_path %||% NULL
+      if (codec$external) {
+        byte_size <- suppressWarnings(
+          as.numeric(record$byte_size %||% NA_real_)
+        )
+        if (
+          !is.null(content_path) ||
+            length(byte_size) != 1L ||
+            is.na(byte_size) ||
+            byte_size != 0 ||
+            !identical(record$content_sha256, record$checksum)
+        ) {
+          tempest_artifact_codec_abort(
+            "Malformed external artifact reference record."
+          )
+        }
+      } else {
+        path <- tempest_artifact_bundle_assert_safe_path(
+          bundle_dir,
+          content_path
+        )
+        if (!file.exists(path)) {
+          tempest_artifact_codec_abort(
+            "Artifact content file is missing: {.path {content_path}}."
+          )
+        }
+      }
+      codec
+    }),
+    names(records)
+  )
+
+  restored_artifacts <- vector("list", length(records))
+  names(restored_artifacts) <- names(records)
   for (artifact_id in names(records)) {
     record <- records[[artifact_id]]
-    if (!identical(record$artifact_id, artifact_id)) {
-      tempest_artifact_codec_abort(
-        "Typed artifact index key does not match artifact identity."
-      )
-    }
-    deliverable <- catalog$get_deliverable(
+    deliverable_key <- tempest_deliverable_catalog_key(
       record$deliverable_id,
       record$deliverable_version
     )
+    deliverable <- deliverables[[deliverable_key]] %||% NULL
+    if (is.null(deliverable)) {
+      tempest_artifact_codec_abort(
+        "Artifact references an unknown deliverable specification."
+      )
+    }
     content <- NULL
-    if (identical(record$codec_id, "tempest.external.reference")) {
-      if (
-        !identical(record$codec_version, "1") ||
-          !is.null(record$content_path)
-      ) {
-        tempest_artifact_codec_abort(
-          "Malformed external artifact reference record."
-        )
-      }
-    } else {
+    if (!resolved_codecs[[artifact_id]]$external) {
       content_path <- record$content_path %||% NULL
       path <- tempest_artifact_bundle_assert_safe_path(
         bundle_dir,
@@ -336,19 +401,28 @@ tempest_artifact_bundle_read <- function(
         list(
           codec_id = record$codec_id,
           codec_version = record$codec_version,
+          media_type = record$media_type,
           byte_size = record$byte_size,
           sha256 = record$content_sha256
         ),
-        bytes
+        bytes,
+        registry = codec_registry
       )
     }
-    artifact <- tempest_artifact_from_data(
+    restored_artifacts[[artifact_id]] <- tempest_artifact_from_data(
       record,
       deliverable,
       content = content
     )
-    catalog$add(artifact, persist = FALSE)
   }
+  catalog <- tempest_artifact_catalog(
+    store = store,
+    deliverables = deliverables
+  )
+  catalog$add_many(
+    unname(restored_artifacts),
+    persist = FALSE
+  )
   tempest_artifact_catalog_validate_lineage(catalog, evidence_store)
   catalog
 }

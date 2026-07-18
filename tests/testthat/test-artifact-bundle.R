@@ -61,6 +61,13 @@ test_that("typed artifact bundles round-trip arbitrary representations", {
     restored$get("response-appendix")@storage_ref,
     "host://objects/appendix"
   )
+  index <- tempest:::tempest_read_json_strict(
+    file.path(bundle_dir, written$index_path)
+  )
+  expect_equal(
+    index$artifacts[["response-appendix"]]$codec_id,
+    "tempest.external.reference"
+  )
 })
 
 test_that("typed artifact bundles reject tampering and unknown codecs", {
@@ -150,5 +157,213 @@ test_that("typed artifact bundles reject unsafe and undeclared paths", {
   expect_error(
     tempest:::tempest_artifact_bundle_read(bundle_dir),
     class = "tempest_artifact_codec_error"
+  )
+})
+
+test_that("custom codecs persist inline typed artifacts", {
+  reverse_codec <- tempest_artifact_codec_definition(
+    "host.text.reverse",
+    version = "7",
+    media_types = "application/x-reverse-text",
+    extension = "rev",
+    priority = 200,
+    encode = function(content) rev(charToRaw(enc2utf8(content))),
+    decode = function(bytes) rawToChar(rev(bytes)),
+    supports = function(content) {
+      is.character(content) && length(content) == 1L
+    }
+  )
+  registry <- tempest_artifact_codec_registry(list(reverse_codec))
+  spec <- tempest_deliverable_spec(
+    "custom",
+    title = "Custom",
+    purpose = "Exercise a host codec",
+    instructions = "Preserve the content.",
+    generator_id = "generator",
+    renderer_ids = "renderer",
+    media_types = "application/x-reverse-text"
+  )
+  artifact <- tempest_artifact(
+    spec,
+    content = "Custom body",
+    artifact_id = "custom-1",
+    media_type = "application/x-reverse-text",
+    metadata = list(
+      codec = list(
+        codec_id = "host.text.reverse",
+        codec_version = "7"
+      )
+    )
+  )
+  catalog <- tempest_artifact_catalog(
+    artifacts = list(artifact),
+    deliverables = list(spec)
+  )
+  bundle_dir <- withr::local_tempdir()
+
+  written <- tempest:::tempest_artifact_bundle_write(
+    catalog,
+    bundle_dir,
+    codec_registry = registry
+  )
+  restored <- tempest:::tempest_artifact_bundle_read(
+    bundle_dir,
+    declared_files = written$files,
+    codec_registry = registry
+  )
+
+  expect_equal(restored$get("custom-1")@content, "Custom body")
+  expect_match(written$content_files[[1]], "\\.rev$")
+  index <- tempest:::tempest_read_json_strict(
+    file.path(bundle_dir, written$index_path)
+  )
+  expect_equal(
+    index$artifacts[["custom-1"]]$codec_id,
+    "host.text.reverse"
+  )
+  expect_null(index$codecs[["host.text.reverse"]]$encode)
+})
+
+test_that("custom external codecs honor preferences and deterministic selection", {
+  external_codec <- tempest_artifact_codec_definition(
+    "host.external.object",
+    version = "3",
+    media_types = "application/octet-stream",
+    extension = "href",
+    external = TRUE,
+    priority = -2000
+  )
+  registry <- tempest_artifact_codec_registry(list(external_codec))
+  spec <- tempest_deliverable_spec(
+    "external",
+    title = "External",
+    purpose = "Exercise a host external codec",
+    instructions = "Preserve the storage reference.",
+    generator_id = "generator",
+    renderer_ids = "renderer",
+    media_types = "application/octet-stream"
+  )
+  declared <- tempest_artifact(
+    spec,
+    storage_ref = "host://objects/declared",
+    artifact_id = "external-declared",
+    metadata = list(
+      codec = list(
+        codec_id = "host.external.object",
+        codec_version = "3"
+      )
+    )
+  )
+  catalog <- tempest_artifact_catalog(
+    artifacts = list(declared),
+    deliverables = list(spec)
+  )
+  bundle_dir <- withr::local_tempdir()
+
+  written <- tempest:::tempest_artifact_bundle_write(
+    catalog,
+    bundle_dir,
+    codec_registry = registry
+  )
+  index <- tempest:::tempest_read_json_strict(
+    file.path(bundle_dir, written$index_path)
+  )
+  restored <- tempest:::tempest_artifact_bundle_read(
+    bundle_dir,
+    codec_registry = registry
+  )
+
+  expect_equal(
+    index$artifacts[["external-declared"]]$codec_id,
+    "host.external.object"
+  )
+  expect_equal(
+    index$artifacts[["external-declared"]]$codec_version,
+    "3"
+  )
+  expect_equal(
+    restored$get("external-declared")@storage_ref,
+    "host://objects/declared"
+  )
+
+  automatic <- tempest_artifact(
+    spec,
+    storage_ref = "host://objects/automatic",
+    artifact_id = "external-automatic"
+  )
+  automatic_catalog <- tempest_artifact_catalog(
+    artifacts = list(automatic),
+    deliverables = list(spec)
+  )
+  automatic_dir <- withr::local_tempdir()
+  custom_only <- tempest_artifact_codec_registry(
+    list(external_codec),
+    include_builtins = FALSE
+  )
+  automatic_written <- tempest:::tempest_artifact_bundle_write(
+    automatic_catalog,
+    automatic_dir,
+    codec_registry = custom_only
+  )
+  automatic_index <- tempest:::tempest_read_json_strict(
+    file.path(automatic_dir, automatic_written$index_path)
+  )
+
+  expect_equal(
+    automatic_index$artifacts[["external-automatic"]]$codec_id,
+    "host.external.object"
+  )
+})
+
+test_that("bundle codecs preflight before artifact promotion", {
+  codec <- tempest_artifact_codec_definition(
+    "host.text.reverse",
+    version = "1",
+    media_types = "application/x-reverse-text",
+    extension = "rev",
+    encode = function(content) rev(charToRaw(content)),
+    decode = function(bytes) rawToChar(rev(bytes))
+  )
+  registry <- tempest_artifact_codec_registry(list(codec))
+  spec <- tempest_deliverable_spec(
+    "custom",
+    title = "Custom",
+    purpose = "Exercise codec preflight",
+    instructions = "Preserve content.",
+    generator_id = "generator",
+    renderer_ids = "renderer",
+    media_types = "application/x-reverse-text"
+  )
+  artifact <- tempest_artifact(
+    spec,
+    content = "Body",
+    artifact_id = "custom"
+  )
+  catalog <- tempest_artifact_catalog(
+    artifacts = list(artifact),
+    deliverables = list(spec)
+  )
+  bundle_dir <- withr::local_tempdir()
+  tempest:::tempest_artifact_bundle_write(
+    catalog,
+    bundle_dir,
+    codec_registry = registry
+  )
+
+  expect_error(
+    tempest:::tempest_artifact_bundle_read(bundle_dir),
+    class = "tempest_artifact_codec_missing_error"
+  )
+
+  index_path <- file.path(bundle_dir, "artifacts/typed/index.json")
+  index <- tempest:::tempest_read_json_strict(index_path)
+  index$artifacts$custom$codec_version <- "2"
+  tempest:::tempest_write_json(index_path, index)
+  expect_error(
+    tempest:::tempest_artifact_bundle_read(
+      bundle_dir,
+      codec_registry = registry
+    ),
+    class = "tempest_artifact_codec_version_error"
   )
 })

@@ -335,20 +335,189 @@ tempest_deliverable_provenance_value <- function(
 tempest_deliverable_artifact_id <- function(
   provenance,
   operation_id,
-  artifact_index
+  artifact_index,
+  representation_index = 1L,
+  representation_count = 1L,
+  deliverable = NULL
 ) {
   artifact_ids <- provenance$artifact_ids %||% character()
+  explicit_id <- NULL
   if (
     length(artifact_ids) > 0L &&
       !is.null(names(artifact_ids)) &&
       operation_id %in% names(artifact_ids)
   ) {
-    return(unname(artifact_ids[[operation_id]]))
+    explicit_id <- unname(artifact_ids[[operation_id]])
   }
-  if (artifact_index == 1L && !is.null(provenance$artifact_id)) {
-    return(provenance$artifact_id)
+  if (
+    is.null(explicit_id) &&
+      artifact_index - representation_index + 1L == 1L &&
+      !is.null(provenance$artifact_id)
+  ) {
+    explicit_id <- provenance$artifact_id
   }
-  NULL
+  if (representation_count == 1L) {
+    return(explicit_id)
+  }
+  if (is.null(explicit_id)) {
+    stopifnot(S7::S7_inherits(deliverable, TempestDeliverableSpec))
+    identity <- list(
+      run_id = provenance$run_id %||% NA_character_,
+      step_id = provenance$step_id %||% NA_character_,
+      expert_id = provenance$expert_id %||% NA_character_,
+      deliverable_id = deliverable@deliverable_id,
+      deliverable_version = deliverable@version,
+      spec_fingerprint = tempest_deliverable_fingerprint(deliverable),
+      operation_id = operation_id
+    )
+    explicit_id <- paste0(
+      "artifact-",
+      substr(digest::digest(identity, algo = "sha256"), 1L, 24L)
+    )
+  } else {
+    explicit_id <- tempest_workflow_scalar(explicit_id, "artifact_id")
+  }
+  if (representation_index == 1L) {
+    return(explicit_id)
+  }
+  paste0(explicit_id, "--", representation_index)
+}
+
+tempest_deliverable_retry_history_record <- function(artifact) {
+  list(
+    status = artifact@status,
+    checksum = artifact@checksum,
+    validation_results = lapply(
+      artifact@validation_results,
+      tempest_validation_result_data
+    ),
+    created_at = artifact@created_at,
+    updated_at = artifact@updated_at
+  )
+}
+
+tempest_deliverable_preflight_publication <- function(plan, artifacts) {
+  artifact_ids <- vapply(
+    artifacts,
+    \(artifact) artifact@artifact_id,
+    character(1)
+  )
+  duplicate_ids <- unique(artifact_ids[duplicated(artifact_ids)])
+  if (length(duplicate_ids) > 0L) {
+    tempest_deliverable_abort(
+      "Renderers produced duplicate artifact id {.val {duplicate_ids[[1]]}}.",
+      phase = "publication"
+    )
+  }
+
+  deliverable <- plan$deliverable
+  deliverable_key <- tempest_deliverable_catalog_key(
+    deliverable@deliverable_id,
+    deliverable@version
+  )
+  if (deliverable_key %in% names(plan$catalog$list_deliverables())) {
+    registered <- plan$catalog$get_deliverable(
+      deliverable@deliverable_id,
+      deliverable@version
+    )
+    if (
+      !identical(
+        tempest_deliverable_fingerprint(registered),
+        tempest_deliverable_fingerprint(deliverable)
+      )
+    ) {
+      tempest_deliverable_abort(
+        "Deliverable specification {.val {deliverable_key}} conflicts with the catalog.",
+        phase = "publication"
+      )
+    }
+  }
+
+  replace_invalid <- tempest_workflow_flag(
+    plan$provenance$replace_invalid_artifacts %||% FALSE,
+    "provenance$replace_invalid_artifacts"
+  )
+  replacements <- list()
+  for (artifact in artifacts) {
+    existing <- plan$catalog$get(artifact@artifact_id, error = FALSE)
+    if (is.null(existing)) {
+      next
+    }
+    if (!replace_invalid) {
+      tempest_deliverable_abort(
+        c(
+          "Artifact {.val {artifact@artifact_id}} already exists.",
+          i = "Set {.code provenance$replace_invalid_artifacts} to `TRUE` for an explicit retry."
+        ),
+        phase = "publication"
+      )
+    }
+    same_provenance <- all(
+      !is.na(existing@run_id),
+      !is.na(existing@step_id),
+      identical(existing@run_id, artifact@run_id),
+      identical(existing@step_id, artifact@step_id),
+      identical(existing@spec_fingerprint, artifact@spec_fingerprint)
+    )
+    if (
+      !existing@status %in% c("draft", "invalid") ||
+        !same_provenance
+    ) {
+      tempest_deliverable_abort(
+        paste0(
+          "Artifact {.val {artifact@artifact_id}} cannot be replaced: ",
+          "retries may replace only a draft or invalid artifact from the ",
+          "same run, step, and deliverable specification."
+        ),
+        phase = "publication"
+      )
+    }
+    replacements[[artifact@artifact_id]] <- existing
+  }
+  replacements
+}
+
+tempest_deliverable_attach_retry_history <- function(
+  artifacts,
+  replacements
+) {
+  lapply(artifacts, function(artifact) {
+    previous <- replacements[[artifact@artifact_id]] %||% NULL
+    if (is.null(previous)) {
+      return(artifact)
+    }
+    history <- previous@metadata$tempest_prior_attempts %||% list()
+    history <- c(
+      history,
+      list(tempest_deliverable_retry_history_record(previous))
+    )
+    artifact@metadata <- utils::modifyList(
+      artifact@metadata,
+      list(tempest_prior_attempts = history)
+    )
+    artifact
+  })
+}
+
+tempest_deliverable_exportable <- function(artifact) {
+  artifact@status %in% c("valid", "approved")
+}
+
+tempest_deliverable_export_immutable_changes <- function(
+  artifact,
+  exported
+) {
+  allowed_fields <- c("storage_ref", "updated_at", "metadata")
+  artifact_data <- tempest_artifact_data(artifact)
+  exported_data <- tempest_artifact_data(exported)
+  immutable_fields <- setdiff(names(artifact_data), allowed_fields)
+  immutable_fields[
+    !vapply(
+      immutable_fields,
+      \(field) identical(artifact_data[[field]], exported_data[[field]]),
+      logical(1)
+    )
+  ]
 }
 
 tempest_deliverable_finalize <- function(plan, canonical_content) {
@@ -407,7 +576,9 @@ tempest_deliverable_finalize <- function(plan, canonical_content) {
         deliverable,
         renderer_index
       )
-      lapply(representations, function(representation) {
+      representation_count <- length(representations)
+      lapply(seq_along(representations), function(representation_index) {
+        representation <- representations[[representation_index]]
         artifact_index <<- artifact_index + 1L
         tempest_artifact(
           deliverable,
@@ -416,7 +587,10 @@ tempest_deliverable_finalize <- function(plan, canonical_content) {
           artifact_id = tempest_deliverable_artifact_id(
             plan$provenance,
             operation$id,
-            artifact_index
+            artifact_index,
+            representation_index = representation_index,
+            representation_count = representation_count,
+            deliverable = deliverable
           ),
           artifact_kind = representation$artifact_kind,
           media_type = representation$media_type,
@@ -484,47 +658,59 @@ tempest_deliverable_finalize <- function(plan, canonical_content) {
     recursive = FALSE
   )
 
-  for (exporter in plan$exporters) {
-    artifacts <- lapply(artifacts, function(artifact) {
-      exported <- tempest_deliverable_run_operation(
-        exporter,
-        "export",
-        list(
-          artifact = artifact,
-          deliverable = deliverable,
-          context = plan$context,
-          runtime = plan$runtime,
-          validation_results = validation_results
-        )
-      )
-      if (is.null(exported)) {
-        return(artifact)
-      }
-      if (!S7::S7_inherits(exported, TempestArtifact)) {
-        tempest_deliverable_abort(
-          "Exporter {.val {exporter$id}} must return a typed artifact or `NULL`.",
-          operation_id = exporter$id,
-          phase = "export"
-        )
-      }
-      if (
-        !identical(exported@artifact_id, artifact@artifact_id) ||
-          !identical(
-            exported@spec_fingerprint,
-            artifact@spec_fingerprint
+  replacements <- tempest_deliverable_preflight_publication(
+    plan,
+    artifacts
+  )
+  if (all(vapply(artifacts, tempest_deliverable_exportable, logical(1)))) {
+    for (exporter in plan$exporters) {
+      artifacts <- lapply(artifacts, function(artifact) {
+        exported <- tempest_deliverable_run_operation(
+          exporter,
+          "export",
+          list(
+            artifact = artifact,
+            deliverable = deliverable,
+            context = plan$context,
+            runtime = plan$runtime,
+            validation_results = validation_results
           )
-      ) {
-        tempest_deliverable_abort(
-          "Exporter {.val {exporter$id}} changed artifact identity.",
-          operation_id = exporter$id,
-          phase = "export"
         )
-      }
-      exported
-    })
+        if (is.null(exported)) {
+          return(artifact)
+        }
+        if (!S7::S7_inherits(exported, TempestArtifact)) {
+          tempest_deliverable_abort(
+            "Exporter {.val {exporter$id}} must return a typed artifact or `NULL`.",
+            operation_id = exporter$id,
+            phase = "export"
+          )
+        }
+        immutable_changes <-
+          tempest_deliverable_export_immutable_changes(
+            artifact,
+            exported
+          )
+        if (length(immutable_changes) > 0L) {
+          tempest_deliverable_abort(
+            "Exporter {.val {exporter$id}} changed immutable artifact field {.val {immutable_changes[[1]]}}.",
+            operation_id = exporter$id,
+            phase = "export"
+          )
+        }
+        exported
+      })
+    }
   }
+  artifacts <- tempest_deliverable_attach_retry_history(
+    artifacts,
+    replacements
+  )
   plan$catalog$register(deliverable)
-  plan$catalog$add_many(artifacts)
+  plan$catalog$add_many(
+    artifacts,
+    replace = length(replacements) > 0L
+  )
 
   resolved_operations <- c(
     list(plan$generator),
@@ -555,13 +741,19 @@ tempest_deliverable_finalize <- function(plan, canonical_content) {
 #'
 #' This is the application-neutral output lifecycle used by built-in and
 #' host-defined workflows. It resolves all operations before generation, runs
-#' validators, renders typed artifacts, invokes exporters, and publishes the
-#' artifacts to a catalog. Failed validation produces inspectable invalid
-#' artifacts rather than dropping output.
+#' validators, renders typed artifacts, invokes exporters only for `valid` or
+#' `approved` output, and publishes the artifacts to a catalog. Failed
+#' validation produces inspectable invalid artifacts rather than dropping
+#' output. Approval-required output is exported by its owning `TempestRun`
+#' after the host approves it.
 #'
 #' Generator, validator, renderer, and exporter operations receive named
 #' arguments and may declare only those they use. See
 #' [tempest_artifact_representation()] for the renderer return contract.
+#' Exporters may return `NULL` or the same artifact with only `storage_ref`,
+#' `updated_at`, and `metadata` changed. All other finalized artifact fields,
+#' including content, checksum, validation, provenance, and status, are
+#' immutable.
 #'
 #' @param deliverable A `tempest_deliverable_spec`.
 #' @param context Serializable generation and rendering context.
@@ -571,6 +763,9 @@ tempest_deliverable_finalize <- function(plan, canonical_content) {
 #'   default.
 #' @param runtime Runtime-only clients and callbacks.
 #' @param provenance Run, step, expert, evidence, and artifact identifiers.
+#'   A retry may set `replace_invalid_artifacts = TRUE` to replace only a draft
+#'   or invalid artifact from the same run, step, and specification while
+#'   retaining its validation diagnostics in artifact metadata.
 #' @return A `tempest_deliverable_result` containing canonical content,
 #'   validation results, typed artifacts, the catalog, and resolved operation
 #'   metadata.
@@ -725,12 +920,23 @@ tempest_storm_report_plan <- function(
   run_id,
   generate_text
 ) {
+  deliverable <- tempest_storm_report_spec(
+    title,
+    config,
+    remove_duplicate
+  )
+  deliverable_key <- tempest_deliverable_catalog_key(
+    deliverable@deliverable_id,
+    deliverable@version
+  )
+  if (deliverable_key %in% names(catalog$list_deliverables())) {
+    deliverable <- catalog$get_deliverable(
+      deliverable@deliverable_id,
+      deliverable@version
+    )
+  }
   tempest_deliverable_plan(
-    deliverable = tempest_storm_report_spec(
-      title,
-      config,
-      remove_duplicate
-    ),
+    deliverable = deliverable,
     context = list(
       prompt = tempest_storm_report_prompt(
         draft_md,
@@ -763,6 +969,16 @@ tempest_storm_restore_report_artifact <- function(
   run_id
 ) {
   deliverable <- tempest_storm_report_spec(title, config, remove_duplicate)
+  deliverable_key <- tempest_deliverable_catalog_key(
+    deliverable@deliverable_id,
+    deliverable@version
+  )
+  if (deliverable_key %in% names(catalog$list_deliverables())) {
+    deliverable <- catalog$get_deliverable(
+      deliverable@deliverable_id,
+      deliverable@version
+    )
+  }
   artifact <- tempest_artifact(
     deliverable,
     content = report_md,

@@ -20,11 +20,11 @@ mod_facts_ui <- function(id) {
 mod_facts_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     facts <- shiny::reactive({
-      ses <- store$get()
-      if (is.null(ses)) {
+      evidence <- store$evidence_store()
+      if (is.null(evidence)) {
         return(NULL)
       }
-      tempest::tempest_claims(ses$store)
+      tempest::tempest_claims(evidence)
     })
 
     output$body <- shiny::renderUI({

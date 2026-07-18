@@ -6,7 +6,7 @@
 \alias{tempest-package}
 \title{tempest: STORM and Co-STORM Research and Writing Agents for R}
 \description{
-Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using 'ellmer' for LLM orchestration and 'shinychat' for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on 'vitals'. Application-neutral contracts for objectives, versioned deliverables, runtime operations, and typed artifacts let host applications customize generated outcomes without embedding business-domain logic in the package.
+Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using 'ellmer' for LLM orchestration and 'shinychat' for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on 'vitals'. Application-neutral contracts for objectives, selected expert teams, scoped skills and capabilities, generic workflow runs, versioned deliverables, typed evidence resources, and typed artifacts let host applications customize generated outcomes without embedding business-domain logic in the package.
 }
 \references{
 tempest ports Stanford's STORM and Co-STORM research workflows to R, with

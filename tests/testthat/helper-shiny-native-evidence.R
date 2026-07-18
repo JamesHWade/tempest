@@ -30,6 +30,32 @@ native_openai_json_turn <- function(
   )
 }
 
+test_expert <- function(
+  expert_id = "expert.test",
+  name = "Dr. Test",
+  title = "Research specialist",
+  description = "A test expert profile.",
+  instructions = "Answer the assigned question with explicit evidence.",
+  initial_questions = character(),
+  required_capability_ids = character(),
+  optional_capability_ids = character(),
+  state = "active",
+  metadata = list()
+) {
+  tempest_expert(
+    expert_id = expert_id,
+    name = name,
+    title = title,
+    description = description,
+    instructions = instructions,
+    initial_questions = initial_questions,
+    required_capability_ids = required_capability_ids,
+    optional_capability_ids = optional_capability_ids,
+    state = state,
+    metadata = metadata
+  )
+}
+
 native_evidence_session <- function(claim_text = "native-backed app claim") {
   url <- "https://example.org/native-app-source"
   source_id <- tempest:::tempest_source_id(url)
@@ -64,10 +90,12 @@ native_evidence_session <- function(claim_text = "native-backed app claim") {
   ses <- tempest_session(
     "Native evidence topic",
     config = cfg,
-    personas = list(tempest_expert(
+    experts = list(tempest_expert(
+      expert_id = "expert.native",
       name = "Dr. Native",
       title = "Researcher",
-      perspective = "Native source evidence"
+      description = "Native source evidence",
+      instructions = "Inspect and cite provider-native source evidence."
     ))
   )
   list(

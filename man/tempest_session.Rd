@@ -7,8 +7,10 @@
 tempest_session(
   topic,
   config = tempest_config(),
+  runtime = tempest_runtime(),
   n_experts = 3,
-  personas = NULL,
+  experts = NULL,
+  connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
   session_id = NULL
@@ -19,10 +21,15 @@ tempest_session(
 
 \item{config}{A \code{TempestConfig}.}
 
+\item{runtime}{A \code{\link[=tempest_runtime]{tempest_runtime()}} containing process-local adapters.}
+
 \item{n_experts}{Number of expert agents.}
 
-\item{personas}{Optional list of pre-generated personas. If NULL,
-personas are generated automatically.}
+\item{experts}{Optional list of validated expert profiles. If \code{NULL},
+experts are generated automatically.}
+
+\item{connection_permissions}{Named per-role or per-expert connection
+allow-lists.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
 with a \code{SourceStore} at \verb{$store}.}

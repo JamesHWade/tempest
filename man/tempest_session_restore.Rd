@@ -4,7 +4,13 @@
 \alias{tempest_session_restore}
 \title{Restore a Co-STORM session from a snapshot}
 \usage{
-tempest_session_restore(snapshot, config = tempest_config(), progress = NULL)
+tempest_session_restore(
+  snapshot,
+  config = tempest_config(),
+  runtime = tempest_runtime(),
+  connection_permissions = NULL,
+  progress = NULL
+)
 }
 \arguments{
 \item{snapshot}{A list from \code{\link[=tempest_session_snapshot]{tempest_session_snapshot()}}.}
@@ -12,6 +18,13 @@ tempest_session_restore(snapshot, config = tempest_config(), progress = NULL)
 \item{config}{Runtime \link{TempestConfig} used to recreate chats, retrievers, and
 tools. Functions, credentials, and host-specific stores should be supplied
 here rather than read from the snapshot.}
+
+\item{runtime}{A fresh \code{\link[=tempest_runtime]{tempest_runtime()}} supplying process-local skill,
+capability, and connection implementations.}
+
+\item{connection_permissions}{Optional named connection-permission override
+that may only remove saved contexts or connection ids. When \code{NULL}, the
+saved opaque connection ids are reused.}
 
 \item{progress}{Optional callback for future \code{tempest_progress_event}
 objects.}
@@ -26,7 +39,7 @@ A restored \link{TempestSession}.
 \code{tempest_session_restore()} rebuilds a \link{TempestSession} from a structured
 snapshot created by \code{\link[=tempest_session_snapshot]{tempest_session_snapshot()}} or read by
 \code{\link[=tempest_session_resume]{tempest_session_resume()}}. It restores durable research state and creates
-fresh chat/tool handles using the supplied runtime \code{config}.
+fresh chat/tool handles using the supplied runtime and \code{config}.
 
 Historical progress events are restored as session artifact data and can be
 reduced with \code{\link[=tempest_progress_state]{tempest_progress_state()}}. They are not replayed into the new

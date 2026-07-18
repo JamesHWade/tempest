@@ -9,6 +9,10 @@ tempest_run(
   config = tempest_config(),
   retriever = NULL,
   n_experts = 3,
+  experts = NULL,
+  runtime = tempest_runtime(),
+  runtime_factory = function() tempest_runtime(),
+  connection_permissions = list(),
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
@@ -21,7 +25,9 @@ tempest_run(
   run_id = NULL,
   remove_duplicate = FALSE,
   progress = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  artifact_catalog = NULL,
+  workflow_run = NULL
 )
 }
 \arguments{
@@ -31,7 +37,23 @@ tempest_run(
 
 \item{retriever}{Optional \code{TempestRetriever}. If \code{NULL}, created from \code{config}.}
 
-\item{n_experts}{Number of expert personas to use (default 3).}
+\item{n_experts}{Number of expert profiles to generate when \code{experts} is
+\code{NULL} (default 3).}
+
+\item{experts}{Optional list of active profiles created by
+\code{\link[=tempest_expert]{tempest_expert()}}. When supplied, STORM uses this selected team and does
+not generate experts.}
+
+\item{runtime}{A \code{\link[=tempest_runtime]{tempest_runtime()}} containing scoped skill, capability, and
+connection adapters.}
+
+\item{runtime_factory}{Function that recreates \code{runtime} inside parallel
+workers. The default recreates the built-in runtime. Hosts using custom
+capabilities with \code{parallel_research = TRUE} must provide a matching
+factory.}
+
+\item{connection_permissions}{Named list mapping expert or model-role ids to
+opaque connection ids allowed for this run.}
 
 \item{research_strategy}{Either "key_questions" (default, faster) or "conversation"
 (more thorough but slower). Key questions uses predefined questions; conversation
@@ -69,10 +91,17 @@ object as STORM workflow stages start, finish, fail, persist artifacts, or
 make final artifacts available.}
 
 \item{verbose}{If \code{TRUE}, prints progress messages.}
+
+\item{artifact_catalog}{Optional shared \code{TempestArtifactCatalog}. This is
+used by the built-in generic STORM workflow adapter.}
+
+\item{workflow_run}{Optional owning \code{TempestRun}. When supplied, the result
+exposes it as \code{workflow_run}.}
 }
 \value{
-A list with \code{title}, \code{outline}, \code{draft_md}, \code{report_md}, \code{store},
-\code{artifact_catalog}, and \code{output_dir}.
+A list with \code{title}, \code{perspectives}, \code{experts}, \code{outline},
+\code{draft_md}, \code{report_md}, \code{store}, \code{artifact_catalog}, \code{workflow_run}, and
+\code{output_dir}.
 }
 \description{
 This is a scripted workflow that:

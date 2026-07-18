@@ -7,7 +7,7 @@ tempest_session_extract_facts_async <- function(
   turn = NULL,
   source_ids = NULL,
   session_id = session$session_id,
-  persona_id = NA_character_,
+  expert_id = NA_character_,
   correlation_id = NA_character_,
   is_current = function() TRUE
 ) {
@@ -29,7 +29,7 @@ tempest_session_extract_facts_async <- function(
     session$store,
     source_ids = unique(c(source_ids, harvested)),
     session_id = session_id,
-    persona_id = persona_id,
+    expert_id = expert_id,
     retrieval_step_id = correlation_id,
     commit_if = is_current
   )

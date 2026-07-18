@@ -11,7 +11,10 @@ threaded through every pipeline stage and Co-STORM turn.
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
   \describe{
-    \item{\code{sources}}{Environment of source objects keyed by id.}
+    \item{\code{resources}}{Environment of typed resources and built-in web-source
+records keyed by resource id.}
+
+    \item{\code{sources}}{Alias of \code{resources} retained for built-in web adapters.}
 
     \item{\code{claims}}{Environment of claim records keyed by claim_id.}
 
@@ -33,6 +36,9 @@ threaded through every pipeline stage and Co-STORM turn.
     \item \href{#method-SourceStore-upsert_source}{\code{SourceStore$upsert_source()}}
     \item \href{#method-SourceStore-get_source}{\code{SourceStore$get_source()}}
     \item \href{#method-SourceStore-list_sources}{\code{SourceStore$list_sources()}}
+    \item \href{#method-SourceStore-upsert_resource}{\code{SourceStore$upsert_resource()}}
+    \item \href{#method-SourceStore-get_resource}{\code{SourceStore$get_resource()}}
+    \item \href{#method-SourceStore-list_resources}{\code{SourceStore$list_resources()}}
     \item \href{#method-SourceStore-add_claim}{\code{SourceStore$add_claim()}}
     \item \href{#method-SourceStore-get_claim}{\code{SourceStore$get_claim()}}
     \item \href{#method-SourceStore-list_claims}{\code{SourceStore$list_claims()}}
@@ -101,7 +107,8 @@ refused once the limit is reached.}
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{source}}{A source list with an \code{id} field.}
+      \item{\code{source}}{A built-in web-source list or a typed resource created by
+\code{\link[=tempest_resource]{tempest_resource()}}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -134,6 +141,56 @@ refused once the limit is reached.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{SourceStore$list_sources()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-upsert_resource"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-upsert_resource}{}}}
+\subsection{\code{SourceStore$upsert_resource()}}{
+  Insert or update a typed evidence resource.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$upsert_resource(resource)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{resource}}{A resource created by \code{\link[=tempest_resource]{tempest_resource()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-get_resource"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-get_resource}{}}}
+\subsection{\code{SourceStore$get_resource()}}{
+  Get a typed evidence resource by id.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$get_resource(resource_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{resource_id}}{Resource id.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SourceStore-list_resources"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-list_resources}{}}}
+\subsection{\code{SourceStore$list_resources()}}{
+  List all evidence as typed resources.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{SourceStore$list_resources()}
     \if{html}{\out{</div>}}
   }
 }
