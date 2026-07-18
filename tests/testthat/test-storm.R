@@ -19,6 +19,31 @@ test_that("tempest_run rejects invalid runtime budgets before provider work", {
   }
 })
 
+test_that("tempest_run resume starts fresh when no manifest exists", {
+  loader_called <- FALSE
+  local_mocked_bindings(
+    tempest_load_run_artifacts = function(...) {
+      loader_called <<- TRUE
+      stop("unexpected loader call")
+    },
+    tempest_make_chat = function(...) {
+      stop("continued with a fresh run")
+    }
+  )
+
+  expect_error(
+    tempest_run(
+      "New resumable run",
+      output_dir = withr::local_tempdir(),
+      resume = TRUE,
+      steps = "perspectives",
+      verbose = FALSE
+    ),
+    "continued with a fresh run"
+  )
+  expect_identical(loader_called, FALSE)
+})
+
 test_that("tempest_run emits ordered STORM progress events", {
   skip_if_not_installed("ellmer")
   local_mocked_bindings(

@@ -59,6 +59,20 @@ tempest_workflow_list <- function(value, arg) {
   value
 }
 
+tempest_workflow_serializable_list <- function(value, arg) {
+  value <- tempest_workflow_list(value, arg)
+  tryCatch(
+    tempest_canonical_json(value),
+    error = function(error) {
+      tempest_workflow_abort(
+        "{.arg {arg}} must contain only canonical JSON-compatible values.",
+        parent = error
+      )
+    }
+  )
+  value
+}
+
 tempest_workflow_flag <- function(value, arg) {
   if (!is.logical(value) || length(value) != 1L || is.na(value)) {
     tempest_workflow_abort("{.arg {arg}} must be `TRUE` or `FALSE`.")
@@ -232,7 +246,7 @@ tempest_objective <- function(
     objective_id %||% tempest_uuid("objective"),
     "objective_id"
   )
-  context <- tempest_workflow_list(context, "context")
+  context <- tempest_workflow_serializable_list(context, "context")
   constraints <- tempest_workflow_character(constraints, "constraints")
   acceptance_criteria <- tempest_workflow_character(
     acceptance_criteria,
@@ -246,7 +260,7 @@ tempest_objective <- function(
     deliverable_ids,
     "deliverable_ids"
   )
-  metadata <- tempest_workflow_list(metadata, "metadata")
+  metadata <- tempest_workflow_serializable_list(metadata, "metadata")
   created_at <- tempest_workflow_scalar(
     created_at %||% tempest_now_utc(),
     "created_at"
@@ -290,7 +304,9 @@ tempest_objective <- function(
 #' @param purpose What the deliverable is intended to accomplish.
 #' @param instructions Generation instructions.
 #' @param version Stable specification version.
-#' @param content_schema Serializable content schema.
+#' @param content_schema Serializable canonical JSON content schema. Tempest
+#'   records this contract but enforces it only through validators named in
+#'   `validator_ids`.
 #' @param required_fields Required content fields or sections.
 #' @param evidence_policy Evidence policy.
 #' @param generator_id Runtime generator operation identifier.
@@ -312,7 +328,7 @@ tempest_objective <- function(
 #'   purpose = "Answer the customer's request with evidence",
 #'   instructions = "Be concise and preserve uncertainty.",
 #'   required_fields = c("response", "risks"),
-#'   generator_id = "tempest.generator.markdown",
+#'   generator_id = "tempest.generator.provided_content",
 #'   renderer_ids = "tempest.renderer.markdown"
 #' )
 #' @export
@@ -344,7 +360,10 @@ tempest_deliverable_spec <- function(
   title <- tempest_workflow_scalar(title, "title")
   purpose <- tempest_workflow_scalar(purpose, "purpose")
   instructions <- tempest_workflow_scalar(instructions, "instructions")
-  content_schema <- tempest_workflow_list(content_schema, "content_schema")
+  content_schema <- tempest_workflow_serializable_list(
+    content_schema,
+    "content_schema"
+  )
   required_fields <- tempest_workflow_character(
     required_fields,
     "required_fields"
@@ -424,7 +443,7 @@ tempest_deliverable_spec <- function(
       "{.arg media_types} must contain at least one media type."
     )
   }
-  filename_policy <- tempest_workflow_list(
+  filename_policy <- tempest_workflow_serializable_list(
     filename_policy,
     "filename_policy"
   )
@@ -432,7 +451,7 @@ tempest_deliverable_spec <- function(
     requires_approval,
     "requires_approval"
   )
-  metadata <- tempest_workflow_list(metadata, "metadata")
+  metadata <- tempest_workflow_serializable_list(metadata, "metadata")
 
   TempestDeliverableSpec(
     deliverable_id = deliverable_id,
@@ -469,11 +488,7 @@ tempest_deliverable_spec_data <- function(spec) {
 }
 
 tempest_deliverable_fingerprint <- function(spec) {
-  digest::digest(
-    tempest_deliverable_spec_data(spec),
-    algo = "sha256",
-    serialize = TRUE
-  )
+  tempest_deliverable_spec_checksum(spec)
 }
 
 #' Create a Tempest validation result
@@ -505,7 +520,7 @@ tempest_validation_result <- function(
       "{.arg message} must be a non-empty string or `NA`."
     )
   }
-  details <- tempest_workflow_list(details, "details")
+  details <- tempest_workflow_serializable_list(details, "details")
   created_at <- tempest_workflow_scalar(
     created_at %||% tempest_now_utc(),
     "created_at"
@@ -545,7 +560,9 @@ tempest_validation_results <- function(results) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' @param deliverable A `tempest_deliverable_spec` object.
-#' @param content Inline artifact content.
+#' @param content Inline artifact content: a single UTF-8 string or canonical
+#'   JSON-compatible lists and atomic values. JSON content restores with JSON
+#'   object and array semantics; use `storage_ref` for other representations.
 #' @param storage_ref Optional external storage reference.
 #' @param artifact_id Optional stable artifact identifier.
 #' @param artifact_kind Artifact role within the deliverable.
@@ -567,7 +584,7 @@ tempest_validation_results <- function(results) {
 #'   title = "Brief",
 #'   purpose = "Summarize findings",
 #'   instructions = "Use verified evidence.",
-#'   generator_id = "tempest.generator.markdown",
+#'   generator_id = "tempest.generator.provided_content",
 #'   renderer_ids = "tempest.renderer.markdown"
 #' )
 #' artifact <- tempest_artifact(spec, content = "# Brief")
@@ -671,13 +688,13 @@ tempest_artifact <- function(
   )
   validation_results <- tempest_validation_results(validation_results)
   status <- match.arg(status)
-  metadata <- tempest_workflow_list(metadata, "metadata")
+  metadata <- tempest_workflow_serializable_list(metadata, "metadata")
   checksum <- tempest_workflow_scalar(
     checksum %||%
-      digest::digest(
-        if (is.null(content)) storage_ref else content,
-        algo = "sha256",
-        serialize = TRUE
+      tempest_artifact_content_checksum(
+        content,
+        storage_ref,
+        media_type
       ),
     "checksum"
   )

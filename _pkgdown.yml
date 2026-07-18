@@ -30,6 +30,18 @@ reference:
   - tempest_report_md
   - tempest_session_report_md
   - tempest_suggest_questions
+- title: Workflow contracts and artifacts
+  contents:
+  - tempest_objective
+  - tempest_deliverable_spec
+  - tempest_validation_result
+  - tempest_artifact
+  - tempest_artifact_representation
+  - tempest_operation_registry
+  - tempest_builtin_operation_registry
+  - tempest_generate_deliverable
+  - tempest_artifact_catalog
+  - tempest_artifact_catalog_restore
 - title: Host app extension points
   contents:
   - tempest_artifact_store

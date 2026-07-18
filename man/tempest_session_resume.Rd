@@ -22,7 +22,8 @@ objects.}
 
 \item{partial_recovery}{Whether to allow explicitly requested recovery when
 declared optional files are missing or fail integrity checks. Required
-source and persona data must still be readable.}
+source and persona data, typed-artifact indexes, and declared typed content
+must still pass integrity checks.}
 }
 \value{
 A restored \link{TempestSession}.

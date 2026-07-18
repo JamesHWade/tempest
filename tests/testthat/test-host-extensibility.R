@@ -127,8 +127,9 @@ test_that("artifact stores can capture report artifacts", {
   report <- session$report(include_references = FALSE, reorganize = FALSE)
 
   expect_equal(report, "Report body.")
-  expect_equal(artifacts$read("report_md"), "Report body.")
-  expect_equal(artifacts$list(), "report_md")
+  expect_equal(artifacts$read("report_md")@content, "Report body.")
+  expect_named(artifacts$list(), "report_md")
+  expect_identical(artifacts$exists("report_md", "1"), TRUE)
   expect_equal(
     session$artifact_catalog$get("report_md")@content,
     "Report body."
@@ -141,10 +142,24 @@ test_that("artifact stores can capture report artifacts", {
 
 test_that("default artifact store is a no-op adapter", {
   store <- tempest_artifact_store()
+  spec <- tempest_deliverable_spec(
+    "report",
+    title = "Report",
+    purpose = "Explain",
+    instructions = "Be concise.",
+    generator_id = "generator",
+    renderer_ids = "renderer"
+  )
+  artifact <- tempest_artifact(
+    spec,
+    content = "value",
+    artifact_id = "x"
+  )
 
-  expect_silent(store$write("x", 1, metadata = list()))
+  expect_silent(store$write(artifact))
   expect_null(store$read("x"))
-  expect_equal(store$list(), character())
+  expect_equal(store$list(), list())
+  expect_identical(store$exists("x"), FALSE)
   expect_error(
     tempest_config(artifact_store = list()),
     class = "tempest_artifact_store_error"
@@ -157,11 +172,27 @@ test_that("default artifact store is a no-op adapter", {
 
 test_that("memory artifact store overwrites existing names", {
   store <- tempest_memory_artifact_store()
-  store$write("report_md", "first")
-  store$write("report_md", "second")
+  spec <- tempest_deliverable_spec(
+    "report",
+    title = "Report",
+    purpose = "Explain",
+    instructions = "Be concise.",
+    generator_id = "generator",
+    renderer_ids = "renderer"
+  )
+  store$write(tempest_artifact(
+    spec,
+    content = "first",
+    artifact_id = "report_md"
+  ))
+  store$write(tempest_artifact(
+    spec,
+    content = "second",
+    artifact_id = "report_md"
+  ))
 
-  expect_equal(store$read("report_md"), "second")
-  expect_equal(store$list(), "report_md")
+  expect_equal(store$read("report_md")@content, "second")
+  expect_named(store$list(), "report_md")
 })
 
 test_that("tempest_session rejects a retriever without a SourceStore", {

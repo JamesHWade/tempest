@@ -2,6 +2,7 @@
 
 * The bundled Shiny app now escapes untrusted model and source content, rejects unsafe links, isolates browser session storage behind upload/download archives with quotas and private permissions, provides cancellable STORM workers, runs Co-STORM persona generation, enrichment, suggestions, and reports asynchronously with ordered stale-safe commits, quarantines timed-out expert chats, and exposes an accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
 * `SourceStore` now validates source, claim, evidence-span, and dispute mutations, rejects orphan references and source-budget overflow, and keeps reverse indexes correct when claims are replaced; the unused parallel S7 source representation was removed (67h9, y2kw).
+* `tempest_artifact()`, `tempest_artifact_catalog()`, `tempest_artifact_store()`, `tempest_deliverable_spec()`, `tempest_generate_deliverable()`, `tempest_objective()`, and `tempest_operation_registry()` add an application-neutral output lifecycle with versioned operation references, validation, evidence lineage, typed multi-format artifacts, host storage adapters, and checksummed persistence shared by STORM, Co-STORM, and host-defined outcomes (xbwy).
 * `tempest_config()` now validates scalar model, logical, search, source, expert, query, and retrieval budgets immediately with classed errors, and provider tools cannot exceed configured search limits (y2kw).
 * `tempest_create_ragnar_store()` preserves and validates compatible persistent stores by default; destructive replacement now requires `reset = TRUE` (yb8s).
 * `tempest_report_md()` now applies strict citation actions to complete matched assertions, removes unsupported assertions under `drop`, gives `revise` distinct behavior, and no longer lets unrelated claims sharing a source determine sentence status (e9kn).
@@ -9,11 +10,7 @@
 * `tempest_session_save()` now replaces bundles atomically from a complete sibling staging directory, records SHA-256 checksums for every declared file, and `tempest_session_resume()` verifies manifest completeness and integrity with explicit `partial_recovery` support (arqh).
 * Retriever URL fetching now parses and resolves destinations structurally, rejects non-public and obfuscated IPv4/IPv6 targets, revalidates redirects, and enforces timeout, redirect, content-type, and body-size limits; cache writes are atomic, corrupt entries are quarantined, and transient fetch failures are retried instead of cached indefinitely (vbg7, cax6).
 * Search-provider, evaluation-task, app-startup, asynchronous-run, and UI integration boundaries now have deterministic fixture-based contract coverage without API keys or network access (kqgx).
-* `tempest_artifact_store()`, `tempest_memory_artifact_store()`, and
-  `tempest_expert()` provide initial host-app extension points for capturing
-  report artifacts and supplying validated Co-STORM experts. `tempest_config()`
-  now accepts an `artifact_store`, and `tempest_session()` accepts a shared
-  retriever with a `SourceStore`.
+* `tempest_expert()` provides an initial host-app extension point for supplying validated Co-STORM experts, while `tempest_config()` accepts an `artifact_store` and `tempest_session()` accepts a shared retriever with a `SourceStore`.
 * `tempest_artifact_store()`, `tempest_expert()`, `tempest_progress_event()`, `tempest_session_save()`, `tempest_shiny_ui()`, and related host-app APIs now carry explicit experimental lifecycle badges, and the pkgdown reference groups separate core workflows, evidence, host extension points, persistence, progress, and dsprrr modules (2nzw).
 * `tempest_claims()` now preserves support scores from structured fact extraction, and `tempest_sources()` now includes derived `context_text` plus fallback snippets for source rows backed by content or provider-native citation context (w3fm, fmbv).
 * `tempest_config()` now defaults to `openai/gpt-5.4` for coordinator and

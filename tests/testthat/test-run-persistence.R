@@ -283,6 +283,50 @@ test_that("Tempest session bundles save and resume durable state", {
   session_id <- session$session_id
   session$add_turn("User", "user", "Save this session.")
   session$artifacts[["report_md"]] <- "# Bundle report"
+  report_spec <- tempest:::tempest_costorm_report_spec(session)
+  session$artifact_catalog$register(report_spec)
+  session$artifact_catalog$add(tempest_artifact(
+    report_spec,
+    content = "# Bundle report",
+    artifact_id = "report_md",
+    status = "valid"
+  ))
+  package_spec <- tempest_deliverable_spec(
+    "response-package",
+    title = "Response package",
+    purpose = "Record actions and supporting material",
+    instructions = "Preserve validation and evidence lineage.",
+    generator_id = "generator.package",
+    validator_ids = "validator.package",
+    renderer_ids = c("renderer.json", "renderer.external"),
+    media_types = c("application/json", "application/octet-stream")
+  )
+  package_validation <- tempest_validation_result(
+    "validator.package",
+    status = "failed",
+    message = "Owner approval is missing."
+  )
+  session$artifact_catalog$register(package_spec)
+  session$artifact_catalog$add(tempest_artifact(
+    package_spec,
+    content = list(actions = list(list(owner = "Team"))),
+    artifact_id = "action-register",
+    artifact_kind = "action-register",
+    media_type = "application/json",
+    resource_ids = source$id,
+    claim_ids = claim_id,
+    validation_results = list(package_validation),
+    status = "invalid"
+  ))
+  session$artifact_catalog$add(tempest_artifact(
+    package_spec,
+    storage_ref = "host://objects/evidence-appendix",
+    artifact_id = "evidence-appendix",
+    artifact_kind = "appendix",
+    media_type = "application/octet-stream",
+    parent_artifact_ids = "action-register",
+    status = "valid"
+  ))
   session$artifacts[["suggested_questions"]] <- c("What next?", "And then?")
   session$emit_progress(
     "stage",
@@ -305,6 +349,7 @@ test_that("Tempest session bundles save and resume durable state", {
     normalizePath(bundle_dir, winslash = "/", mustWork = TRUE)
   )
   expect_equal(manifest$status, "complete")
+  expect_equal(manifest$schema_version, 2L)
   expect_setequal(names(manifest$checksums), manifest$files)
   expect_contains(
     manifest$files,
@@ -314,7 +359,8 @@ test_that("Tempest session bundles save and resume durable state", {
       "progress_events.json",
       "store/sources.json",
       "store/claims.json",
-      "artifacts/report.md",
+      "artifacts/typed/deliverables.json",
+      "artifacts/typed/index.json",
       "artifacts/suggested_questions.json",
       "artifacts/citation_audit.json"
     )
@@ -332,6 +378,33 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_equal(restored$session_id, session_id)
   expect_equal(restored$transcript[[1]]$text, "Save this session.")
   expect_equal(restored$artifacts[["report_md"]], "# Bundle report")
+  expect_equal(
+    restored$artifact_catalog$get("report_md")@content,
+    "# Bundle report"
+  )
+  expect_equal(
+    restored$artifact_catalog$get("action-register")@content$actions[[1]]$owner,
+    "Team"
+  )
+  expect_equal(
+    restored$artifact_catalog$get("action-register")@status,
+    "invalid"
+  )
+  expect_equal(
+    restored$artifact_catalog$get(
+      "action-register"
+    )@validation_results[[1]]@status,
+    "failed"
+  )
+  expect_equal(
+    restored$artifact_catalog$get("action-register")@claim_ids,
+    claim_id
+  )
+  expect_null(restored$artifact_catalog$get("evidence-appendix")@content)
+  expect_equal(
+    restored$artifact_catalog$get("evidence-appendix")@storage_ref,
+    "host://objects/evidence-appendix"
+  )
   expect_equal(
     restored$artifacts[["suggested_questions"]],
     c("What next?", "And then?")
@@ -510,6 +583,28 @@ test_that("partial session recovery is explicit and skips corrupt optional data"
   expect_match(paste(warnings, collapse = "\n"), "malformed", fixed = TRUE)
 })
 
+test_that("session resume ignores files that its manifest does not declare", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Declared inventory",
+    config = cfg,
+    personas = list(tempest_expert(name = "Dr. Inventory"))
+  )
+  bundle_dir <- file.path(withr::local_tempdir(), "bundle")
+  tempest_session_save(session, bundle_dir)
+  tempest:::tempest_write_json(
+    file.path(bundle_dir, "artifacts/suggested_questions.json"),
+    "undeclared"
+  )
+
+  restored <- tempest_session_resume(bundle_dir, config = cfg)
+
+  expect_length(restored$artifacts[["suggested_questions"]], 0L)
+})
+
 test_that("run artifacts save and load store state", {
   skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")
@@ -565,6 +660,19 @@ test_that("run artifacts save and load store state", {
   )
 
   cfg <- tempest_config()
+  artifact_catalog <- tempest_artifact_catalog()
+  report_spec <- tempest:::tempest_storm_report_spec(
+    "Lithium Batteries",
+    cfg
+  )
+  artifact_catalog$register(report_spec)
+  artifact_catalog$add(tempest_artifact(
+    report_spec,
+    content = "Polished body",
+    artifact_id = "report_md",
+    run_id = "lithium-run",
+    status = "valid"
+  ))
   tempest:::tempest_save_run_artifacts(
     run_dir,
     store,
@@ -581,11 +689,17 @@ test_that("run artifacts save and load store state", {
     steps = c("perspectives", "research", "outline", "write", "polish"),
     research_strategy = "key_questions",
     parallel_writing = TRUE,
-    remove_duplicate = TRUE
+    remove_duplicate = TRUE,
+    artifact_catalog = artifact_catalog
   )
 
   restored <- SourceStore$new()
-  loaded <- tempest:::tempest_load_run_artifacts(run_dir, restored)
+  restored_catalog <- tempest_artifact_catalog()
+  loaded <- tempest:::tempest_load_run_artifacts(
+    run_dir,
+    restored,
+    artifact_catalog = restored_catalog
+  )
 
   expect_equal(
     loaded$completed_stages,
@@ -597,6 +711,8 @@ test_that("run artifacts save and load store state", {
   expect_equal(restored$get_artifact("outline")$title, "Lithium Batteries")
   expect_equal(restored$get_artifact("draft_md"), "Draft body")
   expect_equal(restored$get_artifact("report_md"), "Polished body")
+  expect_equal(restored_catalog$get("report_md")@content, "Polished body")
+  expect_equal(restored_catalog$get("report_md")@run_id, "lithium-run")
   expect_s3_class(restored$get_artifact("citation_audit"), "tbl_df")
   expect_equal(nrow(restored$get_artifact("citation_audit")), 1)
   expect_equal(loaded$metadata$parallel_writing, TRUE)
@@ -638,6 +754,70 @@ test_that("completed stage metadata controls resume state", {
       "research"
     ),
     FALSE
+  )
+})
+
+test_that("run restore ignores undeclared legacy artifact files", {
+  dir <- withr::local_tempdir()
+  store <- SourceStore$new()
+  tempest:::tempest_save_run_artifacts(
+    dir,
+    store,
+    topic = "t",
+    title = "T",
+    config = tempest_config(),
+    completed_stages = character(),
+    steps = "polish",
+    research_strategy = "key_questions"
+  )
+  writeLines("UNDECLARED", file.path(dir, "storm_gen_article_polished.md"))
+
+  restored <- SourceStore$new()
+  tempest:::tempest_load_run_artifacts(dir, restored)
+
+  expect_null(restored$get_artifact("report_md"))
+})
+
+test_that("run manifest failures are classed and reject escaping symlinks", {
+  make_bundle <- function() {
+    dir <- tempfile("tempest-run-")
+    dir.create(dir)
+    tempest:::tempest_save_run_artifacts(
+      dir,
+      SourceStore$new(),
+      topic = "t",
+      title = "T",
+      config = tempest_config(),
+      completed_stages = character(),
+      steps = "polish",
+      research_strategy = "key_questions"
+    )
+    dir
+  }
+
+  missing_checksum_dir <- make_bundle()
+  manifest_path <- file.path(missing_checksum_dir, "run_config.json")
+  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest$checksums[[manifest$files[[1]]]] <- NULL
+  tempest:::tempest_write_json(manifest_path, manifest)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      missing_checksum_dir,
+      SourceStore$new()
+    ),
+    class = "tempest_run_restore_error"
+  )
+
+  skip_on_os("windows")
+  symlink_dir <- make_bundle()
+  source_path <- file.path(symlink_dir, "sources.json")
+  outside_path <- tempfile("outside-sources-", tmpdir = dirname(symlink_dir))
+  expect_true(file.copy(source_path, outside_path))
+  unlink(source_path)
+  expect_true(file.symlink(outside_path, source_path))
+  expect_error(
+    tempest:::tempest_load_run_artifacts(symlink_dir, SourceStore$new()),
+    class = "tempest_run_restore_error"
   )
 })
 

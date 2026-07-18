@@ -1544,28 +1544,6 @@ session_bundle_enforce_quota <- function(
   invisible(size)
 }
 
-session_archive_files <- function() {
-  c(
-    "session.json",
-    "config.json",
-    "personas.json",
-    "expert_sessions.json",
-    "transcript.json",
-    "mindmap.json",
-    "progress_events.json",
-    "store/sources.json",
-    "store/claims.json",
-    "store/evidence_spans.json",
-    "store/disputes.json",
-    "artifacts/report.md",
-    "artifacts/report_body.md",
-    "artifacts/mindmap.md",
-    "artifacts/suggested_questions.json",
-    "artifacts/citation_audit.json",
-    "artifacts/references.json"
-  )
-}
-
 session_archive_write <- function(store, file) {
   if (is.null(store$peek())) {
     stop("No Co-STORM session is active.", call. = FALSE)
@@ -1599,36 +1577,165 @@ session_archive_write <- function(store, file) {
 
 session_archive_extract <- function(archive, root) {
   listing <- utils::unzip(archive, list = TRUE)
-  entries <- listing$Name
-  entries <- gsub("\\\\", "/", entries)
+  entries <- gsub("\\\\", "/", listing$Name)
   if (!session_archive_listing_is_safe(entries, listing$Length)) {
-    stop("Session archive contains unsafe or unexpected files.", call. = FALSE)
+    stop("Session archive contains unsafe files.", call. = FALSE)
   }
+  manifest <- session_archive_read_manifest(archive, listing)
+  declared_files <- session_archive_manifest_files(manifest)
+  if (
+    !session_archive_listing_is_safe(
+      entries,
+      listing$Length,
+      declared_files = declared_files
+    )
+  ) {
+    stop(
+      "Session archive contents do not match its manifest.",
+      call. = FALSE
+    )
+  }
+  complete <- FALSE
+  on.exit(
+    if (!complete && dir.exists(root)) {
+      unlink(root, recursive = TRUE, force = TRUE)
+    },
+    add = TRUE
+  )
   dir.create(root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
   utils::unzip(archive, exdir = root)
-  if (!file.exists(file.path(root, "session.json"))) {
-    stop("Session archive is missing session.json.", call. = FALSE)
-  }
+  tempest:::tempest_session_bundle_validate_manifest(
+    root,
+    manifest,
+    partial_recovery = FALSE
+  )
   session_secure_permissions(root)
+  complete <- TRUE
   normalizePath(root, winslash = "/", mustWork = TRUE)
 }
 
-session_archive_listing_is_safe <- function(entries, sizes) {
+session_archive_listing_is_safe <- function(
+  entries,
+  sizes,
+  declared_files = NULL
+) {
+  entries <- gsub("\\\\", "/", entries)
+  valid_sizes <- is.numeric(sizes) &&
+    length(sizes) == length(entries) &&
+    all(is.finite(sizes)) &&
+    all(sizes >= 0)
   unsafe <- grepl("^(/|~|[A-Za-z]:)", entries) |
     vapply(
       strsplit(entries, "/", fixed = TRUE),
       function(parts) {
-        ".." %in% parts
+        any(!nzchar(parts)) || any(parts %in% c(".", ".."))
       },
       logical(1)
     )
-  unknown <- setdiff(entries, session_archive_files())
-  too_large <- sum(sizes) > 100 * 1024^2 || any(sizes > 50 * 1024^2)
-  length(entries) > 0L &&
+  too_large <- !valid_sizes ||
+    sum(sizes) > 100 * 1024^2 ||
+    any(sizes > 50 * 1024^2)
+  safe <- length(entries) > 0L &&
     !anyDuplicated(entries) &&
     !any(unsafe) &&
-    length(unknown) == 0L &&
     !too_large
+  if (!safe || is.null(declared_files)) {
+    return(safe)
+  }
+  declared_files <- gsub("\\\\", "/", declared_files)
+  declared_safe <- length(declared_files) > 0L &&
+    !anyDuplicated(declared_files) &&
+    all(vapply(
+      declared_files,
+      tempest:::tempest_artifact_bundle_path_is_safe,
+      logical(1)
+    ))
+  declared_safe &&
+    setequal(entries, c("session.json", declared_files)) &&
+    length(entries) == length(declared_files) + 1L
+}
+
+session_archive_read_manifest <- function(archive, listing) {
+  names <- gsub("\\\\", "/", listing$Name)
+  index <- which(names == "session.json")
+  if (
+    length(index) != 1L ||
+      !is.finite(listing$Length[[index]]) ||
+      listing$Length[[index]] > 50 * 1024^2
+  ) {
+    stop(
+      "Session archive must contain exactly one bounded session.json.",
+      call. = FALSE
+    )
+  }
+  connection <- unz(archive, "session.json", open = "rb")
+  bytes <- tryCatch(
+    readBin(
+      connection,
+      what = "raw",
+      n = as.integer(listing$Length[[index]])
+    ),
+    finally = close(connection)
+  )
+  tryCatch(
+    jsonlite::fromJSON(rawToChar(bytes), simplifyVector = FALSE),
+    error = function(error) {
+      stop("Session archive manifest is not valid JSON.", call. = FALSE)
+    }
+  )
+}
+
+session_archive_manifest_files <- function(manifest) {
+  if (
+    !is.list(manifest) ||
+      !identical(as.integer(manifest$schema_version %||% NA_integer_), 2L) ||
+      !identical(manifest$status %||% "", "complete")
+  ) {
+    stop(
+      "Session archive manifest uses an unsupported schema or status.",
+      call. = FALSE
+    )
+  }
+  files <- as.character(unlist(manifest$files %||% character()))
+  checksums <- unlist(manifest$checksums %||% list(), use.names = TRUE)
+  artifact_files <- as.character(unlist(
+    manifest$artifact_files %||% character()
+  ))
+  indexes <- c(
+    manifest$artifact_index %||% NA_character_,
+    manifest$deliverable_index %||% NA_character_
+  )
+  if (
+    length(files) == 0L ||
+      anyDuplicated(files) ||
+      !setequal(names(checksums), files) ||
+      length(names(checksums)) != length(files) ||
+      any(
+        !vapply(
+          files,
+          tempest:::tempest_artifact_bundle_path_is_safe,
+          logical(1)
+        )
+      ) ||
+      anyDuplicated(artifact_files) ||
+      length(setdiff(artifact_files, files)) > 0L ||
+      any(
+        !startsWith(
+          artifact_files,
+          "artifacts/typed/content/"
+        )
+      ) ||
+      !identical(
+        indexes,
+        c(
+          "artifacts/typed/index.json",
+          "artifacts/typed/deliverables.json"
+        )
+      )
+  ) {
+    stop("Session archive manifest is internally inconsistent.", call. = FALSE)
+  }
+  files
 }
 
 session_persistence_status_ui <- function(state) {
@@ -1682,7 +1789,15 @@ append_restored_session_chat <- function(chat, session, source_store = NULL) {
     )
   }
 
-  if (nzchar(session$artifacts[["report_md"]] %||% "")) {
+  report_md <- if (
+    !is.null(session$artifact_catalog) &&
+      session$artifact_catalog$has("report_md")
+  ) {
+    session$artifact_catalog$get("report_md")@content
+  } else {
+    session$artifacts[["report_md"]] %||% ""
+  }
+  if (nzchar(report_md)) {
     chat$append(
       "Restored report artifact. See the **Report** tab.",
       role = "assistant"

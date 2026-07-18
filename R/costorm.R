@@ -217,7 +217,8 @@ tempest_async_is_current <- function(is_current) {
 
 #' TempestSession
 #'
-#' Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, and report artifacts.
+#' Maintains state for a Co-STORM session: multi-agent dialog, mind map,
+#' sources, auxiliary session state, and typed deliverable artifacts.
 #'
 #' @field topic The research topic.
 #' @field title The report title.
@@ -232,7 +233,10 @@ tempest_async_is_current <- function(is_current) {
 #' @field chats List of chat objects for each role.
 #' @field transcript List of dialog turns.
 #' @field mindmap The mind map data structure.
-#' @field artifacts Environment of report artifacts.
+#' @field artifacts Environment of auxiliary and legacy-compatible session
+#'   state.
+#' @field artifact_catalog Typed deliverable specifications and artifacts
+#'   produced by the session.
 #' @field discourse_manager A `DiscourseManager` object (NULL when disabled).
 #'
 #' @export

@@ -4,7 +4,8 @@
 \alias{TempestSession}
 \title{TempestSession}
 \description{
-Maintains state for a Co-STORM session: multi-agent dialog, mind map, sources, and report artifacts.
+Maintains state for a Co-STORM session: multi-agent dialog, mind map,
+sources, auxiliary session state, and typed deliverable artifacts.
 }
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
@@ -34,7 +35,11 @@ session.}
 
     \item{\code{mindmap}}{The mind map data structure.}
 
-    \item{\code{artifacts}}{Environment of report artifacts.}
+    \item{\code{artifacts}}{Environment of auxiliary and legacy-compatible session
+state.}
+
+    \item{\code{artifact_catalog}}{Typed deliverable specifications and artifacts
+produced by the session.}
 
     \item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
   }

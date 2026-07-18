@@ -363,10 +363,11 @@ tempest_config_snapshot <- function(config) {
 #'
 #' `tempest_session_snapshot()` returns a structured, in-memory representation
 #' of the durable state in a [TempestSession]. It includes the session identity,
-#' personas, transcript, mind map, report artifacts, progress-event history,
-#' expert-session metadata, and the underlying `SourceStore` ledger. Live chat
-#' handles, tools, Shiny reactive state, credentials, and provider request
-#' bodies are not included.
+#' personas, transcript, mind map, typed deliverable specifications and
+#' artifacts, auxiliary session state, progress-event history, expert-session
+#' metadata, and the underlying `SourceStore` ledger. Live chat handles, tools,
+#' Shiny reactive state, credentials, and provider request bodies are not
+#' included.
 #'
 #' Use [tempest_session_restore()] to rebuild a session from the returned list,
 #' or [tempest_session_save()] to write the same durable state to a directory
@@ -387,7 +388,7 @@ tempest_session_snapshot <- function(session) {
   artifacts <- tempest_env_snapshot(session$artifacts)
 
   list(
-    schema_version = 1L,
+    schema_version = 2L,
     package_version = tryCatch(
       as.character(utils::packageVersion("tempest")),
       error = function(e) NA_character_
@@ -400,6 +401,9 @@ tempest_session_snapshot <- function(session) {
     transcript = session$transcript,
     mindmap = session$mindmap,
     artifacts = artifacts,
+    artifact_catalog = session$artifact_catalog$snapshot(
+      include_content = TRUE
+    ),
     suggested_questions = artifacts$suggested_questions %||% character(),
     progress_events = artifacts$progress_events %||% list(),
     store = tempest_source_store_snapshot(session$store),
@@ -492,7 +496,7 @@ tempest_session_restore <- function(
     tempest_session_restore_abort("{.arg snapshot} must be a list.")
   }
   schema_version <- snapshot$schema_version %||% NA_integer_
-  if (!identical(as.integer(schema_version), 1L)) {
+  if (!identical(as.integer(schema_version), 2L)) {
     tempest_session_restore_abort(
       paste0("Unsupported snapshot schema version: ", schema_version, ".")
     )
@@ -521,10 +525,27 @@ tempest_session_restore <- function(
   session$transcript <- snapshot$transcript %||% list()
   session$mindmap <- snapshot$mindmap %||% tempest_mindmap_init(session$topic)
   session$artifacts <- new.env(parent = emptyenv())
+  session$artifact_catalog <- tempest_artifact_catalog_restore(
+    snapshot$artifact_catalog %||%
+      list(
+        schema_version = 1L,
+        deliverables = list(),
+        artifacts = list()
+      ),
+    store = config@artifact_store,
+    evidence_store = store
+  )
 
   artifacts <- snapshot$artifacts %||% list()
   for (name in names(artifacts)) {
     session$artifacts[[name]] <- artifacts[[name]]
+  }
+  if (
+    is.null(session$artifacts[["report_md"]]) &&
+      session$artifact_catalog$has("report_md")
+  ) {
+    session$artifacts[["report_md"]] <-
+      session$artifact_catalog$get("report_md")@content
   }
   if (
     !is.null(snapshot$suggested_questions) &&
@@ -741,10 +762,11 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_save()` writes a schema-versioned directory bundle for a
-#' [TempestSession]. The bundle stores durable research state as JSON and
-#' Markdown files and writes the `session.json` manifest last. Live chat
-#' handles, registered tool closures, Shiny reactive state, credentials, and
-#' raw provider request bodies are not serialized.
+#' [TempestSession]. The bundle stores durable research state plus a typed
+#' artifact catalog. Inline artifacts use explicit UTF-8 or canonical JSON
+#' codecs, every declared file is checksummed, and the `session.json` manifest
+#' is written last. Live chat handles, registered tool closures, Shiny reactive
+#' state, credentials, and raw provider request bodies are not serialized.
 #'
 #' Use [tempest_session_resume()] to load the bundle with a fresh runtime
 #' [TempestConfig].
@@ -833,11 +855,6 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
     files,
     tempest_session_bundle_write_text(
       staging_dir,
-      "artifacts/report.md",
-      snapshot$artifacts$report_md
-    ),
-    tempest_session_bundle_write_text(
-      staging_dir,
       "artifacts/report_body.md",
       snapshot$artifacts$report
     ),
@@ -847,6 +864,12 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
       snapshot$artifacts$mindmap_md
     )
   )
+
+  typed_bundle <- tempest_artifact_bundle_write(
+    session$artifact_catalog,
+    staging_dir
+  )
+  files <- c(files, typed_bundle$files)
 
   if (!is.null(snapshot$artifacts$suggested_questions)) {
     files <- c(
@@ -895,7 +918,10 @@ tempest_session_save <- function(session, path, overwrite = FALSE) {
     saved_at = tempest_now_utc(),
     status = "complete",
     files = files,
-    checksums = checksums
+    checksums = checksums,
+    artifact_files = typed_bundle$content_files,
+    artifact_index = typed_bundle$index_path,
+    deliverable_index = typed_bundle$deliverables_path
   )
   tempest_session_bundle_write_json(staging_dir, "session.json", manifest)
 
@@ -1004,13 +1030,17 @@ tempest_session_bundle_validate_manifest <- function(
     "store/sources.json",
     "store/claims.json",
     "store/evidence_spans.json",
-    "store/disputes.json"
+    "store/disputes.json",
+    "artifacts/typed/deliverables.json",
+    "artifacts/typed/index.json"
   )
-  unsafe <- grepl("^(/|~|[A-Za-z]:)", files) |
+  normalized_files <- gsub("\\\\", "/", files)
+  parts <- strsplit(normalized_files, "/", fixed = TRUE)
+  unsafe <- grepl("^(/|~|[A-Za-z]:)", normalized_files) |
     vapply(
-      strsplit(files, "/", fixed = TRUE),
+      parts,
       function(parts) {
-        ".." %in% parts
+        any(!nzchar(parts)) || any(parts %in% c(".", ".."))
       },
       logical(1)
     )
@@ -1018,9 +1048,27 @@ tempest_session_bundle_validate_manifest <- function(
   missing <- files[!file.exists(file.path(bundle_dir, files))]
   checksums <- unlist(manifest$checksums %||% list(), use.names = TRUE)
   missing_checksums <- setdiff(files, names(checksums))
+  extra_checksums <- setdiff(names(checksums), files)
   available <- setdiff(files, missing)
-  mismatched <- available[vapply(
+  bundle_root <- paste0(
+    normalizePath(bundle_dir, winslash = "/", mustWork = TRUE),
+    "/"
+  )
+  escaping <- available[vapply(
     available,
+    function(file) {
+      resolved <- normalizePath(
+        file.path(bundle_dir, file),
+        winslash = "/",
+        mustWork = TRUE
+      )
+      !startsWith(resolved, bundle_root)
+    },
+    logical(1)
+  )]
+  checksum_candidates <- setdiff(available, escaping)
+  mismatched <- checksum_candidates[vapply(
+    checksum_candidates,
     function(file) {
       expected <- if (file %in% names(checksums)) {
         checksums[[file]]
@@ -1032,9 +1080,25 @@ tempest_session_bundle_validate_manifest <- function(
     },
     logical(1)
   )]
+  artifact_files <- as.character(unlist(
+    manifest$artifact_files %||% character()
+  ))
+  artifact_index <- manifest$artifact_index %||% NA_character_
+  deliverable_index <- manifest$deliverable_index %||% NA_character_
+  invalid_artifact_files <- artifact_files[
+    !startsWith(artifact_files, "artifacts/typed/content/") |
+      !vapply(
+        artifact_files,
+        tempest_artifact_bundle_path_is_safe,
+        logical(1)
+      )
+  ]
 
   problems <- c(
     if (length(files) == 0L) "Manifest declares no files.",
+    if (anyDuplicated(normalized_files)) {
+      "Manifest declares duplicate file paths."
+    },
     if (any(unsafe)) "Manifest contains unsafe file paths.",
     if (length(undeclared_required) > 0L) {
       paste0(
@@ -1057,12 +1121,42 @@ tempest_session_bundle_validate_manifest <- function(
         "."
       )
     },
+    if (length(extra_checksums) > 0L) {
+      paste0(
+        "Manifest contains checksums for undeclared files: ",
+        paste(extra_checksums, collapse = ", "),
+        "."
+      )
+    },
+    if (length(escaping) > 0L) {
+      paste0(
+        "Declared files resolve outside the bundle: ",
+        paste(escaping, collapse = ", "),
+        "."
+      )
+    },
     if (length(mismatched) > 0L) {
       paste0(
         "Declared files failed checksum validation: ",
         paste(mismatched, collapse = ", "),
         "."
       )
+    },
+    if (
+      !identical(artifact_index, "artifacts/typed/index.json") ||
+        !identical(
+          deliverable_index,
+          "artifacts/typed/deliverables.json"
+        )
+    ) {
+      "Manifest contains invalid typed-artifact index paths."
+    },
+    if (
+      anyDuplicated(artifact_files) ||
+        length(invalid_artifact_files) > 0L ||
+        length(setdiff(artifact_files, files)) > 0L
+    ) {
+      "Manifest contains invalid typed-artifact content paths."
     }
   )
   if (length(problems) > 0L && !isTRUE(partial_recovery)) {
@@ -1091,7 +1185,8 @@ tempest_session_bundle_validate_manifest <- function(
 #'   objects.
 #' @param partial_recovery Whether to allow explicitly requested recovery when
 #'   declared optional files are missing or fail integrity checks. Required
-#'   source and persona data must still be readable.
+#'   source and persona data, typed-artifact indexes, and declared typed content
+#'   must still pass integrity checks.
 #' @return A restored [TempestSession].
 #' @export
 tempest_session_resume <- function(
@@ -1131,7 +1226,7 @@ tempest_session_resume <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(as.integer(manifest$schema_version %||% NA_integer_), 1L)) {
+  if (!identical(as.integer(manifest$schema_version %||% NA_integer_), 2L)) {
     tempest_session_restore_abort(
       paste0(
         "Unsupported session bundle schema version: ",
@@ -1140,14 +1235,38 @@ tempest_session_resume <- function(
       )
     )
   }
-  tempest_session_bundle_validate_manifest(
+  declared_files <- tempest_session_bundle_validate_manifest(
     bundle_dir,
     manifest,
     partial_recovery = partial_recovery
   )
+  optional_json <- function(rel_path, default = NULL, what) {
+    if (!rel_path %in% declared_files) {
+      return(default)
+    }
+    tempest_session_bundle_optional_json(
+      file.path(bundle_dir, rel_path),
+      default = default,
+      what = what
+    )
+  }
+  optional_text <- function(rel_path, default = NULL, what) {
+    if (!rel_path %in% declared_files) {
+      return(default)
+    }
+    tempest_session_bundle_optional_text(
+      file.path(bundle_dir, rel_path),
+      default = default,
+      what = what
+    )
+  }
+  typed_catalog <- tempest_artifact_bundle_read(
+    bundle_dir,
+    declared_files = declared_files
+  )
 
-  citation_audit <- tempest_session_bundle_optional_json(
-    file.path(bundle_dir, "artifacts/citation_audit.json"),
+  citation_audit <- optional_json(
+    "artifacts/citation_audit.json",
     what = "citation audit artifact"
   )
   store_artifacts <- list(
@@ -1156,8 +1275,8 @@ tempest_session_resume <- function(
     } else {
       tempest_restore_citation_audit(citation_audit)
     },
-    references = tempest_session_bundle_optional_json(
-      file.path(bundle_dir, "artifacts/references.json"),
+    references = optional_json(
+      "artifacts/references.json",
       what = "references artifact"
     )
   )
@@ -1175,8 +1294,8 @@ tempest_session_resume <- function(
     topic = manifest$topic,
     title = manifest$title,
     session_id = manifest$session_id,
-    config = tempest_session_bundle_optional_json(
-      file.path(bundle_dir, "config.json"),
+    config = optional_json(
+      "config.json",
       default = list(),
       what = "session config summary"
     ),
@@ -1187,42 +1306,39 @@ tempest_session_resume <- function(
         "tempest_session_restore_error"
       )
     ),
-    transcript = tempest_session_bundle_optional_json(
-      file.path(bundle_dir, "transcript.json"),
+    transcript = optional_json(
+      "transcript.json",
       default = list(),
       what = "session transcript"
     ),
-    mindmap = tempest_session_bundle_optional_json(
-      file.path(bundle_dir, "mindmap.json"),
+    mindmap = optional_json(
+      "mindmap.json",
       default = NULL,
       what = "session mind map"
     ),
     artifacts = list(
-      report_md = tempest_session_bundle_optional_text(
-        file.path(bundle_dir, "artifacts/report.md"),
-        what = "report artifact"
-      ),
-      report = tempest_session_bundle_optional_text(
-        file.path(bundle_dir, "artifacts/report_body.md"),
+      report = optional_text(
+        "artifacts/report_body.md",
         what = "report body artifact"
       ),
-      mindmap_md = tempest_session_bundle_optional_text(
-        file.path(bundle_dir, "artifacts/mindmap.md"),
+      mindmap_md = optional_text(
+        "artifacts/mindmap.md",
         what = "mind map artifact"
       ),
-      suggested_questions = tempest_session_bundle_optional_json(
-        file.path(bundle_dir, "artifacts/suggested_questions.json"),
+      suggested_questions = optional_json(
+        "artifacts/suggested_questions.json",
         what = "suggested questions artifact"
       )
     ),
-    suggested_questions = tempest_session_bundle_optional_json(
-      file.path(bundle_dir, "artifacts/suggested_questions.json"),
+    artifact_catalog = typed_catalog$snapshot(include_content = TRUE),
+    suggested_questions = optional_json(
+      "artifacts/suggested_questions.json",
       default = character(),
       what = "suggested questions artifact"
     ),
     progress_events = tempest_session_restore_progress_events(
-      tempest_session_bundle_optional_json(
-        file.path(bundle_dir, "progress_events.json"),
+      optional_json(
+        "progress_events.json",
         default = list(),
         what = "progress-event history"
       )
@@ -1236,25 +1352,25 @@ tempest_session_resume <- function(
           "tempest_session_restore_error"
         )
       ),
-      claims = tempest_session_bundle_optional_json(
-        file.path(bundle_dir, "store/claims.json"),
+      claims = optional_json(
+        "store/claims.json",
         default = list(),
         what = "session claim ledger"
       ),
-      evidence_spans = tempest_session_bundle_optional_json(
-        file.path(bundle_dir, "store/evidence_spans.json"),
+      evidence_spans = optional_json(
+        "store/evidence_spans.json",
         default = list(),
         what = "session evidence-span ledger"
       ),
-      disputes = tempest_session_bundle_optional_json(
-        file.path(bundle_dir, "store/disputes.json"),
+      disputes = optional_json(
+        "store/disputes.json",
         default = list(),
         what = "session dispute ledger"
       ),
       artifacts = store_artifacts
     ),
-    expert_sessions = tempest_session_bundle_optional_json(
-      file.path(bundle_dir, "expert_sessions.json"),
+    expert_sessions = optional_json(
+      "expert_sessions.json",
       default = list(),
       what = "expert-session metadata"
     )
@@ -1345,29 +1461,163 @@ tempest_restore_citation_audit <- function(citation_audit) {
 }
 
 #' @keywords internal
-tempest_load_run_artifacts <- function(run_dir, store) {
+tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
+  if (
+    !identical(as.integer(manifest$schema_version %||% NA_integer_), 2L) ||
+      !identical(manifest$status %||% "", "complete")
+  ) {
+    tempest_abort(
+      "STORM run manifest is incomplete or uses an unsupported schema.",
+      class = tempest_persistence_error_class(
+        "tempest_run_restore_error"
+      )
+    )
+  }
+  files <- as.character(unlist(manifest$files %||% character()))
+  normalized <- gsub("\\\\", "/", files)
+  required <- c(
+    "artifacts/typed/deliverables.json",
+    "artifacts/typed/index.json"
+  )
+  unsafe <- !vapply(
+    normalized,
+    tempest_artifact_bundle_path_is_safe,
+    logical(1)
+  )
+  missing <- files[!file.exists(file.path(run_dir, files))]
+  checksums <- unlist(manifest$checksums %||% list(), use.names = TRUE)
+  missing_checksums <- setdiff(files, names(checksums))
+  extra_checksums <- setdiff(names(checksums), files)
+  available <- setdiff(files, missing)
+  run_root <- paste0(
+    normalizePath(run_dir, winslash = "/", mustWork = TRUE),
+    "/"
+  )
+  escaping <- available[vapply(
+    available,
+    function(file) {
+      resolved <- normalizePath(
+        file.path(run_dir, file),
+        winslash = "/",
+        mustWork = TRUE
+      )
+      !startsWith(resolved, run_root)
+    },
+    logical(1)
+  )]
+  checksum_candidates <- setdiff(available, escaping)
+  mismatched <- checksum_candidates[vapply(
+    checksum_candidates,
+    function(file) {
+      expected <- if (file %in% names(checksums)) {
+        checksums[[file]]
+      } else {
+        NA_character_
+      }
+      is.na(expected) ||
+        !identical(
+          tempest_session_bundle_checksum(run_dir, file),
+          expected
+        )
+    },
+    logical(1)
+  )]
+  problems <- c(
+    if (length(files) == 0L) "Manifest declares no files.",
+    if (anyDuplicated(normalized)) "Manifest declares duplicate files.",
+    if (any(unsafe)) "Manifest contains unsafe paths.",
+    if (length(setdiff(required, files)) > 0L) {
+      "Manifest omits typed artifact indexes."
+    },
+    if (length(missing) > 0L) "Manifest declares missing files.",
+    if (
+      length(missing_checksums) > 0L ||
+        length(extra_checksums) > 0L
+    ) {
+      "Manifest checksum inventory does not match its file inventory."
+    },
+    if (length(escaping) > 0L) {
+      "Manifest declares files outside the run directory."
+    },
+    if (length(mismatched) > 0L) "Manifest checksum validation failed."
+  )
+  if (length(problems) > 0L) {
+    tempest_abort(
+      paste(problems, collapse = " "),
+      class = tempest_persistence_error_class(
+        "tempest_run_restore_error"
+      )
+    )
+  }
+  invisible(files)
+}
+
+tempest_artifact_catalog_import <- function(target, source) {
+  for (record in source$list_deliverables()) {
+    target$register(tempest_deliverable_spec_from_data(record))
+  }
+  for (artifact_id in names(source$list())) {
+    target$add(source$get(artifact_id), persist = FALSE)
+  }
+  invisible(target)
+}
+
+#' @keywords internal
+tempest_load_run_artifacts <- function(
+  run_dir,
+  store,
+  artifact_catalog = tempest_artifact_catalog()
+) {
   stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(artifact_catalog, "TempestArtifactCatalog")) {
+    tempest_abort(
+      "{.arg artifact_catalog} must be a TempestArtifactCatalog."
+    )
+  }
   paths <- tempest_run_artifact_paths(run_dir)
   metadata <- if (file.exists(paths$run_config)) {
-    tempest_read_json(paths$run_config) %||% list()
+    tempest_read_json_strict(
+      paths$run_config,
+      what = "STORM run manifest",
+      class = tempest_persistence_error_class(
+        "tempest_run_restore_error"
+      )
+    )
   } else {
-    list()
+    tempest_abort(
+      "STORM run manifest is missing.",
+      class = tempest_persistence_error_class(
+        "tempest_run_restore_error"
+      )
+    )
+  }
+  declared_files <- tempest_run_bundle_validate_manifest(run_dir, metadata)
+  path_is_declared <- function(path) {
+    rel_path <- gsub(
+      "\\\\",
+      "/",
+      as.character(fs::path_rel(path, start = run_dir))
+    )
+    rel_path %in% declared_files
   }
 
-  if (file.exists(paths$sources)) {
+  if (path_is_declared(paths$sources) && file.exists(paths$sources)) {
     tempest_restore_sources(store, tempest_read_json(paths$sources))
   }
-  if (file.exists(paths$claims)) {
+  if (path_is_declared(paths$claims) && file.exists(paths$claims)) {
     tempest_restore_claims(store, tempest_read_json(paths$claims))
     store$set_artifact("claims", store$list_claims())
   }
-  if (file.exists(paths$references)) {
+  if (path_is_declared(paths$references) && file.exists(paths$references)) {
     references <- tempest_read_json(paths$references)
     if (!is.null(references)) {
       store$set_artifact("references", references)
     }
   }
-  if (file.exists(paths$citation_audit)) {
+  if (
+    path_is_declared(paths$citation_audit) &&
+      file.exists(paths$citation_audit)
+  ) {
     citation_audit <- tempest_read_json(paths$citation_audit)
     if (!is.null(citation_audit)) {
       store$set_artifact(
@@ -1385,7 +1635,7 @@ tempest_load_run_artifacts <- function(run_dir, store) {
   )
   for (artifact_name in names(json_artifacts)) {
     path <- paths[[artifact_name]]
-    if (file.exists(path)) {
+    if (path_is_declared(path) && file.exists(path)) {
       value <- tempest_read_json(path)
       if (!is.null(value)) {
         store$set_artifact(json_artifacts[[artifact_name]], value)
@@ -1400,7 +1650,7 @@ tempest_load_run_artifacts <- function(run_dir, store) {
   )
   for (artifact_name in names(text_artifacts)) {
     path <- paths[[artifact_name]]
-    if (file.exists(path)) {
+    if (path_is_declared(path) && file.exists(path)) {
       store$set_artifact(
         text_artifacts[[artifact_name]],
         tempest_read_text(path)
@@ -1413,13 +1663,17 @@ tempest_load_run_artifacts <- function(run_dir, store) {
   }
 
   completed_stages <- tempest_as_character_vector(metadata$completed_stages)
-  if (length(completed_stages) == 0) {
-    completed_stages <- tempest_infer_completed_stages(paths)
-  }
+  restored_catalog <- tempest_artifact_bundle_read(
+    run_dir,
+    evidence_store = store,
+    declared_files = declared_files
+  )
+  tempest_artifact_catalog_import(artifact_catalog, restored_catalog)
 
   list(
     metadata = metadata,
-    completed_stages = completed_stages
+    completed_stages = completed_stages,
+    artifact_catalog = artifact_catalog
   )
 }
 
@@ -1455,12 +1709,18 @@ tempest_save_run_artifacts <- function(
   steps,
   research_strategy,
   parallel_writing = FALSE,
-  remove_duplicate = FALSE
+  remove_duplicate = FALSE,
+  artifact_catalog = tempest_artifact_catalog()
 ) {
   if (is.null(run_dir)) {
     return(invisible(NULL))
   }
   stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(artifact_catalog, "TempestArtifactCatalog")) {
+    tempest_abort(
+      "{.arg artifact_catalog} must be a TempestArtifactCatalog."
+    )
+  }
   paths <- tempest_run_artifact_paths(run_dir)
   completed_stages <- unique(tempest_as_character_vector(completed_stages))
 
@@ -1527,6 +1787,36 @@ tempest_save_run_artifacts <- function(
       tempest_write_text(paths[[path_name]], value)
     }
   }
+
+  typed_dir <- file.path(run_dir, "artifacts", "typed")
+  if (dir.exists(typed_dir)) {
+    unlink(typed_dir, recursive = TRUE, force = TRUE)
+  }
+  typed_bundle <- tempest_artifact_bundle_write(
+    artifact_catalog,
+    run_dir
+  )
+  files <- list.files(
+    run_dir,
+    recursive = TRUE,
+    all.files = TRUE,
+    no.. = TRUE
+  )
+  files <- sort(setdiff(files, "run_config.json"))
+  checksums <- stats::setNames(
+    lapply(
+      files,
+      function(file) tempest_session_bundle_checksum(run_dir, file)
+    ),
+    files
+  )
+  metadata$schema_version <- 2L
+  metadata$status <- "complete"
+  metadata$files <- files
+  metadata$checksums <- checksums
+  metadata$artifact_files <- typed_bundle$content_files
+  metadata$artifact_index <- typed_bundle$index_path
+  metadata$deliverable_index <- typed_bundle$deliverables_path
 
   # Write the run manifest last, so a crash mid-save never leaves
   # `completed_stages` asserting a stage whose artifacts are not yet on disk.

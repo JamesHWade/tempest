@@ -4,45 +4,66 @@
 #'
 #' `r lifecycle::badge("experimental")`
 #'
-#' Artifact stores let host applications observe or persist Tempest outputs
-#' without replacing the live in-memory `SourceStore`. The default store is a
-#' no-op adapter.
+#' Artifact stores let host applications observe or persist typed Tempest
+#' outputs without replacing the live in-memory artifact catalog. The default
+#' store is a no-op adapter.
 #'
-#' @param write Function with signature `function(name, value, metadata)` used
-#'   to persist an artifact.
-#' @param read Function with signature `function(name, default)` used to read an
-#'   artifact.
-#' @param list_names Function with no arguments that returns available artifact
-#'   names.
-#' @return A list with `write`, `read`, and `list` functions.
+#' @param write Function with signature `function(artifact)` used to persist a
+#'   typed artifact.
+#' @param read Function with signature `function(artifact_id, default)` that
+#'   returns a typed artifact.
+#' @param list_metadata Function with no arguments that returns a named list of
+#'   artifact metadata records without inline content.
+#' @param exists Function with signature `function(artifact_id, version)` used
+#'   to test artifact identity and optional deliverable version.
+#' @return A typed artifact-store adapter.
 #' @examples
 #' store <- tempest_memory_artifact_store()
-#' store$write("report_md", "# Report", metadata = list(topic = "Demo"))
-#' store$read("report_md")
+#' spec <- tempest_deliverable_spec(
+#'   "report",
+#'   title = "Report",
+#'   purpose = "Explain the result",
+#'   instructions = "Be concise.",
+#'   generator_id = "tempest.generator.provided_content",
+#'   renderer_ids = "tempest.renderer.markdown"
+#' )
+#' artifact <- tempest_artifact(spec, content = "# Report")
+#' store$write(artifact)
+#' store$read(artifact@artifact_id)
 #' @export
 tempest_artifact_store <- function(
   write = NULL,
   read = NULL,
-  list_names = NULL
+  list_metadata = NULL,
+  exists = NULL
 ) {
   write <- write %||%
-    function(name, value, metadata = list()) {
-      invisible(name)
+    function(artifact) {
+      invisible(artifact@artifact_id)
     }
   read <- read %||%
-    function(name, default = NULL) {
+    function(artifact_id, default = NULL) {
       default
     }
-  list_fn <- list_names %||%
+  list_fn <- list_metadata %||%
     function() {
-      character()
+      list()
     }
-  for (fn in list(write = write, read = read, list = list_fn)) {
+  exists_fn <- exists %||%
+    function(artifact_id, version = NULL) {
+      FALSE
+    }
+  for (fn in list(
+    write = write,
+    read = read,
+    list = list_fn,
+    exists = exists_fn
+  )) {
     if (!is.function(fn)) {
       tempest_abort(
         c(
           "Artifact store entries must be functions.",
-          i = "Use {.fn tempest_artifact_store} with function values for {.arg write}, {.arg read}, and {.arg list_names}."
+          i = "Use {.fn tempest_artifact_store} with function values for its adapter arguments."
         ),
         class = c(
           "tempest_artifact_store_error",
@@ -53,7 +74,12 @@ tempest_artifact_store <- function(
     }
   }
   structure(
-    list(write = write, read = read, list = list_fn),
+    list(
+      write = write,
+      read = read,
+      list = list_fn,
+      exists = exists_fn
+    ),
     class = "tempest_artifact_store"
   )
 }
@@ -68,30 +94,55 @@ tempest_artifact_store <- function(
 #' @return A `tempest_artifact_store`.
 #' @examples
 #' store <- tempest_memory_artifact_store()
-#' store$write("summary", "Done")
+#' # Stores accept typed artifacts produced by a deliverable lifecycle.
 #' store$list()
 #' @export
 tempest_memory_artifact_store <- function() {
   artifacts <- new.env(parent = emptyenv())
   tempest_artifact_store(
-    write = function(name, value, metadata = list()) {
-      artifacts[[name]] <- list(value = value, metadata = metadata)
-      invisible(name)
+    write = function(artifact) {
+      if (!S7::S7_inherits(artifact, TempestArtifact)) {
+        tempest_abort(
+          "{.arg artifact} must be created by {.fn tempest_artifact}.",
+          class = c("tempest_artifact_store_error", "tempest_error")
+        )
+      }
+      artifacts[[artifact@artifact_id]] <- artifact
+      invisible(artifact@artifact_id)
     },
-    read = function(name, default = NULL) {
-      item <- artifacts[[name]]
-      if (is.null(item)) default else item$value
+    read = function(artifact_id, default = NULL) {
+      artifact <- artifacts[[artifact_id]]
+      if (is.null(artifact)) default else artifact
     },
-    list_names = function() {
-      sort(ls(artifacts, all.names = TRUE))
+    list_metadata = function() {
+      ids <- sort(ls(artifacts, all.names = TRUE))
+      stats::setNames(
+        lapply(
+          ids,
+          function(id) {
+            tempest_artifact_data(
+              artifacts[[id]],
+              include_content = FALSE
+            )
+          }
+        ),
+        ids
+      )
+    },
+    exists = function(artifact_id, version = NULL) {
+      artifact <- artifacts[[artifact_id]]
+      if (is.null(artifact)) {
+        return(FALSE)
+      }
+      is.null(version) || identical(artifact@deliverable_version, version)
     }
   )
 }
 
 #' @keywords internal
-tempest_artifact_write <- function(store, name, value, metadata = list()) {
+tempest_artifact_store_write <- function(store, artifact) {
   if (is.null(store)) {
-    return(invisible(name))
+    return(invisible(artifact@artifact_id))
   }
   if (!inherits(store, "tempest_artifact_store")) {
     tempest_abort(
@@ -106,8 +157,23 @@ tempest_artifact_write <- function(store, name, value, metadata = list()) {
       )
     )
   }
-  store$write(name, value, metadata)
-  invisible(name)
+  if (!S7::S7_inherits(artifact, TempestArtifact)) {
+    tempest_abort(
+      "{.arg artifact} must be created by {.fn tempest_artifact}.",
+      class = c("tempest_artifact_store_error", "tempest_error")
+    )
+  }
+  tryCatch(
+    store$write(artifact),
+    error = function(error) {
+      tempest_abort(
+        "Could not persist artifact {.val {artifact@artifact_id}}.",
+        class = c("tempest_artifact_store_error", "tempest_error"),
+        parent = error
+      )
+    }
+  )
+  invisible(artifact@artifact_id)
 }
 
 #' @keywords internal

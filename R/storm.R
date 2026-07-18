@@ -270,7 +270,8 @@ tempest_run <- function(
         steps = steps,
         research_strategy = research_strategy,
         parallel_writing = parallel_writing,
-        remove_duplicate = remove_duplicate
+        remove_duplicate = remove_duplicate,
+        artifact_catalog = artifact_catalog
       ),
       error = function(e) {
         if (!is.null(run_dir)) {
@@ -300,8 +301,21 @@ tempest_run <- function(
   }
 
   completed_stages <- character()
-  if (!is.null(run_dir) && isTRUE(resume)) {
-    loaded_run <- tempest_load_run_artifacts(run_dir, store)
+  run_manifest <- if (is.null(run_dir)) {
+    NULL
+  } else {
+    tempest_run_artifact_paths(run_dir)$run_config
+  }
+  if (
+    !is.null(run_manifest) &&
+      isTRUE(resume) &&
+      file.exists(run_manifest)
+  ) {
+    loaded_run <- tempest_load_run_artifacts(
+      run_dir,
+      store,
+      artifact_catalog = artifact_catalog
+    )
     completed_stages <- loaded_run$completed_stages
     if (verbose && length(completed_stages) > 0) {
       tempest_inform(
@@ -1039,7 +1053,10 @@ tempest_run <- function(
           )
         }
         report_md <- store$get_artifact("report_md")
-        if (!is.null(report_md)) {
+        if (
+          !is.null(report_md) &&
+            !artifact_catalog$has("report_md")
+        ) {
           tempest_storm_restore_report_artifact(
             report_md = report_md,
             title = title,

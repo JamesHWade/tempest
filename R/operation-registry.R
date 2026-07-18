@@ -34,7 +34,7 @@ tempest_operation_descriptor <- function(
       "{.arg implementation} must be a function."
     )
   }
-  metadata <- tempest_workflow_list(metadata, "metadata")
+  metadata <- tempest_workflow_serializable_list(metadata, "metadata")
   list(
     id = id,
     version = version,

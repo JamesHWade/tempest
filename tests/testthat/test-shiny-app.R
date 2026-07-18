@@ -945,6 +945,23 @@ test_that("session archives round-trip through the upload boundary", {
     config = cfg,
     personas = list(tempest_expert(name = "Dr. Archive"))
   )
+  custom_spec <- tempest_deliverable_spec(
+    "custom-output",
+    title = "Custom output",
+    purpose = "Exercise dynamic artifact paths",
+    instructions = "Return structured content.",
+    generator_id = "generator.custom",
+    renderer_ids = "renderer.custom",
+    media_types = "application/json"
+  )
+  ses$artifact_catalog$register(custom_spec)
+  ses$artifact_catalog$add(tempest_artifact(
+    custom_spec,
+    content = list(result = "restored"),
+    artifact_id = "custom-output",
+    media_type = "application/json",
+    status = "valid"
+  ))
   store <- app$new_session_store()
   store$set(ses)
   archive <- tempfile(fileext = ".zip")
@@ -956,10 +973,17 @@ test_that("session archives round-trip through the upload boundary", {
 
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$topic, "Downloadable session")
+  expect_equal(
+    restored$artifact_catalog$get("custom-output")@content$result,
+    "restored"
+  )
   archive_files <- utils::unzip(archive, list = TRUE)$Name
+  manifest <- tempest:::tempest_read_json_strict(
+    file.path(bundle, "session.json")
+  )
   expect_setequal(
-    intersect(archive_files, app$session_archive_files()),
-    archive_files
+    archive_files,
+    c("session.json", as.character(unlist(manifest$files)))
   )
   expect_contains(archive_files, "session.json")
 })
@@ -989,8 +1013,104 @@ test_that("session archive validation rejects unsafe entries and large files", {
   )
   expect_equal(
     app$session_archive_listing_is_safe("unexpected.txt", 100),
+    TRUE
+  )
+  expect_equal(
+    app$session_archive_listing_is_safe(
+      c("session.json", "unexpected.txt"),
+      c(100, 100),
+      declared_files = "config.json"
+    ),
     FALSE
   )
+  expect_equal(
+    app$session_archive_listing_is_safe("/session.json", 100),
+    FALSE
+  )
+  expect_equal(
+    app$session_archive_listing_is_safe("a/./session.json", 100),
+    FALSE
+  )
+})
+
+test_that("session archive extraction rejects undeclared and tampered files", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("zip")
+  app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Archive integrity",
+    config = cfg,
+    personas = list(tempest_expert(name = "Dr. Integrity"))
+  )
+  spec <- tempest_deliverable_spec(
+    "integrity-output",
+    title = "Integrity output",
+    purpose = "Exercise archive validation",
+    instructions = "Return text.",
+    generator_id = "generator",
+    renderer_ids = "renderer"
+  )
+  ses$artifact_catalog$register(spec)
+  ses$artifact_catalog$add(tempest_artifact(
+    spec,
+    content = "Trusted content",
+    artifact_id = "integrity-output"
+  ))
+  root <- withr::local_tempdir()
+  bundle <- file.path(root, "bundle")
+  tempest_session_save(ses, bundle)
+  manifest <- tempest:::tempest_read_json_strict(
+    file.path(bundle, "session.json")
+  )
+  content_file <- as.character(unlist(manifest$artifact_files))[[1]]
+  writeLines("tampered", file.path(bundle, content_file))
+  tampered_archive <- file.path(root, "tampered.zip")
+  zip::zip(
+    tampered_archive,
+    files = list.files(
+      bundle,
+      recursive = TRUE,
+      all.files = TRUE,
+      no.. = TRUE
+    ),
+    include_directories = FALSE,
+    root = bundle,
+    mode = "mirror"
+  )
+  tampered_extract <- file.path(root, "tampered-extract")
+
+  expect_error(
+    app$session_archive_extract(tampered_archive, tampered_extract),
+    class = "tempest_session_restore_error"
+  )
+  expect_false(dir.exists(tampered_extract))
+
+  tempest_session_save(ses, bundle, overwrite = TRUE)
+  writeLines("undeclared", file.path(bundle, "extra.txt"))
+  extra_archive <- file.path(root, "extra.zip")
+  zip::zip(
+    extra_archive,
+    files = list.files(
+      bundle,
+      recursive = TRUE,
+      all.files = TRUE,
+      no.. = TRUE
+    ),
+    include_directories = FALSE,
+    root = bundle,
+    mode = "mirror"
+  )
+  extra_extract <- file.path(root, "extra-extract")
+
+  expect_error(
+    app$session_archive_extract(extra_archive, extra_extract),
+    "do not match"
+  )
+  expect_false(dir.exists(extra_extract))
 })
 
 test_that("Shiny session storage is isolated, private, and quota-bound", {
@@ -1074,6 +1194,15 @@ test_that("session store saves and restores bundles for shared app tabs", {
     source_id,
     "]."
   )
+  report_spec <- tempest:::tempest_costorm_report_spec(ses)
+  ses$artifact_catalog$register(report_spec)
+  ses$artifact_catalog$add(tempest_artifact(
+    report_spec,
+    content = ses$artifacts[["report_md"]],
+    artifact_id = "report_md",
+    resource_ids = source_id,
+    status = "valid"
+  ))
   ses$emit_progress(
     "stage",
     "succeeded",

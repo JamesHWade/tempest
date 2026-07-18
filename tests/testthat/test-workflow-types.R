@@ -31,6 +31,13 @@ test_that("objective validation rejects malformed values", {
     tempest_objective("Outcome", schema_version = 0),
     class = "tempest_workflow_spec_error"
   )
+  expect_error(
+    tempest_objective(
+      "Outcome",
+      metadata = list(callback = function() NULL)
+    ),
+    class = "tempest_workflow_spec_error"
+  )
 })
 
 test_that("deliverable specifications are serializable and fingerprinted", {
@@ -146,6 +153,18 @@ test_that("deliverable specifications reject invalid operations and policies", {
       generator_id = "generator.response",
       renderer_ids = "renderer.markdown",
       operation_versions = c("unknown" = "1")
+    ),
+    class = "tempest_workflow_spec_error"
+  )
+  expect_error(
+    tempest_deliverable_spec(
+      "response",
+      title = "Response",
+      purpose = "Answer the request",
+      instructions = "Use evidence.",
+      content_schema = list(default = new.env()),
+      generator_id = "generator.response",
+      renderer_ids = "renderer.markdown"
     ),
     class = "tempest_workflow_spec_error"
   )

@@ -220,7 +220,8 @@ tempest_deliverable_normalize_validation <- function(result, operation) {
 #' provenance, checksums, and lifecycle status when it creates the final typed
 #' artifact.
 #'
-#' @param content Inline representation content.
+#' @param content Inline representation content: a single UTF-8 string or
+#'   canonical JSON-compatible lists and atomic values.
 #' @param storage_ref Optional external storage reference.
 #' @param artifact_kind Role within the deliverable.
 #' @param media_type Optional media type. Defaults to renderer metadata or the
@@ -281,7 +282,7 @@ tempest_artifact_representation <- function(
         parent_artifact_ids,
         "parent_artifact_ids"
       ),
-      metadata = tempest_workflow_list(metadata, "metadata")
+      metadata = tempest_workflow_serializable_list(metadata, "metadata")
     ),
     class = "tempest_artifact_representation"
   )
@@ -522,6 +523,7 @@ tempest_deliverable_finalize <- function(plan, canonical_content) {
       exported
     })
   }
+  plan$catalog$register(deliverable)
   plan$catalog$add_many(artifacts)
 
   resolved_operations <- c(
@@ -760,8 +762,9 @@ tempest_storm_restore_report_artifact <- function(
   catalog,
   run_id
 ) {
+  deliverable <- tempest_storm_report_spec(title, config, remove_duplicate)
   artifact <- tempest_artifact(
-    tempest_storm_report_spec(title, config, remove_duplicate),
+    deliverable,
     content = report_md,
     artifact_id = "report_md",
     producer_operation_id = "tempest.renderer.markdown_report",
@@ -770,6 +773,7 @@ tempest_storm_restore_report_artifact <- function(
     status = "valid",
     metadata = list(topic = title, restored = TRUE)
   )
+  catalog$register(deliverable)
   catalog$add(artifact)
   artifact
 }
@@ -1083,7 +1087,15 @@ tempest_builtin_markdown_exporter <- function(
 #' Hosts can register additional operations or explicitly replace a built-in
 #' operation on the returned registry.
 #'
+#' The built-in ids are `tempest.generator.markdown_report`,
+#' `tempest.generator.provided_content`,
+#' `tempest.validator.required_fields`, `tempest.renderer.markdown`,
+#' `tempest.renderer.markdown_report`, and `tempest.exporter.markdown`.
+#'
 #' @return A `TempestOperationRegistry`.
+#' @examples
+#' registry <- tempest_builtin_operation_registry()
+#' names(registry$list())
 #' @export
 tempest_builtin_operation_registry <- function() {
   tempest_operation_registry(list(

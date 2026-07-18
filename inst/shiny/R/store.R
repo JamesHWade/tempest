@@ -49,7 +49,14 @@ new_session_store <- function() {
   }
 
   set_report_from_session <- function(session) {
-    report_md <- session$artifacts[["report_md"]] %||% NULL
+    report_md <- if (
+      !is.null(session$artifact_catalog) &&
+        session$artifact_catalog$has("report_md")
+    ) {
+      session$artifact_catalog$get("report_md")@content
+    } else {
+      session$artifacts[["report_md"]] %||% NULL
+    }
     rv$report_md <- report_md
     rv$report_topic <- if (is.null(report_md)) NULL else session$topic
     rv$report_source_store <- if (is.null(report_md)) NULL else session$store

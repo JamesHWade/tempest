@@ -72,7 +72,7 @@ make final artifacts available.}
 }
 \value{
 A list with \code{title}, \code{outline}, \code{draft_md}, \code{report_md}, \code{store},
-and \code{output_dir}.
+\code{artifact_catalog}, and \code{output_dir}.
 }
 \description{
 This is a scripted workflow that:

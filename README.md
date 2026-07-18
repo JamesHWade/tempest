@@ -10,6 +10,8 @@ An R-native implementation of [STORM](https://storm.genie.stanford.edu/) (Synthe
 This package reproduces the core workflow primitives:
 - **Multi-perspective research** with automatically generated expert personas
 - **Evidence tracking** with citations and source attribution
+- **Reusable objectives and deliverables** with versioned output contracts,
+  validation, typed artifacts, and runtime operation adapters
 - **Two-step outline refinement** and **lead section generation**
 - **Query decomposition** and **semantic fact retrieval**
 - **Parallel research** across perspectives (optional)
@@ -65,6 +67,103 @@ Provider-specific API keys for alternative search:
 - Google Custom Search: set `GOOGLE_SEARCH_API_KEY` and `GOOGLE_CSE_ID`
 - Azure AI Search: set `AZURE_AI_SEARCH_API_KEY`,
   `AZURE_AI_SEARCH_ENDPOINT`, and `AZURE_AI_SEARCH_INDEX_NAME`
+
+## Reusable deliverables
+
+Tempest's output kernel is independent of STORM and Co-STORM. A host
+application can define an objective, versioned output contract, and runtime
+operations without adding its business model to the package:
+
+```r
+objective <- tempest_objective(
+  "Turn the supplied request into a concise action brief",
+  constraints = "Do not invent unsupported commitments",
+  acceptance_criteria = c(
+    "The brief includes a summary",
+    "The brief includes explicit actions"
+  ),
+  deliverable_ids = "action-brief"
+)
+
+registry <- tempest_builtin_operation_registry()
+registry$register(
+  "example.generator.action_brief",
+  kind = "generator",
+  version = "1",
+  implementation = function(context) {
+    list(
+      summary = context$objective@description,
+      actions = context$actions
+    )
+  }
+)
+registry$register(
+  "example.renderer.action_brief",
+  kind = "renderer",
+  version = "1",
+  implementation = function(content) {
+    list(
+      tempest_artifact_representation(
+        content = paste0(
+          "# Action brief\n\n",
+          content$summary,
+          "\n\n## Actions\n\n- ",
+          paste(content$actions, collapse = "\n- ")
+        ),
+        artifact_kind = "brief",
+        media_type = "text/markdown"
+      ),
+      tempest_artifact_representation(
+        content = content,
+        artifact_kind = "structured",
+        media_type = "application/json"
+      )
+    )
+  }
+)
+
+spec <- tempest_deliverable_spec(
+  "action-brief",
+  version = "1",
+  title = "Action brief",
+  purpose = "Make the requested outcome actionable",
+  instructions = "Preserve constraints and uncertainty.",
+  required_fields = c("summary", "actions"),
+  generator_id = "example.generator.action_brief",
+  validator_ids = "tempest.validator.required_fields",
+  renderer_ids = "example.renderer.action_brief",
+  operation_versions = c(
+    "example.generator.action_brief" = "1",
+    "tempest.validator.required_fields" = "1",
+    "example.renderer.action_brief" = "1"
+  ),
+  media_types = c("text/markdown", "application/json")
+)
+
+catalog <- tempest_artifact_catalog(
+  store = tempest_memory_artifact_store()
+)
+result <- tempest_generate_deliverable(
+  spec,
+  context = list(
+    objective = objective,
+    actions = c("Confirm scope", "Prepare evidence", "Review outcome")
+  ),
+  registry = registry,
+  catalog = catalog
+)
+
+catalog$list()
+```
+
+Specifications contain only serializable values and stable operation ids.
+Runtime functions stay in the operation registry, while artifacts retain their
+specification fingerprint, validation state, provenance, and content checksum.
+Inline structured content uses canonical JSON semantics: objects and arrays
+restore as lists, while classed R objects, missing values, and binary content
+should use an external `storage_ref`.
+Session and STORM run bundles persist every registered artifact representation
+instead of relying on a fixed report filename.
 
 ## Scripted STORM
 
@@ -131,9 +230,9 @@ res <- tempest_run(
 )
 ```
 
-Each run directory includes JSON artifacts for perspectives, personas,
-sources, facts, outlines, and references, plus Markdown drafts and the polished
-article.
+Each run directory includes checksummed JSON artifacts for perspectives,
+personas, sources, facts, outlines, and references; Markdown drafts; and a
+typed artifact catalog containing all final deliverable representations.
 
 ### Pipeline Details
 

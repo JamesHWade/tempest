@@ -489,9 +489,9 @@ sequenceDiagram
 - [x] Route STORM final output through the shared deliverable lifecycle.
 - [x] Add typed artifact catalog operations and use them consistently from
   STORM and Co-STORM.
-- [ ] Persist arbitrary typed artifacts and specification fingerprints through
+- [x] Persist arbitrary typed artifacts and specification fingerprints through
   session and run bundles.
-- [ ] Update public documentation, `_pkgdown.yml`, README examples, and
+- [x] Update public documentation, `_pkgdown.yml`, README examples, and
   `NEWS.md`.
 
 ### Phase 2: Experts, skills, and scoped capabilities
