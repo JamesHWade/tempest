@@ -1,6 +1,12 @@
 url: https://jameshwade.github.io/tempest/
 template:
   bootstrap: 5
+articles:
+- title: Build with Tempest
+  desc: Define application-neutral workflows, experts, permissions, and outputs.
+  navbar: ~
+  contents:
+  - reusable-workflows
 reference:
 - title: Core workflows
   contents:

@@ -254,6 +254,10 @@ Classed execution errors retain the failed run in `condition$run`, so a host
 can inspect its events, grants, validation results, and artifacts before
 deciding whether to retry or present the failure.
 
+Run `vignette("reusable-workflows", package = "tempest")` for a complete,
+offline example that combines a selected expert, output template, workflow,
+approval, typed artifact, audit trail, and save/restore cycle.
+
 ## Scripted STORM
 
 ```r
