@@ -34,6 +34,9 @@ Built on the R AI ecosystem:
 pak::pak("JamesHWade/tempest")
 ```
 
+After installation, run `vignette("tempest", package = "tempest")` for the
+package tour and a first STORM workflow.
+
 ## Setup
 
 ### LLM provider credentials

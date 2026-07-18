@@ -2,6 +2,11 @@ url: https://jameshwade.github.io/tempest/
 template:
   bootstrap: 5
 articles:
+- title: Get started
+  desc: Install Tempest and run your first workflow.
+  navbar: ~
+  contents:
+  - tempest
 - title: Build with Tempest
   desc: Define application-neutral workflows, experts, permissions, and outputs.
   navbar: ~
