@@ -242,6 +242,21 @@ test_that("built-in Markdown operations honor the output contract", {
   expect_equal(result$artifacts[[1]]@status, "valid")
 })
 
+test_that("STORM report prompts preserve the existing polish contract", {
+  prompt <- tempest:::tempest_storm_report_prompt(
+    "# Draft",
+    remove_duplicate = TRUE
+  )
+
+  expect_match(
+    prompt,
+    "Polish the following Markdown report.",
+    fixed = TRUE
+  )
+  expect_match(prompt, "<draft>\n# Draft\n</draft>", fixed = TRUE)
+  expect_match(prompt, "duplicate", ignore.case = TRUE)
+})
+
 test_that("built-in Markdown exporter writes an addressable file", {
   output_dir <- withr::local_tempdir()
   spec <- tempest_deliverable_spec(

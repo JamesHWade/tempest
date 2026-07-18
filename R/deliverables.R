@@ -677,6 +677,103 @@ tempest_markdown_report_prompt <- function(deliverable, context) {
   )
 }
 
+tempest_storm_report_spec <- function(
+  title,
+  config,
+  remove_duplicate = FALSE
+) {
+  tempest_deliverable_spec(
+    "storm-report",
+    title = title,
+    purpose = "Produce the final evidence-backed STORM report.",
+    instructions = tempest_polish_rules(remove_duplicate = remove_duplicate),
+    evidence_policy = config@citation_policy,
+    generator_id = "tempest.generator.markdown_report",
+    validator_ids = "tempest.validator.required_fields",
+    renderer_ids = "tempest.renderer.markdown_report",
+    operation_versions = c(
+      "tempest.generator.markdown_report" = "1",
+      "tempest.validator.required_fields" = "1",
+      "tempest.renderer.markdown_report" = "1"
+    ),
+    filename_policy = list(filename = "report.md"),
+    metadata = list(workflow = "storm")
+  )
+}
+
+tempest_storm_report_prompt <- function(draft_md, remove_duplicate) {
+  paste0(
+    "Polish the following Markdown report.\n\n",
+    "Rules:\n",
+    tempest_polish_rules(remove_duplicate = remove_duplicate),
+    "\n\n",
+    "<draft>\n",
+    draft_md,
+    "\n</draft>\n"
+  )
+}
+
+tempest_storm_report_plan <- function(
+  title,
+  draft_md,
+  store,
+  config,
+  remove_duplicate,
+  catalog,
+  run_id,
+  generate_text
+) {
+  tempest_deliverable_plan(
+    deliverable = tempest_storm_report_spec(
+      title,
+      config,
+      remove_duplicate
+    ),
+    context = list(
+      prompt = tempest_storm_report_prompt(
+        draft_md,
+        remove_duplicate
+      ),
+      title = title,
+      store = store,
+      include_references = TRUE,
+      citation_policy = config@citation_policy,
+      on_unsupported_claim = config@on_unsupported_claim,
+      min_support_score = config@min_support_score
+    ),
+    catalog = catalog,
+    runtime = list(generate_text = generate_text),
+    provenance = list(
+      artifact_id = "report_md",
+      run_id = run_id,
+      step_id = "polish",
+      metadata = list(topic = title)
+    )
+  )
+}
+
+tempest_storm_restore_report_artifact <- function(
+  report_md,
+  title,
+  config,
+  remove_duplicate,
+  catalog,
+  run_id
+) {
+  artifact <- tempest_artifact(
+    tempest_storm_report_spec(title, config, remove_duplicate),
+    content = report_md,
+    artifact_id = "report_md",
+    producer_operation_id = "tempest.renderer.markdown_report",
+    run_id = run_id,
+    step_id = "polish",
+    status = "valid",
+    metadata = list(topic = title, restored = TRUE)
+  )
+  catalog$add(artifact)
+  artifact
+}
+
 tempest_costorm_report_spec <- function(session) {
   tempest_deliverable_spec(
     "costorm-report",

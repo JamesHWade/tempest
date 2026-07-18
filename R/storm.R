@@ -85,7 +85,7 @@ tempest_run_verification <- function(
 #'   make final artifacts available.
 #' @param verbose If `TRUE`, prints progress messages.
 #' @return A list with `title`, `outline`, `draft_md`, `report_md`, `store`,
-#'   and `output_dir`.
+#'   `artifact_catalog`, and `output_dir`.
 #' @examples
 #' \dontrun{
 #' cfg <- tempest_config()
@@ -177,6 +177,9 @@ tempest_run <- function(
   } else {
     tempest_uuid("run")
   }
+  artifact_catalog <- tempest_artifact_catalog(
+    store = config@artifact_store
+  )
   current_progress_stage <- NA_character_
   emit_progress <- function(
     event_type,
@@ -954,19 +957,22 @@ tempest_run <- function(
         if (verbose) {
           tempest_inform("Polishing and consistency pass")
         }
-        prompt <- paste0(
-          "Polish the following Markdown report.\n\n",
-          "Rules:\n",
-          tempest_polish_rules(remove_duplicate = remove_duplicate),
-          "\n\n",
-          "<draft>\n",
-          draft_md,
-          "\n</draft>\n"
+        report_plan <- tempest_storm_report_plan(
+          title = title,
+          draft_md = draft_md,
+          store = store,
+          config = config,
+          remove_duplicate = remove_duplicate,
+          catalog = artifact_catalog,
+          run_id = progress_run_id,
+          generate_text = function(prompt) {
+            polisher$chat(
+              prompt,
+              echo = if (verbose) "output" else "none"
+            )
+          }
         )
-        polished <- polisher$chat(
-          prompt,
-          echo = if (verbose) "output" else "none"
-        )
+        polished <- tempest_deliverable_generate(report_plan)
         if (config@citation_policy %in% c("claim_verified", "strict")) {
           emit_progress(
             "stage",
@@ -1003,14 +1009,14 @@ tempest_run <- function(
             payload = list(citation_policy = config@citation_policy)
           )
         }
-        report_md <- tempest_report_md(
-          title = title,
-          body = polished,
-          store = store,
-          citation_policy = config@citation_policy,
-          on_unsupported_claim = config@on_unsupported_claim,
-          min_support_score = config@min_support_score
+        deliverable_result <- tempest_deliverable_finalize(
+          report_plan,
+          polished
         )
+        report_artifact <- tempest_deliverable_primary_artifact(
+          deliverable_result
+        )
+        report_md <- report_artifact@content
         store$set_artifact("report_md", report_md)
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
@@ -1033,6 +1039,16 @@ tempest_run <- function(
           )
         }
         report_md <- store$get_artifact("report_md")
+        if (!is.null(report_md)) {
+          tempest_storm_restore_report_artifact(
+            report_md = report_md,
+            title = title,
+            config = config,
+            remove_duplicate = remove_duplicate,
+            catalog = artifact_catalog,
+            run_id = progress_run_id
+          )
+        }
         if ("polish" %in% steps) {
           emit_stage_skipped(
             "polish",
@@ -1066,6 +1082,7 @@ tempest_run <- function(
         draft_md = draft_md,
         report_md = report_md,
         store = store,
+        artifact_catalog = artifact_catalog,
         retriever = retriever,
         output_dir = run_dir
       )

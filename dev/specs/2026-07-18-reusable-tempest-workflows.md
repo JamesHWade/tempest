@@ -486,8 +486,8 @@ sequenceDiagram
   generator, validator, renderer, and exporter operations.
 - [x] Replace sync and async Co-STORM report generation with the shared
   lifecycle.
-- [ ] Route STORM final output through the shared deliverable lifecycle.
-- [ ] Add typed artifact catalog operations and use them consistently from
+- [x] Route STORM final output through the shared deliverable lifecycle.
+- [x] Add typed artifact catalog operations and use them consistently from
   STORM and Co-STORM.
 - [ ] Persist arbitrary typed artifacts and specification fingerprints through
   session and run bundles.

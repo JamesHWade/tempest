@@ -220,6 +220,14 @@ test_that("tempest_run emits ordered STORM progress events", {
   )
   expect_match(result$report_md, "Polished report")
   expect_equal(
+    result$artifact_catalog$get("report_md")@content,
+    result$report_md
+  )
+  expect_equal(
+    result$artifact_catalog$get("report_md")@run_id,
+    "progress-run"
+  )
+  expect_equal(
     collector$data(event_type = "artifact")[[1]]$payload$artifact,
     "report_md"
   )
