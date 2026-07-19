@@ -12,6 +12,11 @@ articles:
   navbar: ~
   contents:
   - reusable-workflows
+- title: Add Tempest to an agent
+  desc: Install Agent Skills or make portable STORM research callable from chat.
+  navbar: ~
+  contents:
+  - agent-skills
 reference:
 - title: Agent integrations
   contents:
