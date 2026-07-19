@@ -280,6 +280,52 @@ for a complete, offline example that combines a selected expert, output
 template, workflow, approval, typed artifact, audit trail, and
 save/restore cycle.
 
+## Agent skills
+
+Tempest ships five portable Agent Skills for built-in research,
+framework-neutral STORM research, and custom workflow development:
+
+- `use-tempest-research` chooses, configures, runs, resumes, inspects,
+  and embeds Tempest’s scripted STORM and interactive Co-STORM
+  workflows.
+- `conduct-storm-research` carries the provider- and framework-neutral
+  STORM and Co-STORM protocols. It can guide another implementation or
+  be loaded by a tool-capable chat host without calling Tempest APIs.
+- `design-tempest-workflow` defines custom contracts, graphs,
+  permissions, approvals, and acceptance tests.
+- `build-tempest-workflow` turns a custom design into public Tempest API
+  calls and deterministic R tests.
+- `verify-tempest-workflow` audits custom runtime, approval, artifact,
+  failure, and restore integrity.
+
+List the bundled skill directories or install them into the directory
+used by your agent:
+
+``` r
+
+tempest_agent_skills()
+
+# Install all five for user-level Codex sessions.
+tempest_install_agent_skills("~/.codex/skills")
+
+# Or install a selected character vector of skills.
+tempest_install_agent_skills(
+  "~/.codex/skills",
+  skills = c("use-tempest-research", "conduct-storm-research")
+)
+```
+
+Existing copies are preserved unless `overwrite = TRUE`. A compatible
+skill loader can also discover the bundled skills from an attached
+Tempest package and expose `conduct-storm-research` inside a
+tool-capable chat application. The host must still provide retrieval,
+evidence, state, and output tools.
+
+These Agent Skills are distinct from
+[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md),
+which defines a serializable procedure assigned to an expert inside a
+Tempest workflow.
+
 ## Scripted STORM
 
 ``` r
@@ -727,6 +773,12 @@ Code that inspired tempest:
   demo and project overview.
 
 # Package index
+
+## Agent integrations
+
+- [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+  [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+  : Discover and install bundled Agent Skills
 
 ## Core workflows
 

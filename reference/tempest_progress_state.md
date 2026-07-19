@@ -75,47 +75,47 @@ tempest_progress_state(events)
 #> 
 #> $active
 #> $active$stages
-#> $active$stages$P_76e762a8a5a24146
-#> $active$stages$P_76e762a8a5a24146$event_id
-#> [1] "P_76e762a8a5a24146"
+#> $active$stages$P_c7a5b831b599017a
+#> $active$stages$P_c7a5b831b599017a$event_id
+#> [1] "P_c7a5b831b599017a"
 #> 
-#> $active$stages$P_76e762a8a5a24146$event_type
+#> $active$stages$P_c7a5b831b599017a$event_type
 #> [1] "stage"
 #> 
-#> $active$stages$P_76e762a8a5a24146$stage
+#> $active$stages$P_c7a5b831b599017a$stage
 #> [1] "research"
 #> 
-#> $active$stages$P_76e762a8a5a24146$step
+#> $active$stages$P_c7a5b831b599017a$step
 #> [1] NA
 #> 
-#> $active$stages$P_76e762a8a5a24146$status
+#> $active$stages$P_c7a5b831b599017a$status
 #> [1] "started"
 #> 
-#> $active$stages$P_76e762a8a5a24146$message
+#> $active$stages$P_c7a5b831b599017a$message
 #> [1] NA
 #> 
-#> $active$stages$P_76e762a8a5a24146$started_at
-#> [1] "2026-07-18 22:42:02 UTC"
+#> $active$stages$P_c7a5b831b599017a$started_at
+#> [1] "2026-07-19 01:23:46 UTC"
 #> 
-#> $active$stages$P_76e762a8a5a24146$updated_at
-#> [1] "2026-07-18 22:42:02 UTC"
+#> $active$stages$P_c7a5b831b599017a$updated_at
+#> [1] "2026-07-19 01:23:46 UTC"
 #> 
-#> $active$stages$P_76e762a8a5a24146$parent_event_id
+#> $active$stages$P_c7a5b831b599017a$parent_event_id
 #> [1] NA
 #> 
-#> $active$stages$P_76e762a8a5a24146$correlation_id
+#> $active$stages$P_c7a5b831b599017a$correlation_id
 #> [1] NA
 #> 
-#> $active$stages$P_76e762a8a5a24146$expert_id
+#> $active$stages$P_c7a5b831b599017a$expert_id
 #> [1] NA
 #> 
-#> $active$stages$P_76e762a8a5a24146$expert_name
+#> $active$stages$P_c7a5b831b599017a$expert_name
 #> [1] NA
 #> 
-#> $active$stages$P_76e762a8a5a24146$session_id
+#> $active$stages$P_c7a5b831b599017a$session_id
 #> [1] NA
 #> 
-#> $active$stages$P_76e762a8a5a24146$question_index
+#> $active$stages$P_c7a5b831b599017a$question_index
 #> [1] NA
 #> 
 #> 
@@ -143,9 +143,9 @@ tempest_progress_state(events)
 #> [1] 2
 #> 
 #> $latest_event_id
-#> [1] "P_76e762a8a5a24146"
+#> [1] "P_c7a5b831b599017a"
 #> 
 #> $updated_at
-#> [1] "2026-07-18 22:42:02 UTC"
+#> [1] "2026-07-19 01:23:46 UTC"
 #> 
 ```

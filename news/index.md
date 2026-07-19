@@ -25,6 +25,13 @@
   host-defined evidence resources with opaque locators, connection
   provenance, redaction and retention metadata, and durable claim
   lineage without requiring public URLs (fr54).
+- [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+  and
+  [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+  expose and install five bundled Agent Skills for using Tempest STORM
+  and Co-STORM, conducting the portable research protocol in other
+  hosts, and designing, building, or verifying custom Tempest workflows
+  (cheg).
 - [`tempest_artifact()`](https://jameshwade.github.io/tempest/reference/tempest_artifact.md),
   [`tempest_artifact_catalog()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_catalog.md),
   [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),

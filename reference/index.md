@@ -1,5 +1,11 @@
 # Package index
 
+## Agent integrations
+
+- [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+  [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+  : Discover and install bundled Agent Skills
+
 ## Core workflows
 
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
