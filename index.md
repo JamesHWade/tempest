@@ -5,27 +5,32 @@ An R-native implementation of [STORM](https://storm.genie.stanford.edu/)
 Question Asking) and [Co-STORM](https://co-storm.genie.stanford.edu/)
 from Stanford’s STORM project.
 
-This package reproduces the core workflow primitives: -
-**Multi-perspective research** with selected or automatically generated
-expert profiles - **Evidence tracking** with citations and source
-attribution - **Reusable objectives and deliverables** with versioned
-output contracts, validation, typed artifacts, and runtime operation
-adapters - **Two-step outline refinement** and **lead section
-generation** - **Query decomposition** and **semantic fact retrieval** -
-**Parallel research** across perspectives (optional) - **Interactive
-multi-agent moderation** with mind map (Co-STORM) - **LLM-driven
-discourse management** with dynamic expert roster (Co-STORM) -
-**Automated evaluation** with simulated users
+This package reproduces the core workflow primitives:
 
-Built on the R AI ecosystem: -
-[ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration: tool
-calling, structured output, streaming -
-[ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking,
-embedding, semantic retrieval -
-[dsprrr](https://github.com/JamesHWade/dsprrr) — structured
-extraction/generation modules -
-[shinychat](https://github.com/posit-dev/shinychat) — interactive chat
-UI - [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
+- **Multi-perspective research** with selected or automatically
+  generated expert profiles
+- **Evidence tracking** with citations and source attribution
+- **Reusable objectives and deliverables** with versioned output
+  contracts, validation, typed artifacts, and runtime operation adapters
+- **Two-step outline refinement** and **lead section generation**
+- **Query decomposition** and **semantic fact retrieval**
+- **Parallel research** across perspectives (optional)
+- **Interactive multi-agent moderation** with mind map (Co-STORM)
+- **LLM-driven discourse management** with dynamic expert roster
+  (Co-STORM)
+- **Automated evaluation** with simulated users
+
+Built on the R AI ecosystem:
+
+- [ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration:
+  tool calling, structured output, streaming
+- [ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking,
+  embedding, semantic retrieval
+- [dsprrr](https://github.com/JamesHWade/dsprrr) — structured
+  extraction/generation modules
+- [shinychat](https://github.com/posit-dev/shinychat) — interactive chat
+  UI
+- [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
 
 ## Installation
 
@@ -66,15 +71,19 @@ cfg <- tempest_config(
 )
 ```
 
-Provider-specific API keys for alternative search: - Wikipedia: no API
-key required (fallback when native not available) - You.com: set
-`YDC_API_KEY` - Bing: set `BING_SEARCH_API_KEY` - Serper: set
-`SERPER_API_KEY` - Brave: set `BRAVE_API_KEY` - DuckDuckGo: no API key
-required - Tavily: set `TAVILY_API_KEY` - SearXNG: set
-`SEARXNG_API_URL`; optionally set `SEARXNG_API_KEY` - Google Custom
-Search: set `GOOGLE_SEARCH_API_KEY` and `GOOGLE_CSE_ID` - Azure AI
-Search: set `AZURE_AI_SEARCH_API_KEY`, `AZURE_AI_SEARCH_ENDPOINT`, and
-`AZURE_AI_SEARCH_INDEX_NAME`
+Provider-specific API keys for alternative search:
+
+- Wikipedia: no API key required (fallback when native not available)
+- You.com: set `YDC_API_KEY`
+- Bing: set `BING_SEARCH_API_KEY`
+- Serper: set `SERPER_API_KEY`
+- Brave: set `BRAVE_API_KEY`
+- DuckDuckGo: no API key required
+- Tavily: set `TAVILY_API_KEY`
+- SearXNG: set `SEARXNG_API_URL`; optionally set `SEARXNG_API_KEY`
+- Google Custom Search: set `GOOGLE_SEARCH_API_KEY` and `GOOGLE_CSE_ID`
+- Azure AI Search: set `AZURE_AI_SEARCH_API_KEY`,
+  `AZURE_AI_SEARCH_ENDPOINT`, and `AZURE_AI_SEARCH_INDEX_NAME`
 
 ## Reusable deliverables
 
@@ -326,6 +335,12 @@ These Agent Skills are distinct from
 which defines a serializable procedure assigned to an expert inside a
 Tempest workflow.
 
+Read
+[`vignette("agent-skills", package = "tempest")`](https://jameshwade.github.io/tempest/articles/agent-skills.md)
+to choose among the five skills, install them for an agent, or expose
+portable STORM research through an ellmer client and shinychat
+application.
+
 ## Scripted STORM
 
 ``` r
@@ -505,11 +520,12 @@ cfg <- tempest_config(
 res <- tempest_run("Quantum computing applications", config = cfg)
 ```
 
-When `embed_fn` is provided, tempest automatically: - Chunks fetched web
-content using
-[`ragnar::markdown_chunk()`](https://ragnar.tidyverse.org/reference/markdown_chunk.html) -
-Stores chunks with metadata (source_id, url, title, perspective) -
-Registers a semantic retrieve tool with chat agents
+When `embed_fn` is provided, tempest automatically:
+
+- Chunks fetched web content using
+  [`ragnar::markdown_chunk()`](https://ragnar.tidyverse.org/reference/markdown_chunk.html)
+- Stores chunks with metadata (source_id, url, title, perspective)
+- Registers a semantic retrieve tool with chat agents
 
 You can also provide a pre-built ragnar store:
 
@@ -702,8 +718,11 @@ The app provides:
 - **Facts tab**: Extracted facts with citations and confidence
 - **Report tab**: Rendered markdown report with footnotes
 
-Features: - Configurable number of experts and optional warmup phase -
-Report style selection (technical or executive) - Dark mode toggle
+Features:
+
+- Configurable number of experts and optional warmup phase
+- Report style selection (technical or executive)
+- Dark mode toggle
 
 The app currently depends on the shinychat development version that
 provides `chat_server()`, pinned in `DESCRIPTION`.

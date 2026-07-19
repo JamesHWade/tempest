@@ -20,3 +20,13 @@ Define application-neutral workflows, experts, permissions, and outputs.
 
   Turn an application objective into a validated, approval-gated
   artifact with selected experts and scoped runtime capabilities.
+
+### Add Tempest to an agent
+
+Install Agent Skills or make portable STORM research callable from chat.
+
+- [Use Tempest Agent
+  Skills](https://jameshwade.github.io/tempest/articles/agent-skills.md):
+
+  Choose and install Tempest’s five Agent Skills, or make portable STORM
+  research callable from an ellmer and shinychat application.

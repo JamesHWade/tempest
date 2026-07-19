@@ -37,6 +37,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+    <li><a class="dropdown-item" href="articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -59,8 +60,42 @@
 <!-- badges: start -->
 
 <p>An R-native implementation of <a href="https://storm.genie.stanford.edu/" class="external-link">STORM</a> (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and <a href="https://co-storm.genie.stanford.edu/" class="external-link">Co-STORM</a> from Stanford’s STORM project.</p>
-<p>This package reproduces the core workflow primitives: - <strong>Multi-perspective research</strong> with selected or automatically generated expert profiles - <strong>Evidence tracking</strong> with citations and source attribution - <strong>Reusable objectives and deliverables</strong> with versioned output contracts, validation, typed artifacts, and runtime operation adapters - <strong>Two-step outline refinement</strong> and <strong>lead section generation</strong> - <strong>Query decomposition</strong> and <strong>semantic fact retrieval</strong> - <strong>Parallel research</strong> across perspectives (optional) - <strong>Interactive multi-agent moderation</strong> with mind map (Co-STORM) - <strong>LLM-driven discourse management</strong> with dynamic expert roster (Co-STORM) - <strong>Automated evaluation</strong> with simulated users</p>
-<p>Built on the R AI ecosystem: - <a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> — LLM orchestration: tool calling, structured output, streaming - <a href="https://github.com/tidyverse/ragnar" class="external-link">ragnar</a> — RAG: chunking, embedding, semantic retrieval - <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> — structured extraction/generation modules - <a href="https://github.com/posit-dev/shinychat" class="external-link">shinychat</a> — interactive chat UI - <a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a> — evaluation tasks</p>
+<p>This package reproduces the core workflow primitives:</p>
+<ul>
+<li>
+<strong>Multi-perspective research</strong> with selected or automatically generated expert profiles</li>
+<li>
+<strong>Evidence tracking</strong> with citations and source attribution</li>
+<li>
+<strong>Reusable objectives and deliverables</strong> with versioned output contracts, validation, typed artifacts, and runtime operation adapters</li>
+<li>
+<strong>Two-step outline refinement</strong> and <strong>lead section generation</strong>
+</li>
+<li>
+<strong>Query decomposition</strong> and <strong>semantic fact retrieval</strong>
+</li>
+<li>
+<strong>Parallel research</strong> across perspectives (optional)</li>
+<li>
+<strong>Interactive multi-agent moderation</strong> with mind map (Co-STORM)</li>
+<li>
+<strong>LLM-driven discourse management</strong> with dynamic expert roster (Co-STORM)</li>
+<li>
+<strong>Automated evaluation</strong> with simulated users</li>
+</ul>
+<p>Built on the R AI ecosystem:</p>
+<ul>
+<li>
+<a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> — LLM orchestration: tool calling, structured output, streaming</li>
+<li>
+<a href="https://github.com/tidyverse/ragnar" class="external-link">ragnar</a> — RAG: chunking, embedding, semantic retrieval</li>
+<li>
+<a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> — structured extraction/generation modules</li>
+<li>
+<a href="https://github.com/posit-dev/shinychat" class="external-link">shinychat</a> — interactive chat UI</li>
+<li>
+<a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a> — evaluation tasks</li>
+</ul>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -88,7 +123,27 @@
 <code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
 <span>  search_provider <span class="op">=</span> <span class="st">"wikipedia"</span>  <span class="co"># or "you", "bing", "serper", "brave", "duckduckgo", "tavily", "searxng", "google", "azure_ai_search"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Provider-specific API keys for alternative search: - Wikipedia: no API key required (fallback when native not available) - You.com: set <code>YDC_API_KEY</code> - Bing: set <code>BING_SEARCH_API_KEY</code> - Serper: set <code>SERPER_API_KEY</code> - Brave: set <code>BRAVE_API_KEY</code> - DuckDuckGo: no API key required - Tavily: set <code>TAVILY_API_KEY</code> - SearXNG: set <code>SEARXNG_API_URL</code>; optionally set <code>SEARXNG_API_KEY</code> - Google Custom Search: set <code>GOOGLE_SEARCH_API_KEY</code> and <code>GOOGLE_CSE_ID</code> - Azure AI Search: set <code>AZURE_AI_SEARCH_API_KEY</code>, <code>AZURE_AI_SEARCH_ENDPOINT</code>, and <code>AZURE_AI_SEARCH_INDEX_NAME</code></p>
+<p>Provider-specific API keys for alternative search:</p>
+<ul>
+<li>Wikipedia: no API key required (fallback when native not available)</li>
+<li>You.com: set <code>YDC_API_KEY</code>
+</li>
+<li>Bing: set <code>BING_SEARCH_API_KEY</code>
+</li>
+<li>Serper: set <code>SERPER_API_KEY</code>
+</li>
+<li>Brave: set <code>BRAVE_API_KEY</code>
+</li>
+<li>DuckDuckGo: no API key required</li>
+<li>Tavily: set <code>TAVILY_API_KEY</code>
+</li>
+<li>SearXNG: set <code>SEARXNG_API_URL</code>; optionally set <code>SEARXNG_API_KEY</code>
+</li>
+<li>Google Custom Search: set <code>GOOGLE_SEARCH_API_KEY</code> and <code>GOOGLE_CSE_ID</code>
+</li>
+<li>Azure AI Search: set <code>AZURE_AI_SEARCH_API_KEY</code>, <code>AZURE_AI_SEARCH_ENDPOINT</code>, and <code>AZURE_AI_SEARCH_INDEX_NAME</code>
+</li>
+</ul>
 </div>
 </div>
 <div class="section level2">
@@ -264,6 +319,7 @@
 <span><span class="op">)</span></span></code></pre></div>
 <p>Existing copies are preserved unless <code>overwrite = TRUE</code>. A compatible skill loader can also discover the bundled skills from an attached Tempest package and expose <code>conduct-storm-research</code> inside a tool-capable chat application. The host must still provide retrieval, evidence, state, and output tools.</p>
 <p>These Agent Skills are distinct from <code><a href="reference/tempest_skill.html">tempest_skill()</a></code>, which defines a serializable procedure assigned to an expert inside a Tempest workflow.</p>
+<p>Read <code><a href="articles/agent-skills.html">vignette("agent-skills", package = "tempest")</a></code> to choose among the five skills, install them for an agent, or expose portable STORM research through an ellmer client and shinychat application.</p>
 </div>
 <div class="section level2">
 <h2 id="scripted-storm">Scripted STORM<a class="anchor" aria-label="anchor" href="#scripted-storm"></a>
@@ -495,7 +551,13 @@
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span><span class="st">"Quantum computing applications"</span>, config <span class="op">=</span> <span class="va">cfg</span><span class="op">)</span></span></code></pre></div>
-<p>When <code>embed_fn</code> is provided, tempest automatically: - Chunks fetched web content using <code><a href="https://ragnar.tidyverse.org/reference/markdown_chunk.html" class="external-link">ragnar::markdown_chunk()</a></code> - Stores chunks with metadata (source_id, url, title, perspective) - Registers a semantic retrieve tool with chat agents</p>
+<p>When <code>embed_fn</code> is provided, tempest automatically:</p>
+<ul>
+<li>Chunks fetched web content using <code><a href="https://ragnar.tidyverse.org/reference/markdown_chunk.html" class="external-link">ragnar::markdown_chunk()</a></code>
+</li>
+<li>Stores chunks with metadata (source_id, url, title, perspective)</li>
+<li>Registers a semantic retrieve tool with chat agents</li>
+</ul>
 <p>You can also provide a pre-built ragnar store:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_create_ragnar_store.html">tempest_create_ragnar_store</a></span><span class="op">(</span></span>
@@ -641,7 +703,12 @@
 <li>
 <strong>Report tab</strong>: Rendered markdown report with footnotes</li>
 </ul>
-<p>Features: - Configurable number of experts and optional warmup phase - Report style selection (technical or executive) - Dark mode toggle</p>
+<p>Features:</p>
+<ul>
+<li>Configurable number of experts and optional warmup phase</li>
+<li>Report style selection (technical or executive)</li>
+<li>Dark mode toggle</li>
+</ul>
 <p>The app currently depends on the shinychat development version that provides <code>chat_server()</code>, pinned in <code>DESCRIPTION</code>.</p>
 </div>
 </div>

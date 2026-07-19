@@ -1,0 +1,292 @@
+# Use Tempest Agent Skills
+
+Tempest ships Agent Skills alongside its R APIs. Each skill is a
+portable directory containing a `SKILL.md` file, supporting references,
+and agent metadata. A compatible agent can load those instructions when
+it needs to operate Tempest, conduct STORM research in another
+framework, or build a custom workflow.
+
+This article covers two deployment shapes:
+
+1.  install the skills for a coding or research agent; or
+2.  let an ellmer client load a skill at runtime inside shinychat.
+
+The second shape makes a skill callable, but the skill remains
+instructions. The host application must still provide the tools,
+authorization, state, and lifecycle needed to perform the research.
+
+## Agent Skills and workflow skills are different
+
+Tempest has two concepts with similar names:
+
+| Concept | Created by | Purpose |
+|----|----|----|
+| Agent Skill | [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md) or [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md) | Teaches an external agent how to use or extend Tempest |
+| Workflow skill | [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md) | Defines a serializable procedure assigned to a Tempest expert |
+
+An Agent Skill can teach a coding agent to construct an entire workflow.
+A workflow skill is one durable part of the expert profile inside that
+workflow. They are complementary, but they are not interchangeable.
+
+## Choose among the five skills
+
+Use the smallest skill that matches the task:
+
+| Skill | Use it when the agent should |
+|----|----|
+| `use-tempest-research` | Choose, configure, run, resume, inspect, or embed Tempest’s built-in STORM and Co-STORM workflows |
+| `conduct-storm-research` | Follow a provider- and framework-neutral STORM or Co-STORM protocol outside Tempest |
+| `design-tempest-workflow` | Define a custom workflow’s contracts, graph, permissions, approvals, and acceptance tests |
+| `build-tempest-workflow` | Turn an approved design into public Tempest API calls and deterministic tests |
+| `verify-tempest-workflow` | Audit runtime behavior, artifacts, approvals, failures, cancellation, and restore integrity |
+
+The custom workflow skills form a sequence: design first, build against
+the approved design, and verify the finished implementation. The two
+research skills describe complete operating modes and can be used
+independently.
+
+## Discover and install the skills
+
+List the skill directories bundled with the installed package:
+
+``` r
+
+library(tempest)
+
+skills <- tempest_agent_skills()
+names(skills)
+#> [1] "build-tempest-workflow"  "conduct-storm-research" 
+#> [3] "design-tempest-workflow" "use-tempest-research"   
+#> [5] "verify-tempest-workflow"
+```
+
+Install every skill into a directory supported by the agent:
+
+``` r
+
+tempest_install_agent_skills("~/.codex/skills")
+```
+
+Or install a selected character vector:
+
+``` r
+
+tempest_install_agent_skills(
+  "~/.codex/skills",
+  skills = c("use-tempest-research", "conduct-storm-research")
+)
+```
+
+Existing skill directories are preserved by default. Set
+`overwrite = TRUE` only when the installed copy should be replaced by
+the version bundled with the current Tempest package.
+
+After installation, ask the agent to load the relevant skill by name. A
+useful request names the desired outcome rather than restating the
+procedure:
+
+> Load `use-tempest-research` and help me configure a resumable STORM
+> report.
+
+> Load `design-tempest-workflow` and produce a design packet for an
+> approval-gated evidence brief.
+
+## Let an ellmer client discover Tempest skills
+
+The [btw skill
+tool](https://posit-dev.github.io/btw/reference/btw_tool_skill.html)
+discovers skills bundled in attached R packages. Attach Tempest before
+registering the `"skills"` tool group so the resolved skill paths
+include `tempest`:
+
+``` r
+
+library(tempest)
+library(ellmer)
+library(btw)
+
+client <- ellmer::chat(
+  "openai/gpt-5.4",
+  system_prompt = paste(
+    "Load conduct-storm-research for deep research requests.",
+    "Follow the loaded protocol and use only the registered research tools."
+  )
+)
+
+client$register_tools(btw::btw_tools("skills"))
+```
+
+Use a `btw` release that provides the `"skills"` tool group. Skills are
+resolved when the tools are registered, so create a new client after
+changing skill paths or attached packages.
+
+Registering only the skill tool lets the model read the instructions and
+references. It does not provide search, evidence storage, report
+publication, or persistent Co-STORM state.
+
+## Make portable research callable in shinychat
+
+`conduct-storm-research` is the right boundary when a shinychat
+application should offer STORM research without depending on Tempest’s
+workflow APIs. The outer ellmer client loads the protocol, then uses
+narrow tools supplied by the host application.
+
+At minimum, the host tool set should cover:
+
+| Capability                                      | Batch STORM |    Co-STORM |
+|-------------------------------------------------|------------:|------------:|
+| Search approved sources                         |    Required |    Required |
+| Read full source content                        |    Required |    Required |
+| Save stable source and claim records            |    Required |    Required |
+| Publish a report artifact                       |    Required |    Required |
+| Persist checkpoints                             | Recommended |    Required |
+| Preserve expert, transcript, and mind-map state |          No |    Required |
+| Report progress and cancel work                 | Recommended | Recommended |
+
+Do not substitute search snippets for full-source reading or the model’s
+conversation window for durable Co-STORM state.
+
+### Single-user prototype
+
+For a local, single-user prototype, attach Tempest, create an ellmer
+client, register the skill loader and host tools, and pass the client to
+[`chat_app()`](https://posit-dev.github.io/shinychat/r/reference/chat_app.html):
+
+``` r
+
+library(tempest)
+library(ellmer)
+library(btw)
+library(shinychat)
+
+client <- ellmer::chat(
+  "openai/gpt-5.4",
+  system_prompt = paste(
+    "A portable STORM skill is available.",
+    "Load conduct-storm-research for deep research requests.",
+    "Default to batch mode unless the user asks for collaborative research.",
+    "Use only the registered research and evidence tools."
+  )
+)
+
+host_tools <- research_tools_for_session()
+
+client$register_tools(c(
+  btw::btw_tools("skills"),
+  host_tools
+))
+
+shinychat::chat_app(client)
+```
+
+`research_tools_for_session()` is an application-owned constructor, not
+a Tempest function. It should return fresh
+[`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
+definitions for approved search, full-source reading, evidence writes,
+artifact publication, progress, cancellation, and any persistent state
+required by the selected mode. Keep credentials and authenticated
+clients inside the tool closures; never return them to the model or save
+them in a checkpoint.
+
+The [`btw_tools()`
+reference](https://posit-dev.github.io/btw/reference/btw_tools.html)
+describes tool-group registration. The [ellmer tool-calling
+guide](https://ellmer.tidyverse.org/articles/tool-calling.html) covers
+typed arguments, tool results, and the automatic tool loop.
+
+### Multi-user shinychat application
+
+[`chat_app()`](https://posit-dev.github.io/shinychat/r/reference/chat_app.html)
+mutates one client and is intended for a single user. In a multi-user
+Shiny application, create the ellmer client and host tool state inside
+the server function, then use
+[`chat_mod_server()`](https://posit-dev.github.io/shinychat/r/reference/chat_app.html):
+
+``` r
+
+library(tempest)
+library(shiny)
+library(bslib)
+library(ellmer)
+library(btw)
+library(shinychat)
+
+ui <- bslib::page_fillable(
+  bslib::card(
+    full_screen = TRUE,
+    shinychat::chat_mod_ui("research")
+  )
+)
+
+server <- function(input, output, session) {
+  client <- ellmer::chat(
+    "openai/gpt-5.4",
+    system_prompt = paste(
+      "Load conduct-storm-research for deep research requests.",
+      "Use only the registered research and evidence tools."
+    )
+  )
+
+  client$register_tools(c(
+    btw::btw_tools("skills"),
+    research_tools_for_session(session)
+  ))
+
+  shinychat::chat_mod_server(
+    "research",
+    client,
+    greeting = paste(
+      "Ask me for a multi-perspective research report.",
+      "I will show tool calls and preserve cited evidence."
+    )
+  )
+}
+
+shiny::shinyApp(ui, server)
+```
+
+The [shinychat module
+reference](https://posit-dev.github.io/shinychat/r/reference/chat_app.html)
+documents the single-user and multi-user distinction. The per-session
+constructor is essential: sharing the mutable ellmer client, evidence
+ledger, or tool closures across sessions can mix users’ conversations
+and data.
+
+Run long research outside the reactive main path, connect the UI’s stop
+action to the active research boundary, and keep safe partial evidence
+when work is cancelled. Return a concise tool result to the transcript
+and expose the full report, sources, claims, and checkpoint through
+appropriate Shiny UI or downloads.
+
+## Choose dynamic loading or one research tool
+
+Dynamic loading gives the outer model access to the skill and the
+underlying research tools. It is flexible and transparent, but the outer
+model must select and follow the protocol.
+
+For a tighter application boundary, wrap the protocol and tools in a
+dedicated research agent, then register that agent as one outer tool
+such as `research_topic(topic, mode, constraints)`. This shape is useful
+when the host needs fixed budgets, simpler authorization, or a compact
+tool result. The outer chat should receive a structured status, report,
+evidence summary, and checkpoint identifier rather than only prose.
+
+Whichever shape you choose, keep the research state separate from the
+outer chat history.
+
+## Verify the integration
+
+Use deterministic local search and evidence tools before enabling live
+providers. Exercise:
+
+- discovery and loading of `conduct-storm-research`;
+- a complete batch research request;
+- refusal of Co-STORM when persistent state is unavailable;
+- missing, weak, and conflicting evidence;
+- per-session isolation;
+- cancellation and partial checkpoint behavior;
+- rich tool-call display and a plain-text fallback; and
+- absence of credentials or live clients in saved state.
+
+The integration is ready when the same evidence and artifact contracts
+survive success, failure, cancellation, and restore.
