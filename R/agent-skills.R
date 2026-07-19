@@ -13,10 +13,11 @@ tempest_agent_skill_abort <- function(message, ..., parent = NULL) {
 #' Discover and install bundled Agent Skills
 #'
 #' `tempest_agent_skills()` lists the portable Agent Skill directories shipped
-#' with Tempest. These `SKILL.md` bundles guide a coding agent through designing,
-#' building, and verifying a custom Tempest workflow. They are distinct from
-#' [tempest_skill()], which creates a serializable procedure assigned to a
-#' Tempest expert inside a workflow.
+#' with Tempest. These `SKILL.md` bundles guide agents through using the
+#' built-in research workflows, conducting the portable STORM protocol, and
+#' designing, building, or verifying a custom Tempest workflow. They are
+#' distinct from [tempest_skill()], which creates a serializable procedure
+#' assigned to a Tempest expert inside a workflow.
 #'
 #' @return `tempest_agent_skills()` returns a named character vector of bundled
 #'   skill directories.

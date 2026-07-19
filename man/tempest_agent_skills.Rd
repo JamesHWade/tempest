@@ -29,10 +29,11 @@ vector of installed skill directories.
 }
 \description{
 \code{tempest_agent_skills()} lists the portable Agent Skill directories shipped
-with Tempest. These \code{SKILL.md} bundles guide a coding agent through designing,
-building, and verifying a custom Tempest workflow. They are distinct from
-\code{\link[=tempest_skill]{tempest_skill()}}, which creates a serializable procedure assigned to a
-Tempest expert inside a workflow.
+with Tempest. These \code{SKILL.md} bundles guide agents through using the
+built-in research workflows, conducting the portable STORM protocol, and
+designing, building, or verifying a custom Tempest workflow. They are
+distinct from \code{\link[=tempest_skill]{tempest_skill()}}, which creates a serializable procedure
+assigned to a Tempest expert inside a workflow.
 }
 \examples{
 tempest_agent_skills()

@@ -5,7 +5,7 @@
     Condition
       Error in `tempest_agent_skill_abort()`:
       ! Unknown bundled Agent Skill: "missing-skill".
-      i Available skills: "build-tempest-workflow", "design-tempest-workflow", and "verify-tempest-workflow".
+      i Available skills: "build-tempest-workflow", "conduct-storm-research", "design-tempest-workflow", "use-tempest-research", and "verify-tempest-workflow".
 
 ---
 

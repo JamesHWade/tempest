@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use Tempest Research"
+  short_description: "Run and embed Tempest STORM and Co-STORM"
+  default_prompt: "Use $use-tempest-research to choose and run the right Tempest research workflow."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conduct STORM Research"
+  short_description: "Conduct portable multi-perspective research"
+  default_prompt: "Use $conduct-storm-research to research this topic with a portable STORM-style workflow."
