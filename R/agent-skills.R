@@ -106,7 +106,7 @@ tempest_install_agent_skills <- function(
     )
   }
   targets <- file.path(destination, skills)
-  existing <- file.exists(targets) | dir.exists(targets)
+  existing <- file.exists(targets)
   if (any(existing) && !overwrite) {
     existing_skill <- skills[[which(existing)[[1]]]]
     tempest_agent_skill_abort(c(
@@ -153,9 +153,9 @@ tempest_install_agent_skills <- function(
   for (skill in skills) {
     target <- file.path(destination, skill)
     staged <- file.path(staging, skill)
-    if (file.exists(target) || dir.exists(target)) {
+    if (file.exists(target)) {
       unlink(target, recursive = TRUE, force = TRUE)
-      if (file.exists(target) || dir.exists(target)) {
+      if (file.exists(target)) {
         tempest_agent_skill_abort(
           "Could not replace existing Agent Skill: {.path {target}}."
         )

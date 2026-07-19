@@ -286,13 +286,18 @@ tempest_agent_skills()
 
 # Install all five for user-level Codex sessions.
 tempest_install_agent_skills("~/.codex/skills")
+
+# Or install a selected character vector of skills.
+tempest_install_agent_skills(
+  "~/.codex/skills",
+  skills = c("use-tempest-research", "conduct-storm-research")
+)
 ```
 
-Pass `skills = ` to install a subset. Existing copies are preserved unless
-`overwrite = TRUE`. A compatible skill loader can also discover the bundled
-skills from an attached Tempest package and expose
-`conduct-storm-research` inside a tool-capable chat application. The host must
-still provide retrieval, evidence, state, and output tools.
+Existing copies are preserved unless `overwrite = TRUE`. A compatible skill
+loader can also discover the bundled skills from an attached Tempest package
+and expose `conduct-storm-research` inside a tool-capable chat application.
+The host must still provide retrieval, evidence, state, and output tools.
 
 These Agent Skills are distinct from `tempest_skill()`, which defines a
 serializable procedure assigned to an expert inside a Tempest workflow.
