@@ -8,6 +8,7 @@
 An R-native implementation of [STORM](https://storm.genie.stanford.edu/) (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and [Co-STORM](https://co-storm.genie.stanford.edu/) from Stanford's STORM project.
 
 This package reproduces the core workflow primitives:
+
 - **Multi-perspective research** with selected or automatically generated
   expert profiles
 - **Evidence tracking** with citations and source attribution
@@ -21,6 +22,7 @@ This package reproduces the core workflow primitives:
 - **Automated evaluation** with simulated users
 
 Built on the R AI ecosystem:
+
 - [ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration: tool calling, structured output, streaming
 - [ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking, embedding, semantic retrieval
 - [dsprrr](https://github.com/JamesHWade/dsprrr) — structured extraction/generation modules
@@ -60,6 +62,7 @@ cfg <- tempest_config(
 ```
 
 Provider-specific API keys for alternative search:
+
 - Wikipedia: no API key required (fallback when native not available)
 - You.com: set `YDC_API_KEY`
 - Bing: set `BING_SEARCH_API_KEY`
@@ -302,6 +305,10 @@ The host must still provide retrieval, evidence, state, and output tools.
 These Agent Skills are distinct from `tempest_skill()`, which defines a
 serializable procedure assigned to an expert inside a Tempest workflow.
 
+Read `vignette("agent-skills", package = "tempest")` to choose among the five
+skills, install them for an agent, or expose portable STORM research through
+an ellmer client and shinychat application.
+
 ## Scripted STORM
 
 ```r
@@ -458,6 +465,7 @@ res <- tempest_run("Quantum computing applications", config = cfg)
 ```
 
 When `embed_fn` is provided, tempest automatically:
+
 - Chunks fetched web content using `ragnar::markdown_chunk()`
 - Stores chunks with metadata (source_id, url, title, perspective)
 - Registers a semantic retrieve tool with chat agents
@@ -624,6 +632,7 @@ The app provides:
 - **Report tab**: Rendered markdown report with footnotes
 
 Features:
+
 - Configurable number of experts and optional warmup phase
 - Report style selection (technical or executive)
 - Dark mode toggle
