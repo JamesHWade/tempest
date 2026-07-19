@@ -3,6 +3,18 @@
 # verification stage) without network or API keys, for progress-event tests.
 
 storm_progress_fixture <- function() {
+  testthat::local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8L) {
+      tibble::tibble(
+        title = character(),
+        url = character(),
+        snippet = character()
+      )
+    },
+    tempest_extract_toc_from_url = function(url) character(),
+    tempest_wiki_page_sections = function(title) character(),
+    .env = parent.frame()
+  )
   source <- fake_source(
     url = "https://example.org/progress",
     title = "Progress source",
@@ -34,6 +46,7 @@ storm_progress_fixture <- function() {
   }
   cfg <- tempest_config(
     citation_policy = "claim_verified",
+    cache_enabled = FALSE,
     chat_fn = function(role, model, system_prompt, echo) {
       if (
         identical(role, "writer") &&

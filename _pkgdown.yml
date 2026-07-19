@@ -13,6 +13,9 @@ articles:
   contents:
   - reusable-workflows
 reference:
+- title: Agent integrations
+  contents:
+  - tempest_agent_skills
 - title: Core workflows
   contents:
   - tempest_run
