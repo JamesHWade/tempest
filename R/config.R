@@ -848,12 +848,13 @@ tempest_make_chat <- function(
       )
     } else if (!is.null(config@chat)) {
       client_prompt <- config@chat$get_system_prompt()
-      chat <- config@chat$clone()
-      chat$set_system_prompt(c(
+      chat <- config@chat$clone(deep = TRUE)
+      combined_prompt <- c(
         system_prompt,
-        if (!is.null(client_prompt)) "---",
-        client_prompt
-      ))
+        if (!is.null(client_prompt)) c("---", client_prompt)
+      ) |>
+        paste(collapse = "\n\n")
+      chat$set_system_prompt(combined_prompt)
       chat
     } else {
       tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")

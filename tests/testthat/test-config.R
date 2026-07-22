@@ -149,19 +149,31 @@ test_that("tempest_config uses a provider/model from tempest.chat", {
 })
 
 test_that("tempest_config captures and clones a Chat from tempest.chat", {
+  ChatState <- R6::R6Class(
+    "ChatState",
+    public = list(
+      values = NULL,
+      initialize = function() {
+        self$values <- character()
+      }
+    )
+  )
   MockChat <- R6::R6Class(
     "Chat",
     public = list(
       model = NULL,
       system_prompt = NULL,
+      state = NULL,
       initialize = function(model, system_prompt) {
         self$model <- model
         self$system_prompt <- system_prompt
+        self$state <- ChatState$new()
       },
       get_model = function() self$model,
       get_system_prompt = function() self$system_prompt,
       set_system_prompt = function(value) {
-        self$system_prompt <- paste(value, collapse = "\n\n")
+        checkmate::assert_string(value)
+        self$system_prompt <- value
         invisible(self)
       }
     )
@@ -183,6 +195,10 @@ test_that("tempest_config captures and clones a Chat from tempest.chat", {
   )
   expect_equal(second$get_system_prompt(), "Write.\n\n---\n\nUse terse prose.")
   expect_equal(default_chat$get_system_prompt(), "Use terse prose.")
+  expect_identical(identical(first$state, second$state), FALSE)
+  first$state$values <- "first"
+  expect_length(second$state$values, 0L)
+  expect_length(default_chat$state$values, 0L)
 })
 
 test_that("explicit chat configuration overrides tempest.chat", {
