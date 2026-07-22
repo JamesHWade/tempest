@@ -148,6 +148,18 @@ tempest_config(
 
 A `TempestConfig` S7 object.
 
+## Default chat
+
+When both `models` and `chat_fn` are `NULL`, `tempest_config()` consults
+the `tempest.chat` R option. Set it to a provider/model string accepted
+by
+[`ellmer::chat()`](https://ellmer.tidyverse.org/reference/chat-any.html)
+or an ellmer `Chat` object. String values are used for every role. Chat
+objects are cloned for every role, retain their provider settings and
+system instructions, and receive the appropriate Tempest role prompt.
+Explicit `models` and `chat_fn` arguments take precedence over the
+option.
+
 ## Examples
 
 ``` r

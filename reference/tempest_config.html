@@ -189,6 +189,17 @@ unsupported assertion; <code>revise</code> replaces it with a revision notice.</
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>TempestConfig</code> S7 object.</p>
     </div>
+    <div class="section level2">
+    <h2 id="default-chat">Default chat<a class="anchor" aria-label="anchor" href="#default-chat"></a></h2>
+
+
+<p>When both <code>models</code> and <code>chat_fn</code> are <code>NULL</code>, <code>tempest_config()</code> consults the
+<code>tempest.chat</code> R option. Set it to a provider/model string accepted by
+<code><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">ellmer::chat()</a></code> or an ellmer <code>Chat</code> object. String values are used for every
+role. Chat objects are cloned for every role, retain their provider settings
+and system instructions, and receive the appropriate Tempest role prompt.
+Explicit <code>models</code> and <code>chat_fn</code> arguments take precedence over the option.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

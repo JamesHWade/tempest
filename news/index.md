@@ -55,6 +55,11 @@
   now validates scalar model, logical, search, source, expert, query,
   and retrieval budgets immediately with classed errors, and provider
   tools cannot exceed configured search limits (y2kw).
+- [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+  now honors the `tempest.chat` R option for a default provider/model
+  string or cloneable ellmer Chat; explicit `models` and `chat_fn`
+  arguments still take precedence, and role-specific prompts are
+  preserved (serz).
 - [`tempest_create_ragnar_store()`](https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.md)
   preserves and validates compatible persistent stores by default;
   destructive replacement now requires `reset = TRUE` (yb8s).

@@ -475,7 +475,7 @@ res <- tempest_run(
 )
 ```
 
-### Configuration Options
+### Configuration options
 
 [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
 accepts the following parameters:
@@ -502,6 +502,29 @@ accepts the following parameters:
 
 By default, coordinator and writer roles use `openai/gpt-5.4`; expert,
 mind map, and judge roles use `openai/gpt-5.4-mini`.
+
+To set a personal default model, add the `tempest.chat` option to your
+`.Rprofile`, using the same provider/model format as
+[`ellmer::chat()`](https://ellmer.tidyverse.org/reference/chat-any.html):
+
+``` r
+
+options(tempest.chat = "anthropic/claude-sonnet-4-20250514")
+```
+
+You can also supply a configured ellmer Chat object:
+
+``` r
+
+options(
+  tempest.chat = ellmer::chat_ollama(model = "qwen3.5:9b")
+)
+```
+
+Tempest clones a configured Chat for each role, prepends its
+role-specific system prompt, and retains the Chat’s provider settings
+and existing system instructions. Explicit `models` and `chat_fn`
+arguments take precedence over the option.
 
 ## RAG with ragnar
 
@@ -538,7 +561,7 @@ store <- tempest_create_ragnar_store(
 cfg <- tempest_config(ragnar_store = store)
 ```
 
-## Custom Chat Functions
+## Custom chat functions
 
 Use custom LLM providers (e.g., internal APIs) with the `chat_fn`
 parameter:

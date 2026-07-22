@@ -55,6 +55,8 @@
 <li>
 <code><a href="../reference/tempest_config.html">tempest_config()</a></code> now validates scalar model, logical, search, source, expert, query, and retrieval budgets immediately with classed errors, and provider tools cannot exceed configured search limits (y2kw).</li>
 <li>
+<code><a href="../reference/tempest_config.html">tempest_config()</a></code> now honors the <code>tempest.chat</code> R option for a default provider/model string or cloneable ellmer Chat; explicit <code>models</code> and <code>chat_fn</code> arguments still take precedence, and role-specific prompts are preserved (serz).</li>
+<li>
 <code><a href="../reference/tempest_create_ragnar_store.html">tempest_create_ragnar_store()</a></code> preserves and validates compatible persistent stores by default; destructive replacement now requires <code>reset = TRUE</code> (yb8s).</li>
 <li>
 <code><a href="../reference/tempest_costorm_workflow_run.html">tempest_costorm_workflow_run()</a></code> and <code><a href="../reference/tempest_storm_workflow_run.html">tempest_storm_workflow_run()</a></code> expose the built-in research workflows as executable <code>TempestRun</code> specifications with shared evidence, typed checkpoints, selected expert teams, scoped connections, and an approval-gated Co-STORM dialogue boundary (vtvt).</li>
