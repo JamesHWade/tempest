@@ -172,7 +172,7 @@ test_that("tempest_config captures and clones a Chat from tempest.chat", {
       get_model = function() self$model,
       get_system_prompt = function() self$system_prompt,
       set_system_prompt = function(value) {
-        checkmate::assert_string(value)
+        stopifnot(is.character(value), length(value) == 1L, !is.na(value))
         self$system_prompt <- value
         invisible(self)
       }
