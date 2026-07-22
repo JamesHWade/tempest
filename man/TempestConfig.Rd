@@ -7,6 +7,7 @@
 TempestConfig(
   models = list(),
   params = list(),
+  chat = NULL,
   chat_fn = function() NULL,
   embed_fn = function() NULL,
   ragnar_store = NULL,

@@ -102,6 +102,16 @@ A \code{TempestConfig} S7 object.
 \description{
 Create a STORM configuration
 }
+\section{Default chat}{
+
+When both \code{models} and \code{chat_fn} are \code{NULL}, \code{tempest_config()} consults the
+\code{tempest.chat} R option. Set it to a provider/model string accepted by
+\code{\link[ellmer:chat]{ellmer::chat()}} or an ellmer \code{Chat} object. String values are used for every
+role. Chat objects are cloned for every role, retain their provider settings
+and system instructions, and receive the appropriate Tempest role prompt.
+Explicit \code{models} and \code{chat_fn} arguments take precedence over the option.
+}
+
 \examples{
 cfg <- tempest_config()
 cfg <- tempest_config(search_provider = "wikipedia")

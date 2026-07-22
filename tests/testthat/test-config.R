@@ -17,6 +17,7 @@ test_that("tempest_config creates valid config", {
   expect_equal(cfg@cache_ttl, Inf)
   expect_equal(cfg@max_search_queries_per_turn, 3L)
   expect_equal(cfg@retrieve_top_k, 25L)
+  expect_null(cfg@chat)
 })
 
 test_that("tempest_config accepts cache controls", {
@@ -131,6 +132,78 @@ test_that("tempest_config accepts single model string for all roles", {
   expect_equal(cfg@models$coordinator, "anthropic/claude-sonnet-4-20250514")
   expect_equal(cfg@models$writer, "anthropic/claude-sonnet-4-20250514")
   expect_equal(cfg@models$expert, "anthropic/claude-sonnet-4-20250514")
+})
+
+test_that("tempest_config uses a provider/model from tempest.chat", {
+  withr::local_options(
+    tempest.chat = "anthropic/claude-sonnet-4-20250514"
+  )
+
+  cfg <- tempest_config()
+
+  expect_equal(
+    unname(unlist(cfg@models)),
+    rep("anthropic/claude-sonnet-4-20250514", 5L)
+  )
+  expect_null(cfg@chat)
+})
+
+test_that("tempest_config captures and clones a Chat from tempest.chat", {
+  MockChat <- R6::R6Class(
+    "Chat",
+    public = list(
+      model = NULL,
+      system_prompt = NULL,
+      initialize = function(model, system_prompt) {
+        self$model <- model
+        self$system_prompt <- system_prompt
+      },
+      get_model = function() self$model,
+      get_system_prompt = function() self$system_prompt,
+      set_system_prompt = function(value) {
+        self$system_prompt <- paste(value, collapse = "\n\n")
+        invisible(self)
+      }
+    )
+  )
+  default_chat <- MockChat$new("claude-sonnet-4", "Use terse prose.")
+  withr::local_options(tempest.chat = default_chat)
+
+  cfg <- tempest_config()
+  first <- tempest_make_chat(cfg, "coordinator", system_prompt = "Coordinate.")
+  second <- tempest_make_chat(cfg, "writer", system_prompt = "Write.")
+
+  expect_equal(cfg@models$coordinator, "claude-sonnet-4")
+  expect_identical(cfg@chat, default_chat)
+  expect_identical(identical(first, default_chat), FALSE)
+  expect_identical(identical(first, second), FALSE)
+  expect_equal(
+    first$get_system_prompt(),
+    "Coordinate.\n\n---\n\nUse terse prose."
+  )
+  expect_equal(second$get_system_prompt(), "Write.\n\n---\n\nUse terse prose.")
+  expect_equal(default_chat$get_system_prompt(), "Use terse prose.")
+})
+
+test_that("explicit chat configuration overrides tempest.chat", {
+  withr::local_options(tempest.chat = 1)
+
+  model_cfg <- tempest_config(models = "openai/gpt-5.4-mini")
+  factory_cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+
+  expect_equal(model_cfg@models$coordinator, "openai/gpt-5.4-mini")
+  expect_null(model_cfg@chat)
+  expect_null(factory_cfg@chat)
+  expect_type(tempest_make_chat(factory_cfg, "coordinator"), "list")
+})
+
+test_that("tempest_config validates tempest.chat", {
+  withr::local_options(tempest.chat = 1)
+
+  expect_snapshot(tempest_config(), error = TRUE)
+  expect_error(tempest_config(), class = "tempest_config_error")
 })
 
 test_that("tempest_config accepts custom chat_fn", {
