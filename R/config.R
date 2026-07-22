@@ -484,6 +484,53 @@ tempest_config_models <- function(models) {
   models
 }
 
+#' @keywords internal
+tempest_config_chat_option <- function(chat) {
+  if (is.null(chat)) {
+    return(list(chat = NULL, model = NULL))
+  }
+  if (
+    is.character(chat) &&
+      length(chat) == 1L &&
+      !is.na(chat) &&
+      nzchar(chat)
+  ) {
+    return(list(chat = NULL, model = chat))
+  }
+  if (!inherits(chat, "Chat")) {
+    tempest_config_abort(c(
+      "The {.option tempest.chat} option must be an ellmer Chat or a provider/model string.",
+      i = paste0(
+        "For example, use ",
+        "{.code options(tempest.chat = ",
+        "\"anthropic/claude-sonnet-4-20250514\")}."
+      )
+    ))
+  }
+
+  model <- tryCatch(
+    chat$get_model(),
+    error = function(error) {
+      tempest_config_abort(
+        "Failed to read the model from the {.option tempest.chat} Chat.",
+        parent = error
+      )
+    }
+  )
+  if (
+    !is.character(model) ||
+      length(model) != 1L ||
+      is.na(model) ||
+      !nzchar(model)
+  ) {
+    tempest_config_abort(
+      "The {.option tempest.chat} Chat must return a non-empty model string."
+    )
+  }
+
+  list(chat = chat, model = model)
+}
+
 #' TempestConfig (S7)
 #'
 #' Holds configuration for STORM / Co-STORM sessions: LLM models, prompts,
@@ -496,6 +543,7 @@ TempestConfig <- S7::new_class(
   properties = list(
     models = S7::new_property(S7::class_list, default = list()),
     params = S7::new_property(S7::class_list, default = list()),
+    chat = S7::new_property(S7::class_any, default = NULL),
     chat_fn = S7::new_property(S7::class_function | NULL, default = NULL),
     embed_fn = S7::new_property(S7::class_function | NULL, default = NULL),
     ragnar_store = S7::new_property(S7::class_any, default = NULL),
@@ -585,6 +633,13 @@ TempestConfig <- S7::new_class(
 #' @param on_unsupported_claim Action for unsupported claims: one of "flag",
 #'   "drop", "revise", or "keep_with_warning". `drop` removes the complete
 #'   unsupported assertion; `revise` replaces it with a revision notice.
+#' @section Default chat:
+#' When both `models` and `chat_fn` are `NULL`, `tempest_config()` consults the
+#' `tempest.chat` R option. Set it to a provider/model string accepted by
+#' [ellmer::chat()] or an ellmer `Chat` object. String values are used for every
+#' role. Chat objects are cloned for every role, retain their provider settings
+#' and system instructions, and receive the appropriate Tempest role prompt.
+#' Explicit `models` and `chat_fn` arguments take precedence over the option.
 #' @return A `TempestConfig` S7 object.
 #' @examples
 #' cfg <- tempest_config()
@@ -621,7 +676,14 @@ tempest_config <- function(
     mindmap = "openai/gpt-5.4-mini",
     judge = "openai/gpt-5.4-mini"
   )
-  models <- if (is.null(models)) {
+  configured_chat <- if (is.null(models) && is.null(chat_fn)) {
+    tempest_config_chat_option(getOption("tempest.chat"))
+  } else {
+    list(chat = NULL, model = NULL)
+  }
+  models <- if (!is.null(configured_chat$model)) {
+    lapply(default_models, \(model) configured_chat$model)
+  } else if (is.null(models)) {
     default_models
   } else if (is.character(models) && length(models) == 1) {
     lapply(default_models, function(x) models)
@@ -728,6 +790,7 @@ tempest_config <- function(
   TempestConfig(
     models = models,
     params = params %||% list(),
+    chat = configured_chat$chat,
     chat_fn = chat_fn,
     embed_fn = embed_fn,
     ragnar_store = ragnar_store,
@@ -775,60 +838,51 @@ tempest_make_chat <- function(
     }) %||%
       "You are a helpful assistant."
   }
-  if (!is.null(config@chat_fn)) {
-    chat <- tryCatch(
+  chat <- tryCatch(
+    if (!is.null(config@chat_fn)) {
       config@chat_fn(
         role = role,
         model = model,
         system_prompt = system_prompt,
         echo = echo
-      ),
-      error = function(e) {
-        tempest_abort(
-          c(
-            "Failed to create a Tempest chat client.",
-            i = "Role: {.val {role}}.",
-            i = "Model: {.val {model}}."
-          ),
-          class = c(
-            "tempest_chat_error",
-            "tempest_config_error",
-            "tempest_error"
-          ),
-          parent = e,
-          role = role,
-          model = model
-        )
-      }
-    )
-  } else {
-    tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
-    chat <- tryCatch(
+      )
+    } else if (!is.null(config@chat)) {
+      client_prompt <- config@chat$get_system_prompt()
+      chat <- config@chat$clone(deep = TRUE)
+      combined_prompt <- c(
+        system_prompt,
+        if (!is.null(client_prompt)) c("---", client_prompt)
+      ) |>
+        paste(collapse = "\n\n")
+      chat$set_system_prompt(combined_prompt)
+      chat
+    } else {
+      tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
       ellmer::chat(
         name = model,
         system_prompt = system_prompt,
         params = config@params,
         echo = echo
-      ),
-      error = function(e) {
-        tempest_abort(
-          c(
-            "Failed to create a Tempest chat client.",
-            i = "Role: {.val {role}}.",
-            i = "Model: {.val {model}}."
-          ),
-          class = c(
-            "tempest_chat_error",
-            "tempest_config_error",
-            "tempest_error"
-          ),
-          parent = e,
-          role = role,
-          model = model
-        )
-      }
-    )
-  }
+      )
+    },
+    error = function(e) {
+      tempest_abort(
+        c(
+          "Failed to create a Tempest chat client.",
+          i = "Role: {.val {role}}.",
+          i = "Model: {.val {model}}."
+        ),
+        class = c(
+          "tempest_chat_error",
+          "tempest_config_error",
+          "tempest_error"
+        ),
+        parent = e,
+        role = role,
+        model = model
+      )
+    }
+  )
   chat
 }
 
