@@ -12,6 +12,11 @@ articles:
   navbar: ~
   contents:
   - reusable-workflows
+- title: Bring organizational knowledge
+  desc: Read portable knowledge as bounded evidence for Tempest workflows.
+  navbar: ~
+  contents:
+  - open-knowledge-format
 - title: Add Tempest to an agent
   desc: Install Agent Skills or make portable STORM research callable from chat.
   navbar: ~
@@ -57,6 +62,12 @@ reference:
   - tempest_report_md
   - tempest_session_report_md
   - tempest_suggest_questions
+- title: Open knowledge
+  contents:
+  - tempest_read_okf
+  - tempest_okf_concepts
+  - tempest_okf_resources
+  - tempest_okf_context
 - title: Workflow contracts and artifacts
   contents:
   - tempest_objective
