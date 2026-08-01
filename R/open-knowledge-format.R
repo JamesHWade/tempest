@@ -882,6 +882,12 @@ tempest_okf_context <- function(
     truncated <- TRUE
     break
   }
+  text <- sub(
+    paste0("Selected concepts: ", nrow(catalog), " of ", available_count),
+    paste0("Selected concepts: ", length(included), " of ", available_count),
+    text,
+    fixed = TRUE
+  )
   structure(
     text,
     class = c("tempest_okf_context", "character"),

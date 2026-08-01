@@ -43,10 +43,10 @@
 * `tempest_run()` and `tempest_session()` now pass source context into dsprrr claim extraction for provider-native citations, so optimized extraction works for native web-search turns as well as inline `[S...]` citations (c8jk).
 * `tempest_run()` and `tempest_session()` now expose evidence review tools for agents to inspect claims, cited sources, evidence spans, and unsupported claims without requiring write access (my3y).
 * `tempest_run()` and `tempest_session()` now expose claim-oriented `add_claim` and `list_claims` agent tools while keeping `add_fact` and `list_facts` as transitional aliases (msg3).
+* `tempest_okf_concepts()`, `tempest_okf_context()`, `tempest_okf_resources()`, and `tempest_read_okf()` read bounded Open Knowledge Format bundles as typed evidence resources and explicitly untrusted agent context without executing referenced code or granting capabilities.
 * `tempest_optimize_dsprrr_modules()`, `tempest_save_dsprrr_modules()`, and
   `tempest_load_dsprrr_modules()` support explicit dsprrr compilation and
   reuse of optimized STORM module sets.
-* `tempest_okf_concepts()`, `tempest_okf_context()`, `tempest_okf_resources()`, and `tempest_read_okf()` read bounded Open Knowledge Format bundles as typed evidence resources and explicitly untrusted agent context without executing referenced code or granting capabilities.
 * `tempest_progress_event()` and `tempest_progress_event_data()` define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).
 * `tempest_progress_labels()` provides compact host-neutral STORM and Co-STORM progress labels for stage chips and current-step displays (a3rg).
 * `tempest_progress_collector()`, `tempest_progress_filter()`, and `tempest_progress_replay()` provide host-neutral in-memory progress sinks with filtering and replay helpers (wpt9).

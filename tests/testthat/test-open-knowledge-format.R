@@ -137,6 +137,20 @@ test_that("OKF context is bounded and states the trust boundary", {
   )
   expect_lte(nchar(smallest, type = "chars"), 500L)
   expect_identical(attr(smallest, "truncated"), TRUE)
+  expect_lt(
+    length(attr(smallest, "concept_ids")),
+    attr(smallest, "available_count")
+  )
+  expect_match(
+    smallest,
+    paste0(
+      "Selected concepts: ",
+      length(attr(smallest, "concept_ids")),
+      " of ",
+      attr(smallest, "available_count")
+    ),
+    fixed = TRUE
+  )
 })
 
 test_that("OKF conformance failures are classed and bounded", {
