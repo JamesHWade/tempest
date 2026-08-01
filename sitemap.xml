@@ -5,6 +5,7 @@
 <url><loc>https://jameshwade.github.io/tempest/LICENSE.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/articles/agent-skills.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/articles/index.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/articles/open-knowledge-format.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/articles/reusable-workflows.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/articles/tempest.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/authors.html</loc></url>
@@ -79,6 +80,9 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_normalize_url.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_now_utc.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_objective.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_okf_concepts.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_okf_context.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_okf_resources.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_operation_registry.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_parallel_workers.html</loc></url>
@@ -92,6 +96,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_state.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_prompt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_provider_has_native_search.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_okf.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_text.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_register_default_tools.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_render_expert_prompt.html</loc></url>

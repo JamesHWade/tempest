@@ -20,6 +20,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+    <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -99,6 +100,8 @@
 <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now expose evidence review tools for agents to inspect claims, cited sources, evidence spans, and unsupported claims without requiring write access (my3y).</li>
 <li>
 <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now expose claim-oriented <code>add_claim</code> and <code>list_claims</code> agent tools while keeping <code>add_fact</code> and <code>list_facts</code> as transitional aliases (msg3).</li>
+<li>
+<code><a href="../reference/tempest_okf_concepts.html">tempest_okf_concepts()</a></code>, <code><a href="../reference/tempest_okf_context.html">tempest_okf_context()</a></code>, <code><a href="../reference/tempest_okf_resources.html">tempest_okf_resources()</a></code>, and <code><a href="../reference/tempest_read_okf.html">tempest_read_okf()</a></code> read bounded Open Knowledge Format bundles as typed evidence resources and explicitly untrusted agent context without executing referenced code or granting capabilities.</li>
 <li>
 <code><a href="../reference/tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules()</a></code>, <code><a href="../reference/tempest_save_dsprrr_modules.html">tempest_save_dsprrr_modules()</a></code>, and <code><a href="../reference/tempest_load_dsprrr_modules.html">tempest_load_dsprrr_modules()</a></code> support explicit dsprrr compilation and reuse of optimized STORM module sets.</li>
 <li>

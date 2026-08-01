@@ -192,6 +192,14 @@
   now expose claim-oriented `add_claim` and `list_claims` agent tools
   while keeping `add_fact` and `list_facts` as transitional aliases
   (msg3).
+- [`tempest_okf_concepts()`](https://jameshwade.github.io/tempest/reference/tempest_okf_concepts.md),
+  [`tempest_okf_context()`](https://jameshwade.github.io/tempest/reference/tempest_okf_context.md),
+  [`tempest_okf_resources()`](https://jameshwade.github.io/tempest/reference/tempest_okf_resources.md),
+  and
+  [`tempest_read_okf()`](https://jameshwade.github.io/tempest/reference/tempest_read_okf.md)
+  read bounded Open Knowledge Format bundles as typed evidence resources
+  and explicitly untrusted agent context without executing referenced
+  code or granting capabilities.
 - [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md),
   [`tempest_save_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_save_dsprrr_modules.md),
   and

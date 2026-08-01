@@ -21,6 +21,16 @@ Define application-neutral workflows, experts, permissions, and outputs.
   Turn an application objective into a validated, approval-gated
   artifact with selected experts and scoped runtime capabilities.
 
+### Bring organizational knowledge
+
+Read portable knowledge as bounded evidence for Tempest workflows.
+
+- [Use Open Knowledge Format with
+  Tempest](https://jameshwade.github.io/tempest/articles/open-knowledge-format.md):
+
+  Read portable organizational knowledge as typed evidence and bounded,
+  explicitly untrusted context for agents and workflows.
+
 ### Add Tempest to an agent
 
 Install Agent Skills or make portable STORM research callable from chat.

@@ -85,6 +85,17 @@
 - [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md)
   : Suggest follow-up research questions for a topic
 
+## Open knowledge
+
+- [`tempest_read_okf()`](https://jameshwade.github.io/tempest/reference/tempest_read_okf.md)
+  : Read an Open Knowledge Format bundle
+- [`tempest_okf_concepts()`](https://jameshwade.github.io/tempest/reference/tempest_okf_concepts.md)
+  : Inspect concepts in an Open Knowledge Format bundle
+- [`tempest_okf_resources()`](https://jameshwade.github.io/tempest/reference/tempest_okf_resources.md)
+  : Convert Open Knowledge Format concepts to typed Tempest resources
+- [`tempest_okf_context()`](https://jameshwade.github.io/tempest/reference/tempest_okf_context.md)
+  : Assemble bounded agent context from an Open Knowledge Format bundle
+
 ## Workflow contracts and artifacts
 
 - [`tempest_objective()`](https://jameshwade.github.io/tempest/reference/tempest_objective.md)
