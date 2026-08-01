@@ -36,7 +36,8 @@ Imports:
     rlang (>= 1.0.0),
     S7,
     stringi,
-    tibble
+    tibble,
+    yaml
 Suggests:
     bslib (>= 0.6.0),
     commonmark,
@@ -109,6 +110,7 @@ Collate:
     'capabilities.R'
     'runtime.R'
     'resources.R'
+    'open-knowledge-format.R'
     'workflow-spec.R'
     'tempest-run.R'
     'run-accessors.R'

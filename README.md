@@ -75,6 +75,44 @@ Provider-specific API keys for alternative search:
 - Azure AI Search: set `AZURE_AI_SEARCH_API_KEY`,
   `AZURE_AI_SEARCH_ENDPOINT`, and `AZURE_AI_SEARCH_INDEX_NAME`
 
+## Open knowledge as evidence
+
+Tempest reads [Open Knowledge
+Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf)
+(OKF) directories as portable, bounded evidence:
+
+```r
+knowledge <- tempest_read_okf("knowledge/okf")
+tempest_okf_concepts(knowledge)
+
+resources <- tempest_okf_resources(
+  knowledge,
+  include_stale = FALSE
+)
+
+evidence <- SourceStore$new()
+invisible(lapply(resources, evidence$upsert_resource))
+
+context <- tempest_okf_context(
+  knowledge,
+  types = c("Assessment", "Business"),
+  include_stale = FALSE,
+  max_concepts = 25,
+  max_chars = 50000
+)
+```
+
+The reader preserves each Markdown document and its metadata, derives advisory
+trust and freshness signals, and never follows links or executes referenced
+code. Reading, converting, and adding resources are separate operations so the
+host retains the write boundary. An OKF document cannot grant capabilities,
+change policy, approve output, or authorize an action.
+
+Graft can export current or historical accepted revisions directly into this
+format. Read [Use Open Knowledge Format with
+Tempest](https://jameshwade.github.io/tempest/articles/open-knowledge-format.html)
+for the complete handoff and safety model.
+
 ## Reusable deliverables
 
 Tempest's output kernel is independent of STORM and Co-STORM. A host
