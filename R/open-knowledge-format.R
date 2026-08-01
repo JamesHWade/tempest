@@ -695,19 +695,6 @@ tempest_okf_resources <- function(
       ),
       sep = "\n"
     )
-    generated_at <- row$generated_at[[1L]]
-    retrieved_at <- if (
-      is.na(generated_at) ||
-        !tempest_okf_is_datetime(generated_at)
-    ) {
-      format(
-        file.info(concept$file)$mtime,
-        "%Y-%m-%dT%H:%M:%SZ",
-        tz = "UTC"
-      )
-    } else {
-      generated_at
-    }
     tempest_resource(
       resource_kind = "okf.concept",
       locator = if (is.na(row$resource[[1L]])) {
@@ -727,7 +714,6 @@ tempest_okf_resources <- function(
       ),
       content = concept$document,
       scope_metadata = tempest_okf_scope(bundle),
-      retrieved_at = retrieved_at,
       metadata = list(
         okf = list(
           version = if (is.na(bundle$okf_version)) {

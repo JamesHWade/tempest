@@ -33,6 +33,9 @@ test_that("Tempest reads conformant OKF with trust and freshness signals", {
 test_that("OKF concepts become fingerprinted evidence resources explicitly", {
   path <- test_path("fixtures", "okf")
   bundle <- tempest_read_okf(path)
+  local_mocked_bindings(
+    tempest_now_utc = \() "2026-07-28T16:45:00Z"
+  )
   resources <- tempest_okf_resources(
     bundle,
     today = as.Date("2026-07-28")
@@ -62,6 +65,14 @@ test_that("OKF concepts become fingerprinted evidence resources explicitly", {
   expect_identical(assessment@media_type, "text/markdown")
   expect_identical(assessment@metadata$okf$status, "stable")
   expect_identical(assessment@metadata$okf$stale, TRUE)
+  expect_identical(
+    assessment@retrieved_at,
+    "2026-07-28T16:45:00Z"
+  )
+  expect_identical(
+    assessment@metadata$okf$frontmatter$generated$at,
+    "2026-06-20T14:00:00Z"
+  )
   expect_identical(
     assessment@scope_metadata$profile,
     "graft-okf"
