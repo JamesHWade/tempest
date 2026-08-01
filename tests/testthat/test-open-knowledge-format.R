@@ -177,6 +177,26 @@ test_that("OKF conformance failures are classed and bounded", {
   )
 })
 
+test_that("empty OKF frontmatter is valid for indexes but not concepts", {
+  path <- withr::local_tempdir()
+  writeLines(c("---", "---", "# Index"), file.path(path, "index.md"))
+  writeLines(
+    c("---", "type: Business", "---", "# Business"),
+    file.path(path, "business.md")
+  )
+
+  bundle <- tempest_read_okf(path)
+
+  expect_identical(bundle$index$frontmatter, list())
+  expect_identical(bundle$concept_count, 1L)
+
+  writeLines(c("---", "---", "# Missing type"), file.path(path, "empty.md"))
+  expect_error(
+    tempest_read_okf(path),
+    class = "tempest_okf_error"
+  )
+})
+
 test_that("Tempest warns softly for optional OKF profile problems", {
   path <- withr::local_tempdir()
   writeLines(

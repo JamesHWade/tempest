@@ -209,29 +209,39 @@ tempest_okf_parse_document <- function(path, require_type, input = NULL) {
   delimiters <- which(lines == "---")
   if (
     length(delimiters) < 2L ||
-      delimiters[[1L]] != 1L ||
-      delimiters[[2L]] <= 2L
+      delimiters[[1L]] != 1L
   ) {
     tempest_okf_abort(
       "OKF document has malformed YAML frontmatter: {.path {path}}.",
       path = path
     )
   }
-  yaml_text <- paste(
-    lines[seq.int(delimiters[[1L]] + 1L, delimiters[[2L]] - 1L)],
-    collapse = "\n"
-  )
-  frontmatter <- tryCatch(
-    yaml::yaml.load(yaml_text, eval.expr = FALSE),
-    error = function(error) {
-      tempest_okf_abort(
-        "OKF document has invalid YAML frontmatter: {.path {path}}.",
-        path = path,
-        parent = error
-      )
-    }
-  )
-  if (!is.list(frontmatter) || is.null(names(frontmatter))) {
+  yaml_text <- if (delimiters[[2L]] == delimiters[[1L]] + 1L) {
+    ""
+  } else {
+    paste(
+      lines[seq.int(delimiters[[1L]] + 1L, delimiters[[2L]] - 1L)],
+      collapse = "\n"
+    )
+  }
+  frontmatter <- if (!nzchar(trimws(yaml_text))) {
+    list()
+  } else {
+    tryCatch(
+      yaml::yaml.load(yaml_text, eval.expr = FALSE),
+      error = function(error) {
+        tempest_okf_abort(
+          "OKF document has invalid YAML frontmatter: {.path {path}}.",
+          path = path,
+          parent = error
+        )
+      }
+    )
+  }
+  if (
+    !is.list(frontmatter) ||
+      (length(frontmatter) > 0L && is.null(names(frontmatter)))
+  ) {
     tempest_okf_abort(
       "OKF frontmatter must be a YAML mapping: {.path {path}}.",
       path = path
