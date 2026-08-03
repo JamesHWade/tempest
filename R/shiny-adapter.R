@@ -53,7 +53,7 @@ tempest_shiny_require_ui <- function(panels) {
   tempest_require("shiny", "tempest_shiny_ui() builds Shiny UI.")
   tempest_require("bslib", "tempest_shiny_ui() builds a bslib tabset.")
   if ("chat" %in% panels) {
-    tempest_require("shinychat", "the Tempest chat panel requires shinychat.")
+    tempest_shinychat_require()
     tempest_require("zip", "Tempest session downloads require zip.")
   }
   invisible(NULL)
@@ -70,7 +70,7 @@ tempest_shiny_require_server <- function(panels) {
     tempest_require("later", "Tempest Shiny async callbacks require later.")
   }
   if ("chat" %in% panels) {
-    tempest_require("shinychat", "the Tempest chat panel requires shinychat.")
+    tempest_shinychat_require()
   }
   if ("storm" %in% panels) {
     tempest_require("mirai", "the Tempest STORM panel requires mirai.")
@@ -310,7 +310,7 @@ tempest_shiny_server <- function(
     })
     run_events <- shiny::reactive({
       active <- current_run()
-      if (is.null(active)) list() else tempest_run_events(active)
+      if (is.null(active)) list() else tempest_execution_events(active)
     })
     run_approvals <- shiny::reactive({
       active <- current_run()

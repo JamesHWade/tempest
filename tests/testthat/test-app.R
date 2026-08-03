@@ -33,16 +33,26 @@ test_that("run_app rejects an invalid configured runner", {
   expect_error(run_app(), class = "tempest_shiny_error")
 })
 
-test_that("run_app explains how to update an incompatible shinychat", {
+test_that("Shiny requirements reject an incompatible shinychat backend", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
   local_mocked_bindings(
-    tempest_shinychat_exports = \() character()
+    tempest_shinychat_backend = \() list(version = "0.4.0.9000")
   )
 
-  expect_error(
-    tempest_shiny_require_chat_server(),
-    regexp = "restart R",
-    class = "tempest_shiny_error"
+  ui_error <- tryCatch(
+    tempest_shiny_require_ui("chat"),
+    error = identity
   )
+  server_error <- tryCatch(
+    tempest_shiny_require_server("chat"),
+    error = identity
+  )
+
+  expect_s3_class(ui_error, "tempest_shinychat_error")
+  expect_match(conditionMessage(ui_error), "chat_server")
+  expect_s3_class(server_error, "tempest_shinychat_error")
+  expect_match(conditionMessage(server_error), "chat_server")
 })
 
 test_that("run_app validates and preserves shorter provider timeouts", {

@@ -154,7 +154,7 @@ mod_mindmap_server <- function(id, store) {
         if (is.null(ses)) {
           return("Start a session to see the mind map.")
         }
-        ses$artifacts[["mindmap_md"]] %||% ses$mindmap_markdown()
+        ses$mindmap_markdown()
       })
     }
   })

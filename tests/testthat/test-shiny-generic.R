@@ -40,6 +40,10 @@ test_that("Shiny adapter exposes and controls generic run state", {
       expect_length(pending, 1L)
       expect_identical(shiny::isolate(run_assignments())$publish, character())
       expect_identical(shiny::isolate(run_events())[[1]]$sequence, 1L)
+      expect_identical(
+        shiny::isolate(run_events()),
+        tempest_execution_events(run)
+      )
       expect_identical(shiny::isolate(run_grants()), list())
 
       approve(names(pending)[[1]], "approved")

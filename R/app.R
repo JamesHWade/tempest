@@ -16,7 +16,6 @@
 run_app <- function(...) {
   tempest_shiny_require_ui(tempest_shiny_panel_choices())
   tempest_shiny_require_server(tempest_shiny_panel_choices())
-  tempest_shiny_require_chat_server()
   app_dir <- system.file("shiny", package = "tempest")
   if (identical(app_dir, "")) {
     tempest_abort("Shiny app not found in installed package.")
@@ -59,25 +58,4 @@ tempest_shiny_provider_timeout <- function() {
     timeout_s <- min(timeout_s, current)
   }
   timeout_s
-}
-
-tempest_shiny_require_chat_server <- function() {
-  if ("chat_server" %in% tempest_shinychat_exports()) {
-    return(invisible(TRUE))
-  }
-
-  tempest_abort(
-    c(
-      "The Tempest Shiny app requires the development version of shinychat with `chat_server()`.",
-      "i" = paste0(
-        "Install it with `pak::pak(\"posit-dev/shinychat/pkg-r\")`, ",
-        "restart R, and try again."
-      )
-    ),
-    class = c("tempest_shiny_error", "tempest_error")
-  )
-}
-
-tempest_shinychat_exports <- function() {
-  getNamespaceExports("shinychat")
 }

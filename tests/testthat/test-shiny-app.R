@@ -261,41 +261,16 @@ test_that("chat UI delegates presentation features to shinychat", {
   expect_no_match(css, ".shiny-chat-footer", fixed = TRUE)
 })
 
-test_that("chat server disables turn-only history for Tempest sessions", {
+test_that("chat module delegates native chat and session lifecycle work", {
   app <- source_shiny_modules()
   server_code <- paste(deparse(body(app$mod_chat_server)), collapse = "\n")
 
-  expect_match(server_code, "history = FALSE", fixed = TRUE)
-})
-
-test_that("restoring a session keeps the moderator's native turns", {
-  app <- source_shiny_modules()
-  moderator <- new.env(parent = emptyenv())
-  calls <- new.env(parent = emptyenv())
-  calls$client <- NULL
-  calls$sync <- NULL
-  calls$clear <- NULL
-  chat <- list(
-    set_client = function(client, sync = TRUE) {
-      calls$client <- client
-      calls$sync <- sync
-    },
-    clear = function(...) calls$clear <- list(...),
-    append = function(...) invisible(NULL)
-  )
-  restored <- list(
-    topic = "Restored topic",
-    chats = list(moderator = moderator),
-    transcript = list(),
-    artifacts = list()
-  )
-
-  app$replace_chat_with_session(chat, restored)
-
-  expect_identical(calls$client, moderator)
-  expect_identical(calls$sync, FALSE)
-  expect_identical(calls$clear$greeting, FALSE)
-  expect_identical(calls$clear$client_history, "keep")
+  expect_match(server_code, "tempest_shinychat_adapter", fixed = TRUE)
+  expect_match(server_code, "tempest_session_process_turn_async", fixed = TRUE)
+  expect_match(server_code, "tempest_session_warmup_async", fixed = TRUE)
+  expect_no_match(server_code, "shinychat::", fixed = TRUE)
+  expect_no_match(server_code, "$last_turn", fixed = TRUE)
+  expect_no_match(server_code, "$last_input", fixed = TRUE)
 })
 
 test_that("expert cards render deterministic expert icons", {
@@ -373,32 +348,6 @@ test_that("citation_markdown renders numbered references from cited sources", {
   expect_match(rendered, "[3?]", fixed = TRUE)
   expect_match(rendered, "Missing source metadata")
   expect_no_match(rendered, paste0("[", first_id, "]"), fixed = TRUE)
-})
-
-test_that("mind-map enrichment keeps unsupported answers as evidence gaps", {
-  app <- source_shiny_modules()
-  unsupported <- app$turn_mindmap_exchange(
-    "What is known?",
-    "An unsupported factual answer.",
-    list(source_ids = character())
-  )
-  supported <- app$turn_mindmap_exchange(
-    "What is known?",
-    "A supported answer [S123456789abc].",
-    list(source_ids = "S123456789abc")
-  )
-
-  expect_match(unsupported, "Record only the question", fixed = TRUE)
-  expect_no_match(unsupported, "unsupported factual answer", fixed = TRUE)
-  expect_match(supported, "A supported answer", fixed = TRUE)
-  expect_match(
-    app$warmup_orientation_exchange(
-      list(name = "Dr. Scope", response = "Unverified orientation."),
-      list(source_ids = character())
-    ),
-    "Scoping-only orientation",
-    fixed = TRUE
-  )
 })
 
 test_that("citation_markdown strips private external citation markers", {
@@ -906,103 +855,6 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
   })
 })
 
-test_that("extract_chat_turn_facts populates facts and sources from native turns", {
-  skip_if_not_installed("ellmer")
-  app <- source_shiny_modules()
-  fixture <- native_evidence_session("native chat claim")
-
-  ids <- app$extract_chat_turn_facts(
-    fixture$session,
-    fixture$claim_text,
-    turn = fixture$turn,
-    session_id = "costorm-session-1",
-    expert_id = "moderator",
-    correlation_id = "chat-turn-1"
-  )
-
-  expect_equal(ids, fixture$source_id)
-  store <- fixture$session$store
-  expect_equal(store$get_source(fixture$source_id)$title, "Native app source")
-  claims <- store$list_claims()
-  expect_length(claims, 1L)
-  expect_equal(claims[[1]]@claim_text, fixture$claim_text)
-  expect_equal(claims[[1]]@source_ids, fixture$source_id)
-  expect_equal(claims[[1]]@session_id, "costorm-session-1")
-  expect_equal(claims[[1]]@expert_id, "moderator")
-  expect_equal(claims[[1]]@retrieval_step_id, "chat-turn-1")
-})
-
-test_that("suggestion_cards builds shinychat's recognized card list", {
-  app <- source_shiny_modules()
-  md <- app$suggestion_cards(c("What is X?", "How does Y work?"))
-  expect_type(md, "character")
-  expect_s3_class(md, "tempest_shinychat_suggestions")
-  expect_match(md, "Research next")
-  expect_match(
-    md,
-    'class="suggestion submit" title="Evidence gap"',
-    fixed = TRUE
-  )
-  expect_match(md, "What is X?", fixed = TRUE)
-  expect_match(
-    md,
-    'class="suggestion submit" title="Key uncertainty"',
-    fixed = TRUE
-  )
-  expect_match(md, "How does Y work?", fixed = TRUE)
-  expect_match(md, "suggestion submit", fixed = TRUE)
-})
-
-test_that("suggestion cards bypass answer sanitization only at their typed boundary", {
-  app <- source_shiny_modules()
-  calls <- list()
-  chat <- list(append = function(...) calls[[length(calls) + 1L]] <<- list(...))
-  cards <- app$suggestion_cards("What evidence is missing?")
-
-  app$chat_append_suggestion_cards(chat, cards)
-
-  expect_match(
-    calls[[1]][[1]],
-    '<span class="suggestion submit"',
-    fixed = TRUE
-  )
-  expect_no_match(
-    app$citation_markdown(as.character(cards)),
-    '<span class="suggestion submit"',
-    fixed = TRUE
-  )
-  expect_error(
-    app$chat_append_suggestion_cards(chat, as.character(cards)),
-    "must be created by suggestion_cards",
-    fixed = TRUE
-  )
-})
-
-test_that("suggestion_cards preserves explicit native card titles", {
-  app <- source_shiny_modules()
-  md <- app$suggestion_cards(c("Compare" = "What differs?"))
-
-  expect_match(md, 'title="Compare"', fixed = TRUE)
-  expect_match(md, "What differs?", fixed = TRUE)
-})
-
-test_that("chat_input_text summarizes native attachment content", {
-  skip_if_not_installed("ellmer")
-  app <- source_shiny_modules()
-  input <- list(
-    "Inspect these files.",
-    ellmer::ContentText("Text attachment"),
-    ellmer::content_image_url("data:image/png;base64,aA=="),
-    ellmer::content_pdf_url("data:application/pdf;base64,aA==")
-  )
-
-  text <- app$chat_input_text(input)
-  expect_match(text, "Inspect these files.", fixed = TRUE)
-  expect_match(text, "Text attachment", fixed = TRUE)
-  expect_match(text, "[Image attachment]", fixed = TRUE)
-  expect_match(text, "[PDF attachment", fixed = TRUE)
-})
-
 test_that("chat command messages summarize active session state", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -1015,8 +867,22 @@ test_that("chat command messages summarize active session state", {
     verification_status = "supported",
     support_score = 0.82
   ))
-  artifacts <- new.env(parent = emptyenv())
-  artifacts[["report_md"]] <- "# Command report"
+  report_spec <- tempest_deliverable_spec(
+    "report_md",
+    title = "Command report",
+    purpose = "Exercise runtime report status",
+    instructions = "Return Markdown.",
+    generator_id = "tempest.generator.markdown_report",
+    renderer_ids = "tempest.renderer.markdown"
+  )
+  artifact_catalog <- tempest_artifact_catalog(
+    deliverables = list(report_spec)
+  )
+  artifact_catalog$add(tempest_artifact(
+    report_spec,
+    content = "# Command report",
+    artifact_id = "report_md"
+  ))
   ses <- list(
     topic = "Command topic",
     experts = list(test_expert(
@@ -1026,7 +892,7 @@ test_that("chat command messages summarize active session state", {
       description = "Runtime controls"
     )),
     store = source_store,
-    artifacts = artifacts,
+    artifact_catalog = artifact_catalog,
     config = tempest_config(search_provider = "wikipedia"),
     capability_grants = list(
       moderator = list(list(
@@ -1065,53 +931,6 @@ test_that("chat command messages summarize active session state", {
     "<template>Report status: report ready</template>",
     fixed = TRUE
   )
-})
-
-test_that("suggestion_cards returns NULL for no questions", {
-  app <- source_shiny_modules()
-  expect_null(app$suggestion_cards(character()))
-  expect_null(app$suggestion_cards(c("", NA_character_)))
-})
-
-test_that("suggestion_cards keeps only valid questions, in order", {
-  app <- source_shiny_modules()
-  md <- app$suggestion_cards(c("Keep this?", "", NA_character_, "And this"))
-  matches <- gregexpr('class="suggestion submit"', md, fixed = TRUE)[[1]]
-  n_items <- sum(matches > 0L)
-  expect_equal(n_items, 2)
-  expect_lt(
-    regexpr("Keep this", md, fixed = TRUE),
-    regexpr("And this", md, fixed = TRUE)
-  )
-})
-
-test_that("suggestion_cards honors a custom lead", {
-  app <- source_shiny_modules()
-  md <- app$suggestion_cards("Q1", lead = "**Try asking:**")
-  expect_match(md, "Try asking", fixed = TRUE)
-})
-
-test_that("append_suggestions gates on the toggle and swallows generator errors", {
-  app <- source_shiny_modules()
-  calls <- character()
-  rec <- function(x) calls[[length(calls) + 1L]] <<- x
-  ok <- list(suggest_questions = function(n) c("Q1?", "Q2?"))
-  err <- list(suggest_questions = function(n) stop("boom"))
-
-  app$append_suggestions(ok, TRUE, rec)
-  expect_match(calls[[1]], 'class="suggestion submit"', fixed = TRUE)
-
-  calls <- character()
-  app$append_suggestions(ok, FALSE, rec)
-  expect_length(calls, 0)
-
-  calls <- character()
-  expect_silent(app$append_suggestions(err, TRUE, rec))
-  expect_length(calls, 0)
-
-  calls <- character()
-  app$append_suggestions(NULL, TRUE, rec)
-  expect_length(calls, 0)
 })
 
 test_that("start suggestions wait for warmup when experts are available", {
@@ -1426,7 +1245,7 @@ test_that("session store saves and restores bundles for shared app tabs", {
     "assistant",
     paste0("Cited evidence survives [", source_id, "].")
   )
-  ses$artifacts[["report_md"]] <- paste0(
+  report_md <- paste0(
     "# Restored report\n\nCited evidence survives [",
     source_id,
     "]."
@@ -1435,7 +1254,7 @@ test_that("session store saves and restores bundles for shared app tabs", {
   ses$artifact_catalog$register(report_spec)
   ses$artifact_catalog$add(tempest_artifact(
     report_spec,
-    content = ses$artifacts[["report_md"]],
+    content = report_md,
     artifact_id = "report_md",
     resource_ids = source_id,
     status = "valid"
@@ -1457,22 +1276,21 @@ test_that("session store saves and restores bundles for shared app tabs", {
 
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$topic, "Shiny persistence")
-  expect_equal(shiny::isolate(store$report()), ses$artifacts[["report_md"]])
+  expect_null(restored$artifacts[["report_md"]])
+  expect_equal(shiny::isolate(store$report()), report_md)
   expect_equal(shiny::isolate(store$persistence())$status, "restored")
   expect_equal(
-    tempest_progress_state(restored$artifacts[["progress_events"]])$run_id,
+    tempest_progress_state(tempest_execution_events(restored))$run_id,
     restored$session_id
   )
 
-  chat_calls <- list()
-  fake_chat_ui <- list(
-    append = function(text, role = "assistant") {
-      chat_calls[[length(chat_calls) + 1L]] <<- list(text = text, role = role)
-    }
+  chat_calls <- tempest:::tempest_shinychat_restore_messages(
+    restored$transcript,
+    topic = restored$topic,
+    report_available = restored$artifact_catalog$has("report_md")
   )
-  app$append_restored_session_chat(fake_chat_ui, restored, restored$store)
   chat_text <- paste(
-    vapply(chat_calls, `[[`, character(1), "text"),
+    vapply(chat_calls, `[[`, character(1), "content"),
     collapse = "\n"
   )
   chat_roles <- vapply(chat_calls, `[[`, character(1), "role")
@@ -2322,674 +2140,87 @@ test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
   expect_no_match(html, "timed out")
 })
 
-await_promise <- function(promise, timeout_s = 2) {
-  done <- FALSE
-  value <- NULL
-  error <- NULL
-  promises::then(
-    promise,
-    onFulfilled = function(x) {
-      value <<- x
-      done <<- TRUE
-    },
-    onRejected = function(e) {
-      error <<- e
-      done <<- TRUE
-    }
-  )
-
-  deadline <- Sys.time() + timeout_s
-  while (!done && Sys.time() < deadline) {
-    later::run_now(0.01)
-  }
-  expect_equal(done, TRUE)
-  if (!is.null(error)) {
-    stop(error)
-  }
-  value
-}
-
-fake_warmup_session <- function(
-  chat_async,
-  stream_async = NULL,
-  experts = NULL,
-  progress = NULL,
-  record_evidence = TRUE
-) {
-  turns <- new.env(parent = emptyenv())
-  turns$n <- 0L
-  turns$map_updates <- 0L
-  if (is.null(experts)) {
-    experts <- list(test_expert(
-      expert_id = "expert.a",
-      name = "Dr. A",
-      title = "Expert",
-      initial_questions = c("What is X?", "How does Y work?")
-    ))
-  }
-
-  call_chat_async <- function(prompt, expert, generation) {
-    arg_names <- names(formals(chat_async))
-    if ("..." %in% arg_names || length(arg_names) >= 3L) {
-      return(chat_async(prompt, expert, generation))
-    }
-    if ("..." %in% arg_names || length(arg_names) >= 2L) {
-      return(chat_async(prompt, expert))
-    }
-    chat_async(prompt)
-  }
-
-  call_stream_async <- function(prompt, stream, expert) {
-    arg_names <- names(formals(stream_async))
-    if ("..." %in% arg_names || length(arg_names) >= 3L) {
-      return(stream_async(prompt, stream, expert))
-    }
-    if (length(arg_names) >= 2L) {
-      return(stream_async(prompt, stream))
-    }
-    stream_async(prompt)
-  }
-
-  manager_state <- new.env(parent = emptyenv())
-  manager_state$chats <- new.env(parent = emptyenv())
-  manager_state$generations <- new.env(parent = emptyenv())
-  manager_state$session_keys <- new.env(parent = emptyenv())
-  manager_state$retired <- 0L
-  manager_state$fact_extractions <- 0L
-  manager_state$source_count <- 0L
-  manager_state$claim_count <- 0L
-  manager <- list()
-  manager$get_or_create <- function(expert_id) {
-    idx <- match(
-      expert_id,
-      vapply(experts, \(expert) expert@expert_id, character(1))
-    )
-    if (is.na(idx)) {
-      stop("Unknown expert id: ", expert_id)
-    }
-    expert <- experts[[idx]]
-    key <- expert@expert_id
-    chat <- manager_state$chats[[key]]
-    if (is.null(chat)) {
-      generation <- (manager_state$generations[[key]] %||% 0L) + 1L
-      manager_state$generations[[key]] <- generation
-      chat <- list(
-        chat_async = function(prompt) {
-          call_chat_async(prompt, expert, generation)
-        }
-      )
-      if (!is.null(stream_async)) {
-        chat$stream_async <- function(prompt, stream) {
-          call_stream_async(prompt, stream, expert)
-        }
-      }
-      manager_state$chats[[key]] <- chat
-    }
-    generation <- manager_state$generations[[key]]
-    session_id <- paste0("fake-", key, "-", generation)
-    manager_state$session_keys[[session_id]] <- key
-    provenance <- new.env(parent = emptyenv())
-    provenance$current <- list()
+test_that("warmup result messages summarize typed lifecycle results", {
+  app <- source_shiny_modules()
+  orientation <- function(name, status, error_message = NA_character_) {
     list(
-      chat = manager_state$chats[[key]],
-      session_id = session_id,
-      provenance = provenance,
-      grants = list(research = list(status = "granted"))
+      expert_id = paste0("expert.", tolower(name)),
+      expert_name = name,
+      expert_session_id = NA_character_,
+      correlation_id = paste0("warmup-", tolower(name)),
+      status = status,
+      evidence_status = if (identical(status, "succeeded")) {
+        "committed"
+      } else {
+        "not_run"
+      },
+      source_ids = if (identical(status, "succeeded")) {
+        "S123456789abc"
+      } else {
+        character()
+      },
+      sources_added = as.integer(identical(status, "succeeded")),
+      claims_added = as.integer(identical(status, "succeeded")),
+      failure_kind = if (identical(status, "timeout")) {
+        "timeout"
+      } else {
+        NA_character_
+      },
+      error_class = if (identical(status, "timeout")) {
+        "tempest_warmup_timeout"
+      } else {
+        NA_character_
+      },
+      error_message = error_message,
+      tools_available = TRUE,
+      capability_count = 1L,
+      session_retired = identical(status, "timeout"),
+      cancellation_supported = FALSE
     )
   }
-  manager$retire_session <- function(session_id) {
-    key <- manager_state$session_keys[[session_id]]
-    if (!is.null(key)) {
-      rm(list = key, envir = manager_state$chats)
-      rm(list = session_id, envir = manager_state$session_keys)
-    }
-    manager_state$retired <- manager_state$retired + 1L
-    list(retired = TRUE, cancellation_supported = FALSE)
-  }
-  manager$extract_facts <- function(response, ...) {
-    manager_state$fact_extractions <- manager_state$fact_extractions + 1L
-    if (isTRUE(record_evidence)) {
-      manager_state$source_count <- 1L
-      manager_state$claim_count <- manager_state$claim_count + 1L
-    }
-    NULL
-  }
-
-  session <- list(
-    topic = "Test topic",
-    experts = experts,
-    expert_session_manager = manager,
-    chats = list(),
-    add_turn = function(...) {
-      turns$n <- turns$n + 1L
-      invisible(NULL)
-    },
-    update_mindmap = function(...) {
-      turns$map_updates <- turns$map_updates + 1L
-      invisible(NULL)
-    },
-    store = list(
-      list_claims = function() {
-        rep(list(list()), manager_state$claim_count)
-      },
-      list_sources = function() {
-        rep(list(list()), manager_state$source_count)
-      }
-    ),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      event <- tempest_progress_event(
-        run_id = "fake-session",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-      if (!is.null(progress)) {
-        progress(event)
-      }
-      event
-    },
-    turns = turns
+  result <- tempest:::TempestWarmupResult(
+    session_id = "session-1",
+    status = "succeeded",
+    expert_count = 2L,
+    orientation_count = 1L,
+    failure_count = 1L,
+    evidence_failure_count = 0L,
+    source_count = 1L,
+    claim_count = 1L,
+    mindmap_updated = TRUE,
+    orientations = list(
+      orientation("Dr. Ready", "succeeded"),
+      orientation("Dr. Slow", "timeout", "timed out")
+    )
   )
-  session$manager_state <- manager_state
-  session
-}
 
-fake_warmup_store <- function() {
-  touches <- new.env(parent = emptyenv())
-  touches$n <- 0L
-  list(
-    touch = function() {
-      touches$n <- touches$n + 1L
-      invisible(NULL)
-    },
-    count = function() touches$n
-  )
-}
+  messages <- app$warmup_result_messages(result)
 
-test_that("warmup defaults bound each tool-enabled orientation", {
-  app <- source_shiny_modules()
-  withr::local_options(
-    tempest.shiny.warmup_timeout_s = NULL
-  )
-  defaults <- formals(app$run_warmup)
-
-  expect_equal(eval(defaults$timeout_s), 120)
-  expect_null(defaults$max_questions_per_expert)
+  expect_length(messages, 2L)
+  expect_match(messages[[1]], "Dr. Slow", fixed = TRUE)
+  expect_match(messages[[1]], "timed out", fixed = TRUE)
+  expect_match(messages[[2]], "Oriented 1 of 2", fixed = TRUE)
+  expect_match(messages[[2]], "1 source-backed fact", fixed = TRUE)
 })
 
-test_that("warmup allows tools while bounding research work", {
+test_that("turn notices render explicit partial-result guidance", {
   app <- source_shiny_modules()
-  expert <- test_expert(
-    expert_id = "expert.planning",
-    name = "Dr. Planning",
-    title = "Expert",
-    initial_questions = "What should the panel investigate?"
+  gap <- tempest:::tempest_session_turn_notice(
+    code = "evidence_gap",
+    stage = "evidence",
+    message = "No source was inspected."
+  )
+  failure <- tempest:::tempest_session_turn_error_notice(
+    code = "mindmap_failed",
+    stage = "mindmap",
+    message = "Mind-map update failed.",
+    error = simpleError("map unavailable")
   )
 
-  prompt <- app$warmup_prompt("Test topic", expert)
-
-  expect_match(prompt, "must seed the shared evidence ledger", fixed = TRUE)
-  expect_match(prompt, "make exactly one web search", fixed = TRUE)
-  expect_match(prompt, "inspect no more than two results", fixed = TRUE)
-  expect_match(prompt, "set k = 2", fixed = TRUE)
-  expect_match(prompt, "do not call add_claim or add_fact", fixed = TRUE)
-  expect_match(prompt, "Ground at least one orientation claim", fixed = TRUE)
-  expect_match(prompt, "What should the panel investigate?", fixed = TRUE)
-  expect_match(prompt, "no more than 250 words", fixed = TRUE)
-})
-
-test_that("run_warmup finishes with a summary without transcript progress spam", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  messages <- character()
-  store <- fake_warmup_store()
-  ses <- fake_warmup_session(function(prompt) {
-    promises::promise_resolve("Supported answer [S123456789abc].")
-  })
-
-  await_promise(app$run_warmup(
-    ses,
-    store,
-    function(x) messages[[length(messages) + 1L]] <<- x,
-    timeout_s = 1
-  ))
-
-  transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "Warmup complete")
-  expect_match(transcript, "1 source-backed fact from 1 source")
-  expect_no_match(transcript, "Running warmup phase")
-  expect_no_match(transcript, "warmup question 1/1")
-  expect_equal(store$count(), 1)
-  expect_equal(ses$turns$n, 1)
-  expect_equal(ses$turns$map_updates, 1L)
-  expect_equal(ses$manager_state$fact_extractions, 1L)
-})
-
-test_that("warmup labels orientations when no evidence was committed", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  messages <- character()
-  ses <- fake_warmup_session(
-    function(prompt) promises::promise_resolve("Scoping only."),
-    record_evidence = FALSE
-  )
-
-  await_promise(app$run_warmup(
-    ses,
-    fake_warmup_store(),
-    function(x) messages[[length(messages) + 1L]] <<- x,
-    timeout_s = 1
-  ))
-
+  expect_match(app$turn_notice_message(gap), "Treat", fixed = TRUE)
   expect_match(
-    paste(messages, collapse = "\n"),
-    "No citable evidence was collected",
+    app$turn_notice_message(failure),
+    "map unavailable",
     fixed = TRUE
   )
-  expect_equal(ses$manager_state$fact_extractions, 1L)
-})
-
-test_that("run_warmup records progress events for reducer rendering", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  collector <- tempest_progress_collector(include_payload = TRUE)
-  store <- fake_warmup_store()
-  ses <- fake_warmup_session(
-    function(prompt) promises::promise_resolve("Supported answer."),
-    progress = collector$record
-  )
-
-  await_promise(app$run_warmup(
-    ses,
-    store,
-    function(x) x,
-    timeout_s = 1
-  ))
-
-  labels <- vapply(
-    collector$data(),
-    function(event) {
-      paste(
-        event$event_type,
-        event$stage,
-        event$step,
-        event$status,
-        sep = ":"
-      )
-    },
-    character(1)
-  )
-  state <- tempest_progress_state(collector$events())
-
-  expect_contains(
-    labels,
-    c(
-      "stage:warmup:expert_fanout:started",
-      "expert:warmup:expert_fanout:started",
-      "expert:warmup:expert_fanout:succeeded",
-      "stage:warmup:expert_fanout:succeeded"
-    )
-  )
-  expect_equal(state$completed_stages, "warmup")
-  expect_length(state$active$tools, 0L)
-  expect_identical(collector$data()[[2]]$payload$tools_available, TRUE)
-  expect_equal(collector$data()[[2]]$payload$capability_count, 1L)
-})
-
-test_that("run_warmup exposes running progress before expert answers resolve", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  collector <- tempest_progress_collector(include_payload = TRUE)
-  store <- fake_warmup_store()
-  resolve_chat <- NULL
-  ses <- fake_warmup_session(
-    function(prompt) {
-      promises::promise(function(resolve, reject) {
-        resolve_chat <<- resolve
-      })
-    },
-    progress = collector$record
-  )
-
-  promise <- app$run_warmup(
-    ses,
-    store,
-    function(x) x,
-    timeout_s = 1
-  )
-  deadline <- Sys.time() + 1
-  while (is.null(resolve_chat) && Sys.time() < deadline) {
-    later::run_now(0.01)
-  }
-
-  expect_equal(is.null(resolve_chat), FALSE)
-  running <- tempest_progress_state(collector$events())
-  expect_equal(running$status, "running")
-  expect_equal(running$current_stage, "warmup")
-  expect_length(running$active$experts, 1L)
-  expect_length(running$active$tools, 0L)
-  html <- paste(
-    as.character(app$workflow_progress_ui(running, app$costorm_stage_labels())),
-    collapse = ""
-  )
-  expect_match(html, "Warmup")
-  expect_match(html, "fa-spinner")
-
-  resolve_chat("Warmup answer [S123456789abc].")
-  await_promise(promise)
-})
-
-test_that("run_warmup does not stream warmup answers into the main chat", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  messages <- character()
-  store <- fake_warmup_store()
-  used_stream <- FALSE
-  used_chat <- FALSE
-  ses <- fake_warmup_session(
-    chat_async = function(prompt) {
-      used_chat <<- TRUE
-      promises::promise_resolve("Private answer [S123456789abc].")
-    },
-    stream_async = function(prompt, stream) {
-      used_stream <<- TRUE
-      promises::promise_resolve("Visible streamed answer [S123456789abc].")
-    }
-  )
-
-  await_promise(app$run_warmup(
-    ses,
-    store,
-    function(x) {
-      messages[[length(messages) + 1L]] <<- x
-      x
-    },
-    timeout_s = 1
-  ))
-
-  transcript <- paste(messages, collapse = "\n")
-  expect_equal(used_chat, TRUE)
-  expect_equal(used_stream, FALSE)
-  expect_no_match(transcript, "Private answer")
-  expect_no_match(transcript, "Visible streamed answer")
-  expect_equal(ses$turns$n, 1)
-})
-
-test_that("run_warmup keeps routine progress in events, not chat text", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  collector <- tempest_progress_collector(include_payload = TRUE)
-  messages <- character()
-  store <- fake_warmup_store()
-  resolve_chat <- NULL
-  ses <- fake_warmup_session(
-    function(prompt) {
-      promises::promise(function(resolve, reject) {
-        resolve_chat <<- resolve
-      })
-    },
-    progress = collector$record
-  )
-
-  promise <- app$run_warmup(
-    ses,
-    store,
-    function(x) messages[[length(messages) + 1L]] <<- x,
-    timeout_s = 1
-  )
-  deadline <- Sys.time() + 1
-  while (is.null(resolve_chat) && Sys.time() < deadline) {
-    later::run_now(0.01)
-  }
-
-  running <- tempest_progress_state(collector$events())
-  transcript <- paste(messages, collapse = "\n")
-  expect_equal(running$status, "running")
-  expect_equal(running$current_stage, "warmup")
-  expect_length(running$active$experts, 1L)
-  expect_length(running$active$tools, 0L)
-  expect_equal(nzchar(transcript), FALSE)
-
-  resolve_chat("Warmup answer [S123456789abc].")
-  await_promise(promise)
-  transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "Warmup complete")
-  expect_no_match(transcript, "warmup question")
-})
-
-test_that("run_warmup starts independent experts in parallel", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  messages <- character()
-  store <- fake_warmup_store()
-  resolve_first <- NULL
-  second_started <- FALSE
-  experts <- list(
-    test_expert(
-      expert_id = "expert.a",
-      name = "Dr. A",
-      title = "Expert",
-      initial_questions = "A?"
-    ),
-    test_expert(
-      expert_id = "expert.b",
-      name = "Dr. B",
-      title = "Expert",
-      initial_questions = "B?"
-    )
-  )
-  ses <- fake_warmup_session(
-    function(prompt, expert) {
-      if (identical(expert@name, "Dr. A")) {
-        return(promises::promise(function(resolve, reject) {
-          resolve_first <<- resolve
-        }))
-      }
-      second_started <<- TRUE
-      promises::promise_resolve("Second answer [S123456789abc].")
-    },
-    experts = experts
-  )
-
-  promise <- app$run_warmup(
-    ses,
-    store,
-    function(x) messages[[length(messages) + 1L]] <<- x,
-    timeout_s = 1,
-    max_parallel_experts = 2
-  )
-  deadline <- Sys.time() + 1
-  while ((is.null(resolve_first) || !second_started) && Sys.time() < deadline) {
-    later::run_now(0.01)
-  }
-
-  expect_equal(is.null(resolve_first), FALSE)
-  expect_equal(second_started, TRUE)
-  if (is.null(resolve_first)) {
-    stop("First expert did not start.")
-  }
-  resolve_first("First answer [S123456789abc].")
-  await_promise(promise)
-
-  transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "Warmup complete")
-  expect_equal(ses$turns$n, 2)
-})
-
-test_that("run_warmup times out a stuck orientation and continues", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  collector <- tempest_progress_collector(include_payload = TRUE)
-  messages <- character()
-  store <- fake_warmup_store()
-  ses <- fake_warmup_session(
-    function(prompt) {
-      promises::promise(function(resolve, reject) {})
-    },
-    progress = collector$record
-  )
-
-  await_promise(app$run_warmup(
-    ses,
-    store,
-    function(x) messages[[length(messages) + 1L]] <<- x,
-    timeout_s = 0.01
-  ))
-
-  transcript <- paste(messages, collapse = "\n")
-  expect_match(transcript, "timed out")
-  expect_match(transcript, "Warmup complete")
-  expect_equal(store$count(), 1)
-  expect_equal(ses$turns$n, 0)
-  state <- tempest_progress_state(collector$events())
-  expect_equal(state$completed_stages, "warmup")
-  expect_length(state$active$experts, 0L)
-  expect_length(state$active$tools, 0L)
-})
-
-test_that("run_warmup batches panel orientations into one map update", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  store <- fake_warmup_store()
-  experts <- list(
-    test_expert(
-      expert_id = "expert.a",
-      name = "Dr. A",
-      title = "Expert"
-    ),
-    test_expert(
-      expert_id = "expert.b",
-      name = "Dr. B",
-      title = "Expert"
-    )
-  )
-  ses <- fake_warmup_session(
-    function(prompt, expert) {
-      promises::promise_resolve(paste(expert@name, "orientation"))
-    },
-    experts = experts
-  )
-
-  await_promise(app$run_warmup(
-    ses,
-    store,
-    function(x) invisible(x),
-    timeout_s = 1
-  ))
-
-  expect_equal(ses$turns$n, 2L)
-  expect_equal(ses$turns$map_updates, 1L)
-})
-
-test_that("warmup retires a timed-out tool session and ignores its late result", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  collector <- tempest_progress_collector(include_payload = TRUE)
-  store <- fake_warmup_store()
-  late_resolve <- NULL
-  ses <- fake_warmup_session(
-    function(prompt, expert, generation) {
-      promises::promise(function(resolve, reject) {
-        late_resolve <<- resolve
-      })
-    },
-    experts = list(test_expert(
-      expert_id = "expert.timeout",
-      name = "Dr. Timeout",
-      title = "Expert",
-      initial_questions = c("First?", "Second?")
-    )),
-    progress = collector$record
-  )
-
-  await_promise(app$run_warmup(
-    ses,
-    store,
-    function(x) invisible(x),
-    timeout_s = 0.02
-  ))
-
-  expect_equal(ses$manager_state$generations[["expert.timeout"]], 1L)
-  expect_equal(ses$manager_state$retired, 1L)
-  expect_equal(ses$turns$n, 0L)
-  expect_equal(is.null(late_resolve), FALSE)
-  late_resolve("Late answer must be ignored [S123456789abc].")
-  later::run_now(0.05)
-  expect_equal(ses$turns$n, 0L)
-
-  events <- collector$events()
-  timeout_events <- Filter(
-    function(event) {
-      identical(event@event_type, "expert") &&
-        identical(event@status, "failed") &&
-        identical(event@payload$failure_kind, "timeout")
-    },
-    events
-  )
-  expect_length(timeout_events, 1L)
-  expect_identical(timeout_events[[1]]@payload$tools_available, TRUE)
-  expect_equal(timeout_events[[1]]@payload$capability_count, 1L)
-  expect_identical(timeout_events[[1]]@payload$session_retired, TRUE)
-})
-
-test_that("run_warmup ignores stale callbacks after the session is gone", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  app <- source_shiny_modules()
-  messages <- character()
-  store <- fake_warmup_store()
-  resolve_chat <- NULL
-  active <- TRUE
-  ses <- fake_warmup_session(function(prompt) {
-    promises::promise(function(resolve, reject) {
-      resolve_chat <<- resolve
-    })
-  })
-
-  promise <- app$run_warmup(
-    ses,
-    store,
-    function(x) messages[[length(messages) + 1L]] <<- x,
-    is_current = function() active,
-    timeout_s = 1
-  )
-  while (is.null(resolve_chat)) {
-    later::run_now(0.01)
-  }
-
-  active <- FALSE
-  resolve_chat("Late answer [S123456789abc].")
-  await_promise(promise)
-
-  transcript <- paste(messages, collapse = "\n")
-  expect_equal(nzchar(transcript), FALSE)
-  expect_no_match(transcript, "Warmup complete")
-  expect_equal(store$count(), 0)
-  expect_equal(ses$turns$n, 0)
-  expect_equal(ses$manager_state$retired, 1L)
 })
