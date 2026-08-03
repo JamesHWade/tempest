@@ -34,11 +34,7 @@ server <- function(input, output, session) {
     c("promises", "shinychat", "ellmer", "later", "mirai", "zip"),
     reason = "to run the tempest app."
   )
-  if (!"chat_server" %in% getNamespaceExports("shinychat")) {
-    rlang::abort(
-      "The tempest Shiny app requires the development version of shinychat with chat_server()."
-    )
-  }
+  tempest:::tempest_shiny_require_chat_server()
 
   store <- new_session_store()
   config <- mod_config_server("config")

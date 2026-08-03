@@ -108,7 +108,7 @@ tempest_solver_cited_answer <- function(
 #' @return A `vitals::Task`.
 #' @examples
 #' \dontrun{
-#' scorer_chat <- ellmer::chat("openai/gpt-5.4-mini")
+#' scorer_chat <- ellmer::chat("openai/gpt-5.6-luna")
 #' task <- tempest_task(scorer_chat = scorer_chat, config = tempest_config())
 #' task$eval()
 #' }

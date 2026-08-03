@@ -25,7 +25,7 @@ Imports:
     DBI,
     digest,
     dsprrr,
-    ellmer,
+    ellmer (>= 0.4.2.9000),
     fs,
     glue,
     httr2,
@@ -52,7 +52,7 @@ Suggests:
     rmarkdown,
     rvest,
     shiny (>= 1.8.1),
-    shinychat,
+    shinychat (>= 0.4.0.9000),
     testthat (>= 3.2.0),
     tidyr,
     visNetwork,
@@ -61,7 +61,9 @@ Suggests:
     xml2,
     zip
 Remotes:
-    JamesHWade/dsprrr
+    JamesHWade/dsprrr,
+    posit-dev/shinychat/pkg-r,
+    tidyverse/ellmer@5cb916dbab521f2d0b3871f284a6c67b8045d14c
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://jameshwade.github.io/tempest/,

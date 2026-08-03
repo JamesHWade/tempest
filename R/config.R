@@ -591,7 +591,8 @@ TempestConfig <- S7::new_class(
 #'
 #' @param models Named list of model identifiers for each role, or a single
 #'   string to use for all roles.
-#' @param params Additional parameters passed to chat creation.
+#' @param params Additional parameters passed to chat creation. Explicit values
+#'   override the role defaults used by built-in ChatGPT-subscription clients.
 #' @param chat_fn Custom chat factory function. Should accept `role`, `model`,
 #'   `system_prompt`, and `echo` arguments and return an ellmer-compatible Chat
 #'   object. Use this for custom providers like `chat_company()`.
@@ -639,7 +640,10 @@ TempestConfig <- S7::new_class(
 #' [ellmer::chat()] or an ellmer `Chat` object. String values are used for every
 #' role. Chat objects are cloned for every role, retain their provider settings
 #' and system instructions, and receive the appropriate Tempest role prompt.
-#' Explicit `models` and `chat_fn` arguments take precedence over the option.
+#' When the option is unset, Tempest creates its built-in OpenAI clients with
+#' [ellmer::chat_openai()] and `auth = "codex"`, which uses file-backed ChatGPT
+#' subscription authentication managed by Codex CLI. Explicit `models` and
+#' `chat_fn` arguments take precedence over the option.
 #' @return A `TempestConfig` S7 object.
 #' @examples
 #' cfg <- tempest_config()
@@ -670,11 +674,11 @@ tempest_config <- function(
   on_unsupported_claim = "flag"
 ) {
   default_models <- list(
-    coordinator = "openai/gpt-5.4",
-    writer = "openai/gpt-5.4",
-    expert = "openai/gpt-5.4-mini",
-    mindmap = "openai/gpt-5.4-mini",
-    judge = "openai/gpt-5.4-mini"
+    coordinator = "openai/gpt-5.6-sol",
+    writer = "openai/gpt-5.6-sol",
+    expert = "openai/gpt-5.6-luna",
+    mindmap = "openai/gpt-5.6-luna",
+    judge = "openai/gpt-5.6-luna"
   )
   configured_chat <- if (is.null(models) && is.null(chat_fn)) {
     tempest_config_chat_option(getOption("tempest.chat"))
@@ -814,6 +818,55 @@ tempest_config <- function(
   )
 }
 
+# Call ellmer through a package-local seam so the provider boundary can be
+# tested without credentials or network access.
+tempest_chat_openai <- function(...) {
+  if (!"auth" %in% names(formals(ellmer::chat_openai))) {
+    tempest_abort(
+      c(
+        "The installed ellmer does not support ChatGPT subscription authentication.",
+        i = "Reinstall Tempest dependencies to obtain tidyverse/ellmer PR #1067."
+      ),
+      class = c(
+        "tempest_chat_error",
+        "tempest_config_error",
+        "tempest_error"
+      )
+    )
+  }
+  ellmer::chat_openai(...)
+}
+
+tempest_subscription_chat_params <- function(role, params) {
+  defaults <- switch(
+    role,
+    mindmap = list(reasoning_effort = "low"),
+    judge = list(reasoning_effort = "low"),
+    list()
+  )
+  utils::modifyList(defaults, params)
+}
+
+tempest_default_chat <- function(model, system_prompt, params, echo, role) {
+  tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
+  if (startsWith(model, "openai/")) {
+    return(tempest_chat_openai(
+      system_prompt = system_prompt,
+      model = sub("^openai/", "", model),
+      params = tempest_subscription_chat_params(role, params),
+      echo = echo,
+      auth = "codex"
+    ))
+  }
+
+  ellmer::chat(
+    name = model,
+    system_prompt = system_prompt,
+    params = params,
+    echo = echo
+  )
+}
+
 #' Create a chat object for a given role.
 #'
 #' @param config A `TempestConfig` object.
@@ -830,7 +883,7 @@ tempest_make_chat <- function(
 ) {
   model <- config@models[[role]] %||%
     config@models[["coordinator"]] %||%
-    "openai/gpt-5.4"
+    "openai/gpt-5.6-sol"
   if (is.null(system_prompt)) {
     prompt_name <- paste0(role, "_system")
     system_prompt <- tryCatch(tempest_prompt(prompt_name), error = function(e) {
@@ -857,12 +910,12 @@ tempest_make_chat <- function(
       chat$set_system_prompt(combined_prompt)
       chat
     } else {
-      tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
-      ellmer::chat(
-        name = model,
+      tempest_default_chat(
+        model = model,
         system_prompt = system_prompt,
         params = config@params,
-        echo = echo
+        echo = echo,
+        role = role
       )
     },
     error = function(e) {

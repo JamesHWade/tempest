@@ -5,11 +5,11 @@ test_that("tempest_config creates valid config", {
   expect_mapequal(
     cfg@models,
     list(
-      coordinator = "openai/gpt-5.4",
-      writer = "openai/gpt-5.4",
-      expert = "openai/gpt-5.4-mini",
-      mindmap = "openai/gpt-5.4-mini",
-      judge = "openai/gpt-5.4-mini"
+      coordinator = "openai/gpt-5.6-sol",
+      writer = "openai/gpt-5.6-sol",
+      expert = "openai/gpt-5.6-luna",
+      mindmap = "openai/gpt-5.6-luna",
+      judge = "openai/gpt-5.6-luna"
     )
   )
   expect_type(cfg@search_provider, "character")
@@ -204,15 +204,57 @@ test_that("tempest_config captures and clones a Chat from tempest.chat", {
 test_that("explicit chat configuration overrides tempest.chat", {
   withr::local_options(tempest.chat = 1)
 
-  model_cfg <- tempest_config(models = "openai/gpt-5.4-mini")
+  model_cfg <- tempest_config(models = "openai/gpt-5.6-luna")
   factory_cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
 
-  expect_equal(model_cfg@models$coordinator, "openai/gpt-5.4-mini")
+  expect_equal(model_cfg@models$coordinator, "openai/gpt-5.6-luna")
   expect_null(model_cfg@chat)
   expect_null(factory_cfg@chat)
   expect_type(tempest_make_chat(factory_cfg, "coordinator"), "list")
+})
+
+test_that("default OpenAI chats use ChatGPT subscription authentication", {
+  captured <- NULL
+  local_mocked_bindings(
+    tempest_chat_openai = function(...) {
+      captured <<- list(...)
+      list(mock = TRUE)
+    }
+  )
+
+  chat <- tempest_make_chat(
+    tempest_config(),
+    "expert",
+    system_prompt = "Research carefully.",
+    echo = "all"
+  )
+
+  expect_identical(chat$mock, TRUE)
+  expect_equal(captured$model, "gpt-5.6-luna")
+  expect_equal(captured$system_prompt, "Research carefully.")
+  expect_equal(captured$params, list())
+  expect_equal(captured$echo, "all")
+  expect_equal(captured$auth, "codex")
+})
+
+test_that("subscription chats tune auxiliary reasoning and honor params", {
+  expect_equal(
+    tempest_subscription_chat_params("mindmap", list()),
+    list(reasoning_effort = "low")
+  )
+  expect_equal(
+    tempest_subscription_chat_params(
+      "mindmap",
+      list(reasoning_effort = "high")
+    ),
+    list(reasoning_effort = "high")
+  )
+  expect_equal(
+    tempest_subscription_chat_params("writer", list()),
+    list()
+  )
 })
 
 test_that("tempest_config validates tempest.chat", {
@@ -264,14 +306,12 @@ test_that("tempest_config does not accept globally registered tools", {
 
 test_that("make_chat creates ellmer chat object", {
   skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
-    "No API key available"
-  )
+  skip_if(!"auth" %in% names(formals(ellmer::chat_openai)))
 
   cfg <- tempest_config()
   chat <- tempest_make_chat(cfg, "coordinator")
   expect_s3_class(chat, "Chat")
+  expect_equal(chat$get_model(), "gpt-5.6-sol")
 })
 
 test_that("missing optional packages are classed", {

@@ -666,6 +666,8 @@ test_that("one delegation tool resolves the live roster by exact expert id", {
   )
 
   expect_equal(tool@name, "delegate_to_expert")
+  expect_match(tool@description, "expert.policy", fixed = TRUE)
+  expect_match(tool@description, "Policy expert", fixed = TRUE)
   expect_named(
     tool@arguments@properties,
     c("expert_id", "question")
@@ -674,12 +676,37 @@ test_that("one delegation tool resolves the live roster by exact expert id", {
     expert_id = "expert.policy",
     question = "What matters?"
   )
+  first_prompt <- expert_chat$.calls()[[1]]$prompt
+  expect_match(
+    first_prompt,
+    "evidence already in the shared session",
+    fixed = TRUE
+  )
+  expect_match(first_prompt, "exactly one web search", fixed = TRUE)
+  expect_match(first_prompt, "no more than two search results", fixed = TRUE)
+  expect_match(first_prompt, "no more than 250 words", fixed = TRUE)
+  expect_match(
+    tool@arguments@properties$question@description,
+    "One narrow, answerable evidence question",
+    fixed = TRUE
+  )
   second <- tool(
     expert_id = "expert.policy",
     question = "What else?"
   )
   expect_equal(first$expert_id, "expert.policy")
   expect_equal(first$response, "First answer.")
+  expect_named(
+    first,
+    c(
+      "expert_id",
+      "expert",
+      "response",
+      "session_id",
+      "source_ids",
+      "claim_ids"
+    )
+  )
   expect_equal(second$response, "Second answer.")
   expect_equal(second$session_id, first$session_id)
   expect_length(manager$list_sessions(), 1L)
@@ -700,6 +727,73 @@ test_that("one delegation tool resolves the live roster by exact expert id", {
     ),
     FALSE
   )
+})
+
+test_that("expert delegation returns and commits its native evidence", {
+  skip_if_not_installed("ellmer")
+  claim_text <- "Native expert evidence supports the answer."
+  url <- "https://example.org/delegated-native-source"
+  source_id <- tempest:::tempest_source_id(url)
+  turn <- native_openai_json_turn(
+    claim_text = claim_text,
+    url = url,
+    title = "Delegated native source"
+  )
+  expert_chat <- list(
+    chat = function(...) claim_text,
+    last_turn = function() turn
+  )
+  extractor <- list(
+    chat_structured = function(prompt, ...) {
+      expect_match(prompt, source_id, fixed = TRUE)
+      list(
+        facts = list(list(
+          claim = claim_text,
+          sources = list(list(source_id = source_id)),
+          confidence = "high"
+        ))
+      )
+    }
+  )
+  config <- tempest_config(
+    models = list(
+      coordinator = "test/coordinator",
+      expert = "test/expert"
+    ),
+    chat_fn = function(role, model, system_prompt, echo) expert_chat
+  )
+  expert <- tempest_expert(
+    expert_id = "expert.native",
+    name = "Native expert",
+    title = "Evidence analyst",
+    description = "Analyzes native citations.",
+    instructions = "Use inspected evidence.",
+    model_role = "expert"
+  )
+  store <- SourceStore$new()
+  manager <- tempest_expert_session_manager(
+    experts = list(expert),
+    runtime = tempest_runtime(include_builtins = FALSE),
+    config = config,
+    retriever = tempest_retriever(config = config, store = store),
+    extractor = extractor,
+    store = store
+  )
+  tool <- tempest:::tempest_create_expert_delegation_tool(
+    session_manager = manager,
+    topic = "Native evidence",
+    experts = list(expert)
+  )
+
+  result <- tool(
+    expert_id = "expert.native",
+    question = "What does the inspected evidence show?"
+  )
+
+  expect_equal(result$source_ids, source_id)
+  expect_length(result$claim_ids, 1L)
+  expect_equal(store$get_source(source_id)$title, "Delegated native source")
+  expect_equal(store$list_claims()[[1]]@claim_text, claim_text)
 })
 
 test_that("single expert generation returns deterministic scoped profiles", {

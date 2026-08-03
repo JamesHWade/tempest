@@ -38,6 +38,7 @@ tempest_suggest_questions_prompt <- function(topic, context = NULL, n = 4) {
     "",
     "These will be rendered as clickable suggestion cards, separate from the assistant's prose answer.",
     "Focus on topic-specific research questions that fill evidence gaps, inspect uncertainty, or expand the mind map.",
+    "Order them when possible as: an evidence gap, a key uncertainty or tradeoff, a contrasting perspective, and a way to verify the most important claim.",
     "Do not suggest generic artifacts or transformations such as diagrams, slide decks, outlines, or gap-analysis tables unless the user explicitly asked for that artifact."
   )
   paste(parts, collapse = "\n")

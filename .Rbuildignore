@@ -17,3 +17,4 @@
 ^\.kata\.toml$
 ^AGENTS\.md$
 ^.*[.]dsprrr_cache$
+^inst/shiny/[.]shinychat$

@@ -517,10 +517,6 @@ tempest_app_styles <- function() {
 .tempest-persona-icon-5 { --tempest-persona-bg: #b83280; }
 .tempest-persona-icon-6 { --tempest-persona-bg: #2b6cb0; }
 
-.tempest-expert-card {
-  border-radius: 8px;
-}
-
 .tempest-activity-item {
   display: inline-flex;
   align-items: center;
@@ -530,75 +526,6 @@ tempest_app_styles <- function() {
 
 .tempest-activity-label {
   overflow-wrap: anywhere;
-}
-
-.tempest-chat-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: .5rem;
-  width: 100%;
-}
-
-.tempest-chat-footer-status {
-  min-width: 0;
-  flex: 1 1 18rem;
-}
-
-.tempest-chat-runtime,
-.tempest-chat-footer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .35rem;
-}
-
-.tempest-chat-runtime {
-  color: var(--bs-secondary-color, #6c757d);
-}
-
-.tempest-chat-runtime > bslib-tooltip,
-.tempest-chat-footer-actions > bslib-tooltip {
-  display: inline-flex;
-}
-
-.tempest-chat-runtime > span {
-  display: inline-flex;
-  align-items: center;
-  gap: .25rem;
-  white-space: nowrap;
-}
-
-.tempest-chat-runtime > bslib-tooltip > span {
-  display: inline-flex;
-  align-items: center;
-  gap: .25rem;
-  white-space: nowrap;
-}
-
-.tempest-runtime-pill {
-  padding: .12rem .45rem;
-  border: 1px solid var(--bs-border-color, #dee2e6);
-  border-radius: 999px;
-  color: var(--bs-body-color, #212529);
-  background: var(--bs-body-bg, #fff);
-}
-
-.tempest-footer-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-}
-
-.tempest-footer-button > .fa,
-.tempest-footer-button > .fas,
-.tempest-footer-button > .far,
-.tempest-footer-button > .fab {
-  margin-right: 0;
 }
 
 .tempest-citation {
