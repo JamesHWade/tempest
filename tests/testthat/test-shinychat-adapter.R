@@ -195,6 +195,57 @@ test_that("shinychat adapter owns client and restoration lifecycle", {
   })
 })
 
+test_that("shinychat adapter binds outside a reactive consumer", {
+  skip_if_not_installed("shiny")
+  state <- new.env(parent = emptyenv())
+  state$last_input <- shiny::reactiveVal(NULL)
+  state$last_turn <- shiny::reactiveVal(NULL)
+  state$status <- shiny::reactiveVal("idle")
+  backend <- list(
+    version = "0.4.0.9000",
+    chat_ui = function(id, greeting, ...) NULL,
+    chat_greeting = function(content, ...) content,
+    chat_server = function(id, client, history, session, ...) {
+      list(
+        append = function(response, role = "assistant") NULL,
+        clear = function(
+          messages = NULL,
+          greeting = FALSE,
+          client_history = "clear"
+        ) {
+          NULL
+        },
+        last_input = shiny::reactive(state$last_input()),
+        last_turn = shiny::reactive(state$last_turn()),
+        set_client = function(client, sync = TRUE) {
+          state$status()
+          NULL
+        },
+        slash_command = function(name, description, handler) NULL,
+        status = shiny::reactive(state$status())
+      )
+    }
+  )
+  session <- shiny::MockShinySession$new()
+  withr::defer(session$close())
+  adapter <- shiny::withReactiveDomain(
+    session,
+    tempest_shinychat_adapter(
+      "chat",
+      initial_client = new.env(parent = emptyenv()),
+      session = session,
+      on_turn = function(...) NULL,
+      backend = backend
+    )
+  )
+  withr::defer(adapter$dispose())
+
+  expect_identical(
+    adapter$bind(new.env(parent = emptyenv())),
+    TRUE
+  )
+})
+
 test_that("shinychat adapter suppresses stale turns and defers client binding", {
   skip_if_not_installed("shiny")
   state <- new.env(parent = emptyenv())

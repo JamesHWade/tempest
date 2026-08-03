@@ -480,7 +480,8 @@ TempestShinyChatAdapter <- R6::R6Class(
         messages = private$validate_messages(messages),
         client_history = client_history
       )
-      if (identical(private$chat$status(), "streaming")) {
+      status <- shiny::isolate(private$chat$status())
+      if (identical(status, "streaming")) {
         private$pending_bind <- transition
         return(invisible(FALSE))
       }
@@ -609,7 +610,10 @@ TempestShinyChatAdapter <- R6::R6Class(
     },
 
     in_domain = function(fn) {
-      shiny::withReactiveDomain(private$session, fn())
+      shiny::withReactiveDomain(
+        private$session,
+        shiny::isolate(fn())
+      )
     },
 
     next_generation = function() {
