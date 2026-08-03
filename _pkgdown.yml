@@ -36,12 +36,15 @@ reference:
   - tempest_run_workflow
   - tempest_storm_workflow_run
   - tempest_costorm_workflow_run
+  - tempest_execution_events
   - tempest_run_accessors
   - tempest_run_snapshot
   - tempest_run_restore
   - tempest_run_save
   - tempest_run_resume
   - tempest_session
+  - tempest_session_process_turn_async
+  - tempest_session_warmup_async
   - TempestSession
   - SimulatedUser
   - run_app

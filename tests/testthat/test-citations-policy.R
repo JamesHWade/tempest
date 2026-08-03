@@ -136,3 +136,59 @@ test_that("default policy is unchanged source-attributed output", {
   expect_match(md, "## References")
   expect_no_match(md, "✓")
 })
+
+test_that("session report Markdown comes from the session artifact catalog", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Canonical report",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.canonical-report",
+      name = "Dr. Canonical"
+    ))
+  )
+  report_md <- "# Canonical report\n\nDurable body."
+  report_spec <- tempest:::tempest_costorm_report_spec(session)
+  session$artifact_catalog$register(report_spec)
+  session$artifact_catalog$add(tempest_artifact(
+    report_spec,
+    content = report_md,
+    artifact_id = "report_md",
+    status = "valid"
+  ))
+  catalog_before <- session$artifact_catalog$snapshot(include_content = TRUE)
+  local_mocked_bindings(
+    tempest_artifact_catalog = function(...) {
+      stop("detached catalog created")
+    }
+  )
+
+  expect_identical(tempest_session_report_md(session), report_md)
+  expect_identical(
+    session$artifact_catalog$snapshot(include_content = TRUE),
+    catalog_before
+  )
+})
+
+test_that("session report Markdown requires a canonical report artifact", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Missing report",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.missing-report",
+      name = "Dr. Missing"
+    ))
+  )
+
+  expect_error(
+    tempest_session_report_md(session),
+    class = "tempest_artifact_catalog_error"
+  )
+})

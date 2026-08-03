@@ -1062,10 +1062,12 @@ tempest_costorm_report_context <- function(
 
 tempest_costorm_artifact_catalog <- function(session) {
   catalog <- session$artifact_catalog %||% NULL
-  if (!is.null(catalog)) {
-    return(catalog)
+  if (!inherits(catalog, "TempestArtifactCatalog")) {
+    tempest_deliverable_abort(
+      "Co-STORM report generation requires a session-owned artifact catalog."
+    )
   }
-  tempest_artifact_catalog(store = session$config@artifact_store)
+  catalog
 }
 
 tempest_costorm_report_plan <- function(

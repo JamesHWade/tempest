@@ -23,10 +23,12 @@ test_that("run status and event accessors preserve ordered cursors", {
   )
   run <- tempest_run_workflow(objective, workflow, registry)
   events <- tempest_run_events(run)
+  execution_events <- tempest_execution_events(run)
   cursor <- events[[2]]$sequence
   remaining <- tempest_run_events(run, after_sequence = cursor)
 
   expect_identical(tempest_run_status(run), "succeeded")
+  expect_identical(execution_events, events)
   expect_identical(
     vapply(events, \(event) event$sequence, integer(1)),
     seq_along(events)
@@ -43,6 +45,10 @@ test_that("run status and event accessors preserve ordered cursors", {
   expect_error(
     tempest_run_status(list()),
     class = "tempest_run_accessor_error"
+  )
+  expect_error(
+    tempest_execution_events(list()),
+    class = "tempest_execution_events_error"
   )
 })
 
