@@ -60,6 +60,18 @@ tempest_session_extract_facts_async <- function(
       value
     },
     onRejected = function(error) {
+      if (!tempest_async_is_current(is_current)) {
+        session$emit_progress(
+          "step",
+          "cancelled",
+          stage = "evidence",
+          step = "fact_extraction",
+          parent_event_id = event@event_id,
+          correlation_id = event@correlation_id,
+          payload = list(reason = "stale_session")
+        )
+        return(NULL)
+      }
       session$emit_progress(
         "step",
         "failed",
@@ -72,6 +84,87 @@ tempest_session_extract_facts_async <- function(
       stop(error)
     }
   )
+}
+
+tempest_session_evidence_counts <- function(session) {
+  if (is.null(session$store) || !inherits(session$store, "SourceStore")) {
+    return(list(source_count = 0L, claim_count = 0L))
+  }
+  list(
+    source_count = length(session$store$list_sources()),
+    claim_count = length(session$store$list_claims())
+  )
+}
+
+tempest_session_commit_evidence_async <- function(
+  session,
+  text,
+  turn = NULL,
+  source_ids = NULL,
+  session_id = session$session_id,
+  expert_id = NA_character_,
+  correlation_id = NA_character_,
+  is_current = function() TRUE
+) {
+  tempest_require("promises", "Async evidence commitment requires promises.")
+  before <- tempest_session_evidence_counts(session)
+  if (!tempest_async_is_current(is_current)) {
+    return(promises::promise_resolve(c(
+      before,
+      list(
+        source_ids = character(),
+        sources_added = 0L,
+        claims_added = 0L,
+        cancelled = TRUE
+      )
+    )))
+  }
+  if (is.null(source_ids)) {
+    source_ids <- if (!is.null(session$harvest_native_sources)) {
+      session$harvest_native_sources(turn = turn)
+    } else {
+      tempest_harvest_native_sources_from_turn(turn, session$store)
+    }
+  }
+  source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
+  source_ids <- tempest_session_answer_source_ids(session, text, source_ids)
+
+  summarize <- function(extraction_skipped = NA_character_) {
+    after <- tempest_session_evidence_counts(session)
+    list(
+      source_count = after$source_count,
+      claim_count = after$claim_count,
+      source_ids = source_ids,
+      sources_added = max(0L, after$source_count - before$source_count),
+      claims_added = max(0L, after$claim_count - before$claim_count),
+      extraction_skipped = extraction_skipped,
+      cancelled = FALSE
+    )
+  }
+
+  if (length(source_ids) == 0L) {
+    session$emit_progress(
+      "step",
+      "skipped",
+      stage = "evidence",
+      step = "fact_extraction",
+      correlation_id = correlation_id,
+      payload = list(reason = "no_cited_sources")
+    )
+    return(promises::promise_resolve(summarize("no_cited_sources")))
+  }
+
+  request <- tempest_session_extract_facts_async(
+    session,
+    text,
+    turn = turn,
+    source_ids = source_ids,
+    session_id = session_id,
+    expert_id = expert_id,
+    correlation_id = correlation_id,
+    is_current = is_current
+  )
+  promises::then(request, function(...) summarize())
 }
 
 tempest_session_update_mindmap_async <- function(
@@ -95,8 +188,10 @@ tempest_session_update_mindmap_async <- function(
     last_exchange,
     "\n\nRules:\n",
     "- Keep node ids stable where possible.\n",
+    "- Keep the map concise with no more than 24 nodes.\n",
     "- Add nodes for new subtopics, hypotheses, and open questions.\n",
     "- Add source_ids to nodes when the exchange included citations like [Sxxxxxxxxxxxx].\n",
+    "- When the exchange marks content as scoping-only or an evidence gap, add only open-question or gap nodes; do not turn unsupported statements into findings.\n",
     "- Do not fabricate sources.\n\n",
     "Return an updated mind map as structured data."
   )
@@ -139,6 +234,18 @@ tempest_session_update_mindmap_async <- function(
       invisible(TRUE)
     },
     onRejected = function(error) {
+      if (!tempest_async_is_current(is_current)) {
+        session$emit_progress(
+          "step",
+          "cancelled",
+          stage = "mindmap",
+          step = "update",
+          parent_event_id = event@event_id,
+          correlation_id = event@correlation_id,
+          payload = list(reason = "stale_session")
+        )
+        return(NULL)
+      }
       session$emit_progress(
         "step",
         "failed",
@@ -235,7 +342,7 @@ tempest_session_report_async <- function(
     style,
     include_references,
     generate_text = function(prompt) {
-      session$chats$reporter$chat_async(prompt, echo = "none")
+      session$chats$reporter$chat_async(prompt)
     }
   )
   request <- tempest_deliverable_generate(plan)

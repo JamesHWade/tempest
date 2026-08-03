@@ -25,7 +25,7 @@ Use `tempest_run()` for the direct STORM result:
 
 ```r
 config <- tempest_config(
-  models = "openai/gpt-5.4-mini",
+  models = "openai/gpt-5.6-luna",
   search_provider = "wikipedia",
   citation_policy = "source_attributed",
   max_search_results = 4,

@@ -66,6 +66,9 @@ test_that("suggestion prompts separate cards from generic deliverable offers", {
   expect_match(prompt, "clickable suggestion cards", fixed = TRUE)
   expect_match(prompt, "fill evidence gaps", fixed = TRUE)
   expect_match(prompt, "expand the mind map", fixed = TRUE)
+  expect_match(prompt, "a key uncertainty or tradeoff", fixed = TRUE)
+  expect_match(prompt, "a contrasting perspective", fixed = TRUE)
+  expect_match(prompt, "a way to verify", fixed = TRUE)
   expect_match(prompt, "Do not suggest generic artifacts", fixed = TRUE)
   expect_match(prompt, "gap-analysis tables", fixed = TRUE)
 })
@@ -134,7 +137,9 @@ test_that("Co-STORM moderator prompt suppresses generic next-step menus", {
   )
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
-      if (identical(system_prompt, tempest_prompt("moderator_system"))) {
+      if (
+        grepl(tempest_prompt("moderator_system"), system_prompt, fixed = TRUE)
+      ) {
         return(moderator)
       }
       if (identical(system_prompt, tempest_prompt("fact_extractor_system"))) {
@@ -166,4 +171,26 @@ test_that("Co-STORM moderator prompt suppresses generic next-step menus", {
   expect_match(prompt, "Do not end with a generic menu", fixed = TRUE)
   expect_match(prompt, "Clickable follow-up cards", fixed = TRUE)
   expect_match(prompt, "specific evidence gap", fixed = TRUE)
+})
+
+test_that("moderator session prompt names the real delegation tool and roster", {
+  expert <- test_expert(
+    expert_id = "expert.safety",
+    name = "Dr. Safety",
+    title = "Safety engineer"
+  )
+
+  prompt <- tempest:::tempest_moderator_system_prompt(
+    "Adaptive animatronics",
+    list(expert)
+  )
+
+  expect_match(prompt, "delegate_to_expert", fixed = TRUE)
+  expect_match(prompt, "expert.safety", fixed = TRUE)
+  expect_match(prompt, "Adaptive animatronics", fixed = TRUE)
+  expect_match(prompt, "at least once before answering", fixed = TRUE)
+  expect_match(prompt, "at most once per moderator", fixed = TRUE)
+  expect_match(prompt, "one narrow evidence question", fixed = TRUE)
+  expect_no_match(prompt, "ask_*", fixed = TRUE)
+  expect_no_match(prompt, "ask_expert", fixed = TRUE)
 })

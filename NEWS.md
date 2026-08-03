@@ -1,7 +1,8 @@
 # tempest 0.1.0
 
 * Persistence bundles from before the reusable workflow-kernel cutover are intentionally unsupported: Co-STORM restore requires schema version 4, and staged STORM restore requires schema version 3 with typed artifact indexes; completed perspective stages persist fingerprinted expert profiles (vtvt, wgr8).
-* The bundled Shiny app now escapes untrusted model and source content, rejects unsafe links, isolates browser session storage behind upload/download archives with quotas and private permissions, provides cancellable STORM workers, runs Co-STORM expert generation, enrichment, suggestions, and reports asynchronously with ordered stale-safe commits, quarantines timed-out expert chats, and exposes an accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
+* The bundled Shiny app now escapes untrusted model and source content, rejects unsafe links, isolates browser session storage behind upload/download archives with quotas and private permissions, provides cancellable STORM workers, runs Co-STORM expert generation, enrichment, suggestions, and reports asynchronously with provider-correct requests and ordered stale-safe commits, quarantines timed-out expert chats, and exposes an accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
+* `run_app()` now inherits the package-level `tempest.chat` default while its model fields remain untouched; editing any model field switches the app to explicit per-role models. Tempest once again declares the shinychat development dependency required by the app and reports how to update an incompatible loaded version before launching.
 * `SourceStore` now validates source, claim, evidence-span, and dispute mutations, rejects orphan references and source-budget overflow, and keeps reverse indexes correct when claims are replaced; the unused parallel S7 source representation was removed (67h9, y2kw).
 * `SourceStore` and `tempest_resource()` now support fingerprinted web, file, message, database, and host-defined evidence resources with opaque locators, connection provenance, redaction and retention metadata, and durable claim lineage without requiring public URLs (fr54).
 * `tempest_agent_skills()` and `tempest_install_agent_skills()` expose and install five bundled Agent Skills for using Tempest STORM and Co-STORM, conducting the portable research protocol in other hosts, and designing, building, or verifying custom Tempest workflows (cheg).
@@ -9,6 +10,7 @@
 * `tempest_artifact_codec_registry()` and `tempest_artifact_store()` provide versioned runtime codecs and complete typed storage adapters for inline or external custom artifact representations without serializing executable codec functions (fr54).
 * `tempest_config()` now validates scalar model, logical, search, source, expert, query, and retrieval budgets immediately with classed errors, and provider tools cannot exceed configured search limits (y2kw).
 * `tempest_config()` now honors the `tempest.chat` R option for a default provider/model string or cloneable ellmer Chat; explicit `models` and `chat_fn` arguments still take precedence, and role-specific prompts are preserved (serz).
+* `tempest_config()` now creates its built-in OpenAI clients with `ellmer::chat_openai(auth = "codex")`, reusing file-backed ChatGPT subscription authentication managed by Codex CLI; custom chat options and factories remain available for API-key and alternative-provider access (tidyverse/ellmer#1067).
 * `tempest_create_ragnar_store()` preserves and validates compatible persistent stores by default; destructive replacement now requires `reset = TRUE` (yb8s).
 * `tempest_costorm_workflow_run()` and `tempest_storm_workflow_run()` expose the built-in research workflows as executable `TempestRun` specifications with shared evidence, typed checkpoints, selected expert teams, scoped connections, and an approval-gated Co-STORM dialogue boundary (vtvt).
 * `tempest_report_md()` now applies strict citation actions to complete matched assertions, removes unsupported assertions under `drop`, gives `revise` distinct behavior, and no longer lets unrelated claims sharing a source determine sentence status (e9kn).
@@ -19,13 +21,9 @@
 * `tempest_expert()`, `tempest_skill()`, `tempest_capability_spec()`, `tempest_connection_ref()`, and `tempest_runtime()` add stable expert profiles, reusable skill contracts, per-context least-privilege capability resolution, opaque host connection bindings, exact expert-session restoration, and durable per-step grant records; global all-chat tool registration and the `tempest_config(tools = )` argument have been removed, so hosts should attach tool implementations through scoped runtime capabilities (wgr8).
 * `tempest_artifact_store()`, `tempest_expert()`, `tempest_progress_event()`, `tempest_session_save()`, `tempest_shiny_ui()`, and related host-app APIs now carry explicit experimental lifecycle badges, and the pkgdown reference groups separate core workflows, evidence, host extension points, persistence, progress, and dsprrr modules (2nzw).
 * `tempest_claims()` now preserves support scores from structured fact extraction, and `tempest_sources()` now includes derived `context_text` plus fallback snippets for source rows backed by content or provider-native citation context (w3fm, fmbv).
-* `tempest_config()` now defaults to `openai/gpt-5.4` for coordinator and
-  writer roles, and `openai/gpt-5.4-mini` for expert, mind map, and judge roles.
+* `tempest_config()` now defaults to `openai/gpt-5.6-sol` for coordinator and writer roles, and `openai/gpt-5.6-luna` for expert, mind map, and judge roles. Built-in subscription clients use lower reasoning effort for auxiliary mind-map and judge calls, and `run_app()` bounds provider requests to 120 seconds by default.
 * `tempest_config()`, `tempest_retriever()`, and session persistence now use catchable cli/rlang condition classes for invalid providers, missing search-provider environment variables, unsafe URLs, chat setup failures, invalid artifact stores, and invalid session objects, all sharing a common `tempest_error` base class (and a `tempest_persistence_error` base for save/load failures) so callers can catch them with a single handler (9c6a).
-* The Chat tab now suggests follow-up questions as clickable cards. A set appears
-  when the expert panel assembles and refreshes after each answer; clicking a card
-  sends that question to the Moderator. Toggle it off with "Suggest follow-up
-  questions" in the sidebar. New exported helper `tempest_suggest_questions()`.
+* The Chat tab now suggests follow-up questions as clickable cards using shinychat's recognized suggestion markup. A set appears when the expert panel assembles and refreshes after each answer; clicking a card sends that question to the Moderator. Toggle it off with "Suggest follow-up questions" in the sidebar. New exported helper `tempest_suggest_questions()`.
 * `tempest_config()` gains `max_search_queries_per_turn` and `retrieve_top_k`
   controls to mirror the upstream STORM runner's query and section-retrieval
   limits.
@@ -74,7 +72,7 @@
 * Co-STORM sessions now route turns, update the mind map, and summarise using
   the most recent dialogue turns instead of the oldest.
 * Co-STORM evidence now records expert session ids, expert ids, and progress correlation ids on claims from expert tools, warmup, chat, and STORM research runs so Facts and Sources can be traced back to the agent turn that produced them (vtz9).
-* Co-STORM moderator answers now avoid generic end-of-answer next-step menus, while suggestion cards focus on topic-specific research questions tied to evidence gaps, uncertainty, and mind-map expansion (svyx).
+* Co-STORM moderators now receive the exact live expert roster and the real `delegate_to_expert()` contract, must delegate substantive research questions before answering, preserve returned source and claim IDs, and surface an explicit evidence gap when a turn cites no inspected source. Each moderator turn delegates at most one narrow question, and experts reuse shared evidence before a bounded search, preventing exhaustive research loops from blocking the chat. Moderator answers avoid generic end-of-answer next-step menus, while suggestion cards focus on topic-specific research questions tied to evidence gaps, uncertainty, and mind-map expansion (svyx).
 * Persisted runs now write artifacts atomically and write the run manifest
   last, so an interrupted save cannot corrupt artifacts or leave `resume`
   pointing at a stage whose output is missing.
@@ -85,17 +83,13 @@
 * The bundled Shiny app now streams STORM workflow progress from the background worker so stage chips update while a run is still in flight (1fxn).
 * The bundled Shiny app now carries provider-native source context into Co-STORM fact extraction so warmup and chat turns populate Facts and Sources when sources were attached to the answer turn (b77g).
 * The bundled Shiny app now invalidates Co-STORM progress output from asynchronous warmup callbacks so progress icons render while warmup is still running (2zbg).
-* The bundled Shiny app now includes a compact chat footer with runtime status and icon actions for new sessions, experts, sources, facts, reports, system prompts, and tools (pkd5).
+* The bundled Shiny app now delegates its greeting, cancellation, suggestion cards, footer container, slash commands, attachments, and streamed tool and thinking displays to `shinychat`; app-generated suggestion markup crosses a narrow typed trusted boundary while model output remains escaped, native card titles and attachment types are used, restored moderator turns are preserved, session controls use `bslib` accordions and switches, and turn-only chat history remains disabled until it can restore complete Tempest experts, evidence, maps, progress, and reports (pkd5).
 * The bundled Shiny app now renders Tempest source citations as numbered inline links with cited-source reference panels in reports, transcript answers, and HTML report downloads (k67p, pgp9, eq7b, dq0v).
 * The bundled Shiny app now registers slash commands for `/new`, `/new-session`, `/experts`, `/sources`, `/facts`, `/claims`, `/report`, `/system`, and `/tools`, backed by normal chat-visible responses (t5zn).
 * The bundled Shiny app now uses a Tempest assistant icon in chat and transcript views plus deterministic expert icons for Co-STORM experts in the panel and workflow progress (q8zc, zb9y).
 * The bundled Shiny app no longer errors when async chat callbacks refresh the
   shared session store outside a reactive consumer.
-* The bundled Shiny app's Co-STORM warmup now runs independent experts in
-  bounded parallel batches, shows compact progress without streaming every
-  warmup answer into the chat, delays suggested questions until warmup finishes,
-  times out stalled research calls, and ignores late callbacks from closed
-  sessions.
+* The bundled Shiny app's Co-STORM warmup now asks each capability-scoped expert for one bounded evidence-backed orientation in parallel, requires a targeted search when session evidence is absent, commits cited sources and claims in stable order before updating the shared mind map once, distinguishes evidence from scoping-only context in its summary, shows compact progress without streaming orientations into the chat, and retires timed-out expert sessions before later dialogue.
 * The bundled Shiny app was rebuilt around Shiny modules (one per tab) with a
   shared reactive store, runs the STORM pipeline as a background `ExtendedTask`
   bound to its task button, and adds a knowledge-stats value-box strip on the

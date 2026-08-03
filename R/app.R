@@ -16,6 +16,7 @@
 run_app <- function(...) {
   tempest_shiny_require_ui(tempest_shiny_panel_choices())
   tempest_shiny_require_server(tempest_shiny_panel_choices())
+  tempest_shiny_require_chat_server()
   app_dir <- system.file("shiny", package = "tempest")
   if (identical(app_dir, "")) {
     tempest_abort("Shiny app not found in installed package.")
@@ -27,5 +28,56 @@ run_app <- function(...) {
       class = c("tempest_shiny_error", "tempest_error")
     )
   }
+  provider_timeout_s <- tempest_shiny_provider_timeout()
+  old_options <- options(ellmer_timeout_s = provider_timeout_s)
+  on.exit(options(old_options), add = TRUE)
   runner(app_dir, ...)
+}
+
+tempest_shiny_provider_timeout <- function() {
+  timeout_s <- getOption("tempest.shiny.provider_timeout_s", 120)
+  if (
+    !is.numeric(timeout_s) ||
+      length(timeout_s) != 1L ||
+      is.na(timeout_s) ||
+      !is.finite(timeout_s) ||
+      timeout_s <= 0
+  ) {
+    tempest_abort(
+      "{.option tempest.shiny.provider_timeout_s} must be a finite positive number.",
+      class = c("tempest_shiny_error", "tempest_error")
+    )
+  }
+  current <- getOption("ellmer_timeout_s")
+  if (
+    is.numeric(current) &&
+      length(current) == 1L &&
+      !is.na(current) &&
+      is.finite(current) &&
+      current > 0
+  ) {
+    timeout_s <- min(timeout_s, current)
+  }
+  timeout_s
+}
+
+tempest_shiny_require_chat_server <- function() {
+  if ("chat_server" %in% tempest_shinychat_exports()) {
+    return(invisible(TRUE))
+  }
+
+  tempest_abort(
+    c(
+      "The Tempest Shiny app requires the development version of shinychat with `chat_server()`.",
+      "i" = paste0(
+        "Install it with `pak::pak(\"posit-dev/shinychat/pkg-r\")`, ",
+        "restart R, and try again."
+      )
+    ),
+    class = c("tempest_shiny_error", "tempest_error")
+  )
+}
+
+tempest_shinychat_exports <- function() {
+  getNamespaceExports("shinychat")
 }

@@ -25,7 +25,7 @@ library(tempest)
 library(ellmer)
 library(shinychat)
 
-client <- ellmer::chat("openai/gpt-5.4")
+client <- ellmer::chat("openai/gpt-5.6-sol")
 client$register_tools(c(
   btw::btw_tools("skills"),
   host_search_tools(),

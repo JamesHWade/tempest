@@ -33,7 +33,8 @@ tempest_config(
 \item{models}{Named list of model identifiers for each role, or a single
 string to use for all roles.}
 
-\item{params}{Additional parameters passed to chat creation.}
+\item{params}{Additional parameters passed to chat creation. Explicit values
+override the role defaults used by built-in ChatGPT-subscription clients.}
 
 \item{chat_fn}{Custom chat factory function. Should accept \code{role}, \code{model},
 \code{system_prompt}, and \code{echo} arguments and return an ellmer-compatible Chat
@@ -109,7 +110,10 @@ When both \code{models} and \code{chat_fn} are \code{NULL}, \code{tempest_config
 \code{\link[ellmer:chat]{ellmer::chat()}} or an ellmer \code{Chat} object. String values are used for every
 role. Chat objects are cloned for every role, retain their provider settings
 and system instructions, and receive the appropriate Tempest role prompt.
-Explicit \code{models} and \code{chat_fn} arguments take precedence over the option.
+When the option is unset, Tempest creates its built-in OpenAI clients with
+\code{\link[ellmer:chat_openai]{ellmer::chat_openai()}} and \code{auth = "codex"}, which uses file-backed ChatGPT
+subscription authentication managed by Codex CLI. Explicit \code{models} and
+\code{chat_fn} arguments take precedence over the option.
 }
 
 \examples{

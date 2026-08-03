@@ -131,6 +131,184 @@ test_that("stale async fact extraction cannot commit", {
   expect_length(store$list_claims(), 0L)
 })
 
+test_that("evidence commitment skips extraction when a turn cites no source", {
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+  extractor_calls <- 0L
+  events <- list()
+  session <- list(
+    session_id = "unsupported-session",
+    store = SourceStore$new(),
+    chats = list(
+      extractor = list(
+        chat_structured_async = function(...) {
+          extractor_calls <<- extractor_calls + 1L
+          promises::promise_resolve(list(facts = list()))
+        }
+      )
+    ),
+    emit_progress = function(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
+      event <- tempest_progress_event(
+        run_id = "unsupported-session",
+        workflow = "costorm",
+        event_type = event_type,
+        status = status,
+        stage = stage,
+        step = step,
+        message = message,
+        payload = payload,
+        parent_event_id = parent_event_id,
+        correlation_id = correlation_id
+      )
+      events[[length(events) + 1L]] <<- event
+      event
+    }
+  )
+
+  request <- tempest:::tempest_session_commit_evidence_async(
+    session,
+    "An unsupported answer.",
+    correlation_id = "turn-unsupported"
+  )
+  settled <- await_tempest_promise(request)
+
+  expect_null(settled$error)
+  expect_equal(extractor_calls, 0L)
+  expect_identical(settled$value$extraction_skipped, "no_cited_sources")
+  expect_length(settled$value$source_ids, 0L)
+  expect_equal(events[[1]]@status, "skipped")
+  expect_identical(events[[1]]@payload$reason, "no_cited_sources")
+})
+
+test_that("evidence commitment extracts claims from cited session sources", {
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+  store <- fake_store_with_sources(1)
+  source_id <- store$list_sources()[[1]]$id
+  extractor <- list(
+    chat_structured_async = function(...) {
+      promises::promise_resolve(list(
+        facts = list(list(
+          claim = "A cited claim",
+          sources = list(list(source_id = source_id)),
+          confidence = "high"
+        ))
+      ))
+    }
+  )
+  session <- list(
+    session_id = "cited-session",
+    store = store,
+    chats = list(extractor = extractor),
+    emit_progress = function(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
+      tempest_progress_event(
+        run_id = "cited-session",
+        workflow = "costorm",
+        event_type = event_type,
+        status = status,
+        stage = stage,
+        step = step,
+        message = message,
+        payload = payload,
+        parent_event_id = parent_event_id,
+        correlation_id = correlation_id
+      )
+    }
+  )
+
+  request <- tempest:::tempest_session_commit_evidence_async(
+    session,
+    paste0("A cited claim [", source_id, "].")
+  )
+  settled <- await_tempest_promise(request)
+
+  expect_null(settled$error)
+  expect_equal(settled$value$source_ids, source_id)
+  expect_equal(settled$value$claims_added, 1L)
+  expect_equal(store$list_claims()[[1]]@claim_text, "A cited claim")
+})
+
+test_that("stale mind-map failures are recorded as cancellation", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  reject_request <- NULL
+  current <- TRUE
+  events <- list()
+  session <- list(
+    session_id = "stale-map-session",
+    topic = "Stale map",
+    mindmap = tempest:::tempest_mindmap_init("Stale map"),
+    chats = list(
+      mindmap = list(
+        chat_structured_async = function(...) {
+          promises::promise(function(resolve, reject) {
+            reject_request <<- reject
+          })
+        }
+      )
+    ),
+    emit_progress = function(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
+      event <- tempest_progress_event(
+        run_id = "stale-map-session",
+        workflow = "costorm",
+        event_type = event_type,
+        status = status,
+        stage = stage,
+        step = step,
+        message = message,
+        payload = payload,
+        parent_event_id = parent_event_id,
+        correlation_id = correlation_id
+      )
+      events[[length(events) + 1L]] <<- event
+      event
+    }
+  )
+
+  request <- tempest:::tempest_session_update_mindmap_async(
+    session,
+    "Late exchange",
+    is_current = function() current
+  )
+  current <- FALSE
+  reject_request(simpleError("provider timed out"))
+  settled <- await_tempest_promise(request)
+
+  expect_null(settled$error)
+  expect_equal(
+    vapply(events, \(event) event@status, character(1)),
+    c("started", "cancelled")
+  )
+})
+
 test_that("async report generation commits only after provider settlement", {
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
@@ -160,7 +338,7 @@ test_that("async report generation commits only after provider settlement", {
     transcript_markdown = function(max_turns = 80) "Conversation",
     chats = list(
       reporter = list(
-        chat_async = function(prompt, ...) {
+        chat_async = function(prompt) {
           async_prompt <<- prompt
           promises::promise(function(resolve, reject) {
             resolve_report <<- resolve

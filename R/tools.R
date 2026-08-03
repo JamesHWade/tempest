@@ -2,7 +2,7 @@
 
 #' Detect provider from model name
 #'
-#' Parses model names like "openai/gpt-5.4-mini" or
+#' Parses model names like "openai/gpt-5.6-luna" or
 #' "anthropic/claude-sonnet"
 #' to extract the provider.
 #'
@@ -1240,11 +1240,28 @@ ExpertSessionManager <- R6::R6Class(
             } else {
               character()
             }
+            source_ids <- tempest_session_answer_source_ids(
+              list(store = self$store),
+              response,
+              unique(c(source_ids, harvested))
+            )
+            if (length(source_ids) == 0L) {
+              self$emit_progress(
+                "step",
+                "skipped",
+                stage = "evidence",
+                step = "fact_extraction",
+                parent_event_id = event@event_id,
+                correlation_id = event@correlation_id,
+                payload = list(reason = "no_cited_sources")
+              )
+              return(invisible(FALSE))
+            }
             tempest_extract_facts_from_answer(
               self$extractor,
               response,
               self$store,
-              source_ids = unique(c(source_ids, harvested)),
+              source_ids = source_ids,
               session_id = session_id,
               expert_id = expert_id,
               retrieval_step_id = correlation_id
@@ -1904,8 +1921,42 @@ tempest_create_expert_delegation_tool <- function(
     )
   }
   mgr <- session_manager
+  roster <- mgr$list_experts()
+  roster_text <- paste(
+    vapply(
+      roster,
+      function(expert) {
+        paste0(
+          expert@expert_id,
+          " (",
+          expert@name,
+          ", ",
+          expert@title,
+          ")"
+        )
+      },
+      character(1)
+    ),
+    collapse = "; "
+  )
+  source_ids_in_store <- function() {
+    if (!inherits(mgr$store, "SourceStore")) {
+      return(character())
+    }
+    vapply(mgr$store$list_sources(), \(source) source$id, character(1))
+  }
+  claim_ids_in_store <- function() {
+    if (!inherits(mgr$store, "SourceStore")) {
+      return(character())
+    }
+    vapply(
+      mgr$store$list_claims(),
+      \(claim) claim@claim_id,
+      character(1)
+    )
+  }
 
-  ask_expert <- function(expert_id, question) {
+  delegate_to_expert <- function(expert_id, question) {
     expert <- mgr$profile(expert_id)
     result <- mgr$get_or_create(expert@expert_id)
     chat <- result$chat
@@ -1913,6 +1964,8 @@ tempest_create_expert_delegation_tool <- function(
     provenance <- result$provenance
     expert_name <- expert@name
     correlation_id <- tempest_uuid("tool")
+    prior_source_ids <- source_ids_in_store()
+    prior_claim_ids <- claim_ids_in_store()
     tool_event <- mgr$emit_progress(
       "tool",
       "started",
@@ -1936,9 +1989,20 @@ tempest_create_expert_delegation_tool <- function(
       "Instructions:\n",
       "- Follow your expert profile and assigned skill instructions.\n",
       "- Use only the capabilities and connections granted to this session.\n",
+      "- Start with evidence already in the shared session by using ",
+      "list_sources, get_source, or retrieve when available.\n",
+      "- If shared evidence cannot answer the question, make exactly one web ",
+      "search and set k = 2 when the search tool accepts k.\n",
+      "- Inspect no more than two search results and make no more than two ",
+      "retrieval or fetch calls in total.\n",
+      "- Stop when those bounds are reached. Do not expand into an exhaustive ",
+      "survey; state the remaining evidence gap instead.\n",
       "- Only state factual claims supported by sources you inspected.\n",
       "- Cite source IDs like [Sxxxxxxxxxxxx] when evidence is available.\n",
-      "- If evidence is weak or unclear, say so.\n\n",
+      "- Do not call add_claim or add_fact; the host commits evidence after ",
+      "your response.\n",
+      "- If evidence is weak or unclear, say so.\n",
+      "- Respond in no more than 250 words.\n\n",
       "Respond now:"
     )
 
@@ -1987,13 +2051,30 @@ tempest_create_expert_delegation_tool <- function(
       ellmer::contents_markdown(last_turn)
     }
 
+    native_source_ids <- if (inherits(mgr$store, "SourceStore")) {
+      tempest_harvest_native_sources_from_turn(last_turn, mgr$store)
+    } else {
+      character()
+    }
     mgr$extract_facts(
       response_text,
       turn = last_turn,
+      source_ids = native_source_ids,
       session_id = sid,
       expert_id = expert@expert_id,
       correlation_id = correlation_id
     )
+    current_source_ids <- source_ids_in_store()
+    cited_source_ids <- intersect(
+      tempest_extract_citation_ids(response_text),
+      current_source_ids
+    )
+    evidence_source_ids <- unique(c(
+      native_source_ids,
+      cited_source_ids,
+      setdiff(current_source_ids, prior_source_ids)
+    ))
+    evidence_claim_ids <- setdiff(claim_ids_in_store(), prior_claim_ids)
     mgr$emit_progress(
       "tool",
       "succeeded",
@@ -2012,23 +2093,30 @@ tempest_create_expert_delegation_tool <- function(
       expert_id = expert@expert_id,
       expert = expert_name,
       response = response_text,
-      session_id = sid
+      session_id = sid,
+      source_ids = evidence_source_ids,
+      claim_ids = evidence_claim_ids
     )
   }
 
   ellmer::tool(
-    ask_expert,
+    delegate_to_expert,
     name = "delegate_to_expert",
     description = paste(
       "Delegate a question to one active expert from the live roster.",
-      "Use the expert's exact stable expert_id."
+      "Use the expert's exact stable expert_id.",
+      "Active experts:",
+      roster_text
     ),
     arguments = list(
       expert_id = ellmer::type_string(
         "Exact stable id of an active expert in the live roster."
       ),
       question = ellmer::type_string(
-        "The question or topic to research. Be specific about what you need."
+        paste(
+          "One narrow, answerable evidence question.",
+          "Do not request an exhaustive survey or multiple deliverables."
+        )
       )
     )
   )

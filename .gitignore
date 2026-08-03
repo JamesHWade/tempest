@@ -12,3 +12,4 @@ vignettes/*.html
 .kata.local.toml
 .positai
 **/.dsprrr_cache/
+inst/shiny/.shinychat/

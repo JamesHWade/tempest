@@ -43,7 +43,14 @@ package tour and a first STORM workflow.
 
 ### LLM provider credentials
 
-`ellmer` reads provider credentials from environment variables. For OpenAI, for example:
+By default, Tempest creates OpenAI clients with
+`ellmer::chat_openai(auth = "codex")`. This reuses file-backed ChatGPT
+subscription authentication managed by an installed Codex CLI; no
+`OPENAI_API_KEY` is required. If Codex has not stored file-backed credentials,
+run `codex login -c 'cli_auth_credentials_store="file"'`.
+
+Alternative providers and custom chat factories use the credential mechanism
+configured for that provider. For example, an OpenAI API-key factory can read:
 
 ```r
 Sys.setenv(OPENAI_API_KEY = "<your key>")
@@ -355,11 +362,11 @@ library(tempest)
 cfg <- tempest_config(
   # search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)
   models = list(
-    coordinator = "openai/gpt-5.4",
-    expert = "openai/gpt-5.4-mini",
-    writer = "openai/gpt-5.4",
-    judge = "openai/gpt-5.4-mini",
-    mindmap = "openai/gpt-5.4-mini"
+    coordinator = "openai/gpt-5.6-sol",
+    expert = "openai/gpt-5.6-luna",
+    writer = "openai/gpt-5.6-sol",
+    judge = "openai/gpt-5.6-luna",
+    mindmap = "openai/gpt-5.6-luna"
   )
 )
 
@@ -484,8 +491,21 @@ res <- tempest_run(
 | `max_active_experts` | `5` | Co-STORM: maximum concurrent active experts |
 | `enable_unseen_surfacing` | `FALSE` | Co-STORM: surface undiscussed sources as moderator questions |
 
-By default, coordinator and writer roles use `openai/gpt-5.4`; expert, mind
-map, and judge roles use `openai/gpt-5.4-mini`.
+By default, coordinator and writer roles use `openai/gpt-5.6-sol`; expert,
+mind map, and judge roles use `openai/gpt-5.6-luna`. Tempest constructs
+these clients with `ellmer::chat_openai(auth = "codex")`, reusing the ChatGPT
+subscription authenticated by Codex CLI. Built-in subscription clients use
+lower reasoning effort for mind-map and judge calls; explicit `params` values
+override these defaults. `run_app()` limits individual provider requests to 120
+seconds by default, configurable with `tempest.shiny.provider_timeout_s`.
+The bundled app's warmup asks each capability-scoped expert for one brief,
+bounded, evidence-backed orientation. Each expert reuses session evidence or
+runs one targeted search, inspects at most two results, and preserves at least
+one citation. Tempest then commits source-backed claims in stable expert order
+and updates the shared mind map once for the complete panel. The summary says
+explicitly when no citable evidence was collected. Warmup concurrency and its
+120-second safety timeout are configurable with `tempest.shiny.warmup_*`
+options.
 
 To set a personal default model, add the `tempest.chat` option to your
 `.Rprofile`, using the same provider/model format as `ellmer::chat()`:
@@ -505,7 +525,8 @@ options(
 Tempest clones a configured Chat for each role, prepends its role-specific
 system prompt, and retains the Chat's provider settings and existing system
 instructions. Explicit `models` and `chat_fn` arguments take precedence over
-the option.
+the option. Use either override when API-key authentication or another provider
+is preferred.
 
 ## RAG with ragnar
 
@@ -680,6 +701,11 @@ library(tempest)
 run_app()
 ```
 
+Untouched model fields inherit `options(tempest.chat = )`; otherwise the app
+uses Tempest's GPT-5.6 Sol/Luna defaults with ChatGPT subscription
+authentication. Editing any model field switches the app to those explicit
+per-role model selections.
+
 The app provides:
 
 - **Chat tab**: Multi-expert conversation with selected or generated experts,
@@ -707,7 +733,7 @@ library(tempest)
 library(vitals)
 library(ellmer)
 
-judge <- ellmer::chat("openai/gpt-5.4-mini")
+judge <- ellmer::chat("openai/gpt-5.6-luna")
 tsk <- tempest_task(dataset = "qa", scorer_chat = judge)
 tsk$get_samples()
 ```
