@@ -40,7 +40,9 @@ tempest_config(
 
 - params:
 
-  Additional parameters passed to chat creation.
+  Additional parameters passed to chat creation. Explicit values
+  override the role defaults used by built-in ChatGPT-subscription
+  clients.
 
 - chat_fn:
 
@@ -157,8 +159,12 @@ by
 or an ellmer `Chat` object. String values are used for every role. Chat
 objects are cloned for every role, retain their provider settings and
 system instructions, and receive the appropriate Tempest role prompt.
-Explicit `models` and `chat_fn` arguments take precedence over the
-option.
+When the option is unset, Tempest creates its built-in OpenAI clients
+with
+[`ellmer::chat_openai()`](https://ellmer.tidyverse.org/reference/chat_openai.html)
+and `auth = "codex"`, which uses file-backed ChatGPT subscription
+authentication managed by Codex CLI. Explicit `models` and `chat_fn`
+arguments take precedence over the option.
 
 ## Examples
 

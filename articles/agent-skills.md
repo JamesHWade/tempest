@@ -106,7 +106,7 @@ library(ellmer)
 library(btw)
 
 client <- ellmer::chat(
-  "openai/gpt-5.4",
+  "openai/gpt-5.6-sol",
   system_prompt = paste(
     "Load conduct-storm-research for deep research requests.",
     "Follow the loaded protocol and use only the registered research tools."
@@ -160,7 +160,7 @@ library(btw)
 library(shinychat)
 
 client <- ellmer::chat(
-  "openai/gpt-5.4",
+  "openai/gpt-5.6-sol",
   system_prompt = paste(
     "A portable STORM skill is available.",
     "Load conduct-storm-research for deep research requests.",
@@ -200,7 +200,7 @@ typed arguments, tool results, and the automatic tool loop.
 mutates one client and is intended for a single user. In a multi-user
 Shiny application, create the ellmer client and host tool state inside
 the server function, then use
-[`chat_mod_server()`](https://posit-dev.github.io/shinychat/r/reference/chat_app.html):
+[`chat_mod_server()`](https://posit-dev.github.io/shinychat/r/reference/chat_mod_ui.html):
 
 ``` r
 
@@ -220,7 +220,7 @@ ui <- bslib::page_fillable(
 
 server <- function(input, output, session) {
   client <- ellmer::chat(
-    "openai/gpt-5.4",
+    "openai/gpt-5.6-sol",
     system_prompt = paste(
       "Load conduct-storm-research for deep research requests.",
       "Use only the registered research and evidence tools."

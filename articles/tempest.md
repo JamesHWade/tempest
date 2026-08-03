@@ -46,9 +46,13 @@ library(tempest)
 
 Tempest uses `ellmer` for model access. Configure the credential
 required by your chosen provider outside your R source files. For the
-default OpenAI models, set `OPENAI_API_KEY` in your user `.Renviron` and
-restart R. Do not put credentials in a Tempest configuration, expert
-profile, workflow specification, or saved run.
+default OpenAI models, Tempest uses
+`ellmer::chat_openai(auth = "codex")` and reuses the file-backed ChatGPT
+subscription authentication managed by Codex CLI. If Codex has not
+stored file-backed credentials, run
+`codex login -c 'cli_auth_credentials_store="file"'`. Do not put
+credentials in a Tempest configuration, expert profile, workflow
+specification, or saved run.
 
 [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
 controls model roles, retrieval, evidence policy, caching, and Co-STORM
@@ -61,7 +65,7 @@ need a separate search-provider key:
 ``` r
 
 cfg <- tempest_config(
-  models = "openai/gpt-5.4-mini",
+  models = "openai/gpt-5.6-luna",
   search_provider = "wikipedia",
   max_search_results = 4,
   max_sources = 12,

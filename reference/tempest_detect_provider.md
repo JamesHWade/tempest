@@ -1,6 +1,6 @@
 # Detect provider from model name
 
-Parses model names like "openai/gpt-5.4-mini" or
+Parses model names like "openai/gpt-5.6-luna" or
 "anthropic/claude-sonnet" to extract the provider.
 
 ## Usage

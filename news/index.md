@@ -11,10 +11,16 @@
   rejects unsafe links, isolates browser session storage behind
   upload/download archives with quotas and private permissions, provides
   cancellable STORM workers, runs Co-STORM expert generation,
-  enrichment, suggestions, and reports asynchronously with ordered
-  stale-safe commits, quarantines timed-out expert chats, and exposes an
-  accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q,
-  t593, gcg1).
+  enrichment, suggestions, and reports asynchronously with
+  provider-correct requests and ordered stale-safe commits, quarantines
+  timed-out expert chats, and exposes an accessible keyboard-operable
+  mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
+- [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
+  now inherits the package-level `tempest.chat` default while its model
+  fields remain untouched; editing any model field switches the app to
+  explicit per-role models. Tempest once again declares the shinychat
+  development dependency required by the app and reports how to update
+  an incompatible loaded version before launching.
 - `SourceStore` now validates source, claim, evidence-span, and dispute
   mutations, rejects orphan references and source-budget overflow, and
   keeps reverse indexes correct when claims are replaced; the unused
@@ -60,6 +66,12 @@
   string or cloneable ellmer Chat; explicit `models` and `chat_fn`
   arguments still take precedence, and role-specific prompts are
   preserved (serz).
+- [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+  now creates its built-in OpenAI clients with
+  `ellmer::chat_openai(auth = "codex")`, reusing file-backed ChatGPT
+  subscription authentication managed by Codex CLI; custom chat options
+  and factories remain available for API-key and alternative-provider
+  access (tidyverse/ellmer#1067).
 - [`tempest_create_ragnar_store()`](https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.md)
   preserves and validates compatible persistent stores by default;
   destructive replacement now requires `reset = TRUE` (yb8s).
@@ -124,8 +136,12 @@
   rows backed by content or provider-native citation context (w3fm,
   fmbv).
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
-  now defaults to `openai/gpt-5.4` for coordinator and writer roles, and
-  `openai/gpt-5.4-mini` for expert, mind map, and judge roles.
+  now defaults to `openai/gpt-5.6-sol` for coordinator and writer roles,
+  and `openai/gpt-5.6-luna` for expert, mind map, and judge roles.
+  Built-in subscription clients use lower reasoning effort for auxiliary
+  mind-map and judge calls, and
+  [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
+  bounds provider requests to 120 seconds by default.
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md),
   [`tempest_retriever()`](https://jameshwade.github.io/tempest/reference/tempest_retriever.md),
   and session persistence now use catchable cli/rlang condition classes
@@ -134,11 +150,11 @@
   session objects, all sharing a common `tempest_error` base class (and
   a `tempest_persistence_error` base for save/load failures) so callers
   can catch them with a single handler (9c6a).
-- The Chat tab now suggests follow-up questions as clickable cards. A
-  set appears when the expert panel assembles and refreshes after each
-  answer; clicking a card sends that question to the Moderator. Toggle
-  it off with “Suggest follow-up questions” in the sidebar. New exported
-  helper
+- The Chat tab now suggests follow-up questions as clickable cards using
+  shinychat’s recognized suggestion markup. A set appears when the
+  expert panel assembles and refreshes after each answer; clicking a
+  card sends that question to the Moderator. Toggle it off with “Suggest
+  follow-up questions” in the sidebar. New exported helper
   [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md).
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
   gains `max_search_queries_per_turn` and `retrieve_top_k` controls to
@@ -281,15 +297,23 @@
   progress correlation ids on claims from expert tools, warmup, chat,
   and STORM research runs so Facts and Sources can be traced back to the
   agent turn that produced them (vtz9).
-- Co-STORM moderator answers now avoid generic end-of-answer next-step
-  menus, while suggestion cards focus on topic-specific research
-  questions tied to evidence gaps, uncertainty, and mind-map expansion
-  (svyx).
+- Co-STORM moderators now receive the exact live expert roster and the
+  real `delegate_to_expert()` contract, must delegate substantive
+  research questions before answering, preserve returned source and
+  claim IDs, and surface an explicit evidence gap when a turn cites no
+  inspected source. Each moderator turn delegates at most one narrow
+  question, and experts reuse shared evidence before a bounded search,
+  preventing exhaustive research loops from blocking the chat. Moderator
+  answers avoid generic end-of-answer next-step menus, while suggestion
+  cards focus on topic-specific research questions tied to evidence
+  gaps, uncertainty, and mind-map expansion (svyx).
 - Persisted runs now write artifacts atomically and write the run
   manifest last, so an interrupted save cannot corrupt artifacts or
   leave `resume` pointing at a stage whose output is missing.
-- The bundled Shiny app now targets shinychat’s `chat_server()` API for
-  streaming, cancellation, greetings, and client state management.
+- The bundled Shiny app now targets shinychat’s
+  [`chat_server()`](https://posit-dev.github.io/shinychat/r/reference/chat_app.html)
+  API for streaming, cancellation, greetings, and client state
+  management.
 - The bundled Shiny app now saves, loads, and autosaves Co-STORM session
   bundles from the Chat sidebar so restored sessions repopulate the
   chat, sources, mind map, transcript, and report views (n64q).
@@ -304,9 +328,15 @@
 - The bundled Shiny app now invalidates Co-STORM progress output from
   asynchronous warmup callbacks so progress icons render while warmup is
   still running (2zbg).
-- The bundled Shiny app now includes a compact chat footer with runtime
-  status and icon actions for new sessions, experts, sources, facts,
-  reports, system prompts, and tools (pkd5).
+- The bundled Shiny app now delegates its greeting, cancellation,
+  suggestion cards, footer container, slash commands, attachments, and
+  streamed tool and thinking displays to `shinychat`; app-generated
+  suggestion markup crosses a narrow typed trusted boundary while model
+  output remains escaped, native card titles and attachment types are
+  used, restored moderator turns are preserved, session controls use
+  `bslib` accordions and switches, and turn-only chat history remains
+  disabled until it can restore complete Tempest experts, evidence,
+  maps, progress, and reports (pkd5).
 - The bundled Shiny app now renders Tempest source citations as numbered
   inline links with cited-source reference panels in reports, transcript
   answers, and HTML report downloads (k67p, pgp9, eq7b, dq0v).
@@ -319,11 +349,14 @@
   in the panel and workflow progress (q8zc, zb9y).
 - The bundled Shiny app no longer errors when async chat callbacks
   refresh the shared session store outside a reactive consumer.
-- The bundled Shiny app’s Co-STORM warmup now runs independent experts
-  in bounded parallel batches, shows compact progress without streaming
-  every warmup answer into the chat, delays suggested questions until
-  warmup finishes, times out stalled research calls, and ignores late
-  callbacks from closed sessions.
+- The bundled Shiny app’s Co-STORM warmup now asks each
+  capability-scoped expert for one bounded evidence-backed orientation
+  in parallel, requires a targeted search when session evidence is
+  absent, commits cited sources and claims in stable order before
+  updating the shared mind map once, distinguishes evidence from
+  scoping-only context in its summary, shows compact progress without
+  streaming orientations into the chat, and retires timed-out expert
+  sessions before later dialogue.
 - The bundled Shiny app was rebuilt around Shiny modules (one per tab)
   with a shared reactive store, runs the STORM pipeline as a background
   `ExtendedTask` bound to its task button, and adds a knowledge-stats

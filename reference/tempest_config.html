@@ -82,7 +82,8 @@ string to use for all roles.</p></dd>
 
 
 <dt id="arg-params">params<a class="anchor" aria-label="anchor" href="#arg-params"></a></dt>
-<dd><p>Additional parameters passed to chat creation.</p></dd>
+<dd><p>Additional parameters passed to chat creation. Explicit values
+override the role defaults used by built-in ChatGPT-subscription clients.</p></dd>
 
 
 <dt id="arg-chat-fn">chat_fn<a class="anchor" aria-label="anchor" href="#arg-chat-fn"></a></dt>
@@ -199,7 +200,10 @@ unsupported assertion; <code>revise</code> replaces it with a revision notice.</
 <code><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">ellmer::chat()</a></code> or an ellmer <code>Chat</code> object. String values are used for every
 role. Chat objects are cloned for every role, retain their provider settings
 and system instructions, and receive the appropriate Tempest role prompt.
-Explicit <code>models</code> and <code>chat_fn</code> arguments take precedence over the option.</p>
+When the option is unset, Tempest creates its built-in OpenAI clients with
+<code><a href="https://ellmer.tidyverse.org/reference/chat_openai.html" class="external-link">ellmer::chat_openai()</a></code> and <code>auth = "codex"</code>, which uses file-backed ChatGPT
+subscription authentication managed by Codex CLI. Explicit <code>models</code> and
+<code>chat_fn</code> arguments take precedence over the option.</p>
     </div>
 
     <div class="section level2">
