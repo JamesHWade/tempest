@@ -77,6 +77,11 @@ tempest_shinychat_validate_backend <- function(backend) {
 }
 
 tempest_shinychat_validate_handle <- function(handle, version = "unknown") {
+  if (!is.list(handle) && !is.environment(handle)) {
+    tempest_shinychat_error(
+      "shinychat::chat_server() returned an incompatible handle."
+    )
+  }
   required <- c(
     "append",
     "clear",
@@ -107,11 +112,13 @@ tempest_shinychat_validate_handle <- function(handle, version = "unknown") {
     set_client = "sync",
     slash_command = c("name", "description", "handler")
   )
+  methods <- lapply(names(contracts), \(name) handle[[name]])
+  names(methods) <- names(contracts)
   incompatible <- names(Filter(
     Negate(identity),
     Map(
       tempest_shinychat_function_supports,
-      handle[names(contracts)],
+      methods,
       contracts
     )
   ))

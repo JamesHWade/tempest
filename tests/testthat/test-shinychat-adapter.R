@@ -33,6 +33,30 @@ test_that("shinychat adapter rejects incompatible backends and handles", {
 
   expect_s3_class(handle_error, "tempest_shinychat_error")
   expect_match(conditionMessage(handle_error), "set_client")
+
+  environment_handle <- list2env(
+    list(
+      append = function(response, role = "assistant") NULL,
+      clear = function(
+        messages = NULL,
+        greeting = FALSE,
+        client_history = "clear"
+      ) {
+        NULL
+      },
+      last_input = function() NULL,
+      last_turn = function() NULL,
+      set_client = function(client, sync = TRUE) NULL,
+      slash_command = function(name, description, handler) NULL,
+      status = function() "idle"
+    ),
+    parent = emptyenv()
+  )
+
+  expect_identical(
+    tempest_shinychat_validate_handle(environment_handle),
+    environment_handle
+  )
 })
 
 test_that("shinychat adapter owns client and restoration lifecycle", {
