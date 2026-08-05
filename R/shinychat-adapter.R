@@ -649,6 +649,8 @@ TempestShinyChatAdapter <- R6::R6Class(
       private$in_domain(function() {
         private$chat$set_client(transition$client, sync = FALSE)
         private$chat$clear(
+          messages = NULL,
+          greeting = FALSE,
           client_history = transition$client_history
         )
         for (message in transition$messages) {

@@ -151,6 +151,7 @@ test_that("shinychat adapter owns client and restoration lifecycle", {
     )
     expect_identical(state$set_clients[[1L]]$client, fresh)
     expect_identical(state$set_clients[[1L]]$sync, FALSE)
+    expect_null(state$clears[[1L]]$messages)
     expect_identical(state$clears[[1L]]$client_history, "clear")
     expect_identical(state$clears[[1L]]$greeting, FALSE)
     expect_identical(state$appends[[1L]]$content, "Fresh session")
@@ -166,6 +167,7 @@ test_that("shinychat adapter owns client and restoration lifecycle", {
     adapter$bind(restored, messages, client_history = "keep")
     expect_identical(state$set_clients[[2L]]$client, restored)
     expect_identical(state$set_clients[[2L]]$sync, FALSE)
+    expect_null(state$clears[[2L]]$messages)
     expect_identical(state$clears[[2L]]$client_history, "keep")
     expect_identical(state$clears[[2L]]$greeting, FALSE)
     restored_roles <- vapply(
@@ -182,6 +184,7 @@ test_that("shinychat adapter owns client and restoration lifecycle", {
     append_count <- length(state$appends)
     adapter$reset()
     expect_identical(state$set_clients[[3L]]$client, shell)
+    expect_null(state$clears[[3L]]$messages)
     expect_identical(state$clears[[3L]]$client_history, "clear")
     expect_identical(state$clears[[3L]]$greeting, FALSE)
     expect_length(state$appends, append_count)
