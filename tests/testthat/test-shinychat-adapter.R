@@ -152,6 +152,7 @@ test_that("shinychat adapter owns client and restoration lifecycle", {
     expect_identical(state$set_clients[[1L]]$client, fresh)
     expect_identical(state$set_clients[[1L]]$sync, FALSE)
     expect_identical(state$clears[[1L]]$client_history, "clear")
+    expect_identical(state$clears[[1L]]$greeting, FALSE)
     expect_identical(state$appends[[1L]]$content, "Fresh session")
 
     messages <- tempest_shinychat_restore_messages(
@@ -166,6 +167,7 @@ test_that("shinychat adapter owns client and restoration lifecycle", {
     expect_identical(state$set_clients[[2L]]$client, restored)
     expect_identical(state$set_clients[[2L]]$sync, FALSE)
     expect_identical(state$clears[[2L]]$client_history, "keep")
+    expect_identical(state$clears[[2L]]$greeting, FALSE)
     restored_roles <- vapply(
       tail(state$appends, 4L),
       `[[`,
@@ -177,10 +179,12 @@ test_that("shinychat adapter owns client and restoration lifecycle", {
       c("assistant", "user", "assistant", "assistant")
     )
 
-    adapter$reset("Session cleared")
+    append_count <- length(state$appends)
+    adapter$reset()
     expect_identical(state$set_clients[[3L]]$client, shell)
     expect_identical(state$clears[[3L]]$client_history, "clear")
-    expect_identical(tail(state$appends, 1L)[[1L]]$content, "Session cleared")
+    expect_identical(state$clears[[3L]]$greeting, FALSE)
+    expect_length(state$appends, append_count)
 
     adapter$register_commands(list(
       help = list(

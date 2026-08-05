@@ -30,6 +30,31 @@ test_that("every module UI builds a Shiny tag", {
   expect_s3_class(app$mod_report_ui("report"), "shiny.tag")
 })
 
+test_that("evidence tabs prioritize the graph and curated table shells", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  app <- source_shiny_modules()
+
+  mindmap_html <- paste(
+    as.character(app$mod_mindmap_ui("mindmap")),
+    collapse = ""
+  )
+  sources_html <- paste(
+    as.character(app$mod_sources_ui("sources")),
+    collapse = ""
+  )
+  facts_html <- paste(as.character(app$mod_facts_ui("facts")), collapse = "")
+
+  expect_match(mindmap_html, "tempest-mindmap-card", fixed = TRUE)
+  expect_match(mindmap_html, "height:620px", fixed = TRUE)
+  expect_match(mindmap_html, "<details", fixed = TRUE)
+  expect_match(mindmap_html, "Accessible mind map outline", fixed = TRUE)
+  expect_match(sources_html, "tempest-evidence-card", fixed = TRUE)
+  expect_match(sources_html, "sources-source_count", fixed = TRUE)
+  expect_match(facts_html, "tempest-evidence-card", fixed = TRUE)
+  expect_match(facts_html, "facts-fact_count", fixed = TRUE)
+})
+
 test_that("module UIs namespace their input ids", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -42,10 +67,9 @@ test_that("module UIs namespace their input ids", {
     as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
     collapse = ""
   )
-  expect_match(chat_html, "chat-progress")
+  expect_match(chat_html, "chat-setup_settings_toggle")
   expect_match(chat_html, "shiny-chat-footer")
   expect_match(chat_html, "chat-runtime_footer")
-  expect_match(chat_html, "chat-footer_report")
   expect_match(chat_html, "tempestCitationSanitizer")
 })
 
@@ -209,31 +233,74 @@ test_that("the About popover links the papers and upstream repos", {
   expect_match(html, "github.com/stanfordnlp/dspy")
 })
 
-test_that("the chat module provides a landing welcome message", {
-  app <- source_shiny_modules()
-  msg <- app$welcome_message()
-  expect_type(msg, "character")
-  expect_length(msg, 1)
-  expect_match(msg, "Welcome to tempest")
-  expect_match(msg, "Start Session")
-})
-
-test_that("chat footer renders accessible command controls", {
+test_that("the chat module provides an interactive landing greeting", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   app <- source_shiny_modules()
   html <- paste(
+    as.character(app$chat_session_greeting_ui(shiny::NS("chat"))),
+    collapse = ""
+  )
+
+  expect_match(html, "tempest-chat-welcome", fixed = TRUE)
+  expect_match(html, "Welcome to tempest", fixed = TRUE)
+  expect_match(html, "cited evidence", fixed = TRUE)
+  expect_match(html, "one-shot report", fixed = TRUE)
+  expect_match(html, "chat-topic", fixed = TRUE)
+  expect_match(html, "chat-n_experts", fixed = TRUE)
+  expect_match(html, "chat-start", fixed = TRUE)
+  expect_match(html, "chat-research_options", fixed = TRUE)
+  expect_match(html, "chat-setup_settings_toggle", fixed = TRUE)
+  expect_match(html, "tempest-chat-start btn-sm", fixed = TRUE)
+})
+
+test_that("chat footer reserves controls for active sessions", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  app <- source_shiny_modules()
+  ns <- shiny::NS("chat")
+  shell <- paste(
     as.character(app$chat_footer_ui(shiny::NS("chat"))),
+    collapse = ""
+  )
+  expect_match(shell, "tempest-chat-footer", fixed = TRUE)
+  expect_match(shell, "chat-runtime_footer", fixed = TRUE)
+  expect_no_match(shell, "chat-footer_new", fixed = TRUE)
+  idle <- paste(
+    as.character(app$chat_runtime_footer_ui(NULL, ns = ns)),
+    collapse = ""
+  )
+  expect_match(idle, "tempest-chat-footer-idle", fixed = TRUE)
+  expect_no_match(idle, "No session", fixed = TRUE)
+
+  ses <- new.env(parent = emptyenv())
+  ses$experts <- list(list(name = "Dr. Footer"))
+  ses$store <- new.env(parent = emptyenv())
+  ses$store$list_sources <- function() list()
+  ses$store$list_claims <- function() list()
+  ses$artifact_catalog <- NULL
+  html <- paste(
+    as.character(app$chat_runtime_footer_ui(ses, ns = ns)),
     collapse = ""
   )
 
   expect_match(html, "justify-content-between")
-  expect_no_match(html, "tempest-chat-footer")
+  expect_match(html, "tempest-chat-footer-active")
+  expect_match(html, "chat-footer_settings_toggle")
   expect_match(html, "chat-footer_new")
-  expect_match(html, "aria-label=\"Generate report\"", fixed = TRUE)
-  expect_match(html, "<bslib-tooltip", fixed = TRUE)
-  expect_match(html, "<template>New session</template>", fixed = TRUE)
-  expect_match(html, "<template>Generate report</template>", fixed = TRUE)
+  expect_match(html, "chat-generate_report")
+  expect_match(html, "chat-report_options")
+  expect_match(html, "chat-report_style")
+  expect_match(html, ">New session</span>", fixed = TRUE)
+  expect_match(html, "bslib-toolbar-label", fixed = TRUE)
+  expect_match(html, ">Report options</span>", fixed = TRUE)
+  expect_match(
+    html,
+    '<div style="display:contents;">Report options</div>',
+    fixed = TRUE
+  )
+  expect_match(html, "Generate report", fixed = TRUE)
+  expect_no_match(html, "No report", fixed = TRUE)
   expect_no_match(html, "footer_sources", fixed = TRUE)
   expect_no_match(html, "footer_system", fixed = TRUE)
   expect_no_match(html, "footer_tools", fixed = TRUE)
@@ -259,6 +326,14 @@ test_that("chat UI delegates presentation features to shinychat", {
   expect_no_match(css, ".suggestion", fixed = TRUE)
   expect_no_match(css, "shiny-chat-suggestion", fixed = TRUE)
   expect_no_match(css, ".shiny-chat-footer", fixed = TRUE)
+  expect_match(css, "@media (max-width: 575.98px)", fixed = TRUE)
+  expect_match(css, "--shiny-chat-greeting-max-width: 680px", fixed = TRUE)
+  expect_match(css, "tempest-chat-welcome-actions", fixed = TRUE)
+  expect_match(css, "--tempest-chat-welcome-control-height", fixed = TRUE)
+  expect_match(css, "bslib-toolbar-input-button[data-type=", fixed = TRUE)
+  expect_match(css, "'experts tools'", fixed = TRUE)
+  expect_match(css, "'start start'", fixed = TRUE)
+  expect_match(css, "padding-right: 2.25rem", fixed = TRUE)
 })
 
 test_that("chat module delegates native chat and session lifecycle work", {
@@ -562,32 +637,57 @@ test_that("sources and facts table data populate explicit display values", {
 
   source_rows <- tibble::tibble(
     id = c("Swithcontent", "Smissing"),
+    resource_kind = c("web", "host.document"),
+    locator = c(
+      "https://example.org/with-content",
+      "documents/missing"
+    ),
     url = c("https://example.org/with-content", "https://example.org/missing"),
     title = c("With content", "Missing"),
     snippet = c(NA_character_, NA_character_),
-    content_text = c("Source content backs the table row.", NA_character_)
+    content_text = c("**Source content** backs the table row.", NA_character_),
+    fetched_at = c("2026-08-03T12:30:00Z", NA_character_)
   )
   source_display <- app$sources_table_data(source_rows)
-  expect_equal(
-    source_display$snippet[[1]],
-    "Source content backs the table row."
+  expect_named(
+    source_display,
+    c(
+      "Source",
+      "Location",
+      "Evidence excerpt",
+      "Type",
+      "Retrieved",
+      "Source ID"
+    )
   )
   expect_equal(
-    source_display$context_text[[1]],
+    source_display[["Evidence excerpt"]][[1]],
     "Source content backs the table row."
   )
-  expect_equal(source_display$snippet[[2]], "Not available")
-  expect_equal(source_display$context_text[[2]], "Not available")
+  expect_equal(source_display[["Evidence excerpt"]][[2]], "Not available")
+  expect_equal(source_display$Type, c("Web", "Host Document"))
+  expect_equal(source_display$Retrieved[[1]], "2026-08-03 12:30:00 UTC")
 
   fact_rows <- tibble::tibble(
     claim_id = c("Cscored", "Cmissing"),
     claim_text = c("Scored fact", "Unscored fact"),
+    claim_type = c("finding", "observation"),
     source_ids = list("Swithcontent", character()),
+    confidence = c("high", "low"),
+    verification_status = c("supported", "pending"),
     support_score = c(0.823, NA_real_)
   )
   fact_display <- app$facts_table_data(fact_rows)
-  expect_equal(fact_display$source_ids, c("Swithcontent", "Not available"))
-  expect_equal(fact_display$support_score, c("0.82", "Not scored"))
+  expect_named(
+    fact_display,
+    c("Fact", "Sources", "Confidence", "Status", "Support", "Type")
+  )
+  expect_equal(
+    fact_display$Sources,
+    c("1 linked · Swithcontent", "Not linked")
+  )
+  expect_equal(fact_display$Support, c("82%", "Not scored"))
+  expect_equal(fact_display$Status, c("Supported", "Pending"))
 })
 
 test_that("Shiny rendering escapes untrusted HTML and unsafe links", {
@@ -621,6 +721,18 @@ test_that("Shiny rendering escapes untrusted HTML and unsafe links", {
     html_columns = "url"
   )
   expect_equal(attr(widget$x$options, "escapeIdx"), '"1"')
+  expect_equal(widget$x$options$responsive, TRUE)
+  expect_match(widget$x$options$dom, "tempest-table-toolbar", fixed = TRUE)
+  expect_null(widget$x$options$scrollX)
+
+  source_link <- app$source_table_links(
+    '<img src=x onerror="alert(1)">',
+    "javascript:alert(1)",
+    "Sunsafe"
+  )
+  expect_no_match(source_link, "<img", fixed = TRUE)
+  expect_no_match(source_link, "href=", fixed = TRUE)
+  expect_match(source_link, "&lt;img", fixed = TRUE)
 
   document <- app$report_html_document("<p>Safe body</p>")
   expect_match(document, "Content-Security-Policy", fixed = TRUE)
@@ -772,6 +884,27 @@ test_that("mind map accessible view exposes relationships, notes, and sources", 
   expect_match(html, "supports to Child finding", fixed = TRUE)
   expect_match(html, source$url, fixed = TRUE)
   expect_match(html, "<summary>", fixed = TRUE)
+
+  network <- app$mindmap_to_visnetwork(mindmap)
+  expect_equal(network$edges$label, "")
+  expect_equal(network$edges$title, "supports")
+
+  mindmap$nodes[[3]] <- list(
+    id = "leaf",
+    label = "Leaf",
+    parent = "child",
+    notes = "",
+    source_ids = character()
+  )
+  structural_network <- app$mindmap_to_visnetwork(mindmap)
+  leaf_edge <- structural_network$edges[
+    structural_network$edges$to == "leaf",
+    ,
+    drop = FALSE
+  ]
+  expect_equal(leaf_edge$from, "child")
+  expect_equal(leaf_edge$title, "Contains")
+  expect_equal(leaf_edge$dashes, TRUE)
 })
 
 test_that("shared fake Co-STORM session populates evidence tabs", {
@@ -917,7 +1050,7 @@ test_that("chat command messages summarize active session state", {
     collapse = ""
   )
   expect_match(footer, "Answering")
-  expect_match(footer, "report ready")
+  expect_match(footer, "Report ready")
   expect_match(
     footer,
     "<template>Session status: Answering</template>",
@@ -928,7 +1061,7 @@ test_that("chat command messages summarize active session state", {
   expect_match(footer, "<template>Facts: 1</template>", fixed = TRUE)
   expect_match(
     footer,
-    "<template>Report status: report ready</template>",
+    "<template>Report status: Report ready</template>",
     fixed = TRUE
   )
 })
@@ -947,7 +1080,7 @@ test_that("start suggestions wait for warmup when experts are available", {
   expect_equal(app$should_delay_start_suggestions(TRUE, list()), FALSE)
 })
 
-test_that("the chat sidebar offers a follow-up-questions toggle", {
+test_that("the chat greeting prioritizes one-time session controls", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   skip_if_not_installed("shinychat")
@@ -956,15 +1089,22 @@ test_that("the chat sidebar offers a follow-up-questions toggle", {
     as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
     collapse = ""
   )
-  expect_match(html, "chat-session_settings", fixed = TRUE)
-  expect_match(html, "Session and report", fixed = TRUE)
-  expect_match(html, "Expert panel", fixed = TRUE)
+  expect_match(html, "tempest-chat-welcome", fixed = TRUE)
+  expect_match(html, "chat-topic", fixed = TRUE)
+  expect_match(html, "chat-n_experts", fixed = TRUE)
+  expect_match(html, "chat-start", fixed = TRUE)
+  expect_match(html, "chat-research_options", fixed = TRUE)
+  expect_match(html, "chat-setup_settings_toggle", fixed = TRUE)
+  expect_match(html, "Welcome to tempest", fixed = TRUE)
+  expect_no_match(html, "tempest-chat-card-header", fixed = TRUE)
+  expect_no_match(html, "chat-progress", fixed = TRUE)
+  expect_no_match(html, "detailed workspace settings", fixed = TRUE)
   expect_match(html, 'role="switch"', fixed = TRUE)
   expect_match(html, "chat-suggest")
   expect_match(html, "Suggest follow-up questions")
 })
 
-test_that("the chat sidebar offers session persistence controls", {
+test_that("the chat settings drawer holds secondary workspace controls", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   skip_if_not_installed("shinychat")
@@ -974,10 +1114,28 @@ test_that("the chat sidebar offers session persistence controls", {
     collapse = ""
   )
 
+  expect_match(html, "sidebar-right", fixed = TRUE)
+  expect_match(html, 'data-open-desktop="closed"', fixed = TRUE)
+  expect_match(html, "chat-session_settings", fixed = TRUE)
+  expect_match(html, "Expert panel", fixed = TRUE)
+  expect_match(html, "Session storage", fixed = TRUE)
   expect_match(html, "chat-save_session")
   expect_match(html, "chat-load_session")
   expect_match(html, "chat-autosave_session")
+  expect_no_match(html, "Research configuration", fixed = TRUE)
   expect_no_match(html, "Bundle directory", fixed = TRUE)
+})
+
+test_that("the chat server toggles settings from greeting and footer", {
+  app <- source_shiny_modules()
+  server_code <- paste(deparse(body(app$mod_chat_server)), collapse = "\n")
+
+  expect_match(server_code, "input$setup_settings_toggle", fixed = TRUE)
+  expect_match(server_code, "input$footer_settings_toggle", fixed = TRUE)
+  expect_match(server_code, 'toggle_sidebar("settings"', fixed = TRUE)
+  expect_match(server_code, "suggestions_enabled", fixed = TRUE)
+  expect_match(server_code, "ignoreNULL = TRUE", fixed = TRUE)
+  expect_no_match(server_code, "input$footer_report", fixed = TRUE)
 })
 
 test_that("session archives round-trip through the upload boundary", {

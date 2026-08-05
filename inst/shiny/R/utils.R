@@ -471,6 +471,34 @@ empty_state <- function(icon_name, message) {
   )
 }
 
+evidence_table_header <- function(
+  ns,
+  title,
+  description,
+  icon_name,
+  count_id
+) {
+  shiny::div(
+    class = "tempest-evidence-heading",
+    shiny::div(
+      class = "tempest-evidence-heading-copy",
+      shiny::span(
+        class = "tempest-evidence-heading-icon",
+        `aria-hidden` = "true",
+        shiny::icon(icon_name)
+      ),
+      shiny::div(
+        shiny::h2(class = "h5 mb-1", title),
+        shiny::p(class = "mb-0 text-muted small", description)
+      )
+    ),
+    shiny::span(
+      class = "badge rounded-pill tempest-evidence-count",
+      shiny::textOutput(ns(count_id), inline = TRUE)
+    )
+  )
+}
+
 tempest_app_styles <- function() {
   shiny::tags$style(shiny::HTML(
     "
@@ -484,6 +512,121 @@ tempest_app_styles <- function() {
   width: 1rem;
   height: 1rem;
   vertical-align: -0.125em;
+}
+
+.tempest-chat-layout {
+  min-width: 0;
+}
+
+.tempest-chat-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tempest-chat-card shiny-chat-container {
+  --shiny-chat-greeting-max-width: 680px;
+}
+
+.tempest-chat-welcome {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.tempest-chat-welcome-copy {
+  max-width: 38rem;
+}
+
+.tempest-chat-welcome-copy p {
+  line-height: 1.55;
+}
+
+.tempest-chat-welcome-form {
+  display: grid;
+  gap: .75rem;
+  min-width: 0;
+}
+
+.tempest-chat-welcome-actions {
+  --tempest-chat-welcome-control-height: 2.375rem;
+  display: grid;
+  grid-template-columns: 8rem max-content minmax(9rem, 1fr);
+  align-items: flex-end;
+  gap: .65rem;
+  min-width: 0;
+}
+
+.tempest-chat-welcome-form .form-group,
+.tempest-chat-research-options .form-group,
+.tempest-chat-footer-actions .form-group {
+  margin-bottom: 0;
+}
+
+.tempest-chat-welcome-form .control-label {
+  margin-bottom: .2rem;
+  color: var(--bs-secondary-color, #596771);
+  font-size: .76rem;
+  font-weight: 650;
+}
+
+.tempest-chat-welcome-experts {
+  min-width: 8rem;
+}
+
+.tempest-chat-welcome-topic .shiny-input-container,
+.tempest-chat-welcome-experts .shiny-input-container {
+  width: 100%;
+}
+
+.tempest-chat-welcome-experts .form-select,
+.tempest-chat-welcome-tools .bslib-toolbar-input-button,
+.tempest-chat-start {
+  height: var(--tempest-chat-welcome-control-height);
+  min-height: var(--tempest-chat-welcome-control-height);
+}
+
+.tempest-chat-start {
+  white-space: nowrap;
+}
+
+.tempest-chat-welcome-tools {
+  min-height: var(--tempest-chat-welcome-control-height);
+  padding: 0;
+}
+
+.tempest-chat-welcome-tools .bslib-toolbar-input-button[data-type='icon'] {
+  width: var(--tempest-chat-welcome-control-height);
+}
+
+.tempest-chat-research-options {
+  display: grid;
+  gap: .65rem;
+  min-width: 17rem;
+}
+
+.tempest-chat-footer-idle {
+  display: none;
+}
+
+.tempest-chat-footer {
+  width: 100%;
+  max-width: 680px;
+  margin-inline: auto;
+}
+
+.tempest-chat-settings {
+  border-left-color: var(--bs-border-color, #dee2e6);
+  background: var(--bs-tertiary-bg, #f7f9fa);
+}
+
+.tempest-chat-config {
+  margin-top: .75rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.tempest-chat-footer-actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
 }
 
 .tempest-persona-icon {
@@ -626,6 +769,397 @@ tempest_app_styles <- function() {
   display: flex;
   flex-wrap: wrap;
   gap: .75rem;
+}
+
+.tempest-mindmap-kpis {
+  margin-bottom: .75rem;
+}
+
+.tempest-mindmap-kpi {
+  min-height: 150px;
+}
+
+.tempest-mindmap-card {
+  min-height: 620px;
+  overflow: hidden;
+}
+
+.tempest-mindmap-heading {
+  display: grid;
+  gap: .2rem;
+  padding: .85rem 1rem;
+}
+
+.tempest-mindmap-heading > .shiny-html-output {
+  min-height: 1.5rem;
+  font-weight: 600;
+}
+
+.tempest-mindmap-canvas {
+  position: relative;
+  min-height: 0;
+  background: var(--bs-body-bg, #fff);
+}
+
+.tempest-mindmap-visualization,
+.tempest-mindmap-visualization .vis-network {
+  min-height: 520px;
+}
+
+.tempest-mindmap-outline {
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: var(--bs-border-radius-lg, .5rem);
+  background: var(--bs-body-bg, #fff);
+}
+
+.tempest-mindmap-outline > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1rem;
+  cursor: pointer;
+  color: var(--bs-body-color, #15293a);
+  font-weight: 600;
+  list-style: none;
+}
+
+.tempest-mindmap-outline > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tempest-mindmap-outline > summary::after {
+  content: '+';
+  flex: 0 0 auto;
+  color: var(--bs-primary, #4a90a4);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.tempest-mindmap-outline[open] > summary::after {
+  content: '−';
+}
+
+.tempest-mindmap-outline > summary:hover,
+.tempest-mindmap-outline > summary:focus-visible {
+  background: var(--bs-tertiary-bg, #eef3f5);
+}
+
+.tempest-mindmap-outline-title {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.tempest-mindmap-outline-hint {
+  margin-left: auto;
+  color: var(--bs-secondary-color, #6c757d);
+  font-size: .8rem;
+  font-weight: 500;
+}
+
+.tempest-mindmap-outline-body {
+  padding: 1rem;
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.tempest-evidence-card {
+  overflow: hidden;
+}
+
+.tempest-evidence-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .15rem 0;
+}
+
+.tempest-evidence-heading-copy {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  min-width: 0;
+}
+
+.tempest-evidence-heading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: rgba(74, 144, 164, .12);
+  color: var(--bs-primary, #4a90a4);
+}
+
+.tempest-evidence-count {
+  flex: 0 0 auto;
+  border: 1px solid rgba(74, 144, 164, .3);
+  background: rgba(74, 144, 164, .1);
+  color: var(--bs-body-color, #15293a);
+  font-weight: 600;
+}
+
+.tempest-evidence-table .dataTables_wrapper {
+  padding: 1rem;
+}
+
+.tempest-table-toolbar,
+.tempest-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.tempest-table-toolbar {
+  flex-wrap: wrap;
+  margin-bottom: .85rem;
+}
+
+.tempest-table-footer {
+  flex-wrap: wrap;
+  margin-top: .85rem;
+}
+
+.tempest-table-search .dataTables_filter,
+.tempest-table-actions .dt-buttons,
+.tempest-table-footer .dataTables_info,
+.tempest-table-footer .dataTables_paginate {
+  float: none;
+  margin: 0;
+}
+
+.tempest-table-search label {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.tempest-table-search input[type='search'] {
+  min-width: min(22rem, 62vw);
+  margin: 0;
+  padding: .45rem .7rem;
+  border: 1px solid var(--bs-border-color, #ced4da);
+  border-radius: var(--bs-border-radius, .5rem);
+  background: var(--bs-body-bg, #fff);
+  color: var(--bs-body-color, #15293a);
+}
+
+.tempest-table-search input[type='search']:focus {
+  border-color: var(--bs-primary, #4a90a4);
+  outline: 0;
+  box-shadow: 0 0 0 .2rem rgba(74, 144, 164, .18);
+}
+
+.tempest-table-actions .dt-buttons {
+  display: flex;
+  gap: .4rem;
+}
+
+.tempest-evidence-table .tempest-table-actions .dt-buttons .btn,
+.tempest-table-actions .dt-button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: .4rem .7rem;
+  border: 1px solid var(--bs-border-color, #ced4da);
+  border-radius: var(--bs-border-radius, .5rem);
+  background: var(--bs-body-bg, #fff);
+  color: var(--bs-body-color, #15293a);
+  font-size: .82rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.tempest-evidence-table .tempest-table-actions .dt-buttons .btn:hover,
+.tempest-evidence-table .tempest-table-actions .dt-buttons .btn:focus,
+.tempest-table-actions .dt-button:hover,
+.tempest-table-actions .dt-button:focus {
+  border-color: var(--bs-primary, #4a90a4);
+  background: rgba(74, 144, 164, .1);
+  color: var(--bs-body-color, #15293a);
+}
+
+.tempest-evidence-table table.dataTable {
+  width: 100% !important;
+  margin: 0 !important;
+  border-collapse: collapse !important;
+}
+
+.tempest-evidence-table table.dataTable thead th {
+  padding: .65rem .75rem;
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+  background: var(--bs-tertiary-bg, #eef3f5);
+  color: var(--bs-secondary-color, #596771);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tempest-evidence-table table.dataTable tbody td {
+  padding: .8rem .75rem;
+  border-color: var(--bs-border-color, #dee2e6);
+  vertical-align: top;
+}
+
+.tempest-evidence-table table.dataTable tbody tr:hover > * {
+  background: rgba(74, 144, 164, .055);
+}
+
+.tempest-col-primary,
+.tempest-col-wrap {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+.tempest-col-primary {
+  min-width: 18rem;
+  font-weight: 500;
+}
+
+.tempest-col-wrap {
+  min-width: 14rem;
+  line-height: 1.45;
+}
+
+.tempest-col-secondary {
+  white-space: nowrap;
+  color: var(--bs-secondary-color, #596771);
+}
+
+.tempest-col-mono {
+  color: var(--bs-secondary-color, #596771);
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: .76rem;
+  white-space: nowrap;
+}
+
+.tempest-source-cell {
+  display: grid;
+  gap: .2rem;
+}
+
+.tempest-source-title {
+  color: var(--bs-body-color, #15293a);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.tempest-source-title:hover,
+a.tempest-source-title:focus {
+  color: var(--bs-primary, #4a90a4);
+  text-decoration: underline;
+}
+
+.tempest-source-location {
+  color: var(--bs-secondary-color, #596771);
+  font-size: .78rem;
+  font-weight: 400;
+}
+
+.tempest-evidence-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: .28rem .5rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tempest-evidence-badge-success {
+  border-color: var(--bs-success-border-subtle, rgba(47, 133, 90, .28));
+  background: var(--bs-success-bg-subtle, rgba(47, 133, 90, .12));
+  color: var(--bs-success-text-emphasis, #246b48);
+}
+
+.tempest-evidence-badge-warning {
+  border-color: var(--bs-warning-border-subtle, rgba(183, 121, 31, .32));
+  background: var(--bs-warning-bg-subtle, rgba(244, 183, 64, .18));
+  color: var(--bs-warning-text-emphasis, #7a5318);
+}
+
+.tempest-evidence-badge-danger {
+  border-color: var(--bs-danger-border-subtle, rgba(184, 50, 80, .28));
+  background: var(--bs-danger-bg-subtle, rgba(184, 50, 80, .1));
+  color: var(--bs-danger-text-emphasis, #943049);
+}
+
+.tempest-evidence-badge-neutral {
+  border-color: var(--bs-border-color, #ced4da);
+  background: var(--bs-tertiary-bg, #eef3f5);
+  color: var(--bs-secondary-color, #596771);
+}
+
+@media (max-width: 575.98px) {
+  .tempest-chat-welcome-actions {
+    grid-template-areas:
+      'experts tools'
+      'start start';
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .tempest-chat-welcome-experts {
+    grid-area: experts;
+    min-width: 0;
+  }
+
+  .tempest-chat-start {
+    grid-area: start;
+    width: 100%;
+  }
+
+  .tempest-chat-welcome-tools {
+    grid-area: tools;
+  }
+
+  .tempest-chat-footer-active {
+    align-items: stretch !important;
+  }
+
+  .tempest-chat-footer-actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-right: 2.25rem;
+  }
+
+  .tempest-mindmap-card {
+    height: 560px !important;
+    min-height: 560px;
+  }
+
+  .tempest-mindmap-visualization,
+  .tempest-mindmap-visualization .vis-network {
+    min-height: 460px;
+  }
+
+  .tempest-mindmap-outline-hint {
+    display: none;
+  }
+
+  .tempest-evidence-heading {
+    align-items: flex-start;
+  }
+
+  .tempest-evidence-table .dataTables_wrapper {
+    padding: .75rem;
+  }
+
+  .tempest-table-search,
+  .tempest-table-actions,
+  .tempest-table-search input[type='search'] {
+    width: 100%;
+  }
 }
 "
   ))
@@ -1095,9 +1629,64 @@ sources_table_data <- function(df) {
     missing = NA_character_
   )
 
-  df$snippet <- table_compact_text(snippet)
-  df$context_text <- table_compact_text(context, max_chars = 600L)
-  df
+  ids <- if ("id" %in% names(df)) {
+    table_compact_text(df$id, max_chars = 80L)
+  } else {
+    rep("Not available", n)
+  }
+  urls <- if ("url" %in% names(df)) {
+    as.character(df$url)
+  } else {
+    rep(NA_character_, n)
+  }
+  locators <- urls
+  fallback_locators <- if ("locator" %in% names(df)) {
+    as.character(df$locator)
+  } else {
+    rep(NA_character_, n)
+  }
+  missing_locator <- table_missing_text(locators)
+  locators[missing_locator] <- fallback_locators[missing_locator]
+  locations <- table_compact_text(locators, max_chars = 180L)
+
+  titles <- if ("title" %in% names(df)) {
+    as.character(df$title)
+  } else {
+    rep(NA_character_, n)
+  }
+  missing_title <- table_missing_text(titles)
+  titles[missing_title] <- vapply(
+    locations[missing_title],
+    source_location_label,
+    character(1)
+  )
+  missing_title <- table_missing_text(titles)
+  titles[missing_title] <- ids[missing_title]
+
+  kinds <- if ("resource_kind" %in% names(df)) {
+    table_display_label(df$resource_kind)
+  } else {
+    rep("Not available", n)
+  }
+  fetched <- if ("fetched_at" %in% names(df)) {
+    table_timestamp_text(df$fetched_at)
+  } else {
+    rep("Not available", n)
+  }
+
+  data.frame(
+    Source = table_compact_text(titles, max_chars = 140L),
+    Location = locations,
+    `Evidence excerpt` = table_compact_text(
+      table_plain_text(snippet),
+      max_chars = 260L
+    ),
+    Type = kinds,
+    Retrieved = fetched,
+    `Source ID` = ids,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
 }
 
 facts_table_data <- function(df) {
@@ -1105,34 +1694,195 @@ facts_table_data <- function(df) {
     return(NULL)
   }
   n <- nrow(df)
-  if ("source_ids" %in% names(df)) {
-    df$source_ids <- vapply(
+  source_ids <- if ("source_ids" %in% names(df)) {
+    vapply(
       df$source_ids,
       function(ids) {
         ids <- as.character(unlist(ids, use.names = FALSE))
         ids <- ids[!table_missing_text(ids)]
         if (length(ids) == 0L) {
-          return("Not available")
+          return("Not linked")
         }
-        paste(ids, collapse = ", ")
+        paste0(
+          length(ids),
+          " linked · ",
+          paste(ids, collapse = ", ")
+        )
       },
       character(1)
     )
+  } else {
+    rep("Not linked", n)
   }
-  if (!"support_score" %in% names(df)) {
-    df$support_score <- rep(NA_real_, n)
+  score <- if ("support_score" %in% names(df)) {
+    suppressWarnings(as.numeric(df$support_score))
+  } else {
+    rep(NA_real_, n)
   }
-  score <- suppressWarnings(as.numeric(df$support_score))
-  df$support_score <- ifelse(
+  support <- ifelse(
     is.na(score),
     "Not scored",
-    format(round(score, 2), nsmall = 2, trim = TRUE)
+    paste0(round(score * 100), "%")
   )
-  df
+  claim_text <- if ("claim_text" %in% names(df)) {
+    table_compact_text(table_plain_text(df$claim_text), max_chars = 500L)
+  } else {
+    rep("Not available", n)
+  }
+  claim_type <- if ("claim_type" %in% names(df)) {
+    table_display_label(df$claim_type)
+  } else {
+    rep("Not available", n)
+  }
+  confidence <- if ("confidence" %in% names(df)) {
+    table_display_label(df$confidence)
+  } else {
+    rep("Not available", n)
+  }
+  status <- if ("verification_status" %in% names(df)) {
+    table_display_label(df$verification_status)
+  } else {
+    rep("Not available", n)
+  }
+
+  data.frame(
+    Fact = claim_text,
+    Sources = source_ids,
+    Confidence = confidence,
+    Status = status,
+    Support = support,
+    Type = claim_type,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
 }
 
-# A DT datatable with the app's standard export options.
-styled_datatable <- function(df, html_columns = character()) {
+table_display_label <- function(x) {
+  vapply(
+    as.character(x),
+    function(value) {
+      if (is.na(value) || !nzchar(trimws(value))) {
+        return("Not available")
+      }
+      value <- gsub("[._-]+", " ", trimws(value), perl = TRUE)
+      tools::toTitleCase(tolower(value))
+    },
+    character(1)
+  )
+}
+
+table_timestamp_text <- function(x) {
+  values <- table_compact_text(x, max_chars = 40L)
+  values <- sub(
+    "^([0-9]{4}-[0-9]{2}-[0-9]{2})T",
+    "\\1 ",
+    values,
+    perl = TRUE
+  )
+  sub("Z$", " UTC", values)
+}
+
+table_plain_text <- function(x) {
+  values <- as.character(x)
+  values <- gsub("\\*{1,3}|_{1,3}|`+", "", values, perl = TRUE)
+  gsub("\\[([^]]+)\\]\\([^)]*\\)", "\\1", values, perl = TRUE)
+}
+
+source_location_label <- function(location) {
+  if (is.na(location) || !nzchar(trimws(location))) {
+    return("Not available")
+  }
+  safe <- citation_safe_url(location)
+  if (nzchar(safe)) {
+    return(sub("^https?://([^/]+).*$", "\\1", safe, perl = TRUE))
+  }
+  table_compact_text(location, max_chars = 64L)
+}
+
+source_table_links <- function(labels, locations, ids) {
+  mapply(
+    function(label, location, id) {
+      label <- table_compact_text(label, max_chars = 140L)
+      location_label <- source_location_label(location)
+      escaped_label <- htmltools::htmlEscape(label)
+      escaped_location <- htmltools::htmlEscape(location_label)
+      safe <- citation_safe_url(location)
+      title <- if (nzchar(safe)) {
+        paste0(
+          '<a class="tempest-source-title" href="',
+          htmltools::htmlEscape(safe, attribute = TRUE),
+          '" target="_blank" rel="noopener noreferrer">',
+          escaped_label,
+          '<span class="visually-hidden"> (opens in a new tab)</span></a>'
+        )
+      } else {
+        paste0('<span class="tempest-source-title">', escaped_label, "</span>")
+      }
+      meta <- if (identical(location_label, "Not available")) {
+        htmltools::htmlEscape(id)
+      } else {
+        escaped_location
+      }
+      paste0(
+        '<div class="tempest-source-cell">',
+        title,
+        '<span class="tempest-source-location">',
+        meta,
+        "</span></div>"
+      )
+    },
+    labels,
+    locations,
+    ids,
+    USE.NAMES = FALSE
+  )
+}
+
+evidence_status_badges <- function(values, palette) {
+  palette <- match.arg(palette, c("confidence", "verification"))
+  vapply(
+    as.character(values),
+    function(value) {
+      key <- tolower(trimws(value %||% ""))
+      tone <- if (identical(palette, "confidence")) {
+        switch(
+          key,
+          high = "success",
+          medium = "warning",
+          low = "danger",
+          "neutral"
+        )
+      } else {
+        switch(
+          key,
+          supported = "success",
+          verified = "success",
+          disputed = "warning",
+          pending = "warning",
+          unsupported = "danger",
+          rejected = "danger",
+          "neutral"
+        )
+      }
+      paste0(
+        '<span class="tempest-evidence-badge tempest-evidence-badge-',
+        tone,
+        '">',
+        htmltools::htmlEscape(value %||% "Not available"),
+        "</span>"
+      )
+    },
+    character(1)
+  )
+}
+
+# A responsive DT datatable with the app's standard search and export options.
+styled_datatable <- function(
+  df,
+  html_columns = character(),
+  search_placeholder = "Search evidence",
+  column_defs = list()
+) {
   html_columns <- intersect(html_columns, names(df))
   escape <- if (length(html_columns) == 0L) {
     TRUE
@@ -1142,14 +1892,35 @@ styled_datatable <- function(df, html_columns = character()) {
   DT::datatable(
     df,
     escape = escape,
-    extensions = "Buttons",
+    extensions = c("Buttons", "Responsive"),
     options = list(
-      dom = "Bfrtip",
-      buttons = c("csv", "excel"),
-      pageLength = 25,
-      scrollX = TRUE
+      dom = paste0(
+        "<'tempest-table-toolbar'",
+        "<'tempest-table-search'f>",
+        "<'tempest-table-actions'B>>",
+        "rt",
+        "<'tempest-table-footer'ip>"
+      ),
+      buttons = list(
+        list(extend = "csv", text = "Export CSV"),
+        list(extend = "excel", text = "Export Excel")
+      ),
+      pageLength = 10,
+      lengthChange = FALSE,
+      responsive = TRUE,
+      autoWidth = FALSE,
+      orderClasses = FALSE,
+      columnDefs = column_defs,
+      language = list(
+        search = "",
+        searchPlaceholder = search_placeholder,
+        info = "_START_–_END_ of _TOTAL_",
+        infoEmpty = "No records",
+        paginate = list(previous = "Previous", `next` = "Next")
+      )
     ),
-    rownames = FALSE
+    rownames = FALSE,
+    class = "compact hover row-border"
   )
 }
 
@@ -1283,11 +2054,48 @@ mindmap_to_visnetwork <- function(mindmap) {
     stringsAsFactors = FALSE
   )
 
+  edge_pairs <- vapply(
+    edges,
+    function(edge) paste(edge$from %||% "", edge$to %||% "", sep = "\r"),
+    character(1)
+  )
+  hierarchy_edges <- Filter(
+    Negate(is.null),
+    lapply(nodes, function(node) {
+      parent <- node$parent %||% NULL
+      if (is.null(parent)) {
+        return(NULL)
+      }
+      pair <- paste(parent, node$id, sep = "\r")
+      if (pair %in% edge_pairs) {
+        return(NULL)
+      }
+      list(
+        from = parent,
+        to = node$id,
+        relation = "Contains",
+        structural = TRUE
+      )
+    })
+  )
+  edges <- c(edges, hierarchy_edges)
+
   edges_df <- if (length(edges) > 0) {
     data.frame(
       from = vapply(edges, function(e) e$from %||% "", character(1)),
       to = vapply(edges, function(e) e$to %||% "", character(1)),
-      label = vapply(edges, function(e) e$relation %||% "", character(1)),
+      label = "",
+      title = vapply(
+        edges,
+        function(e) htmltools::htmlEscape(e$relation %||% "Related"),
+        character(1)
+      ),
+      dashes = vapply(edges, function(e) isTRUE(e$structural), logical(1)),
+      color = vapply(
+        edges,
+        function(e) if (isTRUE(e$structural)) "#B7C3CA" else "#8A9AA4",
+        character(1)
+      ),
       arrows = "to",
       stringsAsFactors = FALSE
     )
@@ -1296,6 +2104,9 @@ mindmap_to_visnetwork <- function(mindmap) {
       from = character(),
       to = character(),
       label = character(),
+      title = character(),
+      dashes = logical(),
+      color = character(),
       arrows = character(),
       stringsAsFactors = FALSE
     )

@@ -1,5 +1,5 @@
 # Config module: model/search/advanced settings shared by the Chat and STORM
-# tabs. The UI lives in the Chat sidebar; the server returns a reactive
+# tabs. The UI lives in the Chat settings drawer; the server returns a reactive
 # `TempestConfig` that both tabs consume.
 
 shiny_default_models <- function() {

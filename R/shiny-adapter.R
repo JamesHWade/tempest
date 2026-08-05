@@ -120,8 +120,8 @@ tempest_shiny_store <- function() {
 #' @param panels Character vector of panels to include. Use `"all"` for every
 #'   panel. The default embeds the Co-STORM chat and durable research views.
 #' @param show_config If `TRUE`, include the bundled configuration controls in
-#'   the Chat sidebar. Hosts that provide their own config should leave this as
-#'   `FALSE`.
+#'   the Chat settings drawer. Hosts that provide their own config should leave
+#'   this as `FALSE`.
 #' @return A Shiny tag object.
 #' @examples
 #' \dontrun{

@@ -10,101 +10,17 @@ mod_chat_ui <- function(id, config_ui) {
     title = shiny::tagList(shiny::icon("comments"), "Chat"),
     value = "Chat",
     bslib::layout_sidebar(
-      sidebar = bslib::sidebar(
-        title = "Session settings",
-        width = 300,
-        bslib::accordion(
-          id = ns("session_settings"),
-          open = "Research",
-          multiple = TRUE,
-          bslib::accordion_panel(
-            title = "Research",
-            icon = shiny::icon("magnifying-glass"),
-            shiny::textInput(
-              ns("topic"),
-              "Research topic",
-              placeholder = "Enter a research topic..."
-            ),
-            shiny::sliderInput(
-              ns("n_experts"),
-              "Number of experts",
-              1,
-              5,
-              3
-            ),
-            bslib::input_switch(
-              ns("warmup"),
-              "Orient the expert panel",
-              FALSE
-            ),
-            bslib::input_switch(
-              ns("suggest"),
-              "Suggest follow-up questions",
-              TRUE
-            ),
-            bslib::input_task_button(
-              ns("start"),
-              "Start session",
-              icon = shiny::icon("play"),
-              label_busy = "Starting...",
-              auto_reset = FALSE,
-              class = "w-100"
-            )
-          ),
-          bslib::accordion_panel(
-            title = "Session and report",
-            icon = shiny::icon("folder-open"),
-            shiny::downloadButton(
-              ns("save_session"),
-              "Download session",
-              icon = shiny::icon("floppy-disk"),
-              class = "btn-outline-primary btn-sm w-100"
-            ),
-            shiny::fileInput(
-              ns("load_session"),
-              "Restore session bundle",
-              accept = ".zip",
-              buttonLabel = "Choose bundle",
-              placeholder = "No bundle selected"
-            ),
-            bslib::input_switch(
-              ns("autosave_session"),
-              "Autosave after changes",
-              FALSE
-            ),
-            shiny::uiOutput(ns("session_persistence")),
-            shiny::selectInput(
-              ns("report_style"),
-              "Report style",
-              choices = c("technical", "executive"),
-              selected = "technical"
-            ),
-            bslib::input_task_button(
-              ns("generate_report"),
-              "Generate report",
-              icon = shiny::icon("file-export"),
-              label_busy = "Generating...",
-              type = "secondary",
-              class = "w-100"
-            )
-          ),
-          bslib::accordion_panel(
-            title = "Expert panel",
-            icon = shiny::icon("users"),
-            shiny::uiOutput(ns("expert_panel"))
-          )
-        ),
-        config_ui
-      ),
+      class = "tempest-chat-layout",
+      sidebar = chat_settings_sidebar_ui(ns, config_ui),
       bslib::card(
+        class = "tempest-chat-card",
         full_screen = TRUE,
-        bslib::card_header(shiny::uiOutput(ns("progress"))),
         bslib::card_body(
           class = "p-0",
           tempest:::tempest_shinychat_ui(
             ns("chat"),
             height = "100%",
-            greeting = welcome_message(),
+            greeting = chat_session_greeting_ui(ns),
             icon_assistant = tempest_chat_icon(),
             allow_attachments = tempest_chat_attachment_types(),
             footer = chat_footer_ui(ns)
@@ -113,6 +29,162 @@ mod_chat_ui <- function(id, config_ui) {
         )
       )
     )
+  )
+}
+
+chat_session_greeting_ui <- function(ns) {
+  research_options <- bslib::popover(
+    bslib::toolbar_input_button(
+      ns("research_options"),
+      "Research options",
+      icon = shiny::icon("sliders"),
+      show_label = TRUE,
+      tooltip = FALSE,
+      border = TRUE
+    ),
+    id = ns("research_options_popover"),
+    title = "Research options",
+    placement = "bottom",
+    shiny::div(
+      class = "tempest-chat-research-options",
+      bslib::input_switch(
+        ns("warmup"),
+        "Orient the expert panel",
+        FALSE
+      ),
+      bslib::input_switch(
+        ns("suggest"),
+        "Suggest follow-up questions",
+        TRUE
+      ),
+      shiny::p(
+        class = "small text-body-secondary mb-0",
+        "Orientation gives experts a short evidence-gathering pass before chat."
+      )
+    )
+  )
+
+  shiny::div(
+    class = "tempest-chat-welcome",
+    shiny::div(
+      class = "tempest-chat-welcome-copy",
+      shiny::h2(class = "h4 mb-2", "Welcome to tempest"),
+      shiny::p(
+        paste(
+          "Investigate a topic with a panel of AI experts.",
+          "Ask follow-up questions as they gather cited evidence,",
+          "then generate a report."
+        )
+      ),
+      shiny::p(
+        class = "mb-0",
+        "For a one-shot report, use ",
+        shiny::strong("STORM"),
+        "."
+      )
+    ),
+    shiny::div(
+      class = "tempest-chat-welcome-form",
+      shiny::div(
+        class = "tempest-chat-welcome-topic",
+        shiny::textInput(
+          ns("topic"),
+          "Research topic",
+          placeholder = "What should the expert panel investigate?"
+        )
+      ),
+      shiny::div(
+        class = "tempest-chat-welcome-actions",
+        shiny::div(
+          class = "tempest-chat-welcome-experts",
+          shiny::selectInput(
+            ns("n_experts"),
+            "Experts",
+            choices = c(
+              "1 expert" = 1,
+              "2 experts" = 2,
+              "3 experts" = 3,
+              "4 experts" = 4,
+              "5 experts" = 5
+            ),
+            selected = 3,
+            selectize = FALSE
+          )
+        ),
+        bslib::toolbar(
+          class = "tempest-chat-welcome-tools",
+          align = "left",
+          gap = ".35rem",
+          width = "auto",
+          research_options,
+          bslib::toolbar_input_button(
+            ns("setup_settings_toggle"),
+            "Workspace settings",
+            icon = shiny::icon("gear"),
+            border = TRUE
+          )
+        ),
+        bslib::input_task_button(
+          ns("start"),
+          "Start session",
+          icon = shiny::icon("play"),
+          label_busy = "Starting...",
+          auto_reset = FALSE,
+          class = "tempest-chat-start btn-sm"
+        )
+      )
+    )
+  )
+}
+
+chat_settings_sidebar_ui <- function(ns, config_ui) {
+  bslib::sidebar(
+    id = ns("settings"),
+    title = shiny::tagList(shiny::icon("sliders"), "Workspace settings"),
+    position = "right",
+    open = FALSE,
+    width = 340,
+    resizable = FALSE,
+    class = "tempest-chat-settings",
+    bslib::accordion(
+      id = ns("session_settings"),
+      open = FALSE,
+      multiple = TRUE,
+      bslib::accordion_panel(
+        title = "Expert panel",
+        icon = shiny::icon("users"),
+        shiny::uiOutput(ns("expert_panel"))
+      ),
+      bslib::accordion_panel(
+        title = "Session storage",
+        icon = shiny::icon("folder-open"),
+        shiny::downloadButton(
+          ns("save_session"),
+          "Download session",
+          icon = shiny::icon("floppy-disk"),
+          class = "btn-outline-primary btn-sm w-100"
+        ),
+        shiny::fileInput(
+          ns("load_session"),
+          "Restore session bundle",
+          accept = ".zip",
+          buttonLabel = "Choose bundle",
+          placeholder = "No bundle selected"
+        ),
+        bslib::input_switch(
+          ns("autosave_session"),
+          "Autosave after changes",
+          FALSE
+        ),
+        shiny::uiOutput(ns("session_persistence"))
+      )
+    ),
+    if (!is.null(config_ui)) {
+      shiny::div(
+        class = "tempest-chat-config",
+        config_ui
+      )
+    }
   )
 }
 
@@ -127,6 +199,7 @@ mod_chat_server <- function(
 ) {
   shiny::moduleServer(id, function(input, output, session) {
     report_ready <- shiny::reactiveVal(0L)
+    suggestions_enabled <- shiny::reactiveVal(TRUE)
     progress_events <- shiny::reactiveVal(list())
     warmup_run_id <- 0L
     active_session_id <- 0L
@@ -154,7 +227,10 @@ mod_chat_server <- function(
       "coordinator",
       system_prompt = paste(
         "You are the tempest chat shell.",
-        "Ask the user to start a Co-STORM session from the sidebar before research chat.",
+        paste(
+          "Ask the user to start a Co-STORM session from the welcome panel",
+          "before research chat."
+        ),
         sep = "\n"
       ),
       echo = "none"
@@ -199,7 +275,7 @@ mod_chat_server <- function(
         return(invisible(NULL))
       }
       turn_session_id <- active_session_id
-      suggest_enabled <- shiny::isolate(isTRUE(input$suggest))
+      turn_suggestions_enabled <- shiny::isolate(suggestions_enabled())
       turn_id <- tempest:::tempest_uuid("chat-turn")
       task <- work_queue$enqueue(function(queue_current) {
         current <- function() {
@@ -213,7 +289,7 @@ mod_chat_server <- function(
           user_text = user_text,
           assistant_text = assistant_text,
           provider_turn = assistant_turn,
-          suggest = suggest_enabled,
+          suggest = turn_suggestions_enabled,
           n_suggestions = 4L,
           turn_id = turn_id,
           is_current = current
@@ -299,10 +375,10 @@ mod_chat_server <- function(
         progress = record_progress
       )
       shiny::updateTextInput(session, "topic", value = ses$topic %||% "")
-      shiny::updateSliderInput(
+      shiny::updateSelectInput(
         session,
         "n_experts",
-        value = max(1L, min(5L, length(ses$experts %||% list())))
+        selected = max(1L, min(5L, length(ses$experts %||% list())))
       )
       restore_progress_history(ses)
       report_available <- !is.null(ses$artifact_catalog) &&
@@ -340,11 +416,6 @@ mod_chat_server <- function(
 
     output$session_persistence <- shiny::renderUI({
       session_persistence_status_ui(store$persistence())
-    })
-
-    output$progress <- shiny::renderUI({
-      state <- costorm_progress_state(progress_events())
-      workflow_progress_ui(state, costorm_stage_labels())
     })
 
     # --- Session lifecycle ---------------------------------------------------
@@ -463,10 +534,7 @@ mod_chat_server <- function(
       progress_events(list())
       store$set(NULL)
       store$set_report(NULL)
-      chat$reset(paste(
-        "Session cleared.",
-        "Enter a topic in the sidebar and start a new Co-STORM session."
-      ))
+      chat$reset()
       invisible(NULL)
     }
 
@@ -547,18 +615,45 @@ mod_chat_server <- function(
       chat_runtime_footer_ui(
         ses = store$get(),
         progress_state = costorm_progress_state(progress_events()),
-        chat_status = chat$status()
+        chat_status = chat$status(),
+        ns = session$ns
       )
     })
+
+    shiny::observeEvent(
+      input$suggest,
+      {
+        suggestions_enabled(isTRUE(input$suggest))
+      },
+      ignoreNULL = TRUE
+    )
 
     shiny::observeEvent(input$footer_new, {
       run_chat_command("new")
     })
-    shiny::observeEvent(input$footer_report, {
-      run_chat_command("report")
+
+    toggle_workspace_settings <- function() {
+      bslib::toggle_popover(
+        "research_options_popover",
+        show = FALSE,
+        session = session
+      )
+      bslib::toggle_sidebar("settings", session = session)
+      invisible(NULL)
+    }
+    shiny::observeEvent(input$setup_settings_toggle, {
+      toggle_workspace_settings()
+    })
+    shiny::observeEvent(input$footer_settings_toggle, {
+      toggle_workspace_settings()
     })
 
     shiny::observeEvent(input$start, {
+      bslib::toggle_popover(
+        "research_options_popover",
+        show = FALSE,
+        session = session
+      )
       work_queue$cancel()
       warmup_is_current <- next_warmup_guard()
       progress_events(list())
@@ -578,8 +673,9 @@ mod_chat_server <- function(
       session_id_value <- shiny::isolate(reactive_or_value(session_id))
       session_id_value <- session_id_value %||%
         tempest:::tempest_uuid("session")
-      n_experts <- input$n_experts %||% 3
-      suggest_enabled <- isTRUE(input$suggest)
+      n_experts <- as.integer(input$n_experts %||% 3)
+      suggest_enabled <- isTRUE(input$suggest %||% suggestions_enabled())
+      suggestions_enabled(suggest_enabled)
       warmup_enabled <- isTRUE(input$warmup)
 
       record_progress(costorm_starting_event(session_id_value))
@@ -847,24 +943,6 @@ mod_chat_server <- function(
 
 # --- Chat module helpers -----------------------------------------------------
 
-# The landing-page greeting shown in the empty chat.
-welcome_message <- function() {
-  paste(
-    "**Welcome to tempest** — research reports written by a panel of AI experts.",
-    "",
-    paste(
-      "Give it a topic and the experts search the web, gather cited evidence,",
-      "and write it up. To start, enter a topic in the sidebar and click",
-      "**Start Session**. The panel assembles and you can ask questions right",
-      "here; answers stream in and you can stop them mid-response. When you've",
-      "gathered enough, click **Generate Report**."
-    ),
-    "",
-    "For a one-shot run without the back-and-forth, use the **STORM** tab.",
-    sep = "\n"
-  )
-}
-
 tempest_chat_attachment_types <- function() {
   c(
     "image/png",
@@ -889,32 +967,41 @@ reactive_or_value <- function(x) {
 }
 
 chat_footer_ui <- function(ns) {
-  button <- function(id, icon, label) {
-    chat_footer_tooltip(
-      shiny::actionButton(
-        ns(id),
-        label = shiny::span(label, class = "visually-hidden"),
-        icon = shiny::icon(icon),
-        title = label,
-        `aria-label` = label,
-        class = "btn-outline-secondary btn-sm px-2"
-      ),
-      label
-    )
-  }
   shiny::div(
-    class = paste(
-      "d-flex flex-wrap align-items-center justify-content-between",
-      "gap-2 w-100"
-    ),
+    class = "tempest-chat-footer w-100",
     shiny::uiOutput(
       ns("runtime_footer"),
-      class = "flex-grow-1 text-start"
+      class = "tempest-chat-footer-output w-100"
+    )
+  )
+}
+
+chat_report_options_ui <- function(ns) {
+  bslib::popover(
+    bslib::toolbar_input_button(
+      ns("report_options"),
+      "Report options",
+      icon = shiny::icon("sliders"),
+      show_label = TRUE,
+      tooltip = FALSE,
+      border = TRUE
     ),
-    shiny::div(
-      class = "d-flex flex-wrap align-items-center gap-1",
-      button("footer_new", "plus", "New session"),
-      button("footer_report", "file-lines", "Generate report")
+    id = ns("report_options_popover"),
+    title = "Report options",
+    placement = "top",
+    shiny::selectInput(
+      ns("report_style"),
+      "Report style",
+      choices = c(
+        "Technical" = "technical",
+        "Executive" = "executive"
+      ),
+      selected = "technical",
+      selectize = FALSE
+    ),
+    shiny::p(
+      class = "small text-body-secondary mb-0",
+      "Reports use the evidence collected in this session."
     )
   )
 }
@@ -950,12 +1037,17 @@ chat_runtime_counts <- function(ses) {
 chat_runtime_footer_ui <- function(
   ses,
   progress_state = NULL,
-  chat_status = "idle"
+  chat_status = "idle",
+  ns = identity
 ) {
+  if (is.null(ses)) {
+    return(shiny::span(
+      class = "tempest-chat-footer-idle",
+      `aria-hidden` = "true"
+    ))
+  }
   counts <- chat_runtime_counts(ses)
-  session_label <- if (is.null(ses)) {
-    "No session"
-  } else if (identical(chat_status, "streaming")) {
+  session_label <- if (identical(chat_status, "streaming")) {
     "Answering"
   } else if (
     !is.null(progress_state) &&
@@ -966,56 +1058,101 @@ chat_runtime_footer_ui <- function(
   } else {
     "Ready"
   }
-  report_label <- if (isTRUE(counts$report)) "report ready" else "no report"
-  shiny::div(
-    class = "d-flex flex-wrap align-items-center gap-1 text-body-secondary",
+
+  report_status <- if (isTRUE(counts$report)) {
     chat_footer_tooltip(
       shiny::span(
         class = "badge rounded-pill text-bg-light border text-body",
-        title = paste("Session status:", session_label),
-        `aria-label` = paste("Session status:", session_label),
-        session_label
+        title = "Report status: Report ready",
+        `aria-label` = "Report status: Report ready",
+        "Report ready"
       ),
-      paste("Session status:", session_label)
+      "Report status: Report ready"
+    )
+  }
+
+  shiny::div(
+    class = paste(
+      "tempest-chat-footer-active",
+      "d-flex flex-wrap align-items-center justify-content-between gap-2"
     ),
-    chat_footer_tooltip(
-      shiny::span(
-        class = "d-inline-flex align-items-center gap-1 text-nowrap",
-        title = paste("Experts:", counts$experts),
-        `aria-label` = paste("Experts:", counts$experts),
-        shiny::icon("users"),
-        counts$experts
+    shiny::div(
+      class = paste(
+        "tempest-chat-footer-status",
+        "d-flex flex-wrap align-items-center gap-1 text-body-secondary"
       ),
-      paste("Experts:", counts$experts)
+      chat_footer_tooltip(
+        shiny::span(
+          class = "badge rounded-pill text-bg-light border text-body",
+          title = paste("Session status:", session_label),
+          `aria-label` = paste("Session status:", session_label),
+          session_label
+        ),
+        paste("Session status:", session_label)
+      ),
+      chat_footer_tooltip(
+        shiny::span(
+          class = "d-inline-flex align-items-center gap-1 text-nowrap",
+          title = paste("Experts:", counts$experts),
+          `aria-label` = paste("Experts:", counts$experts),
+          shiny::icon("users"),
+          counts$experts
+        ),
+        paste("Experts:", counts$experts)
+      ),
+      chat_footer_tooltip(
+        shiny::span(
+          class = "d-inline-flex align-items-center gap-1 text-nowrap",
+          title = paste("Sources:", counts$sources),
+          `aria-label` = paste("Sources:", counts$sources),
+          shiny::icon("link"),
+          counts$sources
+        ),
+        paste("Sources:", counts$sources)
+      ),
+      chat_footer_tooltip(
+        shiny::span(
+          class = "d-inline-flex align-items-center gap-1 text-nowrap",
+          title = paste("Facts:", counts$facts),
+          `aria-label` = paste("Facts:", counts$facts),
+          shiny::icon("clipboard-check"),
+          counts$facts
+        ),
+        paste("Facts:", counts$facts)
+      ),
+      report_status
     ),
-    chat_footer_tooltip(
-      shiny::span(
-        class = "d-inline-flex align-items-center gap-1 text-nowrap",
-        title = paste("Sources:", counts$sources),
-        `aria-label` = paste("Sources:", counts$sources),
-        shiny::icon("link"),
-        counts$sources
+    shiny::div(
+      class = "tempest-chat-footer-actions d-flex align-items-center gap-2",
+      bslib::toolbar(
+        align = "left",
+        width = "auto",
+        bslib::toolbar_input_button(
+          ns("footer_settings_toggle"),
+          "Workspace settings",
+          icon = shiny::icon("gear"),
+          border = TRUE
+        )
       ),
-      paste("Sources:", counts$sources)
-    ),
-    chat_footer_tooltip(
-      shiny::span(
-        class = "d-inline-flex align-items-center gap-1 text-nowrap",
-        title = paste("Facts:", counts$facts),
-        `aria-label` = paste("Facts:", counts$facts),
-        shiny::icon("clipboard-check"),
-        counts$facts
+      shiny::actionButton(
+        ns("footer_new"),
+        "New session",
+        icon = shiny::icon("plus"),
+        class = "btn-outline-secondary btn-sm text-nowrap"
       ),
-      paste("Facts:", counts$facts)
-    ),
-    chat_footer_tooltip(
-      shiny::span(
-        class = "d-inline-flex align-items-center text-nowrap",
-        title = paste("Report status:", report_label),
-        `aria-label` = paste("Report status:", report_label),
-        report_label
+      bslib::toolbar(
+        align = "left",
+        width = "auto",
+        chat_report_options_ui(ns)
       ),
-      paste("Report status:", report_label)
+      bslib::input_task_button(
+        ns("generate_report"),
+        "Generate report",
+        icon = shiny::icon("file-lines"),
+        label_busy = "Generating...",
+        type = "secondary",
+        class = "btn-sm text-nowrap"
+      )
     )
   )
 }

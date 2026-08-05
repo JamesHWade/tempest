@@ -489,10 +489,10 @@ TempestShinyChatAdapter <- R6::R6Class(
       invisible(TRUE)
     },
 
-    reset = function(message) {
+    reset = function() {
       self$bind(
         private$initial_client,
-        messages = list(list(role = "assistant", content = message)),
+        messages = list(),
         client_history = "clear"
       )
     },
@@ -649,7 +649,6 @@ TempestShinyChatAdapter <- R6::R6Class(
       private$in_domain(function() {
         private$chat$set_client(transition$client, sync = FALSE)
         private$chat$clear(
-          greeting = FALSE,
           client_history = transition$client_history
         )
         for (message in transition$messages) {
