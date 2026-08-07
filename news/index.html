@@ -43,6 +43,7 @@
 <h2 class="pkg-version" data-toc-text="0.1.0" id="tempest-010">tempest 0.1.0<a class="anchor" aria-label="anchor" href="#tempest-010"></a></h2>
 <ul><li>Persistence bundles from before the reusable workflow-kernel cutover are intentionally unsupported: Co-STORM restore requires schema version 4, and staged STORM restore requires schema version 3 with typed artifact indexes; completed perspective stages persist fingerprinted expert profiles (vtvt, wgr8).</li>
 <li>The bundled Shiny app now escapes untrusted model and source content, rejects unsafe links, isolates browser session storage behind upload/download archives with quotas and private permissions, provides cancellable STORM workers, runs Co-STORM expert generation, enrichment, suggestions, and reports asynchronously with provider-correct requests and ordered stale-safe commits, quarantines timed-out expert chats, and exposes an accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).</li>
+<li>The bundled Shiny app now presents Co-STORM setup as a one-time native shinychat greeting with consistently sized controls and reserves the footer for active-session status and actions.</li>
 <li>
 <code><a href="../reference/run_app.html">run_app()</a></code> now inherits the package-level <code>tempest.chat</code> default while its model fields remain untouched; editing any model field switches the app to explicit per-role models. Tempest once again declares the shinychat development dependency required by the app and reports how to update an incompatible loaded version before launching.</li>
 <li>
@@ -65,6 +66,8 @@
 <code><a href="../reference/tempest_create_ragnar_store.html">tempest_create_ragnar_store()</a></code> preserves and validates compatible persistent stores by default; destructive replacement now requires <code>reset = TRUE</code> (yb8s).</li>
 <li>
 <code><a href="../reference/tempest_costorm_workflow_run.html">tempest_costorm_workflow_run()</a></code> and <code><a href="../reference/tempest_storm_workflow_run.html">tempest_storm_workflow_run()</a></code> expose the built-in research workflows as executable <code>TempestRun</code> specifications with shared evidence, typed checkpoints, selected expert teams, scoped connections, and an approval-gated Co-STORM dialogue boundary (vtvt).</li>
+<li>
+<code><a href="../reference/tempest_execution_events.html">tempest_execution_events()</a></code> provides one cursor-based event query for <code>TempestRun</code> and <code>TempestSession</code>; Co-STORM sessions now own normalized event history directly, and persistence migrates legacy progress history out of the auxiliary artifact environment.</li>
 <li>
 <code><a href="../reference/tempest_report_md.html">tempest_report_md()</a></code> now applies strict citation actions to complete matched assertions, removes unsupported assertions under <code>drop</code>, gives <code>revise</code> distinct behavior, and no longer lets unrelated claims sharing a source determine sentence status (e9kn).</li>
 <li>
@@ -131,7 +134,11 @@
 <li>
 <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now accepts <code>session_id</code> so host apps can align Co-STORM progress, persistence, and artifacts with their own project/session identity (z0e0).</li>
 <li>
+<code><a href="../reference/tempest_session_process_turn_async.html">tempest_session_process_turn_async()</a></code> records completed user and moderator turns and performs evidence, mind-map, and suggestion enrichment asynchronously, returning a typed stale-safe result with host-presentable notices.</li>
+<li>
 <code><a href="../reference/tempest_session_save.html">tempest_session_save()</a></code>, <code><a href="../reference/tempest_session_resume.html">tempest_session_resume()</a></code>, <code><a href="../reference/tempest_session_snapshot.html">tempest_session_snapshot()</a></code>, and <code><a href="../reference/tempest_session_restore.html">tempest_session_restore()</a></code> provide schema-versioned Co-STORM session persistence bundles and in-memory snapshot/restore helpers (zj62). <code>tempest_session_save(overwrite = TRUE)</code> only replaces directories that already look like a Tempest session bundle, so a mistyped path cannot recursively delete unrelated files.</li>
+<li>
+<code><a href="../reference/tempest_session_warmup_async.html">tempest_session_warmup_async()</a></code> runs bounded expert orientations in parallel and commits transcript, evidence, and one mind-map update in deterministic order with per-expert timeouts and stale-result suppression.</li>
 <li>
 <code><a href="../reference/tempest_shiny_ui.html">tempest_shiny_ui()</a></code>, <code><a href="../reference/tempest_shiny_server.html">tempest_shiny_server()</a></code>, and <code><a href="../reference/tempest_shiny_store.html">tempest_shiny_store()</a></code> provide an experimental embeddable Shiny adapter for host apps, with fake-chat example code under <code>inst/examples/shiny-host</code> (z0e0).</li>
 <li>

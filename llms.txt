@@ -910,6 +910,8 @@ Code that inspired tempest:
 - [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_run.md)
   **\[experimental\]** : Attach and start the generic workflow for a
   Co-STORM session
+- [`tempest_execution_events()`](https://jameshwade.github.io/tempest/reference/tempest_execution_events.md)
+  **\[experimental\]** : Query events from a Tempest execution
 - [`tempest_run_status()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
   [`tempest_run_events()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
   [`tempest_run_approvals()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
@@ -929,6 +931,11 @@ Code that inspired tempest:
   **\[experimental\]** : Resume a generic Tempest run bundle
 - [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   : Create a Co-STORM session
+- [`tempest_session_process_turn_async()`](https://jameshwade.github.io/tempest/reference/tempest_session_process_turn_async.md)
+  **\[experimental\]** : Process a completed Co-STORM turn
+  asynchronously
+- [`tempest_session_warmup_async()`](https://jameshwade.github.io/tempest/reference/tempest_session_warmup_async.md)
+  **\[experimental\]** : Warm up a Co-STORM session asynchronously
 - [`TempestSession`](https://jameshwade.github.io/tempest/reference/TempestSession.md)
   : TempestSession
 - [`SimulatedUser`](https://jameshwade.github.io/tempest/reference/SimulatedUser.md)

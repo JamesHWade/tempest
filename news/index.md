@@ -15,6 +15,9 @@
   provider-correct requests and ordered stale-safe commits, quarantines
   timed-out expert chats, and exposes an accessible keyboard-operable
   mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
+- The bundled Shiny app now presents Co-STORM setup as a one-time native
+  shinychat greeting with consistently sized controls and reserves the
+  footer for active-session status and actions.
 - [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
   now inherits the package-level `tempest.chat` default while its model
   fields remain untouched; editing any model field switches the app to
@@ -82,6 +85,11 @@
   specifications with shared evidence, typed checkpoints, selected
   expert teams, scoped connections, and an approval-gated Co-STORM
   dialogue boundary (vtvt).
+- [`tempest_execution_events()`](https://jameshwade.github.io/tempest/reference/tempest_execution_events.md)
+  provides one cursor-based event query for `TempestRun` and
+  `TempestSession`; Co-STORM sessions now own normalized event history
+  directly, and persistence migrates legacy progress history out of the
+  auxiliary artifact environment.
 - [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
   now applies strict citation actions to complete matched assertions,
   removes unsupported assertions under `drop`, gives `revise` distinct
@@ -266,6 +274,10 @@
   now accepts `session_id` so host apps can align Co-STORM progress,
   persistence, and artifacts with their own project/session identity
   (z0e0).
+- [`tempest_session_process_turn_async()`](https://jameshwade.github.io/tempest/reference/tempest_session_process_turn_async.md)
+  records completed user and moderator turns and performs evidence,
+  mind-map, and suggestion enrichment asynchronously, returning a typed
+  stale-safe result with host-presentable notices.
 - [`tempest_session_save()`](https://jameshwade.github.io/tempest/reference/tempest_session_save.md),
   [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md),
   [`tempest_session_snapshot()`](https://jameshwade.github.io/tempest/reference/tempest_session_snapshot.md),
@@ -276,6 +288,10 @@
   `tempest_session_save(overwrite = TRUE)` only replaces directories
   that already look like a Tempest session bundle, so a mistyped path
   cannot recursively delete unrelated files.
+- [`tempest_session_warmup_async()`](https://jameshwade.github.io/tempest/reference/tempest_session_warmup_async.md)
+  runs bounded expert orientations in parallel and commits transcript,
+  evidence, and one mind-map update in deterministic order with
+  per-expert timeouts and stale-result suppression.
 - [`tempest_shiny_ui()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_ui.md),
   [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md),
   and

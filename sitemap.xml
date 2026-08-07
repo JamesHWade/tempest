@@ -58,6 +58,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_dispute.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_eval_dataset.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_evidence_span.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_execution_events.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_expert.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_expert_session_manager.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_extract_toc_from_url.html</loc></url>
@@ -129,11 +130,13 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_you.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_semantic_filter_facts.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_session.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_session_process_turn_async.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_session_report_md.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_session_restore.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_session_resume.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_session_save.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_session_snapshot.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_session_warmup_async.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_setup_daemons.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_shiny_server.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_shiny_store.html</loc></url>

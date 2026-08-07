@@ -26,8 +26,8 @@ tempest_shiny_ui(
 - show_config:
 
   If `TRUE`, include the bundled configuration controls in the Chat
-  sidebar. Hosts that provide their own config should leave this as
-  `FALSE`.
+  settings drawer. Hosts that provide their own config should leave this
+  as `FALSE`.
 
 ## Value
 

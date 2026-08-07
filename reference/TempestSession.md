@@ -61,6 +61,10 @@ sources, auxiliary session state, and typed deliverable artifacts.
 
   The mind map data structure.
 
+- `events`:
+
+  Ordered normalized progress-event history.
+
 - `artifacts`:
 
   Environment of auxiliary and legacy-compatible session state.
@@ -88,6 +92,8 @@ sources, auxiliary session state, and typed deliverable artifacts.
 ### Public methods
 
 - [`TempestSession$new()`](#method-TempestSession-initialize)
+
+- [`TempestSession$record_progress_event()`](#method-TempestSession-record_progress_event)
 
 - [`TempestSession$emit_progress()`](#method-TempestSession-emit_progress)
 
@@ -202,6 +208,26 @@ Create a new TempestSession.
 
   Optional stable session identifier. If `NULL`, a new identifier is
   generated.
+
+------------------------------------------------------------------------
+
+### `TempestSession$record_progress_event()`
+
+Record a progress event emitted by a session-owned collaborator.
+
+#### Usage
+
+    TempestSession$record_progress_event(event)
+
+#### Arguments
+
+- `event`:
+
+  A `tempest_progress_event` object.
+
+#### Returns
+
+The event, invisibly.
 
 ------------------------------------------------------------------------
 
