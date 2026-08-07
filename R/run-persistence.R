@@ -652,6 +652,9 @@ tempest_session_snapshot <- function(session) {
     )
   }
   artifacts <- tempest_env_snapshot(session$artifacts)
+  artifacts[
+    c("report", "report_md", "mindmap_md", "progress_events")
+  ] <- NULL
   runtime_records <- tempest_session_runtime_records(session$runtime)
 
   list(
@@ -681,7 +684,7 @@ tempest_session_snapshot <- function(session) {
       include_content = TRUE
     ),
     suggested_questions = artifacts$suggested_questions %||% character(),
-    progress_events = artifacts$progress_events %||% list(),
+    progress_events = tempest_execution_events(session),
     store = tempest_source_store_snapshot(session$store),
     expert_sessions = tempest_expert_sessions_snapshot(session),
     workflow_run = if (inherits(session$workflow_run, "TempestRun")) {
@@ -948,7 +951,9 @@ tempest_session_restore <- function(
   session$capability_grants <- capability_grants
   session$progress <- tempest_progress_callback(progress)
   session$expert_session_manager$run_id <- session$session_id
-  session$expert_session_manager$progress <- session$progress
+  session$expert_session_manager$progress <- function(event) {
+    session$record_progress_event(event)
+  }
   session$transcript <- snapshot$transcript %||% list()
   session$mindmap <- snapshot$mindmap %||% tempest_mindmap_init(session$topic)
   session$artifacts <- new.env(parent = emptyenv())
@@ -964,15 +969,12 @@ tempest_session_restore <- function(
   )
 
   artifacts <- snapshot$artifacts %||% list()
+  legacy_progress_events <- artifacts$progress_events %||% list()
+  artifacts[
+    c("report", "report_md", "mindmap_md", "progress_events")
+  ] <- NULL
   for (name in names(artifacts)) {
     session$artifacts[[name]] <- artifacts[[name]]
-  }
-  if (
-    is.null(session$artifacts[["report_md"]]) &&
-      session$artifact_catalog$has("report_md")
-  ) {
-    session$artifacts[["report_md"]] <-
-      session$artifact_catalog$get("report_md")@content
   }
   if (
     !is.null(snapshot$suggested_questions) &&
@@ -988,12 +990,11 @@ tempest_session_restore <- function(
       session$artifacts[["suggested_questions"]]
     ))
   }
-  if (
-    !is.null(snapshot$progress_events) &&
-      is.null(session$artifacts[["progress_events"]])
-  ) {
-    session$artifacts[["progress_events"]] <- snapshot$progress_events
+  progress_events <- snapshot$progress_events
+  if (is.null(progress_events)) {
+    progress_events <- legacy_progress_events
   }
+  session$events <- tempest_session_restore_progress_events(progress_events)
 
   tempest_session_restore_expert_sessions(
     session,
@@ -1321,20 +1322,6 @@ tempest_session_save <- function(
     )
   }
 
-  files <- c(
-    files,
-    tempest_session_bundle_write_text(
-      staging_dir,
-      "artifacts/report_body.md",
-      snapshot$artifacts$report
-    ),
-    tempest_session_bundle_write_text(
-      staging_dir,
-      "artifacts/mindmap.md",
-      snapshot$artifacts$mindmap_md
-    )
-  )
-
   typed_bundle <- tempest_artifact_bundle_write(
     session$artifact_catalog,
     staging_dir,
@@ -1423,31 +1410,8 @@ tempest_session_bundle_optional_json <- function(path, default = NULL, what) {
 }
 
 #' @keywords internal
-tempest_session_bundle_optional_text <- function(path, default = NULL, what) {
-  if (!file.exists(path)) {
-    return(default)
-  }
-  tryCatch(
-    tempest_read_text(path),
-    error = function(e) {
-      if (isTRUE(getOption("tempest.session_partial_recovery", FALSE))) {
-        tempest_warn("Skipping malformed {what} during partial recovery.")
-        return(default)
-      }
-      tempest_abort(
-        c("Cannot read {what}.", x = "Path: {.path {path}}."),
-        class = tempest_session_persistence_error_class(
-          "tempest_session_restore_error"
-        ),
-        parent = e
-      )
-    }
-  )
-}
-
-#' @keywords internal
 tempest_session_restore_progress_events <- function(events) {
-  lapply(events %||% list(), function(event) {
+  records <- lapply(events %||% list(), function(event) {
     defaults <- list(
       stage = NA_character_,
       step = NA_character_,
@@ -1463,6 +1427,41 @@ tempest_session_restore_progress_events <- function(events) {
     }
     tempest_progress_event_record(event)
   })
+  if (length(records) == 0L) {
+    return(list())
+  }
+  sequences <- vapply(
+    records,
+    function(event) {
+      value <- event$sequence %||% NA_integer_
+      if (
+        !is.numeric(value) ||
+          length(value) != 1L ||
+          is.na(value) ||
+          !is.finite(value) ||
+          value < 1L ||
+          value != as.integer(value)
+      ) {
+        return(NA_integer_)
+      }
+      as.integer(value)
+    },
+    integer(1)
+  )
+  if (all(is.na(sequences))) {
+    sequences <- seq_along(records)
+  } else if (
+    anyNA(sequences) ||
+      !identical(sequences, seq_along(records))
+  ) {
+    tempest_session_restore_abort(
+      "Session progress-event sequences are not contiguous."
+    )
+  }
+  for (i in seq_along(records)) {
+    records[[i]]$sequence <- sequences[[i]]
+  }
+  records
 }
 
 #' @keywords internal
@@ -1483,11 +1482,7 @@ tempest_session_bundle_require_files <- function(bundle_dir, files) {
 
 #' @keywords internal
 tempest_session_bundle_optional_presentation_files <- function() {
-  c(
-    "artifacts/report_body.md",
-    "artifacts/mindmap.md",
-    "artifacts/suggested_questions.json"
-  )
+  "artifacts/suggested_questions.json"
 }
 
 #' @keywords internal
@@ -1797,16 +1792,6 @@ tempest_session_resume <- function(
       what = what
     )
   }
-  optional_text <- function(rel_path, default = NULL, what) {
-    if (!rel_path %in% declared_files) {
-      return(default)
-    }
-    tempest_session_bundle_optional_text(
-      file.path(bundle_dir, rel_path),
-      default = default,
-      what = what
-    )
-  }
   typed_catalog <- tempest_artifact_bundle_read(
     bundle_dir,
     declared_files = declared_files,
@@ -1875,14 +1860,6 @@ tempest_session_resume <- function(
       what = "session mind map"
     ),
     artifacts = list(
-      report = optional_text(
-        "artifacts/report_body.md",
-        what = "report body artifact"
-      ),
-      mindmap_md = optional_text(
-        "artifacts/mindmap.md",
-        what = "mind map artifact"
-      ),
       suggested_questions = optional_json(
         "artifacts/suggested_questions.json",
         what = "suggested questions artifact"
@@ -1894,11 +1871,9 @@ tempest_session_resume <- function(
       default = character(),
       what = "suggested questions artifact"
     ),
-    progress_events = tempest_session_restore_progress_events(
-      strict_json(
-        "progress_events.json",
-        what = "progress-event history"
-      )
+    progress_events = strict_json(
+      "progress_events.json",
+      what = "progress-event history"
     ),
     store = list(
       schema_version = 2L,

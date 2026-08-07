@@ -1,10 +1,8 @@
 # Chat tab: the interactive Co-STORM session.
 #
-# Session creation, the warmup phase, and per-turn fact/mind-map extraction all
-# operate on a live `TempestSession` (which holds ellmer chats and is not
-# serialisable), so they run in the main process rather than as ExtendedTasks.
-# The warmup streams compact progress into the chat while expert calls run as
-# bounded async work; full expert answers are recorded in the session state.
+# Package lifecycle functions own warmup and post-turn processing for the live
+# `TempestSession`. This module owns only Shiny reactivity and presentation,
+# while the shinychat adapter owns the provider widget lifecycle.
 
 mod_chat_ui <- function(id, config_ui) {
   ns <- shiny::NS(id)
@@ -12,109 +10,181 @@ mod_chat_ui <- function(id, config_ui) {
     title = shiny::tagList(shiny::icon("comments"), "Chat"),
     value = "Chat",
     bslib::layout_sidebar(
-      sidebar = bslib::sidebar(
-        title = "Session settings",
-        width = 300,
-        bslib::accordion(
-          id = ns("session_settings"),
-          open = "Research",
-          multiple = TRUE,
-          bslib::accordion_panel(
-            title = "Research",
-            icon = shiny::icon("magnifying-glass"),
-            shiny::textInput(
-              ns("topic"),
-              "Research topic",
-              placeholder = "Enter a research topic..."
-            ),
-            shiny::sliderInput(
-              ns("n_experts"),
-              "Number of experts",
-              1,
-              5,
-              3
-            ),
-            bslib::input_switch(
-              ns("warmup"),
-              "Orient the expert panel",
-              FALSE
-            ),
-            bslib::input_switch(
-              ns("suggest"),
-              "Suggest follow-up questions",
-              TRUE
-            ),
-            bslib::input_task_button(
-              ns("start"),
-              "Start session",
-              icon = shiny::icon("play"),
-              label_busy = "Starting...",
-              auto_reset = FALSE,
-              class = "w-100"
-            )
-          ),
-          bslib::accordion_panel(
-            title = "Session and report",
-            icon = shiny::icon("folder-open"),
-            shiny::downloadButton(
-              ns("save_session"),
-              "Download session",
-              icon = shiny::icon("floppy-disk"),
-              class = "btn-outline-primary btn-sm w-100"
-            ),
-            shiny::fileInput(
-              ns("load_session"),
-              "Restore session bundle",
-              accept = ".zip",
-              buttonLabel = "Choose bundle",
-              placeholder = "No bundle selected"
-            ),
-            bslib::input_switch(
-              ns("autosave_session"),
-              "Autosave after changes",
-              FALSE
-            ),
-            shiny::uiOutput(ns("session_persistence")),
-            shiny::selectInput(
-              ns("report_style"),
-              "Report style",
-              choices = c("technical", "executive"),
-              selected = "technical"
-            ),
-            bslib::input_task_button(
-              ns("generate_report"),
-              "Generate report",
-              icon = shiny::icon("file-export"),
-              label_busy = "Generating...",
-              type = "secondary",
-              class = "w-100"
-            )
-          ),
-          bslib::accordion_panel(
-            title = "Expert panel",
-            icon = shiny::icon("users"),
-            shiny::uiOutput(ns("expert_panel"))
-          )
-        ),
-        config_ui
-      ),
+      class = "tempest-chat-layout",
+      sidebar = chat_settings_sidebar_ui(ns, config_ui),
       bslib::card(
+        class = "tempest-chat-card",
         full_screen = TRUE,
-        bslib::card_header(shiny::uiOutput(ns("progress"))),
         bslib::card_body(
           class = "p-0",
-          shinychat::chat_ui(
+          tempest:::tempest_shinychat_ui(
             ns("chat"),
             height = "100%",
-            greeting = shinychat::chat_greeting(welcome_message()),
+            greeting = chat_session_greeting_ui(ns),
             icon_assistant = tempest_chat_icon(),
             allow_attachments = tempest_chat_attachment_types(),
             footer = chat_footer_ui(ns)
           ),
-          chat_citation_sanitizer_script(ns)
+          tempest:::tempest_shinychat_citation_sanitizer(ns("chat"))
         )
       )
     )
+  )
+}
+
+chat_session_greeting_ui <- function(ns) {
+  research_options <- bslib::popover(
+    bslib::toolbar_input_button(
+      ns("research_options"),
+      "Research options",
+      icon = shiny::icon("sliders"),
+      show_label = TRUE,
+      tooltip = FALSE,
+      border = TRUE
+    ),
+    id = ns("research_options_popover"),
+    title = "Research options",
+    placement = "bottom",
+    shiny::div(
+      class = "tempest-chat-research-options",
+      bslib::input_switch(
+        ns("warmup"),
+        "Orient the expert panel",
+        FALSE
+      ),
+      bslib::input_switch(
+        ns("suggest"),
+        "Suggest follow-up questions",
+        TRUE
+      ),
+      shiny::p(
+        class = "small text-body-secondary mb-0",
+        "Orientation gives experts a short evidence-gathering pass before chat."
+      )
+    )
+  )
+
+  shiny::div(
+    class = "tempest-chat-welcome",
+    shiny::div(
+      class = "tempest-chat-welcome-copy",
+      shiny::h2(class = "h4 mb-2", "Welcome to tempest"),
+      shiny::p(
+        paste(
+          "Investigate a topic with a panel of AI experts.",
+          "Ask follow-up questions as they gather cited evidence,",
+          "then generate a report."
+        )
+      ),
+      shiny::p(
+        class = "mb-0",
+        "For a one-shot report, use ",
+        shiny::strong("STORM"),
+        "."
+      )
+    ),
+    shiny::div(
+      class = "tempest-chat-welcome-form",
+      shiny::div(
+        class = "tempest-chat-welcome-topic",
+        shiny::textInput(
+          ns("topic"),
+          "Research topic",
+          placeholder = "What should the expert panel investigate?"
+        )
+      ),
+      shiny::div(
+        class = "tempest-chat-welcome-actions",
+        shiny::div(
+          class = "tempest-chat-welcome-experts",
+          shiny::selectInput(
+            ns("n_experts"),
+            "Experts",
+            choices = c(
+              "1 expert" = 1,
+              "2 experts" = 2,
+              "3 experts" = 3,
+              "4 experts" = 4,
+              "5 experts" = 5
+            ),
+            selected = 3,
+            selectize = FALSE
+          )
+        ),
+        bslib::toolbar(
+          class = "tempest-chat-welcome-tools",
+          align = "left",
+          gap = ".35rem",
+          width = "auto",
+          research_options,
+          bslib::toolbar_input_button(
+            ns("setup_settings_toggle"),
+            "Workspace settings",
+            icon = shiny::icon("gear"),
+            border = TRUE
+          )
+        ),
+        bslib::input_task_button(
+          ns("start"),
+          "Start session",
+          icon = shiny::icon("play"),
+          label_busy = "Starting...",
+          auto_reset = FALSE,
+          class = "tempest-chat-start btn-sm"
+        )
+      )
+    )
+  )
+}
+
+chat_settings_sidebar_ui <- function(ns, config_ui) {
+  bslib::sidebar(
+    id = ns("settings"),
+    title = shiny::tagList(shiny::icon("sliders"), "Workspace settings"),
+    position = "right",
+    open = FALSE,
+    width = 340,
+    resizable = FALSE,
+    class = "tempest-chat-settings",
+    bslib::accordion(
+      id = ns("session_settings"),
+      open = FALSE,
+      multiple = TRUE,
+      bslib::accordion_panel(
+        title = "Expert panel",
+        icon = shiny::icon("users"),
+        shiny::uiOutput(ns("expert_panel"))
+      ),
+      bslib::accordion_panel(
+        title = "Session storage",
+        icon = shiny::icon("folder-open"),
+        shiny::downloadButton(
+          ns("save_session"),
+          "Download session",
+          icon = shiny::icon("floppy-disk"),
+          class = "btn-outline-primary btn-sm w-100"
+        ),
+        shiny::fileInput(
+          ns("load_session"),
+          "Restore session bundle",
+          accept = ".zip",
+          buttonLabel = "Choose bundle",
+          placeholder = "No bundle selected"
+        ),
+        bslib::input_switch(
+          ns("autosave_session"),
+          "Autosave after changes",
+          FALSE
+        ),
+        shiny::uiOutput(ns("session_persistence"))
+      )
+    ),
+    if (!is.null(config_ui)) {
+      shiny::div(
+        class = "tempest-chat-config",
+        config_ui
+      )
+    }
   )
 }
 
@@ -129,6 +199,7 @@ mod_chat_server <- function(
 ) {
   shiny::moduleServer(id, function(input, output, session) {
     report_ready <- shiny::reactiveVal(0L)
+    suggestions_enabled <- shiny::reactiveVal(TRUE)
     progress_events <- shiny::reactiveVal(list())
     warmup_run_id <- 0L
     active_session_id <- 0L
@@ -156,14 +227,14 @@ mod_chat_server <- function(
       "coordinator",
       system_prompt = paste(
         "You are the tempest chat shell.",
-        "Ask the user to start a Co-STORM session from the sidebar before research chat.",
+        paste(
+          "Ask the user to start a Co-STORM session from the welcome panel",
+          "before research chat."
+        ),
         sep = "\n"
       ),
       echo = "none"
     )
-    # A Tempest conversation includes experts, evidence, map, report, and
-    # progress state that shinychat's turn-only history cannot yet restore.
-    chat <- shinychat::chat_server("chat", initial_chat, history = FALSE)
     current_source_store <- function() {
       ses <- tryCatch(shiny::isolate(store$get()), error = function(e) NULL)
       if (is.null(ses)) {
@@ -171,14 +242,12 @@ mod_chat_server <- function(
       }
       citation_source_store(ses$store %||% NULL)
     }
+    chat <- NULL
     append_chat <- function(text) {
-      chat$append(
-        citation_markdown(text, store = current_source_store()),
-        role = "assistant"
-      )
+      chat$append(text, role = "assistant")
     }
     append_suggestion_cards <- function(cards) {
-      chat_append_suggestion_cards(chat, cards)
+      chat$append_suggestions(cards)
     }
     append_chat_if_active <- function(text, session_id = active_session_id) {
       if (!isTRUE(session_ended) && identical(session_id, active_session_id)) {
@@ -195,6 +264,91 @@ mod_chat_server <- function(
       }
       invisible(NULL)
     }
+    process_completed_turn <- function(
+      user_text,
+      assistant_text,
+      assistant_turn,
+      is_current
+    ) {
+      ses <- tryCatch(shiny::isolate(store$get()), error = function(error) NULL)
+      if (is.null(ses)) {
+        return(invisible(NULL))
+      }
+      turn_session_id <- active_session_id
+      turn_suggestions_enabled <- shiny::isolate(suggestions_enabled())
+      turn_id <- tempest:::tempest_uuid("chat-turn")
+      task <- work_queue$enqueue(function(queue_current) {
+        current <- function() {
+          queue_current() &&
+            is_current() &&
+            !isTRUE(session_ended) &&
+            identical(turn_session_id, active_session_id)
+        }
+        tempest::tempest_session_process_turn_async(
+          ses,
+          user_text = user_text,
+          assistant_text = assistant_text,
+          provider_turn = assistant_turn,
+          suggest = turn_suggestions_enabled,
+          n_suggestions = 4L,
+          turn_id = turn_id,
+          is_current = current
+        )
+      })
+      promises::then(
+        task,
+        onFulfilled = function(result) {
+          shiny::withReactiveDomain(session, {
+            current <- !isTRUE(session_ended) &&
+              identical(turn_session_id, active_session_id) &&
+              is_current() &&
+              !identical(result@status, "cancelled")
+            if (!current) {
+              return(NULL)
+            }
+            for (notice in result@notices) {
+              message <- turn_notice_message(notice)
+              if (nzchar(message)) {
+                append_chat_if_active(message, turn_session_id)
+              }
+            }
+            if (identical(result@suggestion_status, "generated")) {
+              cards <- tempest:::tempest_shinychat_suggestion_cards(
+                result@suggestions
+              )
+              if (!is.null(cards)) {
+                append_suggestion_cards_if_active(cards, turn_session_id)
+              }
+            }
+            store$touch()
+            result
+          })
+        },
+        onRejected = function(error) {
+          if (
+            !isTRUE(session_ended) &&
+              identical(turn_session_id, active_session_id) &&
+              is_current()
+          ) {
+            warning("Turn processing failed: ", conditionMessage(error))
+          }
+          NULL
+        }
+      )
+      invisible(task)
+    }
+    # Tempest owns complete session restoration. shinychat history remains off
+    # because it cannot restore evidence, experts, mind-map, or artifact state.
+    chat <- tempest:::tempest_shinychat_adapter(
+      "chat",
+      initial_client = initial_chat,
+      session = session,
+      on_turn = process_completed_turn,
+      source_store = current_source_store,
+      render_message = function(text, role, source_store) {
+        citation_markdown(text, store = source_store)
+      }
+    )
     record_progress <- function(event) {
       record_costorm_progress_event(progress_events, event, session)
     }
@@ -205,7 +359,7 @@ mod_chat_server <- function(
     })
 
     restore_progress_history <- function(ses) {
-      progress_events(ses$artifacts[["progress_events"]] %||% list())
+      progress_events(tempest::tempest_execution_events(ses))
       invisible(NULL)
     }
 
@@ -221,13 +375,24 @@ mod_chat_server <- function(
         progress = record_progress
       )
       shiny::updateTextInput(session, "topic", value = ses$topic %||% "")
-      shiny::updateSliderInput(
+      shiny::updateSelectInput(
         session,
         "n_experts",
-        value = max(1L, min(5L, length(ses$experts %||% list())))
+        selected = max(1L, min(5L, length(ses$experts %||% list())))
       )
       restore_progress_history(ses)
-      replace_chat_with_session(chat, ses)
+      report_available <- !is.null(ses$artifact_catalog) &&
+        ses$artifact_catalog$has("report_md")
+      messages <- tempest:::tempest_shinychat_restore_messages(
+        ses$transcript,
+        topic = ses$topic,
+        report_available = report_available
+      )
+      chat$bind(
+        ses$chats$moderator,
+        messages = messages,
+        client_history = "keep"
+      )
       ses
     }
 
@@ -251,11 +416,6 @@ mod_chat_server <- function(
 
     output$session_persistence <- shiny::renderUI({
       session_persistence_status_ui(store$persistence())
-    })
-
-    output$progress <- shiny::renderUI({
-      state <- costorm_progress_state(progress_events())
-      workflow_progress_ui(state, costorm_stage_labels())
     })
 
     # --- Session lifecycle ---------------------------------------------------
@@ -345,16 +505,20 @@ mod_chat_server <- function(
       }
       active_session_id <<- active_session_id + 1L
       store$set(ses)
-      shiny::isolate(chat$set_client(ses$chats$moderator, sync = FALSE))
-      # Clear the landing greeting; the session intro below replaces it.
-      chat$clear(greeting = FALSE)
-      append_chat(paste0(
-        "Co-STORM session started for: **",
-        topic,
-        "**",
-        expert_intro(ses),
-        "\n\nAsk questions, request sources, or ask for a report.\n"
-      ))
+      chat$bind(
+        ses$chats$moderator,
+        messages = list(list(
+          role = "assistant",
+          content = paste0(
+            "Co-STORM session started for: **",
+            topic,
+            "**",
+            expert_intro(ses),
+            "\n\nAsk questions, request sources, or ask for a report.\n"
+          )
+        )),
+        client_history = "clear"
+      )
       costorm_log(
         "session ready: %s with %d experts",
         ses$session_id,
@@ -370,18 +534,7 @@ mod_chat_server <- function(
       progress_events(list())
       store$set(NULL)
       store$set_report(NULL)
-      chat$set_client(initial_chat, sync = FALSE)
-      chat$clear(
-        messages = list(list(
-          role = "assistant",
-          content = paste(
-            "Session cleared.",
-            "Enter a topic in the sidebar and start a new Co-STORM session."
-          )
-        )),
-        greeting = FALSE,
-        client_history = "clear"
-      )
+      chat$reset()
       invisible(NULL)
     }
 
@@ -417,51 +570,44 @@ mod_chat_server <- function(
     }
 
     register_chat_commands <- function() {
-      chat$slash_command(
-        "new",
-        "Clear the current Co-STORM session.",
-        function() run_chat_command("new")
-      )
-      chat$slash_command(
-        "new-session",
-        "Clear the current Co-STORM session.",
-        function() run_chat_command("new")
-      )
-      chat$slash_command(
-        "experts",
-        "Show the current expert panel.",
-        function() run_chat_command("experts")
-      )
-      chat$slash_command(
-        "sources",
-        "Summarize collected sources.",
-        function() run_chat_command("sources")
-      )
-      chat$slash_command(
-        "facts",
-        "Summarize collected facts.",
-        function() run_chat_command("facts")
-      )
-      chat$slash_command(
-        "claims",
-        "Summarize collected claims.",
-        function() run_chat_command("facts")
-      )
-      chat$slash_command(
-        "report",
-        "Generate a report from collected evidence.",
-        function() run_chat_command("report")
-      )
-      chat$slash_command(
-        "system",
-        "Show the moderator system prompt.",
-        function() run_chat_command("system")
-      )
-      chat$slash_command(
-        "tools",
-        "Show runtime tools and command status.",
-        function() run_chat_command("tools")
-      )
+      chat$register_commands(list(
+        new = list(
+          description = "Clear the current Co-STORM session.",
+          handler = function() run_chat_command("new")
+        ),
+        `new-session` = list(
+          description = "Clear the current Co-STORM session.",
+          handler = function() run_chat_command("new")
+        ),
+        experts = list(
+          description = "Show the current expert panel.",
+          handler = function() run_chat_command("experts")
+        ),
+        sources = list(
+          description = "Summarize collected sources.",
+          handler = function() run_chat_command("sources")
+        ),
+        facts = list(
+          description = "Summarize collected facts.",
+          handler = function() run_chat_command("facts")
+        ),
+        claims = list(
+          description = "Summarize collected claims.",
+          handler = function() run_chat_command("facts")
+        ),
+        report = list(
+          description = "Generate a report from collected evidence.",
+          handler = function() run_chat_command("report")
+        ),
+        system = list(
+          description = "Show the moderator system prompt.",
+          handler = function() run_chat_command("system")
+        ),
+        tools = list(
+          description = "Show runtime tools and command status.",
+          handler = function() run_chat_command("tools")
+        )
+      ))
     }
     register_chat_commands()
 
@@ -469,18 +615,45 @@ mod_chat_server <- function(
       chat_runtime_footer_ui(
         ses = store$get(),
         progress_state = costorm_progress_state(progress_events()),
-        chat_status = chat$status()
+        chat_status = chat$status(),
+        ns = session$ns
       )
     })
+
+    shiny::observeEvent(
+      input$suggest,
+      {
+        suggestions_enabled(isTRUE(input$suggest))
+      },
+      ignoreNULL = TRUE
+    )
 
     shiny::observeEvent(input$footer_new, {
       run_chat_command("new")
     })
-    shiny::observeEvent(input$footer_report, {
-      run_chat_command("report")
+
+    toggle_workspace_settings <- function() {
+      bslib::toggle_popover(
+        "research_options_popover",
+        show = FALSE,
+        session = session
+      )
+      bslib::toggle_sidebar("settings", session = session)
+      invisible(NULL)
+    }
+    shiny::observeEvent(input$setup_settings_toggle, {
+      toggle_workspace_settings()
+    })
+    shiny::observeEvent(input$footer_settings_toggle, {
+      toggle_workspace_settings()
     })
 
     shiny::observeEvent(input$start, {
+      bslib::toggle_popover(
+        "research_options_popover",
+        show = FALSE,
+        session = session
+      )
       work_queue$cancel()
       warmup_is_current <- next_warmup_guard()
       progress_events(list())
@@ -500,8 +673,9 @@ mod_chat_server <- function(
       session_id_value <- shiny::isolate(reactive_or_value(session_id))
       session_id_value <- session_id_value %||%
         tempest:::tempest_uuid("session")
-      n_experts <- input$n_experts %||% 3
-      suggest_enabled <- isTRUE(input$suggest)
+      n_experts <- as.integer(input$n_experts %||% 3)
+      suggest_enabled <- isTRUE(input$suggest %||% suggestions_enabled())
+      suggestions_enabled(suggest_enabled)
       warmup_enabled <- isTRUE(input$warmup)
 
       record_progress(costorm_starting_event(session_id_value))
@@ -564,31 +738,44 @@ mod_chat_server <- function(
                               ses$session_id %||% session_id_value
                             )
                             work_queue$enqueue(function(queue_current) {
-                              append_suggestions_async(
-                                ses,
-                                suggest_enabled,
-                                function(cards) {
-                                  append_suggestion_cards_if_active(
-                                    cards,
-                                    session_id = start_session_id
-                                  )
+                              current <- function() {
+                                queue_current() && warmup_is_current()
+                              }
+                              request <-
+                                tempest:::tempest_session_suggest_questions_async(
+                                  ses,
+                                  n = 4L,
+                                  is_current = current
+                                )
+                              promises::then(
+                                request,
+                                onFulfilled = function(questions) {
+                                  if (!current()) {
+                                    return(NULL)
+                                  }
+                                  cards <-
+                                    tempest:::tempest_shinychat_suggestion_cards(
+                                      questions
+                                    )
+                                  if (!is.null(cards)) {
+                                    append_suggestion_cards_if_active(
+                                      cards,
+                                      session_id = start_session_id
+                                    )
+                                  }
+                                  NULL
                                 },
-                                n = 4,
-                                is_current = function() {
-                                  queue_current() && warmup_is_current()
-                                },
-                                on_error = function(error) {
-                                  costorm_log(
-                                    "suggestions failed: %s",
-                                    conditionMessage(error)
-                                  )
+                                onRejected = function(error) {
+                                  if (current()) {
+                                    costorm_log(
+                                      "suggestions failed: %s",
+                                      conditionMessage(error)
+                                    )
+                                  }
+                                  NULL
                                 }
                               )
                             })
-                            costorm_log(
-                              "suggestions finished: %s",
-                              ses$session_id %||% session_id_value
-                            )
                           })
                         },
                         delay = delay_s
@@ -634,17 +821,37 @@ mod_chat_server <- function(
                     }
 
                     costorm_log("warmup started: %s", ses$session_id)
+                    warmup_request <- work_queue$enqueue(
+                      function(queue_current) {
+                        tempest::tempest_session_warmup_async(
+                          ses,
+                          is_current = function() {
+                            queue_current() && warmup_is_current()
+                          }
+                        )
+                      }
+                    )
                     warmup_done <- promises::then(
-                      run_warmup(
-                        ses,
-                        store,
-                        append_chat,
-                        is_current = warmup_is_current,
-                        queue = work_queue
-                      ),
-                      onFulfilled = function(...) {
-                        costorm_log("warmup finished: %s", ses$session_id)
-                        NULL
+                      warmup_request,
+                      onFulfilled = function(result) {
+                        shiny::withReactiveDomain(session, {
+                          if (
+                            !warmup_is_current() ||
+                              identical(result@status, "cancelled")
+                          ) {
+                            return(NULL)
+                          }
+                          for (message in warmup_result_messages(result)) {
+                            append_chat_if_active(message, start_session_id)
+                          }
+                          store$touch()
+                          costorm_log(
+                            "warmup finished: %s (%s)",
+                            ses$session_id,
+                            result@status
+                          )
+                          result
+                        })
                       },
                       onRejected = function(e) {
                         costorm_log("warmup failed: %s", conditionMessage(e))
@@ -704,171 +911,6 @@ mod_chat_server <- function(
       )
     })
 
-    # --- Post-process each completed chat turn -------------------------------
-    shiny::observeEvent(chat$last_turn(), {
-      ses <- store$get()
-      if (is.null(ses)) {
-        return()
-      }
-      msg <- chat_input_text(chat$last_input())
-      turn <- chat$last_turn()
-      ans <- tryCatch(
-        ellmer::contents_markdown(turn),
-        error = function(e) {
-          if (is.character(turn)) paste(turn, collapse = "\n") else ""
-        }
-      )
-      ans <- sanitize_external_citation_markers(ans)
-      if (nzchar(msg)) {
-        ses$add_turn("user", "user", msg)
-      }
-      if (nzchar(ans)) {
-        ses$add_turn("Moderator", "assistant", ans)
-      }
-      turn_id <- paste0(
-        "chat-turn-",
-        active_session_id,
-        "-",
-        length(ses$transcript)
-      )
-      turn_event <- session_emit_progress(
-        ses,
-        "stage",
-        "started",
-        stage = "dialogue",
-        step = "turn",
-        correlation_id = turn_id
-      )
-      if (nzchar(msg)) {
-        session_emit_progress(
-          ses,
-          "step",
-          "succeeded",
-          stage = "dialogue",
-          step = "user_turn",
-          parent_event_id = progress_event_id(turn_event),
-          correlation_id = turn_id
-        )
-      }
-      if (nzchar(ans)) {
-        session_emit_progress(
-          ses,
-          "step",
-          "succeeded",
-          stage = "dialogue",
-          step = "moderator_response",
-          parent_event_id = progress_event_id(turn_event),
-          correlation_id = turn_id
-        )
-      }
-      turn_session_id <- active_session_id
-      suggest_enabled <- isTRUE(input$suggest)
-      task <- work_queue$enqueue(function(queue_current) {
-        is_current <- function() {
-          queue_current() &&
-            !isTRUE(session_ended) &&
-            identical(turn_session_id, active_session_id)
-        }
-        evidence <- tempest:::tempest_session_commit_evidence_async(
-          ses,
-          ans,
-          turn = turn,
-          session_id = ses$session_id,
-          expert_id = "moderator",
-          correlation_id = turn_id,
-          is_current = is_current
-        )
-        evidence <- promises::then(evidence, function(result) {
-          if (
-            is_current() &&
-              nzchar(msg) &&
-              nzchar(ans) &&
-              length(result$source_ids %||% character()) == 0L
-          ) {
-            append_chat_if_active(
-              turn_evidence_gap_message(),
-              session_id = turn_session_id
-            )
-          }
-          result
-        })
-        evidence <- costorm_async_continue(
-          evidence,
-          function(error) {
-            warning("Fact extraction failed: ", conditionMessage(error))
-            append_chat_if_active(
-              paste0(
-                "**Evidence processing failed:** This answer was not added to ",
-                "the evidence ledger. ",
-                conditionMessage(error)
-              ),
-              session_id = turn_session_id
-            )
-          }
-        )
-        mindmap <- promises::then(evidence, function(evidence_result) {
-          tempest:::tempest_session_update_mindmap_async(
-            ses,
-            last_exchange = turn_mindmap_exchange(
-              msg,
-              ans,
-              evidence_result
-            ),
-            is_current = is_current
-          )
-        })
-        mindmap <- costorm_async_continue(
-          mindmap,
-          function(error) {
-            warning("Mind map update failed: ", conditionMessage(error))
-          }
-        )
-        promises::then(mindmap, function(...) {
-          if (!nzchar(msg) || !isTRUE(suggest_enabled)) {
-            return(NULL)
-          }
-          append_suggestions_async(
-            ses,
-            enabled = TRUE,
-            append_fn = function(cards) {
-              append_suggestion_cards_if_active(
-                cards,
-                session_id = turn_session_id
-              )
-            },
-            n = 4,
-            is_current = is_current
-          )
-        })
-      })
-      promises::then(
-        task,
-        onFulfilled = function(...) {
-          if (
-            isTRUE(session_ended) ||
-              !identical(turn_session_id, active_session_id)
-          ) {
-            return(NULL)
-          }
-          session_emit_progress(
-            ses,
-            "stage",
-            "succeeded",
-            stage = "dialogue",
-            step = "turn",
-            parent_event_id = progress_event_id(turn_event),
-            correlation_id = turn_id
-          )
-          store$touch()
-        },
-        onRejected = function(error) {
-          if (!isTRUE(session_ended)) {
-            warning("Turn enrichment failed: ", conditionMessage(error))
-          }
-        }
-      )
-    })
-
     # --- Report generation ---------------------------------------------------
     shiny::observeEvent(input$generate_report, {
       report <- run_report_generation()
@@ -901,24 +943,6 @@ mod_chat_server <- function(
 
 # --- Chat module helpers -----------------------------------------------------
 
-# The landing-page greeting shown in the empty chat.
-welcome_message <- function() {
-  paste(
-    "**Welcome to tempest** — research reports written by a panel of AI experts.",
-    "",
-    paste(
-      "Give it a topic and the experts search the web, gather cited evidence,",
-      "and write it up. To start, enter a topic in the sidebar and click",
-      "**Start Session**. The panel assembles and you can ask questions right",
-      "here; answers stream in and you can stop them mid-response. When you've",
-      "gathered enough, click **Generate Report**."
-    ),
-    "",
-    "For a one-shot run without the back-and-forth, use the **STORM** tab.",
-    sep = "\n"
-  )
-}
-
 tempest_chat_attachment_types <- function() {
   c(
     "image/png",
@@ -943,32 +967,41 @@ reactive_or_value <- function(x) {
 }
 
 chat_footer_ui <- function(ns) {
-  button <- function(id, icon, label) {
-    chat_footer_tooltip(
-      shiny::actionButton(
-        ns(id),
-        label = shiny::span(label, class = "visually-hidden"),
-        icon = shiny::icon(icon),
-        title = label,
-        `aria-label` = label,
-        class = "btn-outline-secondary btn-sm px-2"
-      ),
-      label
-    )
-  }
   shiny::div(
-    class = paste(
-      "d-flex flex-wrap align-items-center justify-content-between",
-      "gap-2 w-100"
-    ),
+    class = "tempest-chat-footer w-100",
     shiny::uiOutput(
       ns("runtime_footer"),
-      class = "flex-grow-1 text-start"
+      class = "tempest-chat-footer-output w-100"
+    )
+  )
+}
+
+chat_report_options_ui <- function(ns) {
+  bslib::popover(
+    bslib::toolbar_input_button(
+      ns("report_options"),
+      "Report options",
+      icon = shiny::icon("sliders"),
+      show_label = TRUE,
+      tooltip = FALSE,
+      border = TRUE
     ),
-    shiny::div(
-      class = "d-flex flex-wrap align-items-center gap-1",
-      button("footer_new", "plus", "New session"),
-      button("footer_report", "file-lines", "Generate report")
+    id = ns("report_options_popover"),
+    title = "Report options",
+    placement = "top",
+    shiny::selectInput(
+      ns("report_style"),
+      "Report style",
+      choices = c(
+        "Technical" = "technical",
+        "Executive" = "executive"
+      ),
+      selected = "technical",
+      selectize = FALSE
+    ),
+    shiny::p(
+      class = "small text-body-secondary mb-0",
+      "Reports use the evidence collected in this session."
     )
   )
 }
@@ -981,91 +1014,6 @@ chat_footer_tooltip <- function(trigger, label) {
   )
 }
 
-# shinychat 0.4.0.9000 does not expose a transformation hook for streamed
-# ContentText chunks. Keep this narrowly scoped provider-marker cleanup at the
-# chat root until the same transformation can happen before React rendering.
-chat_citation_sanitizer_script <- function(ns) {
-  root_id <- ns("chat")
-  root_id <- gsub("\\", "\\\\", root_id, fixed = TRUE)
-  root_id <- gsub("'", "\\'", root_id, fixed = TRUE)
-  shiny::tags$script(shiny::HTML(sprintf(
-    "
-(function(rootId) {
-  function clean(value) {
-    if (!value || value.indexOf('cite') === -1) {
-      return value;
-    }
-    return value
-      .replace(/\\uE200cite\\uE202[^\\uE201\\n]*(?:\\uE201)?/g, '')
-      .replace(/[\\uE000-\\uF8FF]*cite[\\uE000-\\uF8FF]*turn\\d+(?:search|view|fetch|image|news|source)\\d+(?:[\\uE000-\\uF8FF]*turn\\d+(?:search|view|fetch|image|news|source)\\d+)*[\\uE000-\\uF8FF]*/g, '')
-      .replace(/[ \\t]+([.,;:!?])/g, '$1');
-  }
-  function cleanTree(root) {
-    if (!root) {
-      return;
-    }
-    if (root.nodeType === Node.TEXT_NODE) {
-      var cleaned = clean(root.nodeValue);
-      if (cleaned !== root.nodeValue) {
-        root.nodeValue = cleaned;
-      }
-      return;
-    }
-    if (
-      root.nodeType !== Node.ELEMENT_NODE &&
-      root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE
-    ) {
-      return;
-    }
-    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    var node;
-    while ((node = walker.nextNode())) {
-      cleanTree(node);
-    }
-  }
-  function observe(root) {
-    if (!root || root.dataset.tempestCitationSanitizer === 'true') {
-      return;
-    }
-    root.dataset.tempestCitationSanitizer = 'true';
-    cleanTree(root);
-    var observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        if (mutation.type === 'characterData') {
-          cleanTree(mutation.target);
-        }
-        mutation.addedNodes.forEach(cleanTree);
-      });
-    });
-    observer.observe(root, {
-      childList: true,
-      characterData: true,
-      subtree: true
-    });
-    if (root.shadowRoot) {
-      cleanTree(root.shadowRoot);
-      observer.observe(root.shadowRoot, {
-        childList: true,
-        characterData: true,
-        subtree: true
-      });
-    }
-  }
-  function start() {
-    observe(document.getElementById(rootId));
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start, { once: true });
-  } else {
-    start();
-  }
-  document.addEventListener('shiny:connected', start);
-})('%s');
-",
-    root_id
-  )))
-}
-
 chat_runtime_counts <- function(ses) {
   if (is.null(ses)) {
     return(list(experts = 0L, sources = 0L, facts = 0L, report = FALSE))
@@ -1073,7 +1021,9 @@ chat_runtime_counts <- function(ses) {
   sources <- tryCatch(ses$store$list_sources(), error = function(e) list())
   claims <- tryCatch(ses$store$list_claims(), error = function(e) list())
   report <- tryCatch(
-    nzchar(ses$artifacts[["report_md"]] %||% ""),
+    !is.null(ses$artifact_catalog) &&
+      ses$artifact_catalog$has("report_md") &&
+      nzchar(ses$artifact_catalog$get("report_md")@content),
     error = function(e) FALSE
   )
   list(
@@ -1087,12 +1037,17 @@ chat_runtime_counts <- function(ses) {
 chat_runtime_footer_ui <- function(
   ses,
   progress_state = NULL,
-  chat_status = "idle"
+  chat_status = "idle",
+  ns = identity
 ) {
+  if (is.null(ses)) {
+    return(shiny::span(
+      class = "tempest-chat-footer-idle",
+      `aria-hidden` = "true"
+    ))
+  }
   counts <- chat_runtime_counts(ses)
-  session_label <- if (is.null(ses)) {
-    "No session"
-  } else if (identical(chat_status, "streaming")) {
+  session_label <- if (identical(chat_status, "streaming")) {
     "Answering"
   } else if (
     !is.null(progress_state) &&
@@ -1103,56 +1058,101 @@ chat_runtime_footer_ui <- function(
   } else {
     "Ready"
   }
-  report_label <- if (isTRUE(counts$report)) "report ready" else "no report"
-  shiny::div(
-    class = "d-flex flex-wrap align-items-center gap-1 text-body-secondary",
+
+  report_status <- if (isTRUE(counts$report)) {
     chat_footer_tooltip(
       shiny::span(
         class = "badge rounded-pill text-bg-light border text-body",
-        title = paste("Session status:", session_label),
-        `aria-label` = paste("Session status:", session_label),
-        session_label
+        title = "Report status: Report ready",
+        `aria-label` = "Report status: Report ready",
+        "Report ready"
       ),
-      paste("Session status:", session_label)
+      "Report status: Report ready"
+    )
+  }
+
+  shiny::div(
+    class = paste(
+      "tempest-chat-footer-active",
+      "d-flex flex-wrap align-items-center justify-content-between gap-2"
     ),
-    chat_footer_tooltip(
-      shiny::span(
-        class = "d-inline-flex align-items-center gap-1 text-nowrap",
-        title = paste("Experts:", counts$experts),
-        `aria-label` = paste("Experts:", counts$experts),
-        shiny::icon("users"),
-        counts$experts
+    shiny::div(
+      class = paste(
+        "tempest-chat-footer-status",
+        "d-flex flex-wrap align-items-center gap-1 text-body-secondary"
       ),
-      paste("Experts:", counts$experts)
+      chat_footer_tooltip(
+        shiny::span(
+          class = "badge rounded-pill text-bg-light border text-body",
+          title = paste("Session status:", session_label),
+          `aria-label` = paste("Session status:", session_label),
+          session_label
+        ),
+        paste("Session status:", session_label)
+      ),
+      chat_footer_tooltip(
+        shiny::span(
+          class = "d-inline-flex align-items-center gap-1 text-nowrap",
+          title = paste("Experts:", counts$experts),
+          `aria-label` = paste("Experts:", counts$experts),
+          shiny::icon("users"),
+          counts$experts
+        ),
+        paste("Experts:", counts$experts)
+      ),
+      chat_footer_tooltip(
+        shiny::span(
+          class = "d-inline-flex align-items-center gap-1 text-nowrap",
+          title = paste("Sources:", counts$sources),
+          `aria-label` = paste("Sources:", counts$sources),
+          shiny::icon("link"),
+          counts$sources
+        ),
+        paste("Sources:", counts$sources)
+      ),
+      chat_footer_tooltip(
+        shiny::span(
+          class = "d-inline-flex align-items-center gap-1 text-nowrap",
+          title = paste("Facts:", counts$facts),
+          `aria-label` = paste("Facts:", counts$facts),
+          shiny::icon("clipboard-check"),
+          counts$facts
+        ),
+        paste("Facts:", counts$facts)
+      ),
+      report_status
     ),
-    chat_footer_tooltip(
-      shiny::span(
-        class = "d-inline-flex align-items-center gap-1 text-nowrap",
-        title = paste("Sources:", counts$sources),
-        `aria-label` = paste("Sources:", counts$sources),
-        shiny::icon("link"),
-        counts$sources
+    shiny::div(
+      class = "tempest-chat-footer-actions d-flex align-items-center gap-2",
+      bslib::toolbar(
+        align = "left",
+        width = "auto",
+        bslib::toolbar_input_button(
+          ns("footer_settings_toggle"),
+          "Workspace settings",
+          icon = shiny::icon("gear"),
+          border = TRUE
+        )
       ),
-      paste("Sources:", counts$sources)
-    ),
-    chat_footer_tooltip(
-      shiny::span(
-        class = "d-inline-flex align-items-center gap-1 text-nowrap",
-        title = paste("Facts:", counts$facts),
-        `aria-label` = paste("Facts:", counts$facts),
-        shiny::icon("clipboard-check"),
-        counts$facts
+      shiny::actionButton(
+        ns("footer_new"),
+        "New session",
+        icon = shiny::icon("plus"),
+        class = "btn-outline-secondary btn-sm text-nowrap"
       ),
-      paste("Facts:", counts$facts)
-    ),
-    chat_footer_tooltip(
-      shiny::span(
-        class = "d-inline-flex align-items-center text-nowrap",
-        title = paste("Report status:", report_label),
-        `aria-label` = paste("Report status:", report_label),
-        report_label
+      bslib::toolbar(
+        align = "left",
+        width = "auto",
+        chat_report_options_ui(ns)
       ),
-      paste("Report status:", report_label)
+      bslib::input_task_button(
+        ns("generate_report"),
+        "Generate report",
+        icon = shiny::icon("file-lines"),
+        label_busy = "Generating...",
+        type = "secondary",
+        class = "btn-sm text-nowrap"
+      )
     )
   )
 }
@@ -1362,56 +1362,6 @@ costorm_async_queue <- function() {
   )
 }
 
-costorm_async_continue <- function(promise, on_error = NULL) {
-  promises::then(
-    promise,
-    onFulfilled = identity,
-    onRejected = function(error) {
-      if (is.function(on_error)) {
-        on_error(error)
-      }
-      NULL
-    }
-  )
-}
-
-append_suggestions_async <- function(
-  ses,
-  enabled,
-  append_fn,
-  n = 4,
-  is_current = function() TRUE,
-  on_error = NULL
-) {
-  if (is.null(ses) || !isTRUE(enabled)) {
-    return(promises::promise_resolve(NULL))
-  }
-  request <- tempest:::tempest_session_suggest_questions_async(
-    ses,
-    n = n,
-    is_current = is_current
-  )
-  promises::then(
-    request,
-    onFulfilled = function(questions) {
-      if (!warmup_is_current(is_current)) {
-        return(NULL)
-      }
-      cards <- suggestion_cards(questions)
-      if (!is.null(cards)) {
-        append_fn(cards)
-      }
-      invisible(NULL)
-    },
-    onRejected = function(error) {
-      if (is.function(on_error)) {
-        on_error(error)
-      }
-      stop(error)
-    }
-  )
-}
-
 generate_report_for_chat_async <- function(
   ses,
   store,
@@ -1469,50 +1419,6 @@ generate_report_for_chat_async <- function(
       FALSE
     }
   )
-}
-
-generate_report_for_chat <- function(
-  ses,
-  store,
-  append_chat,
-  report_ready,
-  style = "technical"
-) {
-  if (is.null(ses)) {
-    append_chat("No session active. Start a session first.")
-    return(invisible(FALSE))
-  }
-  n_evidence <- length(ses$store$list_claims()) +
-    length(ses$store$list_sources())
-  if (n_evidence == 0) {
-    append_chat(
-      "No facts or sources collected yet. Ask some questions first to gather research."
-    )
-    return(invisible(FALSE))
-  }
-  append_chat("Generating report...")
-  md <- tryCatch(
-    ses$report(style = style),
-    error = function(e) {
-      append_chat(paste0("Report generation failed: ", conditionMessage(e)))
-      NULL
-    }
-  )
-  if (is.null(md) || !nzchar(md)) {
-    append_chat(
-      "Report generation returned empty. Try asking more questions first."
-    )
-    return(invisible(FALSE))
-  }
-  ses$artifacts[["report_md"]] <- md
-  store$set_report(md, ses$topic, source_store = ses$store)
-  store$touch()
-  append_chat(sprintf(
-    "Report generated (%d chars). See the **Report** tab.",
-    nchar(md)
-  ))
-  report_ready(report_ready() + 1L)
-  invisible(TRUE)
 }
 
 session_autosave_server <- function(
@@ -1830,60 +1736,6 @@ session_persistence_status_ui <- function(state) {
   )
 }
 
-replace_chat_with_session <- function(chat, session) {
-  chat$set_client(session$chats$moderator, sync = FALSE)
-  chat$clear(greeting = FALSE, client_history = "keep")
-  append_restored_session_chat(
-    chat = chat,
-    session = session,
-    source_store = citation_source_store(session$store %||% NULL)
-  )
-  invisible(chat)
-}
-
-append_restored_session_chat <- function(chat, session, source_store = NULL) {
-  topic <- session$topic %||% "Untitled topic"
-  chat$append(
-    citation_markdown(
-      paste0("Resumed Co-STORM session for: **", topic, "**"),
-      store = source_store
-    ),
-    role = "assistant"
-  )
-
-  for (turn in session$transcript %||% list()) {
-    text <- turn$text %||% ""
-    if (!nzchar(text)) {
-      next
-    }
-    role <- tolower(turn$role %||% "")
-    speaker <- turn$speaker %||%
-      if (identical(role, "user")) "User" else "Moderator"
-    display_role <- if (identical(role, "user")) "user" else "assistant"
-    markdown <- paste0("**", speaker, ":**\n\n", text)
-    chat$append(
-      citation_markdown(markdown, store = source_store),
-      role = display_role
-    )
-  }
-
-  report_md <- if (
-    !is.null(session$artifact_catalog) &&
-      session$artifact_catalog$has("report_md")
-  ) {
-    session$artifact_catalog$get("report_md")@content
-  } else {
-    session$artifacts[["report_md"]] %||% ""
-  }
-  if (nzchar(report_md)) {
-    chat$append(
-      "Restored report artifact. See the **Report** tab.",
-      role = "assistant"
-    )
-  }
-  invisible(chat)
-}
-
 expert_intro <- function(ses) {
   if (length(ses$experts) == 0) {
     return("")
@@ -1921,139 +1773,6 @@ expert_card <- function(expert) {
       shiny::div(class = "mt-1 fst-italic", expert@description)
     }
   )
-}
-
-# Flatten shinychat's last_input (string or list) into a single string.
-chat_input_text <- function(x) {
-  if (is.null(x)) {
-    return("")
-  }
-  if (is.character(x)) {
-    return(paste(x, collapse = "\n"))
-  }
-  if (is.list(x)) {
-    parts <- vapply(
-      x,
-      chat_input_part_text,
-      character(1)
-    )
-    parts <- parts[nzchar(parts)]
-    return(paste(parts, collapse = "\n"))
-  }
-  chat_input_part_text(x)
-}
-
-chat_input_part_text <- function(x) {
-  if (is.character(x)) {
-    return(paste(x, collapse = "\n"))
-  }
-  text <- tryCatch(ellmer::contents_text(x), error = function(e) NULL)
-  usable_text <- !is.null(text) &&
-    length(text) > 0L &&
-    any(!is.na(text) & nzchar(text))
-  if (isTRUE(usable_text)) {
-    text <- text[!is.na(text) & nzchar(text)]
-    return(paste(text, collapse = "\n"))
-  }
-  if (inherits(x, "ellmer::ContentImage")) {
-    return("[Image attachment]")
-  }
-  if (inherits(x, "ellmer::ContentPDF")) {
-    filename <- tryCatch(x@filename, error = function(e) "")
-    if (
-      !is.null(filename) &&
-        length(filename) == 1L &&
-        !is.na(filename) &&
-        nzchar(filename)
-    ) {
-      return(paste0("[PDF attachment: ", filename, "]"))
-    }
-    return("[PDF attachment]")
-  }
-  "[Attachment]"
-}
-
-suggestion_card_titles <- function(n) {
-  if (n <= 0L) {
-    return(character())
-  }
-  rep_len(
-    c(
-      "Evidence gap",
-      "Key uncertainty",
-      "Another perspective",
-      "How to verify"
-    ),
-    n
-  )
-}
-
-# Build a shinychat suggestion-card block from a vector of questions. shinychat
-# renders a markdown list whose items are all `<span class="suggestion submit">`
-# as a grid of cards and submits the selected question through the native chat
-# input.
-# Returns NULL when there are no usable questions.
-suggestion_cards <- function(questions, lead = "**Research next:**") {
-  titles <- names(questions)
-  questions <- sanitize_external_citation_markers(questions)
-  questions <- trimws(questions)
-  keep <- !is.na(questions) & nzchar(questions)
-  questions <- questions[keep]
-  if (is.null(titles)) {
-    titles <- rep("", length(keep))
-  }
-  titles <- trimws(titles[keep])
-  if (length(questions) == 0) {
-    return(NULL)
-  }
-  fallback_titles <- suggestion_card_titles(length(questions))
-  missing_titles <- is.na(titles) | !nzchar(titles)
-  titles[missing_titles] <- fallback_titles[missing_titles]
-  items <- paste0(
-    "- <span class=\"suggestion submit\" title=\"",
-    htmltools::htmlEscape(titles, attribute = TRUE),
-    "\">",
-    htmltools::htmlEscape(questions),
-    "</span>"
-  )
-  structure(
-    paste0(lead, "\n\n", paste(items, collapse = "\n")),
-    class = c("tempest_shinychat_suggestions", "character")
-  )
-}
-
-chat_append_suggestion_cards <- function(chat, cards) {
-  if (!inherits(cards, "tempest_shinychat_suggestions")) {
-    stop("Suggestion cards must be created by suggestion_cards().")
-  }
-  chat$append(as.character(cards), role = "assistant")
-  invisible(cards)
-}
-
-# Generate suggestion cards and append them, gated on `enabled`. Quiet on
-# failure: a stalled or erroring generator simply shows no cards. Pure of Shiny
-# reactives (deps injected) so it can be unit-tested directly.
-append_suggestions <- function(
-  ses,
-  enabled,
-  append_fn,
-  n = 4,
-  on_error = NULL
-) {
-  if (is.null(ses) || !isTRUE(enabled)) {
-    return(invisible(NULL))
-  }
-  questions <- tryCatch(ses$suggest_questions(n), error = function(e) {
-    if (is.function(on_error)) {
-      on_error(e)
-    }
-    character()
-  })
-  cards <- suggestion_cards(questions)
-  if (!is.null(cards)) {
-    append_fn(cards)
-  }
-  invisible(NULL)
 }
 
 should_delay_start_suggestions <- function(warmup_enabled, experts) {
@@ -2152,21 +1871,6 @@ costorm_stage_labels <- function() {
   tempest::tempest_progress_labels("costorm", kind = "stage")
 }
 
-session_emit_progress <- function(ses, ...) {
-  if (is.null(ses) || is.null(ses$emit_progress)) {
-    return(NULL)
-  }
-  tryCatch(ses$emit_progress(...), error = function(e) NULL)
-}
-
-progress_event_id <- function(event) {
-  if (S7::S7_inherits(event, tempest::tempest_progress_event)) {
-    event@event_id
-  } else {
-    NA_character_
-  }
-}
-
 progress_error_payload <- function(error) {
   list(
     error_class = class(error)[[1]],
@@ -2174,227 +1878,17 @@ progress_error_payload <- function(error) {
   )
 }
 
-warmup_prompt <- function(topic, expert) {
-  seed_questions <- unique(c(
-    expert@initial_questions,
-    expert@initial_work_items
-  ))
-  seed_questions <- stringi::stri_trim_both(seed_questions)
-  seed_questions <- seed_questions[
-    !is.na(seed_questions) & nzchar(seed_questions)
-  ]
-  seeds <- if (length(seed_questions) > 0L) {
-    paste0(
-      "\n\nUse these seed questions as planning context:\n- ",
-      paste(seed_questions, collapse = "\n- ")
-    )
-  } else {
-    ""
-  }
-  paste0(
-    "Topic: ",
-    topic,
-    "\n\nGive the panel a concise, evidence-backed orientation from your ",
-    "professional perspective. This bounded pass must seed the shared evidence ",
-    "ledger, not merely brainstorm. First inspect relevant evidence already in ",
-    "the session. If none is available, make exactly one web search, inspect no ",
-    "more than two results, and set k = 2 when the search tool accepts k. Do ",
-    "not make more than two retrieval or fetch calls. Ground at least one ",
-    "orientation claim in an inspected source and preserve its citation. The ",
-    "app commits evidence after your response, so do not call add_claim or ",
-    "add_fact yourself. Label anything not supported by inspected evidence as ",
-    "uncertain.",
-    seeds,
-    "\n\nIn no more than 250 words, cover:\n",
-    "- the lens you bring to this topic;\n",
-    "- two or three high-value research questions; and\n",
-    "- the main uncertainty, tradeoff, or risk the panel should investigate."
-  )
-}
-
-record_warmup_orientations_async <- function(
-  ses,
-  orientations,
-  queue = costorm_async_queue(),
-  is_current = function() TRUE
-) {
-  if (length(orientations) == 0L) {
-    return(promises::promise_resolve(NULL))
-  }
-  queue$enqueue(function(queue_current) {
-    current <- function() queue_current() && warmup_is_current(is_current)
-    if (!current()) {
-      return(NULL)
-    }
-    evidence_results <- vector("list", length(orientations))
-    for (orientation in orientations) {
-      if (!current()) {
-        return(NULL)
-      }
-      ses$add_turn(
-        orientation$name,
-        "assistant",
-        orientation$response
-      )
-    }
-    commit_one <- function(previous, index) {
-      promises::then(previous, function(...) {
-        if (!current()) {
-          return(NULL)
-        }
-        orientation <- orientations[[index]]
-        has_async_extractor <- is.function(
-          ses$chats$extractor$chat_structured_async %||% NULL
-        )
-        request <- if (has_async_extractor) {
-          tempest:::tempest_session_commit_evidence_async(
-            ses,
-            orientation$response,
-            turn = orientation$turn %||% NULL,
-            session_id = orientation$session_id,
-            expert_id = orientation$expert_id,
-            correlation_id = orientation$correlation_id,
-            is_current = current
-          )
-        } else {
-          tryCatch(
-            {
-              source_ids <- harvest_session_sources(
-                ses,
-                turn = orientation$turn %||% NULL
-              )
-              ses$expert_session_manager$extract_facts(
-                orientation$response,
-                turn = orientation$turn %||% NULL,
-                source_ids = source_ids,
-                session_id = orientation$session_id,
-                expert_id = orientation$expert_id,
-                correlation_id = orientation$correlation_id
-              )
-              promises::promise_resolve(list(
-                source_ids = source_ids,
-                extraction_skipped = NA_character_
-              ))
-            },
-            error = function(error) promises::promise_reject(error)
-          )
-        }
-        promises::then(
-          request,
-          onFulfilled = function(result) {
-            evidence_results[[index]] <<- result
-            result
-          },
-          onRejected = function(error) {
-            evidence_results[[index]] <<- list(error = error)
-            NULL
-          }
-        )
-      })
-    }
-    evidence <- Reduce(
-      commit_one,
-      seq_along(orientations),
-      promises::promise_resolve(NULL)
-    )
-    promises::then(evidence, function(...) {
-      if (!current()) {
-        return(NULL)
-      }
-      exchange <- paste(
-        Map(
-          warmup_orientation_exchange,
-          orientations,
-          evidence_results
-        ),
-        collapse = "\n\n---\n\n"
-      )
-      map_request <- if (is.null(ses$chats$mindmap)) {
-        tryCatch(
-          {
-            ses$update_mindmap(last_exchange = exchange)
-            promises::promise_resolve(TRUE)
-          },
-          error = function(error) promises::promise_reject(error)
-        )
-      } else {
-        tempest:::tempest_session_update_mindmap_async(
-          ses,
-          last_exchange = exchange,
-          is_current = current
-        )
-      }
-      promises::then(
-        costorm_async_continue(map_request),
-        function(...) {
-          list(
-            evidence_results = evidence_results,
-            evidence_failure_count = sum(vapply(
-              evidence_results,
-              \(result) !is.null(result$error),
-              logical(1)
-            ))
-          )
-        }
-      )
-    })
-  })
-}
-
-harvest_session_sources <- function(ses, turn = NULL, chat = NULL) {
-  if (is.null(ses) || is.null(ses$harvest_native_sources)) {
-    return(character())
-  }
-  ids <- tryCatch(
-    ses$harvest_native_sources(turn = turn, chat = chat),
-    error = function(e) character()
-  )
-  unique(ids[!is.na(ids) & nzchar(ids)])
-}
-
-extract_chat_turn_facts <- function(
-  ses,
-  answer_text,
-  turn = NULL,
-  source_ids = NULL,
-  session_id = NULL,
-  expert_id = NA_character_,
-  correlation_id = NA_character_
-) {
-  # Harvest only when the caller has not already done so for this turn; the
-  # session's extract_facts also avoids re-harvesting when source_ids are passed.
-  if (is.null(source_ids)) {
-    source_ids <- harvest_session_sources(ses, turn = turn)
-  }
-  ses$extract_facts(
-    answer_text,
-    turn = turn,
-    source_ids = source_ids,
-    session_id = session_id %||% ses$session_id,
-    expert_id = expert_id,
-    correlation_id = correlation_id
-  )
-  invisible(source_ids)
-}
-
-warmup_summary <- function(
-  ses,
-  orientation_count,
-  expert_count,
-  evidence_failure_count = 0L
-) {
-  source_count <- length(ses$store$list_sources())
-  claim_count <- length(ses$store$list_claims())
-  evidence_text <- if (source_count > 0L && claim_count > 0L) {
-    claim_label <- if (claim_count == 1L) "fact" else "facts"
-    source_label <- if (source_count == 1L) "source" else "sources"
+warmup_summary <- function(result) {
+  evidence_text <- if (result@source_count > 0L && result@claim_count > 0L) {
+    claim_label <- if (result@claim_count == 1L) "fact" else "facts"
+    source_label <- if (result@source_count == 1L) "source" else "sources"
     paste0(
       " Collected ",
-      claim_count,
+      result@claim_count,
       " source-backed ",
       claim_label,
       " from ",
-      source_count,
+      result@source_count,
       " ",
       source_label,
       "."
@@ -2405,10 +1899,10 @@ warmup_summary <- function(
       "context only, not research findings."
     )
   }
-  failure_text <- if (evidence_failure_count > 0L) {
+  failure_text <- if (result@evidence_failure_count > 0L) {
     paste0(
       " Evidence processing failed for ",
-      evidence_failure_count,
+      result@evidence_failure_count,
       " expert orientation(s)."
     )
   } else {
@@ -2416,13 +1910,43 @@ warmup_summary <- function(
   }
   paste0(
     "**Warmup complete.** Oriented ",
-    orientation_count,
+    result@orientation_count,
     " of ",
-    expert_count,
+    result@expert_count,
     " experts around the topic.",
     evidence_text,
     failure_text
   )
+}
+
+warmup_result_messages <- function(result) {
+  failures <- vapply(
+    result@orientations,
+    function(orientation) {
+      if (identical(orientation$status, "succeeded")) {
+        return(NA_character_)
+      }
+      if (identical(orientation$status, "timeout")) {
+        return(paste0(
+          "**",
+          orientation$expert_name,
+          "** orientation timed out; continuing with the rest of the panel."
+        ))
+      }
+      detail <- orientation$error_message
+      if (is.na(detail) || !nzchar(detail)) {
+        detail <- "No error details were returned."
+      }
+      paste0(
+        "**",
+        orientation$expert_name,
+        "** orientation was unavailable: ",
+        detail
+      )
+    },
+    character(1)
+  )
+  c(failures[!is.na(failures)], warmup_summary(result))
 }
 
 turn_evidence_gap_message <- function() {
@@ -2432,33 +1956,19 @@ turn_evidence_gap_message <- function() {
   )
 }
 
-evidence_result_has_sources <- function(result) {
-  length(result$source_ids %||% character()) > 0L
-}
-
-turn_mindmap_exchange <- function(user_text, answer_text, evidence_result) {
-  tempest:::tempest_costorm_mindmap_exchange(
-    user_text,
-    answer_text,
-    evidence_result$source_ids %||% character()
-  )
-}
-
-warmup_orientation_exchange <- function(orientation, evidence_result) {
-  status <- if (evidence_result_has_sources(evidence_result)) {
-    "Evidence-backed orientation"
-  } else {
-    paste(
-      "Scoping-only orientation with no cited source.",
-      "Do not add its factual claims to the mind map"
-    )
-  }
-  paste0(
-    status,
-    " from ",
-    orientation$name,
-    ":\n",
-    orientation$response
+turn_notice_message <- function(notice) {
+  detail <- notice@details$error_message %||% ""
+  switch(
+    notice@code,
+    evidence_gap = turn_evidence_gap_message(),
+    evidence_failed = paste0(
+      "**Evidence processing failed:** This answer was not added to the ",
+      "evidence ledger. ",
+      detail
+    ),
+    mindmap_failed = paste0("**Mind map update failed:** ", detail),
+    suggestions_failed = paste0("**Suggestion generation failed:** ", detail),
+    ""
   )
 }
 
@@ -2467,402 +1977,4 @@ warmup_is_current <- function(is_current) {
     isTRUE(is_current()),
     error = function(e) FALSE
   )
-}
-
-warmup_timeout_condition <- function(label, timeout_s) {
-  structure(
-    list(
-      message = sprintf("%s timed out after %.0f seconds", label, timeout_s),
-      call = NULL,
-      label = label,
-      timeout_s = timeout_s
-    ),
-    class = c("tempest_warmup_timeout", "error", "condition")
-  )
-}
-
-warmup_with_timeout <- function(promise, timeout_s, label = "Warmup step") {
-  if (is.null(timeout_s) || !is.finite(timeout_s) || timeout_s <= 0) {
-    return(promise)
-  }
-
-  promises::promise(function(resolve, reject) {
-    settled <- FALSE
-
-    later::later(
-      function() {
-        if (!settled) {
-          settled <<- TRUE
-          reject(warmup_timeout_condition(label, timeout_s))
-        }
-      },
-      delay = timeout_s
-    )
-
-    promises::then(
-      promise,
-      onFulfilled = function(value) {
-        if (!settled) {
-          settled <<- TRUE
-          resolve(value)
-        }
-      },
-      onRejected = function(err) {
-        if (!settled) {
-          settled <<- TRUE
-          reject(err)
-        }
-      }
-    )
-  })
-}
-
-warmup_chat_response <- function(expert_chat, prompt) {
-  response <- tryCatch(
-    expert_chat$chat_async(prompt),
-    error = function(e) promises::promise_reject(e)
-  )
-  promises::then(
-    promises::promise_resolve(response),
-    function(value) warmup_response_text(expert_chat, value)
-  )
-}
-
-warmup_response_text <- function(expert_chat, response) {
-  turn <- tryCatch(expert_chat$last_turn(), error = function(e) NULL)
-  text <- tryCatch(
-    if (is.null(turn)) "" else ellmer::contents_markdown(turn),
-    error = function(e) ""
-  )
-  if (nzchar(text)) {
-    return(text)
-  }
-  if (is.character(response) && length(response) > 0) {
-    return(paste(response, collapse = ""))
-  }
-  ""
-}
-
-warmup_safe_append <- function(text, append_chat, is_current) {
-  if (warmup_is_current(is_current)) {
-    append_chat(text)
-  }
-  invisible(NULL)
-}
-
-warmup_safe_touch <- function(store, is_current) {
-  if (warmup_is_current(is_current)) {
-    store$touch()
-  }
-  invisible(NULL)
-}
-
-# Ask each fully equipped expert for one bounded orientation, then update the
-# shared mind map once from the complete panel. Returns a promise that resolves
-# when warmup finishes.
-run_warmup <- function(
-  ses,
-  store,
-  append_chat,
-  is_current = function() TRUE,
-  timeout_s = getOption("tempest.shiny.warmup_timeout_s", 120),
-  max_parallel_experts = getOption(
-    "tempest.shiny.warmup_max_parallel_experts",
-    3L
-  ),
-  queue = costorm_async_queue()
-) {
-  if (!warmup_is_current(is_current)) {
-    return(promises::promise_resolve(NULL))
-  }
-
-  safe_append <- function(text) {
-    warmup_safe_append(text, append_chat, is_current)
-  }
-  safe_touch <- function() {
-    warmup_safe_touch(store, is_current)
-  }
-  emit_progress <- function(...) {
-    session_emit_progress(ses, ...)
-  }
-
-  warmup_event <- emit_progress(
-    "stage",
-    "started",
-    stage = "warmup",
-    step = "expert_fanout",
-    payload = list(expert_count = length(ses$experts))
-  )
-
-  if (is.null(max_parallel_experts) || length(max_parallel_experts) == 0L) {
-    max_parallel_experts <- 3L
-  } else {
-    max_parallel_experts <- suppressWarnings(
-      as.integer(max_parallel_experts[[1]])
-    )
-  }
-  if (is.na(max_parallel_experts) || max_parallel_experts < 1L) {
-    max_parallel_experts <- 1L
-  }
-
-  state <- new.env(parent = emptyenv())
-  state$orientations <- vector("list", length(ses$experts))
-  state$failure_count <- 0L
-
-  orient_expert <- function(idx) {
-    expert <- ses$experts[[idx]]
-    name <- expert@name
-    expert_id <- expert@expert_id
-    expert_correlation_id <- paste("warmup-expert", expert_id, sep = "-")
-    expert_event <- NULL
-    expert_chat <- NULL
-    expert_session_id <- NULL
-    expert_provenance <- NULL
-    old_provenance <- list()
-    capability_count <- 0L
-    orientation_active <- FALSE
-    retirement <- list(retired = FALSE, cancellation_supported = FALSE)
-    restore_provenance <- function() {
-      if (!is.null(expert_provenance)) {
-        expert_provenance$current <- old_provenance
-      }
-      invisible(NULL)
-    }
-    retire_expert_session <- function() {
-      if (isTRUE(retirement$retired) || is.null(expert_session_id)) {
-        return(retirement)
-      }
-      retirement <<- tryCatch(
-        ses$expert_session_manager$retire_session(expert_session_id),
-        error = function(retire_error) {
-          list(retired = FALSE, cancellation_supported = FALSE)
-        }
-      )
-      retirement
-    }
-    promises::then(promises::promise_resolve(NULL), function(...) {
-      if (!warmup_is_current(is_current)) {
-        return(NULL)
-      }
-      session_result <- ses$expert_session_manager$get_or_create(expert_id)
-      expert_chat <<- session_result$chat
-      expert_session_id <<- session_result$session_id
-      expert_provenance <<- session_result$provenance
-      old_provenance <<- expert_provenance$current %||% list()
-      expert_provenance$current <- list(
-        session_id = expert_session_id,
-        expert_id = expert_id,
-        retrieval_step_id = expert_correlation_id
-      )
-      capability_count <<- sum(vapply(
-        session_result$grants %||% list(),
-        \(grant) identical(grant$status, "granted"),
-        logical(1)
-      ))
-      expert_event <<- emit_progress(
-        "expert",
-        "started",
-        stage = "warmup",
-        step = "expert_fanout",
-        parent_event_id = progress_event_id(warmup_event),
-        correlation_id = expert_correlation_id,
-        payload = list(
-          expert_id = expert_id,
-          expert_name = name,
-          mode = "bounded_research",
-          session_id = expert_session_id,
-          tools_available = capability_count > 0L,
-          capability_count = capability_count
-        )
-      )
-      orientation_active <<- TRUE
-      request <- warmup_chat_response(
-        expert_chat,
-        warmup_prompt(ses$topic, expert)
-      )
-      work <- promises::then(request, function(response) {
-        if (!orientation_active) {
-          return(NULL)
-        }
-        if (!warmup_is_current(is_current)) {
-          orientation_active <<- FALSE
-          restore_provenance()
-          retire_expert_session()
-          return(NULL)
-        }
-        if (!nzchar(trimws(response))) {
-          stop("The expert returned an empty orientation.")
-        }
-        turn <- tryCatch(
-          expert_chat$last_turn(),
-          error = function(error) NULL
-        )
-        state$orientations[[idx]] <- list(
-          expert_id = expert_id,
-          name = name,
-          response = response,
-          turn = turn,
-          session_id = expert_session_id,
-          correlation_id = expert_correlation_id
-        )
-        orientation_active <<- FALSE
-        restore_provenance()
-        emit_progress(
-          "expert",
-          "succeeded",
-          stage = "warmup",
-          step = "expert_fanout",
-          parent_event_id = progress_event_id(expert_event),
-          correlation_id = expert_correlation_id,
-          payload = list(
-            expert_id = expert_id,
-            expert_name = name,
-            mode = "bounded_research",
-            session_id = expert_session_id,
-            tools_available = capability_count > 0L,
-            capability_count = capability_count
-          )
-        )
-        NULL
-      })
-      warmup_with_timeout(work, timeout_s, paste(name, "orientation")) |>
-        promises::catch(function(error) {
-          orientation_active <<- FALSE
-          restore_provenance()
-          timed_out <- inherits(error, "tempest_warmup_timeout")
-          if (timed_out) {
-            retire_expert_session()
-          }
-          if (!warmup_is_current(is_current)) {
-            return(NULL)
-          }
-          state$failure_count <- state$failure_count + 1L
-          failure_kind <- if (timed_out) "timeout" else "provider_error"
-          emit_progress(
-            "expert",
-            "failed",
-            stage = "warmup",
-            step = "expert_fanout",
-            parent_event_id = progress_event_id(expert_event),
-            correlation_id = expert_correlation_id,
-            payload = c(
-              list(
-                expert_id = expert_id,
-                expert_name = name,
-                mode = "bounded_research",
-                session_id = expert_session_id,
-                tools_available = capability_count > 0L,
-                capability_count = capability_count,
-                failure_kind = failure_kind,
-                session_retired = retirement$retired,
-                cancellation_supported = retirement$cancellation_supported
-              ),
-              progress_error_payload(error)
-            )
-          )
-          if (timed_out) {
-            safe_append(sprintf(
-              "**%s** orientation timed out after %.0f seconds; continuing with the rest of the panel.",
-              name,
-              timeout_s
-            ))
-          } else {
-            safe_append(sprintf(
-              "**%s** orientation was unavailable: %s",
-              name,
-              conditionMessage(error)
-            ))
-          }
-          NULL
-        })
-    }) |>
-      promises::catch(function(error) {
-        restore_provenance()
-        if (warmup_is_current(is_current)) {
-          state$failure_count <- state$failure_count + 1L
-          emit_progress(
-            "expert",
-            "failed",
-            stage = "warmup",
-            step = "expert_fanout",
-            parent_event_id = progress_event_id(expert_event),
-            correlation_id = expert_correlation_id,
-            payload = c(
-              list(
-                expert_id = expert_id,
-                expert_name = name,
-                mode = "bounded_research",
-                session_id = expert_session_id,
-                tools_available = capability_count > 0L,
-                capability_count = capability_count
-              ),
-              progress_error_payload(error)
-            )
-          )
-          safe_append(sprintf(
-            "**%s** orientation was unavailable: %s",
-            name,
-            conditionMessage(error)
-          ))
-        }
-        NULL
-      })
-  }
-
-  expert_indices <- seq_along(ses$experts)
-  batches <- split(
-    expert_indices,
-    ceiling(seq_along(expert_indices) / max_parallel_experts)
-  )
-  run_batch <- function(prev, batch) {
-    promises::then(prev, function(...) {
-      if (!warmup_is_current(is_current)) {
-        return(NULL)
-      }
-      promises::promise_all(.list = lapply(batch, orient_expert)) |>
-        promises::then(function(...) NULL)
-    })
-  }
-
-  chain <- Reduce(run_batch, batches, promises::promise_resolve(NULL))
-  promises::then(chain, function(...) {
-    if (!warmup_is_current(is_current)) {
-      return(NULL)
-    }
-    orientations <- Filter(Negate(is.null), state$orientations)
-    recorded <- record_warmup_orientations_async(
-      ses,
-      orientations,
-      queue = queue,
-      is_current = is_current
-    )
-    promises::then(costorm_async_continue(recorded), function(record_result) {
-      if (!warmup_is_current(is_current)) {
-        return(NULL)
-      }
-      safe_append(warmup_summary(
-        ses = ses,
-        orientation_count = length(orientations),
-        expert_count = length(ses$experts),
-        evidence_failure_count = record_result$evidence_failure_count %||% 0L
-      ))
-      emit_progress(
-        "stage",
-        "succeeded",
-        stage = "warmup",
-        step = "expert_fanout",
-        parent_event_id = progress_event_id(warmup_event),
-        payload = list(
-          expert_count = length(ses$experts),
-          orientation_count = length(orientations),
-          failure_count = state$failure_count,
-          evidence_failure_count = record_result$evidence_failure_count %||% 0L,
-          source_count = length(ses$store$list_sources()),
-          claim_count = length(ses$store$list_claims()),
-          bounded_research = TRUE
-        )
-      )
-      safe_touch()
-    })
-  })
 }

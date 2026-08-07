@@ -53,7 +53,7 @@ tempest_shiny_require_ui <- function(panels) {
   tempest_require("shiny", "tempest_shiny_ui() builds Shiny UI.")
   tempest_require("bslib", "tempest_shiny_ui() builds a bslib tabset.")
   if ("chat" %in% panels) {
-    tempest_require("shinychat", "the Tempest chat panel requires shinychat.")
+    tempest_shinychat_require()
     tempest_require("zip", "Tempest session downloads require zip.")
   }
   invisible(NULL)
@@ -70,7 +70,7 @@ tempest_shiny_require_server <- function(panels) {
     tempest_require("later", "Tempest Shiny async callbacks require later.")
   }
   if ("chat" %in% panels) {
-    tempest_require("shinychat", "the Tempest chat panel requires shinychat.")
+    tempest_shinychat_require()
   }
   if ("storm" %in% panels) {
     tempest_require("mirai", "the Tempest STORM panel requires mirai.")
@@ -120,8 +120,8 @@ tempest_shiny_store <- function() {
 #' @param panels Character vector of panels to include. Use `"all"` for every
 #'   panel. The default embeds the Co-STORM chat and durable research views.
 #' @param show_config If `TRUE`, include the bundled configuration controls in
-#'   the Chat sidebar. Hosts that provide their own config should leave this as
-#'   `FALSE`.
+#'   the Chat settings drawer. Hosts that provide their own config should leave
+#'   this as `FALSE`.
 #' @return A Shiny tag object.
 #' @examples
 #' \dontrun{
@@ -310,7 +310,7 @@ tempest_shiny_server <- function(
     })
     run_events <- shiny::reactive({
       active <- current_run()
-      if (is.null(active)) list() else tempest_run_events(active)
+      if (is.null(active)) list() else tempest_execution_events(active)
     })
     run_approvals <- shiny::reactive({
       active <- current_run()

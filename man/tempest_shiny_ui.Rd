@@ -17,8 +17,8 @@ tempest_shiny_ui(
 panel. The default embeds the Co-STORM chat and durable research views.}
 
 \item{show_config}{If \code{TRUE}, include the bundled configuration controls in
-the Chat sidebar. Hosts that provide their own config should leave this as
-\code{FALSE}.}
+the Chat settings drawer. Hosts that provide their own config should leave
+this as \code{FALSE}.}
 }
 \value{
 A Shiny tag object.

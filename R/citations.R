@@ -426,20 +426,17 @@ tempest_report_md <- function(
 #' @export
 tempest_session_report_md <- function(session) {
   stopifnot(inherits(session, "TempestSession"))
-  title <- session$title %||% "Co-STORM Report"
-  body <- session$artifacts$report %||% ""
-  plan <- tempest_deliverable_plan(
-    deliverable = tempest_costorm_report_spec(session),
-    context = list(
-      title = title,
-      store = session$store,
-      include_references = TRUE,
-      citation_policy = session$config@citation_policy,
-      on_unsupported_claim = session$config@on_unsupported_claim,
-      min_support_score = session$config@min_support_score
+  catalog <- tempest_costorm_artifact_catalog(session)
+  artifact <- catalog$get("report_md")
+  report_md <- artifact@content
+  if (
+    !rlang::is_string(report_md) ||
+      is.na(report_md) ||
+      !nzchar(report_md)
+  ) {
+    tempest_deliverable_abort(
+      "The canonical Co-STORM report artifact has no Markdown content."
     )
-  )
-  result <- tempest_deliverable_finalize(plan, body)
-  artifact <- tempest_deliverable_primary_artifact(result)
-  artifact@content
+  }
+  report_md
 }

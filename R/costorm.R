@@ -203,6 +203,7 @@ tempest_costorm_mindmap_exchange <- function(
 #' @field chats List of chat objects for each role.
 #' @field transcript List of dialog turns.
 #' @field mindmap The mind map data structure.
+#' @field events Ordered normalized progress-event history.
 #' @field artifacts Environment of auxiliary and legacy-compatible session
 #'   state.
 #' @field artifact_catalog Typed deliverable specifications and artifacts
@@ -231,6 +232,7 @@ TempestSession <- R6::R6Class(
     chats = NULL,
     transcript = NULL,
     mindmap = NULL,
+    events = NULL,
     artifacts = NULL,
     artifact_catalog = NULL,
     workflow_run = NULL,
@@ -353,6 +355,7 @@ TempestSession <- R6::R6Class(
       }
       self$transcript <- list()
       self$mindmap <- tempest_mindmap_init(self$topic)
+      self$events <- list()
       self$artifacts <- new.env(parent = emptyenv())
       self$artifact_catalog <- tempest_artifact_catalog(
         store = config@artifact_store
@@ -420,7 +423,7 @@ TempestSession <- R6::R6Class(
         allowed_connection_ref_ids = expert_connection_permissions,
         extractor = self$chats$extractor,
         store = self$store,
-        progress = self$progress,
+        progress = function(event) self$record_progress_event(event),
         run_id = self$session_id
       )
 
@@ -497,6 +500,34 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
+    #' Record a progress event emitted by a session-owned collaborator.
+    #' @param event A `tempest_progress_event` object.
+    #' @return The event, invisibly.
+    record_progress_event = function(event) {
+      if (!S7::S7_inherits(event, tempest_progress_event)) {
+        tempest_abort(
+          "{.arg event} must be a tempest_progress_event object."
+        )
+      }
+      event_data <- tempest_progress_event_data(event)
+      event_data$sequence <- length(self$events) + 1L
+      self$events[[event_data$sequence]] <- event_data
+      if (!is.null(self$progress)) {
+        tryCatch(
+          self$progress(event),
+          error = function(error) {
+            rlang::abort(
+              "Progress callback failed.",
+              class = "tempest_progress_callback_error",
+              parent = error
+            )
+          }
+        )
+      }
+      invisible(event)
+    },
+
+    #' @description
     #' Emit a Co-STORM progress event.
     #' @param event_type Progress event type.
     #' @param status Progress event status.
@@ -517,7 +548,7 @@ TempestSession <- R6::R6Class(
       correlation_id = NA_character_
     ) {
       event <- tempest_emit_progress(
-        self$progress,
+        NULL,
         run_id = self$session_id,
         workflow = "costorm",
         event_type = event_type,
@@ -529,14 +560,7 @@ TempestSession <- R6::R6Class(
         parent_event_id = parent_event_id,
         correlation_id = correlation_id
       )
-      if (!is.null(self$artifacts)) {
-        events <- self$artifacts[["progress_events"]] %||% list()
-        self$artifacts[["progress_events"]] <- c(
-          events,
-          list(tempest_progress_event_data(event))
-        )
-      }
-      invisible(event)
+      self$record_progress_event(event)
     },
 
     #' @description
@@ -646,9 +670,6 @@ TempestSession <- R6::R6Class(
           )
           if (!is.null(new_mm$nodes) && length(new_mm$nodes) > 0) {
             self$mindmap <- new_mm
-            self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(
-              new_mm
-            )
             # Check for oversized nodes and split if needed
             self$check_and_expand_nodes()
           }
@@ -1000,8 +1021,7 @@ TempestSession <- R6::R6Class(
           result <- list(
             speaker = "Moderator",
             answer = ans,
-            mindmap_md = self$artifacts[["mindmap_md"]] %||%
-              tempest_mindmap_to_markdown(self$mindmap)
+            mindmap_md = self$mindmap_markdown()
           )
           self$emit_progress(
             "stage",
@@ -1366,8 +1386,6 @@ TempestSession <- R6::R6Class(
           result <- tempest_deliverable_finalize(plan, body)
           artifact <- tempest_deliverable_primary_artifact(result)
           md <- artifact@content
-          self$artifacts[["report"]] <- body
-          self$artifacts[["report_md"]] <- md
           self$emit_progress(
             "artifact",
             "available",
@@ -1470,11 +1488,6 @@ TempestSession <- R6::R6Class(
           self$chats$mindmap,
           self$mindmap,
           node_id
-        )
-      }
-      if (length(oversized) > 0) {
-        self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(
-          self$mindmap
         )
       }
       invisible(length(oversized))
@@ -1586,7 +1599,6 @@ TempestSession <- R6::R6Class(
         !is.null(new_mm) && !is.null(new_mm$nodes) && length(new_mm$nodes) > 0
       ) {
         self$mindmap <- new_mm
-        self$artifacts[["mindmap_md"]] <- tempest_mindmap_to_markdown(new_mm)
       }
       invisible(TRUE)
     },

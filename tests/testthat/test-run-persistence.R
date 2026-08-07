@@ -147,7 +147,17 @@ test_that("TempestSession snapshots restore durable session state", {
     )),
     edges = list()
   )
+  report_spec <- tempest:::tempest_costorm_report_spec(session)
+  session$artifact_catalog$register(report_spec)
+  session$artifact_catalog$add(tempest_artifact(
+    report_spec,
+    content = "# Restored report",
+    artifact_id = "report_md",
+    status = "valid"
+  ))
+  session$artifacts[["report"]] <- "Legacy report body"
   session$artifacts[["report_md"]] <- "# Restored report"
+  session$artifacts[["mindmap_md"]] <- "Legacy mind map"
   session$artifacts[["suggested_questions"]] <- c("Q1", "Q2")
   expert_session <- session$expert_session_manager$get_or_create(
     expert@expert_id
@@ -155,9 +165,13 @@ test_that("TempestSession snapshots restore durable session state", {
   expert_session_id <- expert_session$session_id
 
   snapshot <- tempest:::tempest_session_snapshot(session)
+  restore_snapshot <- snapshot
+  restore_snapshot$artifacts$report <- "Legacy report body"
+  restore_snapshot$artifacts$report_md <- "Legacy report markdown"
+  restore_snapshot$artifacts$mindmap_md <- "Legacy mind map markdown"
   collector <- tempest_progress_collector(include_payload = TRUE)
   restored <- tempest:::tempest_session_restore(
-    snapshot,
+    restore_snapshot,
     config = cfg,
     progress = collector$record
   )
@@ -174,7 +188,16 @@ test_that("TempestSession snapshots restore durable session state", {
   expect_equal(restored$title, "Session persistence report")
   expect_equal(restored$transcript[[1]]$text, "What is durable?")
   expect_equal(restored$mindmap$nodes[[1]]$notes, "Durable state")
-  expect_equal(restored$artifacts[["report_md"]], "# Restored report")
+  expect_null(snapshot$artifacts$report)
+  expect_null(snapshot$artifacts$report_md)
+  expect_null(snapshot$artifacts$mindmap_md)
+  expect_null(restored$artifacts[["report"]])
+  expect_null(restored$artifacts[["report_md"]])
+  expect_null(restored$artifacts[["mindmap_md"]])
+  expect_equal(
+    restored$artifact_catalog$get("report_md")@content,
+    "# Restored report"
+  )
   expect_equal(restored$artifacts[["suggested_questions"]], c("Q1", "Q2"))
   expect_equal(
     restored$store$get_claim(claim_id)@claim_text,
@@ -225,12 +248,14 @@ test_that("TempestSession restores progress history without replaying it", {
     stage = "dialogue",
     step = "turn"
   )
-  history <- session$artifacts[["progress_events"]]
+  history <- tempest_execution_events(session)
   snapshot <- tempest:::tempest_session_snapshot(session)
 
   expect_equal(length(history), 2)
   expect_equal(tempest_progress_state(history)$run_id, session$session_id)
   expect_equal(length(snapshot$progress_events), length(history))
+  expect_null(snapshot$artifacts$progress_events)
+  expect_null(session$artifacts[["progress_events"]])
 
   restore_collector <- tempest_progress_collector(include_payload = TRUE)
   restored <- tempest:::tempest_session_restore(
@@ -240,7 +265,7 @@ test_that("TempestSession restores progress history without replaying it", {
   )
 
   expect_length(restore_collector$events(), 0)
-  restored_history <- restored$artifacts[["progress_events"]]
+  restored_history <- tempest_execution_events(restored)
   expect_equal(length(restored_history), length(history))
   expect_equal(
     tempest_progress_state(restored_history)$run_id,
@@ -255,9 +280,20 @@ test_that("TempestSession restores progress history without replaying it", {
   )
   expect_length(restore_collector$events(), 1)
   expect_equal(
-    length(restored$artifacts[["progress_events"]]),
+    length(tempest_execution_events(restored)),
     length(history) + 1
   )
+  expect_null(restored$artifacts[["progress_events"]])
+
+  legacy_snapshot <- snapshot
+  legacy_snapshot$artifacts$progress_events <- snapshot$progress_events
+  legacy_snapshot$progress_events <- NULL
+  legacy_restored <- tempest:::tempest_session_restore(
+    legacy_snapshot,
+    config = cfg
+  )
+  expect_identical(tempest_execution_events(legacy_restored), history)
+  expect_null(legacy_restored$artifacts[["progress_events"]])
 })
 
 test_that("Tempest session bundles save and resume durable state", {
@@ -301,7 +337,6 @@ test_that("Tempest session bundles save and resume durable state", {
   )
   session_id <- session$session_id
   session$add_turn("User", "user", "Save this session.")
-  session$artifacts[["report_md"]] <- "# Bundle report"
   report_spec <- tempest:::tempest_costorm_report_spec(session)
   session$artifact_catalog$register(report_spec)
   session$artifact_catalog$add(tempest_artifact(
@@ -388,6 +423,8 @@ test_that("Tempest session bundles save and resume durable state", {
       "artifacts/citation_audit.json"
     )
   )
+  expect_false("artifacts/report_body.md" %in% manifest$files)
+  expect_false("artifacts/mindmap.md" %in% manifest$files)
   expect_null(config_summary$chat_fn)
 
   restore_collector <- tempest_progress_collector(include_payload = TRUE)
@@ -400,7 +437,9 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$session_id, session_id)
   expect_equal(restored$transcript[[1]]$text, "Save this session.")
-  expect_equal(restored$artifacts[["report_md"]], "# Bundle report")
+  expect_null(restored$artifacts[["report"]])
+  expect_null(restored$artifacts[["report_md"]])
+  expect_null(restored$artifacts[["mindmap_md"]])
   expect_equal(
     restored$artifact_catalog$get("report_md")@content,
     "# Bundle report"
@@ -439,7 +478,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_equal(nrow(restored$store$get_artifact("citation_audit")), 1)
   expect_length(restore_collector$events(), 0)
   expect_equal(
-    tempest_progress_state(restored$artifacts[["progress_events"]])$run_id,
+    tempest_progress_state(tempest_execution_events(restored))$run_id,
     session_id
   )
 
@@ -1003,11 +1042,14 @@ test_that("partial session recovery is explicit and skips corrupt optional data"
       instructions = "Recover only explicitly optional state."
     ))
   )
-  session$artifacts[["report"]] <- "# Optional report body"
+  session$artifacts[["suggested_questions"]] <- "What remains?"
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
   tempest_session_save(session, bundle_dir)
-  report_path <- file.path(bundle_dir, "artifacts/report_body.md")
-  writeLines("tampered optional presentation", report_path)
+  questions_path <- file.path(
+    bundle_dir,
+    "artifacts/suggested_questions.json"
+  )
+  writeLines("{", questions_path)
 
   expect_error(
     tempest_session_resume(bundle_dir, config = cfg),
@@ -1027,7 +1069,10 @@ test_that("partial session recovery is explicit and skips corrupt optional data"
   )
 
   expect_r6_class(restored, "TempestSession")
-  expect_null(restored$artifacts[["report"]])
+  expect_identical(
+    restored$artifacts[["suggested_questions"]],
+    character()
+  )
   expect_match(paste(warnings, collapse = "\n"), "incomplete", fixed = TRUE)
   manifest <- tempest:::tempest_read_json_strict(
     file.path(bundle_dir, "session.json")
@@ -1039,31 +1084,35 @@ test_that("partial session recovery is explicit and skips corrupt optional data"
       partial_recovery = TRUE
     )
   )
-  expect_false("artifacts/report_body.md" %in% declared)
+  expect_false("artifacts/suggested_questions.json" %in% declared)
 })
 
-test_that("partial recovery filters missing and unsafe presentation files", {
+test_that("partial recovery filters missing and unsafe suggestion files", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   session <- tempest_session(
-    "Presentation recovery",
+    "Suggestion recovery",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.presentation-recovery",
-      name = "Presentation Recovery Expert",
+      expert_id = "expert.suggestion-recovery",
+      name = "Suggestion Recovery Expert",
       title = "Recovery analyst",
-      description = "Tests optional presentation recovery.",
+      description = "Tests optional suggestion recovery.",
       instructions = "Keep durable state strict."
     ))
   )
-  session$artifacts[["report"]] <- "# Optional report body"
+  session$artifacts[["suggested_questions"]] <- "What remains?"
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
 
   tempest_session_save(session, bundle_dir)
-  unlink(file.path(bundle_dir, "artifacts/report_body.md"))
+  questions_path <- file.path(
+    bundle_dir,
+    "artifacts/suggested_questions.json"
+  )
+  unlink(questions_path)
   manifest <- tempest:::tempest_read_json_strict(
     file.path(bundle_dir, "session.json")
   )
@@ -1074,14 +1123,13 @@ test_that("partial recovery filters missing and unsafe presentation files", {
       partial_recovery = TRUE
     )
   )
-  expect_false("artifacts/report_body.md" %in% declared)
+  expect_false("artifacts/suggested_questions.json" %in% declared)
 
   tempest_session_save(session, bundle_dir, overwrite = TRUE)
-  report_path <- file.path(bundle_dir, "artifacts/report_body.md")
-  external_path <- tempfile("tempest-external-presentation-")
-  writeLines("# Outside bundle", external_path)
-  unlink(report_path)
-  linked <- file.symlink(external_path, report_path)
+  external_path <- tempfile("tempest-external-suggestions-")
+  writeLines('["Outside bundle"]', external_path)
+  unlink(questions_path)
+  linked <- file.symlink(external_path, questions_path)
   if (isTRUE(linked)) {
     manifest <- tempest:::tempest_read_json_strict(
       file.path(bundle_dir, "session.json")
@@ -1093,7 +1141,7 @@ test_that("partial recovery filters missing and unsafe presentation files", {
         partial_recovery = TRUE
       )
     )
-    expect_false("artifacts/report_body.md" %in% declared)
+    expect_false("artifacts/suggested_questions.json" %in% declared)
   }
 })
 

@@ -7,6 +7,10 @@
 library(shiny)
 library(bslib)
 
+panels <- tempest:::tempest_shiny_panel_choices()
+tempest:::tempest_shiny_require_ui(panels)
+tempest:::tempest_shiny_require_server(panels)
+
 # Colors, typography, and logo are defined in _brand.yml (auto-discovered by
 # bslib from the app directory).
 theme <- bs_theme(version = 5, preset = "shiny", brand = TRUE)
@@ -30,12 +34,6 @@ ui <- page_navbar(
 )
 
 server <- function(input, output, session) {
-  rlang::check_installed(
-    c("promises", "shinychat", "ellmer", "later", "mirai", "zip"),
-    reason = "to run the tempest app."
-  )
-  tempest:::tempest_shiny_require_chat_server()
-
   store <- new_session_store()
   config <- mod_config_server("config")
 

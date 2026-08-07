@@ -40,6 +40,8 @@ session.}
 
     \item{\code{mindmap}}{The mind map data structure.}
 
+    \item{\code{events}}{Ordered normalized progress-event history.}
+
     \item{\code{artifacts}}{Environment of auxiliary and legacy-compatible session
 state.}
 
@@ -60,6 +62,7 @@ context.}
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-TempestSession-initialize}{\code{TempestSession$new()}}
+    \item \href{#method-TempestSession-record_progress_event}{\code{TempestSession$record_progress_event()}}
     \item \href{#method-TempestSession-emit_progress}{\code{TempestSession$emit_progress()}}
     \item \href{#method-TempestSession-add_turn}{\code{TempestSession$add_turn()}}
     \item \href{#method-TempestSession-transcript_markdown}{\code{TempestSession$transcript_markdown()}}
@@ -125,6 +128,28 @@ objects as the session makes progress.}
 identifier is generated.}
     }
     \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-record_progress_event"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-record_progress_event}{}}}
+\subsection{\code{TempestSession$record_progress_event()}}{
+  Record a progress event emitted by a session-owned collaborator.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$record_progress_event(event)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{event}}{A \code{tempest_progress_event} object.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    The event, invisibly.
   }
 }
 

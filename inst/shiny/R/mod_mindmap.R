@@ -9,7 +9,10 @@ mod_mindmap_ui <- function(id) {
       title = title,
       value = shiny::textOutput(ns(output_id), inline = TRUE),
       showcase = shiny::icon(icon_name),
-      theme = theme
+      showcase_layout = "left center",
+      theme = theme,
+      height = "150px",
+      class = "tempest-mindmap-kpi"
     )
   }
 
@@ -31,6 +34,8 @@ mod_mindmap_ui <- function(id) {
     bslib::layout_column_wrap(
       width = "180px",
       fill = FALSE,
+      gap = "0.75rem",
+      class = "tempest-mindmap-kpis",
       kpi("Nodes", "n_nodes", "sitemap", "primary"),
       kpi("Sources", "n_sources", "link", "info"),
       kpi("Facts", "n_facts", "check-circle", "success"),
@@ -38,24 +43,45 @@ mod_mindmap_ui <- function(id) {
     ),
     bslib::card(
       full_screen = TRUE,
-      bslib::card_header(shiny::uiOutput(ns("header"))),
-      bslib::card_body(graph)
+      height = "620px",
+      class = "tempest-mindmap-card",
+      bslib::card_header(
+        class = "tempest-mindmap-heading",
+        shiny::uiOutput(ns("header")),
+        shiny::p(
+          id = ns("graph_description"),
+          class = "mb-0 text-muted small",
+          "Drag to explore, scroll to zoom, and select a node for its notes and linked sources."
+        )
+      ),
+      bslib::card_body(
+        class = "p-0 tempest-mindmap-canvas",
+        graph
+      )
     ),
-    shiny::tags$section(
+    shiny::tags$details(
       class = "mt-3 tempest-mindmap-outline",
-      `aria-labelledby` = ns("outline_heading"),
-      shiny::h3(
+      shiny::tags$summary(
         id = ns("outline_heading"),
-        class = "h5",
-        "Mind map outline"
+        shiny::span(
+          class = "tempest-mindmap-outline-title",
+          shiny::icon("list"),
+          "Accessible mind map outline"
+        ),
+        shiny::span(
+          class = "tempest-mindmap-outline-hint",
+          "Show structured view"
+        )
       ),
-      shiny::p(
-        id = ns("graph_description"),
-        class = "text-muted small",
-        "Use this structured view to inspect nodes, relationships, notes, and sources without the interactive canvas."
-      ),
-      shiny::uiOutput(ns("graph_status")),
-      shiny::uiOutput(ns("graph_accessible"))
+      shiny::div(
+        class = "tempest-mindmap-outline-body",
+        shiny::p(
+          class = "text-muted small",
+          "Inspect nodes, relationships, notes, and sources without using the interactive canvas."
+        ),
+        shiny::uiOutput(ns("graph_status")),
+        shiny::uiOutput(ns("graph_accessible"))
+      )
     )
   )
 }
@@ -154,7 +180,7 @@ mod_mindmap_server <- function(id, store) {
         if (is.null(ses)) {
           return("Start a session to see the mind map.")
         }
-        ses$artifacts[["mindmap_md"]] %||% ses$mindmap_markdown()
+        ses$mindmap_markdown()
       })
     }
   })
@@ -180,27 +206,69 @@ knowledge_graph <- function(vn, input_id) {
     }",
     input_id
   )
+  overview_ids <- vn$nodes$id[vn$nodes$level <= 2L]
+  fit_js <- paste0(
+    "function() {",
+    "network.fit({nodes: ",
+    jsonlite::toJSON(overview_ids, auto_unbox = FALSE),
+    ", animation: {duration: 350, easingFunction: 'easeInOutQuad'}});",
+    "}"
+  )
   visNetwork::visNetwork(vn$nodes, vn$edges) |>
     visNetwork::visHierarchicalLayout(
+      levelSeparation = 130,
+      nodeSpacing = 110,
+      treeSpacing = 170,
+      blockShifting = TRUE,
+      edgeMinimization = TRUE,
+      parentCentralization = TRUE,
       direction = "UD",
       sortMethod = "directed"
     ) |>
     visNetwork::visNodes(
       shape = "box",
-      font = list(size = 14),
-      widthConstraint = list(maximum = 200)
+      borderWidth = 2,
+      borderWidthSelected = 3,
+      font = list(
+        size = 14,
+        face = "Inter",
+        color = "#15293A"
+      ),
+      margin = list(top = 10, right = 12, bottom = 10, left = 12),
+      shadow = list(enabled = TRUE, color = "rgba(21,41,58,0.18)", size = 6),
+      widthConstraint = list(maximum = 220),
+      color = list(
+        border = "#326B7D",
+        highlight = list(background = "#F4B740", border = "#15293A"),
+        hover = list(background = "#EEF3F5", border = "#4A90A4")
+      )
     ) |>
     visNetwork::visEdges(
-      arrows = "to",
-      color = list(color = "#6C757D"),
-      smooth = list(type = "cubicBezier")
+      arrows = list(to = list(enabled = TRUE, scaleFactor = 0.7)),
+      color = list(
+        color = "#8A9AA4",
+        highlight = "#326B7D",
+        hover = "#4A90A4"
+      ),
+      font = list(size = 10, color = "#596771", strokeWidth = 0),
+      smooth = list(type = "cubicBezier", forceDirection = "vertical")
     ) |>
     visNetwork::visOptions(
       highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE),
       nodesIdSelection = FALSE
     ) |>
-    visNetwork::visEvents(click = click_js) |>
-    visNetwork::visInteraction(navigationButtons = TRUE, zoomView = TRUE)
+    visNetwork::visLayout(randomSeed = 42, improvedLayout = TRUE) |>
+    visNetwork::visEvents(
+      click = click_js,
+      stabilizationIterationsDone = fit_js
+    ) |>
+    visNetwork::visInteraction(
+      hover = TRUE,
+      keyboard = list(enabled = TRUE, bindToWindow = FALSE),
+      navigationButtons = TRUE,
+      tooltipDelay = 200,
+      zoomView = TRUE
+    )
 }
 
 find_node <- function(mindmap, node_id) {

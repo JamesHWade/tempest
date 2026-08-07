@@ -8,9 +8,16 @@ mod_facts_ui <- function(id) {
     value = "Facts",
     bslib::card(
       full_screen = TRUE,
-      bslib::card_header("Extracted Facts"),
+      class = "tempest-evidence-card",
+      bslib::card_header(evidence_table_header(
+        ns = ns,
+        title = "Extracted facts",
+        description = "Inspect claim status, support, and linked evidence.",
+        icon_name = "check-circle",
+        count_id = "fact_count"
+      )),
       bslib::card_body(
-        class = "p-2",
+        class = "p-0",
         shiny::uiOutput(ns("body"))
       )
     )
@@ -36,44 +43,59 @@ mod_facts_server <- function(id, store) {
         return(empty_state("check-circle", "No facts extracted yet."))
       }
       if (has_pkg("DT")) {
-        DT::DTOutput(session$ns("table"))
+        shiny::div(
+          class = "tempest-evidence-table",
+          DT::DTOutput(session$ns("table"))
+        )
       } else {
-        shiny::tableOutput(session$ns("table_basic"))
+        shiny::div(
+          class = "tempest-evidence-table p-3",
+          shiny::tableOutput(session$ns("table_basic"))
+        )
       }
     })
 
-    confidence_badge <- function(values) {
-      vapply(
-        values,
-        function(value) {
-          color <- switch(
-            tolower(value %||% ""),
-            high = "bg-success",
-            medium = "bg-warning text-dark",
-            low = "bg-danger",
-            "bg-secondary"
-          )
-          paste0(
-            '<span class="badge ',
-            color,
-            '">',
-            htmltools::htmlEscape(value %||% "N/A"),
-            "</span>"
-          )
-        },
-        character(1)
-      )
-    }
+    output$fact_count <- shiny::renderText({
+      df <- facts()
+      n <- if (is.null(df)) 0L else nrow(df)
+      paste(n, if (identical(n, 1L)) "fact" else "facts")
+    })
 
     if (has_pkg("DT")) {
       output$table <- DT::renderDT({
         df <- facts()
         shiny::req(df, nrow(df) > 0)
         df <- facts_table_data(df)
-        if ("confidence" %in% names(df)) {
-          df$confidence <- confidence_badge(df$confidence)
-        }
-        styled_datatable(df, html_columns = "confidence")
+        df$Confidence <- evidence_status_badges(
+          df$Confidence,
+          palette = "confidence"
+        )
+        df$Status <- evidence_status_badges(
+          df$Status,
+          palette = "verification"
+        )
+        styled_datatable(
+          df,
+          html_columns = c("Confidence", "Status"),
+          search_placeholder = "Search facts",
+          column_defs = list(
+            list(
+              targets = 0,
+              className = "tempest-col-primary",
+              responsivePriority = 1
+            ),
+            list(
+              targets = c(2, 3, 4),
+              className = "tempest-col-secondary",
+              responsivePriority = 2
+            ),
+            list(
+              targets = c(1, 5),
+              className = "tempest-col-wrap",
+              responsivePriority = 3
+            )
+          )
+        )
       })
     } else {
       output$table_basic <- shiny::renderTable(

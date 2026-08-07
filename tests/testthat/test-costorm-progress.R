@@ -99,6 +99,7 @@ test_that("TempestSession emits Co-STORM progress events", {
   report <- session$report(include_references = FALSE, reorganize = FALSE)
 
   event_data <- collector$data()
+  session_events <- tempest_execution_events(session)
   labels <- vapply(
     event_data,
     function(event) {
@@ -136,10 +137,32 @@ test_that("TempestSession emits Co-STORM progress events", {
   )
   expect_equal(questions, "What next?")
   expect_match(report, "Report body")
+  expect_null(session$artifacts[["report"]])
+  expect_null(session$artifacts[["report_md"]])
+  expect_null(session$artifacts[["mindmap_md"]])
+  expect_equal(
+    session$artifact_catalog$get("report_md")@content,
+    report
+  )
+  expect_equal(
+    session$mindmap_markdown(),
+    tempest:::tempest_mindmap_to_markdown(session$mindmap)
+  )
   expect_equal(
     unique(vapply(event_data, `[[`, character(1), "workflow")),
     "costorm"
   )
+  expect_length(session_events, length(event_data))
+  expect_identical(
+    vapply(session_events, `[[`, integer(1), "sequence"),
+    seq_along(session_events)
+  )
+  cursor <- session_events[[2]]$sequence
+  expect_identical(
+    tempest_execution_events(session, after_sequence = cursor),
+    session_events[-seq_len(cursor)]
+  )
+  expect_null(session$artifacts[["progress_events"]])
   expert_payload <- collector$data(event_type = "expert", status = "started")[[
     1
   ]]$payload
