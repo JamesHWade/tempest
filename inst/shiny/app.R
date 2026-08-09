@@ -24,7 +24,11 @@ ui <- page_navbar(
   nav_spacer(),
   about_nav_item(),
   nav_item(input_dark_mode(id = "dark_mode", mode = "light")),
-  mod_chat_ui("chat", config_ui = mod_config_ui("config")),
+  mod_chat_ui(
+    "chat",
+    config_ui = mod_config_ui("config"),
+    allow_user_experts = TRUE
+  ),
   mod_storm_ui("storm"),
   mod_mindmap_ui("mindmap"),
   mod_sources_ui("sources"),
@@ -37,7 +41,12 @@ server <- function(input, output, session) {
   store <- new_session_store()
   config <- mod_config_server("config")
 
-  chat_report_ready <- mod_chat_server("chat", config = config, store = store)
+  chat_report_ready <- mod_chat_server(
+    "chat",
+    config = config,
+    store = store,
+    allow_user_experts = TRUE
+  )
   storm_report_ready <- mod_storm_server(
     "storm",
     config = config,

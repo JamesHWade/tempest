@@ -61,7 +61,7 @@ Suggests:
     xml2,
     zip
 Remotes:
-    JamesHWade/dsprrr,
+    JamesHWade/dsprrr@bfd497a5ee7c365cbcc1be6b8780c9904aa0cdb1,
     posit-dev/shinychat/pkg-r,
     tidyverse/ellmer@5cb916dbab521f2d0b3871f284a6c67b8045d14c
 Config/testthat/edition: 3

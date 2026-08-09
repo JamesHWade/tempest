@@ -9,7 +9,8 @@ test_that("tempest_make_dsprrr_modules creates modules", {
       "perspectives",
       "personas",
       "query_decomposition",
-      "fact_extraction",
+      "extract_claims",
+      "verify_claim_support",
       "next_question",
       "draft_outline",
       "refined_outline",
@@ -45,17 +46,151 @@ test_that("tempest_optimize_dsprrr_modules compiles named modules", {
   meta <- attr(optimized, "tempest_dsprrr_optimization")
   expect_equal(meta$query_decomposition$n_train, 2L)
   expect_identical(meta$query_decomposition$compiled, TRUE)
+  expect_s3_class(
+    meta$query_decomposition$summary,
+    "dsprrr_optimization_summary"
+  )
 })
 
-test_that("compiled dsprrr module sets can be saved and loaded", {
+test_that("dsprrr module sets use versioned program artifact bundles", {
   modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
-  path <- withr::local_tempdir()
+  path <- file.path(withr::local_tempdir(), "programs.rds")
 
   saved_path <- tempest_save_dsprrr_modules(modules, path)
   expect_equal(file.exists(saved_path), TRUE)
+  bundle <- readRDS(saved_path)
+  expect_s3_class(bundle, "tempest_dsprrr_program_bundle")
+  expect_identical(bundle$bundle_type, "tempest_dsprrr_programs")
+  expect_identical(bundle$schema_version, 1L)
+  expect_named(bundle$programs, names(modules))
+  expect_s3_class(bundle$programs[[1]], "dsprrr_program_artifact")
 
   loaded <- tempest_load_dsprrr_modules(path)
   expect_named(loaded, names(modules))
+  expect_r6_class(loaded$query_decomposition, "Module")
+})
+
+test_that("dsprrr program bundles preserve compiled module state", {
+  modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
+  train <- data.frame(question = "Why?", topic = "Topic")
+  train$queries <- I(list(c("topic evidence", "topic sources")))
+  optimized <- tempest_optimize_dsprrr_modules(
+    trainsets = list(query_decomposition = train),
+    modules = modules,
+    verbose = FALSE
+  )
+  path <- withr::local_tempfile(fileext = ".rds")
+
+  tempest_save_dsprrr_modules(optimized, path)
+  loaded <- tempest_load_dsprrr_modules(path)
+
+  expect_identical(loaded$query_decomposition$is_compiled(), TRUE)
+  expect_length(loaded$query_decomposition$demos, 1L)
+})
+
+test_that("dsprrr program bundles reject modified artifacts", {
+  modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
+  path <- file.path(withr::local_tempdir(), "programs.rds")
+  tempest_save_dsprrr_modules(modules, path)
+
+  bundle <- readRDS(path)
+  bundle$programs[[1]]$format_version <- 999L
+  saveRDS(bundle, path)
+
+  expect_error(
+    tempest_load_dsprrr_modules(path),
+    class = "tempest_dsprrr_bundle_error"
+  )
+})
+
+test_that("dsprrr program bundles replace only validated bundles", {
+  modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
+  root <- withr::local_tempdir()
+  path <- file.path(root, "programs.rds")
+  tempest_save_dsprrr_modules(modules, path)
+
+  expect_error(
+    tempest_save_dsprrr_modules(modules, path),
+    class = "tempest_dsprrr_bundle_error"
+  )
+  expect_no_error(
+    tempest_save_dsprrr_modules(modules, path, overwrite = TRUE)
+  )
+
+  unrelated <- file.path(root, "unrelated.rds")
+  saveRDS(list(note = "keep"), unrelated)
+  expect_error(
+    tempest_save_dsprrr_modules(modules, unrelated, overwrite = TRUE),
+    class = "tempest_dsprrr_bundle_error"
+  )
+  expect_identical(readRDS(unrelated), list(note = "keep"))
+})
+
+test_that("dsprrr compile args merge defaults with module overrides", {
+  args <- tempest:::tempest_select_dsprrr_compile_args(
+    list(
+      .default = list(.cache = FALSE, shared = "default"),
+      extract_claims = list(shared = "module", runner = "runner")
+    ),
+    "extract_claims"
+  )
+
+  expect_identical(
+    args,
+    list(.cache = FALSE, shared = "module", runner = "runner")
+  )
+  expect_error(
+    tempest:::tempest_select_dsprrr_compile_args(
+      list(.default = list(program = "invalid")),
+      "extract_claims"
+    ),
+    class = "tempest_dsprrr_optimization_error"
+  )
+})
+
+test_that("dsprrr optimization rejects misspelled teleprompter names", {
+  modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
+  train <- data.frame(question = "Why?", topic = "Topic")
+  train$queries <- list(c("topic evidence", "topic sources"))
+
+  expect_error(
+    tempest_optimize_dsprrr_modules(
+      trainsets = list(query_decomposition = train),
+      modules = modules,
+      teleprompter = list(
+        query_decompostion = dsprrr::LabeledFewShot(k = 1L)
+      ),
+      verbose = FALSE
+    ),
+    class = "tempest_dsprrr_optimization_error"
+  )
+})
+
+test_that("dsprrr optimization rejects misspelled compile argument names", {
+  modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
+  train <- data.frame(question = "Why?", topic = "Topic")
+  train$queries <- list(c("topic evidence", "topic sources"))
+
+  expect_error(
+    tempest_optimize_dsprrr_modules(
+      trainsets = list(query_decomposition = train),
+      modules = modules,
+      compile_args = list(query_decompostion = list(.cache = FALSE)),
+      verbose = FALSE
+    ),
+    class = "tempest_dsprrr_optimization_error"
+  )
+})
+
+test_that("dsprrr program bundle paths are explicit", {
+  modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
+  path <- file.path(withr::local_tempdir(), "programs")
+
+  expect_error(
+    tempest_save_dsprrr_modules(modules, path),
+    class = "tempest_dsprrr_bundle_error"
+  )
+  expect_equal(file.exists(path), FALSE)
 })
 
 test_that("tempest_run_dsprrr_module ignores missing module", {

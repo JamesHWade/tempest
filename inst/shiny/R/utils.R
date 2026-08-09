@@ -578,10 +578,19 @@ tempest_app_styles <- function() {
 }
 
 .tempest-chat-welcome-experts .form-select,
+.tempest-chat-expert-setup,
 .tempest-chat-welcome-tools .bslib-toolbar-input-button,
 .tempest-chat-start {
   height: var(--tempest-chat-welcome-control-height);
   min-height: var(--tempest-chat-welcome-control-height);
+}
+
+.tempest-chat-expert-setup {
+  width: 100%;
+  overflow: hidden;
+  justify-content: flex-start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tempest-chat-start {
@@ -601,6 +610,43 @@ tempest_app_styles <- function() {
   display: grid;
   gap: .65rem;
   min-width: 17rem;
+}
+
+.tempest-custom-expert-builder {
+  display: grid;
+  gap: .85rem;
+}
+
+.tempest-custom-expert-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .85rem;
+}
+
+.tempest-custom-expert-card {
+  display: grid;
+  gap: .7rem;
+  min-width: 0;
+  padding: .85rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: var(--bs-border-radius-lg, .5rem);
+  background: var(--bs-tertiary-bg, #f7f9fa);
+}
+
+.tempest-custom-expert-heading {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+
+.tempest-custom-expert-identity {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.tempest-custom-expert-card .form-group {
+  margin-bottom: 0;
 }
 
 .tempest-chat-footer-idle {
@@ -1104,9 +1150,10 @@ a.tempest-source-title:focus {
 @media (max-width: 575.98px) {
   .tempest-chat-welcome-actions {
     grid-template-areas:
-      'experts tools'
-      'start start';
-    grid-template-columns: minmax(0, 1fr) max-content;
+      'experts'
+      'tools'
+      'start';
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .tempest-chat-welcome-experts {
@@ -1121,6 +1168,11 @@ a.tempest-source-title:focus {
 
   .tempest-chat-welcome-tools {
     grid-area: tools;
+  }
+
+  .tempest-custom-expert-grid,
+  .tempest-custom-expert-identity {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .tempest-chat-footer-active {

@@ -457,7 +457,12 @@ query_train$queries <- I(list(c(
 optimized_modules <- tempest_optimize_dsprrr_modules(
   trainsets = list(query_decomposition = query_train),
   config = cfg,
-  save_dir = "storm-modules"
+  compile_args = list(
+    .default = list(
+      control = dsprrr::optimizer_control(max_provider_calls = 100L)
+    )
+  ),
+  save_path = "storm-programs.rds"
 )
 
 res <- tempest_run(
@@ -466,6 +471,12 @@ res <- tempest_run(
   dsprrr_modules = optimized_modules
 )
 ```
+
+`storm-programs.rds` is an atomic, checksummed bundle of dsprrr program artifacts,
+not a raw serialization of live R6 objects. More advanced teleprompters such as
+`Omni()`, `AutoResearch()`, and `MetaHarness()` can be selected through
+`teleprompter`; use per-module `compile_args` to provide their optimizer
+controls, checkpoints, agent chats, and sandbox runners.
 
 ### Configuration options
 

@@ -254,6 +254,94 @@ test_that("the chat module provides an interactive landing greeting", {
   expect_match(html, "tempest-chat-start btn-sm", fixed = TRUE)
 })
 
+test_that("the bundled chat greeting offers an expert panel builder", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  app <- source_shiny_modules()
+  ns <- shiny::NS("chat")
+  html <- paste(
+    as.character(app$chat_session_greeting_ui(
+      ns,
+      allow_user_experts = TRUE
+    )),
+    collapse = ""
+  )
+  modal <- paste(
+    as.character(app$custom_expert_setup_modal(ns)),
+    collapse = ""
+  )
+
+  expect_match(html, "chat-expert_setup", fixed = TRUE)
+  expect_match(html, "3 generated", fixed = TRUE)
+  expect_no_match(html, "chat-n_experts", fixed = TRUE)
+  expect_match(modal, "Choose my own experts", fixed = TRUE)
+  expect_match(modal, "chat-custom_expert_fields", fixed = TRUE)
+  expect_match(modal, "chat-apply_expert_setup", fixed = TRUE)
+  expect_match(
+    modal,
+    '<option value="3" selected>3 experts</option>',
+    fixed = TRUE
+  )
+})
+
+test_that("custom expert forms create validated user profiles", {
+  app <- source_shiny_modules()
+  profiles <- app$custom_expert_profiles(list(
+    list(
+      name = "Maya Chen",
+      title = "Battery policy analyst",
+      perspective = "Compare incentives, regulation, and adoption barriers."
+    ),
+    list(
+      name = "Sam Okafor",
+      title = "Grid engineer",
+      perspective = "Test infrastructure assumptions against grid constraints."
+    )
+  ))
+
+  expect_length(profiles, 2L)
+  expect_s7_class(profiles[[1]], tempest:::TempestExpertProfile)
+  expect_equal(profiles[[1]]@expert_id, "expert.user.01")
+  expect_equal(profiles[[1]]@name, "Maya Chen")
+  expect_equal(profiles[[1]]@title, "Battery policy analyst")
+  expect_equal(
+    profiles[[1]]@description,
+    "Compare incentives, regulation, and adoption barriers."
+  )
+  expect_equal(profiles[[1]]@selection_metadata$source, "user")
+  expect_match(profiles[[1]]@instructions, "cite relevant evidence")
+
+  invalid <- tryCatch(
+    app$custom_expert_profiles(list(list(
+      name = "",
+      title = "Analyst",
+      perspective = "Inspect the evidence."
+    ))),
+    error = identity
+  )
+  expect_s3_class(invalid, "tempest_custom_expert_input_error")
+  expect_match(conditionMessage(invalid), "Expert 1 needs a name")
+})
+
+test_that("user expert panels override host defaults only when enabled", {
+  app <- source_shiny_modules()
+  host <- list(test_expert(expert_id = "expert.host", name = "Host Expert"))
+  user <- list(test_expert(expert_id = "expert.user", name = "User Expert"))
+
+  expect_identical(
+    app$costorm_session_experts(host, user, FALSE, "custom"),
+    host
+  )
+  expect_identical(
+    app$costorm_session_experts(host, user, TRUE, "generated"),
+    host
+  )
+  expect_identical(
+    app$costorm_session_experts(host, user, TRUE, "custom"),
+    user
+  )
+})
+
 test_that("chat footer reserves controls for active sessions", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -331,8 +419,9 @@ test_that("chat UI delegates presentation features to shinychat", {
   expect_match(css, "tempest-chat-welcome-actions", fixed = TRUE)
   expect_match(css, "--tempest-chat-welcome-control-height", fixed = TRUE)
   expect_match(css, "bslib-toolbar-input-button[data-type=", fixed = TRUE)
-  expect_match(css, "'experts tools'", fixed = TRUE)
-  expect_match(css, "'start start'", fixed = TRUE)
+  expect_match(css, "'experts'", fixed = TRUE)
+  expect_match(css, "'tools'", fixed = TRUE)
+  expect_match(css, "'start'", fixed = TRUE)
   expect_match(css, "padding-right: 2.25rem", fixed = TRUE)
 })
 
@@ -1104,6 +1193,19 @@ test_that("the chat greeting prioritizes one-time session controls", {
   expect_match(html, "Suggest follow-up questions")
 })
 
+test_that("the bundled app enables user-configured expert panels", {
+  app_file <- system.file("shiny", "app.R", package = "tempest")
+  app_code <- paste(readLines(app_file, warn = FALSE), collapse = "\n")
+
+  expect_equal(
+    lengths(regmatches(
+      app_code,
+      gregexpr("allow_user_experts = TRUE", app_code, fixed = TRUE)
+    )),
+    2L
+  )
+})
+
 test_that("the chat settings drawer holds secondary workspace controls", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -1134,6 +1236,12 @@ test_that("the chat server toggles settings from greeting and footer", {
   expect_match(server_code, "input$footer_settings_toggle", fixed = TRUE)
   expect_match(server_code, 'toggle_sidebar("settings"', fixed = TRUE)
   expect_match(server_code, "suggestions_enabled", fixed = TRUE)
+  expect_match(server_code, "update_expert_setup_button", fixed = TRUE)
+  expect_match(
+    server_code,
+    "shiny::isolate(expert_setup_mode())",
+    fixed = TRUE
+  )
   expect_match(server_code, "ignoreNULL = TRUE", fixed = TRUE)
   expect_no_match(server_code, "input$footer_report", fixed = TRUE)
 })

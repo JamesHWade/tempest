@@ -4,25 +4,43 @@
 \alias{tempest_save_dsprrr_modules}
 \title{Save compiled dsprrr modules}
 \usage{
-tempest_save_dsprrr_modules(modules, path)
+tempest_save_dsprrr_modules(
+  modules,
+  path,
+  registry = list(),
+  trusted = FALSE,
+  overwrite = FALSE
+)
 }
 \arguments{
-\item{modules}{A named list of dsprrr modules.}
+\item{modules}{A non-empty named list of dsprrr modules.}
 
-\item{path}{File path ending in \code{.rds}, or a directory where
-\code{dsprrr-modules.rds} will be written.}
+\item{path}{Program bundle file ending in \code{.rds}.}
+
+\item{registry}{Named runtime registry passed to
+\code{\link[dsprrr:program_artifact]{dsprrr::program_artifact()}}.}
+
+\item{trusted}{Whether dsprrr may embed trusted runtime values. The safer
+default is \code{FALSE}; prefer stable registry IDs.}
+
+\item{overwrite}{Whether to replace an existing Tempest dsprrr bundle.}
 }
 \value{
-Invisibly returns the RDS path.
+Invisibly returns the normalized bundle path.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
+Saves every module as a dsprrr versioned program artifact inside one
+checksummed Tempest bundle. Runtime chats, credentials, caches, and execution
+history are not persisted. The completed bundle is installed atomically.
 }
 \examples{
 \dontrun{
 modules <- tempest_optimize_dsprrr_modules(
   trainsets = list(query_decomposition = trainset)
 )
-path <- tempest_save_dsprrr_modules(modules, tempfile(fileext = ".rds"))
+path <- tempest_save_dsprrr_modules(modules, "storm-programs.rds")
 }
 }

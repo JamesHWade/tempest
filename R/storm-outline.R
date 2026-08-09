@@ -5,7 +5,7 @@ tempest_draft_outline <- function(writer, topic, title, module = NULL) {
   module_result <- tempest_run_dsprrr_module(
     module,
     writer,
-    inputs = list(topic = topic, title = title),
+    inputs = list(topic = topic, report_title = title),
     step = "draft outline generation"
   )
   if (!is.null(module_result)) {
@@ -49,7 +49,7 @@ tempest_refine_outline <- function(
     writer,
     inputs = list(
       topic = topic,
-      title = title,
+      report_title = title,
       draft_outline = tempest_outline_summary(draft_outline),
       facts = facts_txt
     ),
