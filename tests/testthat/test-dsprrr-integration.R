@@ -148,6 +148,21 @@ test_that("dsprrr compile args merge defaults with module overrides", {
   )
 })
 
+test_that("empty dsprrr teleprompter overrides use defaults", {
+  modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
+  train <- data.frame(question = "Why?", topic = "Topic")
+  train$queries <- list(c("topic evidence", "topic sources"))
+
+  optimized <- tempest_optimize_dsprrr_modules(
+    trainsets = list(query_decomposition = train),
+    modules = modules,
+    teleprompter = list(),
+    verbose = FALSE
+  )
+
+  expect_identical(optimized$query_decomposition$is_compiled(), TRUE)
+})
+
 test_that("dsprrr optimization rejects misspelled teleprompter names", {
   modules <- tempest:::tempest_make_dsprrr_modules(tempest_config())
   train <- data.frame(question = "Why?", topic = "Topic")

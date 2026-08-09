@@ -341,11 +341,11 @@ tempest_validate_dsprrr_teleprompter <- function(teleprompter, module_names) {
   }
   valid <- is.list(teleprompter) &&
     !is.data.frame(teleprompter) &&
-    length(teleprompter) > 0L &&
-    !is.null(names(teleprompter)) &&
-    !anyNA(names(teleprompter)) &&
-    all(nzchar(names(teleprompter))) &&
-    !anyDuplicated(names(teleprompter))
+    (length(teleprompter) == 0L ||
+      (!is.null(names(teleprompter)) &&
+        !anyNA(names(teleprompter)) &&
+        all(nzchar(names(teleprompter))) &&
+        !anyDuplicated(names(teleprompter))))
   if (!valid) {
     tempest_dsprrr_abort(
       "{.arg teleprompter} must be a dsprrr teleprompter, factory, or named list.",
@@ -864,7 +864,7 @@ tempest_load_dsprrr_modules <- function(
 #' @param config A `TempestConfig` object used when `modules` is `NULL`.
 #' @param teleprompter Optional dsprrr teleprompter, factory function, or named
 #'   list keyed by module name with an optional `.default`. Defaults to
-#'   `dsprrr::LabeledFewShot()`.
+#'   `dsprrr::LabeledFewShot()`; an empty list also uses this default.
 #' @param valsets Optional named list of validation data frames.
 #' @param .llm Optional ellmer chat object passed to dsprrr compilation.
 #' @param compile_args Named list of additional arguments for dsprrr

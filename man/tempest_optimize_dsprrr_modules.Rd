@@ -32,7 +32,7 @@ modules from \code{tempest_make_dsprrr_modules(config)}.}
 
 \item{teleprompter}{Optional dsprrr teleprompter, factory function, or named
 list keyed by module name with an optional \code{.default}. Defaults to
-\code{dsprrr::LabeledFewShot()}.}
+\code{dsprrr::LabeledFewShot()}; an empty list also uses this default.}
 
 \item{valsets}{Optional named list of validation data frames.}
 
