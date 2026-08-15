@@ -16,8 +16,9 @@
   timed-out expert chats, and exposes an accessible keyboard-operable
   mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
 - The bundled Shiny app now presents Co-STORM setup as a one-time native
-  shinychat greeting with consistently sized controls and reserves the
-  footer for active-session status and actions.
+  shinychat greeting with consistently sized controls, lets users
+  replace generated panels with up to five named expert perspectives,
+  and reserves the footer for active-session status and actions.
 - [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
   now inherits the package-level `tempest.chat` default while its model
   fields remain untouched; editing any model field switches the app to
@@ -228,8 +229,10 @@
   [`tempest_save_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_save_dsprrr_modules.md),
   and
   [`tempest_load_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.md)
-  support explicit dsprrr compilation and reuse of optimized STORM
-  module sets.
+  now expose per-module dsprrr optimizer controls and agentic
+  teleprompter arguments, persist modules as atomic checksummed bundles
+  of versioned dsprrr program artifacts instead of raw RDS lists, and
+  remove the obsolete `fact_extraction` module alias.
 - [`tempest_progress_event()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event.md)
   and
   [`tempest_progress_event_data()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event_data.md)

@@ -53,7 +53,8 @@
 <span>  teleprompter <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  valsets <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .llm <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  save_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  compile_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  save_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  k <span class="op">=</span> <span class="fl">4L</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">123L</span>,</span>
 <span>  strict <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -82,9 +83,9 @@ modules from <code>tempest_make_dsprrr_modules(config)</code>.</p></dd>
 
 
 <dt id="arg-teleprompter">teleprompter<a class="anchor" aria-label="anchor" href="#arg-teleprompter"></a></dt>
-<dd><p>Optional dsprrr teleprompter, named list of
-teleprompters, or factory function. Defaults to
-<code><a href="https://jameshwade.github.io/dsprrr/reference/LabeledFewShot.html" class="external-link">dsprrr::LabeledFewShot()</a></code>.</p></dd>
+<dd><p>Optional dsprrr teleprompter, factory function, or named
+list keyed by module name with an optional <code>.default</code>. Defaults to
+<code><a href="https://jameshwade.github.io/dsprrr/reference/LabeledFewShot.html" class="external-link">dsprrr::LabeledFewShot()</a></code>; an empty list also uses this default.</p></dd>
 
 
 <dt id="arg-valsets">valsets<a class="anchor" aria-label="anchor" href="#arg-valsets"></a></dt>
@@ -95,9 +96,16 @@ teleprompters, or factory function. Defaults to
 <dd><p>Optional ellmer chat object passed to dsprrr compilation.</p></dd>
 
 
-<dt id="arg-save-dir">save_dir<a class="anchor" aria-label="anchor" href="#arg-save-dir"></a></dt>
-<dd><p>Optional directory or <code>.rds</code> path for the optimized module
-list.</p></dd>
+<dt id="arg-compile-args">compile_args<a class="anchor" aria-label="anchor" href="#arg-compile-args"></a></dt>
+<dd><p>Named list of additional arguments for dsprrr
+compilation. Use <code>.default</code> for arguments shared by every module and a
+module name for overrides. This exposes dsprrr optimizer controls,
+checkpoints, agent chats, and sandbox runners without Tempest duplicating
+their contracts.</p></dd>
+
+
+<dt id="arg-save-path">save_path<a class="anchor" aria-label="anchor" href="#arg-save-path"></a></dt>
+<dd><p>Optional <code>.rds</code> path for an atomic, versioned program bundle.</p></dd>
 
 
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
@@ -138,7 +146,13 @@ pass the returned module list to <code><a href="tempest_run.html">tempest_run()<
 <span class="r-in"><span><span class="va">trainset</span><span class="op">$</span><span class="va">queries</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"battery recycling"</span>, <span class="st">"EV battery capacity"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">modules</span> <span class="op">&lt;-</span> <span class="fu">tempest_optimize_dsprrr_modules</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  trainsets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>query_decomposition <span class="op">=</span> <span class="va">trainset</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  compile_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    .default <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>      control <span class="op">=</span> <span class="fu">dsprrr</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/dsprrr/reference/optimizer_control.html" class="external-link">optimizer_control</a></span><span class="op">(</span>max_provider_calls <span class="op">=</span> <span class="fl">100L</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span>,</span></span>
+<span class="r-in"><span>  save_path <span class="op">=</span> <span class="st">"storm-programs.rds"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>

@@ -12,7 +12,8 @@ tempest_optimize_dsprrr_modules(
   teleprompter = NULL,
   valsets = NULL,
   .llm = NULL,
-  save_dir = NULL,
+  compile_args = list(),
+  save_path = NULL,
   k = 4L,
   seed = 123L,
   strict = TRUE,
@@ -40,9 +41,10 @@ tempest_optimize_dsprrr_modules(
 
 - teleprompter:
 
-  Optional dsprrr teleprompter, named list of teleprompters, or factory
-  function. Defaults to
-  [`dsprrr::LabeledFewShot()`](https://jameshwade.github.io/dsprrr/reference/LabeledFewShot.html).
+  Optional dsprrr teleprompter, factory function, or named list keyed by
+  module name with an optional `.default`. Defaults to
+  [`dsprrr::LabeledFewShot()`](https://jameshwade.github.io/dsprrr/reference/LabeledFewShot.html);
+  an empty list also uses this default.
 
 - valsets:
 
@@ -52,9 +54,17 @@ tempest_optimize_dsprrr_modules(
 
   Optional ellmer chat object passed to dsprrr compilation.
 
-- save_dir:
+- compile_args:
 
-  Optional directory or `.rds` path for the optimized module list.
+  Named list of additional arguments for dsprrr compilation. Use
+  `.default` for arguments shared by every module and a module name for
+  overrides. This exposes dsprrr optimizer controls, checkpoints, agent
+  chats, and sandbox runners without Tempest duplicating their
+  contracts.
+
+- save_path:
+
+  Optional `.rds` path for an atomic, versioned program bundle.
 
 - k:
 
@@ -96,7 +106,13 @@ trainset <- data.frame(
 trainset$queries <- list(c("battery recycling", "EV battery capacity"))
 modules <- tempest_optimize_dsprrr_modules(
   trainsets = list(query_decomposition = trainset),
-  config = tempest_config()
+  config = tempest_config(),
+  compile_args = list(
+    .default = list(
+      control = dsprrr::optimizer_control(max_provider_calls = 100L)
+    )
+  ),
+  save_path = "storm-programs.rds"
 )
 } # }
 ```

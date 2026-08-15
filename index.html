@@ -447,7 +447,12 @@
 <span><span class="va">optimized_modules</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules</a></span><span class="op">(</span></span>
 <span>  trainsets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>query_decomposition <span class="op">=</span> <span class="va">query_train</span><span class="op">)</span>,</span>
 <span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  save_dir <span class="op">=</span> <span class="st">"storm-modules"</span></span>
+<span>  compile_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    .default <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      control <span class="op">=</span> <span class="fu">dsprrr</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/dsprrr/reference/optimizer_control.html" class="external-link">optimizer_control</a></span><span class="op">(</span>max_provider_calls <span class="op">=</span> <span class="fl">100L</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  save_path <span class="op">=</span> <span class="st">"storm-programs.rds"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
@@ -455,6 +460,7 @@
 <span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
 <span>  dsprrr_modules <span class="op">=</span> <span class="va">optimized_modules</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p><code>storm-programs.rds</code> is an atomic, checksummed bundle of dsprrr program artifacts, not a raw serialization of live R6 objects. More advanced teleprompters such as <code>Omni()</code>, <code>AutoResearch()</code>, and <code>MetaHarness()</code> can be selected through <code>teleprompter</code>; use per-module <code>compile_args</code> to provide their optimizer controls, checkpoints, agent chats, and sandbox runners.</p>
 </div>
 <div class="section level3">
 <h3 id="configuration-options">Configuration options<a class="anchor" aria-label="anchor" href="#configuration-options"></a>
