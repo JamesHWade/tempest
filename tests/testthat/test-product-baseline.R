@@ -11,6 +11,13 @@ test_that("default dsprrr STORM semantic outcomes are frozen", {
 
   expect_identical(semantics$citations$uses, semantics$source_ids)
   expect_identical(definition_ids, semantics$source_ids)
+  expect_identical(fixture$result$workspace, fixture$result$store)
+  expect_identical(fixture$result$workspace, fixture$store)
+  expect_identical(
+    fixture$result$manifest@research_run_id,
+    "storm-product-baseline"
+  )
+  expect_identical(fixture$result$manifest@status, "succeeded")
   expect_snapshot(baseline_snapshot_json(semantics))
 })
 
@@ -39,6 +46,31 @@ test_that("scripted STORM resumes through the public product path", {
   )
 
   expect_equal(resumed[outcome_fields], uninterrupted[outcome_fields])
+  expect_identical(fixture$restored$workspace, fixture$restored_store)
+  expect_identical(fixture$restored$workspace, fixture$restored$store)
+  expect_identical(
+    fixture$restored$retriever$workspace,
+    fixture$restored$workspace
+  )
+  expect_identical(
+    fixture$restored$retriever$store,
+    fixture$restored$workspace
+  )
+  resumed_source <- fake_source(
+    url = "https://example.org/resumed-workspace-alias",
+    title = "Resumed workspace alias"
+  )
+  fixture$restored$retriever$workspace$upsert_source(resumed_source)
+  expect_identical(
+    fixture$restored$workspace$get_source(resumed_source$id)$id,
+    resumed_source$id
+  )
+  expect_identical(
+    fixture$first$manifest@research_run_id,
+    fixture$restored$manifest@research_run_id
+  )
+  expect_identical(fixture$first$manifest@status, "running")
+  expect_identical(fixture$restored$manifest@status, "succeeded")
 
   expect_snapshot(baseline_snapshot_json(
     list(
@@ -138,6 +170,7 @@ test_that("STORM cancellation is terminal and publishes no report", {
   fixture <- storm_product_fixture()
   artifacts <- tempest_memory_artifact_store()
   fixture$config@artifact_store <- artifacts
+  output_root <- withr::local_tempdir()
   collector <- tempest_progress_collector(include_payload = TRUE)
   progress <- function(event) {
     collector$record(event)
@@ -161,7 +194,7 @@ test_that("STORM cancellation is terminal and publishes no report", {
       retriever = fixture$retriever,
       n_experts = 1,
       max_questions_per_perspective = 1,
-      output_dir = withr::local_tempdir(),
+      output_dir = output_root,
       run_id = "storm-cancel-baseline",
       progress = progress,
       verbose = FALSE
@@ -170,6 +203,11 @@ test_that("STORM cancellation is terminal and publishes no report", {
   )
   events <- collector$data()
   state <- tempest_progress_state(events)
+  persisted <- tempest:::tempest_read_json_strict(file.path(
+    output_root,
+    "storm-cancel-baseline",
+    "run_config.json"
+  ))
 
   expect_identical(state$status, "cancelled")
   expect_identical(state$terminal, TRUE)
@@ -178,6 +216,11 @@ test_that("STORM cancellation is terminal and publishes no report", {
     TRUE
   )
   expect_identical(artifacts$exists("report_md"), FALSE)
+  expect_identical(
+    persisted$research_manifest$status,
+    "cancelled"
+  )
+  expect_equal("research" %in% unlist(persisted$completed_stages), FALSE)
   expect_identical(
     fixture$program_stages(),
     c("perspectives", "personas")

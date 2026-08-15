@@ -135,13 +135,152 @@ tempest_moderator_system_prompt <- function(topic, experts) {
   )
 }
 
+tempest_costorm_session_abort <- function(message, ..., parent = NULL) {
+  tempest_abort(
+    message,
+    ...,
+    class = c("tempest_session_error", "tempest_error"),
+    parent = parent,
+    .envir = rlang::caller_env()
+  )
+}
+
+tempest_costorm_restore_token <- new.env(parent = emptyenv())
+
+tempest_costorm_retriever_workspace <- function(retriever) {
+  if (!is.list(retriever) && !is.environment(retriever)) {
+    tempest_costorm_session_abort(
+      paste0(
+        "{.arg retriever} must expose a ResearchWorkspace at ",
+        "{.code retriever$workspace} or the legacy SourceStore-compatible ",
+        "{.code retriever$store} alias."
+      )
+    )
+  }
+  workspace <- retriever[["workspace"]] %||% NULL
+  store <- retriever[["store"]] %||% NULL
+  if (!is.null(workspace) && !inherits(workspace, "ResearchWorkspace")) {
+    tempest_costorm_session_abort(
+      "{.code retriever$workspace} must be a ResearchWorkspace."
+    )
+  }
+  if (!is.null(store) && !inherits(store, "ResearchWorkspace")) {
+    tempest_costorm_session_abort(
+      paste0(
+        "The legacy SourceStore-compatible {.code retriever$store} alias ",
+        "must be a ResearchWorkspace."
+      )
+    )
+  }
+  if (
+    !is.null(workspace) &&
+      !is.null(store) &&
+      !identical(workspace, store)
+  ) {
+    tempest_costorm_session_abort(
+      paste0(
+        "{.code retriever$workspace} and the legacy ",
+        "{.code retriever$store} alias must reference the same ",
+        "ResearchWorkspace."
+      )
+    )
+  }
+  result <- workspace %||% store
+  if (is.null(result)) {
+    tempest_costorm_session_abort(
+      paste0(
+        "{.arg retriever} must expose a ResearchWorkspace at ",
+        "{.code retriever$workspace} or the legacy SourceStore-compatible ",
+        "{.code retriever$store} alias."
+      )
+    )
+  }
+  result
+}
+
+tempest_costorm_manifest_snapshot_reference <- function(workspace) {
+  snapshot_id <- workspace$base_snapshot_id
+  if (is.null(snapshot_id)) {
+    return(list())
+  }
+  list(snapshot_id = snapshot_id)
+}
+
+tempest_costorm_manifest_validate <- function(
+  manifest,
+  session_id,
+  config,
+  workspace
+) {
+  if (!S7::S7_inherits(manifest, TempestResearchManifest)) {
+    tempest_costorm_session_abort(
+      "{.arg manifest} must be created by {.fn tempest_research_manifest}."
+    )
+  }
+  if (!identical(manifest@mode, "costorm")) {
+    tempest_costorm_session_abort(
+      "{.arg manifest} must describe a {.val costorm} research run."
+    )
+  }
+  if (!identical(manifest@status, "running")) {
+    tempest_costorm_session_abort(
+      paste0(
+        "A Co-STORM session can restore only a running research manifest; ",
+        "terminal manifests cannot be resumed."
+      )
+    )
+  }
+  if (!identical(manifest@research_run_id, session_id)) {
+    tempest_costorm_session_abort(
+      paste0(
+        "{.arg session_id} must match ",
+        "{.code manifest@research_run_id}; manifest identity cannot be ",
+        "replaced."
+      )
+    )
+  }
+  config_digest <- tempest_research_config_digest(config)
+  if (!identical(manifest@config_digest, config_digest)) {
+    tempest_costorm_session_abort(
+      "{.arg manifest} does not match the supplied {.arg config}."
+    )
+  }
+  snapshot <- manifest@knowledge_snapshot
+  snapshot_id <- snapshot$snapshot_id %||% NULL
+  if (length(snapshot) > 0L && is.null(snapshot_id)) {
+    tempest_costorm_session_abort(
+      paste0(
+        "{.code manifest@knowledge_snapshot} must identify its ",
+        "{.field snapshot_id}."
+      )
+    )
+  }
+  if (!identical(snapshot_id, workspace$base_snapshot_id)) {
+    tempest_costorm_session_abort(
+      paste0(
+        "{.code manifest@knowledge_snapshot} does not match the ",
+        "ResearchWorkspace base snapshot."
+      )
+    )
+  }
+  manifest
+}
+
 #' @keywords internal
 tempest_session_answer_source_ids <- function(session, text, source_ids) {
-  if (is.null(session$store) || !inherits(session$store, "SourceStore")) {
+  workspace <- if (is.list(session) || is.environment(session)) {
+    session[["workspace"]] %||% session[["store"]] %||% NULL
+  } else {
+    NULL
+  }
+  if (
+    is.null(workspace) ||
+      !inherits(workspace, "ResearchWorkspace")
+  ) {
     return(character())
   }
   text <- text %||% ""
-  sources <- session$store$list_sources()
+  sources <- workspace$list_sources()
   referenced <- vapply(
     sources,
     function(source) {
@@ -196,17 +335,21 @@ tempest_costorm_mindmap_exchange <- function(
 #' should keep tools and authenticated clients process-local and use the
 #' session's scientific evidence and report state as its product boundary.
 #'
-#' @field topic The research topic.
+#' @field topic Read-only research topic fixed at construction.
 #' @field title The report title.
-#' @field config A `TempestConfig` object.
+#' @field config Read-only `TempestConfig` fixed at construction.
 #' @field runtime Frozen Tempest 0.1 `TempestRuntime` adapter.
 #' @field connection_permissions Frozen Tempest 0.1 per-role or per-expert
 #'   connection allow-lists.
-#' @field session_id Stable identifier shared by progress events for the
-#'   session.
+#' @field session_id Read-only stable identifier shared by the manifest and
+#'   progress events for the session.
 #' @field progress Optional progress callback.
-#' @field store A `SourceStore` object.
-#' @field retriever A `TempestRetriever` object.
+#' @field manifest Immutable [TempestResearchManifest] for this research run.
+#' @field workspace Read-only reference to the authoritative
+#'   [ResearchWorkspace] containing provisional research material. Workspace
+#'   mutation methods remain available.
+#' @field store Deprecated read-only compatibility alias of `workspace`.
+#' @field retriever Read-only `TempestRetriever` reference.
 #' @field experts List of validated `tempest_expert` profiles.
 #' @field expert_session_manager Manages expert chat sessions.
 #' @field chats List of chat objects for each role.
@@ -225,15 +368,10 @@ tempest_costorm_mindmap_exchange <- function(
 TempestSession <- R6::R6Class(
   "TempestSession",
   public = list(
-    topic = NULL,
     title = NULL,
-    config = NULL,
     runtime = NULL,
     connection_permissions = NULL,
-    session_id = NULL,
     progress = NULL,
-    store = NULL,
-    retriever = NULL,
     experts = NULL,
     expert_session_manager = NULL,
     chats = NULL,
@@ -258,11 +396,16 @@ TempestSession <- R6::R6Class(
     #' @param connection_permissions Frozen Tempest 0.1 mapping from role or
     #'   expert ids to opaque connection ids allowed for this session.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
-    #'   object with a `SourceStore` at `$store`.
+    #'   object with a [ResearchWorkspace] at `$workspace` or its legacy
+    #'   `$store` alias.
     #' @param progress Optional function called with `tempest_progress_event`
     #'   objects as the session makes progress.
     #' @param session_id Optional stable session identifier. If `NULL`, a new
     #'   identifier is generated.
+    #' @param .restore_manifest Internal research manifest supplied only by
+    #'   Tempest's bundle-restoration seam.
+    #' @param .restore_token Internal authorization token for bundle
+    #'   restoration.
     initialize = function(
       topic,
       config = tempest_config(),
@@ -272,14 +415,34 @@ TempestSession <- R6::R6Class(
       connection_permissions = list(),
       retriever = NULL,
       progress = NULL,
-      session_id = NULL
+      session_id = NULL,
+      .restore_manifest = NULL,
+      .restore_token = NULL
     ) {
       tempest_require("ellmer", "TempestSession requires ellmer.")
+      restoring <- identical(.restore_token, tempest_costorm_restore_token)
+      if (
+        (!is.null(.restore_manifest) || !is.null(.restore_token)) &&
+          !restoring
+      ) {
+        tempest_costorm_session_abort(
+          paste0(
+            "Research manifests can be supplied only through Tempest's ",
+            "internal session-restoration seam."
+          )
+        )
+      }
+      if (restoring && is.null(.restore_manifest)) {
+        tempest_costorm_session_abort(
+          "Internal session restoration requires a research manifest."
+        )
+      }
+      manifest <- if (restoring) .restore_manifest else NULL
       if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
         tempest_config_abort("{.arg topic} must be a single non-empty string.")
       }
-      self$topic <- tempest_trim(topic)
-      if (!nzchar(self$topic)) {
+      private$topic_value <- tempest_trim(topic)
+      if (!nzchar(private$topic_value)) {
         tempest_config_abort("{.arg topic} must be a single non-empty string.")
       }
       if (!S7::S7_inherits(config, TempestConfig)) {
@@ -326,41 +489,86 @@ TempestSession <- R6::R6Class(
           )
         }
       }
-      self$title <- self$topic
-      self$config <- config
+      private$config_value <- config
+      self$title <- private$topic_value
       self$runtime <- runtime
       self$connection_permissions <- connection_permissions
-      if (is.null(session_id)) {
+      if (
+        !is.null(manifest) &&
+          !S7::S7_inherits(
+            manifest,
+            TempestResearchManifest
+          )
+      ) {
+        tempest_costorm_session_abort(
+          "{.arg manifest} must be created by {.fn tempest_research_manifest}."
+        )
+      }
+      if (is.null(session_id) && !is.null(manifest)) {
+        session_id <- manifest@research_run_id
+      } else if (is.null(session_id)) {
         session_id <- tempest_uuid("session")
       } else if (
         !rlang::is_string(session_id) || !nzchar(tempest_trim(session_id))
       ) {
-        tempest_abort(
-          "{.arg session_id} must be a single non-empty string or {.code NULL}.",
-          class = c("tempest_session_error", "tempest_error")
+        tempest_costorm_session_abort(
+          "{.arg session_id} must be a single non-empty string or {.code NULL}."
         )
       } else {
         session_id <- tempest_trim(session_id)
       }
-      self$session_id <- session_id
       self$progress <- tempest_progress_callback(progress)
       if (is.null(retriever)) {
-        self$store <- SourceStore$new()
-        self$retriever <- tempest_retriever(config = config, store = self$store)
+        private$workspace_value <- tempest_research_workspace()
+        private$retriever_value <- tempest_retriever(
+          config = config,
+          store = private$workspace_value
+        )
       } else {
-        store <- if (is.list(retriever) || is.environment(retriever)) {
-          retriever$store
-        } else {
-          NULL
+        retriever_config_digest <- tempest_retriever_config_digest(retriever)
+        if (
+          !is.null(retriever_config_digest) &&
+            !identical(
+              retriever_config_digest,
+              tempest_research_config_digest(config)
+            )
+        ) {
+          tempest_costorm_session_abort(c(
+            "{.arg retriever} does not match the supplied {.arg config}.",
+            x = paste0(
+              "A TempestRetriever must be created from the same ",
+              "behavior-relevant configuration."
+            )
+          ))
         }
-        if (is.null(store) || !inherits(store, "SourceStore")) {
-          tempest_abort(
-            "{.arg retriever} must expose a SourceStore at {.code retriever$store}."
-          )
-        }
-        self$retriever <- retriever
-        self$store <- store
+        private$retriever_value <- retriever
+        private$workspace_value <- tempest_costorm_retriever_workspace(
+          retriever
+        )
       }
+      private$manifest_value <- if (is.null(manifest)) {
+        tempest_research_manifest(
+          research_run_id = session_id,
+          mode = "costorm",
+          config = config,
+          programs = list(),
+          knowledge_snapshot = tempest_costorm_manifest_snapshot_reference(
+            private$workspace_value
+          ),
+          runtime = list(),
+          traces = list(),
+          deliverables = list(),
+          status = "running"
+        )
+      } else {
+        tempest_costorm_manifest_validate(
+          manifest,
+          session_id,
+          config,
+          private$workspace_value
+        )
+      }
+      private$session_id_value <- private$manifest_value@research_run_id
       self$transcript <- list()
       self$mindmap <- tempest_mindmap_init(self$topic)
       self$events <- list()
@@ -430,7 +638,7 @@ TempestSession <- R6::R6Class(
         retriever = self$retriever,
         allowed_connection_ref_ids = expert_connection_permissions,
         extractor = self$chats$extractor,
-        store = self$store,
+        store = self$workspace,
         progress = function(event) self$record_progress_event(event),
         run_id = self$session_id
       )
@@ -742,7 +950,7 @@ TempestSession <- R6::R6Class(
           # Only re-harvest when the caller did not already do so; callers that
           # pass source_ids have harvested the turn into the store already.
           harvested <- if (is.null(source_ids)) {
-            tempest_harvest_native_sources_from_turn(turn, self$store)
+            tempest_harvest_native_sources_from_turn(turn, self$workspace)
           } else {
             character()
           }
@@ -766,7 +974,7 @@ TempestSession <- R6::R6Class(
           tempest_extract_facts_from_answer(
             self$chats$extractor,
             text,
-            self$store,
+            self$workspace,
             source_ids = source_ids,
             session_id = session_id,
             expert_id = expert_id,
@@ -779,7 +987,7 @@ TempestSession <- R6::R6Class(
             step = "fact_extraction",
             parent_event_id = event@event_id,
             correlation_id = event@correlation_id,
-            payload = list(claim_count = length(self$store$list_claims()))
+            payload = list(claim_count = length(self$workspace$list_claims()))
           )
         },
         error = function(e) {
@@ -811,7 +1019,7 @@ TempestSession <- R6::R6Class(
           ids,
           tempest_harvest_native_sources_from_turn(
             turn,
-            self$store
+            self$workspace
           )
         )
       }
@@ -820,7 +1028,7 @@ TempestSession <- R6::R6Class(
           ids,
           tempest_harvest_native_sources_from_chat(
             chat,
-            self$store
+            self$workspace
           )
         )
       }
@@ -1319,8 +1527,8 @@ TempestSession <- R6::R6Class(
           }
 
           if (verbose) {
-            total_facts <- length(self$store$list_claims())
-            total_sources <- length(self$store$list_sources())
+            total_facts <- length(self$workspace$list_claims())
+            total_sources <- length(self$workspace$list_sources())
             tempest_inform(
               "Warmup complete: {total_facts} facts, {total_sources} sources"
             )
@@ -1335,8 +1543,8 @@ TempestSession <- R6::R6Class(
             correlation_id = warmup_event@correlation_id,
             payload = list(
               expert_count = length(results),
-              claim_count = length(self$store$list_claims()),
-              source_count = length(self$store$list_sources())
+              claim_count = length(self$workspace$list_claims()),
+              source_count = length(self$workspace$list_sources())
             )
           )
           invisible(results)
@@ -1513,7 +1721,7 @@ TempestSession <- R6::R6Class(
     #' Find sources that haven't been discussed yet.
     #' @return Character vector of undiscussed source IDs.
     find_undiscussed_sources = function() {
-      all_source_ids <- purrr::map_chr(self$store$list_sources(), "id")
+      all_source_ids <- purrr::map_chr(self$workspace$list_sources(), "id")
       discussed <- self$get_discussed_source_ids()
       setdiff(all_source_ids, discussed)
     },
@@ -1530,7 +1738,7 @@ TempestSession <- R6::R6Class(
 
       # Get snippets from unseen sources
       unseen_info <- purrr::map_chr(head(unseen_ids, 5), function(id) {
-        src <- self$store$get_source(id)
+        src <- self$workspace$get_source(id)
         if (is.null(src)) {
           return("")
         }
@@ -1712,6 +1920,75 @@ TempestSession <- R6::R6Class(
       # expert_speaks or moderator_probes: route through normal step
       self$step(instruction)
     }
+  ),
+  active = list(
+    topic = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field topic} is fixed when the session is created."
+        )
+      }
+      private$topic_value
+    },
+    config = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field config} is fixed when the session is created."
+        )
+      }
+      private$config_value
+    },
+    session_id = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field session_id} is fixed when the session is created."
+        )
+      }
+      private$session_id_value
+    },
+    retriever = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field retriever} is fixed when the session is created."
+        )
+      }
+      private$retriever_value
+    },
+    manifest = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field manifest} is immutable for the lifetime of a session."
+        )
+      }
+      private$manifest_value
+    },
+    workspace = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field workspace} is fixed when the session is created."
+        )
+      }
+      private$workspace_value
+    },
+    store = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          paste0(
+            "{.field store} is a fixed compatibility alias of ",
+            "{.field workspace}."
+          )
+        )
+      }
+      private$workspace_value
+    }
+  ),
+  private = list(
+    topic_value = NULL,
+    config_value = NULL,
+    session_id_value = NULL,
+    retriever_value = NULL,
+    manifest_value = NULL,
+    workspace_value = NULL
   )
 )
 
@@ -1733,7 +2010,7 @@ TempestSession <- R6::R6Class(
 #' @param connection_permissions Frozen Tempest 0.1 per-role or per-expert
 #'   connection allow-lists.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
-#'   with a `SourceStore` at `$store`.
+#'   with a [ResearchWorkspace] at `$workspace` or its legacy `$store` alias.
 #' @param progress Optional function called with `tempest_progress_event`
 #'   objects as the session makes progress.
 #' @param session_id Optional stable session identifier. If `NULL`, a new
@@ -1765,5 +2042,32 @@ tempest_session <- function(
     retriever = retriever,
     progress = progress,
     session_id = session_id
+  )
+}
+
+tempest_session_restore_new <- function(
+  topic,
+  config = tempest_config(),
+  runtime = tempest_runtime(),
+  n_experts = 3,
+  experts = NULL,
+  connection_permissions = list(),
+  retriever = NULL,
+  progress = NULL,
+  session_id = NULL,
+  manifest
+) {
+  TempestSession$new(
+    topic = topic,
+    config = config,
+    runtime = runtime,
+    n_experts = n_experts,
+    experts = experts,
+    connection_permissions = connection_permissions,
+    retriever = retriever,
+    progress = progress,
+    session_id = session_id,
+    .restore_manifest = manifest,
+    .restore_token = tempest_costorm_restore_token
   )
 }

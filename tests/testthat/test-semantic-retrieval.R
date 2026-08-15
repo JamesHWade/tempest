@@ -29,7 +29,7 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
 })
 
 test_that("tempest_semantic_filter_facts returns empty for empty store", {
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   cfg <- tempest_config()
   retriever <- tempest_retriever(config = cfg, store = store)
 
@@ -61,7 +61,7 @@ test_that("tempest_semantic_filter_facts with ragnar configured", {
 
   mock_embed <- function(x) matrix(stats::rnorm(length(x) * 3), ncol = 3)
   cfg <- tempest_config(embed_fn = mock_embed)
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   source <- fake_source("https://example.com")
   store$upsert_source(source)
   retriever <- tempest_retriever(config = cfg, store = store)

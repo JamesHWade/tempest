@@ -47,6 +47,11 @@ reference:
   - TempestRetriever
   - tempest_create_ragnar_store
   - tempest_cache_clear
+- title: Research identity and workspace
+  contents:
+  - tempest_research_manifest
+  - tempest_research_workspace
+  - ResearchWorkspace
   - SourceStore
 - title: Evidence and reports
   contents:

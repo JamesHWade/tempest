@@ -11,7 +11,7 @@ tempest_semantic_filter_facts(retriever, query, store, max_items = 30)
 
 \item{query}{Search query.}
 
-\item{store}{A \code{SourceStore} object.}
+\item{store}{A \link{ResearchWorkspace}.}
 
 \item{max_items}{Maximum facts to return.}
 }

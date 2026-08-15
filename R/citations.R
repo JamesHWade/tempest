@@ -1,7 +1,7 @@
 # Citations and report assembly
 
 #' Return evidence resources as a tibble
-#' @param store A `SourceStore` or `TempestRetriever`.
+#' @param store A [ResearchWorkspace] or [TempestRetriever].
 #' @return A tibble with resource identity, kind, opaque locator, optional web
 #'   URL, title, media type, content context, retrieval time, and metadata.
 #' @examples
@@ -12,9 +12,13 @@
 #' @export
 tempest_sources <- function(store) {
   if (inherits(store, "TempestRetriever")) {
-    store <- store$store
+    store <- store$workspace
   }
-  stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(store, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg store} must be a ResearchWorkspace or TempestRetriever."
+    )
+  }
   store$to_tibbles()$sources
 }
 
@@ -25,7 +29,7 @@ tempest_resources <- function(store) {
 }
 
 #' Return claims as a tibble
-#' @param store A `SourceStore` or `TempestRetriever`.
+#' @param store A [ResearchWorkspace] or [TempestRetriever].
 #' @return A tibble of claims with columns: claim_id, claim_text, claim_type,
 #'   source_ids, confidence, verification_status, support_score, created_at.
 #' @examples
@@ -36,9 +40,13 @@ tempest_resources <- function(store) {
 #' @export
 tempest_claims <- function(store) {
   if (inherits(store, "TempestRetriever")) {
-    store <- store$store
+    store <- store$workspace
   }
-  stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(store, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg store} must be a ResearchWorkspace or TempestRetriever."
+    )
+  }
   store$to_tibbles()$claims
 }
 
@@ -278,7 +286,11 @@ tempest_add_footnotes <- function(
   on_unsupported_claim = "flag",
   min_support_score = 0.7
 ) {
-  stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(store, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg store} must be a ResearchWorkspace."
+    )
+  }
   if (identical(citation_policy, "none")) {
     return(list(text = text, footnotes = ""))
   }
@@ -356,7 +368,8 @@ tempest_add_footnotes <- function(
 #'
 #' @param title Document title.
 #' @param body Markdown body text that may include inline citations like `[Sxxxxxxxxxxxx]`.
-#' @param store A `SourceStore` containing sources.
+#' @param store A [ResearchWorkspace] or [TempestRetriever] containing
+#'   retrieved sources.
 #' @param citation_policy One of "none", "source_attributed" (default),
 #'   "claim_verified", "strict". "none" leaves inline citation ids unchanged
 #'   and omits references. Under verified policies, footnotes show a
@@ -387,9 +400,13 @@ tempest_report_md <- function(
   min_support_score = 0.7
 ) {
   if (inherits(store, "TempestRetriever")) {
-    store <- store$store
+    store <- store$workspace
   }
-  stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(store, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg store} must be a ResearchWorkspace or TempestRetriever."
+    )
+  }
 
   res <- tempest_add_footnotes(
     body,

@@ -1035,7 +1035,7 @@ tempest_costorm_report_prompt <- function(session, style) {
     tempest_mindmap_to_markdown(session$mindmap),
     "\n\n",
     "Verified facts:\n",
-    tempest_summarize_facts_for_prompt(session$store, max_items = 120),
+    tempest_summarize_facts_for_prompt(session$workspace, max_items = 120),
     "\n\n",
     "Conversation (summary):\n",
     session$transcript_markdown(max_turns = 80),
@@ -1059,7 +1059,7 @@ tempest_costorm_report_context <- function(
   list(
     prompt = tempest_costorm_report_prompt(session, style),
     title = session$title %||% session$topic,
-    store = session$store,
+    store = session$workspace,
     include_references = include_references,
     citation_policy = session$config@citation_policy,
     on_unsupported_claim = session$config@on_unsupported_claim,
@@ -1246,9 +1246,12 @@ tempest_builtin_markdown_report_renderer <- function(
     ))
   }
   store <- context$store %||% NULL
-  if (!inherits(store, "SourceStore") && !inherits(store, "TempestRetriever")) {
+  if (
+    !inherits(store, "ResearchWorkspace") &&
+      !inherits(store, "TempestRetriever")
+  ) {
     tempest_deliverable_abort(
-      "The Markdown report renderer requires a SourceStore when references are included.",
+      "The Markdown report renderer requires a ResearchWorkspace when references are included.",
       operation_id = "tempest.renderer.markdown_report",
       phase = "rendering"
     )

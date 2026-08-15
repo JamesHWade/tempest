@@ -27,7 +27,7 @@ expert.}
 
     \item{\code{extractor}}{Chat object for fact extraction (optional).}
 
-    \item{\code{store}}{A \code{SourceStore} for storing extracted facts (optional).}
+    \item{\code{store}}{A \link{ResearchWorkspace} for storing extracted facts (optional).}
 
     \item{\code{progress}}{Optional progress callback.}
 
@@ -86,7 +86,7 @@ claim-write provenance.}
       \item{\code{allowed_connection_ref_ids}}{Named list of allowed connection ids by
 expert id.}
       \item{\code{extractor}}{Optional chat object for fact extraction.}
-      \item{\code{store}}{Optional \code{SourceStore} for storing extracted facts.}
+      \item{\code{store}}{Optional \link{ResearchWorkspace} for storing extracted facts.}
       \item{\code{progress}}{Optional progress callback.}
       \item{\code{run_id}}{Shared Co-STORM session id for progress events.}
     }

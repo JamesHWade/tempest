@@ -48,6 +48,26 @@ tempest_run_verification <- function(
   invisible(NULL)
 }
 
+#' @keywords internal
+tempest_storm_retriever_workspace <- function(retriever) {
+  workspace <- retriever$workspace %||% NULL
+  store <- retriever$store %||% NULL
+  if (
+    !is.null(workspace) &&
+      !is.null(store) &&
+      !identical(workspace, store)
+  ) {
+    tempest_config_abort(
+      paste0(
+        "{.code retriever$workspace} and the legacy ",
+        "{.code retriever$store} alias must reference the same ",
+        "ResearchWorkspace."
+      )
+    )
+  }
+  workspace %||% store
+}
+
 #' Run the STORM pipeline
 #'
 #' This is a scripted workflow that:
@@ -61,8 +81,8 @@ tempest_run_verification <- function(
 #' `runtime`, `runtime_factory`, `connection_permissions`, `artifact_catalog`,
 #' and `workflow_run` expose the frozen experimental generic kernel. They remain
 #' only for existing Tempest 0.1 integrations and are scheduled for replacement
-#' or removal in Tempest 0.2.0. New code should consume `report_md` and the
-#' scientific evidence in `store`.
+#' or removal in Tempest 0.2.0. New code should consume `report_md`, `manifest`,
+#' `state`, and the scientific evidence in `workspace`.
 #'
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
@@ -107,10 +127,13 @@ tempest_run_verification <- function(
 #'   `TempestArtifactCatalog`, used by the generic STORM workflow adapter.
 #' @param workflow_run Frozen Tempest 0.1 owning `TempestRun`. When supplied,
 #'   the result exposes it as `workflow_run`.
+#' @param .state Internal adapter-only fixed STORM product state. This is not a
+#'   public continuation API.
 #' @return A list with product fields `title`, `perspectives`, `experts`,
-#'   `outline`, `draft_md`, `report_md`, `store`, and `output_dir`. Frozen 0.1
-#'   compatibility fields `artifact_catalog` and `workflow_run` are also
-#'   returned temporarily.
+#'   `outline`, `draft_md`, `report_md`, `manifest`, `state`, `workspace`,
+#'   `retriever`, and `output_dir`. The compatibility field `store` references
+#'   the same object as `workspace`. Frozen 0.1 compatibility fields
+#'   `artifact_catalog` and `workflow_run` are also returned temporarily.
 #' @examples
 #' \dontrun{
 #' cfg <- tempest_config()
@@ -141,7 +164,8 @@ tempest_run <- function(
   progress = NULL,
   verbose = TRUE,
   artifact_catalog = NULL,
-  workflow_run = NULL
+  workflow_run = NULL,
+  .state = NULL
 ) {
   tempest_require("ellmer", "tempest_run() requires ellmer.")
   if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
@@ -228,38 +252,96 @@ tempest_run <- function(
   }
   steps <- unique(steps)
 
+  retriever_supplied <- !is.null(retriever)
   retriever <- retriever %||%
-    tempest_retriever(config = config, store = SourceStore$new())
-  store <- retriever$store
-  if (!is.null(experts)) {
-    store$set_artifact("experts", experts)
+    tempest_retriever(
+      config = config,
+      store = tempest_research_workspace()
+    )
+  retriever_config_digest <- tempest_retriever_config_digest(retriever)
+  if (
+    !is.null(retriever_config_digest) &&
+      !identical(
+        retriever_config_digest,
+        tempest_research_config_digest(config)
+      )
+  ) {
+    tempest_config_abort(c(
+      "{.arg retriever} does not match the supplied {.arg config}.",
+      x = paste0(
+        "A TempestRetriever must be created from the same ",
+        "behavior-relevant configuration."
+      )
+    ))
   }
+  workspace <- tempest_storm_retriever_workspace(retriever)
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_config_abort(
+      paste0(
+        "{.arg retriever} must expose a ResearchWorkspace at ",
+        "{.code retriever$store}."
+      )
+    )
+  }
+  store <- workspace
   run_dir <- tempest_prepare_run_dir(output_dir, topic, run_id = run_id)
   progress <- tempest_progress_callback(progress)
-  progress_run_id <- if (
+  supplied_run_id <- if (
     rlang::is_string(run_id) &&
       nzchar(tempest_trim(run_id))
   ) {
-    run_id
+    tempest_trim(run_id)
+  } else {
+    NULL
+  }
+  progress_run_id <- if (!is.null(supplied_run_id)) {
+    supplied_run_id
   } else if (!is.null(run_dir)) {
     basename(run_dir)
   } else {
     tempest_uuid("run")
   }
-  artifact_catalog <- artifact_catalog %||%
-    tempest_artifact_catalog(store = config@artifact_store)
-  if (
-    !is.null(workflow_run) &&
-      (!identical(workflow_run$source_store, store) ||
-        !identical(workflow_run$artifact_catalog, artifact_catalog))
-  ) {
-    tempest_config_abort(
-      paste0(
-        "{.arg workflow_run} must own the same evidence store and artifact ",
-        "catalog used by {.fn tempest_run}."
-      )
+  state <- if (is.null(.state)) {
+    tempest_storm_state(
+      topic = topic,
+      experts = experts %||% list()
+    )
+  } else {
+    tempest_storm_state_validate(.state)
+  }
+  if (!identical(state$topic, topic)) {
+    tempest_storm_state_abort(
+      "{.field topic} in {.arg .state} must match {.arg topic}."
     )
   }
+  if (length(experts %||% list()) > 0L && length(state$experts) > 0L) {
+    state_experts <- tempest_expert_records(state$experts)
+    supplied_experts <- tempest_expert_records(experts)
+    if (!identical(state_experts, supplied_experts)) {
+      tempest_storm_state_abort(
+        "{.field experts} in {.arg .state} must match {.arg experts}."
+      )
+    }
+  } else if (length(state$experts) == 0L && length(experts %||% list()) > 0L) {
+    state$experts <- experts
+    state <- tempest_storm_state_validate(state)
+  }
+  research_manifest <- tempest_research_manifest(
+    research_run_id = progress_run_id,
+    mode = "storm",
+    config = config,
+    programs = list(),
+    knowledge_snapshot = tempest_storm_snapshot_reference(workspace),
+    runtime = list(
+      deputy_session_ids = character(),
+      deputy_run_ids = character()
+    ),
+    traces = list(),
+    deliverables = list(),
+    status = "running"
+  )
+  artifact_catalog <- artifact_catalog %||%
+    tempest_artifact_catalog(store = config@artifact_store)
   current_progress_stage <- NA_character_
   emit_progress <- function(
     event_type,
@@ -328,6 +410,34 @@ tempest_run <- function(
       payload = payload
     )
   }
+  refresh_state_references <- function() {
+    cited_md <- state$report_md %||% state$draft_md %||% ""
+    cited_ids <- tempest_extract_citation_ids(cited_md)
+    state$references <<- Filter(
+      Negate(is.null),
+      lapply(cited_ids, function(id) workspace$get_source(id))
+    )
+    state <<- tempest_storm_state_validate(state)
+    invisible(state)
+  }
+  write_run_bundle <- function() {
+    refresh_state_references()
+    if (is.null(run_dir)) {
+      return(invisible(NULL))
+    }
+    tempest_save_run_artifacts(
+      run_dir,
+      workspace,
+      state,
+      research_manifest,
+      config = config,
+      steps = steps,
+      research_strategy = research_strategy,
+      parallel_writing = parallel_writing,
+      remove_duplicate = remove_duplicate,
+      artifact_catalog = artifact_catalog
+    )
+  }
   save_run_artifacts <- function(stage) {
     step <- paste0(stage, "_artifacts")
     if (!is.null(run_dir)) {
@@ -340,19 +450,7 @@ tempest_run <- function(
       )
     }
     tryCatch(
-      tempest_save_run_artifacts(
-        run_dir,
-        store,
-        topic = topic,
-        title = title,
-        config = config,
-        completed_stages = completed_stages,
-        steps = steps,
-        research_strategy = research_strategy,
-        parallel_writing = parallel_writing,
-        remove_duplicate = remove_duplicate,
-        artifact_catalog = artifact_catalog
-      ),
+      write_run_bundle(),
       error = function(e) {
         if (!is.null(run_dir)) {
           emit_progress(
@@ -379,8 +477,15 @@ tempest_run <- function(
       )
     }
   }
+  persist_terminal_state <- function() {
+    tryCatch(
+      write_run_bundle(),
+      error = function(error) invisible(NULL)
+    )
+    invisible(NULL)
+  }
 
-  completed_stages <- character()
+  completed_stages <- state$completed_stages
   run_manifest <- if (is.null(run_dir)) {
     NULL
   } else {
@@ -393,15 +498,73 @@ tempest_run <- function(
   ) {
     loaded_run <- tempest_load_run_artifacts(
       run_dir,
-      store,
+      workspace = if (retriever_supplied) workspace else NULL,
+      config = config,
+      run_id = supplied_run_id,
       artifact_catalog = artifact_catalog
     )
-    completed_stages <- loaded_run$completed_stages
+    workspace <- loaded_run$workspace
+    store <- workspace
+    if (!identical(tempest_storm_retriever_workspace(retriever), workspace)) {
+      retriever <- tempest_retriever(config = config, store = workspace)
+    }
+    state <- loaded_run$state
+    if (!identical(state$topic, topic)) {
+      tempest_abort(
+        paste0(
+          "Cannot resume a STORM research run for a different topic. ",
+          "The requested {.arg topic} must match the persisted state topic."
+        ),
+        class = tempest_persistence_error_class(
+          "tempest_run_resume_error"
+        )
+      )
+    }
+    completed_stages <- state$completed_stages
+    research_manifest <- loaded_run$research_manifest
+    terminal_status <- research_manifest@status
+    pending_steps <- setdiff(steps, completed_stages)
+    if (terminal_status %in% c("failed", "cancelled")) {
+      tempest_abort(
+        paste0(
+          "Cannot resume a {.val {terminal_status}} STORM research run. ",
+          "Start a new run with a new {.arg run_id}."
+        ),
+        class = tempest_persistence_error_class(
+          "tempest_run_resume_error"
+        )
+      )
+    }
+    if (identical(terminal_status, "succeeded") && length(pending_steps) > 0L) {
+      tempest_abort(
+        paste0(
+          "Cannot execute additional stages for a succeeded STORM research ",
+          "run. Start a new run with a new {.arg run_id}."
+        ),
+        class = tempest_persistence_error_class(
+          "tempest_run_resume_error"
+        )
+      )
+    }
+    progress_run_id <- research_manifest@research_run_id
     if (verbose && length(completed_stages) > 0) {
       tempest_inform(
         "Loaded persisted STORM stages from {.path {run_dir}}: {paste(completed_stages, collapse = ', ')}"
       )
     }
+  }
+
+  if (
+    !is.null(workflow_run) &&
+      (!identical(workflow_run$source_store, workspace) ||
+        !identical(workflow_run$artifact_catalog, artifact_catalog))
+  ) {
+    tempest_config_abort(
+      paste0(
+        "{.arg workflow_run} must own the same evidence store and artifact ",
+        "catalog used by {.fn tempest_run}."
+      )
+    )
   }
 
   emit_progress(
@@ -457,13 +620,13 @@ tempest_run <- function(
         )
       )
 
-      title <- store$get_artifact("title") %||% topic
-      perspectives <- NULL
-      experts <- experts %||% list()
+      title <- state$title
+      perspectives <- state$perspectives
+      experts <- state$experts
       expert_chats <- list() # Created per-perspective
-      outline <- NULL
-      draft_md <- NULL
-      report_md <- NULL
+      outline <- state$outline
+      draft_md <- state$draft_md
+      report_md <- state$report_md
 
       if (
         "perspectives" %in%
@@ -524,8 +687,8 @@ tempest_run <- function(
         )
         title <- plan$title %||% topic
         perspectives <- plan$perspectives %||% list()
-        store$set_artifact("perspectives", perspectives)
-        store$set_artifact("title", title)
+        state$title <- title
+        state$perspectives <- perspectives
 
         if (length(experts) == 0L) {
           if (verbose) {
@@ -539,11 +702,13 @@ tempest_run <- function(
             module = dsprrr_modules$personas
           )
         }
-        store$set_artifact("experts", experts)
+        state$experts <- experts
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "perspectives"
         )
+        state$completed_stages <- completed_stages
+        state <- tempest_storm_state_validate(state)
         save_run_artifacts("perspectives")
         emit_stage_succeeded(
           "perspectives",
@@ -561,9 +726,9 @@ tempest_run <- function(
         ) {
           tempest_inform("Using persisted perspectives from {.path {run_dir}}")
         }
-        title <- store$get_artifact("title") %||% title
-        perspectives <- store$get_artifact("perspectives") %||% list()
-        experts <- store$get_artifact("experts") %||% experts
+        title <- state$title
+        perspectives <- state$perspectives
+        experts <- state$experts
         experts <- tempest_validate_experts(experts)
         if ("perspectives" %in% steps) {
           emit_stage_skipped(
@@ -599,6 +764,7 @@ tempest_run <- function(
             description = "General overview",
             key_questions = c(topic)
           ))
+          state$perspectives <- perspectives
         }
 
         if (
@@ -901,11 +1067,12 @@ tempest_run <- function(
           }
         }
 
-        store$set_artifact("claims", store$list_claims())
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "research"
         )
+        state$completed_stages <- completed_stages
+        state <- tempest_storm_state_validate(state)
         save_run_artifacts("research")
         emit_stage_succeeded(
           "research",
@@ -958,7 +1125,7 @@ tempest_run <- function(
           title,
           module = dsprrr_modules$draft_outline
         )
-        store$set_artifact("draft_outline", draft_outline)
+        state$draft_outline <- draft_outline
 
         # Step 2: Refined outline incorporating facts
         facts_txt <- tempest_summarize_facts_for_prompt(store, max_items = 80)
@@ -970,11 +1137,13 @@ tempest_run <- function(
           facts_txt,
           module = dsprrr_modules$refined_outline
         )
-        store$set_artifact("outline", outline)
+        state$outline <- outline
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "outline"
         )
+        state$completed_stages <- completed_stages
+        state <- tempest_storm_state_validate(state)
         save_run_artifacts("outline")
         emit_stage_succeeded(
           "outline",
@@ -989,7 +1158,7 @@ tempest_run <- function(
         ) {
           tempest_inform("Using persisted outline from {.path {run_dir}}")
         }
-        outline <- store$get_artifact("outline")
+        outline <- state$outline
         if ("outline" %in% steps) {
           emit_stage_skipped(
             "outline",
@@ -1058,13 +1227,14 @@ tempest_run <- function(
           verbose = verbose
         )
         draft_md <- paste0(lead_section, "\n\n", draft_md)
-        store$set_artifact("lead_section", lead_section)
-
-        store$set_artifact("draft_md", draft_md)
+        state$lead_section <- lead_section
+        state$draft_md <- draft_md
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "write"
         )
+        state$completed_stages <- completed_stages
+        state <- tempest_storm_state_validate(state)
         save_run_artifacts("write")
         emit_stage_succeeded(
           "write",
@@ -1079,7 +1249,7 @@ tempest_run <- function(
         ) {
           tempest_inform("Using persisted draft article from {.path {run_dir}}")
         }
-        draft_md <- store$get_artifact("draft_md")
+        draft_md <- state$draft_md
         if ("write" %in% steps) {
           emit_stage_skipped(
             "write",
@@ -1161,11 +1331,13 @@ tempest_run <- function(
           deliverable_result
         )
         report_md <- report_artifact@content
-        store$set_artifact("report_md", report_md)
+        state$report_md <- report_md
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "polish"
         )
+        state$completed_stages <- completed_stages
+        state <- tempest_storm_state_validate(state)
         save_run_artifacts("polish")
         emit_stage_succeeded(
           "polish",
@@ -1182,7 +1354,7 @@ tempest_run <- function(
             "Using persisted polished report from {.path {run_dir}}"
           )
         }
-        report_md <- store$get_artifact("report_md")
+        report_md <- state$report_md
         if (
           !is.null(report_md) &&
             !artifact_catalog$has("report_md")
@@ -1214,6 +1386,24 @@ tempest_run <- function(
           payload = list(artifact = "report_md", persisted = !is.null(run_dir))
         )
       }
+      product_complete <- tempest_storm_state_is_complete(state)
+      if (
+        identical(research_manifest@status, "running") &&
+          isTRUE(product_complete)
+      ) {
+        running_manifest <- research_manifest
+        research_manifest <- tempest_research_manifest_update(
+          research_manifest,
+          status = "succeeded"
+        )
+        tryCatch(
+          write_run_bundle(),
+          error = function(error) {
+            research_manifest <<- running_manifest
+            stop(error)
+          }
+        )
+      }
       emit_progress(
         "workflow",
         "succeeded",
@@ -1228,7 +1418,10 @@ tempest_run <- function(
         outline = outline,
         draft_md = draft_md,
         report_md = report_md,
-        store = store,
+        manifest = research_manifest,
+        state = state,
+        workspace = workspace,
+        store = workspace,
         artifact_catalog = artifact_catalog,
         retriever = retriever,
         workflow_run = workflow_run,
@@ -1238,6 +1431,13 @@ tempest_run <- function(
     error = function(e) {
       if (inherits(e, "tempest_progress_callback_error")) {
         return()
+      }
+      if (identical(research_manifest@status, "running")) {
+        research_manifest <<- tempest_research_manifest_update(
+          research_manifest,
+          status = "failed"
+        )
+        persist_terminal_state()
       }
       stage <- current_progress_stage
       if (!is.na(stage)) {
@@ -1259,6 +1459,13 @@ tempest_run <- function(
     interrupt = function(e) {
       if (inherits(e, "tempest_progress_callback_error")) {
         return()
+      }
+      if (identical(research_manifest@status, "running")) {
+        research_manifest <<- tempest_research_manifest_update(
+          research_manifest,
+          status = "cancelled"
+        )
+        persist_terminal_state()
       }
       stage <- current_progress_stage
       emit_progress(

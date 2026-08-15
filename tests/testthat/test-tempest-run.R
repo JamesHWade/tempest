@@ -144,7 +144,7 @@ test_that("run preflights requested deliverables and input resources", {
     class = "tempest_run_preflight_error"
   )
 
-  store <- SourceStore$new()
+  store <- tempest_research_workspace()
   resource <- tempest_resource(
     resource_kind = "host.document",
     locator = "documents/approved",
@@ -167,6 +167,29 @@ test_that("run preflights requested deliverables and input resources", {
   )
 
   expect_equal(run$status, "succeeded")
+  snapshot <- tempest_run_snapshot(run)
+  restored <- tempest_run_restore(snapshot, runtime = registry)
+  expect_identical(snapshot$source_store$schema_version, 4L)
+  expect_r6_class(restored$source_store, "ResearchWorkspace")
+  expect_identical(inherits(restored$source_store, "SourceStore"), FALSE)
+  expect_identical(
+    restored$source_store$get_resource(resource@resource_id),
+    resource
+  )
+  fractional <- snapshot
+  fractional$source_store$schema_version <- 4.5
+  expect_error(
+    tempest_run_restore(fractional, runtime = registry),
+    class = "tempest_run_restore_error"
+  )
+  expect_error(
+    tempest_run_restore(
+      snapshot,
+      runtime = registry,
+      source_store = quiet_source_store()
+    ),
+    class = "tempest_run_restore_error"
+  )
 })
 
 test_that("run execution is deterministic with attempts and ordered events", {
@@ -1588,7 +1611,7 @@ test_that("restore rejects state substitution and gates partial recovery", {
     generator_id = "generate",
     renderer_ids = "render"
   )
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   store$upsert_source(tempest:::tempest_source(
     "https://example.com/restored-source",
     title = "Restored source"
@@ -1630,7 +1653,7 @@ test_that("restore rejects state substitution and gates partial recovery", {
     tempest_run_restore(
       snapshot,
       runtime = registry,
-      source_store = SourceStore$new()
+      source_store = quiet_source_store()
     ),
     class = "tempest_run_restore_error"
   )

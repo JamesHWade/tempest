@@ -23,7 +23,7 @@ tempest_run_resume(
 
 \item{artifact_catalog}{Optional process-local catalog override.}
 
-\item{source_store}{Optional process-local evidence-store override.}
+\item{source_store}{Optional process-local \link{ResearchWorkspace} override.}
 
 \item{runtime_context}{Process-local services to reattach to operations and
 capability factories. These values are never read from disk.}

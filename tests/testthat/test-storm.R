@@ -19,6 +19,41 @@ test_that("tempest_run rejects invalid runtime budgets before provider work", {
   }
 })
 
+test_that("tempest_run rejects a mismatched TempestRetriever before execution", {
+  skip_if_not_installed("ellmer")
+  chat_calls <- 0L
+  run_config <- tempest_config(
+    max_search_results = 2L,
+    chat_fn = function(role, model, system_prompt, echo) {
+      chat_calls <<- chat_calls + 1L
+      fake_chat()
+    }
+  )
+  retriever_config <- tempest_config(
+    max_search_results = 3L,
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  retriever <- tempest_retriever(config = retriever_config)
+
+  expect_error(
+    tempest_run(
+      "Retriever config identity",
+      config = run_config,
+      retriever = retriever,
+      experts = list(test_expert(
+        expert_id = "expert.retriever-config",
+        name = "Retriever Config Expert"
+      )),
+      dsprrr_modules = list(),
+      steps = "perspectives",
+      verbose = FALSE
+    ),
+    class = "tempest_config_error",
+    regexp = "same behavior-relevant configuration"
+  )
+  expect_equal(chat_calls, 0L)
+})
+
 test_that("generated experts normalize to stable S7 profiles", {
   provider_result <- list(
     personas = list(
@@ -94,8 +129,8 @@ test_that("tempest_run uses the selected expert team", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  store <- SourceStore$new()
-  retriever <- tempest_retriever(config = cfg, store = store)
+  workspace <- tempest_research_workspace()
+  retriever <- tempest_retriever(config = cfg, store = workspace)
   local_mocked_bindings(
     tempest_wiki_search = function(query, limit = 8L) {
       tibble::tibble(
@@ -137,8 +172,46 @@ test_that("tempest_run uses the selected expert team", {
   )
 
   expect_identical(result$experts[[1]], expert)
-  expect_identical(store$get_artifact("experts")[[1]], expert)
+  expect_identical(result$workspace, workspace)
+  expect_identical(result$store, workspace)
+  expect_identical(result$manifest@mode, "storm")
+  expect_equal("artifacts" %in% names(result$workspace), FALSE)
   expect_null(result$personas)
+})
+
+test_that("tempest_run continues from fixed product state", {
+  skip_if_not_installed("ellmer")
+  fixture <- storm_progress_fixture()
+
+  first <- tempest_run(
+    "State continuation",
+    config = fixture$config,
+    retriever = fixture$retriever,
+    n_experts = 1,
+    max_questions_per_perspective = 1,
+    dsprrr_modules = list(),
+    steps = c("perspectives", "research", "outline"),
+    verbose = FALSE
+  )
+  continued <- tempest_run(
+    "State continuation",
+    config = fixture$config,
+    retriever = fixture$retriever,
+    experts = first$experts,
+    dsprrr_modules = list(),
+    steps = "write",
+    verbose = FALSE,
+    .state = first$state
+  )
+
+  expect_identical(continued$state$outline, first$state$outline)
+  expect_match(continued$state$draft_md, "Section body cites events")
+  expect_identical(
+    continued$state$completed_stages,
+    c("perspectives", "research", "outline", "write")
+  )
+  expect_identical(continued$workspace, first$workspace)
+  expect_equal("artifacts" %in% names(continued$state), FALSE)
 })
 
 test_that("tempest_run resume starts fresh when no manifest exists", {
@@ -166,6 +239,165 @@ test_that("tempest_run resume starts fresh when no manifest exists", {
   expect_identical(loader_called, FALSE)
 })
 
+test_that("tempest_run rejects a resumed checkpoint for another topic", {
+  skip_if_not_installed("ellmer")
+  chat_calls <- 0L
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      chat_calls <<- chat_calls + 1L
+      fake_chat()
+    }
+  )
+  output_root <- withr::local_tempdir()
+  run_id <- "topic-identity"
+  run_dir <- tempest:::tempest_prepare_run_dir(
+    output_root,
+    "Persisted topic",
+    run_id = run_id
+  )
+  tempest:::tempest_save_run_artifacts(
+    run_dir,
+    tempest_research_workspace(),
+    tempest:::tempest_storm_state("Persisted topic"),
+    tempest_research_manifest(run_id, config = config),
+    config = config,
+    steps = "write",
+    research_strategy = "key_questions"
+  )
+
+  expect_error(
+    tempest_run(
+      "Different requested topic",
+      config = config,
+      dsprrr_modules = list(),
+      steps = "write",
+      output_dir = output_root,
+      resume = TRUE,
+      run_id = run_id,
+      verbose = FALSE
+    ),
+    class = "tempest_run_resume_error",
+    regexp = "different topic"
+  )
+  expect_equal(chat_calls, 0L)
+})
+
+test_that("tempest_run preserves absorbing terminal manifest identities", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  output_root <- withr::local_tempdir()
+
+  for (terminal_status in c("failed", "cancelled")) {
+    run_id <- paste0("terminal-", terminal_status)
+    run_dir <- tempest:::tempest_prepare_run_dir(
+      output_root,
+      "Terminal resume",
+      run_id = run_id
+    )
+    workspace <- tempest_research_workspace()
+    manifest <- tempest_research_manifest(
+      run_id,
+      config = cfg,
+      status = terminal_status
+    )
+    tempest:::tempest_save_run_artifacts(
+      run_dir,
+      workspace,
+      tempest:::tempest_storm_state("Terminal resume"),
+      manifest,
+      config = cfg,
+      steps = "write",
+      research_strategy = "key_questions"
+    )
+
+    expect_error(
+      tempest_run(
+        "Terminal resume",
+        config = cfg,
+        retriever = tempest_retriever(config = cfg, store = workspace),
+        steps = "write",
+        dsprrr_modules = list(),
+        output_dir = output_root,
+        resume = TRUE,
+        run_id = run_id,
+        verbose = FALSE
+      ),
+      class = "tempest_run_resume_error"
+    )
+    persisted <- tempest:::tempest_read_json_strict(file.path(
+      run_dir,
+      "run_config.json"
+    ))
+
+    expect_identical(persisted$research_manifest$status, terminal_status)
+    expect_identical(
+      persisted$research_manifest$research_run_id,
+      run_id
+    )
+  }
+
+  run_dir <- tempest:::tempest_prepare_run_dir(
+    output_root,
+    "Completed resume",
+    run_id = "terminal-succeeded"
+  )
+  state <- tempest:::tempest_storm_state(
+    "Completed resume",
+    draft_md = "# Completed resume",
+    report_md = "# Completed resume",
+    completed_stages = "polish"
+  )
+  manifest <- tempest_research_manifest(
+    "terminal-succeeded",
+    config = cfg,
+    status = "succeeded"
+  )
+  tempest:::tempest_save_run_artifacts(
+    run_dir,
+    tempest_research_workspace(),
+    state,
+    manifest,
+    config = cfg,
+    steps = "polish",
+    research_strategy = "key_questions"
+  )
+
+  loaded <- tempest_run(
+    "Completed resume",
+    config = cfg,
+    steps = "polish",
+    dsprrr_modules = list(),
+    output_dir = output_root,
+    resume = TRUE,
+    run_id = "terminal-succeeded",
+    verbose = FALSE
+  )
+  expect_identical(loaded$manifest@status, "succeeded")
+  expect_identical(loaded$manifest@research_run_id, "terminal-succeeded")
+  expect_identical(loaded$state, state)
+
+  expect_error(
+    tempest_run(
+      "Completed resume",
+      config = cfg,
+      steps = "write",
+      dsprrr_modules = list(),
+      output_dir = output_root,
+      resume = TRUE,
+      run_id = "terminal-succeeded",
+      verbose = FALSE
+    ),
+    class = "tempest_run_resume_error"
+  )
+  persisted <- tempest:::tempest_read_json_strict(file.path(
+    run_dir,
+    "run_config.json"
+  ))
+  expect_identical(persisted$research_manifest$status, "succeeded")
+})
+
 test_that("tempest_run emits ordered STORM progress events", {
   skip_if_not_installed("ellmer")
   local_mocked_bindings(
@@ -186,7 +418,7 @@ test_that("tempest_run emits ordered STORM progress events", {
     content_text = "Progress uses staged events and persisted artifacts."
   )
   source_id <- source$id
-  store <- SourceStore$new()
+  store <- tempest_research_workspace()
   store$upsert_source(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
   outline <- list(
@@ -457,9 +689,9 @@ test_that("STORM research harvests OpenAI native annotations", {
 
   expect_equal(result$sources[[1]]$id, source_id)
   expect_equal(result$sources[[1]]$title, "STORM Native Source")
-  result_store <- SourceStore$new()
-  result_store$upsert_source(result$sources[[1]])
-  sources <- tempest_sources(result_store)
+  result_workspace <- tempest_research_workspace()
+  result_workspace$upsert_source(result$sources[[1]])
+  sources <- tempest_sources(result_workspace)
   expect_match(sources$snippet[[1]], "STORM native-backed claim")
   expect_match(sources$context_text[[1]], "STORM native-backed claim")
   expect_length(result$claims, 1L)
@@ -525,14 +757,20 @@ test_that("tempest_run emits terminal progress events on failure", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
+  output_root <- withr::local_tempdir()
 
   expect_error(
     tempest_run(
       "Progress failure",
       config = cfg,
-      retriever = tempest_retriever(config = cfg, store = SourceStore$new()),
+      retriever = tempest_retriever(
+        config = cfg,
+        store = tempest_research_workspace()
+      ),
       steps = "write",
       dsprrr_modules = list(),
+      output_dir = output_root,
+      run_id = "failed-storm-run",
       progress = collector$record,
       verbose = FALSE
     ),
@@ -555,4 +793,66 @@ test_that("tempest_run emits terminal progress events on failure", {
       "workflow:NA:failed"
     )
   )
+  persisted <- tempest:::tempest_read_json_strict(file.path(
+    output_root,
+    "failed-storm-run",
+    "run_config.json"
+  ))
+  expect_identical(persisted$research_manifest$status, "failed")
+  expect_equal("write" %in% unlist(persisted$completed_stages), FALSE)
+})
+
+test_that("final STORM persistence failure is recorded without masking it", {
+  skip_if_not_installed("ellmer")
+  fixture <- storm_progress_fixture()
+  output_root <- withr::local_tempdir()
+  original_save <- tempest:::tempest_save_run_artifacts
+  local_mocked_bindings(
+    tempest_save_run_artifacts = function(
+      run_dir,
+      workspace,
+      state,
+      research_manifest,
+      ...
+    ) {
+      if (identical(research_manifest@status, "succeeded")) {
+        rlang::abort(
+          "Final persistence failed.",
+          class = "test_terminal_persistence_error"
+        )
+      }
+      original_save(
+        run_dir,
+        workspace,
+        state,
+        research_manifest,
+        ...
+      )
+    }
+  )
+
+  condition <- tryCatch(
+    tempest_run(
+      "Terminal persistence",
+      config = fixture$config,
+      retriever = fixture$retriever,
+      n_experts = 1,
+      max_questions_per_perspective = 1,
+      dsprrr_modules = list(),
+      output_dir = output_root,
+      run_id = "terminal-persistence",
+      verbose = FALSE
+    ),
+    error = \(error) error
+  )
+  persisted <- tempest:::tempest_read_json_strict(file.path(
+    output_root,
+    "terminal-persistence",
+    "run_config.json"
+  ))
+
+  expect_s3_class(condition, "test_terminal_persistence_error")
+  expect_identical(conditionMessage(condition), "Final persistence failed.")
+  expect_identical(persisted$research_manifest$status, "failed")
+  expect_contains(unlist(persisted$completed_stages), "polish")
 })

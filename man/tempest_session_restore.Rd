@@ -38,8 +38,9 @@ A restored \link{TempestSession}.
 \details{
 \code{tempest_session_restore()} rebuilds a \link{TempestSession} from a structured
 snapshot created by \code{\link[=tempest_session_snapshot]{tempest_session_snapshot()}} or read by
-\code{\link[=tempest_session_resume]{tempest_session_resume()}}. It restores durable research state and creates
-fresh chat/tool handles using the supplied runtime and \code{config}.
+\code{\link[=tempest_session_resume]{tempest_session_resume()}}. It restores the research manifest and
+authoritative workspace, reestablishes the \code{store} compatibility alias, and
+creates fresh chat/tool handles using the supplied runtime and \code{config}.
 
 Historical progress events are restored as session artifact data and can be
 reduced with \code{\link[=tempest_progress_state]{tempest_progress_state()}}. They are not replayed into the new

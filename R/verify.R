@@ -72,7 +72,8 @@ tempest_empty_citation_audit <- function() {
 
 #' Verify claim citations against their sources
 #'
-#' @param store A `SourceStore` holding claims and sources.
+#' @param store A [ResearchWorkspace] holding provisional claims and retrieved
+#'   sources.
 #' @param verifier A chat object (e.g. from `tempest_make_chat(config, "judge")`).
 #' @param policy Citation policy; verification runs only for "claim_verified" or
 #'   "strict". Defaults to "claim_verified".
@@ -92,19 +93,24 @@ tempest_verify_claims <- function(
   modules = NULL,
   min_support_score = 0.7
 ) {
-  stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(store, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg store} must be a ResearchWorkspace."
+    )
+  }
+  workspace <- store
   if (!policy %in% c("claim_verified", "strict")) {
     audit <- tempest_empty_citation_audit()
-    store$set_artifact("citation_audit", audit)
-    return(audit)
+    workspace$set_citation_audit(audit)
+    return(workspace$citation_audit)
   }
   min_support_score <- tempest_normalize_min_support_score(min_support_score)
-  claims <- store$list_claims()
+  claims <- workspace$list_claims()
   rows <- purrr::map(claims, function(claim) {
     v <- tryCatch(
       tempest_verify_one_claim(
         claim,
-        store,
+        workspace,
         verifier,
         module = modules[["verify_claim_support"]]
       ),
@@ -141,7 +147,7 @@ tempest_verify_claims <- function(
       score,
       min_support_score = min_support_score
     )
-    store$verify_claim(
+    workspace$verify_claim(
       claim@claim_id,
       status = status,
       score = score,
@@ -160,6 +166,6 @@ tempest_verify_claims <- function(
   } else {
     do.call(rbind, rows)
   }
-  store$set_artifact("citation_audit", audit)
-  audit
+  workspace$set_citation_audit(audit)
+  workspace$citation_audit
 }

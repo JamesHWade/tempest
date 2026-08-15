@@ -95,7 +95,7 @@ test_that("built-in STORM operations execute through TempestRun", {
       tempest:::tempest_workflow_checkpoint_spec(),
       report
     ),
-    source_store = SourceStore$new()
+    source_store = tempest_research_workspace()
   )
 
   expect_equal(run$status, "succeeded")
@@ -118,6 +118,25 @@ test_that("built-in STORM operations execute through TempestRun", {
     "research"
   )
   expect_equal(run$artifact("report_md")@content, "# Test report")
+})
+
+test_that("generic STORM defaults to one product ResearchWorkspace", {
+  local_mocked_bindings(
+    tempest_run_workflow = function(...) list(...)
+  )
+
+  arguments <- tempest_storm_workflow_run(
+    "Workspace-backed STORM",
+    config = tempest_config(cache_dir = withr::local_tempdir()),
+    verbose = FALSE
+  )
+
+  workspace <- arguments$source_store
+  retriever <- arguments$runtime_context$retriever
+  expect_r6_class(workspace, "ResearchWorkspace")
+  expect_identical(inherits(workspace, "SourceStore"), FALSE)
+  expect_identical(retriever$workspace, workspace)
+  expect_identical(retriever$store, workspace)
 })
 
 test_that("generic STORM run reuses existing stages and shared state", {
@@ -237,6 +256,19 @@ test_that("generic STORM run reuses existing stages and shared state", {
     run$artifact("storm.outline")@content$state$store_artifact_ids,
     "outline"
   )
+  outline_state <- tempest:::tempest_storm_state_from_record(
+    run$artifact("storm.outline")@content$state$storm_state
+  )
+  expect_identical(
+    outline_state$completed_stages,
+    c("perspectives", "research", "outline")
+  )
+  expect_identical(
+    tempest:::tempest_storm_state_from_record(
+      run$artifact("storm.draft")@content$state$storm_state
+    )$outline,
+    outline_state$outline
+  )
 })
 
 test_that("generic STORM recomputes research assignments after expert generation", {
@@ -299,7 +331,9 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
 
   expect_equal(run$status, "awaiting_approval")
   expect_identical(session$workflow_run, run)
-  expect_identical(run$source_store, session$store)
+  expect_identical(run$source_store, session$workspace)
+  expect_identical(session$store, session$workspace)
+  expect_identical(inherits(run$source_store, "SourceStore"), FALSE)
   expect_identical(run$artifact_catalog, session$artifact_catalog)
   expect_identical(
     run$experts,
@@ -325,6 +359,7 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
     snapshot$workflow_run$workflow$workflow_id,
     "tempest.costorm"
   )
+  expect_identical(snapshot$workflow_run$source_store$schema_version, 4L)
   bundle <- file.path(withr::local_tempdir(), "costorm-session")
   tempest_session_save(session, bundle)
   expect_true(file.exists(file.path(bundle, "workflow_run.json")))
@@ -332,7 +367,7 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
   run <- session$workflow_run
   expect_r6_class(run, "TempestRun")
   expect_equal(tempest_run_status(run), "awaiting_approval")
-  expect_identical(run$source_store, session$store)
+  expect_identical(run$source_store, session$workspace)
   expect_identical(run$artifact_catalog, session$artifact_catalog)
 
   session$add_turn(
@@ -381,7 +416,7 @@ test_that("Co-STORM adapter rejects session and run scope mismatches", {
   run <- tempest_costorm_workflow_run(session, verbose = FALSE)
   adapter <- tempest_costorm_workflow_adapter(session, verbose = FALSE)
   context <- list(
-    source_store = session$store,
+    source_store = session$workspace,
     artifact_catalog = session$artifact_catalog
   )
 

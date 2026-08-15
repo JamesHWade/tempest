@@ -544,8 +544,11 @@ tempest_research_one_perspective <- function(
   expert_id <- expert_record$expert_id
   perspective_id <- as.character(p$id %||% i)
 
-  local_store <- SourceStore$new()
-  local_retriever <- tempest_retriever(config = config, store = local_store)
+  local_workspace <- tempest_research_workspace()
+  local_retriever <- tempest_retriever(
+    config = config,
+    store = local_workspace
+  )
 
   sp <- tempest_render_expert_prompt(
     persona = expert_profile,
@@ -656,13 +659,13 @@ tempest_research_one_perspective <- function(
         harvest <- tempest_turn_answer_and_sources(
           expert_chat,
           ans,
-          local_store
+          local_workspace
         )
         tryCatch(
           tempest_extract_facts_from_answer(
             extractor,
             harvest$answer_text,
-            local_store,
+            local_workspace,
             module = modules$extract_claims,
             source_ids = harvest$source_ids,
             session_id = run_id,
@@ -678,8 +681,8 @@ tempest_research_one_perspective <- function(
   }
 
   list(
-    sources = local_store$list_sources(),
-    claims = local_store$list_claims()
+    sources = local_workspace$list_sources(),
+    claims = local_workspace$list_claims()
   )
 }
 

@@ -33,7 +33,7 @@ objects.}
 \item{partial_recovery}{Whether to allow explicitly requested recovery when
 allowlisted presentation files are missing or fail integrity checks. All
 other declared files, including workflow, permission, grant, expert,
-runtime, store, and typed-artifact state, must pass integrity checks.}
+runtime, workspace, and typed-artifact state, must pass integrity checks.}
 
 \item{codec_registry}{Optional \code{\link[=tempest_artifact_codec_registry]{tempest_artifact_codec_registry()}} containing
 host-defined codecs needed to decode typed artifact content.}

@@ -24,11 +24,13 @@ Invisibly returns the normalized bundle directory.
 }
 \details{
 \code{tempest_session_save()} writes a schema-versioned directory bundle for a
-\link{TempestSession}. The bundle stores durable research state plus a typed
-artifact catalog. Inline artifacts use explicit UTF-8 or canonical JSON
-codecs, every declared file is checksummed, and the \code{session.json} manifest
-is written last. Live chat handles, registered tool closures, Shiny reactive
-state, credentials, and raw provider request bodies are not serialized.
+\link{TempestSession}. The bundle stores the research manifest, authoritative
+workspace, and typed artifact catalog. The deprecated \code{store} alias is not
+serialized separately. Inline artifacts use explicit UTF-8 or canonical
+JSON codecs, every declared file is checksummed, and the \code{session.json}
+manifest is written last. Live chat handles, registered tool closures,
+Shiny reactive state, credentials, and raw provider request bodies are not
+serialized.
 
 Use \code{\link[=tempest_session_resume]{tempest_session_resume()}} to load the bundle with a fresh runtime
 \link{TempestConfig} and \code{\link[=tempest_runtime]{tempest_runtime()}}.

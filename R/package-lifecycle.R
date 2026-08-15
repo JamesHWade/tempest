@@ -91,6 +91,7 @@ tempest_generic_kernel_exports <- c(
 #' open-ended agent work uses Deputy; accepted knowledge uses graft snapshots
 #' and commits; provisional scientific evidence remains in Tempest; and reports
 #' and promotion plans become product-specific bundles.
-#'
+#' @seealso [tempest_run()] and [tempest_session()] for the supported research
+#'   product APIs.
 #' @name tempest-generic-kernel-retirement
 NULL

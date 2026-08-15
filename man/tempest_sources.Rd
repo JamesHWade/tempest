@@ -10,7 +10,7 @@ tempest_sources(store)
 tempest_resources(store)
 }
 \arguments{
-\item{store}{A \code{SourceStore} or \code{TempestRetriever}.}
+\item{store}{A \link{ResearchWorkspace} or \link{TempestRetriever}.}
 }
 \value{
 A tibble with resource identity, kind, opaque locator, optional web

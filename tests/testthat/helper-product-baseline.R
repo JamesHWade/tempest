@@ -422,7 +422,7 @@ storm_resume_baseline_fixture <- function() {
     verbose = FALSE
   )
 
-  restored_store <- SourceStore$new()
+  restored_store <- tempest_research_workspace()
   restored_events <- tempest_progress_collector(include_payload = TRUE)
   restored <- tempest_run(
     "Progress events",
@@ -536,7 +536,7 @@ costorm_product_baseline_fixture <- function() {
     content_text = "Co-STORM preserves research evidence across dialogue."
   )
   source_id <- source$id
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   store$upsert_source(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
   mindmap <- list(

@@ -43,7 +43,7 @@ test_that("runtime resolves expert skill requirements before capabilities", {
   )
   retriever <- tempest_retriever(
     config = tempest_config(search_provider = "wikipedia"),
-    store = SourceStore$new()
+    store = quiet_source_store()
   )
   runtime <- tempest_runtime(
     operations = operations,

@@ -11,7 +11,9 @@ This package reproduces the core workflow primitives:
 
 - **Multi-perspective research** with selected or automatically generated
   expert profiles
-- **Evidence tracking** with citations and source attribution
+- **Provisional evidence workspaces** with citations and source attribution
+- **Research manifests** that identify configuration, programs, knowledge
+  snapshots, traces, and deliverables
 - **Resumable research state** for scripted STORM and interactive Co-STORM
 - **Two-step outline refinement** and **lead section generation**
 - **Query decomposition** and **semantic fact retrieval**
@@ -96,8 +98,8 @@ resources <- tempest_okf_resources(
   include_stale = FALSE
 )
 
-evidence <- SourceStore$new()
-invisible(lapply(resources, evidence$upsert_resource))
+workspace <- tempest_research_workspace()
+invisible(lapply(resources, workspace$upsert_resource))
 
 context <- tempest_okf_context(
   knowledge,
@@ -113,6 +115,15 @@ trust and freshness signals, and never follows links or executes referenced
 code. Reading, converting, and adding resources are separate operations so the
 host retains the write boundary. An OKF document cannot grant capabilities,
 change policy, approve output, or authorize an action.
+
+STORM results expose a `manifest`, validated `state`, and authoritative
+`workspace`; Co-STORM sessions expose the same manifest/workspace identity.
+Session correlation fields and retriever configuration are read-only, while
+the pinned workspace remains mutable through its explicit methods. The
+workspace contains only provisional run material and opaque references to
+accepted knowledge; acceptance still requires an explicit graft review and
+commit. The legacy `store` projection references that same workspace, and
+`SourceStore` remains a deprecated compatibility subclass for one release.
 
 Graft can export current or historical accepted revisions directly into this
 format. Read [Use Open Knowledge Format with

@@ -23,7 +23,7 @@ tempest_run_restore(
 
 \item{artifact_catalog}{Optional restored catalog override.}
 
-\item{source_store}{Optional restored evidence-store override.}
+\item{source_store}{Optional restored \link{ResearchWorkspace} override.}
 
 \item{runtime_context}{Process-local services to reattach after restore.}
 

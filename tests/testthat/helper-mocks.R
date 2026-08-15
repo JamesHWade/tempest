@@ -65,7 +65,7 @@ fake_source <- function(
 }
 
 fake_store_with_sources <- function(n = 2) {
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   for (i in seq_len(n)) {
     store$upsert_source(fake_source(
       url = paste0("https://example.org/", i),

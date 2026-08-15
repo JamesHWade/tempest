@@ -17,6 +17,29 @@ test_that("report renders verification badges under claim_verified", {
   expect_match(md, "✓") # check mark badge for supported
 })
 
+test_that("citation helpers consume a ResearchWorkspace directly", {
+  workspace <- tempest_research_workspace()
+  source <- fake_source("https://example.org/workspace")
+  workspace$upsert_source(source)
+  claim <- tempest_claim(
+    claim_text = "Workspace evidence is provisional.",
+    source_ids = source$id
+  )
+  workspace$add_claim(claim)
+
+  expect_equal(tempest_sources(workspace)$id, source$id)
+  expect_equal(tempest_claims(workspace)$claim_id, claim@claim_id)
+  expect_match(
+    tempest_report_md(
+      "Workspace report",
+      paste0("Workspace evidence [", source$id, "]."),
+      workspace
+    ),
+    "## References",
+    fixed = TRUE
+  )
+})
+
 test_that("strict policy flags unsupported citations", {
   store <- fake_store_with_sources(1)
   s1 <- store$list_sources()[[1]]$id

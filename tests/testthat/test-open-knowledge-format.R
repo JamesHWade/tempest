@@ -100,9 +100,9 @@ test_that("OKF concepts become fingerprinted evidence resources explicitly", {
   Encoding(expected_content) <- "UTF-8"
   expect_identical(assessment@content, expected_content)
 
-  store <- SourceStore$new()
-  invisible(lapply(resources, store$upsert_resource))
-  expect_length(store$list_resources(), 3L)
+  workspace <- tempest_research_workspace()
+  invisible(lapply(resources, workspace$upsert_resource))
+  expect_length(workspace$list_resources(), 3L)
 })
 
 test_that("OKF context is bounded and states the trust boundary", {

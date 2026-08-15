@@ -1,5 +1,6 @@
 test_that("verify_claims labels each claim and returns an audit tibble", {
-  store <- fake_store_with_sources(1)
+  store <- tempest_research_workspace()
+  store$upsert_source(fake_source("https://example.org/1"))
   s1 <- store$list_sources()[[1]]$id
   store$add_claim(tempest_claim(
     claim_text = "supported claim",
@@ -52,19 +53,27 @@ test_that("verify_claims enforces min_support_score", {
 })
 
 test_that("verify_claims skips when policy is none/source_attributed", {
-  store <- fake_store_with_sources(1)
-  store$add_claim(tempest_claim(
+  store <- tempest_research_workspace()
+  store$upsert_source(fake_source("https://example.org/1"))
+  claim <- tempest_claim(
     claim_text = "c",
     source_ids = store$list_sources()[[1]]$id
+  )
+  store$add_claim(claim)
+  store$set_citation_audit(tibble::tibble(
+    claim_id = claim@claim_id,
+    claim_text = claim@claim_text,
+    verification_status = claim@verification_status,
+    support_score = claim@support_score,
+    rationale = NA_character_
   ))
-  store$set_artifact("citation_audit", tibble::tibble(claim_id = "stale"))
   audit <- tempest_verify_claims(
     store,
     verifier = fake_chat(),
     policy = "source_attributed"
   )
   expect_equal(nrow(audit), 0)
-  expect_equal(nrow(store$get_artifact("citation_audit")), 0)
+  expect_identical(store$citation_audit, audit)
 })
 
 test_that("verify_claims sanitizes out-of-range, string, and invalid judge output", {

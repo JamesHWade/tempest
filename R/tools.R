@@ -335,7 +335,7 @@ tempest_harvest_native_sources_from_turn <- function(turn, store) {
   if (is.null(turn) || is.null(store)) {
     return(character())
   }
-  if (!inherits(store, "SourceStore")) {
+  if (!inherits(store, "ResearchWorkspace")) {
     return(character())
   }
   contents <- tryCatch(turn@contents, error = function(e) list())
@@ -488,7 +488,7 @@ tempest_add_tool_claim <- function(
   )]
   if (length(unknown) > 0) {
     tempest_abort(c(
-      "{tool_name} requires source_ids already in the SourceStore.",
+      "{tool_name} requires source_ids already in the ResearchWorkspace.",
       x = "Unknown source_id(s): {.val {unknown}}",
       i = "Use web_search and fetch_url, or provider-native search, before recording the claim."
     ))
@@ -816,7 +816,7 @@ tempest_tools_web <- function(
 tempest_tools_evidence_read <- function(retriever) {
   tempest_require("ellmer", "Tool calling for evidence review.")
   stopifnot(inherits(retriever, "TempestRetriever"))
-  retriever$store |>
+  retriever$workspace |>
     tempest_tool_review_functions() |>
     tempest_tool_review_ellmer_tools()
 }
@@ -829,7 +829,7 @@ tempest_tools_evidence_write <- function(
   tempest_require("ellmer", "Tool calling for evidence writing.")
   stopifnot(inherits(retriever, "TempestRetriever"))
   tempest_tool_write_functions(
-    retriever$store,
+    retriever$workspace,
     provenance = claim_provenance
   ) |>
     tempest_tool_write_ellmer_tools()
@@ -1072,7 +1072,7 @@ tempest_expert_system_prompt <- function(expert, resolution) {
 #' @field expert_connection_ref_ids Environment of allowed connection ids by
 #'   expert.
 #' @field extractor Chat object for fact extraction (optional).
-#' @field store A `SourceStore` for storing extracted facts (optional).
+#' @field store A [ResearchWorkspace] for storing extracted facts (optional).
 #' @field progress Optional progress callback.
 #' @field run_id Shared Co-STORM session id for progress events.
 #' @field session_provenance Environments keyed by expert session id for
@@ -1104,7 +1104,7 @@ ExpertSessionManager <- R6::R6Class(
     #' @param allowed_connection_ref_ids Named list of allowed connection ids by
     #'   expert id.
     #' @param extractor Optional chat object for fact extraction.
-    #' @param store Optional `SourceStore` for storing extracted facts.
+    #' @param store Optional [ResearchWorkspace] for storing extracted facts.
     #' @param progress Optional progress callback.
     #' @param run_id Shared Co-STORM session id for progress events.
     initialize = function(
@@ -1165,7 +1165,13 @@ ExpertSessionManager <- R6::R6Class(
       self$config <- config
       self$retriever <- retriever
       self$extractor <- extractor
-      self$store <- store %||% retriever$store
+      workspace <- store %||% retriever$workspace
+      if (!inherits(workspace, "ResearchWorkspace")) {
+        tempest_expert_session_abort(
+          "{.arg store} must be a ResearchWorkspace or `NULL`."
+        )
+      }
+      self$store <- workspace
       self$progress <- tempest_progress_callback(progress)
       self$run_id <- run_id %||% tempest_uuid("session")
       invisible(self)
@@ -1241,7 +1247,7 @@ ExpertSessionManager <- R6::R6Class(
               character()
             }
             source_ids <- tempest_session_answer_source_ids(
-              list(store = self$store),
+              list(workspace = self$store, store = self$store),
               response,
               unique(c(source_ids, harvested))
             )
@@ -1849,7 +1855,8 @@ ExpertSessionManager <- R6::R6Class(
 #' @param allowed_connection_ref_ids Named list of allowed connection ids by
 #'   stable expert id.
 #' @param extractor Optional fact-extraction chat.
-#' @param store Optional `SourceStore`; defaults to the retriever store.
+#' @param store Optional [ResearchWorkspace]; defaults to the retriever
+#'   workspace.
 #' @param progress Optional progress callback.
 #' @param run_id Optional shared workflow run id.
 #' @return An `ExpertSessionManager`.
@@ -1940,13 +1947,13 @@ tempest_create_expert_delegation_tool <- function(
     collapse = "; "
   )
   source_ids_in_store <- function() {
-    if (!inherits(mgr$store, "SourceStore")) {
+    if (!inherits(mgr$store, "ResearchWorkspace")) {
       return(character())
     }
     vapply(mgr$store$list_sources(), \(source) source$id, character(1))
   }
   claim_ids_in_store <- function() {
-    if (!inherits(mgr$store, "SourceStore")) {
+    if (!inherits(mgr$store, "ResearchWorkspace")) {
       return(character())
     }
     vapply(
@@ -2051,7 +2058,7 @@ tempest_create_expert_delegation_tool <- function(
       ellmer::contents_markdown(last_turn)
     }
 
-    native_source_ids <- if (inherits(mgr$store, "SourceStore")) {
+    native_source_ids <- if (inherits(mgr$store, "ResearchWorkspace")) {
       tempest_harvest_native_sources_from_turn(last_turn, mgr$store)
     } else {
       character()

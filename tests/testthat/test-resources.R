@@ -53,7 +53,7 @@ test_that("resource records reject live runtime values and tampering", {
 })
 
 test_that("SourceStore indexes typed resources without inventing web URLs", {
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   resource <- tempest_resource(
     resource_kind = "email.message",
     locator = "messages/opaque-17",
@@ -108,7 +108,7 @@ test_that("SourceStore persistence preserves storage-reference-only resources", 
     metadata = list(version_id = "v3"),
     retrieved_at = "2026-07-18 UTC"
   )
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   store$upsert_resource(resource)
 
   path <- withr::local_tempfile(fileext = ".json")
@@ -144,7 +144,7 @@ test_that("SourceStore persistence preserves storage-reference-only resources", 
 })
 
 test_that("legacy web sources have typed resource views", {
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   source <- tempest:::tempest_source(
     "https://example.org/evidence",
     title = "Evidence",

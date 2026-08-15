@@ -4,12 +4,16 @@
 \alias{tempest_retriever}
 \title{Create a TempestRetriever}
 \usage{
-tempest_retriever(config = tempest_config(), store = SourceStore$new())
+tempest_retriever(
+  config = tempest_config(),
+  store = tempest_research_workspace()
+)
 }
 \arguments{
 \item{config}{A \code{TempestConfig}.}
 
-\item{store}{A \code{SourceStore}.}
+\item{store}{A \link{ResearchWorkspace}. The argument name is retained for
+compatibility.}
 }
 \value{
 A \code{TempestRetriever}.

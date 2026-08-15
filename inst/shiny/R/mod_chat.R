@@ -2051,10 +2051,32 @@ session_archive_read_manifest <- function(archive, listing) {
 }
 
 session_archive_manifest_files <- function(manifest) {
+  schema_version <- NA_integer_
+  if (is.list(manifest)) {
+    value <- manifest$schema_version %||% NA_integer_
+    if (
+      is.numeric(value) &&
+        length(value) == 1L &&
+        !is.na(value) &&
+        is.finite(value) &&
+        value >= 0 &&
+        value == floor(value) &&
+        value <= .Machine$integer.max
+    ) {
+      schema_version <- as.integer(value)
+    }
+  }
+  valid_header <- if (identical(schema_version, 5L)) {
+    identical(manifest$bundle_type %||% "", "costorm") &&
+      identical(manifest$bundle_status %||% "", "complete")
+  } else if (identical(schema_version, 4L)) {
+    identical(manifest$status %||% "", "complete")
+  } else {
+    FALSE
+  }
   if (
     !is.list(manifest) ||
-      !identical(as.integer(manifest$schema_version %||% NA_integer_), 4L) ||
-      !identical(manifest$status %||% "", "complete")
+      !isTRUE(valid_header)
   ) {
     stop(
       "Session archive manifest uses an unsupported schema or status.",

@@ -19,6 +19,12 @@ tempest_session_extract_facts_async <- function(
   is_current = function() TRUE,
   emit_stale_progress = TRUE
 ) {
+  workspace <- session$workspace %||% session$store %||% NULL
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "The Co-STORM session must expose a ResearchWorkspace."
+    )
+  }
   event <- session$emit_progress(
     "step",
     "started",
@@ -27,7 +33,7 @@ tempest_session_extract_facts_async <- function(
     correlation_id = correlation_id
   )
   harvested <- if (is.null(source_ids)) {
-    tempest_harvest_native_sources_from_turn(turn, session$store)
+    tempest_harvest_native_sources_from_turn(turn, workspace)
   } else {
     character()
   }
@@ -35,7 +41,7 @@ tempest_session_extract_facts_async <- function(
     tempest_extract_facts_from_answer_async(
       session$chats$extractor,
       text,
-      session$store,
+      workspace,
       source_ids = unique(c(source_ids, harvested)),
       session_id = session_id,
       expert_id = expert_id,
@@ -67,7 +73,7 @@ tempest_session_extract_facts_async <- function(
         step = "fact_extraction",
         parent_event_id = event@event_id,
         correlation_id = event@correlation_id,
-        payload = list(claim_count = length(session$store$list_claims()))
+        payload = list(claim_count = length(workspace$list_claims()))
       )
       value
     },
@@ -101,12 +107,13 @@ tempest_session_extract_facts_async <- function(
 }
 
 tempest_session_evidence_counts <- function(session) {
-  if (is.null(session$store) || !inherits(session$store, "SourceStore")) {
+  workspace <- session$workspace %||% session$store %||% NULL
+  if (!inherits(workspace, "ResearchWorkspace")) {
     return(list(source_count = 0L, claim_count = 0L))
   }
   list(
-    source_count = length(session$store$list_sources()),
-    claim_count = length(session$store$list_claims())
+    source_count = length(workspace$list_sources()),
+    claim_count = length(workspace$list_claims())
   )
 }
 
@@ -122,6 +129,12 @@ tempest_session_commit_evidence_async <- function(
   emit_stale_progress = TRUE
 ) {
   tempest_require("promises", "Async evidence commitment requires promises.")
+  workspace <- session$workspace %||% session$store %||% NULL
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "The Co-STORM session must expose a ResearchWorkspace."
+    )
+  }
   before <- tempest_session_evidence_counts(session)
   if (!tempest_async_is_current(is_current)) {
     return(promises::promise_resolve(c(
@@ -138,7 +151,7 @@ tempest_session_commit_evidence_async <- function(
     source_ids <- if (!is.null(session$harvest_native_sources)) {
       session$harvest_native_sources(turn = turn)
     } else {
-      tempest_harvest_native_sources_from_turn(turn, session$store)
+      tempest_harvest_native_sources_from_turn(turn, workspace)
     }
   }
   source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])

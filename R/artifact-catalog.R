@@ -472,9 +472,9 @@ tempest_artifact_catalog_validate_lineage <- function(
   if (is.null(evidence_store)) {
     return(invisible(catalog))
   }
-  if (!inherits(evidence_store, "SourceStore")) {
+  if (!inherits(evidence_store, "ResearchWorkspace")) {
     tempest_artifact_catalog_abort(
-      "{.arg evidence_store} must be a SourceStore."
+      "{.arg evidence_store} must be a ResearchWorkspace."
     )
   }
   source_ids <- purrr::map_chr(
@@ -485,9 +485,9 @@ tempest_artifact_catalog_validate_lineage <- function(
     evidence_store$list_claims(),
     function(claim) claim@claim_id
   )
-  evidence_span_ids <- ls(
-    evidence_store$evidence_spans,
-    all.names = TRUE
+  evidence_span_ids <- purrr::map_chr(
+    evidence_store$list_evidence_spans(),
+    function(span) span@evidence_span_id
   )
   for (record in records) {
     missing_resources <- setdiff(
@@ -525,14 +525,14 @@ tempest_artifact_catalog_validate_lineage <- function(
 #'
 #' Restoration reconstructs every specification and artifact through its
 #' validated constructor, verifies fingerprints and content checksums, and
-#' optionally verifies evidence lineage against a `SourceStore`. Runtime store
-#' adapters are reattached but are not written during restoration.
+#' optionally verifies evidence lineage against a [ResearchWorkspace]. Runtime
+#' store adapters are reattached but are not written during restoration.
 #'
 #' @param snapshot A catalog snapshot from
 #'   `TempestArtifactCatalog$snapshot()`.
 #' @param store Optional runtime artifact-store adapter.
-#' @param evidence_store Optional `SourceStore` used to validate resource,
-#'   claim, and evidence-span identifiers.
+#' @param evidence_store Optional [ResearchWorkspace] used to validate
+#'   resource, claim, and evidence-span identifiers.
 #' @return A restored `TempestArtifactCatalog`.
 #' @export
 tempest_artifact_catalog_restore <- function(

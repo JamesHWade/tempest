@@ -14,7 +14,8 @@ tempest_verify_claims(
 )
 }
 \arguments{
-\item{store}{A \code{SourceStore} holding claims and sources.}
+\item{store}{A \link{ResearchWorkspace} holding provisional claims and retrieved
+sources.}
 
 \item{verifier}{A chat object (e.g. from \code{tempest_make_chat(config, "judge")}).}
 

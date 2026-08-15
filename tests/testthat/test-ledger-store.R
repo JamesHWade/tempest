@@ -90,7 +90,7 @@ test_that("SourceStore rejects orphans and keeps replacement indexes valid", {
 })
 
 test_that("SourceStore refuses new sources beyond its configured budget", {
-  store <- SourceStore$new(max_sources = 1L)
+  store <- quiet_source_store(max_sources = 1L)
   store$upsert_source(fake_source("https://example.org/first"))
 
   expect_no_error(store$upsert_source(fake_source("https://example.org/first")))
@@ -101,7 +101,7 @@ test_that("SourceStore refuses new sources beyond its configured budget", {
 })
 
 test_that("SourceStore validates complete source records", {
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   malformed <- fake_source("https://example.org/malformed")
   malformed$meta <- "not a list"
 
