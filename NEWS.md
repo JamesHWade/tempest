@@ -2,7 +2,7 @@
 
 * Persistence bundles from before the reusable workflow-kernel cutover are intentionally unsupported: Co-STORM restore requires schema version 4, and staged STORM restore requires schema version 3 with typed artifact indexes; completed perspective stages persist fingerprinted expert profiles (vtvt, wgr8).
 * The bundled Shiny app now escapes untrusted model and source content, rejects unsafe links, isolates browser session storage behind upload/download archives with quotas and private permissions, provides cancellable STORM workers, runs Co-STORM expert generation, enrichment, suggestions, and reports asynchronously with provider-correct requests and ordered stale-safe commits, quarantines timed-out expert chats, and exposes an accessible keyboard-operable mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
-* The bundled Shiny app now presents Co-STORM setup as a one-time native shinychat greeting with consistently sized controls and reserves the footer for active-session status and actions.
+* The bundled Shiny app now presents Co-STORM setup as a one-time native shinychat greeting with consistently sized controls, lets users replace generated panels with up to five named expert perspectives, and reserves the footer for active-session status and actions.
 * `run_app()` now inherits the package-level `tempest.chat` default while its model fields remain untouched; editing any model field switches the app to explicit per-role models. Tempest once again declares the shinychat development dependency required by the app and reports how to update an incompatible loaded version before launching.
 * `SourceStore` now validates source, claim, evidence-span, and dispute mutations, rejects orphan references and source-budget overflow, and keeps reverse indexes correct when claims are replaced; the unused parallel S7 source representation was removed (67h9, y2kw).
 * `SourceStore` and `tempest_resource()` now support fingerprinted web, file, message, database, and host-defined evidence resources with opaque locators, connection provenance, redaction and retention metadata, and durable claim lineage without requiring public URLs (fr54).
@@ -44,9 +44,7 @@
 * `tempest_run()` and `tempest_session()` now expose evidence review tools for agents to inspect claims, cited sources, evidence spans, and unsupported claims without requiring write access (my3y).
 * `tempest_run()` and `tempest_session()` now expose claim-oriented `add_claim` and `list_claims` agent tools while keeping `add_fact` and `list_facts` as transitional aliases (msg3).
 * `tempest_okf_concepts()`, `tempest_okf_context()`, `tempest_okf_resources()`, and `tempest_read_okf()` read bounded Open Knowledge Format bundles as typed evidence resources and explicitly untrusted agent context without executing referenced code or granting capabilities.
-* `tempest_optimize_dsprrr_modules()`, `tempest_save_dsprrr_modules()`, and
-  `tempest_load_dsprrr_modules()` support explicit dsprrr compilation and
-  reuse of optimized STORM module sets.
+* `tempest_optimize_dsprrr_modules()`, `tempest_save_dsprrr_modules()`, and `tempest_load_dsprrr_modules()` now expose per-module dsprrr optimizer controls and agentic teleprompter arguments, persist modules as atomic checksummed bundles of versioned dsprrr program artifacts instead of raw RDS lists, and remove the obsolete `fact_extraction` module alias.
 * `tempest_progress_event()` and `tempest_progress_event_data()` define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).
 * `tempest_progress_labels()` provides compact host-neutral STORM and Co-STORM progress labels for stage chips and current-step displays (a3rg).
 * `tempest_progress_collector()`, `tempest_progress_filter()`, and `tempest_progress_replay()` provide host-neutral in-memory progress sinks with filtering and replay helpers (wpt9).
