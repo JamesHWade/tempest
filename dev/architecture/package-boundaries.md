@@ -150,8 +150,9 @@ are in scope before removal in 0.2.0.
 
 The public export families scheduled for removal are documented in
 `tempest-generic-kernel-retirement`. No new feature may depend on them. The
-`SourceStore` rename, dsprrr module persistence replacement, and expert-runtime
-cutover happen through the additive product seams before deletion.
+`SourceStore` rename, transition from Tempest's checksummed dsprrr
+ProgramArtifact bundle to `TempestProgramSet`, and expert-runtime cutover happen
+through additive product seams before deletion.
 
 Several retirement files contain product code and must be split before they are
 deleted:
@@ -175,9 +176,10 @@ narrower product file first; only the application-neutral portion is removed.
 Generic validation helpers currently used by product code must likewise be
 extracted before `R/workflow-types.R` is deleted.
 
-The T0 retirement manifest contains 43 generic-kernel exports. The three raw
-dsprrr module persistence and optimization exports are tracked separately for
-replacement in T2. Shared product seams such as `tempest_execution_events()`,
+The T0 retirement manifest contains 43 generic-kernel exports. The three
+Tempest-specific dsprrr program-bundle and optimization exports are tracked
+separately for narrowing into `TempestProgramSet` and exact program identities
+in T2. Shared product seams such as `tempest_execution_events()`,
 `tempest_validation_result()`, and `tempest_shiny_store()` are narrowed during
 the cutover rather than preemptively classified as deleted.
 
@@ -215,6 +217,7 @@ they require no API keys, network access, or live provider responses.
 |---|---|
 | Scripted STORM stage sequence and terminal status | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-storm.R` |
 | Co-STORM warmup and one moderator turn | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-costorm-progress.R`, `tests/testthat/test-costorm-warmup.R` |
+| Custom expert roster construction and session controls | `tests/testthat/test-shiny-app.R` |
 | Claim extraction | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-claim-extraction.R` |
 | Claim support verification | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-verify.R` |
 | Source and citation rendering | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-citations-policy.R` |
@@ -234,10 +237,12 @@ The semantic projections assert:
 - normalized event sequence;
 - durable state after save and resume;
 - cancellation state transitions;
+- custom expert roster selection and session controls;
 - the exact pre-0.2 public export surface.
 
-On 2026-08-15, before T0 changes, the full package suite completed with 2,459
-passing expectations and no failures, warnings, or skips.
+On 2026-08-15, after integrating the custom-expert and dsprrr ProgramArtifact
+work from PR #28, the full package suite completed with 2,535 passing
+expectations and no failures, warnings, or skips.
 
 The pre-0.2 namespace baseline contains 96 explicit exports and two registered
 S3 print methods. The versioned fixtures remain unchanged through the additive

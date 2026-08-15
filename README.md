@@ -121,8 +121,8 @@ for the complete handoff and safety model.
 
 ## Maintain Tempest 0.1 reusable deliverables
 
-> [!WARNING]
-> The experimental generic deliverable and workflow kernel is frozen and is
+> **Warning:** The experimental generic deliverable and workflow kernel is
+> frozen and is
 > scheduled for removal in Tempest 0.2.0. No compatibility shim is planned.
 > Use the STORM and Co-STORM product APIs for new research workflows.
 
@@ -231,8 +231,8 @@ snapshots use canonical JSON content or external storage references.
 
 ## Maintain Tempest 0.1 reusable workflows and selected experts
 
-> [!WARNING]
-> This section documents maintenance of existing Tempest 0.1 integrations.
+> **Warning:** This section documents maintenance of existing Tempest 0.1
+> integrations.
 > These generic workflow APIs are scheduled for removal in Tempest 0.2.0 and
 > should not be used for new work.
 
@@ -445,7 +445,7 @@ Markdown report.
 - **Parallel section writing** -- pass `parallel_writing = TRUE` to write
   report sections concurrently with mirai, then extract facts and assemble the
   article in deterministic outline order.
-- **dsprrr modules** -- structured extraction steps (query decomposition, fact extraction, outline drafting, section writing) use [dsprrr](https://github.com/JamesHWade/dsprrr) modules for more reliable structured output. Optimized module sets can be passed through `dsprrr_modules`.
+- **dsprrr modules** -- structured extraction steps (query decomposition, claim extraction, outline drafting, section writing) use [dsprrr](https://github.com/JamesHWade/dsprrr) modules for more reliable structured output. Optimized module sets can be passed through `dsprrr_modules`.
 
 ### Optimizing dsprrr Modules
 
