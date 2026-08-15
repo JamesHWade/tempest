@@ -48,8 +48,10 @@ is automatically created.}
 \item{ragnar_store}{A pre-built ragnar store. If NULL and \code{embed_fn} is
 provided, a store is created automatically with the tempest metadata schema.}
 
-\item{artifact_store}{Optional artifact-store adapter from
-\code{tempest_artifact_store()} or \code{tempest_memory_artifact_store()}.}
+\item{artifact_store}{Frozen Tempest 0.1 artifact-store adapter from
+\code{tempest_artifact_store()} or \code{tempest_memory_artifact_store()}. Existing
+integrations only; new code should consume \code{report_md} and scientific
+evidence directly.}
 
 \item{search_provider}{Search provider: "native" (use provider's built-in web
 search when available), "wikipedia", "you", "bing", "serper", "brave",

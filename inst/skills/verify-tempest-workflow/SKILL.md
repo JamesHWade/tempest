@@ -1,9 +1,13 @@
 ---
 name: verify-tempest-workflow
-description: Verify or review a custom Tempest R workflow for correctness, least privilege, approval integrity, typed artifact provenance, failure handling, cancellation, deterministic tests, and safe persistence or restoration. Use when an agent is asked to audit, test, review, harden, debug, or declare ready a workflow built with `tempest_run_workflow()`, especially after adding custom operations, capabilities, connections, retries, approvals, exporters, artifact codecs, Shiny adapters, or saved-run support.
+description: "Tempest 0.1 only: verify a custom workflow built with the frozen generic kernel scheduled for removal in Tempest 0.2.0. Use when an agent must audit or maintain an existing workflow's correctness, least privilege, approval integrity, typed artifact provenance, failure handling, cancellation, deterministic tests, or safe persistence."
 ---
 
 # Verify a Tempest workflow
+
+> **Retirement notice:** This skill documents Tempest's frozen experimental
+> generic kernel and will be removed in Tempest 0.2.0. Use the STORM and
+> Co-STORM product APIs for new research workflows.
 
 Treat workflow verification as a contract and security audit, not merely a
 happy-path test run. Inspect the actual specifications, runtime factories,

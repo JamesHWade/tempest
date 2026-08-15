@@ -364,6 +364,10 @@ TempestSkillRegistry <- R6::R6Class(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' The registry binds serializable skill specifications to versioned runtime
 #' operations. Every operation declared by a skill must be available from
 #' `operations` with kind `"skill"`.
@@ -621,6 +625,10 @@ TempestConnectionProvider <- R6::R6Class(
 #' Create a Tempest runtime connection provider
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' A connection provider keeps authenticated clients and factories outside
 #' durable [tempest_connection_ref()] records. Resolution requires an explicit
@@ -1453,6 +1461,10 @@ TempestCapabilityResolver <- R6::R6Class(
 #' Create a Tempest capability resolver
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' The resolver keeps serializable capability specifications separate from
 #' runtime factories. It preflights every requested capability before invoking

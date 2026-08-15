@@ -24,7 +24,7 @@ tempest_resource(
 }
 \arguments{
 \item{resource_kind}{Stable resource-kind identifier such as \code{"web"},
-\code{"file"}, or \code{"host.document"}.}
+\code{"file"}, or \code{"scientific.document"}.}
 
 \item{locator}{Opaque locator or URI. Tempest records it but does not resolve
 it outside a resource-kind adapter.}
@@ -64,17 +64,19 @@ A \code{tempest_resource} S7 object.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
-Resources identify evidence without requiring a public URL. The durable
-value may describe a web page, file, email, database result, host document,
-or another application-defined resource kind. Authenticated clients and
-credentials remain in host runtime adapters and are never stored here.
+Resources identify provisional scientific evidence without requiring a
+public URL. The durable value may describe a web page, file, lab record, or
+database result used during research. Authenticated clients and credentials
+remain host-owned and are never stored here. This record is not a generic
+connection-management contract; its 0.2 role narrows to scientific source
+and context evidence in a research workspace.
 }
 \examples{
 resource <- tempest_resource(
-  resource_kind = "host.document",
-  locator = "documents/brief-42",
-  title = "Approved project brief",
+  resource_kind = "scientific.document",
+  locator = "protocols/assay-42",
+  title = "Reviewed assay protocol",
   media_type = "text/plain",
-  content = "The requested outcome is a rollout plan."
+  content = "Measure the response after 24 hours."
 )
 }

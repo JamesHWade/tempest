@@ -412,6 +412,10 @@ TempestArtifactCatalog <- R6::R6Class(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' The catalog owns typed artifacts for one workflow run. It supports
 #' metadata-only listing so host applications do not need to load large
 #' artifact content to render an output index.
@@ -514,6 +518,10 @@ tempest_artifact_catalog_validate_lineage <- function(
 #' Restore a typed Tempest artifact catalog
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' Restoration reconstructs every specification and artifact through its
 #' validated constructor, verifies fingerprints and content checksums, and

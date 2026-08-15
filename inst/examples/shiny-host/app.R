@@ -1,3 +1,6 @@
+# This Tempest 0.1 generic-kernel example is frozen and will be removed in
+# Tempest 0.2.0. Use the STORM and Co-STORM product APIs for new integrations.
+
 library(shiny)
 library(bslib)
 library(tempest)

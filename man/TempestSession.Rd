@@ -5,8 +5,19 @@
 \title{TempestSession}
 \description{
 Maintains state for a Co-STORM session: multi-agent dialog, mind map,
-sources, auxiliary session state, and typed deliverable artifacts.
+provisional scientific evidence, and report state.
 }
+\section{Frozen Tempest 0.1 fields}{
+
+
+\code{runtime}, \code{connection_permissions}, \code{artifacts}, \code{artifact_catalog},
+\code{workflow_run}, and \code{capability_grants} expose the frozen experimental
+generic kernel. They remain only for existing Tempest 0.1 integrations and
+are scheduled for replacement or removal in Tempest 0.2.0. New host code
+should keep tools and authenticated clients process-local and use the
+session's scientific evidence and report state as its product boundary.
+}
+
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
   \describe{
@@ -16,10 +27,10 @@ sources, auxiliary session state, and typed deliverable artifacts.
 
     \item{\code{config}}{A \code{TempestConfig} object.}
 
-    \item{\code{runtime}}{A \code{TempestRuntime} containing process-local adapters.}
+    \item{\code{runtime}}{Frozen Tempest 0.1 \code{TempestRuntime} adapter.}
 
-    \item{\code{connection_permissions}}{Named per-role or per-expert connection
-allow-lists.}
+    \item{\code{connection_permissions}}{Frozen Tempest 0.1 per-role or per-expert
+connection allow-lists.}
 
     \item{\code{session_id}}{Stable identifier shared by progress events for the
 session.}
@@ -42,17 +53,15 @@ session.}
 
     \item{\code{events}}{Ordered normalized progress-event history.}
 
-    \item{\code{artifacts}}{Environment of auxiliary and legacy-compatible session
-state.}
+    \item{\code{artifacts}}{Frozen Tempest 0.1 environment of auxiliary session state.}
 
-    \item{\code{artifact_catalog}}{Typed deliverable specifications and artifacts
-produced by the session.}
+    \item{\code{artifact_catalog}}{Frozen Tempest 0.1 typed deliverable catalog.}
 
-    \item{\code{workflow_run}}{Optional generic \code{TempestRun} that owns the session
-workflow lifecycle.}
+    \item{\code{workflow_run}}{Frozen Tempest 0.1 generic \code{TempestRun} that owns the
+session workflow lifecycle, when present.}
 
-    \item{\code{capability_grants}}{Serializable capability decisions by execution
-context.}
+    \item{\code{capability_grants}}{Frozen Tempest 0.1 capability decisions by
+execution context.}
 
     \item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
   }
@@ -114,12 +123,13 @@ context.}
     \describe{
       \item{\code{topic}}{The research topic.}
       \item{\code{config}}{A \code{TempestConfig} object.}
-      \item{\code{runtime}}{A \code{\link[=tempest_runtime]{tempest_runtime()}} containing process-local adapters.}
+      \item{\code{runtime}}{Frozen Tempest 0.1 \code{\link[=tempest_runtime]{tempest_runtime()}} adapter. Existing
+integrations only.}
       \item{\code{n_experts}}{Number of expert agents.}
       \item{\code{experts}}{Optional list of validated expert profiles. If \code{NULL},
 experts are generated automatically using \code{tempest_generate_experts()}.}
-      \item{\code{connection_permissions}}{Named list mapping role or expert ids to
-opaque connection ids allowed for this session.}
+      \item{\code{connection_permissions}}{Frozen Tempest 0.1 mapping from role or
+expert ids to opaque connection ids allowed for this session.}
       \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
 object with a \code{SourceStore} at \verb{$store}.}
       \item{\code{progress}}{Optional function called with \code{tempest_progress_event}

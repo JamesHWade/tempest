@@ -31,6 +31,10 @@ grant records.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 The resolver keeps serializable capability specifications separate from
 runtime factories. It preflights every requested capability before invoking
 factories, treats required failures as errors, and records optional failures

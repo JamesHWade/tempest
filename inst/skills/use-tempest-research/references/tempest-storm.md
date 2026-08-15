@@ -14,7 +14,7 @@ Preserve Tempest's five STORM stages:
 3. `outline`: draft an outline and refine it against the collected evidence.
 4. `write`: select relevant facts and write cited sections plus the lead.
 5. `polish`: assemble the report, remove duplication when requested, enforce
-   citation policy, and publish typed artifacts.
+   citation policy, and publish the product report.
 
 Do not collapse these stages when progress, resume, provenance, or failure
 recovery matters.
@@ -43,10 +43,6 @@ result <- tempest_run(
 )
 ```
 
-Use `tempest_storm_workflow_run()` when the host needs a `TempestRun` with
-generic status, ordered events, assignments, approvals, capability grants,
-typed artifacts, and generic save/restore behavior.
-
 Use `tempest_run_async()` when a Shiny or other event-driven host must keep its
 main session responsive. Read the installed help for its result and
 cancellation contract before integrating it.
@@ -67,8 +63,7 @@ cancellation contract before integrating it.
 - Bound experts, questions, searches, sources, and retrieved facts before
   increasing quality or coverage budgets.
 - Supply exact `tempest_expert()` profiles when the host owns expert selection.
-  Resolve their tools and authenticated connections through the runtime, not
-  through serialized profiles.
+  Keep executable tools and authenticated clients out of serialized profiles.
 
 ## Inspect the result
 
@@ -82,20 +77,11 @@ result$outline
 
 sources <- tempest_sources(result$store)
 claims <- tempest_claims(result$store)
-artifact <- result$artifact_catalog$get("report_md")
 ```
 
-Verify the artifact status, checksum, media type, run and step provenance,
-validation metadata, and evidence lineage required by the configured policy.
-Inspect warnings and unsupported claims instead of hiding them in final prose.
-
-For a generic run, prefer public accessors such as:
-
-```r
-tempest_run_status(run)
-tempest_run_events(run)
-tempest_run_artifacts(run)
-```
+Verify the report, source relationships, claim support, citation references,
+and evidence lineage required by the configured policy. Inspect warnings and
+unsupported claims instead of hiding them in final prose.
 
 ## Persist and resume
 
@@ -114,7 +100,7 @@ result <- tempest_run(
 ```
 
 Keep durable research state and checksums. Recreate process-local functions,
-clients, credentials, callbacks, and runtime bindings after process restart.
+clients, credentials, callbacks, and host dependencies after process restart.
 Do not silently continue a run whose topic, evidence policy, or runtime
 assumptions no longer match.
 
@@ -124,8 +110,8 @@ Use deterministic fake chats and retrieval fixtures for package tests. Verify:
 
 - stage order and terminal failure events;
 - resume from each completed stage;
-- source, claim, citation, and artifact provenance;
-- selected-expert and capability boundaries;
+- source, claim, citation, and report provenance;
+- selected-expert identity boundaries;
 - cancellation before further work begins;
 - asynchronous cleanup and stale-result rejection in hosts;
 - the rendered report and downloads when the UI is part of the behavior.

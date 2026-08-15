@@ -39,6 +39,10 @@ A process-local workflow adapter function.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 The adapter executes one existing \code{\link[=tempest_run]{tempest_run()}} stage at a time against
 the generic run's shared evidence store and artifact catalog. Runtime and
 connection permissions always come from the owning \code{TempestRun}.

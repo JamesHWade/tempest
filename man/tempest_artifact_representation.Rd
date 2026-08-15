@@ -40,6 +40,10 @@ A runtime \code{tempest_artifact_representation}.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 Custom renderer operations return this lightweight runtime value. The
 deliverable lifecycle adds specification identity, validation results,
 provenance, checksums, and lifecycle status when it creates the final typed

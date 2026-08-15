@@ -85,6 +85,10 @@ Control functions return \code{run} invisibly.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 These functions provide host applications with stable access to mutable
 \code{TempestRun} state without reaching into R6 fields or methods directly.
 Event filtering preserves run-local sequence order. Approval controls remain

@@ -13,7 +13,7 @@ Let the host supply:
 
 - a per-session `tempest_config()`;
 - optional selected experts;
-- a process-local runtime and connection permissions;
+- process-local tools and authenticated clients when required;
 - a stable session ID;
 - storage and download policy;
 - the panel selection and surrounding controls.
@@ -36,22 +36,20 @@ UI and should present research results in that conversation.
 - Surface progress, cancellation, failures, evidence, and report readiness.
   Do not show only a spinner followed by prose.
 - Append the final report or a concise tool result to shinychat while keeping
-  the source ledger and typed artifacts available in dedicated views or
-  downloads.
+  sources, claims, and report available in dedicated views or downloads.
 - Use shinychat's tool-result display only for presentation. Authorization,
-  evidence policy, persistence, and cancellation remain host or Tempest
-  responsibilities.
+  permissions, and external side effects remain host responsibilities;
+  Tempest owns research evidence, persistence, and cancellation.
 
-## Expose a generic run
+## Observe product state
 
-Use `tempest_storm_workflow_run()` or `tempest_costorm_workflow_run()` when the
-host already understands `TempestRun`. Consume state through public accessors:
+Use the direct STORM and Co-STORM APIs. Consume product events through
+`tempest_execution_events()` and keep host UI state as a projection over the
+research result or session:
 
-- `tempest_run_status()`;
-- `tempest_run_events()`;
-- `tempest_run_approvals()`;
-- `tempest_run_artifacts()`;
-- `tempest_run_capability_grants()`.
+- `tempest_run()` or `tempest_run_async()` for scripted STORM;
+- `tempest_session()` for interactive Co-STORM;
+- `tempest_progress_state()` for normalized event state.
 
 Feed events into a host-neutral reducer before rendering them. Keep Shiny
 reactivity and widgets as adapters over package state rather than as the source
@@ -79,7 +77,6 @@ Exercise:
 - cancellation before another search, model call, or export;
 - ordered progress and stale-result rejection;
 - client replacement and transcript continuity when used;
-- approval UI against the exact pending request;
 - rich tool-result rendering and accessible fallback text;
 - report, evidence, and archive downloads;
-- restore behavior after the process-local runtime is recreated.
+- restore behavior after process-local dependencies are recreated.

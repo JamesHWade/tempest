@@ -45,6 +45,10 @@ A \code{tempest_connection_ref} S7 object.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 A connection reference identifies a host-owned authenticated binding without
 storing credentials or a live client in a durable workflow definition.
 }

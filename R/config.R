@@ -105,6 +105,10 @@ tempest_artifact_store_validate_read <- function(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' Artifact stores let host applications observe or persist typed Tempest
 #' outputs without replacing the live in-memory artifact catalog. The default
 #' store is a no-op adapter.
@@ -261,6 +265,10 @@ tempest_artifact_store <- function(
 #' Create an in-memory Tempest artifact store
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' This is useful for tests and host apps that want to capture artifacts before
 #' deciding where to persist them.
@@ -602,8 +610,10 @@ TempestConfig <- S7::new_class(
 #'   is automatically created.
 #' @param ragnar_store A pre-built ragnar store. If NULL and `embed_fn` is
 #'   provided, a store is created automatically with the tempest metadata schema.
-#' @param artifact_store Optional artifact-store adapter from
-#'   `tempest_artifact_store()` or `tempest_memory_artifact_store()`.
+#' @param artifact_store Frozen Tempest 0.1 artifact-store adapter from
+#'   `tempest_artifact_store()` or `tempest_memory_artifact_store()`. Existing
+#'   integrations only; new code should consume `report_md` and scientific
+#'   evidence directly.
 #' @param search_provider Search provider: "native" (use provider's built-in web
 #'   search when available), "wikipedia", "you", "bing", "serper", "brave",
 #'   "duckduckgo", "tavily", "searxng", "google", or "azure_ai_search". Default

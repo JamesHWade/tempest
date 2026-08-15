@@ -354,6 +354,10 @@ TempestRuntime <- R6::R6Class(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' A runtime binds durable workflow definitions to process-local operations,
 #' skills, capabilities, and authenticated connections. Runtime factories and
 #' clients are deliberately excluded from snapshots.

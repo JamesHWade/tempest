@@ -1,3 +1,7 @@
+# tempest (development version)
+
+* Tempest is now explicitly scoped as a scientific-research product. Its experimental application-neutral workflow, runtime, capability, connection, skill, deliverable, artifact, and generic host-state APIs are frozen and scheduled for removal in the deliberate 0.2.0 breaking release (v659).
+
 # tempest 0.1.0
 
 * Persistence bundles from before the reusable workflow-kernel cutover are intentionally unsupported: Co-STORM restore requires schema version 4, and staged STORM restore requires schema version 3 with typed artifact indexes; completed perspective stages persist fingerprinted expert profiles (vtvt, wgr8).

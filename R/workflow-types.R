@@ -203,6 +203,10 @@ TempestArtifact <- S7::new_class(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' An objective describes an application-neutral requested outcome, its
 #' constraints, approved inputs, completion criteria, and requested
 #' deliverables.
@@ -295,6 +299,10 @@ tempest_objective <- function(
 #' Create a Tempest deliverable specification
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' A deliverable specification separates serializable output requirements from
 #' runtime generator, validator, renderer, and exporter implementations.
@@ -558,6 +566,10 @@ tempest_validation_results <- function(results) {
 #' Create a typed Tempest artifact
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' @param deliverable A `tempest_deliverable_spec` object.
 #' @param content Inline artifact content: a single UTF-8 string or canonical

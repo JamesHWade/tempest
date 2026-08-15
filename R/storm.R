@@ -56,6 +56,14 @@ tempest_run_verification <- function(
 #' 3) creates an outline,
 #' 4) writes a cited report in Markdown.
 #'
+#' @section Frozen Tempest 0.1 seams:
+#'
+#' `runtime`, `runtime_factory`, `connection_permissions`, `artifact_catalog`,
+#' and `workflow_run` expose the frozen experimental generic kernel. They remain
+#' only for existing Tempest 0.1 integrations and are scheduled for replacement
+#' or removal in Tempest 0.2.0. New code should consume `report_md` and the
+#' scientific evidence in `store`.
+#'
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from `config`.
@@ -64,14 +72,13 @@ tempest_run_verification <- function(
 #' @param experts Optional list of active profiles created by
 #'   [tempest_expert()]. When supplied, STORM uses this selected team and does
 #'   not generate experts.
-#' @param runtime A [tempest_runtime()] containing scoped skill, capability, and
-#'   connection adapters.
-#' @param runtime_factory Function that recreates `runtime` inside parallel
-#'   workers. The default recreates the built-in runtime. Hosts using custom
-#'   capabilities with `parallel_research = TRUE` must provide a matching
-#'   factory.
-#' @param connection_permissions Named list mapping expert or model-role ids to
-#'   opaque connection ids allowed for this run.
+#' @param runtime Frozen Tempest 0.1 [tempest_runtime()] adapter. Existing
+#'   integrations only.
+#' @param runtime_factory Function that recreates the frozen 0.1 `runtime`
+#'   inside parallel workers. Existing integrations using a custom runtime with
+#'   `parallel_research = TRUE` must provide a matching factory.
+#' @param connection_permissions Frozen Tempest 0.1 mapping from expert or
+#'   model-role ids to opaque connection ids allowed for this run.
 #' @param research_strategy Either "key_questions" (default, faster) or "conversation"
 #'   (more thorough but slower). Key questions uses predefined questions; conversation
 #'   dynamically generates follow-up questions.
@@ -96,13 +103,14 @@ tempest_run_verification <- function(
 #'   object as STORM workflow stages start, finish, fail, persist artifacts, or
 #'   make final artifacts available.
 #' @param verbose If `TRUE`, prints progress messages.
-#' @param artifact_catalog Optional shared `TempestArtifactCatalog`. This is
-#'   used by the built-in generic STORM workflow adapter.
-#' @param workflow_run Optional owning `TempestRun`. When supplied, the result
-#'   exposes it as `workflow_run`.
-#' @return A list with `title`, `perspectives`, `experts`, `outline`,
-#'   `draft_md`, `report_md`, `store`, `artifact_catalog`, `workflow_run`, and
-#'   `output_dir`.
+#' @param artifact_catalog Frozen Tempest 0.1 shared
+#'   `TempestArtifactCatalog`, used by the generic STORM workflow adapter.
+#' @param workflow_run Frozen Tempest 0.1 owning `TempestRun`. When supplied,
+#'   the result exposes it as `workflow_run`.
+#' @return A list with product fields `title`, `perspectives`, `experts`,
+#'   `outline`, `draft_md`, `report_md`, `store`, and `output_dir`. Frozen 0.1
+#'   compatibility fields `artifact_catalog` and `workflow_run` are also
+#'   returned temporarily.
 #' @examples
 #' \dontrun{
 #' cfg <- tempest_config()

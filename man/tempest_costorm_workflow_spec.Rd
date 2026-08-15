@@ -13,6 +13,10 @@ A \code{tempest_workflow_spec}.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 The interactive dialogue is an approval checkpoint. Starting the workflow
 runs warmup and then returns in \code{awaiting_approval}. A host conducts as many
 \link{TempestSession} turns as needed before approving the dialogue checkpoint

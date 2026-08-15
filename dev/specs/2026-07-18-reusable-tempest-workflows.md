@@ -1,8 +1,12 @@
 # Reusable Tempest workflow architecture
 
 Date: 2026-07-18
-Status: Implemented
+Status: Superseded for Tempest 0.2
 Audience: Tempest maintainers, host-application developers, and coding agents
+
+The application-neutral ownership in this historical implementation record is
+superseded by `dev/architecture/package-boundaries.md`. Its generic kernel is
+frozen and scheduled for removal in Tempest 0.2.0.
 
 ## Overview
 

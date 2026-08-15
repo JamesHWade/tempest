@@ -1,10 +1,14 @@
 # Tempest session persistence and resume
 
 Date: 2026-06-28
-Status: Proposed design
+Status: Partially superseded for Tempest 0.2
 Scope: Package and bundled Shiny app support for saving and resuming
 interactive Co-STORM sessions, while reusing existing STORM run artifacts,
 host-app storage contracts, and progress events.
+
+The product-state and rehydration rules remain relevant. Generic workflow and
+artifact persistence, including compatibility policy, is superseded by
+`dev/architecture/package-boundaries.md`.
 
 ## Goal
 

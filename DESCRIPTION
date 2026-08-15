@@ -1,6 +1,6 @@
 Package: tempest
 Title: STORM and Co-STORM Research and Writing Agents for R
-Version: 0.1.0
+Version: 0.1.0.9000
 Authors@R: c(
     person("James", "Wade", role = c("aut", "cre"), email = "github@jameshwade.com"),
     person("OpenAI", role = "cph")
@@ -9,11 +9,10 @@ Description: Implements an R-native clone of the STORM and Co-STORM
     research-and-writing workflows using 'ellmer' for LLM orchestration and
     'shinychat' for an interactive Shiny UI. Includes web retrieval tools,
     evidence tracking with citations, mind-map style topic planning, and
-    evaluation helpers built on 'vitals'. Application-neutral contracts for
-    objectives, selected expert teams, scoped skills and capabilities, generic
-    workflow runs, versioned deliverables, typed evidence resources, and typed
-    artifacts let host applications customize generated outcomes without
-    embedding business-domain logic in the package.
+    evaluation helpers built on 'vitals'. Tempest owns provisional scientific
+    research state, claim-centered evidence, STORM and Co-STORM product flows,
+    and scientific reports. Its 0.2 migration will delegate generic agent
+    runtime, program, and accepted-knowledge concerns to narrower packages.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd"))
@@ -90,6 +89,7 @@ Collate:
     'evals.R'
     'models.R'
     'operation-registry.R'
+    'package-lifecycle.R'
     'progress-events.R'
     'costorm-warmup.R'
     'prompts.R'

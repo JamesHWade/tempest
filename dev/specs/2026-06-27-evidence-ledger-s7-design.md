@@ -1,8 +1,12 @@
 # Evidence Ledger + S7 Records: Phase 0 and Phase 1
 
 **Date:** 2026-06-27
-**Status:** Approved design, ready for implementation planning
+**Status:** Partially superseded for Tempest 0.2
 **Scope:** Foundations (Phase 0) + evidence ledger and claim-level citation verification (Phase 1)
+
+The S7/R6 and claim-centered evidence decisions remain authoritative. The
+general-purpose research scope and warning-only fallback direction are
+superseded by `dev/architecture/package-boundaries.md`.
 
 ## Why
 
