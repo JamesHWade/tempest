@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="STORM and Co-STORM Research and Writing Agents for R">
-<meta name="description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Application-neutral contracts for objectives, selected expert teams, scoped skills and capabilities, generic workflow runs, versioned deliverables, typed evidence resources, and typed artifacts let host applications customize generated outcomes without embedding business-domain logic in the package.">
-<meta property="og:description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Application-neutral contracts for objectives, selected expert teams, scoped skills and capabilities, generic workflow runs, versioned deliverables, typed evidence resources, and typed artifacts let host applications customize generated outcomes without embedding business-domain logic in the package.">
+<meta name="description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Tempest owns provisional scientific research state, claim-centered evidence, STORM and Co-STORM product flows, and scientific reports. Its 0.2 migration will delegate generic agent runtime, program, and accepted-knowledge concerns to narrower packages.">
+<meta property="og:description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Tempest owns provisional scientific research state, claim-centered evidence, STORM and Co-STORM product flows, and scientific reports. Its 0.2 migration will delegate generic agent runtime, program, and accepted-knowledge concerns to narrower packages.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,7 +36,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+<li><a class="dropdown-item" href="articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul>
@@ -68,7 +68,7 @@
 <li>
 <strong>Evidence tracking</strong> with citations and source attribution</li>
 <li>
-<strong>Reusable objectives and deliverables</strong> with versioned output contracts, validation, typed artifacts, and runtime operation adapters</li>
+<strong>Resumable research state</strong> for scripted STORM and interactive Co-STORM</li>
 <li>
 <strong>Two-step outline refinement</strong> and <strong>lead section generation</strong>
 </li>
@@ -175,9 +175,12 @@
 <p>Graft can export current or historical accepted revisions directly into this format. Read <a href="https://jameshwade.github.io/tempest/articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a> for the complete handoff and safety model.</p>
 </div>
 <div class="section level2">
-<h2 id="reusable-deliverables">Reusable deliverables<a class="anchor" aria-label="anchor" href="#reusable-deliverables"></a>
+<h2 id="maintain-tempest-01-reusable-deliverables">Maintain Tempest 0.1 reusable deliverables<a class="anchor" aria-label="anchor" href="#maintain-tempest-01-reusable-deliverables"></a>
 </h2>
-<p>Tempest’s output kernel is independent of STORM and Co-STORM. A host application can define an objective, versioned output contract, and runtime operations without adding its business model to the package:</p>
+<blockquote>
+<p><strong>Warning:</strong> The experimental generic deliverable and workflow kernel is frozen and is scheduled for removal in Tempest 0.2.0. No compatibility shim is planned. Use the STORM and Co-STORM product APIs for new research workflows.</p>
+</blockquote>
+<p>The frozen 0.1 output kernel is independent of STORM and Co-STORM. Existing host applications can still define an objective, versioned output contract, and runtime operations while the product migration is under way:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">objective</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_objective.html">tempest_objective</a></span><span class="op">(</span></span>
 <span>  <span class="st">"Turn the supplied request into a concise action brief"</span>,</span>
@@ -261,9 +264,12 @@
 <p>Specifications contain only serializable values and stable operation ids. Runtime functions stay in the operation registry, while artifacts retain their specification fingerprint, validation state, provenance, and content checksum. When <code>requires_approval = TRUE</code>, a <code>TempestRun</code> publishes the validated artifact as <code>awaiting_approval</code>, pauses without rerunning its producer, and invokes exporters only after the host approves the output. Invalid output stays inspectable and is never exported. A retry can explicitly replace a stable invalid artifact from the same run, step, and specification while retaining the prior validation diagnostics. Inline structured content uses canonical JSON semantics: objects and arrays restore as lists, while classed R objects, missing values, and binary content should use an external <code>storage_ref</code>. Session bundles persist every registered artifact representation instead of relying on a fixed report filename. Hosts with custom inline content codecs reattach the same <code>codec_registry</code> when saving and resuming; generic run snapshots use canonical JSON content or external storage references.</p>
 </div>
 <div class="section level2">
-<h2 id="reusable-workflows-and-selected-experts">Reusable workflows and selected experts<a class="anchor" aria-label="anchor" href="#reusable-workflows-and-selected-experts"></a>
+<h2 id="maintain-tempest-01-reusable-workflows-and-selected-experts">Maintain Tempest 0.1 reusable workflows and selected experts<a class="anchor" aria-label="anchor" href="#maintain-tempest-01-reusable-workflows-and-selected-experts"></a>
 </h2>
-<p>Hosts can execute application-specific work through the same run model without adding customer, CRM, or opportunity concepts to Tempest. Workflow specifications are serializable; executable operations stay in the runtime:</p>
+<blockquote>
+<p><strong>Warning:</strong> This section documents maintenance of existing Tempest 0.1 integrations. These generic workflow APIs are scheduled for removal in Tempest 0.2.0 and should not be used for new work.</p>
+</blockquote>
+<p>Existing Tempest 0.1 hosts can maintain application-specific work through the same run model while they migrate. Workflow specifications are serializable; executable operations stay in the runtime:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">expert</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
 <span>  expert_id <span class="op">=</span> <span class="st">"expert.delivery"</span>,</span>
@@ -312,42 +318,36 @@
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/tempest_run_accessors.html">tempest_run_status</a></span><span class="op">(</span><span class="va">run</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/tempest_run_accessors.html">tempest_run_events</a></span><span class="op">(</span><span class="va">run</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="reference/tempest_runtime.html">tempest_runtime()</a></code> adds least-privilege skills, capabilities, and opaque connection references. An expert profile declares what it needs; the host grants connection IDs for that run; a connection provider rehydrates authenticated clients only after authorization. Profiles, snapshots, and events never contain tool closures, clients, or credentials.</p>
-<p>Hosts can pass process-local services through <code>runtime_context</code> and reattach them explicitly after restore. Tempest records the resulting per-step and per-expert authorization decisions for inspection with <code><a href="reference/tempest_run_accessors.html">tempest_run_capability_grants()</a></code>, including per-attempt grant history for retries, while leaving the live services themselves out of snapshots and run bundles. Side-effecting capabilities pass through policy and approval before their factories or step operation can execute.</p>
-<p>Use <code><a href="reference/tempest_storm_workflow_run.html">tempest_storm_workflow_run()</a></code> or <code><a href="reference/tempest_costorm_workflow_run.html">tempest_costorm_workflow_run()</a></code> when a host wants the built-in research workflows behind the same run interface. <code><a href="reference/tempest_run_save.html">tempest_run_save()</a></code> and <code><a href="reference/tempest_run_resume.html">tempest_run_resume()</a></code> persist generic runs while requiring the host to reattach process-local operations and connections. Restored permission overrides may only narrow saved grants, and recovering an in-flight snapshot requires the explicit <code>partial_recovery = TRUE</code> mode. Classed execution errors retain the failed run in <code>condition$run</code>, so a host can inspect its events, grants, validation results, and artifacts before deciding whether to retry or present the failure.</p>
-<p>Run <code><a href="articles/reusable-workflows.html">vignette("reusable-workflows", package = "tempest")</a></code> for a complete, offline example that combines a selected expert, output template, workflow, approval, typed artifact, audit trail, and save/restore cycle.</p>
+<p>In the frozen 0.1 model, <code><a href="reference/tempest_runtime.html">tempest_runtime()</a></code> adds least-privilege skills, capabilities, and opaque connection references. An expert profile declares what it needs; the host grants connection IDs for that run; a connection provider rehydrates authenticated clients only after authorization. Profiles, snapshots, and events never contain tool closures, clients, or credentials.</p>
+<p>Existing 0.1 hosts can pass process-local services through <code>runtime_context</code> and reattach them explicitly after restore. Tempest records the resulting per-step and per-expert authorization decisions for inspection with <code><a href="reference/tempest_run_accessors.html">tempest_run_capability_grants()</a></code>, including per-attempt grant history for retries, while leaving the live services themselves out of snapshots and run bundles. Side-effecting capabilities pass through policy and approval before their factories or step operation can execute.</p>
+<p>Existing 0.1 hosts may continue to use <code><a href="reference/tempest_storm_workflow_run.html">tempest_storm_workflow_run()</a></code> or <code><a href="reference/tempest_costorm_workflow_run.html">tempest_costorm_workflow_run()</a></code> until they migrate. New research integrations should call <code><a href="reference/tempest_run.html">tempest_run()</a></code> or <code><a href="reference/tempest_session.html">tempest_session()</a></code> directly. <code><a href="reference/tempest_run_save.html">tempest_run_save()</a></code> and <code><a href="reference/tempest_run_resume.html">tempest_run_resume()</a></code> persist frozen generic runs while requiring the host to reattach process-local operations and connections. Restored permission overrides may only narrow saved grants, and recovering an in-flight snapshot requires the explicit <code>partial_recovery = TRUE</code> mode. Classed execution errors retain the failed run in <code>condition$run</code>, so a host can inspect its events, grants, validation results, and artifacts before deciding whether to retry or present the failure.</p>
+<p>Run <code><a href="articles/reusable-workflows.html">vignette("reusable-workflows", package = "tempest")</a></code> for a complete, offline maintenance example for an existing Tempest 0.1 integration.</p>
 </div>
 <div class="section level2">
 <h2 id="agent-skills">Agent skills<a class="anchor" aria-label="anchor" href="#agent-skills"></a>
 </h2>
-<p>Tempest ships five portable Agent Skills for built-in research, framework-neutral STORM research, and custom workflow development:</p>
+<p>Tempest ships two supported research skills and three retiring Tempest 0.1 workflow skills:</p>
+<p>The custom-workflow design, build, and verification skills document the frozen generic kernel and will be removed with it in Tempest 0.2.0. The two research skills remain the supported product direction.</p>
 <ul>
 <li>
 <code>use-tempest-research</code> chooses, configures, runs, resumes, inspects, and embeds Tempest’s scripted STORM and interactive Co-STORM workflows.</li>
 <li>
 <code>conduct-storm-research</code> carries the provider- and framework-neutral STORM and Co-STORM protocols. It can guide another implementation or be loaded by a tool-capable chat host without calling Tempest APIs.</li>
 <li>
-<code>design-tempest-workflow</code> defines custom contracts, graphs, permissions, approvals, and acceptance tests.</li>
-<li>
-<code>build-tempest-workflow</code> turns a custom design into public Tempest API calls and deterministic R tests.</li>
-<li>
-<code>verify-tempest-workflow</code> audits custom runtime, approval, artifact, failure, and restore integrity.</li>
+<code>design-tempest-workflow</code>, <code>build-tempest-workflow</code>, and <code>verify-tempest-workflow</code> support maintenance of existing 0.1 generic-kernel integrations only.</li>
 </ul>
 <p>List the bundled skill directories or install them into the directory used by your agent:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/tempest_agent_skills.html">tempest_agent_skills</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Install all five for user-level Codex sessions.</span></span>
-<span><span class="fu"><a href="reference/tempest_agent_skills.html">tempest_install_agent_skills</a></span><span class="op">(</span><span class="st">"~/.codex/skills"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Or install a selected character vector of skills.</span></span>
+<span><span class="co"># Install the supported research skills for user-level Codex sessions.</span></span>
 <span><span class="fu"><a href="reference/tempest_agent_skills.html">tempest_install_agent_skills</a></span><span class="op">(</span></span>
 <span>  <span class="st">"~/.codex/skills"</span>,</span>
 <span>  skills <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"use-tempest-research"</span>, <span class="st">"conduct-storm-research"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Existing copies are preserved unless <code>overwrite = TRUE</code>. A compatible skill loader can also discover the bundled skills from an attached Tempest package and expose <code>conduct-storm-research</code> inside a tool-capable chat application. The host must still provide retrieval, evidence, state, and output tools.</p>
-<p>These Agent Skills are distinct from <code><a href="reference/tempest_skill.html">tempest_skill()</a></code>, which defines a serializable procedure assigned to an expert inside a Tempest workflow.</p>
-<p>Read <code><a href="articles/agent-skills.html">vignette("agent-skills", package = "tempest")</a></code> to choose among the five skills, install them for an agent, or expose portable STORM research through an ellmer client and shinychat application.</p>
+<p>These Agent Skills are distinct from the frozen 0.1 <code><a href="reference/tempest_skill.html">tempest_skill()</a></code> runtime contract, which is also scheduled for removal in Tempest 0.2.0.</p>
+<p>Read <code><a href="articles/agent-skills.html">vignette("agent-skills", package = "tempest")</a></code> to install a supported research skill or expose portable STORM research through an ellmer client and shinychat application.</p>
 </div>
 <div class="section level2">
 <h2 id="scripted-storm">Scripted STORM<a class="anchor" aria-label="anchor" href="#scripted-storm"></a>
@@ -405,7 +405,7 @@
 <span>  output_dir <span class="op">=</span> <span class="st">"storm-runs"</span>,</span>
 <span>  resume <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Each run directory includes checksummed JSON artifacts for perspectives, experts, sources, claims, outlines, and references; Markdown drafts; and a typed artifact catalog containing all final deliverable representations.</p>
+<p>Each run directory includes checksummed JSON state for perspectives, experts, sources, claims, outlines, and references; Markdown drafts; and the final Markdown report.</p>
 </div>
 <div class="section level3">
 <h3 id="pipeline-details">Pipeline Details<a class="anchor" aria-label="anchor" href="#pipeline-details"></a>
@@ -427,7 +427,7 @@
 <li>
 <strong>Parallel section writing</strong> – pass <code>parallel_writing = TRUE</code> to write report sections concurrently with mirai, then extract facts and assemble the article in deterministic outline order.</li>
 <li>
-<strong>dsprrr modules</strong> – structured extraction steps (query decomposition, fact extraction, outline drafting, section writing) use <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> modules for more reliable structured output. Optimized module sets can be passed through <code>dsprrr_modules</code>.</li>
+<strong>dsprrr modules</strong> – structured extraction steps (query decomposition, claim extraction, outline drafting, section writing) use <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> modules for more reliable structured output. Optimized module sets can be passed through <code>dsprrr_modules</code>.</li>
 </ul>
 </div>
 <div class="section level3">
@@ -503,8 +503,7 @@
 <tr>
 <td><code>artifact_store</code></td>
 <td><code>NULL</code></td>
-<td>Optional host-app artifact store from <code><a href="reference/tempest_artifact_store.html">tempest_artifact_store()</a></code>
-</td>
+<td>Frozen Tempest 0.1 host adapter; do not use for new integrations</td>
 </tr>
 <tr>
 <td><code>chat_fn</code></td>
@@ -569,7 +568,7 @@
 </tr>
 </tbody>
 </table>
-<p>By default, coordinator and writer roles use <code>openai/gpt-5.6-sol</code>; expert, mind map, and judge roles use <code>openai/gpt-5.6-luna</code>. Tempest constructs these clients with <code>ellmer::chat_openai(auth = "codex")</code>, reusing the ChatGPT subscription authenticated by Codex CLI. Built-in subscription clients use lower reasoning effort for mind-map and judge calls; explicit <code>params</code> values override these defaults. <code><a href="reference/run_app.html">run_app()</a></code> limits individual provider requests to 120 seconds by default, configurable with <code>tempest.shiny.provider_timeout_s</code>. The bundled app’s warmup asks each capability-scoped expert for one brief, bounded, evidence-backed orientation. Each expert reuses session evidence or runs one targeted search, inspects at most two results, and preserves at least one citation. Tempest then commits source-backed claims in stable expert order and updates the shared mind map once for the complete panel. The summary says explicitly when no citable evidence was collected. Warmup concurrency and its 120-second safety timeout are configurable with <code>tempest.shiny.warmup_*</code> options.</p>
+<p>By default, coordinator and writer roles use <code>openai/gpt-5.6-sol</code>; expert, mind map, and judge roles use <code>openai/gpt-5.6-luna</code>. Tempest constructs these clients with <code>ellmer::chat_openai(auth = "codex")</code>, reusing the ChatGPT subscription authenticated by Codex CLI. Built-in subscription clients use lower reasoning effort for mind-map and judge calls; explicit <code>params</code> values override these defaults. <code><a href="reference/run_app.html">run_app()</a></code> limits individual provider requests to 120 seconds by default, configurable with <code>tempest.shiny.provider_timeout_s</code>. The bundled app’s warmup asks each active expert for one brief, bounded, evidence-backed orientation. Each expert reuses session evidence or runs one targeted search, inspects at most two results, and preserves at least one citation. Tempest then commits source-backed claims in stable expert order and updates the shared mind map once for the complete panel. The summary says explicitly when no citable evidence was collected. Warmup concurrency and its 120-second safety timeout are configurable with <code>tempest.shiny.warmup_*</code> options.</p>
 <p>To set a personal default model, add the <code>tempest.chat</code> option to your <code>.Rprofile</code>, using the same provider/model format as <code><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">ellmer::chat()</a></code>:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>tempest.chat <span class="op">=</span> <span class="st">"anthropic/claude-sonnet-4-20250514"</span><span class="op">)</span></span></code></pre></div>
@@ -625,9 +624,10 @@
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="scoped-skills-capabilities-and-connections">Scoped skills, capabilities, and connections<a class="anchor" aria-label="anchor" href="#scoped-skills-capabilities-and-connections"></a>
+<h2 id="frozen-01-scoped-runtime">Frozen 0.1 scoped runtime<a class="anchor" aria-label="anchor" href="#frozen-01-scoped-runtime"></a>
 </h2>
-<p>Tools are resolved for one role or expert execution context rather than registered globally on every chat. Use <code><a href="reference/tempest_skill.html">tempest_skill()</a></code> for reusable procedures, <code><a href="reference/tempest_capability_spec.html">tempest_capability_spec()</a></code> for permissioned behavior, <code><a href="reference/tempest_connection_ref.html">tempest_connection_ref()</a></code> for durable non-secret connection identities, and <code><a href="reference/tempest_runtime.html">tempest_runtime()</a></code> for process-local implementations and authenticated bindings. Selected experts can then declare exact skill and capability IDs. Code that previously passed <code>tools =</code> to <code><a href="reference/tempest_config.html">tempest_config()</a></code> should instead define a named <code><a href="reference/tempest_capability_spec.html">tempest_capability_spec()</a></code>, pass it to <code>tempest_runtime(capability_specs = )</code>, register a same-ID factory that returns <code>list(tools = )</code> through <code>capability_implementations =</code>, and grant that capability ID to the relevant expert or workflow step.</p>
+<p>This experimental runtime layer is frozen and scheduled for removal in Tempest 0.2.0. Co-STORM will move to Deputy-managed agents, permissions, and tools; hosts will inject connection implementations directly.</p>
+<p>Do not adopt this layer for a new integration. Existing 0.1 hosts may continue to use <code><a href="reference/tempest_skill.html">tempest_skill()</a></code>, <code><a href="reference/tempest_capability_spec.html">tempest_capability_spec()</a></code>, <code><a href="reference/tempest_connection_ref.html">tempest_connection_ref()</a></code>, and <code><a href="reference/tempest_runtime.html">tempest_runtime()</a></code> while the Co-STORM Deputy adapter and direct host-injection seams are introduced.</p>
 </div>
 <div class="section level2">
 <h2 id="interactive-co-storm">Interactive Co-STORM<a class="anchor" aria-label="anchor" href="#interactive-co-storm"></a>
@@ -668,8 +668,8 @@
 <p>The moderator receives one scoped <code>delegate_to_expert(expert_id, question)</code> tool. It resolves the active roster by stable expert id, so display-name changes cannot redirect work. Each expert:</p>
 <ul>
 <li>Has their own chat session with conversation continuity</li>
-<li>Receives only the skills, capabilities, and connections granted for that run</li>
-<li>Can use granted web or evidence tools to find and cite sources</li>
+<li>Receives only the role-specific tools needed for that run</li>
+<li>Can use host-provided web or evidence tools to find and cite sources</li>
 <li>Extracts claims automatically after each response</li>
 <li>Keeps an opaque, host-inaccessible chat session binding for continuity</li>
 </ul>

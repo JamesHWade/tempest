@@ -67,6 +67,10 @@ A `tempest_connection_ref` S7 object.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 A connection reference identifies a host-owned authenticated binding
 without storing credentials or a live client in a durable workflow
 definition.

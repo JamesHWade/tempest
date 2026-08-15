@@ -101,6 +101,10 @@ Control functions return `run` invisibly.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 These functions provide host applications with stable access to mutable
 `TempestRun` state without reaching into R6 fields or methods directly.
 Event filtering preserves run-local sequence order. Approval controls

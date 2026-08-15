@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -97,7 +97,10 @@ metadata.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>This is the application-neutral output lifecycle used by built-in and
+    <p>This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+<a href="tempest-generic-kernel-retirement.html">tempest-generic-kernel-retirement</a>.</p>
+<p>This is the application-neutral output lifecycle used by built-in and
 host-defined workflows. It resolves all operations before generation, runs
 validators, renders typed artifacts, invokes exporters only for <code>valid</code> or
 <code>approved</code> output, and publishes the artifacts to a catalog. Failed

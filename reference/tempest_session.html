@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -72,7 +72,8 @@
 
 
 <dt id="arg-runtime">runtime<a class="anchor" aria-label="anchor" href="#arg-runtime"></a></dt>
-<dd><p>A <code><a href="tempest_runtime.html">tempest_runtime()</a></code> containing process-local adapters.</p></dd>
+<dd><p>Frozen Tempest 0.1 <code><a href="tempest_runtime.html">tempest_runtime()</a></code> adapter. Existing
+integrations only.</p></dd>
 
 
 <dt id="arg-n-experts">n_experts<a class="anchor" aria-label="anchor" href="#arg-n-experts"></a></dt>
@@ -85,8 +86,8 @@ experts are generated automatically.</p></dd>
 
 
 <dt id="arg-connection-permissions">connection_permissions<a class="anchor" aria-label="anchor" href="#arg-connection-permissions"></a></dt>
-<dd><p>Named per-role or per-expert connection
-allow-lists.</p></dd>
+<dd><p>Frozen Tempest 0.1 per-role or per-expert
+connection allow-lists.</p></dd>
 
 
 <dt id="arg-retriever">retriever<a class="anchor" aria-label="anchor" href="#arg-retriever"></a></dt>
@@ -104,6 +105,15 @@ objects as the session makes progress.</p></dd>
 identifier is generated.</p></dd>
 
 </dl></div>
+    <div class="section level2">
+    <h2 id="frozen-tempest-seams">Frozen Tempest 0.1 seams<a class="anchor" aria-label="anchor" href="#frozen-tempest-seams"></a></h2>
+
+
+
+<p><code>runtime</code> and <code>connection_permissions</code> remain only for existing Tempest 0.1
+integrations and are scheduled for replacement in Tempest 0.2.0. New host
+code should keep role-specific tools and authenticated clients process-local.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

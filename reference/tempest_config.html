@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -105,8 +105,10 @@ provided, a store is created automatically with the tempest metadata schema.</p>
 
 
 <dt id="arg-artifact-store">artifact_store<a class="anchor" aria-label="anchor" href="#arg-artifact-store"></a></dt>
-<dd><p>Optional artifact-store adapter from
-<code><a href="tempest_artifact_store.html">tempest_artifact_store()</a></code> or <code><a href="tempest_memory_artifact_store.html">tempest_memory_artifact_store()</a></code>.</p></dd>
+<dd><p>Frozen Tempest 0.1 artifact-store adapter from
+<code><a href="tempest_artifact_store.html">tempest_artifact_store()</a></code> or <code><a href="tempest_memory_artifact_store.html">tempest_memory_artifact_store()</a></code>. Existing
+integrations only; new code should consume <code>report_md</code> and scientific
+evidence directly.</p></dd>
 
 
 <dt id="arg-search-provider">search_provider<a class="anchor" aria-label="anchor" href="#arg-search-provider"></a></dt>

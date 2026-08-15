@@ -14,6 +14,10 @@ A `tempest_workflow_spec`.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 The interactive dialogue is an approval checkpoint. Starting the
 workflow runs warmup and then returns in `awaiting_approval`. A host
 conducts as many

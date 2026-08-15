@@ -66,10 +66,12 @@ tempest_config(
 
 - artifact_store:
 
-  Optional artifact-store adapter from
+  Frozen Tempest 0.1 artifact-store adapter from
   [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
   or
   [`tempest_memory_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.md).
+  Existing integrations only; new code should consume `report_md` and
+  scientific evidence directly.
 
 - search_provider:
 

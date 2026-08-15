@@ -91,6 +91,10 @@ A `TempestRun`.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 This is the generic-run counterpart to
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md).
 It returns the `TempestRun`; each step result retains the corresponding

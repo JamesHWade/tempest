@@ -37,6 +37,10 @@ and `snapshot()` methods.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 The catalog owns typed artifacts for one workflow run. It supports
 metadata-only listing so host applications do not need to load large
 artifact content to render an output index.
@@ -56,71 +60,71 @@ catalog <- tempest_artifact_catalog(deliverables = list(spec))
 artifact <- tempest_artifact(spec, content = "# Brief")
 catalog$add(artifact)
 catalog$list()
-#> $artifact_74bfb52b1fb341bd
-#> $artifact_74bfb52b1fb341bd$artifact_id
-#> [1] "artifact_74bfb52b1fb341bd"
+#> $artifact_2814b683cadd3d87
+#> $artifact_2814b683cadd3d87$artifact_id
+#> [1] "artifact_2814b683cadd3d87"
 #> 
-#> $artifact_74bfb52b1fb341bd$deliverable_id
+#> $artifact_2814b683cadd3d87$deliverable_id
 #> [1] "brief"
 #> 
-#> $artifact_74bfb52b1fb341bd$deliverable_version
+#> $artifact_2814b683cadd3d87$deliverable_version
 #> [1] "1"
 #> 
-#> $artifact_74bfb52b1fb341bd$spec_fingerprint
+#> $artifact_2814b683cadd3d87$spec_fingerprint
 #> [1] "7163d0f76e102677ea68a30af5b96c74655df967c758356e45fe39defa69bb71"
 #> 
-#> $artifact_74bfb52b1fb341bd$artifact_kind
+#> $artifact_2814b683cadd3d87$artifact_kind
 #> [1] "primary"
 #> 
-#> $artifact_74bfb52b1fb341bd$media_type
+#> $artifact_2814b683cadd3d87$media_type
 #> [1] "text/markdown"
 #> 
-#> $artifact_74bfb52b1fb341bd$schema_version
+#> $artifact_2814b683cadd3d87$schema_version
 #> [1] 1
 #> 
-#> $artifact_74bfb52b1fb341bd$storage_ref
+#> $artifact_2814b683cadd3d87$storage_ref
 #> [1] NA
 #> 
-#> $artifact_74bfb52b1fb341bd$producer_operation_id
+#> $artifact_2814b683cadd3d87$producer_operation_id
 #> [1] NA
 #> 
-#> $artifact_74bfb52b1fb341bd$run_id
+#> $artifact_2814b683cadd3d87$run_id
 #> [1] NA
 #> 
-#> $artifact_74bfb52b1fb341bd$step_id
+#> $artifact_2814b683cadd3d87$step_id
 #> [1] NA
 #> 
-#> $artifact_74bfb52b1fb341bd$expert_id
+#> $artifact_2814b683cadd3d87$expert_id
 #> [1] NA
 #> 
-#> $artifact_74bfb52b1fb341bd$resource_ids
+#> $artifact_2814b683cadd3d87$resource_ids
 #> character(0)
 #> 
-#> $artifact_74bfb52b1fb341bd$claim_ids
+#> $artifact_2814b683cadd3d87$claim_ids
 #> character(0)
 #> 
-#> $artifact_74bfb52b1fb341bd$evidence_span_ids
+#> $artifact_2814b683cadd3d87$evidence_span_ids
 #> character(0)
 #> 
-#> $artifact_74bfb52b1fb341bd$parent_artifact_ids
+#> $artifact_2814b683cadd3d87$parent_artifact_ids
 #> character(0)
 #> 
-#> $artifact_74bfb52b1fb341bd$validation_results
+#> $artifact_2814b683cadd3d87$validation_results
 #> list()
 #> 
-#> $artifact_74bfb52b1fb341bd$status
+#> $artifact_2814b683cadd3d87$status
 #> [1] "draft"
 #> 
-#> $artifact_74bfb52b1fb341bd$checksum
+#> $artifact_2814b683cadd3d87$checksum
 #> [1] "fd55350669a978d5a8cde0218d92baa5d6f8e1c9102f40cc42301a56543cc99d"
 #> 
-#> $artifact_74bfb52b1fb341bd$created_at
-#> [1] "2026-08-15 17:50:16 UTC"
+#> $artifact_2814b683cadd3d87$created_at
+#> [1] "2026-08-15 18:13:13 UTC"
 #> 
-#> $artifact_74bfb52b1fb341bd$updated_at
-#> [1] "2026-08-15 17:50:16 UTC"
+#> $artifact_2814b683cadd3d87$updated_at
+#> [1] "2026-08-15 18:13:13 UTC"
 #> 
-#> $artifact_74bfb52b1fb341bd$metadata
+#> $artifact_2814b683cadd3d87$metadata
 #> list()
 #> 
 #> 

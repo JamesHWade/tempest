@@ -11,9 +11,9 @@
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Use Tempest Agent Skills">
-<meta name="description" content="Choose and install Tempest's five Agent Skills, or make portable STORM research callable from an ellmer and shinychat application.
+<meta name="description" content="Install Tempest's two research Agent Skills or make portable STORM research callable from an ellmer and shinychat application.
 ">
-<meta property="og:description" content="Choose and install Tempest's five Agent Skills, or make portable STORM research callable from an ellmer and shinychat application.
+<meta property="og:description" content="Install Tempest's two research Agent Skills or make portable STORM research callable from an ellmer and shinychat application.
 ">
 </head>
 <body>
@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul>
@@ -72,11 +72,13 @@
 
     
     
-<p>Tempest ships Agent Skills alongside its R APIs. Each skill is a
+<p>Tempest ships Agent Skills alongside its R APIs. Two research skills
+remain supported; three custom-workflow skills document the frozen
+Tempest 0.1 kernel and will be removed in Tempest 0.2.0. Each skill is a
 portable directory containing a <code>SKILL.md</code> file, supporting
 references, and agent metadata. A compatible agent can load those
-instructions when it needs to operate Tempest, conduct STORM research in
-another framework, or build a custom workflow.</p>
+instructions when it needs to operate Tempest or conduct STORM research
+in another framework.</p>
 <p>This article covers two deployment shapes:</p>
 <ol style="list-style-type: decimal">
 <li>install the skills for a coding or research agent; or</li>
@@ -112,60 +114,62 @@ authorization, state, and lifecycle needed to perform the research.</p>
 <tr class="even">
 <td>Workflow skill</td>
 <td><code><a href="../reference/tempest_skill.html">tempest_skill()</a></code></td>
-<td>Defines a serializable procedure assigned to a Tempest expert</td>
+<td>Frozen 0.1 runtime contract scheduled for removal in 0.2.0</td>
 </tr>
 </tbody>
 </table>
-<p>An Agent Skill can teach a coding agent to construct an entire
-workflow. A workflow skill is one durable part of the expert profile
-inside that workflow. They are complementary, but they are not
-interchangeable.</p>
+<p>An Agent Skill is external operating guidance. The similarly named
+workflow skill belongs to the retiring generic runtime and should not be
+adopted for a new integration.</p>
 </div>
 <div class="section level2">
-<h2 id="choose-among-the-five-skills">Choose among the five skills<a class="anchor" aria-label="anchor" href="#choose-among-the-five-skills"></a>
+<h2 id="choose-a-supported-research-skill">Choose a supported research skill<a class="anchor" aria-label="anchor" href="#choose-a-supported-research-skill"></a>
 </h2>
 <p>Use the smallest skill that matches the task:</p>
 <table class="table">
 <colgroup>
-<col width="50%">
-<col width="50%">
+<col width="33%">
+<col width="33%">
+<col width="33%">
 </colgroup>
 <thead><tr class="header">
 <th>Skill</th>
+<th>Lifecycle</th>
 <th>Use it when the agent should</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>use-tempest-research</code></td>
+<td>Supported</td>
 <td>Choose, configure, run, resume, inspect, or embed Tempest’s built-in
 STORM and Co-STORM workflows</td>
 </tr>
 <tr class="even">
 <td><code>conduct-storm-research</code></td>
+<td>Supported</td>
 <td>Follow a provider- and framework-neutral STORM or Co-STORM protocol
 outside Tempest</td>
 </tr>
 <tr class="odd">
 <td><code>design-tempest-workflow</code></td>
-<td>Define a custom workflow’s contracts, graph, permissions, approvals,
-and acceptance tests</td>
+<td>Tempest 0.1 only</td>
+<td>Maintain an existing generic workflow design</td>
 </tr>
 <tr class="even">
 <td><code>build-tempest-workflow</code></td>
-<td>Turn an approved design into public Tempest API calls and
-deterministic tests</td>
+<td>Tempest 0.1 only</td>
+<td>Maintain an existing generic workflow implementation</td>
 </tr>
 <tr class="odd">
 <td><code>verify-tempest-workflow</code></td>
-<td>Audit runtime behavior, artifacts, approvals, failures,
-cancellation, and restore integrity</td>
+<td>Tempest 0.1 only</td>
+<td>Audit an existing generic workflow before its migration</td>
 </tr>
 </tbody>
 </table>
-<p>The custom workflow skills form a sequence: design first, build
-against the approved design, and verify the finished implementation. The
-two research skills describe complete operating modes and can be used
-independently.</p>
+<p>The two research skills describe complete operating modes and can be
+used independently. Do not start new work with the three retiring
+workflow skills.</p>
 </div>
 <div class="section level2">
 <h2 id="discover-and-install-the-skills">Discover and install the skills<a class="anchor" aria-label="anchor" href="#discover-and-install-the-skills"></a>
@@ -179,11 +183,8 @@ independently.</p>
 <span><span class="co">#&gt; [1] "build-tempest-workflow"  "conduct-storm-research" </span></span>
 <span><span class="co">#&gt; [3] "design-tempest-workflow" "use-tempest-research"   </span></span>
 <span><span class="co">#&gt; [5] "verify-tempest-workflow"</span></span></code></pre></div>
-<p>Install every skill into a directory supported by the agent:</p>
+<p>Install the supported skills into a directory used by the agent:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/tempest_agent_skills.html">tempest_install_agent_skills</a></span><span class="op">(</span><span class="st">"~/.codex/skills"</span><span class="op">)</span></span></code></pre></div>
-<p>Or install a selected character vector:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/tempest_agent_skills.html">tempest_install_agent_skills</a></span><span class="op">(</span></span>
 <span>  <span class="st">"~/.codex/skills"</span>,</span>
 <span>  skills <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"use-tempest-research"</span>, <span class="st">"conduct-storm-research"</span><span class="op">)</span></span>
@@ -198,10 +199,6 @@ procedure:</p>
 <p>Load <code>use-tempest-research</code> and help me configure a
 resumable STORM report.</p>
 </blockquote>
-<blockquote>
-<p>Load <code>design-tempest-workflow</code> and produce a design packet
-for an approval-gated evidence brief.</p>
-</blockquote>
 </div>
 <div class="section level2">
 <h2 id="let-an-ellmer-client-discover-tempest-skills">Let an ellmer client discover Tempest skills<a class="anchor" aria-label="anchor" href="#let-an-ellmer-client-discover-tempest-skills"></a>
@@ -210,7 +207,7 @@ for an approval-gated evidence brief.</p>
 skill tool</a> discovers skills bundled in attached R packages. Attach
 Tempest before registering the <code>"skills"</code> tool group so the
 resolved skill paths include <code>tempest</code>:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/posit-dev/btw" class="external-link">btw</a></span><span class="op">)</span></span>
@@ -292,7 +289,7 @@ model’s conversation window for durable Co-STORM state.</p>
 <p>For a local, single-user prototype, attach Tempest, create an ellmer
 client, register the skill loader and host tools, and pass the client to
 <code><a href="https://posit-dev.github.io/shinychat/r/reference/chat_app.html" class="external-link">chat_app()</a></code>:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/posit-dev/btw" class="external-link">btw</a></span><span class="op">)</span></span>
@@ -335,7 +332,7 @@ automatic tool loop.</p>
 single user. In a multi-user Shiny application, create the ellmer client
 and host tool state inside the server function, then use
 <code><a href="https://posit-dev.github.io/shinychat/r/reference/chat_mod_ui.html" class="external-link">chat_mod_server()</a></code>:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rstudio.github.io/bslib/" class="external-link">bslib</a></span><span class="op">)</span></span>

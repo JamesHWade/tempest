@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -71,7 +71,7 @@
 
 <dl><dt id="arg-resource-kind">resource_kind<a class="anchor" aria-label="anchor" href="#arg-resource-kind"></a></dt>
 <dd><p>Stable resource-kind identifier such as <code>"web"</code>,
-<code>"file"</code>, or <code>"host.document"</code>.</p></dd>
+<code>"file"</code>, or <code>"scientific.document"</code>.</p></dd>
 
 
 <dt id="arg-locator">locator<a class="anchor" aria-label="anchor" href="#arg-locator"></a></dt>
@@ -139,20 +139,22 @@ inline content when omitted.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Resources identify evidence without requiring a public URL. The durable
-value may describe a web page, file, email, database result, host document,
-or another application-defined resource kind. Authenticated clients and
-credentials remain in host runtime adapters and are never stored here.</p>
+    <p>Resources identify provisional scientific evidence without requiring a
+public URL. The durable value may describe a web page, file, lab record, or
+database result used during research. Authenticated clients and credentials
+remain host-owned and are never stored here. This record is not a generic
+connection-management contract; its 0.2 role narrows to scientific source
+and context evidence in a research workspace.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">resource</span> <span class="op">&lt;-</span> <span class="fu">tempest_resource</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  resource_kind <span class="op">=</span> <span class="st">"host.document"</span>,</span></span>
-<span class="r-in"><span>  locator <span class="op">=</span> <span class="st">"documents/brief-42"</span>,</span></span>
-<span class="r-in"><span>  title <span class="op">=</span> <span class="st">"Approved project brief"</span>,</span></span>
+<span class="r-in"><span>  resource_kind <span class="op">=</span> <span class="st">"scientific.document"</span>,</span></span>
+<span class="r-in"><span>  locator <span class="op">=</span> <span class="st">"protocols/assay-42"</span>,</span></span>
+<span class="r-in"><span>  title <span class="op">=</span> <span class="st">"Reviewed assay protocol"</span>,</span></span>
 <span class="r-in"><span>  media_type <span class="op">=</span> <span class="st">"text/plain"</span>,</span></span>
-<span class="r-in"><span>  content <span class="op">=</span> <span class="st">"The requested outcome is a rollout plan."</span></span></span>
+<span class="r-in"><span>  content <span class="op">=</span> <span class="st">"Measure the response after 24 hours."</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>

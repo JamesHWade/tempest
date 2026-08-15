@@ -23,6 +23,10 @@ A mutable runtime registry with `register()`, `resolve()`, `describe()`,
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 The registry keeps executable functions outside serializable workflow
 and deliverable specifications. Operations are resolved by stable id,
 version, and kind when a run is rehydrated.

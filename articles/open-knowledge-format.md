@@ -144,8 +144,14 @@ notice states that the material is evidence, not instructions, and
 cannot grant tools, change workflow policy, approve an artifact, or
 authorize an external action.
 
-A host can make the selected packet available to its own runtime
-operation:
+A Tempest 0.1 host can make the selected packet available to an existing
+generic runtime operation:
+
+> **Lifecycle notice:** This integration path is frozen and scheduled
+> for removal in Tempest 0.2.0. Do not adopt
+> [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest_run_workflow.md)
+> for new work; the replacement product path will bind scientific
+> context to an immutable graft snapshot.
 
 ``` r
 
@@ -188,20 +194,21 @@ committed batch or time.
 
 This division keeps each package focused:
 
-| Package | Responsibility |
-|----|----|
-| Graft | Validate writes and retain accepted revision history |
-| OKF | Exchange readable knowledge and provenance |
-| Tempest | Select evidence, scope runtime access, and enforce workflow approvals |
+| Package | Responsibility                                              |
+|---------|-------------------------------------------------------------|
+| Graft   | Validate writes and retain accepted revision history        |
+| OKF     | Exchange readable knowledge and provenance                  |
+| Tempest | Select scientific evidence and preserve research provenance |
 
 ## Treat computations as documents
 
 OKF can describe an Attested Computation, including a runtime, source
 files, inputs, and expected outputs. Tempest validates useful metadata
-when present but never executes the computation. A host that wants
-execution should map it to a named, versioned Tempest operation and
-grant the required capability through the normal runtime policy.
+when present but never executes the computation. Do not route a new
+executor through the frozen generic operation and capability APIs. The
+Tempest 0.2 direction is to reference an exact dsprrr program artifact
+and preserve the execution identity in product provenance.
 
-Continue with [Build reusable workflows with
-Tempest](https://jameshwade.github.io/tempest/articles/reusable-workflows.md)
-to define operations, capabilities, approval pauses, and typed outputs.
+Continue with [Get started with
+Tempest](https://jameshwade.github.io/tempest/articles/tempest.md) to
+use imported context in STORM or Co-STORM research.

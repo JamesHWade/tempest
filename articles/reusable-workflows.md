@@ -1,17 +1,23 @@
-# Build reusable workflows with Tempest
+# Maintain Tempest 0.1 reusable workflows
 
-Tempest includes STORM and Co-STORM, but its workflow kernel is not
-limited to research reports. A host application can use the same
-machinery to turn a customer request, product objective, or internal
+> **Lifecycle notice:** The experimental generic workflow kernel
+> documented in this article is frozen and scheduled for removal in
+> Tempest 0.2.0. No compatibility shim is planned. New work should use
+> Tempest’s STORM and Co-STORM product APIs while the replacement seams
+> are introduced.
+
+Tempest 0.1 includes a workflow kernel that is not limited to research
+reports. Existing host applications can still use that machinery during
+the migration to turn a customer request, product objective, or internal
 task into its own typed outcome.
 
-This article builds a small action-register workflow. It runs entirely
-in R, without an API key or network connection, and demonstrates the
-package-user path from request to approved artifact.
+This article reproduces a small action-register workflow for maintainers
+of an existing Tempest 0.1 integration. It runs entirely in R, without
+an API key or network connection.
 
-## The workflow model
+## Understand the Tempest 0.1 workflow model
 
-A reusable Tempest workflow has four parts:
+A frozen Tempest 0.1 workflow has four parts:
 
 | Part | Responsibility |
 |----|----|
@@ -25,9 +31,11 @@ Specifications can be stored, compared, and restored. Functions,
 authenticated clients, credentials, and other live services stay in the
 host process and must be reattached when a run is restored.
 
-Tempest owns the generic execution contract. The host application still
-owns its domain model, expert selection, operation implementations,
-policy decisions, credentials, and user interface.
+In the frozen 0.1 implementation, Tempest owns the generic execution
+contract. That ownership is superseded by the Tempest 0.2
+package-boundary decision. The host application still owns its domain
+model, expert selection, operation implementations, policy decisions,
+credentials, and user interface.
 
 ## Describe the requested outcome
 
@@ -375,11 +383,11 @@ Canonical JSON values and strings can persist inline. Classed R objects,
 missing values, and binary content need an appropriate artifact codec or
 an external storage reference.
 
-## Add skills, capabilities, and connections
+## Maintain skills, capabilities, and connections
 
-The simple example uses a pure R operation. A production host can give
-each expert durable skill and capability requirements while keeping
-authenticated clients and credentials outside the profile:
+The simple example uses a pure R operation. An existing Tempest 0.1 host
+may already give each expert durable skill and capability requirements
+while keeping authenticated clients and credentials outside the profile:
 
 ``` r
 
@@ -411,7 +419,7 @@ read_customer_context <- tempest_capability_spec(
 )
 ```
 
-The host then constructs a
+An existing 0.1 host reconstructs a
 [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
 with these specifications, process-local capability implementations, and
 connection bindings. Experts refer to skills and capabilities by ID.
@@ -426,10 +434,10 @@ decisions are available through
 while tools, clients, and credentials never enter profiles, events,
 snapshots, or bundles.
 
-The bundled Shiny host example connects these pieces end to end,
-including process-local connection bindings, capability authorization,
-step and artifact approvals, typed JSON output, and the generic Shiny
-run adapter:
+The bundled frozen 0.1 Shiny host example connects these pieces end to
+end, including process-local connection bindings, capability
+authorization, step and artifact approvals, typed JSON output, and the
+generic Shiny run adapter:
 
 ``` r
 
@@ -438,10 +446,10 @@ shiny::runApp(
 )
 ```
 
-## Reuse the same kernel elsewhere
+## Maintain an existing Tempest 0.1 integration
 
-To adapt this example for another application, replace only the
-host-owned parts:
+When maintaining an existing integration, keep these host-owned parts
+explicit:
 
 1.  Map the incoming request to a
     [`tempest_objective()`](https://jameshwade.github.io/tempest/reference/tempest_objective.md).
@@ -454,15 +462,17 @@ host-owned parts:
     checkpoints.
 6.  Attach policy, connections, runtime services, and the host UI.
 
-The run, artifact, validation, event, approval, cancellation, and
-persistence contracts remain the same. This is the intended integration
-boundary: Tempest does not need application-specific customer,
-opportunity, CRM, or project types.
+In Tempest 0.1, the run, artifact, validation, event, approval,
+cancellation, and persistence contracts remain the same. Do not extend
+those contracts or adapt them for a new application during the
+migration.
 
-Use
+Existing integrations may continue to call
 [`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_run.md)
 or
 [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_run.md)
-when the desired application is research and report generation. Those
-built-in workflows are specializations of the same objective, expert,
-artifact, event, approval, and persistence model.
+until they migrate. New research code should call
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+or
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+directly.

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -90,7 +90,10 @@ returns the persisted deliverable version.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Artifact stores let host applications observe or persist typed Tempest
+    <p>This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+<a href="tempest-generic-kernel-retirement.html">tempest-generic-kernel-retirement</a>.</p>
+<p>Artifact stores let host applications observe or persist typed Tempest
 outputs without replacing the live in-memory artifact catalog. The default
 store is a no-op adapter.</p>
     </div>
@@ -110,7 +113,7 @@ store is a no-op adapter.</p>
 <span class="r-in"><span><span class="va">store</span><span class="op">$</span><span class="fu">write</span><span class="op">(</span><span class="va">artifact</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">store</span><span class="op">$</span><span class="fu">read</span><span class="op">(</span><span class="va">artifact</span><span class="op">@</span><span class="va">artifact_id</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;tempest::tempest_artifact&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ artifact_id          : chr "artifact_175272e93dbdfc09"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ artifact_id          : chr "artifact_25bfe486e89a4400"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ deliverable_id       : chr "report"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ deliverable_version  : chr "1"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ spec_fingerprint     : chr "c34c9d934526738c62ad2db702339f587bd7cd48ea38ffcb6547751480e6e060"</span>
@@ -130,8 +133,8 @@ store is a no-op adapter.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ validation_results   : list()</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ status               : chr "draft"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ checksum             : chr "04e1d1467e73933d8841c0c22eca9710ee72d020f5d494b091d68d4d2efea89d"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ created_at           : chr "2026-08-15 17:50:17 UTC"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ updated_at           : chr "2026-08-15 17:50:17 UTC"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ created_at           : chr "2026-08-15 18:13:14 UTC"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ updated_at           : chr "2026-08-15 18:13:14 UTC"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ metadata             : list()</span>
 </code></pre></div>
     </div>

@@ -10,8 +10,8 @@ This package reproduces the core workflow primitives:
 - **Multi-perspective research** with selected or automatically
   generated expert profiles
 - **Evidence tracking** with citations and source attribution
-- **Reusable objectives and deliverables** with versioned output
-  contracts, validation, typed artifacts, and runtime operation adapters
+- **Resumable research state** for scripted STORM and interactive
+  Co-STORM
 - **Two-step outline refinement** and **lead section generation**
 - **Query decomposition** and **semantic fact retrieval**
 - **Parallel research** across perspectives (optional)
@@ -132,11 +132,17 @@ this format. Read [Use Open Knowledge Format with
 Tempest](https://jameshwade.github.io/tempest/articles/open-knowledge-format.html)
 for the complete handoff and safety model.
 
-## Reusable deliverables
+## Maintain Tempest 0.1 reusable deliverables
 
-Tempest’s output kernel is independent of STORM and Co-STORM. A host
-application can define an objective, versioned output contract, and
-runtime operations without adding its business model to the package:
+> **Warning:** The experimental generic deliverable and workflow kernel
+> is frozen and is scheduled for removal in Tempest 0.2.0. No
+> compatibility shim is planned. Use the STORM and Co-STORM product APIs
+> for new research workflows.
+
+The frozen 0.1 output kernel is independent of STORM and Co-STORM.
+Existing host applications can still define an objective, versioned
+output contract, and runtime operations while the product migration is
+under way:
 
 ``` r
 
@@ -239,12 +245,15 @@ codecs reattach the same `codec_registry` when saving and resuming;
 generic run snapshots use canonical JSON content or external storage
 references.
 
-## Reusable workflows and selected experts
+## Maintain Tempest 0.1 reusable workflows and selected experts
 
-Hosts can execute application-specific work through the same run model
-without adding customer, CRM, or opportunity concepts to Tempest.
-Workflow specifications are serializable; executable operations stay in
-the runtime:
+> **Warning:** This section documents maintenance of existing Tempest
+> 0.1 integrations. These generic workflow APIs are scheduled for
+> removal in Tempest 0.2.0 and should not be used for new work.
+
+Existing Tempest 0.1 hosts can maintain application-specific work
+through the same run model while they migrate. Workflow specifications
+are serializable; executable operations stay in the runtime:
 
 ``` r
 
@@ -297,6 +306,7 @@ tempest_run_status(run)
 tempest_run_events(run)
 ```
 
+In the frozen 0.1 model,
 [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
 adds least-privilege skills, capabilities, and opaque connection
 references. An expert profile declares what it needs; the host grants
@@ -304,42 +314,49 @@ connection IDs for that run; a connection provider rehydrates
 authenticated clients only after authorization. Profiles, snapshots, and
 events never contain tool closures, clients, or credentials.
 
-Hosts can pass process-local services through `runtime_context` and
-reattach them explicitly after restore. Tempest records the resulting
-per-step and per-expert authorization decisions for inspection with
+Existing 0.1 hosts can pass process-local services through
+`runtime_context` and reattach them explicitly after restore. Tempest
+records the resulting per-step and per-expert authorization decisions
+for inspection with
 [`tempest_run_capability_grants()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md),
 including per-attempt grant history for retries, while leaving the live
 services themselves out of snapshots and run bundles. Side-effecting
 capabilities pass through policy and approval before their factories or
 step operation can execute.
 
-Use
+Existing 0.1 hosts may continue to use
 [`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_run.md)
 or
 [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_run.md)
-when a host wants the built-in research workflows behind the same run
-interface.
+until they migrate. New research integrations should call
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+or
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+directly.
 [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md)
 and
 [`tempest_run_resume()`](https://jameshwade.github.io/tempest/reference/tempest_run_resume.md)
-persist generic runs while requiring the host to reattach process-local
-operations and connections. Restored permission overrides may only
-narrow saved grants, and recovering an in-flight snapshot requires the
-explicit `partial_recovery = TRUE` mode. Classed execution errors retain
-the failed run in `condition$run`, so a host can inspect its events,
-grants, validation results, and artifacts before deciding whether to
-retry or present the failure.
+persist frozen generic runs while requiring the host to reattach
+process-local operations and connections. Restored permission overrides
+may only narrow saved grants, and recovering an in-flight snapshot
+requires the explicit `partial_recovery = TRUE` mode. Classed execution
+errors retain the failed run in `condition$run`, so a host can inspect
+its events, grants, validation results, and artifacts before deciding
+whether to retry or present the failure.
 
 Run
 [`vignette("reusable-workflows", package = "tempest")`](https://jameshwade.github.io/tempest/articles/reusable-workflows.md)
-for a complete, offline example that combines a selected expert, output
-template, workflow, approval, typed artifact, audit trail, and
-save/restore cycle.
+for a complete, offline maintenance example for an existing Tempest 0.1
+integration.
 
 ## Agent skills
 
-Tempest ships five portable Agent Skills for built-in research,
-framework-neutral STORM research, and custom workflow development:
+Tempest ships two supported research skills and three retiring Tempest
+0.1 workflow skills:
+
+The custom-workflow design, build, and verification skills document the
+frozen generic kernel and will be removed with it in Tempest 0.2.0. The
+two research skills remain the supported product direction.
 
 - `use-tempest-research` chooses, configures, runs, resumes, inspects,
   and embeds Tempest’s scripted STORM and interactive Co-STORM
@@ -347,12 +364,9 @@ framework-neutral STORM research, and custom workflow development:
 - `conduct-storm-research` carries the provider- and framework-neutral
   STORM and Co-STORM protocols. It can guide another implementation or
   be loaded by a tool-capable chat host without calling Tempest APIs.
-- `design-tempest-workflow` defines custom contracts, graphs,
-  permissions, approvals, and acceptance tests.
-- `build-tempest-workflow` turns a custom design into public Tempest API
-  calls and deterministic R tests.
-- `verify-tempest-workflow` audits custom runtime, approval, artifact,
-  failure, and restore integrity.
+- `design-tempest-workflow`, `build-tempest-workflow`, and
+  `verify-tempest-workflow` support maintenance of existing 0.1
+  generic-kernel integrations only.
 
 List the bundled skill directories or install them into the directory
 used by your agent:
@@ -361,10 +375,7 @@ used by your agent:
 
 tempest_agent_skills()
 
-# Install all five for user-level Codex sessions.
-tempest_install_agent_skills("~/.codex/skills")
-
-# Or install a selected character vector of skills.
+# Install the supported research skills for user-level Codex sessions.
 tempest_install_agent_skills(
   "~/.codex/skills",
   skills = c("use-tempest-research", "conduct-storm-research")
@@ -377,16 +388,14 @@ Tempest package and expose `conduct-storm-research` inside a
 tool-capable chat application. The host must still provide retrieval,
 evidence, state, and output tools.
 
-These Agent Skills are distinct from
-[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md),
-which defines a serializable procedure assigned to an expert inside a
-Tempest workflow.
+These Agent Skills are distinct from the frozen 0.1
+[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md)
+runtime contract, which is also scheduled for removal in Tempest 0.2.0.
 
 Read
 [`vignette("agent-skills", package = "tempest")`](https://jameshwade.github.io/tempest/articles/agent-skills.md)
-to choose among the five skills, install them for an agent, or expose
-portable STORM research through an ellmer client and shinychat
-application.
+to install a supported research skill or expose portable STORM research
+through an ellmer client and shinychat application.
 
 ## Scripted STORM
 
@@ -458,10 +467,9 @@ res <- tempest_run(
 )
 ```
 
-Each run directory includes checksummed JSON artifacts for perspectives,
+Each run directory includes checksummed JSON state for perspectives,
 experts, sources, claims, outlines, and references; Markdown drafts; and
-a typed artifact catalog containing all final deliverable
-representations.
+the final Markdown report.
 
 ### Pipeline Details
 
@@ -488,7 +496,7 @@ executes five steps: `perspectives`, `research`, `outline`, `write`,
   report sections concurrently with mirai, then extract facts and
   assemble the article in deterministic outline order.
 - **dsprrr modules** – structured extraction steps (query decomposition,
-  fact extraction, outline drafting, section writing) use
+  claim extraction, outline drafting, section writing) use
   [dsprrr](https://github.com/JamesHWade/dsprrr) modules for more
   reliable structured output. Optimized module sets can be passed
   through `dsprrr_modules`.
@@ -545,7 +553,7 @@ accepts the following parameters:
 | `search_provider` | `"native"` | Search backend: `"native"`, `"wikipedia"`, `"you"`, `"bing"`, `"serper"`, `"brave"`, `"duckduckgo"`, `"tavily"`, `"searxng"`, `"google"`, `"azure_ai_search"` |
 | `embed_fn` | `NULL` | Embedding function for RAG (e.g., [`ragnar::embed_openai()`](https://ragnar.tidyverse.org/reference/embed_ollama.html)) |
 | `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
-| `artifact_store` | `NULL` | Optional host-app artifact store from [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md) |
+| `artifact_store` | `NULL` | Frozen Tempest 0.1 host adapter; do not use for new integrations |
 | `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
 | `cache_dir` | `NULL` | Cache directory; defaults to `tempdir()/tempest-cache` or `TEMPEST_CACHE_DIR` env var |
 | `cache_enabled` | `TRUE` | Whether search and fetch calls read from and write to the cache |
@@ -568,14 +576,14 @@ calls; explicit `params` values override these defaults.
 [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
 limits individual provider requests to 120 seconds by default,
 configurable with `tempest.shiny.provider_timeout_s`. The bundled app’s
-warmup asks each capability-scoped expert for one brief, bounded,
-evidence-backed orientation. Each expert reuses session evidence or runs
-one targeted search, inspects at most two results, and preserves at
-least one citation. Tempest then commits source-backed claims in stable
-expert order and updates the shared mind map once for the complete
-panel. The summary says explicitly when no citable evidence was
-collected. Warmup concurrency and its 120-second safety timeout are
-configurable with `tempest.shiny.warmup_*` options.
+warmup asks each active expert for one brief, bounded, evidence-backed
+orientation. Each expert reuses session evidence or runs one targeted
+search, inspects at most two results, and preserves at least one
+citation. Tempest then commits source-backed claims in stable expert
+order and updates the shared mind map once for the complete panel. The
+summary says explicitly when no citable evidence was collected. Warmup
+concurrency and its 120-second safety timeout are configurable with
+`tempest.shiny.warmup_*` options.
 
 To set a personal default model, add the `tempest.chat` option to your
 `.Rprofile`, using the same provider/model format as
@@ -654,27 +662,21 @@ cfg <- tempest_config(
 )
 ```
 
-## Scoped skills, capabilities, and connections
+## Frozen 0.1 scoped runtime
 
-Tools are resolved for one role or expert execution context rather than
-registered globally on every chat. Use
-[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md)
-for reusable procedures,
-[`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest_capability_spec.md)
-for permissioned behavior,
-[`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest_connection_ref.md)
-for durable non-secret connection identities, and
-[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-for process-local implementations and authenticated bindings. Selected
-experts can then declare exact skill and capability IDs. Code that
-previously passed `tools =` to
-[`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
-should instead define a named
+This experimental runtime layer is frozen and scheduled for removal in
+Tempest 0.2.0. Co-STORM will move to Deputy-managed agents, permissions,
+and tools; hosts will inject connection implementations directly.
+
+Do not adopt this layer for a new integration. Existing 0.1 hosts may
+continue to use
+[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md),
 [`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest_capability_spec.md),
-pass it to `tempest_runtime(capability_specs = )`, register a same-ID
-factory that returns `list(tools = )` through
-`capability_implementations =`, and grant that capability ID to the
-relevant expert or workflow step.
+[`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest_connection_ref.md),
+and
+[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+while the Co-STORM Deputy adapter and direct host-injection seams are
+introduced.
 
 ## Interactive Co-STORM
 
@@ -719,9 +721,8 @@ roster by stable expert id, so display-name changes cannot redirect
 work. Each expert:
 
 - Has their own chat session with conversation continuity
-- Receives only the skills, capabilities, and connections granted for
-  that run
-- Can use granted web or evidence tools to find and cite sources
+- Receives only the role-specific tools needed for that run
+- Can use host-provided web or evidence tools to find and cite sources
 - Extracts claims automatically after each response
 - Keeps an opaque, host-inaccessible chat session binding for continuity
 

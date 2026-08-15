@@ -1,10 +1,12 @@
 # Use Tempest Agent Skills
 
-Tempest ships Agent Skills alongside its R APIs. Each skill is a
+Tempest ships Agent Skills alongside its R APIs. Two research skills
+remain supported; three custom-workflow skills document the frozen
+Tempest 0.1 kernel and will be removed in Tempest 0.2.0. Each skill is a
 portable directory containing a `SKILL.md` file, supporting references,
 and agent metadata. A compatible agent can load those instructions when
-it needs to operate Tempest, conduct STORM research in another
-framework, or build a custom workflow.
+it needs to operate Tempest or conduct STORM research in another
+framework.
 
 This article covers two deployment shapes:
 
@@ -22,28 +24,27 @@ Tempest has two concepts with similar names:
 | Concept | Created by | Purpose |
 |----|----|----|
 | Agent Skill | [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md) or [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md) | Teaches an external agent how to use or extend Tempest |
-| Workflow skill | [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md) | Defines a serializable procedure assigned to a Tempest expert |
+| Workflow skill | [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md) | Frozen 0.1 runtime contract scheduled for removal in 0.2.0 |
 
-An Agent Skill can teach a coding agent to construct an entire workflow.
-A workflow skill is one durable part of the expert profile inside that
-workflow. They are complementary, but they are not interchangeable.
+An Agent Skill is external operating guidance. The similarly named
+workflow skill belongs to the retiring generic runtime and should not be
+adopted for a new integration.
 
-## Choose among the five skills
+## Choose a supported research skill
 
 Use the smallest skill that matches the task:
 
-| Skill | Use it when the agent should |
-|----|----|
-| `use-tempest-research` | Choose, configure, run, resume, inspect, or embed Tempest’s built-in STORM and Co-STORM workflows |
-| `conduct-storm-research` | Follow a provider- and framework-neutral STORM or Co-STORM protocol outside Tempest |
-| `design-tempest-workflow` | Define a custom workflow’s contracts, graph, permissions, approvals, and acceptance tests |
-| `build-tempest-workflow` | Turn an approved design into public Tempest API calls and deterministic tests |
-| `verify-tempest-workflow` | Audit runtime behavior, artifacts, approvals, failures, cancellation, and restore integrity |
+| Skill | Lifecycle | Use it when the agent should |
+|----|----|----|
+| `use-tempest-research` | Supported | Choose, configure, run, resume, inspect, or embed Tempest’s built-in STORM and Co-STORM workflows |
+| `conduct-storm-research` | Supported | Follow a provider- and framework-neutral STORM or Co-STORM protocol outside Tempest |
+| `design-tempest-workflow` | Tempest 0.1 only | Maintain an existing generic workflow design |
+| `build-tempest-workflow` | Tempest 0.1 only | Maintain an existing generic workflow implementation |
+| `verify-tempest-workflow` | Tempest 0.1 only | Audit an existing generic workflow before its migration |
 
-The custom workflow skills form a sequence: design first, build against
-the approved design, and verify the finished implementation. The two
-research skills describe complete operating modes and can be used
-independently.
+The two research skills describe complete operating modes and can be
+used independently. Do not start new work with the three retiring
+workflow skills.
 
 ## Discover and install the skills
 
@@ -60,14 +61,7 @@ names(skills)
 #> [5] "verify-tempest-workflow"
 ```
 
-Install every skill into a directory supported by the agent:
-
-``` r
-
-tempest_install_agent_skills("~/.codex/skills")
-```
-
-Or install a selected character vector:
+Install the supported skills into a directory used by the agent:
 
 ``` r
 
@@ -87,9 +81,6 @@ procedure:
 
 > Load `use-tempest-research` and help me configure a resumable STORM
 > report.
-
-> Load `design-tempest-workflow` and produce a design packet for an
-> approval-gated evidence brief.
 
 ## Let an ellmer client discover Tempest skills
 

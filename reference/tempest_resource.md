@@ -29,7 +29,7 @@ tempest_resource(
 - resource_kind:
 
   Stable resource-kind identifier such as `"web"`, `"file"`, or
-  `"host.document"`.
+  `"scientific.document"`.
 
 - locator:
 
@@ -96,20 +96,21 @@ A `tempest_resource` S7 object.
 
 ## Details
 
-Resources identify evidence without requiring a public URL. The durable
-value may describe a web page, file, email, database result, host
-document, or another application-defined resource kind. Authenticated
-clients and credentials remain in host runtime adapters and are never
-stored here.
+Resources identify provisional scientific evidence without requiring a
+public URL. The durable value may describe a web page, file, lab record,
+or database result used during research. Authenticated clients and
+credentials remain host-owned and are never stored here. This record is
+not a generic connection-management contract; its 0.2 role narrows to
+scientific source and context evidence in a research workspace.
 
 ## Examples
 
 ``` r
 resource <- tempest_resource(
-  resource_kind = "host.document",
-  locator = "documents/brief-42",
-  title = "Approved project brief",
+  resource_kind = "scientific.document",
+  locator = "protocols/assay-42",
+  title = "Reviewed assay protocol",
   media_type = "text/plain",
-  content = "The requested outcome is a rollout plan."
+  content = "Measure the response after 24 hours."
 )
 ```

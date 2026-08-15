@@ -52,6 +52,10 @@ The session-owned `TempestRun` in `awaiting_approval`.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 The run executes warmup and then waits at the dialogue approval
 checkpoint. Conduct session turns normally, then approve the pending
 checkpoint with

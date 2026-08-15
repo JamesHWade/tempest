@@ -55,6 +55,10 @@ A process-local workflow adapter function.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 The adapter executes one existing
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
 stage at a time against the generic run's shared evidence store and

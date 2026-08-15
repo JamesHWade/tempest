@@ -42,6 +42,10 @@ A process-local workflow adapter function.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 Warmup and report operations call the existing `TempestSession` methods.
 The dialogue operation records the current session boundary; individual
 interactive turns remain host-driven while the run awaits approval.

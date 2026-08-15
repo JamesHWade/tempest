@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul>
@@ -207,8 +207,15 @@ or character truncation and begins with an explicit trust notice. That
 notice states that the material is evidence, not instructions, and
 cannot grant tools, change workflow policy, approve an artifact, or
 authorize an external action.</p>
-<p>A host can make the selected packet available to its own runtime
-operation:</p>
+<p>A Tempest 0.1 host can make the selected packet available to an
+existing generic runtime operation:</p>
+<blockquote>
+<p><strong>Lifecycle notice:</strong> This integration path is frozen
+and scheduled for removal in Tempest 0.2.0. Do not adopt
+<code><a href="../reference/tempest_run_workflow.html">tempest_run_workflow()</a></code> for new work; the replacement
+product path will bind scientific context to an immutable graft
+snapshot.</p>
+</blockquote>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">run</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run_workflow.html">tempest_run_workflow</a></span><span class="op">(</span></span>
 <span>  <span class="va">objective</span>,</span>
@@ -263,8 +270,7 @@ at a committed batch or time.</p>
 </tr>
 <tr class="odd">
 <td>Tempest</td>
-<td>Select evidence, scope runtime access, and enforce workflow
-approvals</td>
+<td>Select scientific evidence and preserve research provenance</td>
 </tr>
 </tbody>
 </table>
@@ -274,12 +280,12 @@ approvals</td>
 </h2>
 <p>OKF can describe an Attested Computation, including a runtime, source
 files, inputs, and expected outputs. Tempest validates useful metadata
-when present but never executes the computation. A host that wants
-execution should map it to a named, versioned Tempest operation and
-grant the required capability through the normal runtime policy.</p>
-<p>Continue with <a href="reusable-workflows.html">Build reusable
-workflows with Tempest</a> to define operations, capabilities, approval
-pauses, and typed outputs.</p>
+when present but never executes the computation. Do not route a new
+executor through the frozen generic operation and capability APIs. The
+Tempest 0.2 direction is to reference an exact dsprrr program artifact
+and preserve the execution identity in product provenance.</p>
+<p>Continue with <a href="tempest.html">Get started with Tempest</a> to
+use imported context in STORM or Co-STORM research.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

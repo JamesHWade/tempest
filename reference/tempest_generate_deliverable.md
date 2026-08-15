@@ -51,6 +51,10 @@ results, typed artifacts, the catalog, and resolved operation metadata.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 This is the application-neutral output lifecycle used by built-in and
 host-defined workflows. It resolves all operations before generation,
 runs validators, renders typed artifacts, invokes exporters only for

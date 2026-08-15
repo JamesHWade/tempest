@@ -1,7 +1,17 @@
 # TempestSession
 
 Maintains state for a Co-STORM session: multi-agent dialog, mind map,
-sources, auxiliary session state, and typed deliverable artifacts.
+provisional scientific evidence, and report state.
+
+## Frozen Tempest 0.1 fields
+
+`runtime`, `connection_permissions`, `artifacts`, `artifact_catalog`,
+`workflow_run`, and `capability_grants` expose the frozen experimental
+generic kernel. They remain only for existing Tempest 0.1 integrations
+and are scheduled for replacement or removal in Tempest 0.2.0. New host
+code should keep tools and authenticated clients process-local and use
+the session's scientific evidence and report state as its product
+boundary.
 
 ## Public fields
 
@@ -19,11 +29,11 @@ sources, auxiliary session state, and typed deliverable artifacts.
 
 - `runtime`:
 
-  A `TempestRuntime` containing process-local adapters.
+  Frozen Tempest 0.1 `TempestRuntime` adapter.
 
 - `connection_permissions`:
 
-  Named per-role or per-expert connection allow-lists.
+  Frozen Tempest 0.1 per-role or per-expert connection allow-lists.
 
 - `session_id`:
 
@@ -67,21 +77,20 @@ sources, auxiliary session state, and typed deliverable artifacts.
 
 - `artifacts`:
 
-  Environment of auxiliary and legacy-compatible session state.
+  Frozen Tempest 0.1 environment of auxiliary session state.
 
 - `artifact_catalog`:
 
-  Typed deliverable specifications and artifacts produced by the
-  session.
+  Frozen Tempest 0.1 typed deliverable catalog.
 
 - `workflow_run`:
 
-  Optional generic `TempestRun` that owns the session workflow
-  lifecycle.
+  Frozen Tempest 0.1 generic `TempestRun` that owns the session workflow
+  lifecycle, when present.
 
 - `capability_grants`:
 
-  Serializable capability decisions by execution context.
+  Frozen Tempest 0.1 capability decisions by execution context.
 
 - `discourse_manager`:
 
@@ -175,9 +184,9 @@ Create a new TempestSession.
 
 - `runtime`:
 
-  A
+  Frozen Tempest 0.1
   [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-  containing process-local adapters.
+  adapter. Existing integrations only.
 
 - `n_experts`:
 
@@ -191,8 +200,8 @@ Create a new TempestSession.
 
 - `connection_permissions`:
 
-  Named list mapping role or expert ids to opaque connection ids allowed
-  for this session.
+  Frozen Tempest 0.1 mapping from role or expert ids to opaque
+  connection ids allowed for this session.
 
 - `retriever`:
 

@@ -11,9 +11,9 @@
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Get started with Tempest">
-<meta name="description" content="Choose a Tempest workflow, configure a provider, create an evidence-backed report, and continue into interactive or application-specific workflows.
+<meta name="description" content="Choose a Tempest workflow, configure a provider, create an evidence-backed report, and continue into interactive scientific research.
 ">
-<meta property="og:description" content="Choose a Tempest workflow, configure a provider, create an evidence-backed report, and continue into interactive or application-specific workflows.
+<meta property="og:description" content="Choose a Tempest workflow, configure a provider, create an evidence-backed report, and continue into interactive scientific research.
 ">
 </head>
 <body>
@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Build reusable workflows with Tempest</a></li>
+<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul>
@@ -72,11 +72,10 @@
 
     
     
-<p>Tempest brings STORM and Co-STORM research workflows to R and exposes
-their shared execution machinery for other applications. It combines
-multi-perspective research, source and claim tracking, cited writing,
-selected or generated experts, typed artifacts, and resumable
-execution.</p>
+<p>Tempest brings STORM and Co-STORM research workflows to R. It
+combines multi-perspective research, source and claim tracking, cited
+writing, selected or generated experts, scientific reports, and
+resumable research state.</p>
 <p>This article helps you choose a workflow and produce a first result.
 Provider-backed examples are not executed while the vignette is built,
 so rendering the article makes no model or search calls and requires no
@@ -100,7 +99,7 @@ provider credentials.</p>
 <tr class="odd">
 <td>Create an evidence-backed report</td>
 <td><code><a href="../reference/tempest_run.html">tempest_run()</a></code></td>
-<td>A report, sources, claims, outline, and artifacts</td>
+<td>A report, sources, claims, outline, and run state</td>
 </tr>
 <tr class="even">
 <td>Explore a topic interactively</td>
@@ -111,17 +110,16 @@ provider credentials.</p>
 report</td>
 </tr>
 <tr class="odd">
-<td>Build an application-specific outcome</td>
+<td>Inspect the frozen generic kernel</td>
 <td><code><a href="../reference/tempest_run_workflow.html">tempest_run_workflow()</a></code></td>
-<td>A generic run with selected experts, approvals, events, and typed
-artifacts</td>
+<td>Frozen experimental 0.1 behavior scheduled for removal in 0.2.0</td>
 </tr>
 </tbody>
 </table>
 <p>Most package users should begin with scripted STORM. Co-STORM is
 useful when the research question should evolve through dialogue. The
-generic workflow kernel is for host applications that need their own
-output templates and operations.</p>
+experimental generic workflow kernel is frozen; do not use it for new
+integrations.</p>
 </div>
 <div class="section level2">
 <h2 id="install-and-load-tempest">Install and load Tempest<a class="anchor" aria-label="anchor" href="#install-and-load-tempest"></a>
@@ -173,7 +171,7 @@ Other providers may require their own environment variables.</p>
 <li>research questions from each perspective;</li>
 <li>draft and refine an outline;</li>
 <li>write cited sections; and</li>
-<li>polish and publish the report artifact.</li>
+<li>polish and publish the Markdown report.</li>
 </ol>
 <p>Start with two experts and a small question budget while learning the
 package:</p>
@@ -212,19 +210,12 @@ create it:</p>
 <span>    <span class="st">"verification_status"</span>,</span>
 <span>    <span class="st">"support_score"</span></span>
 <span>  <span class="op">)</span></span>
-<span><span class="op">]</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">report_artifact</span> <span class="op">&lt;-</span> <span class="va">result</span><span class="op">$</span><span class="va">artifact_catalog</span><span class="op">$</span><span class="fu">get</span><span class="op">(</span><span class="st">"report_md"</span><span class="op">)</span></span>
-<span><span class="va">report_artifact</span><span class="op">@</span><span class="va">status</span></span>
-<span><span class="va">report_artifact</span><span class="op">@</span><span class="va">media_type</span></span>
-<span><span class="va">report_artifact</span><span class="op">@</span><span class="va">checksum</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">report_artifact</span><span class="op">@</span><span class="va">content</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">result</span><span class="op">$</span><span class="va">artifact_catalog</span><span class="op">$</span><span class="fu">list</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>The source store is the evidence ledger. Sources, claims, support
-scores, and citations remain inspectable instead of being flattened into
-report text. The artifact catalog contains the typed final
-representations and their validation and provenance metadata.</p>
+<span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<p>The source store holds run-scoped provisional evidence. Sources,
+claims, support scores, and citations remain inspectable instead of
+being flattened into report text. The product report is available
+directly in <code>result$report_md</code>; new callers should not depend
+on the frozen 0.1 artifact catalog.</p>
 <p>Choose a stronger <code>citation_policy</code> when a workflow
 requires verified claims:</p>
 <ul>
@@ -277,26 +268,14 @@ profiles from its own expert pool:</p>
 <span>    name <span class="op">=</span> <span class="st">"Recycling Engineer"</span>,</span>
 <span>    title <span class="op">=</span> <span class="st">"Battery recovery specialist"</span>,</span>
 <span>    description <span class="op">=</span> <span class="st">"Focuses on process yield, safety, and scale-up."</span>,</span>
-<span>    instructions <span class="op">=</span> <span class="st">"Separate demonstrated performance from projections."</span>,</span>
-<span>    required_capability_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>      <span class="st">"tempest.research.web"</span>,</span>
-<span>      <span class="st">"tempest.evidence.read"</span>,</span>
-<span>      <span class="st">"tempest.evidence.write"</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    optional_capability_ids <span class="op">=</span> <span class="st">"tempest.retrieval.semantic"</span></span>
+<span>    instructions <span class="op">=</span> <span class="st">"Separate demonstrated performance from projections."</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
 <span>    expert_id <span class="op">=</span> <span class="st">"expert.recycling-policy"</span>,</span>
 <span>    name <span class="op">=</span> <span class="st">"Policy Analyst"</span>,</span>
 <span>    title <span class="op">=</span> <span class="st">"Circular-economy policy specialist"</span>,</span>
 <span>    description <span class="op">=</span> <span class="st">"Focuses on incentives, standards, and accountability."</span>,</span>
-<span>    instructions <span class="op">=</span> <span class="st">"Compare jurisdictions and preserve policy uncertainty."</span>,</span>
-<span>    required_capability_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>      <span class="st">"tempest.research.web"</span>,</span>
-<span>      <span class="st">"tempest.evidence.read"</span>,</span>
-<span>      <span class="st">"tempest.evidence.write"</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    optional_capability_ids <span class="op">=</span> <span class="st">"tempest.retrieval.semantic"</span></span>
+<span>    instructions <span class="op">=</span> <span class="st">"Compare jurisdictions and preserve policy uncertainty."</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -308,10 +287,10 @@ profiles from its own expert pool:</p>
 <span>  run_id <span class="op">=</span> <span class="st">"selected-expert-recycling"</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Profiles are serializable definitions that declare skills and
-capabilities by ID. Capability specifications may name opaque connection
-reference IDs, while live tools, clients, and credentials are resolved
-separately through <code><a href="../reference/tempest_runtime.html">tempest_runtime()</a></code>.</p>
+<p>Profiles describe a scientific perspective and stable expert
+identity. Keep live tools, clients, and credentials outside the
+serialized profile. The 0.1 skill, capability, and connection fields are
+frozen and should not be used for new integrations.</p>
 </div>
 <div class="section level2">
 <h2 id="explore-interactively-with-co-storm">Explore interactively with Co-STORM<a class="anchor" aria-label="anchor" href="#explore-interactively-with-co-storm"></a>
@@ -367,23 +346,27 @@ not already available:</p>
 <span>  config <span class="op">=</span> <span class="va">cfg</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Each expert keeps its own conversation continuity and receives only
-the capabilities and connections granted for that session. The moderator
-delegates by stable expert ID, and evidence collected during dialogue
-remains available to the final report. Session bundles preserve durable
-research state, but not credentials, live chat handles, or executable
-runtime bindings. Supply a fresh configuration when resuming and
-reattach a custom <code>runtime</code> when the session uses
-host-defined capabilities or connections.</p>
+the role-specific tools needed for that session. The moderator delegates
+by stable expert ID, and evidence collected during dialogue remains
+available to the final report. Session bundles preserve durable research
+state, but not credentials, live chat handles, tools, or authenticated
+clients. Recreate those host-injected dependencies after resume.
+Existing Tempest 0.1 integrations that supplied a custom
+<code>runtime</code> must still reattach it; that seam is frozen and
+should not be used for new integrations.</p>
 </div>
 <div class="section level2">
-<h2 id="build-application-specific-workflows">Build application-specific workflows<a class="anchor" aria-label="anchor" href="#build-application-specific-workflows"></a>
+<h2 id="maintain-a-tempest-0-1-application-specific-workflow">Maintain a Tempest 0.1 application-specific workflow<a class="anchor" aria-label="anchor" href="#maintain-a-tempest-0-1-application-specific-workflow"></a>
 </h2>
-<p>STORM and Co-STORM are built-in specializations. The same kernel can
-also turn a customer request or internal objective into a host-defined
-action register, implementation plan, review packet, or other typed
-outcome.</p>
-<p>The <code>reusable-workflows</code> vignette builds a complete
-offline example with:</p>
+<blockquote>
+<p><strong>Lifecycle notice:</strong> The experimental generic workflow
+kernel is frozen and scheduled for removal in Tempest 0.2.0. Do not use
+it for new integrations.</p>
+</blockquote>
+<p>Existing Tempest 0.1 hosts may still need the generic kernel while
+the product migration is under way.</p>
+<p>The <code>reusable-workflows</code> vignette documents maintenance of
+an existing Tempest 0.1 integration with:</p>
 <ul>
 <li>an application-neutral objective;</li>
 <li>a host-selected expert;</li>
@@ -403,11 +386,9 @@ reusable workflows with Tempest</a>.</p>
 <h2 id="where-to-go-next">Where to go next<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>
 </h2>
 <ul>
-<li>Use <code><a href="../reference/tempest_storm_workflow_run.html">tempest_storm_workflow_run()</a></code> when a host wants
-STORM behind the generic <code>TempestRun</code> status, event,
-artifact, and persistence interface.</li>
-<li>Use <code><a href="../reference/tempest_costorm_workflow_run.html">tempest_costorm_workflow_run()</a></code> to wrap an
-interactive Co-STORM session in the same generic run model.</li>
+<li>Use <code><a href="../reference/tempest_run.html">tempest_run()</a></code> for a scripted STORM report.</li>
+<li>Use <code><a href="../reference/tempest_session.html">tempest_session()</a></code> or <code><a href="../reference/run_app.html">run_app()</a></code> for
+interactive Co-STORM research.</li>
 <li>Add semantic retrieval with <code>ragnar</code> through
 <code>embed_fn</code> or a pre-built <code>ragnar_store</code>.</li>
 <li>Optimize structured STORM modules with
@@ -419,9 +400,8 @@ inspect events with <code><a href="../reference/tempest_progress_event_data.html
 <code><a href="../reference/tempest_costorm_task.html">tempest_costorm_task()</a></code>.</li>
 </ul>
 <p>Start with a narrow topic, a small expert and question budget, and
-durable output. Expand model roles, retrieval, parallelism, expert
-capabilities, and evaluation only after the first workflow behaves as
-intended.</p>
+durable output. Expand model roles, retrieval, parallelism, and
+evaluation only after the first workflow behaves as intended.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

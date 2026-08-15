@@ -29,6 +29,10 @@ A restored `TempestArtifactCatalog`.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 Restoration reconstructs every specification and artifact through its
 validated constructor, verifies fingerprints and content checksums, and
 optionally verifies evidence lineage against a `SourceStore`. Runtime

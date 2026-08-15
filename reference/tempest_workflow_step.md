@@ -102,5 +102,9 @@ A `tempest_workflow_step` S7 object.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 A workflow step is a serializable declaration. Its executable operation
 is resolved from the run's runtime registry before any step begins.

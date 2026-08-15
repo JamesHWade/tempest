@@ -9,6 +9,7 @@
 <url><loc>https://jameshwade.github.io/tempest/articles/reusable-workflows.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/articles/tempest.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/authors.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/copilot-instructions.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/index.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/news/index.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/DiscourseManager.html</loc></url>
@@ -20,6 +21,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestSession.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/index.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/run_app.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest-package.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_abort.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_agent_skills.html</loc></url>
@@ -165,6 +167,5 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_workflow_spec.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_workflow_step.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_write_text.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/tempest_recommendations.html</loc></url>
 </urlset>
 

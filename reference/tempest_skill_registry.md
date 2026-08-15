@@ -38,6 +38,10 @@ requirement is promoted and the returned sets remain disjoint.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 The registry binds serializable skill specifications to versioned
 runtime operations. Every operation declared by a skill must be
 available from `operations` with kind `"skill"`.

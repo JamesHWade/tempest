@@ -69,20 +69,20 @@ tempest_run(
 
 - runtime:
 
-  A
+  Frozen Tempest 0.1
   [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-  containing scoped skill, capability, and connection adapters.
+  adapter. Existing integrations only.
 
 - runtime_factory:
 
-  Function that recreates `runtime` inside parallel workers. The default
-  recreates the built-in runtime. Hosts using custom capabilities with
+  Function that recreates the frozen 0.1 `runtime` inside parallel
+  workers. Existing integrations using a custom runtime with
   `parallel_research = TRUE` must provide a matching factory.
 
 - connection_permissions:
 
-  Named list mapping expert or model-role ids to opaque connection ids
-  allowed for this run.
+  Frozen Tempest 0.1 mapping from expert or model-role ids to opaque
+  connection ids allowed for this run.
 
 - research_strategy:
 
@@ -151,19 +151,28 @@ tempest_run(
 
 - artifact_catalog:
 
-  Optional shared `TempestArtifactCatalog`. This is used by the built-in
+  Frozen Tempest 0.1 shared `TempestArtifactCatalog`, used by the
   generic STORM workflow adapter.
 
 - workflow_run:
 
-  Optional owning `TempestRun`. When supplied, the result exposes it as
-  `workflow_run`.
+  Frozen Tempest 0.1 owning `TempestRun`. When supplied, the result
+  exposes it as `workflow_run`.
 
 ## Value
 
-A list with `title`, `perspectives`, `experts`, `outline`, `draft_md`,
-`report_md`, `store`, `artifact_catalog`, `workflow_run`, and
-`output_dir`.
+A list with product fields `title`, `perspectives`, `experts`,
+`outline`, `draft_md`, `report_md`, `store`, and `output_dir`. Frozen
+0.1 compatibility fields `artifact_catalog` and `workflow_run` are also
+returned temporarily.
+
+## Frozen Tempest 0.1 seams
+
+`runtime`, `runtime_factory`, `connection_permissions`,
+`artifact_catalog`, and `workflow_run` expose the frozen experimental
+generic kernel. They remain only for existing Tempest 0.1 integrations
+and are scheduled for replacement or removal in Tempest 0.2.0. New code
+should consume `report_md` and the scientific evidence in `store`.
 
 ## Examples
 

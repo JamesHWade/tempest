@@ -63,6 +63,10 @@ A rehydrated `TempestRun`.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 Resume validates the complete file inventory and checksums before
 parsing the snapshot. The supplied runtime and adapters are attached
 explicitly; they are never loaded from disk. The returned run is

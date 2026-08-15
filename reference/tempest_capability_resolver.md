@@ -42,6 +42,10 @@ serializable grant records.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 The resolver keeps serializable capability specifications separate from
 runtime factories. It preflights every requested capability before
 invoking factories, treats required failures as errors, and records

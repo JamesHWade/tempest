@@ -60,6 +60,10 @@ A mutable `TempestRuntime` with role and expert resolution methods.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 A runtime binds durable workflow definitions to process-local
 operations, skills, capabilities, and authenticated connections. Runtime
 factories and clients are deliberately excluded from snapshots.

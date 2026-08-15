@@ -30,9 +30,9 @@ tempest_session(
 
 - runtime:
 
-  A
+  Frozen Tempest 0.1
   [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-  containing process-local adapters.
+  adapter. Existing integrations only.
 
 - n_experts:
 
@@ -45,7 +45,7 @@ tempest_session(
 
 - connection_permissions:
 
-  Named per-role or per-expert connection allow-lists.
+  Frozen Tempest 0.1 per-role or per-expert connection allow-lists.
 
 - retriever:
 
@@ -61,6 +61,13 @@ tempest_session(
 
   Optional stable session identifier. If `NULL`, a new identifier is
   generated.
+
+## Frozen Tempest 0.1 seams
+
+`runtime` and `connection_permissions` remain only for existing Tempest
+0.1 integrations and are scheduled for replacement in Tempest 0.2.0. New
+host code should keep role-specific tools and authenticated clients
+process-local.
 
 ## Examples
 

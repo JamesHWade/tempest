@@ -72,6 +72,10 @@ A runtime artifact codec definition.
 
 ## Details
 
+This experimental API is frozen and scheduled for removal in Tempest
+0.2.0. No compatibility shim is planned; see
+[tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+
 Codec definitions keep executable encode/decode functions in a runtime
 registry while exposing only serializable identity and media metadata in
 durable listings.
