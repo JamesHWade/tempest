@@ -4,11 +4,16 @@
 \alias{tempest_load_dsprrr_modules}
 \title{Load compiled dsprrr modules}
 \usage{
-tempest_load_dsprrr_modules(path)
+tempest_load_dsprrr_modules(path, registry = list(), trusted = FALSE)
 }
 \arguments{
-\item{path}{File path ending in \code{.rds}, or a directory containing
-\code{dsprrr-modules.rds}.}
+\item{path}{Program bundle file created by
+\code{\link[=tempest_save_dsprrr_modules]{tempest_save_dsprrr_modules()}}.}
+
+\item{registry}{Named runtime registry passed to
+\code{\link[dsprrr:restore_module_config]{dsprrr::restore_module_config()}}.}
+
+\item{trusted}{Whether dsprrr may restore embedded trusted runtime values.}
 }
 \value{
 A named list of dsprrr modules.
@@ -16,9 +21,13 @@ A named list of dsprrr modules.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
+\details{
+Validates the bundle checksum before asking dsprrr to validate and restore
+each versioned program artifact.
+}
 \examples{
 \dontrun{
-modules <- tempest_load_dsprrr_modules("path/to/dsprrr-modules.rds")
+modules <- tempest_load_dsprrr_modules("path/to/storm-programs.rds")
 result <- tempest_run("History of jazz", dsprrr_modules = modules)
 }
 }

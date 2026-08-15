@@ -11,7 +11,8 @@ tempest_optimize_dsprrr_modules(
   teleprompter = NULL,
   valsets = NULL,
   .llm = NULL,
-  save_dir = NULL,
+  compile_args = list(),
+  save_path = NULL,
   k = 4L,
   seed = 123L,
   strict = TRUE,
@@ -29,16 +30,21 @@ modules from \code{tempest_make_dsprrr_modules(config)}.}
 
 \item{config}{A \code{TempestConfig} object used when \code{modules} is \code{NULL}.}
 
-\item{teleprompter}{Optional dsprrr teleprompter, named list of
-teleprompters, or factory function. Defaults to
-\code{dsprrr::LabeledFewShot()}.}
+\item{teleprompter}{Optional dsprrr teleprompter, factory function, or named
+list keyed by module name with an optional \code{.default}. Defaults to
+\code{dsprrr::LabeledFewShot()}; an empty list also uses this default.}
 
 \item{valsets}{Optional named list of validation data frames.}
 
 \item{.llm}{Optional ellmer chat object passed to dsprrr compilation.}
 
-\item{save_dir}{Optional directory or \code{.rds} path for the optimized module
-list.}
+\item{compile_args}{Named list of additional arguments for dsprrr
+compilation. Use \code{.default} for arguments shared by every module and a
+module name for overrides. This exposes dsprrr optimizer controls,
+checkpoints, agent chats, and sandbox runners without Tempest duplicating
+their contracts.}
+
+\item{save_path}{Optional \code{.rds} path for an atomic, versioned program bundle.}
 
 \item{k}{Number of examples for the default \code{LabeledFewShot} teleprompter.}
 
@@ -69,7 +75,13 @@ trainset <- data.frame(
 trainset$queries <- list(c("battery recycling", "EV battery capacity"))
 modules <- tempest_optimize_dsprrr_modules(
   trainsets = list(query_decomposition = trainset),
-  config = tempest_config()
+  config = tempest_config(),
+  compile_args = list(
+    .default = list(
+      control = dsprrr::optimizer_control(max_provider_calls = 100L)
+    )
+  ),
+  save_path = "storm-programs.rds"
 )
 }
 }
