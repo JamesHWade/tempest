@@ -1,4 +1,4 @@
 interface:
-  display_name: "Design Tempest Workflow"
-  short_description: "Design typed, approval-aware Tempest workflows"
-  default_prompt: "Use $design-tempest-workflow to turn this request into a concrete Tempest workflow design."
+  display_name: "Design Tempest 0.1 Workflow"
+  short_description: "Maintain an existing Tempest 0.1 workflow design"
+  default_prompt: "Use $design-tempest-workflow only to maintain an existing Tempest 0.1 generic workflow design."

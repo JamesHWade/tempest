@@ -187,6 +187,10 @@ tempest_execution_events <- function(x, after_sequence = 0L) {
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' These functions provide host applications with stable access to mutable
 #' `TempestRun` state without reaching into R6 fields or methods directly.
 #' Event filtering preserves run-local sequence order. Approval controls remain

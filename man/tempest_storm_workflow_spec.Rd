@@ -13,6 +13,10 @@ A \code{tempest_workflow_spec}.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 The specification declares the five durable STORM stages. Executable
 operations are supplied by \code{\link[=tempest_builtin_workflow_operation_registry]{tempest_builtin_workflow_operation_registry()}}.
 }

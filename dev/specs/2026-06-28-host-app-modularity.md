@@ -1,9 +1,13 @@
 # Host-App Modularity for Tempest
 
 Date: 2026-06-28
-Status: Proposed design
+Status: Partially superseded for Tempest 0.2
 Scope: Package contracts that let other apps embed Tempest capabilities without
 copying the bundled Shiny app.
+
+The STORM and Co-STORM embedding boundary remains relevant. Generic artifact,
+runtime, and host-workflow contracts are superseded by
+`dev/architecture/package-boundaries.md`.
 
 ## Goal
 

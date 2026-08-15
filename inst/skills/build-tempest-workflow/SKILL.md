@@ -1,9 +1,13 @@
 ---
 name: build-tempest-workflow
-description: Implement a custom workflow with the Tempest R package using its public objective, expert, in-workflow skill, capability, connection, deliverable, operation-registry, workflow-step, runtime, run, artifact, approval, and persistence APIs. Use when an agent is asked to build, scaffold, extend, or fix a host-defined Tempest workflow, convert a workflow design into R code, add deterministic workflow tests, or integrate a custom workflow into an R package, script, or Shiny host application.
+description: "Tempest 0.1 only: build a custom workflow with the frozen generic kernel scheduled for removal in Tempest 0.2.0. Use when an agent is asked to maintain an existing host-defined Tempest workflow, add deterministic workflow tests, or integrate that legacy workflow into an R package, script, or Shiny host application."
 ---
 
 # Build a Tempest workflow
+
+> **Retirement notice:** This skill documents Tempest's frozen experimental
+> generic kernel and will be removed in Tempest 0.2.0. Use the STORM and
+> Co-STORM product APIs for new research workflows.
 
 Implement the smallest complete vertical slice through Tempest's public API.
 Prefer a runnable workflow with one validated artifact over a broad scaffold

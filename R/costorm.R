@@ -185,14 +185,23 @@ tempest_costorm_mindmap_exchange <- function(
 #' TempestSession
 #'
 #' Maintains state for a Co-STORM session: multi-agent dialog, mind map,
-#' sources, auxiliary session state, and typed deliverable artifacts.
+#' provisional scientific evidence, and report state.
+#'
+#' @section Frozen Tempest 0.1 fields:
+#'
+#' `runtime`, `connection_permissions`, `artifacts`, `artifact_catalog`,
+#' `workflow_run`, and `capability_grants` expose the frozen experimental
+#' generic kernel. They remain only for existing Tempest 0.1 integrations and
+#' are scheduled for replacement or removal in Tempest 0.2.0. New host code
+#' should keep tools and authenticated clients process-local and use the
+#' session's scientific evidence and report state as its product boundary.
 #'
 #' @field topic The research topic.
 #' @field title The report title.
 #' @field config A `TempestConfig` object.
-#' @field runtime A `TempestRuntime` containing process-local adapters.
-#' @field connection_permissions Named per-role or per-expert connection
-#'   allow-lists.
+#' @field runtime Frozen Tempest 0.1 `TempestRuntime` adapter.
+#' @field connection_permissions Frozen Tempest 0.1 per-role or per-expert
+#'   connection allow-lists.
 #' @field session_id Stable identifier shared by progress events for the
 #'   session.
 #' @field progress Optional progress callback.
@@ -204,14 +213,12 @@ tempest_costorm_mindmap_exchange <- function(
 #' @field transcript List of dialog turns.
 #' @field mindmap The mind map data structure.
 #' @field events Ordered normalized progress-event history.
-#' @field artifacts Environment of auxiliary and legacy-compatible session
-#'   state.
-#' @field artifact_catalog Typed deliverable specifications and artifacts
-#'   produced by the session.
-#' @field workflow_run Optional generic `TempestRun` that owns the session
-#'   workflow lifecycle.
-#' @field capability_grants Serializable capability decisions by execution
-#'   context.
+#' @field artifacts Frozen Tempest 0.1 environment of auxiliary session state.
+#' @field artifact_catalog Frozen Tempest 0.1 typed deliverable catalog.
+#' @field workflow_run Frozen Tempest 0.1 generic `TempestRun` that owns the
+#'   session workflow lifecycle, when present.
+#' @field capability_grants Frozen Tempest 0.1 capability decisions by
+#'   execution context.
 #' @field discourse_manager A `DiscourseManager` object (NULL when disabled).
 #'
 #' @export
@@ -243,12 +250,13 @@ TempestSession <- R6::R6Class(
     #' Create a new TempestSession.
     #' @param topic The research topic.
     #' @param config A `TempestConfig` object.
-    #' @param runtime A [tempest_runtime()] containing process-local adapters.
+    #' @param runtime Frozen Tempest 0.1 [tempest_runtime()] adapter. Existing
+    #'   integrations only.
     #' @param n_experts Number of expert agents.
     #' @param experts Optional list of validated expert profiles. If `NULL`,
     #'   experts are generated automatically using `tempest_generate_experts()`.
-    #' @param connection_permissions Named list mapping role or expert ids to
-    #'   opaque connection ids allowed for this session.
+    #' @param connection_permissions Frozen Tempest 0.1 mapping from role or
+    #'   expert ids to opaque connection ids allowed for this session.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
     #'   object with a `SourceStore` at `$store`.
     #' @param progress Optional function called with `tempest_progress_event`
@@ -1709,14 +1717,21 @@ TempestSession <- R6::R6Class(
 
 #' Create a Co-STORM session
 #'
+#' @section Frozen Tempest 0.1 seams:
+#'
+#' `runtime` and `connection_permissions` remain only for existing Tempest 0.1
+#' integrations and are scheduled for replacement in Tempest 0.2.0. New host
+#' code should keep role-specific tools and authenticated clients process-local.
+#'
 #' @param topic Topic string.
 #' @param config A `TempestConfig`.
-#' @param runtime A [tempest_runtime()] containing process-local adapters.
+#' @param runtime Frozen Tempest 0.1 [tempest_runtime()] adapter. Existing
+#'   integrations only.
 #' @param n_experts Number of expert agents.
 #' @param experts Optional list of validated expert profiles. If `NULL`,
 #'   experts are generated automatically.
-#' @param connection_permissions Named per-role or per-expert connection
-#'   allow-lists.
+#' @param connection_permissions Frozen Tempest 0.1 per-role or per-expert
+#'   connection allow-lists.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
 #'   with a `SourceStore` at `$store`.
 #' @param progress Optional function called with `tempest_progress_event`

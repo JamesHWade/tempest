@@ -2,7 +2,7 @@
 title: "Get started with Tempest"
 description: >
   Choose a Tempest workflow, configure a provider, create an evidence-backed
-  report, and continue into interactive or application-specific workflows.
+  report, and continue into interactive scientific research.
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Get started with Tempest}
@@ -17,10 +17,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-Tempest brings STORM and Co-STORM research workflows to R and exposes their
-shared execution machinery for other applications. It combines
+Tempest brings STORM and Co-STORM research workflows to R. It combines
 multi-perspective research, source and claim tracking, cited writing, selected
-or generated experts, typed artifacts, and resumable execution.
+or generated experts, scientific reports, and resumable research state.
 
 This article helps you choose a workflow and produce a first result.
 Provider-backed examples are not executed while the vignette is built, so
@@ -33,14 +32,13 @@ Start with the interface that matches the outcome you need:
 
 | Goal | Interface | Result |
 |---|---|---|
-| Create an evidence-backed report | `tempest_run()` | A report, sources, claims, outline, and artifacts |
+| Create an evidence-backed report | `tempest_run()` | A report, sources, claims, outline, and run state |
 | Explore a topic interactively | `run_app()` or `tempest_session()` | A continuing Co-STORM conversation, mind map, evidence, and report |
-| Build an application-specific outcome | `tempest_run_workflow()` | A generic run with selected experts, approvals, events, and typed artifacts |
+| Inspect the frozen generic kernel | `tempest_run_workflow()` | Frozen experimental 0.1 behavior scheduled for removal in 0.2.0 |
 
 Most package users should begin with scripted STORM. Co-STORM is useful when
-the research question should evolve through dialogue. The generic workflow
-kernel is for host applications that need their own output templates and
-operations.
+the research question should evolve through dialogue. The experimental generic
+workflow kernel is frozen; do not use it for new integrations.
 
 ## Install and load Tempest
 
@@ -96,7 +94,7 @@ environment variables.
 2. research questions from each perspective;
 3. draft and refine an outline;
 4. write cited sections; and
-5. polish and publish the report artifact.
+5. polish and publish the Markdown report.
 
 Start with two experts and a small question budget while learning the package:
 
@@ -139,20 +137,13 @@ utils::head(claims[
     "support_score"
   )
 ])
-
-report_artifact <- result$artifact_catalog$get("report_md")
-report_artifact@status
-report_artifact@media_type
-report_artifact@checksum
-cat(report_artifact@content)
-
-result$artifact_catalog$list()
 ```
 
-The source store is the evidence ledger. Sources, claims, support scores, and
-citations remain inspectable instead of being flattened into report text.
-The artifact catalog contains the typed final representations and their
-validation and provenance metadata.
+The source store holds run-scoped provisional evidence. Sources, claims,
+support scores, and citations remain inspectable instead of being flattened
+into report text. The product report is available directly in
+`result$report_md`; new callers should not depend on the frozen 0.1 artifact
+catalog.
 
 Choose a stronger `citation_policy` when a workflow requires verified claims:
 
@@ -202,26 +193,14 @@ experts <- list(
     name = "Recycling Engineer",
     title = "Battery recovery specialist",
     description = "Focuses on process yield, safety, and scale-up.",
-    instructions = "Separate demonstrated performance from projections.",
-    required_capability_ids = c(
-      "tempest.research.web",
-      "tempest.evidence.read",
-      "tempest.evidence.write"
-    ),
-    optional_capability_ids = "tempest.retrieval.semantic"
+    instructions = "Separate demonstrated performance from projections."
   ),
   tempest_expert(
     expert_id = "expert.recycling-policy",
     name = "Policy Analyst",
     title = "Circular-economy policy specialist",
     description = "Focuses on incentives, standards, and accountability.",
-    instructions = "Compare jurisdictions and preserve policy uncertainty.",
-    required_capability_ids = c(
-      "tempest.research.web",
-      "tempest.evidence.read",
-      "tempest.evidence.write"
-    ),
-    optional_capability_ids = "tempest.retrieval.semantic"
+    instructions = "Compare jurisdictions and preserve policy uncertainty."
   )
 )
 
@@ -235,10 +214,10 @@ result <- tempest_run(
 )
 ```
 
-Profiles are serializable definitions that declare skills and capabilities by
-ID. Capability specifications may name opaque connection reference IDs, while
-live tools, clients, and credentials are resolved separately through
-`tempest_runtime()`.
+Profiles describe a scientific perspective and stable expert identity. Keep
+live tools, clients, and credentials outside the serialized profile. The 0.1
+skill, capability, and connection fields are frozen and should not be used for
+new integrations.
 
 ## Explore interactively with Co-STORM
 
@@ -298,20 +277,24 @@ restored <- tempest_session_resume(
 ```
 
 Each expert keeps its own conversation continuity and receives only the
-capabilities and connections granted for that session. The moderator delegates
-by stable expert ID, and evidence collected during dialogue remains available
-to the final report. Session bundles preserve durable research state, but not
-credentials, live chat handles, or executable runtime bindings. Supply a fresh
-configuration when resuming and reattach a custom `runtime` when the session
-uses host-defined capabilities or connections.
+role-specific tools needed for that session. The moderator delegates by stable
+expert ID, and evidence collected during dialogue remains available to the
+final report. Session bundles preserve durable research state, but not
+credentials, live chat handles, tools, or authenticated clients. Recreate those
+host-injected dependencies after resume. Existing Tempest 0.1 integrations that
+supplied a custom `runtime` must still reattach it; that seam is frozen and
+should not be used for new integrations.
 
-## Build application-specific workflows
+## Maintain a Tempest 0.1 application-specific workflow
 
-STORM and Co-STORM are built-in specializations. The same kernel can also turn
-a customer request or internal objective into a host-defined action register,
-implementation plan, review packet, or other typed outcome.
+> **Lifecycle notice:** The experimental generic workflow kernel is frozen and
+> scheduled for removal in Tempest 0.2.0. Do not use it for new integrations.
 
-The `reusable-workflows` vignette builds a complete offline example with:
+Existing Tempest 0.1 hosts may still need the generic kernel while the product
+migration is under way.
+
+The `reusable-workflows` vignette documents maintenance of an existing Tempest
+0.1 integration with:
 
 - an application-neutral objective;
 - a host-selected expert;
@@ -332,10 +315,8 @@ On the pkgdown website, see
 
 ## Where to go next
 
-- Use `tempest_storm_workflow_run()` when a host wants STORM behind the generic
-  `TempestRun` status, event, artifact, and persistence interface.
-- Use `tempest_costorm_workflow_run()` to wrap an interactive Co-STORM session
-  in the same generic run model.
+- Use `tempest_run()` for a scripted STORM report.
+- Use `tempest_session()` or `run_app()` for interactive Co-STORM research.
 - Add semantic retrieval with `ragnar` through `embed_fn` or a pre-built
   `ragnar_store`.
 - Optimize structured STORM modules with
@@ -346,5 +327,5 @@ On the pkgdown website, see
   `tempest_costorm_task()`.
 
 Start with a narrow topic, a small expert and question budget, and durable
-output. Expand model roles, retrieval, parallelism, expert capabilities, and
-evaluation only after the first workflow behaves as intended.
+output. Expand model roles, retrieval, parallelism, and evaluation only after
+the first workflow behaves as intended.

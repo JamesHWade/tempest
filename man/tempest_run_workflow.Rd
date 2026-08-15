@@ -58,6 +58,10 @@ A mutable \code{TempestRun}.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 Construction preflights every step operation before execution. The function
 returns a mutable run in a terminal state or in nonblocking
 \code{awaiting_approval} state. If execution fails after construction, the

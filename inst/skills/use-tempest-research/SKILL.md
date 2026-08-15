@@ -1,6 +1,6 @@
 ---
 name: use-tempest-research
-description: Use the Tempest R package's built-in STORM and Co-STORM research workflows. Use when an agent needs to explain, select, configure, run, resume, inspect, evaluate, or embed scripted multi-perspective STORM reports or interactive Co-STORM sessions, including Shiny and shinychat host integration. Use the custom-workflow skills instead when the requested outcome requires a host-defined workflow graph.
+description: Use the Tempest R package's built-in STORM and Co-STORM research workflows. Use when an agent needs to explain, select, configure, run, resume, inspect, evaluate, or embed scripted multi-perspective STORM reports or interactive Co-STORM sessions, including Shiny and shinychat host integration.
 ---
 
 # Use Tempest research
@@ -14,12 +14,6 @@ then operate it through Tempest's public APIs and inspectable evidence state.
   through a bounded batch run.
 - Use Co-STORM when a human should steer an ongoing expert discussion, inspect
   a shared mind map, ask follow-up questions, and request a report later.
-- Use `tempest_storm_workflow_run()` or
-  `tempest_costorm_workflow_run()` when a host needs the built-in behavior
-  behind the generic `TempestRun` status, event, artifact, approval, and
-  persistence interface.
-- Use `design-tempest-workflow` when the requested steps, permissions,
-  approvals, side effects, or output types are application-specific.
 - Use `conduct-storm-research` when the STORM protocol must run without
   Tempest APIs.
 
@@ -43,13 +37,13 @@ Read the mode-specific reference before implementing or operating it:
    source-budget choices. Keep credentials outside R source and durable state.
 4. Start with a narrow topic, small expert pool, and bounded question count.
    Expand only after the first run or session behaves correctly.
-5. Preserve the `SourceStore`, typed artifact catalog, claims, evidence spans,
-   citations, events, and run or session identifiers. Do not reduce the result
-   to report text when the host needs auditability or resume support.
-6. Inspect terminal or paused state explicitly. A report string alone does not
-   prove that requested outputs, approvals, or evidence policies succeeded.
+5. Preserve the research store, claims, evidence spans, citations, events, and
+   run or session identifiers. Do not reduce the result to report text when the
+   host needs auditability or resume support.
+6. Inspect terminal or paused product state explicitly. A report string alone
+   does not prove that the configured evidence policy succeeded.
 7. Save durable state at intentional boundaries and recreate live chats,
-   credentials, callbacks, tools, and connection bindings before resuming.
+   credentials, callbacks, tools, and other host dependencies before resuming.
 8. Exercise the actual host path when correctness depends on asynchronous work,
    cancellation, Shiny session lifetime, reactive invalidation, tool display,
    approval UI, or downloads.

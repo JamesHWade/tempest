@@ -1,9 +1,13 @@
 ---
 name: design-tempest-workflow
-description: Design a custom workflow for the Tempest R package before implementation. Use when an agent needs to translate an application request into Tempest objectives, resources, expert profiles, in-workflow skill and capability specifications, deliverables, workflow steps, approvals, runtime services, persistence boundaries, or a concrete implementation plan. Also use when deciding whether to use the built-in STORM or Co-STORM workflows instead of a host-defined workflow.
+description: "Tempest 0.1 only: design a custom workflow with the frozen generic kernel scheduled for removal in Tempest 0.2.0. Use when an agent needs to translate an application request into Tempest objectives, resources, expert profiles, in-workflow skill and capability specifications, deliverables, workflow steps, approvals, runtime services, persistence boundaries, or a concrete implementation plan."
 ---
 
 # Design a Tempest workflow
+
+> **Retirement notice:** This skill documents Tempest's frozen experimental
+> generic kernel and will be removed in Tempest 0.2.0. Use the STORM and
+> Co-STORM product APIs for new research workflows.
 
 Turn the requested outcome into a small, versioned workflow contract that can
 be implemented and tested without inventing application-specific state inside

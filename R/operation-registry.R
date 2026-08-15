@@ -283,6 +283,10 @@ TempestOperationRegistry <- R6::R6Class(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' The registry keeps executable functions outside serializable workflow and
 #' deliverable specifications. Operations are resolved by stable id, version,
 #' and kind when a run is rehydrated.

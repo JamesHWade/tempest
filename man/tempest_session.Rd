@@ -21,15 +21,16 @@ tempest_session(
 
 \item{config}{A \code{TempestConfig}.}
 
-\item{runtime}{A \code{\link[=tempest_runtime]{tempest_runtime()}} containing process-local adapters.}
+\item{runtime}{Frozen Tempest 0.1 \code{\link[=tempest_runtime]{tempest_runtime()}} adapter. Existing
+integrations only.}
 
 \item{n_experts}{Number of expert agents.}
 
 \item{experts}{Optional list of validated expert profiles. If \code{NULL},
 experts are generated automatically.}
 
-\item{connection_permissions}{Named per-role or per-expert connection
-allow-lists.}
+\item{connection_permissions}{Frozen Tempest 0.1 per-role or per-expert
+connection allow-lists.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
 with a \code{SourceStore} at \verb{$store}.}
@@ -43,6 +44,14 @@ identifier is generated.}
 \description{
 Create a Co-STORM session
 }
+\section{Frozen Tempest 0.1 seams}{
+
+
+\code{runtime} and \code{connection_permissions} remain only for existing Tempest 0.1
+integrations and are scheduled for replacement in Tempest 0.2.0. New host
+code should keep role-specific tools and authenticated clients process-local.
+}
+
 \examples{
 \dontrun{
 session <- tempest_session("History of jazz", config = tempest_config())

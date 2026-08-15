@@ -27,6 +27,10 @@ the requirement is promoted and the returned sets remain disjoint.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 The registry binds serializable skill specifications to versioned runtime
 operations. Every operation declared by a skill must be available from
 \code{operations} with kind \code{"skill"}.

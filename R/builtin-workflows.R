@@ -18,6 +18,10 @@ tempest_builtin_workflow_abort <- function(message, ..., parent = NULL) {
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' The specification declares the five durable STORM stages. Executable
 #' operations are supplied by [tempest_builtin_workflow_operation_registry()].
 #'
@@ -91,6 +95,10 @@ tempest_storm_workflow_spec <- function() {
 #' Create the built-in Co-STORM workflow specification
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' The interactive dialogue is an approval checkpoint. Starting the workflow
 #' runs warmup and then returns in `awaiting_approval`. A host conducts as many
@@ -307,6 +315,10 @@ tempest_builtin_workflow_adapter <- function(
 #' Create a registry for Tempest's built-in research workflows
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' The returned registry resolves every operation used by
 #' [tempest_storm_workflow_spec()] and [tempest_costorm_workflow_spec()].
@@ -551,6 +563,10 @@ tempest_storm_workflow_update_experts <- function(run, experts, stage) {
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' The adapter executes one existing [tempest_run()] stage at a time against
 #' the generic run's shared evidence store and artifact catalog. Runtime and
 #' connection permissions always come from the owning `TempestRun`.
@@ -685,6 +701,10 @@ tempest_storm_workflow_adapter <- function(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' This is the generic-run counterpart to [tempest_run()]. It returns the
 #' `TempestRun`; each step result retains the corresponding legacy STORM result
 #' under `$value`, including its `$workflow_run` handle.
@@ -790,6 +810,10 @@ tempest_storm_workflow_run <- function(
 #' Create an adapter for the built-in Co-STORM workflow
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' Warmup and report operations call the existing `TempestSession` methods.
 #' The dialogue operation records the current session boundary; individual
@@ -905,6 +929,10 @@ tempest_costorm_workflow_adapter <- function(
 #' Attach and start the generic workflow for a Co-STORM session
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' The run executes warmup and then waits at the dialogue approval checkpoint.
 #' Conduct session turns normally, then approve the pending checkpoint with

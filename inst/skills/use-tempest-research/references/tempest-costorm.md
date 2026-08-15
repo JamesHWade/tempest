@@ -37,8 +37,8 @@ session <- tempest_session(
 ```
 
 Use exact `tempest_expert()` profiles when the host owns the roster. Keep live
-capability implementations and connection bindings in a process-local
-`tempest_runtime()`.
+tools, clients, and credentials in the host process rather than serialized
+profiles.
 
 ## Conduct the session
 
@@ -81,25 +81,9 @@ report <- session$report(
 cat(report)
 ```
 
-Inspect the session's source store, claims, transcript, mind map, artifacts,
-and report state. Report generation should preserve uncertainty and evidence
+Inspect the session's source store, claims, transcript, mind map, and report
+state. Report generation should preserve uncertainty and evidence
 relationships collected during dialogue.
-
-## Use the generic workflow wrapper
-
-Use `tempest_costorm_workflow_run()` when a host needs the session behind the
-generic run interface. The built-in generic workflow:
-
-1. runs warmup;
-2. pauses at an approval-gated dialogue boundary;
-3. lets the host conduct interactive session turns;
-4. records approval when dialogue is complete; and
-5. generates the report.
-
-Use public run accessors to display status, events, approvals, artifacts,
-evidence, assignments, and capability grants. Record the exact pending
-approval with `tempest_run_record_approval()` only after the host has captured
-the intended dialogue boundary.
 
 ## Persist and restore
 
@@ -116,10 +100,10 @@ session <- tempest_session_resume(
 )
 ```
 
-Restore durable roster, transcript, mind map, evidence, and artifact state.
-Recreate chats, credentials, callbacks, capability implementations, and
-authenticated connection bindings. Do not resume work automatically before
-the host has inspected the restored state.
+Restore durable roster, transcript, mind map, evidence, and report state.
+Recreate chats, credentials, callbacks, tools, and authenticated clients. Do
+not resume work automatically before the host has inspected the restored
+state.
 
 ## Verify
 
@@ -129,7 +113,6 @@ Test with fake chats and local evidence. Verify:
 - warmup progress and terminal events;
 - dynamic roster limits and retired-expert behavior;
 - transcript, mind-map, evidence, and report consistency;
-- session save/restore and explicit runtime reattachment;
-- approval alignment in the generic wrapper;
+- session save/restore and explicit live-dependency reattachment;
 - cancellation and stale callback handling;
 - live Shiny behavior when background work or reactive state is involved.

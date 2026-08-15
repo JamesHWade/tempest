@@ -1,4 +1,4 @@
 interface:
-  display_name: "Verify Tempest Workflow"
-  short_description: "Audit custom Tempest workflow integrity"
-  default_prompt: "Use $verify-tempest-workflow to audit this Tempest workflow and its tests."
+  display_name: "Verify Tempest 0.1 Workflow"
+  short_description: "Audit an existing Tempest 0.1 workflow"
+  default_prompt: "Use $verify-tempest-workflow only to audit an existing Tempest 0.1 generic workflow and its tests."

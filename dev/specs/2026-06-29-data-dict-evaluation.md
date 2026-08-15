@@ -1,8 +1,13 @@
 # data-dict evaluation for Tempest schemas
 
 **Date:** 2026-06-29
-**Status:** Recommendation recorded for v6kb
+**Status:** Partially superseded for Tempest 0.2
 **Decision:** Defer adding `tidyverse/data-dict` as a Tempest dependency.
+
+The dependency audit and decision not to add a `data-dict` runtime dependency
+remain authoritative. The decision not to publish an external scientific
+schema is superseded by `dev/architecture/package-boundaries.md` and the
+planned resolved, graft-compatible Tempest schema.
 
 ## Recommendation
 

@@ -163,6 +163,10 @@ tempest_artifact_codec_media_supported <- function(patterns, media_type) {
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' Codec definitions keep executable encode/decode functions in a runtime
 #' registry while exposing only serializable identity and media metadata in
 #' durable listings.
@@ -669,6 +673,10 @@ TempestArtifactCodecRegistry <- R6::R6Class(
 #' Create a typed artifact codec registry
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' Registries resolve codecs by stable id, version, and media type. Their
 #' `list()` method deliberately excludes executable functions.

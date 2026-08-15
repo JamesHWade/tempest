@@ -478,6 +478,10 @@ tempest_generated_expert_id <- function(value, index = 1L) {
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' Skills are serializable procedures. They identify required capabilities and
 #' runtime skill operations without storing executable functions.
 #'
@@ -565,6 +569,10 @@ tempest_skill <- function(
 #' Create a Tempest capability specification
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' A capability specification declares permissioned callable behavior. Runtime
 #' implementations and authenticated connections are resolved separately.
@@ -663,6 +671,10 @@ tempest_capability_spec <- function(
 #' Create an opaque Tempest connection reference
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' A connection reference identifies a host-owned authenticated binding without
 #' storing credentials or a live client in a durable workflow definition.

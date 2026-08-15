@@ -215,6 +215,10 @@ tempest_deliverable_normalize_validation <- function(result, operation) {
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' Custom renderer operations return this lightweight runtime value. The
 #' deliverable lifecycle adds specification identity, validation results,
 #' provenance, checksums, and lifecycle status when it creates the final typed
@@ -738,6 +742,10 @@ tempest_deliverable_finalize <- function(plan, canonical_content) {
 #' Generate and finalize a Tempest deliverable
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' This is the application-neutral output lifecycle used by built-in and
 #' host-defined workflows. It resolves all operations before generation, runs
@@ -1301,6 +1309,10 @@ tempest_builtin_markdown_exporter <- function(
 #' Create a registry containing Tempest's built-in deliverable operations
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' Hosts can register additional operations or explicitly replace a built-in
 #' operation on the returned registry.

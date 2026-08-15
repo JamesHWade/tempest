@@ -26,6 +26,10 @@ A \code{TempestArtifactCatalog} with \code{add()}, \code{get()}, \code{has()},
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 The catalog owns typed artifacts for one workflow run. It supports
 metadata-only listing so host applications do not need to load large
 artifact content to render an output index.

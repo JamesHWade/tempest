@@ -13,6 +13,10 @@ A \code{tempest_artifact_store}.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
+This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+No compatibility shim is planned; see
+\link{tempest-generic-kernel-retirement}.
+
 This is useful for tests and host apps that want to capture artifacts before
 deciding where to persist them.
 }

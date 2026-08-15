@@ -1,5 +1,12 @@
 # API lifecycle and style modernization
 
+Status: Partially superseded for Tempest 0.2
+
+The condition and style guidance remains useful. Lifecycle guidance for the
+frozen experimental generic kernel is superseded by
+`dev/architecture/package-boundaries.md`; those APIs are removed directly in
+0.2.0 after their product replacements are proven.
+
 This first pass keeps existing behavior intact while making the public package
 surface easier for host apps to depend on intentionally.
 

@@ -112,6 +112,10 @@ TempestWorkflowSpec <- S7::new_class(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
+#'
 #' A workflow step is a serializable declaration. Its executable operation is
 #' resolved from the run's runtime registry before any step begins.
 #'
@@ -325,6 +329,10 @@ tempest_workflow_validate_graph <- function(steps) {
 #' Create a Tempest workflow specification
 #'
 #' `r lifecycle::badge("experimental")`
+#'
+#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
+#' No compatibility shim is planned; see
+#' [tempest-generic-kernel-retirement].
 #'
 #' @param workflow_id Stable workflow identifier.
 #' @param title Display title.

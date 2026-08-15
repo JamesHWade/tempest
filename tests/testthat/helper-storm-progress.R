@@ -2,7 +2,7 @@
 # Builds a fully scripted STORM fixture that runs end-to-end (through the
 # verification stage) without network or API keys, for progress-event tests.
 
-storm_progress_fixture <- function() {
+storm_progress_fixture <- function(.local_envir = parent.frame()) {
   testthat::local_mocked_bindings(
     tempest_wiki_search = function(query, limit = 8L) {
       tibble::tibble(
@@ -13,7 +13,7 @@ storm_progress_fixture <- function() {
     },
     tempest_extract_toc_from_url = function(url) character(),
     tempest_wiki_page_sections = function(title) character(),
-    .env = parent.frame()
+    .env = .local_envir
   )
   source <- fake_source(
     url = "https://example.org/progress",
@@ -137,6 +137,7 @@ storm_progress_fixture <- function() {
     config = cfg,
     store = store,
     retriever = tempest_retriever(config = cfg, store = store),
-    source_id = source_id
+    source_id = source_id,
+    outline = outline
   )
 }
