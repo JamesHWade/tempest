@@ -122,9 +122,7 @@ tempest_mindmap_expand_node <- function(chat, mindmap, node_id) {
   result <- tryCatch(
     chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
     error = function(e) {
-      tempest_warn(
-        "Failed to expand mind map node {.val {node_id}}: {conditionMessage(e)}"
-      )
+      tempest_warn("Failed to expand the mind map node.")
       NULL
     }
   )

@@ -17,36 +17,68 @@ tempest_as_character_vector <- function(x) {
 }
 
 #' @keywords internal
+tempest_storm_report_with_execution_review <- function(
+  report_artifact,
+  stage_records,
+  artifact_catalog,
+  title = NULL
+) {
+  if (!S7::S7_inherits(report_artifact, TempestArtifact)) {
+    tempest_abort(
+      "STORM execution review requires a typed report artifact.",
+      class = "tempest_stage_commit_error"
+    )
+  }
+  if (!inherits(artifact_catalog, "TempestArtifactCatalog")) {
+    tempest_abort(
+      "STORM execution review requires an artifact catalog.",
+      class = "tempest_stage_commit_error"
+    )
+  }
+  review <- tempest_stage_records_execution_review(stage_records)
+  content <- tempest_markdown_append_execution_review(
+    report_artifact@content,
+    review,
+    trusted_title = title
+  )
+  if (identical(content, report_artifact@content)) {
+    return(report_artifact)
+  }
+  report_artifact <- S7::set_props(
+    report_artifact,
+    content = content,
+    checksum = tempest_artifact_content_checksum(
+      content,
+      report_artifact@storage_ref,
+      report_artifact@media_type
+    ),
+    updated_at = tempest_now_utc()
+  )
+  artifact_catalog$add(report_artifact, replace = TRUE)
+  report_artifact
+}
+
+#' @keywords internal
 tempest_run_verification <- function(
   store,
   config,
   verifier = NULL,
-  program
+  program,
+  record_stage = function(record, output = NULL) invisible(record),
+  record_stages = function(records, outputs = NULL) invisible(records)
 ) {
-  if (!config@citation_policy %in% c("claim_verified", "strict")) {
-    return(invisible(NULL))
-  }
   verifier <- verifier %||% tempest_make_chat(config, "judge")
-  # Ordinary verifier failures degrade to an unverified report. Program
-  # identity and trace contract failures remain fatal.
-  tryCatch(
-    tempest_verify_claims_internal(
-      workspace = store,
-      verifier = verifier,
-      policy = config@citation_policy,
-      verifier_model = config@models[["judge"]] %||% NA_character_,
-      program = program,
-      min_support_score = config@min_support_score
-    ),
-    error = function(e) {
-      tempest_rethrow_dsprrr_contract(e)
-      tempest_warn(
-        "Citation verification failed; report left unverified: {conditionMessage(e)}"
-      )
-      NULL
-    }
+  verification_policy <- config@citation_policy
+  tempest_verify_claims_internal(
+    workspace = store,
+    verifier = verifier,
+    policy = verification_policy,
+    verifier_model = config@models[["judge"]] %||% NA_character_,
+    program = program,
+    min_support_score = config@min_support_score,
+    record_stage = record_stage,
+    record_stages = record_stages
   )
-  invisible(NULL)
 }
 
 #' @keywords internal
@@ -176,6 +208,7 @@ tempest_run_internal <- function(
   progress = NULL,
   verbose = TRUE,
   .state = NULL,
+  .requested_steps = NULL,
   runtime = tempest_runtime(),
   runtime_factory = function() tempest_runtime(),
   connection_permissions = list(),
@@ -247,18 +280,17 @@ tempest_run_internal <- function(
   resume <- tempest_config_flag(resume, "resume")
   remove_duplicate <- tempest_config_flag(remove_duplicate, "remove_duplicate")
   verbose <- tempest_config_flag(verbose, "verbose")
-  allowed_steps <- c("perspectives", "research", "outline", "write", "polish")
-  if (
-    !is.character(steps) ||
-      length(steps) == 0L ||
-      anyNA(steps) ||
-      length(setdiff(steps, allowed_steps)) > 0L
-  ) {
-    tempest_config_abort(
-      "{.arg steps} must contain only: {.val {allowed_steps}}."
+  steps <- tempest_storm_requested_steps(steps)
+  requested_steps <- if (is.null(.requested_steps)) {
+    steps
+  } else {
+    tempest_storm_requested_steps(.requested_steps)
+  }
+  if (!all(steps %in% requested_steps)) {
+    tempest_storm_state_abort(
+      "Execution {.arg steps} must be contained in {.arg .requested_steps}."
     )
   }
-  steps <- unique(steps)
 
   retriever_supplied <- !is.null(retriever)
   retriever <- retriever %||%
@@ -312,7 +344,8 @@ tempest_run_internal <- function(
   state <- if (is.null(.state)) {
     tempest_storm_state(
       topic = topic,
-      experts = experts %||% list()
+      experts = experts %||% list(),
+      requested_steps = requested_steps
     )
   } else {
     tempest_storm_state_validate(.state)
@@ -320,6 +353,14 @@ tempest_run_internal <- function(
   if (!identical(state$topic, topic)) {
     tempest_storm_state_abort(
       "{.field topic} in {.arg .state} must match {.arg topic}."
+    )
+  }
+  if (!identical(state$requested_steps, requested_steps)) {
+    tempest_storm_state_abort(
+      paste0(
+        "{.field requested_steps} in {.arg .state} must match the immutable ",
+        "run request."
+      )
     )
   }
   if (length(experts %||% list()) > 0L && length(state$experts) > 0L) {
@@ -379,6 +420,12 @@ tempest_run_internal <- function(
       payload = payload,
       parent_event_id = parent_event_id,
       correlation_id = correlation_id
+    )
+  }
+  emit_progress_best_effort <- function(...) {
+    tryCatch(
+      emit_progress(...),
+      error = function(error) invisible(NULL)
     )
   }
   emit_stage_started <- function(
@@ -446,7 +493,7 @@ tempest_run_internal <- function(
       research_manifest,
       program_set = program_set,
       config = config,
-      steps = steps,
+      steps = requested_steps,
       research_strategy = research_strategy,
       parallel_writing = parallel_writing,
       remove_duplicate = remove_duplicate
@@ -478,7 +525,7 @@ tempest_run_internal <- function(
             )
           )
         }
-        stop(e)
+        tempest_rethrow_operation(e, class = "tempest_run_error")
       }
     )
     if (!is.null(run_dir)) {
@@ -534,6 +581,17 @@ tempest_run_internal <- function(
         )
       )
     }
+    if (!identical(state$requested_steps, requested_steps)) {
+      tempest_abort(
+        paste0(
+          "Cannot resume a STORM research run with different requested ",
+          "steps. The requested {.arg steps} must match persisted state."
+        ),
+        class = tempest_persistence_error_class(
+          "tempest_run_resume_error"
+        )
+      )
+    }
     completed_stages <- state$completed_stages
     research_manifest <- loaded_run$research_manifest
     programs <- tempest_bind_program_set(
@@ -570,6 +628,102 @@ tempest_run_internal <- function(
         "Loaded persisted STORM stages from {.path {run_dir}}: {paste(completed_stages, collapse = ', ')}"
       )
     }
+  }
+
+  stage_recorder <- function(commit_output = NULL) {
+    if (!is.null(commit_output) && !is.function(commit_output)) {
+      tempest_stage_evaluator_abort(
+        "{.arg commit_output} must be `NULL` or a function."
+      )
+    }
+    force(commit_output)
+    function(record, output = NULL) {
+      next_state <- rlang::duplicate(state, shallow = TRUE)
+      next_state$stage_records <- tempest_stage_records_upsert(
+        next_state$stage_records,
+        record
+      )
+      if (!is.null(output) && is.function(commit_output)) {
+        next_state <- commit_output(next_state, output)
+      }
+      next_state <- tempest_storm_state_validate(next_state)
+      state <<- next_state
+      invisible(record)
+    }
+  }
+  record_stage <- stage_recorder()
+  record_stages <- function(records, outputs = NULL) {
+    next_state <- rlang::duplicate(state, shallow = TRUE)
+    next_state$stage_records <- tempest_stage_records_upsert_many(
+      next_state$stage_records,
+      records
+    )
+    next_state <- tempest_storm_state_validate(next_state)
+    state <<- next_state
+    invisible(records)
+  }
+  verification_ready <- FALSE
+  ensure_verification_complete <- function() {
+    claims <- store$list_proposed_claims()
+    if (isTRUE(verification_ready)) {
+      return(claims)
+    }
+    if (length(claims) == 0L) {
+      verification_ready <<- TRUE
+      return(list())
+    }
+    audit <- store$citation_audit
+    claim_ids <- vapply(claims, \(claim) claim@claim_id, character(1))
+    audit_complete <- !is.null(audit) &&
+      setequal(audit$claim_id, claim_ids) &&
+      all(vapply(
+        claims,
+        \(claim) !identical(claim@verification_status, "unverified"),
+        logical(1)
+      ))
+    if (!audit_complete) {
+      parent_progress_stage <- current_progress_stage
+      emit_stage_started(
+        "verification",
+        message = "Verifying evidence for grounded generation."
+      )
+      tempest_run_verification(
+        store,
+        config,
+        program = programs$verify_claim_support,
+        record_stage = record_stage,
+        record_stages = record_stages
+      )
+      emit_stage_succeeded(
+        "verification",
+        message = "Finished evidence verification.",
+        payload = list(claim_count = length(claims))
+      )
+      current_progress_stage <<- parent_progress_stage
+    }
+    verification_ready <<- TRUE
+    store$list_proposed_claims()
+  }
+  ensure_grounded_evidence <- function() {
+    claims <- ensure_verification_complete()
+    if (length(claims) == 0L) {
+      tempest_stage_governance_abort(
+        "Grounded STORM stages require at least one proposed evidence claim."
+      )
+    }
+    verified <- tempest_supported_claims(
+      store,
+      min_support_score = config@min_support_score
+    )
+    if (length(verified) == 0L) {
+      tempest_stage_governance_abort(
+        paste0(
+          "Grounded STORM stages require at least one supported claim at ",
+          "the configured support threshold."
+        )
+      )
+    }
+    verified
   }
 
   emit_progress(
@@ -686,12 +840,15 @@ tempest_run_internal <- function(
           topic,
           seed_txt,
           n_experts,
-          module = programs$perspectives
+          module = programs$perspectives,
+          record_stage = stage_recorder(function(next_state, output) {
+            next_state$title <- output$title
+            next_state$perspectives <- output$perspectives
+            next_state
+          })
         )
-        title <- plan$title %||% topic
-        perspectives <- plan$perspectives %||% list()
-        state$title <- title
-        state$perspectives <- perspectives
+        title <- plan$title
+        perspectives <- plan$perspectives
 
         if (length(experts) == 0L) {
           if (verbose) {
@@ -702,10 +859,18 @@ tempest_run_internal <- function(
             n = n_experts,
             config = config,
             verbose = verbose,
-            module = programs$personas
+            module = programs$personas,
+            record_stage = stage_recorder(function(next_state, output) {
+              next_state$experts <- output
+              next_state
+            })
           )
         }
-        state$experts <- experts
+        if (length(experts) != length(perspectives)) {
+          tempest_stage_governance_abort(
+            "Every research perspective requires one explicit expert profile."
+          )
+        }
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "perspectives"
@@ -760,14 +925,15 @@ tempest_run_internal <- function(
           tempest_inform("Research loop: {length(perspectives)} perspectives")
         }
 
-        if (length(perspectives) == 0) {
-          # Fallback: single perspective
-          perspectives <- list(list(
-            name = "Overview",
-            description = "General overview",
-            key_questions = c(topic)
-          ))
-          state$perspectives <- perspectives
+        if (length(perspectives) == 0L) {
+          tempest_stage_governance_abort(
+            "STORM research requires evaluated perspectives."
+          )
+        }
+        if (length(experts) != length(perspectives)) {
+          tempest_stage_governance_abort(
+            "Every research perspective requires one explicit expert profile."
+          )
         }
 
         if (
@@ -795,17 +961,14 @@ tempest_run_internal <- function(
             max_questions_per_perspective,
             programs,
             verbose,
-            run_id = progress_run_id
+            run_id = progress_run_id,
+            record_stage = record_stage
           )
         } else {
           # Sequential research loop
           # Create one chat per selected expert/perspective pair.
           for (i in seq_along(perspectives)) {
-            expert_profile <- if (i <= length(experts)) {
-              experts[[i]]
-            } else {
-              tempest_fallback_expert_profile(i)
-            }
+            expert_profile <- experts[[i]]
             expert_record <- tempest_expert_runtime_record(expert_profile)
             expert_id <- expert_record$expert_id
             model_role <- expert_record$model_role
@@ -852,16 +1015,12 @@ tempest_run_internal <- function(
 
           for (i in seq_along(perspectives)) {
             p <- perspectives[[i]]
-            p_name <- p$name %||% "Perspective"
-            p_desc <- p$description %||% ""
-            qs <- p$key_questions %||% c(topic)
+            p_name <- p$name
+            p_desc <- p$description
+            qs <- p$key_questions
 
             expert <- expert_chats[[i]]
-            expert_profile <- if (i <= length(experts)) {
-              experts[[i]]
-            } else {
-              tempest_fallback_expert_profile(i)
-            }
+            expert_profile <- experts[[i]]
             expert_record <- tempest_expert_runtime_record(expert_profile)
             expert_name <- expert_record$name
             expert_id <- expert_record$expert_id
@@ -886,25 +1045,17 @@ tempest_run_internal <- function(
               }
               for (q in qs_limited) {
                 # Decompose query into targeted search queries
-                decomposed <- tryCatch(
-                  tempest_decompose_query(
-                    writer,
-                    q,
-                    topic,
-                    module = programs$query_decomposition,
-                    max_queries = config@max_search_queries_per_turn
-                  ),
-                  error = function(e) {
-                    tempest_rethrow_dsprrr_contract(e)
-                    tempest_warn(
-                      "Query decomposition failed, using original query: {conditionMessage(e)}"
-                    )
-                    list(queries = list(q))
-                  }
+                decomposed <- tempest_decompose_query(
+                  writer,
+                  q,
+                  topic,
+                  module = programs$query_decomposition,
+                  max_queries = config@max_search_queries_per_turn,
+                  record_stage = record_stage
                 )
                 search_instructions <- paste0(
                   "Suggested search queries:\n",
-                  paste0("- ", decomposed$queries %||% q, collapse = "\n"),
+                  paste0("- ", decomposed$queries, collapse = "\n"),
                   "\n\n"
                 )
 
@@ -926,36 +1077,22 @@ tempest_run_internal <- function(
                   "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
                   "Answer:"
                 )
-                ans <- tryCatch(
-                  expert$chat(prompt, echo = if (verbose) "output" else "none"),
-                  error = function(e) {
-                    tempest_warn(
-                      "Expert answer failed for {.val {p_name}}: {conditionMessage(e)}"
-                    )
-                    NULL
-                  }
+                ans <- expert$chat(
+                  prompt,
+                  echo = if (verbose) "output" else "none"
                 )
-                if (!is.null(ans)) {
-                  harvest <- tempest_turn_answer_and_sources(expert, ans, store)
-                  tryCatch(
-                    tempest_extract_facts_from_answer(
-                      extractor,
-                      harvest$answer_text,
-                      store,
-                      module = programs$extract_claims,
-                      source_ids = harvest$source_ids,
-                      session_id = progress_run_id,
-                      expert_id = expert_id,
-                      perspective_id = perspective_id
-                    ),
-                    error = function(e) {
-                      tempest_rethrow_dsprrr_contract(e)
-                      tempest_warn(
-                        "Fact extraction failed: {conditionMessage(e)}"
-                      )
-                    }
-                  )
-                }
+                harvest <- tempest_turn_answer_and_sources(expert, ans, store)
+                tempest_extract_facts_from_answer(
+                  extractor,
+                  harvest$answer_text,
+                  store,
+                  module = programs$extract_claims,
+                  source_ids = harvest$source_ids,
+                  session_id = progress_run_id,
+                  expert_id = expert_id,
+                  perspective_id = perspective_id,
+                  record_stage = record_stage
+                )
               }
             } else {
               # Conversation-style interviewing: writer proposes the next best question,
@@ -978,35 +1115,24 @@ tempest_run_internal <- function(
                   p,
                   answered_md = answered_md,
                   facts_md = facts_md,
-                  module = programs$next_question
+                  module = programs$next_question,
+                  record_stage = record_stage
                 )
-                q <- tempest_trim(nxt$question %||% "")
+                q <- nxt$question
                 done <- isTRUE(nxt$done)
 
-                if (is.na(q) || q == "") {
-                  break
-                }
-
                 # Decompose query into targeted search queries
-                decomposed <- tryCatch(
-                  tempest_decompose_query(
-                    writer,
-                    q,
-                    topic,
-                    module = programs$query_decomposition,
-                    max_queries = config@max_search_queries_per_turn
-                  ),
-                  error = function(e) {
-                    tempest_rethrow_dsprrr_contract(e)
-                    tempest_warn(
-                      "Query decomposition failed, using original query: {conditionMessage(e)}"
-                    )
-                    list(queries = list(q))
-                  }
+                decomposed <- tempest_decompose_query(
+                  writer,
+                  q,
+                  topic,
+                  module = programs$query_decomposition,
+                  max_queries = config@max_search_queries_per_turn,
+                  record_stage = record_stage
                 )
                 search_instructions <- paste0(
                   "Suggested search queries:\n",
-                  paste0("- ", decomposed$queries %||% q, collapse = "\n"),
+                  paste0("- ", decomposed$queries, collapse = "\n"),
                   "\n\n"
                 )
 
@@ -1029,43 +1155,25 @@ tempest_run_internal <- function(
                   "Answer:"
                 )
 
-                ans <- tryCatch(
-                  expert$chat(prompt, echo = if (verbose) "output" else "none"),
-                  error = function(e) {
-                    tempest_warn(
-                      "Expert answer failed for {.val {p_name}}: {conditionMessage(e)}"
-                    )
-                    NULL
-                  }
+                ans <- expert$chat(
+                  prompt,
+                  echo = if (verbose) "output" else "none"
                 )
-                if (is.null(ans)) {
-                  if (done) {
-                    break
-                  }
-                  next
-                }
                 harvest <- tempest_turn_answer_and_sources(expert, ans, store)
                 answered <- c(
                   answered,
                   paste0("Q: ", q, "\nA: ", harvest$answer_text)
                 )
-                tryCatch(
-                  tempest_extract_facts_from_answer(
-                    extractor,
-                    harvest$answer_text,
-                    store,
-                    module = programs$extract_claims,
-                    source_ids = harvest$source_ids,
-                    session_id = progress_run_id,
-                    expert_id = expert_id,
-                    perspective_id = perspective_id
-                  ),
-                  error = function(e) {
-                    tempest_rethrow_dsprrr_contract(e)
-                    tempest_warn(
-                      "Fact extraction failed: {conditionMessage(e)}"
-                    )
-                  }
+                tempest_extract_facts_from_answer(
+                  extractor,
+                  harvest$answer_text,
+                  store,
+                  module = programs$extract_claims,
+                  source_ids = harvest$source_ids,
+                  session_id = progress_run_id,
+                  expert_id = expert_id,
+                  perspective_id = perspective_id,
+                  record_stage = record_stage
                 )
 
                 if (done) break
@@ -1130,21 +1238,38 @@ tempest_run_internal <- function(
           writer,
           topic,
           title,
-          module = programs$draft_outline
+          module = programs$draft_outline,
+          record_stage = stage_recorder(function(next_state, output) {
+            next_state$draft_outline <- output
+            next_state
+          })
         )
-        state$draft_outline <- draft_outline
 
         # Step 2: Refined outline incorporating facts
-        facts_txt <- tempest_summarize_facts_for_prompt(store, max_items = 80)
+        verified_evidence <- ensure_grounded_evidence()
+        facts_txt <- tempest_summarize_facts_for_prompt(
+          store,
+          max_items = 80,
+          verified_only = TRUE,
+          min_support_score = config@min_support_score
+        )
         outline <- tempest_refine_outline(
           writer,
           topic,
           title,
           draft_outline,
           facts_txt,
-          module = programs$refined_outline
+          module = programs$refined_outline,
+          workspace = store,
+          evidence = verified_evidence,
+          verified_evidence = verified_evidence,
+          verified_facts = facts_txt,
+          min_support_score = config@min_support_score,
+          record_stage = stage_recorder(function(next_state, output) {
+            next_state$outline <- output
+            next_state
+          })
         )
-        state$outline <- outline
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "outline"
@@ -1186,14 +1311,19 @@ tempest_run_internal <- function(
           tempest_inform("Writing draft")
         }
         if (is.null(outline) || is.null(outline$sections)) {
-          tempest_abort("No outline available; run steps including 'outline'.")
+          tempest_abort(
+            "No outline available; run steps including 'outline'.",
+            class = c("tempest_run_error", "tempest_error")
+          )
         }
+        verified_evidence <- ensure_grounded_evidence()
 
         section_jobs <- tempest_section_jobs(
           outline,
           retriever,
           store,
-          retrieve_top_k = config@retrieve_top_k
+          retrieve_top_k = config@retrieve_top_k,
+          min_support_score = config@min_support_score
         )
         section_results <- tempest_write_section_jobs(
           section_jobs,
@@ -1201,21 +1331,10 @@ tempest_run_internal <- function(
           config = config,
           programs = programs,
           parallel = parallel_writing,
-          verbose = verbose
+          verbose = verbose,
+          record_stage = record_stage
         )
         parts <- purrr::map_chr(section_results, "markdown")
-
-        for (section_result in section_results) {
-          # Extract any newly-cited facts from the section itself
-          tempest_extract_facts_from_answer(
-            extractor,
-            section_result$section_text,
-            store,
-            module = programs$extract_claims,
-            session_id = progress_run_id,
-            section_id = section_result$title %||% NA_character_
-          )
-        }
 
         draft_md <- paste(parts, collapse = "\n\n")
 
@@ -1223,7 +1342,13 @@ tempest_run_internal <- function(
         if (verbose) {
           tempest_inform("Generating lead section")
         }
-        lead_facts <- tempest_summarize_facts_for_prompt(store, max_items = 40)
+        lead_facts <- tempest_summarize_facts_for_prompt(
+          store,
+          max_items = 40,
+          verified_only = TRUE,
+          min_support_score = config@min_support_score
+        )
+        article_body <- draft_md
         lead_section <- tempest_write_lead_section(
           writer,
           topic,
@@ -1231,11 +1356,19 @@ tempest_run_internal <- function(
           draft_md,
           facts_txt = lead_facts,
           module = programs$lead_section,
-          verbose = verbose
+          workspace = store,
+          evidence = verified_evidence,
+          verified_evidence = verified_evidence,
+          verified_facts = lead_facts,
+          min_support_score = config@min_support_score,
+          verbose = verbose,
+          record_stage = stage_recorder(function(next_state, output) {
+            next_state$lead_section <- output
+            next_state$draft_md <- paste0(output, "\n\n", article_body)
+            next_state
+          })
         )
         draft_md <- paste0(lead_section, "\n\n", draft_md)
-        state$lead_section <- lead_section
-        state$draft_md <- draft_md
         completed_stages <- tempest_mark_stage_complete(
           completed_stages,
           "write"
@@ -1278,6 +1411,9 @@ tempest_run_internal <- function(
         if (verbose) {
           tempest_inform("Polishing and consistency pass")
         }
+        if (config@citation_policy %in% c("claim_verified", "strict")) {
+          ensure_verification_complete()
+        }
         report_plan <- tempest_storm_report_plan(
           title = title,
           draft_md = draft_md,
@@ -1294,54 +1430,18 @@ tempest_run_internal <- function(
           }
         )
         polished <- tempest_deliverable_generate(report_plan)
-        if (config@citation_policy %in% c("claim_verified", "strict")) {
-          emit_progress(
-            "stage",
-            "started",
-            stage = "verification",
-            message = "Verifying cited claims."
-          )
-          tryCatch(
-            tempest_run_verification(
-              store,
-              config,
-              program = programs$verify_claim_support
-            ),
-            error = function(e) {
-              emit_progress(
-                "stage",
-                "failed",
-                stage = "verification",
-                message = "Citation verification failed.",
-                payload = tempest_progress_error_payload(e)
-              )
-              stop(e)
-            }
-          )
-          emit_progress(
-            "stage",
-            "succeeded",
-            stage = "verification",
-            message = "Finished citation verification.",
-            payload = list(
-              claim_count = length(store$list_proposed_claims())
-            )
-          )
-        } else {
-          emit_progress(
-            "stage",
-            "skipped",
-            stage = "verification",
-            message = "Citation verification skipped.",
-            payload = list(citation_policy = config@citation_policy)
-          )
-        }
         deliverable_result <- tempest_deliverable_finalize(
           report_plan,
           polished
         )
         report_artifact <- tempest_deliverable_primary_artifact(
           deliverable_result
+        )
+        report_artifact <- tempest_storm_report_with_execution_review(
+          report_artifact,
+          state$stage_records,
+          artifact_catalog,
+          title = title
         )
         report_md <- report_artifact@content
         state$report_md <- report_md
@@ -1413,7 +1513,7 @@ tempest_run_internal <- function(
           write_run_bundle(),
           error = function(error) {
             research_manifest <<- running_manifest
-            stop(error)
+            tempest_rethrow_operation(error, class = "tempest_run_error")
           }
         )
       }
@@ -1439,9 +1539,6 @@ tempest_run_internal <- function(
       )
     },
     error = function(e) {
-      if (inherits(e, "tempest_progress_callback_error")) {
-        return()
-      }
       if (identical(research_manifest@status, "running")) {
         research_manifest <<- tempest_research_manifest_update(
           research_manifest,
@@ -1451,7 +1548,7 @@ tempest_run_internal <- function(
       }
       stage <- current_progress_stage
       if (!is.na(stage)) {
-        emit_progress(
+        emit_progress_best_effort(
           "stage",
           "failed",
           stage = stage,
@@ -1459,17 +1556,15 @@ tempest_run_internal <- function(
         )
         current_progress_stage <<- NA_character_
       }
-      emit_progress(
+      emit_progress_best_effort(
         "workflow",
         "failed",
         message = "STORM workflow failed.",
         payload = c(list(stage = stage), tempest_progress_error_payload(e))
       )
+      tempest_rethrow_operation(e, class = "tempest_run_error")
     },
     interrupt = function(e) {
-      if (inherits(e, "tempest_progress_callback_error")) {
-        return()
-      }
       if (identical(research_manifest@status, "running")) {
         research_manifest <<- tempest_research_manifest_update(
           research_manifest,
@@ -1478,12 +1573,21 @@ tempest_run_internal <- function(
         persist_terminal_state()
       }
       stage <- current_progress_stage
-      emit_progress(
+      emit_progress_best_effort(
         "cancellation",
         "cancelled",
         stage = stage,
         message = "STORM workflow cancelled.",
         payload = list(stage = stage)
+      )
+      tempest_abort(
+        "STORM workflow was cancelled.",
+        class = c(
+          "tempest_run_cancelled",
+          "tempest_run_error",
+          "tempest_error",
+          "interrupt"
+        )
       )
     }
   )
@@ -1545,7 +1649,7 @@ tempest_run_async <- function(...) {
           simpleError(
             "Asynchronous STORM worker returned an invalid result."
           )
-        stop(condition)
+        tempest_rethrow_operation(condition, class = "tempest_async_error")
       }
       result$value
     },
@@ -1560,7 +1664,7 @@ tempest_run_async <- function(...) {
           )
         )
       }
-      stop(error)
+      tempest_rethrow_operation(error, class = "tempest_async_error")
     }
   )
   attr(promise, "tempest_mirai") <- job

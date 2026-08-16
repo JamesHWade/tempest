@@ -253,14 +253,12 @@ tempest_session_turn_notice <- function(
 }
 
 tempest_session_turn_error_notice <- function(code, stage, message, error) {
+  error_payload <- tempest_progress_error_payload(error)
   tempest_session_turn_notice(
     code = code,
     stage = stage,
     message = message,
-    details = list(
-      error_class = class(error),
-      error_message = conditionMessage(error)
-    )
+    details = error_payload
   )
 }
 

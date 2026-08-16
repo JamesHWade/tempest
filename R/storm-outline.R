@@ -1,38 +1,22 @@
 # STORM outline stage
 
 #' @keywords internal
-tempest_draft_outline <- function(writer, topic, title, module = NULL) {
-  module_result <- tempest_run_dsprrr_module(
+tempest_draft_outline <- function(
+  writer,
+  topic,
+  title,
+  module,
+  record_stage = function(record, output = NULL) invisible(record)
+) {
+  stage_result <- tempest_execute_stage(
     module,
     writer,
     inputs = list(topic = topic, report_title = title),
-    step = "draft outline generation"
+    record_stage = function(record, output = NULL) {
+      record_stage(record, output)
+    }
   )
-  if (!is.null(module_result)) {
-    return(tempest_normalize_outline(module_result, fallback_title = title))
-  }
-
-  draft_outline_prompt <- paste0(
-    "Create a draft outline for a report based on your own knowledge.\n\n",
-    "Topic: ",
-    topic,
-    "\n",
-    "Desired report title: ",
-    title,
-    "\n\n",
-    "Requirements:\n",
-    "- Organize into 4-6 sections based on what you know about the topic.\n",
-    "- Include subsections with bullet points.\n",
-    "- This is a preliminary outline; it will be refined with research findings.\n",
-    "- Return structured data.\n"
-  )
-  writer$chat_structured(
-    draft_outline_prompt,
-    type = tempest_type_outline(),
-    echo = "none",
-    convert = FALSE
-  ) |>
-    tempest_normalize_outline(fallback_title = title)
+  stage_result$output
 }
 
 #' @keywords internal
@@ -42,9 +26,15 @@ tempest_refine_outline <- function(
   title,
   draft_outline,
   facts_txt,
-  module = NULL
+  module,
+  workspace,
+  evidence = list(),
+  verified_evidence = list(),
+  verified_facts = facts_txt,
+  min_support_score = 0.7,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
-  module_result <- tempest_run_dsprrr_module(
+  stage_result <- tempest_execute_stage(
     module,
     writer,
     inputs = list(
@@ -53,139 +43,153 @@ tempest_refine_outline <- function(
       draft_outline = tempest_outline_summary(draft_outline),
       facts = facts_txt
     ),
-    step = "outline refinement"
+    context = list(
+      workspace = workspace,
+      title = title,
+      evidence = evidence,
+      verified_evidence = verified_evidence,
+      verified_facts = verified_facts,
+      min_support_score = min_support_score
+    ),
+    record_stage = function(record, output = NULL) {
+      record_stage(record, output)
+    }
   )
-  if (!is.null(module_result)) {
-    return(tempest_normalize_outline(module_result, fallback_title = title))
-  }
-
-  refine_prompt <- paste0(
-    "Refine this draft outline using verified research findings.\n\n",
-    "Topic: ",
-    topic,
-    "\n",
-    "Desired report title: ",
-    title,
-    "\n\n",
-    "Draft outline sections:\n",
-    tempest_outline_summary(draft_outline),
-    "\n\n",
-    "Available verified fact notes (each includes citations):\n",
-    facts_txt,
-    "\n\n",
-    "Requirements:\n",
-    "- Adjust sections based on available evidence.\n",
-    "- Add, merge, or remove sections as needed.\n",
-    "- Ensure each section has supporting facts.\n",
-    "- Return structured data.\n"
-  )
-  writer$chat_structured(
-    refine_prompt,
-    type = tempest_type_outline(),
-    echo = "none",
-    convert = FALSE
-  ) |>
-    tempest_normalize_outline(fallback_title = title)
-}
-
-#' @keywords internal
-tempest_prompt_lines <- function(x, empty = "(none)") {
-  if (is.null(x) || length(x) == 0) {
-    return(empty)
-  }
-  x <- unlist(x, recursive = TRUE, use.names = FALSE)
-  x <- tempest_trim(as.character(x))
-  x <- x[nzchar(x) & !is.na(x)]
-  if (length(x) == 0) {
-    return(empty)
-  }
-  paste(x, collapse = "\n")
+  stage_result$output
 }
 
 #' @keywords internal
 tempest_outline_summary <- function(outline) {
-  sections <- outline$sections %||% list()
-  if (length(sections) == 0) {
-    return("(no sections)")
-  }
+  outline <- tempest_normalize_outline(outline)
   paste(
-    purrr::map_chr(sections, function(s) {
-      paste0(
-        "- ",
-        tempest_outline_text(s$title, "Section"),
-        ": ",
-        tempest_outline_text(s$summary, "")
-      )
-    }),
+    vapply(
+      outline$sections,
+      function(s) {
+        paste0(
+          "- ",
+          s$title,
+          ": ",
+          s$summary
+        )
+      },
+      character(1)
+    ),
     collapse = "\n"
   )
 }
 
 #' @keywords internal
-tempest_outline_text <- function(x, default = "") {
-  values <- tempest_as_character_vector(x)
-  if (length(values) == 0) {
-    return(default)
-  }
-  paste(values, collapse = " ")
-}
-
-#' @keywords internal
 tempest_subsections_markdown <- function(subsections) {
-  if (is.null(subsections) || length(subsections) == 0) {
-    return("(none)")
+  if (
+    !is.list(subsections) ||
+      is.data.frame(subsections) ||
+      !is.null(names(subsections)) ||
+      length(subsections) == 0L
+  ) {
+    tempest_abort(
+      "Section writing requires a non-empty unnamed subsection list.",
+      class = "tempest_stage_output_error"
+    )
   }
   paste(
-    purrr::map_chr(subsections, function(s) {
-      bullets <- tempest_as_character_vector(s$bullets %||% character())
-      bullet_md <- if (length(bullets) == 0) {
-        ""
-      } else {
-        paste0("- ", bullets, collapse = "\n")
-      }
-      paste0(
-        "### ",
-        tempest_outline_text(s$title, "Subsection"),
-        "\n",
-        bullet_md
-      )
-    }),
+    vapply(
+      subsections,
+      function(s) {
+        if (!is.list(s) || is.data.frame(s)) {
+          tempest_abort(
+            "Outline subsection entries must be records.",
+            class = "tempest_stage_output_error"
+          )
+        }
+        title <- tempest_stage_string(s$title, "title")
+        bullets <- tempest_stage_string_array(s$bullets, "bullets")
+        paste0(
+          "### ",
+          title,
+          "\n",
+          paste0("- ", bullets, collapse = "\n")
+        )
+      },
+      character(1)
+    ),
     collapse = "\n\n"
   )
 }
 
 #' @keywords internal
-tempest_normalize_outline <- function(x, fallback_title) {
+tempest_normalize_outline <- function(x) {
   if (is.null(x) || !is.list(x)) {
-    return(list(title = fallback_title, sections = list()))
+    tempest_abort(
+      "Outline stage output must be a record.",
+      class = "tempest_stage_output_error"
+    )
   }
-  if (is.list(x) && !is.null(x$outline) && is.list(x$outline)) {
-    x <- x$outline
-  }
-  sections <- x$sections %||% list()
-  if (is.data.frame(sections)) {
-    sections <- split(sections, seq_len(nrow(sections)))
+  sections <- x$sections
+  if (
+    !is.list(sections) ||
+      is.data.frame(sections) ||
+      !is.null(names(sections)) ||
+      length(sections) == 0L
+  ) {
+    tempest_abort(
+      "Outline stage output must contain a non-empty {.field sections} list.",
+      class = "tempest_stage_output_error"
+    )
   }
   sections <- purrr::map(sections, function(s) {
-    subsections <- s$subsections %||% list()
-    if (is.data.frame(subsections)) {
-      subsections <- split(subsections, seq_len(nrow(subsections)))
+    if (!is.list(s) || is.data.frame(s)) {
+      tempest_abort(
+        "Outline section entries must be records.",
+        class = "tempest_stage_output_error"
+      )
+    }
+    title <- tempest_stage_string(s$title, "title")
+    summary <- tempest_stage_string(s$summary, "summary")
+    subsections <- s$subsections
+    if (
+      !is.list(subsections) ||
+        is.data.frame(subsections) ||
+        !is.null(names(subsections)) ||
+        length(subsections) == 0L
+    ) {
+      tempest_abort(
+        "Outline sections require a non-empty {.field subsections} list.",
+        class = "tempest_stage_output_error"
+      )
     }
     subsections <- purrr::map(subsections, function(sub) {
+      if (!is.list(sub) || is.data.frame(sub)) {
+        tempest_abort(
+          "Outline subsection entries must be records.",
+          class = "tempest_stage_output_error"
+        )
+      }
+      sub_title <- tempest_stage_string(sub$title, "title")
+      bullets <- tempest_stage_string_array(sub$bullets, "bullets")
+      needed <- if (is.null(sub$needed)) {
+        character()
+      } else {
+        tempest_stage_string_array(
+          sub$needed,
+          "needed",
+          allow_empty = TRUE
+        )
+      }
       list(
-        title = tempest_outline_text(sub$title, "Subsection"),
-        bullets = tempest_as_character_vector(sub$bullets %||% character()),
-        needed = tempest_as_character_vector(sub$needed %||% character())
+        title = sub_title,
+        bullets = bullets,
+        needed = needed
       )
     })
     list(
-      title = tempest_outline_text(s$title, "Section"),
-      summary = tempest_outline_text(s$summary, ""),
+      title = title,
+      summary = summary,
       subsections = subsections
     )
   })
+  title <- tempest_stage_string(x$title, "title")
   list(
-    title = tempest_outline_text(x$title, fallback_title),
+    title = title,
     sections = sections
   )
 }

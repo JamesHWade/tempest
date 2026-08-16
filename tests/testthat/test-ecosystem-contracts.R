@@ -22,7 +22,7 @@ test_that("dsprrr identity enters the manifest and execution metadata", {
     programs$extract_claims,
     chat = NULL,
     inputs = list(text = "supported"),
-    step = "claim extraction"
+    step = "extract_claims"
   )
   expected_context <- list(
     knowledge_snapshot_id = "snapshot-contract",
@@ -76,7 +76,7 @@ test_that("dsprrr execution fails closed on a bound identity mismatch", {
       programs$extract_claims,
       chat = NULL,
       inputs = list(text = "supported"),
-      step = "claim extraction"
+      step = "extract_claims"
     ),
     class = "tempest_program_set_verification_error"
   )
@@ -119,7 +119,7 @@ test_that("dsprrr execution rejects tampered structured metadata", {
       program,
       chat = NULL,
       inputs = list(text = "supported"),
-      step = "claim extraction"
+      step = "extract_claims"
     ),
     class = "tempest_ecosystem_contract_error",
     regexp = "bound program artifact"
@@ -161,13 +161,13 @@ test_that("dsprrr bindings are isolated per invocation", {
     binding_a$extract_claims,
     chat = NULL,
     inputs = list(text = "a"),
-    step = "binding a"
+    step = "extract_claims"
   )
   result_b <- tempest:::tempest_run_dsprrr_module_structured(
     binding_b$extract_claims,
     chat = NULL,
     inputs = list(text = "b"),
-    step = "binding b"
+    step = "extract_claims"
   )
 
   expect_identical(
@@ -222,7 +222,7 @@ test_that("dsprrr trace-context contract errors do not trigger fallback", {
       execution,
       chat = NULL,
       inputs = list(text = "invalid"),
-      step = "invalid context"
+      step = "extract_claims"
     ),
     class = "dsprrr_trace_context_error"
   )
@@ -822,6 +822,10 @@ test_that("the 0.2 surface has no T1 compatibility vocabulary", {
     "tempest_source_store_snapshot",
     "tempest_source_store_restore",
     "tempest_session_snapshot_translate_v4",
+    "tempest_session_snapshot_translate_v5",
+    "tempest_session_bundle_translate_v5",
+    "tempest_storm_state_translate_v1",
+    "tempest_run_bundle_translate_v4",
     "tempest_restore_sources",
     "tempest_restore_claims"
   )
@@ -921,20 +925,20 @@ test_that("legacy product bundles fail closed", {
     class = "tempest_unsupported_format_error"
   )
   expect_error(
-    tempest_session_restore(list(schema_version = 4L)),
+    tempest_session_restore(list(schema_version = 5L)),
     class = "tempest_unsupported_format_error"
   )
   expect_error(
     tempest:::tempest_session_bundle_validate_manifest(
       bundle_dir,
-      list(schema_version = 4L)
+      list(schema_version = 5L)
     ),
     class = "tempest_unsupported_format_error"
   )
   expect_error(
     tempest:::tempest_run_bundle_validate_manifest(
       bundle_dir,
-      list(schema_version = 3L)
+      list(schema_version = 4L)
     ),
     class = "tempest_unsupported_format_error"
   )

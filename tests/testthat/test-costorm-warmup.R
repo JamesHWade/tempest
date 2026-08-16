@@ -184,7 +184,40 @@ test_that("async warmup records evidence failures without failing the panel", {
     settled$value@orientations[[1]]$evidence_status,
     "failed"
   )
+  expect_identical(
+    settled$value@orientations[[1]]$error_class,
+    "tempest_operation_error"
+  )
+  expect_identical(
+    settled$value@orientations[[1]]$error_message,
+    "The operation failed."
+  )
   expect_equal(session$state$map_updates, 1L)
+})
+
+test_that("warmup result records never retain provider error details", {
+  expert <- test_expert(
+    expert_id = "expert.safe-warmup-error",
+    name = "Safe Warmup Expert"
+  )
+  secret <- structure(
+    simpleError("Authorization: Bearer sk-live-secret"),
+    class = c("sk-live-secret", class(simpleError("failed")))
+  )
+  record <- tempest:::tempest_warmup_orientation(expert, "warmup-safe-error")
+  record <- tempest:::tempest_warmup_error_record(
+    record,
+    secret,
+    "provider_error"
+  )
+
+  expect_identical(record$error_class, "tempest_operation_error")
+  expect_identical(record$error_message, "The operation failed.")
+  record$error_message <- "sk-live-secret"
+  expect_match(
+    tempest:::tempest_warmup_orientation_error(record),
+    "credential-like"
+  )
 })
 
 test_that("async warmup defaults remain bounded and host-neutral", {

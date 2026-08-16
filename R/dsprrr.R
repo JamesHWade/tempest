@@ -38,7 +38,11 @@ tempest_program_set_execution <- function(
   tempest_dsprrr_execution(
     program = program,
     program_artifact_id = declared_program_artifact_id,
-    trace_context = trace_context
+    trace_context = trace_context,
+    stage = stage,
+    evaluator_id = declared_reference$evaluator_id,
+    evaluator_version = declared_reference$evaluator_version,
+    governed_procedure_revision_id = declared_reference$governed_procedure_revision_id
   )
 }
 
@@ -83,7 +87,11 @@ tempest_bind_program_set <- function(program_set, manifest) {
             manifest,
             stage,
             reference$program_artifact_id
-          )
+          ),
+          stage = stage,
+          evaluator_id = reference$evaluator_id,
+          evaluator_version = reference$evaluator_version,
+          governed_procedure_revision_id = reference$governed_procedure_revision_id
         )
       }
     ),
@@ -94,9 +102,6 @@ tempest_bind_program_set <- function(program_set, manifest) {
 #' @keywords internal
 tempest_run_dsprrr_module <- function(module, chat, inputs, step) {
   result <- tempest_run_dsprrr_module_structured(module, chat, inputs, step)
-  if (is.null(result)) {
-    return(NULL)
-  }
   result$output
 }
 
@@ -114,9 +119,14 @@ tempest_dsprrr_execution_require <- function(module, step) {
 
 tempest_dsprrr_execution_verify <- function(module, step) {
   execution <- tempest_dsprrr_execution_require(module, step)
+  if (!identical(execution$stage, step)) {
+    tempest_ecosystem_contract_abort(
+      "The bound dsprrr stage does not match the requested execution stage."
+    )
+  }
   actual_program_artifact_id <- tempest_program_set_program_id(
     execution$program,
-    step
+    execution$stage
   )
   if (!identical(actual_program_artifact_id, execution$program_artifact_id)) {
     tempest_program_set_abort(
@@ -153,41 +163,23 @@ tempest_dsprrr_execution_metadata_validate <- function(execution, metadata) {
 
 #' @keywords internal
 tempest_run_dsprrr_module_structured <- function(module, chat, inputs, step) {
-  if (is.null(module)) {
-    return(NULL)
-  }
-
   execution <- tempest_dsprrr_execution_verify(module, step)
   program <- execution$program
   trace_context <- execution$trace_context
 
-  result <- tryCatch(
-    do.call(
-      tempest_dsprrr_run,
-      c(
-        list(module = program),
-        inputs,
-        list(
-          .llm = chat,
-          .return_format = "structured",
-          .progress = FALSE,
-          .trace_context = trace_context
-        )
+  result <- do.call(
+    tempest_dsprrr_run,
+    c(
+      list(module = program),
+      inputs,
+      list(
+        .llm = chat,
+        .return_format = "structured",
+        .progress = FALSE,
+        .trace_context = trace_context
       )
-    ),
-    error = function(e) {
-      if (tempest_dsprrr_contract_condition(e)) {
-        stop(e)
-      }
-      tempest_warn(
-        "dsprrr {step} failed, falling back to ellmer: {conditionMessage(e)}"
-      )
-      NULL
-    }
+    )
   )
-  if (is.null(result)) {
-    return(NULL)
-  }
   if (!inherits(result, "dsprrr_result")) {
     tempest_ecosystem_contract_abort(
       "dsprrr execution did not return structured verification metadata."
@@ -198,36 +190,18 @@ tempest_run_dsprrr_module_structured <- function(module, chat, inputs, step) {
 }
 
 tempest_run_dsprrr_module_async <- function(module, chat, inputs, step) {
-  if (is.null(module)) {
-    return(NULL)
-  }
-
   execution <- tempest_dsprrr_execution_verify(module, step)
-  request <- tryCatch(
-    do.call(
-      tempest_dsprrr_run_async,
-      c(
-        list(module = execution$program),
-        inputs,
-        list(
-          .llm = chat,
-          .trace_context = execution$trace_context
-        )
+  request <- do.call(
+    tempest_dsprrr_run_async,
+    c(
+      list(module = execution$program),
+      inputs,
+      list(
+        .llm = chat,
+        .trace_context = execution$trace_context
       )
-    ),
-    error = function(e) {
-      if (tempest_dsprrr_contract_condition(e)) {
-        stop(e)
-      }
-      tempest_warn(
-        "dsprrr {step} failed, falling back to ellmer: {conditionMessage(e)}"
-      )
-      NULL
-    }
+    )
   )
-  if (is.null(request)) {
-    return(NULL)
-  }
   metadata <- attr(request, "dsprrr_trace_context", exact = TRUE)
   tempest_dsprrr_execution_metadata_validate(execution, metadata)
   request
@@ -255,218 +229,210 @@ tempest_rethrow_dsprrr_contract <- function(condition) {
 #' Creates dsprrr modules for STORM structured extraction/generation steps.
 #'
 #' @param config A `TempestConfig` object.
-#' @return A named list of dsprrr modules, or `NULL` if module creation fails.
+#' @return A named list containing every fixed-stage dsprrr module.
 #' @keywords internal
 tempest_make_dsprrr_modules <- function(config) {
-  tryCatch(
-    {
-      query_type <- tempest_type_query_decomposition()
-      personas_type <- tempest_type_personas()
-      perspectives_type <- tempest_type_perspectives()
-      facts_type <- tempest_type_fact_extract()
-      outline_type <- tempest_type_outline()
+  query_type <- tempest_type_query_decomposition()
+  personas_type <- tempest_type_personas()
+  perspectives_type <- tempest_type_perspectives()
+  facts_type <- tempest_type_fact_extract()
+  outline_type <- tempest_type_outline()
 
-      modules <- list(
-        perspectives = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("topic", "string"),
-              dsprrr::input("seed_context", "string"),
-              dsprrr::input("n_experts", "integer")
-            ),
-            output_type = perspectives_type,
-            instructions = paste(
-              "Plan a comprehensive STORM research report.",
-              "Use seed sources and table-of-contents hints to discover distinct perspectives.",
-              "Return a title and exactly n_experts perspectives.",
-              "Each perspective needs 3-6 specific research questions.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
+  modules <- list(
+    perspectives = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("topic", "string"),
+          dsprrr::input("seed_context", "string"),
+          dsprrr::input("n_experts", "integer")
         ),
-        personas = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("topic", "string"),
-              dsprrr::input("n_experts", "integer"),
-              dsprrr::input("requirements", "string")
-            ),
-            output_type = personas_type,
-            instructions = paste(
-              "Generate diverse expert personas for STORM multi-perspective research.",
-              "The personas must be complementary and have non-overlapping focus areas.",
-              "Return exactly n_experts personas.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
-        ),
-        query_decomposition = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("question", "string"),
-              dsprrr::input("topic", "string")
-            ),
-            output_type = query_type,
-            instructions = paste(
-              "Decompose the research question into 2-3 targeted web search queries.",
-              "Queries should cover different aspects of the question and stay anchored to the topic.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
-        ),
-        extract_claims = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("answer_text", "string"),
-              dsprrr::input(
-                "source_context",
-                "string",
-                "Known source ids, titles, and URLs available to cite."
-              ),
-              dsprrr::input(
-                "source_ids",
-                "string",
-                "Source ids attached to this answer turn, one per line."
-              ),
-              dsprrr::input(
-                "citation_mode",
-                "string",
-                "Citation mode: tempest_inline, provider_native, url, or mixed."
-              )
-            ),
-            output_type = facts_type,
-            instructions = paste(
-              "Extract atomic factual claims from the answer.",
-              "Only extract claims explicitly supported by citations or source annotations.",
-              "When source_context is empty, only use explicit citations like [Sxxxxxxxxxxxx].",
-              "When source_context is present, return only source_id values listed there.",
-              "Use source_ids as the set of provider-native sources attached to this turn.",
-              "Do not use a known source unless the answer text or provider-native turn context supports the claim.",
-              "Include support_score in [0,1] when source support is clear; omit it when unscored.",
-              "Do not infer or invent facts.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
-        ),
-        verify_claim_support = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("claim_text", "string"),
-              dsprrr::input("source_excerpts", "string")
-            ),
-            output_type = tempest_type_verification(),
-            instructions = paste(
-              "Judge whether the cited source excerpts support the claim.",
-              "Return a status, a support score in [0,1], and a short rationale.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
-        ),
-        next_question = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("topic", "string"),
-              dsprrr::input("perspective", "string"),
-              dsprrr::input("answered", "string"),
-              dsprrr::input("facts", "string")
-            ),
-            output_type = tempest_type_next_question(),
-            instructions = paste(
-              "Choose the single most useful next question for this perspective.",
-              "Set done to true only when the perspective is sufficiently covered.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
-        ),
-        draft_outline = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("topic", "string"),
-              dsprrr::input("report_title", "string")
-            ),
-            output_type = outline_type,
-            instructions = paste(
-              "Create a preliminary STORM outline from parametric knowledge.",
-              "Organize into 4-6 sections with subsections and bullet points.",
-              "The outline will later be refined using verified facts.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
-        ),
-        refined_outline = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("topic", "string"),
-              dsprrr::input("report_title", "string"),
-              dsprrr::input("draft_outline", "string"),
-              dsprrr::input("facts", "string")
-            ),
-            output_type = outline_type,
-            instructions = paste(
-              "Refine the draft outline using verified fact notes.",
-              "Adjust, merge, add, or remove sections based on available evidence.",
-              "Ensure sections are supportable by cited facts.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
-        ),
-        section_writing = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("section_title", "string"),
-              dsprrr::input("section_summary", "string"),
-              dsprrr::input("subsections", "string"),
-              dsprrr::input("facts", "string")
-            ),
-            output_type = ellmer::type_object(
-              section_text = ellmer::type_string(
-                "Markdown section text with citations"
-              )
-            ),
-            instructions = paste(
-              "Write one concise Markdown report section.",
-              "Use only the provided verified facts.",
-              "Every factual claim must include source citations like [Sxxxxxxxxxxxx].",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
-        ),
-        lead_section = dsprrr::module(
-          dsprrr::signature(
-            inputs = list(
-              dsprrr::input("topic", "string"),
-              dsprrr::input("title", "string"),
-              dsprrr::input("article_body", "string"),
-              dsprrr::input("facts", "string")
-            ),
-            output_type = ellmer::type_object(
-              lead_section = ellmer::type_string(
-                "A 2-3 paragraph lead section with citations"
-              )
-            ),
-            instructions = paste(
-              "Write a Wikipedia-style lead section for the article.",
-              "It must be self-contained, summarize the most important points, and preserve citations.",
-              sep = "\n"
-            )
-          ),
-          type = "predict"
+        output_type = perspectives_type,
+        instructions = paste(
+          "Plan a comprehensive STORM research report.",
+          "Use seed sources and table-of-contents hints to discover distinct perspectives.",
+          "Return a title and exactly n_experts perspectives.",
+          "Each perspective needs 3-6 specific research questions.",
+          sep = "\n"
         )
-      )
-      modules
-    },
-    error = function(e) {
-      tempest_warn("Failed to create dsprrr modules: {conditionMessage(e)}")
-      NULL
-    }
+      ),
+      type = "predict"
+    ),
+    personas = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("topic", "string"),
+          dsprrr::input("n_experts", "integer"),
+          dsprrr::input("requirements", "string")
+        ),
+        output_type = personas_type,
+        instructions = paste(
+          "Generate diverse expert personas for STORM multi-perspective research.",
+          "The personas must be complementary and have non-overlapping focus areas.",
+          "Return exactly n_experts personas.",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    ),
+    query_decomposition = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("question", "string"),
+          dsprrr::input("topic", "string")
+        ),
+        output_type = query_type,
+        instructions = paste(
+          "Decompose the research question into 2-3 targeted web search queries.",
+          "Queries should cover different aspects of the question and stay anchored to the topic.",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    ),
+    extract_claims = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("answer_text", "string"),
+          dsprrr::input(
+            "source_context",
+            "string",
+            "Known source ids, titles, and URLs available to cite."
+          ),
+          dsprrr::input(
+            "source_ids",
+            "string",
+            "Source ids attached to this answer turn, one per line."
+          ),
+          dsprrr::input(
+            "citation_mode",
+            "string",
+            "Citation mode: tempest_inline, provider_native, url, or mixed."
+          )
+        ),
+        output_type = facts_type,
+        instructions = paste(
+          "Extract atomic factual claims from the answer.",
+          "Only extract claims explicitly supported by citations or source annotations.",
+          "When source_context is empty, only use explicit citations like [Sxxxxxxxxxxxx].",
+          "When source_context is present, return only source_id values listed there.",
+          "Use source_ids as the set of provider-native sources attached to this turn.",
+          "Do not use a known source unless the answer text or provider-native turn context supports the claim.",
+          "Include support_score in [0,1] when source support is clear; omit it when unscored.",
+          "Do not infer or invent facts.",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    ),
+    verify_claim_support = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("claim_text", "string"),
+          dsprrr::input("source_excerpts", "string")
+        ),
+        output_type = tempest_type_verification(),
+        instructions = paste(
+          "Judge whether the cited source excerpts support the claim.",
+          "Return a status, a support score in [0,1], and a short rationale.",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    ),
+    next_question = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("topic", "string"),
+          dsprrr::input("perspective", "string"),
+          dsprrr::input("answered", "string"),
+          dsprrr::input("facts", "string")
+        ),
+        output_type = tempest_type_next_question(),
+        instructions = paste(
+          "Choose the single most useful next question for this perspective.",
+          "Set done to true only when the perspective is sufficiently covered.",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    ),
+    draft_outline = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("topic", "string"),
+          dsprrr::input("report_title", "string")
+        ),
+        output_type = outline_type,
+        instructions = paste(
+          "Create a preliminary STORM outline from parametric knowledge.",
+          "Organize into 4-6 sections with subsections and bullet points.",
+          "The outline will later be refined using verified facts.",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    ),
+    refined_outline = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("topic", "string"),
+          dsprrr::input("report_title", "string"),
+          dsprrr::input("draft_outline", "string"),
+          dsprrr::input("facts", "string")
+        ),
+        output_type = outline_type,
+        instructions = paste(
+          "Refine the draft outline using verified fact notes.",
+          "Adjust, merge, add, or remove sections based on available evidence.",
+          "Ensure sections are supportable by cited facts.",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    ),
+    section_writing = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("section_title", "string"),
+          dsprrr::input("section_summary", "string"),
+          dsprrr::input("subsections", "string"),
+          dsprrr::input("facts", "string")
+        ),
+        output_type = ellmer::type_object(
+          section_text = ellmer::type_string(
+            "Markdown section text with citations"
+          )
+        ),
+        instructions = paste(
+          "Write one concise Markdown report section.",
+          "Use only the provided verified facts.",
+          "Every factual claim must include source citations like [Sxxxxxxxxxxxx].",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    ),
+    lead_section = dsprrr::module(
+      dsprrr::signature(
+        inputs = list(
+          dsprrr::input("topic", "string"),
+          dsprrr::input("title", "string"),
+          dsprrr::input("article_body", "string"),
+          dsprrr::input("facts", "string")
+        ),
+        output_type = ellmer::type_object(
+          lead_section = ellmer::type_string(
+            "A 2-3 paragraph lead section with citations"
+          )
+        ),
+        instructions = paste(
+          "Write a Wikipedia-style lead section for the article.",
+          "It must be self-contained, summarize the most important points, and preserve citations.",
+          sep = "\n"
+        )
+      ),
+      type = "predict"
+    )
   )
+  modules
 }

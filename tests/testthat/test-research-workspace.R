@@ -184,6 +184,21 @@ test_that("accepted graft references use canonical JSON array forms", {
   )
 })
 
+test_that("accepted graft identifiers reject credential-shaped values", {
+  for (identifier in c(
+    "Authorization:Bearer-sk-live-secret",
+    "sk-live-secret",
+    "api_key-secret"
+  )) {
+    expect_error(
+      tempest_research_workspace(
+        accepted_graft_references = list(list(record_id = identifier))
+      ),
+      class = "tempest_research_workspace_integrity_error"
+    )
+  }
+})
+
 test_that("ResearchWorkspace listings are deterministic", {
   workspace <- tempest_research_workspace(
     accepted_graft_references = list(
@@ -210,12 +225,12 @@ test_that("ResearchWorkspace listings are deterministic", {
   workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-z",
     source_id = source_z$id,
-    quote = "Z evidence"
+    quote = "Photosynthesis converts light"
   ))
   workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-a",
     source_id = source_a$id,
-    quote = "A evidence"
+    quote = "chemical energy"
   ))
   workspace$add_dispute(tempest_dispute(
     dispute_id = "dispute-z",
@@ -357,7 +372,7 @@ test_that("claims and evidence spans retain source coherence", {
   span <- tempest_evidence_span(
     evidence_span_id = "span-shared",
     source_id = source_a$id,
-    quote = "Evidence from A"
+    quote = "Photosynthesis converts light"
   )
   workspace$add_evidence_span(span)
 
@@ -376,14 +391,15 @@ test_that("claims and evidence spans retain source coherence", {
     claim_id = "claim-linked",
     claim_text = "Linked evidence",
     source_ids = source_a$id,
-    evidence_span_ids = span@evidence_span_id
+    evidence_span_ids = span@evidence_span_id,
+    supporting_quotes = list(span@quote)
   )
   workspace$add_proposed_claim(claim)
   expect_error(
     workspace$add_evidence_span(tempest_evidence_span(
       evidence_span_id = span@evidence_span_id,
       source_id = source_b$id,
-      quote = "Replacement evidence from B"
+      quote = "Photosynthesis converts light"
     )),
     class = "tempest_research_workspace_integrity_error",
     regexp = "Cannot replace linked evidence span"
@@ -392,6 +408,56 @@ test_that("claims and evidence spans retain source coherence", {
     workspace$get_evidence_span(span@evidence_span_id)@source_id,
     source_a$id
   )
+})
+
+test_that("linking evidence atomically maintains ordered quote lineage", {
+  workspace <- tempest_research_workspace()
+  source <- fake_source()
+  workspace$upsert_retrieved_resource(source)
+  claim_id <- workspace$add_proposed_claim(tempest_claim(
+    claim_id = "claim-link-lineage",
+    claim_text = "Photosynthesis stores chemical energy.",
+    source_ids = source$id
+  ))
+  spans <- list(
+    tempest_evidence_span(
+      evidence_span_id = "span-link-first",
+      source_id = source$id,
+      quote = "Photosynthesis"
+    ),
+    tempest_evidence_span(
+      evidence_span_id = "span-link-unquoted",
+      source_id = source$id
+    ),
+    tempest_evidence_span(
+      evidence_span_id = "span-link-last",
+      source_id = source$id,
+      quote = "chemical energy"
+    )
+  )
+  span_ids <- vapply(
+    spans,
+    workspace$add_evidence_span,
+    character(1)
+  )
+
+  for (span_id in span_ids) {
+    expect_identical(
+      workspace$link_evidence_to_proposed_claim(claim_id, span_id),
+      claim_id
+    )
+  }
+
+  linked <- workspace$get_proposed_claim(claim_id)
+  expect_identical(linked@evidence_span_ids, span_ids)
+  expect_identical(
+    linked@supporting_quotes,
+    list("Photosynthesis", "chemical energy")
+  )
+  expect_no_error(
+    workspace$link_evidence_to_proposed_claim(claim_id, span_ids[[1]])
+  )
+  expect_identical(workspace$get_proposed_claim(claim_id), linked)
 })
 
 test_that("ResearchWorkspace validates its explicit citation audit", {
@@ -516,7 +582,7 @@ test_that("relevant workspace mutations invalidate citation audits", {
   workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-audit",
     source_id = source$id,
-    quote = "New evidence"
+    quote = "chemical energy"
   ))
   expect_null(workspace$citation_audit)
 

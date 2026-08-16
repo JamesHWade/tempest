@@ -560,15 +560,31 @@ tempest_storm_workflow_input_state <- function(context) {
       )
     )
   }
-  tryCatch(
+  state <- tryCatch(
     tempest_storm_state_from_record(state_record),
     error = function(error) {
+      if (inherits(error, "tempest_unsupported_format_error")) {
+        rlang::cnd_signal(error)
+      }
       tempest_builtin_workflow_abort(
         "STORM checkpoint {.val {artifact_id}} contains invalid product state.",
         parent = error
       )
     }
   )
+  tryCatch(
+    tempest_stage_records_validate_workspace(
+      state$stage_records,
+      context$source_store
+    ),
+    error = function(error) {
+      tempest_builtin_workflow_abort(
+        "STORM checkpoint {.val {artifact_id}} does not match the workspace.",
+        parent = error
+      )
+    }
+  )
+  state
 }
 
 tempest_storm_workflow_update_experts <- function(run, experts, stage) {
@@ -720,7 +736,12 @@ tempest_storm_workflow_adapter <- function(
         progress = stage_progress,
         verbose = verbose,
         artifact_catalog = context$artifact_catalog,
-        .state = state
+        .state = state,
+        .requested_steps = if (is.null(state)) {
+          tempest_storm_stage_order()
+        } else {
+          state$requested_steps
+        }
       ),
       arguments
     )

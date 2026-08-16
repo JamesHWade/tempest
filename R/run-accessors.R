@@ -60,13 +60,9 @@ tempest_run_accessor_string <- function(value, arg) {
 tempest_run_accessor_call <- function(operation, callback) {
   tryCatch(
     callback(),
-    error = function(error) {
-      if (inherits(error, "tempest_run_error")) {
-        stop(error)
-      }
+    error = function(...) {
       tempest_run_accessor_abort(
-        paste0("Tempest run operation `", operation, "` failed."),
-        parent = error
+        paste0("Tempest run operation `", operation, "` failed.")
       )
     }
   )

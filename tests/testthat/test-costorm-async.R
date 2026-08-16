@@ -295,7 +295,7 @@ test_that("async ProgramSet execution preserves authoritative metadata", {
       source_ids = "",
       citation_mode = "tempest_inline"
     ),
-    step = "fact extraction"
+    step = "extract_claims"
   )
   metadata <- attr(request, "dsprrr_trace_context", exact = TRUE)
   settled <- await_tempest_promise(request)
@@ -352,7 +352,7 @@ test_that("async ProgramSet execution rejects tampered handle metadata", {
       program,
       chat = list(),
       inputs = list(),
-      step = "fact extraction"
+      step = "extract_claims"
     )
   }
 
@@ -412,8 +412,11 @@ test_that("async personas and Shiny startup use one bound ProgramSet", {
 
   expect_null(settled$error)
   expect_equal(calls, 1L)
-  expect_length(settled$value, 1L)
-  expect_identical(settled$value[[1]]@name, "Dr. Async")
+  expect_s3_class(settled$value, "tempest_persona_stage_result")
+  expect_length(settled$value$experts, 1L)
+  expect_identical(settled$value$experts[[1]]@name, "Dr. Async")
+  expect_identical(settled$value$record@status, "succeeded")
+  expect_identical(settled$value$record@stage, "personas")
   expect_identical(
     program$trace_context$research_run_id,
     "shiny-async-personas"
@@ -434,6 +437,163 @@ test_that("async personas and Shiny startup use one bound ProgramSet", {
     "program_set = program_set_value",
     fixed = TRUE
   )
+  expect_match(
+    shiny_code,
+    "tempest_session_set_stage_records(value, stage_records)",
+    fixed = TRUE
+  )
+  session_config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Async research systems",
+    config = session_config,
+    experts = settled$value$experts,
+    session_id = "shiny-async-personas",
+    program_set = program_set
+  )
+  tempest:::tempest_session_set_stage_records(
+    session,
+    list(settled$value$record)
+  )
+  seeded <- tempest:::tempest_session_stage_records(session)
+  expect_length(seeded, 1L)
+  expect_identical(seeded[[1]]@attempt_id, settled$value$record@attempt_id)
+  expect_no_error(tempest_session_snapshot(session))
+})
+
+test_that("stale async extraction persists one cancelled attempt", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  resolve_request <- NULL
+  current <- TRUE
+  extractor <- list(
+    chat_structured_async = function(...) {
+      promises::promise(function(resolve, reject) {
+        resolve_request <<- resolve
+      })
+    }
+  )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "judge")) extractor else fake_chat()
+    }
+  )
+  session <- tempest_session(
+    "Cancelled evidence",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.cancelled",
+      name = "Cancellation expert"
+    )),
+    session_id = "costorm-cancelled-extraction"
+  )
+  source <- fake_source("https://example.org/cancelled")
+  session$workspace$upsert_retrieved_resource(source)
+
+  request <- tempest:::tempest_session_extract_facts_async(
+    session,
+    paste0("Cancelled claim [", source$id, "]."),
+    source_ids = source$id,
+    is_current = function() current
+  )
+  later::run_now(0.02)
+  running <- tempest:::tempest_session_stage_records(session)
+
+  expect_length(running, 1L)
+  expect_identical(running[[1]]@status, "running")
+  current <- FALSE
+  resolve_request(list(
+    facts = list(list(
+      claim = "Cancelled claim",
+      sources = list(list(source_id = source$id)),
+      confidence = "high",
+      support_score = 0.9
+    ))
+  ))
+  settled <- await_tempest_promise(request)
+  terminal <- tempest:::tempest_session_stage_records(session)
+
+  expect_null(settled$error)
+  expect_length(terminal, 1L)
+  expect_identical(terminal[[1]]@attempt_id, running[[1]]@attempt_id)
+  expect_identical(terminal[[1]]@status, "cancelled")
+  expect_identical(
+    terminal[[1]]@failure_message,
+    "Stage execution was cancelled."
+  )
+  expect_length(session$workspace$list_proposed_claims(), 0L)
+})
+
+test_that("failed async extraction remains durable without raw errors", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  extractor <- list(
+    chat_structured_async = function(...) {
+      promises::promise_reject(simpleError(
+        "Authorization: Bearer sk-live-secret"
+      ))
+    }
+  )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "judge")) extractor else fake_chat()
+    }
+  )
+  session <- tempest_session(
+    "Failed evidence",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.failed",
+      name = "Failure expert"
+    )),
+    session_id = "costorm-failed-extraction"
+  )
+  source <- fake_source("https://example.org/failed")
+  session$workspace$upsert_retrieved_resource(source)
+
+  settled <- await_tempest_promise(
+    tempest:::tempest_session_extract_facts_async(
+      session,
+      paste0("Failed claim [", source$id, "]."),
+      source_ids = source$id
+    )
+  )
+  records <- tempest:::tempest_session_stage_records(session)
+
+  expect_s3_class(settled$error, "tempest_session_error")
+  expect_no_match(
+    conditionMessage(settled$error),
+    "sk-live-secret",
+    fixed = TRUE
+  )
+  printed <- paste(capture.output(print(settled$error)), collapse = "\n")
+  expect_no_match(printed, "sk-live-secret", fixed = TRUE)
+  expect_length(records, 1L)
+  expect_identical(records[[1]]@status, "failed")
+  expect_identical(
+    records[[1]]@failure_message,
+    "Primary stage execution failed."
+  )
+  expect_no_match(
+    jsonlite::toJSON(tempest:::tempest_stage_record_data(records[[1]])),
+    "sk-live-secret",
+    fixed = TRUE
+  )
+  expect_no_match(
+    tempest:::tempest_canonical_json(lapply(
+      Filter(
+        \(event) S7::S7_inherits(event, tempest_progress_event),
+        session$events
+      ),
+      tempest_progress_event_data
+    )),
+    "sk-live-secret",
+    fixed = TRUE
+  )
+  expect_length(session$workspace$list_proposed_claims(), 0L)
 })
 
 test_that("post-turn processing owns sequencing and returns typed results", {
@@ -783,6 +943,67 @@ test_that("stale mind-map failures are recorded as cancellation", {
   )
 })
 
+test_that("async mind-map updates reject unbound evidence atomically", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  invalid_map <- list(
+    nodes = list(
+      list(id = "root", label = "Async map", source_ids = character()),
+      list(
+        id = "finding",
+        label = "Unbound finding",
+        parent = "root",
+        source_ids = "Sffffffffffff"
+      )
+    ),
+    edges = list(list(from = "root", to = "finding", relation = "contains"))
+  )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Async map",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.async-map",
+      name = "Async Map Expert"
+    )),
+    session_id = "async-map-integrity"
+  )
+  session$chats$mindmap$chat_structured_async <- function(...) {
+    promises::promise_resolve(invalid_map)
+  }
+  original <- session$mindmap
+
+  settled <- await_tempest_promise(
+    tempest:::tempest_session_update_mindmap_async(
+      session,
+      "An unsupported finding appeared."
+    )
+  )
+
+  expect_s3_class(settled$error, "tempest_session_mindmap_error")
+  expect_identical(session$mindmap, original)
+  mindmap_events <- Filter(
+    function(event) {
+      identical(event$stage, "mindmap") &&
+        identical(event$step, "update")
+    },
+    session$events
+  )
+  expect_equal(
+    vapply(
+      mindmap_events,
+      function(event) {
+        event$status
+      },
+      character(1)
+    ),
+    c("started", "failed")
+  )
+})
+
 test_that("stale suggestion failures are recorded as cancellation", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
@@ -902,6 +1123,25 @@ test_that("async report generation commits only after provider settlement", {
         payload = payload,
         parent_event_id = parent_event_id,
         correlation_id = correlation_id
+      )
+    }
+  )
+  local_mocked_bindings(
+    tempest_costorm_report_context = function(
+      session,
+      style,
+      include_references
+    ) {
+      list(
+        prompt = tempest:::tempest_costorm_report_prompt(session, style),
+        title = session$title,
+        workspace = session$workspace,
+        include_references = include_references,
+        citation_policy = session$config@citation_policy,
+        on_unsupported_claim = session$config@on_unsupported_claim,
+        min_support_score = session$config@min_support_score,
+        execution_review = "",
+        style = style
       )
     }
   )
@@ -1125,6 +1365,25 @@ test_that("async report finalization failures emit failed progress", {
   )
   artifact_catalog$register(report_spec)
   artifact_catalog$add(existing)
+  local_mocked_bindings(
+    tempest_costorm_report_context = function(
+      session,
+      style,
+      include_references
+    ) {
+      list(
+        prompt = tempest:::tempest_costorm_report_prompt(session, style),
+        title = session$title,
+        workspace = session$workspace,
+        include_references = include_references,
+        citation_policy = session$config@citation_policy,
+        on_unsupported_claim = session$config@on_unsupported_claim,
+        min_support_score = session$config@min_support_score,
+        execution_review = "",
+        style = style
+      )
+    }
+  )
 
   request <- tempest:::tempest_session_report_async(
     session,
@@ -1167,6 +1426,8 @@ test_that("stale async reports do not publish artifacts", {
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
   resolve_report <- NULL
+  reject_report <- NULL
+  report_calls <- 0L
   current <- TRUE
   events <- list()
   artifacts <- new.env(parent = emptyenv())
@@ -1185,8 +1446,10 @@ test_that("stale async reports do not publish artifacts", {
     chats = list(
       reporter = list(
         chat_async = function(...) {
+          report_calls <<- report_calls + 1L
           promises::promise(function(resolve, reject) {
             resolve_report <<- resolve
+            reject_report <<- reject
           })
         }
       )
@@ -1217,6 +1480,25 @@ test_that("stale async reports do not publish artifacts", {
       event
     }
   )
+  local_mocked_bindings(
+    tempest_costorm_report_context = function(
+      session,
+      style,
+      include_references
+    ) {
+      list(
+        prompt = tempest:::tempest_costorm_report_prompt(session, style),
+        title = session$title,
+        workspace = session$workspace,
+        include_references = include_references,
+        citation_policy = session$config@citation_policy,
+        on_unsupported_claim = session$config@on_unsupported_claim,
+        min_support_score = session$config@min_support_score,
+        execution_review = "",
+        style = style
+      )
+    }
+  )
 
   request <- tempest:::tempest_session_report_async(
     session,
@@ -1245,4 +1527,31 @@ test_that("stale async reports do not publish artifacts", {
       logical(1)
     )
   ))
+
+  current <- TRUE
+  rejected_request <- tempest:::tempest_session_report_async(
+    session,
+    is_current = function() current,
+    .artifact_catalog = artifact_catalog
+  )
+  current <- FALSE
+  reject_report(simpleError("Authorization: Bearer sk-live-secret"))
+  rejected <- await_tempest_promise(rejected_request)
+
+  expect_null(rejected$error)
+  expect_identical(artifact_catalog$has("report_md"), FALSE)
+  statuses <- vapply(events, function(event) event@status, character(1))
+  expect_identical(sum(statuses == "cancelled"), 2L)
+  expect_identical(sum(statuses == "failed"), 0L)
+
+  stale_at_entry <- tempest:::tempest_session_report_async(
+    session,
+    is_current = function() FALSE,
+    .artifact_catalog = artifact_catalog
+  )
+  entry_result <- await_tempest_promise(stale_at_entry)
+
+  expect_null(entry_result$error)
+  expect_null(entry_result$value)
+  expect_identical(report_calls, 2L)
 })

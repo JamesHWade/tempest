@@ -42,14 +42,14 @@ test_that("tempest_render_expert_prompt accepts an expert profile", {
   expect_match(prompt, "Arctic Research Institute", fixed = TRUE)
 })
 
-test_that("tempest_render_expert_prompt creates a generic fallback", {
-  prompt <- tempest:::tempest_render_expert_prompt(
-    persona = NULL,
-    expert_id = "expert.3"
+test_that("tempest_render_expert_prompt rejects a missing profile", {
+  expect_error(
+    tempest:::tempest_render_expert_prompt(
+      persona = NULL,
+      expert_id = "expert.3"
+    ),
+    class = "tempest_config_error"
   )
-
-  expect_match(prompt, "Expert expert.3", fixed = TRUE)
-  expect_match(prompt, "Research Specialist", fixed = TRUE)
 })
 
 test_that("TempestSession stores selected expert profiles", {
@@ -165,7 +165,7 @@ test_that("expert delegation harvests native sources before extraction", {
     structured = list(list(
       facts = list(list(
         claim = "Native-backed claim",
-        sources = list(list(url = url)),
+        sources = list(list(source_id = source_id)),
         confidence = "high"
       ))
     ))
@@ -210,7 +210,7 @@ test_that("expert delegation harvests native sources before extraction", {
   expect_length(claims, 1)
   expect_equal(claims[[1]]@source_ids, source_id)
   expect_equal(claims[[1]]@expert_id, "expert.climate")
-  expect_equal(claims[[1]]@session_id, result$session_id)
+  expect_identical(claims[[1]]@session_id, manager$run_id)
 })
 
 test_that("expert delegation harvests OpenAI native annotations", {
@@ -283,14 +283,14 @@ test_that("merging source records tolerates empty and missing fields", {
     title = "Old title",
     snippet = "Old snippet",
     content_text = "Old body",
-    fetched_at = "2026-01-01 00:00:00 UTC",
+    fetched_at = "2026-01-01T00:00:00Z",
     meta = list(kind = "old")
   )
   new <- list(
     title = character(),
     snippet = NA_character_,
     content_text = "",
-    fetched_at = "2027-01-01 00:00:00 UTC",
+    fetched_at = "2027-01-01T00:00:00Z",
     meta = list(provider_tool = "native")
   )
 
@@ -299,6 +299,6 @@ test_that("merging source records tolerates empty and missing fields", {
   expect_equal(merged$title, "Old title")
   expect_equal(merged$snippet, "Old snippet")
   expect_equal(merged$content_text, "Old body")
-  expect_equal(merged$fetched_at, "2027-01-01 00:00:00 UTC")
+  expect_equal(merged$fetched_at, "2027-01-01T00:00:00Z")
   expect_equal(merged$meta, list(kind = "old", provider_tool = "native"))
 })

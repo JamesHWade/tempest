@@ -9,6 +9,52 @@ test_that("tempest_create_ragnar_store creates store with correct schema", {
   expect_type(store@embed, "closure")
 })
 
+test_that("ragnar creation failures never expose credential material", {
+  skip_if_not_installed("ragnar")
+  secret <- "Authorization: Bearer sk-live-ragnar-secret"
+  local_mocked_bindings(
+    tempest_ragnar_store_create = function(...) stop(secret)
+  )
+
+  error <- expect_error(
+    tempest_create_ragnar_store(function(x) matrix(1, ncol = 1)),
+    class = "tempest_config_error"
+  )
+
+  expect_no_match(
+    conditionMessage(error),
+    "sk-live-ragnar-secret",
+    fixed = TRUE
+  )
+  printed <- paste(capture.output(print(error)), collapse = "\n")
+  expect_no_match(printed, "sk-live-ragnar-secret", fixed = TRUE)
+})
+
+test_that("ragnar embedding failures never expose credential material", {
+  skip_if_not_installed("ragnar")
+  cache_dir <- withr::local_tempdir()
+  embed <- function(x) matrix(seq_len(length(x) * 3), ncol = 3)
+  store <- tempest_create_ragnar_store(embed, cache_dir = cache_dir)
+  DBI::dbDisconnect(store@con, shutdown = TRUE)
+  secret <- "Authorization: Bearer sk-live-embedding-secret"
+
+  error <- expect_error(
+    tempest_create_ragnar_store(
+      function(...) stop(secret),
+      cache_dir = cache_dir
+    ),
+    class = "tempest_config_error"
+  )
+
+  expect_no_match(
+    conditionMessage(error),
+    "sk-live-embedding-secret",
+    fixed = TRUE
+  )
+  printed <- paste(capture.output(print(error)), collapse = "\n")
+  expect_no_match(printed, "sk-live-embedding-secret", fixed = TRUE)
+})
+
 test_that("TempestConfig creates ragnar_store from embed_fn", {
   skip_if_not_installed("ragnar")
 
@@ -111,6 +157,61 @@ test_that("ingest_to_ragnar chunks text and adds metadata", {
   )
 
   expect_gt(n_chunks, 0)
+})
+
+test_that("ragnar insert and build failures never expose credentials", {
+  skip_if_not_installed("ragnar")
+  secret <- "Authorization: Bearer sk-live-ragnar-secret"
+  retriever <- tempest_retriever(
+    config = tempest_config(ragnar_store = list(store = "test"))
+  )
+  insert_calls <- 0L
+  local_mocked_bindings(
+    tempest_ragnar_store_insert = function(...) {
+      insert_calls <<- insert_calls + 1L
+      stop(secret)
+    }
+  )
+
+  insert_error <- expect_error(
+    retriever$ingest_to_ragnar(
+      source_id = "S123abc123abc",
+      url = "https://example.org/provider-error",
+      title = "Provider error",
+      text = paste(rep("Captured evidence text. ", 50), collapse = ""),
+      fetched_at = "2026-01-01T00:00:00Z",
+      content_type = "html"
+    ),
+    class = "tempest_retriever_error"
+  )
+  expect_identical(insert_calls, 1L)
+  expect_no_match(
+    conditionMessage(insert_error),
+    "sk-live-ragnar-secret",
+    fixed = TRUE
+  )
+  insert_print <- paste(capture.output(print(insert_error)), collapse = "\n")
+  expect_no_match(insert_print, "sk-live-ragnar-secret", fixed = TRUE)
+
+  build_calls <- 0L
+  local_mocked_bindings(
+    tempest_ragnar_store_build_index = function(...) {
+      build_calls <<- build_calls + 1L
+      stop(secret)
+    }
+  )
+  build_error <- expect_error(
+    retriever$build_ragnar_index(),
+    class = "tempest_retriever_error"
+  )
+  expect_identical(build_calls, 1L)
+  expect_no_match(
+    conditionMessage(build_error),
+    "sk-live-ragnar-secret",
+    fixed = TRUE
+  )
+  build_print <- paste(capture.output(print(build_error)), collapse = "\n")
+  expect_no_match(build_print, "sk-live-ragnar-secret", fixed = TRUE)
 })
 
 test_that("retrieve returns results from ragnar store", {

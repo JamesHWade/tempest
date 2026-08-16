@@ -4,23 +4,13 @@
       baseline_snapshot_json(semantics)
     Output
       {
-        "completed_stages": ["perspectives", "research", "outline", "write", "verification", "polish"],
-        "program_stages": ["perspectives", "personas", "query_decomposition", "extract_claims", "draft_outline", "refined_outline", "section_writing", "extract_claims", "lead_section", "verify_claim_support", "verify_claim_support"],
+        "completed_stages": ["perspectives", "research", "verification", "outline", "write", "polish"],
+        "program_stages": ["perspectives", "personas", "query_decomposition", "extract_claims", "draft_outline", "verify_claim_support", "refined_outline", "section_writing", "lead_section"],
         "source_ids": "S3c9e65929df6",
         "claims": [
           {
             "claim_id": "C_0000000000000001",
             "claim_text": "STORM progress emits stage events.",
-            "claim_type": "finding",
-            "source_ids": "S3c9e65929df6",
-            "evidence_span_ids": [],
-            "confidence": "high",
-            "verification_status": "supported",
-            "support_score": 0.9
-          },
-          {
-            "claim_id": "C_0000000000000002",
-            "claim_text": "STORM progress persists artifacts.",
             "claim_type": "finding",
             "source_ids": "S3c9e65929df6",
             "evidence_span_ids": [],
@@ -34,17 +24,17 @@
           "definitions": [
             {
               "citation_id": "S3c9e65929df6",
-              "reference": "Progress source. https://example.org/progress (retrieved 2026-01-01 00:00:00 UTC). ✓"
+              "reference": "Progress source. <https://example.org/progress> (retrieved 2026-01-01T00:00:00Z). ✓"
             }
           ]
         },
         "outline_sections": "Workflow evidence",
         "outline_subsections": "Signals",
-        "report_sections": ["Progress report", "References"],
+        "report_sections": ["Progress report", "References", "Execution review"],
         "terminal_status": "succeeded",
-        "event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:started", "step:persistence:perspectives_artifacts:started", "step:persistence:perspectives_artifacts:succeeded", "stage:perspectives:NA:succeeded", "stage:research:NA:started", "step:persistence:research_artifacts:started", "step:persistence:research_artifacts:succeeded", "stage:research:NA:succeeded", "stage:outline:NA:started", "step:persistence:outline_artifacts:started", "step:persistence:outline_artifacts:succeeded", "stage:outline:NA:succeeded", "stage:write:NA:started", "step:persistence:write_artifacts:started", "step:persistence:write_artifacts:succeeded", "stage:write:NA:succeeded", "stage:polish:NA:started", "stage:verification:NA:started", "stage:verification:NA:succeeded", "step:persistence:polish_artifacts:started", "step:persistence:polish_artifacts:succeeded", "stage:polish:NA:succeeded", "artifact:polish:report_md:available", "workflow:NA:NA:succeeded"]
+        "event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:started", "step:persistence:perspectives_artifacts:started", "step:persistence:perspectives_artifacts:succeeded", "stage:perspectives:NA:succeeded", "stage:research:NA:started", "step:persistence:research_artifacts:started", "step:persistence:research_artifacts:succeeded", "stage:research:NA:succeeded", "stage:outline:NA:started", "stage:verification:NA:started", "stage:verification:NA:succeeded", "step:persistence:outline_artifacts:started", "step:persistence:outline_artifacts:succeeded", "stage:outline:NA:succeeded", "stage:write:NA:started", "step:persistence:write_artifacts:started", "step:persistence:write_artifacts:succeeded", "stage:write:NA:succeeded", "stage:polish:NA:started", "step:persistence:polish_artifacts:started", "step:persistence:polish_artifacts:succeeded", "stage:polish:NA:succeeded", "artifact:polish:report_md:available", "workflow:NA:NA:succeeded"]
       }
-# scripted STORM resumes through the public product path
+# scripted STORM resumes its immutable full-run request
 
     Code
       baseline_snapshot_json(list(initial_completed_stages = baseline_succeeded_stages(
@@ -57,22 +47,12 @@
     Output
       {
         "initial_completed_stages": ["perspectives", "research"],
-        "resumed_program_stages": ["perspectives", "personas", "query_decomposition", "extract_claims", "draft_outline", "refined_outline", "section_writing", "extract_claims", "lead_section", "verify_claim_support", "verify_claim_support"],
+        "resumed_program_stages": ["perspectives", "personas", "query_decomposition", "extract_claims", "draft_outline", "verify_claim_support", "refined_outline", "section_writing", "lead_section"],
         "resumed_source_ids": "S3c9e65929df6",
         "resumed_claims": [
           {
             "claim_id": "C_0000000000000001",
             "claim_text": "STORM progress emits stage events.",
-            "claim_type": "finding",
-            "source_ids": "S3c9e65929df6",
-            "evidence_span_ids": [],
-            "confidence": "high",
-            "verification_status": "supported",
-            "support_score": 0.9
-          },
-          {
-            "claim_id": "C_0000000000000002",
-            "claim_text": "STORM progress persists artifacts.",
             "claim_type": "finding",
             "source_ids": "S3c9e65929df6",
             "evidence_span_ids": [],
@@ -86,14 +66,14 @@
           "definitions": [
             {
               "citation_id": "S3c9e65929df6",
-              "reference": "Progress source. https://example.org/progress (retrieved 2026-01-01 00:00:00 UTC). ✓"
+              "reference": "Progress source. <https://example.org/progress> (retrieved 2026-01-01T00:00:00Z). ✓"
             }
           ]
         },
         "resumed_outline_sections": "Workflow evidence",
-        "resumed_report_sections": ["Progress report", "References"],
+        "resumed_report_sections": ["Progress report", "References", "Execution review"],
         "terminal_status": "succeeded",
-        "resumed_event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:skipped", "stage:research:NA:skipped", "stage:outline:NA:started", "step:persistence:outline_artifacts:started", "step:persistence:outline_artifacts:succeeded", "stage:outline:NA:succeeded", "stage:write:NA:started", "step:persistence:write_artifacts:started", "step:persistence:write_artifacts:succeeded", "stage:write:NA:succeeded", "stage:polish:NA:started", "stage:verification:NA:started", "stage:verification:NA:succeeded", "step:persistence:polish_artifacts:started", "step:persistence:polish_artifacts:succeeded", "stage:polish:NA:succeeded", "artifact:polish:report_md:available", "workflow:NA:NA:succeeded"]
+        "resumed_event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:skipped", "stage:research:NA:skipped", "stage:outline:NA:started", "stage:verification:NA:started", "stage:verification:NA:succeeded", "step:persistence:outline_artifacts:started", "step:persistence:outline_artifacts:succeeded", "stage:outline:NA:succeeded", "stage:write:NA:started", "step:persistence:write_artifacts:started", "step:persistence:write_artifacts:succeeded", "stage:write:NA:succeeded", "stage:polish:NA:started", "step:persistence:polish_artifacts:started", "step:persistence:polish_artifacts:succeeded", "stage:polish:NA:succeeded", "artifact:polish:report_md:available", "workflow:NA:NA:succeeded"]
       }
 
 # Co-STORM warmup and one moderator turn are frozen
@@ -154,13 +134,13 @@
           ],
           "edges": []
         },
-        "report_sections": ["Co-STORM baseline", "Findings", "References"],
+        "report_sections": ["Co\\-STORM baseline", "Findings", "References", "Execution review"],
         "report_citations": {
           "uses": "S43d2118e4326",
           "definitions": [
             {
               "citation_id": "S43d2118e4326",
-              "reference": "Co-STORM baseline source. https://example.org/costorm-product-baseline (retrieved 2026-01-01 00:00:00 UTC)."
+              "reference": "Co\\-STORM baseline source. <https://example.org/costorm-product-baseline> (retrieved 2026-01-01T00:00:00Z)."
             }
           ]
         },
@@ -232,13 +212,13 @@
             ],
             "edges": []
           },
-          "report_sections": ["Co-STORM baseline", "Findings", "References"],
+          "report_sections": ["Co\\-STORM baseline", "Findings", "References", "Execution review"],
           "report_citations": {
             "uses": "S43d2118e4326",
             "definitions": [
               {
                 "citation_id": "S43d2118e4326",
-                "reference": "Co-STORM baseline source. https://example.org/costorm-product-baseline (retrieved 2026-01-01 00:00:00 UTC)."
+                "reference": "Co\\-STORM baseline source. <https://example.org/costorm-product-baseline> (retrieved 2026-01-01T00:00:00Z)."
               }
             ]
           }
@@ -316,13 +296,13 @@
             ],
             "edges": []
           },
-          "report_sections": ["Co-STORM baseline", "Findings", "References"],
+          "report_sections": ["Co\\-STORM baseline", "Findings", "References", "Execution review"],
           "report_citations": {
             "uses": "S43d2118e4326",
             "definitions": [
               {
                 "citation_id": "S43d2118e4326",
-                "reference": "Co-STORM baseline source. https://example.org/costorm-product-baseline (retrieved 2026-01-01 00:00:00 UTC)."
+                "reference": "Co\\-STORM baseline source. <https://example.org/costorm-product-baseline> (retrieved 2026-01-01T00:00:00Z)."
               }
             ]
           }
@@ -341,7 +321,7 @@
         events)))
     Output
       {
-        "condition_class": ["interrupt", "condition"],
+        "condition_class": ["tempest_run_cancelled", "tempest_run_error", "tempest_error", "interrupt", "rlang_error", "error", "condition"],
         "completed_stages": "perspectives",
         "terminal_status": "cancelled",
         "terminal": true,

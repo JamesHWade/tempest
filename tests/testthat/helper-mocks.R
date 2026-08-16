@@ -60,7 +60,7 @@ fake_source <- function(
     url = url,
     title = title,
     content_text = content_text,
-    fetched_at = "2026-01-01 00:00:00 UTC"
+    fetched_at = "2026-01-01T00:00:00Z"
   )
 }
 
@@ -74,6 +74,77 @@ fake_store_with_sources <- function(n = 2) {
     ))
   }
   store
+}
+
+fake_stage_inputs <- function(stage) {
+  switch(
+    stage,
+    perspectives = list(
+      topic = "Topic",
+      seed_context = "Seed context",
+      n_experts = 1L
+    ),
+    personas = list(
+      topic = "Topic",
+      n_experts = 1L,
+      requirements = "Distinct experts"
+    ),
+    query_decomposition = list(question = "Question", topic = "Topic"),
+    extract_claims = list(
+      answer_text = "Source-backed answer",
+      source_context = "",
+      source_ids = "",
+      citation_mode = "tempest_inline"
+    ),
+    verify_claim_support = list(
+      claim_text = "A supported claim",
+      source_excerpts = "Source excerpt"
+    ),
+    next_question = list(
+      topic = "Topic",
+      perspective = "Perspective",
+      answered = "",
+      facts = ""
+    ),
+    draft_outline = list(topic = "Topic", report_title = "Report"),
+    refined_outline = list(
+      topic = "Topic",
+      report_title = "Outline",
+      draft_outline = "Draft outline",
+      facts = "Verified facts"
+    ),
+    section_writing = list(
+      section_title = "Evidence",
+      section_summary = "",
+      subsections = "",
+      facts = "Verified facts"
+    ),
+    lead_section = list(
+      topic = "Topic",
+      title = "Report",
+      article_body = "",
+      facts = "Verified facts"
+    )
+  )
+}
+
+fake_set_citation_audit <- function(workspace, claims) {
+  workspace$set_citation_audit(tibble::tibble(
+    claim_id = vapply(claims, \(claim) claim@claim_id, character(1)),
+    claim_text = vapply(claims, \(claim) claim@claim_text, character(1)),
+    verification_status = vapply(
+      claims,
+      \(claim) claim@verification_status,
+      character(1)
+    ),
+    support_score = vapply(
+      claims,
+      \(claim) claim@support_score,
+      numeric(1)
+    ),
+    rationale = rep("Supported by source", length(claims))
+  ))
+  invisible(workspace)
 }
 
 test_program_executions <- function(

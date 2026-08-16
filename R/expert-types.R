@@ -2,11 +2,11 @@
 
 tempest_contract_id <- function(value, arg) {
   value <- tempest_workflow_scalar(value, arg)
-  if (!grepl("^[A-Za-z0-9][A-Za-z0-9._:/+-]*$", value)) {
+  if (!tempest_opaque_identifier_valid(value)) {
     tempest_workflow_abort(
       paste0(
-        "{.arg {arg}} must start with a letter or number and contain only ",
-        "letters, numbers, `.`, `_`, `:`, `/`, `+`, or `-`."
+        "{.arg {arg}} must be a bounded opaque identifier, not prose or ",
+        "credentials."
       )
     )
   }
@@ -59,13 +59,10 @@ tempest_contract_sensitive_names <- function(value, path) {
   value_names <- names(value)
   found <- character()
   if (!is.null(value_names)) {
-    normalized <- tolower(gsub("[^a-z0-9]+", "_", value_names))
-    sensitive <- grepl(
-      paste0(
-        "(^|_)(api_key|access_token|refresh_token|password|secret|",
-        "credential|private_key)($|_)"
-      ),
-      normalized
+    sensitive <- vapply(
+      value_names,
+      tempest_research_sensitive_name,
+      logical(1)
     )
     if (any(sensitive)) {
       found <- paste0(path, "$", value_names[sensitive])
@@ -85,12 +82,257 @@ tempest_contract_sensitive_names <- function(value, path) {
   )
 }
 
+tempest_contract_decode_numeric_entities <- function(value) {
+  decode_one <- function(text) {
+    matches <- gregexpr(
+      "&#(?:[xX][0-9A-Fa-f]{1,6}|[0-9]{1,7});",
+      text,
+      perl = TRUE
+    )[[1L]]
+    if (identical(matches[[1L]], -1L)) {
+      return(text)
+    }
+    references <- regmatches(text, list(matches))[[1L]]
+    replacements <- vapply(
+      references,
+      function(reference) {
+        encoded <- substring(reference, 3L, nchar(reference) - 1L)
+        base <- 10L
+        if (startsWith(encoded, "x") || startsWith(encoded, "X")) {
+          encoded <- substring(encoded, 2L)
+          base <- 16L
+        }
+        codepoint <- suppressWarnings(strtoi(encoded, base = base))
+        if (is.na(codepoint) || codepoint < 32L || codepoint > 126L) {
+          return(reference)
+        }
+        intToUtf8(codepoint)
+      },
+      character(1)
+    )
+    regmatches(text, list(matches)) <- list(replacements)
+    text
+  }
+  unname(vapply(value, decode_one, character(1)))
+}
+
+tempest_contract_decode_named_entities <- function(value) {
+  replacements <- c(
+    amp = "&",
+    apos = "'",
+    ast = "*",
+    bsol = "\\",
+    colon = ":",
+    comma = ",",
+    commat = "@",
+    dollar = "$",
+    equals = "=",
+    excl = "!",
+    grave = "`",
+    gt = ">",
+    lcub = "{",
+    lpar = "(",
+    lsqb = "[",
+    lt = "<",
+    nbsp = " ",
+    NewLine = "\n",
+    num = "#",
+    percnt = "%",
+    period = ".",
+    plus = "+",
+    quest = "?",
+    quot = '"',
+    rcub = "}",
+    rpar = ")",
+    rsqb = "]",
+    semi = ";",
+    sol = "/",
+    Tab = "\t",
+    verbar = "|",
+    lowbar = "_"
+  )
+  for (entity in names(replacements)) {
+    value <- gsub(
+      paste0("&", entity, ";"),
+      replacements[[entity]],
+      value,
+      fixed = TRUE
+    )
+  }
+  value
+}
+
+tempest_contract_decode_entities <- function(value) {
+  value |>
+    tempest_contract_decode_numeric_entities() |>
+    tempest_contract_decode_named_entities()
+}
+
+tempest_contract_unescape_markdown <- function(value) {
+  punctuation <- intToUtf8(
+    c(33:47, 58:64, 91:96, 123:126),
+    multiple = TRUE
+  )
+  for (mark in punctuation) {
+    value <- gsub(paste0("\\", mark), mark, value, fixed = TRUE)
+  }
+  value
+}
+
+tempest_contract_rendered_markdown <- function(value) {
+  unname(vapply(
+    value,
+    commonmark::markdown_text,
+    character(1),
+    width = 0
+  ))
+}
+
+tempest_contract_url_decode <- function(value) {
+  unname(vapply(
+    value,
+    function(text) {
+      if (!grepl("%[0-9A-Fa-f]{2}", text, perl = TRUE)) {
+        return(text)
+      }
+      suppressWarnings(tryCatch(
+        utils::URLdecode(text),
+        error = function(...) text
+      ))
+    },
+    character(1)
+  ))
+}
+
+tempest_contract_normalize_display_text <- function(value) {
+  value <- stringi::stri_trans_nfkc(value)
+  value <- stringi::stri_replace_all_regex(
+    value,
+    "\\p{Default_Ignorable_Code_Point}+",
+    ""
+  )
+  stringi::stri_replace_all_regex(value, "\\p{White_Space}+", " ")
+}
+
+tempest_contract_sensitive_scalar <- function(value) {
+  if (!is.character(value) || length(value) == 0L) {
+    return(FALSE)
+  }
+  value <- value[!is.na(value)]
+  if (length(value) == 0L) {
+    return(FALSE)
+  }
+  markdown_unescaped <- tempest_contract_unescape_markdown(value)
+  entity_unescaped <- tempest_contract_decode_entities(value)
+  rendered <- tryCatch(
+    tempest_contract_rendered_markdown(value),
+    error = function(...) NULL
+  )
+  if (is.null(rendered)) {
+    return(TRUE)
+  }
+  variants <- c(
+    value,
+    markdown_unescaped,
+    entity_unescaped,
+    rendered,
+    tempest_contract_decode_entities(markdown_unescaped),
+    tempest_contract_unescape_markdown(entity_unescaped),
+    tempest_contract_url_decode(value),
+    tempest_contract_url_decode(markdown_unescaped),
+    tempest_contract_url_decode(entity_unescaped),
+    tempest_contract_url_decode(rendered)
+  )
+  value <- unique(c(
+    variants,
+    tempest_contract_normalize_display_text(variants)
+  ))
+  patterns <- c(
+    paste0(
+      "(^|[^A-Za-z0-9])(?:sk-[A-Za-z0-9_]{20,}|",
+      "sk-(?:proj|svcacct|ant-api[0-9]{2}|or-v1)-",
+      "[A-Za-z0-9_-]{16,}|sk[_-](?:live|test)[_-]",
+      "[A-Za-z0-9_-]{4,})"
+    ),
+    paste0(
+      "(?i:(?:proxy-)?authorization)[[:space:]]*:[[:space:]]*",
+      "[A-Za-z][A-Za-z0-9._-]*[[:space:]]+[^[:space:]]+"
+    ),
+    "(^|[[:space:]])(?i:bearer)[[:space:]]+[A-Za-z0-9._~+/-]{8,}",
+    paste0(
+      "[A-Za-z][A-Za-z0-9+.-]*://",
+      "[^/@[:space:]]+@"
+    ),
+    paste0(
+      "(?i:(?:set-)?cookie)[[:space:]]*:[[:space:]]*",
+      "[^[:space:];=]+=[^[:space:];]+"
+    ),
+    paste0(
+      "(?i:-----BEGIN[[:space:]]+",
+      "(?:[A-Z0-9]+[[:space:]]+)*PRIVATE[[:space:]]+KEY-----)"
+    ),
+    "(^|[^A-Za-z0-9])xox[baprs]-[A-Za-z0-9-]{8,}",
+    "(^|[^A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}",
+    "(^|[^A-Za-z0-9])github_pat_[A-Za-z0-9_]{20,}",
+    "(^|[^A-Za-z0-9])glpat-[A-Za-z0-9_-]{20,}",
+    "(^|[^A-Za-z0-9])hf_[A-Za-z0-9]{30,}",
+    "(^|[^A-Za-z0-9])npm_[A-Za-z0-9]{36}($|[^A-Za-z0-9])",
+    paste0(
+      "(^|[^A-Za-z0-9])SG\\.[A-Za-z0-9_-]{22}\\.",
+      "[A-Za-z0-9_-]{43}($|[^A-Za-z0-9_-])"
+    ),
+    "(^|[^A-Za-z0-9])AIza[0-9A-Za-z_-]{35}($|[^0-9A-Za-z_-])",
+    "(^|[^A-Za-z0-9])AKIA[0-9A-Z]{12,}",
+    "(^|[^A-Za-z0-9])ASIA[0-9A-Z]{16}($|[^0-9A-Z])",
+    "(^|[^A-Za-z0-9])SK[0-9A-Fa-f]{32}($|[^0-9A-Fa-f])",
+    "(^|[^A-Za-z0-9])eyJ[A-Za-z0-9_-]{4,}\\.[A-Za-z0-9_-]{4,}\\.",
+    paste0(
+      "(?i:[?&#](?:api[-_]?key|key|access[-_]?token|refresh[-_]?token|",
+      "security[-_]?token|token|credential|signature|sig|password|secret|",
+      "client[-_]?secret|x[-_]amz[-_](?:security[-_]?token|credential|",
+      "signature)|x[-_]goog[-_]signature)=)",
+      "[^&#[:space:]]{8,}"
+    ),
+    paste0(
+      "(?i:(api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|password|",
+      "client[-_ ]?secret|private[-_ ]?key|",
+      "(?:aws[-_ ]?)?secret[-_ ]?(?:access[-_ ]?)?key))",
+      "[[:space:]]*[:=]",
+      "[[:space:]]*[^[:space:]]{4,}"
+    )
+  )
+  any(vapply(
+    patterns,
+    \(pattern) any(grepl(pattern, value, perl = TRUE)),
+    logical(1)
+  ))
+}
+
+tempest_contract_sensitive_values <- function(value, path) {
+  if (is.list(value)) {
+    value_names <- names(value)
+    child_paths <- if (is.null(value_names)) {
+      paste0(path, "[[", seq_along(value), "]]")
+    } else {
+      paste0(path, "$", value_names)
+    }
+    return(unlist(
+      Map(tempest_contract_sensitive_values, value, child_paths),
+      use.names = FALSE
+    ))
+  }
+  if (tempest_contract_sensitive_scalar(value)) path else character()
+}
+
 tempest_contract_serializable_list <- function(value, arg) {
   value <- tempest_workflow_serializable_list(value, arg)
-  sensitive <- tempest_contract_sensitive_names(value, arg)
+  sensitive <- c(
+    tempest_contract_sensitive_names(value, arg),
+    tempest_contract_sensitive_values(value, arg)
+  )
   if (length(sensitive) > 0L) {
     tempest_workflow_abort(c(
-      "{.arg {arg}} cannot contain credential or secret fields.",
+      "{.arg {arg}} cannot contain credential or secret fields or values.",
       i = "Store authenticated material in a host connection provider.",
       x = "Sensitive field: {.field {sensitive[[1]]}}."
     ))
@@ -751,6 +993,24 @@ tempest_contract_data <- function(value, class, arg) {
   )
 }
 
+tempest_contract_revalidated_data <- function(value, class, arg, constructor) {
+  data <- tempest_contract_data(value, class, arg)
+  validated <- do.call(constructor, data)
+  data <- tempest_contract_data(validated, class, arg)
+  sensitive <- c(
+    tempest_contract_sensitive_names(data, arg),
+    tempest_contract_sensitive_values(data, arg)
+  )
+  if (length(sensitive) > 0L) {
+    tempest_workflow_abort(c(
+      "{.arg {arg}} cannot contain credential or secret values.",
+      i = "Store authenticated material in a host connection provider.",
+      x = "Sensitive field: {.field {sensitive[[1]]}}."
+    ))
+  }
+  data
+}
+
 tempest_contract_record <- function(data, fingerprint) {
   for (field in c("model_role", "model_policy_ref")) {
     if (!is.null(data[[field]]) && is.na(data[[field]])) {
@@ -772,7 +1032,12 @@ tempest_contract_checksum <- function(data) {
 }
 
 tempest_expert_profile_data <- function(expert) {
-  tempest_contract_data(expert, TempestExpertProfile, "expert")
+  tempest_contract_revalidated_data(
+    expert,
+    TempestExpertProfile,
+    "expert",
+    tempest_expert
+  )
 }
 
 tempest_expert_profile_fingerprint <- function(expert_or_data) {
@@ -792,7 +1057,12 @@ tempest_expert_profile_record <- function(expert) {
 }
 
 tempest_skill_data <- function(skill) {
-  tempest_contract_data(skill, TempestSkill, "skill")
+  tempest_contract_revalidated_data(
+    skill,
+    TempestSkill,
+    "skill",
+    tempest_skill
+  )
 }
 
 tempest_skill_fingerprint <- function(skill_or_data) {
@@ -812,10 +1082,11 @@ tempest_skill_record <- function(skill) {
 }
 
 tempest_capability_spec_data <- function(capability) {
-  tempest_contract_data(
+  tempest_contract_revalidated_data(
     capability,
     TempestCapabilitySpec,
-    "capability"
+    "capability",
+    tempest_capability_spec
   )
 }
 
@@ -836,10 +1107,11 @@ tempest_capability_spec_record <- function(capability) {
 }
 
 tempest_connection_ref_data <- function(connection) {
-  tempest_contract_data(
+  tempest_contract_revalidated_data(
     connection,
     TempestConnectionRef,
-    "connection"
+    "connection",
+    tempest_connection_ref
   )
 }
 

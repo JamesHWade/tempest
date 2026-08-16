@@ -10,7 +10,7 @@ tempest_make_dsprrr_modules(config)
 \item{config}{A \code{TempestConfig} object.}
 }
 \value{
-A named list of dsprrr modules, or \code{NULL} if module creation fails.
+A named list containing every fixed-stage dsprrr module.
 }
 \description{
 Creates dsprrr modules for STORM structured extraction/generation steps.

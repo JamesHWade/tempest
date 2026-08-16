@@ -19,7 +19,8 @@ tempest_research_parallel(
   max_questions_per_perspective,
   programs,
   verbose,
-  run_id = NA_character_
+  run_id = NA_character_,
+  record_stage = function(record, output = NULL) invisible(record)
 )
 }
 \description{

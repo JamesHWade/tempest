@@ -14,7 +14,8 @@ tempest_expert_session_manager(
   extract_claims_program = NULL,
   workspace = NULL,
   progress = NULL,
-  run_id = NULL
+  run_id = NULL,
+  stage_recorder = NULL
 )
 }
 \arguments{
@@ -40,6 +41,9 @@ workspace.}
 \item{progress}{Optional progress callback.}
 
 \item{run_id}{Optional shared workflow run id.}
+
+\item{stage_recorder}{Optional callback accepting a stage record and its
+evaluated output.}
 }
 \value{
 An \code{ExpertSessionManager}.

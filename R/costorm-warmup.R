@@ -74,6 +74,9 @@ tempest_warmup_chr_prop <- function(required = FALSE) {
       if (required && (is.na(value) || !nzchar(tempest_trim(value)))) {
         return("must be a single non-empty string")
       }
+      if (!is.na(value) && tempest_contract_sensitive_scalar(value)) {
+        return("must not contain credential-like content")
+      }
     }
   )
 }
@@ -100,8 +103,8 @@ tempest_warmup_orientation_error <- function(orientation) {
   if (!is.list(orientation) || is.data.frame(orientation)) {
     return("must be a list")
   }
-  if (!all(required %in% names(orientation))) {
-    return("is missing required fields")
+  if (!identical(names(orientation), required)) {
+    return("must contain the exact required fields in canonical order")
   }
   scalar_character <- c(
     "expert_id",
@@ -119,6 +122,9 @@ tempest_warmup_orientation_error <- function(orientation) {
     if (!is.character(value) || length(value) != 1L) {
       return(paste0("has invalid `", field, "`"))
     }
+    if (!is.na(value) && tempest_contract_sensitive_scalar(value)) {
+      return(paste0("has credential-like `", field, "`"))
+    }
   }
   if (!orientation$status %in% c("succeeded", "failed", "timeout")) {
     return("has invalid `status`")
@@ -134,7 +140,12 @@ tempest_warmup_orientation_error <- function(orientation) {
   }
   if (
     any(!nzchar(orientation$source_ids)) ||
-      anyDuplicated(orientation$source_ids)
+      anyDuplicated(orientation$source_ids) ||
+      !all(vapply(
+        orientation$source_ids,
+        tempest_opaque_identifier_valid,
+        logical(1)
+      ))
   ) {
     return("has invalid `source_ids`")
   }
@@ -161,6 +172,19 @@ tempest_warmup_orientation_error <- function(orientation) {
     orientation$error_class,
     orientation$error_message
   )
+  if (
+    !is.na(orientation$error_class) &&
+      !orientation$error_class %in%
+        c("tempest_operation_error", tempest_stage_failure_classes())
+  ) {
+    return("has an invalid `error_class`")
+  }
+  if (
+    !is.na(orientation$error_message) &&
+      !identical(orientation$error_message, "The operation failed.")
+  ) {
+    return("has an invalid `error_message`")
+  }
   if (identical(orientation$status, "succeeded")) {
     if (!is.na(orientation$failure_kind)) {
       return("cannot have `failure_kind` when `status` is succeeded")
@@ -456,8 +480,9 @@ tempest_warmup_error_record <- function(record, error, failure_kind) {
     "failed"
   }
   record$failure_kind <- failure_kind
-  record$error_class <- class(error)[[1]]
-  record$error_message <- conditionMessage(error)
+  payload <- tempest_progress_error_payload(error)
+  record$error_class <- payload$error_class
+  record$error_message <- payload$error_message
   record
 }
 
@@ -570,7 +595,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
           session,
           orientation$response,
           turn = orientation$turn,
-          session_id = orientation$expert_session_id,
+          session_id = session$session_id,
           expert_id = orientation$expert_id,
           correlation_id = orientation$correlation_id,
           is_current = is_current,
@@ -611,8 +636,9 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
           evidence_failure_count <<- evidence_failure_count + 1L
           evidence_results[[index]] <<- list(error = error)
           state$records[[index]]$evidence_status <- "failed"
-          state$records[[index]]$error_class <- class(error)[[1]]
-          state$records[[index]]$error_message <- conditionMessage(error)
+          payload <- tempest_progress_error_payload(error)
+          state$records[[index]]$error_class <- payload$error_class
+          state$records[[index]]$error_message <- payload$error_message
           NULL
         }
       )
@@ -1104,7 +1130,7 @@ tempest_session_warmup_async <- function(
         payload = tempest_progress_error_payload(error)
       )
     }
-    stop(error)
+    tempest_rethrow_operation(error, class = "tempest_session_error")
   })
   finalized <- promises::finally(
     finalized,

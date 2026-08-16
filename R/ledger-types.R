@@ -30,7 +30,15 @@ prop_score <- function() {
 }
 
 prop_chr <- function(default = NA_character_) {
-  S7::new_property(S7::class_character, default = default)
+  S7::new_property(
+    S7::class_character,
+    default = default,
+    validator = function(value) {
+      if (length(value) != 1L) {
+        "must be one scalar string or NA"
+      }
+    }
+  )
 }
 
 #' @keywords internal
@@ -49,6 +57,46 @@ prop_score_default <- function(default) {
 
 prop_chr_vec <- function() {
   S7::new_property(S7::class_character, default = character())
+}
+
+tempest_ledger_identifier_valid <- function(value, optional = FALSE) {
+  if (
+    isTRUE(optional) &&
+      is.character(value) &&
+      length(value) == 1L &&
+      is.na(value)
+  ) {
+    return(TRUE)
+  }
+  tempest_opaque_identifier_valid(value)
+}
+
+tempest_ledger_identifier_vector_valid <- function(value) {
+  is.character(value) &&
+    !is.object(value) &&
+    is.null(names(value)) &&
+    !anyNA(value) &&
+    !anyDuplicated(value) &&
+    all(vapply(value, tempest_opaque_identifier_valid, logical(1)))
+}
+
+tempest_ledger_timestamp_valid <- function(value, optional = FALSE) {
+  if (
+    isTRUE(optional) &&
+      is.character(value) &&
+      length(value) == 1L &&
+      is.na(value)
+  ) {
+    return(TRUE)
+  }
+  if (!rlang::is_string(value) || is.na(value)) {
+    return(FALSE)
+  }
+  parsed <- tryCatch(
+    tempest_stage_time_parse(value),
+    error = \(error) as.POSIXct(NA, tz = "UTC")
+  )
+  length(parsed) == 1L && !is.na(parsed)
 }
 
 # --- enums --------------------------------------------------------------------
@@ -137,7 +185,7 @@ tempest_claim <- S7::new_class(
       claim_id = claim_id %||% tempest_uuid("C"),
       claim_text = claim_text,
       claim_type = claim_type,
-      source_ids = unique(source_ids),
+      source_ids = source_ids,
       evidence_span_ids = evidence_span_ids,
       supporting_quotes = supporting_quotes,
       contradicting_source_ids = contradicting_source_ids,
@@ -160,11 +208,68 @@ tempest_claim <- S7::new_class(
   },
   validator = function(self) {
     if (
+      length(self@claim_id) != 1L ||
+        is.na(self@claim_id) ||
+        !tempest_ledger_identifier_valid(self@claim_id) ||
+        !tempest_ledger_timestamp_valid(self@created_at)
+    ) {
+      return("claim_id and created_at must be single non-empty strings")
+    }
+    if (
       length(self@claim_text) != 1 ||
         is.na(self@claim_text) ||
         !nzchar(self@claim_text)
     ) {
       return("claim_text must be a single non-empty string")
+    }
+    if (!tempest_ledger_identifier_vector_valid(self@source_ids)) {
+      return(
+        "source_ids must contain unique bounded credential-free identifiers"
+      )
+    }
+    if (!tempest_ledger_identifier_vector_valid(self@evidence_span_ids)) {
+      return(
+        paste0(
+          "evidence_span_ids must contain unique bounded credential-free ",
+          "identifiers"
+        )
+      )
+    }
+    if (
+      !tempest_ledger_identifier_vector_valid(self@contradicting_source_ids)
+    ) {
+      return(
+        paste0(
+          "contradicting_source_ids must contain unique bounded ",
+          "credential-free identifiers"
+        )
+      )
+    }
+    optional_ids <- c(
+      self@retrieval_step_id,
+      self@perspective_id,
+      self@expert_id,
+      self@session_id,
+      self@section_id,
+      self@verifier_model
+    )
+    if (
+      !all(vapply(
+        optional_ids,
+        tempest_ledger_identifier_valid,
+        logical(1),
+        optional = TRUE
+      ))
+    ) {
+      return(
+        paste0(
+          "Claim context and verifier identifiers must be bounded and ",
+          "credential-free"
+        )
+      )
+    }
+    if (!tempest_ledger_timestamp_valid(self@verified_at, optional = TRUE)) {
+      return("verified_at must be NA or an exact canonical UTC timestamp")
     }
   }
 )
@@ -207,14 +312,81 @@ tempest_evidence_span <- S7::new_class(
       source_id = source_id,
       chunk_id = chunk_id,
       quote = quote,
-      start_offset = as.integer(start_offset),
-      end_offset = as.integer(end_offset),
-      page = as.integer(page),
+      start_offset = start_offset,
+      end_offset = end_offset,
+      page = page,
       section_heading = section_heading,
       relevance_score = relevance_score,
       extracted_by = extracted_by,
       created_at = created_at %||% tempest_now_utc()
     )
+  },
+  validator = function(self) {
+    if (
+      length(self@evidence_span_id) != 1L ||
+        is.na(self@evidence_span_id) ||
+        !tempest_ledger_identifier_valid(self@evidence_span_id) ||
+        length(self@extracted_by) != 1L ||
+        is.na(self@extracted_by) ||
+        !tempest_ledger_identifier_valid(self@extracted_by) ||
+        !tempest_ledger_timestamp_valid(self@created_at)
+    ) {
+      return(
+        paste0(
+          "evidence_span_id, extracted_by, and created_at must be single ",
+          "non-empty strings"
+        )
+      )
+    }
+    if (
+      length(self@source_id) != 1L ||
+        is.na(self@source_id) ||
+        !tempest_ledger_identifier_valid(self@source_id)
+    ) {
+      return("source_id must be a bounded credential-free identifier")
+    }
+    if (!tempest_ledger_identifier_valid(self@chunk_id, optional = TRUE)) {
+      return("chunk_id must be NA or a bounded credential-free identifier")
+    }
+    if (
+      length(self@quote) != 1L ||
+        (!is.na(self@quote) && !nzchar(self@quote))
+    ) {
+      return("quote must be NA or a single non-empty string")
+    }
+    if (
+      length(self@start_offset) != 1L ||
+        length(self@end_offset) != 1L ||
+        length(self@page) != 1L
+    ) {
+      return("start_offset, end_offset, and page must be scalar integers or NA")
+    }
+    start_missing <- length(self@start_offset) == 1L &&
+      is.na(self@start_offset)
+    end_missing <- length(self@end_offset) == 1L && is.na(self@end_offset)
+    if (xor(start_missing, end_missing)) {
+      return(
+        "start_offset and end_offset must both be present or both be absent"
+      )
+    }
+    if (!start_missing) {
+      if (
+        length(self@start_offset) != 1L ||
+          length(self@end_offset) != 1L ||
+          self@start_offset < 0L ||
+          self@end_offset <= self@start_offset
+      ) {
+        return(
+          paste0(
+            "offsets must be zero-based, half-open integers with ",
+            "0 <= start_offset < end_offset"
+          )
+        )
+      }
+      if (is.na(self@quote)) {
+        return("offsets require a non-empty quote")
+      }
+    }
   }
 )
 
@@ -255,6 +427,26 @@ tempest_dispute <- S7::new_class(
       unresolved_questions = unresolved_questions,
       created_at = created_at %||% tempest_now_utc()
     )
+  },
+  validator = function(self) {
+    if (
+      length(self@dispute_id) != 1L ||
+        is.na(self@dispute_id) ||
+        !tempest_ledger_identifier_valid(self@dispute_id) ||
+        length(self@topic) != 1L ||
+        is.na(self@topic) ||
+        !nzchar(self@topic) ||
+        !tempest_ledger_timestamp_valid(self@created_at)
+    ) {
+      return(
+        "dispute_id, topic, and created_at must be single non-empty strings"
+      )
+    }
+    if (!tempest_ledger_identifier_vector_valid(self@claim_ids)) {
+      return(
+        "claim_ids must contain unique bounded credential-free identifiers"
+      )
+    }
   }
 )
 
@@ -263,6 +455,7 @@ tempest_dispute <- S7::new_class(
 #' @keywords internal
 tempest_claim_to_list <- function(claim) {
   stopifnot(S7::S7_inherits(claim, tempest_claim))
+  S7::validate(claim)
   props <- S7::prop_names(claim)
   stats::setNames(lapply(props, function(p) S7::prop(claim, p)), props)
 }
@@ -331,6 +524,7 @@ tempest_claim_from_list <- function(x) {
 #' @keywords internal
 tempest_evidence_span_to_list <- function(span) {
   stopifnot(S7::S7_inherits(span, tempest_evidence_span))
+  S7::validate(span)
   props <- S7::prop_names(span)
   stats::setNames(lapply(props, function(p) S7::prop(span, p)), props)
 }
@@ -378,6 +572,7 @@ tempest_evidence_span_from_list <- function(x) {
 #' @keywords internal
 tempest_dispute_to_list <- function(dispute) {
   stopifnot(S7::S7_inherits(dispute, tempest_dispute))
+  S7::validate(dispute)
   props <- S7::prop_names(dispute)
   stats::setNames(lapply(props, function(p) S7::prop(dispute, p)), props)
 }

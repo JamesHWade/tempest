@@ -69,14 +69,23 @@ test_that("tempest_generate_single_expert returns an expert profile", {
     }
   )
 
-  expert <- tempest:::tempest_generate_single_expert(
-    "Climate change",
-    "Policy analysis",
-    list(test_expert(
-      expert_id = "expert.existing",
-      name = "Dr. Alice"
-    )),
-    cfg
+  expert <- withCallingHandlers(
+    tempest:::tempest_generate_single_expert(
+      "Climate change",
+      "Policy analysis",
+      list(test_expert(
+        expert_id = "expert.existing",
+        name = "Dr. Alice"
+      )),
+      cfg,
+      module = test_program_executions(
+        cfg,
+        "dynamic-roster-single"
+      )$personas
+    ),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
   )
 
   expect_s7_class(expert, tempest:::TempestExpertProfile)
@@ -129,4 +138,47 @@ test_that("add_expert returns NULL at the active-expert cap", {
 
   result <- suppressWarnings(ses$add_expert(area = "New area"))
   expect_null(result)
+})
+
+test_that("dynamic personas append one exact stage attempt", {
+  skip_if_not_installed("ellmer")
+  generated <- list(
+    personas = list(list(
+      name = "Dr. Dynamic",
+      title = "Policy analyst",
+      affiliation = "Independent",
+      background = "Studies adaptive policy panels.",
+      focus_areas = list("policy"),
+      perspective = "Policy adaptation",
+      initial_questions = list("Which policy gap remains?")
+    ))
+  )
+  cfg <- tempest_config(
+    max_active_experts = 2L,
+    chat_fn = function(role, model, system_prompt, echo) {
+      fake_chat(structured = list(generated))
+    }
+  )
+  session <- tempest_session(
+    "Dynamic stage records",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.existing-dynamic",
+      name = "Existing expert"
+    )),
+    session_id = "dynamic-stage-records"
+  )
+
+  expert <- session$add_expert("Policy analysis")
+  records <- tempest:::tempest_session_stage_records(session)
+
+  expect_s7_class(expert, tempest:::TempestExpertProfile)
+  expect_length(session$experts, 2L)
+  expect_length(records, 1L)
+  expect_identical(records[[1]]@stage, "personas")
+  expect_identical(records[[1]]@status, "succeeded")
+  expect_identical(
+    records[[1]]@program_artifact_id,
+    session$manifest@programs$personas$program_artifact_id
+  )
 })

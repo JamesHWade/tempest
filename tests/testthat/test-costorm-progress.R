@@ -13,7 +13,7 @@ test_that("TempestSession emits Co-STORM progress events", {
     nodes = list(list(
       id = "root",
       label = "Co-STORM progress",
-      summary = "Progress metadata",
+      notes = "Progress metadata",
       source_ids = source_id
     )),
     edges = list()
@@ -97,6 +97,12 @@ test_that("TempestSession emits Co-STORM progress events", {
   session$step("What should we inspect?")
   questions <- session$suggest_questions(n = 1)
   report <- session$report(include_references = FALSE, reorganize = FALSE)
+  claims <- session$workspace$list_proposed_claims()
+  expect_gt(length(claims), 0L)
+  expect_identical(
+    unname(vapply(claims, \(claim) claim@session_id, character(1))),
+    rep(session$session_id, length(claims))
+  )
 
   event_data <- collector$data()
   session_events <- tempest_execution_events(session)
@@ -195,7 +201,11 @@ test_that("warmup failure emits failed expert and tool events", {
     progress = collector$record
   )
 
-  expect_error(session$warmup(verbose = FALSE), "warmup unavailable")
+  error <- expect_error(
+    session$warmup(verbose = FALSE),
+    class = "tempest_session_error"
+  )
+  expect_no_match(conditionMessage(error), "warmup unavailable", fixed = TRUE)
 
   tool_events <- collector$data(event_type = "tool", stage = "warmup")
   expect_equal(
@@ -203,7 +213,10 @@ test_that("warmup failure emits failed expert and tool events", {
     c("started", "failed")
   )
   expect_equal(tool_events[[2]]$parent_event_id, tool_events[[1]]$event_id)
-  expect_equal(tool_events[[2]]$payload$error_class, "simpleError")
+  expect_equal(
+    tool_events[[2]]$payload$error_class,
+    "tempest_operation_error"
+  )
 
   expert_events <- collector$data(event_type = "expert", stage = "warmup")
   expect_equal(
@@ -217,7 +230,7 @@ test_that("warmup failure emits failed expert and tool events", {
     status = "failed",
     stage = "warmup"
   )[[1]]
-  expect_equal(stage_failed$payload$error_class, "simpleError")
+  expect_equal(stage_failed$payload$error_class, "tempest_operation_error")
 })
 
 test_that("expert tools emit correlated progress events", {
@@ -291,7 +304,7 @@ test_that("expert tools emit correlated progress events", {
 
   claims <- store$list_proposed_claims()
   expect_length(claims, 1)
-  expect_equal(claims[[1]]@session_id, result$session_id)
+  expect_identical(claims[[1]]@session_id, mgr$run_id)
   expect_equal(claims[[1]]@expert_id, "expert.tool")
   expect_equal(claims[[1]]@retrieval_step_id, tool_events[[1]]$correlation_id)
   fact_events <- collector$data(event_type = "step", stage = "evidence")
@@ -371,7 +384,7 @@ test_that("expert tools reuse sessions and provenance", {
   expect_length(claims, 2)
   expect_equal(
     vapply(claims, function(claim) claim@session_id, character(1)),
-    rep(first$session_id, 2)
+    rep(mgr$run_id, 2)
   )
   expect_equal(
     vapply(claims, function(claim) claim@expert_id, character(1)),
@@ -381,10 +394,11 @@ test_that("expert tools reuse sessions and provenance", {
 
 test_that("expert tools emit failed progress events", {
   skip_if_not_installed("ellmer")
+  secret <- "Authorization: Bearer sk-live-secret"
   store <- test_research_workspace()
   collector <- tempest_progress_collector(include_payload = TRUE)
   failing_chat <- list(
-    chat = function(...) stop("expert unavailable"),
+    chat = function(...) stop(secret),
     register_tools = function(...) invisible(NULL)
   )
   cfg <- tempest_config(
@@ -408,15 +422,18 @@ test_that("expert tools emit failed progress events", {
   )
   tool <- tempest:::tempest_create_expert_delegation_tool(mgr, "Progress")
 
-  expect_error(
+  error <- expect_error(
     tool(
       expert_id = "expert.failure",
       question = "Will this fail?"
     ),
-    "expert unavailable"
+    class = "tempest_expert_session_error"
   )
+  expect_no_match(conditionMessage(error), "sk-live-secret", fixed = TRUE)
+  printed <- paste(capture.output(print(error)), collapse = "\n")
+  expect_no_match(printed, "sk-live-secret", fixed = TRUE)
 
   failed <- collector$data(event_type = "tool", status = "failed")[[1]]
   expect_equal(failed$payload$expert_name, "Dr. Failure")
-  expect_equal(failed$payload$error_class, "simpleError")
+  expect_equal(failed$payload$error_class, "tempest_operation_error")
 })

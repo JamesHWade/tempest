@@ -54,12 +54,69 @@ tempest_extract_citation_ids <- function(text) {
 }
 
 #' @keywords internal
+tempest_markdown_heading_text <- function(text) {
+  if (!rlang::is_string(text) || is.na(text)) {
+    tempest_deliverable_abort(
+      "Markdown heading extraction requires one string."
+    )
+  }
+  values <- tryCatch(
+    {
+      document <- xml2::read_html(
+        commonmark::markdown_html(text),
+        options = c("RECOVER", "NOERROR", "NOWARNING", "NONET")
+      )
+      headings <- xml2::xml_find_all(
+        document,
+        ".//h1 | .//h2 | .//h3 | .//h4 | .//h5 | .//h6"
+      )
+      vapply(
+        headings,
+        \(heading) xml2::xml_text(heading, trim = TRUE),
+        character(1)
+      )
+    },
+    error = function(error) {
+      tempest_deliverable_abort(
+        "Markdown headings could not be parsed safely.",
+        parent = error
+      )
+    }
+  )
+  values <- tempest_contract_normalize_display_text(values)
+  values <- stringi::stri_trim_both(values)
+  values <- values[nzchar(values)]
+  unique(values)
+}
+
+#' @keywords internal
+tempest_markdown_has_heading <- function(text, labels) {
+  heading_key <- function(value) {
+    value <- tempest_contract_normalize_display_text(value)
+    value <- stringi::stri_replace_all_regex(value, "\\p{White_Space}+", "")
+    tolower(value)
+  }
+  headings <- heading_key(tempest_markdown_heading_text(text))
+  labels <- heading_key(labels)
+  any(headings %in% labels)
+}
+
+#' @keywords internal
 tempest_normalize_min_support_score <- function(min_support_score) {
-  score <- suppressWarnings(as.numeric(min_support_score %||% 0.7))
-  if (length(score) != 1 || is.na(score) || score < 0 || score > 1) {
+  score <- min_support_score %||% 0.7
+  if (
+    !is.numeric(score) ||
+      is.object(score) ||
+      !is.null(names(score)) ||
+      length(score) != 1L ||
+      is.na(score) ||
+      !is.finite(score) ||
+      score < 0 ||
+      score > 1
+  ) {
     tempest_abort("min_support_score must be in [0, 1].")
   }
-  score
+  as.double(score)
 }
 
 #' @keywords internal
@@ -69,12 +126,17 @@ tempest_apply_min_support_score <- function(
   min_support_score = 0.7
 ) {
   score <- suppressWarnings(as.numeric(score))
-  if (length(score) != 1 || is.na(score)) {
+  if (length(score) != 1L) {
     return(status)
   }
   min_support_score <- tempest_normalize_min_support_score(min_support_score)
-  if (identical(status, "supported") && score < min_support_score) {
-    return("unsupported")
+  if (identical(status, "supported")) {
+    if (is.na(score) || !is.finite(score)) {
+      return("unverifiable")
+    }
+    if (score < min_support_score) {
+      return("unsupported")
+    }
   }
   status
 }
@@ -119,6 +181,119 @@ tempest_normalize_claim_match_text <- function(text) {
 }
 
 #' @keywords internal
+tempest_citation_shaped_tokens <- function(text) {
+  matches <- gregexpr("\\[S[^]\\r\\n]*\\]", text, perl = TRUE)
+  tokens <- regmatches(text, matches)
+  unname(unlist(tokens, use.names = FALSE))
+}
+
+#' @keywords internal
+tempest_citation_tokens_valid <- function(text) {
+  tokens <- tempest_citation_shaped_tokens(text)
+  length(tokens) == 0L ||
+    all(grepl(
+      "^\\[S[0-9a-f]{12}\\]$",
+      tokens,
+      perl = TRUE
+    ))
+}
+
+#' @keywords internal
+tempest_package_structural_headings <- function() {
+  c(
+    "Introduction",
+    "Overview",
+    "Background",
+    "Methods",
+    "Methodology",
+    "Results",
+    "Evidence",
+    "Discussion",
+    "Limitations",
+    "Recommendations",
+    "Conclusion",
+    "Conclusions",
+    "Summary"
+  )
+}
+
+#' @keywords internal
+tempest_markdown_structural_heading <- function(lines) {
+  headings <- grepl("^[[:space:]]*#{1,6}[[:space:]]", lines)
+  heading_text <- sub(
+    "^[[:space:]]*#{1,6}[[:space:]]+",
+    "",
+    lines
+  )
+  headings &
+    tolower(tempest_trim(heading_text)) %in%
+      tolower(tempest_package_structural_headings())
+}
+
+#' @keywords internal
+tempest_report_title_validate <- function(title) {
+  if (
+    !rlang::is_string(title) ||
+      is.na(title) ||
+      !nzchar(tempest_trim(title)) ||
+      grepl("\r", title, fixed = TRUE) ||
+      grepl("\n", title, fixed = TRUE)
+  ) {
+    tempest_deliverable_abort(
+      "Report title must be non-empty single-line plain text."
+    )
+  }
+  title
+}
+
+#' @keywords internal
+tempest_markdown_escape_plain_text <- function(value, field) {
+  if (is.null(value) || (rlang::is_string(value) && is.na(value))) {
+    return("")
+  }
+  if (
+    !rlang::is_string(value) ||
+      grepl("\r", value, fixed = TRUE) ||
+      grepl("\n", value, fixed = TRUE)
+  ) {
+    tempest_deliverable_abort(
+      "Markdown metadata {.field {field}} must be one single-line string."
+    )
+  }
+  value <- gsub("&", "&amp;", value, fixed = TRUE)
+  value <- gsub("<", "&lt;", value, fixed = TRUE)
+  value <- gsub(">", "&gt;", value, fixed = TRUE)
+  value <- gsub('"', "&quot;", value, fixed = TRUE)
+  value <- gsub("'", "&#39;", value, fixed = TRUE)
+  gsub("([\\\\`*_{}\\[\\]()#+.!|~-])", "\\\\\\1", value, perl = TRUE)
+}
+
+#' @keywords internal
+tempest_markdown_source_url <- function(value) {
+  if (is.null(value) || (rlang::is_string(value) && is.na(value))) {
+    return("")
+  }
+  invalid_bytes <- !rlang::is_string(value) ||
+    grepl("[[:cntrl:][:space:]<>]", value, perl = TRUE)
+  parsed <- if (invalid_bytes) {
+    NULL
+  } else {
+    tryCatch(curl::curl_parse_url(value), error = function(error) NULL)
+  }
+  if (
+    is.null(parsed) ||
+      !tolower(parsed$scheme %||% "") %in% c("http", "https") ||
+      !nzchar(parsed$host %||% "") ||
+      !identical(parsed$url, value)
+  ) {
+    tempest_deliverable_abort(
+      "Source locator cannot be rendered as one canonical safe HTTP URL."
+    )
+  }
+  paste0("<", value, ">")
+}
+
+#' @keywords internal
 tempest_claims_for_citation_context <- function(claims, context = NULL) {
   if (length(claims) == 0 || is.null(context) || !nzchar(context)) {
     return(claims)
@@ -135,7 +310,7 @@ tempest_claims_for_citation_context <- function(claims, context = NULL) {
   matches <- vapply(
     claim_texts,
     function(claim_text) {
-      nzchar(claim_text) && grepl(claim_text, context_text, fixed = TRUE)
+      nzchar(claim_text) && identical(claim_text, context_text)
     },
     logical(1)
   )
@@ -257,6 +432,183 @@ tempest_source_status <- function(
 }
 
 #' @keywords internal
+tempest_strict_publication_claims <- function(
+  text,
+  store,
+  min_support_score = 0.7
+) {
+  if (!tempest_citation_tokens_valid(text)) {
+    tempest_deliverable_abort(
+      "Strict publication contains a malformed source-citation token."
+    )
+  }
+  assertions <- tempest_strict_publication_assertions(text)
+  if (length(assertions) == 0L) {
+    if (nzchar(tempest_trim(text))) {
+      tempest_deliverable_abort(
+        "Strict publication found no publishable cited assertions."
+      )
+    }
+    return(invisible(character()))
+  }
+  audit <- store$citation_audit
+  if (is.null(audit)) {
+    tempest_deliverable_abort(
+      "Strict publication requires a completed citation audit."
+    )
+  }
+
+  required_claim_ids <- character()
+  all_claims <- store$list_proposed_claims()
+  for (assertion in assertions) {
+    matches <- tempest_citation_matches(assertion)
+    if (nrow(matches) == 0L) {
+      tempest_deliverable_abort(
+        "Every strict-publication assertion must carry a bound citation."
+      )
+    }
+    source_ids <- unique(matches$id)
+    for (source_id in source_ids) {
+      if (is.null(store$get_retrieved_source(source_id))) {
+        tempest_deliverable_abort(
+          "Strict publication cites unknown source id {.val {source_id}}."
+        )
+      }
+    }
+    assertion_text <- tempest_normalize_claim_match_text(assertion)
+    candidates <- Filter(
+      function(claim) {
+        identical(
+          tempest_normalize_claim_match_text(claim@claim_text),
+          assertion_text
+        ) &&
+          setequal(source_ids, claim@source_ids)
+      },
+      all_claims
+    )
+    if (length(candidates) != 1L) {
+      tempest_deliverable_abort(
+        paste0(
+          "Every strict-publication assertion must bind unambiguously to ",
+          "one exact proposed claim and only its cited sources."
+        )
+      )
+    }
+    required_claim_ids <- c(
+      required_claim_ids,
+      candidates[[1]]@claim_id
+    )
+  }
+
+  required_claim_ids <- unique(required_claim_ids)
+  for (claim_id in required_claim_ids) {
+    claim <- store$get_proposed_claim(claim_id)
+    if (
+      is.null(claim) ||
+        identical(claim@verification_status, "unverified")
+    ) {
+      tempest_deliverable_abort(
+        "Strict publication requires completed verification for claim {.val {claim_id}}."
+      )
+    }
+    if (!tempest_stage_claim_has_captured_evidence(claim, store)) {
+      tempest_deliverable_abort(
+        paste0(
+          "Strict publication claim {.val {claim_id}} has no exact captured ",
+          "source evidence."
+        )
+      )
+    }
+    if (
+      identical(claim@verification_status, "supported") &&
+        (is.na(claim@support_score) || !is.finite(claim@support_score))
+    ) {
+      tempest_deliverable_abort(
+        paste0(
+          "Strict publication cannot treat claim {.val {claim_id}} as ",
+          "supported without a finite support score."
+        )
+      )
+    }
+    audit_index <- match(claim_id, audit$claim_id)
+    if (is.na(audit_index)) {
+      tempest_deliverable_abort(
+        "Strict publication audit is missing claim {.val {claim_id}}."
+      )
+    }
+    audit_score <- audit$support_score[[audit_index]]
+    score_matches <- isTRUE(all.equal(
+      audit_score,
+      claim@support_score,
+      check.attributes = FALSE
+    ))
+    if (
+      !identical(
+        audit$verification_status[[audit_index]],
+        claim@verification_status
+      ) ||
+        !score_matches
+    ) {
+      tempest_deliverable_abort(
+        "Strict publication audit disagrees with claim {.val {claim_id}}."
+      )
+    }
+  }
+
+  invisible(required_claim_ids)
+}
+
+#' @keywords internal
+tempest_strict_publication_assertions <- function(text) {
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
+  lines <- lines[nzchar(tempest_trim(lines))]
+  structural <- tempest_markdown_structural_heading(lines)
+  references <- grepl(
+    "^[[:space:]]*\\[\\^S[0-9a-f]{12}\\]:",
+    lines
+  )
+  lines <- lines[!references & !structural]
+  if (length(lines) == 0L) {
+    return(character())
+  }
+  assertions <- unlist(
+    lapply(lines, \(line) strsplit(line, "(?<=[.!?])\\s+", perl = TRUE)[[1]]),
+    use.names = FALSE
+  )
+  assertions <- assertions[
+    nzchar(tempest_normalize_claim_match_text(assertions))
+  ]
+  unname(assertions)
+}
+
+#' @keywords internal
+tempest_report_body_validate_reserved_sections <- function(body) {
+  if (!rlang::is_string(body) || is.na(body)) {
+    tempest_deliverable_abort("Report body must be one Markdown string.")
+  }
+  reserved <- tempest_markdown_has_heading(
+    body,
+    c("References", "Execution review")
+  )
+  if (reserved) {
+    tempest_deliverable_abort(
+      "Report body cannot supply package-reserved Markdown sections."
+    )
+  }
+  supplied_source_footnote <- grepl(
+    "(^|\\n)[[:space:]]*\\[\\^[sS][^]\\r\\n]*\\][[:space:]]*:",
+    body,
+    perl = TRUE
+  )
+  if (supplied_source_footnote) {
+    tempest_deliverable_abort(
+      "Report body cannot supply package-reserved source footnotes."
+    )
+  }
+  invisible(body)
+}
+
+#' @keywords internal
 tempest_status_badge <- function(status) {
   if (length(status) != 1 || is.na(status)) {
     return("")
@@ -290,6 +642,11 @@ tempest_add_footnotes <- function(
   }
   min_support_score <- tempest_normalize_min_support_score(min_support_score)
   if (identical(citation_policy, "strict")) {
+    tempest_strict_publication_claims(
+      text,
+      store,
+      min_support_score = min_support_score
+    )
     text <- tempest_apply_strict_claim_action(
       text,
       store,
@@ -343,8 +700,11 @@ tempest_add_footnotes <- function(
     if (is.null(src)) {
       return(glue::glue("[^{id}]: (missing source metadata)"))
     }
-    title <- src$title %||% ""
-    url <- src$url %||% ""
+    title <- tempest_markdown_escape_plain_text(
+      src$title %||% "",
+      "source title"
+    )
+    url <- tempest_markdown_source_url(src$url %||% "")
     fetched <- src$fetched_at %||% ""
     badge <- if (verified) {
       tempest_status_badge(
@@ -356,6 +716,114 @@ tempest_add_footnotes <- function(
     glue::glue("[^{id}]: {title}. {url} (retrieved {fetched}).{badge}")
   })
   list(text = text2, footnotes = paste(notes, collapse = "\n"))
+}
+
+#' @keywords internal
+tempest_report_md_render <- function(
+  title,
+  body,
+  workspace,
+  citation_policy,
+  on_unsupported_claim,
+  min_support_score,
+  include_references = TRUE
+) {
+  if (inherits(workspace, "TempestRetriever")) {
+    workspace <- workspace$workspace
+  }
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg workspace} must be a ResearchWorkspace or TempestRetriever."
+    )
+  }
+  include_references <- tempest_workflow_flag(
+    include_references,
+    "include_references"
+  )
+  if (
+    !rlang::is_string(citation_policy) ||
+      !citation_policy %in%
+        c("none", "source_attributed", "claim_verified", "strict")
+  ) {
+    tempest_deliverable_abort(
+      "Citation policy is outside the closed report-rendering contract."
+    )
+  }
+  if (
+    !rlang::is_string(on_unsupported_claim) ||
+      !on_unsupported_claim %in%
+        c("flag", "drop", "revise", "keep_with_warning")
+  ) {
+    tempest_deliverable_abort(
+      "Unsupported-claim handling is outside the closed report contract."
+    )
+  }
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
+  title <- tempest_report_title_validate(title)
+  rendered_title <- tempest_markdown_escape_plain_text(title, "report title")
+  tempest_report_body_validate_reserved_sections(body)
+  if (
+    !isTRUE(include_references) &&
+      citation_policy %in% c("claim_verified", "strict")
+  ) {
+    required_claim_ids <- tempest_strict_publication_claims(
+      body,
+      workspace,
+      min_support_score = min_support_score
+    )
+    fully_supported <- vapply(
+      required_claim_ids,
+      function(claim_id) {
+        claim <- workspace$get_proposed_claim(claim_id)
+        !is.null(claim) &&
+          tempest_stage_claim_verified(
+            claim,
+            workspace,
+            min_support_score
+          )
+      },
+      logical(1)
+    )
+    if (any(!fully_supported)) {
+      tempest_deliverable_abort(
+        paste0(
+          "Verified citation policies can omit References only when every ",
+          "cited assertion binds to fully supported evidence."
+        )
+      )
+    }
+  }
+
+  res <- tempest_add_footnotes(
+    body,
+    workspace,
+    citation_policy = citation_policy,
+    on_unsupported_claim = on_unsupported_claim,
+    min_support_score = min_support_score
+  )
+  rendered_text <- if (isTRUE(include_references)) {
+    res$text
+  } else {
+    gsub(
+      "\\[\\^(S[0-9a-f]{12})\\]",
+      "[\\1]",
+      res$text,
+      perl = TRUE
+    )
+  }
+  if (isTRUE(include_references) && nzchar(res$footnotes)) {
+    return(paste0(
+      "# ",
+      rendered_title,
+      "\n\n",
+      rendered_text,
+      "\n\n",
+      "## References\n\n",
+      res$footnotes,
+      "\n"
+    ))
+  }
+  paste0("# ", rendered_title, "\n\n", rendered_text, "\n")
 }
 
 #' Assemble a Markdown report with footnotes
@@ -393,35 +861,142 @@ tempest_report_md <- function(
   on_unsupported_claim = "flag",
   min_support_score = 0.7
 ) {
-  if (inherits(workspace, "TempestRetriever")) {
-    workspace <- workspace$workspace
+  tempest_report_md_render(
+    title = title,
+    body = body,
+    workspace = workspace,
+    citation_policy = citation_policy,
+    on_unsupported_claim = on_unsupported_claim,
+    min_support_score = min_support_score,
+    include_references = TRUE
+  )
+}
+
+#' @keywords internal
+tempest_final_report_validate <- function(
+  report_md,
+  workspace,
+  title,
+  citation_policy,
+  on_unsupported_claim,
+  min_support_score,
+  stage_records = list()
+) {
+  if (!rlang::is_string(report_md) || is.na(report_md)) {
+    tempest_deliverable_abort("Final report must be one Markdown string.")
   }
+  title <- tempest_report_title_validate(title)
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
-      "{.arg workspace} must be a ResearchWorkspace or TempestRetriever."
+      "{.arg workspace} must be a ResearchWorkspace."
+    )
+  }
+  stage_records <- tempest_stage_records_validate(stage_records)
+  tempest_stage_records_validate_execution_review(
+    report_md,
+    stage_records,
+    trusted_title = title
+  )
+  review <- tempest_stage_records_execution_review(stage_records)
+  report_without_review <- report_md
+  if (nzchar(review)) {
+    # Canonical report renderings already end in one newline. Remove only the
+    # separator added before the review so the renderer-owned newline remains
+    # part of the report being revalidated.
+    suffix <- paste0("\n", review, "\n")
+    report_without_review <- substr(
+      report_md,
+      1L,
+      nchar(report_md) - nchar(suffix)
     )
   }
 
-  res <- tempest_add_footnotes(
-    body,
-    workspace,
-    citation_policy = citation_policy,
-    on_unsupported_claim = on_unsupported_claim,
-    min_support_score = min_support_score
+  prefix <- paste0(
+    "# ",
+    tempest_markdown_escape_plain_text(title, "report title"),
+    "\n\n"
   )
-  if (nzchar(res$footnotes)) {
-    return(paste0(
-      "# ",
-      title,
-      "\n\n",
-      res$text,
-      "\n\n",
-      "## References\n\n",
-      res$footnotes,
-      "\n"
-    ))
+  if (!startsWith(report_without_review, prefix)) {
+    tempest_deliverable_abort(
+      "Final report title does not match its authoritative product title."
+    )
   }
-  paste0("# ", title, "\n\n", res$text, "\n")
+  rendered_body <- substr(
+    report_without_review,
+    nchar(prefix) + 1L,
+    nchar(report_without_review)
+  )
+  references_marker <- "\n\n## References\n\n"
+  reference_positions <- gregexpr(
+    references_marker,
+    rendered_body,
+    fixed = TRUE
+  )[[1]]
+  reference_positions <- reference_positions[reference_positions != -1L]
+  without_references <- if (endsWith(rendered_body, "\n")) {
+    substr(rendered_body, 1L, nchar(rendered_body) - 1L)
+  } else {
+    rendered_body
+  }
+  candidates <- list(list(
+    body = without_references,
+    include_references = FALSE
+  ))
+  if (length(reference_positions) > 0L) {
+    candidates <- c(
+      candidates,
+      lapply(reference_positions, function(position) {
+        list(
+          body = if (position > 1L) {
+            substr(rendered_body, 1L, position - 1L)
+          } else {
+            ""
+          },
+          include_references = TRUE
+        )
+      })
+    )
+  }
+  canonical <- vapply(
+    candidates,
+    function(candidate) {
+      inline_body <- gsub(
+        paste0(
+          "\\[\\^(S[0-9a-f]{12})\\]",
+          paste0(
+            paste0(
+              "(?: \u2713| \u26a0| \u2717 unsupported| ",
+              "\u2717 contradicted| \\?)?"
+            ),
+            "(?: \\[unsupported citation\\])?"
+          )
+        ),
+        "[\\1]",
+        candidate$body,
+        perl = TRUE
+      )
+      expected <- tryCatch(
+        tempest_report_md_render(
+          title = title,
+          body = inline_body,
+          workspace = workspace,
+          citation_policy = citation_policy,
+          on_unsupported_claim = on_unsupported_claim,
+          min_support_score = min_support_score,
+          include_references = candidate$include_references
+        ),
+        error = function(...) NULL
+      )
+      identical(report_without_review, expected)
+    },
+    logical(1)
+  )
+  if (!any(canonical)) {
+    tempest_deliverable_abort(
+      "Final report is not the exact canonical rendering of its evidence."
+    )
+  }
+  invisible(report_md)
 }
 
 #' Assemble a Markdown report from a Co-STORM session

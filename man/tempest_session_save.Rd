@@ -22,11 +22,13 @@ Invisibly returns the normalized bundle directory.
 \details{
 \code{tempest_session_save()} writes a schema-versioned directory bundle for a
 \link{TempestSession}. The bundle stores the research manifest, authoritative
-workspace, optional immutable Graft snapshot, and narrow report product.
-Every declared file is checksummed, and the \code{session.json} manifest is
-written last. Generic workflow and artifact-catalog state, live chat handles,
-registered tool closures, Shiny reactive state, credentials, and raw provider
-request bodies are not serialized.
+workspace, explicit stage-record history, optional immutable Graft snapshot,
+and narrow report product. Every declared file is checksummed, and the
+\code{session.json} manifest is written last. Generic workflow and
+artifact-catalog state, live chat handles, registered tool closures, Shiny
+reactive state, credentials, and raw provider request bodies are not
+serialized. A stage attempt that is still running is written as cancelled
+without changing the live session.
 
 Use \code{\link[=tempest_session_resume]{tempest_session_resume()}} to load the bundle with a fresh runtime
 \link{TempestConfig}.

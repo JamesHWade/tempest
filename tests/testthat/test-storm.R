@@ -93,8 +93,8 @@ test_that("tempest_generate_experts returns validated profiles", {
     personas = list(list(
       name = "Dr. Scope",
       title = "Scope analyst",
-      affiliation = "",
-      background = "",
+      affiliation = "Independent",
+      background = "Studies reusable workflow boundaries.",
       focus_areas = "Boundaries",
       perspective = "Integration boundaries",
       initial_questions = "What belongs in the package?"
@@ -145,7 +145,8 @@ test_that("tempest_run uses the selected expert team", {
       topic,
       seed_context,
       n_experts,
-      module = NULL
+      module = NULL,
+      record_stage = function(record, output = NULL) invisible(record)
     ) {
       list(
         title = topic,
@@ -182,8 +183,9 @@ test_that("tempest_run uses the selected expert team", {
 test_that("tempest_run continues from fixed product state", {
   skip_if_not_installed("ellmer")
   fixture <- storm_progress_fixture()
+  requested_steps <- c("perspectives", "research", "outline", "write")
 
-  first <- tempest_run(
+  first <- tempest:::tempest_run_internal(
     "State continuation",
     config = fixture$config,
     retriever = fixture$retriever,
@@ -191,21 +193,23 @@ test_that("tempest_run continues from fixed product state", {
     max_questions_per_perspective = 1,
     program_set = tempest_program_set(),
     steps = c("perspectives", "research", "outline"),
+    .requested_steps = requested_steps,
     verbose = FALSE
   )
-  continued <- tempest_run(
+  continued <- tempest:::tempest_run_internal(
     "State continuation",
     config = fixture$config,
     retriever = fixture$retriever,
     experts = first$experts,
     program_set = tempest_program_set(),
     steps = "write",
+    .requested_steps = requested_steps,
     verbose = FALSE,
     .state = first$state
   )
 
   expect_identical(continued$state$outline, first$state$outline)
-  expect_match(continued$state$draft_md, "Section body cites events")
+  expect_match(continued$state$draft_md, "STORM progress emits stage events")
   expect_identical(
     continued$state$completed_stages,
     c("perspectives", "research", "outline", "write")
@@ -214,14 +218,68 @@ test_that("tempest_run continues from fixed product state", {
   expect_equal("artifacts" %in% names(continued$state), FALSE)
 })
 
+test_that("public partial STORM resumes cannot expand their request", {
+  skip_if_not_installed("ellmer")
+  fixture <- storm_progress_fixture()
+  output_root <- withr::local_tempdir()
+  run_id <- "public-partial-request"
+  program_set <- tempest_program_set()
+
+  first <- tempest_run(
+    "Public partial request",
+    config = fixture$config,
+    retriever = fixture$retriever,
+    n_experts = 1,
+    max_questions_per_perspective = 1,
+    program_set = program_set,
+    steps = "perspectives",
+    output_dir = output_root,
+    run_id = run_id,
+    verbose = FALSE
+  )
+  expect_identical(first$state$requested_steps, "perspectives")
+
+  resumed <- tempest_run(
+    "Public partial request",
+    config = fixture$config,
+    program_set = program_set,
+    steps = "perspectives",
+    output_dir = output_root,
+    resume = TRUE,
+    run_id = run_id,
+    verbose = FALSE
+  )
+  expect_identical(resumed$state$requested_steps, "perspectives")
+  expect_identical(resumed$state$completed_stages, "perspectives")
+
+  expect_error(
+    tempest_run(
+      "Public partial request",
+      config = fixture$config,
+      program_set = program_set,
+      steps = c("perspectives", "research"),
+      output_dir = output_root,
+      resume = TRUE,
+      run_id = run_id,
+      verbose = FALSE
+    ),
+    class = "tempest_run_resume_error"
+  )
+})
+
 test_that("tempest_run resume starts fresh when no manifest exists", {
-  loader_called <- FALSE
+  provider_started <- FALSE
+  loaded_before_provider <- FALSE
+  original_loader <- tempest:::tempest_load_run_artifacts
   local_mocked_bindings(
     tempest_load_run_artifacts = function(...) {
-      loader_called <<- TRUE
-      stop("unexpected loader call")
+      if (!provider_started) {
+        loaded_before_provider <<- TRUE
+      }
+      original_loader(...)
     },
     tempest_make_chat = function(...) {
+      provider_started <<- TRUE
       stop("continued with a fresh run")
     }
   )
@@ -234,9 +292,10 @@ test_that("tempest_run resume starts fresh when no manifest exists", {
       steps = "perspectives",
       verbose = FALSE
     ),
-    "continued with a fresh run"
+    class = "tempest_run_error"
   )
-  expect_identical(loader_called, FALSE)
+  expect_identical(provider_started, TRUE)
+  expect_identical(loaded_before_provider, FALSE)
 })
 
 test_that("tempest_run rejects a resumed checkpoint for another topic", {
@@ -352,34 +411,34 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     "Completed resume",
     run_id = "terminal-succeeded"
   )
-  state <- tempest:::tempest_storm_state(
-    "Completed resume",
-    draft_md = "# Completed resume",
-    report_md = "# Completed resume",
-    completed_stages = "polish"
-  )
   program_set <- tempest_program_set()
-  manifest <- tempest_research_manifest(
+  completed <- test_persistence_complete_storm_product(
+    "Completed resume",
     "terminal-succeeded",
-    config = cfg,
-    programs = tempest:::tempest_program_set_manifest_programs(program_set),
-    status = "succeeded"
+    cfg,
+    program_set
   )
   tempest:::tempest_save_run_artifacts(
     run_dir,
-    tempest_research_workspace(),
-    state,
-    manifest,
+    completed$workspace,
+    completed$state,
+    completed$manifest,
     program_set = program_set,
     config = cfg,
-    steps = "polish",
+    steps = c("perspectives", "research", "outline", "write", "polish"),
     research_strategy = "key_questions"
   )
+  expected_state <- tempest:::tempest_load_run_artifacts(
+    run_dir,
+    config = cfg,
+    program_set = program_set,
+    run_id = "terminal-succeeded"
+  )$state
 
   loaded <- tempest_run(
     "Completed resume",
     config = cfg,
-    steps = "polish",
+    steps = c("perspectives", "research", "outline", "write", "polish"),
     program_set = program_set,
     output_dir = output_root,
     resume = TRUE,
@@ -388,7 +447,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
   )
   expect_identical(loaded$manifest@status, "succeeded")
   expect_identical(loaded$manifest@research_run_id, "terminal-succeeded")
-  expect_identical(loaded$state, state)
+  expect_identical(loaded$state, expected_state)
 
   expect_error(
     tempest_run(
@@ -421,7 +480,20 @@ test_that("tempest_run emits ordered STORM progress events", {
       )
     },
     tempest_extract_toc_from_url = function(url) character(),
-    tempest_wiki_page_sections = function(title) character()
+    tempest_wiki_page_sections = function(title) character(),
+    tempest_semantic_filter_facts = function(
+      retriever,
+      query,
+      store,
+      max_items = 30,
+      min_support_score = 0.7
+    ) {
+      facts <- tempest:::tempest_supported_claims(
+        store,
+        min_support_score = min_support_score
+      )
+      utils::head(facts, max_items)
+    }
   )
 
   source <- fake_source(
@@ -477,22 +549,30 @@ test_that("tempest_run emits ordered STORM progress events", {
             outline,
             list(
               section_text = paste0(
-                "Section body cites events [",
+                "STORM progress emits stage events [",
                 source_id,
                 "]."
               )
             ),
             list(
               lead_section = paste0(
-                "Lead body cites events [",
+                "STORM progress emits stage events [",
                 source_id,
                 "]."
               )
             )
           ),
           text = list(
-            paste0("Section body cites events [", source_id, "]."),
-            paste0("Lead body cites events [", source_id, "].")
+            paste0(
+              "STORM progress emits stage events [",
+              source_id,
+              "]."
+            ),
+            paste0(
+              "STORM progress emits stage events [",
+              source_id,
+              "]."
+            )
           )
         ))
       }
@@ -533,8 +613,8 @@ test_that("tempest_run emits ordered STORM progress events", {
             personas = list(list(
               name = "Dr. Flow",
               title = "Workflow analyst",
-              affiliation = "",
-              background = "",
+              affiliation = "Independent",
+              background = "Studies workflow progress reporting.",
               focus_areas = c("Progress"),
               perspective = "Workflow progress",
               initial_questions = c("How should progress be reported?")
@@ -770,6 +850,7 @@ test_that("STORM research does not downgrade dsprrr contract failures", {
 
 test_that("tempest_run emits a failed verification stage event", {
   skip_if_not_installed("ellmer")
+  verification_called <- FALSE
   local_mocked_bindings(
     tempest_wiki_search = function(query, limit = 8L) {
       tibble::tibble(
@@ -781,6 +862,7 @@ test_that("tempest_run emits a failed verification stage event", {
     tempest_extract_toc_from_url = function(url) character(),
     tempest_wiki_page_sections = function(title) character(),
     tempest_run_verification = function(...) {
+      verification_called <<- TRUE
       stop("verification module unavailable")
     }
   )
@@ -800,8 +882,9 @@ test_that("tempest_run emits a failed verification stage event", {
       progress = collector$record,
       verbose = FALSE
     ),
-    "verification module unavailable"
+    class = "tempest_run_error"
   )
+  expect_identical(verification_called, TRUE)
 
   labels <- vapply(
     collector$data(),
@@ -871,6 +954,34 @@ test_that("tempest_run emits terminal progress events on failure", {
   expect_equal("write" %in% unlist(persisted$completed_stages), FALSE)
 })
 
+test_that("tempest_run propagates progress callback failures", {
+  skip_if_not_installed("ellmer")
+  fixture <- storm_progress_fixture()
+  calls <- 0L
+  callback <- function(event) {
+    calls <<- calls + 1L
+    if (calls >= 2L) {
+      stop("progress consumer failed")
+    }
+    invisible(event)
+  }
+
+  expect_error(
+    tempest_run(
+      "Progress callback failure",
+      config = fixture$config,
+      retriever = fixture$retriever,
+      n_experts = 1,
+      steps = "perspectives",
+      program_set = tempest_program_set(),
+      progress = callback,
+      verbose = FALSE
+    ),
+    class = "tempest_progress_callback_error"
+  )
+  expect_gte(calls, 2L)
+})
+
 test_that("final STORM persistence failure is recorded without masking it", {
   skip_if_not_installed("ellmer")
   fixture <- storm_progress_fixture()
@@ -920,8 +1031,63 @@ test_that("final STORM persistence failure is recorded without masking it", {
     "run_config.json"
   ))
 
-  expect_s3_class(condition, "test_terminal_persistence_error")
-  expect_identical(conditionMessage(condition), "Final persistence failed.")
+  expect_s3_class(condition, "tempest_run_error")
+  expect_identical(conditionMessage(condition), "The operation failed.")
   expect_identical(persisted$research_manifest$status, "failed")
   expect_contains(unlist(persisted$completed_stages), "polish")
+})
+
+test_that("STORM appends and persists a safe execution review after polish", {
+  artifact_id <- paste0("sha256:", strrep("a", 64L))
+  running <- tempest:::tempest_stage_record_start(
+    "query_decomposition",
+    artifact_id,
+    attempt_id = "attempt-review",
+    started_at = "2026-08-16T01:00:00Z"
+  )
+  record <- tempest:::tempest_stage_record_succeed(
+    running,
+    tempest:::tempest_stage_content_reference(list(queries = "topic")),
+    support_status = "unknown",
+    fallback_taken = TRUE,
+    primary_error = simpleError("provider unavailable"),
+    completed_at = "2026-08-16T01:00:01Z"
+  )
+  config <- tempest_config()
+  deliverable <- tempest:::tempest_storm_report_spec(
+    "Reviewed report",
+    config
+  )
+  catalog <- tempest_artifact_catalog(deliverables = list(deliverable))
+  artifact <- tempest_artifact(
+    deliverable,
+    content = "# Reviewed report\n\nPolished body.",
+    artifact_id = "report_md",
+    producer_operation_id = "tempest.renderer.markdown_report",
+    status = "valid"
+  )
+  catalog$add(artifact)
+
+  reviewed <- tempest:::tempest_storm_report_with_execution_review(
+    artifact,
+    list(record),
+    catalog
+  )
+
+  expect_match(reviewed@content, "## Execution review", fixed = TRUE)
+  expect_match(reviewed@content, "attempt-review", fixed = TRUE)
+  expect_match(
+    reviewed@content,
+    "tempest::fallback/query-decomposition/original-question@1",
+    fixed = TRUE
+  )
+  expect_identical(catalog$get("report_md")@content, reviewed@content)
+  expect_identical(
+    reviewed@checksum,
+    tempest:::tempest_artifact_content_checksum(
+      reviewed@content,
+      reviewed@storage_ref,
+      reviewed@media_type
+    )
+  )
 })

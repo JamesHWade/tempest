@@ -75,7 +75,8 @@ claim-write provenance.}
   extract_claims_program = NULL,
   workspace = NULL,
   progress = NULL,
-  run_id = NULL
+  run_id = NULL,
+  stage_recorder = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -94,6 +95,8 @@ execution. Required when \code{extractor} is supplied.}
       \item{\code{workspace}}{Optional \link{ResearchWorkspace} for extracted facts.}
       \item{\code{progress}}{Optional progress callback.}
       \item{\code{run_id}}{Shared Co-STORM session id for progress events.}
+      \item{\code{stage_recorder}}{Optional callback accepting a stage record and its
+evaluated output.}
     }
     \if{html}{\out{</div>}}
   }
@@ -157,7 +160,9 @@ execution. Required when \code{extractor} is supplied.}
       \item{\code{response}}{Character string response from expert.}
       \item{\code{turn}}{Optional ellmer turn to inspect for provider-native sources.}
       \item{\code{source_ids}}{Optional source ids already harvested for the turn.}
-      \item{\code{session_id}}{Optional expert session id.}
+      \item{\code{session_id}}{Optional manager-owned expert session id. This is
+delegation metadata only; extracted claims use the manager's exact
+research run id.}
       \item{\code{expert_id}}{Optional stable expert id.}
       \item{\code{correlation_id}}{Optional progress correlation id for the turn.}
     }

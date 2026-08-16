@@ -28,6 +28,22 @@ tempest_abort <- function(message, ..., .envir = rlang::caller_env()) {
   cli::cli_abort(message, ..., .envir = .envir, call = rlang::caller_env())
 }
 
+tempest_rethrow_operation <- function(error, class = character()) {
+  package_error <- inherits(error, "tempest_error")
+  parent <- tryCatch(error$parent %||% NULL, error = function(...) NULL)
+  sensitive <- tempest_contract_sensitive_scalar(c(
+    conditionMessage(error),
+    class(error)
+  ))
+  if (package_error && is.null(parent) && !sensitive) {
+    stop(error)
+  }
+  tempest_abort(
+    "The operation failed.",
+    class = unique(c(class, "tempest_operation_error", "tempest_error"))
+  )
+}
+
 #' Inform user with a formatted message
 #'
 #' Wrapper around [cli::cli_inform()] for consistent messaging.
@@ -57,7 +73,7 @@ tempest_warn <- function(message, ..., .envir = rlang::caller_env()) {
 #' @return Character string with UTC timestamp.
 #' @keywords internal
 tempest_now_utc <- function() {
-  format(Sys.time(), tz = "UTC", usetz = TRUE)
+  format(Sys.time(), "%Y-%m-%dT%H:%M:%OS6Z", tz = "UTC")
 }
 
 #' Trim whitespace from strings

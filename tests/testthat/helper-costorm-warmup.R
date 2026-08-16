@@ -5,6 +5,13 @@ fake_costorm_warmup_session <- function(
   extractor_async = NULL,
   mindmap_async = NULL
 ) {
+  local_mocked_bindings(
+    tempest_session_programs = function(session) session$programs,
+    tempest_session_stage_recorder = function(session) {
+      tempest:::tempest_stage_record_discard
+    },
+    .env = parent.frame()
+  )
   store <- fake_store_with_sources(1)
   source_id <- store$list_retrieved_sources()[[1]]$id
   if (is.null(experts)) {
@@ -126,6 +133,7 @@ fake_costorm_warmup_session <- function(
   session <- new.env(parent = emptyenv())
   class(session) <- "TempestSession"
   session$session_id <- "warmup-session"
+  session$programs <- test_program_executions(run_id = session$session_id)
   session$topic <- "Test topic"
   session$experts <- experts
   session$expert_session_manager <- manager

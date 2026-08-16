@@ -20,6 +20,7 @@ Depends:
     R (>= 4.1.0)
 Imports:
     cli,
+    commonmark,
     curl,
     DBI,
     digest,
@@ -36,10 +37,10 @@ Imports:
     S7,
     stringi,
     tibble,
+    xml2,
     yaml
 Suggests:
     bslib (>= 0.6.0),
-    commonmark,
     coro,
     deputy,
     dplyr,
@@ -60,7 +61,6 @@ Suggests:
     visNetwork,
     vitals,
     withr,
-    xml2,
     zip
 Remotes:
     JamesHWade/deputy@89089c90ddeb668462422b14a4de7a8395eefdc8,
@@ -96,6 +96,7 @@ Collate:
     'research-manifest.R'
     'ecosystem-contracts.R'
     'program-set.R'
+    'stage-record.R'
     'operation-registry.R'
     'package-lifecycle.R'
     'progress-events.R'

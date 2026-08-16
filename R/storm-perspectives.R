@@ -49,7 +49,46 @@ tempest_generate_experts <- function(
     n = n,
     config = config,
     verbose = verbose,
-    module = module
+    module = module,
+    record_stage = function(record, output = NULL) invisible(record)
+  )
+}
+
+#' @keywords internal
+tempest_persona_requirements <- function(requirements = NULL) {
+  if (is.null(requirements)) {
+    return(paste(
+      "- Each persona should have a distinct professional background",
+      "- Personas should complement each other, covering different angles",
+      paste0(
+        "- Include a mix of academic, industry, and practitioner ",
+        "perspectives where appropriate"
+      ),
+      "- Each persona's focus areas should be specific and non-overlapping",
+      "- Initial questions should reflect their unique expertise and concerns",
+      sep = "\n"
+    ))
+  }
+  tempest_config_string(requirements, "requirements")
+}
+
+#' @keywords internal
+tempest_personas_ellmer_fallback <- function(chat, inputs, context) {
+  prompt <- paste0(
+    "Topic: ",
+    inputs$topic,
+    "\n\nGenerate exactly ",
+    inputs$n_experts,
+    " diverse expert personas who would research this topic.\n\n",
+    "Requirements:\n",
+    inputs$requirements,
+    "\n"
+  )
+  chat$chat_structured(
+    prompt,
+    type = tempest_type_personas(),
+    echo = "none",
+    convert = FALSE
   )
 }
 
@@ -59,7 +98,9 @@ tempest_generate_experts_with_program <- function(
   n,
   config,
   verbose,
-  module
+  module,
+  requirements = NULL,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
   tempest_require("ellmer", "Expert generation requires ellmer.")
   topic <- tempest_config_string(topic, "topic")
@@ -77,52 +118,26 @@ tempest_generate_experts_with_program <- function(
     echo = "none"
   )
 
-  prompt <- paste0(
-    "Topic: ",
-    topic,
-    "\n\n",
-    "Generate exactly ",
-    n,
-    " diverse expert personas who would research this topic.\n\n",
-    "Requirements:\n",
-    "- Each persona should have a distinct professional background\n",
-    "- Personas should complement each other, covering different angles\n",
-    "- Include a mix of academic, industry, and practitioner perspectives where appropriate\n",
-    "- Each persona's focus areas should be specific and non-overlapping\n",
-    "- Initial questions should reflect their unique expertise and concerns\n"
-  )
+  requirements <- tempest_persona_requirements(requirements)
 
   if (verbose) {
     tempest_inform("Generating {n} expert profiles for: {.val {topic}}")
   }
 
-  result <- tempest_run_dsprrr_module(
+  result <- tempest_execute_stage(
     module,
     chat,
     inputs = list(
       topic = topic,
       n_experts = n,
-      requirements = paste(
-        "- Each persona should have a distinct professional background",
-        "- Personas should complement each other, covering different angles",
-        "- Include a mix of academic, industry, and practitioner perspectives where appropriate",
-        "- Each persona's focus areas should be specific and non-overlapping",
-        "- Initial questions should reflect their unique expertise and concerns",
-        sep = "\n"
-      )
+      requirements = requirements
     ),
-    step = "expert generation"
+    context = list(n_experts = n),
+    record_stage = function(record, output = NULL) {
+      record_stage(record, output)
+    }
   )
-  if (is.null(result)) {
-    result <- chat$chat_structured(
-      prompt,
-      type = tempest_type_personas(),
-      echo = "none",
-      convert = FALSE
-    )
-  }
-
-  experts <- tempest_normalize_experts(result, n = n)
+  experts <- tempest_validate_experts(result$output)
 
   if (verbose) {
     for (expert in experts) {
@@ -139,7 +154,9 @@ tempest_generate_experts_async <- function(
   topic,
   n = 3,
   config = tempest_config(),
-  program
+  program,
+  requirements = NULL,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
   tempest_require("ellmer", "Expert generation requires ellmer.")
   tempest_require("promises", "Async expert generation requires promises.")
@@ -156,46 +173,28 @@ tempest_generate_experts_async <- function(
     system_prompt = tempest_prompt("persona_generator_system"),
     echo = "none"
   )
-  prompt <- paste0(
-    "Topic: ",
-    topic,
-    "\n\nGenerate exactly ",
-    n,
-    " diverse expert personas who would research this topic.\n\n",
-    "Requirements:\n",
-    "- Each persona should have a distinct professional background\n",
-    "- Personas should complement each other, covering different angles\n",
-    "- Include a mix of academic, industry, and practitioner perspectives where appropriate\n",
-    "- Each persona's focus areas should be specific and non-overlapping\n",
-    "- Initial questions should reflect their unique expertise and concerns\n"
-  )
-  request <- tempest_run_dsprrr_module_async(
+  requirements <- tempest_persona_requirements(requirements)
+  request <- tempest_execute_stage_async(
     program,
     chat,
     inputs = list(
       topic = topic,
       n_experts = n,
-      requirements = paste(
-        "- Each persona should have a distinct professional background",
-        "- Personas should complement each other, covering different angles",
-        "- Include a mix of academic, industry, and practitioner perspectives where appropriate",
-        "- Each persona's focus areas should be specific and non-overlapping",
-        "- Initial questions should reflect their unique expertise and concerns",
-        sep = "\n"
-      )
+      requirements = requirements
     ),
-    step = "expert generation"
+    context = list(n_experts = n),
+    record_stage = function(record, output = NULL) {
+      record_stage(record, output)
+    }
   )
-  if (is.null(request)) {
-    request <- chat$chat_structured_async(
-      prompt,
-      type = tempest_type_personas(),
-      echo = "none",
-      convert = FALSE
+  promises::then(request, function(stage_result) {
+    structure(
+      list(
+        experts = tempest_validate_experts(stage_result$output),
+        record = stage_result$record
+      ),
+      class = "tempest_persona_stage_result"
     )
-  }
-  promises::then(request, function(result) {
-    tempest_normalize_experts(result, n = n)
   })
 }
 
@@ -229,33 +228,25 @@ tempest_format_persona_details <- function(persona) {
 
 #' Render Expert System Prompt for a Persona
 #'
-#' @param persona A persona object, or NULL for a generic expert.
-#' @param expert_id Fallback expert ID if no persona provided.
+#' @param persona A validated expert profile.
+#' @param expert_id Expert ID used in the rendered prompt.
 #' @return A rendered system prompt string.
 #' @keywords internal
-tempest_render_expert_prompt <- function(persona = NULL, expert_id = 1) {
-  if (
-    !is.null(persona) &&
-      S7::S7_inherits(persona, TempestExpertProfile)
-  ) {
-    persona <- tempest_expert_runtime_record(persona)
-  }
-  if (is.null(persona)) {
-    # Fallback to generic expert
-    tempest_prompt_render(
-      "expert_system",
-      persona_name = paste("Expert", expert_id),
-      persona_title = "Research Specialist",
-      persona_details = ""
-    )
-  } else {
-    tempest_prompt_render(
-      "expert_system",
-      persona_name = persona$name %||% paste("Expert", expert_id),
-      persona_title = persona$title %||% "Research Specialist",
-      persona_details = tempest_format_persona_details(persona)
+tempest_render_expert_prompt <- function(persona, expert_id = NULL) {
+  if (!S7::S7_inherits(persona, TempestExpertProfile)) {
+    tempest_abort(
+      "{.arg persona} must be a validated Tempest expert profile.",
+      class = "tempest_config_error"
     )
   }
+  persona <- tempest_expert_runtime_record(persona)
+  expert_id <- expert_id %||% persona$expert_id
+  tempest_prompt_render(
+    "expert_system",
+    persona_name = persona$name,
+    persona_title = persona$title,
+    persona_details = tempest_format_persona_details(persona)
+  )
 }
 
 #' @keywords internal
@@ -264,9 +255,10 @@ tempest_generate_perspectives <- function(
   topic,
   seed_context,
   n_experts,
-  module = NULL
+  module,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
-  module_result <- tempest_run_dsprrr_module(
+  stage_result <- tempest_execute_stage(
     module,
     chat,
     inputs = list(
@@ -274,78 +266,121 @@ tempest_generate_perspectives <- function(
       seed_context = seed_context,
       n_experts = n_experts
     ),
-    step = "perspective generation"
+    context = list(topic = topic, n_experts = n_experts),
+    record_stage = function(record, output = NULL) {
+      record_stage(record, output)
+    }
   )
-  if (!is.null(module_result)) {
-    return(tempest_normalize_perspectives(
-      module_result,
-      topic,
-      n_experts = n_experts
-    ))
-  }
-
-  prompt <- paste0(
-    "You are planning a comprehensive research report.\n",
-    "Topic: ",
-    topic,
-    "\n\n",
-    seed_context,
-    "\n\n",
-    "Propose exactly ",
-    n_experts,
-    " distinct perspectives to cover the topic. Each perspective should have 3-6 research questions.\n",
-    "Return structured data."
-  )
-  plan <- chat$chat_structured(
-    prompt,
-    type = tempest_type_perspectives(),
-    echo = "none",
-    convert = FALSE
-  )
-  tempest_normalize_perspectives(plan, topic, n_experts = n_experts)
+  stage_result$output
 }
 
 #' @keywords internal
-tempest_generated_expert_scalar <- function(value, default) {
-  if (is.null(value) || length(value) == 0L) {
-    return(default)
-  }
-  value <- as.character(value[[1]])
-  if (length(value) != 1L || is.na(value)) {
-    return(default)
+tempest_stage_string <- function(value, field, allow_empty = FALSE) {
+  if (
+    !is.character(value) ||
+      is.object(value) ||
+      !is.null(names(value)) ||
+      length(value) != 1L ||
+      is.na(value)
+  ) {
+    tempest_abort(
+      "Stage output field {.field {field}} must be a plain scalar string.",
+      class = "tempest_stage_output_error"
+    )
   }
   value <- tempest_trim(value)
-  if (!nzchar(value)) default else value
+  if (!isTRUE(allow_empty) && !nzchar(value)) {
+    tempest_abort(
+      "Stage output field {.field {field}} must not be empty.",
+      class = "tempest_stage_output_error"
+    )
+  }
+  value
+}
+
+#' @keywords internal
+tempest_stage_string_array <- function(
+  value,
+  field,
+  allow_empty = FALSE
+) {
+  valid_scalar <- function(item) {
+    is.character(item) &&
+      !is.object(item) &&
+      is.null(names(item)) &&
+      length(item) == 1L &&
+      !is.na(item)
+  }
+  if (is.list(value) && !is.data.frame(value) && is.null(names(value))) {
+    if (!all(vapply(value, valid_scalar, logical(1)))) {
+      value <- NULL
+    } else {
+      value <- vapply(value, identity, character(1))
+      names(value) <- NULL
+    }
+  }
+  if (
+    is.null(value) ||
+      !is.character(value) ||
+      is.object(value) ||
+      !is.null(names(value)) ||
+      anyNA(value)
+  ) {
+    tempest_abort(
+      paste0(
+        "Stage output field {.field {field}} must be a flat unnamed array ",
+        "of strings."
+      ),
+      class = "tempest_stage_output_error"
+    )
+  }
+  value <- tempest_trim(value)
+  if (any(!nzchar(value)) || (!isTRUE(allow_empty) && length(value) == 0L)) {
+    tempest_abort(
+      "Stage output field {.field {field}} must contain non-empty strings.",
+      class = "tempest_stage_output_error"
+    )
+  }
+  value
+}
+
+#' @keywords internal
+tempest_generated_expert_scalar <- function(value, field, allow_empty = FALSE) {
+  tempest_stage_string(value, field, allow_empty = allow_empty)
 }
 
 #' @keywords internal
 tempest_generated_expert_profile <- function(value, index) {
-  name <- tempest_generated_expert_scalar(value$name, "Expert")
-  title <- tempest_generated_expert_scalar(
-    value$title,
-    "Research Specialist"
+  if (!is.list(value) || is.data.frame(value)) {
+    tempest_abort(
+      "Generated persona entries must be records.",
+      class = "tempest_stage_output_error"
+    )
+  }
+  name <- tempest_generated_expert_scalar(value$name, "name")
+  title <- tempest_generated_expert_scalar(value$title, "title")
+  affiliation <- tempest_generated_expert_scalar(
+    value$affiliation,
+    "affiliation",
+    allow_empty = TRUE
   )
-  affiliation <- tempest_generated_expert_scalar(value$affiliation, "")
-  background <- tempest_generated_expert_scalar(value$background, "")
-  focus_areas <- tempest_as_character_vector(
-    value$focus_areas %||% character()
+  background <- tempest_generated_expert_scalar(
+    value$background,
+    "background",
+    allow_empty = TRUE
   )
+  focus_areas <- tempest_stage_string_array(value$focus_areas, "focus_areas")
   description <- tempest_generated_expert_scalar(
     value$perspective,
-    tempest_generated_expert_scalar(
-      value$description,
-      if (nzchar(background)) background else "General research perspective"
-    )
+    "perspective"
   )
-  instructions <- tempest_generated_expert_scalar(
-    value$instructions,
-    paste0("Research the topic from this perspective: ", description)
+  instructions <- paste0(
+    "Research the topic from this perspective: ",
+    description
   )
-  initial_questions <- tempest_as_character_vector(
-    value$initial_questions %||% character()
-  )
-  initial_work_items <- tempest_as_character_vector(
-    value$initial_work_items %||% character()
+  initial_questions <- tempest_stage_string_array(
+    value$initial_questions,
+    "initial_questions"
   )
   normalized <- list(
     name = name,
@@ -356,7 +391,7 @@ tempest_generated_expert_profile <- function(value, index) {
     description = description,
     instructions = instructions,
     initial_questions = initial_questions,
-    initial_work_items = initial_work_items
+    initial_work_items = character()
   )
   metadata <- list()
   if (nzchar(affiliation)) {
@@ -384,43 +419,37 @@ tempest_generated_expert_profile <- function(value, index) {
       origin = "tempest.generated",
       position = as.integer(index)
     ),
-    initial_work_items = initial_work_items,
+    initial_work_items = character(),
     initial_questions = initial_questions,
     metadata = metadata
   )
 }
 
 #' @keywords internal
-tempest_fallback_expert_profile <- function(index) {
-  tempest_expert(
-    expert_id = paste0("expert.fallback-", as.integer(index)),
-    name = paste("Expert", as.integer(index)),
-    title = "Research Specialist",
-    description = "General evidence-backed research perspective.",
-    instructions = paste(
-      "Inspect evidence, distinguish inference from sourced claims,",
-      "and preserve uncertainty."
-    ),
-    required_capability_ids = c(
-      "tempest.research.web",
-      "tempest.evidence.read",
-      "tempest.evidence.write"
-    ),
-    optional_capability_ids = "tempest.retrieval.semantic"
-  )
-}
-
-#' @keywords internal
 tempest_normalize_experts <- function(x, n = NULL) {
-  values <- if (is.list(x) && !is.null(x$personas)) x$personas else x
-  if (is.null(values) || length(values) == 0 || !is.list(values)) {
-    return(list())
+  if (!is.list(x) || is.data.frame(x) || is.null(x$personas)) {
+    tempest_abort(
+      "Persona stage output must be a record containing {.field personas}.",
+      class = "tempest_stage_output_error"
+    )
   }
-  if (is.data.frame(values)) {
-    values <- split(values, seq_len(nrow(values)))
+  values <- x$personas
+  if (
+    !is.list(values) ||
+      is.data.frame(values) ||
+      !is.null(names(values)) ||
+      length(values) == 0L
+  ) {
+    tempest_abort(
+      "Persona stage field {.field personas} must be a non-empty unnamed list.",
+      class = "tempest_stage_output_error"
+    )
   }
-  if (!is.null(n) && length(values) > n) {
-    values <- values[seq_len(n)]
+  if (!is.null(n) && !identical(length(values), as.integer(n))) {
+    tempest_abort(
+      "Persona stage output must contain exactly {as.integer(n)} personas.",
+      class = "tempest_stage_output_error"
+    )
   }
   purrr::map2(
     values,
@@ -431,33 +460,62 @@ tempest_normalize_experts <- function(x, n = NULL) {
 
 #' @keywords internal
 tempest_normalize_perspectives <- function(x, topic, n_experts = NULL) {
-  perspectives <- if (is.list(x) && !is.null(x$perspectives)) {
-    x$perspectives
-  } else {
-    list()
+  if (!is.list(x) || is.data.frame(x)) {
+    tempest_abort(
+      "Perspective stage output must be a record.",
+      class = "tempest_stage_output_error"
+    )
   }
-  if (is.data.frame(perspectives)) {
-    perspectives <- split(perspectives, seq_len(nrow(perspectives)))
-  }
-  if (!is.list(perspectives) || length(perspectives) == 0) {
-    perspectives <- list(list(
-      name = "Overview",
-      description = "General overview",
-      key_questions = topic
-    ))
+  title <- tempest_generated_expert_scalar(x$title, "title")
+  perspectives <- x$perspectives
+  if (
+    !is.list(perspectives) ||
+      is.data.frame(perspectives) ||
+      !is.null(names(perspectives)) ||
+      length(perspectives) == 0L
+  ) {
+    tempest_abort(
+      paste0(
+        "Perspective stage output must contain a non-empty ",
+        "{.field perspectives} list."
+      ),
+      class = "tempest_stage_output_error"
+    )
   }
   perspectives <- purrr::map(perspectives, function(p) {
+    if (!is.list(p) || is.data.frame(p)) {
+      tempest_abort(
+        "Perspective entries must be records.",
+        class = "tempest_stage_output_error"
+      )
+    }
+    key_questions <- tempest_stage_string_array(
+      p$key_questions,
+      "key_questions"
+    )
     list(
-      name = p$name %||% "Perspective",
-      description = p$description %||% "",
-      key_questions = tempest_as_character_vector(p$key_questions %||% topic)
+      name = tempest_generated_expert_scalar(p$name, "name"),
+      description = tempest_generated_expert_scalar(
+        p$description,
+        "description"
+      ),
+      key_questions = key_questions
     )
   })
-  if (!is.null(n_experts) && length(perspectives) > n_experts) {
-    perspectives <- perspectives[seq_len(n_experts)]
+  if (
+    !is.null(n_experts) &&
+      !identical(length(perspectives), as.integer(n_experts))
+  ) {
+    tempest_abort(
+      paste0(
+        "Perspective stage output must contain exactly ",
+        "{as.integer(n_experts)} perspectives."
+      ),
+      class = "tempest_stage_output_error"
+    )
   }
   list(
-    title = if (is.list(x)) x$title %||% topic else topic,
+    title = title,
     perspectives = perspectives
   )
 }

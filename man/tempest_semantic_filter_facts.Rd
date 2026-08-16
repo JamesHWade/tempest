@@ -4,7 +4,13 @@
 \alias{tempest_semantic_filter_facts}
 \title{Semantic fact retrieval}
 \usage{
-tempest_semantic_filter_facts(retriever, query, store, max_items = 30)
+tempest_semantic_filter_facts(
+  retriever,
+  query,
+  store,
+  max_items = 30,
+  min_support_score = 0.7
+)
 }
 \arguments{
 \item{retriever}{A \code{TempestRetriever} object.}

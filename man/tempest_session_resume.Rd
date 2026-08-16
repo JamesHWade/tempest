@@ -23,8 +23,8 @@ objects.}
 
 \item{partial_recovery}{Whether to allow explicitly requested recovery when
 allowlisted presentation files are missing or fail integrity checks. All
-other declared files, including expert, workspace, report, and Graft
-snapshot state, must pass integrity checks.}
+other declared files, including stage-record, expert, workspace, report,
+and Graft snapshot state, must pass integrity checks.}
 
 \item{program_set}{A \link{TempestProgramSet} carrying the same program
 identities recorded in the bundle. If \code{NULL}, the builtin set is used.}
@@ -37,4 +37,6 @@ A restored \link{TempestSession}.
 \code{\link[=tempest_session_save]{tempest_session_save()}} and rebuilds a \link{TempestSession} with a fresh runtime
 \link{TempestConfig}. Historical progress events are
 loaded for display and reduction, but they are not replayed into \code{progress}.
+Stage-record history is restored for audit, but running attempts are rejected
+rather than resumed.
 }

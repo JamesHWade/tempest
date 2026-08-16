@@ -24,7 +24,7 @@ test_that("ResearchWorkspace links evidence spans and verifies claims", {
   ))
   sid <- store$add_evidence_span(tempest_evidence_span(
     source_id = source_id,
-    quote = "q"
+    quote = "Body text"
   ))
   store$link_evidence_to_proposed_claim(cid, sid)
   expect_equal(store$get_proposed_claim(cid)@evidence_span_ids, sid)

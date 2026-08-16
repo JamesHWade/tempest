@@ -4,7 +4,7 @@
       tempest_research_workspace(base_snapshot_id = character())
     Condition
       Error in `tempest_research_workspace_abort()`:
-      ! `base_snapshot_id` must be `NULL` or a single non-empty string.
+      ! `base_snapshot_id` must be `NULL` or a bounded credential-free identifier.
 
 ---
 
@@ -12,7 +12,7 @@
       tempest_research_workspace(base_snapshot_id = " ")
     Condition
       Error in `tempest_research_workspace_abort()`:
-      ! `base_snapshot_id` must be `NULL` or a single non-empty string.
+      ! `base_snapshot_id` must be `NULL` or a bounded credential-free identifier.
 
 ---
 

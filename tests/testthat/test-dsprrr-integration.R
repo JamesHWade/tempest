@@ -19,37 +19,36 @@ test_that("tempest_make_dsprrr_modules creates modules", {
     )
   )
 })
-test_that("tempest_run_dsprrr_module ignores missing module", {
-  result <- tempest:::tempest_run_dsprrr_module(
-    module = NULL,
-    chat = NULL,
-    inputs = list(question = "What changed?", topic = "Topic"),
-    step = "test"
+test_that("tempest_run_dsprrr_module rejects a missing bound module", {
+  expect_error(
+    tempest:::tempest_run_dsprrr_module(
+      module = NULL,
+      chat = NULL,
+      inputs = list(question = "What changed?", topic = "Topic"),
+      step = "query_decomposition"
+    ),
+    class = "tempest_ecosystem_contract_error"
   )
-  expect_null(result)
 })
 
-test_that("dsprrr query output normalizes to bounded character queries", {
+test_that("dsprrr query output requires flat strings and bounds queries", {
   result <- tempest:::tempest_normalize_query_decomposition(
     list(
-      queries = list(
-        " alpha ",
-        "beta",
-        "alpha",
-        "",
-        NA_character_,
-        "gamma",
-        "delta",
-        "epsilon"
-      )
+      queries = list(" alpha ", "beta", "gamma", "delta", "epsilon")
     ),
-    fallback = "fallback"
+    max_queries = 4
   )
 
   expect_equal(result$queries, c("alpha", "beta", "gamma", "delta"))
+  expect_error(
+    tempest:::tempest_normalize_query_decomposition(
+      list(queries = list("valid", 2))
+    ),
+    class = "tempest_stage_output_error"
+  )
 })
 
-test_that("perspective output normalizes and falls back", {
+test_that("perspective output requires the exact requested batch", {
   result <- tempest:::tempest_normalize_perspectives(
     list(
       title = "Research title",
@@ -63,55 +62,59 @@ test_that("perspective output normalizes and falls back", {
       )
     ),
     topic = "Topic",
-    n_experts = 1
+    n_experts = 2
   )
 
   expect_equal(result$title, "Research title")
-  expect_equal(length(result$perspectives), 1)
+  expect_equal(length(result$perspectives), 2)
   expect_equal(result$perspectives[[1]]$key_questions, c("Q1", "Q2"))
 
-  fallback <- tempest:::tempest_normalize_perspectives(NULL, topic = "Topic")
-  expect_equal(fallback$perspectives[[1]]$name, "Overview")
+  expect_error(
+    tempest:::tempest_normalize_perspectives(NULL, topic = "Topic"),
+    class = "tempest_stage_output_error"
+  )
 })
 
 test_that("outline output normalizes nested subsections", {
   outline <- tempest:::tempest_normalize_outline(
     list(
-      title = c("Title", "Extra"),
+      title = "Title",
       sections = list(
         list(
-          title = c("Section", "Variant"),
-          summary = c("Summary", "More detail"),
+          title = "Section",
+          summary = "Summary",
           subsections = list(
             list(
-              title = c("Subsection", "Variant"),
+              title = "Subsection",
               bullets = list("A", "B"),
               needed = list("C")
             )
           )
         )
       )
-    ),
-    fallback_title = "Fallback"
+    )
   )
 
-  expect_equal(outline$title, "Title Extra")
-  expect_equal(outline$sections[[1]]$title, "Section Variant")
-  expect_equal(outline$sections[[1]]$summary, "Summary More detail")
+  expect_equal(outline$title, "Title")
+  expect_equal(outline$sections[[1]]$title, "Section")
+  expect_equal(outline$sections[[1]]$summary, "Summary")
   expect_equal(
     outline$sections[[1]]$subsections[[1]]$title,
-    "Subsection Variant"
+    "Subsection"
   )
   expect_equal(outline$sections[[1]]$subsections[[1]]$bullets, c("A", "B"))
   expect_equal(outline$sections[[1]]$subsections[[1]]$needed, "C")
 })
 
-test_that("fact output normalizes source_ids shorthand", {
+test_that("fact output requires exact source records", {
   facts <- tempest:::tempest_normalize_fact_output(list(
     facts = list(
       list(
         claim = "Claim",
-        source_ids = c("Sabc", "Sdef"),
+        sources = list(
+          list(source_id = "Sabc"),
+          list(source_id = "Sdef")
+        ),
         confidence = "high",
         support_score = 0.84
       )
@@ -126,16 +129,24 @@ test_that("fact output normalizes source_ids shorthand", {
   )
 })
 
-test_that("fact output clamps invalid support scores and leaves missing explicit", {
+test_that("fact output rejects invalid scores and leaves missing explicit", {
+  expect_error(
+    tempest:::tempest_normalize_fact_output(list(
+      facts = list(list(
+        claim = "High",
+        sources = list(list(source_id = "Sabc")),
+        score = 2
+      ))
+    )),
+    class = "purrr_error_indexed"
+  )
   facts <- tempest:::tempest_normalize_fact_output(list(
-    facts = list(
-      list(claim = "High", source_ids = "Sabc", score = 2),
-      list(claim = "Missing", source_ids = "Sdef")
-    )
+    facts = list(list(
+      claim = "Missing",
+      sources = list(list(source_id = "Sdef"))
+    ))
   ))
-
-  expect_equal(facts[[1]]$support_score, 1)
-  expect_equal(facts[[2]]$support_score, NA_real_)
+  expect_equal(facts[[1]]$support_score, NA_real_)
 })
 
 test_that("builtin ProgramSets expose the exact portable stage contract", {

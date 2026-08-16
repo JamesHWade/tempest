@@ -128,6 +128,7 @@ tempest_program_set_default_evaluators <- function() {
 
 tempest_program_set_evaluators <- function(value) {
   stages <- tempest_program_set_stages()
+  expected <- tempest_program_set_default_evaluators()
   if (is.null(value)) {
     return(tempest_program_set_default_evaluators())
   }
@@ -156,7 +157,7 @@ tempest_program_set_evaluators <- function(value) {
             )
           )
         }
-        list(
+        evaluator <- list(
           evaluator_id = tempest_program_set_string(
             evaluator$evaluator_id,
             paste0("evaluators$", stage, "$evaluator_id")
@@ -166,6 +167,18 @@ tempest_program_set_evaluators <- function(value) {
             paste0("evaluators$", stage, "$evaluator_version")
           )
         )
+        if (!identical(evaluator, expected[[stage]])) {
+          tempest_program_set_abort(
+            paste0(
+              "{.arg evaluators$",
+              stage,
+              "} must identify the exact builtin ",
+              "Tempest evaluator pair."
+            ),
+            class = "tempest_program_set_evaluator_error"
+          )
+        }
+        evaluator
       }
     ),
     stages
@@ -323,6 +336,16 @@ tempest_program_set_validate_entries <- function(entries, require_all = TRUE) {
   }
   if (require_all) {
     entries <- entries[stages]
+  }
+  expected <- tempest_program_set_default_evaluators()
+  for (stage in names(entries)) {
+    actual <- entries[[stage]][c("evaluator_id", "evaluator_version")]
+    if (!identical(actual, expected[[stage]])) {
+      tempest_program_set_abort(
+        "ProgramSet stage {.val {stage}} references an unknown evaluator pair.",
+        class = "tempest_program_set_evaluator_error"
+      )
+    }
   }
   entries
 }

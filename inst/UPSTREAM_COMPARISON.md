@@ -24,7 +24,10 @@ through `ellmer`, and a Shiny UI backed by `shinychat`.
 The largest implementation gap was not missing prompts; it was that dsprrr was
 advertised as a structured-program layer but the scripted STORM pipeline still
 called `ellmer::chat_structured()` directly for most structured steps. This pass
-adds real dsprrr modules with explicit output schemas and safe ellmer fallbacks.
+routes every fixed typed stage through a closed executor with exact ProgramSet,
+evaluator, trace, output-schema, and fallback-policy identities. Malformed output
+fails before product mutation, and callers cannot inject an anonymous provider
+downgrade in place of a package-owned policy fallback.
 
 ## Upstream STORM capabilities
 
@@ -58,8 +61,8 @@ Implemented or already present:
 - Expert personas and persona-specific expert prompts.
 - Query decomposition, fact extraction, next-question selection, outline
   drafting/refinement, section writing, and lead generation.
-- dsprrr-backed modules for the structured STORM steps above, all guarded by
-  fallback to direct ellmer calls.
+- dsprrr-backed modules for the structured STORM steps above, with exact
+  evaluators and only the package-owned fallback allowed by each stage policy.
 - Explicit dsprrr compilation through `tempest_compile_programs()`, with
   closed `TempestProgramSet` save/load bundles for exact reuse in
   `tempest_run()` and Co-STORM.

@@ -21,7 +21,7 @@ test_that("tempest_run_async returns before background work completes", {
   expect_equal(tempest_run_cancel(run), FALSE)
 })
 
-test_that("tempest_run_async preserves classed worker errors", {
+test_that("tempest_run_async redacts classed worker errors", {
   skip_if_not_installed("promises")
   skip_if_not_installed("mirai")
   skip_if_not_installed("later")
@@ -32,8 +32,13 @@ test_that("tempest_run_async preserves classed worker errors", {
 
   settled <- await_tempest_promise(tempest_run_async("Failure topic"))
 
-  expect_s3_class(settled$error, "tempest_test_worker_error")
-  expect_match(conditionMessage(settled$error), "worker failed", fixed = TRUE)
+  expect_s3_class(settled$error, "tempest_async_error")
+  expect_identical(conditionMessage(settled$error), "The operation failed.")
+  expect_no_match(
+    conditionMessage(settled$error),
+    "worker failed",
+    fixed = TRUE
+  )
 })
 
 test_that("tempest_run_cancel stops unresolved workers", {
