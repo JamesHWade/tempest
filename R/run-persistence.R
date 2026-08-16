@@ -2195,6 +2195,32 @@ tempest_session_snapshot <- function(session) {
       )
     }
   )
+  tryCatch(
+    {
+      live_programs <- tempest_program_set_manifest_programs(
+        tempest_session_program_set(session)
+      )
+      if (
+        !tempest_program_set_identity_equal(
+          live_programs,
+          research_manifest@programs
+        )
+      ) {
+        tempest_ecosystem_contract_abort(
+          "The live Co-STORM ProgramSet does not match its research manifest."
+        )
+      }
+    },
+    error = function(error) {
+      tempest_abort(
+        "Cannot snapshot an inconsistent Co-STORM ProgramSet.",
+        class = tempest_session_persistence_error_class(
+          "tempest_session_snapshot_error"
+        ),
+        parent = error
+      )
+    }
+  )
   workspace <- tempest_research_workspace_snapshot(session$workspace)
   suggested_questions <- tempest_session_suggested_questions(
     session$artifacts[["suggested_questions"]] %||% character()
@@ -2423,19 +2449,23 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #'   tools.
 #' @param progress Optional callback for future `tempest_progress_event`
 #'   objects.
+#' @param program_set A [TempestProgramSet] carrying the same program
+#'   identities recorded in the snapshot. If `NULL`, the builtin set is used.
 #' @return A restored [TempestSession].
 #' @export
 tempest_session_restore <- function(
   snapshot,
   config = tempest_config(),
-  progress = NULL
+  progress = NULL,
+  program_set = NULL
 ) {
   tempest_session_restore_internal(
     snapshot = snapshot,
     config = config,
     runtime = tempest_runtime(),
     connection_permissions = NULL,
-    progress = progress
+    progress = progress,
+    program_set = program_set
   )
 }
 
@@ -2445,7 +2475,8 @@ tempest_session_restore_internal <- function(
   config = tempest_config(),
   runtime = tempest_runtime(),
   connection_permissions = NULL,
-  progress = NULL
+  progress = NULL,
+  program_set = NULL
 ) {
   if (!is.list(snapshot)) {
     tempest_session_restore_abort("{.arg snapshot} must be a list.")
@@ -2564,13 +2595,27 @@ tempest_session_restore_internal <- function(
       )
     }
   )
+  program_set <- program_set %||% tempest_program_set()
   tryCatch(
-    tempest_costorm_manifest_validate(
-      research_manifest,
-      snapshot$session_id,
-      config,
-      workspace
-    ),
+    {
+      tempest_costorm_manifest_validate(
+        research_manifest,
+        snapshot$session_id,
+        config,
+        workspace
+      )
+      declared_programs <- tempest_program_set_manifest_programs(program_set)
+      if (
+        !tempest_program_set_identity_equal(
+          declared_programs,
+          research_manifest@programs
+        )
+      ) {
+        tempest_ecosystem_contract_abort(
+          "The supplied ProgramSet does not match the Co-STORM manifest."
+        )
+      }
+    },
     error = function(error) {
       tempest_session_restore_abort(
         paste0(
@@ -2609,6 +2654,7 @@ tempest_session_restore_internal <- function(
     retriever = retriever,
     progress = NULL,
     session_id = snapshot$session_id,
+    program_set = program_set,
     manifest = research_manifest
   )
 
@@ -3489,13 +3535,16 @@ tempest_session_bundle_validate_manifest <- function(
 #'   allowlisted presentation files are missing or fail integrity checks. All
 #'   other declared files, including expert, workspace, report, and Graft
 #'   snapshot state, must pass integrity checks.
+#' @param program_set A [TempestProgramSet] carrying the same program
+#'   identities recorded in the bundle. If `NULL`, the builtin set is used.
 #' @return A restored [TempestSession].
 #' @export
 tempest_session_resume <- function(
   path,
   config = tempest_config(),
   progress = NULL,
-  partial_recovery = FALSE
+  partial_recovery = FALSE,
+  program_set = NULL
 ) {
   tempest_session_resume_internal(
     path = path,
@@ -3503,7 +3552,8 @@ tempest_session_resume <- function(
     runtime = tempest_runtime(),
     connection_permissions = NULL,
     progress = progress,
-    partial_recovery = partial_recovery
+    partial_recovery = partial_recovery,
+    program_set = program_set
   )
 }
 
@@ -3514,7 +3564,8 @@ tempest_session_resume_internal <- function(
   runtime = tempest_runtime(),
   connection_permissions = NULL,
   progress = NULL,
-  partial_recovery = FALSE
+  partial_recovery = FALSE,
+  program_set = NULL
 ) {
   previous_partial <- getOption("tempest.session_partial_recovery")
   options(tempest.session_partial_recovery = isTRUE(partial_recovery))
@@ -3674,7 +3725,8 @@ tempest_session_resume_internal <- function(
     config = config,
     runtime = runtime,
     connection_permissions = connection_permissions,
-    progress = progress
+    progress = progress,
+    program_set = program_set
   )
 }
 
@@ -4421,6 +4473,129 @@ tempest_storm_run_restore_abort <- function(message, parent = NULL) {
 }
 
 #' @keywords internal
+tempest_storm_program_set_abort <- function(message, action, parent = NULL) {
+  class <- if (identical(action, "restore")) {
+    tempest_persistence_error_class("tempest_run_restore_error")
+  } else {
+    tempest_persistence_error_class("tempest_run_persistence_error")
+  }
+  tempest_abort(
+    message,
+    class = class,
+    parent = parent,
+    .envir = rlang::caller_env()
+  )
+}
+
+#' @keywords internal
+tempest_storm_program_set_validate <- function(
+  program_set,
+  research_manifest,
+  action = c("save", "restore")
+) {
+  action <- match.arg(action)
+  if (!S7::S7_inherits(research_manifest, TempestResearchManifest)) {
+    tempest_storm_program_set_abort(
+      "The STORM research manifest is invalid.",
+      action
+    )
+  }
+  if (
+    is.null(program_set) ||
+      !S7::S7_inherits(program_set, TempestProgramSet)
+  ) {
+    tempest_storm_program_set_abort(
+      paste0(
+        "Current STORM bundles require an explicit complete ",
+        "TempestProgramSet."
+      ),
+      action
+    )
+  }
+  declared <- tryCatch(
+    tempest_research_manifest_programs(
+      tempest_program_set_entries(program_set)
+    ),
+    error = function(error) {
+      tempest_storm_program_set_abort(
+        "The supplied STORM ProgramSet is invalid.",
+        action,
+        parent = error
+      )
+    }
+  )
+  required_stages <- tempest_program_set_stages()
+  if (
+    length(declared) == 0L ||
+      !setequal(names(declared), required_stages) ||
+      length(research_manifest@programs) == 0L ||
+      !setequal(names(research_manifest@programs), required_stages)
+  ) {
+    tempest_storm_program_set_abort(
+      "Current STORM bundles require every exact ProgramSet stage.",
+      action
+    )
+  }
+  programs <- tryCatch(
+    tempest_program_set_programs(program_set),
+    error = function(error) {
+      tempest_storm_program_set_abort(
+        "The supplied STORM ProgramSet cannot resolve its programs.",
+        action,
+        parent = error
+      )
+    }
+  )
+  same_identity <- tryCatch(
+    tempest_program_set_identity_equal(declared, research_manifest@programs),
+    error = function(error) {
+      tempest_storm_program_set_abort(
+        "The STORM ProgramSet references are malformed.",
+        action,
+        parent = error
+      )
+    }
+  )
+  if (!isTRUE(same_identity)) {
+    tempest_storm_program_set_abort(
+      paste0(
+        "The supplied STORM ProgramSet identity does not match the ",
+        "persisted research manifest."
+      ),
+      action
+    )
+  }
+  for (stage in required_stages) {
+    actual_id <- tryCatch(
+      dsprrr::program_artifact_id(programs[[stage]]),
+      error = function(error) {
+        tempest_storm_program_set_abort(
+          "The STORM program for stage {.val {stage}} is corrupt.",
+          action,
+          parent = error
+        )
+      }
+    )
+    if (
+      !identical(actual_id, declared[[stage]]$program_artifact_id) ||
+        !identical(
+          actual_id,
+          research_manifest@programs[[stage]]$program_artifact_id
+        )
+    ) {
+      tempest_storm_program_set_abort(
+        paste0(
+          "The recomputed dsprrr identity for STORM stage ",
+          "{.val {stage}} does not match its declared program artifact."
+        ),
+        action
+      )
+    }
+  }
+  program_set
+}
+
+#' @keywords internal
 tempest_storm_restore_workspace <- function(
   metadata,
   config,
@@ -4604,6 +4779,7 @@ tempest_storm_restore_manifest <- function(
   workspace,
   state,
   config,
+  program_set,
   run_dir,
   run_id = NULL
 ) {
@@ -4662,6 +4838,11 @@ tempest_storm_restore_manifest <- function(
         parent = error
       )
     }
+  )
+  tempest_storm_program_set_validate(
+    program_set,
+    manifest,
+    action = "restore"
   )
   manifest
 }
@@ -4752,6 +4933,7 @@ tempest_load_run_artifacts <- function(
   run_dir,
   workspace = NULL,
   config = tempest_config(),
+  program_set = NULL,
   run_id = NULL
 ) {
   supplied_workspace <- workspace
@@ -4858,6 +5040,7 @@ tempest_load_run_artifacts <- function(
     workspace,
     state,
     config,
+    program_set,
     run_dir,
     run_id = run_id
   )
@@ -4871,6 +5054,7 @@ tempest_load_run_artifacts <- function(
     metadata = metadata,
     completed_stages = state$completed_stages,
     research_manifest = research_manifest,
+    program_set = program_set,
     state = state,
     workspace = workspace
   )
@@ -4882,6 +5066,7 @@ tempest_save_run_artifacts <- function(
   workspace,
   state,
   research_manifest,
+  program_set = NULL,
   config,
   steps,
   research_strategy,
@@ -4903,6 +5088,11 @@ tempest_save_run_artifacts <- function(
   if (!identical(research_manifest@mode, "storm")) {
     tempest_abort("{.arg research_manifest} must describe a STORM run.")
   }
+  tempest_storm_program_set_validate(
+    program_set,
+    research_manifest,
+    action = "save"
+  )
   if (
     identical(research_manifest@status, "succeeded") &&
       !tempest_storm_state_is_complete(state)

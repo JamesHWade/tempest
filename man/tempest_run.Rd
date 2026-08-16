@@ -15,7 +15,7 @@ tempest_run(
   max_questions_per_perspective = 3,
   parallel_research = FALSE,
   parallel_writing = FALSE,
-  dsprrr_modules = NULL,
+  program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
@@ -55,8 +55,8 @@ the mirai package. Requires mirai to be installed. Default \code{FALSE}.}
 \item{parallel_writing}{If \code{TRUE}, write report sections in parallel using
 the mirai package. Failed parallel sections are retried sequentially.}
 
-\item{dsprrr_modules}{Optional named list of dsprrr modules, typically from
-\code{\link[=tempest_optimize_dsprrr_modules]{tempest_optimize_dsprrr_modules()}}. If \code{NULL}, fresh modules are created.}
+\item{program_set}{A \link{TempestProgramSet} containing the exact dsprrr programs
+used by STORM. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates the default set.}
 
 \item{steps}{Character vector controlling which steps to run. Defaults to all.}
 

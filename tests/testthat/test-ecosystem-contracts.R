@@ -5,16 +5,19 @@ test_that("dsprrr identity enters the manifest and execution metadata", {
     program,
     registry = list(forward = forward)
   )
-  programs <- list(extract_claims = program)
+  program_set <- test_program_set_from_program(
+    program,
+    registry = list(forward = forward)
+  )
   manifest <- tempest_research_manifest(
     research_run_id = "research-contract",
     mode = "storm",
     config = tempest_config(),
-    programs = tempest:::tempest_program_references(programs),
+    programs = tempest:::tempest_program_set_manifest_programs(program_set),
     knowledge_snapshot = list(snapshot_id = "snapshot-contract")
   )
 
-  programs <- tempest:::tempest_bind_dsprrr_trace_context(programs, manifest)
+  programs <- tempest:::tempest_bind_program_set(program_set, manifest)
   execution <- tempest:::tempest_run_dsprrr_module_structured(
     programs$extract_claims,
     chat = NULL,
@@ -52,14 +55,17 @@ test_that("dsprrr execution fails closed on a bound identity mismatch", {
   forward <- function(text, ...) list(answer = text)
   program <- dsprrr::module_fn("text -> answer", forward)
   dsprrr::program_artifact_id(program, registry = list(forward = forward))
-  programs <- list(extract_claims = program)
+  program_set <- test_program_set_from_program(
+    program,
+    registry = list(forward = forward)
+  )
   manifest <- tempest_research_manifest(
     research_run_id = "research-tampered-program",
     mode = "storm",
     config = tempest_config(),
-    programs = tempest:::tempest_program_references(programs)
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
-  programs <- tempest:::tempest_bind_dsprrr_trace_context(programs, manifest)
+  programs <- tempest:::tempest_bind_program_set(program_set, manifest)
   programs$extract_claims$program_artifact_id <- paste0(
     "sha256:",
     strrep("0", 64L)
@@ -72,7 +78,51 @@ test_that("dsprrr execution fails closed on a bound identity mismatch", {
       inputs = list(text = "supported"),
       step = "claim extraction"
     ),
-    class = "tempest_ecosystem_contract_error"
+    class = "tempest_program_set_verification_error"
+  )
+})
+
+test_that("dsprrr execution rejects tampered structured metadata", {
+  forward <- function(text, ...) list(answer = text)
+  program_set <- test_program_set_from_program(
+    dsprrr::module_fn("text -> answer", forward),
+    registry = list(forward = forward)
+  )
+  manifest <- tempest_research_manifest(
+    research_run_id = "research-tampered-metadata",
+    mode = "storm",
+    config = tempest_config(),
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  program <- tempest:::tempest_bind_program_set(
+    program_set,
+    manifest
+  )$extract_claims
+  local_mocked_bindings(
+    tempest_dsprrr_run = function(...) {
+      structure(
+        list(
+          output = list(answer = "supported"),
+          chat = NULL,
+          metadata = list(
+            program_artifact_id = paste0("sha256:", strrep("0", 64L)),
+            trace_context = program$trace_context
+          )
+        ),
+        class = "dsprrr_result"
+      )
+    }
+  )
+
+  expect_error(
+    tempest:::tempest_run_dsprrr_module(
+      program,
+      chat = NULL,
+      inputs = list(text = "supported"),
+      step = "claim extraction"
+    ),
+    class = "tempest_ecosystem_contract_error",
+    regexp = "bound program artifact"
   )
 })
 
@@ -83,8 +133,12 @@ test_that("dsprrr bindings are isolated per invocation", {
     program,
     registry = list(forward = forward)
   )
-  program_reference <- list(
-    stage = list(program_artifact_id = program_artifact_id)
+  program_set <- test_program_set_from_program(
+    program,
+    registry = list(forward = forward)
+  )
+  program_reference <- tempest:::tempest_program_set_manifest_programs(
+    program_set
   )
   manifest_a <- tempest_research_manifest(
     research_run_id = "research-binding-a",
@@ -101,42 +155,36 @@ test_that("dsprrr bindings are isolated per invocation", {
     knowledge_snapshot = list(snapshot_id = "snapshot-b")
   )
 
-  binding_a <- tempest:::tempest_bind_dsprrr_trace_context(
-    list(stage = program),
-    manifest_a
-  )
-  binding_b <- tempest:::tempest_bind_dsprrr_trace_context(
-    list(stage = program),
-    manifest_b
-  )
+  binding_a <- tempest:::tempest_bind_program_set(program_set, manifest_a)
+  binding_b <- tempest:::tempest_bind_program_set(program_set, manifest_b)
   result_a <- tempest:::tempest_run_dsprrr_module_structured(
-    binding_a$stage,
+    binding_a$extract_claims,
     chat = NULL,
     inputs = list(text = "a"),
     step = "binding a"
   )
   result_b <- tempest:::tempest_run_dsprrr_module_structured(
-    binding_b$stage,
+    binding_b$extract_claims,
     chat = NULL,
     inputs = list(text = "b"),
     step = "binding b"
   )
 
   expect_identical(
-    binding_a$stage$trace_context$research_run_id,
+    binding_a$extract_claims$trace_context$research_run_id,
     "research-binding-a"
   )
   expect_identical(
-    binding_b$stage$trace_context$research_run_id,
+    binding_b$extract_claims$trace_context$research_run_id,
     "research-binding-b"
   )
   expect_identical(
     result_a$metadata$trace_context,
-    binding_a$stage$trace_context
+    binding_a$extract_claims$trace_context
   )
   expect_identical(
     result_b$metadata$trace_context,
-    binding_b$stage$trace_context
+    binding_b$extract_claims$trace_context
   )
   expect_identical(
     result_a$metadata$program_artifact_id,
@@ -153,17 +201,20 @@ test_that("dsprrr bindings are isolated per invocation", {
 test_that("dsprrr trace-context contract errors do not trigger fallback", {
   forward <- function(text, ...) list(answer = text)
   program <- dsprrr::module_fn("text -> answer", forward)
-  dsprrr::program_artifact_id(program, registry = list(forward = forward))
+  program_set <- test_program_set_from_program(
+    program,
+    registry = list(forward = forward)
+  )
   manifest <- tempest_research_manifest(
     research_run_id = "research-invalid-context",
     mode = "storm",
     config = tempest_config(),
-    programs = tempest:::tempest_program_references(list(stage = program))
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
-  execution <- tempest:::tempest_bind_dsprrr_trace_context(
-    list(stage = program),
+  execution <- tempest:::tempest_bind_program_set(
+    program_set,
     manifest
-  )$stage
+  )$extract_claims
   execution$trace_context$program_artifact_id <- execution$program_artifact_id
 
   expect_error(
@@ -178,12 +229,14 @@ test_that("dsprrr trace-context contract errors do not trigger fallback", {
 })
 
 test_that("Deputy context is canonical and contains no runtime objects", {
+  program_reference <- test_program_reference("extract_claims")
+  program_artifact_id <- program_reference$program_artifact_id
   manifest <- tempest_research_manifest(
     research_run_id = "research-context",
     mode = "costorm",
     config = tempest_config(),
     programs = list(
-      extract_claims = list(program_artifact_id = "sha256:program")
+      extract_claims = program_reference
     ),
     knowledge_snapshot = list(snapshot_id = "sha256:snapshot")
   )
@@ -192,7 +245,7 @@ test_that("Deputy context is canonical and contains no runtime objects", {
     manifest,
     stage = "expert_research",
     role = "expert",
-    program_artifact_id = "sha256:program"
+    program_artifact_id = program_artifact_id
   )
 
   expect_identical(
@@ -201,7 +254,7 @@ test_that("Deputy context is canonical and contains no runtime objects", {
       knowledge_snapshot_id = "sha256:snapshot",
       mode = "costorm",
       product = "tempest",
-      program_artifact_id = "sha256:program",
+      program_artifact_id = program_artifact_id,
       research_run_id = "research-context",
       role = "expert",
       stage = "expert_research"
@@ -212,16 +265,20 @@ test_that("Deputy context is canonical and contains no runtime objects", {
 })
 
 test_that("Deputy context binds program identity to the manifest", {
+  program_artifact_id <- paste0("sha256:", strrep("a", 64L))
+  unrecorded_program_artifact_id <- paste0("sha256:", strrep("b", 64L))
   manifest <- tempest_research_manifest(
     research_run_id = "research-context-program",
     mode = "costorm",
     config = tempest_config(),
     programs = list(
-      evidence_review = list(
-        program_artifact_id = "sha256:manifest-program"
+      evidence_review = test_program_reference(
+        "evidence_review",
+        program_artifact_id
       ),
-      evidence_summary = list(
-        program_artifact_id = "sha256:manifest-program"
+      evidence_summary = test_program_reference(
+        "evidence_summary",
+        program_artifact_id
       )
     )
   )
@@ -230,11 +287,11 @@ test_that("Deputy context binds program identity to the manifest", {
     manifest,
     stage = "evidence_review",
     role = "moderator",
-    program_artifact_id = "sha256:manifest-program"
+    program_artifact_id = program_artifact_id
   )
   expect_identical(
     context$program_artifact_id,
-    "sha256:manifest-program"
+    program_artifact_id
   )
 
   mismatch <- expect_error(
@@ -242,7 +299,7 @@ test_that("Deputy context binds program identity to the manifest", {
       manifest,
       stage = "evidence_review",
       role = "moderator",
-      program_artifact_id = "sha256:unrecorded-program"
+      program_artifact_id = unrecorded_program_artifact_id
     ),
     class = "tempest_ecosystem_contract_error"
   )
@@ -258,7 +315,7 @@ test_that("Deputy context binds program identity to the manifest", {
       empty_manifest,
       stage = "evidence_review",
       role = "moderator",
-      program_artifact_id = "sha256:unrecorded-program"
+      program_artifact_id = unrecorded_program_artifact_id
     ),
     class = "tempest_ecosystem_contract_error"
   )
@@ -317,10 +374,12 @@ test_that("Graft snapshots retain their immutable restoration boundary", {
       simplifyVector = FALSE
     )
   )
+  program_set <- tempest_program_set()
   manifest <- tempest_research_manifest(
     research_run_id = "research-graft-contract",
     mode = "storm",
     config = config,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set),
     knowledge_snapshot = reference
   )
   manifest_json <- tempest_research_manifest_canonical_json(
@@ -336,6 +395,7 @@ test_that("Graft snapshots retain their immutable restoration boundary", {
     workspace,
     tempest:::tempest_storm_state("Graft contract"),
     manifest,
+    program_set = program_set,
     config = config,
     steps = "research",
     research_strategy = "key_questions"
@@ -371,6 +431,7 @@ test_that("Graft snapshots retain their immutable restoration boundary", {
   restored_run <- tempest:::tempest_load_run_artifacts(
     run_dir,
     config = config,
+    program_set = program_set,
     run_id = "research-graft-contract"
   )
   restored_snapshot <- restored_run$workspace$graft_snapshot
@@ -423,12 +484,14 @@ test_that("Graft snapshots retain their immutable restoration boundary", {
 test_that("Tempest context survives Deputy delegation and hooks", {
   skip_if_not_installed("deputy")
 
+  program_reference <- test_program_reference("review")
+  program_artifact_id <- program_reference$program_artifact_id
   manifest <- tempest_research_manifest(
     research_run_id = "research-deputy-contract",
     mode = "costorm",
     config = tempest_config(),
     programs = list(
-      review = list(program_artifact_id = "sha256:deputy-program")
+      review = program_reference
     ),
     knowledge_snapshot = list(snapshot_id = "sha256:deputy-snapshot")
   )
@@ -436,7 +499,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     manifest,
     stage = "evidence_review",
     role = "moderator",
-    program_artifact_id = "sha256:deputy-program"
+    program_artifact_id = program_artifact_id
   )
   child_chat <- tempest_contract_child_chat()
   parent_chat <- tempest_contract_parent_chat(child_chat)
@@ -518,7 +581,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     manifest,
     stage = "evidence_review",
     role = "expert",
-    program_artifact_id = "sha256:deputy-program",
+    program_artifact_id = program_artifact_id,
     expert_id = "expert.evidence-reviewer"
   )
   correlated_manifest <- tempest_research_manifest_update(
@@ -694,16 +757,18 @@ test_that("research manifests reject the removed program_id alias", {
 })
 
 test_that("research manifests require governed procedure vocabulary", {
+  legacy_reference <- test_program_reference("stage")
+  names(legacy_reference)[
+    names(legacy_reference) == "governed_procedure_revision_id"
+  ] <- "procedure_revision_id"
+  legacy_reference$procedure_revision_id <- "procedure:legacy"
   expect_error(
     tempest_research_manifest(
       research_run_id = "research-no-procedure-alias",
       mode = "storm",
       config = tempest_config(),
       programs = list(
-        stage = list(
-          procedure_revision_id = "procedure:legacy",
-          program_artifact_id = "sha256:program"
-        )
+        stage = legacy_reference
       )
     ),
     class = "tempest_research_manifest_error"
@@ -713,9 +778,9 @@ test_that("research manifests require governed procedure vocabulary", {
     mode = "storm",
     config = tempest_config(),
     programs = list(
-      stage = list(
-        governed_procedure_revision_id = "procedure:governed",
-        program_artifact_id = "sha256:program"
+      stage = test_program_reference(
+        "stage",
+        governed_procedure_revision_id = "procedure:governed"
       )
     )
   )

@@ -75,3 +75,63 @@ fake_store_with_sources <- function(n = 2) {
   }
   store
 }
+
+test_program_executions <- function(
+  config = tempest_config(),
+  run_id = "test-program-execution"
+) {
+  program_set <- tempest_program_set()
+  manifest <- tempest_research_manifest(
+    run_id,
+    mode = "storm",
+    config = config,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  tempest:::tempest_bind_program_set(program_set, manifest)
+}
+
+test_program_set_from_program <- function(
+  program,
+  registry = list(),
+  .local_envir = parent.frame()
+) {
+  stages <- tempest:::tempest_program_set_stages()
+  programs <- stats::setNames(rep(list(program), length(stages)), stages)
+  root <- file.path(
+    withr::local_tempdir(.local_envir = .local_envir),
+    "program-set"
+  )
+  tempest_program_set(
+    programs = programs,
+    path = root,
+    registry = registry
+  )
+}
+
+test_program_reference <- function(
+  stage,
+  program_artifact_id = NULL,
+  governed_procedure_revision_id = NULL
+) {
+  program_artifact_id <- program_artifact_id %||%
+    paste0(
+      "sha256:",
+      digest::digest(
+        paste0("test-program:", stage),
+        algo = "sha256",
+        serialize = FALSE
+      )
+    )
+  list(
+    stage = stage,
+    contract_version = 1L,
+    program_artifact_id = program_artifact_id,
+    artifact_reference = list(
+      type = "builtin",
+      id = paste0("tempest::", stage)
+    ),
+    governed_procedure_revision_id = governed_procedure_revision_id,
+    evaluator_id = paste0("tempest::evaluator/", stage),
+    evaluator_version = "1"
+  )
+}

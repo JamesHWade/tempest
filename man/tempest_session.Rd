@@ -11,7 +11,8 @@ tempest_session(
   experts = NULL,
   retriever = NULL,
   progress = NULL,
-  session_id = NULL
+  session_id = NULL,
+  program_set = NULL
 )
 }
 \arguments{
@@ -32,6 +33,10 @@ objects as the session makes progress.}
 
 \item{session_id}{Optional stable session identifier. If \code{NULL}, a new
 identifier is generated.}
+
+\item{program_set}{A \link{TempestProgramSet} containing the exact dsprrr
+programs used by Co-STORM. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates the
+builtin set.}
 }
 \description{
 Create a Co-STORM session

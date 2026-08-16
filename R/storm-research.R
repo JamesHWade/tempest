@@ -463,6 +463,7 @@ tempest_extract_facts_from_answer_async <- function(
   chat,
   answer_text,
   store,
+  module,
   source_ids = NULL,
   session_id = NA_character_,
   expert_id = NA_character_,
@@ -474,12 +475,20 @@ tempest_extract_facts_from_answer_async <- function(
   tempest_require("promises", "Async fact extraction requires promises.")
   source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
   inputs <- tempest_claim_extraction_inputs(answer_text, store, source_ids)
-  request <- chat$chat_structured_async(
-    tempest_fact_extraction_prompt(inputs, source_ids),
-    type = tempest_type_fact_extract(),
-    echo = "none",
-    convert = FALSE
+  request <- tempest_run_dsprrr_module_async(
+    module,
+    chat,
+    inputs = inputs,
+    step = "fact extraction"
   )
+  if (is.null(request)) {
+    request <- chat$chat_structured_async(
+      tempest_fact_extraction_prompt(inputs, source_ids),
+      type = tempest_type_fact_extract(),
+      echo = "none",
+      convert = FALSE
+    )
+  }
   promises::then(request, function(out) {
     if (!tempest_async_is_current(commit_if)) {
       return(NULL)
@@ -529,7 +538,7 @@ tempest_research_one_perspective <- function(
   topic,
   research_strategy,
   max_questions_per_perspective,
-  dsprrr_modules = NULL,
+  programs,
   run_id = NA_character_
 ) {
   connection_permissions <- tempest_run_connection_permissions(
@@ -599,8 +608,6 @@ tempest_research_one_perspective <- function(
     system_prompt = tempest_prompt("fact_extractor_system"),
     echo = "none"
   )
-  modules <- dsprrr_modules %||% tempest_make_dsprrr_modules(config)
-
   p_name <- p$name %||% "Perspective"
   p_desc <- p$description %||% ""
   qs <- p$key_questions %||% c(topic)
@@ -613,10 +620,11 @@ tempest_research_one_perspective <- function(
           writer,
           q,
           topic,
-          module = modules$query_decomposition,
+          module = programs$query_decomposition,
           max_queries = config@max_search_queries_per_turn
         ),
         error = function(e) {
+          tempest_rethrow_dsprrr_contract(e)
           tempest_warn(
             "Query decomposition failed, using original query: {conditionMessage(e)}"
           )
@@ -671,13 +679,14 @@ tempest_research_one_perspective <- function(
             extractor,
             harvest$answer_text,
             local_workspace,
-            module = modules$extract_claims,
+            module = programs$extract_claims,
             source_ids = harvest$source_ids,
             session_id = run_id,
             expert_id = expert_id,
             perspective_id = perspective_id
           ),
           error = function(e) {
+            tempest_rethrow_dsprrr_contract(e)
             tempest_warn("Fact extraction failed: {conditionMessage(e)}")
           }
         )
@@ -711,7 +720,7 @@ tempest_research_parallel <- function(
   research_strategy,
   max_rounds,
   max_questions_per_perspective,
-  dsprrr_modules = NULL,
+  programs,
   verbose,
   run_id = NA_character_
 ) {
@@ -727,7 +736,7 @@ tempest_research_parallel <- function(
       topic = topic,
       research_strategy = research_strategy,
       max_questions_per_perspective = max_questions_per_perspective,
-      dsprrr_modules = dsprrr_modules,
+      programs = programs,
       run_id = run_id
     )
   }
@@ -753,7 +762,7 @@ tempest_research_parallel <- function(
             topic,
             research_strategy,
             max_questions_per_perspective,
-            dsprrr_modules,
+            programs,
             run_id,
             research_one
           ) {
@@ -767,7 +776,7 @@ tempest_research_parallel <- function(
               topic = topic,
               research_strategy = research_strategy,
               max_questions_per_perspective = max_questions_per_perspective,
-              dsprrr_modules = dsprrr_modules,
+              programs = programs,
               run_id = run_id
             )
           },
@@ -780,7 +789,7 @@ tempest_research_parallel <- function(
             topic = topic,
             research_strategy = research_strategy,
             max_questions_per_perspective = max_questions_per_perspective,
-            dsprrr_modules = dsprrr_modules,
+            programs = programs,
             run_id = run_id,
             research_one = tempest_research_one_perspective
           )
@@ -788,6 +797,7 @@ tempest_research_parallel <- function(
         error = function(e) e
       )
       if (inherits(mapped, "condition")) {
+        tempest_rethrow_dsprrr_contract(mapped)
         tempest_warn(
           "Parallel research failed ({conditionMessage(mapped)}); researching sequentially."
         )
@@ -814,6 +824,7 @@ tempest_research_parallel <- function(
       val <- tryCatch(
         run_one(i),
         error = function(e) {
+          tempest_rethrow_dsprrr_contract(e)
           tempest_warn(
             "Research failed for {.val {p_name}}: {conditionMessage(e)}"
           )

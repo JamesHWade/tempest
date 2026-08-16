@@ -42,6 +42,7 @@ tempest_session_extract_facts_async <- function(
       session$chats$extractor,
       text,
       workspace,
+      module = tempest_session_programs(session)$extract_claims,
       source_ids = unique(c(source_ids, harvested)),
       session_id = session_id,
       expert_id = expert_id,
@@ -609,6 +610,7 @@ tempest_session_process_turn_async <- function(
       result
     },
     onRejected = function(error) {
+      tempest_rethrow_dsprrr_contract(error)
       if (!tempest_async_is_current(is_current)) {
         tempest_session_turn_cancel(state)
         return(NULL)

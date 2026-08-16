@@ -195,7 +195,7 @@ test_that("generic STORM run reuses existing stages and shared state", {
     connection_permissions = list(
       "expert.selected" = "connection.selected-documents"
     ),
-    dsprrr_modules = list(),
+    program_set = tempest_program_set(),
     verbose = FALSE
   )
 
@@ -294,7 +294,7 @@ test_that("generic STORM recomputes research assignments after expert generation
     config = fixture$config,
     retriever = fixture$retriever,
     n_experts = 1,
-    dsprrr_modules = list(),
+    program_set = tempest_program_set(),
     verbose = FALSE
   )
 

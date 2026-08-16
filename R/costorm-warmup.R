@@ -603,6 +603,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
           result
         },
         onRejected = function(error) {
+          tempest_rethrow_dsprrr_contract(error)
           if (!tempest_async_is_current(is_current)) {
             state$cancelled <- TRUE
             return(NULL)

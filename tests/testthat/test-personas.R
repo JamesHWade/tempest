@@ -186,7 +186,13 @@ test_that("expert delegation harvests native sources before extraction", {
     config = cfg,
     retriever = retriever,
     extractor = extractor,
-    workspace = store
+    extract_claims_program = tempest:::tempest_costorm_program_execution(
+      tempest_program_set(),
+      "extract_claims",
+      "session-native-source"
+    ),
+    workspace = store,
+    run_id = "session-native-source"
   )
   tool <- tempest:::tempest_create_expert_delegation_tool(
     manager,
@@ -246,7 +252,13 @@ test_that("expert delegation harvests OpenAI native annotations", {
     config = cfg,
     retriever = retriever,
     extractor = extractor,
-    workspace = store
+    extract_claims_program = tempest:::tempest_costorm_program_execution(
+      tempest_program_set(),
+      "extract_claims",
+      "session-openai-source"
+    ),
+    workspace = store,
+    run_id = "session-openai-source"
   )
   tool <- tempest:::tempest_create_expert_delegation_tool(
     manager,

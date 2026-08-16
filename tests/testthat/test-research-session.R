@@ -1,8 +1,19 @@
 test_that("Co-STORM sessions own a manifest and research workspace", {
   skip_if_not_installed("ellmer")
-  config <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  source <- fake_source("https://example.org/session-workspace")
+  extracted <- list(
+    facts = list(list(
+      claim = "The session owns ProgramSet-bound extraction.",
+      sources = list(list(source_id = source$id)),
+      confidence = "high"
+    ))
   )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      fake_chat(structured = list(extracted))
+    }
+  )
+  program_set <- tempest_program_set()
   expert <- test_expert(
     expert_id = "expert.research-session",
     name = "Research Session Expert"
@@ -12,7 +23,8 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     "Research session",
     config = config,
     experts = list(expert),
-    session_id = "research-session-1"
+    session_id = "research-session-1",
+    program_set = program_set
   )
 
   expect_r6_class(session$workspace, "ResearchWorkspace")
@@ -25,7 +37,39 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     session$manifest@config_digest,
     tempest_research_config_digest(config)
   )
-  expect_identical(session$manifest@programs, list())
+  expect_identical(
+    session$manifest@programs,
+    tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  stages <- tempest:::tempest_program_set_stages()
+  programs <- tempest:::tempest_session_programs(session)
+  expect_identical("programs" %in% names(session), FALSE)
+  expect_named(programs, stages)
+  expect_identical(
+    unname(vapply(
+      programs,
+      inherits,
+      logical(1),
+      what = "tempest_dsprrr_execution"
+    )),
+    rep(TRUE, length(stages))
+  )
+  expect_identical(
+    session$expert_session_manager$extract_claims_program,
+    programs$extract_claims
+  )
+  expect_identical(
+    programs$extract_claims$trace_context$research_run_id,
+    session$session_id
+  )
+  expect_identical(
+    programs$extract_claims$trace_context$stage,
+    "extract_claims"
+  )
+  expect_disjoint(
+    names(programs$extract_claims$trace_context),
+    "program_artifact_id"
+  )
   expect_identical(session$manifest@knowledge_snapshot, list())
   expect_identical(session$manifest@runtime, list())
   expect_identical(session$manifest@traces, list())
@@ -77,11 +121,23 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   expect_identical(session$retriever$workspace, session$workspace)
   expect_identical(session$manifest@status, "running")
 
-  source <- fake_source("https://example.org/session-workspace")
   expect_no_error(session$workspace$upsert_retrieved_resource(source))
   expect_identical(
     session$workspace$get_retrieved_source(source$id)$id,
     source$id
+  )
+  expect_no_error(withCallingHandlers(
+    session$extract_facts(
+      paste0("ProgramSet-bound extraction [", source$id, "]."),
+      source_ids = source$id
+    ),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
+  ))
+  expect_equal(
+    session$workspace$list_proposed_claims()[[1]]@claim_text,
+    "The session owns ProgramSet-bound extraction."
   )
 
   session$add_turn("User", "user", "What evidence is available?")
@@ -91,6 +147,39 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     fixed = TRUE
   )
   expect_identical(session$manifest@status, "running")
+})
+
+test_that("Co-STORM snapshots reject mutated live ProgramSets", {
+  skip_if_not_installed("ellmer")
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Mutated ProgramSet",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.program-mutation",
+      name = "Program Mutation Expert"
+    ))
+  )
+  expected_id <- session$manifest@programs$extract_claims$program_artifact_id
+  program_set <- tempest:::tempest_session_program_set(session)
+  module <- program_set@programs$extract_claims
+
+  module$signature@instructions <- paste(
+    module$signature@instructions,
+    "Mutated after session construction."
+  )
+
+  expect_identical(
+    identical(dsprrr::program_artifact_id(module), expected_id),
+    FALSE
+  )
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error",
+    regexp = "inconsistent Co-STORM ProgramSet"
+  )
 })
 
 test_that("Co-STORM rejects scalar-only pinned workspaces", {
@@ -183,13 +272,14 @@ test_that("Co-STORM restoration preserves manifest identity", {
       fake_chat()
     }
   )
+  program_set <- tempest_program_set()
   workspace <- tempest_research_workspace(base_snapshot_id = "snapshot-1")
   retriever <- tempest_retriever(config = config, workspace = workspace)
   manifest <- tempest_research_manifest(
     research_run_id = "restored-costorm-session",
     mode = "costorm",
     config = config,
-    programs = list(),
+    programs = tempest:::tempest_program_set_manifest_programs(program_set),
     knowledge_snapshot = list(snapshot_id = "snapshot-1"),
     runtime = list(),
     traces = list(),
@@ -206,6 +296,7 @@ test_that("Co-STORM restoration preserves manifest identity", {
       name = "Restored Session Expert"
     )),
     retriever = retriever,
+    program_set = program_set,
     manifest = manifest
   )
   report <- session$report(
@@ -233,6 +324,7 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
+  program_set <- tempest_program_set()
   workspace <- tempest_research_workspace(base_snapshot_id = "snapshot-1")
   retriever <- tempest_retriever(config = config, workspace = workspace)
   expert <- test_expert(
@@ -246,6 +338,7 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
       experts = list(expert),
       retriever = retriever,
       session_id = session_id,
+      program_set = program_set,
       manifest = manifest
     )
   }
@@ -259,6 +352,7 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
       research_run_id = "manifest-session",
       mode = mode,
       config = config_,
+      programs = tempest:::tempest_program_set_manifest_programs(program_set),
       knowledge_snapshot = list(snapshot_id = snapshot_id),
       runtime = list(),
       status = status
@@ -271,6 +365,7 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
       config = config,
       experts = list(expert),
       retriever = retriever,
+      program_set = program_set,
       .restore_manifest = manifest()
     ),
     class = "tempest_session_error",

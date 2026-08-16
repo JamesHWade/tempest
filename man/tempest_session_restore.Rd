@@ -4,7 +4,12 @@
 \alias{tempest_session_restore}
 \title{Restore a Co-STORM session from a snapshot}
 \usage{
-tempest_session_restore(snapshot, config = tempest_config(), progress = NULL)
+tempest_session_restore(
+  snapshot,
+  config = tempest_config(),
+  progress = NULL,
+  program_set = NULL
+)
 }
 \arguments{
 \item{snapshot}{A list from \code{\link[=tempest_session_snapshot]{tempest_session_snapshot()}}.}
@@ -14,6 +19,9 @@ tools.}
 
 \item{progress}{Optional callback for future \code{tempest_progress_event}
 objects.}
+
+\item{program_set}{A \link{TempestProgramSet} carrying the same program
+identities recorded in the snapshot. If \code{NULL}, the builtin set is used.}
 }
 \value{
 A restored \link{TempestSession}.

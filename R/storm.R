@@ -21,24 +21,25 @@ tempest_run_verification <- function(
   store,
   config,
   verifier = NULL,
-  modules = NULL
+  program
 ) {
   if (!config@citation_policy %in% c("claim_verified", "strict")) {
     return(invisible(NULL))
   }
   verifier <- verifier %||% tempest_make_chat(config, "judge")
-  # Verification runs after the expensive polish step; never let it abort the
-  # run -- degrade to an unverified report instead.
+  # Ordinary verifier failures degrade to an unverified report. Program
+  # identity and trace contract failures remain fatal.
   tryCatch(
-    tempest_verify_claims(
-      store,
+    tempest_verify_claims_internal(
+      workspace = store,
       verifier = verifier,
       policy = config@citation_policy,
       verifier_model = config@models[["judge"]] %||% NA_character_,
-      modules = modules,
+      program = program,
       min_support_score = config@min_support_score
     ),
     error = function(e) {
+      tempest_rethrow_dsprrr_contract(e)
       tempest_warn(
         "Citation verification failed; report left unverified: {conditionMessage(e)}"
       )
@@ -85,8 +86,8 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #'   the mirai package. Requires mirai to be installed. Default `FALSE`.
 #' @param parallel_writing If `TRUE`, write report sections in parallel using
 #'   the mirai package. Failed parallel sections are retried sequentially.
-#' @param dsprrr_modules Optional named list of dsprrr modules, typically from
-#'   [tempest_optimize_dsprrr_modules()]. If `NULL`, fresh modules are created.
+#' @param program_set A [TempestProgramSet] containing the exact dsprrr programs
+#'   used by STORM. If `NULL`, [tempest_program_set()] creates the default set.
 #' @param steps Character vector controlling which steps to run. Defaults to all.
 #' @param output_dir Optional directory for persisted STORM run artifacts. When
 #'   supplied, artifacts are written under a topic-specific subdirectory.
@@ -122,7 +123,7 @@ tempest_run <- function(
   max_questions_per_perspective = 3,
   parallel_research = FALSE,
   parallel_writing = FALSE,
-  dsprrr_modules = NULL,
+  program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
@@ -143,7 +144,7 @@ tempest_run <- function(
     max_questions_per_perspective = max_questions_per_perspective,
     parallel_research = parallel_research,
     parallel_writing = parallel_writing,
-    dsprrr_modules = dsprrr_modules,
+    program_set = program_set,
     steps = steps,
     output_dir = output_dir,
     resume = resume,
@@ -166,7 +167,7 @@ tempest_run_internal <- function(
   max_questions_per_perspective = 3,
   parallel_research = FALSE,
   parallel_writing = FALSE,
-  dsprrr_modules = NULL,
+  program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
@@ -333,8 +334,8 @@ tempest_run_internal <- function(
     state$experts <- experts
     state <- tempest_storm_state_validate(state)
   }
-  dsprrr_modules <- dsprrr_modules %||% tempest_make_dsprrr_modules(config)
-  program_references <- tempest_program_references(dsprrr_modules)
+  program_set <- program_set %||% tempest_program_set()
+  program_references <- tempest_program_set_manifest_programs(program_set)
   research_manifest <- tempest_research_manifest(
     research_run_id = progress_run_id,
     mode = "storm",
@@ -349,8 +350,8 @@ tempest_run_internal <- function(
     deliverables = list(),
     status = "running"
   )
-  dsprrr_modules <- tempest_bind_dsprrr_trace_context(
-    dsprrr_modules,
+  programs <- tempest_bind_program_set(
+    program_set,
     research_manifest
   )
   artifact_catalog <- artifact_catalog %||%
@@ -443,6 +444,7 @@ tempest_run_internal <- function(
       workspace,
       state,
       research_manifest,
+      program_set = program_set,
       config = config,
       steps = steps,
       research_strategy = research_strategy,
@@ -512,6 +514,7 @@ tempest_run_internal <- function(
       run_dir,
       workspace = if (retriever_supplied) workspace else NULL,
       config = config,
+      program_set = program_set,
       run_id = supplied_run_id
     )
     workspace <- loaded_run$workspace
@@ -533,8 +536,8 @@ tempest_run_internal <- function(
     }
     completed_stages <- state$completed_stages
     research_manifest <- loaded_run$research_manifest
-    dsprrr_modules <- tempest_bind_dsprrr_trace_context(
-      dsprrr_modules,
+    programs <- tempest_bind_program_set(
+      program_set,
       research_manifest
     )
     terminal_status <- research_manifest@status
@@ -683,7 +686,7 @@ tempest_run_internal <- function(
           topic,
           seed_txt,
           n_experts,
-          module = dsprrr_modules$perspectives
+          module = programs$perspectives
         )
         title <- plan$title %||% topic
         perspectives <- plan$perspectives %||% list()
@@ -694,12 +697,12 @@ tempest_run_internal <- function(
           if (verbose) {
             tempest_inform("Generating {n_experts} expert profiles")
           }
-          experts <- tempest_generate_experts(
+          experts <- tempest_generate_experts_with_program(
             topic = topic,
             n = n_experts,
             config = config,
             verbose = verbose,
-            module = dsprrr_modules$personas
+            module = programs$personas
           )
         }
         state$experts <- experts
@@ -790,7 +793,7 @@ tempest_run_internal <- function(
             research_strategy,
             max_rounds,
             max_questions_per_perspective,
-            dsprrr_modules,
+            programs,
             verbose,
             run_id = progress_run_id
           )
@@ -888,10 +891,11 @@ tempest_run_internal <- function(
                     writer,
                     q,
                     topic,
-                    module = dsprrr_modules$query_decomposition,
+                    module = programs$query_decomposition,
                     max_queries = config@max_search_queries_per_turn
                   ),
                   error = function(e) {
+                    tempest_rethrow_dsprrr_contract(e)
                     tempest_warn(
                       "Query decomposition failed, using original query: {conditionMessage(e)}"
                     )
@@ -938,13 +942,14 @@ tempest_run_internal <- function(
                       extractor,
                       harvest$answer_text,
                       store,
-                      module = dsprrr_modules$extract_claims,
+                      module = programs$extract_claims,
                       source_ids = harvest$source_ids,
                       session_id = progress_run_id,
                       expert_id = expert_id,
                       perspective_id = perspective_id
                     ),
                     error = function(e) {
+                      tempest_rethrow_dsprrr_contract(e)
                       tempest_warn(
                         "Fact extraction failed: {conditionMessage(e)}"
                       )
@@ -973,7 +978,7 @@ tempest_run_internal <- function(
                   p,
                   answered_md = answered_md,
                   facts_md = facts_md,
-                  module = dsprrr_modules$next_question
+                  module = programs$next_question
                 )
                 q <- tempest_trim(nxt$question %||% "")
                 done <- isTRUE(nxt$done)
@@ -988,10 +993,11 @@ tempest_run_internal <- function(
                     writer,
                     q,
                     topic,
-                    module = dsprrr_modules$query_decomposition,
+                    module = programs$query_decomposition,
                     max_queries = config@max_search_queries_per_turn
                   ),
                   error = function(e) {
+                    tempest_rethrow_dsprrr_contract(e)
                     tempest_warn(
                       "Query decomposition failed, using original query: {conditionMessage(e)}"
                     )
@@ -1048,13 +1054,14 @@ tempest_run_internal <- function(
                     extractor,
                     harvest$answer_text,
                     store,
-                    module = dsprrr_modules$extract_claims,
+                    module = programs$extract_claims,
                     source_ids = harvest$source_ids,
                     session_id = progress_run_id,
                     expert_id = expert_id,
                     perspective_id = perspective_id
                   ),
                   error = function(e) {
+                    tempest_rethrow_dsprrr_contract(e)
                     tempest_warn(
                       "Fact extraction failed: {conditionMessage(e)}"
                     )
@@ -1123,7 +1130,7 @@ tempest_run_internal <- function(
           writer,
           topic,
           title,
-          module = dsprrr_modules$draft_outline
+          module = programs$draft_outline
         )
         state$draft_outline <- draft_outline
 
@@ -1135,7 +1142,7 @@ tempest_run_internal <- function(
           title,
           draft_outline,
           facts_txt,
-          module = dsprrr_modules$refined_outline
+          module = programs$refined_outline
         )
         state$outline <- outline
         completed_stages <- tempest_mark_stage_complete(
@@ -1192,7 +1199,7 @@ tempest_run_internal <- function(
           section_jobs,
           writer,
           config = config,
-          dsprrr_modules = dsprrr_modules,
+          programs = programs,
           parallel = parallel_writing,
           verbose = verbose
         )
@@ -1204,7 +1211,7 @@ tempest_run_internal <- function(
             extractor,
             section_result$section_text,
             store,
-            module = dsprrr_modules$extract_claims,
+            module = programs$extract_claims,
             session_id = progress_run_id,
             section_id = section_result$title %||% NA_character_
           )
@@ -1223,7 +1230,7 @@ tempest_run_internal <- function(
           title,
           draft_md,
           facts_txt = lead_facts,
-          module = dsprrr_modules$lead_section,
+          module = programs$lead_section,
           verbose = verbose
         )
         draft_md <- paste0(lead_section, "\n\n", draft_md)
@@ -1295,7 +1302,11 @@ tempest_run_internal <- function(
             message = "Verifying cited claims."
           )
           tryCatch(
-            tempest_run_verification(store, config, modules = dsprrr_modules),
+            tempest_run_verification(
+              store,
+              config,
+              program = programs$verify_claim_support
+            ),
             error = function(e) {
               emit_progress(
                 "stage",

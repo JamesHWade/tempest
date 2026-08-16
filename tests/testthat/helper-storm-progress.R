@@ -65,7 +65,21 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
           structured = list(
             list(queries = c("progress events")),
             outline,
-            outline
+            outline,
+            list(
+              section_text = paste0(
+                "Section body cites events [",
+                source_id,
+                "]."
+              )
+            ),
+            list(
+              lead_section = paste0(
+                "Lead body cites events [",
+                source_id,
+                "]."
+              )
+            )
           ),
           text = list(
             paste0("Section body cites events [", source_id, "]."),

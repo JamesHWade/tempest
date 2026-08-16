@@ -431,6 +431,14 @@ test_that("chat module delegates native chat and session lifecycle work", {
   expect_match(server_code, "tempest_shinychat_adapter", fixed = TRUE)
   expect_match(server_code, "tempest_session_process_turn_async", fixed = TRUE)
   expect_match(server_code, "tempest_session_warmup_async", fixed = TRUE)
+  expect_match(server_code, "tempest_session_new", fixed = TRUE)
+  expect_match(
+    server_code,
+    "tempest_program_set_manifest_programs",
+    fixed = TRUE
+  )
+  expect_match(server_code, "tempest_generate_experts_async", fixed = TRUE)
+  expect_no_match(server_code, "tempest::tempest_session(", fixed = TRUE)
   expect_no_match(server_code, "shinychat::", fixed = TRUE)
   expect_no_match(server_code, "$last_turn", fixed = TRUE)
   expect_no_match(server_code, "$last_input", fixed = TRUE)

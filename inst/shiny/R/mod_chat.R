@@ -469,6 +469,7 @@ mod_chat_server <- function(
   runtime = tempest::tempest_runtime(),
   connection_permissions = list(),
   session_id = NULL,
+  program_set = NULL,
   allow_user_experts = FALSE
 ) {
   shiny::moduleServer(id, function(input, output, session) {
@@ -482,6 +483,13 @@ mod_chat_server <- function(
     expert_setup_mode <- shiny::reactiveVal("generated")
     generated_expert_count <- shiny::reactiveVal(3L)
     user_experts <- shiny::reactiveVal(list())
+
+    resolve_program_set <- function() {
+      value <- shiny::isolate(reactive_or_value(program_set)) %||%
+        tempest::tempest_program_set()
+      tempest:::tempest_program_set_manifest_programs(value)
+      value
+    }
 
     update_expert_setup_button <- function() {
       if (!isTRUE(allow_user_experts)) {
@@ -732,7 +740,8 @@ mod_chat_server <- function(
       ses <- store$restore(
         path,
         config = config(),
-        progress = record_progress
+        progress = record_progress,
+        program_set = resolve_program_set()
       )
       shiny::updateTextInput(session, "topic", value = ses$topic %||% "")
       restored_count <- max(1L, min(5L, length(ses$experts %||% list())))
@@ -845,10 +854,11 @@ mod_chat_server <- function(
       session_experts,
       session_connection_permissions,
       session_id_value,
+      program_set_value,
       on_error = NULL
     ) {
       ses <- tryCatch(
-        tempest::tempest_session(
+        tempest:::tempest_session_new(
           topic,
           config = config_value,
           runtime = runtime_value,
@@ -856,7 +866,8 @@ mod_chat_server <- function(
           experts = session_experts,
           connection_permissions = session_connection_permissions,
           session_id = session_id_value,
-          progress = record_progress
+          progress = record_progress,
+          program_set = program_set_value
         ),
         error = function(e) {
           costorm_log("session setup failed: %s", conditionMessage(e))
@@ -1062,6 +1073,7 @@ mod_chat_server <- function(
       session_id_value <- shiny::isolate(reactive_or_value(session_id))
       session_id_value <- session_id_value %||%
         tempest:::tempest_uuid("session")
+      program_set_value <- resolve_program_set()
       n_experts <- if (isTRUE(allow_user_experts)) {
         shiny::isolate(generated_expert_count())
       } else {
@@ -1074,10 +1086,16 @@ mod_chat_server <- function(
       record_progress(costorm_starting_event(session_id_value))
       costorm_log("start requested: %s", topic)
       experts_ready <- if (is.null(session_experts)) {
+        personas_program <- tempest:::tempest_costorm_program_execution(
+          program_set_value,
+          "personas",
+          session_id_value
+        )
         tempest:::tempest_generate_experts_async(
           topic,
           n = n_experts,
-          config = config_value
+          config = config_value,
+          program = personas_program
         )
       } else {
         promises::promise_resolve(session_experts)
@@ -1185,6 +1203,7 @@ mod_chat_server <- function(
                       session_experts = session_experts,
                       session_connection_permissions = session_connection_permissions,
                       session_id_value = session_id_value,
+                      program_set_value = program_set_value,
                       on_error = function(error) {
                         session_error <<- error
                       }

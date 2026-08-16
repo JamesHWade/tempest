@@ -1192,6 +1192,7 @@ tempest_expert_system_prompt <- function(expert, resolution) {
 #' @field expert_connection_ref_ids Environment of allowed connection ids by
 #'   expert.
 #' @field extractor Chat object for fact extraction (optional).
+#' @field extract_claims_program ProgramSet-bound claim-extraction execution.
 #' @field workspace A [ResearchWorkspace] for extracted facts (optional).
 #' @field progress Optional progress callback.
 #' @field run_id Shared Co-STORM session id for progress events.
@@ -1210,6 +1211,7 @@ ExpertSessionManager <- R6::R6Class(
     experts = NULL,
     expert_connection_ref_ids = NULL,
     extractor = NULL,
+    extract_claims_program = NULL,
     workspace = NULL,
     progress = NULL,
     run_id = NULL,
@@ -1224,6 +1226,8 @@ ExpertSessionManager <- R6::R6Class(
     #' @param allowed_connection_ref_ids Named list of allowed connection ids by
     #'   expert id.
     #' @param extractor Optional chat object for fact extraction.
+    #' @param extract_claims_program ProgramSet-bound claim-extraction
+    #'   execution. Required when `extractor` is supplied.
     #' @param workspace Optional [ResearchWorkspace] for extracted facts.
     #' @param progress Optional progress callback.
     #' @param run_id Shared Co-STORM session id for progress events.
@@ -1234,6 +1238,7 @@ ExpertSessionManager <- R6::R6Class(
       retriever,
       allowed_connection_ref_ids = list(),
       extractor = NULL,
+      extract_claims_program = NULL,
       workspace = NULL,
       progress = NULL,
       run_id = NULL
@@ -1285,6 +1290,13 @@ ExpertSessionManager <- R6::R6Class(
       self$config <- config
       self$retriever <- retriever
       self$extractor <- extractor
+      if (!is.null(extractor) || !is.null(extract_claims_program)) {
+        extract_claims_program <- tempest_dsprrr_execution_require(
+          extract_claims_program,
+          "fact extraction"
+        )
+      }
+      self$extract_claims_program <- extract_claims_program
       workspace <- workspace %||% retriever$workspace
       if (!inherits(workspace, "ResearchWorkspace")) {
         tempest_expert_session_abort(
@@ -1387,6 +1399,7 @@ ExpertSessionManager <- R6::R6Class(
               self$extractor,
               response,
               self$workspace,
+              module = self$extract_claims_program,
               source_ids = source_ids,
               session_id = session_id,
               expert_id = expert_id,
@@ -2034,6 +2047,8 @@ ExpertSessionManager <- R6::R6Class(
 #' @param allowed_connection_ref_ids Named list of allowed connection ids by
 #'   stable expert id.
 #' @param extractor Optional fact-extraction chat.
+#' @param extract_claims_program ProgramSet-bound claim-extraction execution.
+#'   Required when `extractor` is supplied.
 #' @param workspace Optional [ResearchWorkspace]; defaults to the retriever
 #'   workspace.
 #' @param progress Optional progress callback.
@@ -2047,6 +2062,7 @@ tempest_expert_session_manager <- function(
   retriever,
   allowed_connection_ref_ids = list(),
   extractor = NULL,
+  extract_claims_program = NULL,
   workspace = NULL,
   progress = NULL,
   run_id = NULL
@@ -2058,6 +2074,7 @@ tempest_expert_session_manager <- function(
     retriever = retriever,
     allowed_connection_ref_ids = allowed_connection_ref_ids,
     extractor = extractor,
+    extract_claims_program = extract_claims_program,
     workspace = workspace,
     progress = progress,
     run_id = run_id

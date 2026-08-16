@@ -791,6 +791,17 @@ test_that("expert delegation returns and commits its native evidence", {
     instructions = "Use inspected evidence.",
     model_role = "expert"
   )
+  program_set <- tempest_program_set()
+  manifest <- tempest_research_manifest(
+    research_run_id = "native-evidence-manager",
+    mode = "costorm",
+    config = config,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  extract_claims_program <- tempest:::tempest_bind_program_set(
+    program_set,
+    manifest
+  )$extract_claims
   store <- tempest_research_workspace()
   manager <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
@@ -798,7 +809,9 @@ test_that("expert delegation returns and commits its native evidence", {
     config = config,
     retriever = tempest_retriever(config = config, workspace = store),
     extractor = extractor,
-    workspace = store
+    extract_claims_program = extract_claims_program,
+    workspace = store,
+    run_id = "native-evidence-manager"
   )
   tool <- tempest:::tempest_create_expert_delegation_tool(
     session_manager = manager,
@@ -806,11 +819,17 @@ test_that("expert delegation returns and commits its native evidence", {
     experts = list(expert)
   )
 
-  result <- tool(
-    expert_id = "expert.native",
-    question = "What does the inspected evidence show?"
+  result <- withCallingHandlers(
+    tool(
+      expert_id = "expert.native",
+      question = "What does the inspected evidence show?"
+    ),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
   )
 
+  expect_identical(manager$extract_claims_program, extract_claims_program)
   expect_equal(result$source_ids, source_id)
   expect_length(result$claim_ids, 1L)
   expect_equal(

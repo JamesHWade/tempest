@@ -6,8 +6,9 @@ test_that("tempest_run verifies claims before polishing when policy requires it"
     structured = list(list(status = "supported", score = 0.9, rationale = "ok"))
   )
   cfg <- tempest_config(citation_policy = "claim_verified")
+  program <- test_program_executions(cfg)$verify_claim_support
 
-  tempest_run_verification(store, cfg, verifier = judge)
+  tempest_run_verification(store, cfg, verifier = judge, program = program)
 
   expect_equal(
     store$list_proposed_claims()[[1]]@verification_status,
@@ -27,8 +28,9 @@ test_that("tempest_run_verification passes configured min_support_score", {
     citation_policy = "claim_verified",
     min_support_score = 0.9
   )
+  program <- test_program_executions(cfg)$verify_claim_support
 
-  tempest_run_verification(store, cfg, verifier = judge)
+  tempest_run_verification(store, cfg, verifier = judge, program = program)
 
   expect_equal(
     store$list_proposed_claims()[[1]]@verification_status,

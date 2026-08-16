@@ -74,6 +74,7 @@ test_that("section prompts collapse vector subsection titles", {
 })
 
 test_that("tempest_write_sections_sequential preserves job order", {
+  local_mocked_bindings(tempest_run_dsprrr_module = function(...) NULL)
   writer <- list(chat = function(prompt, echo = "none") {
     if (grepl("First", prompt, fixed = TRUE)) "First body" else "Second body"
   })
@@ -94,7 +95,11 @@ test_that("tempest_write_sections_sequential preserves job order", {
     )
   )
 
-  results <- tempest:::tempest_write_sections_sequential(jobs, writer)
+  results <- tempest:::tempest_write_sections_sequential(
+    jobs,
+    writer,
+    programs = test_program_executions()
+  )
 
   expect_equal(
     vapply(results, function(result) result$title, character(1)),
@@ -137,13 +142,18 @@ test_that("parallel section writing returns NULLs when mirai is unavailable", {
     list(index = 1, title = "First", summary = "", subsections = list()),
     list(index = 2, title = "Second", summary = "", subsections = list())
   )
-  results <- tempest:::tempest_write_sections_parallel(jobs, tempest_config())
+  results <- tempest:::tempest_write_sections_parallel(
+    jobs,
+    tempest_config(),
+    programs = test_program_executions()
+  )
   expect_length(results, 2)
   expect_equal(vapply(results, is.null, logical(1)), c(TRUE, TRUE))
 })
 
 test_that("requesting parallel writing still produces sections via fallback", {
   local_mocked_bindings(tempest_has = function(pkg) FALSE)
+  local_mocked_bindings(tempest_run_dsprrr_module = function(...) NULL)
   writer <- list(chat = function(prompt, echo = "none") "Body")
   jobs <- list(
     list(
@@ -166,6 +176,7 @@ test_that("requesting parallel writing still produces sections via fallback", {
     jobs,
     writer,
     config = tempest_config(),
+    programs = test_program_executions(),
     parallel = TRUE
   ))
 

@@ -585,6 +585,44 @@ test_that("TempestSession snapshots restore durable session state", {
   expect_equal(collector$data()[[1]]$run_id, "session_snapshot")
 })
 
+test_that("Co-STORM restore and resume require the recorded custom ProgramSet", {
+  skip_if_not_installed("ellmer")
+  forward <- function(text, ...) list(answer = text)
+  program_set <- test_program_set_from_program(
+    dsprrr::module_fn("text -> answer", forward),
+    registry = list(forward = forward)
+  )
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Custom Co-STORM programs",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.program-set")),
+    program_set = program_set
+  )
+  snapshot <- tempest_session_snapshot(session)
+  bundle <- file.path(withr::local_tempdir(), "custom-program-session")
+  tempest_session_save(session, bundle)
+
+  expect_error(
+    tempest_session_restore(snapshot, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+  expect_error(
+    tempest_session_resume(bundle, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+  expect_r6_class(
+    tempest_session_restore(snapshot, config = cfg, program_set = program_set),
+    "TempestSession"
+  )
+  expect_r6_class(
+    tempest_session_resume(bundle, config = cfg, program_set = program_set),
+    "TempestSession"
+  )
+})
+
 test_that("TempestSession restores progress history without replaying it", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
@@ -1184,6 +1222,9 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
 
   session_workspace <- tempest_research_workspace(
     graft_snapshot = graft_snapshot
@@ -1219,8 +1260,10 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
     tempest_research_manifest(
       "graft-storm-persistence",
       config = cfg,
+      programs = program_references,
       knowledge_snapshot = reference
     ),
+    program_set = program_set,
     config = cfg,
     steps = "research",
     research_strategy = "key_questions"
@@ -1262,6 +1305,7 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
   restored_storm <- tempest:::tempest_load_run_artifacts(
     storm_dir,
     config = cfg,
+    program_set = program_set,
     run_id = "graft-storm-persistence"
   )
   restored_snapshots <- list(
@@ -1318,6 +1362,9 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace(graft_snapshot = snapshot)
   session <- tempest_session(
     "Graft sidecar integrity",
@@ -1341,8 +1388,10 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
     tempest_research_manifest(
       "graft-sidecar-integrity",
       config = cfg,
+      programs = program_references,
       knowledge_snapshot = reference
     ),
+    program_set = program_set,
     config = cfg,
     steps = "research",
     research_strategy = "key_questions"
@@ -1377,13 +1426,21 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
 
   unlink(storm_sidecar)
   expect_error(
-    tempest:::tempest_load_run_artifacts(storm_dir, config = cfg),
+    tempest:::tempest_load_run_artifacts(
+      storm_dir,
+      config = cfg,
+      program_set = program_set
+    ),
     class = "tempest_run_restore_error"
   )
   writeBin(storm_bytes, storm_sidecar)
   writeBin(charToRaw("corrupt snapshot"), storm_sidecar)
   expect_error(
-    tempest:::tempest_load_run_artifacts(storm_dir, config = cfg),
+    tempest:::tempest_load_run_artifacts(
+      storm_dir,
+      config = cfg,
+      program_set = program_set
+    ),
     class = "tempest_run_restore_error"
   )
   writeBin(storm_bytes, storm_sidecar)
@@ -2134,13 +2191,12 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
   ))
 
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
   research_manifest <- tempest_research_manifest(
     research_run_id = "lithium-run",
     mode = "storm",
     config = cfg,
-    programs = list(
-      extract_claims = list(program_artifact_id = "sha256:program")
-    ),
+    programs = tempest:::tempest_program_set_manifest_programs(program_set),
     status = "succeeded"
   )
   tempest:::tempest_save_run_artifacts(
@@ -2148,6 +2204,7 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
     workspace,
     state,
     research_manifest,
+    program_set = program_set,
     config = cfg,
     steps = c("perspectives", "research", "outline", "write", "polish"),
     research_strategy = "key_questions",
@@ -2158,6 +2215,7 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
   loaded <- tempest:::tempest_load_run_artifacts(
     run_dir,
     config = cfg,
+    program_set = program_set,
     run_id = "lithium-run"
   )
 
@@ -2206,6 +2264,7 @@ test_that("run restore rejects tampered expert-profile records", {
   skip_if_not_installed("jsonlite")
   run_dir <- withr::local_tempdir()
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
   workspace <- tempest_research_workspace()
   state <- tempest:::tempest_storm_state(
     "Run integrity",
@@ -2223,12 +2282,17 @@ test_that("run restore rejects tampered expert-profile records", {
     )),
     completed_stages = "perspectives"
   )
-  manifest <- tempest_research_manifest("run-integrity", config = cfg)
+  manifest <- tempest_research_manifest(
+    "run-integrity",
+    config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
   tempest:::tempest_save_run_artifacts(
     run_dir,
     workspace,
     state,
     manifest,
+    program_set = program_set,
     config = cfg,
     steps = "perspectives",
     research_strategy = "key_questions"
@@ -2250,6 +2314,7 @@ test_that("run restore rejects tampered expert-profile records", {
     tempest:::tempest_load_run_artifacts(
       run_dir,
       config = cfg,
+      program_set = program_set,
       run_id = "run-integrity"
     ),
     class = "tempest_run_restore_error"
@@ -2262,6 +2327,7 @@ test_that("completed stage metadata controls resume state", {
 
   run_dir <- tempest:::tempest_prepare_run_dir(root, "Partial Run")
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
   workspace <- tempest_research_workspace()
   state <- tempest:::tempest_storm_state(
     "Partial Run",
@@ -2279,13 +2345,18 @@ test_that("completed stage metadata controls resume state", {
     )),
     completed_stages = "perspectives"
   )
-  manifest <- tempest_research_manifest("partial-run", config = cfg)
+  manifest <- tempest_research_manifest(
+    "partial-run",
+    config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
 
   tempest:::tempest_save_run_artifacts(
     run_dir,
     workspace,
     state,
     manifest,
+    program_set = program_set,
     config = cfg,
     steps = c("perspectives", "research", "outline", "write", "polish"),
     research_strategy = "key_questions"
@@ -2294,6 +2365,7 @@ test_that("completed stage metadata controls resume state", {
   loaded <- tempest:::tempest_load_run_artifacts(
     run_dir,
     config = cfg,
+    program_set = program_set,
     run_id = "partial-run"
   )
 
@@ -2314,6 +2386,9 @@ test_that("completed stage metadata controls resume state", {
 })
 
 test_that("completed STORM product state fails closed when artifacts drift", {
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   make_bundle <- function() {
     dir <- tempfile("tempest-completed-state-")
     dir.create(dir)
@@ -2356,7 +2431,12 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       dir,
       tempest_research_workspace(),
       state,
-      tempest_research_manifest("completed-state", config = cfg),
+      tempest_research_manifest(
+        "completed-state",
+        config = cfg,
+        programs = program_references
+      ),
+      program_set = program_set,
       config = cfg,
       steps = state$completed_stages,
       research_strategy = "key_questions"
@@ -2381,6 +2461,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       tempest:::tempest_load_run_artifacts(
         bundle$dir,
         config = bundle$config,
+        program_set = program_set,
         run_id = "completed-state"
       ),
       class = "tempest_run_restore_error"
@@ -2439,14 +2520,20 @@ test_that("completed STORM product state fails closed when artifacts drift", {
 test_that("run restore rejects undeclared product files", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
   workspace <- tempest_research_workspace()
   state <- tempest:::tempest_storm_state("t")
-  manifest <- tempest_research_manifest("undeclared-run", config = cfg)
+  manifest <- tempest_research_manifest(
+    "undeclared-run",
+    config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
   tempest:::tempest_save_run_artifacts(
     dir,
     workspace,
     state,
     manifest,
+    program_set = program_set,
     config = cfg,
     steps = "polish",
     research_strategy = "key_questions"
@@ -2457,6 +2544,7 @@ test_that("run restore rejects undeclared product files", {
     tempest:::tempest_load_run_artifacts(
       dir,
       config = cfg,
+      program_set = program_set,
       run_id = "undeclared-run"
     ),
     class = "tempest_run_restore_error"
@@ -2468,13 +2556,19 @@ test_that("run save refuses pre-existing unowned files", {
   credentials <- file.path(dir, "credentials.json")
   writeLines("user-owned", credentials)
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
 
   expect_error(
     tempest:::tempest_save_run_artifacts(
       dir,
       tempest_research_workspace(),
       tempest:::tempest_storm_state("Unowned files"),
-      tempest_research_manifest("unowned-files", config = cfg),
+      tempest_research_manifest(
+        "unowned-files",
+        config = cfg,
+        programs = tempest:::tempest_program_set_manifest_programs(program_set)
+      ),
+      program_set = program_set,
       config = cfg,
       steps = "research",
       research_strategy = "key_questions"
@@ -2486,6 +2580,9 @@ test_that("run save refuses pre-existing unowned files", {
 })
 
 test_that("run manifest failures are classed and reject escaping symlinks", {
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   make_bundle <- function() {
     dir <- tempfile("tempest-run-")
     dir.create(dir)
@@ -2494,7 +2591,12 @@ test_that("run manifest failures are classed and reject escaping symlinks", {
       dir,
       tempest_research_workspace(),
       tempest:::tempest_storm_state("t"),
-      tempest_research_manifest("manifest-run", config = cfg),
+      tempest_research_manifest(
+        "manifest-run",
+        config = cfg,
+        programs = program_references
+      ),
+      program_set = program_set,
       config = cfg,
       steps = "polish",
       research_strategy = "key_questions"
@@ -2511,6 +2613,7 @@ test_that("run manifest failures are classed and reject escaping symlinks", {
     tempest:::tempest_load_run_artifacts(
       missing_checksum_dir,
       config = tempest_config(),
+      program_set = program_set,
       run_id = "manifest-run"
     ),
     class = "tempest_run_restore_error"
@@ -2527,6 +2630,7 @@ test_that("run manifest failures are classed and reject escaping symlinks", {
     tempest:::tempest_load_run_artifacts(
       symlink_dir,
       config = tempest_config(),
+      program_set = program_set,
       run_id = "manifest-run"
     ),
     class = "tempest_run_restore_error"
@@ -2551,6 +2655,9 @@ test_that("the run manifest is written after the artifacts it certifies", {
   dir <- withr::local_tempdir()
   paths <- tempest:::tempest_run_artifact_paths(dir)
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   state <- tempest:::tempest_storm_state(
     "t",
     outline = list(
@@ -2565,7 +2672,12 @@ test_that("the run manifest is written after the artifacts it certifies", {
     dir,
     tempest_research_workspace(),
     state,
-    tempest_research_manifest("write-order", config = cfg),
+    tempest_research_manifest(
+      "write-order",
+      config = cfg,
+      programs = program_references
+    ),
+    program_set = program_set,
     config = cfg,
     steps = c("research", "write"),
     research_strategy = "key_questions"
@@ -2582,6 +2694,9 @@ test_that("references.json holds only the cited sources and reloads", {
   skip_if_not_installed("jsonlite")
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace()
   s1 <- tempest:::tempest_source(url = "https://example.com/a", title = "A")
   s2 <- tempest:::tempest_source(url = "https://example.com/b", title = "B")
@@ -2598,7 +2713,12 @@ test_that("references.json holds only the cited sources and reloads", {
     dir,
     workspace,
     state,
-    tempest_research_manifest("references-run", config = cfg),
+    tempest_research_manifest(
+      "references-run",
+      config = cfg,
+      programs = program_references
+    ),
+    program_set = program_set,
     config = cfg,
     steps = "polish",
     research_strategy = "key_questions"
@@ -2612,6 +2732,7 @@ test_that("references.json holds only the cited sources and reloads", {
   loaded <- tempest:::tempest_load_run_artifacts(
     dir,
     config = cfg,
+    program_set = program_set,
     run_id = "references-run"
   )
   expect_length(loaded$state$references, 1L)
@@ -2628,6 +2749,7 @@ test_that("references.json holds only the cited sources and reloads", {
     tempest:::tempest_load_run_artifacts(
       dir,
       config = cfg,
+      program_set = program_set,
       run_id = "references-run"
     ),
     class = "tempest_run_restore_error"
@@ -2637,7 +2759,12 @@ test_that("references.json holds only the cited sources and reloads", {
     dir,
     workspace,
     state,
-    tempest_research_manifest("references-run", config = cfg),
+    tempest_research_manifest(
+      "references-run",
+      config = cfg,
+      programs = program_references
+    ),
+    program_set = program_set,
     config = cfg,
     steps = "polish",
     research_strategy = "key_questions"
@@ -2655,6 +2782,7 @@ test_that("references.json holds only the cited sources and reloads", {
     tempest:::tempest_load_run_artifacts(
       dir,
       config = cfg,
+      program_set = program_set,
       run_id = "references-run"
     ),
     class = "tempest_run_restore_error"
@@ -2676,11 +2804,12 @@ test_that("schema 3 STORM bundles fail closed", {
 test_that("schema 4 resume protects run and config identity", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
   workspace <- tempest_research_workspace()
   manifest <- tempest_research_manifest(
     "protected-run",
     config = cfg,
-    programs = list(extract_claims = list(program_artifact_id = "program-a")),
+    programs = tempest:::tempest_program_set_manifest_programs(program_set),
     status = "failed"
   )
   tempest:::tempest_save_run_artifacts(
@@ -2688,6 +2817,7 @@ test_that("schema 4 resume protects run and config identity", {
     workspace,
     tempest:::tempest_storm_state("Protected run"),
     manifest,
+    program_set = program_set,
     config = cfg,
     steps = "research",
     research_strategy = "key_questions"
@@ -2697,6 +2827,7 @@ test_that("schema 4 resume protects run and config identity", {
     tempest:::tempest_load_run_artifacts(
       dir,
       config = cfg,
+      program_set = program_set,
       run_id = "different-run"
     ),
     class = "tempest_run_restore_error"
@@ -2705,6 +2836,7 @@ test_that("schema 4 resume protects run and config identity", {
     tempest:::tempest_load_run_artifacts(
       dir,
       config = tempest_config(max_search_results = 4L),
+      program_set = program_set,
       run_id = "protected-run"
     ),
     class = "tempest_run_restore_error"
@@ -2716,6 +2848,7 @@ test_that("schema 4 resume protects run and config identity", {
         base_snapshot_id = "snapshot-b"
       ),
       config = cfg,
+      program_set = program_set,
       run_id = "protected-run"
     ),
     class = "tempest_run_restore_error"
@@ -2724,15 +2857,179 @@ test_that("schema 4 resume protects run and config identity", {
   restored <- tempest:::tempest_load_run_artifacts(
     dir,
     config = cfg,
+    program_set = program_set,
     run_id = "protected-run"
   )
   expect_identical(restored$research_manifest@status, "failed")
   expect_identical(restored$research_manifest@programs, manifest@programs)
 })
 
+test_that("STORM persistence verifies complete ProgramSet identity on resume", {
+  root <- withr::local_tempdir()
+  run_dir <- file.path(root, "run")
+  cfg <- tempest_config()
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
+  manifest <- tempest_research_manifest(
+    "program-set-resume",
+    config = cfg,
+    programs = program_references
+  )
+  state <- tempest:::tempest_storm_state("ProgramSet resume")
+
+  tempest:::tempest_save_run_artifacts(
+    run_dir,
+    tempest_research_workspace(),
+    state,
+    manifest,
+    program_set = program_set,
+    config = cfg,
+    steps = "research",
+    research_strategy = "key_questions"
+  )
+  manifest_path <- file.path(run_dir, "run_config.json")
+  persisted <- tempest:::tempest_read_json_strict(manifest_path)
+  restored_manifest <- tempest:::tempest_research_manifest_from_record(
+    persisted$research_manifest
+  )
+
+  expect_identical(restored_manifest@programs, program_references)
+  expect_identical(
+    test_contains_runtime_value(persisted$research_manifest),
+    FALSE
+  )
+  program_files <- unlist(persisted$files, use.names = FALSE)
+  expect_length(program_files[startsWith(program_files, "programs/")], 0L)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      run_id = "program-set-resume"
+    ),
+    class = "tempest_run_restore_error",
+    regexp = "explicit complete TempestProgramSet"
+  )
+
+  file_program_set <- tempest_save_program_set(
+    program_set,
+    file.path(root, "program-set")
+  )
+  relocated <- tempest:::tempest_load_run_artifacts(
+    run_dir,
+    config = cfg,
+    program_set = file_program_set,
+    run_id = "program-set-resume"
+  )
+  expect_s7_class(relocated$program_set, TempestProgramSet)
+  expect_identical(
+    tempest:::tempest_program_set_identity_equal(
+      relocated$program_set,
+      restored_manifest@programs
+    ),
+    TRUE
+  )
+
+  tampered <- persisted
+  tampered$research_manifest$programs$personas <- NULL
+  tempest:::tempest_write_json(manifest_path, tampered)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = program_set,
+      run_id = "program-set-resume"
+    ),
+    class = "tempest_run_restore_error",
+    regexp = "every exact ProgramSet stage"
+  )
+
+  tampered <- persisted
+  tampered$research_manifest$programs$perspectives$program_artifact_id <-
+    paste0("sha256:", strrep("0", 64L))
+  tempest:::tempest_write_json(manifest_path, tampered)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = program_set,
+      run_id = "program-set-resume"
+    ),
+    class = "tempest_run_restore_error",
+    regexp = "identity does not match"
+  )
+
+  tampered <- persisted
+  tampered$research_manifest$programs$perspectives$evaluator_version <- "999"
+  tempest:::tempest_write_json(manifest_path, tampered)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = program_set,
+      run_id = "program-set-resume"
+    ),
+    class = "tempest_run_restore_error",
+    regexp = "identity does not match"
+  )
+
+  tampered <- persisted
+  tampered$research_manifest$programs$perspectives$artifact_reference <- NULL
+  tempest:::tempest_write_json(manifest_path, tampered)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = program_set,
+      run_id = "program-set-resume"
+    ),
+    class = "tempest_run_restore_error",
+    regexp = "research manifest is invalid"
+  )
+  tempest:::tempest_write_json(manifest_path, persisted)
+
+  corrupt_program_set <- tempest_program_set()
+  corrupt_program <- tempest:::tempest_program_set_program(
+    corrupt_program_set,
+    "perspectives"
+  )
+  corrupt_program$config$identity_corruption <- "changed"
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = corrupt_program_set,
+      run_id = "program-set-resume"
+    ),
+    class = "tempest_run_restore_error"
+  )
+
+  missing_save_dir <- file.path(root, "missing-program-set")
+  expect_error(
+    tempest:::tempest_save_run_artifacts(
+      missing_save_dir,
+      tempest_research_workspace(),
+      state,
+      manifest,
+      config = cfg,
+      steps = "research",
+      research_strategy = "key_questions"
+    ),
+    class = "tempest_run_persistence_error",
+    regexp = "explicit complete TempestProgramSet"
+  )
+  expect_identical(
+    file.exists(file.path(missing_save_dir, "run_config.json")),
+    FALSE
+  )
+})
+
 test_that("schema 4 STORM bundles round-trip the complete workspace", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace(
     max_sources = 4L,
     accepted_graft_references = list(
@@ -2794,8 +3091,10 @@ test_that("schema 4 STORM bundles round-trip the complete workspace", {
     ),
     tempest_research_manifest(
       "complete-workspace",
-      config = cfg
+      config = cfg,
+      programs = program_references
     ),
+    program_set = program_set,
     config = cfg,
     steps = "research",
     research_strategy = "key_questions"
@@ -2818,6 +3117,7 @@ test_that("schema 4 STORM bundles round-trip the complete workspace", {
   loaded <- tempest:::tempest_load_run_artifacts(
     dir,
     config = cfg,
+    program_set = program_set,
     run_id = "complete-workspace"
   )
 
@@ -2837,6 +3137,7 @@ test_that("schema 4 STORM bundles round-trip the complete workspace", {
     tempest:::tempest_load_run_artifacts(
       dir,
       config = cfg,
+      program_set = program_set,
       run_id = "complete-workspace"
     ),
     class = "tempest_run_restore_error"
@@ -2844,6 +3145,9 @@ test_that("schema 4 STORM bundles round-trip the complete workspace", {
 })
 
 test_that("STORM workspace files match the exact manifest identity", {
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   make_bundle <- function() {
     dir <- tempfile("tempest-workspace-identity-")
     dir.create(dir)
@@ -2859,7 +3163,12 @@ test_that("STORM workspace files match the exact manifest identity", {
       dir,
       workspace,
       tempest:::tempest_storm_state("Workspace identity"),
-      tempest_research_manifest("workspace-identity", config = cfg),
+      tempest_research_manifest(
+        "workspace-identity",
+        config = cfg,
+        programs = program_references
+      ),
+      program_set = program_set,
       config = cfg,
       steps = "research",
       research_strategy = "key_questions"
@@ -2885,6 +3194,7 @@ test_that("STORM workspace files match the exact manifest identity", {
       tempest:::tempest_load_run_artifacts(
         bundle$dir,
         config = bundle$config,
+        program_set = program_set,
         run_id = "workspace-identity"
       ),
       class = "tempest_run_restore_error"
@@ -2962,13 +3272,17 @@ test_that("persistence schema dispatch rejects fractional versions", {
       tempest_research_workspace(),
       tempest:::tempest_storm_state("Fractional schema"),
       cfg,
-      withr::local_tempdir()
+      program_set = NULL,
+      run_dir = withr::local_tempdir()
     ),
     class = run_class
   )
 })
 
 test_that("schema 4 STORM manifests have an exact product envelope", {
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   make_bundle <- function() {
     dir <- tempfile("tempest-exact-storm-")
     dir.create(dir)
@@ -2993,7 +3307,12 @@ test_that("schema 4 STORM manifests have an exact product envelope", {
       dir,
       tempest_research_workspace(),
       state,
-      tempest_research_manifest("exact-storm", config = cfg),
+      tempest_research_manifest(
+        "exact-storm",
+        config = cfg,
+        programs = program_references
+      ),
+      program_set = program_set,
       config = cfg,
       steps = c("perspectives", "research"),
       research_strategy = "key_questions"
@@ -3017,6 +3336,7 @@ test_that("schema 4 STORM manifests have an exact product envelope", {
       tempest:::tempest_load_run_artifacts(
         bundle$dir,
         config = bundle$config,
+        program_set = program_set,
         run_id = "exact-storm"
       ),
       class = "tempest_run_restore_error"
@@ -3030,6 +3350,7 @@ test_that("schema 4 STORM manifests have an exact product envelope", {
     tempest:::tempest_load_run_artifacts(
       bundle$dir,
       config = bundle$config,
+      program_set = program_set,
       run_id = "exact-storm"
     ),
     class = "tempest_run_restore_error"
@@ -3042,6 +3363,7 @@ test_that("schema 4 STORM manifests have an exact product envelope", {
     tempest:::tempest_load_run_artifacts(
       bundle$dir,
       config = bundle$config,
+      program_set = program_set,
       run_id = "exact-storm"
     ),
     class = "tempest_run_restore_error"
@@ -3057,6 +3379,7 @@ test_that("schema 4 STORM manifests have an exact product envelope", {
     tempest:::tempest_load_run_artifacts(
       bundle$dir,
       config = bundle$config,
+      program_set = program_set,
       run_id = "exact-storm"
     ),
     class = "tempest_run_restore_error"
@@ -3068,12 +3391,16 @@ test_that("schema 4 STORM manifests have an exact product envelope", {
   restored <- tempest:::tempest_load_run_artifacts(
     bundle$dir,
     config = bundle$config,
+    program_set = program_set,
     run_id = "exact-storm"
   )
   expect_identical(restored$completed_stages, character())
 })
 
 test_that("schema 4 STORM declared JSON fails closed", {
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   make_bundle <- function() {
     dir <- tempfile("tempest-strict-storm-")
     dir.create(dir)
@@ -3098,7 +3425,12 @@ test_that("schema 4 STORM declared JSON fails closed", {
       dir,
       tempest_research_workspace(),
       state,
-      tempest_research_manifest("strict-storm", config = cfg),
+      tempest_research_manifest(
+        "strict-storm",
+        config = cfg,
+        programs = program_references
+      ),
+      program_set = program_set,
       config = cfg,
       steps = "perspectives",
       research_strategy = "key_questions"
@@ -3119,6 +3451,7 @@ test_that("schema 4 STORM declared JSON fails closed", {
       tempest:::tempest_load_run_artifacts(
         bundle$dir,
         config = bundle$config,
+        program_set = program_set,
         run_id = "strict-storm"
       ),
       class = "tempest_run_restore_error"
@@ -3127,6 +3460,9 @@ test_that("schema 4 STORM declared JSON fails closed", {
 })
 
 test_that("schema 4 manifests require files implied by completed stages", {
+  program_set <- tempest_program_set()
+  program_references <-
+    tempest:::tempest_program_set_manifest_programs(program_set)
   make_bundle <- function() {
     dir <- tempfile("tempest-stage-files-")
     dir.create(dir)
@@ -3151,7 +3487,12 @@ test_that("schema 4 manifests require files implied by completed stages", {
       dir,
       tempest_research_workspace(),
       state,
-      tempest_research_manifest("stage-files", config = cfg),
+      tempest_research_manifest(
+        "stage-files",
+        config = cfg,
+        programs = program_references
+      ),
+      program_set = program_set,
       config = cfg,
       steps = "perspectives",
       research_strategy = "key_questions"
@@ -3192,6 +3533,7 @@ test_that("schema 4 manifests require files implied by completed stages", {
     tempest:::tempest_load_run_artifacts(
       current_dir,
       config = tempest_config(),
+      program_set = program_set,
       run_id = "stage-files"
     ),
     class = "tempest_run_restore_error"
@@ -3201,6 +3543,7 @@ test_that("schema 4 manifests require files implied by completed stages", {
 test_that("STORM resume accepts only an equivalent supplied workspace", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
+  program_set <- tempest_program_set()
   workspace <- tempest_research_workspace(
     max_sources = 8L,
     accepted_graft_references = list(
@@ -3242,7 +3585,8 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   ))
   manifest <- tempest_research_manifest(
     "authoritative-workspace",
-    config = cfg
+    config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
   tempest:::tempest_save_run_artifacts(
     dir,
@@ -3252,6 +3596,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
       completed_stages = "research"
     ),
     manifest,
+    program_set = program_set,
     config = cfg,
     steps = "research",
     research_strategy = "key_questions"
@@ -3269,6 +3614,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     dir,
     workspace = equivalent,
     config = cfg,
+    program_set = program_set,
     run_id = "authoritative-workspace"
   )
   expect_identical(loaded$workspace, equivalent)
@@ -3284,6 +3630,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     dir,
     workspace = empty,
     config = cfg,
+    program_set = program_set,
     run_id = "authoritative-workspace"
   )
   expect_identical(loaded_empty$workspace, empty)
@@ -3385,6 +3732,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
         dir,
         workspace = candidate,
         config = cfg,
+        program_set = program_set,
         run_id = "authoritative-workspace"
       ),
       class = "tempest_run_restore_error"

@@ -229,6 +229,11 @@ tempest_costorm_manifest_validate <- function(
       "{.arg manifest} does not match the supplied {.arg config}."
     )
   }
+  if (!setequal(names(manifest@programs), tempest_program_set_stages())) {
+    tempest_costorm_session_abort(
+      "{.arg manifest} must record the complete Tempest ProgramSet."
+    )
+  }
   snapshot <- manifest@knowledge_snapshot
   snapshot_id <- snapshot$snapshot_id %||% NULL
   if (length(snapshot) > 0L && is.null(snapshot_id)) {
@@ -248,6 +253,33 @@ tempest_costorm_manifest_validate <- function(
     )
   }
   manifest
+}
+
+tempest_costorm_program_execution <- function(
+  program_set,
+  stage,
+  session_id,
+  knowledge_snapshot_id = NULL
+) {
+  session_id <- tempest_research_manifest_id(session_id, "session_id")
+  trace_context <- list(
+    product = "tempest",
+    research_run_id = session_id,
+    mode = "costorm",
+    stage = stage,
+    role = "program"
+  )
+  if (!is.null(knowledge_snapshot_id)) {
+    trace_context$knowledge_snapshot_id <- knowledge_snapshot_id
+  }
+  tempest_program_set_execution(
+    program_set,
+    stage,
+    trace_context = tempest_research_manifest_canonical_value(
+      trace_context,
+      "trace_context"
+    )
+  )
 }
 
 #' @keywords internal
@@ -378,6 +410,8 @@ TempestSession <- R6::R6Class(
     #'   objects as the session makes progress.
     #' @param session_id Optional stable session identifier. If `NULL`, a new
     #'   identifier is generated.
+    #' @param program_set A [TempestProgramSet] used for every structured
+    #'   Co-STORM stage.
     #' @param .restore_manifest Internal research manifest supplied only by
     #'   Tempest's bundle-restoration seam.
     #' @param .restore_token Internal authorization token for bundle
@@ -392,6 +426,7 @@ TempestSession <- R6::R6Class(
       retriever = NULL,
       progress = NULL,
       session_id = NULL,
+      program_set = NULL,
       .restore_manifest = NULL,
       .restore_token = NULL
     ) {
@@ -426,6 +461,8 @@ TempestSession <- R6::R6Class(
           "{.arg config} must be created by {.fn tempest_config}."
         )
       }
+      program_set <- program_set %||% tempest_program_set()
+      program_references <- tempest_program_set_manifest_programs(program_set)
       if (!inherits(runtime, "TempestRuntime")) {
         tempest_runtime_abort(
           "{.arg runtime} must be created by {.fn tempest_runtime}."
@@ -527,7 +564,7 @@ TempestSession <- R6::R6Class(
           research_run_id = session_id,
           mode = "costorm",
           config = config,
-          programs = list(),
+          programs = program_references,
           knowledge_snapshot = tempest_costorm_manifest_snapshot_reference(
             private$workspace_value
           ),
@@ -544,6 +581,11 @@ TempestSession <- R6::R6Class(
           private$workspace_value
         )
       }
+      private$programs_value <- tempest_bind_program_set(
+        program_set,
+        private$manifest_value
+      )
+      private$program_set_value <- program_set
       private$session_id_value <- private$manifest_value@research_run_id
       self$transcript <- list()
       self$mindmap <- tempest_mindmap_init(self$topic)
@@ -558,11 +600,12 @@ TempestSession <- R6::R6Class(
 
       # Generate or use selected expert profiles.
       if (is.null(experts)) {
-        self$experts <- tempest_generate_experts(
+        self$experts <- tempest_generate_experts_with_program(
           topic = self$topic,
           n = n_experts,
           config = config,
-          verbose = FALSE
+          verbose = FALSE,
+          module = private$programs_value$personas
         )
       } else {
         self$experts <- tempest_validate_experts(experts)
@@ -617,7 +660,8 @@ TempestSession <- R6::R6Class(
         extractor = self$chats$extractor,
         workspace = self$workspace,
         progress = function(event) self$record_progress_event(event),
-        run_id = self$session_id
+        run_id = self$session_id,
+        extract_claims_program = private$programs_value$extract_claims
       )
 
       moderator_resolution <- self$runtime$resolve_role(
@@ -952,6 +996,7 @@ TempestSession <- R6::R6Class(
             self$chats$extractor,
             text,
             self$workspace,
+            module = private$programs_value$extract_claims,
             source_ids = source_ids,
             session_id = session_id,
             expert_id = expert_id,
@@ -1963,12 +2008,34 @@ TempestSession <- R6::R6Class(
     session_id_value = NULL,
     retriever_value = NULL,
     manifest_value = NULL,
+    programs_value = NULL,
+    program_set_value = NULL,
     workspace_value = NULL,
     artifact_catalog_value = NULL,
     workflow_run_value = NULL,
     report_md_value = NULL
   )
 )
+
+#' @keywords internal
+tempest_session_program_set <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$program_set_value
+}
+
+#' @keywords internal
+tempest_session_programs <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$programs_value
+}
 
 #' @keywords internal
 tempest_session_artifact_catalog <- function(session) {
@@ -2051,6 +2118,9 @@ tempest_session_set_report_value <- function(session, report_md) {
 #'   objects as the session makes progress.
 #' @param session_id Optional stable session identifier. If `NULL`, a new
 #'   identifier is generated.
+#' @param program_set A [TempestProgramSet] containing the exact dsprrr
+#'   programs used by Co-STORM. If `NULL`, [tempest_program_set()] creates the
+#'   builtin set.
 #' @examples
 #' \dontrun{
 #' session <- tempest_session("History of jazz", config = tempest_config())
@@ -2064,16 +2134,44 @@ tempest_session <- function(
   experts = NULL,
   retriever = NULL,
   progress = NULL,
-  session_id = NULL
+  session_id = NULL,
+  program_set = NULL
 ) {
-  TempestSession$new(
+  tempest_session_new(
     topic = topic,
     config = config,
     n_experts = n_experts,
     experts = experts,
     retriever = retriever,
     progress = progress,
-    session_id = session_id
+    session_id = session_id,
+    program_set = program_set
+  )
+}
+
+tempest_session_new <- function(
+  topic,
+  config = tempest_config(),
+  runtime = tempest_runtime(),
+  n_experts = 3,
+  experts = NULL,
+  connection_permissions = list(),
+  retriever = NULL,
+  progress = NULL,
+  session_id = NULL,
+  program_set = NULL
+) {
+  TempestSession$new(
+    topic = topic,
+    config = config,
+    runtime = runtime,
+    n_experts = n_experts,
+    experts = experts,
+    connection_permissions = connection_permissions,
+    retriever = retriever,
+    progress = progress,
+    session_id = session_id,
+    program_set = program_set
   )
 }
 
@@ -2087,6 +2185,7 @@ tempest_session_restore_new <- function(
   retriever = NULL,
   progress = NULL,
   session_id = NULL,
+  program_set = NULL,
   manifest
 ) {
   TempestSession$new(
@@ -2099,6 +2198,7 @@ tempest_session_restore_new <- function(
     retriever = retriever,
     progress = progress,
     session_id = session_id,
+    program_set = program_set,
     .restore_manifest = manifest,
     .restore_token = tempest_costorm_restore_token
   )

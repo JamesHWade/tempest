@@ -128,8 +128,9 @@ reference:
   - tempest_progress_replay
   - tempest_progress_state
   - tempest_progress_labels
-- title: dsprrr modules
+- title: Governed programs
   contents:
-  - tempest_load_dsprrr_modules
-  - tempest_optimize_dsprrr_modules
-  - tempest_save_dsprrr_modules
+  - tempest_program_set
+  - tempest_compile_programs
+  - tempest_save_program_set
+  - tempest_load_program_set
