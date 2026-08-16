@@ -8,7 +8,8 @@ tempest_session_resume(
   path,
   config = tempest_config(),
   progress = NULL,
-  partial_recovery = FALSE
+  partial_recovery = FALSE,
+  program_set = NULL
 )
 }
 \arguments{
@@ -24,6 +25,9 @@ objects.}
 allowlisted presentation files are missing or fail integrity checks. All
 other declared files, including expert, workspace, report, and Graft
 snapshot state, must pass integrity checks.}
+
+\item{program_set}{A \link{TempestProgramSet} carrying the same program
+identities recorded in the bundle. If \code{NULL}, the builtin set is used.}
 }
 \value{
 A restored \link{TempestSession}.

@@ -60,8 +60,9 @@ Implemented or already present:
   drafting/refinement, section writing, and lead generation.
 - dsprrr-backed modules for the structured STORM steps above, all guarded by
   fallback to direct ellmer calls.
-- Explicit dsprrr optimization through `tempest_optimize_dsprrr_modules()`,
-  with save/load helpers for compiled module reuse in `tempest_run()`.
+- Explicit dsprrr compilation through `tempest_compile_programs()`, with
+  closed `TempestProgramSet` save/load bundles for exact reuse in
+  `tempest_run()` and Co-STORM.
 - Configurable `max_search_queries_per_turn` and `retrieve_top_k`, matching the
   upstream runner controls.
 - Upstream-style HTTP retrievers for You.com, Bing, Serper, Brave,

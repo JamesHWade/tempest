@@ -44,7 +44,7 @@ test_that("tempest_run rejects a mismatched TempestRetriever before execution", 
         expert_id = "expert.retriever-config",
         name = "Retriever Config Expert"
       )),
-      dsprrr_modules = list(),
+      program_set = tempest_program_set(),
       steps = "perspectives",
       verbose = FALSE
     ),
@@ -166,7 +166,7 @@ test_that("tempest_run uses the selected expert team", {
     config = cfg,
     retriever = retriever,
     experts = list(expert),
-    dsprrr_modules = list(),
+    program_set = tempest_program_set(),
     steps = "perspectives",
     verbose = FALSE
   )
@@ -189,7 +189,7 @@ test_that("tempest_run continues from fixed product state", {
     retriever = fixture$retriever,
     n_experts = 1,
     max_questions_per_perspective = 1,
-    dsprrr_modules = list(),
+    program_set = tempest_program_set(),
     steps = c("perspectives", "research", "outline"),
     verbose = FALSE
   )
@@ -198,7 +198,7 @@ test_that("tempest_run continues from fixed product state", {
     config = fixture$config,
     retriever = fixture$retriever,
     experts = first$experts,
-    dsprrr_modules = list(),
+    program_set = tempest_program_set(),
     steps = "write",
     verbose = FALSE,
     .state = first$state
@@ -255,11 +255,17 @@ test_that("tempest_run rejects a resumed checkpoint for another topic", {
     "Persisted topic",
     run_id = run_id
   )
+  program_set <- tempest_program_set()
   tempest:::tempest_save_run_artifacts(
     run_dir,
     tempest_research_workspace(),
     tempest:::tempest_storm_state("Persisted topic"),
-    tempest_research_manifest(run_id, config = config),
+    tempest_research_manifest(
+      run_id,
+      config = config,
+      programs = tempest:::tempest_program_set_manifest_programs(program_set)
+    ),
+    program_set = program_set,
     config = config,
     steps = "write",
     research_strategy = "key_questions"
@@ -269,7 +275,7 @@ test_that("tempest_run rejects a resumed checkpoint for another topic", {
     tempest_run(
       "Different requested topic",
       config = config,
-      dsprrr_modules = list(),
+      program_set = program_set,
       steps = "write",
       output_dir = output_root,
       resume = TRUE,
@@ -297,9 +303,11 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
       run_id = run_id
     )
     workspace <- tempest_research_workspace()
+    program_set <- tempest_program_set()
     manifest <- tempest_research_manifest(
       run_id,
       config = cfg,
+      programs = tempest:::tempest_program_set_manifest_programs(program_set),
       status = terminal_status
     )
     tempest:::tempest_save_run_artifacts(
@@ -307,6 +315,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
       workspace,
       tempest:::tempest_storm_state("Terminal resume"),
       manifest,
+      program_set = program_set,
       config = cfg,
       steps = "write",
       research_strategy = "key_questions"
@@ -318,7 +327,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
         config = cfg,
         retriever = tempest_retriever(config = cfg, workspace = workspace),
         steps = "write",
-        dsprrr_modules = list(),
+        program_set = program_set,
         output_dir = output_root,
         resume = TRUE,
         run_id = run_id,
@@ -349,9 +358,11 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     report_md = "# Completed resume",
     completed_stages = "polish"
   )
+  program_set <- tempest_program_set()
   manifest <- tempest_research_manifest(
     "terminal-succeeded",
     config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set),
     status = "succeeded"
   )
   tempest:::tempest_save_run_artifacts(
@@ -359,6 +370,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     tempest_research_workspace(),
     state,
     manifest,
+    program_set = program_set,
     config = cfg,
     steps = "polish",
     research_strategy = "key_questions"
@@ -368,7 +380,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     "Completed resume",
     config = cfg,
     steps = "polish",
-    dsprrr_modules = list(),
+    program_set = program_set,
     output_dir = output_root,
     resume = TRUE,
     run_id = "terminal-succeeded",
@@ -383,7 +395,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
       "Completed resume",
       config = cfg,
       steps = "write",
-      dsprrr_modules = list(),
+      program_set = program_set,
       output_dir = output_root,
       resume = TRUE,
       run_id = "terminal-succeeded",
@@ -462,7 +474,21 @@ test_that("tempest_run emits ordered STORM progress events", {
           structured = list(
             list(queries = c("progress events")),
             outline,
-            outline
+            outline,
+            list(
+              section_text = paste0(
+                "Section body cites events [",
+                source_id,
+                "]."
+              )
+            ),
+            list(
+              lead_section = paste0(
+                "Lead body cites events [",
+                source_id,
+                "]."
+              )
+            )
           ),
           text = list(
             paste0("Section body cites events [", source_id, "]."),
@@ -538,7 +564,7 @@ test_that("tempest_run emits ordered STORM progress events", {
     retriever = retriever,
     n_experts = 1,
     max_questions_per_perspective = 1,
-    dsprrr_modules = list(),
+    program_set = tempest_program_set(),
     output_dir = withr::local_tempdir(),
     run_id = "progress-run",
     progress = collector$record,
@@ -671,7 +697,6 @@ test_that("STORM research harvests OpenAI native annotations", {
     description = "Native evidence",
     instructions = "Research native evidence."
   ))
-
   result <- tempest:::tempest_research_one_perspective(
     1,
     perspectives = perspectives,
@@ -680,7 +705,10 @@ test_that("STORM research harvests OpenAI native annotations", {
     topic = "Native evidence",
     research_strategy = "key_questions",
     max_questions_per_perspective = 1,
-    dsprrr_modules = list()
+    programs = test_program_executions(
+      cfg,
+      run_id = "research-one-perspective"
+    )
   )
 
   expect_equal(result$retrieved_resources[[1]]$id, source_id)
@@ -698,6 +726,46 @@ test_that("STORM research harvests OpenAI native annotations", {
   expect_length(result$proposed_claims, 1L)
   expect_equal(result$proposed_claims[[1]]@source_ids, source_id)
   expect_equal(result$proposed_claims[[1]]@support_score, 0.87)
+})
+
+test_that("STORM research does not downgrade dsprrr contract failures", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  expert <- tempest_expert(
+    expert_id = "expert.contract",
+    name = "Contract Expert",
+    title = "Researcher",
+    description = "Contract testing",
+    instructions = "Research the supplied question."
+  )
+  local_mocked_bindings(
+    tempest_decompose_query = function(...) {
+      rlang::abort(
+        "trace metadata mismatch",
+        class = "dsprrr_trace_contract_error"
+      )
+    }
+  )
+
+  expect_error(
+    tempest:::tempest_research_one_perspective(
+      1,
+      perspectives = list(list(
+        name = "Contract",
+        description = "Contract boundary",
+        key_questions = "What changed?"
+      )),
+      experts = list(expert),
+      config = cfg,
+      topic = "Contract boundary",
+      research_strategy = "key_questions",
+      max_questions_per_perspective = 1,
+      programs = test_program_executions(cfg, "storm-contract")
+    ),
+    class = "dsprrr_trace_contract_error"
+  )
 })
 
 test_that("tempest_run emits a failed verification stage event", {
@@ -726,7 +794,7 @@ test_that("tempest_run emits a failed verification stage event", {
       retriever = fixture$retriever,
       n_experts = 1,
       max_questions_per_perspective = 1,
-      dsprrr_modules = list(),
+      program_set = tempest_program_set(),
       output_dir = withr::local_tempdir(),
       run_id = "progress-verify-fail",
       progress = collector$record,
@@ -769,7 +837,7 @@ test_that("tempest_run emits terminal progress events on failure", {
         workspace = tempest_research_workspace()
       ),
       steps = "write",
-      dsprrr_modules = list(),
+      program_set = tempest_program_set(),
       output_dir = output_root,
       run_id = "failed-storm-run",
       progress = collector$record,
@@ -839,7 +907,7 @@ test_that("final STORM persistence failure is recorded without masking it", {
       retriever = fixture$retriever,
       n_experts = 1,
       max_questions_per_perspective = 1,
-      dsprrr_modules = list(),
+      program_set = tempest_program_set(),
       output_dir = output_root,
       run_id = "terminal-persistence",
       verbose = FALSE

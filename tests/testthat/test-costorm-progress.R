@@ -259,6 +259,11 @@ test_that("expert tools emit correlated progress events", {
     config = cfg,
     retriever = retriever,
     extractor = extractor,
+    extract_claims_program = tempest:::tempest_costorm_program_execution(
+      tempest_program_set(),
+      "extract_claims",
+      "session-1"
+    ),
     workspace = store,
     progress = collector$record,
     run_id = "session-1"
@@ -346,6 +351,11 @@ test_that("expert tools reuse sessions and provenance", {
     config = cfg,
     retriever = retriever,
     extractor = extractor,
+    extract_claims_program = tempest:::tempest_costorm_program_execution(
+      tempest_program_set(),
+      "extract_claims",
+      "session-1"
+    ),
     workspace = store,
     run_id = "session-1"
   )

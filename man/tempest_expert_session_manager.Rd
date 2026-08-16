@@ -11,6 +11,7 @@ tempest_expert_session_manager(
   retriever,
   allowed_connection_ref_ids = list(),
   extractor = NULL,
+  extract_claims_program = NULL,
   workspace = NULL,
   progress = NULL,
   run_id = NULL
@@ -29,6 +30,9 @@ tempest_expert_session_manager(
 stable expert id.}
 
 \item{extractor}{Optional fact-extraction chat.}
+
+\item{extract_claims_program}{ProgramSet-bound claim-extraction execution.
+Required when \code{extractor} is supplied.}
 
 \item{workspace}{Optional \link{ResearchWorkspace}; defaults to the retriever
 workspace.}

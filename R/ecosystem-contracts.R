@@ -25,7 +25,7 @@ tempest_dsprrr_execution <- function(
   structure(
     list(
       program = tempest_dsprrr_execution_program(program),
-      program_artifact_id = tempest_research_manifest_id(
+      program_artifact_id = tempest_research_manifest_program_artifact_id(
         program_artifact_id,
         "program_artifact_id"
       ),
@@ -50,32 +50,11 @@ tempest_program_reference <- function(program) {
     }
   )
   list(
-    program_artifact_id = tempest_research_manifest_id(
+    program_artifact_id = tempest_research_manifest_program_artifact_id(
       program_artifact_id,
       "program_artifact_id"
     )
   )
-}
-
-tempest_program_references <- function(programs) {
-  if (is.null(programs) || length(programs) == 0L) {
-    return(list())
-  }
-  if (
-    !is.list(programs) ||
-      is.data.frame(programs) ||
-      is.null(names(programs)) ||
-      anyNA(names(programs)) ||
-      any(!nzchar(names(programs))) ||
-      anyDuplicated(names(programs))
-  ) {
-    tempest_ecosystem_contract_abort(
-      "{.arg programs} must be a uniquely named list of dsprrr programs."
-    )
-  }
-  programs <- programs[!vapply(programs, is.null, logical(1))]
-  references <- lapply(programs, tempest_program_reference)
-  tempest_research_manifest_programs(references)
 }
 
 tempest_snapshot_reference <- function(snapshot) {
@@ -200,34 +179,4 @@ tempest_dsprrr_trace_context <- function(
   # dsprrr reserves this field and injects its verified value independently.
   context$program_artifact_id <- NULL
   context
-}
-
-tempest_bind_dsprrr_trace_context <- function(programs, manifest) {
-  if (is.null(programs)) {
-    return(NULL)
-  }
-  executable_programs <- lapply(programs, tempest_dsprrr_execution_program)
-  references <- tempest_program_references(executable_programs)
-  if (!identical(references, manifest@programs)) {
-    tempest_ecosystem_contract_abort(
-      "The executable dsprrr programs do not match the research manifest."
-    )
-  }
-  for (stage in names(programs)) {
-    program <- executable_programs[[stage]]
-    if (is.null(program)) {
-      next
-    }
-    reference <- references[[stage]]
-    programs[[stage]] <- tempest_dsprrr_execution(
-      program = program,
-      program_artifact_id = reference$program_artifact_id,
-      trace_context = tempest_dsprrr_trace_context(
-        manifest,
-        stage,
-        reference$program_artifact_id
-      )
-    )
-  }
-  programs
 }

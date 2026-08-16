@@ -40,14 +40,23 @@ test_that("research manifests validate schema and lifecycle enums", {
 })
 
 test_that("research manifest records survive canonical JSON without drift", {
+  program_id <- paste0("sha256:", strrep("a", 64L))
   manifest <- tempest_research_manifest(
     research_run_id = "research-123",
     mode = "costorm",
     config = tempest_config(),
     programs = list(
       extract_claims = list(
+        stage = "extract_claims",
+        contract_version = 1L,
+        program_artifact_id = program_id,
+        artifact_reference = list(
+          type = "builtin",
+          id = "tempest::extract_claims"
+        ),
         governed_procedure_revision_id = NULL,
-        program_artifact_id = "artifact:any-format"
+        evaluator_id = "dsprrr",
+        evaluator_version = "1.0.0"
       )
     ),
     knowledge_snapshot = list(
@@ -88,6 +97,102 @@ test_that("research manifest records survive canonical JSON without drift", {
     tempest_research_manifest_canonical_json(restored_record),
     json
   )
+})
+
+test_that("research manifests preserve complete portable ProgramSet references", {
+  program_id <- paste0("sha256:", strrep("c", 64L))
+  builtin <- list(
+    stage = "extract_claims",
+    contract_version = 1L,
+    program_artifact_id = program_id,
+    artifact_reference = list(
+      type = "builtin",
+      id = "tempest::extract_claims"
+    ),
+    governed_procedure_revision_id = "procedure:claims-v2",
+    evaluator_id = "support-evaluator",
+    evaluator_version = "2.1.0"
+  )
+  file <- builtin
+  file$artifact_reference <- list(
+    type = "file",
+    path = "programs/extract_claims.rds"
+  )
+
+  builtin_manifest <- tempest_research_manifest(
+    "research-builtin-program",
+    config = tempest_config(),
+    programs = list(extract_claims = builtin)
+  )
+  file_manifest <- tempest_research_manifest(
+    "research-file-program",
+    config = tempest_config(),
+    programs = list(extract_claims = file)
+  )
+
+  expect_identical(builtin_manifest@programs$extract_claims, builtin)
+  expect_identical(file_manifest@programs$extract_claims, file)
+  expect_identical(
+    tempest:::tempest_research_manifest_programs_same_identity(
+      builtin_manifest@programs,
+      file_manifest@programs
+    ),
+    TRUE
+  )
+  changed_evaluator <- file_manifest@programs
+  changed_evaluator$extract_claims$evaluator_version <- "2.2.0"
+  expect_identical(
+    tempest:::tempest_research_manifest_programs_same_identity(
+      builtin_manifest@programs,
+      changed_evaluator
+    ),
+    FALSE
+  )
+})
+
+test_that("research manifests reject corrupt ProgramSet references", {
+  reference <- list(
+    stage = "extract_claims",
+    contract_version = 1L,
+    program_artifact_id = paste0("sha256:", strrep("d", 64L)),
+    artifact_reference = list(
+      type = "file",
+      path = "programs/extract_claims.rds"
+    ),
+    governed_procedure_revision_id = NULL,
+    evaluator_id = "dsprrr",
+    evaluator_version = "1.0.0"
+  )
+  corrupt <- list(
+    missing_field = reference[names(reference) != "evaluator_version"],
+    wrong_stage = utils::modifyList(reference, list(stage = "personas")),
+    wrong_contract = utils::modifyList(reference, list(contract_version = 2L)),
+    wrong_id = utils::modifyList(
+      reference,
+      list(program_artifact_id = "program")
+    ),
+    escaping_path = utils::modifyList(
+      reference,
+      list(artifact_reference = list(type = "file", path = "../program.rds"))
+    ),
+    wrong_builtin = utils::modifyList(
+      reference,
+      list(
+        artifact_reference = list(type = "builtin", id = "tempest::personas")
+      )
+    )
+  )
+
+  for (value in corrupt) {
+    expect_error(
+      tempest_research_manifest(
+        "research-corrupt-program",
+        config = tempest_config(),
+        programs = list(extract_claims = value)
+      ),
+      class = "tempest_research_manifest_error"
+    )
+  }
 })
 
 test_that("research manifest references reject sensitive nested fields", {
@@ -213,7 +318,20 @@ test_that("research manifest references enforce canonical plain values", {
       "research-123",
       "storm",
       tempest_config(),
-      programs = list(extract_claims = list(program_artifact_id = ""))
+      programs = list(
+        extract_claims = list(
+          stage = "extract_claims",
+          contract_version = 1L,
+          program_artifact_id = "",
+          artifact_reference = list(
+            type = "builtin",
+            id = "tempest::extract_claims"
+          ),
+          governed_procedure_revision_id = NULL,
+          evaluator_id = "dsprrr",
+          evaluator_version = "1.0.0"
+        )
+      )
     ),
     class = "tempest_research_manifest_error",
     regexp = "non-empty identifier"
@@ -392,11 +510,25 @@ test_that("configuration digests cover behavior and exclude runtime details", {
 })
 
 test_that("research manifest records contain references only", {
+  program_id <- paste0("sha256:", strrep("b", 64L))
   manifest <- tempest_research_manifest(
     "research-123",
     "storm",
     tempest_config(),
-    programs = list(extract_claims = list(program_artifact_id = "program-1")),
+    programs = list(
+      extract_claims = list(
+        stage = "extract_claims",
+        contract_version = 1L,
+        program_artifact_id = program_id,
+        artifact_reference = list(
+          type = "builtin",
+          id = "tempest::extract_claims"
+        ),
+        governed_procedure_revision_id = NULL,
+        evaluator_id = "dsprrr",
+        evaluator_version = "1.0.0"
+      )
+    ),
     knowledge_snapshot = list(snapshot_id = "snapshot-1"),
     runtime = list(deputy_run_ids = "deputy-run-1"),
     traces = list(list(trace_id = "trace-1")),

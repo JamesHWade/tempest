@@ -10,7 +10,8 @@
 #' @param n Number of experts to generate.
 #' @param config A `TempestConfig` object.
 #' @param verbose Print progress.
-#' @param module Optional dsprrr module used internally.
+#' @param program_set A [TempestProgramSet] containing the exact `personas`
+#'   program. If `NULL`, [tempest_program_set()] creates the builtin set.
 #' @return A list of `tempest_expert` profiles.
 #'
 #' @examples
@@ -27,7 +28,38 @@ tempest_generate_experts <- function(
   n = 3,
   config = tempest_config(),
   verbose = FALSE,
-  module = NULL
+  program_set = NULL
+) {
+  tempest_require("ellmer", "Expert generation requires ellmer.")
+  topic <- tempest_config_string(topic, "topic")
+  n <- tempest_config_count(n, "n")
+  if (n > config@max_active_experts) {
+    tempest_config_abort(
+      "{.arg n} cannot exceed {.arg max_active_experts}."
+    )
+  }
+  program_set <- program_set %||% tempest_program_set()
+  module <- tempest_program_set_execution(
+    program_set,
+    "personas",
+    trace_context = tempest_standalone_dsprrr_trace_context("personas")
+  )
+  tempest_generate_experts_with_program(
+    topic = topic,
+    n = n,
+    config = config,
+    verbose = verbose,
+    module = module
+  )
+}
+
+#' @keywords internal
+tempest_generate_experts_with_program <- function(
+  topic,
+  n,
+  config,
+  verbose,
+  module
 ) {
   tempest_require("ellmer", "Expert generation requires ellmer.")
   topic <- tempest_config_string(topic, "topic")
@@ -101,11 +133,13 @@ tempest_generate_experts <- function(
   experts
 }
 
-#' @keywords internal
+# Execute persona generation through a ProgramSet-bound dsprrr program without
+# blocking the Shiny event loop.
 tempest_generate_experts_async <- function(
   topic,
   n = 3,
-  config = tempest_config()
+  config = tempest_config(),
+  program
 ) {
   tempest_require("ellmer", "Expert generation requires ellmer.")
   tempest_require("promises", "Async expert generation requires promises.")
@@ -135,12 +169,31 @@ tempest_generate_experts_async <- function(
     "- Each persona's focus areas should be specific and non-overlapping\n",
     "- Initial questions should reflect their unique expertise and concerns\n"
   )
-  request <- chat$chat_structured_async(
-    prompt,
-    type = tempest_type_personas(),
-    echo = "none",
-    convert = FALSE
+  request <- tempest_run_dsprrr_module_async(
+    program,
+    chat,
+    inputs = list(
+      topic = topic,
+      n_experts = n,
+      requirements = paste(
+        "- Each persona should have a distinct professional background",
+        "- Personas should complement each other, covering different angles",
+        "- Include a mix of academic, industry, and practitioner perspectives where appropriate",
+        "- Each persona's focus areas should be specific and non-overlapping",
+        "- Initial questions should reflect their unique expertise and concerns",
+        sep = "\n"
+      )
+    ),
+    step = "expert generation"
   )
+  if (is.null(request)) {
+    request <- chat$chat_structured_async(
+      prompt,
+      type = tempest_type_personas(),
+      echo = "none",
+      convert = FALSE
+    )
+  }
   promises::then(request, function(result) {
     tempest_normalize_experts(result, n = n)
   })

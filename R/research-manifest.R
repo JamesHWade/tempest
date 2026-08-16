@@ -282,6 +282,94 @@ tempest_research_manifest_ids <- function(value, path) {
   as.list(sort(unique(unlist(ids, use.names = FALSE))))
 }
 
+tempest_research_manifest_program_contract_version <- function(value, path) {
+  if (
+    !is.numeric(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !is.finite(value) ||
+      value != 1L
+  ) {
+    tempest_research_manifest_abort(
+      "{.field {path}} must be the supported contract version `1`."
+    )
+  }
+  1L
+}
+
+tempest_research_manifest_program_artifact_id <- function(value, path) {
+  value <- tempest_research_manifest_id(value, path)
+  if (!grepl("^sha256:[a-f0-9]{64}$", value)) {
+    tempest_research_manifest_abort(
+      paste0(
+        "{.field {path}} must use the form ",
+        "{.code sha256:<64 lowercase hexadecimal characters>}."
+      )
+    )
+  }
+  value
+}
+
+tempest_research_manifest_program_artifact_reference <- function(
+  value,
+  stage,
+  path
+) {
+  value <- tempest_research_manifest_canonical_value(value, path)
+  value <- tempest_research_manifest_named_record(value, path)
+  reference_type <- tempest_research_manifest_id(
+    value$type,
+    paste0(path, "$type")
+  )
+  if (!reference_type %in% c("builtin", "file")) {
+    tempest_research_manifest_abort(
+      "{.field {path}$type} must be {.val builtin} or {.val file}."
+    )
+  }
+  if (identical(reference_type, "builtin")) {
+    fields <- c("type", "id")
+    if (!setequal(names(value), fields)) {
+      tempest_research_manifest_abort(
+        paste0(
+          "{.field {path}} must contain exactly {.field type} ",
+          "and {.field id} for a builtin reference."
+        )
+      )
+    }
+    id <- tempest_research_manifest_id(
+      value$id,
+      paste0(path, "$id")
+    )
+    expected_id <- paste0("tempest::", stage)
+    if (!identical(id, expected_id)) {
+      tempest_research_manifest_abort(
+        "{.field {path}$id} must be the builtin stage id {.val {expected_id}}."
+      )
+    }
+    return(list(type = reference_type, id = id))
+  }
+  fields <- c("type", "path")
+  if (!setequal(names(value), fields)) {
+    tempest_research_manifest_abort(
+      paste0(
+        "{.field {path}} must contain exactly {.field type} and ",
+        "{.field path} for a file reference."
+      )
+    )
+  }
+  artifact_path <- tempest_research_manifest_id(
+    value$path,
+    paste0(path, "$path")
+  )
+  expected_path <- paste0("programs/", stage, ".rds")
+  if (!identical(artifact_path, expected_path)) {
+    tempest_research_manifest_abort(
+      "{.field {path}$path} must be the portable stage locator {.path {expected_path}}."
+    )
+  }
+  list(type = reference_type, path = artifact_path)
+}
+
 tempest_research_manifest_programs <- function(value) {
   value <- value %||% list()
   if (!is.list(value) || is.data.frame(value)) {
@@ -305,8 +393,13 @@ tempest_research_manifest_programs <- function(value) {
   }
   value <- value[order(stages)]
   allowed <- c(
+    "stage",
+    "contract_version",
+    "program_artifact_id",
+    "artifact_reference",
     "governed_procedure_revision_id",
-    "program_artifact_id"
+    "evaluator_id",
+    "evaluator_version"
   )
   stats::setNames(
     lapply(names(value), function(stage) {
@@ -317,21 +410,77 @@ tempest_research_manifest_programs <- function(value) {
       )
       reference <- tempest_research_manifest_named_record(reference, path)
       tempest_research_manifest_unknown_fields(reference, allowed, path)
-      if (is.null(reference$program_artifact_id)) {
+      if (!setequal(names(reference), allowed)) {
         tempest_research_manifest_abort(
-          "{.field {path}} must identify {.field program_artifact_id}."
+          paste0(
+            "{.field {path}} must contain exactly the current ProgramSet ",
+            "reference fields."
+          )
         )
       }
-      for (field in intersect(names(reference), allowed)) {
-        reference[field] <- list(tempest_research_manifest_id(
-          reference[[field]],
-          paste0(path, "$", field),
-          nullable = identical(field, "governed_procedure_revision_id")
-        ))
+      reference$stage <- tempest_research_manifest_id(
+        reference$stage,
+        paste0(path, "$stage")
+      )
+      if (!identical(reference$stage, stage)) {
+        tempest_research_manifest_abort(
+          "{.field {path}$stage} must match its named manifest stage."
+        )
       }
-      reference
+      reference$contract_version <-
+        tempest_research_manifest_program_contract_version(
+          reference$contract_version,
+          paste0(path, "$contract_version")
+        )
+      reference$program_artifact_id <-
+        tempest_research_manifest_program_artifact_id(
+          reference$program_artifact_id,
+          paste0(path, "$program_artifact_id")
+        )
+      reference$artifact_reference <-
+        tempest_research_manifest_program_artifact_reference(
+          reference$artifact_reference,
+          stage,
+          paste0(path, "$artifact_reference")
+        )
+      reference["governed_procedure_revision_id"] <- list(
+        tempest_research_manifest_id(
+          reference$governed_procedure_revision_id,
+          paste0(path, "$governed_procedure_revision_id"),
+          nullable = TRUE
+        )
+      )
+      reference$evaluator_id <- tempest_research_manifest_id(
+        reference$evaluator_id,
+        paste0(path, "$evaluator_id")
+      )
+      reference$evaluator_version <- tempest_research_manifest_id(
+        reference$evaluator_version,
+        paste0(path, "$evaluator_version")
+      )
+      reference[allowed]
     }),
     names(value)
+  )
+}
+
+tempest_research_manifest_program_identity_records <- function(value) {
+  value <- tempest_research_manifest_programs(value)
+  identity_fields <- c(
+    "stage",
+    "contract_version",
+    "program_artifact_id",
+    "governed_procedure_revision_id",
+    "evaluator_id",
+    "evaluator_version"
+  )
+  lapply(value, \(reference) reference[identity_fields])
+}
+
+tempest_research_manifest_programs_same_identity <- function(x, y) {
+  identical(
+    tempest_research_manifest_program_identity_records(x),
+    tempest_research_manifest_program_identity_records(y)
   )
 }
 

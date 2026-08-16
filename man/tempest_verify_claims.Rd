@@ -9,7 +9,7 @@ tempest_verify_claims(
   verifier,
   policy = "claim_verified",
   verifier_model = NA_character_,
-  modules = NULL,
+  program_set = NULL,
   min_support_score = 0.7
 )
 }
@@ -24,9 +24,9 @@ sources.}
 
 \item{verifier_model}{Optional model id recorded on each verified claim.}
 
-\item{modules}{Optional named list of dsprrr modules; when it contains
-\code{verify_claim_support}, that module performs the judgement (with an ellmer
-fallback).}
+\item{program_set}{A \link{TempestProgramSet} containing the exact
+\code{verify_claim_support} program. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates
+the builtin set.}
 
 \item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
 considered supported.}

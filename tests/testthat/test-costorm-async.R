@@ -16,6 +16,7 @@ test_that("async fact extraction keeps the event loop responsive", {
   )
   session <- list(
     session_id = "async-session",
+    programs = test_program_executions(run_id = "async-session"),
     workspace = store,
     chats = list(extractor = extractor),
     emit_progress = function(
@@ -41,6 +42,9 @@ test_that("async fact extraction keeps the event loop responsive", {
         correlation_id = correlation_id
       )
     }
+  )
+  local_mocked_bindings(
+    tempest_session_programs = function(session) session$programs
   )
 
   request <- tempest:::tempest_session_extract_facts_async(
@@ -78,6 +82,7 @@ test_that("stale async evidence cannot commit or report success", {
   current <- TRUE
   session <- list(
     session_id = "stale-session",
+    programs = test_program_executions(run_id = "stale-session"),
     workspace = store,
     chats = list(
       extractor = list(
@@ -112,6 +117,9 @@ test_that("stale async evidence cannot commit or report success", {
       )
     }
   )
+  local_mocked_bindings(
+    tempest_session_programs = function(session) session$programs
+  )
   request <- tempest:::tempest_session_commit_evidence_async(
     session,
     paste0("Stale claim [", source_id, "]."),
@@ -141,6 +149,7 @@ test_that("evidence commitment skips extraction when a turn cites no source", {
   workspace <- tempest_research_workspace()
   session <- list(
     session_id = "unsupported-session",
+    programs = test_program_executions(run_id = "unsupported-session"),
     workspace = workspace,
     chats = list(
       extractor = list(
@@ -176,6 +185,9 @@ test_that("evidence commitment skips extraction when a turn cites no source", {
       event
     }
   )
+  local_mocked_bindings(
+    tempest_session_programs = function(session) session$programs
+  )
 
   request <- tempest:::tempest_session_commit_evidence_async(
     session,
@@ -210,6 +222,7 @@ test_that("evidence commitment extracts claims from cited session sources", {
   )
   session <- list(
     session_id = "cited-session",
+    programs = test_program_executions(run_id = "cited-session"),
     workspace = store,
     chats = list(extractor = extractor),
     emit_progress = function(
@@ -236,6 +249,9 @@ test_that("evidence commitment extracts claims from cited session sources", {
       )
     }
   )
+  local_mocked_bindings(
+    tempest_session_programs = function(session) session$programs
+  )
 
   request <- tempest:::tempest_session_commit_evidence_async(
     session,
@@ -247,6 +263,177 @@ test_that("evidence commitment extracts claims from cited session sources", {
   expect_equal(settled$value$source_ids, source_id)
   expect_equal(settled$value$claims_added, 1L)
   expect_equal(store$list_proposed_claims()[[1]]@claim_text, "A cited claim")
+})
+
+test_that("async ProgramSet execution preserves authoritative metadata", {
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+  config <- tempest_config()
+  program_set <- tempest_program_set()
+  manifest <- tempest_research_manifest(
+    research_run_id = "costorm-async-metadata",
+    mode = "costorm",
+    config = config,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  program <- tempest:::tempest_bind_program_set(
+    program_set,
+    manifest
+  )$extract_claims
+  chat <- list(
+    chat_structured_async = function(...) {
+      promises::promise_resolve(list(facts = list()))
+    }
+  )
+
+  request <- tempest:::tempest_run_dsprrr_module_async(
+    program,
+    chat,
+    inputs = list(
+      answer_text = "No cited claim.",
+      source_context = "",
+      source_ids = "",
+      citation_mode = "tempest_inline"
+    ),
+    step = "fact extraction"
+  )
+  metadata <- attr(request, "dsprrr_trace_context", exact = TRUE)
+  settled <- await_tempest_promise(request)
+
+  expect_null(settled$error)
+  expect_identical(metadata$program_artifact_id, program$program_artifact_id)
+  expect_identical(metadata$trace_context, program$trace_context)
+  expect_identical(metadata$trace_context$mode, "costorm")
+  expect_identical(
+    metadata$trace_context$research_run_id,
+    "costorm-async-metadata"
+  )
+  expect_disjoint(names(metadata$trace_context), "program_artifact_id")
+})
+
+test_that("async ProgramSet execution rejects tampered handle metadata", {
+  skip_if_not_installed("promises")
+  config <- tempest_config()
+  program_set <- tempest_program_set()
+  manifest <- tempest_research_manifest(
+    research_run_id = "costorm-async-tamper",
+    mode = "costorm",
+    config = config,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  program <- tempest:::tempest_bind_program_set(
+    program_set,
+    manifest
+  )$extract_claims
+  tamper <- "program_artifact_id"
+  local_mocked_bindings(
+    tempest_dsprrr_run_async = function(
+      module,
+      ...,
+      .llm = NULL,
+      .trace_context = list()
+    ) {
+      request <- promises::promise_resolve(list(facts = list()))
+      metadata <- list(
+        program_artifact_id = dsprrr::program_artifact_id(module),
+        trace_context = .trace_context
+      )
+      if (identical(tamper, "program_artifact_id")) {
+        metadata$program_artifact_id <- paste0("sha256:", strrep("0", 64L))
+      } else {
+        metadata$trace_context$stage <- "personas"
+      }
+      attr(request, "dsprrr_trace_context") <- metadata
+      request
+    }
+  )
+  run <- function() {
+    tempest:::tempest_run_dsprrr_module_async(
+      program,
+      chat = list(),
+      inputs = list(),
+      step = "fact extraction"
+    )
+  }
+
+  expect_error(
+    run(),
+    class = "tempest_ecosystem_contract_error",
+    regexp = "bound program artifact"
+  )
+  tamper <- "trace_context"
+  expect_error(
+    run(),
+    class = "tempest_ecosystem_contract_error",
+    regexp = "bound Tempest trace context"
+  )
+})
+
+test_that("async personas and Shiny startup use one bound ProgramSet", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+  generated <- list(
+    personas = list(list(
+      name = "Dr. Async",
+      title = "Systems researcher",
+      affiliation = "Independent",
+      background = "Studies asynchronous research systems.",
+      focus_areas = list("runtime contracts"),
+      perspective = "Execution integrity",
+      initial_questions = list("Which program executed?")
+    ))
+  )
+  calls <- 0L
+  chat <- list(
+    chat_structured_async = function(...) {
+      calls <<- calls + 1L
+      promises::promise_resolve(generated)
+    }
+  )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) chat
+  )
+  program_set <- tempest_program_set()
+  program <- tempest:::tempest_costorm_program_execution(
+    program_set,
+    "personas",
+    "shiny-async-personas"
+  )
+
+  settled <- await_tempest_promise(
+    tempest:::tempest_generate_experts_async(
+      "Async research systems",
+      n = 1L,
+      config = config,
+      program = program
+    )
+  )
+
+  expect_null(settled$error)
+  expect_equal(calls, 1L)
+  expect_length(settled$value, 1L)
+  expect_identical(settled$value[[1]]@name, "Dr. Async")
+  expect_identical(
+    program$trace_context$research_run_id,
+    "shiny-async-personas"
+  )
+  expect_identical(program$trace_context$stage, "personas")
+  expect_disjoint(names(program$trace_context), "program_artifact_id")
+
+  shiny_path <- system.file("shiny", "R", "mod_chat.R", package = "tempest")
+  skip_if(identical(shiny_path, ""), "Shiny app module is unavailable")
+  shiny_code <- paste(readLines(shiny_path, warn = FALSE), collapse = "\n")
+  expect_match(
+    shiny_code,
+    "program = personas_program",
+    fixed = TRUE
+  )
+  expect_match(
+    shiny_code,
+    "program_set = program_set_value",
+    fixed = TRUE
+  )
 })
 
 test_that("post-turn processing owns sequencing and returns typed results", {

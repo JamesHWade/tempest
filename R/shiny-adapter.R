@@ -183,6 +183,9 @@ tempest_shiny_ui <- function(
 #'   new Co-STORM sessions. May be a value, function, or reactive.
 #' @param session_id Optional stable session id passed to [tempest_session()]
 #'   for new Co-STORM sessions. May be a value, function, or reactive.
+#' @param program_set Optional [TempestProgramSet] used for new and restored
+#'   Co-STORM sessions. May be a value, function, or reactive. `NULL` uses the
+#'   builtin set.
 #' @param run Optional `TempestRun`, function, or reactive. This lets a host
 #'   expose a custom headless workflow through the same generic adapter
 #'   reactives as built-in workflows.
@@ -204,6 +207,7 @@ tempest_shiny_server <- function(
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
   experts = NULL,
   session_id = NULL,
+  program_set = NULL,
   run = NULL
 ) {
   runtime <- tempest_runtime()
@@ -229,7 +233,8 @@ tempest_shiny_server <- function(
         experts = experts,
         runtime = runtime,
         connection_permissions = connection_permissions,
-        session_id = session_id
+        session_id = session_id,
+        program_set = program_set
       )
     }
     if ("storm" %in% panels) {

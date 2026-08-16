@@ -317,8 +317,8 @@ On the pkgdown website, see the
 - Use `tempest_session()` or `run_app()` for interactive Co-STORM research.
 - Add semantic retrieval with `ragnar` through `embed_fn` or a pre-built
   `ragnar_store`.
-- Optimize structured STORM modules with
-  `tempest_optimize_dsprrr_modules()`.
+- Compile selected structured programs with `tempest_compile_programs()`, then
+  pass the complete verified `TempestProgramSet` to STORM or Co-STORM.
 - Capture progress with `tempest_progress_collector()` and inspect events with
   `tempest_progress_event_data()`.
 - Evaluate scripted and interactive workflows with `tempest_task()` and

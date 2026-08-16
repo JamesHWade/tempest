@@ -149,14 +149,14 @@ tempest_run_section_job <- function(
 tempest_write_sections_sequential <- function(
   jobs,
   writer,
-  dsprrr_modules = NULL,
+  programs,
   verbose = FALSE
 ) {
   purrr::map(jobs, function(job) {
     tempest_run_section_job(
       job,
       writer,
-      module = dsprrr_modules$section_writing,
+      module = programs$section_writing,
       verbose = verbose
     )
   })
@@ -204,6 +204,9 @@ tempest_setup_daemons <- function(n) {
 #' @keywords internal
 tempest_collect_parallel <- function(value) {
   # Convert a single mirai_map result element into a value or NULL on failure.
+  if (inherits(value, "condition")) {
+    tempest_rethrow_dsprrr_contract(value)
+  }
   if (
     is.null(value) ||
       inherits(value, "errorValue") ||
@@ -219,7 +222,7 @@ tempest_collect_parallel <- function(value) {
 tempest_write_sections_parallel <- function(
   jobs,
   config,
-  dsprrr_modules = NULL
+  programs
 ) {
   # On any failure we return a list of NULLs so the caller writes the
   # affected sections sequentially. Real parallelism requires the installed
@@ -244,32 +247,27 @@ tempest_write_sections_parallel <- function(
   collected <- tryCatch(
     mirai::mirai_map(
       seq_along(jobs),
-      function(i, jobs, config, dsprrr_modules, run_section_job, make_modules) {
+      function(i, jobs, config, programs, run_section_job) {
         job <- jobs[[i]]
         writer <- tempest_make_chat(config, "writer", echo = "none")
-        modules <- if (is.null(dsprrr_modules)) {
-          make_modules(config)
-        } else {
-          dsprrr_modules
-        }
         run_section_job(
           job,
           writer,
-          module = modules$section_writing,
+          module = programs$section_writing,
           verbose = FALSE
         )
       },
       .args = list(
         jobs = jobs,
         config = config,
-        dsprrr_modules = dsprrr_modules,
-        run_section_job = tempest_run_section_job,
-        make_modules = tempest_make_dsprrr_modules
+        programs = programs,
+        run_section_job = tempest_run_section_job
       )
     )[],
     error = function(e) e
   )
   if (inherits(collected, "condition")) {
+    tempest_rethrow_dsprrr_contract(collected)
     tempest_warn(
       "Parallel section writing failed ({conditionMessage(collected)}); writing sections sequentially."
     )
@@ -284,7 +282,7 @@ tempest_write_section_jobs <- function(
   jobs,
   writer,
   config,
-  dsprrr_modules = NULL,
+  programs,
   parallel = FALSE,
   verbose = FALSE
 ) {
@@ -301,7 +299,7 @@ tempest_write_section_jobs <- function(
       parallel_results <- tempest_write_sections_parallel(
         jobs,
         config,
-        dsprrr_modules = dsprrr_modules
+        programs = programs
       )
       failed <- which(vapply(parallel_results, is.null, logical(1)))
       if (length(failed) == 0) {
@@ -310,7 +308,7 @@ tempest_write_section_jobs <- function(
       sequential_results <- tempest_write_sections_sequential(
         jobs[failed],
         writer,
-        dsprrr_modules = dsprrr_modules,
+        programs = programs,
         verbose = verbose
       )
       parallel_results[failed] <- sequential_results
@@ -321,7 +319,7 @@ tempest_write_section_jobs <- function(
   tempest_write_sections_sequential(
     jobs,
     writer,
-    dsprrr_modules = dsprrr_modules,
+    programs = programs,
     verbose = verbose
   )
 }

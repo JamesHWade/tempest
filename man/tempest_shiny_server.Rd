@@ -11,6 +11,7 @@ tempest_shiny_server(
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
   experts = NULL,
   session_id = NULL,
+  program_set = NULL,
   run = NULL
 )
 }
@@ -30,6 +31,10 @@ new Co-STORM sessions. May be a value, function, or reactive.}
 
 \item{session_id}{Optional stable session id passed to \code{\link[=tempest_session]{tempest_session()}}
 for new Co-STORM sessions. May be a value, function, or reactive.}
+
+\item{program_set}{Optional \link{TempestProgramSet} used for new and restored
+Co-STORM sessions. May be a value, function, or reactive. \code{NULL} uses the
+builtin set.}
 
 \item{run}{Optional \code{TempestRun}, function, or reactive. This lets a host
 expose a custom headless workflow through the same generic adapter

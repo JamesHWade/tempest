@@ -27,6 +27,8 @@ expert.}
 
     \item{\code{extractor}}{Chat object for fact extraction (optional).}
 
+    \item{\code{extract_claims_program}}{ProgramSet-bound claim-extraction execution.}
+
     \item{\code{workspace}}{A \link{ResearchWorkspace} for extracted facts (optional).}
 
     \item{\code{progress}}{Optional progress callback.}
@@ -70,6 +72,7 @@ claim-write provenance.}
   retriever,
   allowed_connection_ref_ids = list(),
   extractor = NULL,
+  extract_claims_program = NULL,
   workspace = NULL,
   progress = NULL,
   run_id = NULL
@@ -86,6 +89,8 @@ claim-write provenance.}
       \item{\code{allowed_connection_ref_ids}}{Named list of allowed connection ids by
 expert id.}
       \item{\code{extractor}}{Optional chat object for fact extraction.}
+      \item{\code{extract_claims_program}}{ProgramSet-bound claim-extraction
+execution. Required when \code{extractor} is supplied.}
       \item{\code{workspace}}{Optional \link{ResearchWorkspace} for extracted facts.}
       \item{\code{progress}}{Optional progress callback.}
       \item{\code{run_id}}{Shared Co-STORM session id for progress events.}

@@ -121,6 +121,7 @@ mutation methods remain available.}
   retriever = NULL,
   progress = NULL,
   session_id = NULL,
+  program_set = NULL,
   .restore_manifest = NULL,
   .restore_token = NULL
 )}
@@ -142,6 +143,8 @@ object with a \link{ResearchWorkspace} at \verb{$workspace}.}
 objects as the session makes progress.}
       \item{\code{session_id}}{Optional stable session identifier. If \code{NULL}, a new
 identifier is generated.}
+      \item{\code{program_set}}{A \link{TempestProgramSet} used for every structured
+Co-STORM stage.}
       \item{\code{.restore_manifest}}{Internal research manifest supplied only by
 Tempest's bundle-restoration seam.}
       \item{\code{.restore_token}}{Internal authorization token for bundle

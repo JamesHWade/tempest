@@ -78,9 +78,9 @@ tempest_empty_citation_audit <- function() {
 #' @param policy Citation policy; verification runs only for "claim_verified" or
 #'   "strict". Defaults to "claim_verified".
 #' @param verifier_model Optional model id recorded on each verified claim.
-#' @param modules Optional named list of dsprrr modules; when it contains
-#'   `verify_claim_support`, that module performs the judgement (with an ellmer
-#'   fallback).
+#' @param program_set A [TempestProgramSet] containing the exact
+#'   `verify_claim_support` program. If `NULL`, [tempest_program_set()] creates
+#'   the builtin set.
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
 #' @return A `citation_audit` tibble (one row per verified claim).
@@ -90,8 +90,44 @@ tempest_verify_claims <- function(
   verifier,
   policy = "claim_verified",
   verifier_model = NA_character_,
-  modules = NULL,
+  program_set = NULL,
   min_support_score = 0.7
+) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg workspace} must be a ResearchWorkspace."
+    )
+  }
+  program <- NULL
+  if (policy %in% c("claim_verified", "strict")) {
+    program_set <- program_set %||% tempest_program_set()
+    snapshot_id <- workspace$base_snapshot_id %||% NULL
+    program <- tempest_program_set_execution(
+      program_set,
+      "verify_claim_support",
+      trace_context = tempest_standalone_dsprrr_trace_context(
+        "verify_claim_support",
+        knowledge_snapshot_id = snapshot_id
+      )
+    )
+  }
+  tempest_verify_claims_internal(
+    workspace = workspace,
+    verifier = verifier,
+    policy = policy,
+    verifier_model = verifier_model,
+    program = program,
+    min_support_score = min_support_score
+  )
+}
+
+tempest_verify_claims_internal <- function(
+  workspace,
+  verifier,
+  policy,
+  verifier_model,
+  program,
+  min_support_score
 ) {
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
@@ -111,9 +147,10 @@ tempest_verify_claims <- function(
         claim,
         workspace,
         verifier,
-        module = modules[["verify_claim_support"]]
+        module = program
       ),
       error = function(e) {
+        tempest_rethrow_dsprrr_contract(e)
         list(
           status = "unverifiable",
           score = NA_real_,

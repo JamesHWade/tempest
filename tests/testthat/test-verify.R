@@ -118,3 +118,25 @@ test_that("verify_claims sanitizes out-of-range, string, and invalid judge outpu
   )
   expect_equal(setdiff(statuses, valid), character())
 })
+
+test_that("verify_claims does not downgrade dsprrr contract failures", {
+  store <- fake_store_with_sources(1)
+  source_id <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
+    claim_text = "contract-bound claim",
+    source_ids = source_id
+  ))
+  local_mocked_bindings(
+    tempest_verify_one_claim = function(...) {
+      rlang::abort(
+        "program identity mismatch",
+        class = "dsprrr_program_artifact_integrity_error"
+      )
+    }
+  )
+
+  expect_error(
+    tempest_verify_claims(store, verifier = fake_chat()),
+    class = "dsprrr_program_artifact_integrity_error"
+  )
+})
