@@ -10,9 +10,8 @@ test_that("tempest_research_workspace creates explicit provisional compartments"
   )
 
   expect_r6_class(workspace, "ResearchWorkspace")
-  expect_identical(workspace$retrieved_resources, workspace$resources)
-  expect_identical(workspace$retrieved_resources, workspace$sources)
-  expect_identical(workspace$proposed_claims, workspace$claims)
+  expect_length(workspace$retrieved_resources, 0L)
+  expect_length(workspace$proposed_claims, 0L)
   expect_equal(workspace$base_snapshot_id, "snapshot-1")
   expect_equal(workspace$max_sources, 3L)
   expect_contains(
@@ -195,8 +194,8 @@ test_that("ResearchWorkspace listings are deterministic", {
   )
   source_z <- fake_source("https://example.org/z")
   source_a <- fake_source("https://example.org/a")
-  workspace$upsert_source(source_z)
-  workspace$upsert_source(source_a)
+  workspace$upsert_retrieved_resource(source_z)
+  workspace$upsert_retrieved_resource(source_a)
 
   workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-z",
@@ -230,7 +229,7 @@ test_that("ResearchWorkspace listings are deterministic", {
   ))
 
   expect_equal(
-    vapply(workspace$list_sources(), `[[`, character(1), "id"),
+    vapply(workspace$list_retrieved_sources(), `[[`, character(1), "id"),
     sort(c(source_z$id, source_a$id))
   )
   expect_equal(
@@ -243,7 +242,7 @@ test_that("ResearchWorkspace listings are deterministic", {
   )
   expect_equal(
     vapply(
-      workspace$claims_for_source(source_z$id),
+      workspace$proposed_claims_for_resource(source_z$id),
       \(claim) S7::prop(claim, "claim_id"),
       character(1)
     ),
@@ -303,36 +302,42 @@ test_that("proposed claims cannot become accepted through workspace mutation", {
 test_that("ResearchWorkspace exposes copies instead of mutable backing stores", {
   workspace <- tempest_research_workspace(max_sources = 2L)
   source <- fake_source("https://example.org/private")
-  workspace$upsert_source(source)
+  workspace$upsert_retrieved_resource(source)
   claim <- tempest_claim(
     claim_id = "claim-private",
     claim_text = "The workspace stays private.",
     source_ids = source$id
   )
-  workspace$add_claim(claim)
+  workspace$add_proposed_claim(claim)
 
-  resources <- workspace$resources
-  resources[[source$id]]$title <- "Changed outside"
-  claims <- workspace$claims
+  resources <- workspace$retrieved_resources
+  resources[[source$id]] <- S7::set_props(
+    resources[[source$id]],
+    title = "Changed outside"
+  )
+  claims <- workspace$proposed_claims
   claims[["claim-private"]] <- S7::set_props(
     claims[["claim-private"]],
     claim_text = "Changed outside"
   )
 
-  expect_identical(workspace$get_source(source$id)$title, source$title)
   expect_identical(
-    workspace$get_claim("claim-private")@claim_text,
+    workspace$get_retrieved_source(source$id)$title,
+    source$title
+  )
+  expect_identical(
+    workspace$get_proposed_claim("claim-private")@claim_text,
     "The workspace stays private."
   )
-  expect_type(workspace$resources, "list")
-  expect_type(workspace$claims, "list")
+  expect_type(workspace$retrieved_resources, "list")
+  expect_type(workspace$proposed_claims, "list")
   expect_error(
-    workspace$resources <- list(),
+    workspace$retrieved_resources <- list(),
     class = "tempest_research_workspace_error",
     regexp = "read-only snapshot"
   )
   expect_error(
-    workspace$claims[["claim-private"]] <- claim,
+    workspace$proposed_claims[["claim-private"]] <- claim,
     class = "tempest_research_workspace_error",
     regexp = "read-only snapshot"
   )
@@ -347,8 +352,8 @@ test_that("claims and evidence spans retain source coherence", {
   workspace <- tempest_research_workspace()
   source_a <- fake_source("https://example.org/source-a")
   source_b <- fake_source("https://example.org/source-b")
-  workspace$upsert_source(source_a)
-  workspace$upsert_source(source_b)
+  workspace$upsert_retrieved_resource(source_a)
+  workspace$upsert_retrieved_resource(source_b)
   span <- tempest_evidence_span(
     evidence_span_id = "span-shared",
     source_id = source_a$id,
@@ -357,7 +362,7 @@ test_that("claims and evidence spans retain source coherence", {
   workspace$add_evidence_span(span)
 
   expect_error(
-    workspace$add_claim(tempest_claim(
+    workspace$add_proposed_claim(tempest_claim(
       claim_id = "claim-mismatch",
       claim_text = "Mismatched evidence",
       source_ids = source_b$id,
@@ -373,7 +378,7 @@ test_that("claims and evidence spans retain source coherence", {
     source_ids = source_a$id,
     evidence_span_ids = span@evidence_span_id
   )
-  workspace$add_claim(claim)
+  workspace$add_proposed_claim(claim)
   expect_error(
     workspace$add_evidence_span(tempest_evidence_span(
       evidence_span_id = span@evidence_span_id,
@@ -389,48 +394,9 @@ test_that("claims and evidence spans retain source coherence", {
   )
 })
 
-test_that("SourceStore remains a deprecated compatibility subclass", {
-  withr::local_options(lifecycle_verbosity = "warning")
-  expect_snapshot({
-    store <- SourceStore$new(base_snapshot_id = "snapshot-1")
-  })
-  withr::local_options(lifecycle_verbosity = "quiet")
-
-  expect_r6_class(store, "SourceStore")
-  expect_r6_class(store, "ResearchWorkspace")
-  expect_equal(store$base_snapshot_id, "snapshot-1")
-
-  store$add_claim(tempest_claim(
-    claim_id = "claim-a",
-    claim_text = "A claim",
-    verification_status = "supported",
-    support_score = 1
-  ))
-
-  audit <- tibble::tibble(
-    claim_id = "claim-a",
-    claim_text = "A claim",
-    verification_status = "supported",
-    support_score = 1,
-    rationale = "Direct support"
-  )
-  store$set_artifact("citation_audit", audit)
-  expect_equal(store$citation_audit, audit)
-  expect_equal(store$get_artifact("citation_audit"), audit)
-
-  store$verify_claim("claim-a", "supported", score = 0.9)
-  updated <- dplyr::mutate(audit, support_score = 0.9)
-  store$set_citation_audit(updated)
-  expect_equal(store$get_artifact("citation_audit"), updated)
-  expect_contains(ls(store$artifacts), "citation_audit")
-
-  store$set_artifact("report_md", "# Legacy report")
-  expect_equal(store$get_artifact("report_md"), "# Legacy report")
-})
-
 test_that("ResearchWorkspace validates its explicit citation audit", {
   workspace <- tempest_research_workspace()
-  workspace$add_claim(tempest_claim(
+  workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-a",
     claim_text = "A claim",
     verification_status = "supported",
@@ -523,7 +489,7 @@ test_that("ResearchWorkspace validates its explicit citation audit", {
 test_that("relevant workspace mutations invalidate citation audits", {
   workspace <- tempest_research_workspace()
   source <- fake_source("https://example.org/audit")
-  workspace$upsert_source(source)
+  workspace$upsert_retrieved_resource(source)
   claim <- tempest_claim(
     claim_id = "claim-audit",
     claim_text = "Audited claim",
@@ -531,7 +497,7 @@ test_that("relevant workspace mutations invalidate citation audits", {
     verification_status = "supported",
     support_score = 1
   )
-  workspace$add_claim(claim)
+  workspace$add_proposed_claim(claim)
   audit <- tibble::tibble(
     claim_id = claim@claim_id,
     claim_text = claim@claim_text,
@@ -543,7 +509,7 @@ test_that("relevant workspace mutations invalidate citation audits", {
 
   changed_source <- source
   changed_source$title <- "Updated source title"
-  workspace$upsert_source(changed_source)
+  workspace$upsert_retrieved_resource(changed_source)
   expect_null(workspace$citation_audit)
 
   workspace$set_citation_audit(audit)
@@ -555,6 +521,6 @@ test_that("relevant workspace mutations invalidate citation audits", {
   expect_null(workspace$citation_audit)
 
   workspace$set_citation_audit(audit)
-  workspace$verify_claim(claim@claim_id, "supported", score = 1)
+  workspace$verify_proposed_claim(claim@claim_id, "supported", score = 1)
   expect_null(workspace$citation_audit)
 })

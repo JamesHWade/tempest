@@ -336,7 +336,7 @@ test_that("built-in Markdown operations honor the output contract", {
 test_that("built-in Markdown reports render a ResearchWorkspace", {
   workspace <- tempest_research_workspace()
   source <- fake_source("https://example.org/report-workspace")
-  workspace$upsert_source(source)
+  workspace$upsert_retrieved_resource(source)
   spec <- tempest_deliverable_spec(
     "workspace-report",
     title = "Workspace report",
@@ -349,7 +349,7 @@ test_that("built-in Markdown reports render a ResearchWorkspace", {
   representation <- tempest:::tempest_builtin_markdown_report_renderer(
     content = paste0("Provisional result [", source$id, "]."),
     deliverable = spec,
-    context = list(store = workspace)
+    context = list(workspace = workspace)
   )
 
   expect_match(representation$content, "## References", fixed = TRUE)

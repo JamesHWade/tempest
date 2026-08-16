@@ -52,8 +52,81 @@ test_that("resource records reject live runtime values and tampering", {
   )
 })
 
-test_that("SourceStore indexes typed resources without inventing web URLs", {
-  store <- quiet_source_store()
+test_that("resource metadata rejects credential-like fields recursively", {
+  base_args <- list(
+    resource_kind = "host.document",
+    locator = "documents/credential-boundary",
+    title = "Credential boundary",
+    media_type = "text/plain"
+  )
+  sensitive <- list(
+    scope_metadata = list(provider = list(apiKey = "secret")),
+    redaction = list(provider = list(authorizationHeader = "secret")),
+    retention = list(provider = list(clientSecret = "secret")),
+    metadata = list(provider = list(refreshToken = "secret"))
+  )
+  sensitive_names <- c(
+    scope_metadata = "apiKey",
+    redaction = "authorizationHeader",
+    retention = "clientSecret",
+    metadata = "refreshToken"
+  )
+
+  for (field in names(sensitive)) {
+    args <- base_args
+    args[[field]] <- sensitive[[field]]
+    error <- expect_error(
+      do.call(tempest_resource, args),
+      class = "tempest_workflow_spec_error"
+    )
+    expect_match(conditionMessage(error), "credential-like")
+    expect_match(
+      conditionMessage(error),
+      sensitive_names[[field]],
+      fixed = TRUE
+    )
+  }
+})
+
+test_that("resource records revalidate credential-like metadata", {
+  resource <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/mutated-credential-boundary",
+    title = "Mutated credential boundary",
+    media_type = "text/plain"
+  )
+  resource@metadata <- list(provider = list(API_KEY = "secret"))
+
+  error <- expect_error(
+    tempest:::tempest_resource_record(resource),
+    class = "tempest_workflow_spec_error"
+  )
+  expect_match(conditionMessage(error), "credential-like")
+  expect_match(conditionMessage(error), "API_KEY", fixed = TRUE)
+})
+
+test_that("resource metadata preserves benign nested fields", {
+  metadata <- list(
+    provenance = list(
+      model_id = "model-reviewer",
+      token_count = 12L,
+      max_tokens = 100L
+    ),
+    review_status = "approved"
+  )
+  resource <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/benign-metadata",
+    title = "Benign metadata",
+    media_type = "text/plain",
+    metadata = metadata
+  )
+
+  expect_identical(resource@metadata, metadata)
+})
+
+test_that("ResearchWorkspace indexes typed resources without web URLs", {
+  store <- test_research_workspace()
   resource <- tempest_resource(
     resource_kind = "email.message",
     locator = "messages/opaque-17",
@@ -61,41 +134,39 @@ test_that("SourceStore indexes typed resources without inventing web URLs", {
     media_type = "text/plain",
     content = "The rollout must finish this quarter."
   )
-  store$upsert_resource(resource)
+  store$upsert_retrieved_resource(resource)
 
-  expect_identical(store$get_resource(resource@resource_id), resource)
-  expect_length(store$list_resources(), 1L)
-  expect_true(is.na(store$get_source(resource@resource_id)$url))
+  expect_identical(store$get_retrieved_resource(resource@resource_id), resource)
+  expect_length(store$list_retrieved_resources(), 1L)
+  expect_true(is.na(store$get_retrieved_source(resource@resource_id)$url))
   expect_equal(
-    store$get_source(resource@resource_id)$meta$resource_kind,
+    store$get_retrieved_source(resource@resource_id)$meta$resource_kind,
     "email.message"
   )
-  expect_identical(tempest_resources(store), tempest_sources(store))
-
   claim <- tempest_claim(
     claim_text = "The rollout must finish this quarter.",
     source_ids = resource@resource_id,
     expert_id = "delivery-expert"
   )
-  expect_identical(store$add_claim(claim), claim@claim_id)
+  expect_identical(store$add_proposed_claim(claim), claim@claim_id)
   expect_identical(
-    store$claims_for_source(resource@resource_id)[[1]]@claim_id,
+    store$proposed_claims_for_resource(resource@resource_id)[[1]]@claim_id,
     claim@claim_id
   )
 
-  snapshot <- tempest:::tempest_source_store_snapshot(store)
-  restored <- tempest:::tempest_source_store_restore(snapshot)
+  snapshot <- tempest:::tempest_research_workspace_snapshot(store)
+  restored <- tempest:::tempest_research_workspace_restore(snapshot)
   expect_identical(
-    restored$get_resource(resource@resource_id)@resource_kind,
+    restored$get_retrieved_resource(resource@resource_id)@resource_kind,
     "email.message"
   )
   expect_identical(
-    restored$get_claim(claim@claim_id)@source_ids,
+    restored$get_proposed_claim(claim@claim_id)@source_ids,
     resource@resource_id
   )
 })
 
-test_that("SourceStore persistence preserves storage-reference-only resources", {
+test_that("workspace persistence preserves storage-reference-only resources", {
   resource <- tempest_resource(
     resource_kind = "host.document",
     locator = "documents/brief-42",
@@ -108,21 +179,21 @@ test_that("SourceStore persistence preserves storage-reference-only resources", 
     metadata = list(version_id = "v3"),
     retrieved_at = "2026-07-18 UTC"
   )
-  store <- quiet_source_store()
-  store$upsert_resource(resource)
+  store <- test_research_workspace()
+  store$upsert_retrieved_resource(resource)
 
   path <- withr::local_tempfile(fileext = ".json")
   tempest:::tempest_write_json(
     path,
-    tempest:::tempest_source_store_snapshot(store)
+    tempest:::tempest_research_workspace_snapshot(store)
   )
   snapshot <- tempest:::tempest_read_json_strict(path)
 
-  expect_null(snapshot$resources[[1]]$content)
+  expect_null(snapshot$retrieved_resources[[1]]$content)
 
-  restored <- tempest:::tempest_source_store_restore(snapshot)
-  restored_resource <- restored$get_resource(resource@resource_id)
-  restored_source <- restored$get_source(resource@resource_id)
+  restored <- tempest:::tempest_research_workspace_restore(snapshot)
+  restored_resource <- restored$get_retrieved_resource(resource@resource_id)
+  restored_source <- restored$get_retrieved_source(resource@resource_id)
 
   expect_null(restored_resource@content)
   expect_equal(restored_resource@locator, "documents/brief-42")
@@ -144,17 +215,17 @@ test_that("SourceStore persistence preserves storage-reference-only resources", 
 })
 
 test_that("legacy web sources have typed resource views", {
-  store <- quiet_source_store()
+  store <- test_research_workspace()
   source <- tempest:::tempest_source(
     "https://example.org/evidence",
     title = "Evidence",
     content_text = "Evidence body"
   )
-  store$upsert_source(source)
+  store$upsert_retrieved_resource(source)
 
-  resource <- store$get_resource(source$id)
+  resource <- store$get_retrieved_resource(source$id)
   expect_s7_class(resource, tempest:::TempestResource)
   expect_equal(resource@resource_kind, "web")
   expect_equal(resource@locator, source$url)
-  expect_equal(store$get_source(source$id)$url, source$url)
+  expect_equal(store$get_retrieved_source(source$id)$url, source$url)
 })

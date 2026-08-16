@@ -28,7 +28,7 @@ mod_transcript_server <- function(id, store) {
       if (is.null(ses)) {
         return(NULL)
       }
-      citation_source_store(ses$store %||% NULL)
+      citation_source_store(ses$workspace %||% NULL)
     })
 
     output$header <- shiny::renderUI({

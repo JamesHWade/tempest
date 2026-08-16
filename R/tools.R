@@ -223,8 +223,11 @@ tempest_upsert_native_source <- function(store, source) {
   if (is.null(source)) {
     return(NA_character_)
   }
-  source <- tempest_merge_source_record(store$get_source(source$id), source)
-  store$upsert_source(source)
+  source <- tempest_merge_source_record(
+    store$get_retrieved_source(source$id),
+    source
+  )
+  store$upsert_retrieved_resource(source)
   source$id
 }
 
@@ -417,7 +420,7 @@ tempest_tool_claim_payload <- function(
     sources <- purrr::map(
       claim@source_ids,
       function(source_id) {
-        source <- store$get_source(source_id)
+        source <- store$get_retrieved_source(source_id)
         if (is.null(source)) {
           return(list(source_id = source_id, missing = TRUE))
         }
@@ -437,25 +440,7 @@ tempest_tool_claim_payload <- function(
     expert_id = claim@expert_id,
     retrieval_step_id = claim@retrieval_step_id,
     created_at = claim@created_at,
-    sources = sources
-  )
-}
-
-#' @keywords internal
-tempest_tool_fact_payload <- function(claim) {
-  list(
-    fact_id = claim@claim_id,
-    claim = claim@claim_text,
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    source_ids = claim@source_ids,
-    confidence = claim@confidence,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    session_id = claim@session_id,
-    expert_id = claim@expert_id,
-    retrieval_step_id = claim@retrieval_step_id,
-    created_at = claim@created_at
+    retrieved_resources = sources
   )
 }
 
@@ -465,7 +450,7 @@ tempest_add_tool_claim <- function(
   claim_text,
   source_ids,
   confidence = "medium",
-  tool_name = "add_claim",
+  tool_name = "add_proposed_claim",
   provenance = list()
 ) {
   provenance <- tempest_resolve_claim_provenance(provenance)
@@ -484,7 +469,7 @@ tempest_add_tool_claim <- function(
 
   unknown <- source_ids[purrr::map_lgl(
     source_ids,
-    ~ is.null(store$get_source(.x))
+    ~ is.null(store$get_retrieved_source(.x))
   )]
   if (length(unknown) > 0) {
     tempest_abort(c(
@@ -502,7 +487,7 @@ tempest_add_tool_claim <- function(
     expert_id = provenance$expert_id %||% NA_character_,
     retrieval_step_id = provenance$retrieval_step_id %||% NA_character_
   )
-  store$add_claim(claim)
+  store$add_proposed_claim(claim)
   claim
 }
 
@@ -518,46 +503,56 @@ tempest_resolve_claim_provenance <- function(provenance) {
 }
 
 #' @keywords internal
-tempest_tool_review_functions <- function(store) {
-  get_source <- function(source_id, excerpt_chars = 1200L) {
-    src <- store$get_source(source_id)
+tempest_tool_review_functions <- function(workspace) {
+  get_retrieved_source <- function(source_id, excerpt_chars = 1200L) {
+    src <- workspace$get_retrieved_source(source_id)
     if (is.null(src)) {
       return(NULL)
     }
     tempest_tool_source_payload(src, excerpt_chars = excerpt_chars)
   }
 
-  list_sources <- function() {
-    purrr::map(store$list_sources(), tempest_tool_source_summary_payload)
+  list_retrieved_sources <- function() {
+    purrr::map(
+      workspace$list_retrieved_sources(),
+      tempest_tool_source_summary_payload
+    )
   }
 
-  list_claims <- function() {
-    purrr::map(store$list_claims(), tempest_tool_claim_payload)
+  list_proposed_claims <- function() {
+    purrr::map(
+      workspace$list_proposed_claims(),
+      tempest_tool_claim_payload
+    )
   }
 
-  get_claim <- function(claim_id) {
-    claim <- store$get_claim(claim_id)
+  get_proposed_claim <- function(claim_id) {
+    claim <- workspace$get_proposed_claim(claim_id)
     if (is.null(claim)) {
       return(NULL)
     }
-    tempest_tool_claim_payload(claim, store = store, include_sources = TRUE)
+    tempest_tool_claim_payload(
+      claim,
+      store = workspace,
+      include_sources = TRUE
+    )
   }
 
-  get_evidence_for_claim <- function(claim_id) {
-    claim <- store$get_claim(claim_id)
+  get_evidence_for_proposed_claim <- function(claim_id) {
+    claim <- workspace$get_proposed_claim(claim_id)
     if (is.null(claim)) {
       return(NULL)
     }
-    spans <- store$get_evidence_for_claim(claim_id)
+    spans <- workspace$get_evidence_for_proposed_claim(claim_id)
     list(
       claim = tempest_tool_claim_payload(
         claim,
-        store = store,
+        store = workspace,
         include_sources = FALSE
       ),
       evidence_spans = purrr::map(spans, tempest_tool_evidence_span_payload),
       cited_sources = purrr::map(claim@source_ids, function(source_id) {
-        source <- store$get_source(source_id)
+        source <- workspace$get_retrieved_source(source_id)
         if (is.null(source)) {
           return(list(source_id = source_id, missing = TRUE))
         }
@@ -566,7 +561,7 @@ tempest_tool_review_functions <- function(store) {
     )
   }
 
-  list_unsupported_claims <- function(limit = 20L) {
+  list_unsupported_proposed_claims <- function(limit = 20L) {
     limit <- as.integer(limit %||% 20L)
     if (is.na(limit) || limit < 1L) {
       limit <- 20L
@@ -578,7 +573,7 @@ tempest_tool_review_functions <- function(store) {
       "unverifiable"
     )
     claims <- purrr::keep(
-      store$list_claims(),
+      workspace$list_proposed_claims(),
       ~ .x@verification_status %in% unsupported_statuses
     )
     claims <- utils::head(claims, limit)
@@ -586,12 +581,12 @@ tempest_tool_review_functions <- function(store) {
   }
 
   list(
-    get_source = get_source,
-    list_sources = list_sources,
-    list_claims = list_claims,
-    get_claim = get_claim,
-    get_evidence_for_claim = get_evidence_for_claim,
-    list_unsupported_claims = list_unsupported_claims
+    get_retrieved_source = get_retrieved_source,
+    list_retrieved_sources = list_retrieved_sources,
+    list_proposed_claims = list_proposed_claims,
+    get_proposed_claim = get_proposed_claim,
+    get_evidence_for_proposed_claim = get_evidence_for_proposed_claim,
+    list_unsupported_proposed_claims = list_unsupported_proposed_claims
   )
 }
 
@@ -599,8 +594,8 @@ tempest_tool_review_functions <- function(store) {
 tempest_tool_review_ellmer_tools <- function(review) {
   list(
     ellmer::tool(
-      review$get_source,
-      name = "get_source",
+      review$get_retrieved_source,
+      name = "get_retrieved_source",
       description = "Get a previously fetched source by source_id. Returns metadata and a compact excerpt.",
       arguments = list(
         source_id = ellmer::type_string("Source id, e.g. S123abc..."),
@@ -611,36 +606,36 @@ tempest_tool_review_ellmer_tools <- function(review) {
       )
     ),
     ellmer::tool(
-      review$list_sources,
-      name = "list_sources",
+      review$list_retrieved_sources,
+      name = "list_retrieved_sources",
       description = "List compact metadata for sources currently stored in memory for this session.",
       arguments = list()
     ),
     ellmer::tool(
-      review$list_claims,
-      name = "list_claims",
+      review$list_proposed_claims,
+      name = "list_proposed_claims",
       description = "List compact source-backed claim records currently stored in memory for this session.",
       arguments = list()
     ),
     ellmer::tool(
-      review$get_claim,
-      name = "get_claim",
+      review$get_proposed_claim,
+      name = "get_proposed_claim",
       description = "Get a claim by claim_id, including verification status, support score, and cited source context.",
       arguments = list(
         claim_id = ellmer::type_string("Claim id, e.g. C123abc...")
       )
     ),
     ellmer::tool(
-      review$get_evidence_for_claim,
-      name = "get_evidence_for_claim",
+      review$get_evidence_for_proposed_claim,
+      name = "get_evidence_for_proposed_claim",
       description = "Get evidence spans and compact cited-source excerpts for a claim.",
       arguments = list(
         claim_id = ellmer::type_string("Claim id, e.g. C123abc...")
       )
     ),
     ellmer::tool(
-      review$list_unsupported_claims,
-      name = "list_unsupported_claims",
+      review$list_unsupported_proposed_claims,
+      name = "list_unsupported_proposed_claims",
       description = "List claims whose verification status indicates weak, missing, or contradictory support.",
       arguments = list(
         limit = ellmer::type_integer(
@@ -653,10 +648,14 @@ tempest_tool_review_ellmer_tools <- function(review) {
 }
 
 #' @keywords internal
-tempest_tool_write_functions <- function(store, provenance = list()) {
-  add_claim <- function(claim_text, source_ids, confidence = "medium") {
+tempest_tool_write_functions <- function(workspace, provenance = list()) {
+  add_proposed_claim <- function(
+    claim_text,
+    source_ids,
+    confidence = "medium"
+  ) {
     claim <- tempest_add_tool_claim(
-      store,
+      workspace,
       claim_text = claim_text,
       source_ids = source_ids,
       confidence = confidence,
@@ -665,61 +664,21 @@ tempest_tool_write_functions <- function(store, provenance = list()) {
     tempest_tool_claim_payload(claim)
   }
 
-  # Transitional aliases keep older prompts/tool loops working while new
-  # agent-facing instructions move to claim terminology.
-  list_facts <- function() {
-    purrr::map(store$list_claims(), tempest_tool_fact_payload)
-  }
-
-  add_fact <- function(claim, source_ids, confidence = "medium") {
-    cl <- tempest_add_tool_claim(
-      store,
-      claim_text = claim,
-      source_ids = source_ids,
-      confidence = confidence,
-      tool_name = "add_fact",
-      provenance = tempest_resolve_claim_provenance(provenance)
-    )
-    tempest_tool_fact_payload(cl)
-  }
-
-  list(add_claim = add_claim, list_facts = list_facts, add_fact = add_fact)
+  list(add_proposed_claim = add_proposed_claim)
 }
 
 #' @keywords internal
 tempest_tool_write_ellmer_tools <- function(write) {
   list(
     ellmer::tool(
-      write$add_claim,
-      name = "add_claim",
+      write$add_proposed_claim,
+      name = "add_proposed_claim",
       description = paste(
         "Add an atomic claim to the session memory with supporting source_ids.",
         "Use this after inspecting sources so later writing can cite the claim."
       ),
       arguments = list(
         claim_text = ellmer::type_string("Atomic factual claim."),
-        source_ids = ellmer::type_array(ellmer::type_string(
-          "One or more source ids that support the claim."
-        )),
-        confidence = ellmer::type_enum(
-          c("low", "medium", "high"),
-          "Confidence level.",
-          required = FALSE
-        )
-      )
-    ),
-    ellmer::tool(
-      write$list_facts,
-      name = "list_facts",
-      description = "Transitional alias for list_claims.",
-      arguments = list()
-    ),
-    ellmer::tool(
-      write$add_fact,
-      name = "add_fact",
-      description = "Transitional alias for add_claim.",
-      arguments = list(
-        claim = ellmer::type_string("Atomic factual claim."),
         source_ids = ellmer::type_array(ellmer::type_string(
           "One or more source ids that support the claim."
         )),
@@ -879,10 +838,9 @@ tempest_tools_retrieval <- function(
 #' Used when provider-native web search is enabled.
 #'
 #' @param retriever A TempestRetriever object
-#' @param allow_claim_writes Whether to include `add_claim` and transitional
-#'   fact-writing aliases.
+#' @param allow_claim_writes Whether to include `add_proposed_claim`.
 #' @param claim_provenance Optional provenance recorded on claims written via
-#'   `add_claim`.
+#'   `add_proposed_claim`.
 #' @return List of ellmer tools for source/claim management
 #' @keywords internal
 tempest_tools_source_management <- function(
@@ -917,7 +875,7 @@ tempest_tools_source_management <- function(
 #'   roles can set this to `FALSE` and still inspect sources, claims, evidence,
 #'   and unsupported claims.
 #' @param claim_provenance Optional provenance recorded on claims written via
-#'   `add_claim`.
+#'   `add_proposed_claim`.
 #' @return The chat object (invisibly)
 #' @keywords internal
 tempest_register_default_tools <- function(
@@ -983,6 +941,168 @@ tempest_expert_session_abort <- function(message, ..., parent = NULL) {
     parent = parent,
     .envir = rlang::caller_env()
   )
+}
+
+tempest_expert_session_connection_ids <- function(value, field) {
+  ids <- if (is.character(value) && is.null(names(value))) {
+    value
+  } else if (
+    is.list(value) &&
+      !is.data.frame(value) &&
+      is.null(names(value))
+  ) {
+    if (length(value) == 0L) {
+      character()
+    } else {
+      valid <- vapply(
+        value,
+        \(item) rlang::is_string(item) && !is.na(item),
+        logical(1)
+      )
+      if (!all(valid)) {
+        tempest_expert_session_abort(
+          "Saved {.field {field}} must be a flat string array."
+        )
+      }
+      unlist(value, use.names = FALSE)
+    }
+  } else {
+    tempest_expert_session_abort(
+      "Saved {.field {field}} must be a flat string array."
+    )
+  }
+  if (
+    anyNA(ids) ||
+      any(!nzchar(ids)) ||
+      !identical(ids, tempest_trim(ids)) ||
+      anyDuplicated(ids)
+  ) {
+    tempest_expert_session_abort(
+      "Saved {.field {field}} contains invalid or duplicate identifiers."
+    )
+  }
+  unname(ids)
+}
+
+tempest_expert_session_grants <- function(grants) {
+  grants <- tryCatch(
+    tempest_contract_serializable_list(grants %||% list(), "binding$grants"),
+    error = function(error) {
+      tempest_expert_session_abort(
+        "Saved capability grants must be canonical non-secret audit records.",
+        parent = error
+      )
+    }
+  )
+  if (length(grants) == 0L) {
+    if (!is.null(names(grants))) {
+      names(grants) <- NULL
+    }
+    return(grants)
+  }
+  grant_ids <- names(grants)
+  if (
+    is.null(grant_ids) ||
+      anyNA(grant_ids) ||
+      any(!nzchar(grant_ids)) ||
+      anyDuplicated(grant_ids)
+  ) {
+    tempest_expert_session_abort(
+      "Saved capability grants must be uniquely named by capability id."
+    )
+  }
+  fields <- c(
+    "capability_id",
+    "capability_version",
+    "operation_id",
+    "operation_version",
+    "required",
+    "status",
+    "connection_ref_ids",
+    "reason_code",
+    "reason",
+    "metadata"
+  )
+  for (index in seq_along(grants)) {
+    grant <- grants[[index]]
+    grant_fields <- names(grant)
+    if (
+      !is.list(grant) ||
+        is.data.frame(grant) ||
+        is.null(grant_fields) ||
+        anyNA(grant_fields) ||
+        anyDuplicated(grant_fields) ||
+        !setequal(grant_fields, fields)
+    ) {
+      tempest_expert_session_abort(
+        "Saved capability-grant records do not match the current schema."
+      )
+    }
+    capability_id <- tryCatch(
+      tempest_contract_id(grant$capability_id, "capability_id"),
+      error = function(error) {
+        tempest_expert_session_abort(
+          "Saved capability grant has an invalid capability id.",
+          parent = error
+        )
+      }
+    )
+    if (!identical(grant_ids[[index]], capability_id)) {
+      tempest_expert_session_abort(
+        "Saved capability-grant names must match their capability ids."
+      )
+    }
+    for (field in c(
+      "capability_version",
+      "operation_id",
+      "operation_version",
+      "reason_code",
+      "reason"
+    )) {
+      value <- grant[[field]]
+      if (!is.null(value) && (!rlang::is_string(value) || is.na(value))) {
+        tempest_expert_session_abort(
+          "Saved capability grant has an invalid {.field {field}}."
+        )
+      }
+    }
+    if (
+      !is.logical(grant$required) ||
+        length(grant$required) != 1L ||
+        is.na(grant$required) ||
+        !rlang::is_string(grant$status) ||
+        !grant$status %in% c("granted", "denied")
+    ) {
+      tempest_expert_session_abort(
+        "Saved capability grant has an invalid requirement or status."
+      )
+    }
+    tryCatch(
+      tempest_contract_ids(
+        tempest_expert_session_connection_ids(
+          grant$connection_ref_ids,
+          "connection_ref_ids"
+        ),
+        "connection_ref_ids"
+      ),
+      error = function(error) {
+        tempest_expert_session_abort(
+          "Saved capability grant has invalid connection ids.",
+          parent = error
+        )
+      }
+    )
+    tryCatch(
+      tempest_contract_serializable_list(grant$metadata, "grant$metadata"),
+      error = function(error) {
+        tempest_expert_session_abort(
+          "Saved capability-grant metadata is invalid.",
+          parent = error
+        )
+      }
+    )
+  }
+  grants
 }
 
 tempest_expert_connection_grants <- function(
@@ -1072,7 +1192,7 @@ tempest_expert_system_prompt <- function(expert, resolution) {
 #' @field expert_connection_ref_ids Environment of allowed connection ids by
 #'   expert.
 #' @field extractor Chat object for fact extraction (optional).
-#' @field store A [ResearchWorkspace] for storing extracted facts (optional).
+#' @field workspace A [ResearchWorkspace] for extracted facts (optional).
 #' @field progress Optional progress callback.
 #' @field run_id Shared Co-STORM session id for progress events.
 #' @field session_provenance Environments keyed by expert session id for
@@ -1090,7 +1210,7 @@ ExpertSessionManager <- R6::R6Class(
     experts = NULL,
     expert_connection_ref_ids = NULL,
     extractor = NULL,
-    store = NULL,
+    workspace = NULL,
     progress = NULL,
     run_id = NULL,
     session_provenance = NULL,
@@ -1104,7 +1224,7 @@ ExpertSessionManager <- R6::R6Class(
     #' @param allowed_connection_ref_ids Named list of allowed connection ids by
     #'   expert id.
     #' @param extractor Optional chat object for fact extraction.
-    #' @param store Optional [ResearchWorkspace] for storing extracted facts.
+    #' @param workspace Optional [ResearchWorkspace] for extracted facts.
     #' @param progress Optional progress callback.
     #' @param run_id Shared Co-STORM session id for progress events.
     initialize = function(
@@ -1114,7 +1234,7 @@ ExpertSessionManager <- R6::R6Class(
       retriever,
       allowed_connection_ref_ids = list(),
       extractor = NULL,
-      store = NULL,
+      workspace = NULL,
       progress = NULL,
       run_id = NULL
     ) {
@@ -1165,13 +1285,13 @@ ExpertSessionManager <- R6::R6Class(
       self$config <- config
       self$retriever <- retriever
       self$extractor <- extractor
-      workspace <- store %||% retriever$workspace
+      workspace <- workspace %||% retriever$workspace
       if (!inherits(workspace, "ResearchWorkspace")) {
         tempest_expert_session_abort(
-          "{.arg store} must be a ResearchWorkspace or `NULL`."
+          "{.arg workspace} must be a ResearchWorkspace or `NULL`."
         )
       }
-      self$store <- workspace
+      self$workspace <- workspace
       self$progress <- tempest_progress_callback(progress)
       self$run_id <- run_id %||% tempest_uuid("session")
       invisible(self)
@@ -1229,7 +1349,7 @@ ExpertSessionManager <- R6::R6Class(
       expert_id = NA_character_,
       correlation_id = NA_character_
     ) {
-      if (!is.null(self$extractor) && !is.null(self$store)) {
+      if (!is.null(self$extractor) && !is.null(self$workspace)) {
         event <- self$emit_progress(
           "step",
           "started",
@@ -1242,12 +1362,12 @@ ExpertSessionManager <- R6::R6Class(
             # Only re-harvest when the caller did not already do so; callers that
             # pass source_ids have harvested the turn into the store already.
             harvested <- if (is.null(source_ids)) {
-              tempest_harvest_native_sources_from_turn(turn, self$store)
+              tempest_harvest_native_sources_from_turn(turn, self$workspace)
             } else {
               character()
             }
             source_ids <- tempest_session_answer_source_ids(
-              list(workspace = self$store, store = self$store),
+              list(workspace = self$workspace),
               response,
               unique(c(source_ids, harvested))
             )
@@ -1266,7 +1386,7 @@ ExpertSessionManager <- R6::R6Class(
             tempest_extract_facts_from_answer(
               self$extractor,
               response,
-              self$store,
+              self$workspace,
               source_ids = source_ids,
               session_id = session_id,
               expert_id = expert_id,
@@ -1279,7 +1399,9 @@ ExpertSessionManager <- R6::R6Class(
               step = "fact_extraction",
               parent_event_id = event@event_id,
               correlation_id = event@correlation_id,
-              payload = list(claim_count = length(self$store$list_claims()))
+              payload = list(
+                claim_count = length(self$workspace$list_proposed_claims())
+              )
             )
           },
           error = function(e) {
@@ -1451,12 +1573,21 @@ ExpertSessionManager <- R6::R6Class(
         "session_id",
         "expert_id",
         "expert_version",
-        "expert_fingerprint"
+        "expert_fingerprint",
+        "model_role",
+        "allowed_connection_ref_ids",
+        "grants",
+        "created_at"
       )
-      missing_fields <- setdiff(required_fields, names(binding))
-      if (length(missing_fields) > 0L) {
+      binding_fields <- names(binding)
+      if (
+        is.null(binding_fields) ||
+          anyNA(binding_fields) ||
+          anyDuplicated(binding_fields) ||
+          !setequal(binding_fields, required_fields)
+      ) {
         tempest_expert_session_abort(
-          "Session binding is missing {.field {missing_fields[[1]]}}."
+          "Session binding does not match the current eight-field schema."
         )
       }
       session_id <- private$session_id(binding$session_id)
@@ -1512,23 +1643,71 @@ ExpertSessionManager <- R6::R6Class(
           )
         ))
       }
-      prior_grants <- tryCatch(
-        tempest_contract_serializable_list(
-          binding$grants %||% list(),
-          "binding$grants"
-        ),
+      model_role <- tryCatch(
+        tempest_contract_id(binding$model_role, "binding$model_role"),
         error = function(error) {
           tempest_expert_session_abort(
-            "Saved capability grants must be serializable audit data.",
+            "Session binding has an invalid model role.",
             parent = error
           )
         }
       )
+      allowed_connection_ref_ids <- tryCatch(
+        tempest_contract_ids(
+          tempest_expert_session_connection_ids(
+            binding$allowed_connection_ref_ids,
+            "allowed_connection_ref_ids"
+          ),
+          "binding$allowed_connection_ref_ids"
+        ),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "Session binding has invalid allowed connection ids.",
+            parent = error
+          )
+        }
+      )
+      created_at <- binding$created_at
+      if (
+        !rlang::is_string(created_at) ||
+          is.na(created_at) ||
+          !nzchar(tempest_trim(created_at))
+      ) {
+        tempest_expert_session_abort(
+          "Session binding has an invalid creation timestamp."
+        )
+      }
+      parsed_created_at <- suppressWarnings(as.POSIXct(created_at, tz = "UTC"))
+      if (is.na(parsed_created_at)) {
+        tempest_expert_session_abort(
+          "Session binding has an invalid creation timestamp."
+        )
+      }
+      prior_grants <- tempest_expert_session_grants(binding$grants)
       private$create(
         expert,
         session_id = session_id,
         prior_grants = prior_grants
       )
+      restored <- self$session_profile(session_id)
+      if (
+        !identical(restored$model_role, model_role) ||
+          !identical(
+            unname(restored$allowed_connection_ref_ids),
+            unname(allowed_connection_ref_ids)
+          )
+      ) {
+        self$retire_session(session_id)
+        tempest_expert_session_abort(
+          paste0(
+            "Expert session {.val {session_id}} cannot be restored because ",
+            "its live authorization differs from the saved binding."
+          )
+        )
+      }
+      restored$created_at <- created_at
+      assign(session_id, restored, envir = self$session_profiles)
+      private$result(session_id, is_new = TRUE)
     },
 
     #' @description
@@ -1855,12 +2034,12 @@ ExpertSessionManager <- R6::R6Class(
 #' @param allowed_connection_ref_ids Named list of allowed connection ids by
 #'   stable expert id.
 #' @param extractor Optional fact-extraction chat.
-#' @param store Optional [ResearchWorkspace]; defaults to the retriever
+#' @param workspace Optional [ResearchWorkspace]; defaults to the retriever
 #'   workspace.
 #' @param progress Optional progress callback.
 #' @param run_id Optional shared workflow run id.
 #' @return An `ExpertSessionManager`.
-#' @export
+#' @keywords internal
 tempest_expert_session_manager <- function(
   experts,
   runtime,
@@ -1868,7 +2047,7 @@ tempest_expert_session_manager <- function(
   retriever,
   allowed_connection_ref_ids = list(),
   extractor = NULL,
-  store = NULL,
+  workspace = NULL,
   progress = NULL,
   run_id = NULL
 ) {
@@ -1879,7 +2058,7 @@ tempest_expert_session_manager <- function(
     retriever = retriever,
     allowed_connection_ref_ids = allowed_connection_ref_ids,
     extractor = extractor,
-    store = store,
+    workspace = workspace,
     progress = progress,
     run_id = run_id
   )
@@ -1947,17 +2126,21 @@ tempest_create_expert_delegation_tool <- function(
     collapse = "; "
   )
   source_ids_in_store <- function() {
-    if (!inherits(mgr$store, "ResearchWorkspace")) {
-      return(character())
-    }
-    vapply(mgr$store$list_sources(), \(source) source$id, character(1))
-  }
-  claim_ids_in_store <- function() {
-    if (!inherits(mgr$store, "ResearchWorkspace")) {
+    if (!inherits(mgr$workspace, "ResearchWorkspace")) {
       return(character())
     }
     vapply(
-      mgr$store$list_claims(),
+      mgr$workspace$list_retrieved_sources(),
+      \(source) source$id,
+      character(1)
+    )
+  }
+  claim_ids_in_store <- function() {
+    if (!inherits(mgr$workspace, "ResearchWorkspace")) {
+      return(character())
+    }
+    vapply(
+      mgr$workspace$list_proposed_claims(),
       \(claim) claim@claim_id,
       character(1)
     )
@@ -1997,7 +2180,10 @@ tempest_create_expert_delegation_tool <- function(
       "- Follow your expert profile and assigned skill instructions.\n",
       "- Use only the capabilities and connections granted to this session.\n",
       "- Start with evidence already in the shared session by using ",
-      "list_sources, get_source, or retrieve when available.\n",
+      paste0(
+        "list_retrieved_sources, get_retrieved_source, or retrieve when ",
+        "available.\n"
+      ),
       "- If shared evidence cannot answer the question, make exactly one web ",
       "search and set k = 2 when the search tool accepts k.\n",
       "- Inspect no more than two search results and make no more than two ",
@@ -2006,7 +2192,7 @@ tempest_create_expert_delegation_tool <- function(
       "survey; state the remaining evidence gap instead.\n",
       "- Only state factual claims supported by sources you inspected.\n",
       "- Cite source IDs like [Sxxxxxxxxxxxx] when evidence is available.\n",
-      "- Do not call add_claim or add_fact; the host commits evidence after ",
+      "- Do not call add_proposed_claim; the host commits evidence after ",
       "your response.\n",
       "- If evidence is weak or unclear, say so.\n",
       "- Respond in no more than 250 words.\n\n",
@@ -2058,8 +2244,8 @@ tempest_create_expert_delegation_tool <- function(
       ellmer::contents_markdown(last_turn)
     }
 
-    native_source_ids <- if (inherits(mgr$store, "ResearchWorkspace")) {
-      tempest_harvest_native_sources_from_turn(last_turn, mgr$store)
+    native_source_ids <- if (inherits(mgr$workspace, "ResearchWorkspace")) {
+      tempest_harvest_native_sources_from_turn(last_turn, mgr$workspace)
     } else {
       character()
     }

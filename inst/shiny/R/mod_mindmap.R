@@ -96,11 +96,11 @@ mod_mindmap_server <- function(id, store) {
     output$n_nodes <- shiny::renderText(length(mindmap()$nodes %||% list()))
     output$n_sources <- shiny::renderText({
       ses <- store$get()
-      if (is.null(ses)) 0L else length(ses$store$list_sources())
+      if (is.null(ses)) 0L else length(ses$workspace$list_retrieved_sources())
     })
     output$n_facts <- shiny::renderText({
       ses <- store$get()
-      if (is.null(ses)) 0L else length(ses$store$list_claims())
+      if (is.null(ses)) 0L else length(ses$workspace$list_proposed_claims())
     })
     output$n_turns <- shiny::renderText({
       ses <- store$get()
@@ -152,7 +152,7 @@ mod_mindmap_server <- function(id, store) {
       if (is.null(ses)) {
         return(shiny::p("Start a session to see the mind map."))
       }
-      mindmap_accessible_tree(ses$mindmap, source_store = ses$store)
+      mindmap_accessible_tree(ses$mindmap, source_store = ses$workspace)
     })
 
     if (has_pkg("visNetwork")) {
@@ -345,7 +345,7 @@ mindmap_accessible_tree <- function(mindmap, source_store = NULL) {
       source <- if (is.null(source_store)) {
         NULL
       } else {
-        source_store$get_source(source_id)
+        source_store$get_retrieved_source(source_id)
       }
       url <- citation_safe_url(source$url %||% "")
       label <- source$title %||% source_id

@@ -51,21 +51,12 @@ tempest_run_verification <- function(
 #' @keywords internal
 tempest_storm_retriever_workspace <- function(retriever) {
   workspace <- retriever$workspace %||% NULL
-  store <- retriever$store %||% NULL
-  if (
-    !is.null(workspace) &&
-      !is.null(store) &&
-      !identical(workspace, store)
-  ) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_config_abort(
-      paste0(
-        "{.code retriever$workspace} and the legacy ",
-        "{.code retriever$store} alias must reference the same ",
-        "ResearchWorkspace."
-      )
+      "{.arg retriever} must expose a ResearchWorkspace at {.code retriever$workspace}."
     )
   }
-  workspace %||% store
+  workspace
 }
 
 #' Run the STORM pipeline
@@ -76,14 +67,6 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #' 3) creates an outline,
 #' 4) writes a cited report in Markdown.
 #'
-#' @section Frozen Tempest 0.1 seams:
-#'
-#' `runtime`, `runtime_factory`, `connection_permissions`, `artifact_catalog`,
-#' and `workflow_run` expose the frozen experimental generic kernel. They remain
-#' only for existing Tempest 0.1 integrations and are scheduled for replacement
-#' or removal in Tempest 0.2.0. New code should consume `report_md`, `manifest`,
-#' `state`, and the scientific evidence in `workspace`.
-#'
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from `config`.
@@ -92,13 +75,6 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #' @param experts Optional list of active profiles created by
 #'   [tempest_expert()]. When supplied, STORM uses this selected team and does
 #'   not generate experts.
-#' @param runtime Frozen Tempest 0.1 [tempest_runtime()] adapter. Existing
-#'   integrations only.
-#' @param runtime_factory Function that recreates the frozen 0.1 `runtime`
-#'   inside parallel workers. Existing integrations using a custom runtime with
-#'   `parallel_research = TRUE` must provide a matching factory.
-#' @param connection_permissions Frozen Tempest 0.1 mapping from expert or
-#'   model-role ids to opaque connection ids allowed for this run.
 #' @param research_strategy Either "key_questions" (default, faster) or "conversation"
 #'   (more thorough but slower). Key questions uses predefined questions; conversation
 #'   dynamically generates follow-up questions.
@@ -123,17 +99,11 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #'   object as STORM workflow stages start, finish, fail, persist artifacts, or
 #'   make final artifacts available.
 #' @param verbose If `TRUE`, prints progress messages.
-#' @param artifact_catalog Frozen Tempest 0.1 shared
-#'   `TempestArtifactCatalog`, used by the generic STORM workflow adapter.
-#' @param workflow_run Frozen Tempest 0.1 owning `TempestRun`. When supplied,
-#'   the result exposes it as `workflow_run`.
 #' @param .state Internal adapter-only fixed STORM product state. This is not a
 #'   public continuation API.
 #' @return A list with product fields `title`, `perspectives`, `experts`,
 #'   `outline`, `draft_md`, `report_md`, `manifest`, `state`, `workspace`,
-#'   `retriever`, and `output_dir`. The compatibility field `store` references
-#'   the same object as `workspace`. Frozen 0.1 compatibility fields
-#'   `artifact_catalog` and `workflow_run` are also returned temporarily.
+#'   `retriever`, and `output_dir`.
 #' @examples
 #' \dontrun{
 #' cfg <- tempest_config()
@@ -147,9 +117,6 @@ tempest_run <- function(
   retriever = NULL,
   n_experts = 3,
   experts = NULL,
-  runtime = tempest_runtime(),
-  runtime_factory = function() tempest_runtime(),
-  connection_permissions = list(),
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
@@ -163,9 +130,55 @@ tempest_run <- function(
   remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE,
-  artifact_catalog = NULL,
-  workflow_run = NULL,
   .state = NULL
+) {
+  tempest_run_internal(
+    topic = topic,
+    config = config,
+    retriever = retriever,
+    n_experts = n_experts,
+    experts = experts,
+    research_strategy = research_strategy,
+    max_rounds = max_rounds,
+    max_questions_per_perspective = max_questions_per_perspective,
+    parallel_research = parallel_research,
+    parallel_writing = parallel_writing,
+    dsprrr_modules = dsprrr_modules,
+    steps = steps,
+    output_dir = output_dir,
+    resume = resume,
+    run_id = run_id,
+    remove_duplicate = remove_duplicate,
+    progress = progress,
+    verbose = verbose,
+    .state = .state
+  )
+}
+
+tempest_run_internal <- function(
+  topic,
+  config = tempest_config(),
+  retriever = NULL,
+  n_experts = 3,
+  experts = NULL,
+  research_strategy = c("key_questions", "conversation"),
+  max_rounds = 3,
+  max_questions_per_perspective = 3,
+  parallel_research = FALSE,
+  parallel_writing = FALSE,
+  dsprrr_modules = NULL,
+  steps = c("perspectives", "research", "outline", "write", "polish"),
+  output_dir = NULL,
+  resume = FALSE,
+  run_id = NULL,
+  remove_duplicate = FALSE,
+  progress = NULL,
+  verbose = TRUE,
+  .state = NULL,
+  runtime = tempest_runtime(),
+  runtime_factory = function() tempest_runtime(),
+  connection_permissions = list(),
+  artifact_catalog = NULL
 ) {
   tempest_require("ellmer", "tempest_run() requires ellmer.")
   if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
@@ -200,12 +213,6 @@ tempest_run <- function(
       "{.arg artifact_catalog} must be a TempestArtifactCatalog or NULL."
     )
   }
-  if (!is.null(workflow_run) && !inherits(workflow_run, "TempestRun")) {
-    tempest_config_abort(
-      "{.arg workflow_run} must be a TempestRun or NULL."
-    )
-  }
-
   research_strategy <- match.arg(research_strategy)
   if (is.null(experts)) {
     n_experts <- tempest_config_count(n_experts, "n_experts")
@@ -256,7 +263,7 @@ tempest_run <- function(
   retriever <- retriever %||%
     tempest_retriever(
       config = config,
-      store = tempest_research_workspace()
+      workspace = tempest_research_workspace()
     )
   retriever_config_digest <- tempest_retriever_config_digest(retriever)
   if (
@@ -279,7 +286,7 @@ tempest_run <- function(
     tempest_config_abort(
       paste0(
         "{.arg retriever} must expose a ResearchWorkspace at ",
-        "{.code retriever$store}."
+        "{.code retriever$workspace}."
       )
     )
   }
@@ -326,11 +333,13 @@ tempest_run <- function(
     state$experts <- experts
     state <- tempest_storm_state_validate(state)
   }
+  dsprrr_modules <- dsprrr_modules %||% tempest_make_dsprrr_modules(config)
+  program_references <- tempest_program_references(dsprrr_modules)
   research_manifest <- tempest_research_manifest(
     research_run_id = progress_run_id,
     mode = "storm",
     config = config,
-    programs = list(),
+    programs = program_references,
     knowledge_snapshot = tempest_storm_snapshot_reference(workspace),
     runtime = list(
       deputy_session_ids = character(),
@@ -339,6 +348,10 @@ tempest_run <- function(
     traces = list(),
     deliverables = list(),
     status = "running"
+  )
+  dsprrr_modules <- tempest_bind_dsprrr_trace_context(
+    dsprrr_modules,
+    research_manifest
   )
   artifact_catalog <- artifact_catalog %||%
     tempest_artifact_catalog(store = config@artifact_store)
@@ -415,7 +428,7 @@ tempest_run <- function(
     cited_ids <- tempest_extract_citation_ids(cited_md)
     state$references <<- Filter(
       Negate(is.null),
-      lapply(cited_ids, function(id) workspace$get_source(id))
+      lapply(cited_ids, function(id) workspace$get_retrieved_source(id))
     )
     state <<- tempest_storm_state_validate(state)
     invisible(state)
@@ -434,8 +447,7 @@ tempest_run <- function(
       steps = steps,
       research_strategy = research_strategy,
       parallel_writing = parallel_writing,
-      remove_duplicate = remove_duplicate,
-      artifact_catalog = artifact_catalog
+      remove_duplicate = remove_duplicate
     )
   }
   save_run_artifacts <- function(stage) {
@@ -500,13 +512,12 @@ tempest_run <- function(
       run_dir,
       workspace = if (retriever_supplied) workspace else NULL,
       config = config,
-      run_id = supplied_run_id,
-      artifact_catalog = artifact_catalog
+      run_id = supplied_run_id
     )
     workspace <- loaded_run$workspace
     store <- workspace
     if (!identical(tempest_storm_retriever_workspace(retriever), workspace)) {
-      retriever <- tempest_retriever(config = config, store = workspace)
+      retriever <- tempest_retriever(config = config, workspace = workspace)
     }
     state <- loaded_run$state
     if (!identical(state$topic, topic)) {
@@ -522,6 +533,10 @@ tempest_run <- function(
     }
     completed_stages <- state$completed_stages
     research_manifest <- loaded_run$research_manifest
+    dsprrr_modules <- tempest_bind_dsprrr_trace_context(
+      dsprrr_modules,
+      research_manifest
+    )
     terminal_status <- research_manifest@status
     pending_steps <- setdiff(steps, completed_stages)
     if (terminal_status %in% c("failed", "cancelled")) {
@@ -552,19 +567,6 @@ tempest_run <- function(
         "Loaded persisted STORM stages from {.path {run_dir}}: {paste(completed_stages, collapse = ', ')}"
       )
     }
-  }
-
-  if (
-    !is.null(workflow_run) &&
-      (!identical(workflow_run$source_store, workspace) ||
-        !identical(workflow_run$artifact_catalog, artifact_catalog))
-  ) {
-    tempest_config_abort(
-      paste0(
-        "{.arg workflow_run} must own the same evidence store and artifact ",
-        "catalog used by {.fn tempest_run}."
-      )
-    )
   }
 
   emit_progress(
@@ -598,8 +600,6 @@ tempest_run <- function(
         system_prompt = tempest_prompt("fact_extractor_system"),
         echo = "none"
       )
-      dsprrr_modules <- dsprrr_modules %||% tempest_make_dsprrr_modules(config)
-
       writer_resolution <- runtime$resolve_role(
         "writer",
         required_capability_ids = "tempest.evidence.read",
@@ -1078,8 +1078,8 @@ tempest_run <- function(
           "research",
           message = "Finished STORM research loop.",
           payload = list(
-            source_count = length(store$list_sources()),
-            claim_count = length(store$list_claims())
+            source_count = length(store$list_retrieved_sources()),
+            claim_count = length(store$list_proposed_claims())
           )
         )
       } else {
@@ -1274,7 +1274,7 @@ tempest_run <- function(
         report_plan <- tempest_storm_report_plan(
           title = title,
           draft_md = draft_md,
-          store = store,
+          workspace = workspace,
           config = config,
           remove_duplicate = remove_duplicate,
           catalog = artifact_catalog,
@@ -1312,7 +1312,9 @@ tempest_run <- function(
             "succeeded",
             stage = "verification",
             message = "Finished citation verification.",
-            payload = list(claim_count = length(store$list_claims()))
+            payload = list(
+              claim_count = length(store$list_proposed_claims())
+            )
           )
         } else {
           emit_progress(
@@ -1421,10 +1423,7 @@ tempest_run <- function(
         manifest = research_manifest,
         state = state,
         workspace = workspace,
-        store = workspace,
-        artifact_catalog = artifact_catalog,
         retriever = retriever,
-        workflow_run = workflow_run,
         output_dir = run_dir
       )
     },

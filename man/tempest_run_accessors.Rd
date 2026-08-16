@@ -36,8 +36,8 @@ tempest_run_record_approval(
 tempest_run_request_cancel(run, reason = "Cancellation requested.")
 }
 \arguments{
-\item{run}{A \code{TempestRun} created by \code{\link[=tempest_run_workflow]{tempest_run_workflow()}} or restored by
-\code{\link[=tempest_run_restore]{tempest_run_restore()}}.}
+\item{run}{A \code{TempestRun} created by the frozen
+\code{\link[=tempest_run_workflow]{tempest_run_workflow()}} generic kernel.}
 
 \item{after_sequence}{Return only events whose sequence is greater than this
 non-negative run-local cursor.}

@@ -6,7 +6,7 @@ fake_costorm_warmup_session <- function(
   mindmap_async = NULL
 ) {
   store <- fake_store_with_sources(1)
-  source_id <- store$list_sources()[[1]]$id
+  source_id <- store$list_retrieved_sources()[[1]]$id
   if (is.null(experts)) {
     experts <- list(test_expert(
       expert_id = "expert.a",
@@ -129,7 +129,7 @@ fake_costorm_warmup_session <- function(
   session$topic <- "Test topic"
   session$experts <- experts
   session$expert_session_manager <- manager
-  session$store <- store
+  session$workspace <- store
   session$mindmap <- tempest:::tempest_mindmap_init(session$topic)
   session$artifacts <- new.env(parent = emptyenv())
   session$state <- state

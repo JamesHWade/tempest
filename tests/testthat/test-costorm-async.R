@@ -3,8 +3,8 @@ test_that("async fact extraction keeps the event loop responsive", {
   skip_if_not_installed("later")
   skip_if_not_installed("ellmer")
   store <- tempest_research_workspace()
-  store$upsert_source(fake_source("https://example.org/1"))
-  source_id <- store$list_sources()[[1]]$id
+  store$upsert_retrieved_resource(fake_source("https://example.org/1"))
+  source_id <- store$list_retrieved_sources()[[1]]$id
   resolve_request <- NULL
   heartbeat <- FALSE
   extractor <- list(
@@ -17,7 +17,6 @@ test_that("async fact extraction keeps the event loop responsive", {
   session <- list(
     session_id = "async-session",
     workspace = store,
-    store = store,
     chats = list(extractor = extractor),
     emit_progress = function(
       event_type,
@@ -54,7 +53,7 @@ test_that("async fact extraction keeps the event loop responsive", {
 
   expect_equal(heartbeat, TRUE)
   expect_equal(is.null(resolve_request), FALSE)
-  expect_length(store$list_claims(), 0L)
+  expect_length(store$list_proposed_claims(), 0L)
   resolve_request(list(
     facts = list(list(
       claim = "Responsive claim",
@@ -66,7 +65,7 @@ test_that("async fact extraction keeps the event loop responsive", {
   settled <- await_tempest_promise(request)
 
   expect_null(settled$error)
-  expect_equal(store$list_claims()[[1]]@claim_text, "Responsive claim")
+  expect_equal(store$list_proposed_claims()[[1]]@claim_text, "Responsive claim")
 })
 
 test_that("stale async evidence cannot commit or report success", {
@@ -74,13 +73,12 @@ test_that("stale async evidence cannot commit or report success", {
   skip_if_not_installed("later")
   skip_if_not_installed("ellmer")
   store <- fake_store_with_sources(1)
-  source_id <- store$list_sources()[[1]]$id
+  source_id <- store$list_retrieved_sources()[[1]]$id
   resolve_request <- NULL
   current <- TRUE
   session <- list(
     session_id = "stale-session",
     workspace = store,
-    store = store,
     chats = list(
       extractor = list(
         chat_structured_async = function(...) {
@@ -131,7 +129,7 @@ test_that("stale async evidence cannot commit or report success", {
   settled <- await_tempest_promise(request)
 
   expect_null(settled$error)
-  expect_length(store$list_claims(), 0L)
+  expect_length(store$list_proposed_claims(), 0L)
   expect_identical(settled$value$cancelled, TRUE)
 })
 
@@ -144,7 +142,6 @@ test_that("evidence commitment skips extraction when a turn cites no source", {
   session <- list(
     session_id = "unsupported-session",
     workspace = workspace,
-    store = workspace,
     chats = list(
       extractor = list(
         chat_structured_async = function(...) {
@@ -199,7 +196,7 @@ test_that("evidence commitment extracts claims from cited session sources", {
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
   store <- fake_store_with_sources(1)
-  source_id <- store$list_sources()[[1]]$id
+  source_id <- store$list_retrieved_sources()[[1]]$id
   extractor <- list(
     chat_structured_async = function(...) {
       promises::promise_resolve(list(
@@ -214,7 +211,6 @@ test_that("evidence commitment extracts claims from cited session sources", {
   session <- list(
     session_id = "cited-session",
     workspace = store,
-    store = store,
     chats = list(extractor = extractor),
     emit_progress = function(
       event_type,
@@ -250,7 +246,7 @@ test_that("evidence commitment extracts claims from cited session sources", {
   expect_null(settled$error)
   expect_equal(settled$value$source_ids, source_id)
   expect_equal(settled$value$claims_added, 1L)
-  expect_equal(store$list_claims()[[1]]@claim_text, "A cited claim")
+  expect_equal(store$list_proposed_claims()[[1]]@claim_text, "A cited claim")
 })
 
 test_that("post-turn processing owns sequencing and returns typed results", {
@@ -274,12 +270,12 @@ test_that("post-turn processing owns sequencing and returns typed results", {
     }
   )
   source <- fake_source()
-  session$store$upsert_source(source)
+  session$workspace$upsert_retrieved_resource(source)
   source_id <- source$id
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(session, ...) {
       calls <<- c(calls, "evidence")
-      session$store$add_claim(tempest_claim(
+      session$workspace$add_proposed_claim(tempest_claim(
         claim_text = "A cited answer",
         source_ids = source_id
       ))
@@ -666,8 +662,8 @@ test_that("async report generation commits only after provider settlement", {
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
   store <- fake_store_with_sources(1)
-  source_id <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(
+  source_id <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
     claim_text = "Report claim",
     source_ids = source_id,
     verification_status = "supported",
@@ -684,11 +680,9 @@ test_that("async report generation commits only after provider settlement", {
     title = "Async report",
     config = cfg,
     workspace = store,
-    store = store,
     mindmap = tempest:::tempest_mindmap_init("Async report"),
     transcript = list(),
     artifacts = artifacts,
-    artifact_catalog = artifact_catalog,
     transcript_markdown = function(max_turns = 80) "Conversation",
     chats = list(
       reporter = list(
@@ -725,7 +719,10 @@ test_that("async report generation commits only after provider settlement", {
     }
   )
 
-  request <- tempest:::tempest_session_report_async(session)
+  request <- tempest:::tempest_session_report_async(
+    session,
+    .artifact_catalog = artifact_catalog
+  )
   later::later(function() heartbeat <<- TRUE, delay = 0)
   later::run_now(0.02)
 
@@ -754,7 +751,7 @@ test_that("async report generation commits only after provider settlement", {
 
 test_that("Co-STORM report generation requires the session catalog", {
   expect_error(
-    tempest:::tempest_costorm_artifact_catalog(list(artifact_catalog = NULL)),
+    tempest:::tempest_costorm_artifact_catalog(list()),
     class = "tempest_deliverable_execution_error"
   )
 })
@@ -891,10 +888,8 @@ test_that("async report finalization failures emit failed progress", {
     title = "Failed report",
     config = cfg,
     workspace = workspace,
-    store = workspace,
     mindmap = tempest:::tempest_mindmap_init("Failed report"),
     artifacts = artifacts,
-    artifact_catalog = artifact_catalog,
     transcript_markdown = function(max_turns = 80) "Conversation",
     chats = list(
       reporter = list(
@@ -944,7 +939,10 @@ test_that("async report finalization failures emit failed progress", {
   artifact_catalog$register(report_spec)
   artifact_catalog$add(existing)
 
-  request <- tempest:::tempest_session_report_async(session)
+  request <- tempest:::tempest_session_report_async(
+    session,
+    .artifact_catalog = artifact_catalog
+  )
   resolve_report("Replacement report body")
   settled <- await_tempest_promise(request)
 
@@ -994,10 +992,8 @@ test_that("stale async reports do not publish artifacts", {
     title = "Stale report",
     config = cfg,
     workspace = workspace,
-    store = workspace,
     mindmap = tempest:::tempest_mindmap_init("Stale report"),
     artifacts = artifacts,
-    artifact_catalog = artifact_catalog,
     transcript_markdown = function(max_turns = 80) "Conversation",
     chats = list(
       reporter = list(
@@ -1037,7 +1033,8 @@ test_that("stale async reports do not publish artifacts", {
 
   request <- tempest:::tempest_session_report_async(
     session,
-    is_current = function() current
+    is_current = function() current,
+    .artifact_catalog = artifact_catalog
   )
   current <- FALSE
   resolve_report("Stale body")

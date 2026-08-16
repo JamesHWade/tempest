@@ -6,14 +6,13 @@
 \usage{
 tempest_retriever(
   config = tempest_config(),
-  store = tempest_research_workspace()
+  workspace = tempest_research_workspace()
 )
 }
 \arguments{
 \item{config}{A \code{TempestConfig}.}
 
-\item{store}{A \link{ResearchWorkspace}. The argument name is retained for
-compatibility.}
+\item{workspace}{A \link{ResearchWorkspace}.}
 }
 \value{
 A \code{TempestRetriever}.

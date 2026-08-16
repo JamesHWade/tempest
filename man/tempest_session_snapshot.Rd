@@ -19,12 +19,12 @@ A list containing a schema-versioned session snapshot.
 \code{tempest_session_snapshot()} returns a structured, in-memory representation
 of the durable state in a \link{TempestSession}. It includes the research
 manifest; fixed session and configuration identity; the authoritative
-\link{ResearchWorkspace}; expert profiles; transcript and mind map; typed
-deliverables; progress-event and expert-session metadata; serializable
-runtime records; and any attached generic workflow run. The deprecated
-\code{store} alias is not duplicated; restoration binds it to the restored
-workspace. Live chat handles, runtime clients, tools, closures, Shiny
-reactive state, credentials, and provider request bodies are not included.
+\link{ResearchWorkspace}; expert profiles; transcript and mind map; the latest
+report Markdown; progress-event and expert-session metadata; and the optional
+immutable Graft snapshot. Live chat
+handles, runtime clients, tools, closures, generic workflows, generic
+artifact catalogs, Shiny reactive state, credentials, and provider request
+bodies are not included.
 
 Use \code{\link[=tempest_session_restore]{tempest_session_restore()}} to rebuild a session from the returned list,
 or \code{\link[=tempest_session_save]{tempest_session_save()}} to write the same durable state to a directory

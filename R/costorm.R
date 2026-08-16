@@ -152,50 +152,25 @@ tempest_costorm_retriever_workspace <- function(retriever) {
     tempest_costorm_session_abort(
       paste0(
         "{.arg retriever} must expose a ResearchWorkspace at ",
-        "{.code retriever$workspace} or the legacy SourceStore-compatible ",
-        "{.code retriever$store} alias."
+        "{.code retriever$workspace}."
       )
     )
   }
   workspace <- retriever[["workspace"]] %||% NULL
-  store <- retriever[["store"]] %||% NULL
   if (!is.null(workspace) && !inherits(workspace, "ResearchWorkspace")) {
     tempest_costorm_session_abort(
       "{.code retriever$workspace} must be a ResearchWorkspace."
     )
   }
-  if (!is.null(store) && !inherits(store, "ResearchWorkspace")) {
-    tempest_costorm_session_abort(
-      paste0(
-        "The legacy SourceStore-compatible {.code retriever$store} alias ",
-        "must be a ResearchWorkspace."
-      )
-    )
-  }
-  if (
-    !is.null(workspace) &&
-      !is.null(store) &&
-      !identical(workspace, store)
-  ) {
-    tempest_costorm_session_abort(
-      paste0(
-        "{.code retriever$workspace} and the legacy ",
-        "{.code retriever$store} alias must reference the same ",
-        "ResearchWorkspace."
-      )
-    )
-  }
-  result <- workspace %||% store
-  if (is.null(result)) {
+  if (is.null(workspace)) {
     tempest_costorm_session_abort(
       paste0(
         "{.arg retriever} must expose a ResearchWorkspace at ",
-        "{.code retriever$workspace} or the legacy SourceStore-compatible ",
-        "{.code retriever$store} alias."
+        "{.code retriever$workspace}."
       )
     )
   }
-  result
+  workspace
 }
 
 tempest_costorm_manifest_snapshot_reference <- function(workspace) {
@@ -203,7 +178,16 @@ tempest_costorm_manifest_snapshot_reference <- function(workspace) {
   if (is.null(snapshot_id)) {
     return(list())
   }
-  list(snapshot_id = snapshot_id)
+  snapshot <- workspace$graft_snapshot
+  if (is.null(snapshot)) {
+    tempest_ecosystem_contract_abort(
+      paste0(
+        "A pinned Co-STORM workspace must retain its actual path-free ",
+        "Graft snapshot."
+      )
+    )
+  }
+  tempest_snapshot_reference(snapshot)
 }
 
 tempest_costorm_manifest_validate <- function(
@@ -269,7 +253,7 @@ tempest_costorm_manifest_validate <- function(
 #' @keywords internal
 tempest_session_answer_source_ids <- function(session, text, source_ids) {
   workspace <- if (is.list(session) || is.environment(session)) {
-    session[["workspace"]] %||% session[["store"]] %||% NULL
+    session[["workspace"]] %||% NULL
   } else {
     NULL
   }
@@ -280,7 +264,7 @@ tempest_session_answer_source_ids <- function(session, text, source_ids) {
     return(character())
   }
   text <- text %||% ""
-  sources <- workspace$list_sources()
+  sources <- workspace$list_retrieved_sources()
   referenced <- vapply(
     sources,
     function(source) {
@@ -326,21 +310,21 @@ tempest_costorm_mindmap_exchange <- function(
 #' Maintains state for a Co-STORM session: multi-agent dialog, mind map,
 #' provisional scientific evidence, and report state.
 #'
-#' @section Frozen Tempest 0.1 fields:
+#' @section Internal implementation:
 #'
-#' `runtime`, `connection_permissions`, `artifacts`, `artifact_catalog`,
-#' `workflow_run`, and `capability_grants` expose the frozen experimental
-#' generic kernel. They remain only for existing Tempest 0.1 integrations and
-#' are scheduled for replacement or removal in Tempest 0.2.0. New host code
-#' should keep tools and authenticated clients process-local and use the
-#' session's scientific evidence and report state as its product boundary.
+#' `TempestSession` is an unexported mutable implementation returned by
+#' [tempest_session()]. Its supported product state is the correlated research
+#' manifest, workspace, transcript, mind map, experts, progress events, and
+#' canonical report. Process-local execution members are internal and are not
+#' part of the persistence or public API contract.
 #'
 #' @field topic Read-only research topic fixed at construction.
 #' @field title The report title.
 #' @field config Read-only `TempestConfig` fixed at construction.
-#' @field runtime Frozen Tempest 0.1 `TempestRuntime` adapter.
-#' @field connection_permissions Frozen Tempest 0.1 per-role or per-expert
-#'   connection allow-lists.
+#' @field runtime Internal process-local execution member; not part of the
+#'   public or persistence contract.
+#' @field connection_permissions Internal process-local execution member; not
+#'   part of the public or persistence contract.
 #' @field session_id Read-only stable identifier shared by the manifest and
 #'   progress events for the session.
 #' @field progress Optional progress callback.
@@ -348,7 +332,6 @@ tempest_costorm_mindmap_exchange <- function(
 #' @field workspace Read-only reference to the authoritative
 #'   [ResearchWorkspace] containing provisional research material. Workspace
 #'   mutation methods remain available.
-#' @field store Deprecated read-only compatibility alias of `workspace`.
 #' @field retriever Read-only `TempestRetriever` reference.
 #' @field experts List of validated `tempest_expert` profiles.
 #' @field expert_session_manager Manages expert chat sessions.
@@ -356,15 +339,13 @@ tempest_costorm_mindmap_exchange <- function(
 #' @field transcript List of dialog turns.
 #' @field mindmap The mind map data structure.
 #' @field events Ordered normalized progress-event history.
-#' @field artifacts Frozen Tempest 0.1 environment of auxiliary session state.
-#' @field artifact_catalog Frozen Tempest 0.1 typed deliverable catalog.
-#' @field workflow_run Frozen Tempest 0.1 generic `TempestRun` that owns the
-#'   session workflow lifecycle, when present.
-#' @field capability_grants Frozen Tempest 0.1 capability decisions by
-#'   execution context.
+#' @field artifacts Internal process-local presentation state; not part of the
+#'   public or persistence contract.
+#' @field capability_grants Internal process-local execution state; not part
+#'   of the public or persistence contract.
 #' @field discourse_manager A `DiscourseManager` object (NULL when disabled).
 #'
-#' @export
+#' @keywords internal
 TempestSession <- R6::R6Class(
   "TempestSession",
   public = list(
@@ -379,25 +360,20 @@ TempestSession <- R6::R6Class(
     mindmap = NULL,
     events = NULL,
     artifacts = NULL,
-    artifact_catalog = NULL,
-    workflow_run = NULL,
     capability_grants = NULL,
     discourse_manager = NULL,
 
     #' @description
-    #' Create a new TempestSession.
+    #' Internal constructor. Use [tempest_session()] for the supported API.
     #' @param topic The research topic.
     #' @param config A `TempestConfig` object.
-    #' @param runtime Frozen Tempest 0.1 [tempest_runtime()] adapter. Existing
-    #'   integrations only.
+    #' @param runtime Internal process-local runtime implementation.
     #' @param n_experts Number of expert agents.
     #' @param experts Optional list of validated expert profiles. If `NULL`,
     #'   experts are generated automatically using `tempest_generate_experts()`.
-    #' @param connection_permissions Frozen Tempest 0.1 mapping from role or
-    #'   expert ids to opaque connection ids allowed for this session.
+    #' @param connection_permissions Internal process-local connection policy.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
-    #'   object with a [ResearchWorkspace] at `$workspace` or its legacy
-    #'   `$store` alias.
+    #'   object with a [ResearchWorkspace] at `$workspace`.
     #' @param progress Optional function called with `tempest_progress_event`
     #'   objects as the session makes progress.
     #' @param session_id Optional stable session identifier. If `NULL`, a new
@@ -522,7 +498,7 @@ TempestSession <- R6::R6Class(
         private$workspace_value <- tempest_research_workspace()
         private$retriever_value <- tempest_retriever(
           config = config,
-          store = private$workspace_value
+          workspace = private$workspace_value
         )
       } else {
         retriever_config_digest <- tempest_retriever_config_digest(retriever)
@@ -573,10 +549,11 @@ TempestSession <- R6::R6Class(
       self$mindmap <- tempest_mindmap_init(self$topic)
       self$events <- list()
       self$artifacts <- new.env(parent = emptyenv())
-      self$artifact_catalog <- tempest_artifact_catalog(
+      private$artifact_catalog_value <- tempest_artifact_catalog(
         store = config@artifact_store
       )
-      self$workflow_run <- NULL
+      private$workflow_run_value <- NULL
+      private$report_md_value <- NULL
       self$capability_grants <- list()
 
       # Generate or use selected expert profiles.
@@ -638,7 +615,7 @@ TempestSession <- R6::R6Class(
         retriever = self$retriever,
         allowed_connection_ref_ids = expert_connection_permissions,
         extractor = self$chats$extractor,
-        store = self$workspace,
+        workspace = self$workspace,
         progress = function(event) self$record_progress_event(event),
         run_id = self$session_id
       )
@@ -987,7 +964,9 @@ TempestSession <- R6::R6Class(
             step = "fact_extraction",
             parent_event_id = event@event_id,
             correlation_id = event@correlation_id,
-            payload = list(claim_count = length(self$workspace$list_claims()))
+            payload = list(
+              claim_count = length(self$workspace$list_proposed_claims())
+            )
           )
         },
         error = function(e) {
@@ -1386,7 +1365,10 @@ TempestSession <- R6::R6Class(
                     "- Use the available web/source tools to find and cite sources.\n",
                     "- If web_search and fetch_url are available, search first and then fetch sources.\n",
                     "- Only state factual claims supported by sources you inspected.\n",
-                    "- If add_claim is available, record key source-backed claims with it.\n",
+                    paste0(
+                      "- If add_proposed_claim is available, record key ",
+                      "source-backed claims with it.\n"
+                    ),
                     "- For each factual sentence, add source IDs like [Sxxxxxxxxxxxx] when available.\n",
                     "- If evidence is weak or unclear, say so.\n\n",
                     "Respond now:"
@@ -1527,8 +1509,8 @@ TempestSession <- R6::R6Class(
           }
 
           if (verbose) {
-            total_facts <- length(self$workspace$list_claims())
-            total_sources <- length(self$workspace$list_sources())
+            total_facts <- length(self$workspace$list_proposed_claims())
+            total_sources <- length(self$workspace$list_retrieved_sources())
             tempest_inform(
               "Warmup complete: {total_facts} facts, {total_sources} sources"
             )
@@ -1543,8 +1525,8 @@ TempestSession <- R6::R6Class(
             correlation_id = warmup_event@correlation_id,
             payload = list(
               expert_count = length(results),
-              claim_count = length(self$workspace$list_claims()),
-              source_count = length(self$workspace$list_sources())
+              claim_count = length(self$workspace$list_proposed_claims()),
+              source_count = length(self$workspace$list_retrieved_sources())
             )
           )
           invisible(results)
@@ -1602,6 +1584,7 @@ TempestSession <- R6::R6Class(
           result <- tempest_deliverable_finalize(plan, body)
           artifact <- tempest_deliverable_primary_artifact(result)
           md <- artifact@content
+          tempest_session_set_report_value(self, md)
           self$emit_progress(
             "artifact",
             "available",
@@ -1721,7 +1704,10 @@ TempestSession <- R6::R6Class(
     #' Find sources that haven't been discussed yet.
     #' @return Character vector of undiscussed source IDs.
     find_undiscussed_sources = function() {
-      all_source_ids <- purrr::map_chr(self$workspace$list_sources(), "id")
+      all_source_ids <- purrr::map_chr(
+        self$workspace$list_retrieved_sources(),
+        "id"
+      )
       discussed <- self$get_discussed_source_ids()
       setdiff(all_source_ids, discussed)
     },
@@ -1738,7 +1724,7 @@ TempestSession <- R6::R6Class(
 
       # Get snippets from unseen sources
       unseen_info <- purrr::map_chr(head(unseen_ids, 5), function(id) {
-        src <- self$workspace$get_source(id)
+        src <- self$workspace$get_retrieved_source(id)
         if (is.null(src)) {
           return("")
         }
@@ -1969,17 +1955,6 @@ TempestSession <- R6::R6Class(
         )
       }
       private$workspace_value
-    },
-    store = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          paste0(
-            "{.field store} is a fixed compatibility alias of ",
-            "{.field workspace}."
-          )
-        )
-      }
-      private$workspace_value
     }
   ),
   private = list(
@@ -1988,29 +1963,90 @@ TempestSession <- R6::R6Class(
     session_id_value = NULL,
     retriever_value = NULL,
     manifest_value = NULL,
-    workspace_value = NULL
+    workspace_value = NULL,
+    artifact_catalog_value = NULL,
+    workflow_run_value = NULL,
+    report_md_value = NULL
   )
 )
 
+#' @keywords internal
+tempest_session_artifact_catalog <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$artifact_catalog_value
+}
+
+#' @keywords internal
+tempest_session_set_artifact_catalog <- function(session, catalog) {
+  if (!inherits(catalog, "TempestArtifactCatalog")) {
+    tempest_costorm_session_abort(
+      "{.arg catalog} must be a TempestArtifactCatalog."
+    )
+  }
+  session$.__enclos_env__$private$artifact_catalog_value <- catalog
+  invisible(session)
+}
+
+#' @keywords internal
+tempest_session_workflow_run <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$workflow_run_value
+}
+
+#' @keywords internal
+tempest_session_set_workflow_run <- function(session, run) {
+  if (!is.null(run) && !inherits(run, "TempestRun")) {
+    tempest_costorm_session_abort(
+      "{.arg run} must be a TempestRun or {.code NULL}."
+    )
+  }
+  session$.__enclos_env__$private$workflow_run_value <- run
+  invisible(session)
+}
+
+#' @keywords internal
+tempest_session_report_value <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$report_md_value
+}
+
+#' @keywords internal
+tempest_session_set_report_value <- function(session, report_md) {
+  if (
+    !is.null(report_md) &&
+      (!is.character(report_md) ||
+        length(report_md) != 1L ||
+        is.na(report_md))
+  ) {
+    tempest_costorm_session_abort(
+      "{.arg report_md} must be one string or {.code NULL}."
+    )
+  }
+  session$.__enclos_env__$private$report_md_value <- report_md
+  invisible(session)
+}
+
 #' Create a Co-STORM session
-#'
-#' @section Frozen Tempest 0.1 seams:
-#'
-#' `runtime` and `connection_permissions` remain only for existing Tempest 0.1
-#' integrations and are scheduled for replacement in Tempest 0.2.0. New host
-#' code should keep role-specific tools and authenticated clients process-local.
 #'
 #' @param topic Topic string.
 #' @param config A `TempestConfig`.
-#' @param runtime Frozen Tempest 0.1 [tempest_runtime()] adapter. Existing
-#'   integrations only.
 #' @param n_experts Number of expert agents.
 #' @param experts Optional list of validated expert profiles. If `NULL`,
 #'   experts are generated automatically.
-#' @param connection_permissions Frozen Tempest 0.1 per-role or per-expert
-#'   connection allow-lists.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
-#'   with a [ResearchWorkspace] at `$workspace` or its legacy `$store` alias.
+#'   with a [ResearchWorkspace] at `$workspace`.
 #' @param progress Optional function called with `tempest_progress_event`
 #'   objects as the session makes progress.
 #' @param session_id Optional stable session identifier. If `NULL`, a new
@@ -2024,10 +2060,8 @@ TempestSession <- R6::R6Class(
 tempest_session <- function(
   topic,
   config = tempest_config(),
-  runtime = tempest_runtime(),
   n_experts = 3,
   experts = NULL,
-  connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
   session_id = NULL
@@ -2035,10 +2069,8 @@ tempest_session <- function(
   TempestSession$new(
     topic = topic,
     config = config,
-    runtime = runtime,
     n_experts = n_experts,
     experts = experts,
-    connection_permissions = connection_permissions,
     retriever = retriever,
     progress = progress,
     session_id = session_id

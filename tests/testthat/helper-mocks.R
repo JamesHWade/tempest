@@ -65,9 +65,9 @@ fake_source <- function(
 }
 
 fake_store_with_sources <- function(n = 2) {
-  store <- quiet_source_store()
+  store <- test_research_workspace()
   for (i in seq_len(n)) {
-    store$upsert_source(fake_source(
+    store$upsert_retrieved_resource(fake_source(
       url = paste0("https://example.org/", i),
       title = paste("Example", i),
       content_text = paste("Body text for source", i)

@@ -168,8 +168,8 @@ tempest_shiny_ui <- function(
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_shiny_server()` pairs with [tempest_shiny_ui()] and lets a host app
-#' provide a [TempestConfig], process-local [tempest_runtime()], optional expert
-#' profiles, a stable session id, and an optional shared store. The returned
+#' provide a [TempestConfig], optional expert profiles, a stable session id, and
+#' an optional shared store. The returned
 #' handle exposes the shared store and reactive accessors for generic run,
 #' event, approval, capability-grant, artifact, session, and report state.
 #'
@@ -181,10 +181,6 @@ tempest_shiny_ui <- function(
 #' @param panels Character vector matching the UI panels.
 #' @param experts Optional expert profiles passed to [tempest_session()] for
 #'   new Co-STORM sessions. May be a value, function, or reactive.
-#' @param runtime A [tempest_runtime()], function, or reactive used to resolve
-#'   process-local operations, capabilities, and connections.
-#' @param connection_permissions Named per-role or per-expert connection
-#'   allow-lists passed to [tempest_session()].
 #' @param session_id Optional stable session id passed to [tempest_session()]
 #'   for new Co-STORM sessions. May be a value, function, or reactive.
 #' @param run Optional `TempestRun`, function, or reactive. This lets a host
@@ -207,11 +203,11 @@ tempest_shiny_server <- function(
   store = NULL,
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
   experts = NULL,
-  runtime = tempest_runtime(),
-  connection_permissions = list(),
   session_id = NULL,
   run = NULL
 ) {
+  runtime <- tempest_runtime()
+  connection_permissions <- list()
   panels <- tempest_shiny_panels(panels)
   tempest_shiny_require_server(panels)
 
@@ -344,12 +340,12 @@ tempest_shiny_server <- function(
       }
       list(
         resources = lapply(
-          active$source_store$list_resources(),
+          active$source_store$list_retrieved_resources(),
           tempest_resource_record,
           include_content = FALSE
         ),
         claims = lapply(
-          active$source_store$list_claims(),
+          active$source_store$list_proposed_claims(),
           tempest_claim_to_list
         ),
         disputes = lapply(

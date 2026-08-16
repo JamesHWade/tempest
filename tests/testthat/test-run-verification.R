@@ -1,7 +1,7 @@
 test_that("tempest_run verifies claims before polishing when policy requires it", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(claim_text = "c", source_ids = s1))
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(claim_text = "c", source_ids = s1))
   judge <- fake_chat(
     structured = list(list(status = "supported", score = 0.9, rationale = "ok"))
   )
@@ -9,14 +9,17 @@ test_that("tempest_run verifies claims before polishing when policy requires it"
 
   tempest_run_verification(store, cfg, verifier = judge)
 
-  expect_equal(store$list_claims()[[1]]@verification_status, "supported")
-  expect_s3_class(store$get_artifact("citation_audit"), "tbl_df")
+  expect_equal(
+    store$list_proposed_claims()[[1]]@verification_status,
+    "supported"
+  )
+  expect_s3_class(store$citation_audit, "tbl_df")
 })
 
 test_that("tempest_run_verification passes configured min_support_score", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(claim_text = "c", source_ids = s1))
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(claim_text = "c", source_ids = s1))
   judge <- fake_chat(
     structured = list(list(status = "supported", score = 0.8, rationale = "ok"))
   )
@@ -27,16 +30,22 @@ test_that("tempest_run_verification passes configured min_support_score", {
 
   tempest_run_verification(store, cfg, verifier = judge)
 
-  expect_equal(store$list_claims()[[1]]@verification_status, "unsupported")
+  expect_equal(
+    store$list_proposed_claims()[[1]]@verification_status,
+    "unsupported"
+  )
 })
 
 test_that("verification is skipped under the default policy", {
   store <- fake_store_with_sources(1)
-  store$add_claim(tempest_claim(
+  store$add_proposed_claim(tempest_claim(
     claim_text = "c",
-    source_ids = store$list_sources()[[1]]$id
+    source_ids = store$list_retrieved_sources()[[1]]$id
   ))
   cfg <- tempest_config() # source_attributed
   tempest_run_verification(store, cfg, verifier = fake_chat())
-  expect_equal(store$list_claims()[[1]]@verification_status, "unverified")
+  expect_equal(
+    store$list_proposed_claims()[[1]]@verification_status,
+    "unverified"
+  )
 })

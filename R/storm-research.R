@@ -192,7 +192,7 @@ tempest_answer_source_context <- function(
   store,
   source_ids = NULL
 ) {
-  sources <- store$list_sources()
+  sources <- store$list_retrieved_sources()
   if (length(sources) == 0 || is.null(answer_text) || !nzchar(answer_text)) {
     return("")
   }
@@ -238,7 +238,7 @@ tempest_resolve_fact_source_ids <- function(source_refs, store) {
     return(character())
   }
   ids <- purrr::map_chr(source_refs, function(ref) {
-    if (!is.null(store$get_source(ref))) {
+    if (!is.null(store$get_retrieved_source(ref))) {
       return(ref)
     }
     url <- tryCatch(tempest_normalize_url(ref), error = function(e) {
@@ -248,7 +248,7 @@ tempest_resolve_fact_source_ids <- function(source_refs, store) {
       return(NA_character_)
     }
     id <- tempest_source_id(url)
-    if (!is.null(store$get_source(id))) id else NA_character_
+    if (!is.null(store$get_retrieved_source(id))) id else NA_character_
   })
   unique(ids[!is.na(ids) & nzchar(ids)])
 }
@@ -380,7 +380,9 @@ tempest_commit_extracted_facts <- function(
       use.names = FALSE
     )
     src_ids <- tempest_resolve_fact_source_ids(source_refs, store)
-    known <- src_ids[!purrr::map_lgl(src_ids, ~ is.null(store$get_source(.x)))]
+    known <- src_ids[
+      !purrr::map_lgl(src_ids, ~ is.null(store$get_retrieved_source(.x)))
+    ]
     if (length(known) == 0) {
       next
     }
@@ -392,7 +394,7 @@ tempest_commit_extracted_facts <- function(
     ) {
       conf <- "medium"
     }
-    store$add_claim(tempest_claim(
+    store$add_proposed_claim(tempest_claim(
       claim_text = claim,
       source_ids = known,
       claim_type = "finding",
@@ -514,8 +516,8 @@ tempest_turn_answer_and_sources <- function(expert, fallback_answer, store) {
 #' Research a single perspective (search + expert synthesis)
 #'
 #' Shared by the parallel and sequential research fallbacks so both paths
-#' behave identically. Returns the sources and facts gathered for one
-#' perspective in an isolated store.
+#' behave identically. Returns the retrieved resources and proposed claims
+#' gathered for one perspective in an isolated workspace.
 #' @keywords internal
 tempest_research_one_perspective <- function(
   i,
@@ -547,7 +549,7 @@ tempest_research_one_perspective <- function(
   local_workspace <- tempest_research_workspace()
   local_retriever <- tempest_retriever(
     config = config,
-    store = local_workspace
+    workspace = local_workspace
   )
 
   sp <- tempest_render_expert_prompt(
@@ -641,7 +643,10 @@ tempest_research_one_perspective <- function(
         "Instructions:\n",
         "- Use web_search + fetch_url as needed.\n",
         "- Only state factual claims that are supported by sources you fetched.\n",
-        "- If add_claim is available, record key source-backed claims with it.\n",
+        paste0(
+          "- If add_proposed_claim is available, record key source-backed ",
+          "claims with it.\n"
+        ),
         "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
         "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
         "Answer:"
@@ -681,8 +686,8 @@ tempest_research_one_perspective <- function(
   }
 
   list(
-    sources = local_workspace$list_sources(),
-    claims = local_workspace$list_claims()
+    retrieved_resources = local_workspace$list_retrieved_sources(),
+    proposed_claims = local_workspace$list_proposed_claims()
   )
 }
 
@@ -819,11 +824,11 @@ tempest_research_parallel <- function(
     if (is.null(val)) {
       next
     }
-    for (src in val$sources %||% list()) {
-      store$upsert_source(src)
+    for (src in val$retrieved_resources %||% list()) {
+      store$upsert_retrieved_resource(src)
     }
-    for (claim in val$claims %||% list()) {
-      store$add_claim(claim)
+    for (claim in val$proposed_claims %||% list()) {
+      store$add_proposed_claim(claim)
     }
   }
 

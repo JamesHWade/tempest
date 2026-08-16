@@ -66,6 +66,6 @@ No compatibility shim is planned; see
 \link{tempest-generic-kernel-retirement}.
 
 This is the generic-run counterpart to \code{\link[=tempest_run]{tempest_run()}}. It returns the
-\code{TempestRun}; each step result retains the corresponding legacy STORM result
-under \verb{$value}, including its \verb{$workflow_run} handle.
+\code{TempestRun}; each step result retains the corresponding STORM result under
+\verb{$value}.
 }

@@ -1,7 +1,7 @@
 test_that("report renders verification badges under claim_verified", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
     claim_text = "A questionable sentence",
     source_ids = s1,
     verification_status = "supported",
@@ -20,12 +20,12 @@ test_that("report renders verification badges under claim_verified", {
 test_that("citation helpers consume a ResearchWorkspace directly", {
   workspace <- tempest_research_workspace()
   source <- fake_source("https://example.org/workspace")
-  workspace$upsert_source(source)
+  workspace$upsert_retrieved_resource(source)
   claim <- tempest_claim(
     claim_text = "Workspace evidence is provisional.",
     source_ids = source$id
   )
-  workspace$add_claim(claim)
+  workspace$add_proposed_claim(claim)
 
   expect_equal(tempest_sources(workspace)$id, source$id)
   expect_equal(tempest_claims(workspace)$claim_id, claim@claim_id)
@@ -42,8 +42,8 @@ test_that("citation helpers consume a ResearchWorkspace directly", {
 
 test_that("strict policy flags unsupported citations", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
     claim_text = "c",
     source_ids = s1,
     verification_status = "unsupported",
@@ -62,7 +62,7 @@ test_that("strict policy flags unsupported citations", {
 
 test_that("none policy leaves citations unfootnoted and omits references", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
+  s1 <- store$list_retrieved_sources()[[1]]$id
   body <- paste0("Plain sentence [", s1, "].")
 
   md <- tempest_report_md("Title", body, store, citation_policy = "none")
@@ -74,8 +74,8 @@ test_that("none policy leaves citations unfootnoted and omits references", {
 
 test_that("strict drop suppresses footnotes for dropped citations", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
     claim_text = "Unsupported claim",
     source_ids = s1,
     verification_status = "unsupported",
@@ -99,14 +99,14 @@ test_that("strict drop suppresses footnotes for dropped citations", {
 
 test_that("strict policy applies status to the matching cited claim", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
     claim_text = "Supported claim",
     source_ids = s1,
     verification_status = "supported",
     support_score = 0.9
   ))
-  store$add_claim(tempest_claim(
+  store$add_proposed_claim(tempest_claim(
     claim_text = "Unsupported claim",
     source_ids = s1,
     verification_status = "unsupported",
@@ -129,8 +129,8 @@ test_that("strict policy applies status to the matching cited claim", {
 
 test_that("strict revise replaces unsupported assertions distinctly", {
   store <- fake_store_with_sources(1)
-  source_id <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(
+  source_id <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
     claim_text = "Unsupported assertion",
     source_ids = source_id,
     verification_status = "unsupported",
@@ -153,14 +153,14 @@ test_that("strict revise replaces unsupported assertions distinctly", {
 
 test_that("default policy is unchanged source-attributed output", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
+  s1 <- store$list_retrieved_sources()[[1]]$id
   body <- paste0("Plain sentence [", s1, "].")
   md <- tempest_report_md("Title", body, store)
   expect_match(md, "## References")
   expect_no_match(md, "✓")
 })
 
-test_that("session report Markdown comes from the session artifact catalog", {
+test_that("session report Markdown comes from narrow product state", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -174,26 +174,9 @@ test_that("session report Markdown comes from the session artifact catalog", {
     ))
   )
   report_md <- "# Canonical report\n\nDurable body."
-  report_spec <- tempest:::tempest_costorm_report_spec(session)
-  session$artifact_catalog$register(report_spec)
-  session$artifact_catalog$add(tempest_artifact(
-    report_spec,
-    content = report_md,
-    artifact_id = "report_md",
-    status = "valid"
-  ))
-  catalog_before <- session$artifact_catalog$snapshot(include_content = TRUE)
-  local_mocked_bindings(
-    tempest_artifact_catalog = function(...) {
-      stop("detached catalog created")
-    }
-  )
+  tempest:::tempest_session_set_report_value(session, report_md)
 
   expect_identical(tempest_session_report_md(session), report_md)
-  expect_identical(
-    session$artifact_catalog$snapshot(include_content = TRUE),
-    catalog_before
-  )
 })
 
 test_that("session report Markdown requires a canonical report artifact", {
@@ -212,6 +195,6 @@ test_that("session report Markdown requires a canonical report artifact", {
 
   expect_error(
     tempest_session_report_md(session),
-    class = "tempest_artifact_catalog_error"
+    class = "tempest_deliverable_execution_error"
   )
 })

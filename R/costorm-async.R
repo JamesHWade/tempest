@@ -19,7 +19,7 @@ tempest_session_extract_facts_async <- function(
   is_current = function() TRUE,
   emit_stale_progress = TRUE
 ) {
-  workspace <- session$workspace %||% session$store %||% NULL
+  workspace <- session$workspace %||% NULL
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
       "The Co-STORM session must expose a ResearchWorkspace."
@@ -73,7 +73,7 @@ tempest_session_extract_facts_async <- function(
         step = "fact_extraction",
         parent_event_id = event@event_id,
         correlation_id = event@correlation_id,
-        payload = list(claim_count = length(workspace$list_claims()))
+        payload = list(claim_count = length(workspace$list_proposed_claims()))
       )
       value
     },
@@ -107,13 +107,13 @@ tempest_session_extract_facts_async <- function(
 }
 
 tempest_session_evidence_counts <- function(session) {
-  workspace <- session$workspace %||% session$store %||% NULL
+  workspace <- session$workspace %||% NULL
   if (!inherits(workspace, "ResearchWorkspace")) {
     return(list(source_count = 0L, claim_count = 0L))
   }
   list(
-    source_count = length(workspace$list_sources()),
-    claim_count = length(workspace$list_claims())
+    source_count = length(workspace$list_retrieved_sources()),
+    claim_count = length(workspace$list_proposed_claims())
   )
 }
 
@@ -129,7 +129,7 @@ tempest_session_commit_evidence_async <- function(
   emit_stale_progress = TRUE
 ) {
   tempest_require("promises", "Async evidence commitment requires promises.")
-  workspace <- session$workspace %||% session$store %||% NULL
+  workspace <- session$workspace %||% NULL
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
       "The Co-STORM session must expose a ResearchWorkspace."
@@ -745,7 +745,8 @@ tempest_session_report_async <- function(
   session,
   style = c("technical", "executive"),
   include_references = TRUE,
-  is_current = function() TRUE
+  is_current = function() TRUE,
+  .artifact_catalog = NULL
 ) {
   style <- match.arg(style)
   event <- session$emit_progress(
@@ -761,7 +762,8 @@ tempest_session_report_async <- function(
     include_references,
     generate_text = function(prompt) {
       session$chats$reporter$chat_async(prompt)
-    }
+    },
+    .artifact_catalog = .artifact_catalog
   )
   request <- tempest_deliverable_generate(plan)
   completed <- promises::then(
@@ -782,6 +784,9 @@ tempest_session_report_async <- function(
       result <- tempest_deliverable_finalize(plan, body)
       artifact <- tempest_deliverable_primary_artifact(result)
       markdown <- artifact@content
+      if (inherits(session, "TempestSession")) {
+        tempest_session_set_report_value(session, markdown)
+      }
       session$emit_progress(
         "artifact",
         "available",

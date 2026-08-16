@@ -127,8 +127,8 @@ SimulatedUser <- R6::R6Class(
       }
 
       if (verbose) {
-        total_facts <- length(session$store$list_claims())
-        total_sources <- length(session$store$list_sources())
+        total_facts <- length(session$workspace$list_proposed_claims())
+        total_sources <- length(session$workspace$list_retrieved_sources())
         tempest_inform(
           "SimulatedUser: {self$turn_count} turns, {total_facts} facts, {total_sources} sources"
         )

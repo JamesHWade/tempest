@@ -48,6 +48,17 @@ tempest_resource_content <- function(content) {
   content
 }
 
+tempest_resource_metadata <- function(value, arg) {
+  value <- tempest_workflow_serializable_list(value, arg)
+  tempest_research_reference_value(
+    value,
+    path = arg,
+    abort = tempest_workflow_abort,
+    noun = "Resource metadata"
+  )
+  value
+}
+
 #' Create a typed evidence resource
 #'
 #' `r lifecycle::badge("experimental")`
@@ -71,12 +82,16 @@ tempest_resource_content <- function(content) {
 #' @param storage_ref Optional opaque reference to externally stored content.
 #' @param origin_connection_id Optional host connection reference identifier.
 #' @param scope_metadata Serializable tenant or project scope metadata.
+#'   Credential-like field names are rejected recursively.
 #' @param content_hash Optional content checksum. Tempest computes one for
 #'   inline content when omitted.
 #' @param retrieved_at Retrieval timestamp.
-#' @param redaction Serializable redaction metadata.
-#' @param retention Serializable retention metadata.
-#' @param metadata Serializable namespaced host metadata.
+#' @param redaction Serializable redaction metadata. Credential-like field names
+#'   are rejected recursively.
+#' @param retention Serializable retention metadata. Credential-like field names
+#'   are rejected recursively.
+#' @param metadata Serializable namespaced host metadata. Credential-like field
+#'   names are rejected recursively.
 #' @param schema_version Positive resource schema version.
 #' @return A `tempest_resource` S7 object.
 #' @examples
@@ -134,13 +149,13 @@ tempest_resource <- function(
     origin_connection_id,
     "origin_connection_id"
   )
-  scope_metadata <- tempest_workflow_serializable_list(
+  scope_metadata <- tempest_resource_metadata(
     scope_metadata,
     "scope_metadata"
   )
-  redaction <- tempest_workflow_serializable_list(redaction, "redaction")
-  retention <- tempest_workflow_serializable_list(retention, "retention")
-  metadata <- tempest_workflow_serializable_list(metadata, "metadata")
+  redaction <- tempest_resource_metadata(redaction, "redaction")
+  retention <- tempest_resource_metadata(retention, "retention")
+  metadata <- tempest_resource_metadata(metadata, "metadata")
   retrieved_at <- tempest_workflow_scalar(
     retrieved_at %||% tempest_now_utc(),
     "retrieved_at"
@@ -195,9 +210,12 @@ tempest_resource_data <- function(resource, include_content = TRUE) {
     lapply(fields, function(field) S7::prop(resource, field)),
     fields
   )
+  for (field in c("scope_metadata", "redaction", "retention", "metadata")) {
+    data[[field]] <- tempest_resource_metadata(data[[field]], field)
+  }
   for (field in c("storage_ref", "origin_connection_id", "content_hash")) {
     if (!is.null(data[[field]]) && is.na(data[[field]])) {
-      data[[field]] <- NULL
+      data[field] <- list(NULL)
     }
   }
   data
@@ -311,7 +329,43 @@ tempest_source_as_resource <- function(source) {
   if (is.na(content)) {
     content <- NULL
   }
-  metadata <- source$meta
+  clean_metadata <- function(value) {
+    if (is.null(value)) {
+      return(NULL)
+    }
+    if (is.list(value) && !is.data.frame(value)) {
+      value <- lapply(value, clean_metadata)
+      return(Filter(Negate(is.null), value))
+    }
+    if (
+      is.atomic(value) &&
+        (anyNA(value) || (is.numeric(value) && any(!is.finite(value))))
+    ) {
+      keep <- !is.na(value)
+      if (is.numeric(value)) {
+        keep <- keep & is.finite(value)
+      }
+      value <- value[keep]
+      if (length(value) == 0L) {
+        return(NULL)
+      }
+    }
+    value
+  }
+  metadata <- clean_metadata(source$meta)
+  projection_fields <- c(
+    "resource_kind",
+    "locator",
+    "media_type",
+    "storage_ref",
+    "origin_connection_id",
+    "scope_metadata",
+    "redaction",
+    "retention"
+  )
+  if (!is.null(names(metadata))) {
+    metadata <- metadata[!names(metadata) %in% projection_fields]
+  }
   if (!is.na(source$snippet)) {
     metadata$snippet <- source$snippet
   }

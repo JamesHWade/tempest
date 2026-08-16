@@ -5,7 +5,7 @@
 \title{Verify claim citations against their sources}
 \usage{
 tempest_verify_claims(
-  store,
+  workspace,
   verifier,
   policy = "claim_verified",
   verifier_model = NA_character_,
@@ -14,7 +14,7 @@ tempest_verify_claims(
 )
 }
 \arguments{
-\item{store}{A \link{ResearchWorkspace} holding provisional claims and retrieved
+\item{workspace}{A \link{ResearchWorkspace} holding proposed claims and retrieved
 sources.}
 
 \item{verifier}{A chat object (e.g. from \code{tempest_make_chat(config, "judge")}).}

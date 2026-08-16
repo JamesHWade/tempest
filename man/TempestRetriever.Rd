@@ -17,8 +17,6 @@ ragnar for semantic search capabilities.
 \link{ResearchWorkspace} containing provisional research evidence. Workspace
 mutation methods remain available.}
 
-    \item{\code{store}}{Deprecated read-only compatibility alias of \code{workspace}.}
-
     \item{\code{ragnar_store}}{Read-only ragnar store reference derived from \code{config}.}
 
     \item{\code{cache_dir}}{Read-only cache path derived from \code{config}.}
@@ -39,7 +37,7 @@ mutation methods remain available.}
     \item \href{#method-TempestRetriever-build_ragnar_index}{\code{TempestRetriever$build_ragnar_index()}}
     \item \href{#method-TempestRetriever-retrieve}{\code{TempestRetriever$retrieve()}}
     \item \href{#method-TempestRetriever-get_source_text}{\code{TempestRetriever$get_source_text()}}
-    \item \href{#method-TempestRetriever-list_sources}{\code{TempestRetriever$list_sources()}}
+    \item \href{#method-TempestRetriever-list_retrieved_sources}{\code{TempestRetriever$list_retrieved_sources()}}
     \item \href{#method-TempestRetriever-cache_stats}{\code{TempestRetriever$cache_stats()}}
     \item \href{#method-TempestRetriever-clone}{\code{TempestRetriever$clone()}}
   }
@@ -53,7 +51,7 @@ mutation methods remain available.}
     \if{html}{\out{<div class="r">}}
     \preformatted{TempestRetriever$new(
   config = tempest_config(),
-  store = tempest_research_workspace()
+  workspace = tempest_research_workspace()
 )}
     \if{html}{\out{</div>}}
   }
@@ -61,8 +59,7 @@ mutation methods remain available.}
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{config}}{A \code{TempestConfig} object.}
-      \item{\code{store}}{A \link{ResearchWorkspace}. The argument name is retained for
-compatibility; new code should use the retriever's \code{workspace} field.}
+      \item{\code{workspace}}{A \link{ResearchWorkspace}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -209,13 +206,13 @@ compatibility; new code should use the retriever's \code{workspace} field.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestRetriever-list_sources"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestRetriever-list_sources}{}}}
-\subsection{\code{TempestRetriever$list_sources()}}{
+\if{html}{\out{<a id="method-TempestRetriever-list_retrieved_sources"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestRetriever-list_retrieved_sources}{}}}
+\subsection{\code{TempestRetriever$list_retrieved_sources()}}{
   List all sources in the store.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestRetriever$list_sources()}
+    \preformatted{TempestRetriever$list_retrieved_sources()}
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{

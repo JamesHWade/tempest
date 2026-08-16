@@ -1,53 +1,47 @@
 # Citations and report assembly
 
 #' Return evidence resources as a tibble
-#' @param store A [ResearchWorkspace] or [TempestRetriever].
+#' @param workspace A [ResearchWorkspace] or [TempestRetriever].
 #' @return A tibble with resource identity, kind, opaque locator, optional web
 #'   URL, title, media type, content context, retrieval time, and metadata.
 #' @examples
 #' \dontrun{
 #' result <- tempest_run("History of jazz", config = tempest_config())
-#' tempest_sources(result$store)
+#' tempest_sources(result$workspace)
 #' }
 #' @export
-tempest_sources <- function(store) {
-  if (inherits(store, "TempestRetriever")) {
-    store <- store$workspace
+tempest_sources <- function(workspace) {
+  if (inherits(workspace, "TempestRetriever")) {
+    workspace <- workspace$workspace
   }
-  if (!inherits(store, "ResearchWorkspace")) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
-      "{.arg store} must be a ResearchWorkspace or TempestRetriever."
+      "{.arg workspace} must be a ResearchWorkspace or TempestRetriever."
     )
   }
-  store$to_tibbles()$sources
-}
-
-#' @rdname tempest_sources
-#' @export
-tempest_resources <- function(store) {
-  tempest_sources(store)
+  workspace$to_tibbles()$retrieved_resources
 }
 
 #' Return claims as a tibble
-#' @param store A [ResearchWorkspace] or [TempestRetriever].
+#' @param workspace A [ResearchWorkspace] or [TempestRetriever].
 #' @return A tibble of claims with columns: claim_id, claim_text, claim_type,
 #'   source_ids, confidence, verification_status, support_score, created_at.
 #' @examples
 #' \dontrun{
 #' result <- tempest_run("History of jazz", config = tempest_config())
-#' tempest_claims(result$store)
+#' tempest_claims(result$workspace)
 #' }
 #' @export
-tempest_claims <- function(store) {
-  if (inherits(store, "TempestRetriever")) {
-    store <- store$workspace
+tempest_claims <- function(workspace) {
+  if (inherits(workspace, "TempestRetriever")) {
+    workspace <- workspace$workspace
   }
-  if (!inherits(store, "ResearchWorkspace")) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
-      "{.arg store} must be a ResearchWorkspace or TempestRetriever."
+      "{.arg workspace} must be a ResearchWorkspace or TempestRetriever."
     )
   }
-  store$to_tibbles()$claims
+  workspace$to_tibbles()$proposed_claims
 }
 
 #' @keywords internal
@@ -233,7 +227,7 @@ tempest_source_status <- function(
   min_support_score = 0.7,
   context = NULL
 ) {
-  claims <- store$claims_for_source(source_id)
+  claims <- store$proposed_claims_for_resource(source_id)
   if (length(claims) == 0) {
     return(NA_character_)
   }
@@ -345,7 +339,7 @@ tempest_add_footnotes <- function(
   ids <- unique(retained_ids)
 
   notes <- purrr::map_chr(ids, function(id) {
-    src <- store$get_source(id)
+    src <- store$get_retrieved_source(id)
     if (is.null(src)) {
       return(glue::glue("[^{id}]: (missing source metadata)"))
     }
@@ -368,7 +362,7 @@ tempest_add_footnotes <- function(
 #'
 #' @param title Document title.
 #' @param body Markdown body text that may include inline citations like `[Sxxxxxxxxxxxx]`.
-#' @param store A [ResearchWorkspace] or [TempestRetriever] containing
+#' @param workspace A [ResearchWorkspace] or [TempestRetriever] containing
 #'   retrieved sources.
 #' @param citation_policy One of "none", "source_attributed" (default),
 #'   "claim_verified", "strict". "none" leaves inline citation ids unchanged
@@ -387,30 +381,30 @@ tempest_add_footnotes <- function(
 #' md <- tempest_report_md(
 #'   title = "History of Jazz",
 #'   body = result$draft_md,
-#'   store = result$store
+#'   workspace = result$workspace
 #' )
 #' }
 #' @export
 tempest_report_md <- function(
   title,
   body,
-  store,
+  workspace,
   citation_policy = "source_attributed",
   on_unsupported_claim = "flag",
   min_support_score = 0.7
 ) {
-  if (inherits(store, "TempestRetriever")) {
-    store <- store$workspace
+  if (inherits(workspace, "TempestRetriever")) {
+    workspace <- workspace$workspace
   }
-  if (!inherits(store, "ResearchWorkspace")) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
-      "{.arg store} must be a ResearchWorkspace or TempestRetriever."
+      "{.arg workspace} must be a ResearchWorkspace or TempestRetriever."
     )
   }
 
   res <- tempest_add_footnotes(
     body,
-    store,
+    workspace,
     citation_policy = citation_policy,
     on_unsupported_claim = on_unsupported_claim,
     min_support_score = min_support_score
@@ -443,9 +437,7 @@ tempest_report_md <- function(
 #' @export
 tempest_session_report_md <- function(session) {
   stopifnot(inherits(session, "TempestSession"))
-  catalog <- tempest_costorm_artifact_catalog(session)
-  artifact <- catalog$get("report_md")
-  report_md <- artifact@content
+  report_md <- tempest_session_report_value(session)
   if (
     !rlang::is_string(report_md) ||
       is.na(report_md) ||

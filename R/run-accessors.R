@@ -219,8 +219,8 @@ tempest_execution_events <- function(x, after_sequence = 0L) {
 #' connection reference ids, denial reason fields, and serializable metadata.
 #'
 #' @name tempest_run_accessors
-#' @param run A `TempestRun` created by [tempest_run_workflow()] or restored by
-#'   [tempest_run_restore()].
+#' @param run A `TempestRun` created by the frozen
+#'   [tempest_run_workflow()] generic kernel.
 #' @return `tempest_run_status()` returns one run-status string.
 NULL
 

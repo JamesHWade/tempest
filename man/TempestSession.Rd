@@ -7,26 +7,27 @@
 Maintains state for a Co-STORM session: multi-agent dialog, mind map,
 provisional scientific evidence, and report state.
 }
-\section{Frozen Tempest 0.1 fields}{
+\section{Internal implementation}{
 
 
-\code{runtime}, \code{connection_permissions}, \code{artifacts}, \code{artifact_catalog},
-\code{workflow_run}, and \code{capability_grants} expose the frozen experimental
-generic kernel. They remain only for existing Tempest 0.1 integrations and
-are scheduled for replacement or removal in Tempest 0.2.0. New host code
-should keep tools and authenticated clients process-local and use the
-session's scientific evidence and report state as its product boundary.
+\code{TempestSession} is an unexported mutable implementation returned by
+\code{\link[=tempest_session]{tempest_session()}}. Its supported product state is the correlated research
+manifest, workspace, transcript, mind map, experts, progress events, and
+canonical report. Process-local execution members are internal and are not
+part of the persistence or public API contract.
 }
 
+\keyword{internal}
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
   \describe{
     \item{\code{title}}{The report title.}
 
-    \item{\code{runtime}}{Frozen Tempest 0.1 \code{TempestRuntime} adapter.}
+    \item{\code{runtime}}{Internal process-local execution member; not part of the
+public or persistence contract.}
 
-    \item{\code{connection_permissions}}{Frozen Tempest 0.1 per-role or per-expert
-connection allow-lists.}
+    \item{\code{connection_permissions}}{Internal process-local execution member; not
+part of the public or persistence contract.}
 
     \item{\code{progress}}{Optional progress callback.}
 
@@ -42,15 +43,11 @@ connection allow-lists.}
 
     \item{\code{events}}{Ordered normalized progress-event history.}
 
-    \item{\code{artifacts}}{Frozen Tempest 0.1 environment of auxiliary session state.}
+    \item{\code{artifacts}}{Internal process-local presentation state; not part of the
+public or persistence contract.}
 
-    \item{\code{artifact_catalog}}{Frozen Tempest 0.1 typed deliverable catalog.}
-
-    \item{\code{workflow_run}}{Frozen Tempest 0.1 generic \code{TempestRun} that owns the
-session workflow lifecycle, when present.}
-
-    \item{\code{capability_grants}}{Frozen Tempest 0.1 capability decisions by
-execution context.}
+    \item{\code{capability_grants}}{Internal process-local execution state; not part
+of the public or persistence contract.}
 
     \item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
   }
@@ -71,8 +68,6 @@ progress events for the session.}
     \item{\code{workspace}}{Read-only reference to the authoritative
 \link{ResearchWorkspace} containing provisional research material. Workspace
 mutation methods remain available.}
-
-    \item{\code{store}}{Deprecated read-only compatibility alias of \code{workspace}.}
 
     \item{\code{retriever}}{Read-only \code{TempestRetriever} reference.}
   }
@@ -113,7 +108,7 @@ mutation methods remain available.}
 \if{html}{\out{<a id="method-TempestSession-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-initialize}{}}}
 \subsection{\code{TempestSession$new()}}{
-  Create a new TempestSession.
+  Internal constructor. Use \code{\link[=tempest_session]{tempest_session()}} for the supported API.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{TempestSession$new(
@@ -136,16 +131,13 @@ mutation methods remain available.}
     \describe{
       \item{\code{topic}}{The research topic.}
       \item{\code{config}}{A \code{TempestConfig} object.}
-      \item{\code{runtime}}{Frozen Tempest 0.1 \code{\link[=tempest_runtime]{tempest_runtime()}} adapter. Existing
-integrations only.}
+      \item{\code{runtime}}{Internal process-local runtime implementation.}
       \item{\code{n_experts}}{Number of expert agents.}
       \item{\code{experts}}{Optional list of validated expert profiles. If \code{NULL},
 experts are generated automatically using \code{tempest_generate_experts()}.}
-      \item{\code{connection_permissions}}{Frozen Tempest 0.1 mapping from role or
-expert ids to opaque connection ids allowed for this session.}
+      \item{\code{connection_permissions}}{Internal process-local connection policy.}
       \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
-object with a \link{ResearchWorkspace} at \verb{$workspace} or its legacy
-\verb{$store} alias.}
+object with a \link{ResearchWorkspace} at \verb{$workspace}.}
       \item{\code{progress}}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}
       \item{\code{session_id}}{Optional stable session identifier. If \code{NULL}, a new

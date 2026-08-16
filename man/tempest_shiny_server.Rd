@@ -10,8 +10,6 @@ tempest_shiny_server(
   store = NULL,
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
   experts = NULL,
-  runtime = tempest_runtime(),
-  connection_permissions = list(),
   session_id = NULL,
   run = NULL
 )
@@ -29,12 +27,6 @@ store is created.}
 
 \item{experts}{Optional expert profiles passed to \code{\link[=tempest_session]{tempest_session()}} for
 new Co-STORM sessions. May be a value, function, or reactive.}
-
-\item{runtime}{A \code{\link[=tempest_runtime]{tempest_runtime()}}, function, or reactive used to resolve
-process-local operations, capabilities, and connections.}
-
-\item{connection_permissions}{Named per-role or per-expert connection
-allow-lists passed to \code{\link[=tempest_session]{tempest_session()}}.}
 
 \item{session_id}{Optional stable session id passed to \code{\link[=tempest_session]{tempest_session()}}
 for new Co-STORM sessions. May be a value, function, or reactive.}
@@ -54,8 +46,8 @@ A list with the shared \code{store}; reactive \code{run}, \code{status}, \code{e
 }
 \details{
 \code{tempest_shiny_server()} pairs with \code{\link[=tempest_shiny_ui]{tempest_shiny_ui()}} and lets a host app
-provide a \link{TempestConfig}, process-local \code{\link[=tempest_runtime]{tempest_runtime()}}, optional expert
-profiles, a stable session id, and an optional shared store. The returned
+provide a \link{TempestConfig}, optional expert profiles, a stable session id, and
+an optional shared store. The returned
 handle exposes the shared store and reactive accessors for generic run,
 event, approval, capability-grant, artifact, session, and report state.
 }

@@ -25,7 +25,7 @@ test_that("TempestRun bundles round-trip durable run state", {
       retrieved_at = "2026-07-18 UTC"
     )
     store <- tempest_research_workspace()
-    store$upsert_resource(resource)
+    store$upsert_retrieved_resource(resource)
     artifact <- tempest_artifact(
       deliverable,
       content = list(
@@ -117,7 +117,7 @@ test_that("TempestRun bundles round-trip durable run state", {
   expect_null(snapshot$runtime)
   expect_null(snapshot$policy_adapter)
 
-  restored <- tempest_run_resume(bundle, runtime = fixture$runtime)
+  restored <- tempest:::tempest_run_resume(bundle, runtime = fixture$runtime)
 
   expect_r6_class(restored, "TempestRun")
   expect_identical(restored$runtime, fixture$runtime)
@@ -131,7 +131,7 @@ test_that("TempestRun bundles round-trip durable run state", {
     )
   )
   expect_equal(
-    restored$source_store$get_resource("resource.request")@content,
+    restored$source_store$get_retrieved_resource("resource.request")@content,
     "The customer needs a rollout plan."
   )
   expect_equal(
@@ -204,14 +204,14 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
   tampered <- make_bundle("tampered")
   writeLines("{}", file.path(tampered$path, "snapshot.json"))
   expect_error(
-    tempest_run_resume(tampered$path, tampered$runtime),
+    tempest:::tempest_run_resume(tampered$path, tampered$runtime),
     class = "tempest_run_resume_error"
   )
 
   missing <- make_bundle("missing")
   unlink(file.path(missing$path, "snapshot.json"))
   expect_error(
-    tempest_run_resume(missing$path, missing$runtime),
+    tempest:::tempest_run_resume(missing$path, missing$runtime),
     "inventory",
     class = "tempest_run_resume_error"
   )
@@ -219,7 +219,7 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
   extra <- make_bundle("extra")
   writeLines("unexpected", file.path(extra$path, "extra.txt"))
   expect_error(
-    tempest_run_resume(extra$path, extra$runtime),
+    tempest:::tempest_run_resume(extra$path, extra$runtime),
     "inventory",
     class = "tempest_run_resume_error"
   )
@@ -229,7 +229,7 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
   manifest$files <- list("snapshot.json", "snapshot.json")
   write_manifest(duplicate$path, manifest)
   expect_error(
-    tempest_run_resume(duplicate$path, duplicate$runtime),
+    tempest:::tempest_run_resume(duplicate$path, duplicate$runtime),
     "duplicate",
     class = "tempest_run_resume_error"
   )
@@ -239,7 +239,7 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
   manifest$files <- list("../snapshot.json")
   write_manifest(unsafe$path, manifest)
   expect_error(
-    tempest_run_resume(unsafe$path, unsafe$runtime),
+    tempest:::tempest_run_resume(unsafe$path, unsafe$runtime),
     "unsafe",
     class = "tempest_run_resume_error"
   )
@@ -249,7 +249,7 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
   manifest$status <- "writing"
   write_manifest(incomplete$path, manifest)
   expect_error(
-    tempest_run_resume(incomplete$path, incomplete$runtime),
+    tempest:::tempest_run_resume(incomplete$path, incomplete$runtime),
     "not complete",
     class = "tempest_run_resume_error"
   )
@@ -260,7 +260,7 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
     file.path(malformed_manifest$path, "manifest.json")
   )
   expect_error(
-    tempest_run_resume(
+    tempest:::tempest_run_resume(
       malformed_manifest$path,
       malformed_manifest$runtime
     ),
@@ -279,7 +279,7 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
   )
   write_manifest(malformed_snapshot$path, manifest)
   expect_error(
-    tempest_run_resume(
+    tempest:::tempest_run_resume(
       malformed_snapshot$path,
       malformed_snapshot$runtime
     ),
@@ -287,7 +287,7 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
   )
 })
 
-test_that("TempestRun bundles never serialize executable store values", {
+test_that("TempestRun bundles never serialize executable runtime values", {
   objective <- tempest_objective(
     "Reject runtime values",
     objective_id = "objective-runtime-value",
@@ -307,17 +307,19 @@ test_that("TempestRun bundles never serialize executable store values", {
       operation_id = "finish"
     ))
   )
-  store <- quiet_source_store()
-  store$set_artifact("runtime_client", function() "live client")
   run <- tempest_run_workflow(
     objective,
     workflow,
     runtime,
-    source_store = store
+    source_store = test_research_workspace(),
+    runtime_context = list(runtime_client = function() "live client")
   )
+  bundle <- file.path(withr::local_tempdir(), "run")
 
-  expect_error(
-    tempest_run_save(run, file.path(withr::local_tempdir(), "run")),
-    class = "tempest_run_save_error"
+  expect_no_error(tempest_run_save(run, bundle))
+  snapshot <- tempest:::tempest_read_json_strict(
+    file.path(bundle, "snapshot.json")
   )
+  expect_null(snapshot$runtime)
+  expect_null(snapshot$runtime_context)
 })

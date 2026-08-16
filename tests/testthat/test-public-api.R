@@ -1,4 +1,4 @@
-test_that("the T1 public export surface is additive and exact", {
+test_that("the 0.2 public export surface is exact", {
   baseline <- readLines(
     test_path("fixtures", "public-exports-0.1.0.txt"),
     warn = FALSE
@@ -8,19 +8,32 @@ test_that("the T1 public export surface is additive and exact", {
     "tempest_research_manifest",
     "tempest_research_workspace"
   )
-  expected <- sort(c(baseline, additions), method = "radix")
+  removals <- c(
+    "SourceStore",
+    "TempestSession",
+    "tempest_expert_session_manager",
+    "tempest_resources",
+    "tempest_run_restore",
+    "tempest_run_resume"
+  )
+  expected <- sort(c(setdiff(baseline, removals), additions), method = "radix")
   actual <- sort(getNamespaceExports("tempest"), method = "radix")
 
   expect_length(baseline, 96L)
-  expect_length(actual, 99L)
+  expect_length(actual, 93L)
   expect_identical(actual, expected)
   expect_identical(setdiff(actual, baseline), additions)
+  expect_identical(intersect(actual, removals), character())
 })
 
 test_that("the frozen generic-kernel retirement set is explicit", {
   expected <- readLines(
     test_path("fixtures", "generic-kernel-exports-0.1.0.txt"),
     warn = FALSE
+  )
+  expected <- setdiff(
+    expected,
+    c("tempest_run_restore", "tempest_run_resume")
   )
   scheduled <- sort(
     tempest:::tempest_generic_kernel_exports,
@@ -30,7 +43,7 @@ test_that("the frozen generic-kernel retirement set is explicit", {
 
   expect_identical(scheduled, expected)
   expect_setequal(intersect(scheduled, public), scheduled)
-  expect_length(scheduled, 43L)
+  expect_length(scheduled, 41L)
 })
 
 test_that("the pre-0.2 S3 registration baseline is exact", {

@@ -42,18 +42,22 @@ derived from \code{resource_kind} and \code{locator}.}
 
 \item{origin_connection_id}{Optional host connection reference identifier.}
 
-\item{scope_metadata}{Serializable tenant or project scope metadata.}
+\item{scope_metadata}{Serializable tenant or project scope metadata.
+Credential-like field names are rejected recursively.}
 
 \item{content_hash}{Optional content checksum. Tempest computes one for
 inline content when omitted.}
 
 \item{retrieved_at}{Retrieval timestamp.}
 
-\item{redaction}{Serializable redaction metadata.}
+\item{redaction}{Serializable redaction metadata. Credential-like field names
+are rejected recursively.}
 
-\item{retention}{Serializable retention metadata.}
+\item{retention}{Serializable retention metadata. Credential-like field names
+are rejected recursively.}
 
-\item{metadata}{Serializable namespaced host metadata.}
+\item{metadata}{Serializable namespaced host metadata. Credential-like field
+names are rejected recursively.}
 
 \item{schema_version}{Positive resource schema version.}
 }

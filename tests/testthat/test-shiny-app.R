@@ -363,10 +363,9 @@ test_that("chat footer reserves controls for active sessions", {
 
   ses <- new.env(parent = emptyenv())
   ses$experts <- list(list(name = "Dr. Footer"))
-  ses$store <- new.env(parent = emptyenv())
-  ses$store$list_sources <- function() list()
-  ses$store$list_claims <- function() list()
-  ses$artifact_catalog <- NULL
+  ses$workspace <- new.env(parent = emptyenv())
+  ses$workspace$list_retrieved_sources <- function() list()
+  ses$workspace$list_proposed_claims <- function() list()
   html <- paste(
     as.character(app$chat_runtime_footer_ui(ses, ns = ns)),
     collapse = ""
@@ -481,7 +480,7 @@ test_that("citation_markdown renders numbered references from cited sources", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(2)
-  sources <- source_store$list_sources()
+  sources <- source_store$list_retrieved_sources()
   first_id <- sources[[1]]$id
   second_id <- sources[[2]]$id
   missing_id <- "S000000000000"
@@ -518,14 +517,14 @@ test_that("citation rendering uses the retriever's T1 workspace", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   workspace <- tempest_research_workspace()
-  workspace$upsert_source(fake_source(
+  workspace$upsert_retrieved_resource(fake_source(
     url = "https://example.org/t1-workspace",
     title = "T1 Workspace Source"
   ))
-  source_id <- workspace$list_sources()[[1]]$id
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
     config = tempest_config(),
-    store = workspace
+    workspace = workspace
   )
 
   rendered <- app$citation_markdown(
@@ -539,16 +538,16 @@ test_that("citation rendering uses the retriever's T1 workspace", {
   expect_match(rendered, "https://example.org/t1-workspace", fixed = TRUE)
   expect_no_match(rendered, "Missing source metadata", fixed = TRUE)
 
-  legacy <- structure(
+  removed_alias <- structure(
     list(workspace = NULL, store = workspace),
     class = "TempestRetriever"
   )
-  divergent <- structure(
+  canonical <- structure(
     list(workspace = workspace, store = tempest_research_workspace()),
     class = "TempestRetriever"
   )
-  expect_identical(app$citation_source_store(legacy), workspace)
-  expect_null(app$citation_source_store(divergent))
+  expect_null(app$citation_source_store(removed_alias))
+  expect_identical(app$citation_source_store(canonical), workspace)
 })
 
 test_that("citation_markdown strips private external citation markers", {
@@ -591,7 +590,7 @@ test_that("citation_markdown replaces Tempest footnotes with a reference panel",
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(2)
-  sources <- source_store$list_sources()
+  sources <- source_store$list_retrieved_sources()
   cited_id <- sources[[1]]$id
   unused_title <- sources[[2]]$title
   md <- paste0(
@@ -619,7 +618,7 @@ test_that("the report module renders linked references for cited sources", {
   app <- source_shiny_modules()
   store <- app$new_session_store()
   source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_sources()[[1]]$id
+  source_id <- source_store$list_retrieved_sources()[[1]]$id
 
   shiny::testServer(app$mod_report_server, args = list(store = store), {
     store$set_report(
@@ -644,12 +643,12 @@ test_that("sources and facts modules show empty states until data exists", {
   shiny::testServer(app$mod_sources_server, args = list(store = store), {
     expect_match(as.character(output$body$html), "Start a session")
 
-    empty_session <- list(store = quiet_source_store())
+    empty_session <- list(workspace = test_research_workspace())
     store$set(empty_session)
     session$flushReact()
     expect_match(as.character(output$body$html), "No sources collected yet")
 
-    populated_session <- list(store = fake_store_with_sources(1))
+    populated_session <- list(workspace = fake_store_with_sources(1))
     store$set(populated_session)
     session$flushReact()
     sources_body <- as.character(output$body$html)
@@ -662,18 +661,18 @@ test_that("sources and facts modules show empty states until data exists", {
     session$flushReact()
     expect_match(as.character(output$body$html), "Start a session")
 
-    empty_session <- list(store = quiet_source_store())
+    empty_session <- list(workspace = test_research_workspace())
     store$set(empty_session)
     session$flushReact()
     expect_match(as.character(output$body$html), "No facts extracted yet")
 
     populated_store <- fake_store_with_sources(1)
-    source_id <- populated_store$list_sources()[[1]]$id
-    populated_store$add_claim(tempest_claim(
+    source_id <- populated_store$list_retrieved_sources()[[1]]$id
+    populated_store$add_proposed_claim(tempest_claim(
       claim_text = "Example evidence exists.",
       source_ids = source_id
     ))
-    populated_session <- list(store = populated_store)
+    populated_session <- list(workspace = populated_store)
     store$set(populated_session)
     session$flushReact()
     facts_body <- as.character(output$body$html)
@@ -687,8 +686,8 @@ test_that("sources and facts modules consume generic run evidence", {
   app <- source_shiny_modules()
   store <- app$new_session_store()
   evidence <- fake_store_with_sources(1)
-  source_id <- evidence$list_sources()[[1]]$id
-  evidence$add_claim(tempest_claim(
+  source_id <- evidence$list_retrieved_sources()[[1]]$id
+  evidence$add_proposed_claim(tempest_claim(
     claim_text = "Generic workflow evidence is available.",
     source_ids = source_id,
     confidence = "high"
@@ -729,7 +728,7 @@ test_that("sources and facts modules consume generic run evidence", {
     expect_no_match(as.character(output$body$html), "Start a session")
     expect_no_match(as.character(output$body$html), "No sources collected yet")
 
-    store$set(list(store = quiet_source_store()))
+    store$set(list(workspace = test_research_workspace()))
     session$flushReact()
     expect_equal(nrow(shiny::isolate(sources())), 0L)
     expect_match(as.character(output$body$html), "No sources collected yet")
@@ -746,7 +745,7 @@ test_that("sources and facts modules consume generic run evidence", {
     expect_no_match(as.character(output$body$html), "Start a session")
     expect_no_match(as.character(output$body$html), "No facts extracted yet")
 
-    store$set(list(store = quiet_source_store()))
+    store$set(list(workspace = test_research_workspace()))
     session$flushReact()
     expect_equal(nrow(shiny::isolate(facts())), 0L)
     expect_match(as.character(output$body$html), "No facts extracted yet")
@@ -821,7 +820,7 @@ test_that("Shiny rendering escapes untrusted HTML and unsafe links", {
   skip_if_not_installed("DT")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_sources()[[1]]$id
+  source_id <- source_store$list_retrieved_sources()[[1]]$id
   malicious <- paste0(
     "<script>globalThis.tempestXss = true</script>",
     "<img src=x onerror=alert(1)>",
@@ -915,7 +914,7 @@ test_that("the transcript module renders citations in completed answers", {
   app <- source_shiny_modules()
   store <- app$new_session_store()
   source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_sources()[[1]]$id
+  source_id <- source_store$list_retrieved_sources()[[1]]$id
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -926,7 +925,7 @@ test_that("the transcript module renders citations in completed answers", {
       expert_id = "expert.citations",
       name = "Dr. Citations"
     )),
-    retriever = tempest_retriever(config = cfg, store = source_store)
+    retriever = tempest_retriever(config = cfg, workspace = source_store)
   )
 
   shiny::testServer(app$mod_transcript_server, args = list(store = store), {
@@ -981,7 +980,7 @@ test_that("mind map accessible view exposes relationships, notes, and sources", 
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(1)
-  source <- source_store$list_sources()[[1]]
+  source <- source_store$list_retrieved_sources()[[1]]
   mindmap <- list(
     nodes = list(
       list(
@@ -1042,13 +1041,13 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_sources()[[1]]$id
-  source_store$add_claim(tempest_claim(
+  source_id <- source_store$list_retrieved_sources()[[1]]$id
+  source_store$add_proposed_claim(tempest_claim(
     claim_text = "Integrated evidence is available.",
     source_ids = source_id,
     confidence = "high"
   ))
-  retriever <- tempest_retriever(config = cfg, store = source_store)
+  retriever <- tempest_retriever(config = cfg, workspace = source_store)
   ses <- tempest_session(
     "Integration topic",
     config = cfg,
@@ -1119,39 +1118,23 @@ test_that("chat command messages summarize active session state", {
   skip_if_not_installed("bslib")
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_sources()[[1]]$id
-  source_store$add_claim(tempest_claim(
+  source_id <- source_store$list_retrieved_sources()[[1]]$id
+  source_store$add_proposed_claim(tempest_claim(
     claim_text = "Command summaries include facts.",
     source_ids = source_id,
     verification_status = "supported",
     support_score = 0.82
   ))
-  report_spec <- tempest_deliverable_spec(
-    "report_md",
-    title = "Command report",
-    purpose = "Exercise runtime report status",
-    instructions = "Return Markdown.",
-    generator_id = "tempest.generator.markdown_report",
-    renderer_ids = "tempest.renderer.markdown"
-  )
-  artifact_catalog <- tempest_artifact_catalog(
-    deliverables = list(report_spec)
-  )
-  artifact_catalog$add(tempest_artifact(
-    report_spec,
-    content = "# Command report",
-    artifact_id = "report_md"
-  ))
   ses <- list(
     topic = "Command topic",
+    report_md = "# Command report",
     experts = list(test_expert(
       expert_id = "expert.command",
       name = "Dr. Command",
       title = "Interaction specialist",
       description = "Runtime controls"
     )),
-    store = source_store,
-    artifact_catalog = artifact_catalog,
+    workspace = source_store,
     config = tempest_config(search_provider = "wikipedia"),
     capability_grants = list(
       moderator = list(list(
@@ -1283,7 +1266,7 @@ test_that("the chat server toggles settings from greeting and footer", {
   expect_no_match(server_code, "input$footer_report", fixed = TRUE)
 })
 
-test_that("session archives round-trip through the upload boundary", {
+test_that("session archives round-trip product state through upload", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("ellmer")
   skip_if_not_installed("zip")
@@ -1299,23 +1282,7 @@ test_that("session archives round-trip through the upload boundary", {
       name = "Dr. Archive"
     ))
   )
-  custom_spec <- tempest_deliverable_spec(
-    "custom-output",
-    title = "Custom output",
-    purpose = "Exercise dynamic artifact paths",
-    instructions = "Return structured content.",
-    generator_id = "generator.custom",
-    renderer_ids = "renderer.custom",
-    media_types = "application/json"
-  )
-  ses$artifact_catalog$register(custom_spec)
-  ses$artifact_catalog$add(tempest_artifact(
-    custom_spec,
-    content = list(result = "restored"),
-    artifact_id = "custom-output",
-    media_type = "application/json",
-    status = "valid"
-  ))
+  tempest:::tempest_session_set_report_value(ses, "# Restored archive")
   store <- app$new_session_store()
   store$set(ses)
   archive <- tempfile(fileext = ".zip")
@@ -1327,10 +1294,7 @@ test_that("session archives round-trip through the upload boundary", {
 
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$topic, "Downloadable session")
-  expect_equal(
-    restored$artifact_catalog$get("custom-output")@content$result,
-    "restored"
-  )
+  expect_equal(tempest_session_report_md(restored), "# Restored archive")
   archive_files <- utils::unzip(archive, list = TRUE)$Name
   manifest <- tempest:::tempest_read_json_strict(
     file.path(bundle, "session.json")
@@ -1340,6 +1304,7 @@ test_that("session archives round-trip through the upload boundary", {
     c("session.json", as.character(unlist(manifest$files)))
   )
   expect_contains(archive_files, "session.json")
+  expect_contains(archive_files, "report.md")
 })
 
 test_that("session archive validation rejects unsafe entries and large files", {
@@ -1373,7 +1338,7 @@ test_that("session archive validation rejects unsafe entries and large files", {
     app$session_archive_listing_is_safe(
       c("session.json", "unexpected.txt"),
       c(100, 100),
-      declared_files = "config.json"
+      declared_files = "experts.json"
     ),
     FALSE
   )
@@ -1387,20 +1352,23 @@ test_that("session archive validation rejects unsafe entries and large files", {
   )
 })
 
-test_that("session archive manifests accept current and bounded legacy headers", {
+test_that("session archive manifests accept only the current envelope", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
   files <- c(
-    "config.json",
-    "artifacts/typed/index.json",
-    "artifacts/typed/deliverables.json"
+    "experts.json",
+    "report.md"
   )
   manifest_fields <- list(
+    package_version = "0.2.0.9000",
+    session_id = "session-1",
+    topic = "Archive topic",
+    title = "Archive topic",
+    research_manifest = list(),
+    workspace = list(),
+    saved_at = "2026-08-15T00:00:00.000000Z",
     files = files,
-    checksums = stats::setNames(as.list(rep("checksum", length(files))), files),
-    artifact_files = character(),
-    artifact_index = "artifacts/typed/index.json",
-    deliverable_index = "artifacts/typed/deliverables.json"
+    checksums = stats::setNames(as.list(rep("checksum", length(files))), files)
   )
   current <- c(
     list(
@@ -1410,13 +1378,16 @@ test_that("session archive manifests accept current and bounded legacy headers",
     ),
     manifest_fields
   )
-  legacy <- c(
-    list(schema_version = 4L, status = "complete"),
-    manifest_fields
-  )
-
   expect_identical(app$session_archive_manifest_files(current), files)
-  expect_identical(app$session_archive_manifest_files(legacy), files)
+
+  expect_error(
+    app$session_archive_manifest_files(c(
+      list(schema_version = 4L, status = "complete"),
+      manifest_fields
+    )),
+    "unsupported schema or status",
+    fixed = TRUE
+  )
 
   expect_error(
     app$session_archive_manifest_files(
@@ -1477,27 +1448,15 @@ test_that("session archive extraction rejects undeclared and tampered files", {
       name = "Dr. Integrity"
     ))
   )
-  spec <- tempest_deliverable_spec(
-    "integrity-output",
-    title = "Integrity output",
-    purpose = "Exercise archive validation",
-    instructions = "Return text.",
-    generator_id = "generator",
-    renderer_ids = "renderer"
-  )
-  ses$artifact_catalog$register(spec)
-  ses$artifact_catalog$add(tempest_artifact(
-    spec,
-    content = "Trusted content",
-    artifact_id = "integrity-output"
-  ))
+  tempest:::tempest_session_set_report_value(ses, "# Trusted report")
   root <- withr::local_tempdir()
   bundle <- file.path(root, "bundle")
   tempest_session_save(ses, bundle)
   manifest <- tempest:::tempest_read_json_strict(
     file.path(bundle, "session.json")
   )
-  content_file <- as.character(unlist(manifest$artifact_files))[[1]]
+  content_file <- "report.md"
+  expect_contains(as.character(unlist(manifest$files)), content_file)
   writeLines("tampered", file.path(bundle, content_file))
   tampered_archive <- file.path(root, "tampered.zip")
   zip::zip(
@@ -1579,8 +1538,8 @@ test_that("session store saves and restores bundles for shared app tabs", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_sources()[[1]]$id
-  source_store$add_claim(tempest_claim(
+  source_id <- source_store$list_retrieved_sources()[[1]]$id
+  source_store$add_proposed_claim(tempest_claim(
     claim_text = "Shiny restore preserves cited evidence.",
     source_ids = source_id,
     confidence = "high"
@@ -1595,7 +1554,7 @@ test_that("session store saves and restores bundles for shared app tabs", {
       description = "Session durability",
       instructions = "Inspect session durability."
     )),
-    retriever = tempest_retriever(config = cfg, store = source_store)
+    retriever = tempest_retriever(config = cfg, workspace = source_store)
   )
   ses$mindmap <- list(
     nodes = list(
@@ -1627,15 +1586,7 @@ test_that("session store saves and restores bundles for shared app tabs", {
     source_id,
     "]."
   )
-  report_spec <- tempest:::tempest_costorm_report_spec(ses)
-  ses$artifact_catalog$register(report_spec)
-  ses$artifact_catalog$add(tempest_artifact(
-    report_spec,
-    content = report_md,
-    artifact_id = "report_md",
-    resource_ids = source_id,
-    status = "valid"
-  ))
+  tempest:::tempest_session_set_report_value(ses, report_md)
   ses$emit_progress(
     "stage",
     "succeeded",
@@ -1664,7 +1615,9 @@ test_that("session store saves and restores bundles for shared app tabs", {
   chat_calls <- tempest:::tempest_shinychat_restore_messages(
     restored$transcript,
     topic = restored$topic,
-    report_available = restored$artifact_catalog$has("report_md")
+    report_available = !is.null(
+      tempest:::tempest_session_report_value(restored)
+    )
   )
   chat_text <- paste(
     vapply(chat_calls, `[[`, character(1), "content"),
@@ -1810,8 +1763,8 @@ test_that("tempest_shiny_server renders host-managed shared state", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_sources()[[1]]$id
-  source_store$add_claim(tempest_claim(
+  source_id <- source_store$list_retrieved_sources()[[1]]$id
+  source_store$add_proposed_claim(tempest_claim(
     claim_text = "Host adapter evidence renders.",
     source_ids = source_id
   ))
@@ -1823,7 +1776,7 @@ test_that("tempest_shiny_server renders host-managed shared state", {
       expert_id = "expert.host",
       name = "Host Expert"
     )),
-    retriever = tempest_retriever(config = cfg, store = source_store),
+    retriever = tempest_retriever(config = cfg, workspace = source_store),
     session_id = "host-session-1"
   )
   ses$mindmap <- list(
@@ -1851,7 +1804,7 @@ test_that("tempest_shiny_server renders host-managed shared state", {
       shared_store$set_report(
         "# Host report",
         topic = ses$topic,
-        source_store = ses$store
+        source_store = ses$workspace
       )
       session$flushReact()
 
@@ -2248,9 +2201,8 @@ test_that("STORM progress stream renders while a task is still active", {
   )
 })
 
-test_that("STORM worker omits progress for older tempest_run signatures", {
+test_that("STORM worker requires current run and progress contracts", {
   app <- source_shiny_modules()
-  calls <- list()
   old_run <- function(
     topic,
     config,
@@ -2260,23 +2212,21 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
     parallel_research,
     verbose
   ) {
-    calls[[length(calls) + 1L]] <<- as.list(match.call())[-1]
     list(report_md = "old run")
   }
 
-  value <- app$storm_run_with_progress(
-    topic = "Topic",
-    cfg = tempest_config(),
-    n_experts = 1,
-    strategy = "key_questions",
-    max_rounds = 1,
-    parallel = FALSE,
-    tempest_run = old_run
+  expect_error(
+    app$storm_run_with_progress(
+      topic = "Topic",
+      cfg = tempest_config(),
+      n_experts = 1,
+      strategy = "key_questions",
+      max_rounds = 1,
+      parallel = FALSE,
+      tempest_run = old_run
+    ),
+    class = "simpleError"
   )
-
-  expect_equal(value$result$report_md, "old run")
-  expect_equal(intersect("progress", names(calls[[1]])), character())
-  expect_length(value$progress, 0L)
 
   seen_run_id <- NULL
   new_run <- function(
@@ -2300,6 +2250,27 @@ test_that("STORM worker omits progress for older tempest_run signatures", {
     ))
     list(report_md = "new run")
   }
+
+  old_collector <- function(include_payload) {
+    list(
+      record = function(event) invisible(event),
+      data = function() list()
+    )
+  }
+  expect_error(
+    app$storm_run_with_progress(
+      topic = "Topic",
+      cfg = tempest_config(),
+      n_experts = 1,
+      strategy = "key_questions",
+      max_rounds = 1,
+      parallel = FALSE,
+      progress_collector = old_collector,
+      tempest_run = new_run
+    ),
+    class = "simpleError"
+  )
+
   value <- app$storm_run_with_progress(
     topic = "Topic",
     cfg = tempest_config(),
@@ -2342,6 +2313,7 @@ test_that("STORM worker streams progress before mirai resolves", {
         research_strategy,
         max_rounds,
         parallel_research,
+        run_id,
         progress,
         verbose
       ) {
@@ -2395,50 +2367,6 @@ test_that("STORM worker streams progress before mirai resolves", {
   result <- value[]
   expect_equal(result$result$report_md, "worker run Topic")
   expect_equal(result$progress[[1]]$stage, "research")
-})
-
-test_that("STORM worker adapter tolerates older tempest_run signatures in mirai", {
-  skip_if_not_installed("mirai")
-  local_mirai_coverage_dir()
-  app <- source_shiny_modules()
-  old_run <- function(
-    topic,
-    config,
-    n_experts,
-    research_strategy,
-    max_rounds,
-    parallel_research,
-    verbose
-  ) {
-    list(report_md = paste("worker run", topic))
-  }
-
-  value <- mirai::mirai(
-    {
-      storm_runner(
-        topic = topic,
-        cfg = cfg,
-        n_experts = n_experts,
-        strategy = strategy,
-        max_rounds = max_rounds,
-        parallel = parallel,
-        progress_collector = progress_collector,
-        tempest_run = old_run
-      )
-    },
-    topic = "Topic",
-    cfg = list(),
-    n_experts = 1,
-    strategy = "key_questions",
-    max_rounds = 1,
-    parallel = FALSE,
-    progress_collector = app$storm_worker_progress_collector,
-    storm_runner = app$storm_run_with_progress,
-    old_run = old_run
-  )[]
-
-  expect_equal(value$result$report_md, "worker run Topic")
-  expect_length(value$progress, 0L)
 })
 
 test_that("workflow_progress_ui hides recorded failures once succeeded", {

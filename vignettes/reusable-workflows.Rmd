@@ -1,11 +1,11 @@
 ---
-title: "Maintain Tempest 0.1 reusable workflows"
+title: "Inspect the Tempest 0.1 generic-kernel deletion inventory"
 description: >
-  Maintain an existing Tempest 0.1 generic workflow while migrating to the
-  scientific-research product APIs.
+  Review the frozen Tempest 0.1 generic workflow baseline owned by the
+  section-10 deletion PR.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Maintain Tempest 0.1 reusable workflows}
+  %\VignetteIndexEntry{Inspect the Tempest 0.1 generic-kernel deletion inventory}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,18 +18,17 @@ knitr::opts_chunk$set(
 ```
 
 > **Lifecycle notice:** The experimental generic workflow kernel documented in
-> this article is frozen and scheduled for removal in Tempest 0.2.0. No
-> compatibility shim is planned. New work should use Tempest's STORM and
-> Co-STORM product APIs while the replacement seams are introduced.
+> this article remains only as section-10 deletion inventory in the Tempest 0.2
+> migration train. It is not a compatibility path, and no migration shim is
+> planned. Use Tempest's STORM and Co-STORM product APIs.
 
-Tempest 0.1 includes a workflow kernel that is not limited to research reports.
-Existing host applications can still use that machinery during the migration
-to turn a customer request, product objective, or internal task into its own
-typed outcome.
+Tempest 0.1 included a workflow kernel that was not limited to research
+reports. The baseline below shows how that machinery turned a customer
+request, product objective, or internal task into a typed outcome.
 
-This article reproduces a small action-register workflow for maintainers of an
-existing Tempest 0.1 integration. It runs entirely in R, without an API key or
-network connection.
+This article preserves a small action-register workflow so the deletion scope
+remains reviewable. It runs entirely in R, without an API key or network
+connection.
 
 ## Understand the Tempest 0.1 workflow model
 
@@ -326,38 +325,20 @@ results, checksum, run and step ownership, expert attribution, evidence
 lineage, and approval status. Events use a strictly increasing sequence within
 the run, so a UI or external observer can resume from its last seen cursor.
 
-## Persist the run and reattach the runtime
+## Treat generic persistence as deletion inventory
 
-Generic run bundles save the objective, workflow, selected experts,
-deliverables, approvals, events, grants, evidence, and artifact catalog.
-Executable operations and live services are deliberately excluded.
+Generic run-bundle restoration is no longer part of the Tempest 0.2 product
+API. Its implementation remains frozen only so the section-10 deletion PR can
+remove the generic kernel as a coherent unit. New integrations must not call
+the internal generic restore helpers or depend on their artifact-catalog and
+workflow-run records.
 
-```{r persistence}
-bundle <- tempfile("tempest-action-register-")
-tempest_run_save(run, bundle)
-
-restored <- tempest_run_resume(
-  bundle,
-  runtime = operations
-)
-
-c(
-  original = tempest_run_status(run),
-  restored = tempest_run_status(restored)
-)
-
-unlink(bundle, recursive = TRUE)
-```
-
-`tempest_run_resume()` rehydrates state but does not automatically execute
-pending work. Recreate the runtime, reattach `runtime_context`, connections,
-policy adapters, and callbacks, then explicitly resume when the host is ready.
-Restored connection permissions may narrow saved grants but cannot broaden
-them.
-
-Canonical JSON values and strings can persist inline. Classed R objects,
-missing values, and binary content need an appropriate artifact codec or an
-external storage reference.
+Persist supported research products through `tempest_session_save()` for
+Co-STORM or the `output_dir` bundle written by `tempest_run()` for STORM. Those
+formats retain the correlated research manifest, explicit research workspace,
+narrow report product, and optional immutable Graft snapshot without
+serializing executable operations, live services, chats, tools, credentials,
+or generic workflow state.
 
 ## Maintain skills, capabilities, and connections
 
@@ -394,7 +375,7 @@ read_customer_context <- tempest_capability_spec(
 )
 ```
 
-An existing 0.1 host reconstructs a `tempest_runtime()` with these
+The frozen 0.1 host reconstructs a `tempest_runtime()` with these
 specifications, process-local capability implementations, and connection
 bindings. Experts refer to skills and capabilities by ID.
 `connection_permissions` on `tempest_run_workflow()` grants only the opaque
@@ -414,9 +395,9 @@ shiny::runApp(
 )
 ```
 
-## Maintain an existing Tempest 0.1 integration
+## Review the frozen Tempest 0.1 integration boundary
 
-When maintaining an existing integration, keep these host-owned parts explicit:
+The deletion-owned baseline keeps these host-owned parts explicit:
 
 1. Map the incoming request to a `tempest_objective()`.
 2. Select profiles from the host's expert pool.
@@ -425,10 +406,10 @@ When maintaining an existing integration, keep these host-owned parts explicit:
 5. Declare the workflow graph, assignments, retries, and approval checkpoints.
 6. Attach policy, connections, runtime services, and the host UI.
 
-In Tempest 0.1, the run, artifact, validation, event, approval, cancellation,
-and persistence contracts remain the same. Do not extend those contracts or
-adapt them for a new application during the migration.
+These frozen run, artifact, validation, event, approval, cancellation, and
+persistence contracts are not part of the Tempest 0.2 product API. Do not
+extend or adopt them.
 
-Existing integrations may continue to call `tempest_storm_workflow_run()` or
-`tempest_costorm_workflow_run()` until they migrate. New research code should
-call `tempest_run()` or `tempest_session()` directly.
+`tempest_storm_workflow_run()` and `tempest_costorm_workflow_run()` remain only
+for the section-10 deletion PR. Research code should call `tempest_run()` or
+`tempest_session()` directly.

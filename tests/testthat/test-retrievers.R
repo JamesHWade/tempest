@@ -19,15 +19,15 @@ test_that("retrievers own one authoritative research workspace", {
   retriever <- tempest_retriever(config = cfg)
 
   expect_r6_class(retriever$workspace, "ResearchWorkspace")
-  expect_identical(retriever$store, retriever$workspace)
+  expect_equal("store" %in% names(retriever), FALSE)
 
-  legacy <- quiet_source_store()
-  compatible <- tempest_retriever(config = cfg, store = legacy)
-  expect_identical(compatible$workspace, legacy)
-  expect_identical(compatible$store, compatible$workspace)
+  workspace <- test_research_workspace()
+  retriever <- tempest_retriever(config = cfg, workspace = workspace)
+  expect_identical(retriever$workspace, workspace)
+  expect_equal("store" %in% names(retriever), FALSE)
 
   expect_error(
-    tempest_retriever(config = cfg, store = new.env()),
+    tempest_retriever(config = cfg, workspace = new.env()),
     class = "tempest_research_workspace_error"
   )
 })
@@ -67,10 +67,6 @@ test_that("retriever correlation identities cannot be rebound", {
     class = "tempest_retriever_identity_error"
   )
   expect_error(
-    retriever$store <- replacement,
-    class = "tempest_retriever_identity_error"
-  )
-  expect_error(
     retriever$config@max_sources <- config@max_sources + 1L,
     class = "tempest_retriever_identity_error"
   )
@@ -93,15 +89,17 @@ test_that("retriever correlation identities cannot be rebound", {
 
   expect_identical(retriever$config, config)
   expect_identical(retriever$workspace, workspace)
-  expect_identical(retriever$store, workspace)
   expect_identical(retriever$ragnar_store, config@ragnar_store)
   expect_identical(retriever$cache_dir, config@cache_dir)
   expect_identical(retriever$cache_enabled, isTRUE(config@cache_enabled))
   expect_identical(retriever$cache_ttl, config@cache_ttl)
 
   source <- fake_source("https://example.org/mutable-workspace")
-  expect_no_error(retriever$workspace$upsert_source(source))
-  expect_identical(retriever$store$get_source(source$id)$id, source$id)
+  expect_no_error(retriever$workspace$upsert_retrieved_resource(source))
+  expect_identical(
+    retriever$workspace$get_retrieved_source(source$id)$id,
+    source$id
+  )
 })
 
 test_that("search() drops missing/unsafe URLs instead of aborting", {
@@ -134,15 +132,19 @@ test_that("retriever enforces search and source budgets", {
   )
   retriever <- tempest_retriever(config = cfg)
 
-  expect_equal(retriever$store$max_sources, 1L)
+  expect_equal(retriever$workspace$max_sources, 1L)
   expect_error(
     retriever$search("too many", k = 3L, provider = "wikipedia"),
     class = "tempest_config_error"
   )
-  retriever$store$upsert_source(fake_source("https://example.org/one"))
+  retriever$workspace$upsert_retrieved_resource(fake_source(
+    "https://example.org/one"
+  ))
   expect_error(
-    retriever$store$upsert_source(fake_source("https://example.org/two")),
-    class = "tempest_source_store_integrity_error"
+    retriever$workspace$upsert_retrieved_resource(fake_source(
+      "https://example.org/two"
+    )),
+    class = "tempest_research_workspace_integrity_error"
   )
 })
 

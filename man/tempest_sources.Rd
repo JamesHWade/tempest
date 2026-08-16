@@ -2,15 +2,12 @@
 % Please edit documentation in R/citations.R
 \name{tempest_sources}
 \alias{tempest_sources}
-\alias{tempest_resources}
 \title{Return evidence resources as a tibble}
 \usage{
-tempest_sources(store)
-
-tempest_resources(store)
+tempest_sources(workspace)
 }
 \arguments{
-\item{store}{A \link{ResearchWorkspace} or \link{TempestRetriever}.}
+\item{workspace}{A \link{ResearchWorkspace} or \link{TempestRetriever}.}
 }
 \value{
 A tibble with resource identity, kind, opaque locator, optional web
@@ -22,6 +19,6 @@ Return evidence resources as a tibble
 \examples{
 \dontrun{
 result <- tempest_run("History of jazz", config = tempest_config())
-tempest_sources(result$store)
+tempest_sources(result$workspace)
 }
 }

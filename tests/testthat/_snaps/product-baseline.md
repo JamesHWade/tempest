@@ -336,17 +336,15 @@
     Code
       baseline_snapshot_json(list(condition_class = class(condition),
       completed_stages = baseline_succeeded_stages(events), terminal_status = state$
-        status, terminal = state$terminal, workspace_report_published = !is.null(
-        fixture$store$get_artifact("report_md")), catalog_report_published = artifacts$
-        exists("report_md"), program_stages = fixture$program_stages(),
-      event_sequence = baseline_event_labels(events)))
+        status, terminal = state$terminal, catalog_report_published = artifacts$
+      exists("report_md"), program_stages = fixture$program_stages(), event_sequence = baseline_event_labels(
+        events)))
     Output
       {
         "condition_class": ["interrupt", "condition"],
         "completed_stages": "perspectives",
         "terminal_status": "cancelled",
         "terminal": true,
-        "workspace_report_published": false,
         "catalog_report_published": false,
         "program_stages": ["perspectives", "personas"],
         "event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:started", "step:persistence:perspectives_artifacts:started", "step:persistence:perspectives_artifacts:succeeded", "stage:perspectives:NA:succeeded", "stage:research:NA:started", "cancellation:research:NA:cancelled"]

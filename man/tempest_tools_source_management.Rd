@@ -13,11 +13,10 @@ tempest_tools_source_management(
 \arguments{
 \item{retriever}{A TempestRetriever object}
 
-\item{allow_claim_writes}{Whether to include \code{add_claim} and transitional
-fact-writing aliases.}
+\item{allow_claim_writes}{Whether to include \code{add_proposed_claim}.}
 
 \item{claim_provenance}{Optional provenance recorded on claims written via
-\code{add_claim}.}
+\code{add_proposed_claim}.}
 }
 \value{
 List of ellmer tools for source/claim management

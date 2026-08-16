@@ -1063,7 +1063,7 @@ TempestRun <- R6::R6Class(
           )
         }
         resource_ids <- vapply(
-          self$source_store$list_resources(),
+          self$source_store$list_retrieved_resources(),
           \(resource) resource@resource_id,
           character(1)
         )
@@ -2260,9 +2260,6 @@ tempest_run_workflow <- function(
 }
 
 tempest_run_evidence_snapshot <- function(workspace) {
-  if (inherits(workspace, "SourceStore")) {
-    return(tempest_source_store_snapshot(workspace))
-  }
   if (inherits(workspace, "ResearchWorkspace")) {
     return(tempest_research_workspace_snapshot(workspace))
   }
@@ -2280,19 +2277,17 @@ tempest_run_evidence_restore <- function(snapshot) {
     )
   }
   schema_version <- tempest_persistence_schema_version(
-    snapshot$schema_version %||% 1L,
+    snapshot$schema_version %||% NA_integer_,
     "Run evidence schema version",
     c("tempest_run_restore_error", "tempest_run_error", "tempest_error")
   )
-  if (schema_version %in% c(3L, 4L)) {
+  if (identical(schema_version, 4L)) {
     return(tempest_research_workspace_restore(snapshot))
   }
-  if (schema_version %in% c(1L, 2L)) {
-    return(tempest_source_store_restore(snapshot))
-  }
-  tempest_run_abort(
-    paste0("Unsupported run evidence schema version: ", schema_version, "."),
-    class = "tempest_run_restore_error"
+  tempest_unsupported_format_abort(
+    "generic run evidence format",
+    schema_version,
+    c("tempest_run_restore_error", "tempest_run_error", "tempest_error")
   )
 }
 
@@ -3416,28 +3411,7 @@ tempest_run_validate_snapshot <- function(
   invisible(snapshot)
 }
 
-#' Restore generic Tempest run state
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
-#' No compatibility shim is planned; see
-#' [tempest-generic-kernel-retirement].
-#'
-#' @param snapshot A record from [tempest_run_snapshot()].
-#' @param runtime Explicit process-local runtime.
-#' @param artifact_catalog Optional restored catalog override.
-#' @param source_store Optional restored [ResearchWorkspace] override.
-#' @param runtime_context Process-local services to reattach after restore.
-#' @param connection_permissions Optional restored connection allow-lists.
-#'   Defaults to the saved permissions. Explicit overrides may only narrow
-#'   saved grants.
-#' @param partial_recovery Whether to recover an explicitly in-flight snapshot
-#'   by resetting running steps to pending. Defaults to `FALSE`.
-#' @param policy_adapter Optional process-local policy adapter.
-#' @param progress Optional generic event callback.
-#' @return A rehydrated `TempestRun`. Call `$resume()` explicitly to continue.
-#' @export
+# Frozen generic-kernel deletion seam. Internal until section-10 removal.
 tempest_run_restore <- function(
   snapshot,
   runtime,
@@ -3489,17 +3463,6 @@ tempest_run_restore <- function(
       )
     }
     saved_source_store <- tempest_run_evidence_restore(snapshot$source_store)
-    if (
-      !identical(
-        inherits(saved_source_store, "SourceStore"),
-        inherits(source_store, "SourceStore")
-      )
-    ) {
-      tempest_run_abort(
-        "{.arg source_store} cannot change the saved workspace kind.",
-        class = "tempest_run_restore_error"
-      )
-    }
     tempest_run_assert_equivalent_snapshot(
       tempest_run_evidence_snapshot(saved_source_store),
       tempest_run_evidence_snapshot(source_store),
@@ -4173,32 +4136,7 @@ tempest_run_save <- function(run, path, overwrite = FALSE) {
   invisible(result)
 }
 
-#' Resume a generic Tempest run bundle
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
-#' No compatibility shim is planned; see
-#' [tempest-generic-kernel-retirement].
-#'
-#' Resume validates the complete file inventory and checksums before parsing
-#' the snapshot. The supplied runtime and adapters are attached explicitly;
-#' they are never loaded from disk. The returned run is rehydrated but is not
-#' executed automatically. Call `$resume()` to continue eligible steps.
-#'
-#' @param path Tempest run bundle directory.
-#' @param runtime Explicit process-local runtime or operation registry.
-#' @param artifact_catalog Optional process-local catalog override.
-#' @param source_store Optional process-local [ResearchWorkspace] override.
-#' @param runtime_context Process-local services to reattach to operations and
-#'   capability factories. These values are never read from disk.
-#' @param connection_permissions Optional connection allow-lists that only
-#'   narrow the saved grants.
-#' @param partial_recovery Whether to recover explicitly in-flight step state.
-#' @param policy_adapter Optional process-local policy adapter.
-#' @param progress Optional process-local event callback.
-#' @return A rehydrated `TempestRun`.
-#' @export
+# Frozen generic-kernel deletion seam. Internal until section-10 removal.
 tempest_run_resume <- function(
   path,
   runtime,

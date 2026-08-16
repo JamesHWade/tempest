@@ -1,27 +1,93 @@
 # dsprrr module factory & optimization
 
+tempest_dsprrr_run <- function(...) {
+  dsprrr::run(...)
+}
+
 #' @keywords internal
 tempest_run_dsprrr_module <- function(module, chat, inputs, step) {
+  result <- tempest_run_dsprrr_module_structured(module, chat, inputs, step)
+  if (is.null(result)) {
+    return(NULL)
+  }
+  result$output
+}
+
+#' @keywords internal
+tempest_run_dsprrr_module_structured <- function(module, chat, inputs, step) {
   if (is.null(module)) {
     return(NULL)
   }
 
-  tryCatch(
+  execution <- if (inherits(module, "tempest_dsprrr_execution")) {
+    module
+  } else {
+    tempest_dsprrr_execution(
+      program = module,
+      program_artifact_id = tempest_program_reference(
+        module
+      )$program_artifact_id,
+      trace_context = list()
+    )
+  }
+  program <- execution$program
+  trace_context <- execution$trace_context
+
+  result <- tryCatch(
     do.call(
-      dsprrr::run,
+      tempest_dsprrr_run,
       c(
-        list(module = module),
+        list(module = program),
         inputs,
-        list(.llm = chat, .return_format = "simple", .progress = FALSE)
+        list(
+          .llm = chat,
+          .return_format = "structured",
+          .progress = FALSE,
+          .trace_context = trace_context
+        )
       )
     ),
     error = function(e) {
+      if (tempest_dsprrr_contract_condition(e)) {
+        stop(e)
+      }
       tempest_warn(
         "dsprrr {step} failed, falling back to ellmer: {conditionMessage(e)}"
       )
       NULL
     }
   )
+  if (is.null(result)) {
+    return(NULL)
+  }
+  if (!inherits(result, "dsprrr_result") || !is.list(result$metadata)) {
+    tempest_ecosystem_contract_abort(
+      "dsprrr execution did not return structured verification metadata."
+    )
+  }
+
+  expected_program_artifact_id <- execution$program_artifact_id
+  actual_program_artifact_id <- result$metadata$program_artifact_id %||% NULL
+  if (!identical(actual_program_artifact_id, expected_program_artifact_id)) {
+    tempest_ecosystem_contract_abort(
+      "dsprrr execution metadata does not match the bound program artifact."
+    )
+  }
+  if (!identical(result$metadata$trace_context %||% list(), trace_context)) {
+    tempest_ecosystem_contract_abort(
+      "dsprrr execution metadata does not match the bound Tempest trace context."
+    )
+  }
+  result
+}
+
+tempest_dsprrr_contract_condition <- function(condition) {
+  classes <- class(condition)
+  inherits(condition, "tempest_ecosystem_contract_error") ||
+    inherits(condition, "dsprrr_trace_context_error") ||
+    inherits(condition, "dsprrr_trace_contract_error") ||
+    inherits(condition, "dsprrr_program_trace_contract_error") ||
+    any(grepl("^dsprrr_(artifact_|program_artifact_)", classes))
 }
 
 #' Create dsprrr modules for structured steps

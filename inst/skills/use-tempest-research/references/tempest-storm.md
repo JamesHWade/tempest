@@ -75,8 +75,8 @@ result$perspectives
 result$experts
 result$outline
 
-sources <- tempest_sources(result$store)
-claims <- tempest_claims(result$store)
+sources <- tempest_sources(result$workspace)
+claims <- tempest_claims(result$workspace)
 ```
 
 Verify the report, source relationships, claim support, citation references,

@@ -31,12 +31,12 @@ Package-specific conventions:
   missing-package branches for it; fallbacks should cover module construction or
   runtime failures only.
 - Keep mutable execution state in R6 classes such as `TempestSession`,
-  `SourceStore`, `TempestRetriever`, and `ExpertSessionManager`.
+  `ResearchWorkspace`, `TempestRetriever`, and `ExpertSessionManager`.
 - Use S7 for validated value boundaries, including `TempestConfig` and evidence
   records such as claims, evidence spans, disputes, and sources.
-- Prefer public adapters and constructors (`tempest_config()`,
-  `tempest_artifact_store()`, `tempest_expert_session_manager()`,
-  `tempest_expert()`) over reaching into R6 internals from host apps.
+- Prefer the current public research adapters and constructors
+  (`tempest_config()`, `tempest_research_workspace()`, `tempest_retriever()`,
+  and `tempest_expert()`) over reaching into R6 internals from host apps.
 - Keep Co-STORM evidence claim-centered. Unknown source IDs, weak support, and
   malformed structured output should be flagged explicitly rather than silently
   dropped or converted to placeholder text.

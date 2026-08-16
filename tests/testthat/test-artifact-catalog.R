@@ -219,7 +219,7 @@ test_that("catalog snapshots restore specifications, artifacts, and lineage", {
 test_that("catalog lineage validation reads a ResearchWorkspace", {
   workspace <- tempest_research_workspace()
   source <- fake_source("https://example.org/catalog-workspace")
-  workspace$upsert_source(source)
+  workspace$upsert_retrieved_resource(source)
   span <- tempest_evidence_span(
     source_id = source$id,
     quote = "Catalog evidence"
@@ -230,7 +230,7 @@ test_that("catalog lineage validation reads a ResearchWorkspace", {
     source_ids = source$id,
     evidence_span_ids = span@evidence_span_id
   )
-  workspace$add_claim(claim)
+  workspace$add_proposed_claim(claim)
   spec <- tempest_deliverable_spec(
     "lineage",
     title = "Lineage",

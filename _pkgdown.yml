@@ -8,7 +8,7 @@ articles:
   contents:
   - tempest
 - title: Retiring experimental generic kernel
-  desc: Review the experimental APIs scheduled for removal in Tempest 0.2.0.
+  desc: Review the deletion-owned baseline scheduled for the section-10 PR.
   navbar: ~
   contents:
   - reusable-workflows
@@ -37,7 +37,6 @@ reference:
   - tempest_session
   - tempest_session_process_turn_async
   - tempest_session_warmup_async
-  - TempestSession
   - SimulatedUser
   - run_app
 - title: Configuration and retrieval
@@ -52,7 +51,6 @@ reference:
   - tempest_research_manifest
   - tempest_research_workspace
   - ResearchWorkspace
-  - SourceStore
 - title: Evidence and reports
   contents:
   - tempest_claims
@@ -73,14 +71,13 @@ reference:
   contents:
   - tempest_expert
   - tempest_generate_experts
-  - tempest_expert_session_manager
 - title: Research UI
   contents:
   - tempest_shiny_store
   - tempest_shiny_ui
   - tempest_shiny_server
 - title: Retiring experimental generic kernel
-  desc: Frozen experimental APIs scheduled for removal in Tempest 0.2.0.
+  desc: Deletion-owned baseline scheduled for the section-10 PR.
   contents:
   - tempest-generic-kernel-retirement
   - tempest_objective
@@ -106,9 +103,7 @@ reference:
   - tempest_costorm_workflow_run
   - tempest_run_accessors
   - tempest_run_snapshot
-  - tempest_run_restore
   - tempest_run_save
-  - tempest_run_resume
   - tempest_skill
   - tempest_skill_registry
   - tempest_capability_spec

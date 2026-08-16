@@ -1,12 +1,15 @@
 test_that("verify_claims labels each claim and returns an audit tibble", {
   store <- tempest_research_workspace()
-  store$upsert_source(fake_source("https://example.org/1"))
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(
+  store$upsert_retrieved_resource(fake_source("https://example.org/1"))
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
     claim_text = "supported claim",
     source_ids = s1
   ))
-  store$add_claim(tempest_claim(claim_text = "weak claim", source_ids = s1))
+  store$add_proposed_claim(tempest_claim(
+    claim_text = "weak claim",
+    source_ids = s1
+  ))
 
   judge <- fake_chat(
     structured = list(
@@ -21,7 +24,7 @@ test_that("verify_claims labels each claim and returns an audit tibble", {
   expect_setequal(audit$verification_status, c("supported", "unsupported"))
 
   statuses <- vapply(
-    store$list_claims(),
+    store$list_proposed_claims(),
     function(c) c@verification_status,
     character(1)
   )
@@ -30,8 +33,8 @@ test_that("verify_claims labels each claim and returns an audit tibble", {
 
 test_that("verify_claims enforces min_support_score", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(
     claim_text = "weakly scored claim",
     source_ids = s1
   ))
@@ -48,18 +51,21 @@ test_that("verify_claims enforces min_support_score", {
     min_support_score = 0.7
   )
   expect_equal(audit$verification_status, "unsupported")
-  expect_equal(store$list_claims()[[1]]@verification_status, "unsupported")
-  expect_equal(store$list_claims()[[1]]@support_score, 0.60)
+  expect_equal(
+    store$list_proposed_claims()[[1]]@verification_status,
+    "unsupported"
+  )
+  expect_equal(store$list_proposed_claims()[[1]]@support_score, 0.60)
 })
 
 test_that("verify_claims skips when policy is none/source_attributed", {
   store <- tempest_research_workspace()
-  store$upsert_source(fake_source("https://example.org/1"))
+  store$upsert_retrieved_resource(fake_source("https://example.org/1"))
   claim <- tempest_claim(
     claim_text = "c",
-    source_ids = store$list_sources()[[1]]$id
+    source_ids = store$list_retrieved_sources()[[1]]$id
   )
-  store$add_claim(claim)
+  store$add_proposed_claim(claim)
   store$set_citation_audit(tibble::tibble(
     claim_id = claim@claim_id,
     claim_text = claim@claim_text,
@@ -78,9 +84,9 @@ test_that("verify_claims skips when policy is none/source_attributed", {
 
 test_that("verify_claims sanitizes out-of-range, string, and invalid judge output", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_sources()[[1]]$id
-  store$add_claim(tempest_claim(claim_text = "a", source_ids = s1))
-  store$add_claim(tempest_claim(claim_text = "b", source_ids = s1))
+  s1 <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest_claim(claim_text = "a", source_ids = s1))
+  store$add_proposed_claim(tempest_claim(claim_text = "b", source_ids = s1))
   judge <- fake_chat(
     structured = list(
       list(status = "supported", score = 1.5, rationale = "over range"),
@@ -95,7 +101,7 @@ test_that("verify_claims sanitizes out-of-range, string, and invalid judge outpu
   audit <- tempest_verify_claims(store, verifier = judge) # must not abort
   expect_equal(nrow(audit), 2)
 
-  cl <- store$list_claims()
+  cl <- store$list_proposed_claims()
   scores <- vapply(cl, function(c) c@support_score, numeric(1))
   bounded_scores <- scores[!is.na(scores)]
   expect_equal(

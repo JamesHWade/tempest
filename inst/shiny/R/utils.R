@@ -185,15 +185,7 @@ citation_source_store <- function(store = NULL) {
   }
   if (inherits(store, "TempestRetriever")) {
     workspace <- tryCatch(store[["workspace"]], error = function(e) NULL)
-    legacy_store <- tryCatch(store[["store"]], error = function(e) NULL)
-    if (
-      !is.null(workspace) &&
-        !is.null(legacy_store) &&
-        !identical(workspace, legacy_store)
-    ) {
-      return(NULL)
-    }
-    store <- workspace %||% legacy_store
+    store <- workspace
   }
   if (inherits(store, "ResearchWorkspace")) {
     return(store)
@@ -205,7 +197,7 @@ citation_reference <- function(id, number, store = NULL) {
   source <- if (is.null(store)) {
     NULL
   } else {
-    tryCatch(store$get_source(id), error = function(e) NULL)
+    tryCatch(store$get_retrieved_source(id), error = function(e) NULL)
   }
   known <- !is.null(source)
   url <- citation_safe_url(source$url %||% "")

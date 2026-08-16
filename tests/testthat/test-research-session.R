@@ -16,9 +16,7 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   )
 
   expect_r6_class(session$workspace, "ResearchWorkspace")
-  expect_identical(session$store, session$workspace)
   expect_identical(session$retriever$workspace, session$workspace)
-  expect_identical(session$retriever$store, session$workspace)
   expect_identical(session$session_id, session$manifest@research_run_id)
   expect_identical(session$manifest@research_run_id, "research-session-1")
   expect_identical(session$manifest@mode, "costorm")
@@ -61,20 +59,11 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     regexp = "fixed when the session is created"
   )
   expect_error(
-    session$store <- replacement,
-    class = "tempest_session_error",
-    regexp = "fixed compatibility alias"
-  )
-  expect_error(
     session$config@max_sources <- config@max_sources + 1L,
     class = "tempest_session_error"
   )
   expect_error(
     session$retriever$workspace <- replacement,
-    class = "tempest_retriever_identity_error"
-  )
-  expect_error(
-    session$retriever$store <- replacement,
     class = "tempest_retriever_identity_error"
   )
   expect_error(
@@ -85,13 +74,15 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   expect_identical(session$config, config)
   expect_identical(session$session_id, "research-session-1")
   expect_identical(session$retriever, original_retriever)
-  expect_identical(session$workspace, session$store)
   expect_identical(session$retriever$workspace, session$workspace)
   expect_identical(session$manifest@status, "running")
 
   source <- fake_source("https://example.org/session-workspace")
-  expect_no_error(session$workspace$upsert_source(source))
-  expect_identical(session$store$get_source(source$id)$id, source$id)
+  expect_no_error(session$workspace$upsert_retrieved_resource(source))
+  expect_identical(
+    session$workspace$get_retrieved_source(source$id)$id,
+    source$id
+  )
 
   session$add_turn("User", "user", "What evidence is available?")
   expect_match(
@@ -102,7 +93,7 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   expect_identical(session$manifest@status, "running")
 })
 
-test_that("Co-STORM sessions retain a supplied pinned workspace", {
+test_that("Co-STORM rejects scalar-only pinned workspaces", {
   skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -110,24 +101,20 @@ test_that("Co-STORM sessions retain a supplied pinned workspace", {
   workspace <- tempest_research_workspace(
     base_snapshot_id = "snapshot-accepted-1"
   )
-  retriever <- tempest_retriever(config = config, store = workspace)
+  retriever <- tempest_retriever(config = config, workspace = workspace)
 
-  session <- tempest_session(
-    "Pinned research session",
-    config = config,
-    experts = list(test_expert(
-      expert_id = "expert.pinned-session",
-      name = "Pinned Session Expert"
-    )),
-    retriever = retriever,
-    session_id = "research-session-pinned"
-  )
-
-  expect_identical(session$workspace, workspace)
-  expect_identical(session$store, workspace)
-  expect_identical(
-    session$manifest@knowledge_snapshot,
-    list(snapshot_id = "snapshot-accepted-1")
+  expect_error(
+    tempest_session(
+      "Pinned research session",
+      config = config,
+      experts = list(test_expert(
+        expert_id = "expert.pinned-session",
+        name = "Pinned Session Expert"
+      )),
+      retriever = retriever,
+      session_id = "research-session-pinned"
+    ),
+    class = "tempest_ecosystem_contract_error"
   )
 })
 
@@ -163,14 +150,13 @@ test_that("Co-STORM rejects a mismatched TempestRetriever before execution", {
   expect_equal(chat_calls, 0L)
 })
 
-test_that("Co-STORM sessions reject divergent retriever workspace aliases", {
+test_that("Co-STORM sessions reject retriever lookalikes", {
   skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   retriever <- new.env(parent = emptyenv())
   retriever$workspace <- tempest_research_workspace()
-  retriever$store <- tempest_research_workspace()
 
   expect_error(
     tempest_session(
@@ -182,8 +168,8 @@ test_that("Co-STORM sessions reject divergent retriever workspace aliases", {
       )),
       retriever = retriever
     ),
-    class = "tempest_session_error",
-    regexp = "must reference the same ResearchWorkspace"
+    class = "tempest_expert_session_error",
+    regexp = "must be a <TempestRetriever>"
   )
 })
 
@@ -198,7 +184,7 @@ test_that("Co-STORM restoration preserves manifest identity", {
     }
   )
   workspace <- tempest_research_workspace(base_snapshot_id = "snapshot-1")
-  retriever <- tempest_retriever(config = config, store = workspace)
+  retriever <- tempest_retriever(config = config, workspace = workspace)
   manifest <- tempest_research_manifest(
     research_run_id = "restored-costorm-session",
     mode = "costorm",
@@ -248,7 +234,7 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   workspace <- tempest_research_workspace(base_snapshot_id = "snapshot-1")
-  retriever <- tempest_retriever(config = config, store = workspace)
+  retriever <- tempest_retriever(config = config, workspace = workspace)
   expert <- test_expert(
     expert_id = "expert.invalid-manifest",
     name = "Invalid Manifest Expert"
@@ -280,7 +266,7 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
   }
 
   expect_error(
-    TempestSession$new(
+    tempest:::TempestSession$new(
       "Manifest validation",
       config = config,
       experts = list(expert),

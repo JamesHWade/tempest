@@ -669,7 +669,7 @@ tempest_fetch_cache_key <- function(url, user_agent = NULL) {
 
 tempest_retriever_config_digest <- function(retriever) {
   # Custom retrievers have no Tempest-owned configuration identity. Their
-  # existing workspace/store contract remains the only package-level seam.
+  # workspace contract remains the only package-level seam.
   if (!inherits(retriever, "TempestRetriever")) {
     return(NULL)
   }
@@ -686,7 +686,6 @@ tempest_retriever_config_digest <- function(retriever) {
 #' @field workspace Read-only reference to the authoritative
 #'   [ResearchWorkspace] containing provisional research evidence. Workspace
 #'   mutation methods remain available.
-#' @field store Deprecated read-only compatibility alias of `workspace`.
 #' @field ragnar_store Read-only ragnar store reference derived from `config`.
 #' @field cache_dir Read-only cache path derived from `config`.
 #' @field cache_enabled Read-only cache policy derived from `config`.
@@ -699,19 +698,18 @@ TempestRetriever <- R6::R6Class(
     #' @description
     #' Create a new TempestRetriever.
     #' @param config A `TempestConfig` object.
-    #' @param store A [ResearchWorkspace]. The argument name is retained for
-    #'   compatibility; new code should use the retriever's `workspace` field.
+    #' @param workspace A [ResearchWorkspace].
     initialize = function(
       config = tempest_config(),
-      store = tempest_research_workspace()
+      workspace = tempest_research_workspace()
     ) {
-      if (!inherits(store, "ResearchWorkspace")) {
+      if (!inherits(workspace, "ResearchWorkspace")) {
         tempest_research_workspace_abort(
-          "{.arg store} must be a ResearchWorkspace."
+          "{.arg workspace} must be a ResearchWorkspace."
         )
       }
       private$config_value <- config
-      private$workspace_value <- store
+      private$workspace_value <- workspace
       private$workspace_value$set_max_sources(config@max_sources)
       private$cache_counts <- new.env(parent = emptyenv())
       invisible(self)
@@ -825,7 +823,7 @@ TempestRetriever <- R6::R6Class(
         )
         private$record_cache("fetch", cached$status)
         if (!is.null(cached$value)) {
-          self$workspace$upsert_source(cached$value)
+          self$workspace$upsert_retrieved_resource(cached$value)
           return(cached$value)
         }
       } else {
@@ -845,7 +843,7 @@ TempestRetriever <- R6::R6Class(
           content_hash = NA_character_,
           meta = list(kind = res$kind, error = res$error)
         )
-        self$workspace$upsert_source(src)
+        self$workspace$upsert_retrieved_resource(src)
         return(src)
       }
 
@@ -880,7 +878,7 @@ TempestRetriever <- R6::R6Class(
         content_hash = txt_hash,
         meta = list(kind = res$kind, error = NULL)
       )
-      self$workspace$upsert_source(src)
+      self$workspace$upsert_retrieved_resource(src)
       if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, src)) {
         private$record_cache("fetch", "write")
       }
@@ -996,7 +994,7 @@ TempestRetriever <- R6::R6Class(
     #' @param source_id The source id.
     #' @return The content text or NA.
     get_source_text = function(source_id) {
-      src <- self$workspace$get_source(source_id)
+      src <- self$workspace$get_retrieved_source(source_id)
       if (is.null(src)) {
         return(NA_character_)
       }
@@ -1006,8 +1004,8 @@ TempestRetriever <- R6::R6Class(
     #' @description
     #' List all sources in the store.
     #' @return A list of source objects.
-    list_sources = function() {
-      self$workspace$list_sources()
+    list_retrieved_sources = function() {
+      self$workspace$list_retrieved_sources()
     },
 
     #' @description
@@ -1036,18 +1034,6 @@ TempestRetriever <- R6::R6Class(
       if (!missing(value)) {
         tempest_abort(
           "{.field workspace} is fixed when the retriever is created.",
-          class = c("tempest_retriever_identity_error", "tempest_error")
-        )
-      }
-      private$workspace_value
-    },
-    store = function(value) {
-      if (!missing(value)) {
-        tempest_abort(
-          paste0(
-            "{.field store} is a fixed compatibility alias of ",
-            "{.field workspace}."
-          ),
           class = c("tempest_retriever_identity_error", "tempest_error")
         )
       }
@@ -1127,8 +1113,7 @@ TempestRetriever <- R6::R6Class(
 #' Create a TempestRetriever
 #'
 #' @param config A `TempestConfig`.
-#' @param store A [ResearchWorkspace]. The argument name is retained for
-#'   compatibility.
+#' @param workspace A [ResearchWorkspace].
 #' @return A `TempestRetriever`.
 #' @examples
 #' retriever <- tempest_retriever(config = tempest_config())
@@ -1138,9 +1123,9 @@ TempestRetriever <- R6::R6Class(
 #' @export
 tempest_retriever <- function(
   config = tempest_config(),
-  store = tempest_research_workspace()
+  workspace = tempest_research_workspace()
 ) {
-  TempestRetriever$new(config = config, store = store)
+  TempestRetriever$new(config = config, workspace = workspace)
 }
 
 # --- Provider-specific search helpers ----------------------------------------

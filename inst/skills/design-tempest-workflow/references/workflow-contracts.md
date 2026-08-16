@@ -33,8 +33,9 @@ operation.
 | Authorization | `policy_adapter` and `connection_permissions` | Apply least privilege per run, expert, and role. |
 | Observation | `progress` and run accessors | Consume ordered public event records. |
 
-Recreate and reattach these values after `tempest_run_resume()`. A restored run
-does not execute automatically.
+Generic run restoration is not part of the Tempest 0.2 product API. This table
+is retained only as section-10 deletion inventory; do not reattach or resume
+these process-local values through product bundles.
 
 ## Graph invariants
 

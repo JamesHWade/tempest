@@ -27,7 +27,7 @@ roles can set this to \code{FALSE} and still inspect sources, claims, evidence,
 and unsupported claims.}
 
 \item{claim_provenance}{Optional provenance recorded on claims written via
-\code{add_claim}.}
+\code{add_proposed_claim}.}
 }
 \value{
 The chat object (invisibly)

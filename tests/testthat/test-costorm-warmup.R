@@ -65,7 +65,7 @@ test_that("async warmup starts independent experts in parallel", {
         }))
       }
       second_started <<- TRUE
-      source_id <- session$store$list_sources()[[1]]$id
+      source_id <- session$workspace$list_retrieved_sources()[[1]]$id
       promises::promise_resolve(paste0("Second [", source_id, "]."))
     }
   )
@@ -82,7 +82,7 @@ test_that("async warmup starts independent experts in parallel", {
 
   expect_equal(is.null(first_resolve), FALSE)
   expect_equal(second_started, TRUE)
-  source_id <- session$store$list_sources()[[1]]$id
+  source_id <- session$workspace$list_retrieved_sources()[[1]]$id
   first_resolve(paste0("First [", source_id, "]."))
   settled <- await_tempest_promise(request)
   expect_null(settled$error)
@@ -204,7 +204,7 @@ test_that("async warmup defaults remain bounded and host-neutral", {
   expect_equal(eval(defaults$timeout_s), 120)
   expect_equal(eval(defaults$max_parallel_experts), 3L)
   expect_match(prompt, "make exactly one web search", fixed = TRUE)
-  expect_match(prompt, "do not call add_claim", fixed = TRUE)
+  expect_match(prompt, "do not call add_proposed_claim", fixed = TRUE)
   expect_match(prompt, "What should the panel investigate?", fixed = TRUE)
   expect_match(prompt, "no more than 250 words", fixed = TRUE)
   expect_no_match(
@@ -322,7 +322,7 @@ test_that("warmup permits only one in-flight call per session", {
           resolve_first <<- resolve
         }))
       }
-      source_id <- session$store$list_sources()[[1]]$id
+      source_id <- session$workspace$list_retrieved_sources()[[1]]$id
       promises::promise_resolve(paste0("Later [", source_id, "]."))
     },
     progress = collector$record
@@ -341,7 +341,7 @@ test_that("warmup permits only one in-flight call per session", {
   expect_s3_class(busy, "tempest_warmup_busy")
   expect_length(collector$events(), before)
 
-  source_id <- session$store$list_sources()[[1]]$id
+  source_id <- session$workspace$list_retrieved_sources()[[1]]$id
   resolve_first(paste0("First [", source_id, "]."))
   settled_first <- await_tempest_promise(first)
   expect_null(settled_first$error)

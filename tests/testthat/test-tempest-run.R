@@ -153,7 +153,7 @@ test_that("run preflights requested deliverables and input resources", {
     content = "Approved context",
     resource_id = "resource.approved"
   )
-  store$upsert_resource(resource)
+  store$upsert_retrieved_resource(resource)
   run <- tempest_run_workflow(
     tempest_objective(
       "Use an input",
@@ -168,25 +168,25 @@ test_that("run preflights requested deliverables and input resources", {
 
   expect_equal(run$status, "succeeded")
   snapshot <- tempest_run_snapshot(run)
-  restored <- tempest_run_restore(snapshot, runtime = registry)
+  restored <- tempest:::tempest_run_restore(snapshot, runtime = registry)
   expect_identical(snapshot$source_store$schema_version, 4L)
   expect_r6_class(restored$source_store, "ResearchWorkspace")
   expect_identical(inherits(restored$source_store, "SourceStore"), FALSE)
   expect_identical(
-    restored$source_store$get_resource(resource@resource_id),
+    restored$source_store$get_retrieved_resource(resource@resource_id),
     resource
   )
   fractional <- snapshot
   fractional$source_store$schema_version <- 4.5
   expect_error(
-    tempest_run_restore(fractional, runtime = registry),
+    tempest:::tempest_run_restore(fractional, runtime = registry),
     class = "tempest_run_restore_error"
   )
   expect_error(
-    tempest_run_restore(
+    tempest:::tempest_run_restore(
       snapshot,
       runtime = registry,
-      source_store = quiet_source_store()
+      source_store = test_research_workspace()
     ),
     class = "tempest_run_restore_error"
   )
@@ -387,7 +387,7 @@ test_that("run snapshots exclude runtime and restore with explicit bindings", {
 
   expect_null(snapshot$runtime)
   expect_null(snapshot$runtime_context)
-  restored <- tempest_run_restore(
+  restored <- tempest:::tempest_run_restore(
     snapshot,
     runtime = registry,
     runtime_context = list(client = runtime_client)
@@ -403,14 +403,14 @@ test_that("run snapshots exclude runtime and restore with explicit bindings", {
 
   snapshot$workflow$purpose <- "tampered"
   expect_error(
-    tempest_run_restore(snapshot, runtime = registry),
+    tempest:::tempest_run_restore(snapshot, runtime = registry),
     class = "tempest_workflow_definition_error"
   )
 
   unsafe <- tempest_run_snapshot(run)
   unsafe$capability_grants <- list(access_token = "must-not-restore")
   expect_error(
-    tempest_run_restore(unsafe, runtime = registry),
+    tempest:::tempest_run_restore(unsafe, runtime = registry),
     class = "tempest_run_restore_error"
   )
 })
@@ -544,7 +544,7 @@ test_that("run connection permissions are durable opaque allow-lists", {
   expect_no_match(encoded, "must-never-be-persisted", fixed = TRUE)
   expect_no_match(encoded, "access_token", fixed = TRUE)
 
-  restored <- tempest_run_restore(snapshot, runtime = runtime)
+  restored <- tempest:::tempest_run_restore(snapshot, runtime = runtime)
   expect_identical(restored$runtime, runtime)
   expect_equal(
     restored$connection_permissions,
@@ -559,7 +559,7 @@ test_that("run connection permissions are durable opaque allow-lists", {
   expect_match(persisted, "connection.customer-documents", fixed = TRUE)
   expect_no_match(persisted, "must-never-be-persisted", fixed = TRUE)
   expect_no_match(persisted, "access_token", fixed = TRUE)
-  resumed <- tempest_run_resume(bundle, runtime = runtime)
+  resumed <- tempest:::tempest_run_resume(bundle, runtime = runtime)
   expect_equal(
     resumed$connection_permissions,
     run$connection_permissions
@@ -1477,7 +1477,7 @@ test_that("artifact approval remains retryable after a store failure", {
     "awaiting_approval"
   )
 
-  restored <- tempest_run_restore(
+  restored <- tempest:::tempest_run_restore(
     tempest_run_snapshot(run),
     runtime = registry
   )
@@ -1611,8 +1611,8 @@ test_that("restore rejects state substitution and gates partial recovery", {
     generator_id = "generate",
     renderer_ids = "render"
   )
-  store <- quiet_source_store()
-  store$upsert_source(tempest:::tempest_source(
+  store <- test_research_workspace()
+  store$upsert_retrieved_resource(tempest:::tempest_source(
     "https://example.com/restored-source",
     title = "Restored source"
   ))
@@ -1642,7 +1642,7 @@ test_that("restore rejects state substitution and gates partial recovery", {
   snapshot <- tempest_run_snapshot(run)
 
   expect_error(
-    tempest_run_restore(
+    tempest:::tempest_run_restore(
       snapshot,
       runtime = registry,
       artifact_catalog = tempest_artifact_catalog()
@@ -1650,10 +1650,10 @@ test_that("restore rejects state substitution and gates partial recovery", {
     class = "tempest_run_restore_error"
   )
   expect_error(
-    tempest_run_restore(
+    tempest:::tempest_run_restore(
       snapshot,
       runtime = registry,
-      source_store = quiet_source_store()
+      source_store = test_research_workspace()
     ),
     class = "tempest_run_restore_error"
   )
@@ -1662,10 +1662,10 @@ test_that("restore rejects state substitution and gates partial recovery", {
   in_flight$status <- "running"
   in_flight$step_states$complete$status <- "running"
   expect_error(
-    tempest_run_restore(in_flight, runtime = registry),
+    tempest:::tempest_run_restore(in_flight, runtime = registry),
     class = "tempest_run_restore_error"
   )
-  recovered <- tempest_run_restore(
+  recovered <- tempest:::tempest_run_restore(
     in_flight,
     runtime = registry,
     partial_recovery = TRUE
@@ -1705,7 +1705,7 @@ test_that("partial recovery preserves attempt numbers and retry budgets", {
     registry
   )
 
-  recovered <- tempest_run_restore(
+  recovered <- tempest:::tempest_run_restore(
     captured,
     runtime = registry,
     partial_recovery = TRUE
@@ -1765,7 +1765,7 @@ test_that("restored result snapshots remain stable across snapshots", {
     registry
   )
   first <- tempest_run_snapshot(run)
-  restored <- tempest_run_restore(first, runtime = registry)
+  restored <- tempest:::tempest_run_restore(first, runtime = registry)
   second <- tempest_run_snapshot(restored)
 
   expect_identical(
@@ -1775,7 +1775,7 @@ test_that("restored result snapshots remain stable across snapshots", {
 
   bundle <- file.path(withr::local_tempdir(), "stable-result")
   tempest_run_save(run, bundle)
-  resumed <- tempest_run_resume(bundle, runtime = registry)
+  resumed <- tempest:::tempest_run_resume(bundle, runtime = registry)
   third <- tempest_run_snapshot(resumed)
   expect_identical(
     third$step_states$work$result,
@@ -1809,14 +1809,14 @@ test_that("restore rejects malformed and forged approval state", {
   malformed_status <- snapshot
   malformed_status$status <- NULL
   expect_error(
-    tempest_run_restore(malformed_status, runtime = registry),
+    tempest:::tempest_run_restore(malformed_status, runtime = registry),
     class = "tempest_run_restore_error"
   )
 
   malformed_approval <- snapshot
   malformed_approval$approvals[[1]] <- "approved"
   expect_error(
-    tempest_run_restore(malformed_approval, runtime = registry),
+    tempest:::tempest_run_restore(malformed_approval, runtime = registry),
     class = "tempest_run_restore_error"
   )
 
@@ -1825,7 +1825,7 @@ test_that("restore rejects malformed and forged approval state", {
   forged$step_states$act$status <- "pending"
   forged$status <- "pending"
   expect_error(
-    tempest_run_restore(forged, runtime = registry),
+    tempest:::tempest_run_restore(forged, runtime = registry),
     class = "tempest_run_restore_error"
   )
 
@@ -1847,7 +1847,7 @@ test_that("restore rejects malformed and forged approval state", {
     tempest_run_snapshot()
   incomplete$status <- "succeeded"
   expect_error(
-    tempest_run_restore(incomplete, runtime = registry),
+    tempest:::tempest_run_restore(incomplete, runtime = registry),
     class = "tempest_run_restore_error"
   )
 })
@@ -1899,14 +1899,14 @@ test_that("restore binds approvals to their policy and event step", {
   retargeted$step_states$second$status <- "awaiting_approval"
 
   expect_error(
-    tempest_run_restore(retargeted, runtime = registry),
+    tempest:::tempest_run_restore(retargeted, runtime = registry),
     class = "tempest_run_restore_error"
   )
 
   mismatched_policy <- snapshot
   mismatched_policy$policy_decisions[[policy_index]]$step_id <- "second"
   expect_error(
-    tempest_run_restore(mismatched_policy, runtime = registry),
+    tempest:::tempest_run_restore(mismatched_policy, runtime = registry),
     class = "tempest_run_restore_error"
   )
 })
@@ -1953,7 +1953,7 @@ test_that("restore classes malformed scalar and cancellation records", {
   )
   for (mutate in malformed) {
     expect_error(
-      tempest_run_restore(mutate(snapshot), runtime = registry),
+      tempest:::tempest_run_restore(mutate(snapshot), runtime = registry),
       class = "tempest_run_restore_error"
     )
   }
@@ -1983,7 +1983,7 @@ test_that("restore rejects succeeded state without durable execution", {
   completed$step_states$work$attempts <- list()
 
   expect_error(
-    tempest_run_restore(completed, runtime = registry),
+    tempest:::tempest_run_restore(completed, runtime = registry),
     class = "tempest_run_restore_error"
   )
 })
@@ -2042,7 +2042,7 @@ test_that("restore validates artifacts referenced by result snapshots", {
   missing <- snapshot
   missing$artifact_catalog$artifacts[["dynamic-output-1"]] <- NULL
   expect_error(
-    tempest_run_restore(missing, runtime = registry),
+    tempest:::tempest_run_restore(missing, runtime = registry),
     class = "tempest_run_restore_error"
   )
 
@@ -2050,7 +2050,7 @@ test_that("restore validates artifacts referenced by result snapshots", {
   invalid$artifact_catalog$artifacts[["dynamic-output-1"]]$status <-
     "invalid"
   expect_error(
-    tempest_run_restore(invalid, runtime = registry),
+    tempest:::tempest_run_restore(invalid, runtime = registry),
     class = "tempest_run_restore_error"
   )
 })
