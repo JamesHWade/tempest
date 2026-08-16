@@ -663,7 +663,7 @@ tempest_evidence_span_from_list <- function(x) {
 
   int_scalar_fields <- c("start_offset", "end_offset", "page")
   for (f in int_scalar_fields) {
-    if (is.null(x[[f]])) {
+    if (is.null(x[[f]]) || identical(x[[f]], NA_integer_)) {
       x[[f]] <- NA_integer_
     } else {
       x[[f]] <- tempest_exact_integer_scalar(

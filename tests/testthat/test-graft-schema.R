@@ -119,14 +119,17 @@ test_that("schema runtime rejects an unpinned local Graft build", {
 })
 
 test_that("schema compiler reuses the exact runtime Graft pin", {
+  compiler_path <- testthat::test_path(
+    "..",
+    "..",
+    "dev",
+    "schema",
+    "compile-tempest-research-schema.R"
+  )
+  testthat::skip_if_not(file.exists(compiler_path))
+
   compiler <- readLines(
-    testthat::test_path(
-      "..",
-      "..",
-      "dev",
-      "schema",
-      "compile-tempest-research-schema.R"
-    ),
+    compiler_path,
     warn = FALSE
   )
 

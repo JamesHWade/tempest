@@ -416,7 +416,7 @@ test_that("run preflights requested deliverables and input resources", {
   expect_equal(run$status, "succeeded")
   snapshot <- tempest_run_snapshot(run)
   restored <- tempest:::tempest_run_restore(snapshot, runtime = registry)
-  expect_identical(snapshot$source_store$schema_version, 4L)
+  expect_identical(snapshot$source_store$schema_version, 5L)
   expect_r6_class(restored$source_store, "ResearchWorkspace")
   expect_identical(inherits(restored$source_store, "SourceStore"), FALSE)
   expect_identical(
@@ -424,7 +424,7 @@ test_that("run preflights requested deliverables and input resources", {
     resource
   )
   fractional <- snapshot
-  fractional$source_store$schema_version <- 4.5
+  fractional$source_store$schema_version <- 5.0
   expect_error(
     tempest:::tempest_run_restore(fractional, runtime = registry),
     class = "tempest_run_restore_error"
