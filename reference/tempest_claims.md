@@ -5,12 +5,12 @@ Return claims as a tibble
 ## Usage
 
 ``` r
-tempest_claims(store)
+tempest_claims(workspace)
 ```
 
 ## Arguments
 
-- store:
+- workspace:
 
   A
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
@@ -27,6 +27,6 @@ source_ids, confidence, verification_status, support_score, created_at.
 ``` r
 if (FALSE) { # \dontrun{
 result <- tempest_run("History of jazz", config = tempest_config())
-tempest_claims(result$store)
+tempest_claims(result$workspace)
 } # }
 ```

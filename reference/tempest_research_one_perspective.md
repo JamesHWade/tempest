@@ -1,8 +1,8 @@
 # Research a single perspective (search + expert synthesis)
 
 Shared by the parallel and sequential research fallbacks so both paths
-behave identically. Returns the sources and facts gathered for one
-perspective in an isolated store.
+behave identically. Returns the retrieved resources and proposed claims
+gathered for one perspective in an isolated workspace.
 
 ## Usage
 

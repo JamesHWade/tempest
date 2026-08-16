@@ -27,8 +27,6 @@
   asynchronously
 - [`tempest_session_warmup_async()`](https://jameshwade.github.io/tempest/reference/tempest_session_warmup_async.md)
   **\[experimental\]** : Warm up a Co-STORM session asynchronously
-- [`TempestSession`](https://jameshwade.github.io/tempest/reference/TempestSession.md)
-  : TempestSession
 - [`SimulatedUser`](https://jameshwade.github.io/tempest/reference/SimulatedUser.md)
   : SimulatedUser
 - [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
@@ -55,15 +53,12 @@
   : Create a provisional research workspace
 - [`ResearchWorkspace`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
   : ResearchWorkspace (provisional scientific evidence ledger)
-- [`SourceStore`](https://jameshwade.github.io/tempest/reference/SourceStore.md)
-  **\[deprecated\]** : SourceStore (deprecated compatibility ledger)
 
 ## Evidence and reports
 
 - [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
   : Return claims as a tibble
 - [`tempest_sources()`](https://jameshwade.github.io/tempest/reference/tempest_sources.md)
-  [`tempest_resources()`](https://jameshwade.github.io/tempest/reference/tempest_sources.md)
   : Return evidence resources as a tibble
 - [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
   **\[experimental\]** : Create a typed evidence resource
@@ -95,8 +90,6 @@
   **\[experimental\]** : Create a Tempest expert profile
 - [`tempest_generate_experts()`](https://jameshwade.github.io/tempest/reference/tempest_generate_experts.md)
   : Generate expert profiles for a topic
-- [`tempest_expert_session_manager()`](https://jameshwade.github.io/tempest/reference/tempest_expert_session_manager.md)
-  **\[experimental\]** : Create a scoped Tempest expert-session manager
 
 ## Research UI
 
@@ -109,7 +102,7 @@
 
 ## Retiring experimental generic kernel
 
-Frozen experimental APIs scheduled for removal in Tempest 0.2.0.
+Deletion-owned baseline scheduled for the section-10 PR.
 
 - [`tempest-generic-kernel-retirement`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
   **\[experimental\]** : Retirement of Tempest's experimental generic
@@ -175,12 +168,8 @@ Frozen experimental APIs scheduled for removal in Tempest 0.2.0.
   **\[experimental\]** : Inspect and control a generic Tempest run
 - [`tempest_run_snapshot()`](https://jameshwade.github.io/tempest/reference/tempest_run_snapshot.md)
   **\[experimental\]** : Snapshot generic Tempest run state
-- [`tempest_run_restore()`](https://jameshwade.github.io/tempest/reference/tempest_run_restore.md)
-  **\[experimental\]** : Restore generic Tempest run state
 - [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md)
   **\[experimental\]** : Save a generic Tempest run bundle
-- [`tempest_run_resume()`](https://jameshwade.github.io/tempest/reference/tempest_run_resume.md)
-  **\[experimental\]** : Resume a generic Tempest run bundle
 - [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md)
   **\[experimental\]** : Create a Tempest skill specification
 - [`tempest_skill_registry()`](https://jameshwade.github.io/tempest/reference/tempest_skill_registry.md)

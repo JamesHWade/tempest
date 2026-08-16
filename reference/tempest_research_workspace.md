@@ -2,14 +2,16 @@
 
 `tempest_research_workspace()` creates the run-scoped ledger for
 material gathered or proposed during scientific research. Accepted
-knowledge remains in graft; this workspace stores only opaque references
-to accepted records.
+knowledge remains in graft; this workspace retains opaque record
+references and, when pinned, the path-free immutable Graft snapshot
+needed to reopen that boundary.
 
 ## Usage
 
 ``` r
 tempest_research_workspace(
   base_snapshot_id = NULL,
+  graft_snapshot = NULL,
   max_sources = Inf,
   accepted_graft_references = list()
 )
@@ -20,6 +22,10 @@ tempest_research_workspace(
 - base_snapshot_id:
 
   Optional opaque identifier for the pinned accepted knowledge snapshot.
+
+- graft_snapshot:
+
+  Optional real, path-free `graft::GraftSnapshot`.
 
 - max_sources:
 

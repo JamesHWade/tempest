@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul>
@@ -198,8 +198,8 @@ create it:</p>
 <span><span class="va">result</span><span class="op">$</span><span class="va">experts</span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">outline</span></span>
 <span></span>
-<span><span class="va">sources</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_sources.html">tempest_sources</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">store</span><span class="op">)</span></span>
-<span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claims.html">tempest_claims</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">store</span><span class="op">)</span></span>
+<span><span class="va">sources</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_sources.html">tempest_sources</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">workspace</span><span class="op">)</span></span>
+<span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claims.html">tempest_claims</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">workspace</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sources</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"url"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">claims</span><span class="op">[</span></span>
@@ -211,11 +211,11 @@ create it:</p>
 <span>    <span class="st">"support_score"</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
-<p>The source store holds run-scoped provisional evidence. Sources,
-claims, support scores, and citations remain inspectable instead of
-being flattened into report text. The product report is available
-directly in <code>result$report_md</code>; new callers should not depend
-on the frozen 0.1 artifact catalog.</p>
+<p>The research workspace holds run-scoped provisional evidence.
+Retrieved resources, proposed claims, support scores, and citations
+remain inspectable instead of being flattened into report text. The
+product report is available directly in <code>result$report_md</code>;
+new callers should not depend on the frozen 0.1 artifact catalog.</p>
 <p>Choose a stronger <code>citation_policy</code> when a workflow
 requires verified claims:</p>
 <ul>
@@ -349,24 +349,21 @@ not already available:</p>
 the role-specific tools needed for that session. The moderator delegates
 by stable expert ID, and evidence collected during dialogue remains
 available to the final report. Session bundles preserve durable research
-state, but not credentials, live chat handles, tools, or authenticated
-clients. Recreate those host-injected dependencies after resume.
-Existing Tempest 0.1 integrations that supplied a custom
-<code>runtime</code> must still reattach it; that seam is frozen and
-should not be used for new integrations.</p>
+state, but not credentials, live chat handles, tools, authenticated
+clients, generic workflow state, or runtime registries. Configure fresh
+supported chats and retrieval dependencies through <code>config</code>
+before resuming.</p>
 </div>
 <div class="section level2">
-<h2 id="maintain-a-tempest-0-1-application-specific-workflow">Maintain a Tempest 0.1 application-specific workflow<a class="anchor" aria-label="anchor" href="#maintain-a-tempest-0-1-application-specific-workflow"></a>
+<h2 id="frozen-generic-kernel-deletion-inventory">Frozen generic-kernel deletion inventory<a class="anchor" aria-label="anchor" href="#frozen-generic-kernel-deletion-inventory"></a>
 </h2>
 <blockquote>
 <p><strong>Lifecycle notice:</strong> The experimental generic workflow
-kernel is frozen and scheduled for removal in Tempest 0.2.0. Do not use
-it for new integrations.</p>
+kernel is frozen and retained only for the section-10 deletion PR. It is
+not a supported Tempest 0.2 product surface.</p>
 </blockquote>
-<p>Existing Tempest 0.1 hosts may still need the generic kernel while
-the product migration is under way.</p>
-<p>The <code>reusable-workflows</code> vignette documents maintenance of
-an existing Tempest 0.1 integration with:</p>
+<p>The <code>reusable-workflows</code> vignette is an offline
+deletion-owned fixture that records:</p>
 <ul>
 <li>an application-neutral objective;</li>
 <li>a host-selected expert;</li>
@@ -374,13 +371,14 @@ an existing Tempest 0.1 integration with:</p>
 <li>runtime generator, validator, renderer, and step operations;</li>
 <li>artifact approval and ordered events;</li>
 <li>typed output inspection; and</li>
-<li>save/restore with explicit runtime reattachment.</li>
+<li>the former generic runtime boundary, which supported product bundles
+do not restore.</li>
 </ul>
 <p>Open it from an installed package:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"reusable-workflows"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span></span></code></pre></div>
-<p>On the pkgdown website, see <a href="reusable-workflows.html">Build
-reusable workflows with Tempest</a>.</p>
+<p>On the pkgdown website, see the <a href="reusable-workflows.html">frozen generic workflow deletion
+inventory</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-go-next">Where to go next<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>

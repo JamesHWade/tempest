@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -105,7 +105,8 @@ derived from <code>resource_kind</code> and <code>locator</code>.</p></dd>
 
 
 <dt id="arg-scope-metadata">scope_metadata<a class="anchor" aria-label="anchor" href="#arg-scope-metadata"></a></dt>
-<dd><p>Serializable tenant or project scope metadata.</p></dd>
+<dd><p>Serializable tenant or project scope metadata.
+Credential-like field names are rejected recursively.</p></dd>
 
 
 <dt id="arg-content-hash">content_hash<a class="anchor" aria-label="anchor" href="#arg-content-hash"></a></dt>
@@ -118,15 +119,18 @@ inline content when omitted.</p></dd>
 
 
 <dt id="arg-redaction">redaction<a class="anchor" aria-label="anchor" href="#arg-redaction"></a></dt>
-<dd><p>Serializable redaction metadata.</p></dd>
+<dd><p>Serializable redaction metadata. Credential-like field names
+are rejected recursively.</p></dd>
 
 
 <dt id="arg-retention">retention<a class="anchor" aria-label="anchor" href="#arg-retention"></a></dt>
-<dd><p>Serializable retention metadata.</p></dd>
+<dd><p>Serializable retention metadata. Credential-like field names
+are rejected recursively.</p></dd>
 
 
 <dt id="arg-metadata">metadata<a class="anchor" aria-label="anchor" href="#arg-metadata"></a></dt>
-<dd><p>Serializable namespaced host metadata.</p></dd>
+<dd><p>Serializable namespaced host metadata. Credential-like field
+names are rejected recursively.</p></dd>
 
 
 <dt id="arg-schema-version">schema_version<a class="anchor" aria-label="anchor" href="#arg-schema-version"></a></dt>

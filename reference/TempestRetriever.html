@@ -11,7 +11,7 @@ ragnar for semantic search capabilities."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,7 +23,7 @@ ragnar for semantic search capabilities."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -63,10 +63,6 @@ ragnar for semantic search capabilities.</p>
 mutation methods remain available.</p></dd>
 
 
-    <dt><code>store</code></dt>
-<dd><p>Deprecated read-only compatibility alias of <code>workspace</code>.</p></dd>
-
-
     <dt><code>ragnar_store</code></dt>
 <dd><p>Read-only ragnar store reference derived from <code>config</code>.</p></dd>
 
@@ -97,7 +93,7 @@ mutation methods remain available.</p></dd>
 <li><p><a href="#method-TempestRetriever-build_ragnar_index"><code>TempestRetriever$build_ragnar_index()</code></a></p></li>
 <li><p><a href="#method-TempestRetriever-retrieve"><code>TempestRetriever$retrieve()</code></a></p></li>
 <li><p><a href="#method-TempestRetriever-get_source_text"><code>TempestRetriever$get_source_text()</code></a></p></li>
-<li><p><a href="#method-TempestRetriever-list_sources"><code>TempestRetriever$list_sources()</code></a></p></li>
+<li><p><a href="#method-TempestRetriever-list_retrieved_sources"><code>TempestRetriever$list_retrieved_sources()</code></a></p></li>
 <li><p><a href="#method-TempestRetriever-cache_stats"><code>TempestRetriever$cache_stats()</code></a></p></li>
 <li><p><a href="#method-TempestRetriever-clone"><code>TempestRetriever$clone()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-TempestRetriever-initialize"></a><div class="section">
@@ -106,16 +102,15 @@ mutation methods remain available.</p></dd>
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/TempestRetriever.html">TempestRetriever</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  store <span class="op">=</span> <span class="fu"><a href="../reference/tempest_research_workspace.html">tempest_research_workspace</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  workspace <span class="op">=</span> <span class="fu"><a href="../reference/tempest_research_workspace.html">tempest_research_workspace</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>config</code></dt>
 <dd><p>A <code>TempestConfig</code> object.</p></dd>
 
-      <dt><code>store</code></dt>
-<dd><p>A <a href="ResearchWorkspace.html">ResearchWorkspace</a>. The argument name is retained for
-compatibility; new code should use the retriever's <code>workspace</code> field.</p></dd>
+      <dt><code>workspace</code></dt>
+<dd><p>A <a href="ResearchWorkspace.html">ResearchWorkspace</a>.</p></dd>
 
 
 </dl><p></p></div>
@@ -271,11 +266,11 @@ compatibility; new code should use the retriever's <code>workspace</code> field.
 
 </div>
 
-<p></p><hr><a id="method-TempestRetriever-list_sources"></a><div class="section">
-<h3 id="tempestretriever-list-sources-"><code>TempestRetriever$list_sources()</code><a class="anchor" aria-label="anchor" href="#tempestretriever-list-sources-"></a></h3>
+<p></p><hr><a id="method-TempestRetriever-list_retrieved_sources"></a><div class="section">
+<h3 id="tempestretriever-list-retrieved-sources-"><code>TempestRetriever$list_retrieved_sources()</code><a class="anchor" aria-label="anchor" href="#tempestretriever-list-retrieved-sources-"></a></h3>
 <p>List all sources in the store.</p><div class="section">
 <h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestRetriever</span><span class="op">$</span><span class="fu">list_sources</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TempestRetriever</span><span class="op">$</span><span class="fu">list_retrieved_sources</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>A list of source objects.</p>

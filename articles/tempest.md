@@ -120,8 +120,8 @@ result$perspectives
 result$experts
 result$outline
 
-sources <- tempest_sources(result$store)
-claims <- tempest_claims(result$store)
+sources <- tempest_sources(result$workspace)
+claims <- tempest_claims(result$workspace)
 
 utils::head(sources[c("id", "title", "url")])
 utils::head(claims[
@@ -135,11 +135,11 @@ utils::head(claims[
 ])
 ```
 
-The source store holds run-scoped provisional evidence. Sources, claims,
-support scores, and citations remain inspectable instead of being
-flattened into report text. The product report is available directly in
-`result$report_md`; new callers should not depend on the frozen 0.1
-artifact catalog.
+The research workspace holds run-scoped provisional evidence. Retrieved
+resources, proposed claims, support scores, and citations remain
+inspectable instead of being flattened into report text. The product
+report is available directly in `result$report_md`; new callers should
+not depend on the frozen 0.1 artifact catalog.
 
 Choose a stronger `citation_policy` when a workflow requires verified
 claims:
@@ -285,23 +285,19 @@ Each expert keeps its own conversation continuity and receives only the
 role-specific tools needed for that session. The moderator delegates by
 stable expert ID, and evidence collected during dialogue remains
 available to the final report. Session bundles preserve durable research
-state, but not credentials, live chat handles, tools, or authenticated
-clients. Recreate those host-injected dependencies after resume.
-Existing Tempest 0.1 integrations that supplied a custom `runtime` must
-still reattach it; that seam is frozen and should not be used for new
-integrations.
+state, but not credentials, live chat handles, tools, authenticated
+clients, generic workflow state, or runtime registries. Configure fresh
+supported chats and retrieval dependencies through `config` before
+resuming.
 
-## Maintain a Tempest 0.1 application-specific workflow
+## Frozen generic-kernel deletion inventory
 
 > **Lifecycle notice:** The experimental generic workflow kernel is
-> frozen and scheduled for removal in Tempest 0.2.0. Do not use it for
-> new integrations.
+> frozen and retained only for the section-10 deletion PR. It is not a
+> supported Tempest 0.2 product surface.
 
-Existing Tempest 0.1 hosts may still need the generic kernel while the
-product migration is under way.
-
-The `reusable-workflows` vignette documents maintenance of an existing
-Tempest 0.1 integration with:
+The `reusable-workflows` vignette is an offline deletion-owned fixture
+that records:
 
 - an application-neutral objective;
 - a host-selected expert;
@@ -309,7 +305,8 @@ Tempest 0.1 integration with:
 - runtime generator, validator, renderer, and step operations;
 - artifact approval and ordered events;
 - typed output inspection; and
-- save/restore with explicit runtime reattachment.
+- the former generic runtime boundary, which supported product bundles
+  do not restore.
 
 Open it from an installed package:
 
@@ -318,8 +315,8 @@ Open it from an installed package:
 vignette("reusable-workflows", package = "tempest")
 ```
 
-On the pkgdown website, see [Build reusable workflows with
-Tempest](https://jameshwade.github.io/tempest/articles/reusable-workflows.md).
+On the pkgdown website, see the [frozen generic workflow deletion
+inventory](https://jameshwade.github.io/tempest/articles/reusable-workflows.md).
 
 ## Where to go next
 

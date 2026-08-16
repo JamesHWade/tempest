@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -80,8 +80,8 @@ expert.</p></dd>
 <dd><p>Chat object for fact extraction (optional).</p></dd>
 
 
-    <dt><code>store</code></dt>
-<dd><p>A <a href="ResearchWorkspace.html">ResearchWorkspace</a> for storing extracted facts (optional).</p></dd>
+    <dt><code>workspace</code></dt>
+<dd><p>A <a href="ResearchWorkspace.html">ResearchWorkspace</a> for extracted facts (optional).</p></dd>
 
 
     <dt><code>progress</code></dt>
@@ -128,7 +128,7 @@ claim-write provenance.</p></dd>
 <span>  <span class="va">retriever</span>,</span>
 <span>  allowed_connection_ref_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extractor <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  store <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  run_id <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
@@ -153,8 +153,8 @@ expert id.</p></dd>
       <dt><code>extractor</code></dt>
 <dd><p>Optional chat object for fact extraction.</p></dd>
 
-      <dt><code>store</code></dt>
-<dd><p>Optional <a href="ResearchWorkspace.html">ResearchWorkspace</a> for storing extracted facts.</p></dd>
+      <dt><code>workspace</code></dt>
+<dd><p>Optional <a href="ResearchWorkspace.html">ResearchWorkspace</a> for extracted facts.</p></dd>
 
       <dt><code>progress</code></dt>
 <dd><p>Optional progress callback.</p></dd>

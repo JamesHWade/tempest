@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -42,15 +42,16 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="tempest-development-version">tempest (development version)<a class="anchor" aria-label="anchor" href="#tempest-development-version"></a></h2>
 <ul><li>Tempest is now explicitly scoped as a scientific-research product. Its experimental application-neutral workflow, runtime, capability, connection, skill, deliverable, artifact, and generic host-state APIs are frozen and scheduled for removal in the deliberate 0.2.0 breaking release (v659).</li>
+<li>Tempest 0.2 is a hard cut to canonical research-product contracts: <code>ResearchWorkspace</code> replaces <code>SourceStore</code>; STORM and Co-STORM expose no <code>store</code> aliases, legacy collection names, generic runtime injection, or generic result projections; old product bundles fail as unsupported; and manifests carry exact dsprrr program, Graft snapshot, and Deputy correlation identities.</li>
 <li>The bundled Shiny app now presents Co-STORM setup as a one-time native shinychat greeting with consistently sized controls, lets users replace generated panels with up to five named expert perspectives, and reserves the footer for active-session status and actions.</li>
 <li>
 <code><a href="../reference/tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules()</a></code>, <code><a href="../reference/tempest_save_dsprrr_modules.html">tempest_save_dsprrr_modules()</a></code>, and <code><a href="../reference/tempest_load_dsprrr_modules.html">tempest_load_dsprrr_modules()</a></code> now expose per-module dsprrr optimizer controls and agentic teleprompter arguments, persist modules as atomic checksummed bundles of versioned dsprrr program artifacts instead of raw RDS lists, and remove the obsolete <code>fact_extraction</code> module alias.</li>
 <li>
 <code><a href="../reference/tempest_research_manifest.html">tempest_research_manifest()</a></code> records the stable run, configuration, program, knowledge-snapshot, runtime, trace, and deliverable identities for STORM and Co-STORM without serializing runtime objects or credentials (04zh).</li>
 <li>
-<code><a href="../reference/tempest_research_workspace.html">tempest_research_workspace()</a></code> and <code>ResearchWorkspace</code> define the provisional run-scoped evidence boundary, including an optional pinned knowledge-snapshot ID and accepted graft references; <code>SourceStore</code> remains as a soft-deprecated compatibility subclass for one release (04zh).</li>
+<code><a href="../reference/tempest_research_workspace.html">tempest_research_workspace()</a></code> and <code>ResearchWorkspace</code> define the canonical provisional run-scoped evidence boundary, including an optional real path-free <code>graft::GraftSnapshot</code>, its complete scalar identity, and accepted Graft references (04zh).</li>
 <li>
-<code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now expose correlated research manifests and authoritative workspaces while retaining <code>store</code> and session/run IDs as compatibility projections (04zh).</li>
+<code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> expose correlated research manifests and authoritative workspaces using only the canonical 0.2 product vocabulary (04zh).</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="tempest-010">tempest 0.1.0<a class="anchor" aria-label="anchor" href="#tempest-010"></a></h2>
@@ -110,7 +111,7 @@
 <li>
 <code><a href="../reference/tempest_run.html">tempest_run()</a></code> now executes STORM structured steps through dsprrr modules, with ellmer fallbacks for module creation or runtime failures.</li>
 <li>
-<code><a href="../reference/tempest_run_save.html">tempest_run_save()</a></code>, <code><a href="../reference/tempest_run_resume.html">tempest_run_resume()</a></code>, and the <code>tempest_run_*()</code> accessors give host applications checksummed generic run bundles plus stable status, event, approval, per-attempt capability-grant, artifact, cancellation, strict restore-integrity, permission-narrowing, and explicit partial-recovery controls without reaching into mutable R6 internals (vtvt).</li>
+<code><a href="../reference/tempest_run_save.html">tempest_run_save()</a></code>, <code>tempest_run_resume()</code>, and the <code>tempest_run_*()</code> accessors give host applications checksummed generic run bundles plus stable status, event, approval, per-attempt capability-grant, artifact, cancellation, strict restore-integrity, permission-narrowing, and explicit partial-recovery controls without reaching into mutable R6 internals (vtvt).</li>
 <li>
 <code><a href="../reference/tempest_run_workflow.html">tempest_run_workflow()</a></code>, <code><a href="../reference/tempest_workflow_spec.html">tempest_workflow_spec()</a></code>, and <code><a href="../reference/tempest_workflow_step.html">tempest_workflow_step()</a></code> add a generic deterministic run shell with expert assignments, bounded retry history, ordered events, typed artifacts, requested-output completion checks, pre-execution policy gates, post-generation output approvals, cooperative cancellation, process-local runtime services, and explicit runtime snapshot restoration (vtvt).</li>
 <li>

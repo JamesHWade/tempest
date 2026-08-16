@@ -8,7 +8,7 @@ Assemble a Markdown report with footnotes
 tempest_report_md(
   title,
   body,
-  store,
+  workspace,
   citation_policy = "source_attributed",
   on_unsupported_claim = "flag",
   min_support_score = 0.7
@@ -26,7 +26,7 @@ tempest_report_md(
   Markdown body text that may include inline citations like
   `[Sxxxxxxxxxxxx]`.
 
-- store:
+- workspace:
 
   A
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
@@ -65,7 +65,7 @@ result <- tempest_run("History of jazz", config = tempest_config())
 md <- tempest_report_md(
   title = "History of Jazz",
   body = result$draft_md,
-  store = result$store
+  workspace = result$workspace
 )
 } # }
 ```

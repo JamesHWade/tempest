@@ -8,10 +8,8 @@ Create a Co-STORM session
 tempest_session(
   topic,
   config = tempest_config(),
-  runtime = tempest_runtime(),
   n_experts = 3,
   experts = NULL,
-  connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
   session_id = NULL
@@ -28,12 +26,6 @@ tempest_session(
 
   A `TempestConfig`.
 
-- runtime:
-
-  Frozen Tempest 0.1
-  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-  adapter. Existing integrations only.
-
 - n_experts:
 
   Number of expert agents.
@@ -43,15 +35,11 @@ tempest_session(
   Optional list of validated expert profiles. If `NULL`, experts are
   generated automatically.
 
-- connection_permissions:
-
-  Frozen Tempest 0.1 per-role or per-expert connection allow-lists.
-
 - retriever:
 
   Optional `TempestRetriever` or compatible retriever object with a
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  at `$workspace` or its legacy `$store` alias.
+  at `$workspace`.
 
 - progress:
 
@@ -62,13 +50,6 @@ tempest_session(
 
   Optional stable session identifier. If `NULL`, a new identifier is
   generated.
-
-## Frozen Tempest 0.1 seams
-
-`runtime` and `connection_permissions` remain only for existing Tempest
-0.1 integrations and are scheduled for replacement in Tempest 0.2.0. New
-host code should keep role-specific tools and authenticated clients
-process-local.
 
 ## Examples
 

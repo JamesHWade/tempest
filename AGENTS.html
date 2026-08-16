@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -59,9 +59,9 @@
 <li>The bundled Shiny app in <code>inst/shiny/</code>, which wraps those package APIs rather than carrying separate research logic.</li>
 </ul><p>Package-specific conventions:</p>
 <ul><li>Treat <code>dsprrr</code> as a required dependency. Do not preserve or add optional missing-package branches for it; fallbacks should cover module construction or runtime failures only.</li>
-<li>Keep mutable execution state in R6 classes such as <code>TempestSession</code>, <code>SourceStore</code>, <code>TempestRetriever</code>, and <code>ExpertSessionManager</code>.</li>
+<li>Keep mutable execution state in R6 classes such as <code>TempestSession</code>, <code>ResearchWorkspace</code>, <code>TempestRetriever</code>, and <code>ExpertSessionManager</code>.</li>
 <li>Use S7 for validated value boundaries, including <code>TempestConfig</code> and evidence records such as claims, evidence spans, disputes, and sources.</li>
-<li>Prefer public adapters and constructors (<code><a href="reference/tempest_config.html">tempest_config()</a></code>, <code><a href="reference/tempest_artifact_store.html">tempest_artifact_store()</a></code>, <code><a href="reference/tempest_expert_session_manager.html">tempest_expert_session_manager()</a></code>, <code><a href="reference/tempest_expert.html">tempest_expert()</a></code>) over reaching into R6 internals from host apps.</li>
+<li>Prefer the current public research adapters and constructors (<code><a href="reference/tempest_config.html">tempest_config()</a></code>, <code><a href="reference/tempest_research_workspace.html">tempest_research_workspace()</a></code>, <code><a href="reference/tempest_retriever.html">tempest_retriever()</a></code>, and <code><a href="reference/tempest_expert.html">tempest_expert()</a></code>) over reaching into R6 internals from host apps.</li>
 <li>Keep Co-STORM evidence claim-centered. Unknown source IDs, weak support, and malformed structured output should be flagged explicitly rather than silently dropped or converted to placeholder text.</li>
 <li>Tests must not require API keys, network access, or live provider responses. Use fake chats, local stores, package fixtures, and focused Shiny <code>testServer</code> checks for deterministic coverage.</li>
 <li>For Shiny hangs or async regressions, reproduce the live app path when possible. Pay attention to session lifetime, background <code>ExtendedTask</code> work, reactive invalidation, and synchronous expert tool calls.</li>

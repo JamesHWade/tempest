@@ -5,14 +5,12 @@ Return evidence resources as a tibble
 ## Usage
 
 ``` r
-tempest_sources(store)
-
-tempest_resources(store)
+tempest_sources(workspace)
 ```
 
 ## Arguments
 
-- store:
+- workspace:
 
   A
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
@@ -29,6 +27,6 @@ title, media type, content context, retrieval time, and metadata.
 ``` r
 if (FALSE) { # \dontrun{
 result <- tempest_run("History of jazz", config = tempest_config())
-tempest_sources(result$store)
+tempest_sources(result$workspace)
 } # }
 ```

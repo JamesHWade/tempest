@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -50,8 +50,9 @@
     <p>Tempest 0.2 becomes a focused scientific-research product. The experimental
 application-neutral workflow, runtime, capability, connection, skill,
 deliverable, and artifact APIs are frozen and scheduled for removal in
-Tempest 0.2.0. They remain available in the 0.1 development line only to
-preserve the product baseline while replacement seams are proven.</p>
+the section-10 deletion PR of the Tempest 0.2 migration train. They remain
+in source only as deletion-owned baseline inventory, not as a compatibility
+path.</p>
 <p>No compatibility framework or generic-kernel migration layer will be added.
 STORM and Co-STORM product bundles will receive direct, product-specific
 replacements before the generic implementation is deleted.</p>
@@ -74,8 +75,8 @@ No compatibility shim is planned.</p>
 <code><a href="tempest_run_accessors.html">tempest_run_approvals()</a></code>, <code><a href="tempest_run_accessors.html">tempest_run_capability_grants()</a></code>,
 <code><a href="tempest_run_accessors.html">tempest_run_artifact()</a></code>, <code><a href="tempest_run_accessors.html">tempest_run_artifacts()</a></code>,
 <code><a href="tempest_run_accessors.html">tempest_run_record_approval()</a></code>, <code><a href="tempest_run_accessors.html">tempest_run_request_cancel()</a></code>,
-<code><a href="tempest_run_snapshot.html">tempest_run_snapshot()</a></code>, <code><a href="tempest_run_restore.html">tempest_run_restore()</a></code>, <code><a href="tempest_run_save.html">tempest_run_save()</a></code>,
-and <code><a href="tempest_run_resume.html">tempest_run_resume()</a></code>. The shared <code><a href="tempest_execution_events.html">tempest_execution_events()</a></code> query
+<code><a href="tempest_run_snapshot.html">tempest_run_snapshot()</a></code>, and <code><a href="tempest_run_save.html">tempest_run_save()</a></code>. The shared
+<code><a href="tempest_execution_events.html">tempest_execution_events()</a></code> query
 remains a product seam and will be narrowed to STORM and Co-STORM state.</p></li>
 <li><p>Runtime contracts: <code><a href="tempest_operation_registry.html">tempest_operation_registry()</a></code>,
 <code><a href="tempest_builtin_operation_registry.html">tempest_builtin_operation_registry()</a></code>,

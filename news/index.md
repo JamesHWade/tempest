@@ -7,6 +7,12 @@
   connection, skill, deliverable, artifact, and generic host-state APIs
   are frozen and scheduled for removal in the deliberate 0.2.0 breaking
   release (v659).
+- Tempest 0.2 is a hard cut to canonical research-product contracts:
+  `ResearchWorkspace` replaces `SourceStore`; STORM and Co-STORM expose
+  no `store` aliases, legacy collection names, generic runtime
+  injection, or generic result projections; old product bundles fail as
+  unsupported; and manifests carry exact dsprrr program, Graft snapshot,
+  and Deputy correlation identities.
 - The bundled Shiny app now presents Co-STORM setup as a one-time native
   shinychat greeting with consistently sized controls, lets users
   replace generated panels with up to five named expert perspectives,
@@ -24,16 +30,15 @@
   runtime, trace, and deliverable identities for STORM and Co-STORM
   without serializing runtime objects or credentials (04zh).
 - [`tempest_research_workspace()`](https://jameshwade.github.io/tempest/reference/tempest_research_workspace.md)
-  and `ResearchWorkspace` define the provisional run-scoped evidence
-  boundary, including an optional pinned knowledge-snapshot ID and
-  accepted graft references; `SourceStore` remains as a soft-deprecated
-  compatibility subclass for one release (04zh).
+  and `ResearchWorkspace` define the canonical provisional run-scoped
+  evidence boundary, including an optional real path-free
+  `graft::GraftSnapshot`, its complete scalar identity, and accepted
+  Graft references (04zh).
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   and
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
-  now expose correlated research manifests and authoritative workspaces
-  while retaining `store` and session/run IDs as compatibility
-  projections (04zh).
+  expose correlated research manifests and authoritative workspaces
+  using only the canonical 0.2 product vocabulary (04zh).
 
 ## tempest 0.1.0
 
@@ -215,12 +220,12 @@
   now executes STORM structured steps through dsprrr modules, with
   ellmer fallbacks for module creation or runtime failures.
 - [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md),
-  [`tempest_run_resume()`](https://jameshwade.github.io/tempest/reference/tempest_run_resume.md),
-  and the `tempest_run_*()` accessors give host applications checksummed
-  generic run bundles plus stable status, event, approval, per-attempt
-  capability-grant, artifact, cancellation, strict restore-integrity,
-  permission-narrowing, and explicit partial-recovery controls without
-  reaching into mutable R6 internals (vtvt).
+  `tempest_run_resume()`, and the `tempest_run_*()` accessors give host
+  applications checksummed generic run bundles plus stable status,
+  event, approval, per-attempt capability-grant, artifact, cancellation,
+  strict restore-integrity, permission-narrowing, and explicit
+  partial-recovery controls without reaching into mutable R6 internals
+  (vtvt).
 - [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest_run_workflow.md),
   [`tempest_workflow_spec()`](https://jameshwade.github.io/tempest/reference/tempest_workflow_spec.md),
   and

@@ -33,10 +33,9 @@ tempest_run_request_cancel(run, reason = "Cancellation requested.")
 
 - run:
 
-  A `TempestRun` created by
+  A `TempestRun` created by the frozen
   [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest_run_workflow.md)
-  or restored by
-  [`tempest_run_restore()`](https://jameshwade.github.io/tempest/reference/tempest_run_restore.md).
+  generic kernel.
 
 - after_sequence:
 

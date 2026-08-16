@@ -20,9 +20,6 @@ tempest_run(
   retriever = NULL,
   n_experts = 3,
   experts = NULL,
-  runtime = tempest_runtime(),
-  runtime_factory = function() tempest_runtime(),
-  connection_permissions = list(),
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
@@ -36,8 +33,6 @@ tempest_run(
   remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE,
-  artifact_catalog = NULL,
-  workflow_run = NULL,
   .state = NULL
 )
 ```
@@ -67,23 +62,6 @@ tempest_run(
   [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md).
   When supplied, STORM uses this selected team and does not generate
   experts.
-
-- runtime:
-
-  Frozen Tempest 0.1
-  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-  adapter. Existing integrations only.
-
-- runtime_factory:
-
-  Function that recreates the frozen 0.1 `runtime` inside parallel
-  workers. Existing integrations using a custom runtime with
-  `parallel_research = TRUE` must provide a matching factory.
-
-- connection_permissions:
-
-  Frozen Tempest 0.1 mapping from expert or model-role ids to opaque
-  connection ids allowed for this run.
 
 - research_strategy:
 
@@ -150,16 +128,6 @@ tempest_run(
 
   If `TRUE`, prints progress messages.
 
-- artifact_catalog:
-
-  Frozen Tempest 0.1 shared `TempestArtifactCatalog`, used by the
-  generic STORM workflow adapter.
-
-- workflow_run:
-
-  Frozen Tempest 0.1 owning `TempestRun`. When supplied, the result
-  exposes it as `workflow_run`.
-
 - .state:
 
   Internal adapter-only fixed STORM product state. This is not a public
@@ -169,19 +137,7 @@ tempest_run(
 
 A list with product fields `title`, `perspectives`, `experts`,
 `outline`, `draft_md`, `report_md`, `manifest`, `state`, `workspace`,
-`retriever`, and `output_dir`. The compatibility field `store`
-references the same object as `workspace`. Frozen 0.1 compatibility
-fields `artifact_catalog` and `workflow_run` are also returned
-temporarily.
-
-## Frozen Tempest 0.1 seams
-
-`runtime`, `runtime_factory`, `connection_permissions`,
-`artifact_catalog`, and `workflow_run` expose the frozen experimental
-generic kernel. They remain only for existing Tempest 0.1 integrations
-and are scheduled for replacement or removal in Tempest 0.2.0. New code
-should consume `report_md`, `manifest`, `state`, and the scientific
-evidence in `workspace`.
+`retriever`, and `output_dir`.
 
 ## Examples
 

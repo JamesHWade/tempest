@@ -7,7 +7,7 @@ Create a TempestRetriever
 ``` r
 tempest_retriever(
   config = tempest_config(),
-  store = tempest_research_workspace()
+  workspace = tempest_research_workspace()
 )
 ```
 
@@ -17,11 +17,10 @@ tempest_retriever(
 
   A `TempestConfig`.
 
-- store:
+- workspace:
 
   A
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md).
-  The argument name is retained for compatibility.
 
 ## Value
 

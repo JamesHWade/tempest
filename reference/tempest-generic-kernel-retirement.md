@@ -7,9 +7,9 @@
 Tempest 0.2 becomes a focused scientific-research product. The
 experimental application-neutral workflow, runtime, capability,
 connection, skill, deliverable, and artifact APIs are frozen and
-scheduled for removal in Tempest 0.2.0. They remain available in the 0.1
-development line only to preserve the product baseline while replacement
-seams are proven.
+scheduled for removal in the section-10 deletion PR of the Tempest 0.2
+migration train. They remain in source only as deletion-owned baseline
+inventory, not as a compatibility path.
 
 No compatibility framework or generic-kernel migration layer will be
 added. STORM and Co-STORM product bundles will receive direct,
@@ -40,10 +40,8 @@ This experimental API is frozen and scheduled for removal in Tempest
   [`tempest_run_record_approval()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md),
   [`tempest_run_request_cancel()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md),
   [`tempest_run_snapshot()`](https://jameshwade.github.io/tempest/reference/tempest_run_snapshot.md),
-  [`tempest_run_restore()`](https://jameshwade.github.io/tempest/reference/tempest_run_restore.md),
-  [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md),
   and
-  [`tempest_run_resume()`](https://jameshwade.github.io/tempest/reference/tempest_run_resume.md).
+  [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md).
   The shared
   [`tempest_execution_events()`](https://jameshwade.github.io/tempest/reference/tempest_execution_events.md)
   query remains a product seam and will be narrowed to STORM and

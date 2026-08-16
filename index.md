@@ -112,7 +112,7 @@ resources <- tempest_okf_resources(
 )
 
 workspace <- tempest_research_workspace()
-invisible(lapply(resources, workspace$upsert_resource))
+invisible(lapply(resources, workspace$upsert_retrieved_resource))
 
 context <- tempest_okf_context(
   knowledge,
@@ -136,26 +136,24 @@ identity. Session correlation fields and retriever configuration are
 read-only, while the pinned workspace remains mutable through its
 explicit methods. The workspace contains only provisional run material
 and opaque references to accepted knowledge; acceptance still requires
-an explicit graft review and commit. The legacy `store` projection
-references that same workspace, and `SourceStore` remains a deprecated
-compatibility subclass for one release.
+an explicit graft review and commit.
 
 Graft can export current or historical accepted revisions directly into
 this format. Read [Use Open Knowledge Format with
 Tempest](https://jameshwade.github.io/tempest/articles/open-knowledge-format.html)
 for the complete handoff and safety model.
 
-## Maintain Tempest 0.1 reusable deliverables
+## Frozen generic-kernel deletion inventory
 
 > **Warning:** The experimental generic deliverable and workflow kernel
-> is frozen and is scheduled for removal in Tempest 0.2.0. No
-> compatibility shim is planned. Use the STORM and Co-STORM product APIs
-> for new research workflows.
+> remains only as section-10 deletion inventory in the Tempest 0.2
+> migration train. It is not a compatibility path, and no migration shim
+> is planned. Use the STORM and Co-STORM product APIs for research
+> workflows.
 
-The frozen 0.1 output kernel is independent of STORM and Co-STORM.
-Existing host applications can still define an objective, versioned
-output contract, and runtime operations while the product migration is
-under way:
+The frozen 0.1 output kernel previously let host applications define an
+objective, versioned output contract, and runtime operations. This
+example is retained only to make the deletion boundary reviewable:
 
 ``` r
 
@@ -252,21 +250,21 @@ the same run, step, and specification while retaining the prior
 validation diagnostics. Inline structured content uses canonical JSON
 semantics: objects and arrays restore as lists, while classed R objects,
 missing values, and binary content should use an external `storage_ref`.
-Session bundles persist every registered artifact representation instead
-of relying on a fixed report filename. Hosts with custom inline content
-codecs reattach the same `codec_registry` when saving and resuming;
-generic run snapshots use canonical JSON content or external storage
-references.
+Supported STORM and Co-STORM bundles persist only their explicit
+research manifest, workspace, product state, report, and optional
+immutable Graft snapshot. They do not persist or restore generic
+artifact catalogs, workflow runs, codec registries, or process-local
+runtime objects.
 
-## Maintain Tempest 0.1 reusable workflows and selected experts
+## Frozen generic-kernel deletion inventory
 
-> **Warning:** This section documents maintenance of existing Tempest
-> 0.1 integrations. These generic workflow APIs are scheduled for
-> removal in Tempest 0.2.0 and should not be used for new work.
+> **Warning:** The experimental generic workflow kernel is retained only
+> so the section-10 deletion PR can remove it as a coherent unit. It is
+> not a supported Tempest 0.2 product surface and must not be used for
+> new work.
 
-Existing Tempest 0.1 hosts can maintain application-specific work
-through the same run model while they migrate. Workflow specifications
-are serializable; executable operations stay in the runtime:
+The following offline example is a deletion-owned fixture. It records
+the old run model without promising bundle restoration or compatibility:
 
 ``` r
 
@@ -319,7 +317,7 @@ tempest_run_status(run)
 tempest_run_events(run)
 ```
 
-In the frozen 0.1 model,
+In the frozen kernel,
 [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
 adds least-privilege skills, capabilities, and opaque connection
 references. An expert profile declares what it needs; the host grants
@@ -327,40 +325,30 @@ connection IDs for that run; a connection provider rehydrates
 authenticated clients only after authorization. Profiles, snapshots, and
 events never contain tool closures, clients, or credentials.
 
-Existing 0.1 hosts can pass process-local services through
-`runtime_context` and reattach them explicitly after restore. Tempest
-records the resulting per-step and per-expert authorization decisions
-for inspection with
+The deletion-owned kernel passes process-local services through
+`runtime_context` and records the resulting per-step and per-expert
+authorization decisions with
 [`tempest_run_capability_grants()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md),
 including per-attempt grant history for retries, while leaving the live
 services themselves out of snapshots and run bundles. Side-effecting
 capabilities pass through policy and approval before their factories or
 step operation can execute.
 
-Existing 0.1 hosts may continue to use
 [`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_run.md)
-or
+and
 [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_run.md)
-until they migrate. New research integrations should call
+are frozen for the section-10 deletion PR; they are not supported 0.2
+product entry points. Research integrations should call
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
 or
 [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
-directly.
-[`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md)
-and
-[`tempest_run_resume()`](https://jameshwade.github.io/tempest/reference/tempest_run_resume.md)
-persist frozen generic runs while requiring the host to reattach
-process-local operations and connections. Restored permission overrides
-may only narrow saved grants, and recovering an in-flight snapshot
-requires the explicit `partial_recovery = TRUE` mode. Classed execution
-errors retain the failed run in `condition$run`, so a host can inspect
-its events, grants, validation results, and artifacts before deciding
-whether to retry or present the failure.
+directly. Classed execution errors retain the failed run in
+`condition$run` for the offline deletion fixture. No supported 0.2
+product bundle restores that generic state.
 
 Run
 [`vignette("reusable-workflows", package = "tempest")`](https://jameshwade.github.io/tempest/articles/reusable-workflows.md)
-for a complete, offline maintenance example for an existing Tempest 0.1
-integration.
+to inspect the offline deletion-owned baseline.
 
 ## Agent skills
 
@@ -378,8 +366,8 @@ two research skills remain the supported product direction.
   STORM and Co-STORM protocols. It can guide another implementation or
   be loaded by a tool-capable chat host without calling Tempest APIs.
 - `design-tempest-workflow`, `build-tempest-workflow`, and
-  `verify-tempest-workflow` support maintenance of existing 0.1
-  generic-kernel integrations only.
+  `verify-tempest-workflow` are frozen deletion-owned 0.1 artifacts and
+  are not part of the 0.2 product contract.
 
 List the bundled skill directories or install them into the directory
 used by your agent:
@@ -677,19 +665,15 @@ cfg <- tempest_config(
 
 ## Frozen 0.1 scoped runtime
 
-This experimental runtime layer is frozen and scheduled for removal in
-Tempest 0.2.0. Co-STORM will move to Deputy-managed agents, permissions,
-and tools; hosts will inject connection implementations directly.
-
-Do not adopt this layer for a new integration. Existing 0.1 hosts may
-continue to use
+This experimental runtime layer remains solely as section-10 deletion
+inventory in the Tempest 0.2 migration train. It is not a compatibility
+path. Co-STORM moves to Deputy-managed agents, permissions, and tools;
+hosts inject connection implementations directly. Do not adopt or extend
 [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md),
 [`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest_capability_spec.md),
 [`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest_connection_ref.md),
-and
-[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-while the Co-STORM Deputy adapter and direct host-injection seams are
-introduced.
+or
+[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md).
 
 ## Interactive Co-STORM
 

@@ -13,13 +13,13 @@ Install Tempest and run your first workflow.
 
 ### Retiring experimental generic kernel
 
-Review the experimental APIs scheduled for removal in Tempest 0.2.0.
+Review the deletion-owned baseline scheduled for the section-10 PR.
 
-- [Maintain Tempest 0.1 reusable
-  workflows](https://jameshwade.github.io/tempest/articles/reusable-workflows.md):
+- [Inspect the Tempest 0.1 generic-kernel deletion
+  inventory](https://jameshwade.github.io/tempest/articles/reusable-workflows.md):
 
-  Maintain an existing Tempest 0.1 generic workflow while migrating to
-  the scientific-research product APIs.
+  Review the frozen Tempest 0.1 generic workflow baseline owned by the
+  section-10 deletion PR.
 
 ### Bring organizational knowledge
 

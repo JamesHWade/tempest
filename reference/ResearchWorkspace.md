@@ -12,22 +12,10 @@ acceptance remains an explicit graft review and commit.
   Read-only named-list snapshot of typed resources and built-in
   web-source records keyed by resource id.
 
-- `resources`:
-
-  Compatibility alias of `retrieved_resources`.
-
-- `sources`:
-
-  Compatibility alias retained for built-in web adapters.
-
 - `proposed_claims`:
 
   Read-only named-list snapshot of provisional claim records keyed by
   claim id.
-
-- `claims`:
-
-  Compatibility alias of `proposed_claims`.
 
 - `evidence_spans`:
 
@@ -47,6 +35,11 @@ acceptance remains an explicit graft review and commit.
   Read-only opaque identifier for the accepted knowledge snapshot on
   which this workspace is based.
 
+- `graft_snapshot`:
+
+  Optional read-only, path-free `graft::GraftSnapshot` used to reopen
+  the accepted knowledge boundary.
+
 - `citation_audit`:
 
   Latest claim-centered citation audit, when available.
@@ -63,23 +56,15 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$set_max_sources()`](#method-ResearchWorkspace-set_max_sources)
 
-- [`ResearchWorkspace$upsert_source()`](#method-ResearchWorkspace-upsert_source)
-
-- [`ResearchWorkspace$get_source()`](#method-ResearchWorkspace-get_source)
-
-- [`ResearchWorkspace$list_sources()`](#method-ResearchWorkspace-list_sources)
-
 - [`ResearchWorkspace$upsert_retrieved_resource()`](#method-ResearchWorkspace-upsert_retrieved_resource)
 
 - [`ResearchWorkspace$get_retrieved_resource()`](#method-ResearchWorkspace-get_retrieved_resource)
 
+- [`ResearchWorkspace$get_retrieved_source()`](#method-ResearchWorkspace-get_retrieved_source)
+
 - [`ResearchWorkspace$list_retrieved_resources()`](#method-ResearchWorkspace-list_retrieved_resources)
 
-- [`ResearchWorkspace$upsert_resource()`](#method-ResearchWorkspace-upsert_resource)
-
-- [`ResearchWorkspace$get_resource()`](#method-ResearchWorkspace-get_resource)
-
-- [`ResearchWorkspace$list_resources()`](#method-ResearchWorkspace-list_resources)
+- [`ResearchWorkspace$list_retrieved_sources()`](#method-ResearchWorkspace-list_retrieved_sources)
 
 - [`ResearchWorkspace$add_proposed_claim()`](#method-ResearchWorkspace-add_proposed_claim)
 
@@ -87,13 +72,7 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$list_proposed_claims()`](#method-ResearchWorkspace-list_proposed_claims)
 
-- [`ResearchWorkspace$add_claim()`](#method-ResearchWorkspace-add_claim)
-
-- [`ResearchWorkspace$get_claim()`](#method-ResearchWorkspace-get_claim)
-
-- [`ResearchWorkspace$list_claims()`](#method-ResearchWorkspace-list_claims)
-
-- [`ResearchWorkspace$claims_for_source()`](#method-ResearchWorkspace-claims_for_source)
+- [`ResearchWorkspace$proposed_claims_for_resource()`](#method-ResearchWorkspace-proposed_claims_for_resource)
 
 - [`ResearchWorkspace$add_evidence_span()`](#method-ResearchWorkspace-add_evidence_span)
 
@@ -101,11 +80,11 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$list_evidence_spans()`](#method-ResearchWorkspace-list_evidence_spans)
 
-- [`ResearchWorkspace$link_evidence()`](#method-ResearchWorkspace-link_evidence)
+- [`ResearchWorkspace$link_evidence_to_proposed_claim()`](#method-ResearchWorkspace-link_evidence_to_proposed_claim)
 
-- [`ResearchWorkspace$get_evidence_for_claim()`](#method-ResearchWorkspace-get_evidence_for_claim)
+- [`ResearchWorkspace$get_evidence_for_proposed_claim()`](#method-ResearchWorkspace-get_evidence_for_proposed_claim)
 
-- [`ResearchWorkspace$verify_claim()`](#method-ResearchWorkspace-verify_claim)
+- [`ResearchWorkspace$verify_proposed_claim()`](#method-ResearchWorkspace-verify_proposed_claim)
 
 - [`ResearchWorkspace$add_dispute()`](#method-ResearchWorkspace-add_dispute)
 
@@ -131,6 +110,7 @@ Create a new provisional research workspace.
 
     ResearchWorkspace$new(
       base_snapshot_id = NULL,
+      graft_snapshot = NULL,
       max_sources = Inf,
       accepted_graft_references = list()
     )
@@ -140,6 +120,10 @@ Create a new provisional research workspace.
 - `base_snapshot_id`:
 
   Optional opaque identifier for the pinned accepted knowledge snapshot.
+
+- `graft_snapshot`:
+
+  Optional real, path-free `graft::GraftSnapshot`.
 
 - `max_sources`:
 
@@ -169,49 +153,6 @@ Set the maximum number of unique sources.
 
 ------------------------------------------------------------------------
 
-### `ResearchWorkspace$upsert_source()`
-
-Insert or update a source.
-
-#### Usage
-
-    ResearchWorkspace$upsert_source(source)
-
-#### Arguments
-
-- `source`:
-
-  A built-in web-source list or a typed resource created by
-  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$get_source()`
-
-Get a source by id.
-
-#### Usage
-
-    ResearchWorkspace$get_source(source_id)
-
-#### Arguments
-
-- `source_id`:
-
-  The source id.
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$list_sources()`
-
-List all sources.
-
-#### Usage
-
-    ResearchWorkspace$list_sources()
-
-------------------------------------------------------------------------
-
 ### `ResearchWorkspace$upsert_retrieved_resource()`
 
 Insert or update a retrieved typed evidence resource.
@@ -225,7 +166,8 @@ Insert or update a retrieved typed evidence resource.
 - `resource`:
 
   A resource created by
-  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
+  or an internal built-in web-source record.
 
 ------------------------------------------------------------------------
 
@@ -245,6 +187,22 @@ Get a retrieved typed evidence resource by id.
 
 ------------------------------------------------------------------------
 
+### `ResearchWorkspace$get_retrieved_source()`
+
+Get one retrieved resource as a built-in source view.
+
+#### Usage
+
+    ResearchWorkspace$get_retrieved_source(resource_id)
+
+#### Arguments
+
+- `resource_id`:
+
+  Resource id.
+
+------------------------------------------------------------------------
+
 ### `ResearchWorkspace$list_retrieved_resources()`
 
 List all retrieved evidence as typed resources.
@@ -255,46 +213,13 @@ List all retrieved evidence as typed resources.
 
 ------------------------------------------------------------------------
 
-### `ResearchWorkspace$upsert_resource()`
+### `ResearchWorkspace$list_retrieved_sources()`
 
-Compatibility alias for `upsert_retrieved_resource()`.
-
-#### Usage
-
-    ResearchWorkspace$upsert_resource(resource)
-
-#### Arguments
-
-- `resource`:
-
-  A resource created by
-  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$get_resource()`
-
-Compatibility alias for `get_retrieved_resource()`.
+List retrieved resources as built-in source views.
 
 #### Usage
 
-    ResearchWorkspace$get_resource(resource_id)
-
-#### Arguments
-
-- `resource_id`:
-
-  Resource id.
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$list_resources()`
-
-Compatibility alias for `list_retrieved_resources()`.
-
-#### Usage
-
-    ResearchWorkspace$list_resources()
+    ResearchWorkspace$list_retrieved_sources()
 
 ------------------------------------------------------------------------
 
@@ -340,61 +265,19 @@ List all proposed claims.
 
 ------------------------------------------------------------------------
 
-### `ResearchWorkspace$add_claim()`
+### `ResearchWorkspace$proposed_claims_for_resource()`
 
-Compatibility alias for `add_proposed_claim()`.
+Proposed claims that cite a retrieved resource.
 
 #### Usage
 
-    ResearchWorkspace$add_claim(claim)
+    ResearchWorkspace$proposed_claims_for_resource(resource_id)
 
 #### Arguments
 
-- `claim`:
+- `resource_id`:
 
-  A `tempest_claim` S7 record.
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$get_claim()`
-
-Compatibility alias for `get_proposed_claim()`.
-
-#### Usage
-
-    ResearchWorkspace$get_claim(claim_id)
-
-#### Arguments
-
-- `claim_id`:
-
-  The claim id.
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$list_claims()`
-
-Compatibility alias for `list_proposed_claims()`.
-
-#### Usage
-
-    ResearchWorkspace$list_claims()
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$claims_for_source()`
-
-Claims that cite a given source.
-
-#### Usage
-
-    ResearchWorkspace$claims_for_source(source_id)
-
-#### Arguments
-
-- `source_id`:
-
-  Source id.
+  Resource id.
 
 ------------------------------------------------------------------------
 
@@ -440,13 +323,13 @@ List all evidence spans in deterministic id order.
 
 ------------------------------------------------------------------------
 
-### `ResearchWorkspace$link_evidence()`
+### `ResearchWorkspace$link_evidence_to_proposed_claim()`
 
 Link an evidence span to a claim.
 
 #### Usage
 
-    ResearchWorkspace$link_evidence(claim_id, span_id)
+    ResearchWorkspace$link_evidence_to_proposed_claim(claim_id, span_id)
 
 #### Arguments
 
@@ -460,13 +343,13 @@ Link an evidence span to a claim.
 
 ------------------------------------------------------------------------
 
-### `ResearchWorkspace$get_evidence_for_claim()`
+### `ResearchWorkspace$get_evidence_for_proposed_claim()`
 
 Evidence spans linked to a claim.
 
 #### Usage
 
-    ResearchWorkspace$get_evidence_for_claim(claim_id)
+    ResearchWorkspace$get_evidence_for_proposed_claim(claim_id)
 
 #### Arguments
 
@@ -476,13 +359,13 @@ Evidence spans linked to a claim.
 
 ------------------------------------------------------------------------
 
-### `ResearchWorkspace$verify_claim()`
+### `ResearchWorkspace$verify_proposed_claim()`
 
 Update a claim's verification status.
 
 #### Usage
 
-    ResearchWorkspace$verify_claim(
+    ResearchWorkspace$verify_proposed_claim(
       claim_id,
       status,
       score = NA_real_,

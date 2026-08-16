@@ -5,7 +5,7 @@
 ## Usage
 
 ``` r
-tempest_session_save(session, path, overwrite = FALSE, codec_registry = NULL)
+tempest_session_save(session, path, overwrite = FALSE)
 ```
 
 ## Arguments
@@ -24,13 +24,6 @@ tempest_session_save(session, path, overwrite = FALSE, codec_registry = NULL)
 
   If `TRUE`, replace an existing bundle directory.
 
-- codec_registry:
-
-  Optional
-  [`tempest_artifact_codec_registry()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_codec_registry.md)
-  containing host-defined codecs needed to encode typed artifact
-  content.
-
 ## Value
 
 Invisibly returns the normalized bundle directory.
@@ -40,17 +33,14 @@ Invisibly returns the normalized bundle directory.
 `tempest_session_save()` writes a schema-versioned directory bundle for
 a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
-The bundle stores the research manifest, authoritative workspace, and
-typed artifact catalog. The deprecated `store` alias is not serialized
-separately. Inline artifacts use explicit UTF-8 or canonical JSON
-codecs, every declared file is checksummed, and the `session.json`
-manifest is written last. Live chat handles, registered tool closures,
-Shiny reactive state, credentials, and raw provider request bodies are
-not serialized.
+The bundle stores the research manifest, authoritative workspace,
+optional immutable Graft snapshot, and narrow report product. Every
+declared file is checksummed, and the `session.json` manifest is written
+last. Generic workflow and artifact-catalog state, live chat handles,
+registered tool closures, Shiny reactive state, credentials, and raw
+provider request bodies are not serialized.
 
 Use
 [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md)
 to load the bundle with a fresh runtime
-[TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md)
-and
-[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md).
+[TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md).

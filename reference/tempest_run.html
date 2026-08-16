@@ -19,7 +19,7 @@ writes a cited report in Markdown.
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,7 +31,7 @@ writes a cited report in Markdown.
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -67,9 +67,6 @@ writes a cited report in Markdown.
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  n_experts <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  experts <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  runtime <span class="op">=</span> <span class="fu"><a href="tempest_runtime.html">tempest_runtime</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  runtime_factory <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="tempest_runtime.html">tempest_runtime</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  connection_permissions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  research_strategy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"key_questions"</span>, <span class="st">"conversation"</span><span class="op">)</span>,</span>
 <span>  max_rounds <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  max_questions_per_perspective <span class="op">=</span> <span class="fl">3</span>,</span>
@@ -83,8 +80,6 @@ writes a cited report in Markdown.
 <span>  remove_duplicate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  artifact_catalog <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  workflow_run <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .state <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -114,22 +109,6 @@ writes a cited report in Markdown.
 <dd><p>Optional list of active profiles created by
 <code><a href="tempest_expert.html">tempest_expert()</a></code>. When supplied, STORM uses this selected team and does
 not generate experts.</p></dd>
-
-
-<dt id="arg-runtime">runtime<a class="anchor" aria-label="anchor" href="#arg-runtime"></a></dt>
-<dd><p>Frozen Tempest 0.1 <code><a href="tempest_runtime.html">tempest_runtime()</a></code> adapter. Existing
-integrations only.</p></dd>
-
-
-<dt id="arg-runtime-factory">runtime_factory<a class="anchor" aria-label="anchor" href="#arg-runtime-factory"></a></dt>
-<dd><p>Function that recreates the frozen 0.1 <code>runtime</code>
-inside parallel workers. Existing integrations using a custom runtime with
-<code>parallel_research = TRUE</code> must provide a matching factory.</p></dd>
-
-
-<dt id="arg-connection-permissions">connection_permissions<a class="anchor" aria-label="anchor" href="#arg-connection-permissions"></a></dt>
-<dd><p>Frozen Tempest 0.1 mapping from expert or
-model-role ids to opaque connection ids allowed for this run.</p></dd>
 
 
 <dt id="arg-research-strategy">research_strategy<a class="anchor" aria-label="anchor" href="#arg-research-strategy"></a></dt>
@@ -195,16 +174,6 @@ make final artifacts available.</p></dd>
 <dd><p>If <code>TRUE</code>, prints progress messages.</p></dd>
 
 
-<dt id="arg-artifact-catalog">artifact_catalog<a class="anchor" aria-label="anchor" href="#arg-artifact-catalog"></a></dt>
-<dd><p>Frozen Tempest 0.1 shared
-<code>TempestArtifactCatalog</code>, used by the generic STORM workflow adapter.</p></dd>
-
-
-<dt id="arg-workflow-run">workflow_run<a class="anchor" aria-label="anchor" href="#arg-workflow-run"></a></dt>
-<dd><p>Frozen Tempest 0.1 owning <code>TempestRun</code>. When supplied,
-the result exposes it as <code>workflow_run</code>.</p></dd>
-
-
 <dt id="arg--state">.state<a class="anchor" aria-label="anchor" href="#arg--state"></a></dt>
 <dd><p>Internal adapter-only fixed STORM product state. This is not a
 public continuation API.</p></dd>
@@ -214,20 +183,7 @@ public continuation API.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A list with product fields <code>title</code>, <code>perspectives</code>, <code>experts</code>,
 <code>outline</code>, <code>draft_md</code>, <code>report_md</code>, <code>manifest</code>, <code>state</code>, <code>workspace</code>,
-<code>retriever</code>, and <code>output_dir</code>. The compatibility field <code>store</code> references
-the same object as <code>workspace</code>. Frozen 0.1 compatibility fields
-<code>artifact_catalog</code> and <code>workflow_run</code> are also returned temporarily.</p>
-    </div>
-    <div class="section level2">
-    <h2 id="frozen-tempest-seams">Frozen Tempest 0.1 seams<a class="anchor" aria-label="anchor" href="#frozen-tempest-seams"></a></h2>
-
-
-
-<p><code>runtime</code>, <code>runtime_factory</code>, <code>connection_permissions</code>, <code>artifact_catalog</code>,
-and <code>workflow_run</code> expose the frozen experimental generic kernel. They remain
-only for existing Tempest 0.1 integrations and are scheduled for replacement
-or removal in Tempest 0.2.0. New code should consume <code>report_md</code>, <code>manifest</code>,
-<code>state</code>, and the scientific evidence in <code>workspace</code>.</p>
+<code>retriever</code>, and <code>output_dir</code>.</p>
     </div>
 
     <div class="section level2">

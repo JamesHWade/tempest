@@ -112,7 +112,7 @@ resources to a run-scoped `ResearchWorkspace` explicitly:
 ``` r
 
 workspace <- tempest_research_workspace()
-invisible(lapply(resources, workspace$upsert_resource))
+invisible(lapply(resources, workspace$upsert_retrieved_resource))
 ```
 
 The workspace now has durable resource fingerprints and can be supplied

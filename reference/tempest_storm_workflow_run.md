@@ -98,5 +98,4 @@ This experimental API is frozen and scheduled for removal in Tempest
 This is the generic-run counterpart to
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md).
 It returns the `TempestRun`; each step result retains the corresponding
-legacy STORM result under `$value`, including its `$workflow_run`
-handle.
+STORM result under `$value`.

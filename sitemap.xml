@@ -16,7 +16,6 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/ExpertSessionManager.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/SimulatedUser.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/SourceStore.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestConfig.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestResearchManifest.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestRetriever.html</loc></url>
@@ -117,8 +116,6 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_accessors.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_async.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_cancel.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_restore.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_resume.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_save.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_snapshot.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_workflow.html</loc></url>

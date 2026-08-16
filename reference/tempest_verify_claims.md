@@ -6,7 +6,7 @@ Verify claim citations against their sources
 
 ``` r
 tempest_verify_claims(
-  store,
+  workspace,
   verifier,
   policy = "claim_verified",
   verifier_model = NA_character_,
@@ -17,11 +17,11 @@ tempest_verify_claims(
 
 ## Arguments
 
-- store:
+- workspace:
 
   A
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  holding provisional claims and retrieved sources.
+  holding proposed claims and retrieved sources.
 
 - verifier:
 

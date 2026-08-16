@@ -3,15 +3,14 @@
 Maintains state for a Co-STORM session: multi-agent dialog, mind map,
 provisional scientific evidence, and report state.
 
-## Frozen Tempest 0.1 fields
+## Internal implementation
 
-`runtime`, `connection_permissions`, `artifacts`, `artifact_catalog`,
-`workflow_run`, and `capability_grants` expose the frozen experimental
-generic kernel. They remain only for existing Tempest 0.1 integrations
-and are scheduled for replacement or removal in Tempest 0.2.0. New host
-code should keep tools and authenticated clients process-local and use
-the session's scientific evidence and report state as its product
-boundary.
+`TempestSession` is an unexported mutable implementation returned by
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
+Its supported product state is the correlated research manifest,
+workspace, transcript, mind map, experts, progress events, and canonical
+report. Process-local execution members are internal and are not part of
+the persistence or public API contract.
 
 ## Public fields
 
@@ -21,11 +20,13 @@ boundary.
 
 - `runtime`:
 
-  Frozen Tempest 0.1 `TempestRuntime` adapter.
+  Internal process-local execution member; not part of the public or
+  persistence contract.
 
 - `connection_permissions`:
 
-  Frozen Tempest 0.1 per-role or per-expert connection allow-lists.
+  Internal process-local execution member; not part of the public or
+  persistence contract.
 
 - `progress`:
 
@@ -57,20 +58,13 @@ boundary.
 
 - `artifacts`:
 
-  Frozen Tempest 0.1 environment of auxiliary session state.
-
-- `artifact_catalog`:
-
-  Frozen Tempest 0.1 typed deliverable catalog.
-
-- `workflow_run`:
-
-  Frozen Tempest 0.1 generic `TempestRun` that owns the session workflow
-  lifecycle, when present.
+  Internal process-local presentation state; not part of the public or
+  persistence contract.
 
 - `capability_grants`:
 
-  Frozen Tempest 0.1 capability decisions by execution context.
+  Internal process-local execution state; not part of the public or
+  persistence contract.
 
 - `discourse_manager`:
 
@@ -103,10 +97,6 @@ boundary.
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
   containing provisional research material. Workspace mutation methods
   remain available.
-
-- `store`:
-
-  Deprecated read-only compatibility alias of `workspace`.
 
 - `retriever`:
 
@@ -172,7 +162,9 @@ boundary.
 
 ### `TempestSession$new()`
 
-Create a new TempestSession.
+Internal constructor. Use
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+for the supported API.
 
 #### Usage
 
@@ -202,9 +194,7 @@ Create a new TempestSession.
 
 - `runtime`:
 
-  Frozen Tempest 0.1
-  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-  adapter. Existing integrations only.
+  Internal process-local runtime implementation.
 
 - `n_experts`:
 
@@ -218,14 +208,13 @@ Create a new TempestSession.
 
 - `connection_permissions`:
 
-  Frozen Tempest 0.1 mapping from role or expert ids to opaque
-  connection ids allowed for this session.
+  Internal process-local connection policy.
 
 - `retriever`:
 
   Optional `TempestRetriever` or compatible retriever object with a
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  at `$workspace` or its legacy `$store` alias.
+  at `$workspace`.
 
 - `progress`:
 

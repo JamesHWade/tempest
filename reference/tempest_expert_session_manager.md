@@ -12,7 +12,7 @@ tempest_expert_session_manager(
   retriever,
   allowed_connection_ref_ids = list(),
   extractor = NULL,
-  store = NULL,
+  workspace = NULL,
   progress = NULL,
   run_id = NULL
 )
@@ -48,7 +48,7 @@ tempest_expert_session_manager(
 
   Optional fact-extraction chat.
 
-- store:
+- workspace:
 
   Optional
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md);

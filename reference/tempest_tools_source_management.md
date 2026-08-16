@@ -21,11 +21,12 @@ tempest_tools_source_management(
 
 - allow_claim_writes:
 
-  Whether to include `add_claim` and transitional fact-writing aliases.
+  Whether to include `add_proposed_claim`.
 
 - claim_provenance:
 
-  Optional provenance recorded on claims written via `add_claim`.
+  Optional provenance recorded on claims written via
+  `add_proposed_claim`.
 
 ## Value
 

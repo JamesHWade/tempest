@@ -11,8 +11,6 @@ tempest_shiny_server(
   store = NULL,
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
   experts = NULL,
-  runtime = tempest_runtime(),
-  connection_permissions = list(),
   session_id = NULL,
   run = NULL
 )
@@ -45,18 +43,6 @@ tempest_shiny_server(
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   for new Co-STORM sessions. May be a value, function, or reactive.
 
-- runtime:
-
-  A
-  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md),
-  function, or reactive used to resolve process-local operations,
-  capabilities, and connections.
-
-- connection_permissions:
-
-  Named per-role or per-expert connection allow-lists passed to
-  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
-
 - session_id:
 
   Optional stable session id passed to
@@ -82,8 +68,6 @@ A list with the shared `store`; reactive `run`, `status`, `events`,
 [`tempest_shiny_ui()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_ui.md)
 and lets a host app provide a
 [TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md),
-process-local
-[`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md),
 optional expert profiles, a stable session id, and an optional shared
 store. The returned handle exposes the shared store and reactive
 accessors for generic run, event, approval, capability-grant, artifact,

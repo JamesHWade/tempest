@@ -9,7 +9,7 @@ provisional scientific evidence, and report state."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,7 +21,7 @@ provisional scientific evidence, and report state."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul></li>
@@ -49,16 +49,15 @@ provisional scientific evidence, and report state.</p>
 
 
     <div class="section level2">
-    <h2 id="frozen-tempest-fields">Frozen Tempest 0.1 fields<a class="anchor" aria-label="anchor" href="#frozen-tempest-fields"></a></h2>
+    <h2 id="internal-implementation">Internal implementation<a class="anchor" aria-label="anchor" href="#internal-implementation"></a></h2>
 
 
 
-<p><code>runtime</code>, <code>connection_permissions</code>, <code>artifacts</code>, <code>artifact_catalog</code>,
-<code>workflow_run</code>, and <code>capability_grants</code> expose the frozen experimental
-generic kernel. They remain only for existing Tempest 0.1 integrations and
-are scheduled for replacement or removal in Tempest 0.2.0. New host code
-should keep tools and authenticated clients process-local and use the
-session's scientific evidence and report state as its product boundary.</p>
+<p><code>TempestSession</code> is an unexported mutable implementation returned by
+<code><a href="tempest_session.html">tempest_session()</a></code>. Its supported product state is the correlated research
+manifest, workspace, transcript, mind map, experts, progress events, and
+canonical report. Process-local execution members are internal and are not
+part of the persistence or public API contract.</p>
     </div>
     <div class="section level2">
     <h2 id="public-fields">Public fields<a class="anchor" aria-label="anchor" href="#public-fields"></a></h2>
@@ -67,12 +66,13 @@ session's scientific evidence and report state as its product boundary.</p>
 
 
     <dt><code>runtime</code></dt>
-<dd><p>Frozen Tempest 0.1 <code>TempestRuntime</code> adapter.</p></dd>
+<dd><p>Internal process-local execution member; not part of the
+public or persistence contract.</p></dd>
 
 
     <dt><code>connection_permissions</code></dt>
-<dd><p>Frozen Tempest 0.1 per-role or per-expert
-connection allow-lists.</p></dd>
+<dd><p>Internal process-local execution member; not
+part of the public or persistence contract.</p></dd>
 
 
     <dt><code>progress</code></dt>
@@ -104,21 +104,13 @@ connection allow-lists.</p></dd>
 
 
     <dt><code>artifacts</code></dt>
-<dd><p>Frozen Tempest 0.1 environment of auxiliary session state.</p></dd>
-
-
-    <dt><code>artifact_catalog</code></dt>
-<dd><p>Frozen Tempest 0.1 typed deliverable catalog.</p></dd>
-
-
-    <dt><code>workflow_run</code></dt>
-<dd><p>Frozen Tempest 0.1 generic <code>TempestRun</code> that owns the
-session workflow lifecycle, when present.</p></dd>
+<dd><p>Internal process-local presentation state; not part of the
+public or persistence contract.</p></dd>
 
 
     <dt><code>capability_grants</code></dt>
-<dd><p>Frozen Tempest 0.1 capability decisions by
-execution context.</p></dd>
+<dd><p>Internal process-local execution state; not part
+of the public or persistence contract.</p></dd>
 
 
     <dt><code>discourse_manager</code></dt>
@@ -150,10 +142,6 @@ progress events for the session.</p></dd>
 <dd><p>Read-only reference to the authoritative
 <a href="ResearchWorkspace.html">ResearchWorkspace</a> containing provisional research material. Workspace
 mutation methods remain available.</p></dd>
-
-
-    <dt><code>store</code></dt>
-<dd><p>Deprecated read-only compatibility alias of <code>workspace</code>.</p></dd>
 
 
     <dt><code>retriever</code></dt>
@@ -195,7 +183,7 @@ mutation methods remain available.</p></dd>
 <li><p><a href="#method-TempestSession-clone"><code>TempestSession$clone()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-TempestSession-initialize"></a><div class="section">
 <h3 id="tempestsession-new-"><code>TempestSession$new()</code><a class="anchor" aria-label="anchor" href="#tempestsession-new-"></a></h3>
-<p>Create a new TempestSession.</p><div class="section">
+<p>Internal constructor. Use <code><a href="tempest_session.html">tempest_session()</a></code> for the supported API.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/TempestSession.html">TempestSession</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  <span class="va">topic</span>,</span>
@@ -219,8 +207,7 @@ mutation methods remain available.</p></dd>
 <dd><p>A <code>TempestConfig</code> object.</p></dd>
 
       <dt><code>runtime</code></dt>
-<dd><p>Frozen Tempest 0.1 <code><a href="tempest_runtime.html">tempest_runtime()</a></code> adapter. Existing
-integrations only.</p></dd>
+<dd><p>Internal process-local runtime implementation.</p></dd>
 
       <dt><code>n_experts</code></dt>
 <dd><p>Number of expert agents.</p></dd>
@@ -230,13 +217,11 @@ integrations only.</p></dd>
 experts are generated automatically using <code><a href="tempest_generate_experts.html">tempest_generate_experts()</a></code>.</p></dd>
 
       <dt><code>connection_permissions</code></dt>
-<dd><p>Frozen Tempest 0.1 mapping from role or
-expert ids to opaque connection ids allowed for this session.</p></dd>
+<dd><p>Internal process-local connection policy.</p></dd>
 
       <dt><code>retriever</code></dt>
 <dd><p>Optional <code>TempestRetriever</code> or compatible retriever
-object with a <a href="ResearchWorkspace.html">ResearchWorkspace</a> at <code>$workspace</code> or its legacy
-<code>$store</code> alias.</p></dd>
+object with a <a href="ResearchWorkspace.html">ResearchWorkspace</a> at <code>$workspace</code>.</p></dd>
 
       <dt><code>progress</code></dt>
 <dd><p>Optional function called with <code>tempest_progress_event</code>

@@ -43,7 +43,8 @@ tempest_register_default_tools(
 
 - claim_provenance:
 
-  Optional provenance recorded on claims written via `add_claim`.
+  Optional provenance recorded on claims written via
+  `add_proposed_claim`.
 
 ## Value
 

@@ -17,10 +17,6 @@ with ragnar for semantic search capabilities.
   containing provisional research evidence. Workspace mutation methods
   remain available.
 
-- `store`:
-
-  Deprecated read-only compatibility alias of `workspace`.
-
 - `ragnar_store`:
 
   Read-only ragnar store reference derived from `config`.
@@ -55,7 +51,7 @@ with ragnar for semantic search capabilities.
 
 - [`TempestRetriever$get_source_text()`](#method-TempestRetriever-get_source_text)
 
-- [`TempestRetriever$list_sources()`](#method-TempestRetriever-list_sources)
+- [`TempestRetriever$list_retrieved_sources()`](#method-TempestRetriever-list_retrieved_sources)
 
 - [`TempestRetriever$cache_stats()`](#method-TempestRetriever-cache_stats)
 
@@ -71,7 +67,7 @@ Create a new TempestRetriever.
 
     TempestRetriever$new(
       config = tempest_config(),
-      store = tempest_research_workspace()
+      workspace = tempest_research_workspace()
     )
 
 #### Arguments
@@ -80,12 +76,10 @@ Create a new TempestRetriever.
 
   A `TempestConfig` object.
 
-- `store`:
+- `workspace`:
 
   A
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md).
-  The argument name is retained for compatibility; new code should use
-  the retriever's `workspace` field.
 
 ------------------------------------------------------------------------
 
@@ -255,13 +249,13 @@ The content text or NA.
 
 ------------------------------------------------------------------------
 
-### `TempestRetriever$list_sources()`
+### `TempestRetriever$list_retrieved_sources()`
 
 List all sources in the store.
 
 #### Usage
 
-    TempestRetriever$list_sources()
+    TempestRetriever$list_retrieved_sources()
 
 #### Returns
 

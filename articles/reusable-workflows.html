@@ -5,15 +5,15 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Maintain Tempest 0.1 reusable workflows • tempest</title>
+<title>Inspect the Tempest 0.1 generic-kernel deletion inventory • tempest</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Maintain Tempest 0.1 reusable workflows">
-<meta name="description" content="Maintain an existing Tempest 0.1 generic workflow while migrating to the scientific-research product APIs.
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Inspect the Tempest 0.1 generic-kernel deletion inventory">
+<meta name="description" content="Review the frozen Tempest 0.1 generic workflow baseline owned by the section-10 deletion PR.
 ">
-<meta property="og:description" content="Maintain an existing Tempest 0.1 generic workflow while migrating to the scientific-research product APIs.
+<meta property="og:description" content="Review the frozen Tempest 0.1 generic workflow baseline owned by the section-10 deletion PR.
 ">
 </head>
 <body>
@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Maintain Tempest 0.1 reusable workflows</a></li>
+<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
     <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
   </ul>
@@ -63,7 +63,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Maintain Tempest 0.1 reusable workflows</h1>
+      <h1>Inspect the Tempest 0.1 generic-kernel deletion inventory</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/vignettes/reusable-workflows.Rmd" class="external-link"><code>vignettes/reusable-workflows.Rmd</code></a></small>
@@ -74,18 +74,18 @@
     
 <blockquote>
 <p><strong>Lifecycle notice:</strong> The experimental generic workflow
-kernel documented in this article is frozen and scheduled for removal in
-Tempest 0.2.0. No compatibility shim is planned. New work should use
-Tempest’s STORM and Co-STORM product APIs while the replacement seams
-are introduced.</p>
+kernel documented in this article remains only as section-10 deletion
+inventory in the Tempest 0.2 migration train. It is not a compatibility
+path, and no migration shim is planned. Use Tempest’s STORM and Co-STORM
+product APIs.</p>
 </blockquote>
-<p>Tempest 0.1 includes a workflow kernel that is not limited to
-research reports. Existing host applications can still use that
-machinery during the migration to turn a customer request, product
-objective, or internal task into its own typed outcome.</p>
-<p>This article reproduces a small action-register workflow for
-maintainers of an existing Tempest 0.1 integration. It runs entirely in
-R, without an API key or network connection.</p>
+<p>Tempest 0.1 included a workflow kernel that was not limited to
+research reports. The baseline below shows how that machinery turned a
+customer request, product objective, or internal task into a typed
+outcome.</p>
+<p>This article preserves a small action-register workflow so the
+deletion scope remains reviewable. It runs entirely in R, without an API
+key or network connection.</p>
 <div class="section level2">
 <h2 id="understand-the-tempest-0-1-workflow-model">Understand the Tempest 0.1 workflow model<a class="anchor" aria-label="anchor" href="#understand-the-tempest-0-1-workflow-model"></a>
 </h2>
@@ -419,37 +419,20 @@ strictly increasing sequence within the run, so a UI or external
 observer can resume from its last seen cursor.</p>
 </div>
 <div class="section level2">
-<h2 id="persist-the-run-and-reattach-the-runtime">Persist the run and reattach the runtime<a class="anchor" aria-label="anchor" href="#persist-the-run-and-reattach-the-runtime"></a>
+<h2 id="treat-generic-persistence-as-deletion-inventory">Treat generic persistence as deletion inventory<a class="anchor" aria-label="anchor" href="#treat-generic-persistence-as-deletion-inventory"></a>
 </h2>
-<p>Generic run bundles save the objective, workflow, selected experts,
-deliverables, approvals, events, grants, evidence, and artifact catalog.
-Executable operations and live services are deliberately excluded.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"tempest-action-register-"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/tempest_run_save.html">tempest_run_save</a></span><span class="op">(</span><span class="va">run</span>, <span class="va">bundle</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">restored</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run_resume.html">tempest_run_resume</a></span><span class="op">(</span></span>
-<span>  <span class="va">bundle</span>,</span>
-<span>  runtime <span class="op">=</span> <span class="va">operations</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  original <span class="op">=</span> <span class="fu"><a href="../reference/tempest_run_accessors.html">tempest_run_status</a></span><span class="op">(</span><span class="va">run</span><span class="op">)</span>,</span>
-<span>  restored <span class="op">=</span> <span class="fu"><a href="../reference/tempest_run_accessors.html">tempest_run_status</a></span><span class="op">(</span><span class="va">restored</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="co">#&gt;    original    restored </span></span>
-<span><span class="co">#&gt; "succeeded" "succeeded"</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">bundle</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/tempest_run_resume.html">tempest_run_resume()</a></code> rehydrates state but does not
-automatically execute pending work. Recreate the runtime, reattach
-<code>runtime_context</code>, connections, policy adapters, and
-callbacks, then explicitly resume when the host is ready. Restored
-connection permissions may narrow saved grants but cannot broaden
-them.</p>
-<p>Canonical JSON values and strings can persist inline. Classed R
-objects, missing values, and binary content need an appropriate artifact
-codec or an external storage reference.</p>
+<p>Generic run-bundle restoration is no longer part of the Tempest 0.2
+product API. Its implementation remains frozen only so the section-10
+deletion PR can remove the generic kernel as a coherent unit. New
+integrations must not call the internal generic restore helpers or
+depend on their artifact-catalog and workflow-run records.</p>
+<p>Persist supported research products through
+<code><a href="../reference/tempest_session_save.html">tempest_session_save()</a></code> for Co-STORM or the
+<code>output_dir</code> bundle written by <code><a href="../reference/tempest_run.html">tempest_run()</a></code> for
+STORM. Those formats retain the correlated research manifest, explicit
+research workspace, narrow report product, and optional immutable Graft
+snapshot without serializing executable operations, live services,
+chats, tools, credentials, or generic workflow state.</p>
 </div>
 <div class="section level2">
 <h2 id="maintain-skills-capabilities-and-connections">Maintain skills, capabilities, and connections<a class="anchor" aria-label="anchor" href="#maintain-skills-capabilities-and-connections"></a>
@@ -458,7 +441,7 @@ codec or an external storage reference.</p>
 host may already give each expert durable skill and capability
 requirements while keeping authenticated clients and credentials outside
 the profile:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">planning_skill</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_skill.html">tempest_skill</a></span><span class="op">(</span></span>
 <span>  <span class="st">"planning.synthesis"</span>,</span>
 <span>  title <span class="op">=</span> <span class="st">"Planning synthesis"</span>,</span>
@@ -485,7 +468,7 @@ the profile:</p>
 <span>  connection_ref_ids <span class="op">=</span> <span class="va">customer_context</span><span class="op">@</span><span class="va">connection_id</span>,</span>
 <span>  model_roles <span class="op">=</span> <span class="st">"expert"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>An existing 0.1 host reconstructs a <code><a href="../reference/tempest_runtime.html">tempest_runtime()</a></code>
+<p>The frozen 0.1 host reconstructs a <code><a href="../reference/tempest_runtime.html">tempest_runtime()</a></code>
 with these specifications, process-local capability implementations, and
 connection bindings. Experts refer to skills and capabilities by ID.
 <code>connection_permissions</code> on
@@ -499,15 +482,15 @@ credentials never enter profiles, events, snapshots, or bundles.</p>
 to end, including process-local connection bindings, capability
 authorization, step and artifact approvals, typed JSON output, and the
 generic Shiny run adapter:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples/shiny-host"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="maintain-an-existing-tempest-0-1-integration">Maintain an existing Tempest 0.1 integration<a class="anchor" aria-label="anchor" href="#maintain-an-existing-tempest-0-1-integration"></a>
+<h2 id="review-the-frozen-tempest-0-1-integration-boundary">Review the frozen Tempest 0.1 integration boundary<a class="anchor" aria-label="anchor" href="#review-the-frozen-tempest-0-1-integration-boundary"></a>
 </h2>
-<p>When maintaining an existing integration, keep these host-owned parts
+<p>The deletion-owned baseline keeps these host-owned parts
 explicit:</p>
 <ol style="list-style-type: decimal">
 <li>Map the incoming request to a <code><a href="../reference/tempest_objective.html">tempest_objective()</a></code>.</li>
@@ -520,15 +503,14 @@ operations.</li>
 checkpoints.</li>
 <li>Attach policy, connections, runtime services, and the host UI.</li>
 </ol>
-<p>In Tempest 0.1, the run, artifact, validation, event, approval,
-cancellation, and persistence contracts remain the same. Do not extend
-those contracts or adapt them for a new application during the
-migration.</p>
-<p>Existing integrations may continue to call
-<code><a href="../reference/tempest_storm_workflow_run.html">tempest_storm_workflow_run()</a></code> or
-<code><a href="../reference/tempest_costorm_workflow_run.html">tempest_costorm_workflow_run()</a></code> until they migrate. New
-research code should call <code><a href="../reference/tempest_run.html">tempest_run()</a></code> or
-<code><a href="../reference/tempest_session.html">tempest_session()</a></code> directly.</p>
+<p>These frozen run, artifact, validation, event, approval,
+cancellation, and persistence contracts are not part of the Tempest 0.2
+product API. Do not extend or adopt them.</p>
+<p><code><a href="../reference/tempest_storm_workflow_run.html">tempest_storm_workflow_run()</a></code> and
+<code><a href="../reference/tempest_costorm_workflow_run.html">tempest_costorm_workflow_run()</a></code> remain only for the
+section-10 deletion PR. Research code should call
+<code><a href="../reference/tempest_run.html">tempest_run()</a></code> or <code><a href="../reference/tempest_session.html">tempest_session()</a></code>
+directly.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

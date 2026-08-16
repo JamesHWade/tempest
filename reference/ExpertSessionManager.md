@@ -36,11 +36,11 @@ Manages capability-scoped chats for validated expert profiles.
 
   Chat object for fact extraction (optional).
 
-- `store`:
+- `workspace`:
 
   A
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  for storing extracted facts (optional).
+  for extracted facts (optional).
 
 - `progress`:
 
@@ -99,7 +99,7 @@ Create a new ExpertSessionManager.
       retriever,
       allowed_connection_ref_ids = list(),
       extractor = NULL,
-      store = NULL,
+      workspace = NULL,
       progress = NULL,
       run_id = NULL
     )
@@ -130,11 +130,11 @@ Create a new ExpertSessionManager.
 
   Optional chat object for fact extraction.
 
-- `store`:
+- `workspace`:
 
   Optional
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  for storing extracted facts.
+  for extracted facts.
 
 - `progress`:
 
