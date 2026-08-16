@@ -1,4 +1,7 @@
-await_tempest_promise <- function(promise, timeout_s = 10) {
+await_tempest_promise <- function(
+  promise,
+  timeout_s = if (identical(Sys.getenv("R_COVR"), "true")) 60 else 10
+) {
   resolved <- FALSE
   value <- NULL
   error <- NULL

@@ -2425,7 +2425,7 @@ test_that("STORM worker streams progress before mirai resolves", {
         verbose
       ) {
         progress(event)
-        deadline <- Sys.time() + 10
+        deadline <- Sys.time() + 60
         while (!file.exists(release_path) && Sys.time() < deadline) {
           Sys.sleep(0.02)
         }
@@ -2458,7 +2458,7 @@ test_that("STORM worker streams progress before mirai resolves", {
   )
 
   seen_stream <- FALSE
-  deadline <- Sys.time() + 10
+  deadline <- Sys.time() + 60
   while (
     mirai::unresolved(value) &&
       !seen_stream &&

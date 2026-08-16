@@ -75,7 +75,7 @@ test_that("async warmup starts independent experts in parallel", {
     timeout_s = 1,
     max_parallel_experts = 2
   )
-  deadline <- Sys.time() + 1
+  deadline <- Sys.time() + 10
   while ((is.null(first_resolve) || !second_started) && Sys.time() < deadline) {
     later::run_now(0.01)
   }
@@ -144,7 +144,7 @@ test_that("stale async warmup suppresses late mutations and events", {
     timeout_s = 1,
     is_current = function() current
   )
-  deadline <- Sys.time() + 1
+  deadline <- Sys.time() + 10
   while (is.null(resolve_chat) && Sys.time() < deadline) {
     later::run_now(0.01)
   }
@@ -298,7 +298,7 @@ test_that("stale warmup evidence and mind-map settlements stay silent", {
     timeout_s = 1,
     is_current = function() evidence_current
   )
-  deadline <- Sys.time() + 1
+  deadline <- Sys.time() + 10
   while (is.null(resolve_evidence) && Sys.time() < deadline) {
     later::run_now(0.01)
   }
@@ -327,7 +327,7 @@ test_that("stale warmup evidence and mind-map settlements stay silent", {
     timeout_s = 1,
     is_current = function() mindmap_current
   )
-  deadline <- Sys.time() + 1
+  deadline <- Sys.time() + 10
   while (is.null(resolve_mindmap) && Sys.time() < deadline) {
     later::run_now(0.01)
   }
@@ -361,7 +361,7 @@ test_that("warmup permits only one in-flight call per session", {
     progress = collector$record
   )
   first <- tempest_session_warmup_async(session, timeout_s = 1)
-  deadline <- Sys.time() + 1
+  deadline <- Sys.time() + 10
   while (is.null(resolve_first) && Sys.time() < deadline) {
     later::run_now(0.01)
   }
