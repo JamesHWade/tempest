@@ -5,7 +5,12 @@
 ## Usage
 
 ``` r
-tempest_session_restore(snapshot, config = tempest_config(), progress = NULL)
+tempest_session_restore(
+  snapshot,
+  config = tempest_config(),
+  progress = NULL,
+  program_set = NULL
+)
 ```
 
 ## Arguments
@@ -24,6 +29,13 @@ tempest_session_restore(snapshot, config = tempest_config(), progress = NULL)
 - progress:
 
   Optional callback for future `tempest_progress_event` objects.
+
+- program_set:
+
+  A
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  carrying the same program identities recorded in the snapshot. If
+  `NULL`, the builtin set is used.
 
 ## Value
 

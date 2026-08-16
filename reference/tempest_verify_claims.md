@@ -10,7 +10,7 @@ tempest_verify_claims(
   verifier,
   policy = "claim_verified",
   verifier_model = NA_character_,
-  modules = NULL,
+  program_set = NULL,
   min_support_score = 0.7
 )
 ```
@@ -36,11 +36,13 @@ tempest_verify_claims(
 
   Optional model id recorded on each verified claim.
 
-- modules:
+- program_set:
 
-  Optional named list of dsprrr modules; when it contains
-  `verify_claim_support`, that module performs the judgement (with an
-  ellmer fallback).
+  A
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  containing the exact `verify_claim_support` program. If `NULL`,
+  [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md)
+  creates the builtin set.
 
 - min_support_score:
 

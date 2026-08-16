@@ -17,7 +17,7 @@ tempest_research_one_perspective(
   topic,
   research_strategy,
   max_questions_per_perspective,
-  dsprrr_modules = NULL,
+  programs,
   run_id = NA_character_
 )
 ```

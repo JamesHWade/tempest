@@ -221,11 +221,13 @@ Deletion-owned baseline scheduled for the section-10 PR.
 - [`tempest_progress_labels()`](https://jameshwade.github.io/tempest/reference/tempest_progress_labels.md)
   : Progress labels for Tempest workflows
 
-## dsprrr modules
+## Governed programs
 
-- [`tempest_load_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.md)
-  **\[experimental\]** : Load compiled dsprrr modules
-- [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md)
-  **\[experimental\]** : Optimize STORM dsprrr modules
-- [`tempest_save_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_save_dsprrr_modules.md)
-  **\[experimental\]** : Save compiled dsprrr modules
+- [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md)
+  : Create a validated Tempest program set
+- [`tempest_compile_programs()`](https://jameshwade.github.io/tempest/reference/tempest_compile_programs.md)
+  : Compile programs in a Tempest program set
+- [`tempest_save_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_save_program_set.md)
+  : Save a Tempest program set
+- [`tempest_load_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_load_program_set.md)
+  : Load and verify a Tempest program set

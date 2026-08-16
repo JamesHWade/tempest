@@ -53,6 +53,7 @@
 <span>  panels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"chat"</span>, <span class="st">"sources"</span>, <span class="st">"facts"</span>, <span class="st">"mindmap"</span>, <span class="st">"transcript"</span>, <span class="st">"report"</span><span class="op">)</span>,</span>
 <span>  experts <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  run <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -87,6 +88,12 @@ new Co-STORM sessions. May be a value, function, or reactive.</p></dd>
 <dt id="arg-session-id">session_id<a class="anchor" aria-label="anchor" href="#arg-session-id"></a></dt>
 <dd><p>Optional stable session id passed to <code><a href="tempest_session.html">tempest_session()</a></code>
 for new Co-STORM sessions. May be a value, function, or reactive.</p></dd>
+
+
+<dt id="arg-program-set">program_set<a class="anchor" aria-label="anchor" href="#arg-program-set"></a></dt>
+<dd><p>Optional <a href="TempestProgramSet.html">TempestProgramSet</a> used for new and restored
+Co-STORM sessions. May be a value, function, or reactive. <code>NULL</code> uses the
+builtin set.</p></dd>
 
 
 <dt id="arg-run">run<a class="anchor" aria-label="anchor" href="#arg-run"></a></dt>

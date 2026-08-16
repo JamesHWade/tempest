@@ -12,6 +12,7 @@ tempest_expert_session_manager(
   retriever,
   allowed_connection_ref_ids = list(),
   extractor = NULL,
+  extract_claims_program = NULL,
   workspace = NULL,
   progress = NULL,
   run_id = NULL
@@ -47,6 +48,11 @@ tempest_expert_session_manager(
 - extractor:
 
   Optional fact-extraction chat.
+
+- extract_claims_program:
+
+  ProgramSet-bound claim-extraction execution. Required when `extractor`
+  is supplied.
 
 - workspace:
 

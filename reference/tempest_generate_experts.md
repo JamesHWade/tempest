@@ -14,7 +14,7 @@ tempest_generate_experts(
   n = 3,
   config = tempest_config(),
   verbose = FALSE,
-  module = NULL
+  program_set = NULL
 )
 ```
 
@@ -36,9 +36,13 @@ tempest_generate_experts(
 
   Print progress.
 
-- module:
+- program_set:
 
-  Optional dsprrr module used internally.
+  A
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  containing the exact `personas` program. If `NULL`,
+  [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md)
+  creates the builtin set.
 
 ## Value
 

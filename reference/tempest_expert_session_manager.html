@@ -53,6 +53,7 @@
 <span>  <span class="va">retriever</span>,</span>
 <span>  allowed_connection_ref_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extractor <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  extract_claims_program <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  run_id <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -86,6 +87,11 @@ stable expert id.</p></dd>
 
 <dt id="arg-extractor">extractor<a class="anchor" aria-label="anchor" href="#arg-extractor"></a></dt>
 <dd><p>Optional fact-extraction chat.</p></dd>
+
+
+<dt id="arg-extract-claims-program">extract_claims_program<a class="anchor" aria-label="anchor" href="#arg-extract-claims-program"></a></dt>
+<dd><p>ProgramSet-bound claim-extraction execution.
+Required when <code>extractor</code> is supplied.</p></dd>
 
 
 <dt id="arg-workspace">workspace<a class="anchor" aria-label="anchor" href="#arg-workspace"></a></dt>

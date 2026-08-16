@@ -53,7 +53,8 @@
 <span>  experts <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  session_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  program_set <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -91,6 +92,12 @@ objects as the session makes progress.</p></dd>
 <dt id="arg-session-id">session_id<a class="anchor" aria-label="anchor" href="#arg-session-id"></a></dt>
 <dd><p>Optional stable session identifier. If <code>NULL</code>, a new
 identifier is generated.</p></dd>
+
+
+<dt id="arg-program-set">program_set<a class="anchor" aria-label="anchor" href="#arg-program-set"></a></dt>
+<dd><p>A <a href="TempestProgramSet.html">TempestProgramSet</a> containing the exact dsprrr
+programs used by Co-STORM. If <code>NULL</code>, <code><a href="tempest_program_set.html">tempest_program_set()</a></code> creates the
+builtin set.</p></dd>
 
 </dl></div>
 

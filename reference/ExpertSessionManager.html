@@ -80,6 +80,10 @@ expert.</p></dd>
 <dd><p>Chat object for fact extraction (optional).</p></dd>
 
 
+    <dt><code>extract_claims_program</code></dt>
+<dd><p>ProgramSet-bound claim-extraction execution.</p></dd>
+
+
     <dt><code>workspace</code></dt>
 <dd><p>A <a href="ResearchWorkspace.html">ResearchWorkspace</a> for extracted facts (optional).</p></dd>
 
@@ -128,6 +132,7 @@ claim-write provenance.</p></dd>
 <span>  <span class="va">retriever</span>,</span>
 <span>  allowed_connection_ref_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extractor <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  extract_claims_program <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  run_id <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -152,6 +157,10 @@ expert id.</p></dd>
 
       <dt><code>extractor</code></dt>
 <dd><p>Optional chat object for fact extraction.</p></dd>
+
+      <dt><code>extract_claims_program</code></dt>
+<dd><p>ProgramSet-bound claim-extraction
+execution. Required when <code>extractor</code> is supplied.</p></dd>
 
       <dt><code>workspace</code></dt>
 <dd><p>Optional <a href="ResearchWorkspace.html">ResearchWorkspace</a> for extracted facts.</p></dd>

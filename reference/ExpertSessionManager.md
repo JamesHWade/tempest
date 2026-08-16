@@ -36,6 +36,10 @@ Manages capability-scoped chats for validated expert profiles.
 
   Chat object for fact extraction (optional).
 
+- `extract_claims_program`:
+
+  ProgramSet-bound claim-extraction execution.
+
 - `workspace`:
 
   A
@@ -99,6 +103,7 @@ Create a new ExpertSessionManager.
       retriever,
       allowed_connection_ref_ids = list(),
       extractor = NULL,
+      extract_claims_program = NULL,
       workspace = NULL,
       progress = NULL,
       run_id = NULL
@@ -129,6 +134,11 @@ Create a new ExpertSessionManager.
 - `extractor`:
 
   Optional chat object for fact extraction.
+
+- `extract_claims_program`:
+
+  ProgramSet-bound claim-extraction execution. Required when `extractor`
+  is supplied.
 
 - `workspace`:
 

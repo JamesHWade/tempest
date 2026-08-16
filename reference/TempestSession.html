@@ -195,6 +195,7 @@ mutation methods remain available.</p></dd>
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .restore_manifest <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .restore_token <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
@@ -230,6 +231,10 @@ objects as the session makes progress.</p></dd>
       <dt><code>session_id</code></dt>
 <dd><p>Optional stable session identifier. If <code>NULL</code>, a new
 identifier is generated.</p></dd>
+
+      <dt><code>program_set</code></dt>
+<dd><p>A <a href="TempestProgramSet.html">TempestProgramSet</a> used for every structured
+Co-STORM stage.</p></dd>
 
       <dt><code>.restore_manifest</code></dt>
 <dd><p>Internal research manifest supplied only by

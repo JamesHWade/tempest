@@ -25,7 +25,7 @@ tempest_run(
   max_questions_per_perspective = 3,
   parallel_research = FALSE,
   parallel_writing = FALSE,
-  dsprrr_modules = NULL,
+  program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
@@ -89,11 +89,13 @@ tempest_run(
   If `TRUE`, write report sections in parallel using the mirai package.
   Failed parallel sections are retried sequentially.
 
-- dsprrr_modules:
+- program_set:
 
-  Optional named list of dsprrr modules, typically from
-  [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md).
-  If `NULL`, fresh modules are created.
+  A
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  containing the exact dsprrr programs used by STORM. If `NULL`,
+  [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md)
+  creates the default set.
 
 - steps:
 

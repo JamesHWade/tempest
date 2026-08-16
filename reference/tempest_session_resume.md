@@ -16,7 +16,8 @@ tempest_session_resume(
   path,
   config = tempest_config(),
   progress = NULL,
-  partial_recovery = FALSE
+  partial_recovery = FALSE,
+  program_set = NULL
 )
 ```
 
@@ -42,6 +43,13 @@ tempest_session_resume(
   presentation files are missing or fail integrity checks. All other
   declared files, including expert, workspace, report, and Graft
   snapshot state, must pass integrity checks.
+
+- program_set:
+
+  A
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  carrying the same program identities recorded in the bundle. If
+  `NULL`, the builtin set is used.
 
 ## Value
 

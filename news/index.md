@@ -17,14 +17,19 @@
   shinychat greeting with consistently sized controls, lets users
   replace generated panels with up to five named expert perspectives,
   and reserves the footer for active-session status and actions.
-- [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md),
-  [`tempest_save_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_save_dsprrr_modules.md),
+- [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md),
+  [`tempest_compile_programs()`](https://jameshwade.github.io/tempest/reference/tempest_compile_programs.md),
+  [`tempest_save_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_save_program_set.md),
   and
-  [`tempest_load_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.md)
-  now expose per-module dsprrr optimizer controls and agentic
-  teleprompter arguments, persist modules as atomic checksummed bundles
-  of versioned dsprrr program artifacts instead of raw RDS lists, and
-  remove the obsolete `fact_extraction` module alias.
+  [`tempest_load_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_load_program_set.md)
+  make all ten STORM and Co-STORM stage programs explicitly addressable,
+  preserve exact dsprrr artifact and evaluator identities, and fail
+  closed on incomplete, corrupt, or mismatched program bundles.
+  [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md),
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md),
+  session restore/resume, and
+  [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
+  accept and verify the ProgramSet before any stage executes.
 - [`tempest_research_manifest()`](https://jameshwade.github.io/tempest/reference/tempest_research_manifest.md)
   records the stable run, configuration, program, knowledge-snapshot,
   runtime, trace, and deliverable identities for STORM and Co-STORM

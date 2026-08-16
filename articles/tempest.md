@@ -330,8 +330,10 @@ inventory](https://jameshwade.github.io/tempest/articles/reusable-workflows.md).
   for interactive Co-STORM research.
 - Add semantic retrieval with `ragnar` through `embed_fn` or a pre-built
   `ragnar_store`.
-- Optimize structured STORM modules with
-  [`tempest_optimize_dsprrr_modules()`](https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.md).
+- Compile selected structured programs with
+  [`tempest_compile_programs()`](https://jameshwade.github.io/tempest/reference/tempest_compile_programs.md),
+  then pass the complete verified `TempestProgramSet` to STORM or
+  Co-STORM.
 - Capture progress with
   [`tempest_progress_collector()`](https://jameshwade.github.io/tempest/reference/tempest_progress_collector.md)
   and inspect events with

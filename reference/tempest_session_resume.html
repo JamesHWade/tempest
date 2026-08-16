@@ -59,7 +59,8 @@ loaded for display and reduction, but they are not replayed into <code>progress<
 <span>  <span class="va">path</span>,</span>
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  partial_recovery <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  partial_recovery <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  program_set <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -86,6 +87,11 @@ objects.</p></dd>
 allowlisted presentation files are missing or fail integrity checks. All
 other declared files, including expert, workspace, report, and Graft
 snapshot state, must pass integrity checks.</p></dd>
+
+
+<dt id="arg-program-set">program_set<a class="anchor" aria-label="anchor" href="#arg-program-set"></a></dt>
+<dd><p>A <a href="TempestProgramSet.html">TempestProgramSet</a> carrying the same program
+identities recorded in the bundle. If <code>NULL</code>, the builtin set is used.</p></dd>
 
 </dl></div>
     <div class="section level2">

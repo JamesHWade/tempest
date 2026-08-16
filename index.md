@@ -496,16 +496,14 @@ executes five steps: `perspectives`, `research`, `outline`, `write`,
 - **Parallel section writing** – pass `parallel_writing = TRUE` to write
   report sections concurrently with mirai, then extract facts and
   assemble the article in deterministic outline order.
-- **dsprrr modules** – structured extraction steps (query decomposition,
-  claim extraction, outline drafting, section writing) use
-  [dsprrr](https://github.com/JamesHWade/dsprrr) modules for more
-  reliable structured output. Optimized module sets can be passed
-  through `dsprrr_modules`.
+- **Governed dsprrr programs** – every structured stage resolves an
+  exact addressable program from a `TempestProgramSet`, including its
+  verified dsprrr artifact ID, stage contract, and evaluator identity.
 
-### Optimizing dsprrr Modules
+### Compiling dsprrr programs
 
-Compile STORM modules with your own labeled examples, then reuse them in
-a run:
+Compile selected programs with your own labeled examples, then reuse the
+complete verified set in a run:
 
 ``` r
 
@@ -518,30 +516,37 @@ query_train$queries <- I(list(c(
   "EV battery recycling capacity constraints"
 )))
 
-optimized_modules <- tempest_optimize_dsprrr_modules(
+program_set <- tempest_program_set()
+compiled_program_set <- tempest_compile_programs(
+  program_set,
   trainsets = list(query_decomposition = query_train),
-  config = cfg,
-  compile_args = list(
-    .default = list(
-      control = dsprrr::optimizer_control(max_provider_calls = 100L)
-    )
-  ),
-  save_path = "storm-programs.rds"
+  teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 123L),
+  path = "compiled-storm-programs"
 )
 
 res <- tempest_run(
   "Life cycle assessment of lithium-ion batteries",
   config = cfg,
-  dsprrr_modules = optimized_modules
+  program_set = compiled_program_set
 )
 ```
 
-`storm-programs.rds` is an atomic, checksummed bundle of dsprrr program
-artifacts, not a raw serialization of live R6 objects. More advanced
-teleprompters such as `Omni()`, `AutoResearch()`, and `MetaHarness()`
-can be selected through `teleprompter`; use per-module `compile_args` to
-provide their optimizer controls, checkpoints, agent chats, and sandbox
-runners.
+`compiled-storm-programs` contains a closed manifest and one dsprrr
+artifact per stage. Loading recomputes every artifact ID before any
+program can execute. Runtime registries, model clients, credentials, and
+executable objects never enter ProgramSet metadata.
+
+When resuming a custom-program run, supply a ProgramSet with the same
+verified identity; moving an intact bundle is allowed. If `program_set`
+is omitted, Tempest resolves its current builtins and resumes only when
+their artifact IDs match the persisted run.
+
+Co-STORM uses the same boundary: pass `program_set` to
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+or
+[`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md).
+Session snapshots record the complete ProgramSet identity, and restoring
+or resuming a custom-program session requires the matching verified set.
 
 ### Configuration options
 

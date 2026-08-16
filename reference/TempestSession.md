@@ -178,6 +178,7 @@ for the supported API.
       retriever = NULL,
       progress = NULL,
       session_id = NULL,
+      program_set = NULL,
       .restore_manifest = NULL,
       .restore_token = NULL
     )
@@ -225,6 +226,12 @@ for the supported API.
 
   Optional stable session identifier. If `NULL`, a new identifier is
   generated.
+
+- `program_set`:
+
+  A
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  used for every structured Co-STORM stage.
 
 - `.restore_manifest`:
 

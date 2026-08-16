@@ -430,13 +430,13 @@
 <li>
 <strong>Parallel section writing</strong> – pass <code>parallel_writing = TRUE</code> to write report sections concurrently with mirai, then extract facts and assemble the article in deterministic outline order.</li>
 <li>
-<strong>dsprrr modules</strong> – structured extraction steps (query decomposition, claim extraction, outline drafting, section writing) use <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> modules for more reliable structured output. Optimized module sets can be passed through <code>dsprrr_modules</code>.</li>
+<strong>Governed dsprrr programs</strong> – every structured stage resolves an exact addressable program from a <code>TempestProgramSet</code>, including its verified dsprrr artifact ID, stage contract, and evaluator identity.</li>
 </ul>
 </div>
 <div class="section level3">
-<h3 id="optimizing-dsprrr-modules">Optimizing dsprrr Modules<a class="anchor" aria-label="anchor" href="#optimizing-dsprrr-modules"></a>
+<h3 id="compiling-dsprrr-programs">Compiling dsprrr programs<a class="anchor" aria-label="anchor" href="#compiling-dsprrr-programs"></a>
 </h3>
-<p>Compile STORM modules with your own labeled examples, then reuse them in a run:</p>
+<p>Compile selected programs with your own labeled examples, then reuse the complete verified set in a run:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">query_train</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  question <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"What are battery recycling bottlenecks?"</span><span class="op">)</span>,</span>
@@ -447,23 +447,22 @@
 <span>  <span class="st">"EV battery recycling capacity constraints"</span></span>
 <span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">optimized_modules</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules</a></span><span class="op">(</span></span>
+<span><span class="va">program_set</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_program_set.html">tempest_program_set</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">compiled_program_set</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_compile_programs.html">tempest_compile_programs</a></span><span class="op">(</span></span>
+<span>  <span class="va">program_set</span>,</span>
 <span>  trainsets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>query_decomposition <span class="op">=</span> <span class="va">query_train</span><span class="op">)</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  compile_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    .default <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>      control <span class="op">=</span> <span class="fu">dsprrr</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/dsprrr/reference/optimizer_control.html" class="external-link">optimizer_control</a></span><span class="op">(</span>max_provider_calls <span class="op">=</span> <span class="fl">100L</span><span class="op">)</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  save_path <span class="op">=</span> <span class="st">"storm-programs.rds"</span></span>
+<span>  teleprompters <span class="op">=</span> <span class="fu">dsprrr</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/dsprrr/reference/LabeledFewShot.html" class="external-link">LabeledFewShot</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">1L</span>, seed <span class="op">=</span> <span class="fl">123L</span><span class="op">)</span>,</span>
+<span>  path <span class="op">=</span> <span class="st">"compiled-storm-programs"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
 <span>  <span class="st">"Life cycle assessment of lithium-ion batteries"</span>,</span>
 <span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  dsprrr_modules <span class="op">=</span> <span class="va">optimized_modules</span></span>
+<span>  program_set <span class="op">=</span> <span class="va">compiled_program_set</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code>storm-programs.rds</code> is an atomic, checksummed bundle of dsprrr program artifacts, not a raw serialization of live R6 objects. More advanced teleprompters such as <code>Omni()</code>, <code>AutoResearch()</code>, and <code>MetaHarness()</code> can be selected through <code>teleprompter</code>; use per-module <code>compile_args</code> to provide their optimizer controls, checkpoints, agent chats, and sandbox runners.</p>
+<p><code>compiled-storm-programs</code> contains a closed manifest and one dsprrr artifact per stage. Loading recomputes every artifact ID before any program can execute. Runtime registries, model clients, credentials, and executable objects never enter ProgramSet metadata.</p>
+<p>When resuming a custom-program run, supply a ProgramSet with the same verified identity; moving an intact bundle is allowed. If <code>program_set</code> is omitted, Tempest resolves its current builtins and resumes only when their artifact IDs match the persisted run.</p>
+<p>Co-STORM uses the same boundary: pass <code>program_set</code> to <code><a href="reference/tempest_session.html">tempest_session()</a></code> or <code><a href="reference/tempest_shiny_server.html">tempest_shiny_server()</a></code>. Session snapshots record the complete ProgramSet identity, and restoring or resuming a custom-program session requires the matching verified set.</p>
 </div>
 <div class="section level3">
 <h3 id="configuration-options">Configuration options<a class="anchor" aria-label="anchor" href="#configuration-options"></a>

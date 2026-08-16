@@ -72,7 +72,7 @@ writes a cited report in Markdown.
 <span>  max_questions_per_perspective <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  parallel_research <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  parallel_writing <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  dsprrr_modules <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  steps <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"perspectives"</span>, <span class="st">"research"</span>, <span class="st">"outline"</span>, <span class="st">"write"</span>, <span class="st">"polish"</span><span class="op">)</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resume <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -136,9 +136,9 @@ the mirai package. Requires mirai to be installed. Default <code>FALSE</code>.</
 the mirai package. Failed parallel sections are retried sequentially.</p></dd>
 
 
-<dt id="arg-dsprrr-modules">dsprrr_modules<a class="anchor" aria-label="anchor" href="#arg-dsprrr-modules"></a></dt>
-<dd><p>Optional named list of dsprrr modules, typically from
-<code><a href="tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules()</a></code>. If <code>NULL</code>, fresh modules are created.</p></dd>
+<dt id="arg-program-set">program_set<a class="anchor" aria-label="anchor" href="#arg-program-set"></a></dt>
+<dd><p>A <a href="TempestProgramSet.html">TempestProgramSet</a> containing the exact dsprrr programs
+used by STORM. If <code>NULL</code>, <code><a href="tempest_program_set.html">tempest_program_set()</a></code> creates the default set.</p></dd>
 
 
 <dt id="arg-steps">steps<a class="anchor" aria-label="anchor" href="#arg-steps"></a></dt>

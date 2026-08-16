@@ -12,6 +12,7 @@ tempest_shiny_server(
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
   experts = NULL,
   session_id = NULL,
+  program_set = NULL,
   run = NULL
 )
 ```
@@ -48,6 +49,13 @@ tempest_shiny_server(
   Optional stable session id passed to
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   for new Co-STORM sessions. May be a value, function, or reactive.
+
+- program_set:
+
+  Optional
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  used for new and restored Co-STORM sessions. May be a value, function,
+  or reactive. `NULL` uses the builtin set.
 
 - run:
 

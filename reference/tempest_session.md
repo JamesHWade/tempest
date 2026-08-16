@@ -12,7 +12,8 @@ tempest_session(
   experts = NULL,
   retriever = NULL,
   progress = NULL,
-  session_id = NULL
+  session_id = NULL,
+  program_set = NULL
 )
 ```
 
@@ -50,6 +51,14 @@ tempest_session(
 
   Optional stable session identifier. If `NULL`, a new identifier is
   generated.
+
+- program_set:
+
+  A
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  containing the exact dsprrr programs used by Co-STORM. If `NULL`,
+  [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md)
+  creates the builtin set.
 
 ## Examples
 

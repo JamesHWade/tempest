@@ -17,6 +17,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/SimulatedUser.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestConfig.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/TempestProgramSet.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestResearchManifest.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestRetriever.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestSession.html</loc></url>
@@ -46,6 +47,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_capability_spec.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_claim.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_claims.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_compile_programs.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_config.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_connection_provider.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_connection_ref.html</loc></url>
@@ -74,7 +76,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_has.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_http_get.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_inform.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_load_dsprrr_modules.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_load_program_set.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_chat.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.html</loc></url>
@@ -88,9 +90,9 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_okf_context.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_okf_resources.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_operation_registry.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_optimize_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_parallel_workers.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_pkg_file.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_program_set.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_collector.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_event.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_event_data.html</loc></url>
@@ -120,7 +122,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_snapshot.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_workflow.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_runtime.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_save_dsprrr_modules.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_save_program_set.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_azure_ai_search.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_bing.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_brave.html</loc></url>
