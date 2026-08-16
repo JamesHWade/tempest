@@ -37,7 +37,8 @@ tempest_run(
   progress = NULL,
   verbose = TRUE,
   artifact_catalog = NULL,
-  workflow_run = NULL
+  workflow_run = NULL,
+  .state = NULL
 )
 ```
 
@@ -159,12 +160,19 @@ tempest_run(
   Frozen Tempest 0.1 owning `TempestRun`. When supplied, the result
   exposes it as `workflow_run`.
 
+- .state:
+
+  Internal adapter-only fixed STORM product state. This is not a public
+  continuation API.
+
 ## Value
 
 A list with product fields `title`, `perspectives`, `experts`,
-`outline`, `draft_md`, `report_md`, `store`, and `output_dir`. Frozen
-0.1 compatibility fields `artifact_catalog` and `workflow_run` are also
-returned temporarily.
+`outline`, `draft_md`, `report_md`, `manifest`, `state`, `workspace`,
+`retriever`, and `output_dir`. The compatibility field `store`
+references the same object as `workspace`. Frozen 0.1 compatibility
+fields `artifact_catalog` and `workflow_run` are also returned
+temporarily.
 
 ## Frozen Tempest 0.1 seams
 
@@ -172,7 +180,8 @@ returned temporarily.
 `artifact_catalog`, and `workflow_run` expose the frozen experimental
 generic kernel. They remain only for existing Tempest 0.1 integrations
 and are scheduled for replacement or removal in Tempest 0.2.0. New code
-should consume `report_md` and the scientific evidence in `store`.
+should consume `report_md`, `manifest`, `state`, and the scientific
+evidence in `workspace`.
 
 ## Examples
 

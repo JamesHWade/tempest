@@ -28,7 +28,11 @@ tempest_report_md(
 
 - store:
 
-  A `SourceStore` containing sources.
+  A
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  or
+  [TempestRetriever](https://jameshwade.github.io/tempest/reference/TempestRetriever.md)
+  containing retrieved sources.
 
 - citation_policy:
 

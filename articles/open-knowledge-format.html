@@ -176,16 +176,15 @@ workflow.</p>
 document as content, stores parsed frontmatter under
 <code>resource@metadata$okf</code>, and carries profile and schema
 identity as scope metadata when present.</p>
-<p>Conversion does not mutate an evidence ledger. Add the selected
-resources to a <code>SourceStore</code> explicitly:</p>
+<p>Conversion does not mutate a research workspace. Add the selected
+resources to a run-scoped <code>ResearchWorkspace</code> explicitly:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">evidence</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/SourceStore.html">SourceStore</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">resources</span>, <span class="va">evidence</span><span class="op">$</span><span class="va">upsert_resource</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>The store now has durable resource fingerprints and can be supplied
-through a workflow’s <code>source_store</code> argument. Assertions
-created later still need their own claim and evidence-span lineage;
-importing a concept does not convert its prose into a verified Tempest
-claim automatically.</p>
+<code class="sourceCode R"><span><span class="va">workspace</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_research_workspace.html">tempest_research_workspace</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">resources</span>, <span class="va">workspace</span><span class="op">$</span><span class="va">upsert_resource</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The workspace now has durable resource fingerprints and can be
+supplied to a Tempest retriever. Assertions created later still need
+their own claim and evidence-span lineage; importing a concept does not
+convert its prose into a verified Tempest claim automatically.</p>
 </div>
 <div class="section level2">
 <h2 id="assemble-bounded-model-context">Assemble bounded model context<a class="anchor" aria-label="anchor" href="#assemble-bounded-model-context"></a>

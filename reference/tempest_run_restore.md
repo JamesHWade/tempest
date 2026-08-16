@@ -35,7 +35,9 @@ tempest_run_restore(
 
 - source_store:
 
-  Optional restored evidence-store override.
+  Optional restored
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  override.
 
 - runtime_context:
 

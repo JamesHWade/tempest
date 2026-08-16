@@ -77,3 +77,10 @@ open-ended agent work uses Deputy; accepted knowledge uses graft
 snapshots and commits; provisional scientific evidence remains in
 Tempest; and reports and promotion plans become product-specific
 bundles.
+
+## See also
+
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+and
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+for the supported research product APIs.

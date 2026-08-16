@@ -50,7 +50,8 @@ tempest_session(
 - retriever:
 
   Optional `TempestRetriever` or compatible retriever object with a
-  `SourceStore` at `$store`.
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  at `$workspace` or its legacy `$store` alias.
 
 - progress:
 

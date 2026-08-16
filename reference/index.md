@@ -46,8 +46,17 @@
   : Create a ragnar store with tempest metadata schema
 - [`tempest_cache_clear()`](https://jameshwade.github.io/tempest/reference/tempest_cache_clear.md)
   : Clear the Tempest cache
+
+## Research identity and workspace
+
+- [`tempest_research_manifest()`](https://jameshwade.github.io/tempest/reference/tempest_research_manifest.md)
+  : Create a Tempest research manifest
+- [`tempest_research_workspace()`](https://jameshwade.github.io/tempest/reference/tempest_research_workspace.md)
+  : Create a provisional research workspace
+- [`ResearchWorkspace`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  : ResearchWorkspace (provisional scientific evidence ledger)
 - [`SourceStore`](https://jameshwade.github.io/tempest/reference/SourceStore.md)
-  : SourceStore (evidence ledger)
+  **\[deprecated\]** : SourceStore (deprecated compatibility ledger)
 
 ## Evidence and reports
 

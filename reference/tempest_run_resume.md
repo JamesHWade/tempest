@@ -34,7 +34,9 @@ tempest_run_resume(
 
 - source_store:
 
-  Optional process-local evidence-store override.
+  Optional process-local
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  override.
 
 - runtime_context:
 

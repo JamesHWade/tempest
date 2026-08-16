@@ -59,8 +59,9 @@ from a structured snapshot created by
 [`tempest_session_snapshot()`](https://jameshwade.github.io/tempest/reference/tempest_session_snapshot.md)
 or read by
 [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md).
-It restores durable research state and creates fresh chat/tool handles
-using the supplied runtime and `config`.
+It restores the research manifest and authoritative workspace,
+reestablishes the `store` compatibility alias, and creates fresh
+chat/tool handles using the supplied runtime and `config`.
 
 Historical progress events are restored as session artifact data and can
 be reduced with

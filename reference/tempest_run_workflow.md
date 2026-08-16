@@ -62,7 +62,10 @@ tempest_run_workflow(
 
 - source_store:
 
-  Optional `SourceStore` evidence ledger.
+  Optional
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  evidence ledger. The argument name is retained for the frozen generic
+  API.
 
 - runtime_context:
 

@@ -4,31 +4,38 @@ Provides web and Wikipedia retrieval with caching, plus helper methods
 to register retrieval tools with ellmer chats. Optionally integrates
 with ragnar for semantic search capabilities.
 
-## Public fields
+## Active bindings
 
 - `config`:
 
-  A `TempestConfig` object.
+  Read-only `TempestConfig` fixed at construction.
+
+- `workspace`:
+
+  Read-only reference to the authoritative
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  containing provisional research evidence. Workspace mutation methods
+  remain available.
 
 - `store`:
 
-  A `SourceStore` object.
+  Deprecated read-only compatibility alias of `workspace`.
 
 - `ragnar_store`:
 
-  A ragnar store for semantic retrieval (optional).
+  Read-only ragnar store reference derived from `config`.
 
 - `cache_dir`:
 
-  Path to cache directory.
+  Read-only cache path derived from `config`.
 
 - `cache_enabled`:
 
-  Whether retriever calls use the on-disk cache.
+  Read-only cache policy derived from `config`.
 
 - `cache_ttl`:
 
-  Maximum cache age in seconds.
+  Read-only maximum cache age derived from `config`.
 
 ## Methods
 
@@ -62,7 +69,10 @@ Create a new TempestRetriever.
 
 #### Usage
 
-    TempestRetriever$new(config = tempest_config(), store = SourceStore$new())
+    TempestRetriever$new(
+      config = tempest_config(),
+      store = tempest_research_workspace()
+    )
 
 #### Arguments
 
@@ -72,7 +82,10 @@ Create a new TempestRetriever.
 
 - `store`:
 
-  A `SourceStore` object.
+  A
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md).
+  The argument name is retained for compatibility; new code should use
+  the retriever's `workspace` field.
 
 ------------------------------------------------------------------------
 

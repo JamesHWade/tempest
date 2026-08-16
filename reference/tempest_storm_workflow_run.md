@@ -35,7 +35,7 @@ tempest_storm_workflow_run(
 
 - retriever:
 
-  Optional retriever whose store must be the run's `source_store`.
+  Optional retriever whose workspace must be the run's `source_store`.
 
 - n_experts:
 

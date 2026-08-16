@@ -62,16 +62,8 @@ session's scientific evidence and report state as its product boundary.</p>
     </div>
     <div class="section level2">
     <h2 id="public-fields">Public fields<a class="anchor" aria-label="anchor" href="#public-fields"></a></h2>
-    <p></p><div class="r6-fields"><dl><dt><code>topic</code></dt>
-<dd><p>The research topic.</p></dd>
-
-
-    <dt><code>title</code></dt>
+    <p></p><div class="r6-fields"><dl><dt><code>title</code></dt>
 <dd><p>The report title.</p></dd>
-
-
-    <dt><code>config</code></dt>
-<dd><p>A <code>TempestConfig</code> object.</p></dd>
 
 
     <dt><code>runtime</code></dt>
@@ -83,21 +75,8 @@ session's scientific evidence and report state as its product boundary.</p>
 connection allow-lists.</p></dd>
 
 
-    <dt><code>session_id</code></dt>
-<dd><p>Stable identifier shared by progress events for the
-session.</p></dd>
-
-
     <dt><code>progress</code></dt>
 <dd><p>Optional progress callback.</p></dd>
-
-
-    <dt><code>store</code></dt>
-<dd><p>A <code>SourceStore</code> object.</p></dd>
-
-
-    <dt><code>retriever</code></dt>
-<dd><p>A <code>TempestRetriever</code> object.</p></dd>
 
 
     <dt><code>experts</code></dt>
@@ -149,6 +128,41 @@ execution context.</p></dd>
 </dl><p></p></div>
     </div>
     <div class="section level2">
+    <h2 id="active-bindings">Active bindings<a class="anchor" aria-label="anchor" href="#active-bindings"></a></h2>
+    <p></p><div class="r6-active-bindings"><dl><dt><code>topic</code></dt>
+<dd><p>Read-only research topic fixed at construction.</p></dd>
+
+
+    <dt><code>config</code></dt>
+<dd><p>Read-only <code>TempestConfig</code> fixed at construction.</p></dd>
+
+
+    <dt><code>session_id</code></dt>
+<dd><p>Read-only stable identifier shared by the manifest and
+progress events for the session.</p></dd>
+
+
+    <dt><code>manifest</code></dt>
+<dd><p>Immutable <a href="TempestResearchManifest.html">TempestResearchManifest</a> for this research run.</p></dd>
+
+
+    <dt><code>workspace</code></dt>
+<dd><p>Read-only reference to the authoritative
+<a href="ResearchWorkspace.html">ResearchWorkspace</a> containing provisional research material. Workspace
+mutation methods remain available.</p></dd>
+
+
+    <dt><code>store</code></dt>
+<dd><p>Deprecated read-only compatibility alias of <code>workspace</code>.</p></dd>
+
+
+    <dt><code>retriever</code></dt>
+<dd><p>Read-only <code>TempestRetriever</code> reference.</p></dd>
+
+
+</dl><p></p></div>
+    </div>
+    <div class="section level2">
     <h2 id="methods">Methods<a class="anchor" aria-label="anchor" href="#methods"></a></h2>
 
 <div class="section">
@@ -192,7 +206,9 @@ execution context.</p></dd>
 <span>  connection_permissions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  session_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  .restore_manifest <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  .restore_token <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
@@ -219,7 +235,8 @@ expert ids to opaque connection ids allowed for this session.</p></dd>
 
       <dt><code>retriever</code></dt>
 <dd><p>Optional <code>TempestRetriever</code> or compatible retriever
-object with a <code>SourceStore</code> at <code>$store</code>.</p></dd>
+object with a <a href="ResearchWorkspace.html">ResearchWorkspace</a> at <code>$workspace</code> or its legacy
+<code>$store</code> alias.</p></dd>
 
       <dt><code>progress</code></dt>
 <dd><p>Optional function called with <code>tempest_progress_event</code>
@@ -228,6 +245,14 @@ objects as the session makes progress.</p></dd>
       <dt><code>session_id</code></dt>
 <dd><p>Optional stable session identifier. If <code>NULL</code>, a new
 identifier is generated.</p></dd>
+
+      <dt><code>.restore_manifest</code></dt>
+<dd><p>Internal research manifest supplied only by
+Tempest's bundle-restoration seam.</p></dd>
+
+      <dt><code>.restore_token</code></dt>
+<dd><p>Internal authorization token for bundle
+restoration.</p></dd>
 
 
 </dl><p></p></div>

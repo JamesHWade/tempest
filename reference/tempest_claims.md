@@ -12,7 +12,10 @@ tempest_claims(store)
 
 - store:
 
-  A `SourceStore` or `TempestRetriever`.
+  A
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  or
+  [TempestRetriever](https://jameshwade.github.io/tempest/reference/TempestRetriever.md).
 
 ## Value
 

@@ -45,6 +45,12 @@
 <li>The bundled Shiny app now presents Co-STORM setup as a one-time native shinychat greeting with consistently sized controls, lets users replace generated panels with up to five named expert perspectives, and reserves the footer for active-session status and actions.</li>
 <li>
 <code><a href="../reference/tempest_optimize_dsprrr_modules.html">tempest_optimize_dsprrr_modules()</a></code>, <code><a href="../reference/tempest_save_dsprrr_modules.html">tempest_save_dsprrr_modules()</a></code>, and <code><a href="../reference/tempest_load_dsprrr_modules.html">tempest_load_dsprrr_modules()</a></code> now expose per-module dsprrr optimizer controls and agentic teleprompter arguments, persist modules as atomic checksummed bundles of versioned dsprrr program artifacts instead of raw RDS lists, and remove the obsolete <code>fact_extraction</code> module alias.</li>
+<li>
+<code><a href="../reference/tempest_research_manifest.html">tempest_research_manifest()</a></code> records the stable run, configuration, program, knowledge-snapshot, runtime, trace, and deliverable identities for STORM and Co-STORM without serializing runtime objects or credentials (04zh).</li>
+<li>
+<code><a href="../reference/tempest_research_workspace.html">tempest_research_workspace()</a></code> and <code>ResearchWorkspace</code> define the provisional run-scoped evidence boundary, including an optional pinned knowledge-snapshot ID and accepted graft references; <code>SourceStore</code> remains as a soft-deprecated compatibility subclass for one release (04zh).</li>
+<li>
+<code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now expose correlated research manifests and authoritative workspaces while retaining <code>store</code> and session/run IDs as compatibility projections (04zh).</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="tempest-010">tempest 0.1.0<a class="anchor" aria-label="anchor" href="#tempest-010"></a></h2>

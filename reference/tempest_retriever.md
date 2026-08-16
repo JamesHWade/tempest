@@ -5,7 +5,10 @@ Create a TempestRetriever
 ## Usage
 
 ``` r
-tempest_retriever(config = tempest_config(), store = SourceStore$new())
+tempest_retriever(
+  config = tempest_config(),
+  store = tempest_research_workspace()
+)
 ```
 
 ## Arguments
@@ -16,7 +19,9 @@ tempest_retriever(config = tempest_config(), store = SourceStore$new())
 
 - store:
 
-  A `SourceStore`.
+  A
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md).
+  The argument name is retained for compatibility.
 
 ## Value
 

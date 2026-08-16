@@ -19,7 +19,9 @@ tempest_verify_claims(
 
 - store:
 
-  A `SourceStore` holding claims and sources.
+  A
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  holding provisional claims and retrieved sources.
 
 - verifier:
 

@@ -15,17 +15,9 @@ boundary.
 
 ## Public fields
 
-- `topic`:
-
-  The research topic.
-
 - `title`:
 
   The report title.
-
-- `config`:
-
-  A `TempestConfig` object.
 
 - `runtime`:
 
@@ -35,21 +27,9 @@ boundary.
 
   Frozen Tempest 0.1 per-role or per-expert connection allow-lists.
 
-- `session_id`:
-
-  Stable identifier shared by progress events for the session.
-
 - `progress`:
 
   Optional progress callback.
-
-- `store`:
-
-  A `SourceStore` object.
-
-- `retriever`:
-
-  A `TempestRetriever` object.
 
 - `experts`:
 
@@ -95,6 +75,42 @@ boundary.
 - `discourse_manager`:
 
   A `DiscourseManager` object (NULL when disabled).
+
+## Active bindings
+
+- `topic`:
+
+  Read-only research topic fixed at construction.
+
+- `config`:
+
+  Read-only `TempestConfig` fixed at construction.
+
+- `session_id`:
+
+  Read-only stable identifier shared by the manifest and progress events
+  for the session.
+
+- `manifest`:
+
+  Immutable
+  [TempestResearchManifest](https://jameshwade.github.io/tempest/reference/TempestResearchManifest.md)
+  for this research run.
+
+- `workspace`:
+
+  Read-only reference to the authoritative
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  containing provisional research material. Workspace mutation methods
+  remain available.
+
+- `store`:
+
+  Deprecated read-only compatibility alias of `workspace`.
+
+- `retriever`:
+
+  Read-only `TempestRetriever` reference.
 
 ## Methods
 
@@ -169,7 +185,9 @@ Create a new TempestSession.
       connection_permissions = list(),
       retriever = NULL,
       progress = NULL,
-      session_id = NULL
+      session_id = NULL,
+      .restore_manifest = NULL,
+      .restore_token = NULL
     )
 
 #### Arguments
@@ -206,7 +224,8 @@ Create a new TempestSession.
 - `retriever`:
 
   Optional `TempestRetriever` or compatible retriever object with a
-  `SourceStore` at `$store`.
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  at `$workspace` or its legacy `$store` alias.
 
 - `progress`:
 
@@ -217,6 +236,15 @@ Create a new TempestSession.
 
   Optional stable session identifier. If `NULL`, a new identifier is
   generated.
+
+- `.restore_manifest`:
+
+  Internal research manifest supplied only by Tempest's
+  bundle-restoration seam.
+
+- `.restore_token`:
+
+  Internal authorization token for bundle restoration.
 
 ------------------------------------------------------------------------
 

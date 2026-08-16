@@ -19,6 +19,21 @@
   teleprompter arguments, persist modules as atomic checksummed bundles
   of versioned dsprrr program artifacts instead of raw RDS lists, and
   remove the obsolete `fact_extraction` module alias.
+- [`tempest_research_manifest()`](https://jameshwade.github.io/tempest/reference/tempest_research_manifest.md)
+  records the stable run, configuration, program, knowledge-snapshot,
+  runtime, trace, and deliverable identities for STORM and Co-STORM
+  without serializing runtime objects or credentials (04zh).
+- [`tempest_research_workspace()`](https://jameshwade.github.io/tempest/reference/tempest_research_workspace.md)
+  and `ResearchWorkspace` define the provisional run-scoped evidence
+  boundary, including an optional pinned knowledge-snapshot ID and
+  accepted graft references; `SourceStore` remains as a soft-deprecated
+  compatibility subclass for one release (04zh).
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  and
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  now expose correlated research manifests and authoritative workspaces
+  while retaining `store` and session/run IDs as compatibility
+  projections (04zh).
 
 ## tempest 0.1.0
 

@@ -1,0 +1,602 @@
+# ResearchWorkspace (provisional scientific evidence ledger)
+
+A mutable, run-scoped workspace for retrieved resources, proposed
+claims, evidence spans, disputes, and references to accepted graft
+knowledge. The workspace never grants acceptance to proposed claims;
+acceptance remains an explicit graft review and commit.
+
+## Active bindings
+
+- `retrieved_resources`:
+
+  Read-only named-list snapshot of typed resources and built-in
+  web-source records keyed by resource id.
+
+- `resources`:
+
+  Compatibility alias of `retrieved_resources`.
+
+- `sources`:
+
+  Compatibility alias retained for built-in web adapters.
+
+- `proposed_claims`:
+
+  Read-only named-list snapshot of provisional claim records keyed by
+  claim id.
+
+- `claims`:
+
+  Compatibility alias of `proposed_claims`.
+
+- `evidence_spans`:
+
+  Read-only named-list snapshot of provisional evidence-span records.
+
+- `disputes`:
+
+  Read-only named-list snapshot of provisional dispute records.
+
+- `accepted_graft_references`:
+
+  Read-only list of opaque references to accepted graft knowledge used
+  by the research run.
+
+- `base_snapshot_id`:
+
+  Read-only opaque identifier for the accepted knowledge snapshot on
+  which this workspace is based.
+
+- `citation_audit`:
+
+  Latest claim-centered citation audit, when available.
+
+- `max_sources`:
+
+  Maximum number of unique resources admitted.
+
+## Methods
+
+### Public methods
+
+- [`ResearchWorkspace$new()`](#method-ResearchWorkspace-initialize)
+
+- [`ResearchWorkspace$set_max_sources()`](#method-ResearchWorkspace-set_max_sources)
+
+- [`ResearchWorkspace$upsert_source()`](#method-ResearchWorkspace-upsert_source)
+
+- [`ResearchWorkspace$get_source()`](#method-ResearchWorkspace-get_source)
+
+- [`ResearchWorkspace$list_sources()`](#method-ResearchWorkspace-list_sources)
+
+- [`ResearchWorkspace$upsert_retrieved_resource()`](#method-ResearchWorkspace-upsert_retrieved_resource)
+
+- [`ResearchWorkspace$get_retrieved_resource()`](#method-ResearchWorkspace-get_retrieved_resource)
+
+- [`ResearchWorkspace$list_retrieved_resources()`](#method-ResearchWorkspace-list_retrieved_resources)
+
+- [`ResearchWorkspace$upsert_resource()`](#method-ResearchWorkspace-upsert_resource)
+
+- [`ResearchWorkspace$get_resource()`](#method-ResearchWorkspace-get_resource)
+
+- [`ResearchWorkspace$list_resources()`](#method-ResearchWorkspace-list_resources)
+
+- [`ResearchWorkspace$add_proposed_claim()`](#method-ResearchWorkspace-add_proposed_claim)
+
+- [`ResearchWorkspace$get_proposed_claim()`](#method-ResearchWorkspace-get_proposed_claim)
+
+- [`ResearchWorkspace$list_proposed_claims()`](#method-ResearchWorkspace-list_proposed_claims)
+
+- [`ResearchWorkspace$add_claim()`](#method-ResearchWorkspace-add_claim)
+
+- [`ResearchWorkspace$get_claim()`](#method-ResearchWorkspace-get_claim)
+
+- [`ResearchWorkspace$list_claims()`](#method-ResearchWorkspace-list_claims)
+
+- [`ResearchWorkspace$claims_for_source()`](#method-ResearchWorkspace-claims_for_source)
+
+- [`ResearchWorkspace$add_evidence_span()`](#method-ResearchWorkspace-add_evidence_span)
+
+- [`ResearchWorkspace$get_evidence_span()`](#method-ResearchWorkspace-get_evidence_span)
+
+- [`ResearchWorkspace$list_evidence_spans()`](#method-ResearchWorkspace-list_evidence_spans)
+
+- [`ResearchWorkspace$link_evidence()`](#method-ResearchWorkspace-link_evidence)
+
+- [`ResearchWorkspace$get_evidence_for_claim()`](#method-ResearchWorkspace-get_evidence_for_claim)
+
+- [`ResearchWorkspace$verify_claim()`](#method-ResearchWorkspace-verify_claim)
+
+- [`ResearchWorkspace$add_dispute()`](#method-ResearchWorkspace-add_dispute)
+
+- [`ResearchWorkspace$list_disputes()`](#method-ResearchWorkspace-list_disputes)
+
+- [`ResearchWorkspace$record_accepted_graft_reference()`](#method-ResearchWorkspace-record_accepted_graft_reference)
+
+- [`ResearchWorkspace$list_accepted_graft_references()`](#method-ResearchWorkspace-list_accepted_graft_references)
+
+- [`ResearchWorkspace$set_citation_audit()`](#method-ResearchWorkspace-set_citation_audit)
+
+- [`ResearchWorkspace$to_tibbles()`](#method-ResearchWorkspace-to_tibbles)
+
+- [`ResearchWorkspace$clone()`](#method-ResearchWorkspace-clone)
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$new()`
+
+Create a new provisional research workspace.
+
+#### Usage
+
+    ResearchWorkspace$new(
+      base_snapshot_id = NULL,
+      max_sources = Inf,
+      accepted_graft_references = list()
+    )
+
+#### Arguments
+
+- `base_snapshot_id`:
+
+  Optional opaque identifier for the pinned accepted knowledge snapshot.
+
+- `max_sources`:
+
+  Maximum number of unique sources. New sources are refused once the
+  limit is reached.
+
+- `accepted_graft_references`:
+
+  Unnamed list of canonical JSON-compatible references to accepted graft
+  records.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$set_max_sources()`
+
+Set the maximum number of unique sources.
+
+#### Usage
+
+    ResearchWorkspace$set_max_sources(max_sources)
+
+#### Arguments
+
+- `max_sources`:
+
+  A positive whole number or `Inf`.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$upsert_source()`
+
+Insert or update a source.
+
+#### Usage
+
+    ResearchWorkspace$upsert_source(source)
+
+#### Arguments
+
+- `source`:
+
+  A built-in web-source list or a typed resource created by
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$get_source()`
+
+Get a source by id.
+
+#### Usage
+
+    ResearchWorkspace$get_source(source_id)
+
+#### Arguments
+
+- `source_id`:
+
+  The source id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_sources()`
+
+List all sources.
+
+#### Usage
+
+    ResearchWorkspace$list_sources()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$upsert_retrieved_resource()`
+
+Insert or update a retrieved typed evidence resource.
+
+#### Usage
+
+    ResearchWorkspace$upsert_retrieved_resource(resource)
+
+#### Arguments
+
+- `resource`:
+
+  A resource created by
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$get_retrieved_resource()`
+
+Get a retrieved typed evidence resource by id.
+
+#### Usage
+
+    ResearchWorkspace$get_retrieved_resource(resource_id)
+
+#### Arguments
+
+- `resource_id`:
+
+  Resource id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_retrieved_resources()`
+
+List all retrieved evidence as typed resources.
+
+#### Usage
+
+    ResearchWorkspace$list_retrieved_resources()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$upsert_resource()`
+
+Compatibility alias for `upsert_retrieved_resource()`.
+
+#### Usage
+
+    ResearchWorkspace$upsert_resource(resource)
+
+#### Arguments
+
+- `resource`:
+
+  A resource created by
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$get_resource()`
+
+Compatibility alias for `get_retrieved_resource()`.
+
+#### Usage
+
+    ResearchWorkspace$get_resource(resource_id)
+
+#### Arguments
+
+- `resource_id`:
+
+  Resource id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_resources()`
+
+Compatibility alias for `list_retrieved_resources()`.
+
+#### Usage
+
+    ResearchWorkspace$list_resources()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$add_proposed_claim()`
+
+Add a proposed claim record to the workspace.
+
+#### Usage
+
+    ResearchWorkspace$add_proposed_claim(claim)
+
+#### Arguments
+
+- `claim`:
+
+  A `tempest_claim` S7 record.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$get_proposed_claim()`
+
+Get a proposed claim by id.
+
+#### Usage
+
+    ResearchWorkspace$get_proposed_claim(claim_id)
+
+#### Arguments
+
+- `claim_id`:
+
+  The claim id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_proposed_claims()`
+
+List all proposed claims.
+
+#### Usage
+
+    ResearchWorkspace$list_proposed_claims()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$add_claim()`
+
+Compatibility alias for `add_proposed_claim()`.
+
+#### Usage
+
+    ResearchWorkspace$add_claim(claim)
+
+#### Arguments
+
+- `claim`:
+
+  A `tempest_claim` S7 record.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$get_claim()`
+
+Compatibility alias for `get_proposed_claim()`.
+
+#### Usage
+
+    ResearchWorkspace$get_claim(claim_id)
+
+#### Arguments
+
+- `claim_id`:
+
+  The claim id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_claims()`
+
+Compatibility alias for `list_proposed_claims()`.
+
+#### Usage
+
+    ResearchWorkspace$list_claims()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$claims_for_source()`
+
+Claims that cite a given source.
+
+#### Usage
+
+    ResearchWorkspace$claims_for_source(source_id)
+
+#### Arguments
+
+- `source_id`:
+
+  Source id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$add_evidence_span()`
+
+Add an evidence span.
+
+#### Usage
+
+    ResearchWorkspace$add_evidence_span(span)
+
+#### Arguments
+
+- `span`:
+
+  A `tempest_evidence_span` S7 record.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$get_evidence_span()`
+
+Get an evidence span by id.
+
+#### Usage
+
+    ResearchWorkspace$get_evidence_span(span_id)
+
+#### Arguments
+
+- `span_id`:
+
+  Evidence span id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_evidence_spans()`
+
+List all evidence spans in deterministic id order.
+
+#### Usage
+
+    ResearchWorkspace$list_evidence_spans()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$link_evidence()`
+
+Link an evidence span to a claim.
+
+#### Usage
+
+    ResearchWorkspace$link_evidence(claim_id, span_id)
+
+#### Arguments
+
+- `claim_id`:
+
+  Claim id.
+
+- `span_id`:
+
+  Evidence span id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$get_evidence_for_claim()`
+
+Evidence spans linked to a claim.
+
+#### Usage
+
+    ResearchWorkspace$get_evidence_for_claim(claim_id)
+
+#### Arguments
+
+- `claim_id`:
+
+  Claim id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$verify_claim()`
+
+Update a claim's verification status.
+
+#### Usage
+
+    ResearchWorkspace$verify_claim(
+      claim_id,
+      status,
+      score = NA_real_,
+      verifier = NA_character_
+    )
+
+#### Arguments
+
+- `claim_id`:
+
+  Claim id.
+
+- `status`:
+
+  One of the verification status labels.
+
+- `score`:
+
+  Support score in `[0, 1]` or NA.
+
+- `verifier`:
+
+  Verifier model id.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$add_dispute()`
+
+Add a dispute.
+
+#### Usage
+
+    ResearchWorkspace$add_dispute(dispute)
+
+#### Arguments
+
+- `dispute`:
+
+  A `tempest_dispute` S7 record.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_disputes()`
+
+List all disputes.
+
+#### Usage
+
+    ResearchWorkspace$list_disputes()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$record_accepted_graft_reference()`
+
+Record a reference to accepted graft knowledge.
+
+#### Usage
+
+    ResearchWorkspace$record_accepted_graft_reference(reference)
+
+#### Arguments
+
+- `reference`:
+
+  Opaque canonical JSON-compatible graft reference.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_accepted_graft_references()`
+
+List accepted graft references deterministically.
+
+#### Usage
+
+    ResearchWorkspace$list_accepted_graft_references()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$set_citation_audit()`
+
+Record the latest claim-centered citation audit.
+
+#### Usage
+
+    ResearchWorkspace$set_citation_audit(citation_audit)
+
+#### Arguments
+
+- `citation_audit`:
+
+  A citation-audit data frame, or `NULL` to clear it.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$to_tibbles()`
+
+Convert sources, claims, and disputes to tibbles.
+
+#### Usage
+
+    ResearchWorkspace$to_tibbles()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$clone()`
+
+The objects of this class are cloneable with this method.
+
+#### Usage
+
+    ResearchWorkspace$clone(deep = FALSE)
+
+#### Arguments
+
+- `deep`:
+
+  Whether to make a deep clone.

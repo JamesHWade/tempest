@@ -1,39 +1,23 @@
-# SourceStore (evidence ledger)
+# SourceStore (deprecated compatibility ledger)
 
-In-memory store for sources, claims, evidence spans, disputes, and
-artifacts. Stays an R6 reference object: it is the mutable accumulator
-threaded through every pipeline stage and Co-STORM turn.
+**\[deprecated\]**
+
+`SourceStore` was renamed in Tempest 0.2.0. Use
+[`tempest_research_workspace()`](https://jameshwade.github.io/tempest/reference/tempest_research_workspace.md)
+for new code. This subclass temporarily retains the legacy arbitrary
+artifact surface while product callers move to explicit STORM and
+Co-STORM state.
+
+## Super class
+
+[`ResearchWorkspace`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+-\> `SourceStore`
 
 ## Public fields
 
-- `resources`:
-
-  Environment of typed resources and built-in web-source records keyed
-  by resource id.
-
-- `sources`:
-
-  Alias of `resources` retained for built-in web adapters.
-
-- `claims`:
-
-  Environment of claim records keyed by claim_id.
-
-- `evidence_spans`:
-
-  Environment of evidence-span records keyed by id.
-
-- `disputes`:
-
-  Environment of dispute records keyed by id.
-
 - `artifacts`:
 
-  Environment of arbitrary artifacts.
-
-- `max_sources`:
-
-  Maximum number of unique sources admitted by the store.
+  Legacy environment of arbitrary product artifacts.
 
 ## Methods
 
@@ -41,341 +25,79 @@ threaded through every pipeline stage and Co-STORM turn.
 
 - [`SourceStore$new()`](#method-SourceStore-initialize)
 
-- [`SourceStore$set_max_sources()`](#method-SourceStore-set_max_sources)
-
-- [`SourceStore$upsert_source()`](#method-SourceStore-upsert_source)
-
-- [`SourceStore$get_source()`](#method-SourceStore-get_source)
-
-- [`SourceStore$list_sources()`](#method-SourceStore-list_sources)
-
-- [`SourceStore$upsert_resource()`](#method-SourceStore-upsert_resource)
-
-- [`SourceStore$get_resource()`](#method-SourceStore-get_resource)
-
-- [`SourceStore$list_resources()`](#method-SourceStore-list_resources)
-
-- [`SourceStore$add_claim()`](#method-SourceStore-add_claim)
-
-- [`SourceStore$get_claim()`](#method-SourceStore-get_claim)
-
-- [`SourceStore$list_claims()`](#method-SourceStore-list_claims)
-
-- [`SourceStore$claims_for_source()`](#method-SourceStore-claims_for_source)
-
-- [`SourceStore$add_evidence_span()`](#method-SourceStore-add_evidence_span)
-
-- [`SourceStore$link_evidence()`](#method-SourceStore-link_evidence)
-
-- [`SourceStore$get_evidence_for_claim()`](#method-SourceStore-get_evidence_for_claim)
-
-- [`SourceStore$verify_claim()`](#method-SourceStore-verify_claim)
-
-- [`SourceStore$add_dispute()`](#method-SourceStore-add_dispute)
-
-- [`SourceStore$list_disputes()`](#method-SourceStore-list_disputes)
-
 - [`SourceStore$set_artifact()`](#method-SourceStore-set_artifact)
 
 - [`SourceStore$get_artifact()`](#method-SourceStore-get_artifact)
 
-- [`SourceStore$to_tibbles()`](#method-SourceStore-to_tibbles)
+- [`SourceStore$set_citation_audit()`](#method-SourceStore-set_citation_audit)
 
 - [`SourceStore$clone()`](#method-SourceStore-clone)
+
+Inherited methods
+
+- [`ResearchWorkspace$add_claim()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-add_claim)
+- [`ResearchWorkspace$add_dispute()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-add_dispute)
+- [`ResearchWorkspace$add_evidence_span()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-add_evidence_span)
+- [`ResearchWorkspace$add_proposed_claim()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-add_proposed_claim)
+- [`ResearchWorkspace$claims_for_source()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-claims_for_source)
+- [`ResearchWorkspace$get_claim()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-get_claim)
+- [`ResearchWorkspace$get_evidence_for_claim()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-get_evidence_for_claim)
+- [`ResearchWorkspace$get_evidence_span()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-get_evidence_span)
+- [`ResearchWorkspace$get_proposed_claim()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-get_proposed_claim)
+- [`ResearchWorkspace$get_resource()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-get_resource)
+- [`ResearchWorkspace$get_retrieved_resource()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-get_retrieved_resource)
+- [`ResearchWorkspace$get_source()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-get_source)
+- [`ResearchWorkspace$link_evidence()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-link_evidence)
+- [`ResearchWorkspace$list_accepted_graft_references()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-list_accepted_graft_references)
+- [`ResearchWorkspace$list_claims()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-list_claims)
+- [`ResearchWorkspace$list_disputes()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-list_disputes)
+- [`ResearchWorkspace$list_evidence_spans()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-list_evidence_spans)
+- [`ResearchWorkspace$list_proposed_claims()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-list_proposed_claims)
+- [`ResearchWorkspace$list_resources()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-list_resources)
+- [`ResearchWorkspace$list_retrieved_resources()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-list_retrieved_resources)
+- [`ResearchWorkspace$list_sources()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-list_sources)
+- [`ResearchWorkspace$record_accepted_graft_reference()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-record_accepted_graft_reference)
+- [`ResearchWorkspace$set_max_sources()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-set_max_sources)
+- [`ResearchWorkspace$to_tibbles()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-to_tibbles)
+- [`ResearchWorkspace$upsert_resource()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-upsert_resource)
+- [`ResearchWorkspace$upsert_retrieved_resource()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-upsert_retrieved_resource)
+- [`ResearchWorkspace$upsert_source()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-upsert_source)
+- [`ResearchWorkspace$verify_claim()`](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html#method-verify_claim)
 
 ------------------------------------------------------------------------
 
 ### `SourceStore$new()`
 
-Create a new SourceStore.
+Create a deprecated SourceStore compatibility object.
 
 #### Usage
 
-    SourceStore$new(max_sources = Inf)
-
-#### Arguments
-
-- `max_sources`:
-
-  Maximum number of unique sources. New sources are refused once the
-  limit is reached.
-
-------------------------------------------------------------------------
-
-### `SourceStore$set_max_sources()`
-
-Set the maximum number of unique sources.
-
-#### Usage
-
-    SourceStore$set_max_sources(max_sources)
-
-#### Arguments
-
-- `max_sources`:
-
-  A positive whole number or `Inf`.
-
-------------------------------------------------------------------------
-
-### `SourceStore$upsert_source()`
-
-Insert or update a source.
-
-#### Usage
-
-    SourceStore$upsert_source(source)
-
-#### Arguments
-
-- `source`:
-
-  A built-in web-source list or a typed resource created by
-  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
-
-------------------------------------------------------------------------
-
-### `SourceStore$get_source()`
-
-Get a source by id.
-
-#### Usage
-
-    SourceStore$get_source(source_id)
-
-#### Arguments
-
-- `source_id`:
-
-  The source id.
-
-------------------------------------------------------------------------
-
-### `SourceStore$list_sources()`
-
-List all sources.
-
-#### Usage
-
-    SourceStore$list_sources()
-
-------------------------------------------------------------------------
-
-### `SourceStore$upsert_resource()`
-
-Insert or update a typed evidence resource.
-
-#### Usage
-
-    SourceStore$upsert_resource(resource)
-
-#### Arguments
-
-- `resource`:
-
-  A resource created by
-  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
-
-------------------------------------------------------------------------
-
-### `SourceStore$get_resource()`
-
-Get a typed evidence resource by id.
-
-#### Usage
-
-    SourceStore$get_resource(resource_id)
-
-#### Arguments
-
-- `resource_id`:
-
-  Resource id.
-
-------------------------------------------------------------------------
-
-### `SourceStore$list_resources()`
-
-List all evidence as typed resources.
-
-#### Usage
-
-    SourceStore$list_resources()
-
-------------------------------------------------------------------------
-
-### `SourceStore$add_claim()`
-
-Add a claim record to the ledger.
-
-#### Usage
-
-    SourceStore$add_claim(claim)
-
-#### Arguments
-
-- `claim`:
-
-  A `tempest_claim` S7 record.
-
-------------------------------------------------------------------------
-
-### `SourceStore$get_claim()`
-
-Get a claim by id.
-
-#### Usage
-
-    SourceStore$get_claim(claim_id)
-
-#### Arguments
-
-- `claim_id`:
-
-  The claim id.
-
-------------------------------------------------------------------------
-
-### `SourceStore$list_claims()`
-
-List all claims.
-
-#### Usage
-
-    SourceStore$list_claims()
-
-------------------------------------------------------------------------
-
-### `SourceStore$claims_for_source()`
-
-Claims that cite a given source.
-
-#### Usage
-
-    SourceStore$claims_for_source(source_id)
-
-#### Arguments
-
-- `source_id`:
-
-  Source id.
-
-------------------------------------------------------------------------
-
-### `SourceStore$add_evidence_span()`
-
-Add an evidence span.
-
-#### Usage
-
-    SourceStore$add_evidence_span(span)
-
-#### Arguments
-
-- `span`:
-
-  A `tempest_evidence_span` S7 record.
-
-------------------------------------------------------------------------
-
-### `SourceStore$link_evidence()`
-
-Link an evidence span to a claim.
-
-#### Usage
-
-    SourceStore$link_evidence(claim_id, span_id)
-
-#### Arguments
-
-- `claim_id`:
-
-  Claim id.
-
-- `span_id`:
-
-  Evidence span id.
-
-------------------------------------------------------------------------
-
-### `SourceStore$get_evidence_for_claim()`
-
-Evidence spans linked to a claim.
-
-#### Usage
-
-    SourceStore$get_evidence_for_claim(claim_id)
-
-#### Arguments
-
-- `claim_id`:
-
-  Claim id.
-
-------------------------------------------------------------------------
-
-### `SourceStore$verify_claim()`
-
-Update a claim's verification status.
-
-#### Usage
-
-    SourceStore$verify_claim(
-      claim_id,
-      status,
-      score = NA_real_,
-      verifier = NA_character_
+    SourceStore$new(
+      max_sources = Inf,
+      base_snapshot_id = NULL,
+      accepted_graft_references = list()
     )
 
 #### Arguments
 
-- `claim_id`:
+- `max_sources`:
 
-  Claim id.
+  Maximum number of unique resources admitted.
 
-- `status`:
+- `base_snapshot_id`:
 
-  One of the verification status labels.
+  Optional opaque identifier for the pinned accepted-knowledge snapshot.
 
-- `score`:
+- `accepted_graft_references`:
 
-  Support score in `[0, 1]` or NA.
-
-- `verifier`:
-
-  Verifier model id.
-
-------------------------------------------------------------------------
-
-### `SourceStore$add_dispute()`
-
-Add a dispute.
-
-#### Usage
-
-    SourceStore$add_dispute(dispute)
-
-#### Arguments
-
-- `dispute`:
-
-  A `tempest_dispute` S7 record.
-
-------------------------------------------------------------------------
-
-### `SourceStore$list_disputes()`
-
-List all disputes.
-
-#### Usage
-
-    SourceStore$list_disputes()
+  Unnamed list of canonical JSON-compatible references to accepted graft
+  records.
 
 ------------------------------------------------------------------------
 
 ### `SourceStore$set_artifact()`
 
-Store an artifact by name.
+Store a legacy product artifact by name.
 
 #### Usage
 
@@ -395,7 +117,7 @@ Store an artifact by name.
 
 ### `SourceStore$get_artifact()`
 
-Retrieve an artifact by name.
+Retrieve a legacy product artifact by name.
 
 #### Usage
 
@@ -409,13 +131,19 @@ Retrieve an artifact by name.
 
 ------------------------------------------------------------------------
 
-### `SourceStore$to_tibbles()`
+### `SourceStore$set_citation_audit()`
 
-Convert sources, claims, and disputes to tibbles.
+Record the latest claim-centered citation audit.
 
 #### Usage
 
-    SourceStore$to_tibbles()
+    SourceStore$set_citation_audit(citation_audit)
+
+#### Arguments
+
+- `citation_audit`:
+
+  A citation-audit data frame, or `NULL` to clear it.
 
 ------------------------------------------------------------------------
 

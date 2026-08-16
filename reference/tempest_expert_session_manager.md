@@ -50,7 +50,9 @@ tempest_expert_session_manager(
 
 - store:
 
-  Optional `SourceStore`; defaults to the retriever store.
+  Optional
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md);
+  defaults to the retriever workspace.
 
 - progress:
 

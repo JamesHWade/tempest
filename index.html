@@ -66,7 +66,9 @@
 <li>
 <strong>Multi-perspective research</strong> with selected or automatically generated expert profiles</li>
 <li>
-<strong>Evidence tracking</strong> with citations and source attribution</li>
+<strong>Provisional evidence workspaces</strong> with citations and source attribution</li>
+<li>
+<strong>Research manifests</strong> that identify configuration, programs, knowledge snapshots, traces, and deliverables</li>
 <li>
 <strong>Resumable research state</strong> for scripted STORM and interactive Co-STORM</li>
 <li>
@@ -161,8 +163,8 @@
 <span>  include_stale <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">evidence</span> <span class="op">&lt;-</span> <span class="va"><a href="reference/SourceStore.html">SourceStore</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">resources</span>, <span class="va">evidence</span><span class="op">$</span><span class="va">upsert_resource</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">workspace</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_research_workspace.html">tempest_research_workspace</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">resources</span>, <span class="va">workspace</span><span class="op">$</span><span class="va">upsert_resource</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">context</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_okf_context.html">tempest_okf_context</a></span><span class="op">(</span></span>
 <span>  <span class="va">knowledge</span>,</span>
@@ -172,6 +174,7 @@
 <span>  max_chars <span class="op">=</span> <span class="fl">50000</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The reader preserves each Markdown document and its metadata, derives advisory trust and freshness signals, and never follows links or executes referenced code. Reading, converting, and adding resources are separate operations so the host retains the write boundary. An OKF document cannot grant capabilities, change policy, approve output, or authorize an action.</p>
+<p>STORM results expose a <code>manifest</code>, validated <code>state</code>, and authoritative <code>workspace</code>; Co-STORM sessions expose the same manifest/workspace identity. Session correlation fields and retriever configuration are read-only, while the pinned workspace remains mutable through its explicit methods. The workspace contains only provisional run material and opaque references to accepted knowledge; acceptance still requires an explicit graft review and commit. The legacy <code>store</code> projection references that same workspace, and <code>SourceStore</code> remains a deprecated compatibility subclass for one release.</p>
 <p>Graft can export current or historical accepted revisions directly into this format. Read <a href="https://jameshwade.github.io/tempest/articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a> for the complete handoff and safety model.</p>
 </div>
 <div class="section level2">

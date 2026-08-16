@@ -38,7 +38,9 @@ Manages capability-scoped chats for validated expert profiles.
 
 - `store`:
 
-  A `SourceStore` for storing extracted facts (optional).
+  A
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  for storing extracted facts (optional).
 
 - `progress`:
 
@@ -130,7 +132,9 @@ Create a new ExpertSessionManager.
 
 - `store`:
 
-  Optional `SourceStore` for storing extracted facts.
+  Optional
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  for storing extracted facts.
 
 - `progress`:
 

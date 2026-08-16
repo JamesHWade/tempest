@@ -52,29 +52,35 @@ ragnar for semantic search capabilities.</p>
 
 
     <div class="section level2">
-    <h2 id="public-fields">Public fields<a class="anchor" aria-label="anchor" href="#public-fields"></a></h2>
-    <p></p><div class="r6-fields"><dl><dt><code>config</code></dt>
-<dd><p>A <code>TempestConfig</code> object.</p></dd>
+    <h2 id="active-bindings">Active bindings<a class="anchor" aria-label="anchor" href="#active-bindings"></a></h2>
+    <p></p><div class="r6-active-bindings"><dl><dt><code>config</code></dt>
+<dd><p>Read-only <code>TempestConfig</code> fixed at construction.</p></dd>
+
+
+    <dt><code>workspace</code></dt>
+<dd><p>Read-only reference to the authoritative
+<a href="ResearchWorkspace.html">ResearchWorkspace</a> containing provisional research evidence. Workspace
+mutation methods remain available.</p></dd>
 
 
     <dt><code>store</code></dt>
-<dd><p>A <code>SourceStore</code> object.</p></dd>
+<dd><p>Deprecated read-only compatibility alias of <code>workspace</code>.</p></dd>
 
 
     <dt><code>ragnar_store</code></dt>
-<dd><p>A ragnar store for semantic retrieval (optional).</p></dd>
+<dd><p>Read-only ragnar store reference derived from <code>config</code>.</p></dd>
 
 
     <dt><code>cache_dir</code></dt>
-<dd><p>Path to cache directory.</p></dd>
+<dd><p>Read-only cache path derived from <code>config</code>.</p></dd>
 
 
     <dt><code>cache_enabled</code></dt>
-<dd><p>Whether retriever calls use the on-disk cache.</p></dd>
+<dd><p>Read-only cache policy derived from <code>config</code>.</p></dd>
 
 
     <dt><code>cache_ttl</code></dt>
-<dd><p>Maximum cache age in seconds.</p></dd>
+<dd><p>Read-only maximum cache age derived from <code>config</code>.</p></dd>
 
 
 </dl><p></p></div>
@@ -98,14 +104,18 @@ ragnar for semantic search capabilities.</p>
 <h3 id="tempestretriever-new-"><code>TempestRetriever$new()</code><a class="anchor" aria-label="anchor" href="#tempestretriever-new-"></a></h3>
 <p>Create a new TempestRetriever.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/TempestRetriever.html">TempestRetriever</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>, store <span class="op">=</span> <span class="va"><a href="../reference/SourceStore.html">SourceStore</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/TempestRetriever.html">TempestRetriever</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
+<span>  config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  store <span class="op">=</span> <span class="fu"><a href="../reference/tempest_research_workspace.html">tempest_research_workspace</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>config</code></dt>
 <dd><p>A <code>TempestConfig</code> object.</p></dd>
 
       <dt><code>store</code></dt>
-<dd><p>A <code>SourceStore</code> object.</p></dd>
+<dd><p>A <a href="ResearchWorkspace.html">ResearchWorkspace</a>. The argument name is retained for
+compatibility; new code should use the retriever's <code>workspace</code> field.</p></dd>
 
 
 </dl><p></p></div>

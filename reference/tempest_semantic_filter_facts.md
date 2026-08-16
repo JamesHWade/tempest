@@ -21,7 +21,8 @@ tempest_semantic_filter_facts(retriever, query, store, max_items = 30)
 
 - store:
 
-  A `SourceStore` object.
+  A
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md).
 
 - max_items:
 

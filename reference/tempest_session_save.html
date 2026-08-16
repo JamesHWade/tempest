@@ -77,11 +77,13 @@ host-defined codecs needed to encode typed artifact content.</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_session_save()</code> writes a schema-versioned directory bundle for a
-<a href="TempestSession.html">TempestSession</a>. The bundle stores durable research state plus a typed
-artifact catalog. Inline artifacts use explicit UTF-8 or canonical JSON
-codecs, every declared file is checksummed, and the <code>session.json</code> manifest
-is written last. Live chat handles, registered tool closures, Shiny reactive
-state, credentials, and raw provider request bodies are not serialized.</p>
+<a href="TempestSession.html">TempestSession</a>. The bundle stores the research manifest, authoritative
+workspace, and typed artifact catalog. The deprecated <code>store</code> alias is not
+serialized separately. Inline artifacts use explicit UTF-8 or canonical
+JSON codecs, every declared file is checksummed, and the <code>session.json</code>
+manifest is written last. Live chat handles, registered tool closures,
+Shiny reactive state, credentials, and raw provider request bodies are not
+serialized.</p>
 <p>Use <code><a href="tempest_session_resume.html">tempest_session_resume()</a></code> to load the bundle with a fresh runtime
 <a href="TempestConfig.html">TempestConfig</a> and <code><a href="tempest_runtime.html">tempest_runtime()</a></code>.</p>
     </div>

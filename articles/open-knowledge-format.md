@@ -106,20 +106,19 @@ Each resource has `resource_kind = "okf.concept"` and
 content, stores parsed frontmatter under `resource@metadata$okf`, and
 carries profile and schema identity as scope metadata when present.
 
-Conversion does not mutate an evidence ledger. Add the selected
-resources to a `SourceStore` explicitly:
+Conversion does not mutate a research workspace. Add the selected
+resources to a run-scoped `ResearchWorkspace` explicitly:
 
 ``` r
 
-evidence <- SourceStore$new()
-invisible(lapply(resources, evidence$upsert_resource))
+workspace <- tempest_research_workspace()
+invisible(lapply(resources, workspace$upsert_resource))
 ```
 
-The store now has durable resource fingerprints and can be supplied
-through a workflow’s `source_store` argument. Assertions created later
-still need their own claim and evidence-span lineage; importing a
-concept does not convert its prose into a verified Tempest claim
-automatically.
+The workspace now has durable resource fingerprints and can be supplied
+to a Tempest retriever. Assertions created later still need their own
+claim and evidence-span lineage; importing a concept does not convert
+its prose into a verified Tempest claim automatically.
 
 ## Assemble bounded model context
 

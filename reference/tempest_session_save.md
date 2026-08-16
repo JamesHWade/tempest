@@ -40,11 +40,13 @@ Invisibly returns the normalized bundle directory.
 `tempest_session_save()` writes a schema-versioned directory bundle for
 a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
-The bundle stores durable research state plus a typed artifact catalog.
-Inline artifacts use explicit UTF-8 or canonical JSON codecs, every
-declared file is checksummed, and the `session.json` manifest is written
-last. Live chat handles, registered tool closures, Shiny reactive state,
-credentials, and raw provider request bodies are not serialized.
+The bundle stores the research manifest, authoritative workspace, and
+typed artifact catalog. The deprecated `store` alias is not serialized
+separately. Inline artifacts use explicit UTF-8 or canonical JSON
+codecs, every declared file is checksummed, and the `session.json`
+manifest is written last. Live chat handles, registered tool closures,
+Shiny reactive state, credentials, and raw provider request bodies are
+not serialized.
 
 Use
 [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md)

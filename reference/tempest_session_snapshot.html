@@ -64,14 +64,14 @@
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_session_snapshot()</code> returns a structured, in-memory representation
-of the durable state in a <a href="TempestSession.html">TempestSession</a>. It includes the session identity,
-expert profiles, transcript, mind map, typed deliverable specifications and
-artifacts, auxiliary session state, progress-event history, expert-session
-metadata, serializable skill and connection-reference records, capability
-decisions, an attached generic workflow run, and the underlying
-<code>SourceStore</code> ledger. Live chat handles, runtime clients, tools, closures,
-Shiny reactive state, credentials, and provider request bodies are not
-included.</p>
+of the durable state in a <a href="TempestSession.html">TempestSession</a>. It includes the research
+manifest; fixed session and configuration identity; the authoritative
+<a href="ResearchWorkspace.html">ResearchWorkspace</a>; expert profiles; transcript and mind map; typed
+deliverables; progress-event and expert-session metadata; serializable
+runtime records; and any attached generic workflow run. The deprecated
+<code>store</code> alias is not duplicated; restoration binds it to the restored
+workspace. Live chat handles, runtime clients, tools, closures, Shiny
+reactive state, credentials, and provider request bodies are not included.</p>
 <p>Use <code><a href="tempest_session_restore.html">tempest_session_restore()</a></code> to rebuild a session from the returned list,
 or <code><a href="tempest_session_save.html">tempest_session_save()</a></code> to write the same durable state to a directory
 bundle.</p>

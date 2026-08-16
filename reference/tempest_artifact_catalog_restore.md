@@ -20,8 +20,9 @@ tempest_artifact_catalog_restore(snapshot, store = NULL, evidence_store = NULL)
 
 - evidence_store:
 
-  Optional `SourceStore` used to validate resource, claim, and
-  evidence-span identifiers.
+  Optional
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  used to validate resource, claim, and evidence-span identifiers.
 
 ## Value
 
@@ -35,5 +36,7 @@ This experimental API is frozen and scheduled for removal in Tempest
 
 Restoration reconstructs every specification and artifact through its
 validated constructor, verifies fingerprints and content checksums, and
-optionally verifies evidence lineage against a `SourceStore`. Runtime
-store adapters are reattached but are not written during restoration.
+optionally verifies evidence lineage against a
+[ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md).
+Runtime store adapters are reattached but are not written during
+restoration.
