@@ -216,6 +216,45 @@ test_that("catalog snapshots restore specifications, artifacts, and lineage", {
   )
 })
 
+test_that("catalog lineage validation reads a ResearchWorkspace", {
+  workspace <- tempest_research_workspace()
+  source <- fake_source("https://example.org/catalog-workspace")
+  workspace$upsert_source(source)
+  span <- tempest_evidence_span(
+    source_id = source$id,
+    quote = "Catalog evidence"
+  )
+  workspace$add_evidence_span(span)
+  claim <- tempest_claim(
+    claim_text = "Catalog lineage resolves.",
+    source_ids = source$id,
+    evidence_span_ids = span@evidence_span_id
+  )
+  workspace$add_claim(claim)
+  spec <- tempest_deliverable_spec(
+    "lineage",
+    title = "Lineage",
+    purpose = "Validate evidence references",
+    instructions = "Preserve evidence lineage.",
+    generator_id = "generator.lineage",
+    renderer_ids = "renderer.lineage"
+  )
+  artifact <- tempest_artifact(
+    spec,
+    content = "Resolved lineage",
+    resource_ids = source$id,
+    claim_ids = claim@claim_id,
+    evidence_span_ids = span@evidence_span_id
+  )
+  catalog <- tempest_artifact_catalog(deliverables = list(spec))
+  catalog$add(artifact)
+
+  expect_no_error(tempest_artifact_catalog_restore(
+    catalog$snapshot(),
+    evidence_store = workspace
+  ))
+})
+
 test_that("artifact store adapters cover typed inline and external artifacts", {
   spec <- tempest_deliverable_spec(
     "stored",

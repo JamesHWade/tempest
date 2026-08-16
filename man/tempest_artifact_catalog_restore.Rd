@@ -12,8 +12,8 @@ tempest_artifact_catalog_restore(snapshot, store = NULL, evidence_store = NULL)
 
 \item{store}{Optional runtime artifact-store adapter.}
 
-\item{evidence_store}{Optional \code{SourceStore} used to validate resource,
-claim, and evidence-span identifiers.}
+\item{evidence_store}{Optional \link{ResearchWorkspace} used to validate
+resource, claim, and evidence-span identifiers.}
 }
 \value{
 A restored \code{TempestArtifactCatalog}.
@@ -28,6 +28,6 @@ No compatibility shim is planned; see
 
 Restoration reconstructs every specification and artifact through its
 validated constructor, verifies fingerprints and content checksums, and
-optionally verifies evidence lineage against a \code{SourceStore}. Runtime store
-adapters are reattached but are not written during restoration.
+optionally verifies evidence lineage against a \link{ResearchWorkspace}. Runtime
+store adapters are reattached but are not written during restoration.
 }

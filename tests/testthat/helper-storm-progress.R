@@ -21,7 +21,7 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
     content_text = "Progress uses staged events and persisted artifacts."
   )
   source_id <- source$id
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   store$upsert_source(source)
   outline <- list(
     title = "Progress report",

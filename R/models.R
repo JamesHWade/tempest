@@ -100,6 +100,8 @@ tempest_source_store_abort <- function(message, ..., parent = NULL) {
     message,
     ...,
     class = c(
+      "tempest_research_workspace_integrity_error",
+      "tempest_research_workspace_error",
       "tempest_source_store_integrity_error",
       "tempest_source_store_error",
       "tempest_error"
@@ -107,6 +109,460 @@ tempest_source_store_abort <- function(message, ..., parent = NULL) {
     parent = parent,
     .envir = rlang::caller_env()
   )
+}
+
+#' @keywords internal
+tempest_research_workspace_abort <- function(message, ..., parent = NULL) {
+  tempest_abort(
+    message,
+    ...,
+    class = c("tempest_research_workspace_error", "tempest_error"),
+    parent = parent,
+    .envir = rlang::caller_env()
+  )
+}
+
+#' @keywords internal
+tempest_research_sensitive_name <- function(value) {
+  value <- gsub("([a-z0-9])([A-Z])", "\\1_\\2", value)
+  value <- tolower(gsub("[^A-Za-z0-9]+", "_", value))
+  token_metric <- grepl(
+    paste0(
+      "(^|_)(max|min|input|output|total|prompt|completion)_tokens($|_)|",
+      "(^|_)tokens?_(budget|count|limit|used|usage|remaining)($|_)"
+    ),
+    value
+  )
+  credential_terms <- c(
+    "api_key",
+    "apikey",
+    "access_key",
+    "accesskey",
+    "access_token",
+    "accesstoken",
+    "refresh_token",
+    "refreshtoken",
+    "auth_token",
+    "authtoken",
+    "oauth_token",
+    "bearer_token",
+    "bearertoken",
+    "id_token",
+    "idtoken",
+    "session_token",
+    "sessiontoken",
+    "password",
+    "passwd",
+    "secret",
+    "secret_key",
+    "client_secret",
+    "clientsecret",
+    "credential",
+    "credentials",
+    "private_key",
+    "privatekey",
+    "signing_key",
+    "ssh_key",
+    "authorization",
+    "authentication",
+    "auth",
+    "auth_header",
+    "authorization_header",
+    "header",
+    "headers",
+    "http_header",
+    "http_headers",
+    "request_header",
+    "request_headers",
+    "cookie",
+    "cookies",
+    "set_cookie",
+    "token"
+  )
+  value %in%
+    credential_terms ||
+    grepl(
+      paste0(
+        "(^|_)(api_key|access_key|access_token|refresh_token|auth_token|",
+        "oauth_token|bearer_token|id_token|session_token|password|passwd|",
+        "client_secret|private_key|signing_key|ssh_key|authorization|auth|",
+        "headers?|cookies?|set_cookie|credentials?|secret|secret_key)($|_)"
+      ),
+      value
+    ) ||
+    (grepl("(^|_)token($|_)", value) && !token_metric)
+}
+
+#' @keywords internal
+tempest_research_reference_list_names <- function(value, path, abort) {
+  value_names <- names(value)
+  if (is.null(value_names) || length(value_names) == 0L) {
+    return(NULL)
+  }
+  if (anyNA(value_names)) {
+    abort("Canonical lists cannot contain missing names at {.field {path}}.")
+  }
+  has_names <- nzchar(value_names)
+  if (any(has_names) && any(!has_names)) {
+    abort(
+      "Canonical lists must be fully named or fully unnamed at {.field {path}}."
+    )
+  }
+  if (!any(has_names)) {
+    return(NULL)
+  }
+  if (anyDuplicated(value_names)) {
+    duplicate <- value_names[duplicated(value_names)][[1]]
+    abort(
+      "Canonical lists cannot repeat {.field {duplicate}} at {.field {path}}."
+    )
+  }
+  value_names
+}
+
+#' @keywords internal
+tempest_research_reference_value <- function(
+  value,
+  path,
+  abort,
+  noun = "Research references",
+  reject_sensitive = TRUE
+) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  if (is.function(value)) {
+    abort("{noun} cannot contain functions at {.field {path}}.")
+  }
+  if (is.environment(value)) {
+    kind <- if (inherits(value, "R6")) "R6 objects" else "environments"
+    abort("{noun} cannot contain {kind} at {.field {path}}.")
+  }
+  if (inherits(value, "connection")) {
+    abort("{noun} cannot contain connections at {.field {path}}.")
+  }
+  if (typeof(value) %in% c("externalptr", "weakref")) {
+    abort("{noun} cannot contain external pointers at {.field {path}}.")
+  }
+  if (inherits(value, "S7_object")) {
+    abort("{noun} cannot contain S7 objects at {.field {path}}.")
+  }
+  if (is.object(value)) {
+    abort(
+      "{noun} must use plain JSON-compatible values at {.field {path}}."
+    )
+  }
+  if (is.list(value)) {
+    value_names <- tempest_research_reference_list_names(value, path, abort)
+    if (!is.null(value_names) && isTRUE(reject_sensitive)) {
+      sensitive <- vapply(
+        value_names,
+        tempest_research_sensitive_name,
+        logical(1)
+      )
+      if (any(sensitive)) {
+        field <- value_names[sensitive][[1]]
+        abort(c(
+          "{noun} cannot contain credential-like fields.",
+          x = "Sensitive field: {.field {paste0(path, '$', field)}}."
+        ))
+      }
+    }
+    if (is.null(value_names)) {
+      names(value) <- NULL
+      result <- lapply(
+        seq_along(value),
+        function(index) {
+          tempest_research_reference_value(
+            value[[index]],
+            paste0(path, "[[", index, "]]"),
+            abort = abort,
+            noun = noun,
+            reject_sensitive = reject_sensitive
+          )
+        }
+      )
+      names(result) <- NULL
+      return(result)
+    }
+    value <- value[order(value_names)]
+    value_names <- names(value)
+    return(stats::setNames(
+      lapply(
+        value_names,
+        function(name) {
+          tempest_research_reference_value(
+            value[[name]],
+            paste0(path, "$", name),
+            abort = abort,
+            noun = noun,
+            reject_sensitive = reject_sensitive
+          )
+        }
+      ),
+      value_names
+    ))
+  }
+  if (!typeof(value) %in% c("logical", "integer", "double", "character")) {
+    abort(
+      "Unsupported research reference type {.val {typeof(value)}} at {.field {path}}."
+    )
+  }
+  if (!is.null(names(value))) {
+    abort("Named atomic vectors are not canonical at {.field {path}}.")
+  }
+  if (!is.null(attributes(value))) {
+    abort("{noun} must use plain atomic values at {.field {path}}.")
+  }
+  if (anyNA(value) || (is.numeric(value) && any(!is.finite(value)))) {
+    abort(
+      "{noun} cannot contain missing or non-finite values at {.field {path}}."
+    )
+  }
+  if (length(value) == 0L) {
+    return(list())
+  }
+  if (length(value) > 1L) {
+    return(lapply(
+      seq_along(value),
+      function(index) {
+        tempest_research_reference_value(
+          value[[index]],
+          paste0(path, "[[", index, "]]"),
+          abort = abort,
+          noun = noun,
+          reject_sensitive = reject_sensitive
+        )
+      }
+    ))
+  }
+  if (
+    is.double(value) &&
+      value == trunc(value) &&
+      value >= -.Machine$integer.max &&
+      value <= .Machine$integer.max
+  ) {
+    return(as.integer(value))
+  }
+  if (is.character(value)) {
+    return(enc2utf8(value))
+  }
+  if (is.logical(value)) {
+    return(as.logical(value))
+  }
+  if (is.integer(value)) {
+    return(as.integer(value))
+  }
+  as.double(value)
+}
+
+#' @keywords internal
+tempest_research_workspace_snapshot_id <- function(value) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  if (
+    !is.character(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !nzchar(tempest_trim(value))
+  ) {
+    tempest_research_workspace_abort(
+      "{.arg base_snapshot_id} must be `NULL` or a single non-empty string."
+    )
+  }
+  tempest_trim(value)
+}
+
+#' @keywords internal
+tempest_research_workspace_reference_value <- function(value, path) {
+  tempest_research_reference_value(
+    value,
+    path,
+    abort = tempest_research_workspace_abort,
+    noun = "Accepted graft references"
+  )
+}
+
+#' @keywords internal
+tempest_research_workspace_reference_json <- function(value) {
+  as.character(jsonlite::toJSON(
+    value,
+    auto_unbox = TRUE,
+    null = "null",
+    digits = NA,
+    pretty = FALSE,
+    force = TRUE
+  ))
+}
+
+#' @keywords internal
+tempest_research_workspace_validate_reference_ids <- function(
+  value,
+  path,
+  base_snapshot_id
+) {
+  if (!is.list(value) || length(value) == 0L) {
+    return(value)
+  }
+  value_names <- names(value)
+  if (is.null(value_names)) {
+    return(lapply(
+      seq_along(value),
+      \(index) {
+        tempest_research_workspace_validate_reference_ids(
+          value[[index]],
+          paste0(path, "[[", index, "]]"),
+          base_snapshot_id
+        )
+      }
+    ))
+  }
+  normalized_names <- tolower(gsub(
+    "[^A-Za-z0-9]+",
+    "_",
+    gsub("([a-z0-9])([A-Z])", "\\1_\\2", value_names)
+  ))
+  if (anyDuplicated(normalized_names)) {
+    tempest_research_workspace_abort(
+      "Accepted graft reference fields must remain unique after normalization at {.field {path}}."
+    )
+  }
+  for (index in seq_along(value)) {
+    field <- value_names[[index]]
+    normalized <- normalized_names[[index]]
+    child_path <- paste0(path, "$", field)
+    child <- value[[field]]
+    if (grepl("(^|_)id$", normalized)) {
+      if (
+        !is.character(child) ||
+          length(child) != 1L ||
+          is.na(child) ||
+          !nzchar(tempest_trim(child))
+      ) {
+        tempest_research_workspace_abort(
+          "Accepted graft reference ID {.field {child_path}} must be a single non-empty string."
+        )
+      }
+      child <- tempest_trim(child)
+      if (
+        identical(normalized, "snapshot_id") &&
+          !is.null(base_snapshot_id) &&
+          !identical(child, base_snapshot_id)
+      ) {
+        tempest_research_workspace_abort(
+          paste0(
+            "Accepted graft reference snapshot does not match ",
+            "{.field base_snapshot_id} at {.field {path}}."
+          )
+        )
+      }
+      value[[field]] <- child
+      next
+    }
+    value[[field]] <- tempest_research_workspace_validate_reference_ids(
+      child,
+      child_path,
+      base_snapshot_id
+    )
+  }
+  value
+}
+
+#' @keywords internal
+tempest_research_workspace_reference_record <- function(
+  reference,
+  index,
+  base_snapshot_id
+) {
+  path <- paste0("accepted_graft_references[[", index, "]]")
+  if (
+    !is.list(reference) ||
+      is.data.frame(reference) ||
+      length(reference) == 0L
+  ) {
+    tempest_research_workspace_abort(
+      "Accepted graft references must be non-empty named records at {.field {path}}."
+    )
+  }
+  reference_names <- names(reference)
+  if (
+    is.null(reference_names) ||
+      anyNA(reference_names) ||
+      any(!nzchar(reference_names)) ||
+      anyDuplicated(reference_names)
+  ) {
+    tempest_research_workspace_abort(
+      "Accepted graft references must be non-empty named records at {.field {path}}."
+    )
+  }
+  reference <- tempest_research_workspace_reference_value(reference, path)
+  reference_names <- names(reference)
+  normalized_names <- tolower(gsub(
+    "[^A-Za-z0-9]+",
+    "_",
+    gsub("([a-z0-9])([A-Z])", "\\1_\\2", reference_names)
+  ))
+  if (anyDuplicated(normalized_names)) {
+    tempest_research_workspace_abort(
+      "Accepted graft reference fields must remain unique after normalization at {.field {path}}."
+    )
+  }
+  id_fields <- grepl("(^|_)id$", normalized_names)
+  if (!any(id_fields)) {
+    tempest_research_workspace_abort(
+      "Accepted graft references require at least one non-empty `*_id` field at {.field {path}}."
+    )
+  }
+  tempest_research_workspace_validate_reference_ids(
+    reference,
+    path,
+    base_snapshot_id
+  )
+}
+
+#' @keywords internal
+tempest_research_workspace_references <- function(
+  value,
+  base_snapshot_id = NULL
+) {
+  if (!is.list(value) || is.data.frame(value)) {
+    tempest_research_workspace_abort(
+      "{.arg accepted_graft_references} must be a list of references."
+    )
+  }
+  if (length(value) == 0L) {
+    return(list())
+  }
+  reference_names <- names(value)
+  if (
+    !is.null(reference_names) &&
+      (anyNA(reference_names) || any(nzchar(reference_names)))
+  ) {
+    tempest_research_workspace_abort(
+      "{.arg accepted_graft_references} must be an unnamed list of references."
+    )
+  }
+  references <- lapply(
+    seq_along(value),
+    function(index) {
+      reference <- tempest_research_workspace_reference_record(
+        value[[index]],
+        index,
+        base_snapshot_id
+      )
+      reference
+    }
+  )
+  keys <- vapply(
+    references,
+    tempest_research_workspace_reference_json,
+    character(1)
+  )
+  index <- order(keys)
+  references <- references[index]
+  keys <- keys[index]
+  references[!duplicated(keys)]
 }
 
 #' @keywords internal
@@ -191,44 +647,77 @@ tempest_validate_source <- function(source) {
   source
 }
 
-#' SourceStore (evidence ledger)
+#' @keywords internal
+tempest_research_workspace_copy <- function(value) {
+  rlang::duplicate(value, shallow = FALSE)
+}
+
+#' @keywords internal
+tempest_research_workspace_values <- function(values) {
+  ids <- sort(ls(values, all.names = TRUE))
+  stats::setNames(
+    lapply(
+      ids,
+      \(id) tempest_research_workspace_copy(values[[id]])
+    ),
+    ids
+  )
+}
+
+#' ResearchWorkspace (provisional scientific evidence ledger)
 #'
-#' In-memory store for sources, claims, evidence spans, disputes, and
-#' artifacts. Stays an R6 reference object: it is the mutable accumulator
-#' threaded through every pipeline stage and Co-STORM turn.
+#' A mutable, run-scoped workspace for retrieved resources, proposed claims,
+#' evidence spans, disputes, and references to accepted graft knowledge. The
+#' workspace never grants acceptance to proposed claims; acceptance remains an
+#' explicit graft review and commit.
 #'
-#' @field resources Environment of typed resources and built-in web-source
-#'   records keyed by resource id.
-#' @field sources Alias of `resources` retained for built-in web adapters.
-#' @field claims Environment of claim records keyed by claim_id.
-#' @field evidence_spans Environment of evidence-span records keyed by id.
-#' @field disputes Environment of dispute records keyed by id.
-#' @field artifacts Environment of arbitrary artifacts.
-#' @field max_sources Maximum number of unique sources admitted by the store.
+#' @field retrieved_resources Read-only named-list snapshot of typed resources
+#'   and built-in web-source records keyed by resource id.
+#' @field resources Compatibility alias of `retrieved_resources`.
+#' @field sources Compatibility alias retained for built-in web adapters.
+#' @field proposed_claims Read-only named-list snapshot of provisional claim
+#'   records keyed by claim id.
+#' @field claims Compatibility alias of `proposed_claims`.
+#' @field evidence_spans Read-only named-list snapshot of provisional
+#'   evidence-span records.
+#' @field disputes Read-only named-list snapshot of provisional dispute
+#'   records.
+#' @field accepted_graft_references Read-only list of opaque references to
+#'   accepted graft knowledge used by the research run.
+#' @field base_snapshot_id Read-only opaque identifier for the accepted
+#'   knowledge snapshot on which this workspace is based.
+#' @field citation_audit Latest claim-centered citation audit, when available.
+#' @field max_sources Maximum number of unique resources admitted.
 #'
 #' @export
-SourceStore <- R6::R6Class(
-  "SourceStore",
+ResearchWorkspace <- R6::R6Class(
+  "ResearchWorkspace",
   public = list(
-    resources = NULL,
-    sources = NULL,
-    claims = NULL,
-    evidence_spans = NULL,
-    disputes = NULL,
-    artifacts = NULL,
-    max_sources = NULL,
-
-    #' @description Create a new SourceStore.
+    #' @description Create a new provisional research workspace.
+    #' @param base_snapshot_id Optional opaque identifier for the pinned
+    #'   accepted knowledge snapshot.
     #' @param max_sources Maximum number of unique sources. New sources are
     #'   refused once the limit is reached.
-    initialize = function(max_sources = Inf) {
-      self$resources <- new.env(parent = emptyenv())
-      self$sources <- self$resources
-      self$claims <- new.env(parent = emptyenv())
-      self$evidence_spans <- new.env(parent = emptyenv())
-      self$disputes <- new.env(parent = emptyenv())
-      self$artifacts <- new.env(parent = emptyenv())
+    #' @param accepted_graft_references Unnamed list of canonical
+    #'   JSON-compatible references to accepted graft records.
+    initialize = function(
+      base_snapshot_id = NULL,
+      max_sources = Inf,
+      accepted_graft_references = list()
+    ) {
+      private$resources_value <- new.env(parent = emptyenv())
+      private$claims_value <- new.env(parent = emptyenv())
+      private$evidence_spans_value <- new.env(parent = emptyenv())
+      private$disputes_value <- new.env(parent = emptyenv())
+      private$citation_audit_value <- NULL
       private$claims_by_source <- new.env(parent = emptyenv())
+      private$base_snapshot_id_value <-
+        tempest_research_workspace_snapshot_id(base_snapshot_id)
+      private$accepted_graft_references_value <-
+        tempest_research_workspace_references(
+          accepted_graft_references,
+          private$base_snapshot_id_value
+        )
       self$set_max_sources(max_sources)
       invisible(self)
     },
@@ -241,7 +730,10 @@ SourceStore <- R6::R6Class(
           length(max_sources) != 1L ||
           is.na(max_sources) ||
           max_sources <= 0 ||
-          (!is.infinite(max_sources) && max_sources != as.integer(max_sources))
+          (!is.infinite(max_sources) &&
+            (!is.finite(max_sources) ||
+              max_sources != trunc(max_sources) ||
+              max_sources > .Machine$integer.max))
       ) {
         tempest_source_store_abort(
           "{.arg max_sources} must be a positive whole number or Inf."
@@ -252,7 +744,11 @@ SourceStore <- R6::R6Class(
           "{.arg max_sources} cannot be lower than the current source count."
         )
       }
-      self$max_sources <- max_sources
+      private$max_sources_value <- if (is.infinite(max_sources)) {
+        Inf
+      } else {
+        as.integer(max_sources)
+      }
       invisible(self)
     },
 
@@ -261,82 +757,109 @@ SourceStore <- R6::R6Class(
     #'   [tempest_resource()].
     upsert_source = function(source) {
       if (S7::S7_inherits(source, TempestResource)) {
-        return(self$upsert_resource(source))
+        return(self$upsert_retrieved_resource(source))
       }
       source <- tempest_validate_source(source)
-      is_new <- is.null(self$resources[[source$id]])
+      previous <- private$resources_value[[source$id]]
+      is_new <- is.null(previous)
       if (is_new && length(self$list_sources()) >= self$max_sources) {
         tempest_source_store_abort(
           c(
-            "SourceStore source limit reached.",
+            "ResearchWorkspace source limit reached.",
             i = "Increase {.arg max_sources} to admit more sources."
           )
         )
       }
-      self$resources[[source$id]] <- source
+      source <- tempest_research_workspace_copy(source)
+      private$resources_value[[source$id]] <- source
+      if (!identical(previous, source)) {
+        private$invalidate_citation_audit()
+      }
       invisible(source$id)
     },
 
     #' @description Get a source by id.
     #' @param source_id The source id.
     get_source = function(source_id) {
-      resource <- self$resources[[source_id]] %||% NULL
+      resource <- private$resources_value[[source_id]] %||% NULL
       if (is.null(resource)) {
         return(NULL)
       }
-      tempest_resource_as_source(resource)
+      tempest_research_workspace_copy(tempest_resource_as_source(resource))
     },
 
     #' @description List all sources.
     list_sources = function() {
-      ids <- ls(self$resources, all.names = TRUE)
+      ids <- sort(ls(private$resources_value, all.names = TRUE))
       purrr::map(ids, self$get_source)
     },
 
-    #' @description Insert or update a typed evidence resource.
+    #' @description Insert or update a retrieved typed evidence resource.
     #' @param resource A resource created by [tempest_resource()].
-    upsert_resource = function(resource) {
+    upsert_retrieved_resource = function(resource) {
       if (!S7::S7_inherits(resource, TempestResource)) {
         tempest_source_store_abort(
           "{.arg resource} must be created by {.fn tempest_resource}."
         )
       }
       resource_id <- resource@resource_id
-      is_new <- is.null(self$resources[[resource_id]])
+      previous <- private$resources_value[[resource_id]]
+      is_new <- is.null(previous)
       if (is_new && length(self$list_resources()) >= self$max_sources) {
         tempest_source_store_abort(
           c(
-            "SourceStore resource limit reached.",
+            "ResearchWorkspace resource limit reached.",
             i = "Increase {.arg max_sources} to admit more resources."
           )
         )
       }
-      self$resources[[resource_id]] <- resource
+      resource <- tempest_research_workspace_copy(resource)
+      private$resources_value[[resource_id]] <- resource
+      if (!identical(previous, resource)) {
+        private$invalidate_citation_audit()
+      }
       invisible(resource_id)
     },
 
-    #' @description Get a typed evidence resource by id.
+    #' @description Get a retrieved typed evidence resource by id.
     #' @param resource_id Resource id.
-    get_resource = function(resource_id) {
-      resource <- self$resources[[resource_id]] %||% NULL
+    get_retrieved_resource = function(resource_id) {
+      resource <- private$resources_value[[resource_id]] %||% NULL
       if (is.null(resource)) {
         return(NULL)
       }
       if (S7::S7_inherits(resource, TempestResource)) {
-        return(resource)
+        return(tempest_research_workspace_copy(resource))
       }
-      tempest_source_as_resource(resource)
+      tempest_research_workspace_copy(tempest_source_as_resource(resource))
     },
 
-    #' @description List all evidence as typed resources.
+    #' @description List all retrieved evidence as typed resources.
+    list_retrieved_resources = function() {
+      ids <- sort(ls(private$resources_value, all.names = TRUE))
+      purrr::map(ids, self$get_retrieved_resource)
+    },
+
+    #' @description Compatibility alias for `upsert_retrieved_resource()`.
+    #' @param resource A resource created by [tempest_resource()].
+    upsert_resource = function(resource) {
+      self$upsert_retrieved_resource(resource)
+    },
+
+    #' @description Compatibility alias for `get_retrieved_resource()`.
+    #' @param resource_id Resource id.
+    get_resource = function(resource_id) {
+      self$get_retrieved_resource(resource_id)
+    },
+
+    #' @description Compatibility alias for `list_retrieved_resources()`.
     list_resources = function() {
-      ids <- ls(self$resources, all.names = TRUE)
-      purrr::map(ids, self$get_resource)
+      self$list_retrieved_resources()
     },
 
-    #' @description Add a claim record to the ledger.
+    #' @description Add a proposed claim record to the workspace.
     #' @param claim A `tempest_claim` S7 record.
-    add_claim = function(claim) {
+    add_proposed_claim = function(claim) {
       if (!S7::S7_inherits(claim, tempest_claim)) {
         tempest_source_store_abort(
           "{.arg claim} must be a {.cls tempest_claim} record."
@@ -344,7 +867,7 @@ SourceStore <- R6::R6Class(
       }
       missing_sources <- setdiff(
         claim@source_ids,
-        ls(self$resources, all.names = TRUE)
+        ls(private$resources_value, all.names = TRUE)
       )
       if (length(missing_sources) > 0L) {
         tempest_source_store_abort(
@@ -353,15 +876,33 @@ SourceStore <- R6::R6Class(
       }
       missing_spans <- setdiff(
         claim@evidence_span_ids,
-        ls(self$evidence_spans, all.names = TRUE)
+        ls(private$evidence_spans_value, all.names = TRUE)
       )
       if (length(missing_spans) > 0L) {
         tempest_source_store_abort(
           "Claim cites unknown evidence span id{?s}: {.val {missing_spans}}."
         )
       }
+      mismatched_spans <- claim@evidence_span_ids[
+        vapply(
+          claim@evidence_span_ids,
+          function(span_id) {
+            !private$evidence_spans_value[[span_id]]@source_id %in%
+              claim@source_ids
+          },
+          logical(1)
+        )
+      ]
+      if (length(mismatched_spans) > 0L) {
+        tempest_source_store_abort(
+          paste0(
+            "Claim evidence span{?s} must come from a source cited by the ",
+            "claim: {.val {mismatched_spans}}."
+          )
+        )
+      }
       id <- claim@claim_id
-      previous <- self$claims[[id]]
+      previous <- private$claims_value[[id]]
       if (!is.null(previous)) {
         for (sid in previous@source_ids) {
           private$claims_by_source[[sid]] <- setdiff(
@@ -370,31 +911,53 @@ SourceStore <- R6::R6Class(
           )
         }
       }
-      self$claims[[id]] <- claim
+      claim <- tempest_research_workspace_copy(claim)
+      private$claims_value[[id]] <- claim
       for (sid in claim@source_ids) {
         existing <- private$claims_by_source[[sid]] %||% character()
         private$claims_by_source[[sid]] <- unique(c(existing, id))
       }
+      if (!identical(previous, claim)) {
+        private$invalidate_citation_audit()
+      }
       invisible(id)
     },
 
-    #' @description Get a claim by id.
+    #' @description Get a proposed claim by id.
     #' @param claim_id The claim id.
-    get_claim = function(claim_id) {
-      self$claims[[claim_id]] %||% NULL
+    get_proposed_claim = function(claim_id) {
+      claim <- private$claims_value[[claim_id]] %||% NULL
+      tempest_research_workspace_copy(claim)
     },
 
-    #' @description List all claims.
+    #' @description List all proposed claims.
+    list_proposed_claims = function() {
+      ids <- sort(ls(private$claims_value, all.names = TRUE))
+      purrr::map(ids, self$get_proposed_claim)
+    },
+
+    #' @description Compatibility alias for `add_proposed_claim()`.
+    #' @param claim A `tempest_claim` S7 record.
+    add_claim = function(claim) {
+      self$add_proposed_claim(claim)
+    },
+
+    #' @description Compatibility alias for `get_proposed_claim()`.
+    #' @param claim_id The claim id.
+    get_claim = function(claim_id) {
+      self$get_proposed_claim(claim_id)
+    },
+
+    #' @description Compatibility alias for `list_proposed_claims()`.
     list_claims = function() {
-      ids <- ls(self$claims, all.names = TRUE)
-      purrr::map(ids, ~ self$claims[[.x]])
+      self$list_proposed_claims()
     },
 
     #' @description Claims that cite a given source.
     #' @param source_id Source id.
     claims_for_source = function(source_id) {
-      ids <- private$claims_by_source[[source_id]] %||% character()
-      purrr::map(ids, ~ self$claims[[.x]])
+      ids <- sort(private$claims_by_source[[source_id]] %||% character())
+      purrr::map(ids, self$get_proposed_claim)
     },
 
     #' @description Add an evidence span.
@@ -411,8 +974,51 @@ SourceStore <- R6::R6Class(
         )
       }
       id <- span@evidence_span_id
-      self$evidence_spans[[id]] <- span
+      previous <- private$evidence_spans_value[[id]]
+      if (
+        !is.null(previous) && !identical(previous@source_id, span@source_id)
+      ) {
+        linked_claim_ids <- vapply(
+          self$list_proposed_claims(),
+          function(claim) {
+            if (id %in% claim@evidence_span_ids) {
+              claim@claim_id
+            } else {
+              NA_character_
+            }
+          },
+          character(1)
+        )
+        linked_claim_ids <- linked_claim_ids[!is.na(linked_claim_ids)]
+        if (length(linked_claim_ids) > 0L) {
+          tempest_source_store_abort(
+            paste0(
+              "Cannot replace linked evidence span {.val {id}} with a ",
+              "different source; it is cited by claim{?s}: ",
+              "{.val {linked_claim_ids}}."
+            )
+          )
+        }
+      }
+      span <- tempest_research_workspace_copy(span)
+      private$evidence_spans_value[[id]] <- span
+      if (!identical(previous, span)) {
+        private$invalidate_citation_audit()
+      }
       invisible(id)
+    },
+
+    #' @description Get an evidence span by id.
+    #' @param span_id Evidence span id.
+    get_evidence_span = function(span_id) {
+      span <- private$evidence_spans_value[[span_id]] %||% NULL
+      tempest_research_workspace_copy(span)
+    },
+
+    #' @description List all evidence spans in deterministic id order.
+    list_evidence_spans = function() {
+      ids <- sort(ls(private$evidence_spans_value, all.names = TRUE))
+      purrr::map(ids, self$get_evidence_span)
     },
 
     #' @description Link an evidence span to a claim.
@@ -423,7 +1029,7 @@ SourceStore <- R6::R6Class(
       if (is.null(claim)) {
         tempest_source_store_abort("Unknown claim id: {.val {claim_id}}.")
       }
-      span <- self$evidence_spans[[span_id]]
+      span <- private$evidence_spans_value[[span_id]]
       if (is.null(span)) {
         tempest_source_store_abort(
           "Unknown evidence span id: {.val {span_id}}."
@@ -439,10 +1045,14 @@ SourceStore <- R6::R6Class(
           "Evidence span source is not cited by claim {.val {claim_id}}."
         )
       }
-      self$claims[[claim_id]] <- S7::set_props(
-        claim,
-        evidence_span_ids = unique(c(claim@evidence_span_ids, span_id))
-      )
+      evidence_span_ids <- unique(c(claim@evidence_span_ids, span_id))
+      if (!identical(evidence_span_ids, claim@evidence_span_ids)) {
+        private$claims_value[[claim_id]] <- S7::set_props(
+          claim,
+          evidence_span_ids = evidence_span_ids
+        )
+        private$invalidate_citation_audit()
+      }
       invisible(claim_id)
     },
 
@@ -453,7 +1063,7 @@ SourceStore <- R6::R6Class(
       if (is.null(claim)) {
         return(list())
       }
-      purrr::map(claim@evidence_span_ids, ~ self$evidence_spans[[.x]])
+      purrr::map(claim@evidence_span_ids, self$get_evidence_span)
     },
 
     #' @description Update a claim's verification status.
@@ -471,13 +1081,14 @@ SourceStore <- R6::R6Class(
       if (is.null(claim)) {
         tempest_abort("Unknown claim id: {.val {claim_id}}")
       }
-      self$claims[[claim_id]] <- S7::set_props(
+      private$claims_value[[claim_id]] <- S7::set_props(
         claim,
         verification_status = status,
         support_score = score,
         verifier_model = verifier,
         verified_at = tempest_now_utc()
       )
+      private$invalidate_citation_audit()
       invisible(claim_id)
     },
 
@@ -491,7 +1102,7 @@ SourceStore <- R6::R6Class(
       }
       missing_claims <- setdiff(
         dispute@claim_ids,
-        ls(self$claims, all.names = TRUE)
+        ls(private$claims_value, all.names = TRUE)
       )
       if (length(missing_claims) > 0L) {
         tempest_source_store_abort(
@@ -499,28 +1110,188 @@ SourceStore <- R6::R6Class(
         )
       }
       id <- dispute@dispute_id
-      self$disputes[[id]] <- dispute
+      previous <- private$disputes_value[[id]]
+      dispute <- tempest_research_workspace_copy(dispute)
+      private$disputes_value[[id]] <- dispute
+      if (!identical(previous, dispute)) {
+        private$invalidate_citation_audit()
+      }
       invisible(id)
     },
 
     #' @description List all disputes.
     list_disputes = function() {
-      ids <- ls(self$disputes, all.names = TRUE)
-      purrr::map(ids, ~ self$disputes[[.x]])
+      ids <- sort(ls(private$disputes_value, all.names = TRUE))
+      purrr::map(
+        ids,
+        \(id) tempest_research_workspace_copy(private$disputes_value[[id]])
+      )
     },
 
-    #' @description Store an artifact by name.
-    #' @param name Artifact name.
-    #' @param value Artifact value.
-    set_artifact = function(name, value) {
-      self$artifacts[[name]] <- value
-      invisible(name)
+    #' @description Record a reference to accepted graft knowledge.
+    #' @param reference Opaque canonical JSON-compatible graft reference.
+    record_accepted_graft_reference = function(reference) {
+      private$accepted_graft_references_value <-
+        tempest_research_workspace_references(
+          c(
+            private$accepted_graft_references_value,
+            list(reference)
+          ),
+          private$base_snapshot_id_value
+        )
+      invisible(tempest_research_workspace_copy(reference))
     },
 
-    #' @description Retrieve an artifact by name.
-    #' @param name Artifact name.
-    get_artifact = function(name) {
-      self$artifacts[[name]] %||% NULL
+    #' @description List accepted graft references deterministically.
+    list_accepted_graft_references = function() {
+      tempest_research_workspace_references(
+        private$accepted_graft_references_value,
+        private$base_snapshot_id_value
+      )
+    },
+
+    #' @description Record the latest claim-centered citation audit.
+    #' @param citation_audit A citation-audit data frame, or `NULL` to clear it.
+    set_citation_audit = function(citation_audit) {
+      if (is.null(citation_audit)) {
+        private$citation_audit_value <- NULL
+        return(invisible(NULL))
+      }
+      if (!is.data.frame(citation_audit)) {
+        tempest_research_workspace_abort(
+          "{.arg citation_audit} must be a data frame or `NULL`."
+        )
+      }
+      required <- c(
+        "claim_id",
+        "claim_text",
+        "verification_status",
+        "support_score",
+        "rationale"
+      )
+      fields <- names(citation_audit)
+      if (
+        is.null(fields) ||
+          anyNA(fields) ||
+          anyDuplicated(fields) ||
+          !setequal(fields, required)
+      ) {
+        missing <- setdiff(required, fields %||% character())
+        unexpected <- setdiff(fields %||% character(), required)
+        tempest_research_workspace_abort(
+          c(
+            "{.arg citation_audit} must contain exactly the claim-audit fields.",
+            x = if (length(missing) > 0L) {
+              "Missing field{?s}: {.field {missing}}."
+            },
+            x = if (length(unexpected) > 0L) {
+              "Unexpected field{?s}: {.field {unexpected}}."
+            }
+          )
+        )
+      }
+      citation_audit <- citation_audit[required]
+      for (field in c(
+        "claim_id",
+        "claim_text",
+        "verification_status",
+        "rationale"
+      )) {
+        if (!is.character(citation_audit[[field]])) {
+          tempest_research_workspace_abort(
+            "Citation-audit field {.field {field}} must be character."
+          )
+        }
+      }
+      if (!is.numeric(citation_audit$support_score)) {
+        tempest_research_workspace_abort(
+          "Citation-audit field {.field support_score} must be numeric."
+        )
+      }
+      if (
+        anyNA(citation_audit$claim_id) ||
+          any(!nzchar(tempest_trim(citation_audit$claim_id))) ||
+          anyDuplicated(citation_audit$claim_id)
+      ) {
+        tempest_research_workspace_abort(
+          "Citation-audit claim IDs must be unique non-empty strings."
+        )
+      }
+      if (
+        anyNA(citation_audit$claim_text) ||
+          any(!nzchar(tempest_trim(citation_audit$claim_text)))
+      ) {
+        tempest_research_workspace_abort(
+          "Citation-audit claim text must contain non-empty strings."
+        )
+      }
+      invalid_statuses <- setdiff(
+        unique(citation_audit$verification_status),
+        tempest_verification_statuses()
+      )
+      if (
+        anyNA(citation_audit$verification_status) ||
+          length(invalid_statuses) > 0L
+      ) {
+        tempest_research_workspace_abort(
+          paste0(
+            "Citation-audit verification statuses must be one of: ",
+            "{.val {tempest_verification_statuses()}}."
+          )
+        )
+      }
+      invalid_scores <- !is.na(citation_audit$support_score) &
+        (!is.finite(citation_audit$support_score) |
+          citation_audit$support_score < 0 |
+          citation_audit$support_score > 1)
+      if (any(invalid_scores)) {
+        tempest_research_workspace_abort(
+          "Citation-audit support scores must be `NA` or finite values in [0, 1]."
+        )
+      }
+      citation_audit$support_score <- as.double(
+        citation_audit$support_score
+      )
+      for (index in seq_len(nrow(citation_audit))) {
+        claim_id <- citation_audit$claim_id[[index]]
+        claim <- private$claims_value[[claim_id]]
+        if (is.null(claim)) {
+          tempest_research_workspace_abort(
+            "Citation audit cites unknown claim id: {.val {claim_id}}."
+          )
+        }
+        if (!identical(citation_audit$claim_text[[index]], claim@claim_text)) {
+          tempest_research_workspace_abort(
+            "Citation-audit text does not match claim {.val {claim_id}}."
+          )
+        }
+        if (
+          !identical(
+            citation_audit$verification_status[[index]],
+            claim@verification_status
+          )
+        ) {
+          tempest_research_workspace_abort(
+            "Citation-audit status does not match claim {.val {claim_id}}."
+          )
+        }
+        if (
+          !isTRUE(all.equal(
+            citation_audit$support_score[[index]],
+            claim@support_score,
+            check.attributes = FALSE
+          ))
+        ) {
+          tempest_research_workspace_abort(
+            "Citation-audit support score does not match claim {.val {claim_id}}."
+          )
+        }
+      }
+      private$citation_audit_value <- rlang::duplicate(
+        tibble::as_tibble(citation_audit),
+        shallow = FALSE
+      )
+      invisible(self$citation_audit)
     },
 
     #' @description Convert sources, claims, and disputes to tibbles.
@@ -579,7 +1350,222 @@ SourceStore <- R6::R6Class(
       )
     }
   ),
+  active = list(
+    retrieved_resources = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("retrieved_resources")
+      }
+      tempest_research_workspace_values(private$resources_value)
+    },
+    resources = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("resources")
+      }
+      tempest_research_workspace_values(private$resources_value)
+    },
+    sources = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("sources")
+      }
+      tempest_research_workspace_values(private$resources_value)
+    },
+    proposed_claims = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("proposed_claims")
+      }
+      tempest_research_workspace_values(private$claims_value)
+    },
+    claims = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("claims")
+      }
+      tempest_research_workspace_values(private$claims_value)
+    },
+    evidence_spans = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("evidence_spans")
+      }
+      tempest_research_workspace_values(private$evidence_spans_value)
+    },
+    disputes = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("disputes")
+      }
+      tempest_research_workspace_values(private$disputes_value)
+    },
+    max_sources = function(value) {
+      if (!missing(value)) {
+        tempest_research_workspace_abort(
+          paste0(
+            "{.field max_sources} is read-only; use ",
+            "{.fn set_max_sources}."
+          )
+        )
+      }
+      private$max_sources_value
+    },
+    base_snapshot_id = function(value) {
+      if (!missing(value)) {
+        tempest_research_workspace_abort(
+          "{.field base_snapshot_id} is pinned when the workspace is created."
+        )
+      }
+      private$base_snapshot_id_value
+    },
+    accepted_graft_references = function(value) {
+      if (!missing(value)) {
+        tempest_research_workspace_abort(
+          paste0(
+            "{.field accepted_graft_references} is read-only; use ",
+            "{.fn record_accepted_graft_reference}."
+          )
+        )
+      }
+      self$list_accepted_graft_references()
+    },
+    citation_audit = function(value) {
+      if (!missing(value)) {
+        tempest_research_workspace_abort(
+          paste0(
+            "{.field citation_audit} is read-only; use ",
+            "{.fn set_citation_audit}."
+          )
+        )
+      }
+      if (is.null(private$citation_audit_value)) {
+        return(NULL)
+      }
+      rlang::duplicate(private$citation_audit_value, shallow = FALSE)
+    }
+  ),
   private = list(
-    claims_by_source = NULL
+    resources_value = NULL,
+    claims_value = NULL,
+    evidence_spans_value = NULL,
+    disputes_value = NULL,
+    max_sources_value = NULL,
+    claims_by_source = NULL,
+    base_snapshot_id_value = NULL,
+    accepted_graft_references_value = NULL,
+    citation_audit_value = NULL,
+    invalidate_citation_audit = function() {
+      private$citation_audit_value <- NULL
+      invisible(NULL)
+    },
+    read_only_binding = function(field) {
+      tempest_research_workspace_abort(
+        paste0(
+          "{.field {field}} is a read-only snapshot; use workspace ",
+          "mutation methods."
+        )
+      )
+    }
+  )
+)
+
+#' Create a provisional research workspace
+#'
+#' `tempest_research_workspace()` creates the run-scoped ledger for material
+#' gathered or proposed during scientific research. Accepted knowledge remains
+#' in graft; this workspace stores only opaque references to accepted records.
+#'
+#' @param base_snapshot_id Optional opaque identifier for the pinned accepted
+#'   knowledge snapshot.
+#' @param max_sources Maximum number of unique resources admitted.
+#' @param accepted_graft_references Unnamed list of canonical JSON-compatible
+#'   references to accepted graft records.
+#'
+#' @return A [ResearchWorkspace] object.
+#' @export
+tempest_research_workspace <- function(
+  base_snapshot_id = NULL,
+  max_sources = Inf,
+  accepted_graft_references = list()
+) {
+  ResearchWorkspace$new(
+    base_snapshot_id = base_snapshot_id,
+    max_sources = max_sources,
+    accepted_graft_references = accepted_graft_references
+  )
+}
+
+#' SourceStore (deprecated compatibility ledger)
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `SourceStore` was renamed in Tempest 0.2.0. Use
+#' [tempest_research_workspace()] for new code. This subclass temporarily
+#' retains the legacy arbitrary artifact surface while product callers move to
+#' explicit STORM and Co-STORM state.
+#'
+#' @field artifacts Legacy environment of arbitrary product artifacts.
+#'
+#' @keywords internal
+#' @export
+SourceStore <- R6::R6Class(
+  "SourceStore",
+  inherit = ResearchWorkspace,
+  public = list(
+    artifacts = NULL,
+
+    #' @description Create a deprecated SourceStore compatibility object.
+    #' @param max_sources Maximum number of unique resources admitted.
+    #' @param base_snapshot_id Optional opaque identifier for the pinned
+    #'   accepted-knowledge snapshot.
+    #' @param accepted_graft_references Unnamed list of canonical
+    #'   JSON-compatible references to accepted graft records.
+    initialize = function(
+      max_sources = Inf,
+      base_snapshot_id = NULL,
+      accepted_graft_references = list()
+    ) {
+      lifecycle::deprecate_soft(
+        when = "0.2.0",
+        what = "SourceStore$new()",
+        with = "tempest_research_workspace()",
+        user_env = rlang::caller_env(2)
+      )
+      super$initialize(
+        base_snapshot_id = base_snapshot_id,
+        max_sources = max_sources,
+        accepted_graft_references = accepted_graft_references
+      )
+      self$artifacts <- new.env(parent = emptyenv())
+      invisible(self)
+    },
+
+    #' @description Store a legacy product artifact by name.
+    #' @param name Artifact name.
+    #' @param value Artifact value.
+    set_artifact = function(name, value) {
+      if (identical(name, "citation_audit")) {
+        self$set_citation_audit(value)
+        return(invisible(name))
+      }
+      self$artifacts[[name]] <- value
+      invisible(name)
+    },
+
+    #' @description Retrieve a legacy product artifact by name.
+    #' @param name Artifact name.
+    get_artifact = function(name) {
+      if (identical(name, "citation_audit")) {
+        return(self$citation_audit)
+      }
+      tempest_research_workspace_copy(self$artifacts[[name]] %||% NULL)
+    },
+
+    #' @description Record the latest claim-centered citation audit.
+    #' @param citation_audit A citation-audit data frame, or `NULL` to clear it.
+    set_citation_audit = function(citation_audit) {
+      super$set_citation_audit(citation_audit)
+      if (is.null(self$citation_audit)) {
+        self$artifacts[["citation_audit"]] <- NULL
+      } else {
+        self$artifacts[["citation_audit"]] <- self$citation_audit
+      }
+      invisible(self$citation_audit)
+    }
   )
 )

@@ -82,7 +82,7 @@ test_that("Shiny shared store publishes custom run evidence and cancellation", {
       operation_id = "review"
     ))
   )
-  evidence <- SourceStore$new()
+  evidence <- quiet_source_store()
   resource <- tempest_resource(
     resource_kind = "host.document",
     locator = "documents/private-1",
@@ -99,7 +99,7 @@ test_that("Shiny shared store publishes custom run evidence and cancellation", {
   )
   store <- tempest_shiny_store()
   store$set(list(
-    store = SourceStore$new(),
+    store = quiet_source_store(),
     workflow_run = NULL
   ))
 

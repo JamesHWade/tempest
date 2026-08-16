@@ -1,11 +1,20 @@
-test_that("the pre-0.2 public export baseline is exact", {
-  expected <- readLines(
+test_that("the T1 public export surface is additive and exact", {
+  baseline <- readLines(
     test_path("fixtures", "public-exports-0.1.0.txt"),
     warn = FALSE
   )
+  additions <- c(
+    "ResearchWorkspace",
+    "tempest_research_manifest",
+    "tempest_research_workspace"
+  )
+  expected <- sort(c(baseline, additions), method = "radix")
   actual <- sort(getNamespaceExports("tempest"), method = "radix")
 
+  expect_length(baseline, 96L)
+  expect_length(actual, 99L)
   expect_identical(actual, expected)
+  expect_identical(setdiff(actual, baseline), additions)
 })
 
 test_that("the frozen generic-kernel retirement set is explicit", {

@@ -18,7 +18,8 @@ tempest_report_md(
 
 \item{body}{Markdown body text that may include inline citations like \verb{[Sxxxxxxxxxxxx]}.}
 
-\item{store}{A \code{SourceStore} containing sources.}
+\item{store}{A \link{ResearchWorkspace} or \link{TempestRetriever} containing
+retrieved sources.}
 
 \item{citation_policy}{One of "none", "source_attributed" (default),
 "claim_verified", "strict". "none" leaves inline citation ids unchanged

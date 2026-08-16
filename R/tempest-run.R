@@ -625,10 +625,10 @@ TempestRun <- R6::R6Class(
       private$progress <- progress
       if (
         !is.null(source_store) &&
-          !inherits(source_store, "SourceStore")
+          !inherits(source_store, "ResearchWorkspace")
       ) {
         tempest_run_abort(
-          "{.arg source_store} must be NULL or a SourceStore.",
+          "{.arg source_store} must be NULL or a ResearchWorkspace.",
           class = "tempest_run_preflight_error"
         )
       }
@@ -1056,9 +1056,9 @@ TempestRun <- R6::R6Class(
         )
       }
       if (length(self$objective@input_resource_ids) > 0L) {
-        if (!inherits(self$source_store, "SourceStore")) {
+        if (!inherits(self$source_store, "ResearchWorkspace")) {
           tempest_run_abort(
-            "Objective input resources require a SourceStore.",
+            "Objective input resources require a ResearchWorkspace.",
             class = "tempest_run_preflight_error"
           )
         }
@@ -2205,7 +2205,8 @@ TempestRun <- R6::R6Class(
 #'   permission.
 #' @param deliverables Deliverable specifications available to the run.
 #' @param artifact_catalog Optional typed artifact catalog.
-#' @param source_store Optional `SourceStore` evidence ledger.
+#' @param source_store Optional [ResearchWorkspace] evidence ledger. The
+#'   argument name is retained for the frozen generic API.
 #' @param runtime_context Process-local named services, such as a retriever or
 #'   expert-session manager, made available to operations and capability
 #'   factories. Approved-output exporters also receive these services as their
@@ -2258,6 +2259,43 @@ tempest_run_workflow <- function(
   run
 }
 
+tempest_run_evidence_snapshot <- function(workspace) {
+  if (inherits(workspace, "SourceStore")) {
+    return(tempest_source_store_snapshot(workspace))
+  }
+  if (inherits(workspace, "ResearchWorkspace")) {
+    return(tempest_research_workspace_snapshot(workspace))
+  }
+  tempest_run_abort(
+    "The run evidence ledger must be a ResearchWorkspace.",
+    class = "tempest_run_preflight_error"
+  )
+}
+
+tempest_run_evidence_restore <- function(snapshot) {
+  if (!is.list(snapshot) || is.data.frame(snapshot)) {
+    tempest_run_abort(
+      "Run evidence must be a workspace snapshot record.",
+      class = "tempest_run_restore_error"
+    )
+  }
+  schema_version <- tempest_persistence_schema_version(
+    snapshot$schema_version %||% 1L,
+    "Run evidence schema version",
+    c("tempest_run_restore_error", "tempest_run_error", "tempest_error")
+  )
+  if (schema_version %in% c(3L, 4L)) {
+    return(tempest_research_workspace_restore(snapshot))
+  }
+  if (schema_version %in% c(1L, 2L)) {
+    return(tempest_source_store_restore(snapshot))
+  }
+  tempest_run_abort(
+    paste0("Unsupported run evidence schema version: ", schema_version, "."),
+    class = "tempest_run_restore_error"
+  )
+}
+
 #' Snapshot generic Tempest run state
 #'
 #' `r lifecycle::badge("experimental")`
@@ -2307,7 +2345,7 @@ tempest_run_snapshot <- function(run) {
     source_store = if (is.null(run$source_store)) {
       NULL
     } else {
-      tempest_source_store_snapshot(run$source_store)
+      tempest_run_evidence_snapshot(run$source_store)
     },
     created_at = run$created_at,
     updated_at = run$updated_at
@@ -3389,7 +3427,7 @@ tempest_run_validate_snapshot <- function(
 #' @param snapshot A record from [tempest_run_snapshot()].
 #' @param runtime Explicit process-local runtime.
 #' @param artifact_catalog Optional restored catalog override.
-#' @param source_store Optional restored evidence-store override.
+#' @param source_store Optional restored [ResearchWorkspace] override.
 #' @param runtime_context Process-local services to reattach after restore.
 #' @param connection_permissions Optional restored connection allow-lists.
 #'   Defaults to the saved permissions. Explicit overrides may only narrow
@@ -3442,20 +3480,29 @@ tempest_run_restore <- function(
       )
     }
   } else if (is.null(source_store)) {
-    source_store <- tempest_source_store_restore(snapshot$source_store)
+    source_store <- tempest_run_evidence_restore(snapshot$source_store)
   } else {
-    if (!inherits(source_store, "SourceStore")) {
+    if (!inherits(source_store, "ResearchWorkspace")) {
       tempest_run_abort(
-        "{.arg source_store} must be a SourceStore.",
+        "{.arg source_store} must be a ResearchWorkspace.",
         class = "tempest_run_restore_error"
       )
     }
-    saved_source_store <- tempest_source_store_restore(
-      snapshot$source_store
-    )
+    saved_source_store <- tempest_run_evidence_restore(snapshot$source_store)
+    if (
+      !identical(
+        inherits(saved_source_store, "SourceStore"),
+        inherits(source_store, "SourceStore")
+      )
+    ) {
+      tempest_run_abort(
+        "{.arg source_store} cannot change the saved workspace kind.",
+        class = "tempest_run_restore_error"
+      )
+    }
     tempest_run_assert_equivalent_snapshot(
-      tempest_source_store_snapshot(saved_source_store),
-      tempest_source_store_snapshot(source_store),
+      tempest_run_evidence_snapshot(saved_source_store),
+      tempest_run_evidence_snapshot(source_store),
       "source store"
     )
   }
@@ -4142,7 +4189,7 @@ tempest_run_save <- function(run, path, overwrite = FALSE) {
 #' @param path Tempest run bundle directory.
 #' @param runtime Explicit process-local runtime or operation registry.
 #' @param artifact_catalog Optional process-local catalog override.
-#' @param source_store Optional process-local evidence-store override.
+#' @param source_store Optional process-local [ResearchWorkspace] override.
 #' @param runtime_context Process-local services to reattach to operations and
 #'   capability factories. These values are never read from disk.
 #' @param connection_permissions Optional connection allow-lists that only

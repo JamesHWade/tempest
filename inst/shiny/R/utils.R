@@ -184,9 +184,18 @@ citation_source_store <- function(store = NULL) {
     return(NULL)
   }
   if (inherits(store, "TempestRetriever")) {
-    store <- store$store
+    workspace <- tryCatch(store[["workspace"]], error = function(e) NULL)
+    legacy_store <- tryCatch(store[["store"]], error = function(e) NULL)
+    if (
+      !is.null(workspace) &&
+        !is.null(legacy_store) &&
+        !identical(workspace, legacy_store)
+    ) {
+      return(NULL)
+    }
+    store <- workspace %||% legacy_store
   }
-  if (inherits(store, "SourceStore")) {
+  if (inherits(store, "ResearchWorkspace")) {
     return(store)
   }
   NULL

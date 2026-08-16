@@ -33,7 +33,7 @@ experts are generated automatically.}
 connection allow-lists.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
-with a \code{SourceStore} at \verb{$store}.}
+with a \link{ResearchWorkspace} at \verb{$workspace} or its legacy \verb{$store} alias.}
 
 \item{progress}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}

@@ -2,29 +2,23 @@
 % Please edit documentation in R/models.R
 \name{SourceStore}
 \alias{SourceStore}
-\title{SourceStore (evidence ledger)}
+\title{SourceStore (deprecated compatibility ledger)}
 \description{
-In-memory store for sources, claims, evidence spans, disputes, and
-artifacts. Stays an R6 reference object: it is the mutable accumulator
-threaded through every pipeline stage and Co-STORM turn.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{SourceStore} was renamed in Tempest 0.2.0. Use
+\code{\link[=tempest_research_workspace]{tempest_research_workspace()}} for new code. This subclass temporarily
+retains the legacy arbitrary artifact surface while product callers move to
+explicit STORM and Co-STORM state.
+}
+\keyword{internal}
+\section{Super class}{
+\code{\link[tempest:ResearchWorkspace]{ResearchWorkspace}} -> \code{SourceStore}
 }
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
   \describe{
-    \item{\code{resources}}{Environment of typed resources and built-in web-source
-records keyed by resource id.}
-
-    \item{\code{sources}}{Alias of \code{resources} retained for built-in web adapters.}
-
-    \item{\code{claims}}{Environment of claim records keyed by claim_id.}
-
-    \item{\code{evidence_spans}}{Environment of evidence-span records keyed by id.}
-
-    \item{\code{disputes}}{Environment of dispute records keyed by id.}
-
-    \item{\code{artifacts}}{Environment of arbitrary artifacts.}
-
-    \item{\code{max_sources}}{Maximum number of unique sources admitted by the store.}
+    \item{\code{artifacts}}{Legacy environment of arbitrary product artifacts.}
   }
   \if{html}{\out{</div>}}
 }
@@ -32,350 +26,67 @@ records keyed by resource id.}
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-SourceStore-initialize}{\code{SourceStore$new()}}
-    \item \href{#method-SourceStore-set_max_sources}{\code{SourceStore$set_max_sources()}}
-    \item \href{#method-SourceStore-upsert_source}{\code{SourceStore$upsert_source()}}
-    \item \href{#method-SourceStore-get_source}{\code{SourceStore$get_source()}}
-    \item \href{#method-SourceStore-list_sources}{\code{SourceStore$list_sources()}}
-    \item \href{#method-SourceStore-upsert_resource}{\code{SourceStore$upsert_resource()}}
-    \item \href{#method-SourceStore-get_resource}{\code{SourceStore$get_resource()}}
-    \item \href{#method-SourceStore-list_resources}{\code{SourceStore$list_resources()}}
-    \item \href{#method-SourceStore-add_claim}{\code{SourceStore$add_claim()}}
-    \item \href{#method-SourceStore-get_claim}{\code{SourceStore$get_claim()}}
-    \item \href{#method-SourceStore-list_claims}{\code{SourceStore$list_claims()}}
-    \item \href{#method-SourceStore-claims_for_source}{\code{SourceStore$claims_for_source()}}
-    \item \href{#method-SourceStore-add_evidence_span}{\code{SourceStore$add_evidence_span()}}
-    \item \href{#method-SourceStore-link_evidence}{\code{SourceStore$link_evidence()}}
-    \item \href{#method-SourceStore-get_evidence_for_claim}{\code{SourceStore$get_evidence_for_claim()}}
-    \item \href{#method-SourceStore-verify_claim}{\code{SourceStore$verify_claim()}}
-    \item \href{#method-SourceStore-add_dispute}{\code{SourceStore$add_dispute()}}
-    \item \href{#method-SourceStore-list_disputes}{\code{SourceStore$list_disputes()}}
     \item \href{#method-SourceStore-set_artifact}{\code{SourceStore$set_artifact()}}
     \item \href{#method-SourceStore-get_artifact}{\code{SourceStore$get_artifact()}}
-    \item \href{#method-SourceStore-to_tibbles}{\code{SourceStore$to_tibbles()}}
+    \item \href{#method-SourceStore-set_citation_audit}{\code{SourceStore$set_citation_audit()}}
     \item \href{#method-SourceStore-clone}{\code{SourceStore$clone()}}
   }
 }
+\if{html}{\out{<details><summary>Inherited methods</summary>
+<ul>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="add_claim"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-add_claim'><code>ResearchWorkspace$add_claim()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="add_dispute"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-add_dispute'><code>ResearchWorkspace$add_dispute()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="add_evidence_span"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-add_evidence_span'><code>ResearchWorkspace$add_evidence_span()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="add_proposed_claim"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-add_proposed_claim'><code>ResearchWorkspace$add_proposed_claim()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="claims_for_source"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-claims_for_source'><code>ResearchWorkspace$claims_for_source()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="get_claim"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-get_claim'><code>ResearchWorkspace$get_claim()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="get_evidence_for_claim"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-get_evidence_for_claim'><code>ResearchWorkspace$get_evidence_for_claim()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="get_evidence_span"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-get_evidence_span'><code>ResearchWorkspace$get_evidence_span()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="get_proposed_claim"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-get_proposed_claim'><code>ResearchWorkspace$get_proposed_claim()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="get_resource"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-get_resource'><code>ResearchWorkspace$get_resource()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="get_retrieved_resource"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-get_retrieved_resource'><code>ResearchWorkspace$get_retrieved_resource()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="get_source"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-get_source'><code>ResearchWorkspace$get_source()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="link_evidence"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-link_evidence'><code>ResearchWorkspace$link_evidence()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="list_accepted_graft_references"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-list_accepted_graft_references'><code>ResearchWorkspace$list_accepted_graft_references()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="list_claims"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-list_claims'><code>ResearchWorkspace$list_claims()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="list_disputes"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-list_disputes'><code>ResearchWorkspace$list_disputes()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="list_evidence_spans"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-list_evidence_spans'><code>ResearchWorkspace$list_evidence_spans()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="list_proposed_claims"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-list_proposed_claims'><code>ResearchWorkspace$list_proposed_claims()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="list_resources"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-list_resources'><code>ResearchWorkspace$list_resources()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="list_retrieved_resources"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-list_retrieved_resources'><code>ResearchWorkspace$list_retrieved_resources()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="list_sources"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-list_sources'><code>ResearchWorkspace$list_sources()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="record_accepted_graft_reference"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-record_accepted_graft_reference'><code>ResearchWorkspace$record_accepted_graft_reference()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="set_max_sources"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-set_max_sources'><code>ResearchWorkspace$set_max_sources()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="to_tibbles"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-to_tibbles'><code>ResearchWorkspace$to_tibbles()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="upsert_resource"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-upsert_resource'><code>ResearchWorkspace$upsert_resource()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="upsert_retrieved_resource"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-upsert_retrieved_resource'><code>ResearchWorkspace$upsert_retrieved_resource()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="upsert_source"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-upsert_source'><code>ResearchWorkspace$upsert_source()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="tempest" data-topic="ResearchWorkspace" data-id="verify_claim"><a href='../../tempest/html/ResearchWorkspace.html#method-ResearchWorkspace-verify_claim'><code>ResearchWorkspace$verify_claim()</code></a></span></li>
+</ul>
+</details>}}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SourceStore-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-initialize}{}}}
 \subsection{\code{SourceStore$new()}}{
-  Create a new SourceStore.
+  Create a deprecated SourceStore compatibility object.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$new(max_sources = Inf)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{max_sources}}{Maximum number of unique sources. New sources are
-refused once the limit is reached.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-set_max_sources"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-set_max_sources}{}}}
-\subsection{\code{SourceStore$set_max_sources()}}{
-  Set the maximum number of unique sources.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$set_max_sources(max_sources)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{max_sources}}{A positive whole number or \code{Inf}.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-upsert_source"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-upsert_source}{}}}
-\subsection{\code{SourceStore$upsert_source()}}{
-  Insert or update a source.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$upsert_source(source)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{source}}{A built-in web-source list or a typed resource created by
-\code{\link[=tempest_resource]{tempest_resource()}}.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-get_source"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-get_source}{}}}
-\subsection{\code{SourceStore$get_source()}}{
-  Get a source by id.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$get_source(source_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{source_id}}{The source id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-list_sources"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-list_sources}{}}}
-\subsection{\code{SourceStore$list_sources()}}{
-  List all sources.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$list_sources()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-upsert_resource"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-upsert_resource}{}}}
-\subsection{\code{SourceStore$upsert_resource()}}{
-  Insert or update a typed evidence resource.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$upsert_resource(resource)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{resource}}{A resource created by \code{\link[=tempest_resource]{tempest_resource()}}.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-get_resource"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-get_resource}{}}}
-\subsection{\code{SourceStore$get_resource()}}{
-  Get a typed evidence resource by id.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$get_resource(resource_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{resource_id}}{Resource id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-list_resources"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-list_resources}{}}}
-\subsection{\code{SourceStore$list_resources()}}{
-  List all evidence as typed resources.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$list_resources()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-add_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-add_claim}{}}}
-\subsection{\code{SourceStore$add_claim()}}{
-  Add a claim record to the ledger.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$add_claim(claim)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{claim}}{A \code{tempest_claim} S7 record.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-get_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-get_claim}{}}}
-\subsection{\code{SourceStore$get_claim()}}{
-  Get a claim by id.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$get_claim(claim_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{claim_id}}{The claim id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-list_claims"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-list_claims}{}}}
-\subsection{\code{SourceStore$list_claims()}}{
-  List all claims.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$list_claims()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-claims_for_source"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-claims_for_source}{}}}
-\subsection{\code{SourceStore$claims_for_source()}}{
-  Claims that cite a given source.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$claims_for_source(source_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{source_id}}{Source id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-add_evidence_span"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-add_evidence_span}{}}}
-\subsection{\code{SourceStore$add_evidence_span()}}{
-  Add an evidence span.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$add_evidence_span(span)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{span}}{A \code{tempest_evidence_span} S7 record.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-link_evidence"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-link_evidence}{}}}
-\subsection{\code{SourceStore$link_evidence()}}{
-  Link an evidence span to a claim.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$link_evidence(claim_id, span_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{claim_id}}{Claim id.}
-      \item{\code{span_id}}{Evidence span id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-get_evidence_for_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-get_evidence_for_claim}{}}}
-\subsection{\code{SourceStore$get_evidence_for_claim()}}{
-  Evidence spans linked to a claim.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$get_evidence_for_claim(claim_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{claim_id}}{Claim id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-verify_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-verify_claim}{}}}
-\subsection{\code{SourceStore$verify_claim()}}{
-  Update a claim's verification status.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$verify_claim(
-  claim_id,
-  status,
-  score = NA_real_,
-  verifier = NA_character_
+    \preformatted{SourceStore$new(
+  max_sources = Inf,
+  base_snapshot_id = NULL,
+  accepted_graft_references = list()
 )}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{claim_id}}{Claim id.}
-      \item{\code{status}}{One of the verification status labels.}
-      \item{\code{score}}{Support score in \verb{[0, 1]} or NA.}
-      \item{\code{verifier}}{Verifier model id.}
+      \item{\code{max_sources}}{Maximum number of unique resources admitted.}
+      \item{\code{base_snapshot_id}}{Optional opaque identifier for the pinned
+accepted-knowledge snapshot.}
+      \item{\code{accepted_graft_references}}{Unnamed list of canonical
+JSON-compatible references to accepted graft records.}
     }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-add_dispute"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-add_dispute}{}}}
-\subsection{\code{SourceStore$add_dispute()}}{
-  Add a dispute.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$add_dispute(dispute)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{dispute}}{A \code{tempest_dispute} S7 record.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-list_disputes"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-list_disputes}{}}}
-\subsection{\code{SourceStore$list_disputes()}}{
-  List all disputes.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$list_disputes()}
     \if{html}{\out{</div>}}
   }
 }
@@ -384,7 +95,7 @@ refused once the limit is reached.}
 \if{html}{\out{<a id="method-SourceStore-set_artifact"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-set_artifact}{}}}
 \subsection{\code{SourceStore$set_artifact()}}{
-  Store an artifact by name.
+  Store a legacy product artifact by name.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{SourceStore$set_artifact(name, value)}
@@ -404,7 +115,7 @@ refused once the limit is reached.}
 \if{html}{\out{<a id="method-SourceStore-get_artifact"></a>}}
 \if{latex}{\out{\hypertarget{method-SourceStore-get_artifact}{}}}
 \subsection{\code{SourceStore$get_artifact()}}{
-  Retrieve an artifact by name.
+  Retrieve a legacy product artifact by name.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{SourceStore$get_artifact(name)}
@@ -420,13 +131,20 @@ refused once the limit is reached.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SourceStore-to_tibbles"></a>}}
-\if{latex}{\out{\hypertarget{method-SourceStore-to_tibbles}{}}}
-\subsection{\code{SourceStore$to_tibbles()}}{
-  Convert sources, claims, and disputes to tibbles.
+\if{html}{\out{<a id="method-SourceStore-set_citation_audit"></a>}}
+\if{latex}{\out{\hypertarget{method-SourceStore-set_citation_audit}{}}}
+\subsection{\code{SourceStore$set_citation_audit()}}{
+  Record the latest claim-centered citation audit.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{SourceStore$to_tibbles()}
+    \preformatted{SourceStore$set_citation_audit(citation_audit)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{citation_audit}}{A citation-audit data frame, or \code{NULL} to clear it.}
+    }
     \if{html}{\out{</div>}}
   }
 }

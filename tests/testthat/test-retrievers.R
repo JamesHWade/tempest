@@ -14,9 +14,99 @@ test_that("search result helpers return the standard retriever shape", {
   expect_equal(results$snippet, NA_character_)
 })
 
+test_that("retrievers own one authoritative research workspace", {
+  cfg <- tempest_config(cache_dir = withr::local_tempdir())
+  retriever <- tempest_retriever(config = cfg)
+
+  expect_r6_class(retriever$workspace, "ResearchWorkspace")
+  expect_identical(retriever$store, retriever$workspace)
+
+  legacy <- quiet_source_store()
+  compatible <- tempest_retriever(config = cfg, store = legacy)
+  expect_identical(compatible$workspace, legacy)
+  expect_identical(compatible$store, compatible$workspace)
+
+  expect_error(
+    tempest_retriever(config = cfg, store = new.env()),
+    class = "tempest_research_workspace_error"
+  )
+})
+
+test_that("retriever config identity is canonical and custom retrievers stay opaque", {
+  first_config <- tempest_config(max_search_results = 2L)
+  second_config <- tempest_config(max_search_results = 3L)
+  retriever <- tempest_retriever(config = first_config)
+  custom_retriever <- list(workspace = tempest_research_workspace())
+
+  expect_identical(
+    tempest:::tempest_retriever_config_digest(retriever),
+    tempest:::tempest_research_config_digest(first_config)
+  )
+  expect_equal(
+    tempest:::tempest_retriever_config_digest(retriever) ==
+      tempest:::tempest_research_config_digest(second_config),
+    FALSE
+  )
+  expect_null(
+    tempest:::tempest_retriever_config_digest(custom_retriever)
+  )
+})
+
+test_that("retriever correlation identities cannot be rebound", {
+  config <- tempest_config(cache_dir = withr::local_tempdir())
+  retriever <- tempest_retriever(config = config)
+  workspace <- retriever$workspace
+  replacement <- tempest_research_workspace()
+
+  expect_error(
+    retriever$config <- tempest_config(cache_dir = withr::local_tempdir()),
+    class = "tempest_retriever_identity_error"
+  )
+  expect_error(
+    retriever$workspace <- replacement,
+    class = "tempest_retriever_identity_error"
+  )
+  expect_error(
+    retriever$store <- replacement,
+    class = "tempest_retriever_identity_error"
+  )
+  expect_error(
+    retriever$config@max_sources <- config@max_sources + 1L,
+    class = "tempest_retriever_identity_error"
+  )
+  expect_error(
+    retriever$ragnar_store <- new.env(parent = emptyenv()),
+    class = "tempest_retriever_identity_error"
+  )
+  expect_error(
+    retriever$cache_dir <- withr::local_tempdir(),
+    class = "tempest_retriever_identity_error"
+  )
+  expect_error(
+    retriever$cache_enabled <- !config@cache_enabled,
+    class = "tempest_retriever_identity_error"
+  )
+  expect_error(
+    retriever$cache_ttl <- config@cache_ttl + 1,
+    class = "tempest_retriever_identity_error"
+  )
+
+  expect_identical(retriever$config, config)
+  expect_identical(retriever$workspace, workspace)
+  expect_identical(retriever$store, workspace)
+  expect_identical(retriever$ragnar_store, config@ragnar_store)
+  expect_identical(retriever$cache_dir, config@cache_dir)
+  expect_identical(retriever$cache_enabled, isTRUE(config@cache_enabled))
+  expect_identical(retriever$cache_ttl, config@cache_ttl)
+
+  source <- fake_source("https://example.org/mutable-workspace")
+  expect_no_error(retriever$workspace$upsert_source(source))
+  expect_identical(retriever$store$get_source(source$id)$id, source$id)
+})
+
 test_that("search() drops missing/unsafe URLs instead of aborting", {
   cfg <- tempest_config(cache_dir = withr::local_tempdir())
-  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  retriever <- tempest_retriever(config = cfg)
 
   local_mocked_bindings(
     tempest_wiki_search = function(query, limit = 8) {
@@ -42,7 +132,7 @@ test_that("retriever enforces search and source budgets", {
     max_search_results = 2L,
     max_sources = 1L
   )
-  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  retriever <- tempest_retriever(config = cfg)
 
   expect_equal(retriever$store$max_sources, 1L)
   expect_error(
@@ -58,7 +148,7 @@ test_that("retriever enforces search and source budgets", {
 
 test_that("search() caches repeated equivalent searches", {
   cfg <- tempest_config(cache_dir = withr::local_tempdir())
-  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  retriever <- tempest_retriever(config = cfg)
   calls <- 0L
 
   local_mocked_bindings(
@@ -89,7 +179,7 @@ test_that("search() caches repeated equivalent searches", {
 
 test_that("search() does not count writes when the cache write fails", {
   cfg <- tempest_config(cache_dir = withr::local_tempdir())
-  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  retriever <- tempest_retriever(config = cfg)
 
   local_mocked_bindings(
     tempest_wiki_search = function(query, limit = 8) {
@@ -113,7 +203,7 @@ test_that("search() does not count writes when the cache write fails", {
 test_that("search cache respects TTL and can be disabled", {
   cache_dir <- withr::local_tempdir()
   cfg <- tempest_config(cache_dir = cache_dir, cache_ttl = 60)
-  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  retriever <- tempest_retriever(config = cfg)
   calls <- 0L
 
   local_mocked_bindings(
@@ -137,8 +227,7 @@ test_that("search cache respects TTL and can be disabled", {
     config = tempest_config(
       cache_dir = withr::local_tempdir(),
       cache_enabled = FALSE
-    ),
-    store = SourceStore$new()
+    )
   )
   disabled$search("ttl", provider = "wikipedia")
   disabled$search("ttl", provider = "wikipedia")
@@ -167,7 +256,7 @@ test_that("search cache keys include provider options", {
 
 test_that("fetch() caches content and force refreshes", {
   cfg <- tempest_config(cache_dir = withr::local_tempdir())
-  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  retriever <- tempest_retriever(config = cfg)
   calls <- 0L
 
   local_mocked_bindings(
@@ -199,7 +288,7 @@ test_that("fetch() caches content and force refreshes", {
 
 test_that("fetch() retries transient failures without force", {
   cfg <- tempest_config(cache_dir = withr::local_tempdir())
-  retriever <- tempest_retriever(config = cfg, store = SourceStore$new())
+  retriever <- tempest_retriever(config = cfg)
   calls <- 0L
 
   local_mocked_bindings(

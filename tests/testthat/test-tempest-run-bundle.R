@@ -24,7 +24,7 @@ test_that("TempestRun bundles round-trip durable run state", {
       content = "The customer needs a rollout plan.",
       retrieved_at = "2026-07-18 UTC"
     )
-    store <- SourceStore$new()
+    store <- tempest_research_workspace()
     store$upsert_resource(resource)
     artifact <- tempest_artifact(
       deliverable,
@@ -113,6 +113,7 @@ test_that("TempestRun bundles round-trip durable run state", {
   snapshot <- tempest:::tempest_read_json_strict(
     file.path(bundle, "snapshot.json")
   )
+  expect_identical(snapshot$source_store$schema_version, 4L)
   expect_null(snapshot$runtime)
   expect_null(snapshot$policy_adapter)
 
@@ -120,6 +121,8 @@ test_that("TempestRun bundles round-trip durable run state", {
 
   expect_r6_class(restored, "TempestRun")
   expect_identical(restored$runtime, fixture$runtime)
+  expect_r6_class(restored$source_store, "ResearchWorkspace")
+  expect_identical(inherits(restored$source_store, "SourceStore"), FALSE)
   expect_equal(
     restored$artifact("brief-output")@content,
     list(
@@ -304,7 +307,7 @@ test_that("TempestRun bundles never serialize executable store values", {
       operation_id = "finish"
     ))
   )
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   store$set_artifact("runtime_client", function() "live client")
   run <- tempest_run_workflow(
     objective,

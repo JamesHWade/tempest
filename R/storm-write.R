@@ -380,7 +380,11 @@ tempest_write_lead_section <- function(
 }
 
 tempest_summarize_facts_for_prompt <- function(store, max_items = 60) {
-  stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(store, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg store} must be a ResearchWorkspace."
+    )
+  }
   facts <- store$list_claims()
   if (length(facts) == 0) {
     return("(no facts yet)")
@@ -428,7 +432,7 @@ tempest_keyword_filter_facts <- function(store, query, max_items = 30) {
 #'
 #' @param retriever A `TempestRetriever` object.
 #' @param query Search query.
-#' @param store A `SourceStore` object.
+#' @param store A [ResearchWorkspace].
 #' @param max_items Maximum facts to return.
 #' @return A list of fact objects.
 #' @keywords internal

@@ -8,20 +8,24 @@ Provides web and Wikipedia retrieval with caching, plus helper methods to
 register retrieval tools with ellmer chats. Optionally integrates with
 ragnar for semantic search capabilities.
 }
-\section{Public fields}{
-  \if{html}{\out{<div class="r6-fields">}}
+\section{Active bindings}{
+  \if{html}{\out{<div class="r6-active-bindings">}}
   \describe{
-    \item{\code{config}}{A \code{TempestConfig} object.}
+    \item{\code{config}}{Read-only \code{TempestConfig} fixed at construction.}
 
-    \item{\code{store}}{A \code{SourceStore} object.}
+    \item{\code{workspace}}{Read-only reference to the authoritative
+\link{ResearchWorkspace} containing provisional research evidence. Workspace
+mutation methods remain available.}
 
-    \item{\code{ragnar_store}}{A ragnar store for semantic retrieval (optional).}
+    \item{\code{store}}{Deprecated read-only compatibility alias of \code{workspace}.}
 
-    \item{\code{cache_dir}}{Path to cache directory.}
+    \item{\code{ragnar_store}}{Read-only ragnar store reference derived from \code{config}.}
 
-    \item{\code{cache_enabled}}{Whether retriever calls use the on-disk cache.}
+    \item{\code{cache_dir}}{Read-only cache path derived from \code{config}.}
 
-    \item{\code{cache_ttl}}{Maximum cache age in seconds.}
+    \item{\code{cache_enabled}}{Read-only cache policy derived from \code{config}.}
+
+    \item{\code{cache_ttl}}{Read-only maximum cache age derived from \code{config}.}
   }
   \if{html}{\out{</div>}}
 }
@@ -47,14 +51,18 @@ ragnar for semantic search capabilities.
   Create a new TempestRetriever.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestRetriever$new(config = tempest_config(), store = SourceStore$new())}
+    \preformatted{TempestRetriever$new(
+  config = tempest_config(),
+  store = tempest_research_workspace()
+)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{config}}{A \code{TempestConfig} object.}
-      \item{\code{store}}{A \code{SourceStore} object.}
+      \item{\code{store}}{A \link{ResearchWorkspace}. The argument name is retained for
+compatibility; new code should use the retriever's \code{workspace} field.}
     }
     \if{html}{\out{</div>}}
   }

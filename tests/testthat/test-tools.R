@@ -1,6 +1,7 @@
 test_that("retrieval tools expose claim tools and fact aliases", {
   skip_if_not_installed("ellmer")
-  store <- fake_store_with_sources(1)
+  store <- tempest_research_workspace()
+  store$upsert_source(fake_source("https://example.org/1"))
   source_id <- store$list_sources()[[1]]$id
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
@@ -284,7 +285,7 @@ test_that("expert sessions resolve scoped capabilities before chat creation", {
     skill_ids = "test.synthesize",
     model_role = "expert"
   )
-  store <- SourceStore$new()
+  store <- tempest_research_workspace()
   retriever <- tempest_retriever(config = config, store = store)
   manager <- tempest_expert_session_manager(
     experts = list(expert),
@@ -295,6 +296,7 @@ test_that("expert sessions resolve scoped capabilities before chat creation", {
 
   session <- manager$get_or_create("expert.synthesis")
 
+  expect_identical(manager$store, retriever$workspace)
   expect_equal(events, c("factory", "chat", "register"))
   expect_equal(roles, "expert")
   expect_equal(registered, list("scoped-document-tool"))
@@ -343,7 +345,7 @@ test_that("expert sessions validate skills and capabilities before chat", {
   runtime <- tempest_runtime(include_builtins = FALSE)
   retriever <- tempest_retriever(
     config = config,
-    store = SourceStore$new()
+    store = tempest_research_workspace()
   )
   manager <- tempest_expert_session_manager(
     experts = list(expert),
@@ -420,7 +422,7 @@ test_that("expert connection grants are exact and runtime-only", {
   )
   retriever <- tempest_retriever(
     config = config,
-    store = SourceStore$new()
+    store = tempest_research_workspace()
   )
   denied <- tempest_expert_session_manager(
     experts = list(expert),
@@ -490,7 +492,7 @@ test_that("expert sessions bind resumes and reject retired profiles", {
   runtime <- tempest_runtime(include_builtins = FALSE)
   retriever <- tempest_retriever(
     config = config,
-    store = SourceStore$new()
+    store = tempest_research_workspace()
   )
   manager <- tempest_expert_session_manager(
     experts = list(first, second),
@@ -586,7 +588,7 @@ test_that("saved expert sessions reauthorize under exact bindings", {
   )
   retriever <- tempest_retriever(
     config = config,
-    store = SourceStore$new()
+    store = tempest_research_workspace()
   )
   first_manager <- tempest_expert_session_manager(
     experts = list(expert),
@@ -651,7 +653,7 @@ test_that("one delegation tool resolves the live roster by exact expert id", {
   runtime <- tempest_runtime(include_builtins = FALSE)
   retriever <- tempest_retriever(
     config = config,
-    store = SourceStore$new()
+    store = tempest_research_workspace()
   )
   manager <- tempest_expert_session_manager(
     experts = list(expert),
@@ -770,7 +772,7 @@ test_that("expert delegation returns and commits its native evidence", {
     instructions = "Use inspected evidence.",
     model_role = "expert"
   )
-  store <- SourceStore$new()
+  store <- tempest_research_workspace()
   manager <- tempest_expert_session_manager(
     experts = list(expert),
     runtime = tempest_runtime(include_builtins = FALSE),

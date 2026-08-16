@@ -32,5 +32,5 @@ Each selected concept becomes a fingerprinted \code{tempest_resource} with
 \code{resource_kind = "okf.concept"}. The original Markdown is retained as
 evidence content and parsed OKF metadata is namespaced under
 \code{resource@metadata$okf}. This function does not add resources to a
-\code{SourceStore}; callers retain an explicit mutation boundary.
+\link{ResearchWorkspace}; callers retain an explicit mutation boundary.
 }

@@ -2,7 +2,8 @@ test_that("async fact extraction keeps the event loop responsive", {
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
   skip_if_not_installed("ellmer")
-  store <- fake_store_with_sources(1)
+  store <- tempest_research_workspace()
+  store$upsert_source(fake_source("https://example.org/1"))
   source_id <- store$list_sources()[[1]]$id
   resolve_request <- NULL
   heartbeat <- FALSE
@@ -15,6 +16,7 @@ test_that("async fact extraction keeps the event loop responsive", {
   )
   session <- list(
     session_id = "async-session",
+    workspace = store,
     store = store,
     chats = list(extractor = extractor),
     emit_progress = function(
@@ -77,6 +79,7 @@ test_that("stale async evidence cannot commit or report success", {
   current <- TRUE
   session <- list(
     session_id = "stale-session",
+    workspace = store,
     store = store,
     chats = list(
       extractor = list(
@@ -137,9 +140,11 @@ test_that("evidence commitment skips extraction when a turn cites no source", {
   skip_if_not_installed("later")
   extractor_calls <- 0L
   events <- list()
+  workspace <- tempest_research_workspace()
   session <- list(
     session_id = "unsupported-session",
-    store = SourceStore$new(),
+    workspace = workspace,
+    store = workspace,
     chats = list(
       extractor = list(
         chat_structured_async = function(...) {
@@ -208,6 +213,7 @@ test_that("evidence commitment extracts claims from cited session sources", {
   )
   session <- list(
     session_id = "cited-session",
+    workspace = store,
     store = store,
     chats = list(extractor = extractor),
     emit_progress = function(
@@ -677,6 +683,7 @@ test_that("async report generation commits only after provider settlement", {
     topic = "Async report",
     title = "Async report",
     config = cfg,
+    workspace = store,
     store = store,
     mindmap = tempest:::tempest_mindmap_init("Async report"),
     transcript = list(),
@@ -877,12 +884,14 @@ test_that("async report finalization failures emit failed progress", {
   artifacts <- new.env(parent = emptyenv())
   artifact_catalog <- tempest_artifact_catalog()
   cfg <- tempest_config()
+  workspace <- tempest_research_workspace()
   session <- list(
     session_id = "failed-report",
     topic = "Failed report",
     title = "Failed report",
     config = cfg,
-    store = SourceStore$new(),
+    workspace = workspace,
+    store = workspace,
     mindmap = tempest:::tempest_mindmap_init("Failed report"),
     artifacts = artifacts,
     artifact_catalog = artifact_catalog,
@@ -978,12 +987,14 @@ test_that("stale async reports do not publish artifacts", {
   artifacts <- new.env(parent = emptyenv())
   artifact_catalog <- tempest_artifact_catalog()
   cfg <- tempest_config()
+  workspace <- tempest_research_workspace()
   session <- list(
     session_id = "stale-report",
     topic = "Stale report",
     title = "Stale report",
     config = cfg,
-    store = SourceStore$new(),
+    workspace = workspace,
+    store = workspace,
     mindmap = tempest:::tempest_mindmap_init("Stale report"),
     artifacts = artifacts,
     artifact_catalog = artifact_catalog,

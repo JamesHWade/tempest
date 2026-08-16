@@ -333,6 +333,29 @@ test_that("built-in Markdown operations honor the output contract", {
   expect_equal(result$artifacts[[1]]@status, "valid")
 })
 
+test_that("built-in Markdown reports render a ResearchWorkspace", {
+  workspace <- tempest_research_workspace()
+  source <- fake_source("https://example.org/report-workspace")
+  workspace$upsert_source(source)
+  spec <- tempest_deliverable_spec(
+    "workspace-report",
+    title = "Workspace report",
+    purpose = "Render provisional evidence",
+    instructions = "Include source references.",
+    generator_id = "tempest.generator.provided_content",
+    renderer_ids = "tempest.renderer.markdown_report"
+  )
+
+  representation <- tempest:::tempest_builtin_markdown_report_renderer(
+    content = paste0("Provisional result [", source$id, "]."),
+    deliverable = spec,
+    context = list(store = workspace)
+  )
+
+  expect_match(representation$content, "## References", fixed = TRUE)
+  expect_match(representation$content, source$url, fixed = TRUE)
+})
+
 test_that("STORM report prompts preserve the existing polish contract", {
   prompt <- tempest:::tempest_storm_report_prompt(
     "# Draft",

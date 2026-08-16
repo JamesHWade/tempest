@@ -34,6 +34,7 @@ tempest_prepare_run_dir <- function(output_dir, topic, run_id = NULL) {
 tempest_run_artifact_paths <- function(run_dir) {
   list(
     run_config = file.path(run_dir, "run_config.json"),
+    workspace = file.path(run_dir, "workspace.json"),
     perspectives = file.path(run_dir, "perspectives.json"),
     experts = file.path(run_dir, "experts.json"),
     sources = file.path(run_dir, "sources.json"),
@@ -97,6 +98,23 @@ tempest_session_persistence_error_class <- function(specific = character()) {
   )
 }
 
+tempest_persistence_schema_version <- function(value, what, class) {
+  valid <- is.numeric(value) &&
+    length(value) == 1L &&
+    !is.na(value) &&
+    is.finite(value) &&
+    value >= 0 &&
+    value == floor(value) &&
+    value <= .Machine$integer.max
+  if (!valid) {
+    tempest_abort(
+      "{what} must be one finite scalar whole number.",
+      class = class
+    )
+  }
+  as.integer(value)
+}
+
 #' @keywords internal
 tempest_read_json_strict <- function(
   path,
@@ -138,12 +156,623 @@ tempest_env_snapshot <- function(env) {
 }
 
 #' @keywords internal
+tempest_research_workspace_snapshot_abort <- function(message) {
+  tempest_abort(
+    c("Cannot snapshot ResearchWorkspace.", x = message),
+    class = tempest_persistence_error_class(
+      "tempest_research_workspace_snapshot_error"
+    )
+  )
+}
+
+#' @keywords internal
+tempest_research_workspace_max_sources_data <- function(max_sources) {
+  if (is.infinite(max_sources)) {
+    return("unbounded")
+  }
+  as.integer(max_sources)
+}
+
+#' @keywords internal
+tempest_research_workspace_citation_audit_data <- function(citation_audit) {
+  if (is.null(citation_audit)) {
+    return(NULL)
+  }
+  rows <- seq_len(nrow(citation_audit))
+  unname(lapply(rows, function(row) {
+    stats::setNames(
+      lapply(citation_audit, function(column) column[[row]]),
+      names(citation_audit)
+    )
+  }))
+}
+
+#' @keywords internal
+tempest_research_workspace_snapshot <- function(workspace) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_research_workspace_snapshot_abort(
+      "{.arg workspace} must be a ResearchWorkspace."
+    )
+  }
+  entries <- workspace$retrieved_resources
+  typed <- vapply(
+    entries,
+    \(entry) S7::S7_inherits(entry, TempestResource),
+    logical(1)
+  )
+  resources <- unname(lapply(
+    entries[typed],
+    tempest_resource_record,
+    include_content = TRUE
+  ))
+  sources <- unname(lapply(entries[!typed], function(source) {
+    tryCatch(
+      tempest_validate_source(source),
+      error = function(error) {
+        tempest_research_workspace_snapshot_abort(
+          paste0(
+            "Raw source entry cannot be represented durably: ",
+            conditionMessage(error)
+          )
+        )
+      }
+    )
+  }))
+
+  list(
+    schema_version = 4L,
+    base_snapshot_id = workspace$base_snapshot_id,
+    max_sources = tempest_research_workspace_max_sources_data(
+      workspace$max_sources
+    ),
+    accepted_graft_references = workspace$list_accepted_graft_references(),
+    resources = resources,
+    sources = sources,
+    proposed_claims = lapply(
+      workspace$list_proposed_claims(),
+      tempest_claim_to_list
+    ),
+    evidence_spans = lapply(
+      workspace$list_evidence_spans(),
+      tempest_evidence_span_to_list
+    ),
+    disputes = lapply(
+      workspace$list_disputes(),
+      tempest_dispute_to_list
+    ),
+    citation_audit = tempest_research_workspace_citation_audit_data(
+      workspace$citation_audit
+    )
+  )
+}
+
+#' @keywords internal
+tempest_research_workspace_restore_abort <- function(message, parent = NULL) {
+  tempest_abort(
+    c("Cannot restore ResearchWorkspace snapshot.", x = message),
+    class = tempest_persistence_error_class(
+      "tempest_research_workspace_restore_error"
+    ),
+    parent = parent
+  )
+}
+
+#' @keywords internal
+tempest_research_workspace_restore_schema <- function(snapshot) {
+  value <- snapshot$schema_version %||% 1L
+  if (
+    !is.numeric(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !is.finite(value) ||
+      value != floor(value) ||
+      value > .Machine$integer.max
+  ) {
+    tempest_research_workspace_restore_abort(
+      "The workspace schema version must be one whole number."
+    )
+  }
+  value <- as.integer(value)
+  if (!value %in% c(1L, 2L, 3L, 4L)) {
+    tempest_research_workspace_restore_abort(
+      paste0("Unsupported workspace schema version: ", value, ".")
+    )
+  }
+  value
+}
+
+#' @keywords internal
+tempest_research_workspace_require_current_schema <- function(
+  snapshot,
+  what,
+  class
+) {
+  if (!is.list(snapshot) || is.data.frame(snapshot)) {
+    tempest_abort(
+      "{what} must be a ResearchWorkspace snapshot record.",
+      class = class
+    )
+  }
+  schema_version <- tempest_persistence_schema_version(
+    snapshot$schema_version %||% NA_integer_,
+    paste0(what, " schema version"),
+    class
+  )
+  if (!identical(schema_version, 4L)) {
+    tempest_abort(
+      "{what} must use ResearchWorkspace snapshot schema version 4.",
+      class = class
+    )
+  }
+  invisible(schema_version)
+}
+
+#' @keywords internal
+tempest_research_workspace_restore_max_sources <- function(value) {
+  if (identical(value, "unbounded")) {
+    return(Inf)
+  }
+  if (
+    !is.numeric(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !is.finite(value) ||
+      value <= 0 ||
+      value != floor(value) ||
+      value > .Machine$integer.max
+  ) {
+    tempest_research_workspace_restore_abort(
+      "{.field max_sources} must be a positive whole number or {.val unbounded}."
+    )
+  }
+  as.integer(value)
+}
+
+#' @keywords internal
+tempest_research_workspace_restore_records <- function(
+  snapshot,
+  field,
+  required = FALSE
+) {
+  if (required && !field %in% names(snapshot)) {
+    tempest_research_workspace_restore_abort(
+      "Workspace snapshot is missing required field {.field {field}}."
+    )
+  }
+  records <- snapshot[[field]] %||% list()
+  if (!is.list(records) || is.data.frame(records)) {
+    tempest_research_workspace_restore_abort(
+      "Workspace field {.field {field}} must be a list of records."
+    )
+  }
+  records
+}
+
+#' @keywords internal
+tempest_research_workspace_restore_metadata <- function(
+  snapshot,
+  schema_version,
+  workspace = NULL
+) {
+  require_fields <- schema_version %in% c(3L, 4L)
+  if (require_fields && "artifacts" %in% names(snapshot)) {
+    tempest_research_workspace_restore_abort(
+      "Current workspaces cannot contain an arbitrary artifacts field."
+    )
+  }
+  if (require_fields && !"base_snapshot_id" %in% names(snapshot)) {
+    tempest_research_workspace_restore_abort(
+      "Workspace snapshot is missing required field {.field base_snapshot_id}."
+    )
+  }
+  base_snapshot_id <- if (
+    !"base_snapshot_id" %in% names(snapshot) && !is.null(workspace)
+  ) {
+    workspace$base_snapshot_id
+  } else {
+    tryCatch(
+      tempest_research_workspace_snapshot_id(snapshot$base_snapshot_id),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          "{.field base_snapshot_id} is invalid.",
+          parent = error
+        )
+      }
+    )
+  }
+
+  if (require_fields && !"accepted_graft_references" %in% names(snapshot)) {
+    tempest_research_workspace_restore_abort(
+      paste0(
+        "Workspace snapshot is missing required field ",
+        "{.field accepted_graft_references}."
+      )
+    )
+  }
+  references <- if (
+    !"accepted_graft_references" %in% names(snapshot) && !is.null(workspace)
+  ) {
+    workspace$list_accepted_graft_references()
+  } else {
+    tryCatch(
+      tempest_research_workspace_references(
+        snapshot$accepted_graft_references %||% list()
+      ),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          "{.field accepted_graft_references} is invalid.",
+          parent = error
+        )
+      }
+    )
+  }
+
+  if (require_fields && !"max_sources" %in% names(snapshot)) {
+    tempest_research_workspace_restore_abort(
+      "Workspace snapshot is missing required field {.field max_sources}."
+    )
+  }
+  max_sources <- if (
+    !"max_sources" %in% names(snapshot) && !is.null(workspace)
+  ) {
+    workspace$max_sources
+  } else {
+    tempest_research_workspace_restore_max_sources(
+      snapshot$max_sources %||% "unbounded"
+    )
+  }
+
+  list(
+    base_snapshot_id = base_snapshot_id,
+    max_sources = max_sources,
+    accepted_graft_references = references
+  )
+}
+
+#' @keywords internal
+tempest_research_workspace_restore <- function(snapshot, workspace = NULL) {
+  if (!is.list(snapshot)) {
+    tempest_abort(
+      "{.arg snapshot} must be a list.",
+      class = tempest_persistence_error_class(
+        "tempest_research_workspace_restore_error"
+      )
+    )
+  }
+  if (!is.null(workspace) && !inherits(workspace, "ResearchWorkspace")) {
+    tempest_abort(
+      "{.arg workspace} must be a ResearchWorkspace or `NULL`.",
+      class = tempest_persistence_error_class(
+        "tempest_research_workspace_restore_error"
+      )
+    )
+  }
+  schema_version <- tempest_research_workspace_restore_schema(snapshot)
+  if (identical(schema_version, 4L)) {
+    expected_fields <- c(
+      "schema_version",
+      "base_snapshot_id",
+      "max_sources",
+      "accepted_graft_references",
+      "resources",
+      "sources",
+      "proposed_claims",
+      "evidence_spans",
+      "disputes",
+      "citation_audit"
+    )
+    snapshot_fields <- names(snapshot)
+    if (
+      is.null(snapshot_fields) ||
+        anyNA(snapshot_fields) ||
+        anyDuplicated(snapshot_fields) ||
+        !setequal(snapshot_fields, expected_fields)
+    ) {
+      tempest_research_workspace_restore_abort(
+        "Schema 4 workspaces must contain exactly the product workspace fields."
+      )
+    }
+  }
+  metadata <- tempest_research_workspace_restore_metadata(
+    snapshot,
+    schema_version,
+    workspace = workspace
+  )
+  if (is.null(workspace)) {
+    workspace <- tempest_research_workspace(
+      base_snapshot_id = metadata$base_snapshot_id,
+      max_sources = metadata$max_sources,
+      accepted_graft_references = metadata$accepted_graft_references
+    )
+  } else {
+    if (!identical(workspace$base_snapshot_id, metadata$base_snapshot_id)) {
+      tempest_research_workspace_restore_abort(
+        "{.field base_snapshot_id} does not match the pinned workspace."
+      )
+    }
+    if (
+      !identical(
+        workspace$list_accepted_graft_references(),
+        metadata$accepted_graft_references
+      )
+    ) {
+      tempest_research_workspace_restore_abort(
+        paste0(
+          "{.field accepted_graft_references} do not match the pinned ",
+          "workspace."
+        )
+      )
+    }
+    tryCatch(
+      workspace$set_max_sources(metadata$max_sources),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          "{.field max_sources} cannot be restored into the workspace.",
+          parent = error
+        )
+      }
+    )
+  }
+
+  if (schema_version %in% c(2L, 3L, 4L)) {
+    records <- tempest_research_workspace_restore_records(
+      snapshot,
+      "resources",
+      required = schema_version %in% c(3L, 4L)
+    )
+    for (i in seq_along(records)) {
+      resource <- tryCatch(
+        tempest_resource_from_data(records[[i]]),
+        error = function(error) {
+          tempest_research_workspace_restore_abort(
+            paste0("Resource entry ", i, " is invalid."),
+            parent = error
+          )
+        }
+      )
+      tryCatch(
+        workspace$upsert_resource(resource),
+        error = function(error) {
+          tempest_research_workspace_restore_abort(
+            paste0("Resource entry ", i, " cannot be restored."),
+            parent = error
+          )
+        }
+      )
+    }
+  } else {
+    snapshot_sources <- tempest_research_workspace_restore_records(
+      snapshot,
+      "sources"
+    )
+    # Schema 1 restoration is retained only for existing development bundles.
+    for (i in seq_along(snapshot_sources)) {
+      source <- snapshot_sources[[i]]
+      if (!is.list(source) || is.null(source$url)) {
+        tempest_research_workspace_restore_abort(
+          paste0("Source entry ", i, " is missing a {.field url}.")
+        )
+      }
+      source$id <- source$id %||% tempest_source_id(source$url)
+      source$meta <- source$meta %||% list()
+      tryCatch(
+        workspace$upsert_source(source),
+        error = function(error) {
+          tempest_research_workspace_restore_abort(
+            paste0("Source entry ", i, " is invalid."),
+            parent = error
+          )
+        }
+      )
+    }
+  }
+
+  if (schema_version %in% c(2L, 3L, 4L)) {
+    source_records <- tempest_research_workspace_restore_records(
+      snapshot,
+      "sources",
+      required = schema_version %in% c(3L, 4L)
+    )
+    resource_ids <- purrr::map_chr(
+      workspace$list_resources(),
+      tempest_resource_identity
+    )
+    for (i in seq_along(source_records)) {
+      source <- tryCatch(
+        tempest_validate_source(source_records[[i]]),
+        error = function(error) {
+          tempest_research_workspace_restore_abort(
+            paste0("Web-source entry ", i, " is invalid."),
+            parent = error
+          )
+        }
+      )
+      if (
+        identical(schema_version, 4L) &&
+          source$id %in% resource_ids
+      ) {
+        tempest_research_workspace_restore_abort(
+          paste0(
+            "Web-source entry ",
+            i,
+            " duplicates a typed resource id."
+          )
+        )
+      }
+      # Schemas 2 and 3 represented web sources as projections of the typed
+      # resource ledger. The resource record remains authoritative when those
+      # legacy mirrors overlap; non-overlapping entries are restored so early
+      # development bundles using a partitioned representation remain readable.
+      if (source$id %in% resource_ids) {
+        next
+      }
+      tryCatch(
+        workspace$upsert_source(source),
+        error = function(error) {
+          tempest_research_workspace_restore_abort(
+            paste0("Web-source entry ", i, " cannot be restored."),
+            parent = error
+          )
+        }
+      )
+    }
+  }
+
+  source_ids <- purrr::map_chr(
+    workspace$list_resources(),
+    tempest_resource_identity
+  )
+  span_records <- tempest_research_workspace_restore_records(
+    snapshot,
+    "evidence_spans",
+    required = schema_version %in% c(3L, 4L)
+  )
+  for (i in seq_along(span_records)) {
+    span <- tryCatch(
+      tempest_evidence_span_from_list(span_records[[i]]),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          paste0("Evidence-span entry ", i, " is invalid."),
+          parent = error
+        )
+      }
+    )
+    if (!(span@source_id %in% source_ids)) {
+      tempest_research_workspace_restore_abort(
+        paste0(
+          "Evidence span ",
+          span@evidence_span_id,
+          " cites unknown source id: ",
+          span@source_id,
+          "."
+        )
+      )
+    }
+    workspace$add_evidence_span(span)
+  }
+
+  claim_field <- if (schema_version %in% c(3L, 4L)) {
+    "proposed_claims"
+  } else {
+    "claims"
+  }
+  claim_records <- tempest_research_workspace_restore_records(
+    snapshot,
+    claim_field,
+    required = schema_version %in% c(3L, 4L)
+  )
+  for (i in seq_along(claim_records)) {
+    claim <- tryCatch(
+      tempest_claim_from_list(claim_records[[i]]),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          paste0("Proposed-claim entry ", i, " is invalid."),
+          parent = error
+        )
+      }
+    )
+    missing_source_ids <- setdiff(claim@source_ids, source_ids)
+    if (length(missing_source_ids) > 0) {
+      tempest_research_workspace_restore_abort(
+        paste0(
+          "Claim ",
+          claim@claim_id,
+          " cites unknown source id(s): ",
+          paste(missing_source_ids, collapse = ", "),
+          "."
+        )
+      )
+    }
+    tryCatch(
+      workspace$add_proposed_claim(claim),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          paste0("Proposed claim ", claim@claim_id, " cannot be restored."),
+          parent = error
+        )
+      }
+    )
+  }
+
+  claim_ids <- purrr::map_chr(
+    workspace$list_proposed_claims(),
+    ~ .x@claim_id
+  )
+  dispute_records <- tempest_research_workspace_restore_records(
+    snapshot,
+    "disputes",
+    required = schema_version %in% c(3L, 4L)
+  )
+  for (i in seq_along(dispute_records)) {
+    dispute <- tryCatch(
+      tempest_dispute_from_list(dispute_records[[i]]),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          paste0("Dispute entry ", i, " is invalid."),
+          parent = error
+        )
+      }
+    )
+    missing_claim_ids <- setdiff(dispute@claim_ids, claim_ids)
+    if (length(missing_claim_ids) > 0) {
+      tempest_research_workspace_restore_abort(
+        paste0(
+          "Dispute ",
+          dispute@dispute_id,
+          " cites unknown claim id(s): ",
+          paste(missing_claim_ids, collapse = ", "),
+          "."
+        )
+      )
+    }
+    workspace$add_dispute(dispute)
+  }
+
+  citation_audit <- if (schema_version %in% c(3L, 4L)) {
+    snapshot$citation_audit
+  } else if (identical(schema_version, 2L)) {
+    if (!is.null(snapshot$artifacts) && !is.list(snapshot$artifacts)) {
+      tempest_research_workspace_restore_abort(
+        "Legacy {.field artifacts} must be a list."
+      )
+    }
+    snapshot$citation_audit %||%
+      (snapshot$artifacts %||% list())$citation_audit
+  } else {
+    NULL
+  }
+  if (!is.null(citation_audit)) {
+    audit <- tryCatch(
+      tempest_restore_citation_audit(citation_audit),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          "{.field citation_audit} is invalid.",
+          parent = error
+        )
+      }
+    )
+    tryCatch(
+      workspace$set_citation_audit(audit),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          "{.field citation_audit} cannot be restored.",
+          parent = error
+        )
+      }
+    )
+  }
+
+  workspace
+}
+
+#' @keywords internal
 tempest_source_store_snapshot <- function(store, artifacts = NULL) {
   stopifnot(inherits(store, "SourceStore"))
   if (!is.null(artifacts) && !is.character(artifacts)) {
     tempest_abort("{.arg artifacts} must be NULL or a character vector.")
   }
 
+  workspace <- tempest_research_workspace_snapshot(store)
   artifact_names <- artifacts %||% sort(ls(store$artifacts, all.names = TRUE))
   artifact_names <- artifact_names[vapply(
     artifact_names,
@@ -155,21 +784,14 @@ tempest_source_store_snapshot <- function(store, artifacts = NULL) {
 
   list(
     schema_version = 2L,
-    resources = lapply(
-      store$list_resources(),
-      tempest_resource_record,
-      include_content = TRUE
-    ),
-    sources = Filter(
-      function(source) !is.na(source$url),
-      store$list_sources()
-    ),
-    claims = lapply(store$list_claims(), tempest_claim_to_list),
-    evidence_spans = lapply(
-      tempest_env_values(store$evidence_spans),
-      tempest_evidence_span_to_list
-    ),
-    disputes = lapply(store$list_disputes(), tempest_dispute_to_list),
+    base_snapshot_id = workspace$base_snapshot_id,
+    max_sources = workspace$max_sources,
+    accepted_graft_references = workspace$accepted_graft_references,
+    resources = workspace$resources,
+    sources = workspace$sources,
+    claims = workspace$proposed_claims,
+    evidence_spans = workspace$evidence_spans,
+    disputes = workspace$disputes,
     artifacts = stats::setNames(
       lapply(artifact_names, function(name) store$get_artifact(name)),
       artifact_names
@@ -178,17 +800,18 @@ tempest_source_store_snapshot <- function(store, artifacts = NULL) {
 }
 
 #' @keywords internal
-tempest_source_store_restore_abort <- function(message) {
+tempest_source_store_restore_abort <- function(message, parent = NULL) {
   tempest_abort(
     c("Cannot restore SourceStore snapshot.", x = message),
     class = tempest_persistence_error_class(
       "tempest_source_store_restore_error"
-    )
+    ),
+    parent = parent
   )
 }
 
 #' @keywords internal
-tempest_source_store_restore <- function(snapshot, store = SourceStore$new()) {
+tempest_source_store_restore <- function(snapshot, store = NULL) {
   if (!is.list(snapshot)) {
     tempest_abort(
       "{.arg snapshot} must be a list.",
@@ -197,112 +820,64 @@ tempest_source_store_restore <- function(snapshot, store = SourceStore$new()) {
       )
     )
   }
-  if (!inherits(store, "SourceStore")) {
+  if (!is.null(store) && !inherits(store, "SourceStore")) {
     tempest_abort(
-      "{.arg store} must be a SourceStore.",
+      "{.arg store} must be a SourceStore or `NULL`.",
       class = tempest_persistence_error_class(
         "tempest_source_store_restore_error"
       )
     )
   }
   store_schema <- snapshot$schema_version %||% 1L
-  if (!as.integer(store_schema) %in% c(1L, 2L)) {
+  if (
+    !is.numeric(store_schema) ||
+      length(store_schema) != 1L ||
+      is.na(store_schema) ||
+      !is.finite(store_schema) ||
+      store_schema != floor(store_schema) ||
+      store_schema > .Machine$integer.max ||
+      !as.integer(store_schema) %in% c(1L, 2L)
+  ) {
     tempest_source_store_restore_abort(
       paste0("Unsupported store schema version: ", store_schema, ".")
     )
   }
 
-  if (identical(as.integer(store_schema), 2L)) {
-    records <- snapshot$resources %||% list()
-    if (!is.list(records) || is.data.frame(records)) {
-      tempest_source_store_restore_abort(
-        "Typed evidence resources must be a list of resource records."
-      )
-    }
-    for (i in seq_along(records)) {
-      resource <- tryCatch(
-        tempest_resource_from_data(records[[i]]),
-        error = function(error) {
-          tempest_source_store_restore_abort(
-            paste0("Resource entry ", i, " is invalid.")
-          )
-        }
-      )
-      store$upsert_resource(resource)
-    }
-  } else {
-    snapshot_sources <- snapshot$sources %||% list()
-    # Schema 1 restoration is retained only for existing development bundles.
-    for (i in seq_along(snapshot_sources)) {
-      source <- snapshot_sources[[i]]
-      if (!is.list(source) || is.null(source$url)) {
+  if (is.null(store)) {
+    metadata <- tryCatch(
+      tempest_research_workspace_restore_metadata(
+        snapshot,
+        as.integer(store_schema)
+      ),
+      error = function(error) {
         tempest_source_store_restore_abort(
-          paste0("Source entry ", i, " is missing a {.field url}.")
+          conditionMessage(error),
+          parent = error
         )
       }
-    }
-    tempest_restore_sources(store, snapshot_sources)
+    )
+    store <- suppressWarnings(SourceStore$new(
+      max_sources = metadata$max_sources,
+      base_snapshot_id = metadata$base_snapshot_id,
+      accepted_graft_references = metadata$accepted_graft_references
+    ))
   }
-
-  source_ids <- purrr::map_chr(
-    store$list_resources(),
-    tempest_resource_identity
+  store <- tryCatch(
+    tempest_research_workspace_restore(snapshot, workspace = store),
+    error = function(error) {
+      tempest_source_store_restore_abort(
+        conditionMessage(error),
+        parent = error
+      )
+    }
   )
-  spans <- lapply(
-    snapshot$evidence_spans %||% list(),
-    tempest_evidence_span_from_list
-  )
-  for (span in spans) {
-    if (!(span@source_id %in% source_ids)) {
-      tempest_source_store_restore_abort(
-        paste0(
-          "Evidence span ",
-          span@evidence_span_id,
-          " cites unknown source id: ",
-          span@source_id,
-          "."
-        )
-      )
-    }
-    store$add_evidence_span(span)
-  }
-
-  claims <- lapply(snapshot$claims %||% list(), tempest_claim_from_list)
-  for (claim in claims) {
-    missing_source_ids <- setdiff(claim@source_ids, source_ids)
-    if (length(missing_source_ids) > 0) {
-      tempest_source_store_restore_abort(
-        paste0(
-          "Claim ",
-          claim@claim_id,
-          " cites unknown source id(s): ",
-          paste(missing_source_ids, collapse = ", "),
-          "."
-        )
-      )
-    }
-    store$add_claim(claim)
-  }
-
-  claim_ids <- purrr::map_chr(store$list_claims(), ~ .x@claim_id)
-  disputes <- lapply(snapshot$disputes %||% list(), tempest_dispute_from_list)
-  for (dispute in disputes) {
-    missing_claim_ids <- setdiff(dispute@claim_ids, claim_ids)
-    if (length(missing_claim_ids) > 0) {
-      tempest_source_store_restore_abort(
-        paste0(
-          "Dispute ",
-          dispute@dispute_id,
-          " cites unknown claim id(s): ",
-          paste(missing_claim_ids, collapse = ", "),
-          "."
-        )
-      )
-    }
-    store$add_dispute(dispute)
-  }
 
   artifacts <- snapshot$artifacts %||% list()
+  if (!is.list(artifacts) || is.data.frame(artifacts)) {
+    tempest_source_store_restore_abort(
+      "Legacy {.field artifacts} must be a named list."
+    )
+  }
   for (name in names(artifacts)) {
     store$set_artifact(name, artifacts[[name]])
   }
@@ -621,19 +1196,67 @@ tempest_config_snapshot <- function(config) {
   )
 }
 
+#' @keywords internal
+tempest_session_snapshot_record <- function(value, field) {
+  tryCatch(
+    tempest_contract_serializable_list(value %||% list(), field),
+    error = function(error) {
+      tempest_abort(
+        "Cannot snapshot non-serializable {.field {field}} state.",
+        class = tempest_session_persistence_error_class(
+          "tempest_session_snapshot_error"
+        ),
+        parent = error
+      )
+    }
+  )
+}
+
+#' @keywords internal
+tempest_session_suggested_questions <- function(value, action = "snapshot") {
+  value <- value %||% character()
+  if (is.list(value) && is.null(names(value))) {
+    valid <- vapply(
+      value,
+      \(question) {
+        is.character(question) &&
+          length(question) == 1L &&
+          !is.na(question)
+      },
+      logical(1)
+    )
+    if (all(valid)) {
+      value <- unlist(value, use.names = FALSE)
+    }
+  }
+  if (!is.character(value) || anyNA(value)) {
+    message <- "Suggested questions must be a character vector without missing values."
+    if (identical(action, "restore")) {
+      tempest_session_restore_abort(message)
+    }
+    tempest_abort(
+      message,
+      class = tempest_session_persistence_error_class(
+        "tempest_session_snapshot_error"
+      )
+    )
+  }
+  unname(value)
+}
+
 #' Snapshot a Co-STORM session
 #'
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_snapshot()` returns a structured, in-memory representation
-#' of the durable state in a [TempestSession]. It includes the session identity,
-#' expert profiles, transcript, mind map, typed deliverable specifications and
-#' artifacts, auxiliary session state, progress-event history, expert-session
-#' metadata, serializable skill and connection-reference records, capability
-#' decisions, an attached generic workflow run, and the underlying
-#' `SourceStore` ledger. Live chat handles, runtime clients, tools, closures,
-#' Shiny reactive state, credentials, and provider request bodies are not
-#' included.
+#' of the durable state in a [TempestSession]. It includes the research
+#' manifest; fixed session and configuration identity; the authoritative
+#' [ResearchWorkspace]; expert profiles; transcript and mind map; typed
+#' deliverables; progress-event and expert-session metadata; serializable
+#' runtime records; and any attached generic workflow run. The deprecated
+#' `store` alias is not duplicated; restoration binds it to the restored
+#' workspace. Live chat handles, runtime clients, tools, closures, Shiny
+#' reactive state, credentials, and provider request bodies are not included.
 #'
 #' Use [tempest_session_restore()] to rebuild a session from the returned list,
 #' or [tempest_session_save()] to write the same durable state to a directory
@@ -651,18 +1274,36 @@ tempest_session_snapshot <- function(session) {
       )
     )
   }
-  artifacts <- tempest_env_snapshot(session$artifacts)
-  artifacts[
-    c("report", "report_md", "mindmap_md", "progress_events")
-  ] <- NULL
+  research_manifest <- tryCatch(
+    tempest_costorm_manifest_validate(
+      session$manifest,
+      session$session_id,
+      session$config,
+      session$workspace
+    ),
+    error = function(error) {
+      tempest_abort(
+        "Cannot snapshot an inconsistent Co-STORM research manifest.",
+        class = tempest_session_persistence_error_class(
+          "tempest_session_snapshot_error"
+        ),
+        parent = error
+      )
+    }
+  )
+  workspace <- tempest_research_workspace_snapshot(session$workspace)
+  suggested_questions <- tempest_session_suggested_questions(
+    session$artifacts[["suggested_questions"]] %||% character()
+  )
   runtime_records <- tempest_session_runtime_records(session$runtime)
 
   list(
-    schema_version = 4L,
+    schema_version = 5L,
     package_version = tryCatch(
       as.character(utils::packageVersion("tempest")),
       error = function(e) NA_character_
     ),
+    research_manifest = tempest_research_manifest_record(research_manifest),
     topic = session$topic,
     title = session$title,
     session_id = session$session_id,
@@ -677,21 +1318,131 @@ tempest_session_snapshot <- function(session) {
     capability_grants = tempest_capability_grants_record(
       session$capability_grants
     ),
-    transcript = session$transcript,
-    mindmap = session$mindmap,
-    artifacts = artifacts,
+    transcript = tempest_session_snapshot_record(
+      session$transcript,
+      "transcript"
+    ),
+    mindmap = tempest_session_snapshot_record(session$mindmap, "mindmap"),
     artifact_catalog = session$artifact_catalog$snapshot(
       include_content = TRUE
     ),
-    suggested_questions = artifacts$suggested_questions %||% character(),
+    suggested_questions = suggested_questions,
     progress_events = tempest_execution_events(session),
-    store = tempest_source_store_snapshot(session$store),
+    workspace = workspace,
     expert_sessions = tempest_expert_sessions_snapshot(session),
     workflow_run = if (inherits(session$workflow_run, "TempestRun")) {
       tempest_run_snapshot(session$workflow_run)
     } else {
       NULL
     }
+  )
+}
+
+#' @keywords internal
+tempest_session_snapshot_translate_v4 <- function(snapshot, config) {
+  schema_version <- tempest_persistence_schema_version(
+    snapshot$schema_version %||% NA_integer_,
+    "Legacy session snapshot schema version",
+    tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  if (!identical(schema_version, 4L)) {
+    tempest_session_restore_abort(
+      "The legacy session translator accepts only schema version 4."
+    )
+  }
+  session_id <- snapshot$session_id %||% NULL
+  if (!rlang::is_string(session_id) || !nzchar(tempest_trim(session_id))) {
+    tempest_session_restore_abort(
+      "Legacy schema 4 snapshot must include a non-empty session id."
+    )
+  }
+  legacy_store <- snapshot$store %||% NULL
+  if (!is.list(legacy_store) || is.data.frame(legacy_store)) {
+    tempest_session_restore_abort(
+      "Legacy schema 4 snapshot must include a SourceStore record."
+    )
+  }
+  legacy_artifacts <- legacy_store$artifacts %||% list()
+  if (!is.list(legacy_artifacts) || is.data.frame(legacy_artifacts)) {
+    tempest_session_restore_abort(
+      "Legacy schema 4 SourceStore artifacts must be a list."
+    )
+  }
+  legacy_store$citation_audit <- legacy_store$citation_audit %||%
+    legacy_artifacts$citation_audit
+  legacy_store$artifacts <- NULL
+  workspace <- tryCatch(
+    tempest_research_workspace_restore(legacy_store),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Legacy schema 4 SourceStore state could not be translated: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
+  workspace_snapshot <- tempest_research_workspace_snapshot(workspace)
+  legacy_session_artifacts <- snapshot$artifacts %||% list()
+  if (
+    !is.list(legacy_session_artifacts) ||
+      is.data.frame(legacy_session_artifacts)
+  ) {
+    tempest_session_restore_abort(
+      "Legacy schema 4 session artifacts must be a list."
+    )
+  }
+  manifest <- tryCatch(
+    tempest_research_manifest(
+      research_run_id = tempest_trim(session_id),
+      mode = "costorm",
+      config = config,
+      programs = list(),
+      knowledge_snapshot = tempest_costorm_manifest_snapshot_reference(
+        workspace
+      ),
+      runtime = list(),
+      traces = list(),
+      deliverables = list(),
+      status = "running"
+    ),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Legacy schema 4 research identity could not be translated: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
+
+  list(
+    schema_version = 5L,
+    package_version = snapshot$package_version %||% NA_character_,
+    research_manifest = tempest_research_manifest_record(manifest),
+    topic = snapshot$topic,
+    title = snapshot$title,
+    session_id = tempest_trim(session_id),
+    config = snapshot$config %||% list(),
+    experts = snapshot$experts %||% list(),
+    skills = snapshot$skills %||% list(),
+    connection_refs = snapshot$connection_refs %||% list(),
+    connection_permissions = snapshot$connection_permissions %||% list(),
+    capability_grants = snapshot$capability_grants %||% list(),
+    transcript = snapshot$transcript %||% list(),
+    mindmap = snapshot$mindmap,
+    artifact_catalog = snapshot$artifact_catalog,
+    suggested_questions = snapshot$suggested_questions %||%
+      legacy_session_artifacts$suggested_questions %||%
+      character(),
+    progress_events = snapshot$progress_events %||%
+      legacy_session_artifacts$progress_events %||%
+      list(),
+    workspace = workspace_snapshot,
+    expert_sessions = snapshot$expert_sessions %||% list(),
+    workflow_run = snapshot$workflow_run %||% NULL
   )
 }
 
@@ -857,8 +1608,9 @@ tempest_session_restore_workflow_run <- function(session, snapshot) {
 #'
 #' `tempest_session_restore()` rebuilds a [TempestSession] from a structured
 #' snapshot created by [tempest_session_snapshot()] or read by
-#' [tempest_session_resume()]. It restores durable research state and creates
-#' fresh chat/tool handles using the supplied runtime and `config`.
+#' [tempest_session_resume()]. It restores the research manifest and
+#' authoritative workspace, reestablishes the `store` compatibility alias, and
+#' creates fresh chat/tool handles using the supplied runtime and `config`.
 #'
 #' Historical progress events are restored as session artifact data and can be
 #' reduced with [tempest_progress_state()]. They are not replayed into the new
@@ -887,17 +1639,96 @@ tempest_session_restore <- function(
   if (!is.list(snapshot)) {
     tempest_session_restore_abort("{.arg snapshot} must be a list.")
   }
-  schema_version <- snapshot$schema_version %||% NA_integer_
-  if (!identical(as.integer(schema_version), 4L)) {
+  schema_version <- tempest_persistence_schema_version(
+    snapshot$schema_version %||% NA_integer_,
+    "Session snapshot schema version",
+    tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  if (identical(schema_version, 4L)) {
+    snapshot <- tempest_session_snapshot_translate_v4(snapshot, config)
+    schema_version <- tempest_persistence_schema_version(
+      snapshot$schema_version %||% NA_integer_,
+      "Translated session snapshot schema version",
+      tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
+    )
+  }
+  if (!identical(schema_version, 5L)) {
     tempest_session_restore_abort(
       paste0("Unsupported snapshot schema version: ", schema_version, ".")
     )
   }
+  if (any(c("artifacts", "store") %in% names(snapshot))) {
+    tempest_session_restore_abort(
+      "Schema 5 session snapshots cannot contain legacy arbitrary artifact or store fields."
+    )
+  }
+  tempest_research_workspace_require_current_schema(
+    snapshot$workspace,
+    "Schema 5 session workspace",
+    tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
   if (
     !rlang::is_string(snapshot$topic) || !nzchar(tempest_trim(snapshot$topic))
   ) {
     tempest_session_restore_abort("Snapshot must include a non-empty topic.")
   }
+  if (
+    !rlang::is_string(snapshot$session_id) ||
+      !nzchar(tempest_trim(snapshot$session_id))
+  ) {
+    tempest_session_restore_abort(
+      "Snapshot must include a non-empty session id."
+    )
+  }
+  research_manifest <- tryCatch(
+    tempest_research_manifest_from_record(snapshot$research_manifest),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Snapshot contains an invalid research manifest: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
+  if (!identical(research_manifest@research_run_id, snapshot$session_id)) {
+    tempest_session_restore_abort(
+      "Snapshot session id does not match its research manifest run id."
+    )
+  }
+  workspace <- tryCatch(
+    tempest_research_workspace_restore(snapshot$workspace),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Snapshot contains an invalid ResearchWorkspace: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
+  tryCatch(
+    tempest_costorm_manifest_validate(
+      research_manifest,
+      snapshot$session_id,
+      config,
+      workspace
+    ),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Snapshot research identity does not match the restore inputs: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
 
   experts <- tempest_experts_from_records(
     snapshot$experts %||% list(),
@@ -934,9 +1765,8 @@ tempest_session_restore <- function(
     snapshot$capability_grants %||% list(),
     action = "restore"
   )
-  store <- tempest_source_store_restore(snapshot$store %||% list())
-  retriever <- tempest_retriever(config = config, store = store)
-  session <- tempest_session(
+  retriever <- tempest_retriever(config = config, store = workspace)
+  session <- tempest_session_restore_new(
     topic = snapshot$topic,
     config = config,
     runtime = runtime,
@@ -944,7 +1774,8 @@ tempest_session_restore <- function(
     connection_permissions = connection_permissions,
     retriever = retriever,
     progress = NULL,
-    session_id = snapshot$session_id
+    session_id = snapshot$session_id,
+    manifest = research_manifest
   )
 
   session$title <- snapshot$title %||% session$topic
@@ -965,36 +1796,17 @@ tempest_session_restore <- function(
         artifacts = list()
       ),
     store = config@artifact_store,
-    evidence_store = store
+    evidence_store = workspace
   )
 
-  artifacts <- snapshot$artifacts %||% list()
-  legacy_progress_events <- artifacts$progress_events %||% list()
-  artifacts[
-    c("report", "report_md", "mindmap_md", "progress_events")
-  ] <- NULL
-  for (name in names(artifacts)) {
-    session$artifacts[[name]] <- artifacts[[name]]
-  }
-  if (
-    !is.null(snapshot$suggested_questions) &&
-      is.null(session$artifacts[["suggested_questions"]])
-  ) {
-    session$artifacts[["suggested_questions"]] <- snapshot$suggested_questions
-  }
-  # JSON read with `simplifyVector = FALSE` returns a multi-element question list
-  # as an R list; coerce back to the character vector the in-memory artifact uses
-  # so the type is stable across save and resume.
-  if (!is.null(session$artifacts[["suggested_questions"]])) {
-    session$artifacts[["suggested_questions"]] <- as.character(unlist(
-      session$artifacts[["suggested_questions"]]
-    ))
-  }
-  progress_events <- snapshot$progress_events
-  if (is.null(progress_events)) {
-    progress_events <- legacy_progress_events
-  }
-  session$events <- tempest_session_restore_progress_events(progress_events)
+  session$artifacts[["suggested_questions"]] <-
+    tempest_session_suggested_questions(
+      snapshot$suggested_questions,
+      action = "restore"
+    )
+  session$events <- tempest_session_restore_progress_events(
+    snapshot$progress_events
+  )
 
   tempest_session_restore_expert_sessions(
     session,
@@ -1191,11 +2003,13 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_save()` writes a schema-versioned directory bundle for a
-#' [TempestSession]. The bundle stores durable research state plus a typed
-#' artifact catalog. Inline artifacts use explicit UTF-8 or canonical JSON
-#' codecs, every declared file is checksummed, and the `session.json` manifest
-#' is written last. Live chat handles, registered tool closures, Shiny reactive
-#' state, credentials, and raw provider request bodies are not serialized.
+#' [TempestSession]. The bundle stores the research manifest, authoritative
+#' workspace, and typed artifact catalog. The deprecated `store` alias is not
+#' serialized separately. Inline artifacts use explicit UTF-8 or canonical
+#' JSON codecs, every declared file is checksummed, and the `session.json`
+#' manifest is written last. Live chat handles, registered tool closures,
+#' Shiny reactive state, credentials, and raw provider request bodies are not
+#' serialized.
 #'
 #' Use [tempest_session_resume()] to load the bundle with a fresh runtime
 #' [TempestConfig] and [tempest_runtime()].
@@ -1287,28 +2101,33 @@ tempest_session_save <- function(
     ),
     tempest_session_bundle_write_json(
       staging_dir,
-      "store/resources.json",
-      snapshot$store$resources
+      "workspace/resources.json",
+      snapshot$workspace$resources
     ),
     tempest_session_bundle_write_json(
       staging_dir,
-      "store/sources.json",
-      snapshot$store$sources
+      "workspace/sources.json",
+      snapshot$workspace$sources
     ),
     tempest_session_bundle_write_json(
       staging_dir,
-      "store/claims.json",
-      snapshot$store$claims
+      "workspace/proposed_claims.json",
+      snapshot$workspace$proposed_claims
     ),
     tempest_session_bundle_write_json(
       staging_dir,
-      "store/evidence_spans.json",
-      snapshot$store$evidence_spans
+      "workspace/evidence_spans.json",
+      snapshot$workspace$evidence_spans
     ),
     tempest_session_bundle_write_json(
       staging_dir,
-      "store/disputes.json",
-      snapshot$store$disputes
+      "workspace/disputes.json",
+      snapshot$workspace$disputes
+    ),
+    tempest_session_bundle_write_json(
+      staging_dir,
+      "workspace/citation_audit.json",
+      snapshot$workspace$citation_audit
     )
   )
   if (!is.null(snapshot$workflow_run)) {
@@ -1329,33 +2148,13 @@ tempest_session_save <- function(
   )
   files <- c(files, typed_bundle$files)
 
-  if (!is.null(snapshot$artifacts$suggested_questions)) {
+  if (length(snapshot$suggested_questions) > 0L) {
     files <- c(
       files,
       tempest_session_bundle_write_json(
         staging_dir,
         "artifacts/suggested_questions.json",
-        snapshot$artifacts$suggested_questions
-      )
-    )
-  }
-  if (!is.null(snapshot$store$artifacts$citation_audit)) {
-    files <- c(
-      files,
-      tempest_session_bundle_write_json(
-        staging_dir,
-        "artifacts/citation_audit.json",
-        snapshot$store$artifacts$citation_audit
-      )
-    )
-  }
-  if (!is.null(snapshot$store$artifacts$references)) {
-    files <- c(
-      files,
-      tempest_session_bundle_write_json(
-        staging_dir,
-        "artifacts/references.json",
-        snapshot$store$artifacts$references
+        snapshot$suggested_questions
       )
     )
   }
@@ -1369,12 +2168,20 @@ tempest_session_save <- function(
   )
   manifest <- list(
     schema_version = snapshot$schema_version,
+    bundle_type = "costorm",
+    bundle_status = "complete",
     package_version = snapshot$package_version,
     session_id = snapshot$session_id,
     topic = snapshot$topic,
     title = snapshot$title,
+    research_manifest = snapshot$research_manifest,
+    workspace = snapshot$workspace[c(
+      "schema_version",
+      "base_snapshot_id",
+      "max_sources",
+      "accepted_graft_references"
+    )],
     saved_at = tempest_now_utc(),
-    status = "complete",
     files = files,
     checksums = checksums,
     artifact_files = typed_bundle$content_files,
@@ -1491,10 +2298,85 @@ tempest_session_bundle_validate_manifest <- function(
   manifest,
   partial_recovery = FALSE
 ) {
-  if (!identical(manifest$status %||% "", "complete")) {
-    tempest_session_restore_abort("Session bundle manifest is not complete.")
+  schema_version <- tempest_persistence_schema_version(
+    manifest$schema_version %||% NA_integer_,
+    "Session bundle schema version",
+    tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  if (!schema_version %in% c(4L, 5L)) {
+    tempest_session_restore_abort(
+      paste0(
+        "Unsupported session bundle schema version: ",
+        manifest$schema_version %||% "missing",
+        "."
+      )
+    )
+  }
+  if (identical(schema_version, 5L)) {
+    if (
+      !identical(manifest$bundle_type %||% "", "costorm") ||
+        !identical(manifest$bundle_status %||% "", "complete")
+    ) {
+      tempest_session_restore_abort(
+        "Schema 5 Co-STORM bundle envelope is not complete."
+      )
+    }
+    if (
+      !is.list(manifest$research_manifest) ||
+        !is.list(manifest$workspace)
+    ) {
+      tempest_session_restore_abort(
+        "Schema 5 Co-STORM bundle is missing research identity metadata."
+      )
+    }
+    workspace_fields <- c(
+      "schema_version",
+      "base_snapshot_id",
+      "max_sources",
+      "accepted_graft_references"
+    )
+    if (
+      is.null(names(manifest$workspace)) ||
+        anyDuplicated(names(manifest$workspace)) ||
+        !setequal(names(manifest$workspace), workspace_fields)
+    ) {
+      tempest_session_restore_abort(
+        "Schema 5 Co-STORM bundle has invalid workspace identity metadata."
+      )
+    }
+    tempest_research_workspace_require_current_schema(
+      manifest$workspace,
+      "Schema 5 Co-STORM workspace identity",
+      tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
+    )
+  } else if (!identical(manifest$status %||% "", "complete")) {
+    tempest_session_restore_abort(
+      "Legacy schema 4 session bundle manifest is not complete."
+    )
   }
   files <- as.character(unlist(manifest$files %||% character()))
+  evidence_required <- if (identical(schema_version, 5L)) {
+    c(
+      "workspace/resources.json",
+      "workspace/sources.json",
+      "workspace/proposed_claims.json",
+      "workspace/evidence_spans.json",
+      "workspace/disputes.json",
+      "workspace/citation_audit.json"
+    )
+  } else {
+    c(
+      "store/resources.json",
+      "store/sources.json",
+      "store/claims.json",
+      "store/evidence_spans.json",
+      "store/disputes.json"
+    )
+  }
   core_required <- c(
     "config.json",
     "experts.json",
@@ -1506,11 +2388,7 @@ tempest_session_bundle_validate_manifest <- function(
     "transcript.json",
     "mindmap.json",
     "progress_events.json",
-    "store/resources.json",
-    "store/sources.json",
-    "store/claims.json",
-    "store/evidence_spans.json",
-    "store/disputes.json",
+    evidence_required,
     "artifacts/typed/deliverables.json",
     "artifacts/typed/index.json"
   )
@@ -1699,7 +2577,7 @@ tempest_session_bundle_validate_manifest <- function(
 #' @param partial_recovery Whether to allow explicitly requested recovery when
 #'   allowlisted presentation files are missing or fail integrity checks. All
 #'   other declared files, including workflow, permission, grant, expert,
-#'   runtime, store, and typed-artifact state, must pass integrity checks.
+#'   runtime, workspace, and typed-artifact state, must pass integrity checks.
 #' @param codec_registry Optional [tempest_artifact_codec_registry()] containing
 #'   host-defined codecs needed to decode typed artifact content.
 #' @return A restored [TempestSession].
@@ -1732,19 +2610,7 @@ tempest_session_resume <- function(
     winslash = "/",
     mustWork = FALSE
   )
-  tempest_session_bundle_require_files(
-    bundle_dir,
-    c(
-      "session.json",
-      "experts.json",
-      "skills.json",
-      "connection_refs.json",
-      "connection_permissions.json",
-      "capability_grants.json",
-      "store/resources.json",
-      "store/sources.json"
-    )
-  )
+  tempest_session_bundle_require_files(bundle_dir, "session.json")
 
   manifest <- tempest_read_json_strict(
     file.path(bundle_dir, "session.json"),
@@ -1753,7 +2619,14 @@ tempest_session_resume <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(as.integer(manifest$schema_version %||% NA_integer_), 4L)) {
+  schema_version <- tempest_persistence_schema_version(
+    manifest$schema_version %||% NA_integer_,
+    "Session bundle schema version",
+    tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  if (!schema_version %in% c(4L, 5L)) {
     tempest_session_restore_abort(
       paste0(
         "Unsupported session bundle schema version: ",
@@ -1798,32 +2671,10 @@ tempest_session_resume <- function(
     codec_registry = codec_registry
   )
 
-  citation_audit <- declared_json(
-    "artifacts/citation_audit.json",
-    what = "citation audit artifact"
-  )
-  store_artifacts <- list(
-    citation_audit = if (is.null(citation_audit)) {
-      NULL
-    } else {
-      tempest_restore_citation_audit(citation_audit)
-    },
-    references = declared_json(
-      "artifacts/references.json",
-      what = "references artifact"
-    )
-  )
-  store_artifacts <- store_artifacts[
-    !vapply(
-      store_artifacts,
-      is.null,
-      logical(1)
-    )
-  ]
-
   snapshot <- list(
-    schema_version = manifest$schema_version,
+    schema_version = schema_version,
     package_version = manifest$package_version %||% NA_character_,
+    research_manifest = manifest$research_manifest,
     topic = manifest$topic,
     title = manifest$title,
     session_id = manifest$session_id,
@@ -1859,12 +2710,6 @@ tempest_session_resume <- function(
       "mindmap.json",
       what = "session mind map"
     ),
-    artifacts = list(
-      suggested_questions = optional_json(
-        "artifacts/suggested_questions.json",
-        what = "suggested questions artifact"
-      )
-    ),
     artifact_catalog = typed_catalog$snapshot(include_content = TRUE),
     suggested_questions = optional_json(
       "artifacts/suggested_questions.json",
@@ -1875,7 +2720,63 @@ tempest_session_resume <- function(
       "progress_events.json",
       what = "progress-event history"
     ),
-    store = list(
+    expert_sessions = strict_json(
+      "expert_sessions.json",
+      what = "expert-session metadata"
+    ),
+    workflow_run = declared_json(
+      "workflow_run.json",
+      default = NULL,
+      what = "generic Co-STORM workflow state"
+    )
+  )
+  if (identical(schema_version, 5L)) {
+    workspace <- manifest$workspace
+    workspace$resources <- strict_json(
+      "workspace/resources.json",
+      what = "session typed resource ledger"
+    )
+    workspace$sources <- strict_json(
+      "workspace/sources.json",
+      what = "session legacy web-source projection"
+    )
+    workspace$proposed_claims <- strict_json(
+      "workspace/proposed_claims.json",
+      what = "session proposed-claim ledger"
+    )
+    workspace$evidence_spans <- strict_json(
+      "workspace/evidence_spans.json",
+      what = "session evidence-span ledger"
+    )
+    workspace$disputes <- strict_json(
+      "workspace/disputes.json",
+      what = "session dispute ledger"
+    )
+    workspace["citation_audit"] <- list(
+      strict_json(
+        "workspace/citation_audit.json",
+        what = "session citation audit"
+      )
+    )
+    snapshot$workspace <- workspace
+  } else {
+    citation_audit <- declared_json(
+      "artifacts/citation_audit.json",
+      what = "legacy citation audit artifact"
+    )
+    store_artifacts <- list(citation_audit = citation_audit)
+    store_artifacts <- store_artifacts[
+      !vapply(
+        store_artifacts,
+        is.null,
+        logical(1)
+      )
+    ]
+    snapshot$research_manifest <- NULL
+    snapshot$artifacts <- list(
+      suggested_questions = snapshot$suggested_questions
+    )
+    snapshot$store <- list(
       schema_version = 2L,
       resources = strict_json(
         "store/resources.json",
@@ -1898,24 +2799,8 @@ tempest_session_resume <- function(
         what = "session dispute ledger"
       ),
       artifacts = store_artifacts
-    ),
-    expert_sessions = strict_json(
-      "expert_sessions.json",
-      what = "expert-session metadata"
-    ),
-    workflow_run = declared_json(
-      "workflow_run.json",
-      default = NULL,
-      what = "generic Co-STORM workflow state"
     )
-  )
-  snapshot$artifacts <- snapshot$artifacts[
-    !vapply(
-      snapshot$artifacts,
-      is.null,
-      logical(1)
-    )
-  ]
+  }
 
   tempest_session_restore(
     snapshot,
@@ -2000,12 +2885,41 @@ tempest_restore_citation_audit <- function(citation_audit) {
   )
 }
 
+tempest_storm_stage_required_files <- function(completed_stages) {
+  files_by_stage <- list(
+    perspectives = c("perspectives.json", "experts.json"),
+    research = "workspace.json",
+    outline = c("direct_gen_outline.json", "storm_gen_outline.json"),
+    write = c("storm_gen_outline.json", "storm_gen_article.md"),
+    polish = c(
+      "storm_gen_article.md",
+      "storm_gen_article_polished.md",
+      "references.json"
+    )
+  )
+  unique(unlist(
+    files_by_stage[intersect(names(files_by_stage), completed_stages)],
+    use.names = FALSE
+  ))
+}
+
 #' @keywords internal
 tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
-  if (
-    !identical(as.integer(manifest$schema_version %||% NA_integer_), 3L) ||
-      !identical(manifest$status %||% "", "complete")
-  ) {
+  schema_version <- tempest_persistence_schema_version(
+    manifest$schema_version %||% NA_integer_,
+    "STORM run schema version",
+    tempest_persistence_error_class("tempest_run_restore_error")
+  )
+  valid_header <- if (identical(schema_version, 3L)) {
+    identical(manifest$status %||% "", "complete")
+  } else if (identical(schema_version, 4L)) {
+    identical(manifest$bundle_type %||% "", "storm") &&
+      identical(manifest$bundle_status %||% "", "complete") &&
+      is.list(manifest$research_manifest)
+  } else {
+    FALSE
+  }
+  if (!isTRUE(valid_header)) {
     tempest_abort(
       "STORM run manifest is incomplete or uses an unsupported schema.",
       class = tempest_persistence_error_class(
@@ -2016,9 +2930,17 @@ tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
   files <- as.character(unlist(manifest$files %||% character()))
   normalized <- gsub("\\\\", "/", files)
   required <- c(
+    if (identical(schema_version, 4L)) "workspace.json",
     "artifacts/typed/deliverables.json",
     "artifacts/typed/index.json"
   )
+  stage_required <- if (identical(schema_version, 4L)) {
+    tempest_storm_stage_required_files(
+      tempest_as_character_vector(manifest$completed_stages)
+    )
+  } else {
+    character()
+  }
   unsafe <- !vapply(
     normalized,
     tempest_artifact_bundle_path_is_safe,
@@ -2067,7 +2989,14 @@ tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
     if (anyDuplicated(normalized)) "Manifest declares duplicate files.",
     if (any(unsafe)) "Manifest contains unsafe paths.",
     if (length(setdiff(required, files)) > 0L) {
-      "Manifest omits typed artifact indexes."
+      "Manifest omits required bundle files."
+    },
+    if (length(setdiff(stage_required, files)) > 0L) {
+      paste0(
+        "Manifest omits product files required by completed stages: ",
+        paste(setdiff(stage_required, files), collapse = ", "),
+        "."
+      )
     },
     if (length(missing) > 0L) "Manifest declares missing files.",
     if (
@@ -2092,6 +3021,353 @@ tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
   invisible(files)
 }
 
+#' @keywords internal
+tempest_storm_workspace_identity_record <- function(workspace) {
+  list(
+    base_snapshot_id = workspace$base_snapshot_id,
+    max_sources = tempest_research_workspace_max_sources_data(
+      workspace$max_sources
+    ),
+    accepted_graft_references = workspace$list_accepted_graft_references()
+  )
+}
+
+#' @keywords internal
+tempest_storm_snapshot_reference <- function(workspace) {
+  snapshot_id <- workspace$base_snapshot_id
+  if (is.null(snapshot_id)) {
+    return(list())
+  }
+  list(snapshot_id = snapshot_id)
+}
+
+#' @keywords internal
+tempest_storm_run_restore_abort <- function(message, parent = NULL) {
+  tempest_abort(
+    message,
+    class = tempest_persistence_error_class("tempest_run_restore_error"),
+    parent = parent,
+    .envir = rlang::caller_env()
+  )
+}
+
+#' @keywords internal
+tempest_storm_restore_workspace <- function(metadata, config) {
+  schema_version <- tempest_persistence_schema_version(
+    metadata$schema_version %||% NA_integer_,
+    "STORM run schema version",
+    tempest_persistence_error_class("tempest_run_restore_error")
+  )
+  if (identical(schema_version, 3L)) {
+    return(tempest_research_workspace(max_sources = config@max_sources))
+  }
+
+  identity <- metadata$workspace
+  if (!is.list(identity) || is.data.frame(identity)) {
+    tempest_storm_run_restore_abort(
+      "Schema 4 STORM bundles must contain a workspace identity record."
+    )
+  }
+  required <- c(
+    "base_snapshot_id",
+    "max_sources",
+    "accepted_graft_references"
+  )
+  if (!setequal(names(identity), required)) {
+    tempest_storm_run_restore_abort(
+      "The STORM workspace identity record has unexpected fields."
+    )
+  }
+  base_snapshot_id <- tryCatch(
+    tempest_research_workspace_snapshot_id(identity$base_snapshot_id),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The persisted workspace snapshot identity is invalid.",
+        parent = error
+      )
+    }
+  )
+  max_sources <- tryCatch(
+    tempest_research_workspace_restore_max_sources(identity$max_sources),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The persisted workspace source limit is invalid.",
+        parent = error
+      )
+    }
+  )
+  accepted_references <- tryCatch(
+    tempest_research_workspace_references(
+      identity$accepted_graft_references %||% list()
+    ),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The persisted accepted graft references are invalid.",
+        parent = error
+      )
+    }
+  )
+
+  tempest_research_workspace(
+    base_snapshot_id = base_snapshot_id,
+    max_sources = max_sources,
+    accepted_graft_references = accepted_references
+  )
+}
+
+tempest_storm_workspace_equivalence_record <- function(workspace) {
+  tempest_research_workspace_snapshot(workspace)
+}
+
+tempest_storm_workspace_is_empty <- function(workspace) {
+  snapshot <- tempest_storm_workspace_equivalence_record(workspace)
+  evidence_fields <- c(
+    "resources",
+    "sources",
+    "proposed_claims",
+    "evidence_spans",
+    "disputes"
+  )
+  all(vapply(snapshot[evidence_fields], length, integer(1)) == 0L) &&
+    is.null(snapshot$citation_audit)
+}
+
+tempest_storm_workspace_has_legacy_artifacts <- function(workspace) {
+  inherits(workspace, "SourceStore") &&
+    length(ls(workspace$artifacts, all.names = TRUE)) > 0L
+}
+
+tempest_storm_clear_legacy_artifacts <- function(workspace) {
+  if (!inherits(workspace, "SourceStore")) {
+    return(invisible(NULL))
+  }
+  artifacts <- ls(workspace$artifacts, all.names = TRUE)
+  if (length(artifacts) > 0L) {
+    rm(list = artifacts, envir = workspace$artifacts)
+  }
+  invisible(NULL)
+}
+
+tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
+  if (is.null(supplied)) {
+    return(persisted)
+  }
+  if (tempest_storm_workspace_has_legacy_artifacts(supplied)) {
+    tempest_storm_run_restore_abort(
+      "The supplied workspace contains legacy arbitrary artifacts."
+    )
+  }
+  supplied_record <- tryCatch(
+    tempest_storm_workspace_equivalence_record(supplied),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The supplied workspace cannot be compared with persisted STORM state.",
+        parent = error
+      )
+    }
+  )
+  persisted_record <- tempest_storm_workspace_equivalence_record(persisted)
+  if (identical(supplied_record, persisted_record)) {
+    return(supplied)
+  }
+  if (!tempest_storm_workspace_is_empty(supplied)) {
+    tempest_storm_run_restore_abort(
+      "The supplied workspace diverges from the persisted STORM workspace."
+    )
+  }
+  if (!identical(supplied$base_snapshot_id, persisted$base_snapshot_id)) {
+    tempest_storm_run_restore_abort(
+      "The supplied workspace does not match the persisted base snapshot."
+    )
+  }
+  supplied_references <- supplied$list_accepted_graft_references()
+  persisted_references <- persisted$list_accepted_graft_references()
+  supplied_keys <- vapply(
+    supplied_references,
+    tempest_research_workspace_reference_json,
+    character(1)
+  )
+  persisted_keys <- vapply(
+    persisted_references,
+    tempest_research_workspace_reference_json,
+    character(1)
+  )
+  if (length(setdiff(supplied_keys, persisted_keys)) > 0L) {
+    tempest_storm_run_restore_abort(
+      "The supplied workspace contains accepted graft references outside the persisted run."
+    )
+  }
+  for (reference in persisted_references) {
+    supplied$record_accepted_graft_reference(reference)
+  }
+  supplied <- tryCatch(
+    tempest_research_workspace_restore(
+      tempest_research_workspace_snapshot(persisted),
+      workspace = supplied
+    ),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The persisted STORM workspace cannot be restored into the supplied workspace.",
+        parent = error
+      )
+    }
+  )
+  tempest_storm_clear_legacy_artifacts(supplied)
+  if (
+    !identical(
+      tempest_storm_workspace_equivalence_record(supplied),
+      persisted_record
+    )
+  ) {
+    tempest_storm_run_restore_abort(
+      "The supplied workspace cannot represent the persisted STORM workspace."
+    )
+  }
+  supplied
+}
+
+#' @keywords internal
+tempest_storm_restore_manifest <- function(
+  metadata,
+  workspace,
+  state,
+  config,
+  run_dir,
+  run_id = NULL
+) {
+  schema_version <- tempest_persistence_schema_version(
+    metadata$schema_version %||% NA_integer_,
+    "STORM run schema version",
+    tempest_persistence_error_class("tempest_run_restore_error")
+  )
+  if (identical(schema_version, 3L)) {
+    status <- if (tempest_storm_state_is_complete(state)) {
+      "succeeded"
+    } else {
+      "running"
+    }
+    return(tempest_research_manifest(
+      research_run_id = run_id %||% basename(run_dir),
+      mode = "storm",
+      config = config,
+      programs = list(),
+      knowledge_snapshot = tempest_storm_snapshot_reference(workspace),
+      status = status
+    ))
+  }
+
+  manifest <- tryCatch(
+    tempest_research_manifest_from_record(metadata$research_manifest),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The persisted research manifest is invalid.",
+        parent = error
+      )
+    }
+  )
+  if (!identical(manifest@mode, "storm")) {
+    tempest_storm_run_restore_abort(
+      "The persisted research manifest is not a STORM run."
+    )
+  }
+  if (!is.null(run_id) && !identical(manifest@research_run_id, run_id)) {
+    tempest_storm_run_restore_abort(
+      "The supplied run id does not match the persisted research run id."
+    )
+  }
+  config_digest <- tempest_research_config_digest(config)
+  if (!identical(manifest@config_digest, config_digest)) {
+    tempest_storm_run_restore_abort(
+      "The current configuration does not match the persisted research run."
+    )
+  }
+  snapshot_id <- manifest@knowledge_snapshot$snapshot_id %||% NULL
+  if (!identical(snapshot_id, workspace$base_snapshot_id)) {
+    tempest_storm_run_restore_abort(
+      "The persisted research manifest and workspace use different knowledge snapshots."
+    )
+  }
+  manifest
+}
+
+#' @keywords internal
+tempest_storm_read_state <- function(
+  run_dir,
+  paths,
+  metadata,
+  path_is_declared
+) {
+  read_json_artifact <- function(name, default = NULL) {
+    path <- paths[[name]]
+    if (!path_is_declared(path) || !file.exists(path)) {
+      return(default)
+    }
+    tempest_read_json(path) %||% default
+  }
+  read_text_artifact <- function(name) {
+    path <- paths[[name]]
+    if (!path_is_declared(path) || !file.exists(path)) {
+      return(NULL)
+    }
+    tempest_read_text(path)
+  }
+  experts <- list()
+  if (path_is_declared(paths$experts) && file.exists(paths$experts)) {
+    expert_records <- tempest_read_json_strict(
+      paths$experts,
+      what = "STORM expert profiles",
+      class = tempest_persistence_error_class("tempest_run_restore_error")
+    )
+    experts <- tempest_experts_from_records(
+      expert_records,
+      what = "STORM expert profiles",
+      class = tempest_persistence_error_class("tempest_run_restore_error")
+    )
+  }
+  schema_version <- tempest_persistence_schema_version(
+    metadata$schema_version %||% NA_integer_,
+    "STORM run schema version",
+    tempest_persistence_error_class("tempest_run_restore_error")
+  )
+  completed_stages <- tempest_as_character_vector(metadata$completed_stages)
+  inferred_stages <- tempest_infer_completed_stages(
+    paths,
+    path_is_declared = path_is_declared
+  )
+  if (identical(schema_version, 3L)) {
+    completed_stages <- if (length(completed_stages) == 0L) {
+      inferred_stages
+    } else {
+      intersect(completed_stages, inferred_stages)
+    }
+  } else if (length(completed_stages) == 0L) {
+    completed_stages <- inferred_stages
+  }
+  topic <- metadata$topic %||% metadata$title %||% basename(run_dir)
+  title <- metadata$title %||% topic
+  tryCatch(
+    tempest_storm_state(
+      topic = topic,
+      title = title,
+      perspectives = read_json_artifact("perspectives", list()),
+      experts = experts,
+      draft_outline = read_json_artifact("draft_outline"),
+      outline = read_json_artifact("outline"),
+      lead_section = read_text_artifact("lead_section"),
+      draft_md = read_text_artifact("draft_md"),
+      report_md = read_text_artifact("report_md"),
+      references = read_json_artifact("references", list()),
+      completed_stages = completed_stages
+    ),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The persisted STORM product state is invalid.",
+        parent = error
+      )
+    }
+  )
+}
+
 tempest_artifact_catalog_import <- function(target, source) {
   for (record in source$list_deliverables()) {
     target$register(tempest_deliverable_spec_from_data(record))
@@ -2105,10 +3381,22 @@ tempest_artifact_catalog_import <- function(target, source) {
 #' @keywords internal
 tempest_load_run_artifacts <- function(
   run_dir,
-  store,
+  workspace = NULL,
+  config = tempest_config(),
+  run_id = NULL,
   artifact_catalog = tempest_artifact_catalog()
 ) {
-  stopifnot(inherits(store, "SourceStore"))
+  supplied_workspace <- workspace
+  if (!is.null(workspace) && !inherits(workspace, "ResearchWorkspace")) {
+    tempest_storm_run_restore_abort(
+      "{.arg workspace} must be a ResearchWorkspace or `NULL`."
+    )
+  }
+  if (!S7::S7_inherits(config, TempestConfig)) {
+    tempest_storm_run_restore_abort(
+      "{.arg config} must be created by {.fn tempest_config}."
+    )
+  }
   if (!inherits(artifact_catalog, "TempestArtifactCatalog")) {
     tempest_abort(
       "{.arg artifact_catalog} must be a TempestArtifactCatalog."
@@ -2132,6 +3420,11 @@ tempest_load_run_artifacts <- function(
     )
   }
   declared_files <- tempest_run_bundle_validate_manifest(run_dir, metadata)
+  schema_version <- tempest_persistence_schema_version(
+    metadata$schema_version %||% NA_integer_,
+    "STORM run schema version",
+    tempest_persistence_error_class("tempest_run_restore_error")
+  )
   path_is_declared <- function(path) {
     rel_path <- gsub(
       "\\\\",
@@ -2141,114 +3434,109 @@ tempest_load_run_artifacts <- function(
     rel_path %in% declared_files
   }
 
-  if (path_is_declared(paths$sources) && file.exists(paths$sources)) {
-    tempest_restore_sources(store, tempest_read_json(paths$sources))
-  }
-  if (path_is_declared(paths$claims) && file.exists(paths$claims)) {
-    tempest_restore_claims(store, tempest_read_json(paths$claims))
-    store$set_artifact("claims", store$list_claims())
-  }
-  if (path_is_declared(paths$references) && file.exists(paths$references)) {
-    references <- tempest_read_json(paths$references)
-    if (!is.null(references)) {
-      store$set_artifact("references", references)
+  workspace <- tempest_storm_restore_workspace(metadata, config)
+  if (identical(schema_version, 4L)) {
+    workspace_snapshot <- tempest_read_json_strict(
+      paths$workspace,
+      what = "STORM research workspace",
+      class = tempest_persistence_error_class("tempest_run_restore_error")
+    )
+    tempest_research_workspace_require_current_schema(
+      workspace_snapshot,
+      "Schema 4 STORM research workspace",
+      tempest_persistence_error_class("tempest_run_restore_error")
+    )
+    workspace <- tryCatch(
+      tempest_research_workspace_restore(
+        workspace_snapshot,
+        workspace = workspace
+      ),
+      error = function(error) {
+        tempest_storm_run_restore_abort(
+          "The persisted STORM research workspace is invalid.",
+          parent = error
+        )
+      }
+    )
+  } else {
+    if (path_is_declared(paths$sources) && file.exists(paths$sources)) {
+      tempest_restore_sources(workspace, tempest_read_json(paths$sources))
     }
-  }
-  if (
-    path_is_declared(paths$citation_audit) &&
-      file.exists(paths$citation_audit)
-  ) {
-    citation_audit <- tempest_read_json(paths$citation_audit)
-    if (!is.null(citation_audit)) {
-      store$set_artifact(
-        "citation_audit",
-        tempest_restore_citation_audit(citation_audit)
-      )
+    if (path_is_declared(paths$claims) && file.exists(paths$claims)) {
+      tempest_restore_claims(workspace, tempest_read_json(paths$claims))
     }
-  }
-
-  json_artifacts <- c(
-    perspectives = "perspectives",
-    draft_outline = "draft_outline",
-    outline = "outline"
-  )
-  for (artifact_name in names(json_artifacts)) {
-    path <- paths[[artifact_name]]
-    if (path_is_declared(path) && file.exists(path)) {
-      value <- tempest_read_json(path)
-      if (!is.null(value)) {
-        store$set_artifact(json_artifacts[[artifact_name]], value)
+    if (
+      path_is_declared(paths$citation_audit) &&
+        file.exists(paths$citation_audit)
+    ) {
+      citation_audit <- tempest_read_json(paths$citation_audit)
+      if (!is.null(citation_audit)) {
+        workspace$set_citation_audit(
+          tempest_restore_citation_audit(citation_audit)
+        )
       }
     }
   }
-  if (path_is_declared(paths$experts) && file.exists(paths$experts)) {
-    expert_records <- tempest_read_json_strict(
-      paths$experts,
-      what = "STORM expert profiles",
-      class = tempest_persistence_error_class(
-        "tempest_run_restore_error"
-      )
-    )
-    experts <- tempest_experts_from_records(
-      expert_records,
-      what = "STORM expert profiles",
-      class = tempest_persistence_error_class(
-        "tempest_run_restore_error"
-      )
-    )
-    store$set_artifact("experts", experts)
-  }
-
-  text_artifacts <- c(
-    lead_section = "lead_section",
-    draft_md = "draft_md",
-    report_md = "report_md"
+  state <- tempest_storm_read_state(
+    run_dir,
+    paths,
+    metadata,
+    path_is_declared
   )
-  for (artifact_name in names(text_artifacts)) {
-    path <- paths[[artifact_name]]
-    if (path_is_declared(path) && file.exists(path)) {
-      store$set_artifact(
-        text_artifacts[[artifact_name]],
-        tempest_read_text(path)
-      )
-    }
-  }
+  research_manifest <- tempest_storm_restore_manifest(
+    metadata,
+    workspace,
+    state,
+    config,
+    run_dir,
+    run_id = run_id
+  )
 
-  if (!is.null(metadata$title)) {
-    store$set_artifact("title", metadata$title)
-  }
-
-  completed_stages <- tempest_as_character_vector(metadata$completed_stages)
+  workspace <- tempest_storm_assert_workspace_equivalent(
+    supplied_workspace,
+    workspace
+  )
   restored_catalog <- tempest_artifact_bundle_read(
     run_dir,
-    evidence_store = store,
+    evidence_store = workspace,
     declared_files = declared_files
   )
   tempest_artifact_catalog_import(artifact_catalog, restored_catalog)
 
   list(
     metadata = metadata,
-    completed_stages = completed_stages,
+    completed_stages = state$completed_stages,
+    research_manifest = research_manifest,
+    state = state,
+    workspace = workspace,
     artifact_catalog = artifact_catalog
   )
 }
 
 #' @keywords internal
-tempest_infer_completed_stages <- function(paths) {
+tempest_infer_completed_stages <- function(paths, path_is_declared = NULL) {
+  artifact_exists <- function(name) {
+    path <- paths[[name]] %||% NULL
+    if (is.null(path)) {
+      return(FALSE)
+    }
+    (is.null(path_is_declared) || isTRUE(path_is_declared(path))) &&
+      file.exists(path)
+  }
   stages <- character()
-  if (file.exists(paths$perspectives) && file.exists(paths$experts)) {
+  if (artifact_exists("perspectives") && artifact_exists("experts")) {
     stages <- c(stages, "perspectives")
   }
-  if (file.exists(paths$sources) && file.exists(paths$claims)) {
+  if (artifact_exists("sources") && artifact_exists("claims")) {
     stages <- c(stages, "research")
   }
-  if (file.exists(paths$outline)) {
+  if (artifact_exists("outline")) {
     stages <- c(stages, "outline")
   }
-  if (file.exists(paths$draft_md)) {
+  if (artifact_exists("draft_md")) {
     stages <- c(stages, "write")
   }
-  if (file.exists(paths$report_md)) {
+  if (artifact_exists("report_md")) {
     stages <- c(stages, "polish")
   }
   stages
@@ -2257,11 +3545,10 @@ tempest_infer_completed_stages <- function(paths) {
 #' @keywords internal
 tempest_save_run_artifacts <- function(
   run_dir,
-  store,
-  topic,
-  title,
+  workspace,
+  state,
+  research_manifest,
   config,
-  completed_stages,
   steps,
   research_strategy,
   parallel_writing = FALSE,
@@ -2271,18 +3558,59 @@ tempest_save_run_artifacts <- function(
   if (is.null(run_dir)) {
     return(invisible(NULL))
   }
-  stopifnot(inherits(store, "SourceStore"))
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_abort("{.arg workspace} must be a ResearchWorkspace.")
+  }
+  state <- tempest_storm_state_validate(state)
+  if (!S7::S7_inherits(research_manifest, TempestResearchManifest)) {
+    tempest_abort(
+      "{.arg research_manifest} must be a TempestResearchManifest."
+    )
+  }
+  if (!identical(research_manifest@mode, "storm")) {
+    tempest_abort("{.arg research_manifest} must describe a STORM run.")
+  }
+  if (
+    identical(research_manifest@status, "succeeded") &&
+      !tempest_storm_state_is_complete(state)
+  ) {
+    tempest_abort(
+      paste0(
+        "A succeeded {.arg research_manifest} requires a completed polish ",
+        "stage and a non-empty {.field report_md}."
+      ),
+      class = tempest_persistence_error_class(
+        "tempest_run_persistence_error"
+      )
+    )
+  }
+  if (
+    !identical(
+      research_manifest@config_digest,
+      tempest_research_config_digest(config)
+    )
+  ) {
+    tempest_abort(
+      "{.arg research_manifest} does not match the current configuration."
+    )
+  }
+  snapshot_id <- research_manifest@knowledge_snapshot$snapshot_id %||% NULL
+  if (!identical(snapshot_id, workspace$base_snapshot_id)) {
+    tempest_abort(
+      "{.arg research_manifest} does not match the workspace snapshot."
+    )
+  }
   if (!inherits(artifact_catalog, "TempestArtifactCatalog")) {
     tempest_abort(
       "{.arg artifact_catalog} must be a TempestArtifactCatalog."
     )
   }
   paths <- tempest_run_artifact_paths(run_dir)
-  completed_stages <- unique(tempest_as_character_vector(completed_stages))
+  completed_stages <- state$completed_stages
 
   metadata <- list(
-    topic = topic,
-    title = title,
+    topic = state$topic,
+    title = state$title,
     completed_stages = completed_stages,
     requested_steps = steps,
     research_strategy = research_strategy,
@@ -2297,53 +3625,46 @@ tempest_save_run_artifacts <- function(
     max_sources = config@max_sources
   )
 
-  tempest_write_json(paths$sources, store$list_sources())
   tempest_write_json(
-    paths$claims,
-    lapply(store$list_claims(), tempest_claim_to_list)
+    paths$workspace,
+    tempest_research_workspace_snapshot(workspace)
   )
-  audit <- store$get_artifact("citation_audit")
-  if (!is.null(audit)) {
-    tempest_write_json(paths$citation_audit, audit)
+  for (legacy_path in paths[c("sources", "claims", "citation_audit")]) {
+    if (file.exists(legacy_path)) {
+      unlink(legacy_path)
+    }
   }
 
   # References are the sources actually cited in the report/draft, not a copy
   # of every collected source.
-  cited_md <- store$get_artifact("report_md") %||%
-    store$get_artifact("draft_md") %||%
+  cited_md <- state$report_md %||%
+    state$draft_md %||%
     ""
   cited_ids <- tempest_extract_citation_ids(cited_md)
   references <- Filter(
     Negate(is.null),
-    lapply(cited_ids, function(id) store$get_source(id))
+    lapply(cited_ids, function(id) workspace$get_source(id))
   )
+  state$references <- references
+  state <- tempest_storm_state_validate(state)
   tempest_write_json(paths$references, references)
 
-  json_artifacts <- c(
-    perspectives = "perspectives",
-    draft_outline = "draft_outline",
-    outline = "outline"
-  )
-  for (path_name in names(json_artifacts)) {
-    value <- store$get_artifact(json_artifacts[[path_name]])
+  for (path_name in c("perspectives", "draft_outline", "outline")) {
+    value <- state[[path_name]]
     if (!is.null(value)) {
       tempest_write_json(paths[[path_name]], value)
+    } else if (file.exists(paths[[path_name]])) {
+      unlink(paths[[path_name]])
     }
   }
-  experts <- store$get_artifact("experts")
-  if (!is.null(experts)) {
-    tempest_write_json(paths$experts, tempest_expert_records(experts))
-  }
+  tempest_write_json(paths$experts, tempest_expert_records(state$experts))
 
-  text_artifacts <- c(
-    lead_section = "lead_section",
-    draft_md = "draft_md",
-    report_md = "report_md"
-  )
-  for (path_name in names(text_artifacts)) {
-    value <- store$get_artifact(text_artifacts[[path_name]])
+  for (path_name in c("lead_section", "draft_md", "report_md")) {
+    value <- state[[path_name]]
     if (rlang::is_string(value)) {
       tempest_write_text(paths[[path_name]], value)
+    } else if (file.exists(paths[[path_name]])) {
+      unlink(paths[[path_name]])
     }
   }
 
@@ -2369,8 +3690,13 @@ tempest_save_run_artifacts <- function(
     ),
     files
   )
-  metadata$schema_version <- 3L
-  metadata$status <- "complete"
+  metadata$schema_version <- 4L
+  metadata$bundle_type <- "storm"
+  metadata$bundle_status <- "complete"
+  metadata$research_manifest <- tempest_research_manifest_record(
+    research_manifest
+  )
+  metadata$workspace <- tempest_storm_workspace_identity_record(workspace)
   metadata$files <- files
   metadata$checksums <- checksums
   metadata$artifact_files <- typed_bundle$content_files
@@ -2391,5 +3717,7 @@ tempest_stage_complete <- function(completed_stages, stage) {
 
 #' @keywords internal
 tempest_mark_stage_complete <- function(completed_stages, stage) {
-  unique(c(completed_stages, stage))
+  allowed <- c("perspectives", "research", "outline", "write", "polish")
+  completed_stages <- unique(c(completed_stages, stage))
+  completed_stages[order(match(completed_stages, allowed))]
 }

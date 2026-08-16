@@ -21,7 +21,7 @@ test_that("empty section fact context does not tell the writer to call tools", {
 
   facts <- tempest:::tempest_section_facts_text(
     retriever = NULL,
-    store = SourceStore$new(),
+    store = tempest_research_workspace(),
     section_title = "Mechanisms",
     max_items = 5
   )

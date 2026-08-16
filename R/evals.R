@@ -43,8 +43,8 @@ tempest_solver_cited_answer <- function(
   meta <- vector("list", n)
 
   for (i in seq_len(n)) {
-    store <- SourceStore$new()
-    retriever <- tempest_retriever(config = config, store = store)
+    workspace <- tempest_research_workspace()
+    retriever <- tempest_retriever(config = config, store = workspace)
     chat <- tempest_make_chat(
       config,
       "expert",
@@ -89,8 +89,8 @@ tempest_solver_cited_answer <- function(
     results[[i]] <- ans
     chats[[i]] <- chat
     meta[[i]] <- list(
-      sources = store$to_tibbles()$sources,
-      claims = store$to_tibbles()$claims
+      sources = workspace$to_tibbles()$sources,
+      claims = workspace$to_tibbles()$claims
     )
   }
 
@@ -208,8 +208,8 @@ tempest_costorm_task <- function(
         chats[[i]] <- session$chats$moderator
         meta[[i]] <- list(
           turns = sim_user$turn_count,
-          sources = session$store$to_tibbles()$sources,
-          claims = session$store$to_tibbles()$claims
+          sources = session$workspace$to_tibbles()$sources,
+          claims = session$workspace$to_tibbles()$claims
         )
       }
 

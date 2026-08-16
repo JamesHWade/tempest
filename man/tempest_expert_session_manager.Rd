@@ -30,7 +30,8 @@ stable expert id.}
 
 \item{extractor}{Optional fact-extraction chat.}
 
-\item{store}{Optional \code{SourceStore}; defaults to the retriever store.}
+\item{store}{Optional \link{ResearchWorkspace}; defaults to the retriever
+workspace.}
 
 \item{progress}{Optional progress callback.}
 

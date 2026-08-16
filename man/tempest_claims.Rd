@@ -7,7 +7,7 @@
 tempest_claims(store)
 }
 \arguments{
-\item{store}{A \code{SourceStore} or \code{TempestRetriever}.}
+\item{store}{A \link{ResearchWorkspace} or \link{TempestRetriever}.}
 }
 \value{
 A tibble of claims with columns: claim_id, claim_text, claim_type,

@@ -80,7 +80,7 @@ test_that("tempest_session accepts host experts and a shared retriever", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   retriever <- tempest_retriever(config = cfg, store = store)
   expert <- tempest_expert(
     expert_id = "expert.host",

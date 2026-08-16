@@ -667,45 +667,52 @@ tempest_fetch_cache_key <- function(url, user_agent = NULL) {
   tempest_cache_key("fetch-v2", url, user_agent %||% "")
 }
 
+tempest_retriever_config_digest <- function(retriever) {
+  # Custom retrievers have no Tempest-owned configuration identity. Their
+  # existing workspace/store contract remains the only package-level seam.
+  if (!inherits(retriever, "TempestRetriever")) {
+    return(NULL)
+  }
+  tempest_research_config_digest(retriever$config)
+}
+
 #' TempestRetriever
 #'
 #' Provides web and Wikipedia retrieval with caching, plus helper methods to
 #' register retrieval tools with ellmer chats. Optionally integrates with
 #' ragnar for semantic search capabilities.
 #'
-#' @field config A `TempestConfig` object.
-#' @field store A `SourceStore` object.
-#' @field ragnar_store A ragnar store for semantic retrieval (optional).
-#' @field cache_dir Path to cache directory.
-#' @field cache_enabled Whether retriever calls use the on-disk cache.
-#' @field cache_ttl Maximum cache age in seconds.
+#' @field config Read-only `TempestConfig` fixed at construction.
+#' @field workspace Read-only reference to the authoritative
+#'   [ResearchWorkspace] containing provisional research evidence. Workspace
+#'   mutation methods remain available.
+#' @field store Deprecated read-only compatibility alias of `workspace`.
+#' @field ragnar_store Read-only ragnar store reference derived from `config`.
+#' @field cache_dir Read-only cache path derived from `config`.
+#' @field cache_enabled Read-only cache policy derived from `config`.
+#' @field cache_ttl Read-only maximum cache age derived from `config`.
 #'
 #' @export
 TempestRetriever <- R6::R6Class(
   "TempestRetriever",
   public = list(
-    config = NULL,
-    store = NULL,
-    ragnar_store = NULL,
-    cache_dir = NULL,
-    cache_enabled = NULL,
-    cache_ttl = NULL,
-
     #' @description
     #' Create a new TempestRetriever.
     #' @param config A `TempestConfig` object.
-    #' @param store A `SourceStore` object.
+    #' @param store A [ResearchWorkspace]. The argument name is retained for
+    #'   compatibility; new code should use the retriever's `workspace` field.
     initialize = function(
       config = tempest_config(),
-      store = SourceStore$new()
+      store = tempest_research_workspace()
     ) {
-      self$config <- config
-      self$store <- store
-      self$store$set_max_sources(config@max_sources)
-      self$ragnar_store <- config@ragnar_store
-      self$cache_dir <- config@cache_dir
-      self$cache_enabled <- isTRUE(config@cache_enabled)
-      self$cache_ttl <- config@cache_ttl
+      if (!inherits(store, "ResearchWorkspace")) {
+        tempest_research_workspace_abort(
+          "{.arg store} must be a ResearchWorkspace."
+        )
+      }
+      private$config_value <- config
+      private$workspace_value <- store
+      private$workspace_value$set_max_sources(config@max_sources)
       private$cache_counts <- new.env(parent = emptyenv())
       invisible(self)
     },
@@ -818,7 +825,7 @@ TempestRetriever <- R6::R6Class(
         )
         private$record_cache("fetch", cached$status)
         if (!is.null(cached$value)) {
-          self$store$upsert_source(cached$value)
+          self$workspace$upsert_source(cached$value)
           return(cached$value)
         }
       } else {
@@ -838,7 +845,7 @@ TempestRetriever <- R6::R6Class(
           content_hash = NA_character_,
           meta = list(kind = res$kind, error = res$error)
         )
-        self$store$upsert_source(src)
+        self$workspace$upsert_source(src)
         return(src)
       }
 
@@ -873,7 +880,7 @@ TempestRetriever <- R6::R6Class(
         content_hash = txt_hash,
         meta = list(kind = res$kind, error = NULL)
       )
-      self$store$upsert_source(src)
+      self$workspace$upsert_source(src)
       if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, src)) {
         private$record_cache("fetch", "write")
       }
@@ -989,7 +996,7 @@ TempestRetriever <- R6::R6Class(
     #' @param source_id The source id.
     #' @return The content text or NA.
     get_source_text = function(source_id) {
-      src <- self$store$get_source(source_id)
+      src <- self$workspace$get_source(source_id)
       if (is.null(src)) {
         return(NA_character_)
       }
@@ -1000,7 +1007,7 @@ TempestRetriever <- R6::R6Class(
     #' List all sources in the store.
     #' @return A list of source objects.
     list_sources = function() {
-      self$store$list_sources()
+      self$workspace$list_sources()
     },
 
     #' @description
@@ -1015,7 +1022,77 @@ TempestRetriever <- R6::R6Class(
       out
     }
   ),
+  active = list(
+    config = function(value) {
+      if (!missing(value)) {
+        tempest_abort(
+          "{.field config} is fixed when the retriever is created.",
+          class = c("tempest_retriever_identity_error", "tempest_error")
+        )
+      }
+      private$config_value
+    },
+    workspace = function(value) {
+      if (!missing(value)) {
+        tempest_abort(
+          "{.field workspace} is fixed when the retriever is created.",
+          class = c("tempest_retriever_identity_error", "tempest_error")
+        )
+      }
+      private$workspace_value
+    },
+    store = function(value) {
+      if (!missing(value)) {
+        tempest_abort(
+          paste0(
+            "{.field store} is a fixed compatibility alias of ",
+            "{.field workspace}."
+          ),
+          class = c("tempest_retriever_identity_error", "tempest_error")
+        )
+      }
+      private$workspace_value
+    },
+    ragnar_store = function(value) {
+      if (!missing(value)) {
+        tempest_abort(
+          "{.field ragnar_store} is fixed when the retriever is created.",
+          class = c("tempest_retriever_identity_error", "tempest_error")
+        )
+      }
+      private$config_value@ragnar_store
+    },
+    cache_dir = function(value) {
+      if (!missing(value)) {
+        tempest_abort(
+          "{.field cache_dir} is fixed when the retriever is created.",
+          class = c("tempest_retriever_identity_error", "tempest_error")
+        )
+      }
+      private$config_value@cache_dir
+    },
+    cache_enabled = function(value) {
+      if (!missing(value)) {
+        tempest_abort(
+          "{.field cache_enabled} is fixed when the retriever is created.",
+          class = c("tempest_retriever_identity_error", "tempest_error")
+        )
+      }
+      isTRUE(private$config_value@cache_enabled)
+    },
+    cache_ttl = function(value) {
+      if (!missing(value)) {
+        tempest_abort(
+          "{.field cache_ttl} is fixed when the retriever is created.",
+          class = c("tempest_retriever_identity_error", "tempest_error")
+        )
+      }
+      private$config_value@cache_ttl
+    }
+  ),
   private = list(
+    config_value = NULL,
+    workspace_value = NULL,
     cache_counts = NULL,
 
     record_cache = function(kind, status) {
@@ -1050,7 +1127,8 @@ TempestRetriever <- R6::R6Class(
 #' Create a TempestRetriever
 #'
 #' @param config A `TempestConfig`.
-#' @param store A `SourceStore`.
+#' @param store A [ResearchWorkspace]. The argument name is retained for
+#'   compatibility.
 #' @return A `TempestRetriever`.
 #' @examples
 #' retriever <- tempest_retriever(config = tempest_config())
@@ -1060,7 +1138,7 @@ TempestRetriever <- R6::R6Class(
 #' @export
 tempest_retriever <- function(
   config = tempest_config(),
-  store = SourceStore$new()
+  store = tempest_research_workspace()
 ) {
   TempestRetriever$new(config = config, store = store)
 }

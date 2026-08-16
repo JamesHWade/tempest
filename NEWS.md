@@ -3,6 +3,9 @@
 * Tempest is now explicitly scoped as a scientific-research product. Its experimental application-neutral workflow, runtime, capability, connection, skill, deliverable, artifact, and generic host-state APIs are frozen and scheduled for removal in the deliberate 0.2.0 breaking release (v659).
 * The bundled Shiny app now presents Co-STORM setup as a one-time native shinychat greeting with consistently sized controls, lets users replace generated panels with up to five named expert perspectives, and reserves the footer for active-session status and actions.
 * `tempest_optimize_dsprrr_modules()`, `tempest_save_dsprrr_modules()`, and `tempest_load_dsprrr_modules()` now expose per-module dsprrr optimizer controls and agentic teleprompter arguments, persist modules as atomic checksummed bundles of versioned dsprrr program artifacts instead of raw RDS lists, and remove the obsolete `fact_extraction` module alias.
+* `tempest_research_manifest()` records the stable run, configuration, program, knowledge-snapshot, runtime, trace, and deliverable identities for STORM and Co-STORM without serializing runtime objects or credentials (04zh).
+* `tempest_research_workspace()` and `ResearchWorkspace` define the provisional run-scoped evidence boundary, including an optional pinned knowledge-snapshot ID and accepted graft references; `SourceStore` remains as a soft-deprecated compatibility subclass for one release (04zh).
+* `tempest_run()` and `tempest_session()` now expose correlated research manifests and authoritative workspaces while retaining `store` and session/run IDs as compatibility projections (04zh).
 
 # tempest 0.1.0
 

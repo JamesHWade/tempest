@@ -195,12 +195,12 @@ tempest_workflow_checkpoint_artifact <- function(
   deliverable <- tempest_workflow_checkpoint_spec()
   context$artifact_catalog$register(deliverable)
   state <- tempest_contract_serializable_list(state, "state")
-  source_count <- if (inherits(context$source_store, "SourceStore")) {
+  source_count <- if (inherits(context$source_store, "ResearchWorkspace")) {
     length(context$source_store$list_sources())
   } else {
     0L
   }
-  claim_count <- if (inherits(context$source_store, "SourceStore")) {
+  claim_count <- if (inherits(context$source_store, "ResearchWorkspace")) {
     length(context$source_store$list_claims())
   } else {
     0L
@@ -438,7 +438,8 @@ tempest_storm_workflow_reserved_arguments <- function() {
     "progress",
     "verbose",
     "artifact_catalog",
-    "workflow_run"
+    "workflow_run",
+    ".state"
   )
 }
 
@@ -490,6 +491,15 @@ tempest_storm_workflow_set_deliverable <- function(
 }
 
 tempest_storm_workflow_checkpoint <- function(stage, result) {
+  storm_state <- tryCatch(
+    tempest_storm_state_record(result$state),
+    error = function(error) {
+      tempest_builtin_workflow_abort(
+        "STORM stage {.val {stage}} did not return valid product state.",
+        parent = error
+      )
+    }
+  )
   store_artifact_ids <- switch(
     stage,
     perspectives = c("title", "perspectives", "experts"),
@@ -500,6 +510,7 @@ tempest_storm_workflow_checkpoint <- function(stage, result) {
     character()
   )
   checkpoint <- list(
+    storm_state = storm_state,
     store_artifact_ids = store_artifact_ids,
     title = result$title %||% NA_character_,
     expert_ids = vapply(
@@ -518,6 +529,46 @@ tempest_storm_workflow_checkpoint <- function(stage, result) {
     checkpoint$draft_characters <- nchar(result$draft_md %||% "")
   }
   checkpoint
+}
+
+tempest_storm_workflow_input_state <- function(context) {
+  required_ids <- context$step@required_input_artifact_ids
+  if (length(required_ids) == 0L) {
+    return(NULL)
+  }
+  if (length(required_ids) != 1L) {
+    tempest_builtin_workflow_abort(
+      "Built-in STORM stages must consume exactly one state checkpoint."
+    )
+  }
+  artifact_id <- required_ids[[1]]
+  artifact <- context$input_artifacts[[artifact_id]] %||% NULL
+  state_record <- if (
+    !is.null(artifact) &&
+      is.list(artifact@content) &&
+      is.list(artifact@content$state)
+  ) {
+    artifact@content$state$storm_state %||% NULL
+  } else {
+    NULL
+  }
+  if (is.null(state_record)) {
+    tempest_builtin_workflow_abort(
+      paste0(
+        "STORM checkpoint {.val {artifact_id}} does not contain its typed ",
+        "product state."
+      )
+    )
+  }
+  tryCatch(
+    tempest_storm_state_from_record(state_record),
+    error = function(error) {
+      tempest_builtin_workflow_abort(
+        "STORM checkpoint {.val {artifact_id}} contains invalid product state.",
+        parent = error
+      )
+    }
+  )
 }
 
 tempest_storm_workflow_update_experts <- function(run, experts, stage) {
@@ -572,7 +623,7 @@ tempest_storm_workflow_update_experts <- function(run, experts, stage) {
 #' connection permissions always come from the owning `TempestRun`.
 #'
 #' @param config A `TempestConfig`.
-#' @param retriever Optional retriever whose store must be the run's
+#' @param retriever Optional retriever whose workspace must be the run's
 #'   `source_store`.
 #' @param n_experts Number of experts to generate when the run starts without
 #'   an explicit expert pool.
@@ -623,9 +674,9 @@ tempest_storm_workflow_adapter <- function(
     }
     active_retriever <- retriever
     if (is.null(active_retriever)) {
-      if (!inherits(context$source_store, "SourceStore")) {
+      if (!inherits(context$source_store, "ResearchWorkspace")) {
         tempest_builtin_workflow_abort(
-          "The STORM adapter requires a shared SourceStore."
+          "The STORM adapter requires a shared ResearchWorkspace."
         )
       }
       active_retriever <- tempest_retriever(
@@ -633,15 +684,19 @@ tempest_storm_workflow_adapter <- function(
         store = context$source_store
       )
     }
+    active_workspace <- active_retriever$workspace %||%
+      active_retriever$store %||%
+      NULL
     if (
-      is.null(active_retriever$store) ||
-        !identical(active_retriever$store, context$source_store)
+      !inherits(active_workspace, "ResearchWorkspace") ||
+        !identical(active_workspace, context$source_store)
     ) {
       tempest_builtin_workflow_abort(
-        "The STORM adapter retriever must use the run's SourceStore."
+        "The STORM adapter retriever must use the run's ResearchWorkspace."
       )
     }
     selected_experts <- unname(run$experts)
+    state <- tempest_storm_workflow_input_state(context)
     call_arguments <- c(
       list(
         topic = context$objective@description,
@@ -667,7 +722,8 @@ tempest_storm_workflow_adapter <- function(
         progress = stage_progress,
         verbose = verbose,
         artifact_catalog = context$artifact_catalog,
-        workflow_run = run
+        workflow_run = run,
+        .state = state
       ),
       arguments
     )
@@ -739,13 +795,16 @@ tempest_storm_workflow_run <- function(
   topic <- tempest_workflow_scalar(topic, "topic")
   arguments <- tempest_storm_workflow_extra_arguments(list(...))
   if (is.null(retriever)) {
-    source_store <- SourceStore$new()
+    source_store <- tempest_research_workspace()
     retriever <- tempest_retriever(config = config, store = source_store)
   } else {
-    source_store <- retriever$store %||% NULL
-    if (!inherits(source_store, "SourceStore")) {
+    source_store <- retriever$workspace %||% retriever$store %||% NULL
+    if (!inherits(source_store, "ResearchWorkspace")) {
       tempest_builtin_workflow_abort(
-        "{.arg retriever} must expose a SourceStore at {.field store}."
+        paste0(
+          "{.arg retriever} must expose a ResearchWorkspace at ",
+          "{.code retriever$workspace} or {.code retriever$store}."
+        )
       )
     }
   }
@@ -851,13 +910,14 @@ tempest_costorm_workflow_adapter <- function(
         "The Co-STORM adapter requires an owning TempestRun."
       )
     }
+    session_workspace <- session$workspace %||% session$store %||% NULL
     if (
-      !identical(session$store, context$source_store) ||
+      !identical(session_workspace, context$source_store) ||
         !identical(session$artifact_catalog, context$artifact_catalog)
     ) {
       tempest_builtin_workflow_abort(
         paste0(
-          "The Co-STORM adapter must share the session store and artifact ",
+          "The Co-STORM adapter must share the session workspace and artifact ",
           "catalog."
         )
       )
@@ -1003,7 +1063,7 @@ tempest_costorm_workflow_run <- function(
     connection_permissions = session$connection_permissions,
     deliverables = list(checkpoint, report),
     artifact_catalog = session$artifact_catalog,
-    source_store = session$store,
+    source_store = session$workspace,
     runtime_context = list(
       config = session$config,
       retriever = session$retriever,

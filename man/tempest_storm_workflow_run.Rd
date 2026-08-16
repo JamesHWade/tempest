@@ -26,7 +26,7 @@ tempest_storm_workflow_run(
 
 \item{config}{A \code{TempestConfig}.}
 
-\item{retriever}{Optional retriever whose store must be the run's
+\item{retriever}{Optional retriever whose workspace must be the run's
 \code{source_store}.}
 
 \item{n_experts}{Number of experts to generate when the run starts without

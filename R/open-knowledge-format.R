@@ -665,7 +665,7 @@ tempest_okf_is_stale <- function(frontmatter, today) {
 #' `resource_kind = "okf.concept"`. The original Markdown is retained as
 #' evidence content and parsed OKF metadata is namespaced under
 #' `resource@metadata$okf`. This function does not add resources to a
-#' `SourceStore`; callers retain an explicit mutation boundary.
+#' [ResearchWorkspace]; callers retain an explicit mutation boundary.
 #'
 #' @inheritParams tempest_okf_concepts
 #' @param include_stale Whether to include concepts whose `stale_after` date

@@ -27,7 +27,8 @@ tempest_run(
   progress = NULL,
   verbose = TRUE,
   artifact_catalog = NULL,
-  workflow_run = NULL
+  workflow_run = NULL,
+  .state = NULL
 )
 }
 \arguments{
@@ -96,12 +97,16 @@ make final artifacts available.}
 
 \item{workflow_run}{Frozen Tempest 0.1 owning \code{TempestRun}. When supplied,
 the result exposes it as \code{workflow_run}.}
+
+\item{.state}{Internal adapter-only fixed STORM product state. This is not a
+public continuation API.}
 }
 \value{
 A list with product fields \code{title}, \code{perspectives}, \code{experts},
-\code{outline}, \code{draft_md}, \code{report_md}, \code{store}, and \code{output_dir}. Frozen 0.1
-compatibility fields \code{artifact_catalog} and \code{workflow_run} are also
-returned temporarily.
+\code{outline}, \code{draft_md}, \code{report_md}, \code{manifest}, \code{state}, \code{workspace},
+\code{retriever}, and \code{output_dir}. The compatibility field \code{store} references
+the same object as \code{workspace}. Frozen 0.1 compatibility fields
+\code{artifact_catalog} and \code{workflow_run} are also returned temporarily.
 }
 \description{
 This is a scripted workflow that:
@@ -118,8 +123,8 @@ This is a scripted workflow that:
 \code{runtime}, \code{runtime_factory}, \code{connection_permissions}, \code{artifact_catalog},
 and \code{workflow_run} expose the frozen experimental generic kernel. They remain
 only for existing Tempest 0.1 integrations and are scheduled for replacement
-or removal in Tempest 0.2.0. New code should consume \code{report_md} and the
-scientific evidence in \code{store}.
+or removal in Tempest 0.2.0. New code should consume \code{report_md}, \code{manifest},
+\code{state}, and the scientific evidence in \code{workspace}.
 }
 
 \examples{

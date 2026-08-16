@@ -97,7 +97,7 @@ test_that("expert delegation tool uses stable ids and reuses sessions", {
       if (identical(role, "expert")) expert_chat else fake_chat()
     }
   )
-  store <- tempest:::SourceStore$new()
+  store <- quiet_source_store()
   retriever <- tempest:::tempest_retriever(config = cfg, store = store)
   expert <- test_expert(
     expert_id = "expert.climate",
@@ -173,7 +173,7 @@ test_that("expert delegation harvests native sources before extraction", {
   cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
     if (identical(role, "expert")) expert_chat else fake_chat()
   })
-  store <- tempest:::SourceStore$new()
+  store <- quiet_source_store()
   retriever <- tempest:::tempest_retriever(config = cfg, store = store)
   expert <- test_expert(
     expert_id = "expert.climate",
@@ -233,7 +233,7 @@ test_that("expert delegation harvests OpenAI native annotations", {
   cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
     if (identical(role, "expert")) expert_chat else fake_chat()
   })
-  store <- tempest:::SourceStore$new()
+  store <- quiet_source_store()
   retriever <- tempest:::tempest_retriever(config = cfg, store = store)
   expert <- test_expert(
     expert_id = "expert.climate",

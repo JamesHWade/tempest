@@ -53,7 +53,7 @@ test_that("tempest_source creates the canonical source record", {
 })
 
 test_that("source tibbles derive snippets and context text", {
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   source <- tempest_source(
     url = "https://example.org/context",
     title = "Context",

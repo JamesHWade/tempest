@@ -21,25 +21,14 @@ session's scientific evidence and report state as its product boundary.
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
   \describe{
-    \item{\code{topic}}{The research topic.}
-
     \item{\code{title}}{The report title.}
-
-    \item{\code{config}}{A \code{TempestConfig} object.}
 
     \item{\code{runtime}}{Frozen Tempest 0.1 \code{TempestRuntime} adapter.}
 
     \item{\code{connection_permissions}}{Frozen Tempest 0.1 per-role or per-expert
 connection allow-lists.}
 
-    \item{\code{session_id}}{Stable identifier shared by progress events for the
-session.}
-
     \item{\code{progress}}{Optional progress callback.}
-
-    \item{\code{store}}{A \code{SourceStore} object.}
-
-    \item{\code{retriever}}{A \code{TempestRetriever} object.}
 
     \item{\code{experts}}{List of validated \code{tempest_expert} profiles.}
 
@@ -64,6 +53,28 @@ session workflow lifecycle, when present.}
 execution context.}
 
     \item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
+  }
+  \if{html}{\out{</div>}}
+}
+\section{Active bindings}{
+  \if{html}{\out{<div class="r6-active-bindings">}}
+  \describe{
+    \item{\code{topic}}{Read-only research topic fixed at construction.}
+
+    \item{\code{config}}{Read-only \code{TempestConfig} fixed at construction.}
+
+    \item{\code{session_id}}{Read-only stable identifier shared by the manifest and
+progress events for the session.}
+
+    \item{\code{manifest}}{Immutable \link{TempestResearchManifest} for this research run.}
+
+    \item{\code{workspace}}{Read-only reference to the authoritative
+\link{ResearchWorkspace} containing provisional research material. Workspace
+mutation methods remain available.}
+
+    \item{\code{store}}{Deprecated read-only compatibility alias of \code{workspace}.}
+
+    \item{\code{retriever}}{Read-only \code{TempestRetriever} reference.}
   }
   \if{html}{\out{</div>}}
 }
@@ -114,7 +125,9 @@ execution context.}
   connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
-  session_id = NULL
+  session_id = NULL,
+  .restore_manifest = NULL,
+  .restore_token = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -131,11 +144,16 @@ experts are generated automatically using \code{tempest_generate_experts()}.}
       \item{\code{connection_permissions}}{Frozen Tempest 0.1 mapping from role or
 expert ids to opaque connection ids allowed for this session.}
       \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
-object with a \code{SourceStore} at \verb{$store}.}
+object with a \link{ResearchWorkspace} at \verb{$workspace} or its legacy
+\verb{$store} alias.}
       \item{\code{progress}}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}
       \item{\code{session_id}}{Optional stable session identifier. If \code{NULL}, a new
 identifier is generated.}
+      \item{\code{.restore_manifest}}{Internal research manifest supplied only by
+Tempest's bundle-restoration seam.}
+      \item{\code{.restore_token}}{Internal authorization token for bundle
+restoration.}
     }
     \if{html}{\out{</div>}}
   }

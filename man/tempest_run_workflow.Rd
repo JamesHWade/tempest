@@ -38,7 +38,8 @@ permission.}
 
 \item{artifact_catalog}{Optional typed artifact catalog.}
 
-\item{source_store}{Optional \code{SourceStore} evidence ledger.}
+\item{source_store}{Optional \link{ResearchWorkspace} evidence ledger. The
+argument name is retained for the frozen generic API.}
 
 \item{runtime_context}{Process-local named services, such as a retriever or
 expert-session manager, made available to operations and capability

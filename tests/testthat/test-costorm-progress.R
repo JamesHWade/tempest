@@ -6,7 +6,7 @@ test_that("TempestSession emits Co-STORM progress events", {
     content_text = "Co-STORM progress uses compact event metadata."
   )
   source_id <- source$id
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   store$upsert_source(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
   mindmap <- list(
@@ -223,7 +223,7 @@ test_that("warmup failure emits failed expert and tool events", {
 test_that("expert tools emit correlated progress events", {
   skip_if_not_installed("ellmer")
   source <- fake_source(url = "https://example.org/expert-tool")
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   store$upsert_source(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
   expert_chat <- fake_chat(
@@ -303,7 +303,7 @@ test_that("expert tools emit correlated progress events", {
 test_that("expert tools reuse sessions and provenance", {
   skip_if_not_installed("ellmer")
   source <- fake_source(url = "https://example.org/expert-reuse")
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   store$upsert_source(source)
   expert_chat <- fake_chat(
     text = list(
@@ -371,7 +371,7 @@ test_that("expert tools reuse sessions and provenance", {
 
 test_that("expert tools emit failed progress events", {
   skip_if_not_installed("ellmer")
-  store <- SourceStore$new()
+  store <- quiet_source_store()
   collector <- tempest_progress_collector(include_payload = TRUE)
   failing_chat <- list(
     chat = function(...) stop("expert unavailable"),

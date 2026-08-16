@@ -164,8 +164,8 @@ deleted:
 - `R/shiny-adapter.R` also implements product research panels;
 - `R/config.R` also defines the product configuration while carrying the
   generic artifact-store adapter;
-- `R/models.R` contains the future ResearchWorkspace implementation as well as
-  the arbitrary artifact environment that must be removed.
+- `R/models.R` contains ResearchWorkspace plus the deprecated SourceStore
+  compatibility subclass whose arbitrary artifact environment must be removed.
 - `R/resources.R` exposes application-neutral resource kinds today. Its public
   seam must narrow to scientific sources and context evidence; host connection
   identifiers remain opaque injected references rather than a general
@@ -224,6 +224,7 @@ they require no API keys, network access, or live provider responses.
 | Report generation and section identity | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-writing.R`, `tests/testthat/test-costorm-async.R` |
 | Cancellation | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-async.R`, `tests/testthat/test-run-accessors.R` |
 | STORM and Co-STORM save/resume | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-run-persistence.R`, `tests/testthat/test-tempest-run-bundle.R` |
+| Research manifest, state, and workspace correlation | `tests/testthat/test-research-manifest.R`, `tests/testthat/test-research-session.R`, `tests/testthat/test-research-workspace.R`, `tests/testthat/test-storm-state.R` |
 | Current public exports and retirement set | `tests/testthat/test-public-api.R` |
 
 The semantic projections assert:
@@ -244,10 +245,12 @@ On 2026-08-15, after integrating the custom-expert and dsprrr ProgramArtifact
 work from PR #28, the full package suite completed with 2,535 passing
 expectations and no failures, warnings, or skips.
 
-The pre-0.2 namespace baseline contains 96 explicit exports and two registered
-S3 print methods. The versioned fixtures remain unchanged through the additive
-train; T8 must make the removal diff explicit rather than silently rewriting
-history.
+The T0 pre-0.2 namespace baseline contains 96 explicit exports and two
+registered S3 print methods. T1 adds exactly three product exports:
+`ResearchWorkspace`, `tempest_research_manifest()`, and
+`tempest_research_workspace()`, bringing the current additive surface to 99
+exports. The versioned T0 fixture remains unchanged through the additive train;
+T8 must make the removal diff explicit rather than silently rewriting history.
 
 ## Superseded decisions
 

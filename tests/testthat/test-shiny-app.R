@@ -514,6 +514,43 @@ test_that("citation_markdown renders numbered references from cited sources", {
   expect_no_match(rendered, paste0("[", first_id, "]"), fixed = TRUE)
 })
 
+test_that("citation rendering uses the retriever's T1 workspace", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  workspace <- tempest_research_workspace()
+  workspace$upsert_source(fake_source(
+    url = "https://example.org/t1-workspace",
+    title = "T1 Workspace Source"
+  ))
+  source_id <- workspace$list_sources()[[1]]$id
+  retriever <- tempest_retriever(
+    config = tempest_config(),
+    store = workspace
+  )
+
+  rendered <- app$citation_markdown(
+    paste0("Workspace-backed claim [", source_id, "]."),
+    store = retriever,
+    include_references = TRUE
+  )
+
+  expect_identical(app$citation_source_store(retriever), workspace)
+  expect_match(rendered, "T1 Workspace Source", fixed = TRUE)
+  expect_match(rendered, "https://example.org/t1-workspace", fixed = TRUE)
+  expect_no_match(rendered, "Missing source metadata", fixed = TRUE)
+
+  legacy <- structure(
+    list(workspace = NULL, store = workspace),
+    class = "TempestRetriever"
+  )
+  divergent <- structure(
+    list(workspace = workspace, store = tempest_research_workspace()),
+    class = "TempestRetriever"
+  )
+  expect_identical(app$citation_source_store(legacy), workspace)
+  expect_null(app$citation_source_store(divergent))
+})
+
 test_that("citation_markdown strips private external citation markers", {
   app <- source_shiny_modules()
   marker <- paste0(
@@ -607,7 +644,7 @@ test_that("sources and facts modules show empty states until data exists", {
   shiny::testServer(app$mod_sources_server, args = list(store = store), {
     expect_match(as.character(output$body$html), "Start a session")
 
-    empty_session <- list(store = SourceStore$new())
+    empty_session <- list(store = quiet_source_store())
     store$set(empty_session)
     session$flushReact()
     expect_match(as.character(output$body$html), "No sources collected yet")
@@ -625,7 +662,7 @@ test_that("sources and facts modules show empty states until data exists", {
     session$flushReact()
     expect_match(as.character(output$body$html), "Start a session")
 
-    empty_session <- list(store = SourceStore$new())
+    empty_session <- list(store = quiet_source_store())
     store$set(empty_session)
     session$flushReact()
     expect_match(as.character(output$body$html), "No facts extracted yet")
@@ -692,7 +729,7 @@ test_that("sources and facts modules consume generic run evidence", {
     expect_no_match(as.character(output$body$html), "Start a session")
     expect_no_match(as.character(output$body$html), "No sources collected yet")
 
-    store$set(list(store = SourceStore$new()))
+    store$set(list(store = quiet_source_store()))
     session$flushReact()
     expect_equal(nrow(shiny::isolate(sources())), 0L)
     expect_match(as.character(output$body$html), "No sources collected yet")
@@ -709,7 +746,7 @@ test_that("sources and facts modules consume generic run evidence", {
     expect_no_match(as.character(output$body$html), "Start a session")
     expect_no_match(as.character(output$body$html), "No facts extracted yet")
 
-    store$set(list(store = SourceStore$new()))
+    store$set(list(store = quiet_source_store()))
     session$flushReact()
     expect_equal(nrow(shiny::isolate(facts())), 0L)
     expect_match(as.character(output$body$html), "No facts extracted yet")
@@ -1347,6 +1384,80 @@ test_that("session archive validation rejects unsafe entries and large files", {
   expect_equal(
     app$session_archive_listing_is_safe("a/./session.json", 100),
     FALSE
+  )
+})
+
+test_that("session archive manifests accept current and bounded legacy headers", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  files <- c(
+    "config.json",
+    "artifacts/typed/index.json",
+    "artifacts/typed/deliverables.json"
+  )
+  manifest_fields <- list(
+    files = files,
+    checksums = stats::setNames(as.list(rep("checksum", length(files))), files),
+    artifact_files = character(),
+    artifact_index = "artifacts/typed/index.json",
+    deliverable_index = "artifacts/typed/deliverables.json"
+  )
+  current <- c(
+    list(
+      schema_version = 5L,
+      bundle_type = "costorm",
+      bundle_status = "complete"
+    ),
+    manifest_fields
+  )
+  legacy <- c(
+    list(schema_version = 4L, status = "complete"),
+    manifest_fields
+  )
+
+  expect_identical(app$session_archive_manifest_files(current), files)
+  expect_identical(app$session_archive_manifest_files(legacy), files)
+
+  expect_error(
+    app$session_archive_manifest_files(
+      utils::modifyList(current, list(bundle_type = "storm"))
+    ),
+    "unsupported schema or status",
+    fixed = TRUE
+  )
+  expect_error(
+    app$session_archive_manifest_files(
+      utils::modifyList(current, list(bundle_status = "running"))
+    ),
+    "unsupported schema or status",
+    fixed = TRUE
+  )
+  expect_error(
+    app$session_archive_manifest_files(
+      utils::modifyList(current, list(schema_version = 5.9))
+    ),
+    "unsupported schema or status",
+    fixed = TRUE
+  )
+  expect_error(
+    app$session_archive_manifest_files(c(
+      list(schema_version = 5L, status = "complete"),
+      manifest_fields
+    )),
+    "unsupported schema or status",
+    fixed = TRUE
+  )
+  expect_error(
+    app$session_archive_manifest_files(c(
+      list(
+        schema_version = 4L,
+        bundle_type = "costorm",
+        bundle_status = "complete"
+      ),
+      manifest_fields
+    )),
+    "unsupported schema or status",
+    fixed = TRUE
   )
 })
 
