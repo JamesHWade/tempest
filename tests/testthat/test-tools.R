@@ -1,11 +1,11 @@
-test_that("retrieval tools expose claim tools and fact aliases", {
+test_that("retrieval tools expose canonical research vocabulary", {
   skip_if_not_installed("ellmer")
   store <- tempest_research_workspace()
-  store$upsert_source(fake_source("https://example.org/1"))
-  source_id <- store$list_sources()[[1]]$id
+  store$upsert_retrieved_resource(fake_source("https://example.org/1"))
+  source_id <- store$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
-    store = store
+    workspace = store
   )
   tools <- tempest:::tempest_tools_retrieval(retriever)
   tool_names <- vapply(tools, function(tool) tool@name, character(1))
@@ -16,17 +16,17 @@ test_that("retrieval tools expose claim tools and fact aliases", {
     c(
       "web_search",
       "fetch_url",
-      "list_claims",
-      "add_claim",
-      "get_claim",
-      "get_evidence_for_claim",
-      "list_unsupported_claims",
-      "list_facts",
-      "add_fact"
+      "get_retrieved_source",
+      "list_retrieved_sources",
+      "list_proposed_claims",
+      "add_proposed_claim",
+      "get_proposed_claim",
+      "get_evidence_for_proposed_claim",
+      "list_unsupported_proposed_claims"
     )
   )
 
-  added <- by_name("add_claim")(
+  added <- by_name("add_proposed_claim")(
     claim_text = "Claim tools store source-backed claims.",
     source_ids = source_id,
     confidence = "high"
@@ -48,14 +48,14 @@ test_that("retrieval tools expose claim tools and fact aliases", {
   expect_equal(added$verification_status, "unverified")
   expect_equal(added$support_score, NA_real_)
 
-  claims <- by_name("list_claims")()
+  claims <- by_name("list_proposed_claims")()
   expect_length(claims, 1)
   expect_equal(claims[[1]]$claim_id, added$claim_id)
 
-  claim <- by_name("get_claim")(added$claim_id)
+  claim <- by_name("get_proposed_claim")(added$claim_id)
   expect_equal(claim$claim_id, added$claim_id)
-  expect_equal(claim$sources[[1]]$source_id, source_id)
-  expect_equal(by_name("get_claim")("Cmissing"), NULL)
+  expect_equal(claim$retrieved_resources[[1]]$source_id, source_id)
+  expect_equal(by_name("get_proposed_claim")("Cmissing"), NULL)
 
   span <- tempest:::tempest_evidence_span(
     source_id = source_id,
@@ -63,41 +63,49 @@ test_that("retrieval tools expose claim tools and fact aliases", {
     relevance_score = 0.8
   )
   span_id <- store$add_evidence_span(span)
-  store$link_evidence(added$claim_id, span_id)
-  evidence <- by_name("get_evidence_for_claim")(added$claim_id)
+  store$link_evidence_to_proposed_claim(added$claim_id, span_id)
+  evidence <- by_name("get_evidence_for_proposed_claim")(added$claim_id)
   expect_equal(evidence$claim$claim_id, added$claim_id)
   expect_equal(evidence$evidence_spans[[1]]$quote, "supporting excerpt")
   expect_equal(evidence$cited_sources[[1]]$source_id, source_id)
-  expect_equal(by_name("get_evidence_for_claim")("Cmissing"), NULL)
+  expect_equal(by_name("get_evidence_for_proposed_claim")("Cmissing"), NULL)
 
-  expect_length(by_name("list_unsupported_claims")(), 0)
-  store$verify_claim(added$claim_id, status = "unsupported", score = 0.2)
-  unsupported <- by_name("list_unsupported_claims")()
+  expect_length(by_name("list_unsupported_proposed_claims")(), 0)
+  store$verify_proposed_claim(
+    added$claim_id,
+    status = "unsupported",
+    score = 0.2
+  )
+  unsupported <- by_name("list_unsupported_proposed_claims")()
   expect_length(unsupported, 1)
   expect_equal(unsupported[[1]]$claim_id, added$claim_id)
 
-  legacy <- by_name("add_fact")(
-    claim = "Fact aliases still write claim records.",
-    source_ids = source_id
-  )
-  expect_equal(legacy$fact_id, legacy$claim_id)
-  expect_equal(legacy$claim, "Fact aliases still write claim records.")
-
-  facts <- by_name("list_facts")()
-  expect_length(facts, 2)
-  expect_contains(
-    names(facts[[1]]),
-    c("fact_id", "claim", "claim_id", "claim_text", "verification_status")
+  expect_equal(
+    intersect(
+      tool_names,
+      c(
+        "get_source",
+        "list_sources",
+        "list_claims",
+        "add_claim",
+        "get_claim",
+        "get_evidence_for_claim",
+        "list_unsupported_claims",
+        "list_facts",
+        "add_fact"
+      )
+    ),
+    character()
   )
 })
 
 test_that("source-management tools expose claim tools without web tools", {
   skip_if_not_installed("ellmer")
   store <- fake_store_with_sources(1)
-  source_id <- store$list_sources()[[1]]$id
+  source_id <- store$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
-    store = store
+    workspace = store
   )
   tools <- tempest:::tempest_tools_source_management(retriever)
   tool_names <- vapply(tools, function(tool) tool@name, character(1))
@@ -106,27 +114,25 @@ test_that("source-management tools expose claim tools without web tools", {
   expect_contains(
     tool_names,
     c(
-      "get_source",
-      "list_sources",
-      "list_claims",
-      "add_claim",
-      "get_claim",
-      "get_evidence_for_claim",
-      "list_unsupported_claims",
-      "list_facts",
-      "add_fact"
+      "get_retrieved_source",
+      "list_retrieved_sources",
+      "list_proposed_claims",
+      "add_proposed_claim",
+      "get_proposed_claim",
+      "get_evidence_for_proposed_claim",
+      "list_unsupported_proposed_claims"
     )
   )
   expect_equal(intersect(tool_names, c("web_search", "fetch_url")), character())
 
-  added <- by_name("add_claim")(
+  added <- by_name("add_proposed_claim")(
     claim_text = "Native source management stores claims.",
     source_ids = source_id
   )
   expect_equal(added$claim_text, "Native source management stores claims.")
   expect_equal(added$source_ids, source_id)
 
-  claims <- by_name("list_claims")()
+  claims <- by_name("list_proposed_claims")()
   expect_length(claims, 1)
   expect_equal(claims[[1]]$claim_id, added$claim_id)
 })
@@ -134,10 +140,10 @@ test_that("source-management tools expose claim tools without web tools", {
 test_that("claim write tools record dynamic provenance", {
   skip_if_not_installed("ellmer")
   store <- fake_store_with_sources(1)
-  source_id <- store$list_sources()[[1]]$id
+  source_id <- store$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
-    store = store
+    workspace = store
   )
   current <- list(
     session_id = "expert-session-1",
@@ -151,7 +157,7 @@ test_that("claim write tools record dynamic provenance", {
   tool_names <- vapply(tools, function(tool) tool@name, character(1))
   by_name <- function(name) tools[[match(name, tool_names)]]
 
-  added <- by_name("add_claim")(
+  added <- by_name("add_proposed_claim")(
     claim_text = "Dynamic provenance is recorded.",
     source_ids = source_id
   )
@@ -159,7 +165,7 @@ test_that("claim write tools record dynamic provenance", {
   expect_equal(added$session_id, "expert-session-1")
   expect_equal(added$expert_id, "expert.climate")
   expect_equal(added$retrieval_step_id, "tool-turn-1")
-  claim <- store$list_claims()[[1]]
+  claim <- store$list_proposed_claims()[[1]]
   expect_equal(claim@session_id, "expert-session-1")
   expect_equal(claim@expert_id, "expert.climate")
   expect_equal(claim@retrieval_step_id, "tool-turn-1")
@@ -169,7 +175,7 @@ test_that("source-management tools can be registered read-only", {
   skip_if_not_installed("ellmer")
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
-    store = fake_store_with_sources(1)
+    workspace = fake_store_with_sources(1)
   )
   tools <- tempest:::tempest_tools_source_management(
     retriever,
@@ -180,15 +186,18 @@ test_that("source-management tools can be registered read-only", {
   expect_contains(
     tool_names,
     c(
-      "get_source",
-      "list_sources",
-      "list_claims",
-      "get_claim",
-      "get_evidence_for_claim",
-      "list_unsupported_claims"
+      "get_retrieved_source",
+      "list_retrieved_sources",
+      "list_proposed_claims",
+      "get_proposed_claim",
+      "get_evidence_for_proposed_claim",
+      "list_unsupported_proposed_claims"
     )
   )
-  expect_equal(intersect(tool_names, c("add_claim", "add_fact")), character())
+  expect_equal(
+    intersect(tool_names, c("add_proposed_claim", "add_fact")),
+    character()
+  )
 })
 
 test_that("default tool registration respects read-only evidence roles", {
@@ -196,7 +205,7 @@ test_that("default tool registration respects read-only evidence roles", {
   store <- fake_store_with_sources(1)
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
-    store = store
+    workspace = store
   )
   registered <- list()
   chat <- list(
@@ -216,9 +225,17 @@ test_that("default tool registration respects read-only evidence roles", {
   tool_names <- vapply(registered[[1]], function(tool) tool@name, character(1))
   expect_contains(
     tool_names,
-    c("web_search", "fetch_url", "get_claim", "list_unsupported_claims")
+    c(
+      "web_search",
+      "fetch_url",
+      "get_proposed_claim",
+      "list_unsupported_proposed_claims"
+    )
   )
-  expect_equal(intersect(tool_names, c("add_claim", "add_fact")), character())
+  expect_equal(
+    intersect(tool_names, c("add_proposed_claim", "add_fact")),
+    character()
+  )
 })
 
 test_that("expert sessions resolve scoped capabilities before chat creation", {
@@ -286,8 +303,8 @@ test_that("expert sessions resolve scoped capabilities before chat creation", {
     model_role = "expert"
   )
   store <- tempest_research_workspace()
-  retriever <- tempest_retriever(config = config, store = store)
-  manager <- tempest_expert_session_manager(
+  retriever <- tempest_retriever(config = config, workspace = store)
+  manager <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
     runtime = runtime,
     config = config,
@@ -296,7 +313,7 @@ test_that("expert sessions resolve scoped capabilities before chat creation", {
 
   session <- manager$get_or_create("expert.synthesis")
 
-  expect_identical(manager$store, retriever$workspace)
+  expect_identical(manager$workspace, retriever$workspace)
   expect_equal(events, c("factory", "chat", "register"))
   expect_equal(roles, "expert")
   expect_equal(registered, list("scoped-document-tool"))
@@ -345,9 +362,9 @@ test_that("expert sessions validate skills and capabilities before chat", {
   runtime <- tempest_runtime(include_builtins = FALSE)
   retriever <- tempest_retriever(
     config = config,
-    store = tempest_research_workspace()
+    workspace = tempest_research_workspace()
   )
-  manager <- tempest_expert_session_manager(
+  manager <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
     runtime = runtime,
     config = config,
@@ -422,9 +439,9 @@ test_that("expert connection grants are exact and runtime-only", {
   )
   retriever <- tempest_retriever(
     config = config,
-    store = tempest_research_workspace()
+    workspace = tempest_research_workspace()
   )
-  denied <- tempest_expert_session_manager(
+  denied <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
     runtime = runtime,
     config = config,
@@ -438,7 +455,7 @@ test_that("expert connection grants are exact and runtime-only", {
   expect_equal(connection_calls, 0L)
   expect_equal(chat_calls, 0L)
 
-  allowed <- tempest_expert_session_manager(
+  allowed <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
     runtime = runtime,
     config = config,
@@ -492,9 +509,9 @@ test_that("expert sessions bind resumes and reject retired profiles", {
   runtime <- tempest_runtime(include_builtins = FALSE)
   retriever <- tempest_retriever(
     config = config,
-    store = tempest_research_workspace()
+    workspace = tempest_research_workspace()
   )
-  manager <- tempest_expert_session_manager(
+  manager <- tempest:::tempest_expert_session_manager(
     experts = list(first, second),
     runtime = runtime,
     config = config,
@@ -588,18 +605,20 @@ test_that("saved expert sessions reauthorize under exact bindings", {
   )
   retriever <- tempest_retriever(
     config = config,
-    store = tempest_research_workspace()
+    workspace = tempest_research_workspace()
   )
-  first_manager <- tempest_expert_session_manager(
+  first_manager <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
     runtime = runtime,
     config = config,
     retriever = retriever
   )
   first <- first_manager$get_or_create("expert.restore")
-  binding <- first_manager$session_profile(first$session_id)
+  binding <- tempest:::tempest_expert_sessions_snapshot(list(
+    expert_session_manager = first_manager
+  ))[[1]]
 
-  second_manager <- tempest_expert_session_manager(
+  second_manager <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
     runtime = runtime,
     config = config,
@@ -653,9 +672,9 @@ test_that("one delegation tool resolves the live roster by exact expert id", {
   runtime <- tempest_runtime(include_builtins = FALSE)
   retriever <- tempest_retriever(
     config = config,
-    store = tempest_research_workspace()
+    workspace = tempest_research_workspace()
   )
-  manager <- tempest_expert_session_manager(
+  manager <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
     runtime = runtime,
     config = config,
@@ -773,13 +792,13 @@ test_that("expert delegation returns and commits its native evidence", {
     model_role = "expert"
   )
   store <- tempest_research_workspace()
-  manager <- tempest_expert_session_manager(
+  manager <- tempest:::tempest_expert_session_manager(
     experts = list(expert),
     runtime = tempest_runtime(include_builtins = FALSE),
     config = config,
-    retriever = tempest_retriever(config = config, store = store),
+    retriever = tempest_retriever(config = config, workspace = store),
     extractor = extractor,
-    store = store
+    workspace = store
   )
   tool <- tempest:::tempest_create_expert_delegation_tool(
     session_manager = manager,
@@ -794,8 +813,11 @@ test_that("expert delegation returns and commits its native evidence", {
 
   expect_equal(result$source_ids, source_id)
   expect_length(result$claim_ids, 1L)
-  expect_equal(store$get_source(source_id)$title, "Delegated native source")
-  expect_equal(store$list_claims()[[1]]@claim_text, claim_text)
+  expect_equal(
+    store$get_retrieved_source(source_id)$title,
+    "Delegated native source"
+  )
+  expect_equal(store$list_proposed_claims()[[1]]@claim_text, claim_text)
 })
 
 test_that("single expert generation returns deterministic scoped profiles", {

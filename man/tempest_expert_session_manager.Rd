@@ -11,7 +11,7 @@ tempest_expert_session_manager(
   retriever,
   allowed_connection_ref_ids = list(),
   extractor = NULL,
-  store = NULL,
+  workspace = NULL,
   progress = NULL,
   run_id = NULL
 )
@@ -30,7 +30,7 @@ stable expert id.}
 
 \item{extractor}{Optional fact-extraction chat.}
 
-\item{store}{Optional \link{ResearchWorkspace}; defaults to the retriever
+\item{workspace}{Optional \link{ResearchWorkspace}; defaults to the retriever
 workspace.}
 
 \item{progress}{Optional progress callback.}
@@ -49,3 +49,4 @@ capability-scoped chat per expert. Runtime tools and authenticated
 connections are resolved before chat creation and are never inferred from
 display names.
 }
+\keyword{internal}

@@ -385,7 +385,7 @@ tempest_summarize_facts_for_prompt <- function(store, max_items = 60) {
       "{.arg store} must be a ResearchWorkspace."
     )
   }
-  facts <- store$list_claims()
+  facts <- store$list_proposed_claims()
   if (length(facts) == 0) {
     return("(no facts yet)")
   }
@@ -399,7 +399,7 @@ tempest_summarize_facts_for_prompt <- function(store, max_items = 60) {
 
 #' @keywords internal
 tempest_keyword_filter_facts <- function(store, query, max_items = 30) {
-  facts <- store$list_claims()
+  facts <- store$list_proposed_claims()
   if (length(facts) == 0) {
     return(list())
   }
@@ -447,7 +447,7 @@ tempest_semantic_filter_facts <- function(
     return(tempest_keyword_filter_facts(store, query, max_items = max_items))
   }
 
-  facts <- store$list_claims()
+  facts <- store$list_proposed_claims()
   if (length(facts) == 0) {
     return(list())
   }

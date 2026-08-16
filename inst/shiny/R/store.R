@@ -52,17 +52,25 @@ new_session_store <- function() {
   }
 
   set_report_from_session <- function(session) {
-    report_md <- if (
-      inherits(session$artifact_catalog, "TempestArtifactCatalog") &&
-        session$artifact_catalog$has("report_md")
+    report_md <- tryCatch(
+      tempest:::tempest_session_report_value(session),
+      error = function(error) NULL
+    )
+    if (
+      !is.character(report_md) ||
+        length(report_md) != 1L ||
+        is.na(report_md) ||
+        !nzchar(report_md)
     ) {
-      session$artifact_catalog$get("report_md")@content
-    } else {
-      NULL
+      report_md <- NULL
     }
     rv$report_md <- report_md
     rv$report_topic <- if (is.null(report_md)) NULL else session$topic
-    rv$report_source_store <- if (is.null(report_md)) NULL else session$store
+    rv$report_source_store <- if (is.null(report_md)) {
+      NULL
+    } else {
+      session$workspace
+    }
     invisible(report_md)
   }
 
@@ -104,7 +112,7 @@ new_session_store <- function() {
       rv$version
       current_session <- rv$session
       if (!is.null(current_session)) {
-        return(current_session$store)
+        return(current_session$workspace)
       }
 
       if (is.null(current_run)) {
@@ -121,7 +129,7 @@ new_session_store <- function() {
     set = function(session) {
       rv$session <- session
       workflow_run <- tryCatch(
-        session$workflow_run,
+        tempest:::tempest_session_workflow_run(session),
         error = function(error) NULL
       )
       if (inherits(workflow_run, "TempestRun")) {
@@ -185,20 +193,16 @@ new_session_store <- function() {
     restore = function(
       path,
       config,
-      runtime = tempest::tempest_runtime(),
-      connection_permissions = list(),
       progress = NULL
     ) {
       session <- tempest::tempest_session_resume(
         path,
         config = config,
-        runtime = runtime,
-        connection_permissions = connection_permissions,
         progress = progress
       )
       rv$session <- session
       workflow_run <- tryCatch(
-        session$workflow_run,
+        tempest:::tempest_session_workflow_run(session),
         error = function(error) NULL
       )
       if (inherits(workflow_run, "TempestRun")) {

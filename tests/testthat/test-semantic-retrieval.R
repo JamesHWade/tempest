@@ -1,15 +1,15 @@
 test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", {
   store <- fake_store_with_sources(2)
-  source_ids <- vapply(store$list_sources(), `[[`, character(1), "id")
+  source_ids <- vapply(store$list_retrieved_sources(), `[[`, character(1), "id")
   cfg <- tempest_config()
-  retriever <- tempest_retriever(config = cfg, store = store)
+  retriever <- tempest_retriever(config = cfg, workspace = store)
 
   # Add some claims
-  store$add_claim(tempest:::tempest_claim(
+  store$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Quantum computing uses qubits",
     source_ids = source_ids[[1]]
   ))
-  store$add_claim(tempest:::tempest_claim(
+  store$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Classical computers use bits",
     source_ids = source_ids[[2]]
   ))
@@ -29,9 +29,9 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
 })
 
 test_that("tempest_semantic_filter_facts returns empty for empty store", {
-  store <- quiet_source_store()
+  store <- test_research_workspace()
   cfg <- tempest_config()
-  retriever <- tempest_retriever(config = cfg, store = store)
+  retriever <- tempest_retriever(config = cfg, workspace = store)
 
   result <- tempest:::tempest_semantic_filter_facts(
     retriever,
@@ -45,8 +45,8 @@ test_that("tempest_semantic_filter_facts returns empty for empty store", {
 
 test_that("tempest_keyword_filter_facts handles empty query", {
   store <- fake_store_with_sources(1)
-  source_id <- store$list_sources()[[1]]$id
-  store$add_claim(tempest:::tempest_claim(
+  source_id <- store$list_retrieved_sources()[[1]]$id
+  store$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Test fact",
     source_ids = source_id
   ))
@@ -61,13 +61,13 @@ test_that("tempest_semantic_filter_facts with ragnar configured", {
 
   mock_embed <- function(x) matrix(stats::rnorm(length(x) * 3), ncol = 3)
   cfg <- tempest_config(embed_fn = mock_embed)
-  store <- quiet_source_store()
+  store <- test_research_workspace()
   source <- fake_source("https://example.com")
-  store$upsert_source(source)
-  retriever <- tempest_retriever(config = cfg, store = store)
+  store$upsert_retrieved_resource(source)
+  retriever <- tempest_retriever(config = cfg, workspace = store)
 
   # Add claims with source IDs
-  store$add_claim(tempest:::tempest_claim(
+  store$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Neural networks learn patterns",
     source_ids = source$id
   ))

@@ -53,19 +53,19 @@ test_that("tempest_source creates the canonical source record", {
 })
 
 test_that("source tibbles derive snippets and context text", {
-  store <- quiet_source_store()
+  store <- test_research_workspace()
   source <- tempest_source(
     url = "https://example.org/context",
     title = "Context",
     content_text = "Full source body gives the table context."
   )
-  store$upsert_source(source)
+  store$upsert_retrieved_resource(source)
   native <- tempest_source(
     url = "https://example.org/native",
     title = "Native",
     meta = list(context_text = "Native citation context supports the answer.")
   )
-  store$upsert_source(native)
+  store$upsert_retrieved_resource(native)
 
   sources <- tempest_sources(store)
   expect_contains(names(sources), c("snippet", "content_text", "context_text"))

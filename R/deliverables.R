@@ -921,7 +921,7 @@ tempest_storm_report_prompt <- function(draft_md, remove_duplicate) {
 tempest_storm_report_plan <- function(
   title,
   draft_md,
-  store,
+  workspace,
   config,
   remove_duplicate,
   catalog,
@@ -951,7 +951,7 @@ tempest_storm_report_plan <- function(
         remove_duplicate
       ),
       title = title,
-      store = store,
+      workspace = workspace,
       include_references = TRUE,
       citation_policy = config@citation_policy,
       on_unsupported_claim = config@on_unsupported_claim,
@@ -1059,7 +1059,7 @@ tempest_costorm_report_context <- function(
   list(
     prompt = tempest_costorm_report_prompt(session, style),
     title = session$title %||% session$topic,
-    store = session$workspace,
+    workspace = session$workspace,
     include_references = include_references,
     citation_policy = session$config@citation_policy,
     on_unsupported_claim = session$config@on_unsupported_claim,
@@ -1069,7 +1069,12 @@ tempest_costorm_report_context <- function(
 }
 
 tempest_costorm_artifact_catalog <- function(session) {
-  catalog <- session$artifact_catalog %||% NULL
+  if (!inherits(session, "TempestSession")) {
+    tempest_deliverable_abort(
+      "Co-STORM report generation requires a TempestSession."
+    )
+  }
+  catalog <- tempest_session_artifact_catalog(session)
   if (!inherits(catalog, "TempestArtifactCatalog")) {
     tempest_deliverable_abort(
       "Co-STORM report generation requires a session-owned artifact catalog."
@@ -1082,7 +1087,8 @@ tempest_costorm_report_plan <- function(
   session,
   style,
   include_references,
-  generate_text
+  generate_text,
+  .artifact_catalog = NULL
 ) {
   tempest_deliverable_plan(
     deliverable = tempest_costorm_report_spec(session),
@@ -1091,7 +1097,7 @@ tempest_costorm_report_plan <- function(
       style,
       include_references
     ),
-    catalog = tempest_costorm_artifact_catalog(session),
+    catalog = .artifact_catalog %||% tempest_costorm_artifact_catalog(session),
     runtime = list(generate_text = generate_text),
     provenance = list(
       artifact_id = "report_md",
@@ -1245,10 +1251,10 @@ tempest_builtin_markdown_report_renderer <- function(
       media_type = "text/markdown"
     ))
   }
-  store <- context$store %||% NULL
+  workspace <- context$workspace %||% NULL
   if (
-    !inherits(store, "ResearchWorkspace") &&
-      !inherits(store, "TempestRetriever")
+    !inherits(workspace, "ResearchWorkspace") &&
+      !inherits(workspace, "TempestRetriever")
   ) {
     tempest_deliverable_abort(
       "The Markdown report renderer requires a ResearchWorkspace when references are included.",
@@ -1259,7 +1265,7 @@ tempest_builtin_markdown_report_renderer <- function(
   rendered <- tempest_report_md(
     title = context$title %||% deliverable@title,
     body = content,
-    store = store,
+    workspace = workspace,
     citation_policy = context$citation_policy %||% deliverable@evidence_policy,
     on_unsupported_claim = context$on_unsupported_claim %||% "flag",
     min_support_score = context$min_support_score %||% 0.7

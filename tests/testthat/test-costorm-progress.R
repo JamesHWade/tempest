@@ -6,8 +6,8 @@ test_that("TempestSession emits Co-STORM progress events", {
     content_text = "Co-STORM progress uses compact event metadata."
   )
   source_id <- source$id
-  store <- quiet_source_store()
-  store$upsert_source(source)
+  store <- test_research_workspace()
+  store$upsert_retrieved_resource(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
   mindmap <- list(
     nodes = list(list(
@@ -82,7 +82,7 @@ test_that("TempestSession emits Co-STORM progress events", {
   session <- tempest_session(
     "Co-STORM progress",
     config = cfg,
-    retriever = tempest_retriever(config = cfg, store = store),
+    retriever = tempest_retriever(config = cfg, workspace = store),
     experts = list(test_expert(
       expert_id = "expert.flow",
       name = "Dr. Flow",
@@ -141,7 +141,7 @@ test_that("TempestSession emits Co-STORM progress events", {
   expect_null(session$artifacts[["report_md"]])
   expect_null(session$artifacts[["mindmap_md"]])
   expect_equal(
-    session$artifact_catalog$get("report_md")@content,
+    test_session_artifact_catalog(session)$get("report_md")@content,
     report
   )
   expect_equal(
@@ -223,8 +223,8 @@ test_that("warmup failure emits failed expert and tool events", {
 test_that("expert tools emit correlated progress events", {
   skip_if_not_installed("ellmer")
   source <- fake_source(url = "https://example.org/expert-tool")
-  store <- quiet_source_store()
-  store$upsert_source(source)
+  store <- test_research_workspace()
+  store$upsert_retrieved_resource(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
   expert_chat <- fake_chat(
     text = list(paste0(
@@ -247,7 +247,7 @@ test_that("expert tools emit correlated progress events", {
       if (identical(role, "expert")) expert_chat else fake_chat()
     }
   )
-  retriever <- tempest_retriever(config = cfg, store = store)
+  retriever <- tempest_retriever(config = cfg, workspace = store)
   expert <- test_expert(
     expert_id = "expert.tool",
     name = "Dr. Tool",
@@ -259,7 +259,7 @@ test_that("expert tools emit correlated progress events", {
     config = cfg,
     retriever = retriever,
     extractor = extractor,
-    store = store,
+    workspace = store,
     progress = collector$record,
     run_id = "session-1"
   )
@@ -284,7 +284,7 @@ test_that("expert tools emit correlated progress events", {
   expect_null(tool_events[[2]]$payload$response)
   expect_equal(result$expert, "Dr. Tool")
 
-  claims <- store$list_claims()
+  claims <- store$list_proposed_claims()
   expect_length(claims, 1)
   expect_equal(claims[[1]]@session_id, result$session_id)
   expect_equal(claims[[1]]@expert_id, "expert.tool")
@@ -303,8 +303,8 @@ test_that("expert tools emit correlated progress events", {
 test_that("expert tools reuse sessions and provenance", {
   skip_if_not_installed("ellmer")
   source <- fake_source(url = "https://example.org/expert-reuse")
-  store <- quiet_source_store()
-  store$upsert_source(source)
+  store <- test_research_workspace()
+  store$upsert_retrieved_resource(source)
   expert_chat <- fake_chat(
     text = list(
       paste0("First expert answer cites [", source$id, "]."),
@@ -334,7 +334,7 @@ test_that("expert tools reuse sessions and provenance", {
       if (identical(role, "expert")) expert_chat else fake_chat()
     }
   )
-  retriever <- tempest_retriever(config = cfg, store = store)
+  retriever <- tempest_retriever(config = cfg, workspace = store)
   expert <- test_expert(
     expert_id = "expert.reuse",
     name = "Dr. Reuse",
@@ -346,7 +346,7 @@ test_that("expert tools reuse sessions and provenance", {
     config = cfg,
     retriever = retriever,
     extractor = extractor,
-    store = store,
+    workspace = store,
     run_id = "session-1"
   )
   tool <- tempest:::tempest_create_expert_delegation_tool(mgr, "Progress")
@@ -357,7 +357,7 @@ test_that("expert tools reuse sessions and provenance", {
   expect_equal(second$session_id, first$session_id)
   expect_length(mgr$list_sessions(), 1)
   expect_equal(length(expert_chat$.calls()), 2)
-  claims <- store$list_claims()
+  claims <- store$list_proposed_claims()
   expect_length(claims, 2)
   expect_equal(
     vapply(claims, function(claim) claim@session_id, character(1)),
@@ -371,7 +371,7 @@ test_that("expert tools reuse sessions and provenance", {
 
 test_that("expert tools emit failed progress events", {
   skip_if_not_installed("ellmer")
-  store <- quiet_source_store()
+  store <- test_research_workspace()
   collector <- tempest_progress_collector(include_payload = TRUE)
   failing_chat <- list(
     chat = function(...) stop("expert unavailable"),
@@ -382,7 +382,7 @@ test_that("expert tools emit failed progress events", {
       if (identical(role, "expert")) failing_chat else fake_chat()
     }
   )
-  retriever <- tempest_retriever(config = cfg, store = store)
+  retriever <- tempest_retriever(config = cfg, workspace = store)
   expert <- test_expert(
     expert_id = "expert.failure",
     name = "Dr. Failure",

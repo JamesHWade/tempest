@@ -186,7 +186,7 @@ mod_storm_server <- function(id, config, store) {
         store$set_report(
           result$report_md %||% "",
           shiny::isolate(input$topic) %||% "STORM Report",
-          source_store = result$store %||% NULL
+          source_store = result$workspace %||% NULL
         )
         storm_cleanup_progress_stream(progress_stream$path)
       } else if (identical(storm_task$status(), "error")) {
@@ -505,14 +505,14 @@ storm_run_with_progress <- function(
   tempest_run_factory = storm_worker_tempest_run,
   tempest_run = NULL
 ) {
-  collector <- storm_create_worker_progress_collector(
-    progress_collector,
-    progress_stream_path
+  collector <- progress_collector(
+    include_payload = TRUE,
+    stream_path = progress_stream_path
   )
   if (is.null(tempest_run)) {
     tempest_run <- tempest_run_factory(package_root)
   }
-  args <- list(
+  result <- tempest_run(
     topic = topic,
     config = cfg,
     n_experts = n_experts,
@@ -523,26 +523,10 @@ storm_run_with_progress <- function(
     progress = collector$record,
     verbose = FALSE
   )
-  fn_args <- names(formals(tempest_run))
-  if (!"..." %in% fn_args) {
-    args <- args[names(args) %in% fn_args]
-  }
   list(
-    result = do.call(tempest_run, args),
+    result = result,
     progress = collector$data()
   )
-}
-
-storm_create_worker_progress_collector <- function(
-  progress_collector,
-  progress_stream_path = NULL
-) {
-  args <- list(include_payload = TRUE)
-  fn_args <- names(formals(progress_collector))
-  if ("..." %in% fn_args || "stream_path" %in% fn_args) {
-    args$stream_path <- progress_stream_path
-  }
-  do.call(progress_collector, args)
 }
 
 storm_worker_tempest_run <- function(package_root = NULL) {

@@ -7,13 +7,15 @@ test_that("tempest_type_query_decomposition returns valid type", {
 
 test_that("tempest_decompose_query returns structured output", {
   skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
-    "No API key available"
+  chat <- fake_chat(
+    structured = list(list(
+      queries = c(
+        "electric vehicle lifecycle emissions",
+        "electric vehicle battery environmental impacts",
+        "electric vehicle grid electricity mix"
+      )
+    ))
   )
-
-  cfg <- tempest_config()
-  chat <- tempest_make_chat(cfg, "coordinator", echo = "none")
 
   result <- tempest:::tempest_decompose_query(
     chat,
@@ -22,7 +24,15 @@ test_that("tempest_decompose_query returns structured output", {
   )
 
   expect_type(result, "list")
-  expect_type(result$queries, "character")
-  expect_gte(length(result$queries), 1)
-  expect_lte(length(result$queries), 4)
+  expect_equal(
+    result$queries,
+    c(
+      "electric vehicle lifecycle emissions",
+      "electric vehicle battery environmental impacts",
+      "electric vehicle grid electricity mix"
+    )
+  )
+  expect_length(chat$.calls(), 1L)
+  expect_identical(chat$.calls()[[1]]$kind, "structured")
+  expect_match(chat$.calls()[[1]]$prompt, "Electric vehicles", fixed = TRUE)
 })

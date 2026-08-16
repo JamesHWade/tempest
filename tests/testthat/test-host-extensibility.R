@@ -80,8 +80,8 @@ test_that("tempest_session accepts host experts and a shared retriever", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  store <- quiet_source_store()
-  retriever <- tempest_retriever(config = cfg, store = store)
+  store <- test_research_workspace()
+  retriever <- tempest_retriever(config = cfg, workspace = store)
   expert <- tempest_expert(
     expert_id = "expert.host",
     name = "Host Expert",
@@ -97,7 +97,7 @@ test_that("tempest_session accepts host experts and a shared retriever", {
     retriever = retriever
   )
 
-  expect_identical(session$store, store)
+  expect_identical(session$workspace, store)
   expect_identical(session$retriever, retriever)
   expect_equal(session$experts[[1]]@expert_id, "expert.host")
   expect_equal(session$experts[[1]]@name, "Host Expert")
@@ -162,7 +162,7 @@ test_that("artifact stores can capture report artifacts", {
   expect_named(artifacts$list(), "report_md")
   expect_identical(artifacts$exists("report_md", "1"), TRUE)
   expect_equal(
-    session$artifact_catalog$get("report_md")@content,
+    test_session_artifact_catalog(session)$get("report_md")@content,
     "Report body."
   )
   expect_equal(
@@ -226,17 +226,17 @@ test_that("memory artifact store overwrites existing names", {
   expect_named(store$list(), "report_md")
 })
 
-test_that("tempest_session rejects a retriever without a SourceStore", {
+test_that("tempest_session rejects a retriever without a ResearchWorkspace", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   expect_error(
     tempest_session("Topic", config = cfg, retriever = 1:3),
-    "SourceStore"
+    "ResearchWorkspace"
   )
   expect_error(
-    tempest_session("Topic", config = cfg, retriever = list(store = 1)),
-    "SourceStore"
+    tempest_session("Topic", config = cfg, retriever = list(workspace = 1)),
+    "ResearchWorkspace"
   )
 })

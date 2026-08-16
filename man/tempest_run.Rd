@@ -10,9 +10,6 @@ tempest_run(
   retriever = NULL,
   n_experts = 3,
   experts = NULL,
-  runtime = tempest_runtime(),
-  runtime_factory = function() tempest_runtime(),
-  connection_permissions = list(),
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
@@ -26,8 +23,6 @@ tempest_run(
   remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE,
-  artifact_catalog = NULL,
-  workflow_run = NULL,
   .state = NULL
 )
 }
@@ -44,16 +39,6 @@ tempest_run(
 \item{experts}{Optional list of active profiles created by
 \code{\link[=tempest_expert]{tempest_expert()}}. When supplied, STORM uses this selected team and does
 not generate experts.}
-
-\item{runtime}{Frozen Tempest 0.1 \code{\link[=tempest_runtime]{tempest_runtime()}} adapter. Existing
-integrations only.}
-
-\item{runtime_factory}{Function that recreates the frozen 0.1 \code{runtime}
-inside parallel workers. Existing integrations using a custom runtime with
-\code{parallel_research = TRUE} must provide a matching factory.}
-
-\item{connection_permissions}{Frozen Tempest 0.1 mapping from expert or
-model-role ids to opaque connection ids allowed for this run.}
 
 \item{research_strategy}{Either "key_questions" (default, faster) or "conversation"
 (more thorough but slower). Key questions uses predefined questions; conversation
@@ -92,21 +77,13 @@ make final artifacts available.}
 
 \item{verbose}{If \code{TRUE}, prints progress messages.}
 
-\item{artifact_catalog}{Frozen Tempest 0.1 shared
-\code{TempestArtifactCatalog}, used by the generic STORM workflow adapter.}
-
-\item{workflow_run}{Frozen Tempest 0.1 owning \code{TempestRun}. When supplied,
-the result exposes it as \code{workflow_run}.}
-
 \item{.state}{Internal adapter-only fixed STORM product state. This is not a
 public continuation API.}
 }
 \value{
 A list with product fields \code{title}, \code{perspectives}, \code{experts},
 \code{outline}, \code{draft_md}, \code{report_md}, \code{manifest}, \code{state}, \code{workspace},
-\code{retriever}, and \code{output_dir}. The compatibility field \code{store} references
-the same object as \code{workspace}. Frozen 0.1 compatibility fields
-\code{artifact_catalog} and \code{workflow_run} are also returned temporarily.
+\code{retriever}, and \code{output_dir}.
 }
 \description{
 This is a scripted workflow that:
@@ -117,16 +94,6 @@ This is a scripted workflow that:
 \item writes a cited report in Markdown.
 }
 }
-\section{Frozen Tempest 0.1 seams}{
-
-
-\code{runtime}, \code{runtime_factory}, \code{connection_permissions}, \code{artifact_catalog},
-and \code{workflow_run} expose the frozen experimental generic kernel. They remain
-only for existing Tempest 0.1 integrations and are scheduled for replacement
-or removal in Tempest 0.2.0. New code should consume \code{report_md}, \code{manifest},
-\code{state}, and the scientific evidence in \code{workspace}.
-}
-
 \examples{
 \dontrun{
 cfg <- tempest_config()

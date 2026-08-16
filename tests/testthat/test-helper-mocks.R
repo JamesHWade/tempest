@@ -5,8 +5,8 @@ test_that("fake_chat scripts structured and text returns", {
   expect_length(ch$.calls(), 2)
 })
 
-test_that("fake_store_with_sources builds a populated store", {
-  store <- fake_store_with_sources(3)
-  expect_s3_class(store, "SourceStore")
-  expect_length(store$list_sources(), 3)
+test_that("fake_store_with_sources builds a populated workspace", {
+  workspace <- fake_store_with_sources(3)
+  expect_r6_class(workspace, "ResearchWorkspace")
+  expect_length(workspace$list_retrieved_sources(), 3)
 })

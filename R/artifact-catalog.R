@@ -478,11 +478,11 @@ tempest_artifact_catalog_validate_lineage <- function(
     )
   }
   source_ids <- purrr::map_chr(
-    evidence_store$list_resources(),
+    evidence_store$list_retrieved_resources(),
     tempest_resource_identity
   )
   claim_ids <- purrr::map_chr(
-    evidence_store$list_claims(),
+    evidence_store$list_proposed_claims(),
     function(claim) claim@claim_id
   )
   evidence_span_ids <- purrr::map_chr(

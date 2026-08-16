@@ -82,7 +82,7 @@ test_that("Shiny shared store publishes custom run evidence and cancellation", {
       operation_id = "review"
     ))
   )
-  evidence <- quiet_source_store()
+  evidence <- test_research_workspace()
   resource <- tempest_resource(
     resource_kind = "host.document",
     locator = "documents/private-1",
@@ -90,7 +90,7 @@ test_that("Shiny shared store publishes custom run evidence and cancellation", {
     media_type = "text/plain",
     content = "Approved evidence."
   )
-  evidence$upsert_resource(resource)
+  evidence$upsert_retrieved_resource(resource)
   run <- TempestRun$new(
     objective = objective,
     workflow = workflow,
@@ -99,7 +99,7 @@ test_that("Shiny shared store publishes custom run evidence and cancellation", {
   )
   store <- tempest_shiny_store()
   store$set(list(
-    store = quiet_source_store(),
+    store = test_research_workspace(),
     workflow_run = NULL
   ))
 

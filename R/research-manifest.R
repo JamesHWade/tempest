@@ -305,9 +305,8 @@ tempest_research_manifest_programs <- function(value) {
   }
   value <- value[order(stages)]
   allowed <- c(
-    "procedure_revision_id",
-    "program_artifact_id",
-    "program_id"
+    "governed_procedure_revision_id",
+    "program_artifact_id"
   )
   stats::setNames(
     lapply(names(value), function(stage) {
@@ -318,35 +317,17 @@ tempest_research_manifest_programs <- function(value) {
       )
       reference <- tempest_research_manifest_named_record(reference, path)
       tempest_research_manifest_unknown_fields(reference, allowed, path)
-      if (
-        is.null(reference$program_id) &&
-          is.null(reference$program_artifact_id)
-      ) {
+      if (is.null(reference$program_artifact_id)) {
         tempest_research_manifest_abort(
-          paste0(
-            "{.field {path}} must identify {.field program_id} or ",
-            "{.field program_artifact_id}."
-          )
+          "{.field {path}} must identify {.field program_artifact_id}."
         )
       }
       for (field in intersect(names(reference), allowed)) {
         reference[field] <- list(tempest_research_manifest_id(
           reference[[field]],
           paste0(path, "$", field),
-          nullable = identical(field, "procedure_revision_id")
+          nullable = identical(field, "governed_procedure_revision_id")
         ))
-      }
-      if (
-        !is.null(reference$program_id) &&
-          !is.null(reference$program_artifact_id) &&
-          !identical(reference$program_id, reference$program_artifact_id)
-      ) {
-        tempest_research_manifest_abort(
-          paste0(
-            "{.field {path}$program_id} and ",
-            "{.field {path}$program_artifact_id} must match when both are supplied."
-          )
-        )
       }
       reference
     }),
@@ -372,7 +353,17 @@ tempest_research_manifest_knowledge_snapshot <- function(value) {
     value,
     "knowledge_snapshot"
   )
-  allowed <- c("commit_order", "snapshot_id", "store_id")
+  allowed <- c(
+    "batch_id",
+    "commit_order",
+    "committed_at",
+    "history_complete",
+    "schema_build_digest",
+    "schema_version",
+    "snapshot_id",
+    "store_format_version",
+    "store_id"
+  )
   tempest_research_manifest_unknown_fields(
     value,
     allowed,
@@ -393,6 +384,52 @@ tempest_research_manifest_knowledge_snapshot <- function(value) {
       "knowledge_snapshot$store_id"
     )
   }
+  for (field in intersect(
+    c(
+      "batch_id",
+      "committed_at",
+      "schema_build_digest",
+      "store_format_version"
+    ),
+    names(value)
+  )) {
+    if (is.null(value[[field]])) {
+      next
+    }
+    value[[field]] <- tempest_research_manifest_id(
+      value[[field]],
+      paste0("knowledge_snapshot$", field)
+    )
+  }
+  if (!is.null(value$schema_version)) {
+    schema_version <- value$schema_version
+    if (
+      !is.numeric(schema_version) ||
+        length(schema_version) != 1L ||
+        is.na(schema_version) ||
+        !is.finite(schema_version) ||
+        schema_version < 1 ||
+        schema_version != trunc(schema_version) ||
+        schema_version > .Machine$integer.max
+    ) {
+      tempest_research_manifest_abort(
+        "{.field knowledge_snapshot$schema_version} must be a positive whole number."
+      )
+    }
+    value$schema_version <- as.integer(schema_version)
+  }
+  if (!is.null(value$history_complete)) {
+    history_complete <- value$history_complete
+    if (
+      !is.logical(history_complete) ||
+        length(history_complete) != 1L ||
+        is.na(history_complete)
+    ) {
+      tempest_research_manifest_abort(
+        "{.field knowledge_snapshot$history_complete} must be TRUE or FALSE."
+      )
+    }
+  }
   if (!is.null(value$commit_order)) {
     commit_order <- value$commit_order
     if (
@@ -402,13 +439,13 @@ tempest_research_manifest_knowledge_snapshot <- function(value) {
         !is.finite(commit_order) ||
         commit_order < 0 ||
         commit_order != trunc(commit_order) ||
-        commit_order > .Machine$integer.max
+        commit_order >= 2^53
     ) {
       tempest_research_manifest_abort(
         "{.field knowledge_snapshot$commit_order} must be a non-negative whole number."
       )
     }
-    value$commit_order <- as.integer(commit_order)
+    value$commit_order <- as.double(commit_order)
   }
   value[order(names(value))]
 }
@@ -511,23 +548,35 @@ tempest_research_manifest_traces <- function(value) {
     value %||% list(),
     "traces",
     allowed = c(
+      "agent_id",
+      "delegation_id",
       "deputy_run_id",
       "deputy_session_id",
+      "expert_id",
+      "parent_agent_id",
       "parent_run_id",
       "program_artifact_id",
+      "role",
       "stage",
+      "status",
+      "tool_call_id",
       "trace_id",
       "trace_type"
     ),
     required_any = "trace_id",
     id_fields = c(
+      "agent_id",
+      "delegation_id",
       "deputy_run_id",
       "deputy_session_id",
+      "expert_id",
+      "parent_agent_id",
       "parent_run_id",
       "program_artifact_id",
+      "tool_call_id",
       "trace_id"
     ),
-    scalar_fields = c("stage", "trace_type"),
+    scalar_fields = c("role", "stage", "status", "trace_type"),
     allow_empty = TRUE
   )
 }

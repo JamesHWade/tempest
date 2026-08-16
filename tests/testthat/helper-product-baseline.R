@@ -94,7 +94,7 @@ baseline_succeeded_stages <- function(events) {
 }
 
 baseline_claim_records <- function(store) {
-  claims <- store$list_claims()
+  claims <- store$list_proposed_claims()
   if (length(claims) == 0L) {
     return(list())
   }
@@ -429,7 +429,7 @@ storm_resume_baseline_fixture <- function() {
     config = fixture$config,
     retriever = tempest_retriever(
       config = fixture$config,
-      store = restored_store
+      workspace = restored_store
     ),
     n_experts = 1,
     max_questions_per_perspective = 1,
@@ -536,14 +536,14 @@ costorm_product_baseline_fixture <- function() {
     content_text = "Co-STORM preserves research evidence across dialogue."
   )
   source_id <- source$id
-  store <- quiet_source_store()
-  store$upsert_source(source)
+  store <- test_research_workspace()
+  store$upsert_retrieved_resource(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
   mindmap <- list(
     nodes = list(list(
       id = "root",
       label = "Co-STORM baseline",
-      summary = "Research evidence",
+      notes = "Research evidence",
       source_ids = source_id
     )),
     edges = list()
@@ -577,7 +577,7 @@ costorm_product_baseline_fixture <- function() {
   session <- tempest_session(
     "Co-STORM baseline",
     config = config,
-    retriever = tempest_retriever(config = config, store = store),
+    retriever = tempest_retriever(config = config, workspace = store),
     experts = list(tempest_expert(
       expert_id = "expert.baseline",
       name = "Dr. Baseline",
@@ -613,7 +613,7 @@ baseline_storm_semantics <- function(fixture) {
     completed_stages = baseline_succeeded_stages(events),
     program_stages = fixture$program_stages %||% character(),
     source_ids = sort(
-      vapply(fixture$store$list_sources(), `[[`, character(1), "id"),
+      vapply(fixture$store$list_retrieved_sources(), `[[`, character(1), "id"),
       method = "radix"
     ),
     claims = baseline_claim_records(fixture$store),
@@ -648,10 +648,15 @@ baseline_costorm_durable_state <- function(session, report) {
   list(
     session_id = session$session_id,
     source_ids = sort(
-      vapply(session$store$list_sources(), `[[`, character(1), "id"),
+      vapply(
+        session$workspace$list_retrieved_sources(),
+        `[[`,
+        character(1),
+        "id"
+      ),
       method = "radix"
     ),
-    claims = baseline_claim_records(session$store),
+    claims = baseline_claim_records(session$workspace),
     transcript = baseline_transcript_records(session$transcript),
     mindmap = baseline_mindmap_records(session$mindmap),
     report_sections = baseline_report_sections(report),
@@ -661,7 +666,7 @@ baseline_costorm_durable_state <- function(session, report) {
 
 baseline_costorm_semantics <- function(fixture) {
   session <- fixture$session
-  report_artifact <- session$artifact_catalog$get("report_md")
+  report_artifact <- test_session_artifact_catalog(session)$get("report_md")
   c(
     baseline_costorm_durable_state(session, fixture$report),
     list(

@@ -1,0 +1,43 @@
+on:
+  pull_request:
+  workflow_dispatch:
+
+name: ecosystem-contracts.yaml
+
+permissions: read-all
+
+jobs:
+  ecosystem-contracts:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::devtools, any::remotes
+          needs: check
+
+      - name: Install exact ecosystem revisions
+        run: |
+          remotes::install_github(
+            c(
+              "JamesHWade/dsprrr@db28eae2235ab15c4f5c1c9794118d127eabbdd7",
+              "JamesHWade/graft@f2e40b6df2af328c15548a40a758d2f838e85176",
+              "JamesHWade/deputy@89089c90ddeb668462422b14a4de7a8395eefdc8"
+            ),
+            dependencies = FALSE,
+            upgrade = "never"
+          )
+        shell: Rscript {0}
+
+      - name: Run deterministic cross-repository contracts
+        run: devtools::test(filter = "^ecosystem-contracts$")
+        shell: Rscript {0}

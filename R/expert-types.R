@@ -754,7 +754,7 @@ tempest_contract_data <- function(value, class, arg) {
 tempest_contract_record <- function(data, fingerprint) {
   for (field in c("model_role", "model_policy_ref")) {
     if (!is.null(data[[field]]) && is.na(data[[field]])) {
-      data[[field]] <- NULL
+      data[field] <- list(NULL)
     }
   }
   for (field in c("operation_versions", "skill_versions")) {

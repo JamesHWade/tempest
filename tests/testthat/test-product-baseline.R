@@ -11,7 +11,13 @@ test_that("default dsprrr STORM semantic outcomes are frozen", {
 
   expect_identical(semantics$citations$uses, semantics$source_ids)
   expect_identical(definition_ids, semantics$source_ids)
-  expect_identical(fixture$result$workspace, fixture$result$store)
+  expect_equal(
+    intersect(
+      names(fixture$result),
+      c("store", "artifact_catalog", "workflow_run")
+    ),
+    character()
+  )
   expect_identical(fixture$result$workspace, fixture$store)
   expect_identical(
     fixture$result$manifest@research_run_id,
@@ -47,22 +53,24 @@ test_that("scripted STORM resumes through the public product path", {
 
   expect_equal(resumed[outcome_fields], uninterrupted[outcome_fields])
   expect_identical(fixture$restored$workspace, fixture$restored_store)
-  expect_identical(fixture$restored$workspace, fixture$restored$store)
-  expect_identical(
-    fixture$restored$retriever$workspace,
-    fixture$restored$workspace
+  expect_equal(
+    intersect(
+      names(fixture$restored),
+      c("store", "artifact_catalog", "workflow_run")
+    ),
+    character()
   )
   expect_identical(
-    fixture$restored$retriever$store,
+    fixture$restored$retriever$workspace,
     fixture$restored$workspace
   )
   resumed_source <- fake_source(
     url = "https://example.org/resumed-workspace-alias",
     title = "Resumed workspace alias"
   )
-  fixture$restored$retriever$workspace$upsert_source(resumed_source)
+  fixture$restored$retriever$workspace$upsert_retrieved_resource(resumed_source)
   expect_identical(
-    fixture$restored$workspace$get_source(resumed_source$id)$id,
+    fixture$restored$workspace$get_retrieved_source(resumed_source$id)$id,
     resumed_source$id
   )
   expect_identical(
@@ -211,10 +219,6 @@ test_that("STORM cancellation is terminal and publishes no report", {
 
   expect_identical(state$status, "cancelled")
   expect_identical(state$terminal, TRUE)
-  expect_identical(
-    is.null(fixture$store$get_artifact("report_md")),
-    TRUE
-  )
   expect_identical(artifacts$exists("report_md"), FALSE)
   expect_identical(
     persisted$research_manifest$status,
@@ -232,9 +236,6 @@ test_that("STORM cancellation is terminal and publishes no report", {
       completed_stages = baseline_succeeded_stages(events),
       terminal_status = state$status,
       terminal = state$terminal,
-      workspace_report_published = !is.null(
-        fixture$store$get_artifact("report_md")
-      ),
       catalog_report_published = artifacts$exists("report_md"),
       program_stages = fixture$program_stages(),
       event_sequence = baseline_event_labels(events)

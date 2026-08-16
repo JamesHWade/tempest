@@ -7,7 +7,7 @@
 tempest_report_md(
   title,
   body,
-  store,
+  workspace,
   citation_policy = "source_attributed",
   on_unsupported_claim = "flag",
   min_support_score = 0.7
@@ -18,7 +18,7 @@ tempest_report_md(
 
 \item{body}{Markdown body text that may include inline citations like \verb{[Sxxxxxxxxxxxx]}.}
 
-\item{store}{A \link{ResearchWorkspace} or \link{TempestRetriever} containing
+\item{workspace}{A \link{ResearchWorkspace} or \link{TempestRetriever} containing
 retrieved sources.}
 
 \item{citation_policy}{One of "none", "source_attributed" (default),
@@ -46,7 +46,7 @@ result <- tempest_run("History of jazz", config = tempest_config())
 md <- tempest_report_md(
   title = "History of Jazz",
   body = result$draft_md,
-  store = result$store
+  workspace = result$workspace
 )
 }
 }

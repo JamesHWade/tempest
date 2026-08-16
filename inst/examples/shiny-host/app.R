@@ -274,11 +274,7 @@ server <- function(input, output, session) {
   adapter <- tempest_shiny_server(
     "research",
     panels = c("sources", "facts"),
-    runtime = host_runtime,
     experts = host_experts,
-    connection_permissions = list(
-      "expert.host-analyst" = "project-documents"
-    ),
     run = run,
     session_id = "example-host-session"
   )

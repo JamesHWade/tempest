@@ -15,14 +15,8 @@ explicit graft review and commit.
     \item{\code{retrieved_resources}}{Read-only named-list snapshot of typed resources
 and built-in web-source records keyed by resource id.}
 
-    \item{\code{resources}}{Compatibility alias of \code{retrieved_resources}.}
-
-    \item{\code{sources}}{Compatibility alias retained for built-in web adapters.}
-
     \item{\code{proposed_claims}}{Read-only named-list snapshot of provisional claim
 records keyed by claim id.}
-
-    \item{\code{claims}}{Compatibility alias of \code{proposed_claims}.}
 
     \item{\code{evidence_spans}}{Read-only named-list snapshot of provisional
 evidence-span records.}
@@ -36,6 +30,9 @@ accepted graft knowledge used by the research run.}
     \item{\code{base_snapshot_id}}{Read-only opaque identifier for the accepted
 knowledge snapshot on which this workspace is based.}
 
+    \item{\code{graft_snapshot}}{Optional read-only, path-free
+\code{graft::GraftSnapshot} used to reopen the accepted knowledge boundary.}
+
     \item{\code{citation_audit}}{Latest claim-centered citation audit, when available.}
 
     \item{\code{max_sources}}{Maximum number of unique resources admitted.}
@@ -47,28 +44,21 @@ knowledge snapshot on which this workspace is based.}
   \itemize{
     \item \href{#method-ResearchWorkspace-initialize}{\code{ResearchWorkspace$new()}}
     \item \href{#method-ResearchWorkspace-set_max_sources}{\code{ResearchWorkspace$set_max_sources()}}
-    \item \href{#method-ResearchWorkspace-upsert_source}{\code{ResearchWorkspace$upsert_source()}}
-    \item \href{#method-ResearchWorkspace-get_source}{\code{ResearchWorkspace$get_source()}}
-    \item \href{#method-ResearchWorkspace-list_sources}{\code{ResearchWorkspace$list_sources()}}
     \item \href{#method-ResearchWorkspace-upsert_retrieved_resource}{\code{ResearchWorkspace$upsert_retrieved_resource()}}
     \item \href{#method-ResearchWorkspace-get_retrieved_resource}{\code{ResearchWorkspace$get_retrieved_resource()}}
+    \item \href{#method-ResearchWorkspace-get_retrieved_source}{\code{ResearchWorkspace$get_retrieved_source()}}
     \item \href{#method-ResearchWorkspace-list_retrieved_resources}{\code{ResearchWorkspace$list_retrieved_resources()}}
-    \item \href{#method-ResearchWorkspace-upsert_resource}{\code{ResearchWorkspace$upsert_resource()}}
-    \item \href{#method-ResearchWorkspace-get_resource}{\code{ResearchWorkspace$get_resource()}}
-    \item \href{#method-ResearchWorkspace-list_resources}{\code{ResearchWorkspace$list_resources()}}
+    \item \href{#method-ResearchWorkspace-list_retrieved_sources}{\code{ResearchWorkspace$list_retrieved_sources()}}
     \item \href{#method-ResearchWorkspace-add_proposed_claim}{\code{ResearchWorkspace$add_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-get_proposed_claim}{\code{ResearchWorkspace$get_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-list_proposed_claims}{\code{ResearchWorkspace$list_proposed_claims()}}
-    \item \href{#method-ResearchWorkspace-add_claim}{\code{ResearchWorkspace$add_claim()}}
-    \item \href{#method-ResearchWorkspace-get_claim}{\code{ResearchWorkspace$get_claim()}}
-    \item \href{#method-ResearchWorkspace-list_claims}{\code{ResearchWorkspace$list_claims()}}
-    \item \href{#method-ResearchWorkspace-claims_for_source}{\code{ResearchWorkspace$claims_for_source()}}
+    \item \href{#method-ResearchWorkspace-proposed_claims_for_resource}{\code{ResearchWorkspace$proposed_claims_for_resource()}}
     \item \href{#method-ResearchWorkspace-add_evidence_span}{\code{ResearchWorkspace$add_evidence_span()}}
     \item \href{#method-ResearchWorkspace-get_evidence_span}{\code{ResearchWorkspace$get_evidence_span()}}
     \item \href{#method-ResearchWorkspace-list_evidence_spans}{\code{ResearchWorkspace$list_evidence_spans()}}
-    \item \href{#method-ResearchWorkspace-link_evidence}{\code{ResearchWorkspace$link_evidence()}}
-    \item \href{#method-ResearchWorkspace-get_evidence_for_claim}{\code{ResearchWorkspace$get_evidence_for_claim()}}
-    \item \href{#method-ResearchWorkspace-verify_claim}{\code{ResearchWorkspace$verify_claim()}}
+    \item \href{#method-ResearchWorkspace-link_evidence_to_proposed_claim}{\code{ResearchWorkspace$link_evidence_to_proposed_claim()}}
+    \item \href{#method-ResearchWorkspace-get_evidence_for_proposed_claim}{\code{ResearchWorkspace$get_evidence_for_proposed_claim()}}
+    \item \href{#method-ResearchWorkspace-verify_proposed_claim}{\code{ResearchWorkspace$verify_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-add_dispute}{\code{ResearchWorkspace$add_dispute()}}
     \item \href{#method-ResearchWorkspace-list_disputes}{\code{ResearchWorkspace$list_disputes()}}
     \item \href{#method-ResearchWorkspace-record_accepted_graft_reference}{\code{ResearchWorkspace$record_accepted_graft_reference()}}
@@ -87,6 +77,7 @@ knowledge snapshot on which this workspace is based.}
     \if{html}{\out{<div class="r">}}
     \preformatted{ResearchWorkspace$new(
   base_snapshot_id = NULL,
+  graft_snapshot = NULL,
   max_sources = Inf,
   accepted_graft_references = list()
 )}
@@ -97,6 +88,7 @@ knowledge snapshot on which this workspace is based.}
     \describe{
       \item{\code{base_snapshot_id}}{Optional opaque identifier for the pinned
 accepted knowledge snapshot.}
+      \item{\code{graft_snapshot}}{Optional real, path-free \code{graft::GraftSnapshot}.}
       \item{\code{max_sources}}{Maximum number of unique sources. New sources are
 refused once the limit is reached.}
       \item{\code{accepted_graft_references}}{Unnamed list of canonical
@@ -126,57 +118,6 @@ JSON-compatible references to accepted graft records.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-upsert_source"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-upsert_source}{}}}
-\subsection{\code{ResearchWorkspace$upsert_source()}}{
-  Insert or update a source.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$upsert_source(source)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{source}}{A built-in web-source list or a typed resource created by
-\code{\link[=tempest_resource]{tempest_resource()}}.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-get_source"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-get_source}{}}}
-\subsection{\code{ResearchWorkspace$get_source()}}{
-  Get a source by id.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$get_source(source_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{source_id}}{The source id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-list_sources"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_sources}{}}}
-\subsection{\code{ResearchWorkspace$list_sources()}}{
-  List all sources.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$list_sources()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ResearchWorkspace-upsert_retrieved_resource"></a>}}
 \if{latex}{\out{\hypertarget{method-ResearchWorkspace-upsert_retrieved_resource}{}}}
 \subsection{\code{ResearchWorkspace$upsert_retrieved_resource()}}{
@@ -189,7 +130,8 @@ JSON-compatible references to accepted graft records.}
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{resource}}{A resource created by \code{\link[=tempest_resource]{tempest_resource()}}.}
+      \item{\code{resource}}{A resource created by \code{\link[=tempest_resource]{tempest_resource()}} or an
+internal built-in web-source record.}
     }
     \if{html}{\out{</div>}}
   }
@@ -215,44 +157,13 @@ JSON-compatible references to accepted graft records.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-list_retrieved_resources"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_retrieved_resources}{}}}
-\subsection{\code{ResearchWorkspace$list_retrieved_resources()}}{
-  List all retrieved evidence as typed resources.
+\if{html}{\out{<a id="method-ResearchWorkspace-get_retrieved_source"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-get_retrieved_source}{}}}
+\subsection{\code{ResearchWorkspace$get_retrieved_source()}}{
+  Get one retrieved resource as a built-in source view.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$list_retrieved_resources()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-upsert_resource"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-upsert_resource}{}}}
-\subsection{\code{ResearchWorkspace$upsert_resource()}}{
-  Compatibility alias for \code{upsert_retrieved_resource()}.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$upsert_resource(resource)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{resource}}{A resource created by \code{\link[=tempest_resource]{tempest_resource()}}.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-get_resource"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-get_resource}{}}}
-\subsection{\code{ResearchWorkspace$get_resource()}}{
-  Compatibility alias for \code{get_retrieved_resource()}.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$get_resource(resource_id)}
+    \preformatted{ResearchWorkspace$get_retrieved_source(resource_id)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -265,13 +176,25 @@ JSON-compatible references to accepted graft records.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-list_resources"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_resources}{}}}
-\subsection{\code{ResearchWorkspace$list_resources()}}{
-  Compatibility alias for \code{list_retrieved_resources()}.
+\if{html}{\out{<a id="method-ResearchWorkspace-list_retrieved_resources"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_retrieved_resources}{}}}
+\subsection{\code{ResearchWorkspace$list_retrieved_resources()}}{
+  List all retrieved evidence as typed resources.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$list_resources()}
+    \preformatted{ResearchWorkspace$list_retrieved_resources()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-list_retrieved_sources"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_retrieved_sources}{}}}
+\subsection{\code{ResearchWorkspace$list_retrieved_sources()}}{
+  List retrieved resources as built-in source views.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$list_retrieved_sources()}
     \if{html}{\out{</div>}}
   }
 }
@@ -327,69 +250,19 @@ JSON-compatible references to accepted graft records.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-add_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-add_claim}{}}}
-\subsection{\code{ResearchWorkspace$add_claim()}}{
-  Compatibility alias for \code{add_proposed_claim()}.
+\if{html}{\out{<a id="method-ResearchWorkspace-proposed_claims_for_resource"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-proposed_claims_for_resource}{}}}
+\subsection{\code{ResearchWorkspace$proposed_claims_for_resource()}}{
+  Proposed claims that cite a retrieved resource.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$add_claim(claim)}
+    \preformatted{ResearchWorkspace$proposed_claims_for_resource(resource_id)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{claim}}{A \code{tempest_claim} S7 record.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-get_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-get_claim}{}}}
-\subsection{\code{ResearchWorkspace$get_claim()}}{
-  Compatibility alias for \code{get_proposed_claim()}.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$get_claim(claim_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{claim_id}}{The claim id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-list_claims"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_claims}{}}}
-\subsection{\code{ResearchWorkspace$list_claims()}}{
-  Compatibility alias for \code{list_proposed_claims()}.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$list_claims()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-claims_for_source"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-claims_for_source}{}}}
-\subsection{\code{ResearchWorkspace$claims_for_source()}}{
-  Claims that cite a given source.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$claims_for_source(source_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{source_id}}{Source id.}
+      \item{\code{resource_id}}{Resource id.}
     }
     \if{html}{\out{</div>}}
   }
@@ -446,13 +319,13 @@ JSON-compatible references to accepted graft records.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-link_evidence"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-link_evidence}{}}}
-\subsection{\code{ResearchWorkspace$link_evidence()}}{
+\if{html}{\out{<a id="method-ResearchWorkspace-link_evidence_to_proposed_claim"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-link_evidence_to_proposed_claim}{}}}
+\subsection{\code{ResearchWorkspace$link_evidence_to_proposed_claim()}}{
   Link an evidence span to a claim.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$link_evidence(claim_id, span_id)}
+    \preformatted{ResearchWorkspace$link_evidence_to_proposed_claim(claim_id, span_id)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -466,13 +339,13 @@ JSON-compatible references to accepted graft records.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-get_evidence_for_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-get_evidence_for_claim}{}}}
-\subsection{\code{ResearchWorkspace$get_evidence_for_claim()}}{
+\if{html}{\out{<a id="method-ResearchWorkspace-get_evidence_for_proposed_claim"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-get_evidence_for_proposed_claim}{}}}
+\subsection{\code{ResearchWorkspace$get_evidence_for_proposed_claim()}}{
   Evidence spans linked to a claim.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$get_evidence_for_claim(claim_id)}
+    \preformatted{ResearchWorkspace$get_evidence_for_proposed_claim(claim_id)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -485,13 +358,13 @@ JSON-compatible references to accepted graft records.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-verify_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-verify_claim}{}}}
-\subsection{\code{ResearchWorkspace$verify_claim()}}{
+\if{html}{\out{<a id="method-ResearchWorkspace-verify_proposed_claim"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-verify_proposed_claim}{}}}
+\subsection{\code{ResearchWorkspace$verify_proposed_claim()}}{
   Update a claim's verification status.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$verify_claim(
+    \preformatted{ResearchWorkspace$verify_proposed_claim(
   claim_id,
   status,
   score = NA_real_,

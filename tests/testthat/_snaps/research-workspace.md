@@ -63,15 +63,6 @@
       Error in `tempest_research_workspace_abort()`:
       ! base_snapshot_id is pinned when the workspace is created.
 
-# SourceStore remains a deprecated compatibility subclass
-
-    Code
-      store <- SourceStore$new(base_snapshot_id = "snapshot-1")
-    Condition
-      Warning:
-      `SourceStore$new()` was deprecated in tempest 0.2.0.
-      i Please use `tempest_research_workspace()` instead.
-
 # ResearchWorkspace validates its explicit citation audit
 
     Code

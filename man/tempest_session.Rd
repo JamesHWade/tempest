@@ -7,10 +7,8 @@
 tempest_session(
   topic,
   config = tempest_config(),
-  runtime = tempest_runtime(),
   n_experts = 3,
   experts = NULL,
-  connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
   session_id = NULL
@@ -21,19 +19,13 @@ tempest_session(
 
 \item{config}{A \code{TempestConfig}.}
 
-\item{runtime}{Frozen Tempest 0.1 \code{\link[=tempest_runtime]{tempest_runtime()}} adapter. Existing
-integrations only.}
-
 \item{n_experts}{Number of expert agents.}
 
 \item{experts}{Optional list of validated expert profiles. If \code{NULL},
 experts are generated automatically.}
 
-\item{connection_permissions}{Frozen Tempest 0.1 per-role or per-expert
-connection allow-lists.}
-
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
-with a \link{ResearchWorkspace} at \verb{$workspace} or its legacy \verb{$store} alias.}
+with a \link{ResearchWorkspace} at \verb{$workspace}.}
 
 \item{progress}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}
@@ -44,14 +36,6 @@ identifier is generated.}
 \description{
 Create a Co-STORM session
 }
-\section{Frozen Tempest 0.1 seams}{
-
-
-\code{runtime} and \code{connection_permissions} remain only for existing Tempest 0.1
-integrations and are scheduled for replacement in Tempest 0.2.0. New host
-code should keep role-specific tools and authenticated clients process-local.
-}
-
 \examples{
 \dontrun{
 session <- tempest_session("History of jazz", config = tempest_config())

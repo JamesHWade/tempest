@@ -10,8 +10,9 @@
 Tempest 0.2 becomes a focused scientific-research product. The experimental
 application-neutral workflow, runtime, capability, connection, skill,
 deliverable, and artifact APIs are frozen and scheduled for removal in
-Tempest 0.2.0. They remain available in the 0.1 development line only to
-preserve the product baseline while replacement seams are proven.
+the section-10 deletion PR of the Tempest 0.2 migration train. They remain
+in source only as deletion-owned baseline inventory, not as a compatibility
+path.
 
 No compatibility framework or generic-kernel migration layer will be added.
 STORM and Co-STORM product bundles will receive direct, product-specific
@@ -33,8 +34,8 @@ No compatibility shim is planned.
 \code{tempest_run_approvals()}, \code{tempest_run_capability_grants()},
 \code{tempest_run_artifact()}, \code{tempest_run_artifacts()},
 \code{tempest_run_record_approval()}, \code{tempest_run_request_cancel()},
-\code{tempest_run_snapshot()}, \code{tempest_run_restore()}, \code{tempest_run_save()},
-and \code{tempest_run_resume()}. The shared \code{tempest_execution_events()} query
+\code{tempest_run_snapshot()}, and \code{tempest_run_save()}. The shared
+\code{tempest_execution_events()} query
 remains a product seam and will be narrowed to STORM and Co-STORM state.
 \item Runtime contracts: \code{tempest_operation_registry()},
 \code{tempest_builtin_operation_registry()},

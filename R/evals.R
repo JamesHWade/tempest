@@ -44,7 +44,7 @@ tempest_solver_cited_answer <- function(
 
   for (i in seq_len(n)) {
     workspace <- tempest_research_workspace()
-    retriever <- tempest_retriever(config = config, store = workspace)
+    retriever <- tempest_retriever(config = config, workspace = workspace)
     chat <- tempest_make_chat(
       config,
       "expert",
@@ -89,8 +89,8 @@ tempest_solver_cited_answer <- function(
     results[[i]] <- ans
     chats[[i]] <- chat
     meta[[i]] <- list(
-      sources = workspace$to_tibbles()$sources,
-      claims = workspace$to_tibbles()$claims
+      retrieved_resources = workspace$to_tibbles()$retrieved_resources,
+      proposed_claims = workspace$to_tibbles()$proposed_claims
     )
   }
 
@@ -208,8 +208,8 @@ tempest_costorm_task <- function(
         chats[[i]] <- session$chats$moderator
         meta[[i]] <- list(
           turns = sim_user$turn_count,
-          sources = session$workspace$to_tibbles()$sources,
-          claims = session$workspace$to_tibbles()$claims
+          retrieved_resources = session$workspace$to_tibbles()$retrieved_resources,
+          proposed_claims = session$workspace$to_tibbles()$proposed_claims
         )
       }
 

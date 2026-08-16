@@ -196,12 +196,12 @@ tempest_workflow_checkpoint_artifact <- function(
   context$artifact_catalog$register(deliverable)
   state <- tempest_contract_serializable_list(state, "state")
   source_count <- if (inherits(context$source_store, "ResearchWorkspace")) {
-    length(context$source_store$list_sources())
+    length(context$source_store$list_retrieved_sources())
   } else {
     0L
   }
   claim_count <- if (inherits(context$source_store, "ResearchWorkspace")) {
-    length(context$source_store$list_claims())
+    length(context$source_store$list_proposed_claims())
   } else {
     0L
   }
@@ -681,12 +681,10 @@ tempest_storm_workflow_adapter <- function(
       }
       active_retriever <- tempest_retriever(
         config = config,
-        store = context$source_store
+        workspace = context$source_store
       )
     }
-    active_workspace <- active_retriever$workspace %||%
-      active_retriever$store %||%
-      NULL
+    active_workspace <- active_retriever$workspace %||% NULL
     if (
       !inherits(active_workspace, "ResearchWorkspace") ||
         !identical(active_workspace, context$source_store)
@@ -722,12 +720,11 @@ tempest_storm_workflow_adapter <- function(
         progress = stage_progress,
         verbose = verbose,
         artifact_catalog = context$artifact_catalog,
-        workflow_run = run,
         .state = state
       ),
       arguments
     )
-    result <- do.call(tempest_run, call_arguments)
+    result <- do.call(tempest_run_internal, call_arguments)
     if (length(result$experts %||% list()) > 0L) {
       tempest_storm_workflow_update_experts(run, result$experts, stage)
     }
@@ -762,8 +759,8 @@ tempest_storm_workflow_adapter <- function(
 #' [tempest-generic-kernel-retirement].
 #'
 #' This is the generic-run counterpart to [tempest_run()]. It returns the
-#' `TempestRun`; each step result retains the corresponding legacy STORM result
-#' under `$value`, including its `$workflow_run` handle.
+#' `TempestRun`; each step result retains the corresponding STORM result under
+#' `$value`.
 #'
 #' @inheritParams tempest_storm_workflow_adapter
 #' @param topic Research objective.
@@ -796,14 +793,17 @@ tempest_storm_workflow_run <- function(
   arguments <- tempest_storm_workflow_extra_arguments(list(...))
   if (is.null(retriever)) {
     source_store <- tempest_research_workspace()
-    retriever <- tempest_retriever(config = config, store = source_store)
+    retriever <- tempest_retriever(
+      config = config,
+      workspace = source_store
+    )
   } else {
-    source_store <- retriever$workspace %||% retriever$store %||% NULL
+    source_store <- retriever$workspace %||% NULL
     if (!inherits(source_store, "ResearchWorkspace")) {
       tempest_builtin_workflow_abort(
         paste0(
           "{.arg retriever} must expose a ResearchWorkspace at ",
-          "{.code retriever$workspace} or {.code retriever$store}."
+          "{.code retriever$workspace}."
         )
       )
     }
@@ -910,10 +910,13 @@ tempest_costorm_workflow_adapter <- function(
         "The Co-STORM adapter requires an owning TempestRun."
       )
     }
-    session_workspace <- session$workspace %||% session$store %||% NULL
+    session_workspace <- session$workspace %||% NULL
     if (
       !identical(session_workspace, context$source_store) ||
-        !identical(session$artifact_catalog, context$artifact_catalog)
+        !identical(
+          tempest_session_artifact_catalog(session),
+          context$artifact_catalog
+        )
     ) {
       tempest_builtin_workflow_abort(
         paste0(
@@ -951,7 +954,7 @@ tempest_costorm_workflow_adapter <- function(
         "The Co-STORM adapter connection permissions must match the owning run."
       )
     }
-    session$workflow_run <- run
+    tempest_session_set_workflow_run(session, run)
     switch(
       stage,
       warmup = {
@@ -1018,7 +1021,7 @@ tempest_costorm_workflow_run <- function(
       "{.arg session} must be a TempestSession."
     )
   }
-  existing <- session$workflow_run %||% NULL
+  existing <- tempest_session_workflow_run(session)
   if (
     inherits(existing, "TempestRun") &&
       !existing$status %in% c("succeeded", "failed", "cancelled")
@@ -1062,7 +1065,7 @@ tempest_costorm_workflow_run <- function(
     experts = session$experts,
     connection_permissions = session$connection_permissions,
     deliverables = list(checkpoint, report),
-    artifact_catalog = session$artifact_catalog,
+    artifact_catalog = tempest_session_artifact_catalog(session),
     source_store = session$workspace,
     runtime_context = list(
       config = session$config,
@@ -1073,6 +1076,6 @@ tempest_costorm_workflow_run <- function(
     run_id = run_id,
     progress = progress
   )
-  session$workflow_run <- run
+  tempest_session_set_workflow_run(session, run)
   run
 }

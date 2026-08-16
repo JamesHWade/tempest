@@ -46,7 +46,7 @@ test_that("research manifest records survive canonical JSON without drift", {
     config = tempest_config(),
     programs = list(
       extract_claims = list(
-        procedure_revision_id = NULL,
+        governed_procedure_revision_id = NULL,
         program_artifact_id = "artifact:any-format"
       )
     ),
@@ -155,7 +155,7 @@ test_that("research manifest reference schemas are closed", {
     list(
       knowledge_snapshot = list(
         snapshot_id = "snapshot-1",
-        batch_id = "batch-1"
+        label = "not-part-of-the-snapshot-contract"
       )
     ),
     list(runtime = list(parent_run_id = "run-parent")),

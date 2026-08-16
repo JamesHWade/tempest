@@ -26,7 +26,7 @@ tempest_type_verification <- function() {
 #' @keywords internal
 tempest_verify_one_claim <- function(claim, store, verifier, module = NULL) {
   excerpts <- purrr::map_chr(claim@source_ids, function(sid) {
-    src <- store$get_source(sid)
+    src <- store$get_retrieved_source(sid)
     if (is.null(src)) {
       return(paste0("[", sid, "]: (source missing)"))
     }
@@ -72,7 +72,7 @@ tempest_empty_citation_audit <- function() {
 
 #' Verify claim citations against their sources
 #'
-#' @param store A [ResearchWorkspace] holding provisional claims and retrieved
+#' @param workspace A [ResearchWorkspace] holding proposed claims and retrieved
 #'   sources.
 #' @param verifier A chat object (e.g. from `tempest_make_chat(config, "judge")`).
 #' @param policy Citation policy; verification runs only for "claim_verified" or
@@ -86,26 +86,25 @@ tempest_empty_citation_audit <- function() {
 #' @return A `citation_audit` tibble (one row per verified claim).
 #' @export
 tempest_verify_claims <- function(
-  store,
+  workspace,
   verifier,
   policy = "claim_verified",
   verifier_model = NA_character_,
   modules = NULL,
   min_support_score = 0.7
 ) {
-  if (!inherits(store, "ResearchWorkspace")) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
-      "{.arg store} must be a ResearchWorkspace."
+      "{.arg workspace} must be a ResearchWorkspace."
     )
   }
-  workspace <- store
   if (!policy %in% c("claim_verified", "strict")) {
     audit <- tempest_empty_citation_audit()
     workspace$set_citation_audit(audit)
     return(workspace$citation_audit)
   }
   min_support_score <- tempest_normalize_min_support_score(min_support_score)
-  claims <- workspace$list_claims()
+  claims <- workspace$list_proposed_claims()
   rows <- purrr::map(claims, function(claim) {
     v <- tryCatch(
       tempest_verify_one_claim(
@@ -147,7 +146,7 @@ tempest_verify_claims <- function(
       score,
       min_support_score = min_support_score
     )
-    workspace$verify_claim(
+    workspace$verify_proposed_claim(
       claim@claim_id,
       status = status,
       score = score,

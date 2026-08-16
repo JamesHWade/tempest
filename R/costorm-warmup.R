@@ -388,8 +388,11 @@ tempest_warmup_prompt <- function(topic, expert) {
     "more than two results, and set k = 2 when the search tool accepts k. Do ",
     "not make more than two retrieval or fetch calls. Ground at least one ",
     "orientation claim in an inspected source and preserve its citation. ",
-    "Evidence is committed after your response, so do not call add_claim or ",
-    "add_fact yourself. Label anything not supported by inspected evidence as ",
+    paste0(
+      "Evidence is committed after your response, so do not call ",
+      "add_proposed_claim yourself. Label anything not supported by inspected ",
+      "evidence as "
+    ),
     "uncertain.",
     seeds,
     "\n\nIn no more than 250 words, cover:\n",

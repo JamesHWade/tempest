@@ -21,8 +21,8 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
     content_text = "Progress uses staged events and persisted artifacts."
   )
   source_id <- source$id
-  store <- quiet_source_store()
-  store$upsert_source(source)
+  store <- test_research_workspace()
+  store$upsert_retrieved_resource(source)
   outline <- list(
     title = "Progress report",
     sections = list(list(
@@ -136,7 +136,7 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
   list(
     config = cfg,
     store = store,
-    retriever = tempest_retriever(config = cfg, store = store),
+    retriever = tempest_retriever(config = cfg, workspace = store),
     source_id = source_id,
     outline = outline
   )

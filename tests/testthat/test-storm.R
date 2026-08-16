@@ -130,7 +130,7 @@ test_that("tempest_run uses the selected expert team", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   workspace <- tempest_research_workspace()
-  retriever <- tempest_retriever(config = cfg, store = workspace)
+  retriever <- tempest_retriever(config = cfg, workspace = workspace)
   local_mocked_bindings(
     tempest_wiki_search = function(query, limit = 8L) {
       tibble::tibble(
@@ -173,7 +173,7 @@ test_that("tempest_run uses the selected expert team", {
 
   expect_identical(result$experts[[1]], expert)
   expect_identical(result$workspace, workspace)
-  expect_identical(result$store, workspace)
+  expect_equal("store" %in% names(result), FALSE)
   expect_identical(result$manifest@mode, "storm")
   expect_equal("artifacts" %in% names(result$workspace), FALSE)
   expect_null(result$personas)
@@ -316,7 +316,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
       tempest_run(
         "Terminal resume",
         config = cfg,
-        retriever = tempest_retriever(config = cfg, store = workspace),
+        retriever = tempest_retriever(config = cfg, workspace = workspace),
         steps = "write",
         dsprrr_modules = list(),
         output_dir = output_root,
@@ -419,7 +419,7 @@ test_that("tempest_run emits ordered STORM progress events", {
   )
   source_id <- source$id
   store <- tempest_research_workspace()
-  store$upsert_source(source)
+  store$upsert_retrieved_resource(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
   outline <- list(
     title = "Progress report",
@@ -530,7 +530,7 @@ test_that("tempest_run emits ordered STORM progress events", {
       )
     }
   )
-  retriever <- tempest_retriever(config = cfg, store = store)
+  retriever <- tempest_retriever(config = cfg, workspace = store)
 
   result <- tempest_run(
     "Progress events",
@@ -599,12 +599,8 @@ test_that("tempest_run emits ordered STORM progress events", {
   )
   expect_match(result$report_md, "Polished report")
   expect_equal(
-    result$artifact_catalog$get("report_md")@content,
-    result$report_md
-  )
-  expect_equal(
-    result$artifact_catalog$get("report_md")@run_id,
-    "progress-run"
+    intersect(names(result), c("store", "artifact_catalog", "workflow_run")),
+    character()
   )
   expect_equal(
     collector$data(event_type = "artifact")[[1]]$payload$artifact,
@@ -687,16 +683,21 @@ test_that("STORM research harvests OpenAI native annotations", {
     dsprrr_modules = list()
   )
 
-  expect_equal(result$sources[[1]]$id, source_id)
-  expect_equal(result$sources[[1]]$title, "STORM Native Source")
+  expect_equal(result$retrieved_resources[[1]]$id, source_id)
+  expect_equal(
+    result$retrieved_resources[[1]]$title,
+    "STORM Native Source"
+  )
   result_workspace <- tempest_research_workspace()
-  result_workspace$upsert_source(result$sources[[1]])
+  result_workspace$upsert_retrieved_resource(
+    result$retrieved_resources[[1]]
+  )
   sources <- tempest_sources(result_workspace)
   expect_match(sources$snippet[[1]], "STORM native-backed claim")
   expect_match(sources$context_text[[1]], "STORM native-backed claim")
-  expect_length(result$claims, 1L)
-  expect_equal(result$claims[[1]]@source_ids, source_id)
-  expect_equal(result$claims[[1]]@support_score, 0.87)
+  expect_length(result$proposed_claims, 1L)
+  expect_equal(result$proposed_claims[[1]]@source_ids, source_id)
+  expect_equal(result$proposed_claims[[1]]@support_score, 0.87)
 })
 
 test_that("tempest_run emits a failed verification stage event", {
@@ -765,7 +766,7 @@ test_that("tempest_run emits terminal progress events on failure", {
       config = cfg,
       retriever = tempest_retriever(
         config = cfg,
-        store = tempest_research_workspace()
+        workspace = tempest_research_workspace()
       ),
       steps = "write",
       dsprrr_modules = list(),

@@ -81,7 +81,7 @@ report <- session$report(
 cat(report)
 ```
 
-Inspect the session's source store, claims, transcript, mind map, and report
+Inspect the session's research workspace, claims, transcript, mind map, and report
 state. Report generation should preserve uncertainty and evidence
 relationships collected during dialogue.
 

@@ -97,8 +97,8 @@ test_that("expert delegation tool uses stable ids and reuses sessions", {
       if (identical(role, "expert")) expert_chat else fake_chat()
     }
   )
-  store <- quiet_source_store()
-  retriever <- tempest:::tempest_retriever(config = cfg, store = store)
+  store <- test_research_workspace()
+  retriever <- tempest:::tempest_retriever(config = cfg, workspace = store)
   expert <- test_expert(
     expert_id = "expert.climate",
     name = "Dr. Sarah Chen",
@@ -173,8 +173,8 @@ test_that("expert delegation harvests native sources before extraction", {
   cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
     if (identical(role, "expert")) expert_chat else fake_chat()
   })
-  store <- quiet_source_store()
-  retriever <- tempest:::tempest_retriever(config = cfg, store = store)
+  store <- test_research_workspace()
+  retriever <- tempest:::tempest_retriever(config = cfg, workspace = store)
   expert <- test_expert(
     expert_id = "expert.climate",
     name = "Dr. Sarah Chen",
@@ -186,7 +186,7 @@ test_that("expert delegation harvests native sources before extraction", {
     config = cfg,
     retriever = retriever,
     extractor = extractor,
-    store = store
+    workspace = store
   )
   tool <- tempest:::tempest_create_expert_delegation_tool(
     manager,
@@ -199,8 +199,8 @@ test_that("expert delegation harvests native sources before extraction", {
   )
 
   expect_equal(result$response, paste("Native-backed claim", url))
-  expect_equal(store$get_source(source_id)$title, "Native Source")
-  claims <- store$list_claims()
+  expect_equal(store$get_retrieved_source(source_id)$title, "Native Source")
+  claims <- store$list_proposed_claims()
   expect_length(claims, 1)
   expect_equal(claims[[1]]@source_ids, source_id)
   expect_equal(claims[[1]]@expert_id, "expert.climate")
@@ -233,8 +233,8 @@ test_that("expert delegation harvests OpenAI native annotations", {
   cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
     if (identical(role, "expert")) expert_chat else fake_chat()
   })
-  store <- quiet_source_store()
-  retriever <- tempest:::tempest_retriever(config = cfg, store = store)
+  store <- test_research_workspace()
+  retriever <- tempest:::tempest_retriever(config = cfg, workspace = store)
   expert <- test_expert(
     expert_id = "expert.climate",
     name = "Dr. Sarah Chen",
@@ -246,7 +246,7 @@ test_that("expert delegation harvests OpenAI native annotations", {
     config = cfg,
     retriever = retriever,
     extractor = extractor,
-    store = store
+    workspace = store
   )
   tool <- tempest:::tempest_create_expert_delegation_tool(
     manager,
@@ -259,8 +259,11 @@ test_that("expert delegation harvests OpenAI native annotations", {
   )
 
   expect_equal(result$response, "OpenAI native-backed claim.")
-  expect_equal(store$get_source(source_id)$title, "OpenAI Native Source")
-  expect_equal(store$list_claims()[[1]]@source_ids, source_id)
+  expect_equal(
+    store$get_retrieved_source(source_id)$title,
+    "OpenAI Native Source"
+  )
+  expect_equal(store$list_proposed_claims()[[1]]@source_ids, source_id)
 })
 
 test_that("merging source records tolerates empty and missing fields", {

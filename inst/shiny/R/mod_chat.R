@@ -602,7 +602,7 @@ mod_chat_server <- function(
       if (is.null(ses)) {
         return(NULL)
       }
-      citation_source_store(ses$store %||% NULL)
+      citation_source_store(ses$workspace %||% NULL)
     }
     chat <- NULL
     append_chat <- function(text) {
@@ -732,8 +732,6 @@ mod_chat_server <- function(
       ses <- store$restore(
         path,
         config = config(),
-        runtime = reactive_or_value(runtime),
-        connection_permissions = reactive_or_value(connection_permissions),
         progress = record_progress
       )
       shiny::updateTextInput(session, "topic", value = ses$topic %||% "")
@@ -751,8 +749,11 @@ mod_chat_server <- function(
         )
       }
       restore_progress_history(ses)
-      report_available <- !is.null(ses$artifact_catalog) &&
-        ses$artifact_catalog$has("report_md")
+      report_md <- tempest:::tempest_session_report_value(ses)
+      report_available <- is.character(report_md) &&
+        length(report_md) == 1L &&
+        !is.na(report_md) &&
+        nzchar(report_md)
       messages <- tempest:::tempest_shinychat_restore_messages(
         ses$transcript,
         topic = ses$topic,
@@ -1410,12 +1411,26 @@ chat_runtime_counts <- function(ses) {
   if (is.null(ses)) {
     return(list(experts = 0L, sources = 0L, facts = 0L, report = FALSE))
   }
-  sources <- tryCatch(ses$store$list_sources(), error = function(e) list())
-  claims <- tryCatch(ses$store$list_claims(), error = function(e) list())
+  sources <- tryCatch(
+    ses$workspace$list_retrieved_sources(),
+    error = function(e) list()
+  )
+  claims <- tryCatch(
+    ses$workspace$list_proposed_claims(),
+    error = function(e) list()
+  )
   report <- tryCatch(
-    !is.null(ses$artifact_catalog) &&
-      ses$artifact_catalog$has("report_md") &&
-      nzchar(ses$artifact_catalog$get("report_md")@content),
+    {
+      report_md <- if (inherits(ses, "TempestSession")) {
+        tempest:::tempest_session_report_value(ses)
+      } else {
+        ses$report_md %||% NULL
+      }
+      is.character(report_md) &&
+        length(report_md) == 1L &&
+        !is.na(report_md) &&
+        nzchar(report_md)
+    },
     error = function(e) FALSE
   )
   list(
@@ -1606,7 +1621,10 @@ chat_command_sources <- function(ses, n = 5L) {
   sources <- if (is.null(ses)) {
     list()
   } else {
-    tryCatch(ses$store$list_sources(), error = function(e) list())
+    tryCatch(
+      ses$workspace$list_retrieved_sources(),
+      error = function(e) list()
+    )
   }
   if (length(sources) == 0L) {
     return("No sources collected yet. Ask a research question first.")
@@ -1637,7 +1655,10 @@ chat_command_facts <- function(ses, n = 5L) {
   claims <- if (is.null(ses)) {
     list()
   } else {
-    tryCatch(ses$store$list_claims(), error = function(e) list())
+    tryCatch(
+      ses$workspace$list_proposed_claims(),
+      error = function(e) list()
+    )
   }
   if (length(claims) == 0L) {
     return("No facts collected yet. Ask a research question first.")
@@ -1767,8 +1788,8 @@ generate_report_for_chat_async <- function(
     append_chat("No session active. Start a session first.")
     return(promises::promise_resolve(FALSE))
   }
-  n_evidence <- length(ses$store$list_claims()) +
-    length(ses$store$list_sources())
+  n_evidence <- length(ses$workspace$list_proposed_claims()) +
+    length(ses$workspace$list_retrieved_sources())
   if (n_evidence == 0L) {
     append_chat(
       "No facts or sources collected yet. Ask some questions first to gather research."
@@ -1792,7 +1813,7 @@ generate_report_for_chat_async <- function(
       ) {
         return(FALSE)
       }
-      store$set_report(markdown, ses$topic, source_store = ses$store)
+      store$set_report(markdown, ses$topic, source_store = ses$workspace)
       store$touch()
       append_chat(sprintf(
         "Report generated (%d chars). See the **Report** tab.",
@@ -2066,17 +2087,18 @@ session_archive_manifest_files <- function(manifest) {
       schema_version <- as.integer(value)
     }
   }
-  valid_header <- if (identical(schema_version, 5L)) {
+  valid_header <- identical(schema_version, 5L) &&
     identical(manifest$bundle_type %||% "", "costorm") &&
-      identical(manifest$bundle_status %||% "", "complete")
-  } else if (identical(schema_version, 4L)) {
-    identical(manifest$status %||% "", "complete")
-  } else {
-    FALSE
-  }
+    identical(manifest$bundle_status %||% "", "complete")
   if (
     !is.list(manifest) ||
-      !isTRUE(valid_header)
+      !isTRUE(valid_header) ||
+      is.null(names(manifest)) ||
+      anyDuplicated(names(manifest)) ||
+      !setequal(
+        names(manifest),
+        tempest:::tempest_session_bundle_manifest_fields()
+      )
   ) {
     stop(
       "Session archive manifest uses an unsupported schema or status.",
@@ -2085,13 +2107,6 @@ session_archive_manifest_files <- function(manifest) {
   }
   files <- as.character(unlist(manifest$files %||% character()))
   checksums <- unlist(manifest$checksums %||% list(), use.names = TRUE)
-  artifact_files <- as.character(unlist(
-    manifest$artifact_files %||% character()
-  ))
-  indexes <- c(
-    manifest$artifact_index %||% NA_character_,
-    manifest$deliverable_index %||% NA_character_
-  )
   if (
     length(files) == 0L ||
       anyDuplicated(files) ||
@@ -2102,21 +2117,6 @@ session_archive_manifest_files <- function(manifest) {
           files,
           tempest:::tempest_artifact_bundle_path_is_safe,
           logical(1)
-        )
-      ) ||
-      anyDuplicated(artifact_files) ||
-      length(setdiff(artifact_files, files)) > 0L ||
-      any(
-        !startsWith(
-          artifact_files,
-          "artifacts/typed/content/"
-        )
-      ) ||
-      !identical(
-        indexes,
-        c(
-          "artifacts/typed/index.json",
-          "artifacts/typed/deliverables.json"
         )
       )
   ) {

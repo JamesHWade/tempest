@@ -24,7 +24,10 @@ test_that("cited-answer solver runs with a fake chat and no network", {
   expect_equal(solved$result, c("Fixture answer", "Fixture answer"))
   expect_length(solved$solver_chat, 2L)
   expect_length(solved$solver_metadata, 2L)
-  expect_named(solved$solver_metadata[[1]], c("sources", "claims"))
+  expect_named(
+    solved$solver_metadata[[1]],
+    c("retrieved_resources", "proposed_claims")
+  )
 })
 
 test_that("evaluation task constructors accept fake solver and scorer contracts", {
