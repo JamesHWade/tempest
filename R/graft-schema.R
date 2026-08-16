@@ -71,7 +71,7 @@ tempest_graft_property_descriptor <- function(property) {
     } else {
       NULL
     },
-    default = paste(capture.output(dput(data$default)), collapse = "\n")
+    default = paste(utils::capture.output(dput(data$default)), collapse = "\n")
   )
 }
 
@@ -149,7 +149,7 @@ tempest_graft_behavior_fingerprint <- function() {
     constants = stats::setNames(
       lapply(constant_names, function(name) {
         paste(
-          capture.output(dput(get(
+          utils::capture.output(dput(get(
             name,
             envir = namespace,
             inherits = FALSE
@@ -378,7 +378,7 @@ tempest_graft_plan_require_valid <- function(plan, phase) {
     )
   }
   plan <- tryCatch(
-    getFromNamespace("validate_graft_commit_plan", "graft")(plan),
+    utils::getFromNamespace("validate_graft_commit_plan", "graft")(plan),
     error = function(error) {
       tempest_graft_plan_abort(
         "The Graft {.val {phase}} plan failed its pinned integrity check."
