@@ -158,6 +158,7 @@ test_that("builtin ProgramSets expose the exact portable stage contract", {
     S7::S7_inherits(program_set, tempest:::TempestProgramSet),
     TRUE
   )
+  expect_identical(program_set@schema_version, 2L)
   expect_identical(names(entries), stages)
   expect_length(program_set@bundle_root, 0L)
   for (stage in stages) {
@@ -168,7 +169,7 @@ test_that("builtin ProgramSets expose the exact portable stage contract", {
         "contract_version",
         "program_artifact_id",
         "artifact_reference",
-        "governed_procedure_revision_id",
+        "governed_procedure_ref",
         "evaluator_id",
         "evaluator_version"
       )
@@ -205,7 +206,7 @@ test_that("builtin ProgramSets expose the exact portable stage contract", {
       "stage",
       "contract_version",
       "program_artifact_id",
-      "governed_procedure_revision_id",
+      "governed_procedure_ref",
       "evaluator_id",
       "evaluator_version"
     )
@@ -260,7 +261,7 @@ test_that("ProgramSet construction rejects partial and ambiguous contracts", {
   builtin <- tempest_program_set()
   expect_error(
     tempest:::TempestProgramSet(
-      schema_version = 1L,
+      schema_version = 2L,
       bundle_root = "relative/program-set",
       entries = builtin@entries,
       programs = builtin@programs
@@ -282,7 +283,7 @@ test_that("ProgramSet construction rejects partial and ambiguous contracts", {
       "contract_version",
       "program_artifact_id",
       "artifact_reference",
-      "governed_procedure_revision_id",
+      "governed_procedure_ref",
       "evaluator_id",
       "evaluator_version"
     )
@@ -309,11 +310,20 @@ test_that("ProgramSet access fails closed after live module mutation", {
 test_that("ProgramSet save and load use exact closed file bundles", {
   root <- withr::local_tempdir()
   path <- file.path(root, "program-set")
-  program_set <- test_program_set(
-    path,
-    governed_procedure_revision_ids = list(personas = "procedure-revision-7")
+  programs <- test_program_set_programs()
+  persona_id <- dsprrr::program_artifact_id(programs$personas)
+  procedure_ref <- test_governed_procedure_ref(
+    "personas",
+    persona_id,
+    revision_id = "procedure-revision-7"
+  )
+  program_set <- tempest_program_set(
+    programs = programs,
+    path = path,
+    governed_procedure_refs = list(personas = procedure_ref)
   )
   loaded <- tempest_load_program_set(path)
+  manifest <- test_program_set_manifest(path)
   stages <- tempest:::tempest_program_set_stages()
 
   expect_identical(
@@ -322,9 +332,10 @@ test_that("ProgramSet save and load use exact closed file bundles", {
   )
   expect_identical(program_set@bundle_root, as.character(fs::path_abs(path)))
   expect_identical(loaded@bundle_root, as.character(fs::path_abs(path)))
+  expect_identical(manifest$schema_version, 2L)
   expect_identical(
-    loaded@entries$personas$governed_procedure_revision_id,
-    "procedure-revision-7"
+    loaded@entries$personas$governed_procedure_ref,
+    tempest:::tempest_governed_procedure_record(procedure_ref)
   )
   for (stage in stages) {
     expect_identical(
@@ -344,9 +355,10 @@ test_that("ProgramSet save and load use exact closed file bundles", {
   )
   changed_identity <- tempest:::tempest_program_set_manifest_programs(loaded)
   changed_identity$personas$evaluator_version <- "2"
-  expect_identical(
+  expect_error(
     tempest:::tempest_program_set_identity_equal(loaded, changed_identity),
-    FALSE
+    class = "tempest_research_manifest_error",
+    regexp = "must match its exact ProgramSet"
   )
 
   copied_path <- file.path(root, "copied-program-set")
@@ -414,12 +426,34 @@ test_that("ProgramSet load rejects inventory and manifest drift", {
   manifest <- test_program_set_manifest(reordered_path)
   manifest <- manifest[c("entries", "schema_version", "format")]
   test_write_program_set_manifest(reordered_path, manifest)
-  expect_identical(
-    S7::S7_inherits(
-      tempest_load_program_set(reordered_path),
-      tempest:::TempestProgramSet
-    ),
-    TRUE
+  expect_error(
+    tempest_load_program_set(reordered_path),
+    class = "tempest_program_set_persistence_error"
+  )
+
+  reordered_entry_path <- file.path(root, "reordered-entry")
+  test_program_set(reordered_entry_path)
+  manifest <- test_program_set_manifest(reordered_entry_path)
+  manifest$entries$personas <- manifest$entries$personas[
+    rev(names(manifest$entries$personas))
+  ]
+  test_write_program_set_manifest(reordered_entry_path, manifest)
+  expect_error(
+    tempest_load_program_set(reordered_entry_path),
+    class = "tempest_program_set_persistence_error"
+  )
+
+  reordered_artifact_path <- file.path(root, "reordered-artifact")
+  test_program_set(reordered_artifact_path)
+  manifest <- test_program_set_manifest(reordered_artifact_path)
+  manifest$entries$personas$artifact_reference <-
+    manifest$entries$personas$artifact_reference[
+      rev(names(manifest$entries$personas$artifact_reference))
+    ]
+  test_write_program_set_manifest(reordered_artifact_path, manifest)
+  expect_error(
+    tempest_load_program_set(reordered_artifact_path),
+    class = "tempest_program_set_persistence_error"
   )
 
   missing_field_path <- file.path(root, "missing-field")
@@ -479,7 +513,7 @@ test_that("ProgramSet manifests require exact unique non-null top-level keys", {
     paste0(
       '{"format":"tempest-program-set",',
       '"format":"tempest-program-set",',
-      '"schema_version":1,"entries":',
+      '"schema_version":2,"entries":',
       entries_json,
       "}"
     )
@@ -492,7 +526,7 @@ test_that("ProgramSet manifests require exact unique non-null top-level keys", {
 
   missing <- bundle_with_manifest(
     "missing",
-    '{"format":"tempest-program-set","schema_version":1}'
+    '{"format":"tempest-program-set","schema_version":2}'
   )
   expect_error(
     tempest_load_program_set(missing),
@@ -503,7 +537,7 @@ test_that("ProgramSet manifests require exact unique non-null top-level keys", {
   wrong_count <- bundle_with_manifest(
     "wrong-count",
     paste0(
-      '{"format":"tempest-program-set","schema_version":1,',
+      '{"format":"tempest-program-set","schema_version":2,',
       '"entries":',
       entries_json,
       ',"extra":1}'
@@ -518,7 +552,7 @@ test_that("ProgramSet manifests require exact unique non-null top-level keys", {
   null_format <- bundle_with_manifest(
     "null-format",
     paste0(
-      '{"format":null,"schema_version":1,"entries":',
+      '{"format":null,"schema_version":2,"entries":',
       entries_json,
       "}"
     )
@@ -547,7 +581,7 @@ test_that("ProgramSet manifests require exact unique non-null top-level keys", {
   null_entries <- bundle_with_manifest(
     "null-entries",
     paste0(
-      '{"format":"tempest-program-set","schema_version":1,',
+      '{"format":"tempest-program-set","schema_version":2,',
       '"entries":null}'
     )
   )
@@ -565,7 +599,7 @@ test_that("ProgramSet manifests require exact unique non-null top-level keys", {
   duplicate_evaluator <- bundle_with_manifest(
     "duplicate-evaluator",
     paste0(
-      '{"format":"tempest-program-set","schema_version":1,',
+      '{"format":"tempest-program-set","schema_version":2,',
       '"entries":',
       duplicate_evaluator_entries,
       "}"

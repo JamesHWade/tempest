@@ -8,7 +8,8 @@ tempest_session_restore(
   snapshot,
   config = tempest_config(),
   progress = NULL,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 )
 }
 \arguments{
@@ -22,6 +23,10 @@ objects.}
 
 \item{program_set}{A \link{TempestProgramSet} carrying the same program
 identities recorded in the snapshot. If \code{NULL}, the builtin set is used.}
+
+\item{knowledge_view}{Optional transient immutable Graft view required by
+future execution when \code{program_set} contains governed procedures. It is
+never reconstructed from or written to persistence.}
 }
 \value{
 A restored \link{TempestSession}.

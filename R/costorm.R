@@ -266,11 +266,15 @@ tempest_costorm_manifest_validate <- function(
       )
     )
   }
-  if (!identical(snapshot_id, workspace$base_snapshot_id)) {
+  workspace_snapshot <- tempest_costorm_manifest_snapshot_reference(workspace)
+  if (
+    !identical(snapshot_id, workspace$base_snapshot_id) ||
+      !identical(snapshot, workspace_snapshot)
+  ) {
     tempest_costorm_session_abort(
       paste0(
         "{.code manifest@knowledge_snapshot} does not match the ",
-        "ResearchWorkspace base snapshot."
+        "exact ResearchWorkspace base snapshot."
       )
     )
   }
@@ -281,7 +285,8 @@ tempest_costorm_program_execution <- function(
   program_set,
   stage,
   session_id,
-  knowledge_snapshot_id = NULL
+  knowledge_snapshot_id = NULL,
+  knowledge_view = NULL
 ) {
   session_id <- tempest_research_manifest_id(session_id, "session_id")
   trace_context <- list(
@@ -294,7 +299,11 @@ tempest_costorm_program_execution <- function(
   if (!is.null(knowledge_snapshot_id)) {
     trace_context$knowledge_snapshot_id <- knowledge_snapshot_id
   }
-  tempest_program_set_execution(
+  knowledge <- tempest_workflow_knowledge_view(
+    program_set,
+    knowledge_view
+  )
+  execution <- tempest_program_set_execution(
     program_set,
     stage,
     trace_context = tempest_research_manifest_canonical_value(
@@ -302,6 +311,8 @@ tempest_costorm_program_execution <- function(
       "trace_context"
     )
   )
+  execution$knowledge_view <- knowledge$view
+  execution
 }
 
 #' @keywords internal
@@ -434,6 +445,8 @@ TempestSession <- R6::R6Class(
     #'   identifier is generated.
     #' @param program_set A [TempestProgramSet] used for every structured
     #'   Co-STORM stage.
+    #' @param knowledge_view Optional immutable Graft view. A fresh session
+    #'   requires it whenever `program_set` contains governed procedures.
     #' @param .restore_manifest Internal research manifest supplied only by
     #'   Tempest's bundle-restoration seam.
     #' @param .restore_token Internal authorization token for bundle
@@ -449,6 +462,7 @@ TempestSession <- R6::R6Class(
       progress = NULL,
       session_id = NULL,
       program_set = NULL,
+      knowledge_view = NULL,
       .restore_manifest = NULL,
       .restore_token = NULL
     ) {
@@ -484,6 +498,11 @@ TempestSession <- R6::R6Class(
         )
       }
       program_set <- program_set %||% tempest_program_set()
+      knowledge <- tempest_workflow_knowledge_view(
+        program_set,
+        knowledge_view,
+        restoring = restoring
+      )
       program_references <- tempest_program_set_manifest_programs(program_set)
       if (!inherits(runtime, "TempestRuntime")) {
         tempest_runtime_abort(
@@ -554,7 +573,9 @@ TempestSession <- R6::R6Class(
       }
       self$progress <- tempest_progress_callback(progress)
       if (is.null(retriever)) {
-        private$workspace_value <- tempest_research_workspace()
+        private$workspace_value <- tempest_research_workspace(
+          graft_snapshot = knowledge$snapshot
+        )
         private$retriever_value <- tempest_retriever(
           config = config,
           workspace = private$workspace_value
@@ -581,6 +602,15 @@ TempestSession <- R6::R6Class(
           retriever
         )
       }
+      private$workspace_value <- tempest_workflow_workspace_validate(
+        private$workspace_value,
+        knowledge,
+        arg = "retriever"
+      )
+      tempest_research_workspace_verification_owner_preflight(
+        private$workspace_value,
+        restoring = restoring
+      )
       private$manifest_value <- if (is.null(manifest)) {
         tempest_research_manifest(
           research_run_id = session_id,
@@ -607,6 +637,11 @@ TempestSession <- R6::R6Class(
         program_set,
         private$manifest_value
       )
+      private$programs_value <- tempest_programs_bind_knowledge_view(
+        private$programs_value,
+        knowledge$view
+      )
+      private$knowledge_view_value <- knowledge$view
       private$program_set_value <- program_set
       private$session_id_value <- private$manifest_value@research_run_id
       self$transcript <- list()
@@ -629,6 +664,7 @@ TempestSession <- R6::R6Class(
           config = config,
           verbose = FALSE,
           module = private$programs_value$personas,
+          knowledge_view = private$knowledge_view_value,
           record_stage = function(record, output = NULL) {
             tempest_session_record_stage(
               self,
@@ -770,6 +806,11 @@ TempestSession <- R6::R6Class(
         step = "created",
         payload = list(expert_count = length(self$experts))
       )
+
+      private$verification_owner_token_value <-
+        tempest_research_workspace_bind_verification_owner(
+          private$workspace_value
+        )
 
       invisible(self)
     },
@@ -1042,6 +1083,7 @@ TempestSession <- R6::R6Class(
             session_id = session_id,
             expert_id = expert_id,
             retrieval_step_id = correlation_id,
+            knowledge_view = private$knowledge_view_value,
             record_stage = function(record, output = NULL) {
               tempest_session_record_stage(self, record, output)
             }
@@ -2066,13 +2108,31 @@ TempestSession <- R6::R6Class(
     manifest_value = NULL,
     programs_value = NULL,
     program_set_value = NULL,
+    knowledge_view_value = NULL,
     workspace_value = NULL,
     artifact_catalog_value = NULL,
     workflow_run_value = NULL,
     report_md_value = NULL,
-    stage_records_value = list()
+    stage_records_value = list(),
+    verification_owner_token_value = NULL
   )
 )
+
+#' @keywords internal
+tempest_session_verification_owner_token <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "Verification ownership requires a TempestSession."
+    )
+  }
+  token <- session$.__enclos_env__$private$verification_owner_token_value
+  if (!is.environment(token)) {
+    tempest_costorm_session_abort(
+      "TempestSession verification ownership is not bound."
+    )
+  }
+  token
+}
 
 #' @keywords internal
 tempest_session_program_set <- function(session) {
@@ -2092,6 +2152,15 @@ tempest_session_programs <- function(session) {
     )
   }
   session$.__enclos_env__$private$programs_value
+}
+
+tempest_session_knowledge_view <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$knowledge_view_value
 }
 
 tempest_session_stage_records <- function(session) {
@@ -2265,6 +2334,8 @@ tempest_session_set_report_value <- function(session, report_md) {
 #' @param program_set A [TempestProgramSet] containing the exact dsprrr
 #'   programs used by Co-STORM. If `NULL`, [tempest_program_set()] creates the
 #'   builtin set.
+#' @param knowledge_view Optional immutable Graft view. It is required for a
+#'   fresh session when `program_set` contains governed procedures.
 #' @examples
 #' \dontrun{
 #' session <- tempest_session("History of jazz", config = tempest_config())
@@ -2279,7 +2350,8 @@ tempest_session <- function(
   retriever = NULL,
   progress = NULL,
   session_id = NULL,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 ) {
   tempest_session_new(
     topic = topic,
@@ -2289,7 +2361,8 @@ tempest_session <- function(
     retriever = retriever,
     progress = progress,
     session_id = session_id,
-    program_set = program_set
+    program_set = program_set,
+    knowledge_view = knowledge_view
   )
 }
 
@@ -2303,7 +2376,8 @@ tempest_session_new <- function(
   retriever = NULL,
   progress = NULL,
   session_id = NULL,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 ) {
   TempestSession$new(
     topic = topic,
@@ -2315,7 +2389,8 @@ tempest_session_new <- function(
     retriever = retriever,
     progress = progress,
     session_id = session_id,
-    program_set = program_set
+    program_set = program_set,
+    knowledge_view = knowledge_view
   )
 }
 
@@ -2330,6 +2405,7 @@ tempest_session_restore_new <- function(
   progress = NULL,
   session_id = NULL,
   program_set = NULL,
+  knowledge_view = NULL,
   manifest
 ) {
   TempestSession$new(
@@ -2343,6 +2419,7 @@ tempest_session_restore_new <- function(
     progress = progress,
     session_id = session_id,
     program_set = program_set,
+    knowledge_view = knowledge_view,
     .restore_manifest = manifest,
     .restore_token = tempest_costorm_restore_token
   )

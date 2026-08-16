@@ -121,18 +121,12 @@ tempest_research_provenance_record <- function(
 }
 
 tempest_research_manifest_schema_version <- function(value) {
-  if (
-    !is.numeric(value) ||
-      length(value) != 1L ||
-      is.na(value) ||
-      !is.finite(value) ||
-      value != 1L
-  ) {
+  if (!tempest_exact_integer_scalar_valid(value, 2L, 2L)) {
     tempest_research_manifest_abort(
-      "{.arg schema_version} must be the supported version `1`."
+      "{.arg schema_version} must be the supported version `2`."
     )
   }
-  1L
+  value
 }
 
 tempest_research_manifest_digest <- function(value) {
@@ -171,6 +165,21 @@ tempest_research_manifest_canonical_value <- function(
     abort = tempest_research_manifest_abort,
     noun = "Manifest references",
     reject_sensitive = reject_sensitive
+  )
+}
+
+tempest_research_manifest_record_fields <- function() {
+  c(
+    "schema_version",
+    "research_run_id",
+    "mode",
+    "config_digest",
+    "programs",
+    "knowledge_snapshot",
+    "runtime",
+    "traces",
+    "deliverables",
+    "status"
   )
 }
 
@@ -325,18 +334,12 @@ tempest_research_manifest_ids <- function(value, path) {
 }
 
 tempest_research_manifest_program_contract_version <- function(value, path) {
-  if (
-    !is.numeric(value) ||
-      length(value) != 1L ||
-      is.na(value) ||
-      !is.finite(value) ||
-      value != 1L
-  ) {
+  if (!tempest_exact_integer_scalar_valid(value, 1L, 1L)) {
     tempest_research_manifest_abort(
       "{.field {path}} must be the supported contract version `1`."
     )
   }
-  1L
+  value
 }
 
 tempest_research_manifest_program_artifact_id <- function(value, path) {
@@ -360,7 +363,6 @@ tempest_research_manifest_program_artifact_reference <- function(
   stage,
   path
 ) {
-  value <- tempest_research_manifest_canonical_value(value, path)
   value <- tempest_research_manifest_named_record(value, path)
   reference_type <- tempest_research_manifest_id(
     value$type,
@@ -373,7 +375,7 @@ tempest_research_manifest_program_artifact_reference <- function(
   }
   if (identical(reference_type, "builtin")) {
     fields <- c("type", "id")
-    if (!setequal(names(value), fields)) {
+    if (!identical(names(value), fields)) {
       tempest_research_manifest_abort(
         paste0(
           "{.field {path}} must contain exactly {.field type} ",
@@ -381,6 +383,7 @@ tempest_research_manifest_program_artifact_reference <- function(
         )
       )
     }
+    value <- tempest_research_manifest_canonical_value(value, path)
     id <- tempest_research_manifest_id(
       value$id,
       paste0(path, "$id")
@@ -394,7 +397,7 @@ tempest_research_manifest_program_artifact_reference <- function(
     return(list(type = reference_type, id = id))
   }
   fields <- c("type", "path")
-  if (!setequal(names(value), fields)) {
+  if (!identical(names(value), fields)) {
     tempest_research_manifest_abort(
       paste0(
         "{.field {path}} must contain exactly {.field type} and ",
@@ -402,6 +405,7 @@ tempest_research_manifest_program_artifact_reference <- function(
       )
     )
   }
+  value <- tempest_research_manifest_canonical_value(value, path)
   artifact_path <- tempest_research_manifest_id(
     value$path,
     paste0(path, "$path")
@@ -442,27 +446,74 @@ tempest_research_manifest_programs <- function(value) {
     "contract_version",
     "program_artifact_id",
     "artifact_reference",
-    "governed_procedure_revision_id",
+    "governed_procedure_ref",
     "evaluator_id",
     "evaluator_version"
   )
   stats::setNames(
     lapply(names(value), function(stage) {
       path <- paste0("programs$", stage)
-      reference <- tempest_research_manifest_canonical_value(
-        value[[stage]],
+      raw_reference <- value[[stage]]
+      raw_reference <- tempest_research_manifest_named_record(
+        raw_reference,
         path
       )
-      reference <- tempest_research_manifest_named_record(reference, path)
-      tempest_research_manifest_unknown_fields(reference, allowed, path)
-      if (!setequal(names(reference), allowed)) {
-        tempest_research_manifest_abort(
-          paste0(
-            "{.field {path}} must contain exactly the current ProgramSet ",
-            "reference fields."
+      scan_reference <- raw_reference
+      if (
+        S7::S7_inherits(
+          scan_reference$governed_procedure_ref,
+          TempestGovernedProcedureRef
+        )
+      ) {
+        scan_reference["governed_procedure_ref"] <- list(
+          tempest_governed_procedure_record(
+            scan_reference$governed_procedure_ref,
+            paste0(path, "$governed_procedure_ref")
           )
         )
       }
+      tempest_research_manifest_canonical_value(scan_reference, path)
+      tempest_research_manifest_unknown_fields(raw_reference, allowed, path)
+      if (!identical(names(raw_reference), allowed)) {
+        tempest_research_manifest_abort(
+          paste0(
+            "{.field {path}} must contain exactly the current ProgramSet ",
+            "reference fields in writer order."
+          )
+        )
+      }
+      raw_reference$contract_version <-
+        tempest_research_manifest_program_contract_version(
+          raw_reference$contract_version,
+          paste0(path, "$contract_version")
+        )
+      governed_procedure_ref <- if (
+        is.null(raw_reference$governed_procedure_ref)
+      ) {
+        NULL
+      } else {
+        tempest_governed_procedure_record(
+          raw_reference$governed_procedure_ref,
+          paste0(path, "$governed_procedure_ref")
+        )
+      }
+      artifact_reference <- tempest_research_manifest_program_artifact_reference(
+        raw_reference$artifact_reference,
+        stage,
+        paste0(path, "$artifact_reference")
+      )
+      scan_reference <- raw_reference
+      scan_reference["artifact_reference"] <- list(artifact_reference)
+      scan_reference["governed_procedure_ref"] <- list(
+        governed_procedure_ref
+      )
+      reference <- tempest_research_manifest_canonical_value(
+        scan_reference,
+        path
+      )
+      reference["artifact_reference"] <- list(artifact_reference)
+      reference["governed_procedure_ref"] <- list(governed_procedure_ref)
+      reference <- tempest_research_manifest_named_record(reference, path)
       reference$stage <- tempest_research_manifest_id(
         reference$stage,
         paste0(path, "$stage")
@@ -482,18 +533,9 @@ tempest_research_manifest_programs <- function(value) {
           reference$program_artifact_id,
           paste0(path, "$program_artifact_id")
         )
-      reference$artifact_reference <-
-        tempest_research_manifest_program_artifact_reference(
-          reference$artifact_reference,
-          stage,
-          paste0(path, "$artifact_reference")
-        )
-      reference["governed_procedure_revision_id"] <- list(
-        tempest_research_manifest_id(
-          reference$governed_procedure_revision_id,
-          paste0(path, "$governed_procedure_revision_id"),
-          nullable = TRUE
-        )
+      reference$artifact_reference <- artifact_reference
+      reference["governed_procedure_ref"] <- list(
+        governed_procedure_ref
       )
       reference$evaluator_id <- tempest_research_manifest_id(
         reference$evaluator_id,
@@ -503,6 +545,28 @@ tempest_research_manifest_programs <- function(value) {
         reference$evaluator_version,
         paste0(path, "$evaluator_version")
       )
+      if (!is.null(reference$governed_procedure_ref)) {
+        binding_fields <- c(
+          "stage",
+          "program_artifact_id",
+          "contract_version",
+          "evaluator_id",
+          "evaluator_version"
+        )
+        if (
+          !identical(
+            reference$governed_procedure_ref[binding_fields],
+            reference[binding_fields]
+          )
+        ) {
+          tempest_research_manifest_abort(
+            paste0(
+              "{.field {path}$governed_procedure_ref} must match its exact ",
+              "ProgramSet stage, program, contract, and evaluator."
+            )
+          )
+        }
+      }
       reference[allowed]
     }),
     names(value)
@@ -515,7 +579,7 @@ tempest_research_manifest_program_identity_records <- function(value) {
     "stage",
     "contract_version",
     "program_artifact_id",
-    "governed_procedure_revision_id",
+    "governed_procedure_ref",
     "evaluator_id",
     "evaluator_version"
   )
@@ -667,6 +731,35 @@ tempest_research_manifest_runtime <- function(value) {
   value[order(names(value))]
 }
 
+tempest_research_manifest_runtime_record <- function(value) {
+  if (is.null(value) || !is.list(value) || is.data.frame(value)) {
+    tempest_research_manifest_abort(
+      "{.field runtime} must be the exact non-null runtime record."
+    )
+  }
+  for (field in intersect(
+    names(value) %||% character(),
+    c("deputy_run_ids", "deputy_session_ids")
+  )) {
+    ids <- value[[field]]
+    valid <- !is.null(ids) &&
+      is.list(ids) &&
+      !is.data.frame(ids) &&
+      is.null(names(ids)) &&
+      all(vapply(
+        ids,
+        \(id) rlang::is_string(id) && !is.na(id),
+        logical(1)
+      ))
+    if (!isTRUE(valid)) {
+      tempest_research_manifest_abort(
+        "{.field runtime${field}} must be an exact unnamed string array."
+      )
+    }
+  }
+  value
+}
+
 tempest_research_manifest_reference_tree <- function(
   value,
   path,
@@ -811,7 +904,17 @@ tempest_research_manifest_field <- function(value, field) {
 }
 
 tempest_research_manifest_canonical_json <- function(value) {
-  value <- tempest_research_manifest_canonical_value(value)
+  value <- if (
+    is.list(value) &&
+      !is.data.frame(value) &&
+      identical(names(value), tempest_research_manifest_record_fields())
+  ) {
+    tempest_research_manifest_record(
+      tempest_research_manifest_from_record(value)
+    )
+  } else {
+    tempest_research_manifest_canonical_value(value)
+  }
   tryCatch(
     as.character(jsonlite::toJSON(
       value,
@@ -955,8 +1058,8 @@ tempest_research_manifest_prop_enum <- function(choices) {
 }
 
 tempest_research_manifest_s7_validator <- function(self) {
-  if (!identical(self@schema_version, 1L)) {
-    return("schema_version must be the supported version 1")
+  if (!identical(self@schema_version, 2L)) {
+    return("schema_version must be the supported version 2")
   }
   if (!grepl("^sha256:[a-f0-9]{64}$", self@config_digest)) {
     return("config_digest must be a SHA-256 identifier")
@@ -995,7 +1098,7 @@ tempest_research_manifest_s7_validator <- function(self) {
 TempestResearchManifest <- S7::new_class(
   "TempestResearchManifest",
   properties = list(
-    schema_version = S7::new_property(S7::class_integer, default = 1L),
+    schema_version = S7::new_property(S7::class_integer, default = 2L),
     research_run_id = tempest_research_manifest_prop_string(),
     mode = tempest_research_manifest_prop_enum(c("storm", "costorm")),
     config_digest = tempest_research_manifest_prop_string(),
@@ -1035,7 +1138,7 @@ TempestResearchManifest <- S7::new_class(
 #' @param deliverables References to product deliverables.
 #' @param status Run status: `"running"`, `"succeeded"`, `"failed"`, or
 #'   `"cancelled"`.
-#' @param schema_version Manifest record schema. Only version 1 is supported.
+#' @param schema_version Manifest record schema. Only version 2 is supported.
 #' @return A `TempestResearchManifest` S7 object.
 #' @examples
 #' manifest <- tempest_research_manifest(
@@ -1059,7 +1162,7 @@ tempest_research_manifest <- function(
   traces = list(),
   deliverables = list(),
   status = "running",
-  schema_version = 1L
+  schema_version = 2L
 ) {
   if (missing(mode)) {
     mode <- "storm"
@@ -1125,17 +1228,10 @@ tempest_research_manifest_record <- function(manifest) {
       "{.arg manifest} must be created by {.fn tempest_research_manifest}."
     )
   }
-  list(
-    schema_version = manifest@schema_version,
-    research_run_id = manifest@research_run_id,
-    mode = manifest@mode,
-    config_digest = manifest@config_digest,
-    programs = manifest@programs,
-    knowledge_snapshot = manifest@knowledge_snapshot,
-    runtime = manifest@runtime,
-    traces = manifest@traces,
-    deliverables = manifest@deliverables,
-    status = manifest@status
+  fields <- tempest_research_manifest_record_fields()
+  stats::setNames(
+    lapply(fields, \(field) S7::prop(manifest, field)),
+    fields
   )
 }
 
@@ -1145,30 +1241,36 @@ tempest_research_manifest_from_record <- function(record) {
       "{.arg record} must be a research manifest record."
     )
   }
-  fields <- c(
-    "schema_version",
-    "research_run_id",
-    "mode",
-    "config_digest",
+  fields <- tempest_research_manifest_record_fields()
+  record_names <- names(record)
+  if (!identical(record_names, fields)) {
+    tempest_research_manifest_abort(
+      paste0(
+        "{.arg record} must contain exactly the schema version 2 manifest ",
+        "fields in writer order."
+      )
+    )
+  }
+  required_records <- c(
     "programs",
     "knowledge_snapshot",
     "runtime",
     "traces",
-    "deliverables",
-    "status"
+    "deliverables"
   )
-  record_names <- names(record)
-  if (
-    is.null(record_names) ||
-      anyNA(record_names) ||
-      anyDuplicated(record_names) ||
-      !setequal(record_names, fields)
-  ) {
+  null_records <- required_records[
+    vapply(required_records, \(field) is.null(record[[field]]), logical(1))
+  ]
+  if (length(null_records) > 0L) {
     tempest_research_manifest_abort(
-      "{.arg record} must contain exactly the schema version 1 manifest fields."
+      paste0(
+        "{.arg record} must retain non-null current-writer fields: ",
+        paste(null_records, collapse = ", "),
+        "."
+      )
     )
   }
-  record <- tempest_research_manifest_canonical_value(record, "record")
+  record$runtime <- tempest_research_manifest_runtime_record(record$runtime)
   tempest_research_manifest(
     research_run_id = record$research_run_id,
     mode = record$mode,

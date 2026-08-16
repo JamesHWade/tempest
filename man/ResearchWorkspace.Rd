@@ -21,6 +21,9 @@ records keyed by claim id.}
     \item{\code{evidence_spans}}{Read-only named-list snapshot of provisional
 evidence-span records.}
 
+    \item{\code{claim_supports}}{Read-only named-list snapshot of explicit
+claim-by-evidence-span support assessments.}
+
     \item{\code{disputes}}{Read-only named-list snapshot of provisional dispute
 records.}
 
@@ -33,7 +36,8 @@ knowledge snapshot on which this workspace is based.}
     \item{\code{graft_snapshot}}{Optional read-only, path-free
 \code{graft::GraftSnapshot} used to reopen the accepted knowledge boundary.}
 
-    \item{\code{citation_audit}}{Latest claim-centered citation audit, when available.}
+    \item{\code{citation_audit}}{Read-only pair-level projection of the authoritative
+claim-support assessments, when available.}
 
     \item{\code{max_sources}}{Maximum number of unique resources admitted.}
   }
@@ -53,6 +57,8 @@ knowledge snapshot on which this workspace is based.}
     \item \href{#method-ResearchWorkspace-add_proposed_claims}{\code{ResearchWorkspace$add_proposed_claims()}}
     \item \href{#method-ResearchWorkspace-add_extracted_claim_batch}{\code{ResearchWorkspace$add_extracted_claim_batch()}}
     \item \href{#method-ResearchWorkspace-verify_proposed_claims_batch}{\code{ResearchWorkspace$verify_proposed_claims_batch()}}
+    \item \href{#method-ResearchWorkspace-get_claim_support}{\code{ResearchWorkspace$get_claim_support()}}
+    \item \href{#method-ResearchWorkspace-list_claim_supports}{\code{ResearchWorkspace$list_claim_supports()}}
     \item \href{#method-ResearchWorkspace-get_proposed_claim}{\code{ResearchWorkspace$get_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-list_proposed_claims}{\code{ResearchWorkspace$list_proposed_claims()}}
     \item \href{#method-ResearchWorkspace-proposed_claims_for_resource}{\code{ResearchWorkspace$proposed_claims_for_resource()}}
@@ -61,12 +67,10 @@ knowledge snapshot on which this workspace is based.}
     \item \href{#method-ResearchWorkspace-list_evidence_spans}{\code{ResearchWorkspace$list_evidence_spans()}}
     \item \href{#method-ResearchWorkspace-link_evidence_to_proposed_claim}{\code{ResearchWorkspace$link_evidence_to_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-get_evidence_for_proposed_claim}{\code{ResearchWorkspace$get_evidence_for_proposed_claim()}}
-    \item \href{#method-ResearchWorkspace-verify_proposed_claim}{\code{ResearchWorkspace$verify_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-add_dispute}{\code{ResearchWorkspace$add_dispute()}}
     \item \href{#method-ResearchWorkspace-list_disputes}{\code{ResearchWorkspace$list_disputes()}}
     \item \href{#method-ResearchWorkspace-record_accepted_graft_reference}{\code{ResearchWorkspace$record_accepted_graft_reference()}}
     \item \href{#method-ResearchWorkspace-list_accepted_graft_references}{\code{ResearchWorkspace$list_accepted_graft_references()}}
-    \item \href{#method-ResearchWorkspace-set_citation_audit}{\code{ResearchWorkspace$set_citation_audit()}}
     \item \href{#method-ResearchWorkspace-validate_integrity}{\code{ResearchWorkspace$validate_integrity()}}
     \item \href{#method-ResearchWorkspace-to_tibbles}{\code{ResearchWorkspace$to_tibbles()}}
     \item \href{#method-ResearchWorkspace-clone}{\code{ResearchWorkspace$clone()}}
@@ -271,12 +275,15 @@ internal built-in web-source record.}
 \if{html}{\out{<a id="method-ResearchWorkspace-verify_proposed_claims_batch"></a>}}
 \if{latex}{\out{\hypertarget{method-ResearchWorkspace-verify_proposed_claims_batch}{}}}
 \subsection{\code{ResearchWorkspace$verify_proposed_claims_batch()}}{
-  Atomically verify proposed claims and set their audit.
+  Atomically replace exact claim-by-span support assessments.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ResearchWorkspace$verify_proposed_claims_batch(
-  verifications,
-  citation_audit,
+  claim_supports,
+  verified_at,
+  min_support_score = 0.7,
+  verifier = NA_character_,
+  .verification_owner_token = NULL,
   commit = NULL
 )}
     \if{html}{\out{</div>}}
@@ -284,10 +291,48 @@ internal built-in web-source record.}
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{verifications}}{A list of claim-verification update records.}
-      \item{\code{citation_audit}}{The complete claim-centered citation audit.}
+      \item{\code{claim_supports}}{An unnamed complete list of
+\code{tempest_claim_support} records.}
+      \item{\code{verified_at}}{Exact canonical verification-batch timestamp bound
+into every corresponding verification-stage record.}
+      \item{\code{min_support_score}}{Bound support threshold used to derive claim
+summaries.}
+      \item{\code{verifier}}{Bounded verifier-model identifier or \code{NA}.}
+      \item{\code{.verification_owner_token}}{Internal process-local session
+capability. Standalone workspaces require \code{NULL}.}
       \item{\code{commit}}{Optional zero-argument callback committed with the batch.}
     }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-get_claim_support"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-get_claim_support}{}}}
+\subsection{\code{ResearchWorkspace$get_claim_support()}}{
+  Get a claim-support assessment by id.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$get_claim_support(claim_support_id)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{claim_support_id}}{Exact derived support identifier.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-list_claim_supports"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_claim_supports}{}}}
+\subsection{\code{ResearchWorkspace$list_claim_supports()}}{
+  List claim-support assessments in deterministic id order.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$list_claim_supports()}
     \if{html}{\out{</div>}}
   }
 }
@@ -432,33 +477,6 @@ internal built-in web-source record.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-verify_proposed_claim"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-verify_proposed_claim}{}}}
-\subsection{\code{ResearchWorkspace$verify_proposed_claim()}}{
-  Update a claim's verification status.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$verify_proposed_claim(
-  claim_id,
-  status,
-  score = NA_real_,
-  verifier = NA_character_
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{claim_id}}{Claim id.}
-      \item{\code{status}}{One of the verification status labels.}
-      \item{\code{score}}{Support score in \verb{[0, 1]} or NA.}
-      \item{\code{verifier}}{Verifier model id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ResearchWorkspace-add_dispute"></a>}}
 \if{latex}{\out{\hypertarget{method-ResearchWorkspace-add_dispute}{}}}
 \subsection{\code{ResearchWorkspace$add_dispute()}}{
@@ -516,25 +534,6 @@ internal built-in web-source record.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ResearchWorkspace$list_accepted_graft_references()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-set_citation_audit"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-set_citation_audit}{}}}
-\subsection{\code{ResearchWorkspace$set_citation_audit()}}{
-  Record the latest claim-centered citation audit.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$set_citation_audit(citation_audit)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{citation_audit}}{A citation-audit data frame, or \code{NULL} to clear it.}
-    }
     \if{html}{\out{</div>}}
   }
 }

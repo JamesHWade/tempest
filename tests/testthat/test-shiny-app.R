@@ -444,6 +444,36 @@ test_that("chat module delegates native chat and session lifecycle work", {
   app <- source_shiny_modules()
   server_code <- paste(deparse(body(app$mod_chat_server)), collapse = "\n")
 
+  expect_named(
+    formals(tempest_shiny_server),
+    c(
+      "id",
+      "config",
+      "store",
+      "panels",
+      "experts",
+      "session_id",
+      "program_set",
+      "knowledge_view",
+      "run"
+    )
+  )
+  expect_named(
+    formals(app$mod_chat_server),
+    c(
+      "id",
+      "config",
+      "store",
+      "experts",
+      "runtime",
+      "connection_permissions",
+      "session_id",
+      "program_set",
+      "knowledge_view",
+      "allow_user_experts"
+    )
+  )
+
   expect_match(server_code, "tempest_shinychat_adapter", fixed = TRUE)
   expect_match(server_code, "tempest_session_process_turn_async", fixed = TRUE)
   expect_match(server_code, "tempest_session_warmup_async", fixed = TRUE)
@@ -451,6 +481,12 @@ test_that("chat module delegates native chat and session lifecycle work", {
   expect_match(
     server_code,
     "tempest_program_set_manifest_programs",
+    fixed = TRUE
+  )
+  expect_match(server_code, "tempest_workflow_knowledge_view", fixed = TRUE)
+  expect_match(
+    server_code,
+    "knowledge_view = knowledge_view_value",
     fixed = TRUE
   )
   expect_match(server_code, "tempest_generate_experts_async", fixed = TRUE)
@@ -1143,12 +1179,14 @@ test_that("chat command messages summarize active session state", {
   app <- source_shiny_modules()
   source_store <- fake_store_with_sources(1)
   source_id <- source_store$list_retrieved_sources()[[1]]$id
-  source_store$add_proposed_claim(tempest_claim(
+  claim <- tempest_claim(
     claim_text = "Command summaries include facts.",
     source_ids = source_id,
     verification_status = "supported",
     support_score = 0.82
-  ))
+  )
+  source_store$add_proposed_claim(claim)
+  fake_verify_claim_supports(source_store, list(claim))
   ses <- list(
     topic = "Command topic",
     report_md = "# Command report",
@@ -1465,7 +1503,7 @@ test_that("session archive manifests accept only the current envelope", {
   )
   current <- c(
     list(
-      schema_version = 7L,
+      schema_version = 8L,
       bundle_type = "costorm",
       bundle_status = "complete"
     ),
@@ -1475,7 +1513,7 @@ test_that("session archive manifests accept only the current envelope", {
 
   expect_error(
     app$session_archive_manifest_files(c(
-      list(schema_version = 6L, status = "complete"),
+      list(schema_version = 7L, status = "complete"),
       manifest_fields
     )),
     "unsupported schema or status",
@@ -1498,14 +1536,14 @@ test_that("session archive manifests accept only the current envelope", {
   )
   expect_error(
     app$session_archive_manifest_files(
-      utils::modifyList(current, list(schema_version = 7.9))
+      utils::modifyList(current, list(schema_version = 8.9))
     ),
     "unsupported schema or status",
     fixed = TRUE
   )
   expect_error(
     app$session_archive_manifest_files(c(
-      list(schema_version = 7L, status = "complete"),
+      list(schema_version = 8L, status = "complete"),
       manifest_fields
     )),
     "unsupported schema or status",
@@ -1514,7 +1552,7 @@ test_that("session archive manifests accept only the current envelope", {
   expect_error(
     app$session_archive_manifest_files(c(
       list(
-        schema_version = 6L,
+        schema_version = 7L,
         bundle_type = "costorm",
         bundle_status = "complete"
       ),

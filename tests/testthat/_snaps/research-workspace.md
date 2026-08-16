@@ -62,28 +62,3 @@
     Condition
       Error in `tempest_research_workspace_abort()`:
       ! base_snapshot_id is pinned when the workspace is created.
-
-# ResearchWorkspace validates its explicit citation audit
-
-    Code
-      workspace$set_citation_audit(list(claim_id = "claim-a"))
-    Condition
-      Error in `tempest_research_workspace_abort()`:
-      ! `citation_audit` must be a data frame or `NULL`.
-
----
-
-    Code
-      workspace$set_citation_audit(tibble::tibble(claim_id = "claim-a"))
-    Condition
-      Error in `tempest_research_workspace_abort()`:
-      ! `citation_audit` must contain exactly the claim-audit fields.
-      x Missing fields: claim_text, verification_status, support_score, and rationale.
-
----
-
-    Code
-      workspace$citation_audit <- NULL
-    Condition
-      Error in `tempest_research_workspace_abort()`:
-      ! citation_audit is read-only; use `set_citation_audit()`.

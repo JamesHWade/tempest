@@ -59,6 +59,40 @@ prop_chr_vec <- function() {
   S7::new_property(S7::class_character, default = character())
 }
 
+tempest_exact_integer_scalar_valid <- function(
+  value,
+  minimum = -.Machine$integer.max,
+  maximum = .Machine$integer.max
+) {
+  is.integer(value) &&
+    !is.object(value) &&
+    is.null(names(value)) &&
+    length(value) == 1L &&
+    !is.na(value) &&
+    value >= minimum &&
+    value <= maximum
+}
+
+tempest_exact_integer_scalar <- function(
+  value,
+  what,
+  class = "tempest_error",
+  minimum = -.Machine$integer.max,
+  maximum = .Machine$integer.max,
+  nullable = FALSE
+) {
+  if (is.null(value) && isTRUE(nullable)) {
+    return(NULL)
+  }
+  if (!tempest_exact_integer_scalar_valid(value, minimum, maximum)) {
+    tempest_abort(
+      "{what} must be one exact plain unnamed integer.",
+      class = class
+    )
+  }
+  value
+}
+
 tempest_ledger_identifier_valid <- function(value, optional = FALSE) {
   if (
     isTRUE(optional) &&
@@ -452,16 +486,91 @@ tempest_dispute <- S7::new_class(
 
 # --- claim converters ---------------------------------------------------------
 
+tempest_claim_record_fields <- function() {
+  c(
+    "claim_id",
+    "claim_text",
+    "claim_type",
+    "source_ids",
+    "evidence_span_ids",
+    "supporting_quotes",
+    "contradicting_source_ids",
+    "contradiction_note",
+    "confidence",
+    "support_score",
+    "contradiction_score",
+    "source_quality_score",
+    "retrieval_query",
+    "retrieval_step_id",
+    "perspective_id",
+    "expert_id",
+    "session_id",
+    "section_id",
+    "created_at",
+    "verified_at",
+    "verifier_model",
+    "verification_status"
+  )
+}
+
+tempest_evidence_span_record_fields <- function() {
+  c(
+    "evidence_span_id",
+    "source_id",
+    "chunk_id",
+    "quote",
+    "start_offset",
+    "end_offset",
+    "page",
+    "section_heading",
+    "relevance_score",
+    "extracted_by",
+    "created_at"
+  )
+}
+
+tempest_dispute_record_fields <- function() {
+  c(
+    "dispute_id",
+    "topic",
+    "claim_ids",
+    "axis_of_disagreement",
+    "likely_explanation",
+    "evidence_balance",
+    "unresolved_questions",
+    "created_at"
+  )
+}
+
+tempest_ledger_record_exact <- function(x, fields, what) {
+  if (
+    !is.list(x) ||
+      is.data.frame(x) ||
+      !identical(names(x), fields)
+  ) {
+    tempest_abort(
+      "{what} must use the exact current field order.",
+      class = c("tempest_ledger_codec_error", "tempest_error")
+    )
+  }
+  x
+}
+
 #' @keywords internal
 tempest_claim_to_list <- function(claim) {
   stopifnot(S7::S7_inherits(claim, tempest_claim))
   S7::validate(claim)
-  props <- S7::prop_names(claim)
+  props <- tempest_claim_record_fields()
   stats::setNames(lapply(props, function(p) S7::prop(claim, p)), props)
 }
 
 #' @keywords internal
 tempest_claim_from_list <- function(x) {
+  x <- tempest_ledger_record_exact(
+    x,
+    tempest_claim_record_fields(),
+    "Claim data"
+  )
   # JSON round-trip coercions:
   # - NA_character_  -> null in JSON -> NULL in R   => restore to NA_character_
   # - character()    -> []   in JSON -> list() in R => restore to character()
@@ -525,12 +634,17 @@ tempest_claim_from_list <- function(x) {
 tempest_evidence_span_to_list <- function(span) {
   stopifnot(S7::S7_inherits(span, tempest_evidence_span))
   S7::validate(span)
-  props <- S7::prop_names(span)
+  props <- tempest_evidence_span_record_fields()
   stats::setNames(lapply(props, function(p) S7::prop(span, p)), props)
 }
 
 #' @keywords internal
 tempest_evidence_span_from_list <- function(x) {
+  x <- tempest_ledger_record_exact(
+    x,
+    tempest_evidence_span_record_fields(),
+    "Evidence-span data"
+  )
   chr_scalar_fields <- c(
     "evidence_span_id",
     "source_id",
@@ -552,7 +666,11 @@ tempest_evidence_span_from_list <- function(x) {
     if (is.null(x[[f]])) {
       x[[f]] <- NA_integer_
     } else {
-      x[[f]] <- as.integer(x[[f]])
+      x[[f]] <- tempest_exact_integer_scalar(
+        x[[f]],
+        paste0("Evidence-span field ", f),
+        class = c("tempest_ledger_codec_error", "tempest_error")
+      )
     }
   }
 
@@ -573,12 +691,17 @@ tempest_evidence_span_from_list <- function(x) {
 tempest_dispute_to_list <- function(dispute) {
   stopifnot(S7::S7_inherits(dispute, tempest_dispute))
   S7::validate(dispute)
-  props <- S7::prop_names(dispute)
+  props <- tempest_dispute_record_fields()
   stats::setNames(lapply(props, function(p) S7::prop(dispute, p)), props)
 }
 
 #' @keywords internal
 tempest_dispute_from_list <- function(x) {
+  x <- tempest_ledger_record_exact(
+    x,
+    tempest_dispute_record_fields(),
+    "Dispute data"
+  )
   chr_scalar_fields <- c(
     "dispute_id",
     "topic",

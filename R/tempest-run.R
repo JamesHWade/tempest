@@ -2332,7 +2332,39 @@ tempest_run_evidence_restore <- function(snapshot) {
     "Run evidence schema version",
     c("tempest_run_restore_error", "tempest_run_error", "tempest_error")
   )
-  if (identical(schema_version, 4L)) {
+  if (identical(schema_version, 5L)) {
+    expected_fields <- tempest_research_workspace_snapshot_fields()
+    if (identical(sort(names(snapshot)), sort(expected_fields))) {
+      snapshot <- snapshot[expected_fields]
+    }
+    record_fields <- c(
+      "retrieved_resources",
+      "proposed_claims",
+      "evidence_spans",
+      "claim_supports",
+      "disputes"
+    )
+    for (field in record_fields) {
+      records <- snapshot[[field]]
+      if (
+        !is.list(records) ||
+          is.data.frame(records) ||
+          !is.null(names(records))
+      ) {
+        next
+      }
+      fields <- tempest_research_workspace_record_fields(field)
+      snapshot[[field]] <- lapply(records, function(record) {
+        if (
+          is.list(record) &&
+            !is.data.frame(record) &&
+            identical(sort(names(record)), sort(fields))
+        ) {
+          return(record[fields])
+        }
+        record
+      })
+    }
     return(tempest_research_workspace_restore(snapshot))
   }
   tempest_unsupported_format_abort(

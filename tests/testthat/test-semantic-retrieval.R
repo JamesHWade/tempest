@@ -1,22 +1,29 @@
 test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", {
-  store <- fake_store_with_sources(2)
-  source_ids <- vapply(store$list_retrieved_sources(), `[[`, character(1), "id")
+  store <- test_research_workspace()
   cfg <- tempest_config()
   retriever <- tempest_retriever(config = cfg, workspace = store)
 
-  # Add some claims
-  store$add_proposed_claim(tempest:::tempest_claim(
+  quantum <- test_add_verifiable_claim(
+    store,
+    key = "semantic-quantum",
     claim_text = "Quantum computing uses qubits",
-    source_ids = source_ids[[1]],
-    verification_status = "supported",
-    support_score = 0.9
-  ))
-  store$add_proposed_claim(tempest:::tempest_claim(
+    quote = "Quantum computing uses qubits"
+  )
+  classical <- test_add_verifiable_claim(
+    store,
+    key = "semantic-classical",
     claim_text = "Classical computers use bits",
-    source_ids = source_ids[[2]],
-    verification_status = "supported",
-    support_score = 0.9
-  ))
+    quote = "Classical computers use bits"
+  )
+  store$verify_proposed_claims_batch(
+    list(
+      test_claim_support(quantum$claim, quantum$span),
+      test_claim_support(classical$claim, classical$span)
+    ),
+    verified_at = "2026-08-16T12:03:00Z",
+    min_support_score = 0.7,
+    verifier = "judge.semantic-retrieval"
+  )
 
   # Without ragnar, should fall back to keyword
   result <- tempest:::tempest_semantic_filter_facts(

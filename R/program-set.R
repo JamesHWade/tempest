@@ -185,48 +185,18 @@ tempest_program_set_evaluators <- function(value) {
   )
 }
 
-tempest_program_set_governed_revisions <- function(value) {
-  stages <- tempest_program_set_stages()
-  if (is.null(value) || length(value) == 0L) {
-    return(stats::setNames(rep(list(NULL), length(stages)), stages))
-  }
-  if (
-    !is.list(value) &&
-      !(is.character(value) && !is.null(names(value)))
-  ) {
-    tempest_program_set_abort(
-      paste0(
-        "{.arg governed_procedure_revision_ids} must be a named list or ",
-        "character vector."
-      )
-    )
-  }
-  if (
-    is.null(names(value)) ||
-      anyNA(names(value)) ||
-      any(!nzchar(names(value))) ||
-      anyDuplicated(names(value)) ||
-      any(!names(value) %in% stages)
-  ) {
-    tempest_program_set_abort(
-      paste0(
-        "{.arg governed_procedure_revision_ids} must use unique known ",
-        "Tempest stage names."
-      )
-    )
-  }
-  result <- stats::setNames(rep(list(NULL), length(stages)), stages)
-  for (stage in names(value)) {
-    revision <- value[[stage]]
-    if (!is.null(revision)) {
-      revision <- tempest_program_set_string(
-        revision,
-        paste0("governed_procedure_revision_ids$", stage)
+tempest_program_set_governed_references <- function(value) {
+  tryCatch(
+    tempest_governed_procedure_references(value),
+    error = function(error) {
+      if (inherits(error, "tempest_program_set_error")) {
+        stop(error)
+      }
+      tempest_program_set_abort(
+        "{.arg governed_procedure_refs} is invalid."
       )
     }
-    result[[stage]] <- revision
-  }
-  result
+  )
 }
 
 tempest_program_set_validate_programs <- function(value, arg = "programs") {
@@ -278,7 +248,7 @@ tempest_program_set_entries_from_programs <- function(
   programs,
   contract_versions,
   evaluators,
-  governed_revisions,
+  governed_references,
   reference_type,
   registry = list()
 ) {
@@ -299,7 +269,7 @@ tempest_program_set_entries_from_programs <- function(
             stage,
             reference_type
           ),
-          governed_procedure_revision_id = governed_revisions[[stage]],
+          governed_procedure_ref = governed_references[[stage]],
           evaluator_id = evaluators[[stage]]$evaluator_id,
           evaluator_version = evaluators[[stage]]$evaluator_version
         )
@@ -353,8 +323,8 @@ tempest_program_set_validate_entries <- function(entries, require_all = TRUE) {
 tempest_program_set_s7_validator <- function(self) {
   result <- tryCatch(
     {
-      if (!identical(self@schema_version, 1L)) {
-        stop("schema_version must be the supported version 1")
+      if (!identical(self@schema_version, 2L)) {
+        stop("schema_version must be the supported version 2")
       }
       entries <- tempest_program_set_validate_entries(self@entries)
       programs <- tempest_program_set_validate_programs(self@programs)
@@ -401,7 +371,7 @@ tempest_program_set_s7_validator <- function(self) {
 TempestProgramSet <- S7::new_class(
   "TempestProgramSet",
   properties = list(
-    schema_version = S7::new_property(S7::class_integer, default = 1L),
+    schema_version = S7::new_property(S7::class_integer, default = 2L),
     bundle_root = S7::new_property(
       S7::class_character,
       default = character()
@@ -418,7 +388,7 @@ tempest_program_set_new <- function(entries, programs, bundle_root = NULL) {
   root <- if (is.null(bundle_root)) character() else bundle_root
   tryCatch(
     TempestProgramSet(
-      schema_version = 1L,
+      schema_version = 2L,
       bundle_root = root,
       entries = entries,
       programs = programs
@@ -474,8 +444,8 @@ tempest_program_set_metadata <- function(program_set) {
       ),
       stages
     ),
-    governed_revisions = stats::setNames(
-      lapply(entries, \(entry) entry$governed_procedure_revision_id),
+    governed_references = stats::setNames(
+      lapply(entries, \(entry) entry$governed_procedure_ref),
       stages
     )
   )
@@ -484,7 +454,7 @@ tempest_program_set_metadata <- function(program_set) {
 tempest_program_set_bundle_record <- function(entries) {
   list(
     format = "tempest-program-set",
-    schema_version = 1L,
+    schema_version = 2L,
     entries = entries
   )
 }
@@ -501,7 +471,7 @@ tempest_program_set_write_bundle <- function(
   path,
   contract_versions,
   evaluators,
-  governed_revisions,
+  governed_references,
   registry = list()
 ) {
   root <- tempest_program_set_root(path)
@@ -538,7 +508,7 @@ tempest_program_set_write_bundle <- function(
     programs,
     contract_versions,
     evaluators,
-    governed_revisions,
+    governed_references,
     reference_type = "file",
     registry = registry
   )
@@ -633,8 +603,8 @@ tempest_program_set_write_bundle <- function(
 #'   evaluators, or an exact named list whose records contain `evaluator_id`
 #'   and `evaluator_version`. These identify how stage output is judged and are
 #'   distinct from an optimization teleprompter or metric.
-#' @param governed_procedure_revision_ids Optional named list or character
-#'   vector of governed procedure revision identifiers by stage.
+#' @param governed_procedure_refs Optional named list of typed
+#'   [tempest_governed_procedure_ref()] values by stage.
 #' @param registry Named runtime-binding registry passed to dsprrr artifact
 #'   operations. It is never stored in ProgramSet metadata.
 #' @return A validated `TempestProgramSet` S7 object.
@@ -644,7 +614,7 @@ tempest_program_set <- function(
   path = NULL,
   contract_versions = 1L,
   evaluators = NULL,
-  governed_procedure_revision_ids = list(),
+  governed_procedure_refs = list(),
   registry = list()
 ) {
   builtin <- is.null(programs)
@@ -663,8 +633,8 @@ tempest_program_set <- function(
   programs <- tempest_program_set_validate_programs(programs)
   contract_versions <- tempest_program_set_contract_versions(contract_versions)
   evaluators <- tempest_program_set_evaluators(evaluators)
-  governed_revisions <- tempest_program_set_governed_revisions(
-    governed_procedure_revision_ids
+  governed_references <- tempest_program_set_governed_references(
+    governed_procedure_refs
   )
   if (!is.null(path)) {
     return(tempest_program_set_write_bundle(
@@ -672,7 +642,7 @@ tempest_program_set <- function(
       path,
       contract_versions,
       evaluators,
-      governed_revisions,
+      governed_references,
       registry = registry
     ))
   }
@@ -680,7 +650,7 @@ tempest_program_set <- function(
     programs,
     contract_versions,
     evaluators,
-    governed_revisions,
+    governed_references,
     reference_type = "builtin",
     registry = registry
   )
@@ -784,7 +754,7 @@ tempest_save_program_set <- function(program_set, path, registry = list()) {
     path,
     metadata$contract_versions,
     metadata$evaluators,
-    metadata$governed_revisions,
+    metadata$governed_references,
     registry = registry
   )
 }
@@ -892,26 +862,20 @@ tempest_program_set_read_manifest <- function(root) {
   manifest_names <- names(manifest)
   if (
     !is.list(manifest) ||
-      length(manifest) != length(fields) ||
-      is.null(manifest_names) ||
-      anyNA(manifest_names) ||
-      any(!nzchar(manifest_names)) ||
-      anyDuplicated(manifest_names) ||
-      !setequal(manifest_names, fields)
+      !identical(manifest_names, fields)
   ) {
     tempest_program_set_abort(
       "The ProgramSet manifest must contain exactly format, schema_version, and entries.",
       class = "tempest_program_set_persistence_error"
     )
   }
-  manifest <- manifest[fields]
   if (!identical(manifest$format, "tempest-program-set")) {
     tempest_program_set_abort(
       "The ProgramSet manifest format is unsupported.",
       class = "tempest_program_set_persistence_error"
     )
   }
-  if (!identical(manifest$schema_version, 1L)) {
+  if (!identical(manifest$schema_version, 2L)) {
     tempest_program_set_abort(
       "The ProgramSet manifest schema version is unsupported.",
       class = "tempest_program_set_persistence_error"
@@ -1156,7 +1120,7 @@ tempest_compile_programs <- function(
     path,
     metadata$contract_versions,
     metadata$evaluators,
-    metadata$governed_revisions,
+    metadata$governed_references,
     registry = registry
   )
 }

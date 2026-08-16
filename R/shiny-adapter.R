@@ -186,6 +186,10 @@ tempest_shiny_ui <- function(
 #' @param program_set Optional [TempestProgramSet] used for new and restored
 #'   Co-STORM sessions. May be a value, function, or reactive. `NULL` uses the
 #'   builtin set.
+#' @param knowledge_view Optional immutable Graft view used with
+#'   `program_set`. May be a value, function, or reactive. A governed ProgramSet
+#'   requires its exact pinned view before any provider call; the view remains
+#'   process-local and is never serialized.
 #' @param run Optional `TempestRun`, function, or reactive. This lets a host
 #'   expose a custom headless workflow through the same generic adapter
 #'   reactives as built-in workflows.
@@ -208,6 +212,7 @@ tempest_shiny_server <- function(
   experts = NULL,
   session_id = NULL,
   program_set = NULL,
+  knowledge_view = NULL,
   run = NULL
 ) {
   runtime <- tempest_runtime()
@@ -234,7 +239,8 @@ tempest_shiny_server <- function(
         runtime = runtime,
         connection_permissions = connection_permissions,
         session_id = session_id,
-        program_set = program_set
+        program_set = program_set,
+        knowledge_view = knowledge_view
       )
     }
     if ("storm" %in% panels) {

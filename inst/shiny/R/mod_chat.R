@@ -470,6 +470,7 @@ mod_chat_server <- function(
   connection_permissions = list(),
   session_id = NULL,
   program_set = NULL,
+  knowledge_view = NULL,
   allow_user_experts = FALSE
 ) {
   shiny::moduleServer(id, function(input, output, session) {
@@ -489,6 +490,21 @@ mod_chat_server <- function(
         tempest::tempest_program_set()
       tempest:::tempest_program_set_manifest_programs(value)
       value
+    }
+
+    resolve_program_binding <- function() {
+      program_set_value <- resolve_program_set()
+      knowledge_view_value <- shiny::isolate(
+        reactive_or_value(knowledge_view)
+      )
+      knowledge <- tempest:::tempest_workflow_knowledge_view(
+        program_set_value,
+        knowledge_view_value
+      )
+      list(
+        program_set = program_set_value,
+        knowledge_view = knowledge$view
+      )
     }
 
     update_expert_setup_button <- function() {
@@ -737,11 +753,13 @@ mod_chat_server <- function(
       warmup_run_id <<- warmup_run_id + 1L
       active_session_id <<- active_session_id + 1L
       work_queue$cancel()
+      binding <- resolve_program_binding()
       ses <- store$restore(
         path,
         config = config(),
         progress = record_progress,
-        program_set = resolve_program_set()
+        program_set = binding$program_set,
+        knowledge_view = binding$knowledge_view
       )
       shiny::updateTextInput(session, "topic", value = ses$topic %||% "")
       restored_count <- max(1L, min(5L, length(ses$experts %||% list())))
@@ -855,6 +873,7 @@ mod_chat_server <- function(
       session_connection_permissions,
       session_id_value,
       program_set_value,
+      knowledge_view_value,
       stage_records = list(),
       on_error = NULL
     ) {
@@ -869,7 +888,8 @@ mod_chat_server <- function(
             connection_permissions = session_connection_permissions,
             session_id = session_id_value,
             progress = record_progress,
-            program_set = program_set_value
+            program_set = program_set_value,
+            knowledge_view = knowledge_view_value
           )
           tempest:::tempest_session_set_stage_records(value, stage_records)
           value
@@ -1078,7 +1098,9 @@ mod_chat_server <- function(
       session_id_value <- shiny::isolate(reactive_or_value(session_id))
       session_id_value <- session_id_value %||%
         tempest:::tempest_uuid("session")
-      program_set_value <- resolve_program_set()
+      program_binding <- resolve_program_binding()
+      program_set_value <- program_binding$program_set
+      knowledge_view_value <- program_binding$knowledge_view
       n_experts <- if (isTRUE(allow_user_experts)) {
         shiny::isolate(generated_expert_count())
       } else {
@@ -1096,6 +1118,7 @@ mod_chat_server <- function(
           "personas",
           session_id_value
         )
+        personas_program$knowledge_view <- knowledge_view_value
         tempest:::tempest_generate_experts_async(
           topic,
           n = n_experts,
@@ -1214,6 +1237,7 @@ mod_chat_server <- function(
                       session_connection_permissions = session_connection_permissions,
                       session_id_value = session_id_value,
                       program_set_value = program_set_value,
+                      knowledge_view_value = knowledge_view_value,
                       stage_records = if (is.null(persona_record)) {
                         list()
                       } else {
@@ -2167,7 +2191,7 @@ session_archive_manifest_files <- function(manifest) {
       schema_version <- as.integer(value)
     }
   }
-  valid_header <- identical(schema_version, 7L) &&
+  valid_header <- identical(schema_version, 8L) &&
     identical(manifest$bundle_type %||% "", "costorm") &&
     identical(manifest$bundle_status %||% "", "complete")
   if (

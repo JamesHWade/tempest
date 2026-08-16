@@ -9,7 +9,8 @@ tempest_session_resume(
   config = tempest_config(),
   progress = NULL,
   partial_recovery = FALSE,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 )
 }
 \arguments{
@@ -28,6 +29,10 @@ and Graft snapshot state, must pass integrity checks.}
 
 \item{program_set}{A \link{TempestProgramSet} carrying the same program
 identities recorded in the bundle. If \code{NULL}, the builtin set is used.}
+
+\item{knowledge_view}{Optional transient immutable Graft view required by
+future execution when \code{program_set} contains governed procedures. It is
+never reconstructed from or written to persistence.}
 }
 \value{
 A restored \link{TempestSession}.

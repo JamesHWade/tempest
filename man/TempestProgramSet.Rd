@@ -5,7 +5,7 @@
 \title{TempestProgramSet (S7)}
 \usage{
 TempestProgramSet(
-  schema_version = 1L,
+  schema_version = 2L,
   bundle_root = character(0),
   entries = list(),
   programs = list()

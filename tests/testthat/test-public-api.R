@@ -5,12 +5,21 @@ test_that("the 0.2 public export surface is exact", {
   )
   additions <- c(
     "ResearchWorkspace",
+    "tempest_claim_support",
+    "tempest_claim_supports",
     "tempest_compile_programs",
+    "tempest_governed_procedure_ref",
+    "tempest_graft_plan",
+    "tempest_graft_schema",
     "tempest_load_program_set",
     "tempest_program_set",
+    "tempest_promotion_bundle",
+    "tempest_promotion_receipt",
+    "tempest_read_promotion_bundle",
     "tempest_research_manifest",
     "tempest_research_workspace",
-    "tempest_save_program_set"
+    "tempest_save_program_set",
+    "tempest_save_promotion_bundle"
   )
   removals <- c(
     "SourceStore",
@@ -27,7 +36,7 @@ test_that("the 0.2 public export surface is exact", {
   actual <- sort(getNamespaceExports("tempest"), method = "radix")
 
   expect_length(baseline, 96L)
-  expect_length(actual, 94L)
+  expect_length(actual, 103L)
   expect_identical(actual, expected)
   expect_identical(setdiff(actual, baseline), additions)
   expect_identical(intersect(actual, removals), character())

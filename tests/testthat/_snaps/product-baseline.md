@@ -13,7 +13,7 @@
             "claim_text": "STORM progress emits stage events.",
             "claim_type": "finding",
             "source_ids": "S3c9e65929df6",
-            "evidence_span_ids": [],
+            "evidence_span_ids": "E_0000000000000001",
             "confidence": "high",
             "verification_status": "supported",
             "support_score": 0.9
@@ -34,6 +34,7 @@
         "terminal_status": "succeeded",
         "event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:started", "step:persistence:perspectives_artifacts:started", "step:persistence:perspectives_artifacts:succeeded", "stage:perspectives:NA:succeeded", "stage:research:NA:started", "step:persistence:research_artifacts:started", "step:persistence:research_artifacts:succeeded", "stage:research:NA:succeeded", "stage:outline:NA:started", "stage:verification:NA:started", "stage:verification:NA:succeeded", "step:persistence:outline_artifacts:started", "step:persistence:outline_artifacts:succeeded", "stage:outline:NA:succeeded", "stage:write:NA:started", "step:persistence:write_artifacts:started", "step:persistence:write_artifacts:succeeded", "stage:write:NA:succeeded", "stage:polish:NA:started", "step:persistence:polish_artifacts:started", "step:persistence:polish_artifacts:succeeded", "stage:polish:NA:succeeded", "artifact:polish:report_md:available", "workflow:NA:NA:succeeded"]
       }
+
 # scripted STORM resumes its immutable full-run request
 
     Code
@@ -55,7 +56,7 @@
             "claim_text": "STORM progress emits stage events.",
             "claim_type": "finding",
             "source_ids": "S3c9e65929df6",
-            "evidence_span_ids": [],
+            "evidence_span_ids": "E_0000000000000001",
             "confidence": "high",
             "verification_status": "supported",
             "support_score": 0.9
@@ -90,20 +91,20 @@
             "claim_text": "Warmup research is preserved.",
             "claim_type": "finding",
             "source_ids": "S43d2118e4326",
-            "evidence_span_ids": [],
+            "evidence_span_ids": "E_0000000000000001",
             "confidence": "high",
             "verification_status": "unverified",
-            "support_score": 0.9
+            "support_score": null
           },
           {
             "claim_id": "C_0000000000000002",
             "claim_text": "Moderator research is preserved.",
             "claim_type": "finding",
             "source_ids": "S43d2118e4326",
-            "evidence_span_ids": [],
+            "evidence_span_ids": "E_0000000000000002",
             "confidence": "high",
             "verification_status": "unverified",
-            "support_score": 0.9
+            "support_score": null
           }
         ],
         "transcript": [
@@ -168,20 +169,20 @@
               "claim_text": "Warmup research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000001",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             },
             {
               "claim_id": "C_0000000000000002",
               "claim_text": "Moderator research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000002",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             }
           ],
           "transcript": [
@@ -232,30 +233,30 @@
               "claim_text": "Warmup research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000001",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             },
             {
               "claim_id": "C_0000000000000002",
               "claim_text": "Moderator research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000002",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             },
             {
               "claim_id": "C_0000000000000003",
               "claim_text": "Continued moderator research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000003",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             }
           ],
           "transcript": [

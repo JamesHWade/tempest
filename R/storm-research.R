@@ -25,6 +25,7 @@ tempest_generate_next_question <- function(
   answered_md,
   facts_md,
   module,
+  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   stage_result <- tempest_execute_stage(
@@ -39,6 +40,11 @@ tempest_generate_next_question <- function(
       ),
       answered = answered_md,
       facts = facts_md
+    ),
+    context = tempest_stage_context_knowledge_view(
+      list(),
+      module,
+      knowledge_view
     ),
     record_stage = record_stage
   )
@@ -79,13 +85,18 @@ tempest_decompose_query <- function(
   topic,
   module,
   max_queries = 3,
+  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   stage_result <- tempest_execute_stage(
     module,
     chat,
     inputs = list(question = question, topic = topic),
-    context = list(max_queries = as.integer(max_queries)),
+    context = tempest_stage_context_knowledge_view(
+      list(max_queries = as.integer(max_queries)),
+      module,
+      knowledge_view
+    ),
     record_stage = record_stage
   )
   stage_result$output
@@ -386,6 +397,7 @@ tempest_extract_facts_from_answer <- function(
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
   section_id = NA_character_,
+  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   record_stage_callback <- record_stage %||% tempest_stage_record_discard
@@ -411,15 +423,19 @@ tempest_extract_facts_from_answer <- function(
     module,
     chat,
     inputs = extraction_inputs,
-    context = list(
-      workspace = store,
-      known_source_ids = vapply(
-        store$list_retrieved_sources(),
-        `[[`,
-        character(1),
-        "id"
+    context = tempest_stage_context_knowledge_view(
+      list(
+        workspace = store,
+        known_source_ids = vapply(
+          store$list_retrieved_sources(),
+          `[[`,
+          character(1),
+          "id"
+        ),
+        claim_context = binding$claim_context
       ),
-      claim_context = binding$claim_context
+      module,
+      knowledge_view
     ),
     output_reference = function(output, running_record, context) {
       tempest_stage_output_reference(
@@ -458,6 +474,7 @@ tempest_extract_facts_from_answer_async <- function(
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
   section_id = NA_character_,
+  knowledge_view = module$knowledge_view %||% NULL,
   commit_if = function() TRUE,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
@@ -478,15 +495,19 @@ tempest_extract_facts_from_answer_async <- function(
     module,
     chat,
     inputs = inputs,
-    context = list(
-      workspace = store,
-      known_source_ids = vapply(
-        store$list_retrieved_sources(),
-        `[[`,
-        character(1),
-        "id"
+    context = tempest_stage_context_knowledge_view(
+      list(
+        workspace = store,
+        known_source_ids = vapply(
+          store$list_retrieved_sources(),
+          `[[`,
+          character(1),
+          "id"
+        ),
+        claim_context = binding$claim_context
       ),
-      claim_context = binding$claim_context
+      module,
+      knowledge_view
     ),
     output_reference = function(output, running_record, context) {
       tempest_stage_output_reference(
@@ -565,7 +586,17 @@ tempest_research_one_perspective <- function(
   expert_id <- expert_record$expert_id
   perspective_id <- as.character(p$id %||% i)
 
-  local_workspace <- tempest_research_workspace()
+  knowledge_view <- programs$extract_claims$knowledge_view %||% NULL
+  knowledge_snapshot <- if (is.null(knowledge_view)) {
+    NULL
+  } else {
+    tempest_research_workspace_graft_snapshot(
+      tempest_governed_procedure_view_snapshot(knowledge_view)
+    )
+  }
+  local_workspace <- tempest_research_workspace(
+    graft_snapshot = knowledge_snapshot
+  )
   local_retriever <- tempest_retriever(
     config = config,
     workspace = local_workspace
@@ -747,7 +778,10 @@ tempest_research_parallel <- function(
   }
 
   collected <- NULL
-  if (tempest_has("mirai")) {
+  if (
+    tempest_has("mirai") &&
+      !tempest_programs_have_knowledge_view(programs)
+  ) {
     ready <- tempest_setup_daemons(tempest_parallel_workers(n))
     if (isTRUE(ready)) {
       if (isTRUE(attr(ready, "started"))) {

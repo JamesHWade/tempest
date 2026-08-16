@@ -18,6 +18,7 @@ test_that("tempest_research_workspace creates explicit provisional compartments"
     names(workspace),
     c(
       "accepted_graft_references",
+      "claim_supports",
       "citation_audit",
       "disputes",
       "evidence_spans",
@@ -460,133 +461,25 @@ test_that("linking evidence atomically maintains ordered quote lineage", {
   expect_identical(workspace$get_proposed_claim(claim_id), linked)
 })
 
-test_that("ResearchWorkspace validates its explicit citation audit", {
-  workspace <- tempest_research_workspace()
-  workspace$add_proposed_claim(tempest_claim(
-    claim_id = "claim-a",
-    claim_text = "A claim",
-    verification_status = "supported",
-    support_score = 1
-  ))
+test_that("ResearchWorkspace exposes only derived read-only support views", {
+  verified <- test_verified_workspace()
+  workspace <- verified$workspace
+  audit <- workspace$citation_audit
+  supports <- workspace$claim_supports
 
-  expect_snapshot(
-    error = TRUE,
-    workspace$set_citation_audit(list(claim_id = "claim-a"))
-  )
-  expect_snapshot(
-    error = TRUE,
-    workspace$set_citation_audit(tibble::tibble(claim_id = "claim-a"))
-  )
-
-  audit <- tibble::tibble(
-    claim_id = "claim-a",
-    claim_text = "A claim",
-    verification_status = "supported",
-    support_score = 1,
-    rationale = "Direct support"
-  )
-  workspace$set_citation_audit(audit)
-  expect_snapshot(error = TRUE, workspace$citation_audit <- NULL)
-
-  changed_input <- audit
-  changed_input$support_score <- 0
-  returned <- workspace$citation_audit
-  returned$support_score <- 0.5
-  expect_identical(workspace$citation_audit$support_score, 1)
-
+  expect_identical("set_citation_audit" %in% names(workspace), FALSE)
+  expect_identical("verify_proposed_claim" %in% names(workspace), FALSE)
   expect_error(
-    workspace$set_citation_audit(dplyr::mutate(
-      audit,
-      authorization = "secret"
-    )),
-    class = "tempest_research_workspace_error",
-    regexp = "Unexpected field"
+    workspace$citation_audit <- NULL,
+    class = "tempest_research_workspace_error"
   )
   expect_error(
-    workspace$set_citation_audit(dplyr::mutate(
-      audit,
-      verification_status = "definitely"
-    )),
-    class = "tempest_research_workspace_error",
-    regexp = "verification statuses"
+    workspace$claim_supports <- list(),
+    class = "tempest_research_workspace_error"
   )
-  expect_error(
-    workspace$set_citation_audit(dplyr::mutate(
-      audit,
-      support_score = 1.1
-    )),
-    class = "tempest_research_workspace_error",
-    regexp = "values in \\[0, 1\\]"
-  )
-  expect_error(
-    workspace$set_citation_audit(dplyr::mutate(
-      audit,
-      claim_text = "Wrong claim text"
-    )),
-    class = "tempest_research_workspace_error",
-    regexp = "text does not match"
-  )
-  expect_error(
-    workspace$set_citation_audit(dplyr::mutate(
-      audit,
-      rationale = list("not a scalar column")
-    )),
-    class = "tempest_research_workspace_error",
-    regexp = "rationale.*character"
-  )
-  expect_error(
-    workspace$set_citation_audit(dplyr::mutate(
-      audit,
-      verification_status = "unsupported"
-    )),
-    class = "tempest_research_workspace_error",
-    regexp = "status does not match"
-  )
-  expect_error(
-    workspace$set_citation_audit(dplyr::mutate(
-      audit,
-      support_score = 0.9
-    )),
-    class = "tempest_research_workspace_error",
-    regexp = "support score does not match"
-  )
-})
 
-test_that("relevant workspace mutations invalidate citation audits", {
-  workspace <- tempest_research_workspace()
-  source <- fake_source("https://example.org/audit")
-  workspace$upsert_retrieved_resource(source)
-  claim <- tempest_claim(
-    claim_id = "claim-audit",
-    claim_text = "Audited claim",
-    source_ids = source$id,
-    verification_status = "supported",
-    support_score = 1
-  )
-  workspace$add_proposed_claim(claim)
-  audit <- tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    rationale = "Direct support"
-  )
-  workspace$set_citation_audit(audit)
-
-  changed_source <- source
-  changed_source$title <- "Updated source title"
-  workspace$upsert_retrieved_resource(changed_source)
-  expect_null(workspace$citation_audit)
-
-  workspace$set_citation_audit(audit)
-  workspace$add_evidence_span(tempest_evidence_span(
-    evidence_span_id = "span-audit",
-    source_id = source$id,
-    quote = "chemical energy"
-  ))
-  expect_null(workspace$citation_audit)
-
-  workspace$set_citation_audit(audit)
-  workspace$verify_proposed_claim(claim@claim_id, "supported", score = 1)
-  expect_null(workspace$citation_audit)
+  audit$support_score[[1]] <- 0
+  supports[[1]]@support_score <- 0
+  expect_identical(workspace$citation_audit$support_score, 0.9)
+  expect_identical(workspace$list_claim_supports()[[1]]@support_score, 0.9)
 })

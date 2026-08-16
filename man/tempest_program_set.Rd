@@ -9,7 +9,7 @@ tempest_program_set(
   path = NULL,
   contract_versions = 1L,
   evaluators = NULL,
-  governed_procedure_revision_ids = list(),
+  governed_procedure_refs = list(),
   registry = list()
 )
 }
@@ -28,8 +28,8 @@ evaluators, or an exact named list whose records contain \code{evaluator_id}
 and \code{evaluator_version}. These identify how stage output is judged and are
 distinct from an optimization teleprompter or metric.}
 
-\item{governed_procedure_revision_ids}{Optional named list or character
-vector of governed procedure revision identifiers by stage.}
+\item{governed_procedure_refs}{Optional named list of typed
+\code{\link[=tempest_governed_procedure_ref]{tempest_governed_procedure_ref()}} values by stage.}
 
 \item{registry}{Named runtime-binding registry passed to dsprrr artifact
 operations. It is never stored in ProgramSet metadata.}

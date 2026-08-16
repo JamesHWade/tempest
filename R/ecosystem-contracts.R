@@ -22,9 +22,10 @@ tempest_dsprrr_execution <- function(
   program_artifact_id,
   trace_context,
   stage,
+  contract_version = 1L,
   evaluator_id,
   evaluator_version,
-  governed_procedure_revision_id = NULL
+  governed_procedure_ref = NULL
 ) {
   stage <- tempest_program_set_string(stage, "stage")
   if (!stage %in% tempest_program_set_stages()) {
@@ -33,6 +34,10 @@ tempest_dsprrr_execution <- function(
     )
   }
   expected_evaluator <- tempest_program_set_default_evaluators()[[stage]]
+  contract_version <- tempest_governed_procedure_contract_version(
+    contract_version,
+    "contract_version"
+  )
   evaluator_id <- tempest_program_set_string(evaluator_id, "evaluator_id")
   evaluator_version <- tempest_program_set_string(
     evaluator_version,
@@ -46,15 +51,26 @@ tempest_dsprrr_execution <- function(
       "The stage execution references an unknown builtin evaluator contract."
     )
   }
-  governed_procedure_revision_id <- if (
-    is.null(governed_procedure_revision_id)
-  ) {
+  governed_procedure_ref <- if (is.null(governed_procedure_ref)) {
     NULL
   } else {
-    tempest_program_set_string(
-      governed_procedure_revision_id,
-      "governed_procedure_revision_id"
+    reference <- tempest_governed_procedure_record(
+      governed_procedure_ref,
+      "governed_procedure_ref"
     )
+    expected_binding <- list(
+      stage = stage,
+      program_artifact_id = program_artifact_id,
+      contract_version = contract_version,
+      evaluator_id = evaluator_id,
+      evaluator_version = evaluator_version
+    )
+    if (!identical(reference[names(expected_binding)], expected_binding)) {
+      tempest_ecosystem_contract_abort(
+        "The governed procedure does not match the dsprrr execution contract."
+      )
+    }
+    reference
   }
   structure(
     list(
@@ -68,9 +84,10 @@ tempest_dsprrr_execution <- function(
         "trace_context"
       ),
       stage = stage,
+      contract_version = contract_version,
       evaluator_id = evaluator_id,
       evaluator_version = evaluator_version,
-      governed_procedure_revision_id = governed_procedure_revision_id
+      governed_procedure_ref = governed_procedure_ref
     ),
     class = c("tempest_dsprrr_execution", "list")
   )

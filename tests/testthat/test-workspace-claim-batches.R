@@ -83,22 +83,11 @@ test_that("ledger timestamps are canonical and revalidated on serialization", {
 })
 
 test_that("claim insertion validates the complete batch before mutation", {
-  workspace <- fake_store_with_sources(1)
-  source_id <- workspace$list_retrieved_sources()[[1]]$id
-  existing <- tempest_claim(
-    claim_id = "claim-existing",
-    claim_text = "Existing claim",
-    source_ids = source_id
-  )
-  workspace$add_proposed_claim(existing)
-  prior_audit <- tibble::tibble(
-    claim_id = existing@claim_id,
-    claim_text = existing@claim_text,
-    verification_status = existing@verification_status,
-    support_score = existing@support_score,
-    rationale = NA_character_
-  )
-  workspace$set_citation_audit(prior_audit)
+  verified <- test_verified_workspace()
+  workspace <- verified$workspace
+  source_id <- verified$fixtures[[1]]$source@resource_id
+  existing <- verified$fixtures[[1]]$claim
+  prior_supports <- tempest_claim_supports(workspace)
   valid <- tempest_claim(
     claim_id = "claim-valid",
     claim_text = "Valid claim",
@@ -125,9 +114,9 @@ test_that("claim insertion validates the complete batch before mutation", {
       \(claim) claim@claim_id,
       character(1)
     ),
-    "claim-existing"
+    existing@claim_id
   )
-  expect_identical(workspace$citation_audit, prior_audit)
+  expect_identical(tempest_claim_supports(workspace), prior_supports)
 })
 
 test_that("claim insertion rolls back when its commit callback fails", {
@@ -153,90 +142,57 @@ test_that("claim insertion rolls back when its commit callback fails", {
 })
 
 test_that("claim verification validates and commits one complete batch", {
-  workspace <- fake_store_with_sources(1)
-  source_id <- workspace$list_retrieved_sources()[[1]]$id
-  claims <- list(
-    tempest_claim(
-      claim_id = "claim-a",
-      claim_text = "Claim A",
-      source_ids = source_id
-    ),
-    tempest_claim(
-      claim_id = "claim-b",
-      claim_text = "Claim B",
-      source_ids = source_id
-    )
+  workspace <- tempest_research_workspace()
+  fixtures <- list(
+    test_add_verifiable_claim(workspace, "a"),
+    test_add_verifiable_claim(workspace, "b")
   )
-  workspace$add_proposed_claims(claims)
   prior_claims <- workspace$list_proposed_claims()
-  updates <- list(
-    list(
-      claim_id = "claim-a",
-      status = "supported",
-      score = 0.9,
-      verifier = "judge"
-    ),
-    list(
-      claim_id = "claim-b",
-      status = "invalid",
+  supports <- list(
+    test_claim_support(fixtures[[1]]$claim, fixtures[[1]]$span),
+    test_claim_support(
+      fixtures[[2]]$claim,
+      fixtures[[2]]$span,
+      status = "unsupported",
       score = 0.2,
-      verifier = "judge"
+      rationale = "The span does not support the claim."
     )
-  )
-  audit <- tibble::tibble(
-    claim_id = c("claim-a", "claim-b"),
-    claim_text = c("Claim A", "Claim B"),
-    verification_status = c("supported", "invalid"),
-    support_score = c(0.9, 0.2),
-    rationale = c("supported", "invalid")
   )
 
   expect_error(
-    workspace$verify_proposed_claims_batch(updates, audit),
+    workspace$verify_proposed_claims_batch(
+      supports[1],
+      verified_at = "2026-08-16T12:03:00Z"
+    ),
     class = "tempest_research_workspace_integrity_error"
   )
   expect_identical(workspace$list_proposed_claims(), prior_claims)
   expect_null(workspace$citation_audit)
 
-  updates[[2]]$status <- "unsupported"
-  audit$verification_status[[2]] <- "unsupported"
-  workspace$verify_proposed_claims_batch(updates, audit)
+  workspace$verify_proposed_claims_batch(
+    supports,
+    verified_at = "2026-08-16T12:03:00Z",
+    verifier = "judge"
+  )
 
   verified <- workspace$list_proposed_claims()
   expect_equal(
     vapply(verified, \(claim) claim@verification_status, character(1)),
     c("supported", "unsupported")
   )
-  expect_identical(workspace$citation_audit, audit)
+  expect_identical(workspace$citation_audit, tempest_claim_supports(workspace))
 })
 
 test_that("claim verification rolls back when its commit callback fails", {
-  workspace <- fake_store_with_sources(1)
-  source_id <- workspace$list_retrieved_sources()[[1]]$id
-  claim <- tempest_claim(
-    claim_id = "claim-a",
-    claim_text = "Claim A",
-    source_ids = source_id
-  )
-  workspace$add_proposed_claim(claim)
-  update <- list(
-    claim_id = claim@claim_id,
-    status = "supported",
-    score = 0.9,
-    verifier = "judge"
-  )
-  audit <- tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = "supported",
-    support_score = 0.9,
-    rationale = "supported"
-  )
+  workspace <- tempest_research_workspace()
+  fixture <- test_add_verifiable_claim(workspace, "rollback")
+  support <- test_claim_support(fixture$claim, fixture$span)
 
   expect_error(
     workspace$verify_proposed_claims_batch(
-      list(update),
-      audit,
+      list(support),
+      verified_at = "2026-08-16T12:03:00Z",
+      verifier = "judge",
       commit = function() {
         rlang::abort("commit failed", class = "test_commit_error")
       }

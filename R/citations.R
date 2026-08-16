@@ -410,9 +410,22 @@ tempest_source_status <- function(
   statuses <- vapply(
     claims,
     function(c) {
+      supports <- tempest_stage_claim_support_records(
+        store,
+        c,
+        required = FALSE
+      )
+      summary <- if (is.null(supports)) {
+        list(
+          status = c@verification_status,
+          score = c@support_score
+        )
+      } else {
+        tempest_claim_support_aggregate(supports)
+      }
       tempest_apply_min_support_score(
-        c@verification_status,
-        c@support_score,
+        summary$status,
+        summary$score,
         min_support_score = min_support_score
       )
     },
@@ -451,10 +464,9 @@ tempest_strict_publication_claims <- function(
     }
     return(invisible(character()))
   }
-  audit <- store$citation_audit
-  if (is.null(audit)) {
+  if (length(store$list_claim_supports()) == 0L) {
     tempest_deliverable_abort(
-      "Strict publication requires a completed citation audit."
+      "Strict publication requires completed claim-by-span verification."
     )
   }
 
@@ -530,27 +542,51 @@ tempest_strict_publication_claims <- function(
         )
       )
     }
-    audit_index <- match(claim_id, audit$claim_id)
-    if (is.na(audit_index)) {
-      tempest_deliverable_abort(
-        "Strict publication audit is missing claim {.val {claim_id}}."
-      )
-    }
-    audit_score <- audit$support_score[[audit_index]]
+    supports <- tryCatch(
+      tempest_stage_claim_support_records(store, claim, required = TRUE),
+      tempest_stage_error = function(error) {
+        tempest_deliverable_abort(
+          paste0(
+            "Strict publication claim {.val {claim_id}} requires its exact ",
+            "complete claim-by-span support set."
+          ),
+          parent = error
+        )
+      }
+    )
+    summary <- tempest_claim_support_aggregate(supports)
     score_matches <- isTRUE(all.equal(
-      audit_score,
+      summary$score,
       claim@support_score,
       check.attributes = FALSE
     ))
     if (
-      !identical(
-        audit$verification_status[[audit_index]],
-        claim@verification_status
-      ) ||
+      !identical(summary$status, claim@verification_status) ||
         !score_matches
     ) {
       tempest_deliverable_abort(
-        "Strict publication audit disagrees with claim {.val {claim_id}}."
+        paste0(
+          "Strict publication claim {.val {claim_id}} disagrees with its ",
+          "exact claim-by-span support set."
+        )
+      )
+    }
+    threshold_status <- tempest_apply_min_support_score(
+      summary$status,
+      summary$score,
+      min_support_score = min_support_score
+    )
+    claim_threshold_status <- tempest_apply_min_support_score(
+      claim@verification_status,
+      claim@support_score,
+      min_support_score = min_support_score
+    )
+    if (!identical(threshold_status, claim_threshold_status)) {
+      tempest_deliverable_abort(
+        paste0(
+          "Strict publication claim {.val {claim_id}} violates the exact ",
+          "support-threshold semantics."
+        )
       )
     }
   }
@@ -938,10 +974,16 @@ tempest_final_report_validate <- function(
   } else {
     rendered_body
   }
-  candidates <- list(list(
-    body = without_references,
-    include_references = FALSE
-  ))
+  candidates <- list(
+    list(
+      body = without_references,
+      include_references = FALSE
+    ),
+    list(
+      body = without_references,
+      include_references = TRUE
+    )
+  )
   if (length(reference_positions) > 0L) {
     candidates <- c(
       candidates,

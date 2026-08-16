@@ -1,7 +1,11 @@
 test_that("tempest_run verifies claims before polishing when policy requires it", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(claim_text = "c", source_ids = s1))
+  test_add_verifiable_claim(
+    store,
+    key = "run-verification-supported",
+    claim_text = "c",
+    quote = "c"
+  )
   judge <- fake_chat(
     structured = list(list(status = "supported", score = 0.9, rationale = "ok"))
   )
@@ -19,8 +23,12 @@ test_that("tempest_run verifies claims before polishing when policy requires it"
 
 test_that("tempest_run_verification passes configured min_support_score", {
   store <- fake_store_with_sources(1)
-  s1 <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(claim_text = "c", source_ids = s1))
+  test_add_verifiable_claim(
+    store,
+    key = "run-verification-threshold",
+    claim_text = "c",
+    quote = "c"
+  )
   judge <- fake_chat(
     structured = list(list(status = "supported", score = 0.8, rationale = "ok"))
   )

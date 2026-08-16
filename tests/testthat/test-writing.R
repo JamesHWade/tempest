@@ -53,7 +53,7 @@ test_that("tempest_run_section_job wraps section text as markdown", {
     support_score = 0.9
   ))
   workspace$add_proposed_claim(evidence[[1]])
-  fake_set_citation_audit(workspace, evidence)
+  evidence <- fake_verify_claim_supports(workspace, evidence)
   job <- list(
     index = 1,
     title = "Mechanisms",
@@ -138,7 +138,7 @@ test_that("tempest_write_sections_sequential preserves job order", {
     )
   )
   lapply(evidence, workspace$add_proposed_claim)
-  fake_set_citation_audit(workspace, evidence)
+  evidence <- fake_verify_claim_supports(workspace, evidence)
   jobs <- list(
     list(
       index = 1,
@@ -255,7 +255,7 @@ test_that("unavailable parallel transport runs each stage sequentially", {
     support_score = 0.9
   ))
   workspace$add_proposed_claim(evidence[[1]])
-  fake_set_citation_audit(workspace, evidence)
+  evidence <- fake_verify_claim_supports(workspace, evidence)
   jobs <- list(
     list(
       index = 1,

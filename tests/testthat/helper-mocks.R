@@ -44,7 +44,7 @@ fake_judge <- function(
   fake_chat(structured = list()) # placeholder; verdict queue set per-test via fake_verdicts()
 }
 
-# Build a queue of verdicts (one per claim) for tempest_verify_claims tests.
+# Build a verdict queue (one per claim-span pair) for verification tests.
 fake_verdicts <- function(...) {
   verdicts <- list(...)
   fake_chat(structured = verdicts)
@@ -128,23 +128,66 @@ fake_stage_inputs <- function(stage) {
   )
 }
 
-fake_set_citation_audit <- function(workspace, claims) {
-  workspace$set_citation_audit(tibble::tibble(
-    claim_id = vapply(claims, \(claim) claim@claim_id, character(1)),
-    claim_text = vapply(claims, \(claim) claim@claim_text, character(1)),
-    verification_status = vapply(
-      claims,
-      \(claim) claim@verification_status,
+fake_verify_claim_supports <- function(
+  workspace,
+  claims,
+  min_support_score = 0.7
+) {
+  requested <- stats::setNames(
+    claims,
+    vapply(claims, \(claim) claim@claim_id, character(1))
+  )
+  for (claim in workspace$list_proposed_claims()) {
+    represented <- vapply(
+      workspace$get_evidence_for_proposed_claim(claim@claim_id),
+      \(span) span@source_id,
       character(1)
+    )
+    for (source_id in setdiff(claim@source_ids, represented)) {
+      source <- workspace$get_retrieved_source(source_id)
+      span_id <- workspace$add_evidence_span(tempest_evidence_span(
+        source_id = source_id,
+        quote = source$content_text,
+        extracted_by = "test::extractor"
+      ))
+      workspace$link_evidence_to_proposed_claim(claim@claim_id, span_id)
+    }
+  }
+  supports <- unlist(
+    lapply(
+      workspace$list_proposed_claims(),
+      function(claim) {
+        requested_claim <- requested[[claim@claim_id]] %||% claim
+        status <- requested_claim@verification_status
+        score <- requested_claim@support_score
+        if (identical(status, "unverified")) {
+          status <- "unverifiable"
+          score <- NA_real_
+        }
+        lapply(
+          workspace$get_evidence_for_proposed_claim(claim@claim_id),
+          \(span) {
+            tempest_claim_support(
+              claim_id = claim@claim_id,
+              evidence_span_id = span@evidence_span_id,
+              source_id = span@source_id,
+              verification_status = status,
+              support_score = score,
+              rationale = "Supported by exact source evidence."
+            )
+          }
+        )
+      }
     ),
-    support_score = vapply(
-      claims,
-      \(claim) claim@support_score,
-      numeric(1)
-    ),
-    rationale = rep("Supported by source", length(claims))
-  ))
-  invisible(workspace)
+    recursive = FALSE
+  )
+  workspace$verify_proposed_claims_batch(
+    supports,
+    verified_at = "2026-08-16T12:03:00Z",
+    min_support_score = min_support_score,
+    verifier = "test::verifier"
+  )
+  lapply(names(requested), workspace$get_proposed_claim)
 }
 
 test_program_executions <- function(
@@ -182,7 +225,7 @@ test_program_set_from_program <- function(
 test_program_reference <- function(
   stage,
   program_artifact_id = NULL,
-  governed_procedure_revision_id = NULL
+  governed_procedure_ref = NULL
 ) {
   program_artifact_id <- program_artifact_id %||%
     paste0(
@@ -201,7 +244,7 @@ test_program_reference <- function(
       type = "builtin",
       id = paste0("tempest::", stage)
     ),
-    governed_procedure_revision_id = governed_procedure_revision_id,
+    governed_procedure_ref = governed_procedure_ref,
     evaluator_id = paste0("tempest::evaluator/", stage),
     evaluator_version = "1"
   )

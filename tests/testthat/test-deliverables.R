@@ -368,7 +368,7 @@ test_that("no-reference reports retain canonical policy validation", {
     support_score = 0.9
   )
   workspace$add_proposed_claim(claim)
-  fake_set_citation_audit(workspace, list(claim))
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
   spec <- tempest_deliverable_spec(
     "strict-no-reference-report",
     title = "Strict no-reference report",
@@ -433,6 +433,7 @@ test_that("STORM report prompts preserve the existing polish contract", {
 test_that("Co-STORM report prompts include only threshold-verified evidence", {
   skip_if_not_installed("ellmer")
   config <- tempest_config(
+    citation_policy = "claim_verified",
     min_support_score = 0.95,
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -444,22 +445,27 @@ test_that("Co-STORM report prompts include only threshold-verified evidence", {
       name = "Verified Report Expert"
     ))
   )
-  source <- fake_source("https://example.org/report-evidence")
-  session$workspace$upsert_retrieved_resource(source)
-  below_threshold <- tempest_claim(
+  below_threshold <- test_add_verifiable_claim(
+    session$workspace,
+    key = "below",
     claim_text = "Below-threshold evidence must not enter the report prompt.",
-    source_ids = source$id,
-    verification_status = "supported",
-    support_score = 0.9
+    quote = "Below-threshold report evidence."
   )
-  verified <- tempest_claim(
+  verified <- test_add_verifiable_claim(
+    session$workspace,
+    key = "verified",
     claim_text = "Threshold-verified evidence enters the report prompt.",
-    source_ids = source$id,
-    verification_status = "supported",
-    support_score = 0.98
+    quote = "Threshold-verified report evidence."
   )
-  session$workspace$add_proposed_claim(below_threshold)
-  session$workspace$add_proposed_claim(verified)
+  tempest_verify_claims(
+    session,
+    verifier = fake_chat(
+      structured = list(
+        list(status = "supported", score = 0.9, rationale = "Below threshold."),
+        list(status = "supported", score = 0.98, rationale = "Verified.")
+      )
+    )
+  )
 
   prompt <- tempest:::tempest_costorm_report_prompt(session, "technical")
 

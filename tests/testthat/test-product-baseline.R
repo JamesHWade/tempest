@@ -68,11 +68,15 @@ test_that("scripted STORM resumes its immutable full-run request", {
     url = "https://example.org/resumed-workspace-alias",
     title = "Resumed workspace alias"
   )
-  fixture$restored$retriever$workspace$upsert_retrieved_resource(resumed_source)
-  expect_identical(
-    fixture$restored$workspace$get_retrieved_source(resumed_source$id)$id,
-    resumed_source$id
+  expect_error(
+    fixture$restored$retriever$workspace$upsert_retrieved_resource(
+      resumed_source
+    ),
+    class = "tempest_research_workspace_integrity_error"
   )
+  expect_null(fixture$restored$workspace$get_retrieved_source(
+    resumed_source$id
+  ))
   expect_identical(
     fixture$first$manifest@research_run_id,
     fixture$restored$manifest@research_run_id

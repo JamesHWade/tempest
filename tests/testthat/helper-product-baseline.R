@@ -363,7 +363,10 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
           list(
             facts = list(list(
               claim = claim,
-              sources = list(list(source_id = source_id)),
+              sources = list(list(
+                source_id = source_id,
+                quote = "Progress uses staged events and persisted artifacts."
+              )),
               confidence = "high"
             ))
           )
@@ -466,9 +469,11 @@ costorm_baseline_runtime <- function(
     list(
       facts = list(list(
         claim = claim,
-        sources = list(list(source_id = source_id)),
-        confidence = "high",
-        support_score = 0.9
+        sources = list(list(
+          source_id = source_id,
+          quote = "Co-STORM preserves research evidence across dialogue."
+        )),
+        confidence = "high"
       ))
     )
   }

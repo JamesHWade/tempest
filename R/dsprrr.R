@@ -40,9 +40,10 @@ tempest_program_set_execution <- function(
     program_artifact_id = declared_program_artifact_id,
     trace_context = trace_context,
     stage = stage,
+    contract_version = declared_reference$contract_version,
     evaluator_id = declared_reference$evaluator_id,
     evaluator_version = declared_reference$evaluator_version,
-    governed_procedure_revision_id = declared_reference$governed_procedure_revision_id
+    governed_procedure_ref = declared_reference$governed_procedure_ref
   )
 }
 
@@ -89,9 +90,10 @@ tempest_bind_program_set <- function(program_set, manifest) {
             reference$program_artifact_id
           ),
           stage = stage,
+          contract_version = reference$contract_version,
           evaluator_id = reference$evaluator_id,
           evaluator_version = reference$evaluator_version,
-          governed_procedure_revision_id = reference$governed_procedure_revision_id
+          governed_procedure_ref = reference$governed_procedure_ref
         )
       }
     ),
@@ -138,6 +140,47 @@ tempest_dsprrr_execution_verify <- function(module, step) {
     )
   }
   execution
+}
+
+tempest_dsprrr_execution_governance_preflight <- function(
+  execution,
+  knowledge_view
+) {
+  execution <- tempest_dsprrr_execution_verify(
+    execution,
+    execution$stage %||% "unknown"
+  )
+  reference <- execution$governed_procedure_ref
+  if (is.null(reference)) {
+    return(NULL)
+  }
+  if (is.null(knowledge_view)) {
+    tempest_governed_procedure_abort(
+      "Governed execution requires its exact pinned {.arg knowledge_view}."
+    )
+  }
+  tempest_governed_procedure_preflight(
+    reference = reference,
+    knowledge_view = knowledge_view,
+    stage = execution$stage,
+    program_artifact_id = execution$program_artifact_id,
+    contract_version = execution$contract_version,
+    evaluator_id = execution$evaluator_id,
+    evaluator_version = execution$evaluator_version
+  )
+}
+
+tempest_dsprrr_execution_governance_trace <- function(execution) {
+  execution <- tempest_dsprrr_execution_require(
+    execution,
+    execution$stage %||% "unknown"
+  )
+  if (is.null(execution$governed_procedure_ref)) {
+    return(NULL)
+  }
+  tempest_governed_procedure_trace_binding(
+    execution$governed_procedure_ref
+  )
 }
 
 tempest_dsprrr_execution_metadata_validate <- function(execution, metadata) {

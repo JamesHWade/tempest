@@ -52,7 +52,10 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
     list(
       facts = list(list(
         claim = claim,
-        sources = list(list(source_id = source_id)),
+        sources = list(list(
+          source_id = source_id,
+          quote = "Progress uses staged events and persisted artifacts."
+        )),
         confidence = "high"
       ))
     )

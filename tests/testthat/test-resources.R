@@ -66,6 +66,44 @@ test_that("resource records reject live runtime values and tampering", {
   )
 })
 
+test_that("resource restore requires exact schema 1", {
+  resource <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/exact-resource-schema",
+    title = "Exact resource schema",
+    media_type = "text/plain"
+  )
+  record <- tempest:::tempest_resource_record(resource)
+  malformed <- list(
+    missing = function(value) {
+      value$schema_version <- NULL
+      value
+    },
+    null = function(value) {
+      value["schema_version"] <- list(NULL)
+      value
+    },
+    string = function(value) {
+      value$schema_version <- "1"
+      value
+    },
+    unknown = function(value) {
+      value$schema_version <- 999L
+      value
+    }
+  )
+
+  for (name in names(malformed)) {
+    invalid <- malformed[[name]](record)
+    invalid$fingerprint <- tempest:::tempest_resource_fingerprint(invalid)
+    expect_error(
+      tempest:::tempest_resource_from_data(invalid),
+      class = "tempest_artifact_codec_error",
+      info = name
+    )
+  }
+})
+
 test_that("resource metadata rejects credential-like fields recursively", {
   base_args <- list(
     resource_kind = "host.document",

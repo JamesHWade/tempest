@@ -71,10 +71,16 @@ test_that("retrieval tools expose canonical research vocabulary", {
   expect_equal(by_name("get_evidence_for_proposed_claim")("Cmissing"), NULL)
 
   expect_length(by_name("list_unsupported_proposed_claims")(), 0)
-  store$verify_proposed_claim(
-    added$claim_id,
-    status = "unsupported",
-    score = 0.2
+  store$verify_proposed_claims_batch(
+    list(tempest_claim_support(
+      claim_id = added$claim_id,
+      evidence_span_id = span_id,
+      source_id = source_id,
+      verification_status = "unsupported",
+      support_score = 0.2,
+      rationale = "The exact evidence span does not support the claim."
+    )),
+    verified_at = "2026-08-16T12:03:00Z"
   )
   unsupported <- by_name("list_unsupported_proposed_claims")()
   expect_length(unsupported, 1)
