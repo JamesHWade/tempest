@@ -1,12 +1,14 @@
 test_that("report renders verification badges under claim_verified", {
   store <- fake_store_with_sources(1)
   s1 <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(
+  claim <- tempest_claim(
     claim_text = "A questionable sentence",
     source_ids = s1,
     verification_status = "supported",
     support_score = 0.9
-  ))
+  )
+  store$add_proposed_claim(claim)
+  fake_verify_claim_supports(store, list(claim))
   body <- paste0("A verified sentence [", s1, "].")
   md <- tempest_report_md(
     "Title",
@@ -43,20 +45,14 @@ test_that("citation helpers consume a ResearchWorkspace directly", {
 test_that("strict policy flags unsupported citations", {
   store <- fake_store_with_sources(1)
   s1 <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(
+  claim <- tempest_claim(
     claim_text = "c",
     source_ids = s1,
     verification_status = "unsupported",
     support_score = 0.1
-  ))
-  claim <- store$list_proposed_claims()[[1]]
-  store$set_citation_audit(tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    rationale = "Not supported"
-  ))
+  )
+  store$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   body <- paste0("c [", s1, "].")
   md <- tempest_report_md(
     "Title",
@@ -189,20 +185,14 @@ test_that("reference metadata is escaped before Markdown interpolation", {
 test_that("strict drop suppresses footnotes for dropped citations", {
   store <- fake_store_with_sources(1)
   s1 <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(
+  claim <- tempest_claim(
     claim_text = "Unsupported claim",
     source_ids = s1,
     verification_status = "unsupported",
     support_score = 0.1
-  ))
-  claim <- store$list_proposed_claims()[[1]]
-  store$set_citation_audit(tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    rationale = "Not supported"
-  ))
+  )
+  store$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   body <- paste0("Unsupported claim [", s1, "].")
 
   md <- tempest_report_md(
@@ -222,34 +212,22 @@ test_that("strict drop suppresses footnotes for dropped citations", {
 test_that("strict policy applies status to the matching cited claim", {
   store <- fake_store_with_sources(1)
   s1 <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(
-    claim_text = "Supported claim",
-    source_ids = s1,
-    verification_status = "supported",
-    support_score = 0.9
-  ))
-  store$add_proposed_claim(tempest_claim(
-    claim_text = "Unsupported claim",
-    source_ids = s1,
-    verification_status = "unsupported",
-    support_score = 0.1
-  ))
-  claims <- store$list_proposed_claims()
-  store$set_citation_audit(tibble::tibble(
-    claim_id = vapply(claims, \(claim) claim@claim_id, character(1)),
-    claim_text = vapply(claims, \(claim) claim@claim_text, character(1)),
-    verification_status = vapply(
-      claims,
-      \(claim) claim@verification_status,
-      character(1)
+  claims <- list(
+    tempest_claim(
+      claim_text = "Supported claim",
+      source_ids = s1,
+      verification_status = "supported",
+      support_score = 0.9
     ),
-    support_score = vapply(
-      claims,
-      \(claim) claim@support_score,
-      numeric(1)
-    ),
-    rationale = c("Supported", "Not supported")
-  ))
+    tempest_claim(
+      claim_text = "Unsupported claim",
+      source_ids = s1,
+      verification_status = "unsupported",
+      support_score = 0.1
+    )
+  )
+  lapply(claims, store$add_proposed_claim)
+  claims <- fake_verify_claim_supports(store, claims)
   body <- paste0("Supported claim [", s1, "]. Unsupported claim [", s1, "].")
 
   md <- tempest_report_md(
@@ -265,23 +243,120 @@ test_that("strict policy applies status to the matching cited claim", {
   expect_match(md, paste0("\\[\\^", s1, "\\]:"))
 })
 
+test_that("strict policy derives multi-span support independent of pair order", {
+  store <- fake_store_with_sources(1)
+  source <- store$list_retrieved_sources()[[1]]
+  spans <- list(
+    tempest_evidence_span(
+      source_id = source$id,
+      quote = source$content_text,
+      extracted_by = "test::strict-extractor",
+      evidence_span_id = "span.strict.first"
+    ),
+    tempest_evidence_span(
+      source_id = source$id,
+      quote = source$content_text,
+      extracted_by = "test::strict-extractor",
+      evidence_span_id = "span.strict.second"
+    )
+  )
+  claim <- tempest_claim(
+    "Layered evidence is mixed",
+    source_ids = source$id,
+    evidence_span_ids = vapply(
+      spans,
+      \(span) span@evidence_span_id,
+      character(1)
+    ),
+    supporting_quotes = lapply(spans, \(span) span@quote),
+    claim_id = "claim.strict.multi-span"
+  )
+  store$add_extracted_claim_batch(list(claim), spans)
+  claim <- store$get_proposed_claim(claim@claim_id)
+  spans <- spans[order(vapply(
+    spans,
+    \(span) {
+      tempest:::tempest_claim_support_id(
+        claim@claim_id,
+        span@evidence_span_id
+      )
+    },
+    character(1)
+  ))]
+  supports <- list(
+    test_claim_support(
+      claim,
+      spans[[1]],
+      status = "supported",
+      score = 0.9
+    ),
+    test_claim_support(
+      claim,
+      spans[[2]],
+      status = "partially_supported",
+      score = 0.8
+    )
+  )
+  body <- paste0(claim@claim_text, " [", source$id, "].")
+
+  reports <- lapply(list(supports, rev(supports)), function(batch) {
+    store$verify_proposed_claims_batch(
+      batch,
+      verified_at = "2026-08-16T12:03:00Z",
+      min_support_score = 0.7,
+      verifier = "test::strict-verifier"
+    )
+    claim <- store$get_proposed_claim(claim@claim_id)
+    expect_identical(claim@verification_status, "partially_supported")
+    expect_identical(claim@support_score, 0.8)
+    expect_identical(
+      store$citation_audit$verification_status[[1]],
+      "supported"
+    )
+    expect_identical(store$citation_audit$support_score[[1]], 0.9)
+    tempest_report_md(
+      "Title",
+      body,
+      store,
+      citation_policy = "strict",
+      min_support_score = 0.7
+    )
+  })
+
+  expect_identical(reports[[1]], reports[[2]])
+
+  supported <- list(
+    test_claim_support(claim, spans[[1]], score = 0.9),
+    test_claim_support(claim, spans[[2]], score = 0.8)
+  )
+  store$verify_proposed_claims_batch(
+    rev(supported),
+    verified_at = "2026-08-16T12:03:00Z",
+    min_support_score = 0.7,
+    verifier = "test::strict-verifier"
+  )
+  thresholded <- tempest_report_md(
+    "Title",
+    body,
+    store,
+    citation_policy = "strict",
+    on_unsupported_claim = "flag",
+    min_support_score = 0.85
+  )
+  expect_match(thresholded, "unsupported citation", fixed = TRUE)
+})
+
 test_that("strict revise replaces unsupported assertions distinctly", {
   store <- fake_store_with_sources(1)
   source_id <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(
+  claim <- tempest_claim(
     claim_text = "Unsupported assertion",
     source_ids = source_id,
     verification_status = "unsupported",
     support_score = 0.1
-  ))
-  claim <- store$list_proposed_claims()[[1]]
-  store$set_citation_audit(tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    rationale = "Not supported"
-  ))
+  )
+  store$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   body <- paste0("Unsupported assertion [", source_id, "].")
 
   revised <- tempest_report_md(
@@ -316,7 +391,7 @@ test_that("strict policy refuses publication without completed verification", {
   )
 })
 
-test_that("strict policy requires each citation to bind to an audited claim", {
+test_that("strict policy requires each citation to bind to exact support", {
   store <- fake_store_with_sources(2)
   source_ids <- vapply(
     store$list_retrieved_sources(),
@@ -331,13 +406,6 @@ test_that("strict policy requires each citation to bind to an audited claim", {
     support_score = 0.9
   )
   store$add_proposed_claim(claim)
-  store$set_citation_audit(tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    rationale = "Supported"
-  ))
 
   expect_error(
     tempest_report_md(
@@ -393,13 +461,7 @@ test_that("strict policy binds every assertion and factual heading exactly", {
     support_score = 0.9
   )
   store$add_proposed_claim(claim)
-  store$set_citation_audit(tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    rationale = "Supported"
-  ))
+  claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   cited <- paste0("Aspirin reduces fever [", source_id, "].")
 
   expect_no_error(tempest_report_md(
@@ -435,7 +497,6 @@ test_that("strict publication requires exact captured source evidence", {
     support_score = 0.9
   )
   store$add_proposed_claim(claim)
-  fake_set_citation_audit(store, list(claim))
 
   expect_error(
     tempest_report_md(
@@ -463,13 +524,7 @@ test_that("strict policy rejects malformed and partial multi-source citations", 
     support_score = 0.9
   )
   store$add_proposed_claim(claim)
-  store$set_citation_audit(tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    rationale = "Supported"
-  ))
+  claim <- fake_verify_claim_supports(store, list(claim))[[1]]
 
   expect_error(
     tempest_report_md(
@@ -505,13 +560,7 @@ test_that("final report validation rebinds canonical rendered citations", {
     support_score = 0.9
   )
   store$add_proposed_claim(claim)
-  store$set_citation_audit(tibble::tibble(
-    claim_id = claim@claim_id,
-    claim_text = claim@claim_text,
-    verification_status = claim@verification_status,
-    support_score = claim@support_score,
-    rationale = "Supported"
-  ))
+  claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   report <- tempest_report_md(
     "Title",
     paste0("Canonical assertion [", source_id, "]."),
@@ -636,7 +685,7 @@ test_that("verified no-reference reports reject non-supported citations", {
         support_score = statuses[[status]]
       )
       store$add_proposed_claim(claim)
-      fake_set_citation_audit(store, list(claim))
+      claim <- fake_verify_claim_supports(store, list(claim))[[1]]
 
       expect_error(
         tempest:::tempest_report_md_render(
@@ -678,7 +727,7 @@ test_that("verified no-reference reports reject non-supported citations", {
   for (claim in claims) {
     store$add_proposed_claim(claim)
   }
-  fake_set_citation_audit(store, claims)
+  claims <- fake_verify_claim_supports(store, claims)
   mixed <- paste0(
     claims[[1]]@claim_text,
     " [",

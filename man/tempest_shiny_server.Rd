@@ -12,6 +12,7 @@ tempest_shiny_server(
   experts = NULL,
   session_id = NULL,
   program_set = NULL,
+  knowledge_view = NULL,
   run = NULL
 )
 }
@@ -35,6 +36,11 @@ for new Co-STORM sessions. May be a value, function, or reactive.}
 \item{program_set}{Optional \link{TempestProgramSet} used for new and restored
 Co-STORM sessions. May be a value, function, or reactive. \code{NULL} uses the
 builtin set.}
+
+\item{knowledge_view}{Optional immutable Graft view used with
+\code{program_set}. May be a value, function, or reactive. A governed ProgramSet
+requires its exact pinned view before any provider call; the view remains
+process-local and is never serialized.}
 
 \item{run}{Optional \code{TempestRun}, function, or reactive. This lets a host
 expose a custom headless workflow through the same generic adapter

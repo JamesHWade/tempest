@@ -1,13 +1,25 @@
-test_persistence_storm_stage_records <- function(state, workspace, manifest) {
+test_persistence_storm_stage_records <- function(
+  state,
+  workspace,
+  manifest,
+  min_support_score = 0.7
+) {
   records <- list()
   sequence <- 0L
   start <- function(stage, trace = list()) {
     sequence <<- sequence + 1L
     reference <- manifest@programs[[stage]]
+    governed_reference <- reference$governed_procedure_ref %||% NULL
+    if (!is.null(governed_reference)) {
+      trace$governed_procedure <-
+        tempest:::tempest_governed_procedure_trace_binding(
+          governed_reference
+        )
+    }
     tempest:::tempest_stage_record_start(
       stage,
       reference$program_artifact_id,
-      reference$governed_procedure_revision_id,
+      governed_reference$revision_id %||% NULL,
       trace_references = c(
         list(
           research_run_id = manifest@research_run_id,
@@ -108,28 +120,41 @@ test_persistence_storm_stage_records <- function(state, workspace, manifest) {
       )
     )
   }
-  verified_ids <- if (is.null(workspace$citation_audit)) {
-    character()
-  } else {
-    workspace$citation_audit$claim_id
-  }
-  if ("write" %in% state$completed_stages) {
-    for (claim_id in verified_ids) {
-      running <- start("verify_claim_support")
-      row <- workspace$citation_audit[
-        workspace$citation_audit$claim_id == claim_id,
-        ,
-        drop = FALSE
-      ]
+  claim_supports <- workspace$list_claim_supports()
+  verified_ids <- sort(unique(vapply(
+    claim_supports,
+    \(support) support@claim_id,
+    character(1)
+  )))
+  if (length(claim_supports) > 0L) {
+    for (support in claim_supports) {
+      claim <- workspace$get_proposed_claim(support@claim_id)
+      verification_trace <- list(
+        min_support_score = tempest:::tempest_stage_support_threshold_string(
+          min_support_score
+        ),
+        verified_at = claim@verified_at
+      )
+      if (!is.na(claim@verifier_model)) {
+        verification_trace$verifier_model <- claim@verifier_model
+      }
+      running <- start(
+        "verify_claim_support",
+        verification_trace
+      )
+      evidence_span <- workspace$get_evidence_span(
+        support@evidence_span_id
+      )
       succeed(
         running,
         tempest:::tempest_stage_output_reference(
-          "citation_audit",
-          claim_id,
+          "claim_supports",
+          support@claim_support_id,
           content_digest = tempest:::tempest_stage_verification_output_digest(
-            row,
+            support,
             running,
-            workspace$get_proposed_claim(claim_id),
+            claim,
+            evidence_span,
             workspace
           )
         ),
@@ -174,11 +199,17 @@ test_persistence_storm_stage_records <- function(state, workspace, manifest) {
   records
 }
 
-test_persistence_bind_storm_records <- function(state, workspace, manifest) {
+test_persistence_bind_storm_records <- function(
+  state,
+  workspace,
+  manifest,
+  min_support_score = 0.7
+) {
   state$stage_records <- test_persistence_storm_stage_records(
     state,
     workspace,
-    manifest
+    manifest,
+    min_support_score = min_support_score
   )
   if (!is.null(state$report_md)) {
     state$report_md <- tempest:::tempest_persistence_report_for_records(
@@ -217,17 +248,22 @@ test_persistence_complete_storm_product <- function(
     evidence_span_ids = span_id,
     supporting_quotes = list(
       "Durable evidence supports the completed research product."
-    ),
-    verification_status = "supported",
-    support_score = 0.9
+    )
   ))
-  workspace$set_citation_audit(tibble::tibble(
-    claim_id = claim_id,
-    claim_text = "Durable evidence supports the completed research product.",
-    verification_status = "supported",
-    support_score = 0.9,
-    rationale = "The exact durable excerpt supports the claim."
-  ))
+  support_score <- max(config@min_support_score, 0.9)
+  workspace$verify_proposed_claims_batch(
+    list(tempest_claim_support(
+      claim_id = claim_id,
+      evidence_span_id = span_id,
+      source_id = source$id,
+      verification_status = "supported",
+      support_score = support_score,
+      rationale = "The exact durable excerpt supports the claim."
+    )),
+    verified_at = "2026-08-16T00:00:00Z",
+    min_support_score = config@min_support_score,
+    verifier = programs$verify_claim_support$program_artifact_id
+  )
   outline <- list(
     title = topic,
     sections = list(list(
@@ -286,7 +322,12 @@ test_persistence_complete_storm_product <- function(
     programs = programs,
     status = manifest_status
   )
-  state <- test_persistence_bind_storm_records(state, workspace, manifest)
+  state <- test_persistence_bind_storm_records(
+    state,
+    workspace,
+    manifest,
+    min_support_score = config@min_support_score
+  )
   list(
     workspace = workspace,
     state = state,

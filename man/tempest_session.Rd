@@ -12,7 +12,8 @@ tempest_session(
   retriever = NULL,
   progress = NULL,
   session_id = NULL,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 )
 }
 \arguments{
@@ -37,6 +38,9 @@ identifier is generated.}
 \item{program_set}{A \link{TempestProgramSet} containing the exact dsprrr
 programs used by Co-STORM. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates the
 builtin set.}
+
+\item{knowledge_view}{Optional immutable Graft view. It is required for a
+fresh session when \code{program_set} contains governed procedures.}
 }
 \description{
 Create a Co-STORM session

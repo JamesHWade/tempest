@@ -8,6 +8,7 @@ tempest_run(
   topic,
   config = tempest_config(),
   retriever = NULL,
+  knowledge_view = NULL,
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
@@ -32,6 +33,9 @@ tempest_run(
 \item{config}{A \code{TempestConfig}.}
 
 \item{retriever}{Optional \code{TempestRetriever}. If \code{NULL}, created from \code{config}.}
+
+\item{knowledge_view}{Optional immutable Graft view. It is required when
+\code{program_set} contains any governed procedure and is never persisted.}
 
 \item{n_experts}{Number of expert profiles to generate when \code{experts} is
 \code{NULL} (default 3).}

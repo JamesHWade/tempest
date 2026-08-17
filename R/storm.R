@@ -92,6 +92,143 @@ tempest_storm_retriever_workspace <- function(retriever) {
   workspace
 }
 
+tempest_program_set_requires_knowledge_view <- function(program_set) {
+  entries <- tempest_program_set_entries(program_set)
+  any(vapply(
+    entries,
+    \(entry) !is.null(entry$governed_procedure_ref),
+    logical(1)
+  ))
+}
+
+tempest_workflow_knowledge_view <- function(
+  program_set,
+  knowledge_view,
+  restoring = FALSE
+) {
+  required <- tempest_program_set_requires_knowledge_view(program_set)
+  if (is.null(knowledge_view)) {
+    if (required && !isTRUE(restoring)) {
+      tempest_governed_procedure_abort(
+        paste0(
+          "A ProgramSet with governed procedures requires its exact pinned ",
+          "{.arg knowledge_view}."
+        )
+      )
+    }
+    return(list(
+      view = NULL,
+      snapshot = NULL,
+      reference = NULL,
+      required = required
+    ))
+  }
+  snapshot <- tryCatch(
+    tempest_governed_procedure_view_snapshot(knowledge_view),
+    error = function(error) {
+      tempest_governed_procedure_abort(
+        "{.arg knowledge_view} must be a valid pinned Graft view."
+      )
+    }
+  )
+  snapshot <- tempest_research_workspace_graft_snapshot(snapshot)
+  reference <- tempest_snapshot_reference(snapshot)
+  entries <- tempest_program_set_entries(program_set)
+  governed <- Filter(
+    Negate(is.null),
+    lapply(entries, \(entry) entry$governed_procedure_ref)
+  )
+  snapshot_fields <- c(
+    "store_id",
+    "snapshot_id",
+    "schema_build_digest",
+    "commit_order"
+  )
+  mismatched <- names(governed)[
+    !vapply(
+      governed,
+      \(procedure) {
+        identical(procedure[snapshot_fields], reference[snapshot_fields])
+      },
+      logical(1)
+    )
+  ]
+  if (length(mismatched) > 0L) {
+    tempest_governed_procedure_abort(
+      paste0(
+        "Governed procedure references do not belong to the supplied pinned ",
+        "view: {.val {mismatched}}."
+      )
+    )
+  }
+  list(
+    view = knowledge_view,
+    snapshot = snapshot,
+    reference = reference,
+    required = required
+  )
+}
+
+tempest_workflow_workspace_validate <- function(
+  workspace,
+  knowledge,
+  arg = "retriever"
+) {
+  if (is.null(knowledge$view)) {
+    return(workspace)
+  }
+  snapshot <- workspace$graft_snapshot
+  if (
+    is.null(snapshot) ||
+      !identical(workspace$base_snapshot_id, knowledge$reference$snapshot_id)
+  ) {
+    tempest_governed_procedure_abort(
+      "{.arg {arg}} workspace does not use the supplied pinned knowledge view."
+    )
+  }
+  workspace_reference <- tempest_snapshot_reference(snapshot)
+  if (!identical(workspace_reference, knowledge$reference)) {
+    tempest_governed_procedure_abort(
+      "{.arg {arg}} workspace snapshot is not exactly the supplied pinned view."
+    )
+  }
+  workspace
+}
+
+tempest_programs_bind_knowledge_view <- function(programs, knowledge_view) {
+  lapply(programs, function(program) {
+    if (!inherits(program, "tempest_dsprrr_execution")) {
+      tempest_ecosystem_contract_abort(
+        "Every structured program must be a ProgramSet-bound execution."
+      )
+    }
+    program$knowledge_view <- knowledge_view
+    program
+  })
+}
+
+tempest_programs_have_knowledge_view <- function(programs) {
+  any(vapply(
+    programs,
+    \(program) !is.null(program$knowledge_view %||% NULL),
+    logical(1)
+  ))
+}
+
+tempest_stage_context_knowledge_view <- function(
+  context = list(),
+  module,
+  knowledge_view = module$knowledge_view %||% NULL
+) {
+  if (!is.list(context) || is.data.frame(context)) {
+    tempest_ecosystem_contract_abort("Stage context must be a list.")
+  }
+  if (!is.null(knowledge_view)) {
+    context$knowledge_view <- knowledge_view
+  }
+  context
+}
+
 #' Run the STORM pipeline
 #'
 #' This is a scripted workflow that:
@@ -103,6 +240,8 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from `config`.
+#' @param knowledge_view Optional immutable Graft view. It is required when
+#'   `program_set` contains any governed procedure and is never persisted.
 #' @param n_experts Number of expert profiles to generate when `experts` is
 #'   `NULL` (default 3).
 #' @param experts Optional list of active profiles created by
@@ -148,6 +287,7 @@ tempest_run <- function(
   topic,
   config = tempest_config(),
   retriever = NULL,
+  knowledge_view = NULL,
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
@@ -169,6 +309,7 @@ tempest_run <- function(
     topic = topic,
     config = config,
     retriever = retriever,
+    knowledge_view = knowledge_view,
     n_experts = n_experts,
     experts = experts,
     research_strategy = research_strategy,
@@ -192,6 +333,7 @@ tempest_run_internal <- function(
   topic,
   config = tempest_config(),
   retriever = NULL,
+  knowledge_view = NULL,
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
@@ -292,11 +434,18 @@ tempest_run_internal <- function(
     )
   }
 
+  program_set <- program_set %||% tempest_program_set()
+  knowledge <- tempest_workflow_knowledge_view(
+    program_set,
+    knowledge_view
+  )
   retriever_supplied <- !is.null(retriever)
   retriever <- retriever %||%
     tempest_retriever(
       config = config,
-      workspace = tempest_research_workspace()
+      workspace = tempest_research_workspace(
+        graft_snapshot = knowledge$snapshot
+      )
     )
   retriever_config_digest <- tempest_retriever_config_digest(retriever)
   if (
@@ -315,6 +464,11 @@ tempest_run_internal <- function(
     ))
   }
   workspace <- tempest_storm_retriever_workspace(retriever)
+  workspace <- tempest_workflow_workspace_validate(
+    workspace,
+    knowledge,
+    arg = "retriever"
+  )
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_config_abort(
       paste0(
@@ -375,7 +529,6 @@ tempest_run_internal <- function(
     state$experts <- experts
     state <- tempest_storm_state_validate(state)
   }
-  program_set <- program_set %||% tempest_program_set()
   program_references <- tempest_program_set_manifest_programs(program_set)
   research_manifest <- tempest_research_manifest(
     research_run_id = progress_run_id,
@@ -394,6 +547,10 @@ tempest_run_internal <- function(
   programs <- tempest_bind_program_set(
     program_set,
     research_manifest
+  )
+  programs <- tempest_programs_bind_knowledge_view(
+    programs,
+    knowledge$view
   )
   artifact_catalog <- artifact_catalog %||%
     tempest_artifact_catalog(store = config@artifact_store)
@@ -565,6 +722,11 @@ tempest_run_internal <- function(
       run_id = supplied_run_id
     )
     workspace <- loaded_run$workspace
+    workspace <- tempest_workflow_workspace_validate(
+      workspace,
+      knowledge,
+      arg = "restored workspace"
+    )
     store <- workspace
     if (!identical(tempest_storm_retriever_workspace(retriever), workspace)) {
       retriever <- tempest_retriever(config = config, workspace = workspace)
@@ -597,6 +759,10 @@ tempest_run_internal <- function(
     programs <- tempest_bind_program_set(
       program_set,
       research_manifest
+    )
+    programs <- tempest_programs_bind_knowledge_view(
+      programs,
+      knowledge$view
     )
     terminal_status <- research_manifest@status
     pending_steps <- setdiff(steps, completed_stages)
@@ -1601,6 +1767,9 @@ tempest_run_internal <- function(
 #' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for details
 #'   on available parameters including `topic`, `config`, `retriever`,
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
+#' @param knowledge_view A live pinned Graft view cannot cross the asynchronous
+#'   worker boundary. Governed runs must use [tempest_run()] in the process that
+#'   owns the view.
 #' @return A `tempest_async_run` promise that resolves with the
 #'   [tempest_run()] result.
 #' @seealso [tempest_run()] for the synchronous version.
@@ -1610,10 +1779,24 @@ tempest_run_internal <- function(
 #'   promises::then(function(result) cat(result$report_md))
 #' }
 #' @export
-tempest_run_async <- function(...) {
+tempest_run_async <- function(..., knowledge_view = NULL) {
+  args <- list(...)
+  program_set <- args$program_set %||% NULL
+  if (
+    !is.null(knowledge_view) ||
+      (!is.null(program_set) &&
+        tempest_program_set_requires_knowledge_view(program_set))
+  ) {
+    tempest_governed_procedure_abort(
+      paste0(
+        "{.fn tempest_run_async} never serializes a live pinned ",
+        "{.arg knowledge_view}. Run the governed workflow with ",
+        "{.fn tempest_run} in the process that owns the view."
+      )
+    )
+  }
   tempest_require("promises", "tempest_run_async() uses promises.")
   tempest_require("mirai", "tempest_run_async() uses a Mirai worker.")
-  args <- list(...)
   runner <- getOption("tempest.async_runner", tempest_run)
   if (!is.function(runner)) {
     tempest_abort(

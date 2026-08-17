@@ -773,6 +773,77 @@ tempest_research_workspace_environment_copy <- function(values) {
   copied
 }
 
+tempest_research_workspace_verification_owner_preflight <- function(
+  workspace,
+  restoring = FALSE
+) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "Verification ownership requires a ResearchWorkspace."
+    )
+  }
+  owner <- workspace$.__enclos_env__$private$verification_owner_token_value
+  if (!is.null(owner)) {
+    tempest_research_workspace_abort(
+      "A ResearchWorkspace cannot be owned by more than one TempestSession."
+    )
+  }
+  if (!isTRUE(restoring)) {
+    claims <- workspace$list_proposed_claims()
+    verified_summary <- any(vapply(
+      claims,
+      function(claim) {
+        !identical(claim@verification_status, "unverified") ||
+          !is.na(claim@verified_at) ||
+          !is.na(claim@verifier_model)
+      },
+      logical(1)
+    ))
+    if (
+      length(workspace$list_claim_supports()) > 0L ||
+        verified_summary
+    ) {
+      tempest_research_workspace_abort(
+        paste0(
+          "A fresh TempestSession can adopt only an unverified workspace ",
+          "without claim-support proof."
+        )
+      )
+    }
+  }
+  invisible(workspace)
+}
+
+tempest_research_workspace_bind_verification_owner <- function(workspace) {
+  tempest_research_workspace_verification_owner_preflight(
+    workspace,
+    restoring = TRUE
+  )
+  token <- new.env(parent = emptyenv())
+  workspace$.__enclos_env__$private$verification_owner_token_value <- token
+  token
+}
+
+tempest_research_workspace_assert_standalone_verification <- function(
+  workspace
+) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "Standalone verification requires a ResearchWorkspace."
+    )
+  }
+  owner <- workspace$.__enclos_env__$private$verification_owner_token_value
+  if (!is.null(owner)) {
+    tempest_research_workspace_abort(
+      paste0(
+        "A session-owned ResearchWorkspace must be verified through its ",
+        "TempestSession."
+      )
+    )
+  }
+  invisible(workspace)
+}
+
 #' ResearchWorkspace (provisional scientific evidence ledger)
 #'
 #' A mutable, run-scoped workspace for retrieved resources, proposed claims,
@@ -786,6 +857,8 @@ tempest_research_workspace_environment_copy <- function(values) {
 #'   records keyed by claim id.
 #' @field evidence_spans Read-only named-list snapshot of provisional
 #'   evidence-span records.
+#' @field claim_supports Read-only named-list snapshot of explicit
+#'   claim-by-evidence-span support assessments.
 #' @field disputes Read-only named-list snapshot of provisional dispute
 #'   records.
 #' @field accepted_graft_references Read-only list of opaque references to
@@ -794,7 +867,8 @@ tempest_research_workspace_environment_copy <- function(values) {
 #'   knowledge snapshot on which this workspace is based.
 #' @field graft_snapshot Optional read-only, path-free
 #'   `graft::GraftSnapshot` used to reopen the accepted knowledge boundary.
-#' @field citation_audit Latest claim-centered citation audit, when available.
+#' @field citation_audit Read-only pair-level projection of the authoritative
+#'   claim-support assessments, when available.
 #' @field max_sources Maximum number of unique resources admitted.
 #'
 #' @export
@@ -818,6 +892,7 @@ ResearchWorkspace <- R6::R6Class(
       private$resources_value <- new.env(parent = emptyenv())
       private$claims_value <- new.env(parent = emptyenv())
       private$evidence_spans_value <- new.env(parent = emptyenv())
+      private$claim_supports_value <- new.env(parent = emptyenv())
       private$disputes_value <- new.env(parent = emptyenv())
       private$citation_audit_value <- NULL
       private$claims_by_source <- new.env(parent = emptyenv())
@@ -937,16 +1012,23 @@ ResearchWorkspace <- R6::R6Class(
         )
       }
       previous_resources <- private$resources_value
+      previous_claims <- private$claims_value
+      previous_claim_supports <- private$claim_supports_value
       previous_audit <- private$citation_audit_value
+      if (!identical(previous, resource)) {
+        private$assert_verification_mutable()
+      }
       tryCatch(
         {
           private$resources_value <- resources_value
           if (!identical(previous, resource)) {
-            private$invalidate_citation_audit()
+            private$invalidate_verification_state()
           }
         },
         error = function(error) {
           private$resources_value <- previous_resources
+          private$claims_value <- previous_claims
+          private$claim_supports_value <- previous_claim_supports
           private$citation_audit_value <- previous_audit
           stop(error)
         }
@@ -1045,14 +1127,22 @@ ResearchWorkspace <- R6::R6Class(
         changed <- changed || !identical(previous, claim)
       }
 
-      citation_audit <- if (changed) {
-        NULL
+      if (changed) {
+        private$assert_verification_mutable()
+        claims_value <- private$unverified_claim_state(claims_value)
+        claim_supports_value <- new.env(parent = emptyenv())
+        citation_audit <- NULL
       } else {
-        private$citation_audit_value
+        claim_supports_value <-
+          tempest_research_workspace_environment_copy(
+            private$claim_supports_value
+          )
+        citation_audit <- private$citation_audit_value
       }
       private$commit_claim_state(
         claims_value,
         claims_by_source,
+        claim_supports_value,
         citation_audit,
         commit = commit
       )
@@ -1187,33 +1277,58 @@ ResearchWorkspace <- R6::R6Class(
         )
       }
 
-      citation_audit <- if (spans_changed || claims_changed) {
-        NULL
+      if (spans_changed || claims_changed) {
+        private$assert_verification_mutable()
+        claims_value <- private$unverified_claim_state(claims_value)
+        claim_supports_value <- new.env(parent = emptyenv())
+        citation_audit <- NULL
       } else {
-        private$citation_audit_value
+        claim_supports_value <-
+          tempest_research_workspace_environment_copy(
+            private$claim_supports_value
+          )
+        citation_audit <- private$citation_audit_value
       }
       private$commit_extraction_state(
         claims_value,
         claims_by_source,
         evidence_spans_value,
+        claim_supports_value,
         citation_audit,
         commit = commit
       )
       invisible(claim_ids)
     },
 
-    #' @description Atomically verify proposed claims and set their audit.
-    #' @param verifications A list of claim-verification update records.
-    #' @param citation_audit The complete claim-centered citation audit.
+    #' @description Atomically replace exact claim-by-span support assessments.
+    #' @param claim_supports An unnamed complete list of
+    #'   `tempest_claim_support` records.
+    #' @param min_support_score Bound support threshold used to derive claim
+    #'   summaries.
+    #' @param verifier Bounded verifier-model identifier or `NA`.
+    #' @param verified_at Exact canonical verification-batch timestamp bound
+    #'   into every corresponding verification-stage record.
+    #' @param .verification_owner_token Internal process-local session
+    #'   capability. Standalone workspaces require `NULL`.
     #' @param commit Optional zero-argument callback committed with the batch.
     verify_proposed_claims_batch = function(
-      verifications,
-      citation_audit,
+      claim_supports,
+      verified_at,
+      min_support_score = 0.7,
+      verifier = NA_character_,
+      .verification_owner_token = NULL,
       commit = NULL
     ) {
-      if (!is.list(verifications) || is.data.frame(verifications)) {
+      if (
+        !is.list(claim_supports) ||
+          is.data.frame(claim_supports) ||
+          !is.null(names(claim_supports))
+      ) {
         tempest_research_workspace_abort(
-          "{.arg verifications} must be a list of verification records."
+          paste0(
+            "{.arg claim_supports} must be an unnamed list of exact ",
+            "claim-support records."
+          )
         )
       }
       if (!is.null(commit) && !is.function(commit)) {
@@ -1221,75 +1336,81 @@ ResearchWorkspace <- R6::R6Class(
           "{.arg commit} must be `NULL` or a function."
         )
       }
-      claims_value <- tempest_research_workspace_environment_copy(
-        private$claims_value
-      )
-      verified_at <- tempest_now_utc()
-      claim_ids <- character(length(verifications))
-      for (index in seq_along(verifications)) {
-        update <- private$validate_claim_verification(
-          verifications[[index]],
-          index
-        )
-        claim <- claims_value[[update$claim_id]]
-        if (is.null(claim)) {
-          tempest_research_workspace_abort(
-            "Unknown claim id: {.val {update$claim_id}}."
-          )
-        }
-        claim_ids[[index]] <- update$claim_id
-        claims_value[[update$claim_id]] <- S7::set_props(
-          claim,
-          verification_status = update$status,
-          support_score = update$score,
-          verifier_model = update$verifier,
-          verified_at = verified_at
-        )
-      }
-      if (anyDuplicated(claim_ids)) {
-        duplicated_ids <- unique(claim_ids[duplicated(claim_ids)])
+      owner <- private$verification_owner_token_value
+      if (
+        (!is.null(owner) &&
+          !identical(.verification_owner_token, owner)) ||
+          (is.null(owner) && !is.null(.verification_owner_token))
+      ) {
         tempest_research_workspace_abort(
           paste0(
-            "{.arg verifications} contains duplicate claim id{?s}: ",
-            "{.val {duplicated_ids}}."
+            "Session-owned verification requires its exact process-local ",
+            "ownership capability."
           )
         )
       }
-      existing_claim_ids <- sort(ls(claims_value, all.names = TRUE))
-      if (!setequal(claim_ids, existing_claim_ids)) {
-        missing_claim_ids <- setdiff(existing_claim_ids, claim_ids)
-        unexpected_claim_ids <- setdiff(claim_ids, existing_claim_ids)
-        tempest_research_workspace_abort(
-          c(
-            paste0(
-              "{.arg verifications} must cover the complete proposed-claim ",
-              "batch."
-            ),
-            x = if (length(missing_claim_ids) > 0L) {
-              "Missing claim id{?s}: {.val {missing_claim_ids}}."
-            },
-            x = if (length(unexpected_claim_ids) > 0L) {
-              "Unknown claim id{?s}: {.val {unexpected_claim_ids}}."
-            }
-          )
-        )
-      }
-      citation_audit <- private$validate_citation_audit(
-        citation_audit,
-        claims_value
+      min_support_score <- tempest_normalize_min_support_score(
+        min_support_score
       )
-      if (!setequal(citation_audit$claim_id, claim_ids)) {
+      if (!tempest_ledger_identifier_valid(verifier, optional = TRUE)) {
         tempest_research_workspace_abort(
-          "{.arg citation_audit} must cover the complete verification batch."
+          paste0(
+            "{.arg verifier} must be `NA` or a bounded credential-free ",
+            "identifier."
+          )
         )
       }
-      private$commit_claim_state(
+      if (!tempest_ledger_timestamp_valid(verified_at)) {
+        tempest_research_workspace_abort(
+          paste0(
+            "{.arg verified_at} must be one exact canonical UTC batch ",
+            "timestamp."
+          )
+        )
+      }
+      claim_supports <- private$validate_claim_support_batch(
+        claim_supports,
+        min_support_score
+      )
+      claims_value <- private$verified_claim_state(
+        private$claims_value,
+        claim_supports,
+        verifier,
+        verified_at
+      )
+      claim_supports_value <- new.env(parent = emptyenv())
+      for (support in claim_supports) {
+        claim_supports_value[[support@claim_support_id]] <-
+          tempest_research_workspace_copy(support)
+      }
+      citation_audit <- tempest_claim_supports_tibble(lapply(
+        sort(vapply(
+          claim_supports,
+          \(support) support@claim_support_id,
+          character(1)
+        )),
+        \(support_id) claim_supports_value[[support_id]]
+      ))
+      private$commit_verification_state(
         claims_value,
-        private$claims_by_source,
+        claim_supports_value,
         citation_audit,
         commit = commit
       )
       invisible(self$citation_audit)
+    },
+
+    #' @description Get a claim-support assessment by id.
+    #' @param claim_support_id Exact derived support identifier.
+    get_claim_support = function(claim_support_id) {
+      support <- private$claim_supports_value[[claim_support_id]] %||% NULL
+      tempest_research_workspace_copy(support)
+    },
+
+    #' @description List claim-support assessments in deterministic id order.
+    list_claim_supports = function() {
+      ids <- sort(ls(private$claim_supports_value, all.names = TRUE))
+      purrr::map(ids, self$get_claim_support)
     },
 
     #' @description Get a proposed claim by id.
@@ -1341,9 +1462,10 @@ ResearchWorkspace <- R6::R6Class(
           )
         }
       }
-      private$evidence_spans_value[[id]] <- span
       if (!identical(previous, span)) {
-        private$invalidate_citation_audit()
+        private$assert_verification_mutable()
+        private$evidence_spans_value[[id]] <- span
+        private$invalidate_verification_state()
       }
       invisible(id)
     },
@@ -1403,8 +1525,9 @@ ResearchWorkspace <- R6::R6Class(
           supporting_quotes = unname(supporting_quotes)
         )
         updated <- private$validate_proposed_claim(updated)
+        private$assert_verification_mutable()
         private$claims_value[[claim_id]] <- updated
-        private$invalidate_citation_audit()
+        private$invalidate_verification_state()
       }
       invisible(claim_id)
     },
@@ -1417,32 +1540,6 @@ ResearchWorkspace <- R6::R6Class(
         return(list())
       }
       purrr::map(claim@evidence_span_ids, self$get_evidence_span)
-    },
-
-    #' @description Update a claim's verification status.
-    #' @param claim_id Claim id.
-    #' @param status One of the verification status labels.
-    #' @param score Support score in `[0, 1]` or NA.
-    #' @param verifier Verifier model id.
-    verify_proposed_claim = function(
-      claim_id,
-      status,
-      score = NA_real_,
-      verifier = NA_character_
-    ) {
-      claim <- self$get_proposed_claim(claim_id)
-      if (is.null(claim)) {
-        tempest_abort("Unknown claim id: {.val {claim_id}}")
-      }
-      private$claims_value[[claim_id]] <- S7::set_props(
-        claim,
-        verification_status = status,
-        support_score = score,
-        verifier_model = verifier,
-        verified_at = tempest_now_utc()
-      )
-      private$invalidate_citation_audit()
-      invisible(claim_id)
     },
 
     #' @description Add a dispute.
@@ -1474,9 +1571,10 @@ ResearchWorkspace <- R6::R6Class(
       id <- dispute@dispute_id
       previous <- private$disputes_value[[id]]
       dispute <- tempest_research_workspace_copy(dispute)
-      private$disputes_value[[id]] <- dispute
       if (!identical(previous, dispute)) {
-        private$invalidate_citation_audit()
+        private$assert_verification_mutable()
+        private$disputes_value[[id]] <- dispute
+        private$invalidate_verification_state()
       }
       invisible(id)
     },
@@ -1510,20 +1608,6 @@ ResearchWorkspace <- R6::R6Class(
         private$accepted_graft_references_value,
         private$base_snapshot_id_value
       )
-    },
-
-    #' @description Record the latest claim-centered citation audit.
-    #' @param citation_audit A citation-audit data frame, or `NULL` to clear it.
-    set_citation_audit = function(citation_audit) {
-      if (is.null(citation_audit)) {
-        private$citation_audit_value <- NULL
-        return(invisible(NULL))
-      }
-      private$citation_audit_value <- private$validate_citation_audit(
-        citation_audit,
-        private$claims_value
-      )
-      invisible(self$citation_audit)
     },
 
     #' @description Validate all authoritative workspace cross-record links.
@@ -1604,11 +1688,63 @@ ResearchWorkspace <- R6::R6Class(
           )
         }
       }
-      if (!is.null(private$citation_audit_value)) {
-        private$validate_citation_audit(
-          private$citation_audit_value,
-          private$claims_value
+      supports <- self$list_claim_supports()
+      if (length(supports) > 0L) {
+        supports <- private$validate_claim_support_batch(supports)
+        supports <- supports[order(vapply(
+          supports,
+          \(support) support@claim_support_id,
+          character(1)
+        ))]
+        expected_audit <- tempest_claim_supports_tibble(supports)
+        if (!identical(private$citation_audit_value, expected_audit)) {
+          tempest_research_workspace_abort(
+            paste0(
+              "Citation audit must exactly project the authoritative ",
+              "claim-support records."
+            )
+          )
+        }
+        for (claim_id in claim_ids) {
+          claim_supports <- Filter(
+            \(support) identical(support@claim_id, claim_id),
+            supports
+          )
+          expected <- private$aggregate_claim_support(claim_supports)
+          claim <- private$claims_value[[claim_id]]
+          if (
+            !identical(claim@verification_status, expected$status) ||
+              !isTRUE(all.equal(
+                claim@support_score,
+                expected$score,
+                check.attributes = FALSE
+              )) ||
+              is.na(claim@verified_at)
+          ) {
+            tempest_research_workspace_abort(
+              "Claim verification summary does not match its support records."
+            )
+          }
+        }
+      } else {
+        if (
+          !is.null(private$citation_audit_value) &&
+            nrow(private$citation_audit_value) != 0L
+        ) {
+          tempest_research_workspace_abort(
+            "Citation audit cannot exist without claim-support records."
+          )
+        }
+        stale <- vapply(
+          self$list_proposed_claims(),
+          \(claim) !identical(claim@verification_status, "unverified"),
+          logical(1)
         )
+        if (any(stale)) {
+          tempest_research_workspace_abort(
+            "Verified claim summaries require exact claim-support records."
+          )
+        }
       }
       invisible(self)
     },
@@ -1665,7 +1801,10 @@ ResearchWorkspace <- R6::R6Class(
       }
       list(
         retrieved_resources = resources,
-        proposed_claims = tempest_claims_tibble(self$list_proposed_claims())
+        proposed_claims = tempest_claims_tibble(self$list_proposed_claims()),
+        claim_supports = tempest_claim_supports_tibble(
+          self$list_claim_supports()
+        )
       )
     }
   ),
@@ -1687,6 +1826,12 @@ ResearchWorkspace <- R6::R6Class(
         private$read_only_binding("evidence_spans")
       }
       tempest_research_workspace_values(private$evidence_spans_value)
+    },
+    claim_supports = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("claim_supports")
+      }
+      tempest_research_workspace_values(private$claim_supports_value)
     },
     disputes = function(value) {
       if (!missing(value)) {
@@ -1734,12 +1879,7 @@ ResearchWorkspace <- R6::R6Class(
     },
     citation_audit = function(value) {
       if (!missing(value)) {
-        tempest_research_workspace_abort(
-          paste0(
-            "{.field citation_audit} is read-only; use ",
-            "{.fn set_citation_audit}."
-          )
-        )
+        private$read_only_binding("citation_audit")
       }
       if (is.null(private$citation_audit_value)) {
         return(NULL)
@@ -1751,6 +1891,7 @@ ResearchWorkspace <- R6::R6Class(
     resources_value = NULL,
     claims_value = NULL,
     evidence_spans_value = NULL,
+    claim_supports_value = NULL,
     disputes_value = NULL,
     max_sources_value = NULL,
     claims_by_source = NULL,
@@ -1758,6 +1899,7 @@ ResearchWorkspace <- R6::R6Class(
     graft_snapshot_value = NULL,
     accepted_graft_references_value = NULL,
     citation_audit_value = NULL,
+    verification_owner_token_value = NULL,
     validate_resource = function(resource) {
       if (!S7::S7_inherits(resource, TempestResource)) {
         tempest_research_workspace_abort(
@@ -1966,230 +2108,217 @@ ResearchWorkspace <- R6::R6Class(
       }
       tempest_research_workspace_copy(span)
     },
-    validate_claim_verification = function(update, index) {
-      required <- c("claim_id", "status", "score", "verifier")
-      if (
-        !is.list(update) ||
-          is.data.frame(update) ||
-          !setequal(names(update), required) ||
-          anyNA(names(update)) ||
-          anyDuplicated(names(update))
-      ) {
+    validate_claim_support = function(
+      support,
+      claims_value = private$claims_value,
+      evidence_spans_value = private$evidence_spans_value,
+      resources_value = private$resources_value
+    ) {
+      if (!S7::S7_inherits(support, TempestClaimSupport)) {
         tempest_research_workspace_abort(
           paste0(
-            "{.arg verifications[[",
-            index,
-            "]]} must contain exactly ",
-            "{.field claim_id}, {.field status}, {.field score}, and ",
-            "{.field verifier}."
+            "{.arg claim_supports} must contain only exact ",
+            "{.cls tempest_claim_support} records."
           )
         )
       }
-      update <- update[required]
-      if (
-        !rlang::is_string(update$claim_id) ||
-          !nzchar(tempest_trim(update$claim_id))
-      ) {
-        tempest_research_workspace_abort(
-          "Verification claim IDs must be single non-empty strings."
-        )
-      }
-      valid_statuses <- setdiff(tempest_verification_statuses(), "unverified")
-      if (
-        !rlang::is_string(update$status) || !update$status %in% valid_statuses
-      ) {
-        tempest_research_workspace_abort(
-          "Verification status must be one of: {.val {valid_statuses}}."
-        )
-      }
-      if (
-        !is.numeric(update$score) ||
-          length(update$score) != 1L ||
-          (!is.na(update$score) &&
-            (!is.finite(update$score) ||
-              update$score < 0 ||
-              update$score > 1))
-      ) {
-        tempest_research_workspace_abort(
-          "Verification score must be `NA` or a finite value in [0, 1]."
-        )
-      }
-      if (
-        !is.character(update$verifier) ||
-          length(update$verifier) != 1L ||
-          (!is.na(update$verifier) &&
-            !tempest_opaque_identifier_valid(update$verifier))
-      ) {
-        tempest_research_workspace_abort(
-          paste0(
-            "Verification model must be `NA` or a bounded credential-free ",
-            "identifier."
+      tryCatch(
+        S7::validate(support),
+        error = function(error) {
+          tempest_research_workspace_abort(
+            "A claim-support assessment failed live validation."
           )
-        )
-      }
-      list(
-        claim_id = tempest_trim(update$claim_id),
-        status = update$status,
-        score = as.double(update$score),
-        verifier = update$verifier
+        }
       )
+      claim <- claims_value[[support@claim_id]]
+      if (is.null(claim)) {
+        tempest_research_workspace_abort(
+          "Claim support cites unknown claim id: {.val {support@claim_id}}."
+        )
+      }
+      span <- evidence_spans_value[[support@evidence_span_id]]
+      if (is.null(span)) {
+        tempest_research_workspace_abort(
+          paste0(
+            "Claim support cites unknown evidence-span id: ",
+            "{.val {support@evidence_span_id}}."
+          )
+        )
+      }
+      if (!support@evidence_span_id %in% claim@evidence_span_ids) {
+        tempest_research_workspace_abort(
+          "Claim support binds an evidence span not cited by its claim."
+        )
+      }
+      if (
+        !identical(support@source_id, span@source_id) ||
+          !support@source_id %in% claim@source_ids ||
+          is.null(resources_value[[support@source_id]])
+      ) {
+        tempest_research_workspace_abort(
+          paste0(
+            "Claim-support source must exactly match the authoritative span ",
+            "and cited claim source."
+          )
+        )
+      }
+      if (is.na(span@quote) || !nzchar(span@quote)) {
+        tempest_research_workspace_abort(
+          "Claim support requires a non-empty captured evidence-span quote."
+        )
+      }
+      private$validate_evidence_span(
+        span,
+        resources_value = resources_value
+      )
+      tempest_research_workspace_copy(support)
     },
-    validate_citation_audit = function(citation_audit, claims_value) {
-      if (!is.data.frame(citation_audit)) {
-        tempest_research_workspace_abort(
-          "{.arg citation_audit} must be a data frame or `NULL`."
-        )
-      }
-      required <- c(
-        "claim_id",
-        "claim_text",
-        "verification_status",
-        "support_score",
-        "rationale"
+    validate_claim_support_batch = function(
+      supports,
+      min_support_score = NULL,
+      claims_value = private$claims_value,
+      evidence_spans_value = private$evidence_spans_value,
+      resources_value = private$resources_value
+    ) {
+      supports <- lapply(
+        supports,
+        private$validate_claim_support,
+        claims_value = claims_value,
+        evidence_spans_value = evidence_spans_value,
+        resources_value = resources_value
       )
-      fields <- names(citation_audit)
-      if (
-        is.null(fields) ||
-          anyNA(fields) ||
-          anyDuplicated(fields) ||
-          !setequal(fields, required)
-      ) {
-        missing <- setdiff(required, fields %||% character())
-        unexpected <- setdiff(fields %||% character(), required)
+      support_ids <- vapply(
+        supports,
+        \(support) support@claim_support_id,
+        character(1)
+      )
+      if (anyDuplicated(support_ids)) {
         tempest_research_workspace_abort(
-          c(
-            "{.arg citation_audit} must contain exactly the claim-audit fields.",
-            x = if (length(missing) > 0L) {
-              "Missing field{?s}: {.field {missing}}."
-            },
-            x = if (length(unexpected) > 0L) {
-              "Unexpected field{?s}: {.field {unexpected}}."
-            }
-          )
+          "Claim-support batches cannot contain duplicate pair identities."
         )
       }
-      citation_audit <- citation_audit[required]
-      for (field in c(
-        "claim_id",
-        "claim_text",
-        "verification_status",
-        "rationale"
-      )) {
-        if (!is.character(citation_audit[[field]])) {
+      claim_ids <- sort(ls(claims_value, all.names = TRUE))
+      expected_ids <- character()
+      for (claim_id in claim_ids) {
+        claim <- claims_value[[claim_id]]
+        if (length(claim@evidence_span_ids) == 0L) {
           tempest_research_workspace_abort(
-            "Citation-audit field {.field {field}} must be character."
+            paste0(
+              "Every verified claim requires at least one exact evidence ",
+              "span: {.val {claim_id}}."
+            )
           )
         }
-      }
-      if (!is.numeric(citation_audit$support_score)) {
-        tempest_research_workspace_abort(
-          "Citation-audit field {.field support_score} must be numeric."
+        span_sources <- vapply(
+          claim@evidence_span_ids,
+          \(span_id) evidence_spans_value[[span_id]]@source_id,
+          character(1)
+        )
+        if (!setequal(unique(span_sources), claim@source_ids)) {
+          tempest_research_workspace_abort(
+            paste0(
+              "Every cited claim source requires at least one exact evidence ",
+              "span: {.val {claim_id}}."
+            )
+          )
+        }
+        expected_ids <- c(
+          expected_ids,
+          vapply(
+            claim@evidence_span_ids,
+            \(span_id) tempest_claim_support_id(claim_id, span_id),
+            character(1)
+          )
         )
       }
-      if (
-        anyNA(citation_audit$claim_id) ||
-          any(!nzchar(tempest_trim(citation_audit$claim_id))) ||
-          anyDuplicated(citation_audit$claim_id)
-      ) {
-        tempest_research_workspace_abort(
-          "Citation-audit claim IDs must be unique non-empty strings."
-        )
-      }
-      if (
-        anyNA(citation_audit$claim_text) ||
-          any(!nzchar(tempest_trim(citation_audit$claim_text)))
-      ) {
-        tempest_research_workspace_abort(
-          "Citation-audit claim text must contain non-empty strings."
-        )
-      }
-      invalid_statuses <- setdiff(
-        unique(citation_audit$verification_status),
-        tempest_verification_statuses()
-      )
-      if (
-        anyNA(citation_audit$verification_status) ||
-          length(invalid_statuses) > 0L
-      ) {
+      if (!setequal(support_ids, expected_ids)) {
         tempest_research_workspace_abort(
           paste0(
-            "Citation-audit verification statuses must be one of: ",
-            "{.val {tempest_verification_statuses()}}."
+            "{.arg claim_supports} must exactly cover every current ",
+            "claim-by-evidence-span pair."
           )
         )
       }
-      invalid_scores <- !is.na(citation_audit$support_score) &
-        (!is.finite(citation_audit$support_score) |
-          citation_audit$support_score < 0 |
-          citation_audit$support_score > 1)
-      if (any(invalid_scores)) {
-        tempest_research_workspace_abort(
-          "Citation-audit support scores must be `NA` or finite values in [0, 1]."
+      if (!is.null(min_support_score)) {
+        min_support_score <- tempest_normalize_min_support_score(
+          min_support_score
+        )
+        below_threshold <- vapply(
+          supports,
+          function(support) {
+            identical(support@verification_status, "supported") &&
+              (is.na(support@support_score) ||
+                support@support_score < min_support_score)
+          },
+          logical(1)
+        )
+        if (any(below_threshold)) {
+          tempest_research_workspace_abort(
+            paste0(
+              "Supported claim-span assessments must satisfy the exact ",
+              "verification threshold."
+            )
+          )
+        }
+      }
+      supports[match(expected_ids, support_ids)]
+    },
+    aggregate_claim_support = function(supports) {
+      tempest_claim_support_aggregate(supports)
+    },
+    verified_claim_state = function(
+      claims_value,
+      supports,
+      verifier,
+      verified_at
+    ) {
+      claims_value <- tempest_research_workspace_environment_copy(claims_value)
+      claim_ids <- sort(ls(claims_value, all.names = TRUE))
+      for (claim_id in claim_ids) {
+        claim_supports <- Filter(
+          \(support) identical(support@claim_id, claim_id),
+          supports
+        )
+        aggregate <- private$aggregate_claim_support(claim_supports)
+        claims_value[[claim_id]] <- S7::set_props(
+          claims_value[[claim_id]],
+          verification_status = aggregate$status,
+          support_score = aggregate$score,
+          verifier_model = verifier,
+          verified_at = verified_at
         )
       }
-      unsafe_rationale <- !is.na(citation_audit$rationale) &
-        (nchar(citation_audit$rationale, type = "bytes") > 2000L |
-          vapply(
-            citation_audit$rationale,
-            tempest_contract_sensitive_scalar,
-            logical(1)
-          ))
-      if (any(unsafe_rationale)) {
-        tempest_research_workspace_abort(
-          "Citation-audit rationale must be bounded and credential-free."
+      claims_value
+    },
+    unverified_claim_state = function(claims_value) {
+      claims_value <- tempest_research_workspace_environment_copy(claims_value)
+      for (claim_id in ls(claims_value, all.names = TRUE)) {
+        claims_value[[claim_id]] <- S7::set_props(
+          claims_value[[claim_id]],
+          verification_status = "unverified",
+          support_score = NA_real_,
+          verified_at = NA_character_,
+          verifier_model = NA_character_
         )
       }
-      citation_audit$support_score <- as.double(citation_audit$support_score)
-      for (index in seq_len(nrow(citation_audit))) {
-        claim_id <- citation_audit$claim_id[[index]]
-        claim <- claims_value[[claim_id]]
-        if (is.null(claim)) {
-          tempest_research_workspace_abort(
-            "Citation audit cites unknown claim id: {.val {claim_id}}."
-          )
-        }
-        if (!identical(citation_audit$claim_text[[index]], claim@claim_text)) {
-          tempest_research_workspace_abort(
-            "Citation-audit text does not match claim {.val {claim_id}}."
-          )
-        }
-        if (
-          !identical(
-            citation_audit$verification_status[[index]],
-            claim@verification_status
-          )
-        ) {
-          tempest_research_workspace_abort(
-            "Citation-audit status does not match claim {.val {claim_id}}."
-          )
-        }
-        if (
-          !isTRUE(all.equal(
-            citation_audit$support_score[[index]],
-            claim@support_score,
-            check.attributes = FALSE
-          ))
-        ) {
-          tempest_research_workspace_abort(
-            "Citation-audit support score does not match claim {.val {claim_id}}."
-          )
-        }
-      }
-      rlang::duplicate(tibble::as_tibble(citation_audit), shallow = FALSE)
+      claims_value
     },
     commit_claim_state = function(
       claims_value,
       claims_by_source,
+      claim_supports_value,
       citation_audit,
       commit = NULL
     ) {
       previous_claims <- private$claims_value
       previous_claims_by_source <- private$claims_by_source
+      previous_claim_supports <- private$claim_supports_value
       previous_citation_audit <- private$citation_audit_value
       tryCatch(
         {
           private$claims_value <- claims_value
           private$claims_by_source <- claims_by_source
+          private$claim_supports_value <- claim_supports_value
           private$citation_audit_value <- citation_audit
           if (!is.null(commit)) {
             commit()
@@ -2198,6 +2327,7 @@ ResearchWorkspace <- R6::R6Class(
         error = function(error) {
           private$claims_value <- previous_claims
           private$claims_by_source <- previous_claims_by_source
+          private$claim_supports_value <- previous_claim_supports
           private$citation_audit_value <- previous_citation_audit
           stop(error)
         }
@@ -2208,18 +2338,21 @@ ResearchWorkspace <- R6::R6Class(
       claims_value,
       claims_by_source,
       evidence_spans_value,
+      claim_supports_value,
       citation_audit,
       commit = NULL
     ) {
       previous_claims <- private$claims_value
       previous_claims_by_source <- private$claims_by_source
       previous_evidence_spans <- private$evidence_spans_value
+      previous_claim_supports <- private$claim_supports_value
       previous_citation_audit <- private$citation_audit_value
       tryCatch(
         {
           private$claims_value <- claims_value
           private$claims_by_source <- claims_by_source
           private$evidence_spans_value <- evidence_spans_value
+          private$claim_supports_value <- claim_supports_value
           private$citation_audit_value <- citation_audit
           if (!is.null(commit)) {
             commit()
@@ -2229,13 +2362,57 @@ ResearchWorkspace <- R6::R6Class(
           private$claims_value <- previous_claims
           private$claims_by_source <- previous_claims_by_source
           private$evidence_spans_value <- previous_evidence_spans
+          private$claim_supports_value <- previous_claim_supports
           private$citation_audit_value <- previous_citation_audit
           stop(error)
         }
       )
       invisible(NULL)
     },
-    invalidate_citation_audit = function() {
+    commit_verification_state = function(
+      claims_value,
+      claim_supports_value,
+      citation_audit,
+      commit = NULL
+    ) {
+      previous_claims <- private$claims_value
+      previous_claim_supports <- private$claim_supports_value
+      previous_citation_audit <- private$citation_audit_value
+      tryCatch(
+        {
+          private$claims_value <- claims_value
+          private$claim_supports_value <- claim_supports_value
+          private$citation_audit_value <- citation_audit
+          if (!is.null(commit)) {
+            commit()
+          }
+        },
+        error = function(error) {
+          private$claims_value <- previous_claims
+          private$claim_supports_value <- previous_claim_supports
+          private$citation_audit_value <- previous_citation_audit
+          stop(error)
+        }
+      )
+      invisible(NULL)
+    },
+    assert_verification_mutable = function() {
+      if (length(ls(private$claim_supports_value, all.names = TRUE)) > 0L) {
+        tempest_research_workspace_abort(
+          paste0(
+            "Verified ResearchWorkspace evidence is sealed; current ",
+            "claim-support proof cannot be invalidated or superseded."
+          )
+        )
+      }
+      invisible(NULL)
+    },
+    invalidate_verification_state = function() {
+      private$assert_verification_mutable()
+      private$claims_value <- private$unverified_claim_state(
+        private$claims_value
+      )
+      private$claim_supports_value <- new.env(parent = emptyenv())
       private$citation_audit_value <- NULL
       invisible(NULL)
     },

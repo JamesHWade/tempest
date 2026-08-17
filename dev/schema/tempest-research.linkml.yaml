@@ -1,0 +1,332 @@
+id: https://w3id.org/tempest/research
+name: tempest-research
+title: Tempest governed research schema
+description: >-
+  Typed promotion contract for Tempest scientific sources, claims, exact
+  evidence spans, pair-level support assessments, executable program
+  artifacts, and governed procedures.
+version: 1.0.0
+license: MIT
+prefixes:
+  graft: https://w3id.org/graft/
+  linkml: https://w3id.org/linkml/
+  tempest: https://w3id.org/tempest/
+default_prefix: tempest
+default_range: string
+imports:
+  - graft-core.linkml
+
+enums:
+  TempestClaimType:
+    permissible_values:
+      finding:
+      definition:
+      method:
+      limitation:
+      contradiction:
+      open_question:
+  TempestConfidenceLabel:
+    permissible_values:
+      low:
+      medium:
+      high:
+  TempestVerificationStatus:
+    permissible_values:
+      unverified:
+      supported:
+      partially_supported:
+      unsupported:
+      contradicted:
+      unverifiable:
+  TempestPairVerificationStatus:
+    permissible_values:
+      supported:
+      partially_supported:
+      unsupported:
+      contradicted:
+      unverifiable:
+  TempestProgramArtifactKind:
+    permissible_values:
+      dsprrr_program:
+  TempestStage:
+    permissible_values:
+      perspectives:
+      personas:
+      query_decomposition:
+      extract_claims:
+      verify_claim_support:
+      next_question:
+      draft_outline:
+      refined_outline:
+      section_writing:
+      lead_section:
+
+slots:
+  tempest_source_id:
+    range: string
+    required: true
+    annotations:
+      graft.external_identifier:
+        tag: graft.external_identifier
+        value: tempest_source
+  resource_kind:
+    range: string
+    required: true
+  locator:
+    range: string
+    required: true
+  title:
+    range: string
+    required: true
+  media_type:
+    range: string
+    required: true
+  content_hash:
+    range: string
+    required: true
+    pattern: "^sha256:[a-f0-9]{64}$"
+  retrieved_at:
+    range: datetime
+    required: true
+
+  tempest_claim_id:
+    range: string
+    required: true
+  claim_type:
+    range: TempestClaimType
+    required: true
+  confidence_label:
+    range: TempestConfidenceLabel
+    required: true
+  verification_status:
+    range: TempestVerificationStatus
+    required: true
+  support_score:
+    range: float
+    minimum_value: 0
+    maximum_value: 1
+  contradiction_score:
+    range: float
+    minimum_value: 0
+    maximum_value: 1
+  source_quality_score:
+    range: float
+    minimum_value: 0
+    maximum_value: 1
+  retrieval_query:
+    range: string
+  retrieval_step_id:
+    range: string
+  perspective_id:
+    range: string
+  expert_id:
+    range: string
+  session_id:
+    range: string
+  section_id:
+    range: string
+  verified_at:
+    range: datetime
+  verifier_model:
+    range: string
+
+  evidence_span_id:
+    range: EvidenceSpan
+    required: true
+  tempest_evidence_span_id:
+    range: string
+    required: true
+  chunk_id:
+    range: string
+  start_offset:
+    range: integer
+    minimum_value: 0
+  end_offset:
+    range: integer
+    minimum_value: 1
+  section_heading:
+    range: string
+  relevance_score:
+    range: float
+    minimum_value: 0
+    maximum_value: 1
+  extracted_at:
+    range: datetime
+    required: true
+
+  tempest_claim_support_id:
+    range: string
+    required: true
+    annotations:
+      graft.external_identifier:
+        tag: graft.external_identifier
+        value: tempest_claim_support
+  pair_verification_status:
+    range: TempestPairVerificationStatus
+    required: true
+  rationale:
+    range: string
+    required: true
+
+  artifact_kind:
+    range: TempestProgramArtifactKind
+    required: true
+  program_artifact_id:
+    range: ProgramArtifact
+    required: true
+  tempest_governed_procedure_id:
+    range: string
+    required: true
+  stage:
+    range: TempestStage
+    required: true
+  contract_version:
+    range: string
+    required: true
+  evaluator_id:
+    range: string
+    required: true
+  evaluator_version:
+    range: string
+    required: true
+
+classes:
+  Source:
+    is_a: GraftSource
+    slots:
+      - tempest_source_id
+      - resource_kind
+      - locator
+      - title
+      - media_type
+      - content_hash
+      - retrieved_at
+    annotations:
+      graft.id_policy:
+        tag: graft.id_policy
+        value: deterministic
+      graft.origin_key_slots:
+        tag: graft.origin_key_slots
+        value: tempest_source_id
+      graft.label_slot:
+        tag: graft.label_slot
+        value: title
+      graft.search_slots:
+        tag: graft.search_slots
+        value: "title, locator"
+
+  Claim:
+    is_a: GraftNarrativeStatement
+    slots:
+      - tempest_claim_id
+      - claim_type
+      - confidence_label
+      - verification_status
+      - support_score
+      - contradiction_score
+      - source_quality_score
+      - retrieval_query
+      - retrieval_step_id
+      - perspective_id
+      - expert_id
+      - session_id
+      - section_id
+      - verified_at
+      - verifier_model
+    annotations:
+      graft.id_policy:
+        tag: graft.id_policy
+        value: deterministic
+      graft.origin_key_slots:
+        tag: graft.origin_key_slots
+        value: tempest_claim_id
+      graft.search_slots:
+        tag: graft.search_slots
+        value: statement_text
+
+  EvidenceSpan:
+    slots:
+      - id
+      - tempest_evidence_span_id
+      - source_id
+      - excerpt
+      - chunk_id
+      - start_offset
+      - end_offset
+      - page_start
+      - page_end
+      - section_heading
+      - relevance_score
+      - extraction_method
+      - extraction_version
+      - source_content_hash
+      - extracted_at
+    slot_usage:
+      source_id:
+        required: true
+      excerpt:
+        required: true
+      source_content_hash:
+        required: true
+      extraction_method:
+        required: true
+      extraction_version:
+        required: true
+    annotations:
+      graft.role:
+        tag: graft.role
+        value: metadata
+
+  ClaimSupport:
+    is_a: GraftEvidence
+    slots:
+      - tempest_claim_support_id
+      - tempest_claim_id
+      - evidence_span_id
+      - pair_verification_status
+      - support_score
+      - rationale
+    slot_usage:
+      source_id:
+        required: true
+      excerpt:
+        required: true
+      source_content_hash:
+        required: true
+      extraction_method:
+        required: true
+      extraction_version:
+        required: true
+    annotations:
+      graft.id_policy:
+        tag: graft.id_policy
+        value: deterministic
+      graft.origin_key_slots:
+        tag: graft.origin_key_slots
+        value: "statement_id, evidence_span_id"
+
+  ProgramArtifact:
+    slots:
+      - id
+      - artifact_kind
+    annotations:
+      graft.role:
+        tag: graft.role
+        value: metadata
+
+  GovernedProcedure:
+    is_a: GraftMetadata
+    slots:
+      - tempest_governed_procedure_id
+      - stage
+      - program_artifact_id
+      - contract_version
+      - evaluator_id
+      - evaluator_version
+    annotations:
+      graft.id_policy:
+        tag: graft.id_policy
+        value: deterministic
+      graft.origin_key_slots:
+        tag: graft.origin_key_slots
+        value: tempest_governed_procedure_id

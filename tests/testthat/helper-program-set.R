@@ -45,6 +45,29 @@ test_write_program_set_manifest <- function(path, manifest) {
   )
 }
 
+test_governed_procedure_ref <- function(
+  stage,
+  program_artifact_id,
+  revision_id = paste0("revision:", stage),
+  snapshot_id = "snapshot:test",
+  evaluator_id = paste0("tempest::evaluator/", stage),
+  evaluator_version = "1"
+) {
+  tempest:::tempest_governed_procedure_ref_new(
+    stage = stage,
+    tempest_governed_procedure_id = paste0("tempest-procedure:", stage),
+    record_id = paste0("procedure:", stage),
+    revision_id = revision_id,
+    program_artifact_id = program_artifact_id,
+    evaluator_id = evaluator_id,
+    evaluator_version = evaluator_version,
+    store_id = "store:test",
+    snapshot_id = snapshot_id,
+    schema_build_digest = "schema:test",
+    commit_order = 1
+  )
+}
+
 test_contains_runtime_value <- function(value) {
   if (
     is.function(value) ||

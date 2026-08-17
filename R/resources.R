@@ -1,5 +1,29 @@
 # Typed evidence resources
 
+tempest_resource_data_fields <- function() {
+  c(
+    "resource_id",
+    "resource_kind",
+    "locator",
+    "title",
+    "media_type",
+    "content",
+    "storage_ref",
+    "origin_connection_id",
+    "scope_metadata",
+    "content_hash",
+    "retrieved_at",
+    "redaction",
+    "retention",
+    "metadata",
+    "schema_version"
+  )
+}
+
+tempest_resource_record_fields <- function() {
+  c(tempest_resource_data_fields(), "fingerprint")
+}
+
 TempestResource <- S7::new_class(
   "tempest_resource",
   properties = list(
@@ -307,7 +331,7 @@ tempest_resource_data <- function(resource, include_content = TRUE) {
   }
   S7::validate(resource)
   include_content <- tempest_workflow_flag(include_content, "include_content")
-  fields <- S7::prop_names(resource)
+  fields <- tempest_resource_data_fields()
   if (!include_content) {
     fields <- setdiff(fields, "content")
   }
@@ -375,9 +399,22 @@ tempest_resource_record <- function(resource, include_content = TRUE) {
 }
 
 tempest_resource_from_data <- function(data) {
-  if (!is.list(data) || is.data.frame(data)) {
+  expected_fields <- tempest_resource_record_fields()
+  if (
+    !is.list(data) ||
+      is.data.frame(data) ||
+      !identical(names(data), expected_fields)
+  ) {
     tempest_artifact_codec_abort(
-      "{.arg data} must be a typed evidence-resource record."
+      paste0(
+        "{.arg data} must be a typed evidence-resource record in exact ",
+        "current field order."
+      )
+    )
+  }
+  if (!identical(data$schema_version, 1L)) {
+    tempest_artifact_codec_abort(
+      "Evidence-resource data must carry exact integer schema_version 1."
     )
   }
   expected <- tempest_workflow_scalar(data$fingerprint, "fingerprint")
@@ -398,7 +435,7 @@ tempest_resource_from_data <- function(data) {
       redaction = tempest_codec_list(data$redaction),
       retention = tempest_codec_list(data$retention),
       metadata = tempest_codec_list(data$metadata),
-      schema_version = data$schema_version %||% 1L
+      schema_version = data$schema_version
     ),
     error = function(error) {
       tempest_artifact_codec_abort(

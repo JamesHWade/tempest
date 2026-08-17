@@ -78,7 +78,7 @@ tempest_stage_durable_output_contracts <- function() {
     personas = list(kind = "state_field", fields = "experts"),
     query_decomposition = list(kind = "content_digest", fields = NULL),
     extract_claims = list(kind = "workspace_claims", fields = NULL),
-    verify_claim_support = list(kind = "citation_audit", fields = NULL),
+    verify_claim_support = list(kind = "claim_supports", fields = NULL),
     next_question = list(kind = "content_digest", fields = NULL),
     draft_outline = list(kind = "state_field", fields = "draft_outline"),
     refined_outline = list(kind = "state_field", fields = "outline"),
@@ -499,21 +499,14 @@ tempest_storm_state_validate <- function(state) {
       !identical(names(state), fields)
   ) {
     tempest_storm_state_abort(
-      "STORM product state must contain exactly the schema version 3 fields in schema order."
+      "STORM product state must contain exactly the schema version 4 fields in schema order."
     )
   }
-  if (
-    !is.numeric(state$schema_version) ||
-      length(state$schema_version) != 1L ||
-      is.na(state$schema_version) ||
-      !identical(as.integer(state$schema_version), 3L) ||
-      state$schema_version != 3
-  ) {
+  if (!tempest_exact_integer_scalar_valid(state$schema_version, 4L, 4L)) {
     tempest_storm_state_abort(
-      "{.field schema_version} must be the supported version `3`."
+      "{.field schema_version} must be the supported version `4`."
     )
   }
-  state$schema_version <- 3L
   state$topic <- tempest_storm_state_string(state$topic, "topic", TRUE)
   state$title <- tempest_storm_state_string(state$title, "title", TRUE)
   state$requested_steps <- tempest_storm_requested_steps(
@@ -647,7 +640,7 @@ tempest_storm_state <- function(
   references = list(),
   stage_records = list(),
   completed_stages = character(),
-  schema_version = 3L
+  schema_version = 4L
 ) {
   tempest_storm_state_validate(list(
     schema_version = schema_version,
@@ -716,20 +709,14 @@ tempest_storm_state_from_record <- function(record) {
       class = "tempest_storm_state_restore_error"
     )
   }
-  schema_version <- record$schema_version %||% NA_integer_
-  invalid_schema <-
-    !is.numeric(schema_version) ||
-    length(schema_version) != 1L ||
-    is.na(schema_version) ||
-    !is.finite(schema_version) ||
-    schema_version != floor(schema_version)
-  if (isTRUE(invalid_schema)) {
+  schema_version <- record$schema_version
+  if (!tempest_exact_integer_scalar_valid(schema_version, minimum = 0L)) {
     tempest_storm_state_abort(
-      "STORM product-state schema version must be one whole number.",
+      "STORM product-state schema version must be one exact integer.",
       class = "tempest_storm_state_restore_error"
     )
   }
-  if (schema_version != 3L) {
+  if (!identical(schema_version, 4L)) {
     tempest_unsupported_format_abort(
       "STORM product-state format",
       schema_version,
@@ -742,7 +729,7 @@ tempest_storm_state_from_record <- function(record) {
   }
   if (!identical(names(record), fields)) {
     tempest_storm_state_abort(
-      "STORM product-state records must contain exactly the schema version 3 fields in schema order.",
+      "STORM product-state records must contain exactly the schema version 4 fields in schema order.",
       class = "tempest_storm_state_restore_error"
     )
   }

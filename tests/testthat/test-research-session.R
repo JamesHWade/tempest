@@ -217,6 +217,10 @@ test_that("Co-STORM stage ledger batches commit atomically", {
   conflicting <- tempest:::tempest_stage_record_start(
     "verify_claim_support",
     programs$verify_claim_support$program_artifact_id,
+    trace_references = list(
+      min_support_score = "0.7",
+      verified_at = "2026-08-16T12:03:00Z"
+    ),
     attempt_id = "stage-attempt-atomic-ledger"
   )
 
@@ -438,14 +442,18 @@ test_that("Co-STORM restoration preserves manifest identity", {
     }
   )
   program_set <- tempest_program_set()
-  workspace <- tempest_research_workspace(base_snapshot_id = "snapshot-1")
+  knowledge <- test_knowledge_view()
+  workspace <- tempest_research_workspace(graft_snapshot = knowledge$snapshot)
+  snapshot_reference <- tempest:::tempest_snapshot_reference(
+    knowledge$snapshot
+  )
   retriever <- tempest_retriever(config = config, workspace = workspace)
   manifest <- tempest_research_manifest(
     research_run_id = "restored-costorm-session",
     mode = "costorm",
     config = config,
     programs = tempest:::tempest_program_set_manifest_programs(program_set),
-    knowledge_snapshot = list(snapshot_id = "snapshot-1"),
+    knowledge_snapshot = snapshot_reference,
     runtime = list(),
     traces = list(),
     deliverables = list(),
@@ -552,7 +560,11 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   program_set <- tempest_program_set()
-  workspace <- tempest_research_workspace(base_snapshot_id = "snapshot-1")
+  knowledge <- test_knowledge_view()
+  workspace <- tempest_research_workspace(graft_snapshot = knowledge$snapshot)
+  snapshot_reference <- tempest:::tempest_snapshot_reference(
+    knowledge$snapshot
+  )
   retriever <- tempest_retriever(config = config, workspace = workspace)
   expert <- test_expert(
     expert_id = "expert.invalid-manifest",
@@ -572,15 +584,17 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
   manifest <- function(
     mode = "costorm",
     status = "running",
-    snapshot_id = "snapshot-1",
+    snapshot_id = snapshot_reference$snapshot_id,
     config_ = config
   ) {
+    knowledge_snapshot <- snapshot_reference
+    knowledge_snapshot$snapshot_id <- snapshot_id
     tempest_research_manifest(
       research_run_id = "manifest-session",
       mode = mode,
       config = config_,
       programs = tempest:::tempest_program_set_manifest_programs(program_set),
-      knowledge_snapshot = list(snapshot_id = snapshot_id),
+      knowledge_snapshot = knowledge_snapshot,
       runtime = list(),
       status = status
     )
@@ -619,7 +633,7 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
     regexp = "terminal manifests cannot be resumed"
   )
   expect_error(
-    create_session(manifest(snapshot_id = "snapshot-2")),
+    create_session(manifest(snapshot_id = "snapshot:mismatched")),
     class = "tempest_session_error",
     regexp = "base snapshot"
   )

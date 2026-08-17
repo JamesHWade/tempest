@@ -36,7 +36,8 @@ test_that("extraction evaluates and commits an exact claim batch", {
   expect_length(claims, 1L)
   expect_equal(claims[[1]]@claim_text, "Exact multi-source claim")
   expect_equal(claims[[1]]@source_ids, source_ids)
-  expect_equal(claims[[1]]@support_score, 0.84)
+  expect_identical(claims[[1]]@support_score, NA_real_)
+  expect_identical(claims[[1]]@verification_status, "unverified")
 })
 
 test_that("extraction rejects an unknown source without partial insertion", {

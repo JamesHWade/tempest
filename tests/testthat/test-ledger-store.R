@@ -30,10 +30,17 @@ test_that("ResearchWorkspace links evidence spans and verifies claims", {
   expect_equal(store$get_proposed_claim(cid)@evidence_span_ids, sid)
   expect_length(store$get_evidence_for_proposed_claim(cid), 1)
 
-  store$verify_proposed_claim(
-    cid,
-    status = "supported",
-    score = 0.8,
+  store$verify_proposed_claims_batch(
+    list(tempest_claim_support(
+      claim_id = cid,
+      evidence_span_id = sid,
+      source_id = source_id,
+      verification_status = "supported",
+      support_score = 0.8,
+      rationale = "The exact evidence span supports the claim."
+    )),
+    verified_at = "2026-08-16T12:03:00Z",
+    min_support_score = 0.7,
     verifier = "judge/x"
   )
   cl <- store$get_proposed_claim(cid)
@@ -51,7 +58,10 @@ test_that("to_tibbles exposes canonical research collections", {
     source_ids = source_id
   ))
   tb <- store$to_tibbles()
-  expect_named(tb, c("retrieved_resources", "proposed_claims"))
+  expect_named(
+    tb,
+    c("retrieved_resources", "proposed_claims", "claim_supports")
+  )
   expect_equal(nrow(tb$proposed_claims), 1)
   expect_contains(
     names(tb$retrieved_resources),

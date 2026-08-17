@@ -12,8 +12,10 @@ This package reproduces the core workflow primitives:
 - **Multi-perspective research** with selected or automatically generated
   expert profiles
 - **Provisional evidence workspaces** with citations and source attribution
+- **Pair-level claim support** with exact claim, span, and source bindings
 - **Research manifests** that identify configuration, programs, knowledge
   snapshots, traces, and deliverables
+- **Review-only Graft promotion** with immutable acceptance receipts
 - **Resumable research state** for scripted STORM and interactive Co-STORM
 - **Two-step outline refinement** and **lead section generation**
 - **Query decomposition** and **semantic fact retrieval**
@@ -128,6 +130,66 @@ Graft can export current or historical accepted revisions directly into this
 format. Read [Use Open Knowledge Format with
 Tempest](https://jameshwade.github.io/tempest/articles/open-knowledge-format.html)
 for the complete handoff and safety model.
+
+## Verify and promote research evidence
+
+Claim verification is authoritative at the exact claim-by-evidence-span pair.
+`tempest_verify_claims()` replaces the complete support set atomically, and
+`tempest_claim_supports()` exposes each deterministic pair identity, source
+binding, status, score, and rationale. Claim-level status and citation-audit
+tables are derived views of those records; they are not separate evidence
+authority.
+
+A succeeded STORM product can be packaged for explicit Graft review:
+
+```r
+supports <- tempest_claim_supports(result$workspace)
+
+bundle <- tempest_promotion_bundle(
+  workspace = result$workspace,
+  manifest = result$manifest,
+  stage_records = result$state$stage_records
+)
+trusted_bundle_id <- bundle@bundle_id
+tempest_save_promotion_bundle(bundle, "promotion/grid-battery-recycling")
+bundle <- tempest_read_promotion_bundle(
+  "promotion/grid-battery-recycling",
+  expected_bundle_id = trusted_bundle_id
+)
+
+schema <- tempest_graft_schema()
+# Open `store` with this exact schema using the host's chosen Graft location.
+plan <- tempest_graft_plan(store, bundle)
+
+# Acceptance authority remains an explicit Graft operation after review.
+commit_result <- graft::graft_commit(store, plan)
+receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
+```
+
+The packaged schema is compiled against Graft accessor commit
+`81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5`; runtime loading checks its exact
+immutable build digest and never recompiles LinkML.
+
+The bundle contains the selected Sources, Claims, EvidenceSpans,
+ClaimSupports, and exact extraction and verification ProgramArtifacts. Its
+closed proof projection retains the exact resources, claims, spans, and
+supports needed to recompute each retained StageRecord digest. A selection
+must include every output bound by each retained extraction or verification
+record; Tempest rejects partial stage-output selection instead of packaging
+unselected evidence. Planning is read-only: Tempest does not call
+`graft::graft_commit()` on the host's behalf. The promotion directory is a
+closed current-format bundle, its destination must not already exist, and any
+older or extra shape is rejected. Reading requires the original bundle id as an
+out-of-band trust pin; checksums stored inside the directory establish internal
+consistency but are not a signature. A `GovernedProcedure` is accepted through
+a separate reviewed Graft flow; research promotion never mints one.
+
+The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
+Co-STORM snapshot and bundle schema 8, STORM bundle schema 7 with state schema
+4, ProgramSet and research-manifest schema 2, StageRecord output-digest payload
+schema 3, and promotion-bundle schema 1. Readers reject every other version;
+missing fields, extra fields, and values that only become valid after coercion
+are errors.
 
 ## Frozen generic-kernel deletion inventory
 
@@ -503,9 +565,48 @@ Tempest resolves its current builtins and resumes only when their artifact IDs
 match the persisted run.
 
 Co-STORM uses the same boundary: pass `program_set` to `tempest_session()` or
-`tempest_shiny_server()`. Session snapshots record the complete ProgramSet
-identity, and restoring or resuming a custom-program session requires the
-matching verified set.
+`tempest_shiny_server()`, and pass the matching `knowledge_view` whenever that
+set contains a governed procedure. Session snapshots record the complete
+ProgramSet identity but never the live view. A governed session can be restored
+or resumed with its matching verified set and no view for read-only inspection.
+Its next governed stage fails before provider execution unless the exact pinned
+view is supplied; if a view is supplied during restore, it must match. An
+ungoverned custom-program session still requires its matching verified set.
+
+### Run an accepted governed procedure
+
+An accepted `GovernedProcedure` binds one stage to an exact dsprrr
+`ProgramArtifact`, contract, and evaluator. Resolve it through an immutable
+Graft view, then place the typed reference in the ProgramSet by stage:
+
+```r
+snapshot <- graft::graft_snapshot(store)
+knowledge_view <- graft::graft_at(store, snapshot)
+
+verify_procedure <- tempest_governed_procedure_ref(
+  knowledge_view,
+  record_id = "governed-procedure-record-id"
+)
+program_set <- tempest_program_set(
+  governed_procedure_refs = list(
+    verify_claim_support = verify_procedure
+  )
+)
+
+result <- tempest_run(
+  "Life cycle assessment of lithium-ion batteries",
+  config = cfg,
+  program_set = program_set,
+  knowledge_view = knowledge_view
+)
+```
+
+Tempest verifies the accepted procedure, program artifact, revision, schema,
+store, snapshot, and commit boundary again immediately before the provider
+runs. The live view is transient and is never serialized. A restored or
+resumed governed workflow therefore needs the matching pinned view before its
+next governed stage; a stored typed reference alone cannot authorize
+execution.
 
 ### Configuration options
 

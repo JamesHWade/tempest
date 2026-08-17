@@ -45,7 +45,7 @@ tempest_stage_fallback_policies <- function() {
 }
 
 tempest_stage_output_kinds <- function() {
-  c("state_field", "workspace_claims", "citation_audit", "content_digest")
+  c("state_field", "workspace_claims", "claim_supports", "content_digest")
 }
 
 tempest_stage_record_fields <- function() {
@@ -551,6 +551,10 @@ tempest_stage_trace_reference_fields <- function() {
     "correlation_id",
     "mode",
     "role",
+    "min_support_score",
+    "verified_at",
+    "verifier_model",
+    "governed_procedure",
     "evidence_claim_ids",
     "verified_evidence_claim_ids"
   )
@@ -571,6 +575,59 @@ tempest_stage_trace_identifier <- function(value, field) {
     )
   }
   value
+}
+
+tempest_stage_support_threshold_string <- function(value) {
+  score <- tempest_normalize_min_support_score(value)
+  if (identical(score, 0) || score == 0) {
+    return("0")
+  }
+  for (digits in seq_len(17L)) {
+    candidate <- sprintf("%.*g", digits, score)
+    candidate <- sub("e\\+", "e", candidate, fixed = FALSE)
+    if (identical(suppressWarnings(as.double(candidate)), score)) {
+      return(candidate)
+    }
+  }
+  tempest_stage_record_abort(
+    "{.arg min_support_score} cannot be represented canonically."
+  )
+}
+
+tempest_stage_support_threshold_value <- function(value) {
+  if (
+    !rlang::is_string(value) ||
+      is.na(value) ||
+      !nzchar(value)
+  ) {
+    tempest_stage_record_abort(
+      paste0(
+        "{.field trace_references$min_support_score} must be one canonical ",
+        "decimal string."
+      )
+    )
+  }
+  score <- suppressWarnings(as.double(value))
+  score <- tryCatch(
+    tempest_normalize_min_support_score(score),
+    error = function(error) {
+      tempest_stage_record_abort(
+        paste0(
+          "{.field trace_references$min_support_score} must be in [0, 1]."
+        ),
+        parent = error
+      )
+    }
+  )
+  if (!identical(value, tempest_stage_support_threshold_string(score))) {
+    tempest_stage_record_abort(
+      paste0(
+        "{.field trace_references$min_support_score} must retain its exact ",
+        "canonical decimal form."
+      )
+    )
+  }
+  score
 }
 
 tempest_stage_trace_references <- function(value, attempt_id) {
@@ -610,7 +667,52 @@ tempest_stage_trace_references <- function(value, attempt_id) {
   collections <- tempest_stage_trace_reference_collection_fields()
   for (field in names(value)) {
     item <- value[[field]]
-    if (field %in% collections) {
+    if (identical(field, "min_support_score")) {
+      tempest_stage_support_threshold_value(item)
+      value[[field]] <- item
+    } else if (identical(field, "verified_at")) {
+      if (!tempest_ledger_timestamp_valid(item)) {
+        tempest_stage_record_abort(
+          paste0(
+            "{.field trace_references$verified_at} must be one exact ",
+            "canonical UTC timestamp."
+          )
+        )
+      }
+      value[[field]] <- item
+    } else if (identical(field, "governed_procedure")) {
+      binding <- tryCatch(
+        {
+          binding_fields <- c(
+            "kind",
+            tempest_governed_procedure_fields()
+          )
+          if (
+            !is.list(item) ||
+              is.data.frame(item) ||
+              is.null(names(item)) ||
+              anyNA(names(item)) ||
+              anyDuplicated(names(item)) ||
+              !setequal(names(item), binding_fields) ||
+              !identical(item$kind, "governed_procedure")
+          ) {
+            stop("invalid governed-procedure trace shape")
+          }
+          reference <- item[tempest_governed_procedure_fields()]
+          tempest_governed_procedure_trace_binding(reference)
+        },
+        error = function(error) {
+          tempest_stage_record_abort(
+            paste0(
+              "{.field trace_references$governed_procedure} must be the ",
+              "exact governed-procedure proof."
+            ),
+            parent = error
+          )
+        }
+      )
+      value[[field]] <- binding
+    } else if (field %in% collections) {
       if (is.character(item) && !is.object(item) && is.null(names(item))) {
         item <- as.list(item)
       }
@@ -818,6 +920,33 @@ tempest_stage_record_validation_message <- function(self) {
       )
       if (!identical(self@trace_references, canonical_trace_references)) {
         stop("trace_references must retain their exact canonical stored shape")
+      }
+      threshold <- self@trace_references$min_support_score %||% NULL
+      verification_time <- self@trace_references$verified_at %||% NULL
+      verifier_model <- self@trace_references$verifier_model %||% NULL
+      if (
+        identical(self@stage, "verify_claim_support") &&
+          is.null(threshold)
+      ) {
+        stop("verification stages require the exact min_support_score trace")
+      }
+      if (
+        !identical(self@stage, "verify_claim_support") &&
+          !is.null(threshold)
+      ) {
+        stop("only verification stages can carry min_support_score traces")
+      }
+      if (
+        identical(self@stage, "verify_claim_support") &&
+          is.null(verification_time)
+      ) {
+        stop("verification stages require the exact verified_at trace")
+      }
+      if (
+        !identical(self@stage, "verify_claim_support") &&
+          (!is.null(verification_time) || !is.null(verifier_model))
+      ) {
+        stop("only verification stages can carry verifier provenance traces")
       }
       started <- tempest_stage_time_parse(self@started_at)
       if (is.na(started)) {
@@ -1279,16 +1408,12 @@ tempest_stage_record_from_data <- function(data) {
   if (
     !is.list(data) ||
       is.data.frame(data) ||
-      is.null(fields) ||
-      anyNA(fields) ||
-      anyDuplicated(fields) ||
-      !setequal(fields, expected)
+      !identical(fields, expected)
   ) {
     tempest_stage_record_abort(
       "Stage record data must contain the exact durable fields."
     )
   }
-  data <- data[expected]
   nullable <- function(value, field) {
     if (is.null(value)) {
       return(NA_character_)
@@ -1548,10 +1673,30 @@ tempest_stage_records_validate_manifest <- function(records, manifest) {
         "Stage record program identity does not match the manifest."
       )
     }
-    revision <- reference$governed_procedure_revision_id %||% NA_character_
+    governed_reference <- reference$governed_procedure_ref %||% NULL
+    revision <- if (is.null(governed_reference)) {
+      NA_character_
+    } else {
+      governed_reference$revision_id
+    }
     if (!identical(record@governed_procedure_revision_id, revision)) {
       tempest_stage_record_abort(
         "Stage record governed-procedure revision does not match the manifest."
+      )
+    }
+    expected_governed_trace <- if (is.null(governed_reference)) {
+      NULL
+    } else {
+      c(list(kind = "governed_procedure"), governed_reference)
+    }
+    actual_governed_trace <-
+      record@trace_references$governed_procedure %||% NULL
+    if (!identical(actual_governed_trace, expected_governed_trace)) {
+      tempest_stage_record_abort(
+        paste0(
+          "Stage record governed-procedure trace does not exactly match ",
+          "the manifest."
+        )
       )
     }
     run_id <- record@trace_references$research_run_id %||% NULL
@@ -2231,13 +2376,27 @@ tempest_stage_evaluate_verification <- function(output, context) {
   output <- tempest_stage_exact_record(
     output,
     "output",
-    "status",
-    c("score", "rationale")
+    c("status", "rationale"),
+    "score"
   )
   claim <- context$claim %||% NULL
+  span <- context$evidence_span %||% NULL
   if (!S7::S7_inherits(claim, tempest_claim)) {
     tempest_stage_evaluator_abort(
       "Verification evaluator context requires one exact claim record."
+    )
+  }
+  if (!S7::S7_inherits(span, tempest_evidence_span)) {
+    tempest_stage_evaluator_abort(
+      "Verification evaluator context requires one exact evidence span."
+    )
+  }
+  if (
+    !span@evidence_span_id %in% claim@evidence_span_ids ||
+      !span@source_id %in% claim@source_ids
+  ) {
+    tempest_stage_governance_abort(
+      "Verification evaluator span must be bound to its exact claim."
     )
   }
   statuses <- c(
@@ -2251,36 +2410,40 @@ tempest_stage_evaluate_verification <- function(output, context) {
   if (!rlang::is_string(status) || !status %in% statuses) {
     tempest_stage_output_abort("Verification output has an invalid status.")
   }
-  score <- if ("score" %in% names(output)) output$score else NA_real_
+  score <- output$score %||% NA_real_
   if (
     !is.numeric(score) ||
+      is.object(score) ||
+      !is.null(names(score)) ||
       length(score) != 1L ||
       (!is.na(score) && (!is.finite(score) || score < 0 || score > 1))
   ) {
     tempest_stage_output_abort("Verification score must be in [0, 1].")
   }
-  rationale <- if ("rationale" %in% names(output)) {
-    output$rationale
-  } else {
-    NA_character_
-  }
-  if (
-    !is.character(rationale) ||
-      is.object(rationale) ||
-      !is.null(names(rationale)) ||
-      length(rationale) != 1L
-  ) {
+  if (identical(status, "unverifiable") && !is.na(score)) {
     tempest_stage_output_abort(
-      "Verification rationale must be one scalar string or NA."
+      "Unverifiable claim-span support must omit its score."
     )
   }
+  if (!identical(status, "unverifiable") && is.na(score)) {
+    tempest_stage_output_abort(
+      "A verifiable claim-span support assessment requires a score."
+    )
+  }
+  rationale <- output$rationale
   if (
-    !is.na(rationale) &&
-      (nchar(rationale, type = "bytes") > 2000L ||
-        tempest_contract_sensitive_scalar(rationale))
+    !rlang::is_string(rationale) ||
+      is.na(rationale) ||
+      !nzchar(tempest_trim(rationale)) ||
+      !identical(rationale, tempest_trim(rationale)) ||
+      nchar(rationale, type = "bytes") > 2000L ||
+      tempest_contract_sensitive_scalar(rationale)
   ) {
     tempest_stage_output_abort(
-      "Verification rationale must be bounded and credential-free."
+      paste0(
+        "Verification rationale must be canonical, non-empty, bounded, ",
+        "and credential-free."
+      )
     )
   }
   min_support_score <- tempest_normalize_min_support_score(
@@ -2291,20 +2454,22 @@ tempest_stage_evaluate_verification <- function(output, context) {
     score,
     min_support_score = min_support_score
   )
-  support <- tempest_stage_verification_support_status(
+  support_status <- tempest_stage_verification_support_status(
     status,
     score,
     min_support_score
   )
+  support <- tempest_claim_support(
+    claim_id = claim@claim_id,
+    evidence_span_id = span@evidence_span_id,
+    source_id = span@source_id,
+    verification_status = status,
+    support_score = as.double(score),
+    rationale = rationale
+  )
   list(
-    output = list(
-      claim_id = claim@claim_id,
-      claim_text = claim@claim_text,
-      verification_status = status,
-      support_score = as.numeric(score),
-      rationale = rationale
-    ),
-    support_status = support
+    output = support,
+    support_status = support_status
   )
 }
 
@@ -2477,34 +2642,34 @@ tempest_stage_authoritative_claims <- function(context, field) {
   claims
 }
 
-tempest_stage_claim_audit_row <- function(workspace, claim, required = TRUE) {
-  audit <- workspace$citation_audit
-  row <- if (is.null(audit)) {
-    NULL
-  } else {
-    matches <- which(audit$claim_id == claim@claim_id)
-    if (length(matches) == 1L) audit[matches, , drop = FALSE] else NULL
-  }
-  exact <- !is.null(row) &&
-    identical(row$claim_text[[1]], claim@claim_text) &&
-    identical(row$verification_status[[1]], claim@verification_status) &&
-    isTRUE(all.equal(
-      row$support_score[[1]],
-      claim@support_score,
-      check.attributes = FALSE
-    ))
+tempest_stage_claim_support_records <- function(
+  workspace,
+  claim,
+  required = TRUE
+) {
+  supports <- Filter(
+    \(support) identical(support@claim_id, claim@claim_id),
+    workspace$list_claim_supports()
+  )
+  support_span_ids <- vapply(
+    supports,
+    \(support) support@evidence_span_id,
+    character(1)
+  )
+  exact <- length(supports) > 0L &&
+    setequal(support_span_ids, claim@evidence_span_ids)
   if (!exact) {
     if (isTRUE(required)) {
       tempest_stage_governance_abort(
         paste0(
-          "Grounded evidence claim {.val {claim@claim_id}} requires one ",
-          "exact authoritative citation-audit row."
+          "Grounded evidence claim {.val {claim@claim_id}} requires the ",
+          "complete authoritative claim-by-span support set."
         )
       )
     }
     return(NULL)
   }
-  row
+  supports
 }
 
 tempest_stage_source_evidence_projection <- function(
@@ -2602,18 +2767,6 @@ tempest_stage_claim_source_evidence <- function(
   )
 }
 
-tempest_stage_verification_source_excerpts <- function(claim, workspace) {
-  evidence <- tempest_stage_claim_source_evidence(
-    claim,
-    workspace,
-    required = TRUE
-  )
-  paste(
-    vapply(evidence, `[[`, character(1), "excerpt"),
-    collapse = "\n\n"
-  )
-}
-
 tempest_stage_claim_has_captured_evidence <- function(claim, workspace) {
   if (length(claim@source_ids) == 0L) {
     return(FALSE)
@@ -2631,8 +2784,23 @@ tempest_stage_claim_verified <- function(claim, workspace, min_support_score) {
   if (!identical(claim@verification_status, "supported")) {
     return(FALSE)
   }
-  tempest_stage_claim_audit_row(workspace, claim, required = TRUE)
-  !is.na(claim@support_score) &&
+  supports <- tempest_stage_claim_support_records(
+    workspace,
+    claim,
+    required = TRUE
+  )
+  support_scores <- vapply(
+    supports,
+    \(support) support@support_score,
+    numeric(1)
+  )
+  all(vapply(
+    supports,
+    \(support) identical(support@verification_status, "supported"),
+    logical(1)
+  )) &&
+    all(!is.na(support_scores) & support_scores >= min_support_score) &&
+    !is.na(claim@support_score) &&
     is.finite(claim@support_score) &&
     claim@support_score >= min_support_score &&
     tempest_stage_claim_has_captured_evidence(claim, workspace)
@@ -2918,7 +3086,7 @@ tempest_stage_record_output_digest <- function(records, record, what) {
     value
   }
   tempest_stage_content_digest_id(nullable(list(
-    schema_version = 2L,
+    schema_version = 3L,
     stage = record@stage,
     attempt_id = record@attempt_id,
     program_artifact_id = record@program_artifact_id,
@@ -3052,106 +3220,80 @@ tempest_stage_claims_output_digest <- function(
   )
 }
 
-tempest_stage_audit_output_records <- function(audit) {
-  required <- c(
-    "claim_id",
-    "claim_text",
-    "verification_status",
-    "support_score",
-    "rationale"
-  )
-  if (is.data.frame(audit)) {
-    if (!identical(names(audit), required)) {
-      tempest_stage_evaluator_abort(
-        "Audit output digest requires the exact citation-audit fields."
-      )
-    }
-    records <- unname(lapply(seq_len(nrow(audit)), function(index) {
-      stats::setNames(
-        lapply(audit, \(column) column[[index]]),
-        required
-      )
-    }))
-  } else {
-    if (
-      !is.list(audit) ||
-        is.null(names(audit)) ||
-        anyNA(names(audit)) ||
-        anyDuplicated(names(audit)) ||
-        !identical(names(audit), required)
-    ) {
-      tempest_stage_evaluator_abort(
-        "Audit output digest requires the exact citation-audit fields."
-      )
-    }
-    records <- list(audit)
-  }
-  for (record in records) {
-    rationale <- record$rationale
-    if (
-      !is.character(rationale) ||
-        length(rationale) != 1L ||
-        (!is.na(rationale) &&
-          (nchar(rationale, type = "bytes") > 2000L ||
-            tempest_contract_sensitive_scalar(rationale)))
-    ) {
-      tempest_stage_evaluator_abort(
-        "Audit rationale must be one bounded credential-free string or NA."
-      )
-    }
-  }
-  records
-}
-
-tempest_stage_audit_output_digest <- function(audit, record) {
-  records <- tempest_stage_audit_output_records(audit)
-  ids <- vapply(records, `[[`, character(1), "claim_id")
-  if (
-    anyNA(ids) ||
-      any(!nzchar(tempest_trim(ids))) ||
-      anyDuplicated(ids)
-  ) {
-    tempest_stage_evaluator_abort(
-      "Audit output digest requires unique non-empty claim IDs."
-    )
-  }
-  tempest_stage_record_output_digest(records, record, "citation_audit")
-}
-
 tempest_stage_verification_output_digest <- function(
-  audit,
+  support,
   record,
   claim,
+  evidence_span,
   workspace
 ) {
-  records <- tempest_stage_audit_output_records(audit)
-  if (length(records) != 1L) {
+  if (!S7::S7_inherits(support, TempestClaimSupport)) {
     tempest_stage_evaluator_abort(
-      "Verification output digest requires exactly one citation-audit row."
+      "Verification output digest requires one exact claim-support record."
     )
   }
-  audit_record <- records[[1]]
+  tryCatch(
+    S7::validate(support),
+    error = function(error) {
+      tempest_stage_evaluator_abort(
+        "Verification output digest received invalid claim support."
+      )
+    }
+  )
   if (
     !S7::S7_inherits(claim, tempest_claim) ||
-      !identical(audit_record$claim_id, claim@claim_id) ||
-      !identical(audit_record$claim_text, claim@claim_text)
+      !S7::S7_inherits(evidence_span, tempest_evidence_span) ||
+      !identical(support@claim_id, claim@claim_id) ||
+      !identical(
+        support@evidence_span_id,
+        evidence_span@evidence_span_id
+      ) ||
+      !identical(support@source_id, evidence_span@source_id) ||
+      !support@evidence_span_id %in% claim@evidence_span_ids ||
+      !support@source_id %in% claim@source_ids
   ) {
     tempest_stage_evaluator_abort(
-      "Verification output digest must bind the exact verified claim."
+      paste0(
+        "Verification output digest must bind the exact claim, evidence ",
+        "span, and source."
+      )
     )
   }
-  source_evidence <- tempest_stage_claim_source_evidence(
-    claim,
+  authoritative_claim <- workspace$get_proposed_claim(claim@claim_id)
+  authoritative_span <- workspace$get_evidence_span(
+    evidence_span@evidence_span_id
+  )
+  if (
+    is.null(authoritative_claim) ||
+      is.null(authoritative_span) ||
+      !identical(authoritative_claim, claim) ||
+      !identical(authoritative_span, evidence_span)
+  ) {
+    tempest_stage_governance_abort(
+      "Verification output digest requires authoritative workspace inputs."
+    )
+  }
+  claim_record <- tempest_claim_to_list(claim)
+  claim_record[c(
+    "support_score",
+    "verification_status",
+    "verified_at",
+    "verifier_model"
+  )] <- NULL
+  source_evidence <- tempest_stage_source_evidence_projection(
     workspace,
+    evidence_span@source_id,
     required = TRUE
   )
   tempest_stage_record_output_digest(
     list(
-      audit = audit_record,
+      claim_support = tempest_claim_support_to_list(support),
+      claim = claim_record,
+      evidence_span = tempest_evidence_span_to_list(evidence_span),
       source_evidence = source_evidence
     ),
     record,
-    "citation_audit"
+    "claim_supports"
   )
 }
 
@@ -3184,7 +3326,7 @@ tempest_stage_output_reference_validate_stage <- function(stage, reference) {
     perspectives = list(kind = "state_field", ids = c("title", "perspectives")),
     personas = list(kind = "state_field", ids = "experts"),
     extract_claims = list(kind = "workspace_claims", ids = NULL),
-    verify_claim_support = list(kind = "citation_audit", ids = NULL),
+    verify_claim_support = list(kind = "claim_supports", ids = NULL),
     draft_outline = list(kind = "state_field", ids = "draft_outline"),
     refined_outline = list(kind = "state_field", ids = "outline"),
     query_decomposition = list(kind = "content_digest", ids = NULL),
@@ -3253,7 +3395,7 @@ tempest_stage_output_reference_derive <- function(
     expected_ids <- if (identical(stage, "extract_claims")) {
       vapply(output, \(claim) claim@claim_id, character(1))
     } else {
-      output$claim_id
+      output@claim_support_id
     }
     actual_ids <- unlist(reference$ids, use.names = FALSE)
     if (length(actual_ids) == 0L) {
@@ -3271,6 +3413,7 @@ tempest_stage_output_reference_derive <- function(
         output,
         record,
         context$claim,
+        context$evidence_span,
         context$workspace
       )
     }
@@ -3387,7 +3530,14 @@ tempest_stage_context_fields <- function(stage) {
     personas = "n_experts",
     query_decomposition = "max_queries",
     extract_claims = c("workspace", "known_source_ids", "claim_context"),
-    verify_claim_support = c("workspace", "claim", "min_support_score"),
+    verify_claim_support = c(
+      "workspace",
+      "claim",
+      "evidence_span",
+      "min_support_score",
+      "verified_at",
+      "verifier_model"
+    ),
     next_question = character(),
     draft_outline = character(),
     refined_outline = c(
@@ -3427,7 +3577,7 @@ tempest_stage_execution_contract_preflight <- function(
     "inputs"
   )
   common_context <- intersect(
-    c("attempt_id", "now", "stage_records"),
+    c("attempt_id", "now", "stage_records", "knowledge_view"),
     names(context) %||% character()
   )
   required_context <- tempest_stage_context_fields(stage)
@@ -3563,10 +3713,36 @@ tempest_stage_execution_contract_preflight <- function(
         "Verification stage context requires one exact claim."
       )
     }
+    if (!S7::S7_inherits(context$evidence_span, tempest_evidence_span)) {
+      tempest_stage_evaluator_abort(
+        "Verification stage context requires one exact evidence span."
+      )
+    }
     tempest_stage_preflight_score(
       context$min_support_score,
       "min_support_score"
     )
+    if (!tempest_ledger_timestamp_valid(context$verified_at)) {
+      tempest_stage_evaluator_abort(
+        paste0(
+          "Verification stage context requires one exact canonical UTC ",
+          "verified_at timestamp."
+        )
+      )
+    }
+    if (
+      !tempest_ledger_identifier_valid(
+        context$verifier_model,
+        optional = TRUE
+      )
+    ) {
+      tempest_stage_evaluator_abort(
+        paste0(
+          "Verification stage context verifier_model must be `NA` or one ",
+          "bounded credential-free identifier."
+        )
+      )
+    }
     if (!identical(inputs$claim_text, context$claim@claim_text)) {
       tempest_stage_governance_abort(
         "Verification input text must match the authoritative claim."
@@ -3640,9 +3816,15 @@ tempest_stage_executor_preflight <- function(
     workspace <- tempest_stage_workspace(context)
     if (identical(stage, "verify_claim_support")) {
       claim <- context$claim %||% NULL
+      evidence_span <- context$evidence_span %||% NULL
       if (!S7::S7_inherits(claim, tempest_claim)) {
         tempest_stage_evaluator_abort(
           "Verification stage context requires one exact claim."
+        )
+      }
+      if (!S7::S7_inherits(evidence_span, tempest_evidence_span)) {
+        tempest_stage_evaluator_abort(
+          "Verification stage context requires one exact evidence span."
         )
       }
       authoritative <- workspace$get_proposed_claim(claim@claim_id)
@@ -3651,15 +3833,32 @@ tempest_stage_executor_preflight <- function(
           "Verification stage context claim is missing, replaced, or forged."
         )
       }
-      expected_excerpts <- tempest_stage_verification_source_excerpts(
-        claim,
-        workspace
+      authoritative_span <- workspace$get_evidence_span(
+        evidence_span@evidence_span_id
       )
-      if (!identical(inputs$source_excerpts, expected_excerpts)) {
+      if (
+        is.null(authoritative_span) ||
+          !identical(authoritative_span, evidence_span) ||
+          !evidence_span@evidence_span_id %in% claim@evidence_span_ids ||
+          !evidence_span@source_id %in% claim@source_ids
+      ) {
         tempest_stage_governance_abort(
           paste0(
-            "Verification source excerpts must match the exact captured ",
-            "workspace evidence."
+            "Verification stage context evidence span is missing, ",
+            "replaced, forged, or not bound to the claim."
+          )
+        )
+      }
+      expected_span_input <- tempest_verification_span_input(
+        claim,
+        evidence_span,
+        workspace
+      )
+      if (!identical(inputs$source_excerpts, expected_span_input)) {
+        tempest_stage_governance_abort(
+          paste0(
+            "Verification span input must match the exact captured workspace ",
+            "evidence."
           )
         )
       }
@@ -3686,7 +3885,11 @@ tempest_stage_executor_preflight <- function(
         evidence
       )
       for (claim in supported) {
-        tempest_stage_claim_audit_row(workspace, claim, required = TRUE)
+        tempest_stage_claim_support_records(
+          workspace,
+          claim,
+          required = TRUE
+        )
       }
       valid_verified <- vapply(
         verified_evidence,
@@ -3729,6 +3932,7 @@ tempest_stage_result_output <- function(result) {
 tempest_stage_error_static <- function(error) {
   classes <- c(
     "tempest_ecosystem_contract_error",
+    "tempest_governed_procedure_error",
     "tempest_program_set_error",
     "tempest_stage_evaluator_contract_error",
     "tempest_stage_governance_error",
@@ -3809,6 +4013,14 @@ tempest_stage_execution_trace_references <- function(execution, context) {
   references <- execution$trace_context[
     intersect(execution_fields, names(execution$trace_context))
   ]
+  if (identical(execution$stage, "verify_claim_support")) {
+    references$min_support_score <-
+      tempest_stage_support_threshold_string(context$min_support_score)
+    references$verified_at <- context$verified_at
+    if (!is.na(context$verifier_model)) {
+      references$verifier_model <- context$verifier_model
+    }
+  }
   if (
     execution$stage %in%
       c(
@@ -3828,6 +4040,10 @@ tempest_stage_execution_trace_references <- function(execution, context) {
     if (length(verified_ids) > 0L) {
       references$verified_evidence_claim_ids <- unname(as.list(verified_ids))
     }
+  }
+  governed_procedure <- tempest_dsprrr_execution_governance_trace(execution)
+  if (!is.null(governed_procedure)) {
+    references$governed_procedure <- governed_procedure
   }
   references
 }
@@ -4052,6 +4268,12 @@ tempest_execute_stage <- function(
   fallback <- tempest_stage_fallback_resolve(evaluator$stage)
   attempt_id <- context$attempt_id %||% tempest_attempt_id()
   execution <- tempest_stage_execution_attempt(module, attempt_id)
+  governed_procedure <- tempest_dsprrr_execution_governance_preflight(
+    execution,
+    context$knowledge_view %||% execution$knowledge_view %||% NULL
+  )
+  execution$governed_procedure_revision_id <-
+    governed_procedure$revision_id %||% NA_character_
   now <- context$now %||% tempest_now_utc
   if (!is.function(now)) {
     tempest_stage_evaluator_abort("Stage clock context must be a function.")
@@ -4272,6 +4494,12 @@ tempest_execute_stage_async <- function(
   fallback <- tempest_stage_fallback_resolve(evaluator$stage)
   attempt_id <- context$attempt_id %||% tempest_attempt_id()
   execution <- tempest_stage_execution_attempt(module, attempt_id)
+  governed_procedure <- tempest_dsprrr_execution_governance_preflight(
+    execution,
+    context$knowledge_view %||% execution$knowledge_view %||% NULL
+  )
+  execution$governed_procedure_revision_id <-
+    governed_procedure$revision_id %||% NA_character_
   now <- context$now %||% tempest_now_utc
   if (!is.function(now)) {
     tempest_stage_evaluator_abort("Stage clock context must be a function.")

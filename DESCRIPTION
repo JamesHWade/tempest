@@ -65,7 +65,7 @@ Suggests:
 Remotes:
     JamesHWade/deputy@89089c90ddeb668462422b14a4de7a8395eefdc8,
     JamesHWade/dsprrr@db28eae2235ab15c4f5c1c9794118d127eabbdd7,
-    JamesHWade/graft@f2e40b6df2af328c15548a40a758d2f838e85176,
+    JamesHWade/graft@81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5,
     posit-dev/shinychat/pkg-r,
     tidyverse/ellmer@5cb916dbab521f2d0b3871f284a6c67b8045d14c
 Config/testthat/edition: 3
@@ -83,6 +83,7 @@ Collate:
     'cache.R'
     'citations.R'
     'ledger-types.R'
+    'claim-support.R'
     'config.R'
     'costorm-turn-types.R'
     'costorm-async.R'
@@ -94,6 +95,7 @@ Collate:
     'evals.R'
     'models.R'
     'research-manifest.R'
+    'governed-procedure.R'
     'ecosystem-contracts.R'
     'program-set.R'
     'stage-record.R'
@@ -104,6 +106,9 @@ Collate:
     'prompts.R'
     'retriever.R'
     'run-persistence.R'
+    'promotion-types.R'
+    'graft-schema.R'
+    'promotion-persistence.R'
     'shiny-adapter.R'
     'shinychat-adapter.R'
     'simulated-user.R'

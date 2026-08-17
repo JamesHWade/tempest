@@ -385,20 +385,12 @@ tempest_unsupported_format_abort <- function(what, version = NULL, class) {
 }
 
 tempest_persistence_schema_version <- function(value, what, class) {
-  valid <- is.numeric(value) &&
-    length(value) == 1L &&
-    !is.na(value) &&
-    is.finite(value) &&
-    value >= 0 &&
-    value == floor(value) &&
-    value <= .Machine$integer.max
-  if (!valid) {
-    tempest_abort(
-      "{what} must be one finite scalar whole number.",
-      class = class
-    )
-  }
-  as.integer(value)
+  tempest_exact_integer_scalar(
+    value,
+    what,
+    class = class,
+    minimum = 0L
+  )
 }
 
 #' @keywords internal
@@ -586,14 +578,6 @@ tempest_persistence_credential_audit <- function(value, what, class) {
       ) ||
       grepl(
         paste0(
-          "\\$workspace\\$citation_audit\\[\\[[0-9]+\\]\\]",
-          "\\$claim_text($|\\$|\\[\\[)"
-        ),
-        path,
-        perl = TRUE
-      ) ||
-      grepl(
-        paste0(
           "\\$state\\$references\\[\\[[0-9]+\\]\\]",
           "\\$(snippet|content_text|context_text)($|\\$|\\[\\[)"
         ),
@@ -718,20 +702,6 @@ tempest_research_workspace_max_sources_data <- function(max_sources) {
 }
 
 #' @keywords internal
-tempest_research_workspace_citation_audit_data <- function(citation_audit) {
-  if (is.null(citation_audit)) {
-    return(NULL)
-  }
-  rows <- seq_len(nrow(citation_audit))
-  unname(lapply(rows, function(row) {
-    stats::setNames(
-      lapply(citation_audit, function(column) column[[row]]),
-      names(citation_audit)
-    )
-  }))
-}
-
-#' @keywords internal
 tempest_research_workspace_array_record <- function(record, fields) {
   for (field in fields) {
     value <- record[[field]] %||% character()
@@ -822,24 +792,42 @@ tempest_research_workspace_validate_noncontent <- function(
       "evidence-span provenance"
     )
   }
+  for (support in workspace$list_claim_supports()) {
+    validate_ids(
+      c(
+        support@claim_support_id,
+        support@claim_id,
+        support@evidence_span_id,
+        support@source_id
+      ),
+      "claim-support provenance"
+    )
+    if (tempest_contract_sensitive_scalar(support@rationale)) {
+      abort("Workspace claim-support rationale contains a credential value.")
+    }
+  }
   for (dispute in workspace$list_disputes()) {
     validate_ids(
       c(dispute@dispute_id, dispute@claim_ids),
       "dispute provenance"
     )
   }
-  audit <- workspace$citation_audit
-  if (!is.null(audit)) {
-    validate_ids(audit$claim_id, "citation-audit claim ids")
-    sensitive <- tempest_contract_sensitive_values(
-      audit$rationale,
-      "citation_audit$rationale"
-    )
-    if (length(sensitive) > 0L) {
-      abort("Workspace citation-audit rationale contains a credential value.")
-    }
-  }
   invisible(workspace)
+}
+
+#' @keywords internal
+tempest_research_workspace_snapshot_fields <- function() {
+  c(
+    "schema_version",
+    "base_snapshot_id",
+    "max_sources",
+    "accepted_graft_references",
+    "retrieved_resources",
+    "proposed_claims",
+    "evidence_spans",
+    "claim_supports",
+    "disputes"
+  )
 }
 
 #' @keywords internal
@@ -867,7 +855,7 @@ tempest_research_workspace_snapshot <- function(workspace) {
   ))
 
   snapshot <- list(
-    schema_version = 4L,
+    schema_version = 5L,
     base_snapshot_id = workspace$base_snapshot_id,
     max_sources = tempest_research_workspace_max_sources_data(
       workspace$max_sources
@@ -882,12 +870,13 @@ tempest_research_workspace_snapshot <- function(workspace) {
       workspace$list_evidence_spans(),
       tempest_evidence_span_to_list
     ),
+    claim_supports = lapply(
+      workspace$list_claim_supports(),
+      tempest_claim_support_to_list
+    ),
     disputes = lapply(
       workspace$list_disputes(),
       tempest_research_workspace_dispute_record
-    ),
-    citation_audit = tempest_research_workspace_citation_audit_data(
-      workspace$citation_audit
     )
   )
   snapshot <- tryCatch(
@@ -898,6 +887,7 @@ tempest_research_workspace_snapshot <- function(workspace) {
       )
     }
   )
+  snapshot <- snapshot[tempest_research_workspace_snapshot_fields()]
   tempest_persistence_credential_audit(
     list(workspace = snapshot),
     "ResearchWorkspace snapshot",
@@ -923,20 +913,15 @@ tempest_research_workspace_restore_abort <- function(message, parent = NULL) {
 #' @keywords internal
 tempest_research_workspace_restore_schema <- function(snapshot) {
   value <- snapshot$schema_version %||% NA_integer_
-  if (
-    !is.numeric(value) ||
-      length(value) != 1L ||
-      is.na(value) ||
-      !is.finite(value) ||
-      value != floor(value) ||
-      value > .Machine$integer.max
-  ) {
-    tempest_research_workspace_restore_abort(
-      "The workspace schema version must be one whole number."
-    )
-  }
-  value <- as.integer(value)
-  if (!identical(value, 4L)) {
+  value <- tempest_exact_integer_scalar(
+    value,
+    "The workspace schema version",
+    class = tempest_persistence_error_class(
+      "tempest_research_workspace_restore_error"
+    ),
+    minimum = 0L
+  )
+  if (!identical(value, 5L)) {
     tempest_unsupported_format_abort(
       "ResearchWorkspace snapshot format",
       value,
@@ -946,6 +931,149 @@ tempest_research_workspace_restore_schema <- function(snapshot) {
     )
   }
   value
+}
+
+#' @keywords internal
+tempest_stage_records_verification_projection <- function(records, workspace) {
+  records <- tempest_stage_records_validate(records)
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_stage_record_abort(
+      "{.arg workspace} must be a ResearchWorkspace."
+    )
+  }
+  supports <- workspace$list_claim_supports()
+  verification <- Filter(
+    function(record) {
+      identical(record@stage, "verify_claim_support") &&
+        identical(record@status, "succeeded")
+    },
+    records
+  )
+  if (length(supports) == 0L) {
+    if (length(verification) > 0L) {
+      tempest_stage_record_abort(
+        paste0(
+          "Succeeded verification records cannot exist without the exact ",
+          "durable claim-support set."
+        )
+      )
+    }
+    return(invisible(list(
+      verified_at = NA_character_,
+      verifier_model = NA_character_
+    )))
+  }
+
+  support_ids <- vapply(
+    supports,
+    \(support) support@claim_support_id,
+    character(1)
+  )
+  record_ids <- vapply(
+    verification,
+    function(record) {
+      ids <- unlist(record@output_reference$ids, use.names = FALSE)
+      if (
+        !identical(record@output_reference$kind, "claim_supports") ||
+          length(ids) != 1L
+      ) {
+        tempest_stage_record_abort(
+          paste0(
+            "Each succeeded verification record must bind exactly one ",
+            "claim-support assessment."
+          )
+        )
+      }
+      ids[[1]]
+    },
+    character(1)
+  )
+  if (
+    length(record_ids) != length(support_ids) ||
+      anyDuplicated(record_ids) ||
+      !setequal(record_ids, support_ids)
+  ) {
+    tempest_stage_record_abort(
+      paste0(
+        "Succeeded verification records must bind every durable ",
+        "claim-support assessment exactly once."
+      )
+    )
+  }
+  verification <- verification[match(support_ids, record_ids)]
+  verified_at <- vapply(
+    verification,
+    \(record) record@trace_references$verified_at,
+    character(1)
+  )
+  verifier_model <- vapply(
+    verification,
+    function(record) {
+      record@trace_references$verifier_model %||% NA_character_
+    },
+    character(1)
+  )
+  if (
+    !all(vapply(
+      verified_at,
+      tempest_ledger_timestamp_valid,
+      logical(1)
+    )) ||
+      !all(vapply(
+        verifier_model,
+        tempest_ledger_identifier_valid,
+        logical(1),
+        optional = TRUE
+      )) ||
+      !all(vapply(verified_at, identical, logical(1), verified_at[[1]])) ||
+      !all(vapply(
+        verifier_model,
+        identical,
+        logical(1),
+        verifier_model[[1]]
+      ))
+  ) {
+    tempest_stage_record_abort(
+      paste0(
+        "A verification batch must bind one exact canonical timestamp and ",
+        "optional verifier identity across every claim-support record."
+      )
+    )
+  }
+  batch_time <- tempest_stage_time_parse(verified_at[[1]])
+  starts <- vapply(
+    verification,
+    function(record) as.numeric(tempest_stage_time_parse(record@started_at)),
+    numeric(1)
+  )
+  if (is.na(batch_time) || any(as.numeric(batch_time) > starts)) {
+    tempest_stage_record_abort(
+      paste0(
+        "Verification batch time must be at or before every bound stage ",
+        "attempt start."
+      )
+    )
+  }
+  for (index in seq_along(supports)) {
+    support <- supports[[index]]
+    claim <- workspace$get_proposed_claim(support@claim_id)
+    if (
+      is.null(claim) ||
+        !identical(claim@verified_at, verified_at[[index]]) ||
+        !identical(claim@verifier_model, verifier_model[[index]])
+    ) {
+      tempest_stage_record_abort(
+        paste0(
+          "Claim verifier metadata must be the exact projection of its ",
+          "authoritative verification-stage proof."
+        )
+      )
+    }
+  }
+  invisible(list(
+    verified_at = verified_at[[1]],
+    verifier_model = verifier_model[[1]]
+  ))
 }
 
 #' @keywords internal
@@ -966,13 +1094,29 @@ tempest_stage_records_validate_workspace <- function(
     \(claim) claim@claim_id,
     character(1)
   )
-  citation_ids <- if (is.null(workspace$citation_audit)) {
-    character()
-  } else {
-    workspace$citation_audit$claim_id
-  }
+  claim_supports <- workspace$list_claim_supports()
+  support_ids <- vapply(
+    claim_supports,
+    \(support) support@claim_support_id,
+    character(1)
+  )
   verification_reference_ids <- list()
   for (record in records) {
+    if (identical(record@stage, "verify_claim_support")) {
+      expected_threshold <- tempest_stage_support_threshold_string(
+        min_support_score
+      )
+      actual_threshold <-
+        record@trace_references$min_support_score %||% NULL
+      if (!identical(actual_threshold, expected_threshold)) {
+        tempest_stage_record_abort(
+          paste0(
+            "Verification-stage threshold trace does not match the exact ",
+            "configured min_support_score."
+          )
+        )
+      }
+    }
     reference <- record@output_reference
     if (length(reference) == 0L) {
       next
@@ -981,12 +1125,12 @@ tempest_stage_records_validate_workspace <- function(
     mismatched <- switch(
       reference$kind,
       workspace_claims = length(setdiff(ids, claim_ids)) > 0L,
-      citation_audit = {
+      claim_supports = {
         verification_reference_ids <- c(
           verification_reference_ids,
           list(ids)
         )
-        length(ids) == 0L || length(setdiff(ids, citation_ids)) > 0L
+        length(ids) == 0L || length(setdiff(ids, support_ids)) > 0L
       },
       FALSE
     )
@@ -1022,28 +1166,34 @@ tempest_stage_records_validate_workspace <- function(
         )
       }
     }
-    if (identical(reference$kind, "citation_audit")) {
-      audit_rows <- workspace$citation_audit[
-        match(ids, workspace$citation_audit$claim_id),
-        ,
-        drop = FALSE
-      ]
-      claim <- if (length(ids) == 1L) {
-        workspace$get_proposed_claim(ids[[1]])
+    if (identical(reference$kind, "claim_supports")) {
+      support <- if (length(ids) == 1L) {
+        workspace$get_claim_support(ids[[1]])
       } else {
         NULL
       }
+      claim <- if (is.null(support)) {
+        NULL
+      } else {
+        workspace$get_proposed_claim(support@claim_id)
+      }
+      evidence_span <- if (is.null(support)) {
+        NULL
+      } else {
+        workspace$get_evidence_span(support@evidence_span_id)
+      }
       expected_digest <- tempest_stage_verification_output_digest(
-        audit_rows,
+        support,
         record,
         claim,
+        evidence_span,
         workspace
       )
       if (!identical(reference$content_digest, expected_digest)) {
         tempest_stage_record_abort(
           paste0(
             "Verification-stage output digest does not match the exact ",
-            "durable audit row and authoritative source evidence."
+            "durable claim-span support and authoritative source evidence."
           )
         )
       }
@@ -1051,20 +1201,36 @@ tempest_stage_records_validate_workspace <- function(
     if (identical(record@stage, "verify_claim_support")) {
       if (length(ids) != 1L) {
         tempest_stage_record_abort(
-          "Each verification-stage record must reference exactly one claim."
+          paste0(
+            "Each verification-stage record must reference exactly one ",
+            "claim-support assessment."
+          )
         )
       }
-      claim <- workspace$get_proposed_claim(ids[[1]])
+      support <- workspace$get_claim_support(ids[[1]])
+      normalized_status <- tempest_apply_min_support_score(
+        support@verification_status,
+        support@support_score,
+        min_support_score = min_support_score
+      )
+      if (!identical(support@verification_status, normalized_status)) {
+        tempest_stage_record_abort(
+          paste0(
+            "Persisted claim-span status is not the exact normalized ",
+            "verification result at the configured threshold."
+          )
+        )
+      }
       expected_support <- tempest_stage_verification_support_status(
-        claim@verification_status,
-        claim@support_score,
+        support@verification_status,
+        support@support_score,
         min_support_score
       )
       if (!identical(record@support_status, expected_support)) {
         tempest_stage_record_abort(
           paste0(
-            "Verification-stage support does not match the durable claim ",
-            "audit at the configured threshold."
+            "Verification-stage trust does not match the durable claim-span ",
+            "support at the configured threshold."
           )
         )
       }
@@ -1133,15 +1299,16 @@ tempest_stage_records_validate_workspace <- function(
       verification_reference_ids,
       use.names = FALSE
     ))
-    if (!setequal(covered_ids, citation_ids)) {
+    if (!setequal(covered_ids, support_ids)) {
       tempest_stage_record_abort(
         paste0(
           "Successful verification-stage references must cover the durable ",
-          "citation audit."
+          "claim-support ledger."
         )
       )
     }
   }
+  tempest_stage_records_verification_projection(records, workspace)
   invisible(records)
 }
 
@@ -1160,6 +1327,10 @@ tempest_stage_records_validate_workspace_coverage <- function(
     \(record) identical(record@stage, "extract_claims"),
     succeeded
   )
+  verification <- Filter(
+    \(record) identical(record@stage, "verify_claim_support"),
+    succeeded
+  )
   extracted_ids <- unname(unlist(lapply(
     extraction,
     \(record) record@output_reference$ids
@@ -1176,14 +1347,10 @@ tempest_stage_records_validate_workspace_coverage <- function(
     )
   }
 
-  audit_ids <- if (is.null(workspace$citation_audit)) {
-    character()
-  } else {
-    workspace$citation_audit$claim_id
-  }
-  verification <- Filter(
-    \(record) identical(record@stage, "verify_claim_support"),
-    succeeded
+  support_ids <- vapply(
+    workspace$list_claim_supports(),
+    \(support) support@claim_support_id,
+    character(1)
   )
   verified_ids <- unname(unlist(lapply(
     verification,
@@ -1191,13 +1358,15 @@ tempest_stage_records_validate_workspace_coverage <- function(
   )))
   if (
     isTRUE(require_verification) &&
-      length(audit_ids) > 0L &&
-      (length(verification) == 0L || !setequal(verified_ids, audit_ids))
+      length(claim_ids) > 0L &&
+      (length(support_ids) == 0L ||
+        length(verification) == 0L ||
+        !setequal(verified_ids, support_ids))
   ) {
     tempest_stage_record_abort(
       paste0(
         "Succeeded verification-stage records must exactly cover the ",
-        "durable citation audit."
+        "durable claim-support ledger."
       )
     )
   }
@@ -1282,10 +1451,6 @@ tempest_stage_records_validate_claim_provenance <- function(
   succeeded <- Filter(\(record) identical(record@status, "succeeded"), records)
   extraction <- Filter(
     \(record) identical(record@stage, "extract_claims"),
-    succeeded
-  )
-  verification <- Filter(
-    \(record) identical(record@stage, "verify_claim_support"),
     succeeded
   )
   present <- function(value) {
@@ -1380,40 +1545,7 @@ tempest_stage_records_validate_claim_provenance <- function(
     }
   }
 
-  audit_ids <- if (is.null(workspace$citation_audit)) {
-    character()
-  } else {
-    workspace$citation_audit$claim_id
-  }
-  generated_audit_ids <- vapply(
-    claims,
-    \(claim) present(claim@verifier_model),
-    logical(1)
-  )
-  generated_audit_ids <- intersect(
-    vapply(claims[generated_audit_ids], \(claim) claim@claim_id, character(1)),
-    audit_ids
-  )
-  for (claim_id in generated_audit_ids) {
-    matching <- Filter(
-      \(record) {
-        claim_id %in%
-          unlist(
-            record@output_reference$ids,
-            use.names = FALSE
-          )
-      },
-      verification
-    )
-    if (length(matching) != 1L) {
-      tempest_stage_record_abort(
-        paste0(
-          "Generated citation-audit provenance requires one exact ",
-          "succeeded verification-stage record."
-        )
-      )
-    }
-  }
+  tempest_stage_records_verification_projection(records, workspace)
   invisible(records)
 }
 
@@ -1480,28 +1612,42 @@ tempest_stage_records_validate_persisted_trust <- function(
     }
   }
   proof_ids <- unique(proof_ids)
-  audit_ids <- if (is.null(workspace$citation_audit)) {
-    character()
-  } else {
-    workspace$citation_audit$claim_id
-  }
   for (claim_id in proof_ids) {
-    matching <- Filter(
-      \(record) {
-        identical(
-          unlist(record@output_reference$ids, use.names = FALSE),
-          claim_id
-        )
-      },
-      verification
+    supports <- Filter(
+      \(support) identical(support@claim_id, claim_id),
+      workspace$list_claim_supports()
     )
-    if (length(matching) == 0L || !claim_id %in% audit_ids) {
+    if (length(supports) == 0L) {
       tempest_stage_record_abort(
         paste0(
-          "Verified publication evidence requires an exact succeeded ",
-          "verification-stage record and bound citation-audit row."
+          "Verified publication evidence requires the complete bound ",
+          "claim-by-span support set."
         )
       )
+    }
+    for (support in supports) {
+      matching <- Filter(
+        \(record) {
+          identical(
+            unlist(record@output_reference$ids, use.names = FALSE),
+            support@claim_support_id
+          )
+        },
+        verification
+      )
+      expected_pair <- tempest_stage_verification_support_status(
+        support@verification_status,
+        support@support_score,
+        min_support_score
+      )
+      if (length(matching) != 1L || !identical(expected_pair, "verified")) {
+        tempest_stage_record_abort(
+          paste0(
+            "Verified publication evidence requires one exact succeeded ",
+            "verification record for every threshold-supported span."
+          )
+        )
+      }
     }
     claim <- workspace$get_proposed_claim(claim_id)
     expected <- tempest_stage_verification_support_status(
@@ -1535,7 +1681,7 @@ tempest_research_workspace_require_current_schema <- function(
     paste0(what, " schema version"),
     class
   )
-  if (!identical(schema_version, 4L)) {
+  if (!identical(schema_version, 5L)) {
     tempest_unsupported_format_abort(
       paste0(what, " format"),
       schema_version,
@@ -1550,35 +1696,28 @@ tempest_research_workspace_restore_max_sources <- function(value) {
   if (identical(value, "unbounded")) {
     return(Inf)
   }
-  if (
-    !is.numeric(value) ||
-      length(value) != 1L ||
-      is.na(value) ||
-      !is.finite(value) ||
-      value <= 0 ||
-      value != floor(value) ||
-      value > .Machine$integer.max
-  ) {
-    tempest_research_workspace_restore_abort(
-      "{.field max_sources} must be a positive whole number or {.val unbounded}."
-    )
-  }
-  as.integer(value)
+  tempest_exact_integer_scalar(
+    value,
+    "Workspace field max_sources",
+    class = tempest_persistence_error_class(
+      "tempest_research_workspace_restore_error"
+    ),
+    minimum = 1L
+  )
 }
 
 #' @keywords internal
 tempest_research_workspace_restore_records <- function(
   snapshot,
-  field,
-  required = FALSE
+  field
 ) {
-  if (required && !field %in% names(snapshot)) {
+  if (!field %in% names(snapshot)) {
     tempest_research_workspace_restore_abort(
       "Workspace snapshot is missing required field {.field {field}}."
     )
   }
-  records <- snapshot[[field]] %||% list()
-  if (!is.list(records) || is.data.frame(records)) {
+  records <- snapshot[[field]]
+  if (is.null(records) || !is.list(records) || is.data.frame(records)) {
     tempest_research_workspace_restore_abort(
       "Workspace field {.field {field}} must be a list of records."
     )
@@ -1590,71 +1729,19 @@ tempest_research_workspace_restore_records <- function(
 tempest_research_workspace_record_fields <- function(field) {
   switch(
     field,
-    retrieved_resources = c(
-      "resource_id",
-      "resource_kind",
-      "locator",
-      "title",
-      "media_type",
-      "content",
-      "storage_ref",
-      "origin_connection_id",
-      "scope_metadata",
-      "content_hash",
-      "retrieved_at",
-      "redaction",
-      "retention",
-      "metadata",
-      "schema_version",
-      "fingerprint"
-    ),
-    proposed_claims = c(
+    retrieved_resources = tempest_resource_record_fields(),
+    proposed_claims = tempest_claim_record_fields(),
+    evidence_spans = tempest_evidence_span_record_fields(),
+    claim_supports = c(
+      "claim_support_id",
       "claim_id",
-      "claim_text",
-      "claim_type",
-      "source_ids",
-      "evidence_span_ids",
-      "supporting_quotes",
-      "contradicting_source_ids",
-      "contradiction_note",
-      "confidence",
-      "support_score",
-      "contradiction_score",
-      "source_quality_score",
-      "retrieval_query",
-      "retrieval_step_id",
-      "perspective_id",
-      "expert_id",
-      "session_id",
-      "section_id",
-      "created_at",
-      "verified_at",
-      "verifier_model",
-      "verification_status"
-    ),
-    evidence_spans = c(
       "evidence_span_id",
       "source_id",
-      "chunk_id",
-      "quote",
-      "start_offset",
-      "end_offset",
-      "page",
-      "section_heading",
-      "relevance_score",
-      "extracted_by",
-      "created_at"
+      "verification_status",
+      "support_score",
+      "rationale"
     ),
-    disputes = c(
-      "dispute_id",
-      "topic",
-      "claim_ids",
-      "axis_of_disagreement",
-      "likely_explanation",
-      "evidence_balance",
-      "unresolved_questions",
-      "created_at"
-    ),
+    disputes = tempest_dispute_record_fields(),
     tempest_research_workspace_restore_abort(
       "Unknown workspace record field {.field {field}}."
     )
@@ -1663,9 +1750,25 @@ tempest_research_workspace_record_fields <- function(field) {
 
 #' @keywords internal
 tempest_research_workspace_exact_records <- function(records, field) {
+  fields <- tempest_research_workspace_record_fields(field)
+  ordered <- is.list(records) &&
+    !is.data.frame(records) &&
+    is.null(names(records)) &&
+    all(vapply(
+      records,
+      \(record) identical(names(record), fields),
+      logical(1)
+    ))
+  if (!isTRUE(ordered)) {
+    tempest_research_workspace_restore_abort(paste0(
+      "Workspace ",
+      gsub("_", "-", field),
+      " records must use the exact current field order."
+    ))
+  }
   tempest_persistence_exact_records(
     records,
-    tempest_research_workspace_record_fields(field),
+    fields,
     paste0("workspace ", gsub("_", "-", field), " records"),
     tempest_persistence_error_class(
       "tempest_research_workspace_restore_error"
@@ -1769,9 +1872,11 @@ tempest_persistence_record_number <- function(
     value >= minimum &&
     value <= maximum &&
     (!isTRUE(integer) ||
-      (value == floor(value) &&
-        value >= -.Machine$integer.max - 1 &&
-        value <= .Machine$integer.max))
+      tempest_exact_integer_scalar_valid(
+        value,
+        minimum = max(minimum, -.Machine$integer.max),
+        maximum = min(maximum, .Machine$integer.max)
+      ))
   if (!isTRUE(valid)) {
     tempest_research_workspace_restore_abort(paste0(
       "Workspace record field ",
@@ -1781,7 +1886,7 @@ tempest_persistence_record_number <- function(
       if (integer) "one exact integer." else "one finite number."
     ))
   }
-  if (isTRUE(integer)) as.integer(value) else value
+  value
 }
 
 #' @keywords internal
@@ -1988,78 +2093,40 @@ tempest_research_workspace_unique_record_ids <- function(
 }
 
 #' @keywords internal
-tempest_research_workspace_restore_metadata <- function(
-  snapshot,
-  schema_version,
-  workspace = NULL
-) {
-  require_fields <- identical(schema_version, 4L)
-  if (require_fields && "artifacts" %in% names(snapshot)) {
+tempest_research_workspace_restore_metadata <- function(snapshot) {
+  if ("artifacts" %in% names(snapshot)) {
     tempest_research_workspace_restore_abort(
       "Current workspaces cannot contain an arbitrary artifacts field."
     )
   }
-  if (require_fields && !"base_snapshot_id" %in% names(snapshot)) {
-    tempest_research_workspace_restore_abort(
-      "Workspace snapshot is missing required field {.field base_snapshot_id}."
-    )
-  }
-  base_snapshot_id <- if (
-    !"base_snapshot_id" %in% names(snapshot) && !is.null(workspace)
-  ) {
-    workspace$base_snapshot_id
-  } else {
-    tryCatch(
-      tempest_research_workspace_snapshot_id(snapshot$base_snapshot_id),
-      error = function(error) {
-        tempest_research_workspace_restore_abort(
-          "{.field base_snapshot_id} is invalid.",
-          parent = error
-        )
-      }
-    )
-  }
-
-  if (require_fields && !"accepted_graft_references" %in% names(snapshot)) {
-    tempest_research_workspace_restore_abort(
-      paste0(
-        "Workspace snapshot is missing required field ",
-        "{.field accepted_graft_references}."
+  base_snapshot_id <- tryCatch(
+    tempest_research_workspace_snapshot_id(snapshot$base_snapshot_id),
+    error = function(error) {
+      tempest_research_workspace_restore_abort(
+        "{.field base_snapshot_id} is invalid.",
+        parent = error
       )
-    )
-  }
-  references <- if (
-    !"accepted_graft_references" %in% names(snapshot) && !is.null(workspace)
-  ) {
-    workspace$list_accepted_graft_references()
-  } else {
-    tryCatch(
-      tempest_research_workspace_references(
-        snapshot$accepted_graft_references %||% list()
-      ),
-      error = function(error) {
-        tempest_research_workspace_restore_abort(
-          "{.field accepted_graft_references} is invalid.",
-          parent = error
-        )
-      }
-    )
-  }
-
-  if (require_fields && !"max_sources" %in% names(snapshot)) {
+    }
+  )
+  if (is.null(snapshot$accepted_graft_references)) {
     tempest_research_workspace_restore_abort(
-      "Workspace snapshot is missing required field {.field max_sources}."
+      "{.field accepted_graft_references} cannot be literal null."
     )
   }
-  max_sources <- if (
-    !"max_sources" %in% names(snapshot) && !is.null(workspace)
-  ) {
-    workspace$max_sources
-  } else {
-    tempest_research_workspace_restore_max_sources(
-      snapshot$max_sources %||% "unbounded"
-    )
-  }
+  references <- tryCatch(
+    tempest_research_workspace_references(
+      snapshot$accepted_graft_references
+    ),
+    error = function(error) {
+      tempest_research_workspace_restore_abort(
+        "{.field accepted_graft_references} is invalid.",
+        parent = error
+      )
+    }
+  )
+  max_sources <- tempest_research_workspace_restore_max_sources(
+    snapshot$max_sources
+  )
 
   list(
     base_snapshot_id = base_snapshot_id,
@@ -2095,33 +2162,16 @@ tempest_research_workspace_restore <- function(
     graft_snapshot <- workspace$graft_snapshot
   }
   schema_version <- tempest_research_workspace_restore_schema(snapshot)
-  if (identical(schema_version, 4L)) {
-    expected_fields <- c(
-      "schema_version",
-      "base_snapshot_id",
-      "max_sources",
-      "accepted_graft_references",
-      "retrieved_resources",
-      "proposed_claims",
-      "evidence_spans",
-      "disputes",
-      "citation_audit"
-    )
-    snapshot_fields <- names(snapshot)
-    if (
-      is.null(snapshot_fields) ||
-        anyNA(snapshot_fields) ||
-        anyDuplicated(snapshot_fields) ||
-        !setequal(snapshot_fields, expected_fields)
-    ) {
-      tempest_unsupported_format_abort(
-        "ResearchWorkspace snapshot format",
-        schema_version,
-        tempest_persistence_error_class(
-          "tempest_research_workspace_restore_error"
-        )
+  expected_fields <- tempest_research_workspace_snapshot_fields()
+  snapshot_fields <- names(snapshot)
+  if (!identical(snapshot_fields, expected_fields)) {
+    tempest_unsupported_format_abort(
+      "ResearchWorkspace snapshot format",
+      schema_version,
+      tempest_persistence_error_class(
+        "tempest_research_workspace_restore_error"
       )
-    }
+    )
   }
   tempest_persistence_credential_audit(
     list(workspace = snapshot),
@@ -2130,11 +2180,7 @@ tempest_research_workspace_restore <- function(
       "tempest_research_workspace_restore_error"
     )
   )
-  metadata <- tempest_research_workspace_restore_metadata(
-    snapshot,
-    schema_version,
-    workspace = workspace
-  )
+  metadata <- tempest_research_workspace_restore_metadata(snapshot)
   graft_snapshot <- tryCatch(
     tempest_research_workspace_graft_snapshot(
       graft_snapshot,
@@ -2227,8 +2273,7 @@ tempest_research_workspace_restore <- function(
 
   records <- tempest_research_workspace_restore_records(
     snapshot,
-    "retrieved_resources",
-    required = TRUE
+    "retrieved_resources"
   )
   records <- tempest_research_workspace_exact_records(
     records,
@@ -2266,8 +2311,7 @@ tempest_research_workspace_restore <- function(
   )
   span_records <- tempest_research_workspace_restore_records(
     snapshot,
-    "evidence_spans",
-    required = TRUE
+    "evidence_spans"
   )
   span_records <- tempest_research_workspace_exact_records(
     span_records,
@@ -2308,8 +2352,7 @@ tempest_research_workspace_restore <- function(
 
   claim_records <- tempest_research_workspace_restore_records(
     snapshot,
-    "proposed_claims",
-    required = TRUE
+    "proposed_claims"
   )
   claim_records <- tempest_research_workspace_exact_records(
     claim_records,
@@ -2324,6 +2367,7 @@ tempest_research_workspace_restore <- function(
     "claim_id",
     "Proposed-claim records"
   )
+  restored_claims <- list()
   for (i in seq_along(claim_records)) {
     claim <- tryCatch(
       tempest_claim_from_list(claim_records[[i]]),
@@ -2334,6 +2378,7 @@ tempest_research_workspace_restore <- function(
         )
       }
     )
+    restored_claims[[length(restored_claims) + 1L]] <- claim
     missing_source_ids <- setdiff(claim@source_ids, source_ids)
     if (length(missing_source_ids) > 0) {
       tempest_research_workspace_restore_abort(
@@ -2363,8 +2408,7 @@ tempest_research_workspace_restore <- function(
   )
   dispute_records <- tempest_research_workspace_restore_records(
     snapshot,
-    "disputes",
-    required = TRUE
+    "disputes"
   )
   dispute_records <- tempest_research_workspace_exact_records(
     dispute_records,
@@ -2404,28 +2448,112 @@ tempest_research_workspace_restore <- function(
     candidate$add_dispute(dispute)
   }
 
-  citation_audit <- snapshot$citation_audit
-  if (!is.null(citation_audit)) {
-    audit <- tryCatch(
-      tempest_restore_citation_audit(citation_audit),
-      error = function(error) {
-        tempest_research_workspace_restore_abort(
-          "{.field citation_audit} is invalid.",
-          parent = error
-        )
-      }
-    )
+  support_records <- tempest_research_workspace_restore_records(
+    snapshot,
+    "claim_supports"
+  )
+  support_records <- tempest_research_workspace_exact_records(
+    support_records,
+    "claim_supports"
+  )
+  tempest_research_workspace_unique_record_ids(
+    support_records,
+    "claim_support_id",
+    "Claim-support records"
+  )
+  supports <- lapply(seq_along(support_records), function(i) {
     tryCatch(
-      candidate$set_citation_audit(audit),
+      tempest_claim_support_from_list(support_records[[i]]),
       error = function(error) {
         tempest_research_workspace_restore_abort(
-          "{.field citation_audit} cannot be restored.",
+          paste0("Claim-support entry ", i, " is invalid."),
           parent = error
         )
       }
     )
+  })
+  if (length(supports) == 0L) {
+    exact_unverified <- all(vapply(
+      restored_claims,
+      function(claim) {
+        identical(candidate$get_proposed_claim(claim@claim_id), claim)
+      },
+      logical(1)
+    ))
+    if (!isTRUE(exact_unverified)) {
+      tempest_research_workspace_restore_abort(
+        paste0(
+          "Verified claim summaries require the complete authoritative ",
+          "claim-support set."
+        )
+      )
+    }
+  } else {
+    verifier_models <- unique(vapply(
+      restored_claims,
+      \(claim) claim@verifier_model,
+      character(1)
+    ))
+    verified_times <- unique(vapply(
+      restored_claims,
+      \(claim) claim@verified_at,
+      character(1)
+    ))
+    if (
+      length(verifier_models) != 1L ||
+        !tempest_ledger_identifier_valid(
+          verifier_models[[1]],
+          optional = TRUE
+        ) ||
+        length(verified_times) != 1L ||
+        !tempest_ledger_timestamp_valid(verified_times[[1]])
+    ) {
+      tempest_research_workspace_restore_abort(
+        paste0(
+          "A complete claim-support set requires one exact verifier and ",
+          "verification timestamp across all claim summaries."
+        )
+      )
+    }
+    tryCatch(
+      candidate$verify_proposed_claims_batch(
+        supports,
+        verified_at = verified_times[[1]],
+        min_support_score = 0,
+        verifier = verifier_models[[1]]
+      ),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          "{.field claim_supports} cannot be restored.",
+          parent = error
+        )
+      }
+    )
+    restored_claims_value <- new.env(parent = emptyenv())
+    for (claim in restored_claims) {
+      derived <- candidate$get_proposed_claim(claim@claim_id)
+      if (!identical(derived, claim)) {
+        tempest_research_workspace_restore_abort(
+          paste0(
+            "Claim summary {.val {claim@claim_id}} is not exactly derived ",
+            "from the authoritative claim-support set."
+          )
+        )
+      }
+      restored_claims_value[[claim@claim_id]] <- claim
+    }
+    candidate$.__enclos_env__$private$claims_value <- restored_claims_value
   }
 
+  tryCatch(
+    candidate$validate_integrity(),
+    error = function(error) {
+      tempest_research_workspace_restore_abort(
+        "Restored claim-support integrity validation failed.",
+        parent = error
+      )
+    }
+  )
   tempest_research_workspace_validate_noncontent(candidate, "restore")
 
   if (is.null(workspace)) {
@@ -2437,6 +2565,7 @@ tempest_research_workspace_restore <- function(
     "resources_value",
     "claims_value",
     "evidence_spans_value",
+    "claim_supports_value",
     "disputes_value",
     "max_sources_value",
     "claims_by_source",
@@ -2466,7 +2595,14 @@ tempest_session_restore_abort <- function(message, parent = NULL) {
 #' @keywords internal
 tempest_expert_records <- function(experts) {
   experts <- tempest_validate_experts(experts, active_only = FALSE)
-  unname(lapply(experts, tempest_expert_profile_record))
+  unname(lapply(experts, function(expert) {
+    record <- tempest_expert_profile_record(expert)
+    record$focus_areas <- unname(as.list(record$focus_areas))
+    if (length(record$metadata) == 0L) {
+      names(record$metadata) <- character()
+    }
+    record
+  }))
 }
 
 #' @keywords internal
@@ -2591,9 +2727,47 @@ tempest_experts_from_records <- function(
     what,
     class
   )
+  valid_writer_fields <- vapply(
+    records,
+    function(record) {
+      rlang::is_string(record$version) &&
+        !is.na(record$version) &&
+        rlang::is_string(record$state) &&
+        !is.na(record$state) &&
+        identical(record$schema_version, 1L) &&
+        is.list(record$focus_areas) &&
+        !is.data.frame(record$focus_areas) &&
+        is.null(names(record$focus_areas)) &&
+        all(vapply(
+          record$focus_areas,
+          \(value) rlang::is_string(value) && !is.na(value),
+          logical(1)
+        )) &&
+        is.list(record$metadata) &&
+        !is.data.frame(record$metadata)
+    },
+    logical(1)
+  )
+  if (!all(valid_writer_fields)) {
+    tempest_abort(
+      paste0(
+        "Cannot restore {what}; expert-profile records must retain exact ",
+        "non-null writer fields."
+      ),
+      class = class
+    )
+  }
   tryCatch(
     {
-      experts <- lapply(records, tempest_expert_profile_from_data)
+      experts <- lapply(records, function(record) {
+        if (
+          length(record$metadata) == 0L &&
+            !is.null(names(record$metadata))
+        ) {
+          record$metadata <- list()
+        }
+        tempest_expert_profile_from_data(record)
+      })
       tempest_validate_experts(experts, active_only = FALSE)
     },
     error = function(error) {
@@ -2765,6 +2939,12 @@ tempest_session_credential_free_value <- function(value, field, action) {
 
 #' @keywords internal
 tempest_session_transcript_record <- function(value, action = "snapshot") {
+  if (is.null(value)) {
+    tempest_session_snapshot_value_abort(
+      "Co-STORM transcript cannot be literal null.",
+      action
+    )
+  }
   value <- tempest_session_snapshot_record(
     value,
     "transcript",
@@ -2819,10 +2999,27 @@ tempest_session_mindmap_record <- function(value, action = "snapshot") {
       (rlang::is_string(value) && !is.na(value) && nzchar(value))
   }
   valid_ids <- function(value) {
-    if (is.character(value)) {
+    if (identical(action, "restore")) {
+      return(
+        !is.null(value) &&
+          is.list(value) &&
+          !is.data.frame(value) &&
+          is.null(names(value)) &&
+          all(vapply(value, valid_string, logical(1)))
+      )
+    }
+    if (is.null(value)) {
+      return(TRUE)
+    }
+    if (
+      is.character(value) &&
+        !is.object(value) &&
+        is.null(names(value))
+    ) {
       return(!anyNA(value) && all(nzchar(value)))
     }
     is.list(value) &&
+      !is.data.frame(value) &&
       is.null(names(value)) &&
       all(vapply(value, valid_string, logical(1)))
   }
@@ -2830,6 +3027,14 @@ tempest_session_mindmap_record <- function(value, action = "snapshot") {
     value$nodes,
     function(node) {
       fields <- names(node)
+      source_ids_valid <- FALSE
+      if (is.list(node) && !is.data.frame(node)) {
+        source_ids_valid <- if (identical(action, "restore")) {
+          "source_ids" %in% fields && valid_ids(node$source_ids)
+        } else {
+          valid_ids(node$source_ids %||% character())
+        }
+      }
       is.list(node) &&
         !is.data.frame(node) &&
         !is.null(fields) &&
@@ -2841,7 +3046,7 @@ tempest_session_mindmap_record <- function(value, action = "snapshot") {
         valid_string(node$label) &&
         valid_string(node$parent %||% NULL, nullable = TRUE) &&
         (is.null(node$notes) || rlang::is_string(node$notes)) &&
-        valid_ids(node$source_ids %||% character())
+        source_ids_valid
     },
     logical(1)
   )
@@ -2873,6 +3078,12 @@ tempest_session_mindmap_record <- function(value, action = "snapshot") {
       action
     )
   }
+  value$nodes <- lapply(value$nodes, function(node) {
+    node$source_ids <- tempest_codec_character(
+      node$source_ids %||% character()
+    )
+    node
+  })
   value
 }
 
@@ -3030,8 +3241,17 @@ tempest_session_portable_snapshot <- function(snapshot, action = "snapshot") {
 
 #' @keywords internal
 tempest_session_suggested_questions <- function(value, action = "snapshot") {
-  value <- value %||% character()
-  if (is.list(value) && is.null(names(value))) {
+  if (identical(action, "restore")) {
+    if (
+      is.null(value) ||
+        !is.list(value) ||
+        is.data.frame(value) ||
+        !is.null(names(value))
+    ) {
+      tempest_session_restore_abort(
+        "Stored suggested questions must be one unnamed JSON array."
+      )
+    }
     valid <- vapply(
       value,
       \(question) {
@@ -3041,8 +3261,31 @@ tempest_session_suggested_questions <- function(value, action = "snapshot") {
       },
       logical(1)
     )
-    if (all(valid)) {
-      value <- unlist(value, use.names = FALSE)
+    if (!all(valid)) {
+      tempest_session_restore_abort(
+        "Stored suggested questions must contain only exact strings."
+      )
+    }
+    value <- if (length(value) == 0L) {
+      character()
+    } else {
+      unlist(value, use.names = FALSE)
+    }
+  } else {
+    value <- value %||% character()
+    if (is.list(value) && is.null(names(value))) {
+      valid <- vapply(
+        value,
+        \(question) {
+          is.character(question) &&
+            length(question) == 1L &&
+            !is.na(question)
+        },
+        logical(1)
+      )
+      if (all(valid)) {
+        value <- unlist(value, use.names = FALSE)
+      }
     }
   }
   if (!is.character(value) || anyNA(value)) {
@@ -3571,6 +3814,10 @@ tempest_session_snapshot <- function(session) {
     session$workspace,
     action = "snapshot"
   )
+  mindmap$nodes <- lapply(mindmap$nodes, function(node) {
+    node$source_ids <- as.list(unname(node$source_ids))
+    node
+  })
   suggested_questions <- tempest_session_suggested_questions(
     session$artifacts[["suggested_questions"]] %||% character()
   )
@@ -3597,7 +3844,7 @@ tempest_session_snapshot <- function(session) {
   )
 
   snapshot <- list(
-    schema_version = 7L,
+    schema_version = 8L,
     package_version = tryCatch(
       as.character(utils::packageVersion("tempest")),
       error = function(e) NA_character_
@@ -3614,7 +3861,7 @@ tempest_session_snapshot <- function(session) {
     mindmap = mindmap,
     report_md = report_md,
     report_reference = report_reference,
-    suggested_questions = suggested_questions,
+    suggested_questions = as.list(suggested_questions),
     progress_events = tempest_session_restore_progress_events(
       tempest_execution_events(session),
       session_id = session$session_id,
@@ -3638,7 +3885,6 @@ tempest_session_snapshot <- function(session) {
 
 #' @keywords internal
 tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
-  expert_sessions <- expert_sessions %||% list()
   expert_sessions <- tempest_persistence_exact_records(
     expert_sessions,
     tempest_expert_session_record_fields(),
@@ -3685,6 +3931,15 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
     }
   }
   for (expert_session in expert_sessions) {
+    if (
+      is.null(expert_session$grants) ||
+        !is.list(expert_session$grants) ||
+        is.data.frame(expert_session$grants)
+    ) {
+      tempest_session_restore_abort(
+        "Expert-session grants must be a non-null list."
+      )
+    }
     expert_session$allowed_connection_ref_ids <- tryCatch(
       tempest_contract_ids(
         tempest_expert_session_connection_ids(
@@ -3806,13 +4061,17 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #'   objects.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the snapshot. If `NULL`, the builtin set is used.
+#' @param knowledge_view Optional transient immutable Graft view required by
+#'   future execution when `program_set` contains governed procedures. It is
+#'   never reconstructed from or written to persistence.
 #' @return A restored [TempestSession].
 #' @export
 tempest_session_restore <- function(
   snapshot,
   config = tempest_config(),
   progress = NULL,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 ) {
   tempest_session_restore_internal(
     snapshot = snapshot,
@@ -3820,7 +4079,8 @@ tempest_session_restore <- function(
     runtime = tempest_runtime(),
     connection_permissions = NULL,
     progress = progress,
-    program_set = program_set
+    program_set = program_set,
+    knowledge_view = knowledge_view
   )
 }
 
@@ -3831,7 +4091,8 @@ tempest_session_restore_internal <- function(
   runtime = tempest_runtime(),
   connection_permissions = NULL,
   progress = NULL,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 ) {
   if (!is.list(snapshot)) {
     tempest_session_restore_abort("{.arg snapshot} must be a list.")
@@ -3843,7 +4104,7 @@ tempest_session_restore_internal <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 7L)) {
+  if (!identical(schema_version, 8L)) {
     tempest_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -3853,12 +4114,7 @@ tempest_session_restore_internal <- function(
     )
   }
   snapshot_fields <- names(snapshot)
-  if (
-    is.null(snapshot_fields) ||
-      anyNA(snapshot_fields) ||
-      anyDuplicated(snapshot_fields) ||
-      !setequal(snapshot_fields, tempest_session_snapshot_fields())
-  ) {
+  if (!identical(snapshot_fields, tempest_session_snapshot_fields())) {
     tempest_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -3885,7 +4141,7 @@ tempest_session_restore_internal <- function(
   )
   tempest_research_workspace_require_current_schema(
     snapshot$workspace,
-    "Schema 7 session workspace",
+    "Schema 8 session workspace",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -4129,6 +4385,7 @@ tempest_session_restore_internal <- function(
     progress = NULL,
     session_id = snapshot$session_id,
     program_set = program_set,
+    knowledge_view = knowledge_view,
     manifest = research_manifest
   )
 
@@ -4159,7 +4416,7 @@ tempest_session_restore_internal <- function(
 
   tempest_session_restore_expert_sessions(
     session,
-    snapshot$expert_sessions %||% list()
+    snapshot$expert_sessions
   )
   tempest_session_set_stage_records(session, stage_records)
   session
@@ -4557,8 +4814,8 @@ tempest_session_save <- function(
     ),
     tempest_session_bundle_write_json(
       staging_dir,
-      "workspace/citation_audit.json",
-      snapshot$workspace$citation_audit
+      "workspace/claim_supports.json",
+      snapshot$workspace$claim_supports
     )
   )
   if (!is.null(snapshot$report_md)) {
@@ -4610,12 +4867,9 @@ tempest_session_save <- function(
     title = snapshot$title,
     research_manifest = snapshot$research_manifest,
     report_reference = snapshot$report_reference,
-    workspace = snapshot$workspace[c(
-      "schema_version",
-      "base_snapshot_id",
-      "max_sources",
-      "accepted_graft_references"
-    )],
+    workspace = snapshot$workspace[
+      tempest_session_bundle_workspace_fields()
+    ],
     saved_at = tempest_now_utc(),
     files = as.list(unname(files)),
     checksums = checksums
@@ -4667,6 +4921,25 @@ tempest_session_bundle_optional_json <- function(path, default = NULL, what) {
 }
 
 #' @keywords internal
+tempest_session_progress_event_fields <- function() {
+  c(
+    "event_id",
+    "run_id",
+    "workflow",
+    "event_type",
+    "stage",
+    "step",
+    "status",
+    "timestamp",
+    "message",
+    "payload",
+    "parent_event_id",
+    "correlation_id",
+    "sequence"
+  )
+}
+
+#' @keywords internal
 tempest_session_restore_progress_events <- function(
   events,
   session_id,
@@ -4682,21 +4955,7 @@ tempest_session_restore_progress_events <- function(
       action
     )
   }
-  event_fields <- c(
-    "event_id",
-    "run_id",
-    "workflow",
-    "event_type",
-    "stage",
-    "step",
-    "status",
-    "timestamp",
-    "message",
-    "payload",
-    "parent_event_id",
-    "correlation_id",
-    "sequence"
-  )
+  event_fields <- tempest_session_progress_event_fields()
   event_props <- setdiff(event_fields, "sequence")
   optional <- c(
     "stage",
@@ -4712,7 +4971,7 @@ tempest_session_restore_progress_events <- function(
         is.null(names(event)) ||
         anyNA(names(event)) ||
         anyDuplicated(names(event)) ||
-        !setequal(names(event), event_fields)
+        !identical(names(event), event_fields)
     ) {
       tempest_session_snapshot_value_abort(
         "Session progress events must contain exactly the current fields.",
@@ -4742,14 +5001,7 @@ tempest_session_restore_progress_events <- function(
       }
     }
     sequence <- event$sequence
-    if (
-      !is.numeric(sequence) ||
-        length(sequence) != 1L ||
-        is.na(sequence) ||
-        !is.finite(sequence) ||
-        sequence < 1L ||
-        sequence != as.integer(sequence)
-    ) {
+    if (!tempest_exact_integer_scalar_valid(sequence, minimum = 1L)) {
       tempest_session_snapshot_value_abort(
         "Session progress-event sequences must be explicit positive integers.",
         action
@@ -4768,7 +5020,7 @@ tempest_session_restore_progress_events <- function(
         )
       }
     )
-    record$sequence <- as.integer(sequence)
+    record$sequence <- sequence
     if (identical(action, "snapshot")) {
       for (field in optional) {
         if (is.na(record[[field]])) {
@@ -4843,6 +5095,16 @@ tempest_session_bundle_manifest_fields <- function() {
 }
 
 #' @keywords internal
+tempest_session_bundle_workspace_fields <- function() {
+  c(
+    "schema_version",
+    "base_snapshot_id",
+    "max_sources",
+    "accepted_graft_references"
+  )
+}
+
+#' @keywords internal
 tempest_session_bundle_validate_manifest <- function(
   bundle_dir,
   manifest,
@@ -4855,7 +5117,7 @@ tempest_session_bundle_validate_manifest <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 7L)) {
+  if (!identical(schema_version, 8L)) {
     tempest_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -4865,12 +5127,7 @@ tempest_session_bundle_validate_manifest <- function(
     )
   }
   manifest_fields <- names(manifest)
-  if (
-    is.null(manifest_fields) ||
-      anyNA(manifest_fields) ||
-      anyDuplicated(manifest_fields) ||
-      !setequal(manifest_fields, tempest_session_bundle_manifest_fields())
-  ) {
+  if (!identical(manifest_fields, tempest_session_bundle_manifest_fields())) {
     tempest_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -4884,7 +5141,7 @@ tempest_session_bundle_validate_manifest <- function(
       !identical(manifest$bundle_status %||% "", "complete")
   ) {
     tempest_session_restore_abort(
-      "Schema 7 Co-STORM bundle envelope is not complete."
+      "Schema 8 Co-STORM bundle envelope is not complete."
     )
   }
   if (
@@ -4892,34 +5149,25 @@ tempest_session_bundle_validate_manifest <- function(
       !is.list(manifest$workspace)
   ) {
     tempest_session_restore_abort(
-      "Schema 7 Co-STORM bundle is missing research identity metadata."
+      "Schema 8 Co-STORM bundle is missing research identity metadata."
     )
   }
-  workspace_fields <- c(
-    "schema_version",
-    "base_snapshot_id",
-    "max_sources",
-    "accepted_graft_references"
-  )
-  if (
-    is.null(names(manifest$workspace)) ||
-      anyDuplicated(names(manifest$workspace)) ||
-      !setequal(names(manifest$workspace), workspace_fields)
-  ) {
+  workspace_fields <- tempest_session_bundle_workspace_fields()
+  if (!identical(names(manifest$workspace), workspace_fields)) {
     tempest_session_restore_abort(
-      "Schema 7 Co-STORM bundle has invalid workspace identity metadata."
+      "Schema 8 Co-STORM bundle has invalid workspace identity metadata."
     )
   }
   tempest_research_workspace_require_current_schema(
     manifest$workspace,
-    "Schema 7 Co-STORM workspace identity",
+    "Schema 8 Co-STORM workspace identity",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 7 Co-STORM file inventory",
+    "Schema 8 Co-STORM file inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -4937,7 +5185,7 @@ tempest_session_bundle_validate_manifest <- function(
     "workspace/proposed_claims.json",
     "workspace/evidence_spans.json",
     "workspace/disputes.json",
-    "workspace/citation_audit.json"
+    "workspace/claim_supports.json"
   )
   core_required <- c(
     "experts.json",
@@ -4988,7 +5236,7 @@ tempest_session_bundle_validate_manifest <- function(
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 7 Co-STORM checksum inventory",
+    "Schema 8 Co-STORM checksum inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -5176,6 +5424,9 @@ tempest_session_bundle_validate_manifest <- function(
 #'   and Graft snapshot state, must pass integrity checks.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the bundle. If `NULL`, the builtin set is used.
+#' @param knowledge_view Optional transient immutable Graft view required by
+#'   future execution when `program_set` contains governed procedures. It is
+#'   never reconstructed from or written to persistence.
 #' @return A restored [TempestSession].
 #' @export
 tempest_session_resume <- function(
@@ -5183,7 +5434,8 @@ tempest_session_resume <- function(
   config = tempest_config(),
   progress = NULL,
   partial_recovery = FALSE,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 ) {
   tempest_session_resume_internal(
     path = path,
@@ -5192,7 +5444,8 @@ tempest_session_resume <- function(
     connection_permissions = NULL,
     progress = progress,
     partial_recovery = partial_recovery,
-    program_set = program_set
+    program_set = program_set,
+    knowledge_view = knowledge_view
   )
 }
 
@@ -5204,7 +5457,8 @@ tempest_session_resume_internal <- function(
   connection_permissions = NULL,
   progress = NULL,
   partial_recovery = FALSE,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 ) {
   previous_partial <- getOption("tempest.session_partial_recovery")
   options(tempest.session_partial_recovery = isTRUE(partial_recovery))
@@ -5248,7 +5502,7 @@ tempest_session_resume_internal <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 7L)) {
+  if (!identical(schema_version, 8L)) {
     tempest_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -5329,7 +5583,7 @@ tempest_session_resume_internal <- function(
     report_reference = manifest$report_reference,
     suggested_questions = optional_json(
       "artifacts/suggested_questions.json",
-      default = character(),
+      default = list(),
       what = "suggested questions artifact"
     ),
     progress_events = strict_json(
@@ -5363,13 +5617,15 @@ tempest_session_resume_internal <- function(
     "workspace/disputes.json",
     what = "session dispute ledger"
   )
-  workspace["citation_audit"] <- list(
+  workspace["claim_supports"] <- list(
     strict_json(
-      "workspace/citation_audit.json",
-      what = "session citation audit"
+      "workspace/claim_supports.json",
+      what = "session claim-support ledger"
     )
   )
+  workspace <- workspace[tempest_research_workspace_snapshot_fields()]
   snapshot$workspace <- workspace
+  snapshot <- snapshot[tempest_session_snapshot_fields()]
 
   tempest_session_restore_internal(
     snapshot,
@@ -5377,107 +5633,8 @@ tempest_session_resume_internal <- function(
     runtime = runtime,
     connection_permissions = connection_permissions,
     progress = progress,
-    program_set = program_set
-  )
-}
-
-#' @keywords internal
-tempest_restore_citation_audit <- function(citation_audit) {
-  if (is.null(citation_audit)) {
-    return(NULL)
-  }
-  if (
-    !is.list(citation_audit) ||
-      is.data.frame(citation_audit) ||
-      !is.null(names(citation_audit))
-  ) {
-    tempest_research_workspace_restore_abort(
-      "Citation audit must be an unnamed list of current-schema rows."
-    )
-  }
-  if (length(citation_audit) == 0L) {
-    return(tibble::tibble(
-      claim_id = character(),
-      claim_text = character(),
-      verification_status = character(),
-      support_score = numeric(),
-      rationale = character()
-    ))
-  }
-  fields <- c(
-    "claim_id",
-    "claim_text",
-    "verification_status",
-    "support_score",
-    "rationale"
-  )
-  rows <- lapply(citation_audit, function(row) {
-    row_fields <- names(row)
-    if (
-      !is.list(row) ||
-        is.data.frame(row) ||
-        is.null(row_fields) ||
-        anyNA(row_fields) ||
-        anyDuplicated(row_fields) ||
-        !setequal(row_fields, fields)
-    ) {
-      tempest_research_workspace_restore_abort(
-        "Citation-audit rows do not match the current schema."
-      )
-    }
-    for (field in c("claim_id", "claim_text", "verification_status")) {
-      if (
-        !rlang::is_string(row[[field]]) ||
-          is.na(row[[field]]) ||
-          !nzchar(tempest_trim(row[[field]]))
-      ) {
-        tempest_research_workspace_restore_abort(
-          "Citation-audit rows contain an invalid {.field {field}}."
-        )
-      }
-    }
-    if (
-      !is.null(row$rationale) &&
-        (!rlang::is_string(row$rationale) || is.na(row$rationale))
-    ) {
-      tempest_research_workspace_restore_abort(
-        "Citation-audit rationale must be one string or null."
-      )
-    }
-    if (
-      !is.null(row$support_score) &&
-        (!is.numeric(row$support_score) ||
-          length(row$support_score) != 1L ||
-          is.na(row$support_score) ||
-          !is.finite(row$support_score) ||
-          row$support_score < 0 ||
-          row$support_score > 1)
-    ) {
-      tempest_research_workspace_restore_abort(
-        "Citation-audit support scores must be null or finite values in [0, 1]."
-      )
-    }
-    row
-  })
-  tibble::tibble(
-    claim_id = vapply(rows, `[[`, character(1), "claim_id"),
-    claim_text = vapply(rows, `[[`, character(1), "claim_text"),
-    verification_status = vapply(
-      rows,
-      `[[`,
-      character(1),
-      "verification_status"
-    ),
-    support_score = vapply(
-      rows,
-      \(row) row$support_score %||% NA_real_,
-      numeric(1)
-    ),
-    rationale = vapply(
-      rows,
-      \(row) row$rationale %||% NA_character_,
-      character(1)
-    )
+    program_set = program_set,
+    knowledge_view = knowledge_view
   )
 }
 
@@ -5544,6 +5701,26 @@ tempest_storm_record_strings <- function(value, field, action) {
 }
 
 #' @keywords internal
+tempest_storm_perspective_fields <- function() {
+  c("name", "description", "key_questions")
+}
+
+#' @keywords internal
+tempest_storm_outline_fields <- function() {
+  c("title", "sections")
+}
+
+#' @keywords internal
+tempest_storm_outline_section_fields <- function() {
+  c("title", "summary", "subsections")
+}
+
+#' @keywords internal
+tempest_storm_outline_subsection_fields <- function() {
+  c("title", "bullets", "needed")
+}
+
+#' @keywords internal
 tempest_storm_validate_perspectives <- function(perspectives, action) {
   valid <- is.list(perspectives) &&
     !is.data.frame(perspectives) &&
@@ -5562,7 +5739,7 @@ tempest_storm_validate_perspectives <- function(perspectives, action) {
         is.null(fields) ||
         anyNA(fields) ||
         anyDuplicated(fields) ||
-        !setequal(fields, c("name", "description", "key_questions")) ||
+        !identical(fields, tempest_storm_perspective_fields()) ||
         !rlang::is_string(perspective$name) ||
         is.na(perspective$name) ||
         !nzchar(tempest_trim(perspective$name)) ||
@@ -5599,7 +5776,7 @@ tempest_storm_validate_outline <- function(outline, field, action) {
       is.null(fields) ||
       anyNA(fields) ||
       anyDuplicated(fields) ||
-      !setequal(fields, c("title", "sections")) ||
+      !identical(fields, tempest_storm_outline_fields()) ||
       !rlang::is_string(outline$title) ||
       is.na(outline$title) ||
       !nzchar(tempest_trim(outline$title)) ||
@@ -5621,9 +5798,9 @@ tempest_storm_validate_outline <- function(outline, field, action) {
         is.null(section_fields) ||
         anyNA(section_fields) ||
         anyDuplicated(section_fields) ||
-        !setequal(
+        !identical(
           section_fields,
-          c("title", "summary", "subsections")
+          tempest_storm_outline_section_fields()
         ) ||
         !rlang::is_string(section$title) ||
         is.na(section$title) ||
@@ -5647,9 +5824,9 @@ tempest_storm_validate_outline <- function(outline, field, action) {
           is.null(subsection_fields) ||
           anyNA(subsection_fields) ||
           anyDuplicated(subsection_fields) ||
-          !setequal(
+          !identical(
             subsection_fields,
-            c("title", "bullets", "needed")
+            tempest_storm_outline_subsection_fields()
           ) ||
           !rlang::is_string(subsection$title) ||
           is.na(subsection$title) ||
@@ -5870,26 +6047,27 @@ tempest_run_bundle_owned_files <- function(include_manifest = FALSE) {
 }
 
 #' @keywords internal
-tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
+tempest_storm_require_current_schema <- function(metadata) {
   schema_version <- tempest_persistence_schema_version(
-    manifest$schema_version %||% NA_integer_,
+    metadata$schema_version %||% NA_integer_,
     "STORM run schema version",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
-  if (!identical(schema_version, 6L)) {
+  if (!identical(schema_version, 7L)) {
     tempest_unsupported_format_abort(
       "STORM bundle format",
       schema_version,
       tempest_persistence_error_class("tempest_run_restore_error")
     )
   }
+  schema_version
+}
+
+#' @keywords internal
+tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
+  schema_version <- tempest_storm_require_current_schema(manifest)
   manifest_fields <- names(manifest)
-  if (
-    is.null(manifest_fields) ||
-      anyNA(manifest_fields) ||
-      anyDuplicated(manifest_fields) ||
-      !setequal(manifest_fields, tempest_run_bundle_manifest_fields())
-  ) {
+  if (!identical(manifest_fields, tempest_run_bundle_manifest_fields())) {
     tempest_unsupported_format_abort(
       "STORM bundle format",
       schema_version,
@@ -5953,7 +6131,7 @@ tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
   }
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 6 STORM file inventory",
+    "Schema 7 STORM file inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   tempest_persistence_require_regular_bundle_files(
@@ -6004,7 +6182,7 @@ tempest_run_bundle_validate_manifest <- function(run_dir, manifest) {
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 6 STORM checksum inventory",
+    "Schema 7 STORM checksum inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   missing_checksums <- setdiff(files, names(checksums))
@@ -6303,15 +6481,11 @@ tempest_storm_restore_workspace <- function(
   config,
   graft_snapshot = NULL
 ) {
-  schema_version <- tempest_persistence_schema_version(
-    metadata$schema_version %||% NA_integer_,
-    "STORM run schema version",
-    tempest_persistence_error_class("tempest_run_restore_error")
-  )
+  tempest_storm_require_current_schema(metadata)
   identity <- metadata$workspace
   if (!is.list(identity) || is.data.frame(identity)) {
     tempest_storm_run_restore_abort(
-      "Schema 6 STORM bundles must contain a workspace identity record."
+      "Schema 7 STORM bundles must contain a workspace identity record."
     )
   }
   required <- c(
@@ -6320,12 +6494,7 @@ tempest_storm_restore_workspace <- function(
     "accepted_graft_references"
   )
   identity_fields <- names(identity)
-  if (
-    is.null(identity_fields) ||
-      anyNA(identity_fields) ||
-      anyDuplicated(identity_fields) ||
-      !setequal(identity_fields, required)
-  ) {
+  if (!identical(identity_fields, required)) {
     tempest_storm_run_restore_abort(
       "The STORM workspace identity record has unexpected fields."
     )
@@ -6348,9 +6517,14 @@ tempest_storm_restore_workspace <- function(
       )
     }
   )
+  if (is.null(identity$accepted_graft_references)) {
+    tempest_storm_run_restore_abort(
+      "Persisted accepted graft references cannot be literal null."
+    )
+  }
   accepted_references <- tryCatch(
     tempest_research_workspace_references(
-      identity$accepted_graft_references %||% list()
+      identity$accepted_graft_references
     ),
     error = function(error) {
       tempest_storm_run_restore_abort(
@@ -6378,10 +6552,10 @@ tempest_storm_workspace_is_empty <- function(workspace) {
     "retrieved_resources",
     "proposed_claims",
     "evidence_spans",
+    "claim_supports",
     "disputes"
   )
-  all(vapply(snapshot[evidence_fields], length, integer(1)) == 0L) &&
-    is.null(snapshot$citation_audit)
+  all(vapply(snapshot[evidence_fields], length, integer(1)) == 0L)
 }
 
 tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
@@ -6485,11 +6659,7 @@ tempest_storm_restore_manifest <- function(
   run_dir,
   run_id = NULL
 ) {
-  schema_version <- tempest_persistence_schema_version(
-    metadata$schema_version %||% NA_integer_,
-    "STORM run schema version",
-    tempest_persistence_error_class("tempest_run_restore_error")
-  )
+  tempest_storm_require_current_schema(metadata)
   manifest <- tryCatch(
     tempest_research_manifest_from_record(metadata$research_manifest),
     error = function(error) {
@@ -6620,11 +6790,7 @@ tempest_storm_read_state <- function(
       class = tempest_persistence_error_class("tempest_run_restore_error")
     )
   }
-  schema_version <- tempest_persistence_schema_version(
-    metadata$schema_version %||% NA_integer_,
-    "STORM run schema version",
-    tempest_persistence_error_class("tempest_run_restore_error")
-  )
+  tempest_storm_require_current_schema(metadata)
   completed_stages <- tempest_storm_state_completed_stages(
     metadata$completed_stages,
     from_record = TRUE
@@ -6802,11 +6968,7 @@ tempest_load_run_artifacts <- function(
       list(),
     class = tempest_persistence_error_class("tempest_run_restore_error")
   )
-  schema_version <- tempest_persistence_schema_version(
-    metadata$schema_version %||% NA_integer_,
-    "STORM run schema version",
-    tempest_persistence_error_class("tempest_run_restore_error")
-  )
+  tempest_storm_require_current_schema(metadata)
   path_is_declared <- function(path) {
     rel_path <- gsub(
       "\\\\",
@@ -6831,7 +6993,7 @@ tempest_load_run_artifacts <- function(
   )
   tempest_research_workspace_require_current_schema(
     workspace_snapshot,
-    "Schema 6 STORM research workspace",
+    "Schema 7 STORM research workspace",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   workspace <- tryCatch(
@@ -7348,7 +7510,7 @@ tempest_save_run_artifacts <- function(
     title = state$title,
     requested_steps = requested_steps,
     completed_stages = state$completed_stages,
-    schema_version = 6L,
+    schema_version = 7L,
     bundle_type = "storm",
     bundle_status = "complete",
     research_manifest = tempest_research_manifest_record(research_manifest),

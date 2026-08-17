@@ -54,6 +54,8 @@ reference:
 - title: Evidence and reports
   contents:
   - tempest_claims
+  - tempest_claim_support
+  - tempest_claim_supports
   - tempest_sources
   - tempest_resource
   - tempest_verify_claims
@@ -134,3 +136,12 @@ reference:
   - tempest_compile_programs
   - tempest_save_program_set
   - tempest_load_program_set
+  - tempest_governed_procedure_ref
+- title: Graft review and promotion
+  contents:
+  - tempest_graft_schema
+  - tempest_promotion_bundle
+  - tempest_save_promotion_bundle
+  - tempest_read_promotion_bundle
+  - tempest_graft_plan
+  - tempest_promotion_receipt

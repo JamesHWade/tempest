@@ -521,7 +521,10 @@ test_that("tempest_run emits ordered STORM progress events", {
     list(
       facts = list(list(
         claim = claim,
-        sources = list(list(source_id = source_id)),
+        sources = list(list(
+          source_id = source_id,
+          quote = "Progress uses staged events and persisted artifacts."
+        )),
         confidence = "high"
       ))
     )
@@ -744,9 +747,11 @@ test_that("STORM research harvests OpenAI native annotations", {
     structured = list(list(
       facts = list(list(
         claim = "STORM native-backed claim",
-        sources = list(list(source_id = source_id)),
-        confidence = "high",
-        support_score = 0.87
+        sources = list(list(
+          source_id = source_id,
+          quote = "STORM native-backed claim."
+        )),
+        confidence = "high"
       ))
     ))
   )
@@ -805,7 +810,11 @@ test_that("STORM research harvests OpenAI native annotations", {
   expect_match(sources$context_text[[1]], "STORM native-backed claim")
   expect_length(result$proposed_claims, 1L)
   expect_equal(result$proposed_claims[[1]]@source_ids, source_id)
-  expect_equal(result$proposed_claims[[1]]@support_score, 0.87)
+  expect_identical(result$proposed_claims[[1]]@support_score, NA_real_)
+  expect_identical(
+    result$proposed_claims[[1]]@verification_status,
+    "unverified"
+  )
 })
 
 test_that("STORM research does not downgrade dsprrr contract failures", {

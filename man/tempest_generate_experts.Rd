@@ -9,7 +9,8 @@ tempest_generate_experts(
   n = 3,
   config = tempest_config(),
   verbose = FALSE,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 )
 }
 \arguments{
@@ -23,6 +24,9 @@ tempest_generate_experts(
 
 \item{program_set}{A \link{TempestProgramSet} containing the exact \code{personas}
 program. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates the builtin set.}
+
+\item{knowledge_view}{Optional pinned Graft view required by a governed
+\code{program_set}.}
 }
 \value{
 A list of \code{tempest_expert} profiles.

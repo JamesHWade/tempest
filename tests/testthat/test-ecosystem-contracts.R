@@ -757,10 +757,11 @@ test_that("research manifests reject the removed program_id alias", {
 })
 
 test_that("research manifests require governed procedure vocabulary", {
-  legacy_reference <- test_program_reference("stage")
+  legacy_reference <- test_program_reference("extract_claims")
   names(legacy_reference)[
-    names(legacy_reference) == "governed_procedure_revision_id"
-  ] <- "procedure_revision_id"
+    names(legacy_reference) == "governed_procedure_ref"
+  ] <-
+    "procedure_revision_id"
   legacy_reference$procedure_revision_id <- "procedure:legacy"
   expect_error(
     tempest_research_manifest(
@@ -768,25 +769,32 @@ test_that("research manifests require governed procedure vocabulary", {
       mode = "storm",
       config = tempest_config(),
       programs = list(
-        stage = legacy_reference
+        extract_claims = legacy_reference
       )
     ),
     class = "tempest_research_manifest_error"
+  )
+  program_id <- test_program_reference("extract_claims")$program_artifact_id
+  procedure_ref <- test_governed_procedure_ref(
+    "extract_claims",
+    program_id
   )
   manifest <- tempest_research_manifest(
     research_run_id = "research-governed-procedure",
     mode = "storm",
     config = tempest_config(),
     programs = list(
-      stage = test_program_reference(
-        "stage",
-        governed_procedure_revision_id = "procedure:governed"
+      extract_claims = test_program_reference(
+        "extract_claims",
+        governed_procedure_ref = tempest:::tempest_governed_procedure_record(
+          procedure_ref
+        )
       )
     )
   )
   expect_identical(
-    manifest@programs$stage$governed_procedure_revision_id,
-    "procedure:governed"
+    manifest@programs$extract_claims$governed_procedure_ref,
+    tempest:::tempest_governed_procedure_record(procedure_ref)
   )
 })
 

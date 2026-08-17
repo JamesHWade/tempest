@@ -113,7 +113,7 @@ test_that("TempestRun bundles round-trip durable run state", {
   snapshot <- tempest:::tempest_read_json_strict(
     file.path(bundle, "snapshot.json")
   )
-  expect_identical(snapshot$source_store$schema_version, 4L)
+  expect_identical(snapshot$source_store$schema_version, 5L)
   expect_null(snapshot$runtime)
   expect_null(snapshot$policy_adapter)
 
@@ -252,6 +252,25 @@ test_that("TempestRun bundles reject tampering and malformed inventories", {
     tempest:::tempest_run_resume(incomplete$path, incomplete$runtime),
     "not complete",
     class = "tempest_run_resume_error"
+  )
+
+  old_evidence <- make_bundle("old-evidence")
+  snapshot_path <- file.path(old_evidence$path, "snapshot.json")
+  snapshot <- tempest:::tempest_read_json_strict(snapshot_path)
+  snapshot$source_store$schema_version <- 4L
+  tempest:::tempest_write_json(snapshot_path, snapshot)
+  manifest <- read_manifest(old_evidence$path)
+  manifest$checksums[["snapshot.json"]] <- digest::digest(
+    snapshot_path,
+    algo = "sha256",
+    file = TRUE,
+    serialize = FALSE
+  )
+  write_manifest(old_evidence$path, manifest)
+  expect_error(
+    tempest:::tempest_run_resume(old_evidence$path, old_evidence$runtime),
+    "Unsupported generic run evidence format: 4",
+    class = "tempest_unsupported_format_error"
   )
 
   malformed_manifest <- make_bundle("malformed-manifest")

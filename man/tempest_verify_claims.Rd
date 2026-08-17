@@ -10,6 +10,7 @@ tempest_verify_claims(
   policy = "claim_verified",
   verifier_model = NA_character_,
   program_set = NULL,
+  knowledge_view = NULL,
   min_support_score = 0.7
 )
 }
@@ -23,7 +24,8 @@ verification program should be used.}
 \item{policy}{Citation policy; verification runs only for "claim_verified" or
 "strict". Defaults to "claim_verified".}
 
-\item{verifier_model}{Optional model id recorded on each verified claim.}
+\item{verifier_model}{Optional model id bound into every verification-stage
+proof and projected onto each verified claim.}
 
 \item{program_set}{A \link{TempestProgramSet} containing the exact
 \code{verify_claim_support} program. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates
@@ -31,15 +33,20 @@ the builtin set. When \code{workspace} is a \code{TempestSession}, its immutable
 ProgramSet, citation policy, and support threshold are authoritative;
 supplied values must match.}
 
+\item{knowledge_view}{Optional immutable Graft view required when a
+standalone \code{program_set} binds verification to a governed procedure.}
+
 \item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
 considered supported.}
 }
 \value{
-A \code{citation_audit} tibble (one row per verified claim).
+A claim-support audit tibble with one row per verified
+claim-by-evidence-span pair.
 
 Passing a standalone \link{ResearchWorkspace} returns an audit but does not own a
 durable product stage ledger. Pass the \code{TempestSession} for Co-STORM bundles
-so claim updates, audit rows, and verification records commit together.
+so pair assessments, claim summaries, and verification records commit
+together.
 }
 \description{
 Verify claim citations against their sources

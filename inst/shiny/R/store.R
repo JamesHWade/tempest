@@ -194,13 +194,15 @@ new_session_store <- function() {
       path,
       config,
       progress = NULL,
-      program_set = NULL
+      program_set = NULL,
+      knowledge_view = NULL
     ) {
       session <- tempest::tempest_session_resume(
         path,
         config = config,
         progress = progress,
-        program_set = program_set
+        program_set = program_set,
+        knowledge_view = knowledge_view
       )
       rv$session <- session
       workflow_run <- tryCatch(

@@ -13,7 +13,7 @@
             "claim_text": "STORM progress emits stage events.",
             "claim_type": "finding",
             "source_ids": "S3c9e65929df6",
-            "evidence_span_ids": [],
+            "evidence_span_ids": "E_0000000000000001",
             "confidence": "high",
             "verification_status": "supported",
             "support_score": 0.9
@@ -55,7 +55,7 @@
             "claim_text": "STORM progress emits stage events.",
             "claim_type": "finding",
             "source_ids": "S3c9e65929df6",
-            "evidence_span_ids": [],
+            "evidence_span_ids": "E_0000000000000001",
             "confidence": "high",
             "verification_status": "supported",
             "support_score": 0.9
@@ -90,20 +90,20 @@
             "claim_text": "Warmup research is preserved.",
             "claim_type": "finding",
             "source_ids": "S43d2118e4326",
-            "evidence_span_ids": [],
+            "evidence_span_ids": "E_0000000000000001",
             "confidence": "high",
             "verification_status": "unverified",
-            "support_score": 0.9
+            "support_score": null
           },
           {
             "claim_id": "C_0000000000000002",
             "claim_text": "Moderator research is preserved.",
             "claim_type": "finding",
             "source_ids": "S43d2118e4326",
-            "evidence_span_ids": [],
+            "evidence_span_ids": "E_0000000000000002",
             "confidence": "high",
             "verification_status": "unverified",
-            "support_score": 0.9
+            "support_score": null
           }
         ],
         "transcript": [
@@ -168,20 +168,20 @@
               "claim_text": "Warmup research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000001",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             },
             {
               "claim_id": "C_0000000000000002",
               "claim_text": "Moderator research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000002",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             }
           ],
           "transcript": [
@@ -232,30 +232,30 @@
               "claim_text": "Warmup research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000001",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             },
             {
               "claim_id": "C_0000000000000002",
               "claim_text": "Moderator research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000002",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             },
             {
               "claim_id": "C_0000000000000003",
               "claim_text": "Continued moderator research is preserved.",
               "claim_type": "finding",
               "source_ids": "S43d2118e4326",
-              "evidence_span_ids": [],
+              "evidence_span_ids": "E_0000000000000003",
               "confidence": "high",
               "verification_status": "unverified",
-              "support_score": 0.9
+              "support_score": null
             }
           ],
           "transcript": [

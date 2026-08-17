@@ -20,7 +20,7 @@ test_that("STORM product state starts with an exact empty stage schema", {
       "completed_stages"
     )
   )
-  expect_identical(state$schema_version, 3L)
+  expect_identical(state$schema_version, 4L)
   expect_identical(state$title, state$topic)
   expect_identical(
     state$requested_steps,
@@ -426,6 +426,13 @@ test_that("STORM product state rejects schema drift and runtime values", {
   record <- tempest:::tempest_storm_state_record(
     tempest:::tempest_storm_state("Battery safety")
   )
+  whole_double_schema <- record
+  whole_double_schema$schema_version <- 4
+  expect_error(
+    tempest:::tempest_storm_state_from_record(whole_double_schema),
+    class = "tempest_storm_state_restore_error"
+  )
+
   record$schema_version <- 1L
   record$stage_records <- NULL
   expect_error(
@@ -436,9 +443,14 @@ test_that("STORM product state rejects schema drift and runtime values", {
 
 test_that("STORM product state excludes evidence and arbitrary artifacts", {
   fields <- names(tempest:::tempest_storm_state("Battery safety"))
+  contracts <- tempest:::tempest_stage_durable_output_contracts()
 
   expect_setequal(
-    intersect(fields, c("claims", "citation_audit", "artifacts")),
+    intersect(fields, c("claims", "claim_supports", "artifacts")),
     character()
+  )
+  expect_identical(
+    contracts$verify_claim_support$kind,
+    "claim_supports"
   )
 })

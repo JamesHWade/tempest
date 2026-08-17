@@ -60,9 +60,10 @@ test_that("ProgramSet accepts only exact builtin evaluator pairs", {
       "program_artifact_id",
       "trace_context",
       "stage",
+      "contract_version",
       "evaluator_id",
       "evaluator_version",
-      "governed_procedure_revision_id"
+      "governed_procedure_ref"
     )
   )
 })
@@ -72,7 +73,11 @@ test_that("stage records enforce lifecycle and derive publication", {
   running <- tempest:::tempest_stage_record_start(
     "verify_claim_support",
     artifact_id,
-    trace_references = list(research_run_id = "run-1"),
+    trace_references = list(
+      research_run_id = "run-1",
+      min_support_score = "0.7",
+      verified_at = "2026-08-16T00:59:00Z"
+    ),
     attempt_id = "attempt-1",
     started_at = "2026-08-16T01:00:00Z"
   )
@@ -88,8 +93,8 @@ test_that("stage records enforce lifecycle and derive publication", {
   succeeded <- tempest:::tempest_stage_record_succeed(
     running,
     tempest:::tempest_stage_output_reference(
-      "citation_audit",
-      "claim-1",
+      "claim_supports",
+      paste0("sha256:", strrep("2", 64L)),
       content_digest = paste0("sha256:", strrep("1", 64L))
     ),
     support_status = "verified",
@@ -104,8 +109,8 @@ test_that("stage records enforce lifecycle and derive publication", {
     tempest:::tempest_stage_record_succeed(
       succeeded,
       tempest:::tempest_stage_output_reference(
-        "citation_audit",
-        "claim-1",
+        "claim_supports",
+        paste0("sha256:", strrep("2", 64L)),
         content_digest = paste0("sha256:", strrep("1", 64L))
       ),
       support_status = "verified"
@@ -233,6 +238,10 @@ test_that("stage record codecs are exact and reject trust tampering", {
   expect_null(data$output_reference)
   expect_null(data$completed_at)
   expect_identical(tempest:::tempest_stage_record_from_data(data), record)
+  expect_error(
+    tempest:::tempest_stage_record_from_data(data[rev(names(data))]),
+    class = "tempest_stage_record_error"
+  )
 
   tampered <- data
   tampered$publication_allowed <- TRUE
@@ -1049,7 +1058,10 @@ test_that("malformed provider records remain output-validation failures", {
     source_ids = source_id
   )
   workspace$add_proposed_claim(claim)
-  fake_set_citation_audit(workspace, list(claim))
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+  evidence_span <- workspace$get_evidence_for_proposed_claim(
+    claim@claim_id
+  )[[1]]
   verification <- tempest:::tempest_program_set_execution(
     tempest_program_set(),
     "verify_claim_support"
@@ -1061,20 +1073,24 @@ test_that("malformed provider records remain output-validation failures", {
       chat = NULL,
       inputs = list(
         claim_text = claim@claim_text,
-        source_excerpts = tempest:::tempest_stage_verification_source_excerpts(
+        source_excerpts = tempest:::tempest_verification_span_input(
           claim,
+          evidence_span,
           workspace
         )
       ),
       context = list(
         workspace = workspace,
         claim = claim,
-        min_support_score = 0.7
+        evidence_span = evidence_span,
+        min_support_score = 0.7,
+        verified_at = claim@verified_at,
+        verifier_model = claim@verifier_model
       ),
       output_reference = function(output, record, context) {
         tempest:::tempest_stage_output_reference(
-          "citation_audit",
-          context$claim@claim_id
+          "claim_supports",
+          output@claim_support_id
         )
       },
       record_stage = function(record, output = NULL) {
@@ -1100,6 +1116,10 @@ test_that("all ProgramSet evaluators reject non-schema fields and omissions", {
     support_score = 0.9
   )
   workspace$add_proposed_claim(evidence)
+  evidence <- fake_verify_claim_supports(workspace, list(evidence))[[1]]
+  evidence_span <- workspace$get_evidence_for_proposed_claim(
+    evidence@claim_id
+  )[[1]]
   outline <- list(
     title = "Report",
     sections = list(list(
@@ -1159,7 +1179,10 @@ test_that("all ProgramSet evaluators reject non-schema fields and omissions", {
       context = list(
         workspace = workspace,
         claim = evidence,
-        min_support_score = 0.7
+        evidence_span = evidence_span,
+        min_support_score = 0.7,
+        verified_at = evidence@verified_at,
+        verifier_model = evidence@verifier_model
       )
     ),
     next_question = list(
@@ -1373,7 +1396,7 @@ test_that("direct grounded output binds exact authoritative support", {
     support_score = 0.9
   )
   workspace$add_proposed_claim(claim)
-  fake_set_citation_audit(workspace, list(claim))
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
   execution <- tempest:::tempest_program_set_execution(
     tempest_program_set(),
     "section_writing"
@@ -1406,7 +1429,7 @@ test_that("direct grounded output binds exact authoritative support", {
   expect_identical(result$record@publication_allowed, TRUE)
 })
 
-test_that("supported claim status without an exact audit fails pre-provider", {
+test_that("a claim without exact supports fails grounded preflight", {
   workspace <- fake_store_with_sources(1)
   source_id <- workspace$list_retrieved_sources()[[1]]$id
   claim <- tempest_claim(
@@ -1416,6 +1439,7 @@ test_that("supported claim status without an exact audit fails pre-provider", {
     support_score = 0.9
   )
   workspace$add_proposed_claim(claim)
+  claim <- workspace$get_proposed_claim(claim@claim_id)
   execution <- tempest:::tempest_program_set_execution(
     tempest_program_set(),
     "section_writing"
@@ -1470,7 +1494,7 @@ test_that("grounded writing treats only closed structural headings as metadata",
     support_score = 0.9
   )
   workspace$add_proposed_claim(claim)
-  fake_set_citation_audit(workspace, list(claim))
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
   execution <- tempest:::tempest_program_set_execution(
     tempest_program_set(),
     "section_writing"
@@ -1518,7 +1542,7 @@ test_that("refined outline remains non-publishable planning metadata", {
     support_score = 0.9
   )
   workspace$add_proposed_claim(claim)
-  fake_set_citation_audit(workspace, list(claim))
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
   execution <- tempest:::tempest_program_set_execution(
     tempest_program_set(),
     "refined_outline"
@@ -1574,7 +1598,7 @@ test_that("grounded writing rejects malformed and incomplete source bindings", {
     support_score = 0.9
   )
   workspace$add_proposed_claim(claim)
-  fake_set_citation_audit(workspace, list(claim))
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
   execution <- tempest:::tempest_program_set_execution(
     tempest_program_set(),
     "section_writing"
@@ -1625,7 +1649,7 @@ test_that("grounded writing rejects citation-free primary and fallback output", 
     support_score = 0.9
   )
   workspace$add_proposed_claim(claim)
-  fake_set_citation_audit(workspace, list(claim))
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
   execution <- tempest:::tempest_program_set_execution(
     tempest_program_set(),
     "section_writing"
@@ -1766,6 +1790,10 @@ test_that("output references must name the evaluated claim IDs", {
     source_ids = source_id
   )
   workspace$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+  evidence_span <- workspace$get_evidence_for_proposed_claim(
+    claim@claim_id
+  )[[1]]
   execution <- tempest:::tempest_program_set_execution(
     tempest_program_set(),
     "verify_claim_support"
@@ -1787,29 +1815,31 @@ test_that("output references must name the evaluated claim IDs", {
     tempest:::tempest_execute_stage(
       execution,
       chat = NULL,
-      inputs = utils::modifyList(
-        fake_stage_inputs("verify_claim_support"),
-        list(
-          claim_text = claim@claim_text,
-          source_excerpts = tempest:::tempest_stage_verification_source_excerpts(
-            claim,
-            workspace
-          )
+      inputs = list(
+        claim_text = claim@claim_text,
+        source_excerpts = tempest:::tempest_verification_span_input(
+          claim,
+          evidence_span,
+          workspace
         )
       ),
       context = list(
         workspace = workspace,
         claim = claim,
-        min_support_score = 0.7
+        evidence_span = evidence_span,
+        min_support_score = 0.7,
+        verified_at = claim@verified_at,
+        verifier_model = claim@verifier_model
       ),
       output_reference = function(output, record, context) {
         tempest:::tempest_stage_output_reference(
-          "citation_audit",
+          "claim_supports",
           "C-wrong-claim",
           content_digest = tempest:::tempest_stage_verification_output_digest(
             output,
             record,
             context$claim,
+            context$evidence_span,
             context$workspace
           )
         )
@@ -1829,7 +1859,7 @@ test_that("output references must name the evaluated claim IDs", {
   expect_identical(records[[1]], terminal)
 })
 
-test_that("grounded stages reject audited claims without captured source text", {
+test_that("claim support rejects spans without captured source text", {
   workspace <- tempest_research_workspace()
   workspace$upsert_retrieved_resource(fake_source(
     "https://example.org/empty-grounding-source",
@@ -1843,35 +1873,10 @@ test_that("grounded stages reject audited claims without captured source text", 
     support_score = 0.9
   )
   workspace$add_proposed_claim(claim)
-  fake_set_citation_audit(workspace, list(claim))
-  execution <- tempest:::tempest_program_set_execution(
-    tempest_program_set(),
-    "section_writing"
-  )
-  provider_calls <- 0L
-  local_mocked_bindings(
-    tempest_run_dsprrr_module_structured = function(...) {
-      provider_calls <<- provider_calls + 1L
-      stop("provider should not run")
-    }
-  )
-
   expect_error(
-    tempest:::tempest_execute_stage(
-      execution,
-      chat = NULL,
-      inputs = fake_stage_inputs("section_writing"),
-      context = list(
-        workspace = workspace,
-        evidence = list(claim),
-        verified_evidence = list(claim),
-        verified_facts = "An uncaptured observation",
-        min_support_score = 0.7
-      )
-    ),
-    class = "tempest_stage_governance_error"
+    fake_verify_claim_supports(workspace, list(claim)),
+    class = "tempest_research_workspace_integrity_error"
   )
-  expect_identical(provider_calls, 0L)
 })
 
 test_that("async cancellation records cancellation and rejects output", {

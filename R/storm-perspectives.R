@@ -12,6 +12,8 @@
 #' @param verbose Print progress.
 #' @param program_set A [TempestProgramSet] containing the exact `personas`
 #'   program. If `NULL`, [tempest_program_set()] creates the builtin set.
+#' @param knowledge_view Optional pinned Graft view required by a governed
+#'   `program_set`.
 #' @return A list of `tempest_expert` profiles.
 #'
 #' @examples
@@ -28,7 +30,8 @@ tempest_generate_experts <- function(
   n = 3,
   config = tempest_config(),
   verbose = FALSE,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 ) {
   tempest_require("ellmer", "Expert generation requires ellmer.")
   topic <- tempest_config_string(topic, "topic")
@@ -39,17 +42,20 @@ tempest_generate_experts <- function(
     )
   }
   program_set <- program_set %||% tempest_program_set()
+  knowledge <- tempest_workflow_knowledge_view(program_set, knowledge_view)
   module <- tempest_program_set_execution(
     program_set,
     "personas",
     trace_context = tempest_standalone_dsprrr_trace_context("personas")
   )
+  module$knowledge_view <- knowledge$view
   tempest_generate_experts_with_program(
     topic = topic,
     n = n,
     config = config,
     verbose = verbose,
     module = module,
+    knowledge_view = knowledge$view,
     record_stage = function(record, output = NULL) invisible(record)
   )
 }
@@ -100,6 +106,7 @@ tempest_generate_experts_with_program <- function(
   verbose,
   module,
   requirements = NULL,
+  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   tempest_require("ellmer", "Expert generation requires ellmer.")
@@ -132,7 +139,11 @@ tempest_generate_experts_with_program <- function(
       n_experts = n,
       requirements = requirements
     ),
-    context = list(n_experts = n),
+    context = tempest_stage_context_knowledge_view(
+      list(n_experts = n),
+      module,
+      knowledge_view
+    ),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }
@@ -156,6 +167,7 @@ tempest_generate_experts_async <- function(
   config = tempest_config(),
   program,
   requirements = NULL,
+  knowledge_view = program$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   tempest_require("ellmer", "Expert generation requires ellmer.")
@@ -182,7 +194,11 @@ tempest_generate_experts_async <- function(
       n_experts = n,
       requirements = requirements
     ),
-    context = list(n_experts = n),
+    context = tempest_stage_context_knowledge_view(
+      list(n_experts = n),
+      program,
+      knowledge_view
+    ),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }
@@ -256,6 +272,7 @@ tempest_generate_perspectives <- function(
   seed_context,
   n_experts,
   module,
+  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   stage_result <- tempest_execute_stage(
@@ -266,7 +283,11 @@ tempest_generate_perspectives <- function(
       seed_context = seed_context,
       n_experts = n_experts
     ),
-    context = list(topic = topic, n_experts = n_experts),
+    context = tempest_stage_context_knowledge_view(
+      list(topic = topic, n_experts = n_experts),
+      module,
+      knowledge_view
+    ),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }

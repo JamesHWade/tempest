@@ -115,33 +115,34 @@ test_that("claim extraction rolls back claims when terminal recording fails", {
   expect_length(store$list_proposed_claims(), 0L)
 })
 
-test_that("verification later failure commits no partial audit or success record", {
-  store <- fake_store_with_sources(1)
-  source_id <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(
-    claim_text = "First claim",
-    source_ids = source_id
-  ))
-  store$add_proposed_claim(tempest_claim(
-    claim_text = "Second claim",
-    source_ids = source_id
-  ))
+test_that("verification later failure records every aborted pair attempt", {
+  store <- tempest_research_workspace()
+  test_add_verifiable_claim(store, "first")
+  test_add_verifiable_claim(store, "second")
   calls <- 0L
   recorded <- list()
   artifact_id <- paste0("sha256:", paste(rep("a", 64L), collapse = ""))
   local_mocked_bindings(
-    tempest_verify_one_claim = function(
+    tempest_verify_one_claim_span = function(
       claim,
+      span,
       store,
       verifier,
       module,
+      verified_at,
+      verifier_model,
       min_support_score,
       record_stage
     ) {
       calls <<- calls + 1L
       running <- tempest:::tempest_stage_record_start(
         stage = "verify_claim_support",
-        program_artifact_id = artifact_id
+        program_artifact_id = artifact_id,
+        trace_references = list(
+          min_support_score = "0.7",
+          verified_at = verified_at,
+          verifier_model = verifier_model
+        )
       )
       record_stage(running)
       if (calls == 2L) {
@@ -153,9 +154,10 @@ test_that("verification later failure commits no partial audit or success record
         record_stage(failed)
         stop("judge failed")
       }
-      result <- list(
+      result <- tempest_claim_support(
         claim_id = claim@claim_id,
-        claim_text = claim@claim_text,
+        evidence_span_id = span@evidence_span_id,
+        source_id = span@source_id,
         verification_status = "supported",
         support_score = 0.9,
         rationale = "Supported"
@@ -163,12 +165,13 @@ test_that("verification later failure commits no partial audit or success record
       succeeded <- tempest:::tempest_stage_record_succeed(
         running,
         output_reference = tempest:::tempest_stage_output_reference(
-          "citation_audit",
-          claim@claim_id,
+          "claim_supports",
+          result@claim_support_id,
           content_digest = tempest:::tempest_stage_verification_output_digest(
             result,
             running,
             claim,
+            span,
             store
           )
         ),
@@ -202,49 +205,66 @@ test_that("verification later failure commits no partial audit or success record
   )
   expect_equal(statuses, rep("unverified", 2L))
   expect_null(store$citation_audit)
-  expect_length(recorded, 1L)
-  expect_equal(recorded[[1]]@status, "failed")
+  expect_length(recorded, 2L)
+  expect_identical(
+    vapply(recorded, \(record) record@status, ""),
+    rep("failed", 2L)
+  )
+  expect_setequal(
+    vapply(recorded, \(record) record@failure_class, ""),
+    c("tempest_stage_commit_error", "tempest_stage_execution_error")
+  )
+  expect_identical(
+    vapply(recorded, \(record) length(record@output_reference), integer(1)),
+    c(0L, 0L)
+  )
 })
 
 test_that("verification success ledger batch fails before any external swap", {
-  store <- fake_store_with_sources(1)
-  source_id <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim("First claim", source_ids = source_id))
-  store$add_proposed_claim(tempest_claim(
-    "Second claim",
-    source_ids = source_id
-  ))
+  store <- tempest_research_workspace()
+  test_add_verifiable_claim(store, "first")
+  test_add_verifiable_claim(store, "second")
   artifact_id <- paste0("sha256:", strrep("b", 64L))
   ledger <- list()
   batch_calls <- 0L
   local_mocked_bindings(
-    tempest_verify_one_claim = function(
+    tempest_verify_one_claim_span = function(
       claim,
+      span,
       store,
       verifier,
       module,
+      verified_at,
+      verifier_model,
       min_support_score,
       record_stage
     ) {
       running <- tempest:::tempest_stage_record_start(
         "verify_claim_support",
-        artifact_id
+        artifact_id,
+        trace_references = list(
+          min_support_score = "0.7",
+          verified_at = verified_at,
+          verifier_model = verifier_model
+        )
       )
       record_stage(running)
-      result <- list(
+      result <- tempest_claim_support(
         claim_id = claim@claim_id,
-        claim_text = claim@claim_text,
+        evidence_span_id = span@evidence_span_id,
+        source_id = span@source_id,
         verification_status = "supported",
         support_score = 0.9,
         rationale = "Supported"
       )
       reference <- tempest:::tempest_stage_output_reference(
-        "citation_audit",
-        claim@claim_id,
+        "claim_supports",
+        result@claim_support_id,
         content_digest = tempest:::tempest_stage_verification_output_digest(
           result,
           running,
           claim,
+          span,
           store
         )
       )
