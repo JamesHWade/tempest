@@ -4006,16 +4006,20 @@ tempest_stage_deputy_execution_references <- function(context) {
   if (is.null(deputy_execution)) {
     return(list())
   }
-  fields <- c("deputy_run_id", "deputy_session_id")
+  base_fields <- c("deputy_run_id", "deputy_session_id")
+  delegation_fields <- c("parent_run_id", "delegation_id", "tool_call_id")
+  fields <- names(deputy_execution)
+  valid_shape <- identical(fields, base_fields) ||
+    identical(fields, c(base_fields, delegation_fields))
   if (
     !is.list(deputy_execution) ||
       is.data.frame(deputy_execution) ||
-      !identical(names(deputy_execution), fields)
+      !valid_shape
   ) {
     tempest_stage_governance_abort(
       paste0(
-        "Stage Deputy execution context must contain exactly ",
-        "{.field deputy_run_id} and {.field deputy_session_id}."
+        "Stage Deputy execution context must contain the exact run/session ",
+        "pair and, when delegated, the complete parent/delegation/tool tuple."
       )
     )
   }
@@ -4035,6 +4039,18 @@ tempest_stage_deputy_execution_references <- function(context) {
         )
       )
     }
+  }
+  if (
+    "parent_run_id" %in%
+      fields &&
+      identical(
+        deputy_execution$parent_run_id,
+        deputy_execution$deputy_run_id
+      )
+  ) {
+    tempest_stage_governance_abort(
+      "A delegated Deputy execution cannot be its own parent run."
+    )
   }
   deputy_execution
 }

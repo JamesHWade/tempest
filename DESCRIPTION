@@ -107,6 +107,7 @@ Collate:
     'prompts.R'
     'retriever.R'
     'run-persistence.R'
+    'shadow-provenance.R'
     'promotion-types.R'
     'graft-schema.R'
     'promotion-persistence.R'

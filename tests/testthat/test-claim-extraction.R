@@ -445,6 +445,71 @@ test_that("extraction rejects forged claim provenance before provider use", {
   expect_identical(provider_calls, 0L)
 })
 
+test_that("extraction binds an exact Deputy delegation tuple", {
+  module <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "extract_claims",
+    trace_context = list(
+      stage = "extract_claims",
+      research_run_id = "run-delegated"
+    )
+  )
+  binding <- tempest:::tempest_extract_claims_execution_bind(
+    module = module,
+    session_id = "run-delegated",
+    expert_id = "expert-delegated",
+    retrieval_step_id = "correlation-delegated",
+    perspective_id = NA_character_,
+    section_id = NA_character_,
+    deputy_run_id = "deputy-child-run",
+    deputy_session_id = "deputy-child-session",
+    parent_run_id = "deputy-parent-run",
+    delegation_id = "delegation-exact",
+    tool_call_id = "tool-call-exact"
+  )
+
+  expect_identical(
+    binding$deputy_execution,
+    list(
+      deputy_run_id = "deputy-child-run",
+      deputy_session_id = "deputy-child-session",
+      parent_run_id = "deputy-parent-run",
+      delegation_id = "delegation-exact",
+      tool_call_id = "tool-call-exact"
+    )
+  )
+  expect_error(
+    tempest:::tempest_extract_claims_execution_bind(
+      module = module,
+      session_id = "run-delegated",
+      expert_id = "expert-delegated",
+      retrieval_step_id = "correlation-delegated",
+      perspective_id = NA_character_,
+      section_id = NA_character_,
+      deputy_run_id = "deputy-child-run",
+      deputy_session_id = "deputy-child-session",
+      parent_run_id = "deputy-parent-run"
+    ),
+    class = "tempest_stage_governance_error"
+  )
+  expect_error(
+    tempest:::tempest_extract_claims_execution_bind(
+      module = module,
+      session_id = "run-delegated",
+      expert_id = "expert-delegated",
+      retrieval_step_id = "correlation-delegated",
+      perspective_id = NA_character_,
+      section_id = NA_character_,
+      deputy_run_id = "deputy-child-run",
+      deputy_session_id = "deputy-child-session",
+      parent_run_id = "deputy-child-run",
+      delegation_id = "delegation-self-parent",
+      tool_call_id = "tool-self-parent"
+    ),
+    class = "tempest_stage_governance_error"
+  )
+})
+
 test_that("extraction rejects duplicate, mismatched, and fabricated sources", {
   store <- fake_store_with_sources(1)
   source <- store$list_retrieved_sources()[[1]]

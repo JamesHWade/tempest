@@ -1463,6 +1463,12 @@ ExpertSessionManager <- R6::R6Class(
                 NA_character_,
               deputy_session_id = deputy_execution$deputy_session_id %||%
                 NA_character_,
+              parent_run_id = deputy_execution$parent_run_id %||%
+                NA_character_,
+              delegation_id = deputy_execution$delegation_id %||%
+                NA_character_,
+              tool_call_id = deputy_execution$tool_call_id %||%
+                NA_character_,
               record_stage = private$stage_recorder_value
             )
             self$emit_progress(

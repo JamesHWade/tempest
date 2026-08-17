@@ -327,7 +327,10 @@ tempest_extract_claims_execution_bind <- function(
   perspective_id,
   section_id,
   deputy_run_id = NA_character_,
-  deputy_session_id = NA_character_
+  deputy_session_id = NA_character_,
+  parent_run_id = NA_character_,
+  delegation_id = NA_character_,
+  tool_call_id = NA_character_
 ) {
   module <- tempest_dsprrr_execution_verify(module, "extract_claims")
   claim_context <- list(
@@ -344,6 +347,8 @@ tempest_extract_claims_execution_bind <- function(
     if (
       !is.character(value) ||
         length(value) != 1L ||
+        is.object(value) ||
+        !is.null(names(value)) ||
         (!is.na(value) && !tempest_opaque_identifier_valid(value))
     ) {
       tempest_stage_governance_abort(
@@ -355,11 +360,19 @@ tempest_extract_claims_execution_bind <- function(
     deputy_run_id = deputy_run_id,
     deputy_session_id = deputy_session_id
   )
-  for (field in names(deputy_context)) {
-    value <- deputy_context[[field]]
+  delegation_context <- list(
+    parent_run_id = parent_run_id,
+    delegation_id = delegation_id,
+    tool_call_id = tool_call_id
+  )
+  execution_context <- c(deputy_context, delegation_context)
+  for (field in names(execution_context)) {
+    value <- execution_context[[field]]
     if (
       !is.character(value) ||
         length(value) != 1L ||
+        is.object(value) ||
+        !is.null(names(value)) ||
         (!is.na(value) && !tempest_opaque_identifier_valid(value))
     ) {
       tempest_stage_governance_abort(
@@ -370,6 +383,32 @@ tempest_extract_claims_execution_bind <- function(
   if (xor(is.na(deputy_run_id), is.na(deputy_session_id))) {
     tempest_stage_governance_abort(
       "Claim execution must bind Deputy run and session identifiers together."
+    )
+  }
+  delegation_present <- !vapply(
+    delegation_context,
+    is.na,
+    logical(1)
+  )
+  if (any(delegation_present) && !all(delegation_present)) {
+    tempest_stage_governance_abort(
+      paste0(
+        "Delegated claim execution must bind parent run, delegation, and ",
+        "tool-call identifiers together."
+      )
+    )
+  }
+  if (all(delegation_present) && is.na(deputy_run_id)) {
+    tempest_stage_governance_abort(
+      "Delegated claim execution requires a Deputy run and session pair."
+    )
+  }
+  if (
+    all(delegation_present) &&
+      identical(parent_run_id, deputy_run_id)
+  ) {
+    tempest_stage_governance_abort(
+      "A delegated claim execution cannot be its own parent run."
     )
   }
   trace <- module$trace_context
@@ -407,6 +446,8 @@ tempest_extract_claims_execution_bind <- function(
   )
   deputy_execution <- if (is.na(deputy_run_id)) {
     NULL
+  } else if (all(delegation_present)) {
+    c(deputy_context, delegation_context)
   } else {
     deputy_context
   }
@@ -431,19 +472,25 @@ tempest_extract_facts_from_answer <- function(
   section_id = NA_character_,
   deputy_run_id = NA_character_,
   deputy_session_id = NA_character_,
+  parent_run_id = NA_character_,
+  delegation_id = NA_character_,
+  tool_call_id = NA_character_,
   knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   record_stage_callback <- record_stage %||% tempest_stage_record_discard
   binding <- tempest_extract_claims_execution_bind(
-    module,
-    session_id,
-    expert_id,
-    retrieval_step_id,
-    perspective_id,
-    section_id,
-    deputy_run_id,
-    deputy_session_id
+    module = module,
+    session_id = session_id,
+    expert_id = expert_id,
+    retrieval_step_id = retrieval_step_id,
+    perspective_id = perspective_id,
+    section_id = section_id,
+    deputy_run_id = deputy_run_id,
+    deputy_session_id = deputy_session_id,
+    parent_run_id = parent_run_id,
+    delegation_id = delegation_id,
+    tool_call_id = tool_call_id
   )
   module <- binding$module
   # Use a separate extraction call to minimize hallucinated facts. dsprrr gets
@@ -513,6 +560,9 @@ tempest_extract_facts_from_answer_async <- function(
   section_id = NA_character_,
   deputy_run_id = NA_character_,
   deputy_session_id = NA_character_,
+  parent_run_id = NA_character_,
+  delegation_id = NA_character_,
+  tool_call_id = NA_character_,
   knowledge_view = module$knowledge_view %||% NULL,
   commit_if = function() TRUE,
   record_stage = function(record, output = NULL) invisible(record)
@@ -520,14 +570,17 @@ tempest_extract_facts_from_answer_async <- function(
   tempest_require("promises", "Async fact extraction requires promises.")
   record_stage_callback <- record_stage %||% tempest_stage_record_discard
   binding <- tempest_extract_claims_execution_bind(
-    module,
-    session_id,
-    expert_id,
-    retrieval_step_id,
-    perspective_id,
-    section_id,
-    deputy_run_id,
-    deputy_session_id
+    module = module,
+    session_id = session_id,
+    expert_id = expert_id,
+    retrieval_step_id = retrieval_step_id,
+    perspective_id = perspective_id,
+    section_id = section_id,
+    deputy_run_id = deputy_run_id,
+    deputy_session_id = deputy_session_id,
+    parent_run_id = parent_run_id,
+    delegation_id = delegation_id,
+    tool_call_id = tool_call_id
   )
   module <- binding$module
   source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
