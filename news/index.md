@@ -13,10 +13,43 @@
   injection, or generic result projections; old product bundles fail as
   unsupported; and manifests carry exact dsprrr program, Graft snapshot,
   and Deputy correlation identities.
+- Current persistence accepts only ResearchWorkspace snapshot schema 5,
+  Co-STORM snapshot and bundle schema 8, STORM bundle schema 7 with
+  state schema 4, ProgramSet and research-manifest schema 2, StageRecord
+  output-digest payload schema 3, and promotion-bundle schema 1; readers
+  reject every other version, missing or extra fields, and values that
+  only become valid after coercion.
 - The bundled Shiny app now presents Co-STORM setup as a one-time native
   shinychat greeting with consistently sized controls, lets users
   replace generated panels with up to five named expert perspectives,
   and reserves the footer for active-session status and actions.
+- [`tempest_claim_support()`](https://jameshwade.github.io/tempest/reference/tempest_claim_support.md)
+  and
+  [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md)
+  make each verifier judgment an explicit claim-by-evidence-span record
+  with a deterministic identity, source binding, status, score, and
+  rationale;
+  [`tempest_verify_claims()`](https://jameshwade.github.io/tempest/reference/tempest_verify_claims.md)
+  replaces the complete pair set atomically, while claim summaries and
+  citation audits are derived projections.
+- [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md)
+  resolves an accepted `GovernedProcedure` and exact dsprrr
+  `ProgramArtifact` only through a pinned Graft view. ProgramSets
+  carrying these typed references require the matching live view before
+  provider execution; serialized references never grant authority by
+  themselves.
+- [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
+  loads the immutable compiled scientific schema, while
+  [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md),
+  [`tempest_save_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_save_promotion_bundle.md),
+  [`tempest_read_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.md),
+  [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md),
+  and
+  [`tempest_promotion_receipt()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.md)
+  provide a deterministic review-only path from completed provisional
+  research to exact accepted Graft revisions. Reading requires the
+  original bundle id as an out-of-band trust pin; Tempest never commits
+  a promotion implicitly, and prior promotion formats are rejected.
 - [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md),
   [`tempest_compile_programs()`](https://jameshwade.github.io/tempest/reference/tempest_compile_programs.md),
   [`tempest_save_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_save_program_set.md),

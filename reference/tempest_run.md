@@ -18,6 +18,7 @@ tempest_run(
   topic,
   config = tempest_config(),
   retriever = NULL,
+  knowledge_view = NULL,
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
@@ -50,6 +51,11 @@ tempest_run(
 - retriever:
 
   Optional `TempestRetriever`. If `NULL`, created from `config`.
+
+- knowledge_view:
+
+  Optional immutable Graft view. It is required when `program_set`
+  contains any governed procedure and is never persisted.
 
 - n_experts:
 

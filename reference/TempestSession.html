@@ -196,6 +196,7 @@ mutation methods remain available.</p></dd>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .restore_manifest <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .restore_token <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
@@ -235,6 +236,10 @@ identifier is generated.</p></dd>
       <dt><code>program_set</code></dt>
 <dd><p>A <a href="TempestProgramSet.html">TempestProgramSet</a> used for every structured
 Co-STORM stage.</p></dd>
+
+      <dt><code>knowledge_view</code></dt>
+<dd><p>Optional immutable Graft view. A fresh session
+requires it whenever <code>program_set</code> contains governed procedures.</p></dd>
 
       <dt><code>.restore_manifest</code></dt>
 <dd><p>Internal research manifest supplied only by

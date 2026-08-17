@@ -65,6 +65,7 @@ writes a cited report in Markdown.
 <span>  <span class="va">topic</span>,</span>
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  n_experts <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  experts <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  research_strategy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"key_questions"</span>, <span class="st">"conversation"</span><span class="op">)</span>,</span>
@@ -98,6 +99,11 @@ writes a cited report in Markdown.
 
 <dt id="arg-retriever">retriever<a class="anchor" aria-label="anchor" href="#arg-retriever"></a></dt>
 <dd><p>Optional <code>TempestRetriever</code>. If <code>NULL</code>, created from <code>config</code>.</p></dd>
+
+
+<dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
+<dd><p>Optional immutable Graft view. It is required when
+<code>program_set</code> contains any governed procedure and is never persisted.</p></dd>
 
 
 <dt id="arg-n-experts">n_experts<a class="anchor" aria-label="anchor" href="#arg-n-experts"></a></dt>

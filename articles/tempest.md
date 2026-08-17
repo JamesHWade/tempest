@@ -122,6 +122,7 @@ result$outline
 
 sources <- tempest_sources(result$workspace)
 claims <- tempest_claims(result$workspace)
+supports <- tempest_claim_supports(result$workspace)
 
 utils::head(sources[c("id", "title", "url")])
 utils::head(claims[
@@ -133,13 +134,16 @@ utils::head(claims[
     "support_score"
   )
 ])
+utils::head(supports)
 ```
 
 The research workspace holds run-scoped provisional evidence. Retrieved
-resources, proposed claims, support scores, and citations remain
-inspectable instead of being flattened into report text. The product
-report is available directly in `result$report_md`; new callers should
-not depend on the frozen 0.1 artifact catalog.
+resources, proposed claims, exact claim-by-evidence-span support
+records, and citations remain inspectable instead of being flattened
+into report text. The pair records are authoritative; claim summaries
+and citation-audit tables are derived projections. The product report is
+available directly in `result$report_md`; new callers should not depend
+on the frozen 0.1 artifact catalog.
 
 Choose a stronger `citation_policy` when a workflow requires verified
 claims:
@@ -147,8 +151,8 @@ claims:
 - `"source_attributed"` converts known inline source IDs to footnotes
   without verifying the claims;
 - `"claim_verified"` runs the exact verifier ProgramSet stage,
-  atomically records its claim and citation audit result, and exposes
-  that support status in the final references; and
+  atomically replaces the complete claim-by-evidence-span support set,
+  and exposes the derived claim status in the final references; and
 - `"strict"` fails publication unless each publishable assertion is
   bound to a completed, provenance-bound verification result at the
   configured threshold and cites that claim’s exact source set.
@@ -159,6 +163,48 @@ to set the verification threshold. Under the `"strict"` policy,
 `on_unsupported_claim` controls whether weak claims are flagged,
 dropped, revised, or retained with an explicit warning. They are never
 presented as unmarked verified facts.
+
+## Review promotion to Graft
+
+A succeeded product can become a deterministic proposal for Graft review
+without granting Tempest acceptance authority:
+
+``` r
+
+bundle <- tempest_promotion_bundle(
+  workspace = result$workspace,
+  manifest = result$manifest,
+  stage_records = result$state$stage_records
+)
+trusted_bundle_id <- bundle@bundle_id
+tempest_save_promotion_bundle(bundle, "promotion/grid-battery-recycling")
+bundle <- tempest_read_promotion_bundle(
+  "promotion/grid-battery-recycling",
+  expected_bundle_id = trusted_bundle_id
+)
+
+schema <- tempest_graft_schema()
+# Open `store` with this schema using the host's chosen Graft location.
+plan <- tempest_graft_plan(store, bundle)
+
+# Review the plan before the host explicitly accepts it.
+commit_result <- graft::graft_commit(store, plan)
+receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
+```
+
+Tempest does not commit during bundle construction or planning. The
+current closed promotion format contains exact Sources, Claims,
+EvidenceSpans, ClaimSupports, and extraction and verification
+ProgramArtifacts. A closed proof projection retains the exact resources,
+claims, spans, and supports needed to recompute every retained
+StageRecord digest. A selection must include every output bound by each
+retained extraction or verification record; Tempest rejects partial
+stage-output selection instead of packaging nonselected evidence.
+Reading requires the original bundle id as an out-of-band trust pin;
+bundle-local checksums establish internal consistency, not authenticity.
+Older bundle shapes are rejected. Research promotion never mints a
+`GovernedProcedure`; that record requires its own reviewed Graft
+acceptance flow.
 
 ## Resume a staged run
 
@@ -183,6 +229,13 @@ result <- tempest_run(
 
 Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.
+
+Current readers accept only `ResearchWorkspace` snapshot schema 5,
+Co-STORM snapshot and bundle schema 8, STORM bundle schema 7 with state
+schema 4, ProgramSet and research-manifest schema 2, StageRecord
+output-digest payload schema 3, and promotion-bundle schema 1. Every
+other version is rejected, as is any missing or extra field or value
+that becomes valid only after coercion.
 
 Every typed attempt is saved with its exact stage, program, evaluator,
 trace, support decision, and fallback path. Structured output is
@@ -344,6 +397,15 @@ inventory](https://jameshwade.github.io/tempest/articles/reusable-workflows.md).
   [`tempest_compile_programs()`](https://jameshwade.github.io/tempest/reference/tempest_compile_programs.md),
   then pass the complete verified `TempestProgramSet` to STORM or
   Co-STORM.
+- Resolve an accepted procedure with
+  [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md),
+  bind it by stage in a ProgramSet, and pass its matching pinned
+  `knowledge_view` to every governed run or session.
+- Review provisional evidence with
+  [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md)
+  and
+  [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
+  before exercising Graft acceptance authority.
 - Capture progress with
   [`tempest_progress_collector()`](https://jameshwade.github.io/tempest/reference/tempest_progress_collector.md)
   and inspect events with

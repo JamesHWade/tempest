@@ -54,7 +54,8 @@
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  program_set <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -98,6 +99,11 @@ identifier is generated.</p></dd>
 <dd><p>A <a href="TempestProgramSet.html">TempestProgramSet</a> containing the exact dsprrr
 programs used by Co-STORM. If <code>NULL</code>, <code><a href="tempest_program_set.html">tempest_program_set()</a></code> creates the
 builtin set.</p></dd>
+
+
+<dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
+<dd><p>Optional immutable Graft view. It is required for a
+fresh session when <code>program_set</code> contains governed procedures.</p></dd>
 
 </dl></div>
 

@@ -63,7 +63,7 @@ dsprrr program artifacts.</p>
 <span>  path <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  contract_versions <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  evaluators <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  governed_procedure_revision_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  governed_procedure_refs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  registry <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -94,9 +94,9 @@ and <code>evaluator_version</code>. These identify how stage output is judged an
 distinct from an optimization teleprompter or metric.</p></dd>
 
 
-<dt id="arg-governed-procedure-revision-ids">governed_procedure_revision_ids<a class="anchor" aria-label="anchor" href="#arg-governed-procedure-revision-ids"></a></dt>
-<dd><p>Optional named list or character
-vector of governed procedure revision identifiers by stage.</p></dd>
+<dt id="arg-governed-procedure-refs">governed_procedure_refs<a class="anchor" aria-label="anchor" href="#arg-governed-procedure-refs"></a></dt>
+<dd><p>Optional named list of typed
+<code><a href="tempest_governed_procedure_ref.html">tempest_governed_procedure_ref()</a></code> values by stage.</p></dd>
 
 
 <dt id="arg-registry">registry<a class="anchor" aria-label="anchor" href="#arg-registry"></a></dt>

@@ -52,6 +52,7 @@
 <span>  policy <span class="op">=</span> <span class="st">"claim_verified"</span>,</span>
 <span>  verifier_model <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  min_support_score <span class="op">=</span> <span class="fl">0.7</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -76,7 +77,8 @@ verification program should be used.</p></dd>
 
 
 <dt id="arg-verifier-model">verifier_model<a class="anchor" aria-label="anchor" href="#arg-verifier-model"></a></dt>
-<dd><p>Optional model id recorded on each verified claim.</p></dd>
+<dd><p>Optional model id bound into every verification-stage
+proof and projected onto each verified claim.</p></dd>
 
 
 <dt id="arg-program-set">program_set<a class="anchor" aria-label="anchor" href="#arg-program-set"></a></dt>
@@ -87,6 +89,11 @@ ProgramSet, citation policy, and support threshold are authoritative;
 supplied values must match.</p></dd>
 
 
+<dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
+<dd><p>Optional immutable Graft view required when a
+standalone <code>program_set</code> binds verification to a governed procedure.</p></dd>
+
+
 <dt id="arg-min-support-score">min_support_score<a class="anchor" aria-label="anchor" href="#arg-min-support-score"></a></dt>
 <dd><p>Minimum support score in <code>[0, 1]</code> for a claim to be
 considered supported.</p></dd>
@@ -94,10 +101,12 @@ considered supported.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>citation_audit</code> tibble (one row per verified claim).</p>
+    <p>A claim-support audit tibble with one row per verified
+claim-by-evidence-span pair.</p>
 <p>Passing a standalone <a href="ResearchWorkspace.html">ResearchWorkspace</a> returns an audit but does not own a
 durable product stage ledger. Pass the <code>TempestSession</code> for Co-STORM bundles
-so claim updates, audit rows, and verification records commit together.</p>
+so pair assessments, claim summaries, and verification records commit
+together.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -21,6 +21,11 @@ acceptance remains an explicit graft review and commit.
 
   Read-only named-list snapshot of provisional evidence-span records.
 
+- `claim_supports`:
+
+  Read-only named-list snapshot of explicit claim-by-evidence-span
+  support assessments.
+
 - `disputes`:
 
   Read-only named-list snapshot of provisional dispute records.
@@ -42,7 +47,8 @@ acceptance remains an explicit graft review and commit.
 
 - `citation_audit`:
 
-  Latest claim-centered citation audit, when available.
+  Read-only pair-level projection of the authoritative claim-support
+  assessments, when available.
 
 - `max_sources`:
 
@@ -74,6 +80,10 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$verify_proposed_claims_batch()`](#method-ResearchWorkspace-verify_proposed_claims_batch)
 
+- [`ResearchWorkspace$get_claim_support()`](#method-ResearchWorkspace-get_claim_support)
+
+- [`ResearchWorkspace$list_claim_supports()`](#method-ResearchWorkspace-list_claim_supports)
+
 - [`ResearchWorkspace$get_proposed_claim()`](#method-ResearchWorkspace-get_proposed_claim)
 
 - [`ResearchWorkspace$list_proposed_claims()`](#method-ResearchWorkspace-list_proposed_claims)
@@ -90,8 +100,6 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$get_evidence_for_proposed_claim()`](#method-ResearchWorkspace-get_evidence_for_proposed_claim)
 
-- [`ResearchWorkspace$verify_proposed_claim()`](#method-ResearchWorkspace-verify_proposed_claim)
-
 - [`ResearchWorkspace$add_dispute()`](#method-ResearchWorkspace-add_dispute)
 
 - [`ResearchWorkspace$list_disputes()`](#method-ResearchWorkspace-list_disputes)
@@ -99,8 +107,6 @@ acceptance remains an explicit graft review and commit.
 - [`ResearchWorkspace$record_accepted_graft_reference()`](#method-ResearchWorkspace-record_accepted_graft_reference)
 
 - [`ResearchWorkspace$list_accepted_graft_references()`](#method-ResearchWorkspace-list_accepted_graft_references)
-
-- [`ResearchWorkspace$set_citation_audit()`](#method-ResearchWorkspace-set_citation_audit)
 
 - [`ResearchWorkspace$validate_integrity()`](#method-ResearchWorkspace-validate_integrity)
 
@@ -297,29 +303,72 @@ Atomically add extracted evidence spans and claims.
 
 ### `ResearchWorkspace$verify_proposed_claims_batch()`
 
-Atomically verify proposed claims and set their audit.
+Atomically replace exact claim-by-span support assessments.
 
 #### Usage
 
     ResearchWorkspace$verify_proposed_claims_batch(
-      verifications,
-      citation_audit,
+      claim_supports,
+      verified_at,
+      min_support_score = 0.7,
+      verifier = NA_character_,
+      .verification_owner_token = NULL,
       commit = NULL
     )
 
 #### Arguments
 
-- `verifications`:
+- `claim_supports`:
 
-  A list of claim-verification update records.
+  An unnamed complete list of `tempest_claim_support` records.
 
-- `citation_audit`:
+- `verified_at`:
 
-  The complete claim-centered citation audit.
+  Exact canonical verification-batch timestamp bound into every
+  corresponding verification-stage record.
+
+- `min_support_score`:
+
+  Bound support threshold used to derive claim summaries.
+
+- `verifier`:
+
+  Bounded verifier-model identifier or `NA`.
+
+- `.verification_owner_token`:
+
+  Internal process-local session capability. Standalone workspaces
+  require `NULL`.
 
 - `commit`:
 
   Optional zero-argument callback committed with the batch.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$get_claim_support()`
+
+Get a claim-support assessment by id.
+
+#### Usage
+
+    ResearchWorkspace$get_claim_support(claim_support_id)
+
+#### Arguments
+
+- `claim_support_id`:
+
+  Exact derived support identifier.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_claim_supports()`
+
+List claim-support assessments in deterministic id order.
+
+#### Usage
+
+    ResearchWorkspace$list_claim_supports()
 
 ------------------------------------------------------------------------
 
@@ -443,39 +492,6 @@ Evidence spans linked to a claim.
 
 ------------------------------------------------------------------------
 
-### `ResearchWorkspace$verify_proposed_claim()`
-
-Update a claim's verification status.
-
-#### Usage
-
-    ResearchWorkspace$verify_proposed_claim(
-      claim_id,
-      status,
-      score = NA_real_,
-      verifier = NA_character_
-    )
-
-#### Arguments
-
-- `claim_id`:
-
-  Claim id.
-
-- `status`:
-
-  One of the verification status labels.
-
-- `score`:
-
-  Support score in `[0, 1]` or NA.
-
-- `verifier`:
-
-  Verifier model id.
-
-------------------------------------------------------------------------
-
 ### `ResearchWorkspace$add_dispute()`
 
 Add a dispute.
@@ -525,22 +541,6 @@ List accepted graft references deterministically.
 #### Usage
 
     ResearchWorkspace$list_accepted_graft_references()
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$set_citation_audit()`
-
-Record the latest claim-centered citation audit.
-
-#### Usage
-
-    ResearchWorkspace$set_citation_audit(citation_audit)
-
-#### Arguments
-
-- `citation_audit`:
-
-  A citation-audit data frame, or `NULL` to clear it.
 
 ------------------------------------------------------------------------
 

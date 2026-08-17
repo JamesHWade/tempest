@@ -9,7 +9,8 @@ tempest_session_restore(
   snapshot,
   config = tempest_config(),
   progress = NULL,
-  program_set = NULL
+  program_set = NULL,
+  knowledge_view = NULL
 )
 ```
 
@@ -36,6 +37,12 @@ tempest_session_restore(
   [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
   carrying the same program identities recorded in the snapshot. If
   `NULL`, the builtin set is used.
+
+- knowledge_view:
+
+  Optional transient immutable Graft view required by future execution
+  when `program_set` contains governed procedures. It is never
+  reconstructed from or written to persistence.
 
 ## Value
 

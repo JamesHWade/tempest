@@ -14,7 +14,7 @@ tempest_program_set(
   path = NULL,
   contract_versions = 1L,
   evaluators = NULL,
-  governed_procedure_revision_ids = list(),
+  governed_procedure_refs = list(),
   registry = list()
 )
 ```
@@ -43,10 +43,11 @@ tempest_program_set(
   `evaluator_version`. These identify how stage output is judged and are
   distinct from an optimization teleprompter or metric.
 
-- governed_procedure_revision_ids:
+- governed_procedure_refs:
 
-  Optional named list or character vector of governed procedure revision
-  identifiers by stage.
+  Optional named list of typed
+  [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md)
+  values by stage.
 
 - registry:
 

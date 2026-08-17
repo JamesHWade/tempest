@@ -8,7 +8,7 @@ modules and the local bundle root remain live process state.
 
 ``` r
 TempestProgramSet(
-  schema_version = 1L,
+  schema_version = 2L,
   bundle_root = character(0),
   entries = list(),
   programs = list()

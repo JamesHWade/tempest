@@ -11,6 +11,7 @@ tempest_verify_claims(
   policy = "claim_verified",
   verifier_model = NA_character_,
   program_set = NULL,
+  knowledge_view = NULL,
   min_support_score = 0.7
 )
 ```
@@ -36,7 +37,8 @@ tempest_verify_claims(
 
 - verifier_model:
 
-  Optional model id recorded on each verified claim.
+  Optional model id bound into every verification-stage proof and
+  projected onto each verified claim.
 
 - program_set:
 
@@ -48,6 +50,11 @@ tempest_verify_claims(
   immutable ProgramSet, citation policy, and support threshold are
   authoritative; supplied values must match.
 
+- knowledge_view:
+
+  Optional immutable Graft view required when a standalone `program_set`
+  binds verification to a governed procedure.
+
 - min_support_score:
 
   Minimum support score in `[0, 1]` for a claim to be considered
@@ -55,10 +62,11 @@ tempest_verify_claims(
 
 ## Value
 
-A `citation_audit` tibble (one row per verified claim).
+A claim-support audit tibble with one row per verified
+claim-by-evidence-span pair.
 
 Passing a standalone
 [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
 returns an audit but does not own a durable product stage ledger. Pass
-the `TempestSession` for Co-STORM bundles so claim updates, audit rows,
-and verification records commit together.
+the `TempestSession` for Co-STORM bundles so pair assessments, claim
+summaries, and verification records commit together.

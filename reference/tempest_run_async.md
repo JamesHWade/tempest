@@ -9,7 +9,7 @@ to stop a run that is no longer needed.
 ## Usage
 
 ``` r
-tempest_run_async(...)
+tempest_run_async(..., knowledge_view = NULL)
 ```
 
 ## Arguments
@@ -23,6 +23,13 @@ tempest_run_async(...)
   for details on available parameters including `topic`, `config`,
   `retriever`, `n_experts`, `research_strategy`, `max_rounds`, `steps`,
   and `verbose`.
+
+- knowledge_view:
+
+  A live pinned Graft view cannot cross the asynchronous worker
+  boundary. Governed runs must use
+  [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  in the process that owns the view.
 
 ## Value
 

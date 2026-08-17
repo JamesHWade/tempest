@@ -17,7 +17,10 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/ResearchWorkspace.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/SimulatedUser.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestConfig.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/TempestGovernedProcedureRef.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestProgramSet.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/TempestPromotionBundle.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/TempestPromotionReceipt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestResearchManifest.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestRetriever.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestSession.html</loc></url>
@@ -46,6 +49,8 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_capability_resolver.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_capability_spec.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_claim.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_claim_support.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_claim_supports.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_claims.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_compile_programs.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_config.html</loc></url>
@@ -73,6 +78,9 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_generate_experts.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_generate_single_expert.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_get_native_web_tools.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_graft_plan.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_graft_schema.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_has.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_http_get.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_inform.html</loc></url>
@@ -100,9 +108,12 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_labels.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_replay.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_state.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_prompt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_provider_has_native_search.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_okf.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_text.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_register_default_tools.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_render_expert_prompt.html</loc></url>
@@ -123,6 +134,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_workflow.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_runtime.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_save_program_set.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_save_promotion_bundle.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_azure_ai_search.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_bing.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_search_brave.html</loc></url>

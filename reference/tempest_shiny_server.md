@@ -13,6 +13,7 @@ tempest_shiny_server(
   experts = NULL,
   session_id = NULL,
   program_set = NULL,
+  knowledge_view = NULL,
   run = NULL
 )
 ```
@@ -56,6 +57,13 @@ tempest_shiny_server(
   [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
   used for new and restored Co-STORM sessions. May be a value, function,
   or reactive. `NULL` uses the builtin set.
+
+- knowledge_view:
+
+  Optional immutable Graft view used with `program_set`. May be a value,
+  function, or reactive. A governed ProgramSet requires its exact pinned
+  view before any provider call; the view remains process-local and is
+  never serialized.
 
 - run:
 

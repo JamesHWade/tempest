@@ -58,6 +58,10 @@
 
 - [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
   : Return claims as a tibble
+- [`tempest_claim_support()`](https://jameshwade.github.io/tempest/reference/tempest_claim_support.md)
+  : Create an explicit claim-support assessment
+- [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md)
+  : List explicit claim-support assessments
 - [`tempest_sources()`](https://jameshwade.github.io/tempest/reference/tempest_sources.md)
   : Return evidence resources as a tibble
 - [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
@@ -231,3 +235,20 @@ Deletion-owned baseline scheduled for the section-10 PR.
   : Save a Tempest program set
 - [`tempest_load_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_load_program_set.md)
   : Load and verify a Tempest program set
+- [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md)
+  : Reference an accepted governed procedure
+
+## Graft review and promotion
+
+- [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
+  : Load Tempest's compiled scientific Graft schema
+- [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md)
+  : Build a deterministic proposal for reviewed Graft promotion
+- [`tempest_save_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_save_promotion_bundle.md)
+  : Save a Tempest promotion bundle atomically
+- [`tempest_read_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.md)
+  : Read and validate a current Tempest promotion bundle
+- [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
+  : Plan a Tempest research promotion without accepting it
+- [`tempest_promotion_receipt()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.md)
+  : Record exact accepted revisions for a committed promotion plan
