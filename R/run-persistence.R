@@ -3210,6 +3210,23 @@ tempest_session_portable_snapshot <- function(snapshot, action = "snapshot") {
       }
     )
   }
+  whole_snapshot <- snapshot[setdiff(names(snapshot), "graft_snapshot")]
+  tryCatch(
+    tempest_workflow_serializable_list(
+      whole_snapshot,
+      "Co-STORM session snapshot"
+    ),
+    error = function(error) {
+      tempest_session_snapshot_value_abort(
+        paste0(
+          "Co-STORM snapshot contains a non-portable Agent, proxy, ",
+          "runtime object, or value."
+        ),
+        action,
+        parent = error
+      )
+    }
+  )
   for (field in c("topic", "title", "session_id")) {
     value <- snapshot[[field]]
     if (
@@ -3507,27 +3524,520 @@ tempest_persistence_stage_manifest_traces <- function(records) {
 }
 
 #' @keywords internal
-tempest_persistence_manifest_bind_stage_records <- function(manifest, records) {
-  traces <- tempest_persistence_stage_manifest_traces(records)
-  runtime <- manifest@runtime
-  runtime_fields <- c(
-    deputy_run_id = "deputy_run_ids",
-    deputy_session_id = "deputy_session_ids"
+tempest_persistence_deputy_manifest_traces <- function(
+  traces,
+  manifest,
+  expert_ids = NULL
+) {
+  if (
+    !is.list(traces) ||
+      is.data.frame(traces) ||
+      !is.null(names(traces))
+  ) {
+    tempest_stage_record_abort(
+      "Deputy traces must be an exact unnamed list of plain records."
+    )
+  }
+  if (!is.null(expert_ids)) {
+    if (
+      !is.character(expert_ids) ||
+        is.object(expert_ids) ||
+        !is.null(names(expert_ids)) ||
+        anyNA(expert_ids) ||
+        anyDuplicated(expert_ids)
+    ) {
+      tempest_stage_record_abort(
+        "Deputy trace validation requires exact unique session expert IDs."
+      )
+    }
+    expert_ids <- sort(expert_ids, method = "radix")
+  }
+  if (length(traces) == 0L) {
+    return(list())
+  }
+
+  allowed_fields <- c(
+    "agent_id",
+    "correlation_id",
+    "deputy_run_id",
+    "deputy_session_id",
+    "expert_id",
+    "role",
+    "stage",
+    "status",
+    "trace_id",
+    "trace_type"
   )
-  for (field in names(runtime_fields)) {
-    values <- vapply(
+  required_fields <- c(
+    "agent_id",
+    "correlation_id",
+    "deputy_run_id",
+    "deputy_session_id",
+    "role",
+    "stage",
+    "status",
+    "trace_id",
+    "trace_type"
+  )
+  traces <- lapply(seq_along(traces), function(index) {
+    trace <- traces[[index]]
+    fields <- names(trace)
+    expected_fields <- allowed_fields[allowed_fields %in% fields]
+    if (
+      !is.list(trace) ||
+        is.data.frame(trace) ||
+        is.object(trace) ||
+        is.null(fields) ||
+        anyNA(fields) ||
+        anyDuplicated(fields) ||
+        !all(required_fields %in% fields) ||
+        !identical(fields, expected_fields)
+    ) {
+      tempest_stage_record_abort(
+        "Deputy traces must use the exact current plain-record fields."
+      )
+    }
+    canonical <- tryCatch(
+      tempest_research_manifest_traces(list(trace))[[1L]],
+      error = function(error) {
+        tempest_stage_record_abort(
+          "Deputy traces contain an invalid canonical manifest reference.",
+          parent = error
+        )
+      }
+    )
+    if (!identical(trace, canonical)) {
+      tempest_stage_record_abort(
+        "Deputy traces must already use exact canonical values and field order."
+      )
+    }
+    if (
+      !identical(trace$trace_type, "deputy_run") ||
+        !identical(trace$trace_id, trace$deputy_run_id)
+    ) {
+      tempest_stage_record_abort(
+        "A Deputy run trace must use its exact run ID as trace ID."
+      )
+    }
+    if (
+      !trace$status %in%
+        c(
+          "abandoned",
+          "complete",
+          "cost_limit",
+          "error",
+          "hook_requested_stop",
+          "input_token_limit",
+          "interrupted",
+          "output_token_limit",
+          "provider_error",
+          "request_limit",
+          "tool_call_limit",
+          "total_token_limit"
+        )
+    ) {
+      tempest_stage_record_abort(
+        "A Deputy run trace must carry one exact terminal status."
+      )
+    }
+    valid_context <-
+      identical(c(trace$stage, trace$role), c("dialogue", "moderator")) ||
+      identical(c(trace$stage, trace$role), c("dialogue", "expert")) ||
+      identical(c(trace$stage, trace$role), c("warmup", "expert"))
+    if (!valid_context) {
+      tempest_stage_record_abort(
+        "A Deputy run trace has an unknown Co-STORM stage and role binding."
+      )
+    }
+    if (identical(trace$role, "expert")) {
+      if (
+        is.null(trace$expert_id) ||
+          (!is.null(expert_ids) && !trace$expert_id %in% expert_ids)
+      ) {
+        tempest_stage_record_abort(
+          "An expert Deputy run trace must bind one active session expert."
+        )
+      }
+    } else if (!is.null(trace$expert_id)) {
+      tempest_stage_record_abort(
+        "A moderator Deputy run trace cannot carry an expert ID."
+      )
+    }
+    expected_agent_id <- tempest_deputy_adapter_agent_id(
+      tempest_deputy_run_context(
+        manifest,
+        stage = "dialogue",
+        role = trace$role,
+        expert_id = trace$expert_id %||% NULL
+      )
+    )
+    if (!identical(trace$agent_id, expected_agent_id)) {
+      tempest_stage_record_abort(
+        paste0(
+          "A Deputy run trace agent ID does not match its deterministic ",
+          "Co-STORM execution context."
+        )
+      )
+    }
+    trace
+  })
+  trace_ids <- vapply(traces, `[[`, character(1), "trace_id")
+  if (anyDuplicated(trace_ids)) {
+    tempest_stage_record_abort("Deputy run trace IDs must be unique.")
+  }
+  ordered <- order(trace_ids, method = "radix")
+  if (!identical(ordered, seq_along(traces))) {
+    tempest_stage_record_abort(
+      "Deputy run traces must be ordered canonically by trace ID."
+    )
+  }
+  traces
+}
+
+#' @keywords internal
+tempest_persistence_expert_session_trace_bindings <- function(
+  records,
+  expert_ids
+) {
+  records <- tryCatch(
+    tempest_persistence_exact_records(
       records,
-      function(record) record@trace_references[[field]] %||% NA_character_,
+      tempest_expert_session_record_fields(),
+      "session expert-session records",
+      tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
+    ),
+    error = function(error) {
+      tempest_stage_record_abort(
+        "Expert-session trace bindings must use exact current records.",
+        parent = error
+      )
+    }
+  )
+  if (length(records) == 0L) {
+    return(character())
+  }
+  session_ids <- vapply(records, `[[`, character(1), "session_id")
+  bound_expert_ids <- vapply(records, `[[`, character(1), "expert_id")
+  if (
+    anyNA(session_ids) ||
+      anyNA(bound_expert_ids) ||
+      any(
+        !grepl(
+          "^expert-session_[a-f0-9]{16}$",
+          session_ids,
+          perl = TRUE
+        )
+      ) ||
+      any(!bound_expert_ids %in% expert_ids) ||
+      anyDuplicated(session_ids) ||
+      anyDuplicated(bound_expert_ids)
+  ) {
+    tempest_stage_record_abort(
+      paste0(
+        "Expert-session trace bindings require unique manager-owned session ",
+        "IDs for active session experts."
+      )
+    )
+  }
+  stats::setNames(bound_expert_ids, session_ids)
+}
+
+#' @keywords internal
+tempest_persistence_manifest_runtime_from_traces <- function(traces) {
+  ids <- function(field) {
+    values <- vapply(
+      traces,
+      function(trace) trace[[field]] %||% NA_character_,
       character(1)
     )
-    values <- values[!is.na(values)]
-    target <- runtime_fields[[field]]
-    existing <- unlist(runtime[[target]] %||% list(), use.names = FALSE)
-    combined <- sort(unique(c(existing, values)))
-    if (length(combined) > 0L) {
-      runtime[[target]] <- as.list(combined)
+    as.list(sort(unique(values[!is.na(values)]), method = "radix"))
+  }
+  list(
+    deputy_run_ids = ids("deputy_run_id"),
+    deputy_session_ids = ids("deputy_session_id")
+  )
+}
+
+#' @keywords internal
+tempest_persistence_manifest_validate_trace_ids <- function(
+  stage_traces,
+  deputy_traces,
+  research_run_id,
+  expert_session_bindings = character()
+) {
+  traces <- c(stage_traces, deputy_traces)
+  trace_ids <- vapply(traces, `[[`, character(1), "trace_id")
+  if (anyDuplicated(trace_ids)) {
+    tempest_stage_record_abort(
+      "Manifest trace IDs must be unique across stage and Deputy traces."
+    )
+  }
+  moderator_session_id <- tempest_costorm_deputy_session_id(
+    research_run_id,
+    "moderator"
+  )
+  for (trace in deputy_traces) {
+    if (identical(trace$role, "moderator")) {
+      if (!identical(trace$deputy_session_id, moderator_session_id)) {
+        tempest_stage_record_abort(
+          paste0(
+            "A moderator Deputy trace must bind the deterministic session ",
+            "identity for its research run."
+          )
+        )
+      }
+    } else if (
+      !grepl(
+        "^expert-session_[a-f0-9]{16}$",
+        trace$deputy_session_id,
+        perl = TRUE
+      )
+    ) {
+      tempest_stage_record_abort(
+        "An expert Deputy trace must bind a manager-owned session identity."
+      )
+    } else {
+      active_expert_id <- if (
+        trace$deputy_session_id %in% names(expert_session_bindings)
+      ) {
+        expert_session_bindings[[trace$deputy_session_id]]
+      } else {
+        NULL
+      }
+      if (
+        !is.null(active_expert_id) &&
+          !identical(trace$expert_id, active_expert_id)
+      ) {
+        tempest_stage_record_abort(
+          paste0(
+            "An expert Deputy trace session ID is owned by a different ",
+            "active persisted expert-session binding."
+          )
+        )
+      }
     }
   }
+  if (length(stage_traces) == 0L) {
+    return(invisible(traces))
+  }
+  for (trace in stage_traces) {
+    run_id <- trace$deputy_run_id %||% NULL
+    session_id <- trace$deputy_session_id %||% NULL
+    if (xor(is.null(run_id), is.null(session_id))) {
+      tempest_stage_record_abort(
+        "A stage trace must bind both Deputy run and session IDs or neither."
+      )
+    }
+    if (is.null(run_id)) {
+      next
+    }
+    matches <- vapply(
+      deputy_traces,
+      function(deputy_trace) {
+        identical(deputy_trace$deputy_run_id, run_id) &&
+          identical(deputy_trace$deputy_session_id, session_id)
+      },
+      logical(1)
+    )
+    if (sum(matches) != 1L) {
+      tempest_stage_record_abort(
+        paste0(
+          "A stage trace Deputy identity must resolve to one exact terminal ",
+          "Deputy run trace."
+        )
+      )
+    }
+    deputy_trace <- deputy_traces[[which(matches)]]
+    if (!identical(deputy_trace$status, "complete")) {
+      tempest_stage_record_abort(
+        paste0(
+          "A durable stage trace can bind only a successfully completed ",
+          "Deputy run."
+        )
+      )
+    }
+    expert_id <- trace$expert_id %||% NULL
+    if (identical(deputy_trace$role, "moderator")) {
+      if (!identical(expert_id, "moderator")) {
+        tempest_stage_record_abort(
+          paste0(
+            "A stage trace backed by a moderator run must use the exact ",
+            "moderator expert sentinel."
+          )
+        )
+      }
+    } else if (
+      is.null(expert_id) ||
+        !identical(deputy_trace$expert_id, expert_id)
+    ) {
+      tempest_stage_record_abort(
+        "A stage trace expert does not match its terminal Deputy run trace."
+      )
+    }
+    correlation_id <- trace$correlation_id %||% NULL
+    if (
+      !is.null(correlation_id) &&
+        !identical(
+          deputy_trace$correlation_id %||% NULL,
+          correlation_id
+        )
+    ) {
+      tempest_stage_record_abort(
+        paste0(
+          "A stage trace correlation ID does not match its terminal Deputy ",
+          "run trace."
+        )
+      )
+    }
+  }
+  invisible(traces)
+}
+
+#' @keywords internal
+tempest_persistence_manifest_existing_traces <- function(
+  manifest,
+  stage_traces,
+  deputy_traces,
+  expert_ids
+) {
+  traces <- manifest@traces
+  if (
+    !is.list(traces) ||
+      is.data.frame(traces) ||
+      !is.null(names(traces))
+  ) {
+    tempest_stage_record_abort(
+      "The live manifest trace collection must be one exact unnamed list."
+    )
+  }
+  if (length(traces) == 0L) {
+    return(invisible(NULL))
+  }
+  types <- vapply(
+    traces,
+    function(trace) trace$trace_type %||% NA_character_,
+    character(1)
+  )
+  if (anyNA(types) || any(!types %in% c("stage_attempt", "deputy_run"))) {
+    tempest_stage_record_abort(
+      "The live manifest contains an unknown or untyped trace."
+    )
+  }
+  existing_deputy <- tempest_persistence_deputy_manifest_traces(
+    traces[types == "deputy_run"],
+    manifest = manifest,
+    expert_ids = expert_ids
+  )
+  if (length(existing_deputy) > 0L) {
+    expected_deputy_ids <- vapply(
+      deputy_traces,
+      `[[`,
+      character(1),
+      "trace_id"
+    )
+    existing_deputy_ids <- vapply(
+      existing_deputy,
+      `[[`,
+      character(1),
+      "trace_id"
+    )
+    expected_deputy_indexes <- match(
+      existing_deputy_ids,
+      expected_deputy_ids
+    )
+    if (
+      anyNA(expected_deputy_indexes) ||
+        is.unsorted(expected_deputy_indexes, strictly = TRUE) ||
+        !identical(
+          existing_deputy,
+          deputy_traces[expected_deputy_indexes]
+        )
+    ) {
+      tempest_stage_record_abort(
+        paste0(
+          "The live manifest Deputy traces are not an exact immutable ",
+          "subset of the session accumulator."
+        )
+      )
+    }
+  }
+  existing_stage <- traces[types == "stage_attempt"]
+  expected_ids <- vapply(stage_traces, `[[`, character(1), "trace_id")
+  existing_ids <- vapply(
+    existing_stage,
+    function(trace) {
+      trace$trace_id %||% NA_character_
+    },
+    character(1)
+  )
+  if (
+    anyNA(existing_ids) ||
+      anyDuplicated(existing_ids) ||
+      any(!existing_ids %in% expected_ids)
+  ) {
+    tempest_stage_record_abort(
+      "The live manifest contains an orphan or duplicate stage trace."
+    )
+  }
+  expected_indexes <- match(existing_ids, expected_ids)
+  if (
+    is.unsorted(expected_indexes, strictly = TRUE) ||
+      !identical(existing_stage, stage_traces[expected_indexes])
+  ) {
+    tempest_stage_record_abort(
+      "The live manifest contains a mismatched stage trace projection."
+    )
+  }
+  final_runtime <- tempest_persistence_manifest_runtime_from_traces(
+    c(stage_traces, deputy_traces)
+  )
+  for (field in names(final_runtime)) {
+    existing <- unlist(manifest@runtime[[field]] %||% list(), use.names = FALSE)
+    allowed <- unlist(final_runtime[[field]], use.names = FALSE)
+    if (length(setdiff(existing, allowed)) > 0L) {
+      tempest_stage_record_abort(
+        "The live manifest runtime contains an orphan Deputy identity."
+      )
+    }
+  }
+  invisible(NULL)
+}
+
+#' @keywords internal
+tempest_persistence_manifest_bind_stage_records <- function(
+  manifest,
+  records,
+  deputy_traces = list(),
+  expert_ids = NULL,
+  expert_sessions = list()
+) {
+  stage_traces <- tempest_persistence_stage_manifest_traces(records)
+  deputy_traces <- tempest_persistence_deputy_manifest_traces(
+    deputy_traces,
+    manifest = manifest,
+    expert_ids = expert_ids
+  )
+  expert_session_bindings <-
+    tempest_persistence_expert_session_trace_bindings(
+      expert_sessions,
+      expert_ids %||% character()
+    )
+  tempest_persistence_manifest_existing_traces(
+    manifest,
+    stage_traces,
+    deputy_traces,
+    expert_ids
+  )
+  traces <- c(stage_traces, deputy_traces)
+  tempest_persistence_manifest_validate_trace_ids(
+    stage_traces,
+    deputy_traces,
+    manifest@research_run_id,
+    expert_session_bindings = expert_session_bindings
+  )
+  runtime <- tempest_persistence_manifest_runtime_from_traces(traces)
   tempest_research_manifest_update(
     manifest,
     runtime = runtime,
@@ -3538,14 +4048,73 @@ tempest_persistence_manifest_bind_stage_records <- function(manifest, records) {
 #' @keywords internal
 tempest_persistence_manifest_validate_stage_records <- function(
   manifest,
-  records
+  records,
+  deputy_traces = NULL,
+  expert_ids = NULL,
+  expert_sessions = list()
 ) {
-  expected <- tempest_persistence_stage_manifest_traces(records)
-  if (!identical(manifest@traces, expected)) {
+  stage_traces <- tempest_persistence_stage_manifest_traces(records)
+  traces <- manifest@traces
+  if (
+    !is.list(traces) ||
+      is.data.frame(traces) ||
+      !is.null(names(traces))
+  ) {
+    tempest_stage_record_abort(
+      "The research manifest traces must be one exact unnamed list."
+    )
+  }
+  types <- vapply(
+    traces,
+    function(trace) trace$trace_type %||% NA_character_,
+    character(1)
+  )
+  if (anyNA(types) || any(!types %in% c("stage_attempt", "deputy_run"))) {
+    tempest_stage_record_abort(
+      "The research manifest contains an unknown or untyped trace."
+    )
+  }
+  actual_deputy <- tempest_persistence_deputy_manifest_traces(
+    traces[types == "deputy_run"],
+    manifest = manifest,
+    expert_ids = expert_ids
+  )
+  if (!is.null(deputy_traces)) {
+    deputy_traces <- tempest_persistence_deputy_manifest_traces(
+      deputy_traces,
+      manifest = manifest,
+      expert_ids = expert_ids
+    )
+    if (!identical(actual_deputy, deputy_traces)) {
+      tempest_stage_record_abort(
+        "The research manifest does not bind the exact session Deputy traces."
+      )
+    }
+  }
+  expected <- c(stage_traces, actual_deputy)
+  if (!identical(traces, expected)) {
     tempest_stage_record_abort(
       paste0(
         "The research manifest trace declarations do not exactly match its ",
-        "durable stage attempts."
+        "durable stage attempts followed by canonical Deputy traces."
+      )
+    )
+  }
+  tempest_persistence_manifest_validate_trace_ids(
+    stage_traces,
+    actual_deputy,
+    manifest@research_run_id,
+    expert_session_bindings = tempest_persistence_expert_session_trace_bindings(
+      expert_sessions,
+      expert_ids %||% character()
+    )
+  )
+  expected_runtime <- tempest_persistence_manifest_runtime_from_traces(traces)
+  if (!identical(manifest@runtime, expected_runtime)) {
+    tempest_stage_record_abort(
+      paste0(
+        "The research manifest runtime IDs do not exactly cover its stage ",
+        "and Deputy traces."
       )
     )
   }
@@ -3619,6 +4188,41 @@ tempest_persistence_validate_report_policy <- function(
   )
 }
 
+tempest_session_assert_no_pending_deputy_runs <- function(
+  session,
+  action = c("snapshot", "save")
+) {
+  action <- match.arg(action)
+  class <- tempest_session_persistence_error_class(
+    paste0("tempest_session_", action, "_error")
+  )
+  pending_runs <- tryCatch(
+    tempest_session_pending_deputy_runs(session),
+    error = function(error) {
+      tempest_abort(
+        paste0(
+          "Cannot ",
+          action,
+          " Co-STORM state with an invalid pending Deputy run registry."
+        ),
+        class = class,
+        parent = error
+      )
+    }
+  )
+  if (length(pending_runs) > 0L) {
+    tempest_abort(
+      paste0(
+        "Cannot ",
+        action,
+        " Co-STORM state while Deputy executions await terminal traces."
+      ),
+      class = class
+    )
+  }
+  invisible(NULL)
+}
+
 #' Snapshot a Co-STORM session
 #'
 #' `r lifecycle::badge("experimental")`
@@ -3650,6 +4254,7 @@ tempest_session_snapshot <- function(session) {
       )
     )
   }
+  tempest_session_assert_no_pending_deputy_runs(session, action = "snapshot")
   research_manifest <- tryCatch(
     tempest_costorm_manifest_validate(
       session$manifest,
@@ -3696,17 +4301,30 @@ tempest_session_snapshot <- function(session) {
   durable_records <- tryCatch(
     {
       live_records <- tempest_session_stage_records(session)
+      deputy_traces <- tempest_session_deputy_traces(session)
+      expert_sessions <- tempest_expert_sessions_snapshot(session)
+      expert_ids <- vapply(
+        session$experts,
+        \(expert) expert@expert_id,
+        character(1)
+      )
       durable_records <- tempest_stage_records_interrupt(
         live_records,
         completed_at = tempest_now_utc()
       )
       research_manifest <- tempest_persistence_manifest_bind_stage_records(
         research_manifest,
-        durable_records
+        durable_records,
+        deputy_traces = deputy_traces,
+        expert_ids = expert_ids,
+        expert_sessions = expert_sessions
       )
       tempest_persistence_manifest_validate_stage_records(
         research_manifest,
-        durable_records
+        durable_records,
+        deputy_traces = deputy_traces,
+        expert_ids = expert_ids,
+        expert_sessions = expert_sessions
       )
       tempest_stage_records_validate_workspace(
         durable_records,
@@ -3844,7 +4462,7 @@ tempest_session_snapshot <- function(session) {
   )
 
   snapshot <- list(
-    schema_version = 8L,
+    schema_version = 9L,
     package_version = tryCatch(
       as.character(utils::packageVersion("tempest")),
       error = function(e) NA_character_
@@ -3869,7 +4487,7 @@ tempest_session_snapshot <- function(session) {
     ),
     stage_records = tempest_stage_records_data(durable_records),
     workspace = workspace,
-    expert_sessions = tempest_expert_sessions_snapshot(session),
+    expert_sessions = expert_sessions,
     graft_snapshot = graft_snapshot
   )
   tempest_persistence_credential_audit(
@@ -4104,7 +4722,7 @@ tempest_session_restore_internal <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 8L)) {
+  if (!identical(schema_version, 9L)) {
     tempest_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -4141,7 +4759,7 @@ tempest_session_restore_internal <- function(
   )
   tempest_research_workspace_require_current_schema(
     snapshot$workspace,
-    "Schema 8 session workspace",
+    "Schema 9 session workspace",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -4164,6 +4782,14 @@ tempest_session_restore_internal <- function(
       "Snapshot must include a non-empty session id."
     )
   }
+  experts <- tempest_experts_from_records(
+    snapshot$experts %||% list(),
+    what = "session expert profiles",
+    class = tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  expert_ids <- vapply(experts, \(expert) expert@expert_id, character(1))
   research_manifest <- tryCatch(
     tempest_research_manifest_from_record(snapshot$research_manifest),
     error = function(error) {
@@ -4188,7 +4814,9 @@ tempest_session_restore_internal <- function(
       )
       tempest_persistence_manifest_validate_stage_records(
         research_manifest,
-        records
+        records,
+        expert_ids = expert_ids,
+        expert_sessions = snapshot$expert_sessions
       )
       records
     },
@@ -4254,25 +4882,13 @@ tempest_session_restore_internal <- function(
       )
       tempest_stage_records_validate_generated_experts(
         stage_records,
-        tempest_experts_from_records(
-          snapshot$experts %||% list(),
-          what = "session expert profiles",
-          class = tempest_session_persistence_error_class(
-            "tempest_session_restore_error"
-          )
-        )
+        experts
       )
       tempest_stage_records_validate_claim_provenance(
         stage_records,
         workspace,
         research_manifest@research_run_id,
-        tempest_experts_from_records(
-          snapshot$experts %||% list(),
-          what = "session expert profiles",
-          class = tempest_session_persistence_error_class(
-            "tempest_session_restore_error"
-          )
-        )
+        experts
       )
       tempest_persistence_manifest_validate_report(
         research_manifest,
@@ -4357,13 +4973,6 @@ tempest_session_restore_internal <- function(
   )
   tempest_session_mindmap_assert_binding(snapshot$mindmap, workspace)
 
-  experts <- tempest_experts_from_records(
-    snapshot$experts %||% list(),
-    what = "session expert profiles",
-    class = tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
-  )
   if (!inherits(runtime, "TempestRuntime")) {
     tempest_session_restore_abort(
       "{.arg runtime} must be created by {.fn tempest_runtime}."
@@ -4748,6 +5357,7 @@ tempest_session_save <- function(
       )
     )
   }
+  tempest_session_assert_no_pending_deputy_runs(session, action = "save")
   tempest_require("jsonlite", "Tempest session persistence requires jsonlite.")
 
   bundle_dir <- tempest_session_prepare_bundle_dir(path, overwrite = overwrite)
@@ -5117,7 +5727,7 @@ tempest_session_bundle_validate_manifest <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 8L)) {
+  if (!identical(schema_version, 9L)) {
     tempest_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -5141,7 +5751,7 @@ tempest_session_bundle_validate_manifest <- function(
       !identical(manifest$bundle_status %||% "", "complete")
   ) {
     tempest_session_restore_abort(
-      "Schema 8 Co-STORM bundle envelope is not complete."
+      "Schema 9 Co-STORM bundle envelope is not complete."
     )
   }
   if (
@@ -5149,25 +5759,25 @@ tempest_session_bundle_validate_manifest <- function(
       !is.list(manifest$workspace)
   ) {
     tempest_session_restore_abort(
-      "Schema 8 Co-STORM bundle is missing research identity metadata."
+      "Schema 9 Co-STORM bundle is missing research identity metadata."
     )
   }
   workspace_fields <- tempest_session_bundle_workspace_fields()
   if (!identical(names(manifest$workspace), workspace_fields)) {
     tempest_session_restore_abort(
-      "Schema 8 Co-STORM bundle has invalid workspace identity metadata."
+      "Schema 9 Co-STORM bundle has invalid workspace identity metadata."
     )
   }
   tempest_research_workspace_require_current_schema(
     manifest$workspace,
-    "Schema 8 Co-STORM workspace identity",
+    "Schema 9 Co-STORM workspace identity",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 8 Co-STORM file inventory",
+    "Schema 9 Co-STORM file inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -5236,7 +5846,7 @@ tempest_session_bundle_validate_manifest <- function(
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 8 Co-STORM checksum inventory",
+    "Schema 9 Co-STORM checksum inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -5502,7 +6112,7 @@ tempest_session_resume_internal <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 8L)) {
+  if (!identical(schema_version, 9L)) {
     tempest_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,

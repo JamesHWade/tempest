@@ -212,6 +212,254 @@ tempest_costorm_manifest_snapshot_reference <- function(workspace) {
   tempest_snapshot_reference(snapshot)
 }
 
+tempest_costorm_deputy_trace <- function(trace) {
+  if (!is.list(trace) || is.data.frame(trace)) {
+    tempest_costorm_session_abort(
+      "A Co-STORM Deputy trace must be a plain record."
+    )
+  }
+  canonical <- tryCatch(
+    tempest_research_manifest_traces(list(trace))[[1L]],
+    error = function(error) {
+      tempest_costorm_session_abort(
+        "A Co-STORM Deputy trace does not match the manifest contract.",
+        parent = error
+      )
+    }
+  )
+  required <- c(
+    "agent_id",
+    "correlation_id",
+    "deputy_run_id",
+    "deputy_session_id",
+    "role",
+    "stage",
+    "status",
+    "trace_id",
+    "trace_type"
+  )
+  if (!all(required %in% names(canonical))) {
+    tempest_costorm_session_abort(
+      "A Co-STORM Deputy trace is missing required execution references."
+    )
+  }
+  if (
+    !identical(canonical$trace_type, "deputy_run") ||
+      !identical(canonical$trace_id, canonical$deputy_run_id)
+  ) {
+    tempest_costorm_session_abort(
+      "A Co-STORM Deputy trace must identify its exact Deputy run."
+    )
+  }
+  allowed_pair <- paste(canonical$stage, canonical$role, sep = ":") %in%
+    c(
+      "dialogue:moderator",
+      "dialogue:expert",
+      "warmup:expert"
+    )
+  if (!allowed_pair) {
+    tempest_costorm_session_abort(
+      "A Co-STORM Deputy trace has an invalid stage and role binding."
+    )
+  }
+  if (
+    identical(canonical$role, "expert") &&
+      is.null(canonical$expert_id)
+  ) {
+    tempest_costorm_session_abort(
+      "A Co-STORM expert Deputy trace must identify its expert."
+    )
+  }
+  if (
+    identical(canonical$role, "moderator") &&
+      !is.null(canonical$expert_id)
+  ) {
+    tempest_costorm_session_abort(
+      "A Co-STORM moderator Deputy trace cannot identify an expert."
+    )
+  }
+  canonical
+}
+
+tempest_costorm_deputy_traces <- function(traces) {
+  if (!is.list(traces) || is.data.frame(traces) || !is.null(names(traces))) {
+    tempest_costorm_session_abort(
+      "Co-STORM Deputy traces must be an unnamed list of trace records."
+    )
+  }
+  canonical <- lapply(traces, tempest_costorm_deputy_trace)
+  ids <- vapply(canonical, `[[`, character(1), "trace_id")
+  if (anyDuplicated(ids)) {
+    tempest_costorm_session_abort(
+      "Co-STORM Deputy trace identifiers must be unique."
+    )
+  }
+  canonical[order(ids)]
+}
+
+tempest_costorm_pending_deputy_run <- function(pending_run) {
+  if (!is.list(pending_run) || is.data.frame(pending_run)) {
+    tempest_costorm_session_abort(
+      "A pending Co-STORM Deputy run must be a plain record."
+    )
+  }
+  required <- c(
+    "agent_id",
+    "correlation_id",
+    "deputy_run_id",
+    "deputy_session_id",
+    "role",
+    "stage"
+  )
+  allowed <- c(required, "expert_id")
+  fields <- names(pending_run)
+  if (
+    is.null(fields) ||
+      anyNA(fields) ||
+      anyDuplicated(fields) ||
+      !all(required %in% fields) ||
+      length(setdiff(fields, allowed)) > 0L
+  ) {
+    tempest_costorm_session_abort(
+      "A pending Co-STORM Deputy run has invalid fields."
+    )
+  }
+  for (field in intersect(
+    c(
+      "agent_id",
+      "correlation_id",
+      "deputy_run_id",
+      "deputy_session_id",
+      "expert_id"
+    ),
+    fields
+  )) {
+    pending_run[[field]] <- tempest_research_manifest_id(
+      pending_run[[field]],
+      paste0("pending_deputy_run$", field)
+    )
+  }
+  for (field in c("role", "stage")) {
+    pending_run[[field]] <- tempest_research_manifest_string(
+      pending_run[[field]],
+      paste0("pending_deputy_run$", field)
+    )
+  }
+  allowed_pair <- paste(
+    pending_run$stage,
+    pending_run$role,
+    sep = ":"
+  ) %in%
+    c(
+      "dialogue:moderator",
+      "dialogue:expert",
+      "warmup:expert"
+    )
+  if (!allowed_pair) {
+    tempest_costorm_session_abort(
+      "A pending Co-STORM Deputy run has an invalid stage and role binding."
+    )
+  }
+  if (
+    identical(pending_run$role, "expert") &&
+      is.null(pending_run$expert_id)
+  ) {
+    tempest_costorm_session_abort(
+      "A pending Co-STORM expert run must identify its expert."
+    )
+  }
+  if (
+    identical(pending_run$role, "moderator") &&
+      !is.null(pending_run$expert_id)
+  ) {
+    tempest_costorm_session_abort(
+      "A pending Co-STORM moderator run cannot identify an expert."
+    )
+  }
+  pending_run[order(names(pending_run))]
+}
+
+tempest_costorm_pending_deputy_runs <- function(pending_runs) {
+  if (
+    !is.list(pending_runs) ||
+      is.data.frame(pending_runs) ||
+      !is.null(names(pending_runs))
+  ) {
+    tempest_costorm_session_abort(
+      "Pending Co-STORM Deputy runs must be an unnamed list of records."
+    )
+  }
+  canonical <- lapply(
+    pending_runs,
+    tempest_costorm_pending_deputy_run
+  )
+  ids <- vapply(canonical, `[[`, character(1), "deputy_run_id")
+  if (anyDuplicated(ids)) {
+    tempest_costorm_session_abort(
+      "Pending Co-STORM Deputy run identifiers must be unique."
+    )
+  }
+  canonical[order(ids)]
+}
+
+tempest_costorm_manifest_deputy_traces <- function(manifest) {
+  traces <- manifest@traces %||% list()
+  traces <- Filter(
+    function(trace) {
+      is.list(trace) && identical(trace$trace_type %||% NULL, "deputy_run")
+    },
+    traces
+  )
+  tempest_costorm_deputy_traces(unname(traces))
+}
+
+tempest_costorm_deputy_session_id <- function(research_run_id, role) {
+  role <- tempest_research_manifest_choice(
+    role,
+    "role",
+    c("moderator", "expert")
+  )
+  paste0(
+    "tempest-",
+    role,
+    "-",
+    substr(
+      digest::digest(
+        tempest_research_manifest_canonical_json(
+          list(
+            product = "tempest",
+            research_run_id = research_run_id,
+            role = role
+          )
+        ),
+        algo = "sha256",
+        serialize = FALSE
+      ),
+      1L,
+      24L
+    )
+  )
+}
+
+tempest_costorm_last_deputy_execution <- function(chat, stage, role) {
+  trace <- tryCatch(
+    tempest_deputy_chat_last_execution(chat),
+    error = function(error) NULL
+  )
+  if (is.null(trace)) {
+    tempest_costorm_session_abort(
+      "A completed Co-STORM agent turn must expose its Deputy execution trace."
+    )
+  }
+  trace <- tempest_costorm_deputy_trace(trace)
+  if (!identical(trace$stage, stage) || !identical(trace$role, role)) {
+    tempest_costorm_session_abort(
+      "The Deputy execution trace does not match the completed Co-STORM turn."
+    )
+  }
+  trace
+}
+
 tempest_costorm_manifest_validate <- function(
   manifest,
   session_id,
@@ -633,6 +881,10 @@ TempestSession <- R6::R6Class(
           private$workspace_value
         )
       }
+      private$deputy_traces_value <- tempest_costorm_manifest_deputy_traces(
+        private$manifest_value
+      )
+      private$pending_deputy_runs_value <- list()
       private$programs_value <- tempest_bind_program_set(
         program_set,
         private$manifest_value
@@ -735,6 +987,13 @@ TempestSession <- R6::R6Class(
         extract_claims_program = private$programs_value$extract_claims,
         stage_recorder = function(record, output = NULL) {
           tempest_session_record_stage(self, record, output)
+        },
+        manifest = private$manifest_value,
+        on_start = function(pending_run) {
+          tempest_session_start_deputy_run(self, pending_run)
+        },
+        on_run = function(trace) {
+          tempest_session_finish_deputy_run(self, trace)
         }
       )
 
@@ -761,6 +1020,30 @@ TempestSession <- R6::R6Class(
         self$chats$moderator,
         moderator_resolution,
         context = list(run_id = self$session_id, role = "moderator")
+      )
+      self$chats$moderator <- tryCatch(
+        tempest_deputy_chat_adapter(
+          self$chats$moderator,
+          manifest = private$manifest_value,
+          deputy_session_id = tempest_costorm_deputy_session_id(
+            self$session_id,
+            "moderator"
+          ),
+          agent_name = "Tempest moderator",
+          stage = "dialogue",
+          role = "moderator",
+          on_start = function(pending_run) {
+            tempest_session_start_deputy_run(self, pending_run)
+          },
+          on_run = function(trace) {
+            tempest_session_finish_deputy_run(self, trace)
+          }
+        ),
+        error = function(error) {
+          tempest_costorm_session_abort(
+            "The moderator Deputy execution session could not be created."
+          )
+        }
       )
       self$capability_grants$moderator <- moderator_resolution$grants
 
@@ -1033,14 +1316,19 @@ TempestSession <- R6::R6Class(
     #' @param session_id Optional Co-STORM or expert session id.
     #' @param expert_id Optional expert id.
     #' @param correlation_id Optional progress correlation id for the turn.
+    #' @param deputy_execution Optional terminal Deputy trace for the answer.
     extract_facts = function(
       text,
       turn = NULL,
       source_ids = NULL,
       session_id = self$session_id,
       expert_id = NA_character_,
-      correlation_id = NA_character_
+      correlation_id = NA_character_,
+      deputy_execution = NULL
     ) {
+      if (!is.null(deputy_execution)) {
+        deputy_execution <- tempest_costorm_deputy_trace(deputy_execution)
+      }
       event <- self$emit_progress(
         "step",
         "started",
@@ -1083,6 +1371,9 @@ TempestSession <- R6::R6Class(
             session_id = session_id,
             expert_id = expert_id,
             retrieval_step_id = correlation_id,
+            deputy_run_id = deputy_execution$deputy_run_id %||% NA_character_,
+            deputy_session_id = deputy_execution$deputy_session_id %||%
+              NA_character_,
             knowledge_view = private$knowledge_view_value,
             record_stage = function(record, output = NULL) {
               tempest_session_record_stage(self, record, output)
@@ -1304,7 +1595,20 @@ TempestSession <- R6::R6Class(
             parent_event_id = turn_event@event_id,
             correlation_id = turn_id
           )
-          ans <- self$chats$moderator$chat(prompt, echo = "none")
+          ans <- self$chats$moderator$chat(
+            prompt,
+            echo = "none",
+            run_context = list(
+              correlation_id = turn_id,
+              role = "moderator",
+              stage = "dialogue"
+            )
+          )
+          deputy_execution <- tempest_costorm_last_deputy_execution(
+            self$chats$moderator,
+            stage = "dialogue",
+            role = "moderator"
+          )
           turn <- tryCatch(
             self$chats$moderator$last_turn(),
             error = function(e) NULL
@@ -1322,7 +1626,11 @@ TempestSession <- R6::R6Class(
             stage = "dialogue",
             step = "moderator_response",
             parent_event_id = moderator_event@event_id,
-            correlation_id = turn_id
+            correlation_id = turn_id,
+            payload = list(
+              deputy_run_id = deputy_execution$deputy_run_id,
+              deputy_session_id = deputy_execution$deputy_session_id
+            )
           )
 
           # Extract facts (best-effort)
@@ -1332,7 +1640,8 @@ TempestSession <- R6::R6Class(
             source_ids = source_ids,
             session_id = self$session_id,
             expert_id = "moderator",
-            correlation_id = turn_id
+            correlation_id = turn_id,
+            deputy_execution = deputy_execution
           )
 
           # Update mind map
@@ -1347,7 +1656,9 @@ TempestSession <- R6::R6Class(
           result <- list(
             speaker = "Moderator",
             answer = ans,
-            mindmap_md = self$mindmap_markdown()
+            mindmap_md = self$mindmap_markdown(),
+            deputy_run_id = deputy_execution$deputy_run_id,
+            deputy_session_id = deputy_execution$deputy_session_id
           )
           self$emit_progress(
             "stage",
@@ -1471,13 +1782,14 @@ TempestSession <- R6::R6Class(
                   if (verbose) {
                     tempest_inform("  Work item: {work_item}")
                   }
+                  question_id <- tempest_uuid("warmup-question")
                   question_event <- self$emit_progress(
                     "tool",
                     "started",
                     stage = "warmup",
                     step = "expert_question",
                     parent_event_id = expert_event@event_id,
-                    correlation_id = expert_event@correlation_id,
+                    correlation_id = question_id,
                     payload = list(
                       expert_id = expert_id,
                       expert_name = expert_name,
@@ -1505,6 +1817,7 @@ TempestSession <- R6::R6Class(
                     "Respond now:"
                   )
 
+                  deputy_execution <- NULL
                   response <- tryCatch(
                     {
                       old_provenance <- provenance$current %||% list()
@@ -1514,10 +1827,23 @@ TempestSession <- R6::R6Class(
                         retrieval_step_id = question_event@correlation_id
                       )
                       response <- tryCatch(
-                        chat$chat(prompt, echo = "none"),
+                        chat$chat(
+                          prompt,
+                          echo = "none",
+                          run_context = list(
+                            correlation_id = question_event@correlation_id,
+                            role = "expert",
+                            stage = "warmup"
+                          )
+                        ),
                         finally = {
                           provenance$current <- old_provenance
                         }
+                      )
+                      deputy_execution <- tempest_costorm_last_deputy_execution(
+                        chat,
+                        stage = "warmup",
+                        role = "expert"
                       )
                       turn <- tryCatch(
                         chat$last_turn(),
@@ -1536,7 +1862,8 @@ TempestSession <- R6::R6Class(
                         source_ids = source_ids,
                         session_id = self$session_id,
                         expert_id = expert_id,
-                        correlation_id = question_event@correlation_id
+                        correlation_id = question_event@correlation_id,
+                        deputy_execution = deputy_execution
                       )
                       self$add_turn(expert_name, "assistant", response)
                       self$update_mindmap(
@@ -1562,7 +1889,9 @@ TempestSession <- R6::R6Class(
                         payload = list(
                           expert_id = expert_id,
                           expert_name = expert_name,
-                          work_item_index = work_index
+                          work_item_index = work_index,
+                          deputy_run_id = deputy_execution$deputy_run_id,
+                          deputy_session_id = deputy_execution$deputy_session_id
                         )
                       )
                       response
@@ -1595,7 +1924,9 @@ TempestSession <- R6::R6Class(
                     expert_results,
                     list(list(
                       work_item = work_item,
-                      response = response
+                      response = response,
+                      deputy_run_id = deputy_execution$deputy_run_id,
+                      deputy_session_id = deputy_execution$deputy_session_id
                     ))
                   )
                 }
@@ -1637,6 +1968,7 @@ TempestSession <- R6::R6Class(
             results[[expert_id]] <- list(
               expert_name = expert_name,
               session_id = session_id,
+              deputy_session_id = session_id,
               work_items_completed = length(expert_results),
               results = expert_results
             )
@@ -1854,8 +2186,11 @@ TempestSession <- R6::R6Class(
     #' @description
     #' Generate questions about undiscussed sources.
     #' @param max_questions Maximum questions to generate.
-    #' @return Character vector of questions, or NULL if none.
+    #' @return An exact record containing `questions`, `correlation_id`,
+    #'   `deputy_run_id`, and `deputy_session_id`, or `NULL` when there is no
+    #'   unseen evidence and no moderator run occurred.
     surface_unseen_information = function(max_questions = 3) {
+      max_questions <- tempest_config_count(max_questions, "max_questions")
       unseen_ids <- self$find_undiscussed_sources()
       if (length(unseen_ids) == 0) {
         return(NULL)
@@ -1897,11 +2232,30 @@ TempestSession <- R6::R6Class(
         "Return each question on a new line."
       )
 
-      response <- self$chats$moderator$chat(prompt, echo = "none")
+      correlation_id <- tempest_uuid("unseen")
+      response <- self$chats$moderator$chat(
+        prompt,
+        echo = "none",
+        run_context = list(
+          correlation_id = correlation_id,
+          role = "moderator",
+          stage = "dialogue"
+        )
+      )
+      deputy_execution <- tempest_costorm_last_deputy_execution(
+        self$chats$moderator,
+        stage = "dialogue",
+        role = "moderator"
+      )
       questions <- strsplit(tempest_trim(response), "\n")[[1]]
       questions <- tempest_trim(questions)
       questions <- questions[nzchar(questions)]
-      head(questions, max_questions)
+      list(
+        questions = unname(head(questions, max_questions)),
+        correlation_id = deputy_execution$correlation_id,
+        deputy_run_id = deputy_execution$deputy_run_id,
+        deputy_session_id = deputy_execution$deputy_session_id
+      )
     },
 
     #' @description
@@ -2021,8 +2375,8 @@ TempestSession <- R6::R6Class(
       }
 
       if (action == "surface_unseen") {
-        questions <- self$surface_unseen_information(max_questions = 3)
-        if (is.null(questions) || length(questions) == 0) {
+        surfaced <- self$surface_unseen_information(max_questions = 3)
+        if (is.null(surfaced) || length(surfaced$questions) == 0) {
           return(list(
             speaker = "System",
             answer = "No undiscussed sources to surface.",
@@ -2030,7 +2384,7 @@ TempestSession <- R6::R6Class(
           ))
         }
         # Ask the first question as if the user asked it
-        return(self$step(questions[[1]]))
+        return(self$step(surfaced$questions[[1]]))
       }
 
       if (action == "end_round") {
@@ -2114,6 +2468,8 @@ TempestSession <- R6::R6Class(
     workflow_run_value = NULL,
     report_md_value = NULL,
     stage_records_value = list(),
+    deputy_traces_value = list(),
+    pending_deputy_runs_value = list(),
     verification_owner_token_value = NULL
   )
 )
@@ -2173,6 +2529,123 @@ tempest_session_stage_records <- function(session) {
     session$.__enclos_env__$private$stage_records_value
   )
   rlang::duplicate(records, shallow = FALSE)
+}
+
+tempest_session_deputy_traces <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  traces <- tempest_costorm_deputy_traces(
+    session$.__enclos_env__$private$deputy_traces_value
+  )
+  rlang::duplicate(traces, shallow = FALSE)
+}
+
+tempest_session_pending_deputy_runs <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  pending_runs <- tempest_costorm_pending_deputy_runs(
+    session$.__enclos_env__$private$pending_deputy_runs_value
+  )
+  rlang::duplicate(pending_runs, shallow = FALSE)
+}
+
+tempest_session_start_deputy_run <- function(session, pending_run) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  pending_run <- tempest_costorm_pending_deputy_run(
+    rlang::duplicate(pending_run, shallow = FALSE)
+  )
+  pending_runs <- tempest_session_pending_deputy_runs(session)
+  ids <- vapply(pending_runs, `[[`, character(1), "deputy_run_id")
+  existing <- match(pending_run$deputy_run_id, ids)
+  if (!is.na(existing)) {
+    if (!identical(pending_runs[[existing]], pending_run)) {
+      tempest_costorm_session_abort(
+        "A pending Deputy run cannot change after it starts."
+      )
+    }
+    return(invisible(pending_run))
+  }
+  terminal_ids <- vapply(
+    tempest_session_deputy_traces(session),
+    `[[`,
+    character(1),
+    "deputy_run_id"
+  )
+  if (pending_run$deputy_run_id %in% terminal_ids) {
+    tempest_costorm_session_abort(
+      "A completed Deputy run cannot become pending."
+    )
+  }
+  pending_runs[[length(pending_runs) + 1L]] <- pending_run
+  session$.__enclos_env__$private$pending_deputy_runs_value <-
+    tempest_costorm_pending_deputy_runs(pending_runs)
+  invisible(pending_run)
+}
+
+tempest_session_finish_deputy_run <- function(session, trace) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  trace <- tempest_costorm_deputy_trace(
+    rlang::duplicate(trace, shallow = FALSE)
+  )
+  pending_runs <- tempest_session_pending_deputy_runs(session)
+  ids <- vapply(pending_runs, `[[`, character(1), "deputy_run_id")
+  index <- which(ids == trace$deputy_run_id)
+  if (length(index) != 1L) {
+    tempest_costorm_session_abort(
+      "A terminal Deputy trace must match one pending run."
+    )
+  }
+  pending_run <- pending_runs[[index]]
+  if (!identical(trace[names(pending_run)], pending_run)) {
+    tempest_costorm_session_abort(
+      "A terminal Deputy trace cannot change its pending run identity."
+    )
+  }
+  tempest_session_record_deputy_trace(session, trace)
+  pending_runs <- pending_runs[-index]
+  session$.__enclos_env__$private$pending_deputy_runs_value <-
+    tempest_costorm_pending_deputy_runs(pending_runs)
+  invisible(trace)
+}
+
+tempest_session_record_deputy_trace <- function(session, trace) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  trace <- tempest_costorm_deputy_trace(
+    rlang::duplicate(trace, shallow = FALSE)
+  )
+  traces <- tempest_session_deputy_traces(session)
+  trace_ids <- vapply(traces, `[[`, character(1), "trace_id")
+  existing <- match(trace$trace_id, trace_ids)
+  if (!is.na(existing)) {
+    if (!identical(traces[[existing]], trace)) {
+      tempest_costorm_session_abort(
+        "A Deputy run trace cannot change after it is recorded."
+      )
+    }
+    return(invisible(trace))
+  }
+  traces[[length(traces) + 1L]] <- trace
+  session$.__enclos_env__$private$deputy_traces_value <-
+    tempest_costorm_deputy_traces(traces)
+  invisible(trace)
 }
 
 tempest_session_stage_recorder <- function(session) {

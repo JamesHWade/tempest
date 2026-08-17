@@ -884,6 +884,10 @@ test_that("fail-closed execution records controlled failure and throws", {
           retrieval_step_id = NA_character_,
           perspective_id = NA_character_,
           section_id = NA_character_
+        ),
+        deputy_execution = list(
+          deputy_run_id = "deputy-run-failed",
+          deputy_session_id = "deputy-session-failed"
         )
       ),
       output_reference = function(output, record, context) {
@@ -905,6 +909,14 @@ test_that("fail-closed execution records controlled failure and throws", {
   expect_identical(terminal, records[[1]])
   expect_identical(terminal@fallback_policy, "fail_closed")
   expect_identical(terminal@fallback_taken, FALSE)
+  expect_identical(
+    terminal@trace_references$deputy_run_id,
+    "deputy-run-failed"
+  )
+  expect_identical(
+    terminal@trace_references$deputy_session_id,
+    "deputy-session-failed"
+  )
   expect_identical(terminal@failure_message, "Primary stage execution failed.")
   expect_no_match(conditionMessage(error), "sk-live-secret", fixed = TRUE)
   printed <- paste(capture.output(print(error)), collapse = "\n")
@@ -969,6 +981,122 @@ test_that("exploratory fallback is evaluated and visible", {
     result$record
   )
   expect_identical(records[[1]], result$record)
+})
+
+test_that("Deputy execution binds StageRecords without changing module traces", {
+  seen_traces <- list()
+  local_mocked_bindings(
+    tempest_run_dsprrr_module_structured = function(execution, ...) {
+      seen_traces[[length(seen_traces) + 1L]] <<- execution$trace_context
+      list(output = list(queries = "Question"))
+    }
+  )
+  execution <- function() {
+    tempest:::tempest_program_set_execution(
+      tempest_program_set(),
+      "query_decomposition",
+      trace_context = list(
+        research_run_id = "stage-record-run",
+        mode = "storm",
+        role = "writer"
+      )
+    )
+  }
+
+  storm <- tempest:::tempest_execute_stage(
+    execution(),
+    chat = NULL,
+    inputs = list(question = "Question", topic = "Topic"),
+    context = list(max_queries = 2L)
+  )
+  deputy <- tempest:::tempest_execute_stage(
+    execution(),
+    chat = NULL,
+    inputs = list(question = "Question", topic = "Topic"),
+    context = list(
+      max_queries = 2L,
+      deputy_execution = list(
+        deputy_run_id = "deputy-run-succeeded",
+        deputy_session_id = "deputy-session-succeeded"
+      )
+    )
+  )
+
+  expect_identical(
+    storm$record@output_reference$content_digest,
+    deputy$record@output_reference$content_digest
+  )
+  expect_null(storm$record@trace_references$deputy_run_id)
+  expect_null(storm$record@trace_references$deputy_session_id)
+  expect_identical(
+    deputy$record@trace_references$deputy_run_id,
+    "deputy-run-succeeded"
+  )
+  expect_identical(
+    deputy$record@trace_references$deputy_session_id,
+    "deputy-session-succeeded"
+  )
+  expect_length(seen_traces, 2L)
+  expect_all_true(vapply(
+    seen_traces,
+    function(trace) {
+      !any(c("deputy_run_id", "deputy_session_id") %in% names(trace))
+    },
+    logical(1)
+  ))
+})
+
+test_that("malformed Deputy stage context fails before provider execution", {
+  calls <- 0L
+  local_mocked_bindings(
+    tempest_run_dsprrr_module_structured = function(...) {
+      calls <<- calls + 1L
+      list(output = list(queries = "Question"))
+    }
+  )
+  malformed <- list(
+    list(deputy_run_id = "run-only"),
+    list(
+      deputy_session_id = "session-reversed",
+      deputy_run_id = "run-reversed"
+    ),
+    c(
+      deputy_run_id = "run-atomic",
+      deputy_session_id = "session-atomic"
+    ),
+    list(
+      deputy_run_id = 1L,
+      deputy_session_id = "session-numeric"
+    ),
+    list(
+      deputy_run_id = "api-key-secret",
+      deputy_session_id = "session-credential"
+    ),
+    list(
+      deputy_run_id = "run-extra",
+      deputy_session_id = "session-extra",
+      secret = "not-allowed"
+    )
+  )
+
+  for (deputy_execution in malformed) {
+    expect_error(
+      tempest:::tempest_execute_stage(
+        tempest:::tempest_program_set_execution(
+          tempest_program_set(),
+          "query_decomposition"
+        ),
+        chat = NULL,
+        inputs = list(question = "Question", topic = "Topic"),
+        context = list(
+          max_queries = 2L,
+          deputy_execution = deputy_execution
+        )
+      ),
+      class = "tempest_stage_governance_error"
+    )
+  }
+  expect_identical(calls, 0L)
 })
 
 test_that("fallback success distinguishes primary output rejection", {

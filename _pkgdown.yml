@@ -27,6 +27,7 @@ reference:
   contents:
   - tempest_agent_skills
 - title: Core workflows
+  desc: Run scripted STORM or persistent Deputy-backed Co-STORM research.
   contents:
   - tempest_run
   - tempest_run_async

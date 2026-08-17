@@ -371,10 +371,9 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
   )
   report_body <- "A deterministic Co-STORM report."
   fake_session_chat <- function(text = "") {
-    list(
-      chat = function(prompt, ...) text,
-      chat_structured = function(...) list(),
-      register_tools = function(...) invisible(NULL)
+    fake_chat(
+      structured = rep(list(list()), 20L),
+      text = as.list(rep(text, 20L))
     )
   }
   config <- tempest_config(
@@ -473,10 +472,9 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
 test_that("Co-STORM adapter rejects session and run scope mismatches", {
   skip_if_not_installed("ellmer")
   fake_session_chat <- function() {
-    list(
-      chat = function(prompt, ...) "",
-      chat_structured = function(...) list(),
-      register_tools = function(...) invisible(NULL)
+    fake_chat(
+      structured = rep(list(list()), 20L),
+      text = as.list(rep("", 20L))
     )
   }
   config <- tempest_config(

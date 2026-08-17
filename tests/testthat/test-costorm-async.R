@@ -601,6 +601,7 @@ test_that("post-turn processing owns sequencing and returns typed results", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   calls <- character()
+  evidence_correlation <- NULL
   events <- list()
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -619,9 +620,19 @@ test_that("post-turn processing owns sequencing and returns typed results", {
   source <- fake_source()
   session$workspace$upsert_retrieved_resource(source)
   source_id <- source$id
+  deputy_execution <- test_record_costorm_deputy_trace(
+    session,
+    run_id = "deputy-run-turn-typed",
+    correlation_id = "turn-typed"
+  )
   local_mocked_bindings(
-    tempest_session_commit_evidence_async = function(session, ...) {
+    tempest_session_commit_evidence_async = function(
+      session,
+      correlation_id,
+      ...
+    ) {
       calls <<- c(calls, "evidence")
+      evidence_correlation <<- correlation_id
       session$workspace$add_proposed_claim(tempest_claim(
         claim_text = "A cited answer",
         source_ids = source_id
@@ -662,12 +673,15 @@ test_that("post-turn processing owns sequencing and returns typed results", {
     session,
     user_text = "What is known?",
     assistant_text = paste0("A cited answer [", source_id, "]."),
-    turn_id = "turn-typed"
+    deputy_execution = deputy_execution,
+    turn_id = NULL
   )
   settled <- await_tempest_promise(request)
 
   expect_null(settled$error)
   expect_equal(calls, c("evidence", "mindmap", "suggestions"))
+  expect_identical(evidence_correlation, "turn-typed")
+  expect_identical(settled$value@turn_id, "turn-typed")
   expect_equal(
     vapply(session$transcript, `[[`, character(1), "role"),
     c("user", "assistant")
@@ -688,6 +702,14 @@ test_that("post-turn processing owns sequencing and returns typed results", {
     c("What evidence remains?", "How can it be verified?")
   )
   expect_equal(settled$value@claims_added, 1L)
+  expect_identical(
+    settled$value@deputy_run_id,
+    "deputy-run-turn-typed"
+  )
+  expect_identical(
+    settled$value@deputy_session_id,
+    "deputy-session-test"
+  )
   expect_equal(
     vapply(
       Filter(
@@ -702,6 +724,196 @@ test_that("post-turn processing owns sequencing and returns typed results", {
   expect_no_error(tempest:::tempest_canonical_json(
     tempest:::tempest_session_turn_result_data(settled$value)
   ))
+})
+
+test_that("post-turn rejects correlation mismatch before session mutation", {
+  skip_if_not_installed("promises")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Mismatched async turn",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.turn-mismatch",
+      name = "Dr. Mismatch"
+    ))
+  )
+  evidence_calls <- 0L
+  event_count <- length(session$events)
+  deputy_execution <- test_record_costorm_deputy_trace(
+    session,
+    run_id = "deputy-run-turn-authoritative",
+    correlation_id = "turn-authoritative"
+  )
+  local_mocked_bindings(
+    tempest_session_commit_evidence_async = function(...) {
+      evidence_calls <<- evidence_calls + 1L
+      promises::promise_resolve(NULL)
+    }
+  )
+
+  expect_error(
+    tempest_session_process_turn_async(
+      session,
+      user_text = "What is known?",
+      assistant_text = "A completed response.",
+      deputy_execution = deputy_execution,
+      turn_id = "turn-mismatched"
+    ),
+    class = "tempest_session_turn_error"
+  )
+  expect_length(session$transcript, 0L)
+  expect_length(session$events, event_count)
+  expect_identical(evidence_calls, 0L)
+})
+
+test_that("queued post-turn work binds its immutable moderator execution", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  moderator_chat <- fake_chat(
+    text = list("First response.", "Second response.")
+  )
+  cfg <- tempest_config(chat_fn = function(
+    role,
+    model,
+    system_prompt,
+    echo
+  ) {
+    if (identical(role, "coordinator")) {
+      return(moderator_chat)
+    }
+    fake_chat()
+  })
+  session <- tempest_session(
+    "Backlogged async turns",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.backlog",
+      name = "Dr. Backlog"
+    ))
+  )
+  first_response <- session$chats$moderator$chat(
+    "First question",
+    run_context = list(correlation_id = "turn-backlog-first")
+  )
+  first_execution <- rlang::duplicate(
+    tempest:::tempest_deputy_chat_last_execution(
+      session$chats$moderator
+    ),
+    shallow = FALSE
+  )
+  session$chats$moderator$chat(
+    "Second question",
+    run_context = list(correlation_id = "turn-backlog-second")
+  )
+  second_execution <- tempest:::tempest_deputy_chat_last_execution(
+    session$chats$moderator
+  )
+  local_mocked_bindings(
+    tempest_session_commit_evidence_async = function(...) {
+      promises::promise_resolve(list(
+        source_count = 0L,
+        claim_count = 0L,
+        source_ids = character(),
+        sources_added = 0L,
+        claims_added = 0L,
+        cancelled = FALSE
+      ))
+    },
+    tempest_session_update_mindmap_async = function(...) {
+      promises::promise_resolve(TRUE)
+    }
+  )
+
+  settled <- await_tempest_promise(tempest_session_process_turn_async(
+    session,
+    user_text = "First question",
+    assistant_text = first_response,
+    deputy_execution = first_execution,
+    suggest = FALSE
+  ))
+
+  expect_null(settled$error)
+  expect_identical(settled$value@turn_id, "turn-backlog-first")
+  expect_identical(
+    settled$value@deputy_run_id,
+    first_execution$deputy_run_id
+  )
+  expect_identical(
+    settled$value@deputy_session_id,
+    first_execution$deputy_session_id
+  )
+  expect_identical(
+    tempest:::tempest_deputy_chat_last_execution(
+      session$chats$moderator
+    ),
+    second_execution
+  )
+  expect_identical(
+    first_execution$deputy_run_id == second_execution$deputy_run_id,
+    FALSE
+  )
+  expect_identical(
+    vapply(moderator_chat$.calls(), `[[`, character(1), "transport"),
+    rep("stream", 2L)
+  )
+})
+
+test_that("unrecorded or mutated Deputy traces fail before turn side effects", {
+  skip_if_not_installed("promises")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Invalid post-turn traces",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.invalid-trace",
+      name = "Dr. Invalid Trace"
+    ))
+  )
+  recorded <- test_record_costorm_deputy_trace(
+    session,
+    run_id = "deputy-run-turn-recorded",
+    correlation_id = "turn-recorded"
+  )
+  mutated <- rlang::duplicate(recorded, shallow = FALSE)
+  mutated$agent_id <- "test-agent-mutated"
+  unrecorded <- test_costorm_deputy_trace(
+    run_id = "deputy-run-turn-unrecorded",
+    correlation_id = "turn-unrecorded"
+  )
+  evidence_calls <- 0L
+  local_mocked_bindings(
+    tempest_session_commit_evidence_async = function(...) {
+      evidence_calls <<- evidence_calls + 1L
+      promises::promise_resolve(NULL)
+    }
+  )
+  transcript_count <- length(session$transcript)
+  event_count <- length(session$events)
+  mindmap <- rlang::duplicate(session$mindmap, shallow = FALSE)
+
+  for (execution in list(mutated, unrecorded)) {
+    expect_error(
+      tempest_session_process_turn_async(
+        session,
+        user_text = "Should not be recorded.",
+        assistant_text = "Should not be enriched.",
+        deputy_execution = execution
+      ),
+      class = "tempest_session_turn_error"
+    )
+  }
+
+  expect_identical(evidence_calls, 0L)
+  expect_length(session$transcript, transcript_count)
+  expect_length(session$events, event_count)
+  expect_identical(session$mindmap, mindmap)
+  expect_length(session$workspace$list_proposed_claims(), 0L)
 })
 
 test_that("post-turn processing exposes evidence gaps without UI callbacks", {
@@ -719,6 +931,11 @@ test_that("post-turn processing exposes evidence gaps without UI callbacks", {
       expert_id = "expert.gap",
       name = "Dr. Gap"
     ))
+  )
+  deputy_execution <- test_record_costorm_deputy_trace(
+    session,
+    run_id = "deputy-run-turn-gap",
+    correlation_id = "turn-gap"
   )
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
@@ -745,6 +962,7 @@ test_that("post-turn processing exposes evidence gaps without UI callbacks", {
     session,
     user_text = "What is known?",
     assistant_text = "An unsupported factual answer.",
+    deputy_execution = deputy_execution,
     suggest = FALSE,
     turn_id = "turn-gap"
   )
@@ -776,6 +994,11 @@ test_that("post-turn enrichment failures are typed and best effort", {
       name = "Dr. Partial"
     ))
   )
+  deputy_execution <- test_record_costorm_deputy_trace(
+    session,
+    run_id = "deputy-run-turn-partial",
+    correlation_id = "turn-partial"
+  )
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
       calls <<- c(calls, "evidence")
@@ -795,6 +1018,7 @@ test_that("post-turn enrichment failures are typed and best effort", {
     session,
     user_text = "Continue?",
     assistant_text = "A response.",
+    deputy_execution = deputy_execution,
     turn_id = "turn-partial"
   )
   settled <- await_tempest_promise(request)
@@ -837,6 +1061,11 @@ test_that("stale post-turn work cannot run later enrichment stages", {
       name = "Dr. Stale"
     ))
   )
+  deputy_execution <- test_record_costorm_deputy_trace(
+    session,
+    run_id = "deputy-run-turn-stale",
+    correlation_id = "turn-stale"
+  )
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
       promises::promise(function(resolve, reject) {
@@ -857,6 +1086,7 @@ test_that("stale post-turn work cannot run later enrichment stages", {
     session,
     user_text = "Will this be stale?",
     assistant_text = "This turn has completed.",
+    deputy_execution = deputy_execution,
     is_current = function() current,
     turn_id = "turn-stale"
   )
@@ -1233,10 +1463,16 @@ test_that("synchronous post-turn setup failures return typed notices", {
         name = "Dr. Sync"
       ))
     )
+    deputy_execution <- test_record_costorm_deputy_trace(
+      session,
+      run_id = paste0("deputy-run-turn-sync-", stage_name),
+      correlation_id = paste0("turn-sync-", stage_name)
+    )
     settled <- await_tempest_promise(tempest_session_process_turn_async(
       session,
       user_text = "Continue?",
       assistant_text = "A response.",
+      deputy_execution = deputy_execution,
       turn_id = paste0("turn-sync-", stage_name)
     ))
 
@@ -1274,6 +1510,8 @@ test_that("turn result validators reject contradictory records", {
     tempest:::tempest_session_turn_result(
       session_id = "validation-session",
       turn_id = "validation-turn",
+      deputy_run_id = "deputy-run-validation",
+      deputy_session_id = "deputy-session-validation",
       status = "succeeded",
       evidence_status = "failed",
       mindmap_status = "updated",
@@ -1289,6 +1527,8 @@ test_that("turn result validators reject contradictory records", {
     tempest:::tempest_session_turn_result(
       session_id = "validation-session",
       turn_id = "validation-turn",
+      deputy_run_id = "deputy-run-validation",
+      deputy_session_id = "deputy-session-validation",
       status = "partial",
       evidence_status = "failed",
       mindmap_status = "updated",

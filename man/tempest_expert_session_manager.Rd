@@ -15,7 +15,9 @@ tempest_expert_session_manager(
   workspace = NULL,
   progress = NULL,
   run_id = NULL,
-  stage_recorder = NULL
+  stage_recorder = NULL,
+  manifest = NULL,
+  on_run = function(trace) invisible(trace)
 )
 }
 \arguments{
@@ -44,6 +46,10 @@ workspace.}
 
 \item{stage_recorder}{Optional callback accepting a stage record and its
 evaluated output.}
+
+\item{manifest}{Research manifest that owns Deputy execution identity.}
+
+\item{on_run}{Callback accepting one terminal Deputy run trace.}
 }
 \value{
 An \code{ExpertSessionManager}.

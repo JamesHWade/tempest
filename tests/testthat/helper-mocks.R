@@ -1,38 +1,217 @@
 # tests/testthat/helper-mocks.R
 # Reusable fakes so ledger/verification logic is testable without network or API keys.
 
-# A fake ellmer-style chat. $chat_structured() pops from a scripted queue of
-# return values; $chat() returns scripted plain text. Records calls for asserts.
+# A deterministic Chat-compatible fake. Direct structured and text calls retain
+# their original queue behavior, while the stream and state methods satisfy the
+# ellmer Chat boundary used by Deputy.
 fake_chat <- function(structured = list(), text = list()) {
   state <- new.env(parent = emptyenv())
   state$structured <- structured
   state$text <- text
   state$calls <- list()
-  list(
-    chat_structured = function(prompt, type = NULL, ...) {
-      state$calls <- c(
-        state$calls,
-        list(list(kind = "structured", prompt = prompt))
-      )
-      if (length(state$structured) == 0) {
-        stop("fake_chat: structured queue exhausted")
-      }
-      out <- state$structured[[1]]
-      state$structured <- state$structured[-1]
-      out
-    },
-    chat = function(prompt, ...) {
-      state$calls <- c(state$calls, list(list(kind = "text", prompt = prompt)))
-      if (length(state$text) == 0) {
-        return("")
-      }
-      out <- state$text[[1]]
-      state$text <- state$text[-1]
-      out
-    },
-    register_tools = function(...) invisible(NULL),
-    .calls = function() state$calls
+  state$turns <- list()
+  state$tools <- list()
+  state$system_prompt <- NULL
+  state$on_tool_request <- function(request) invisible(request)
+  state$on_tool_result <- function(result) invisible(result)
+  state$tokens <- data.frame(
+    input = numeric(),
+    output = numeric(),
+    cached_input = numeric(),
+    cost = numeric()
   )
+
+  resolve <- function(value, prompt) {
+    if (is.function(value)) {
+      value <- value(prompt)
+    }
+    if (inherits(value, "condition")) {
+      stop(value)
+    }
+    value
+  }
+
+  pop <- function(queue, prompt, empty) {
+    values <- state[[queue]]
+    if (length(values) == 0L) {
+      return(empty)
+    }
+    value <- values[[1L]]
+    state[[queue]] <- values[-1L]
+    resolve(value, prompt)
+  }
+
+  record_call <- function(kind, prompt, transport) {
+    state$calls <- c(
+      state$calls,
+      list(list(kind = kind, prompt = prompt, transport = transport))
+    )
+  }
+
+  record_turn <- function(prompt, response) {
+    if (!is.null(prompt)) {
+      state$turns <- c(
+        state$turns,
+        list(ellmer::UserTurn(list(ellmer::ContentText(prompt))))
+      )
+    }
+    response <- paste(as.character(response), collapse = "")
+    state$turns <- c(
+      state$turns,
+      list(ellmer::AssistantTurn(
+        list(ellmer::ContentText(response)),
+        tokens = c(0, 0, 0),
+        cost = 0
+      ))
+    )
+    state$tokens <- rbind(
+      state$tokens,
+      data.frame(input = 0, output = 0, cached_input = 0, cost = 0)
+    )
+    invisible(response)
+  }
+
+  tool_name <- function(tool, fallback = NULL) {
+    name <- tryCatch(tool@name, error = function(error) NULL)
+    name %||% fallback
+  }
+
+  register_tools <- function(tools) {
+    if (length(tools) == 0L) {
+      return(invisible(NULL))
+    }
+    supplied_names <- names(tools) %||% rep("", length(tools))
+    for (index in seq_along(tools)) {
+      fallback <- supplied_names[[index]]
+      if (!nzchar(fallback)) {
+        fallback <- NULL
+      }
+      name <- tool_name(tools[[index]], fallback)
+      if (is.null(name) || !nzchar(name)) {
+        stop("fake_chat: tool has no name")
+      }
+      state$tools[[name]] <- tools[[index]]
+    }
+    invisible(NULL)
+  }
+
+  stream_generator <- function(prompt, async = FALSE) {
+    response <- pop("text", prompt, "")
+    chunks <- as.character(response)
+    if (async) {
+      return(coro::async_generator(function() {
+        for (chunk in chunks) {
+          coro::yield(ellmer::ContentText(chunk))
+        }
+        record_turn(prompt, response)
+        coro::exhausted()
+      })())
+    }
+    coro::generator(function() {
+      for (chunk in chunks) {
+        coro::yield(ellmer::ContentText(chunk))
+      }
+      record_turn(prompt, response)
+      coro::exhausted()
+    })()
+  }
+
+  chat <- NULL
+  chat <- structure(
+    list(
+      chat_structured = function(prompt, type = NULL, ...) {
+        record_call("structured", prompt, "chat_structured")
+        if (length(state$structured) == 0) {
+          stop("fake_chat: structured queue exhausted")
+        }
+        pop("structured", prompt, NULL)
+      },
+      chat_structured_async = function(prompt, type = NULL, ...) {
+        promises::promise_resolve(chat$chat_structured(prompt, type, ...))
+      },
+      chat = function(prompt, ...) {
+        record_call("text", prompt, "chat")
+        response <- pop("text", prompt, "")
+        record_turn(prompt, response)
+        response
+      },
+      chat_async = function(prompt, ...) {
+        promises::promise_resolve(chat$chat(prompt, ...))
+      },
+      stream = function(
+        prompt = NULL,
+        stream = c("text", "content"),
+        controller = NULL
+      ) {
+        record_call("text", prompt, "stream")
+        stream_generator(prompt)
+      },
+      stream_async = function(
+        prompt = NULL,
+        stream = c("text", "content"),
+        controller = NULL
+      ) {
+        record_call("text", prompt, "stream_async")
+        stream_generator(prompt, async = TRUE)
+      },
+      get_turns = function() state$turns,
+      set_turns = function(turns) {
+        state$turns <- turns
+        invisible(NULL)
+      },
+      get_system_prompt = function() state$system_prompt,
+      set_system_prompt = function(prompt) {
+        state$system_prompt <- prompt
+        invisible(NULL)
+      },
+      get_tools = function() state$tools,
+      register_tool = function(tool) {
+        register_tools(list(tool))
+      },
+      register_tools = register_tools,
+      get_tokens = function() state$tokens,
+      get_provider = function() list(name = "mock", model = "fake"),
+      get_model = function() "fake",
+      last_turn = function(role = "assistant") {
+        role_class <- switch(
+          role,
+          assistant = "ellmer::AssistantTurn",
+          user = "ellmer::UserTurn",
+          system = "ellmer::SystemTurn",
+          NULL
+        )
+        turns <- state$turns
+        if (!is.null(role_class)) {
+          turns <- Filter(\(turn) inherits(turn, role_class), turns)
+        }
+        if (length(turns) == 0L) {
+          return(NULL)
+        }
+        tail(turns, 1L)[[1L]]
+      },
+      on_tool_request = function(callback) {
+        state$on_tool_request <- callback
+        invisible(NULL)
+      },
+      on_tool_result = function(callback) {
+        state$on_tool_result <- callback
+        invisible(NULL)
+      },
+      clone = function() chat,
+      .calls = function() state$calls,
+      .callbacks = function() {
+        list(
+          on_tool_request = state$on_tool_request,
+          on_tool_result = state$on_tool_result
+        )
+      },
+      .queues = function() {
+        list(structured = state$structured, text = state$text)
+      }
+    ),
+    class = c("Chat", "list")
+  )
+  chat
 }
 
 # A fake judge that returns a fixed verification verdict for every claim.

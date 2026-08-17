@@ -76,7 +76,10 @@ claim-write provenance.}
   workspace = NULL,
   progress = NULL,
   run_id = NULL,
-  stage_recorder = NULL
+  stage_recorder = NULL,
+  manifest = NULL,
+  on_start = function(pending_run) invisible(pending_run),
+  on_run = function(trace) invisible(trace)
 )}
     \if{html}{\out{</div>}}
   }
@@ -97,6 +100,9 @@ execution. Required when \code{extractor} is supplied.}
       \item{\code{run_id}}{Shared Co-STORM session id for progress events.}
       \item{\code{stage_recorder}}{Optional callback accepting a stage record and its
 evaluated output.}
+      \item{\code{manifest}}{Research manifest that owns Deputy execution identity.}
+      \item{\code{on_start}}{Callback accepting one pending Deputy run record.}
+      \item{\code{on_run}}{Callback accepting one terminal Deputy run trace.}
     }
     \if{html}{\out{</div>}}
   }
@@ -150,7 +156,8 @@ evaluated output.}
   source_ids = NULL,
   session_id = NA_character_,
   expert_id = NA_character_,
-  correlation_id = NA_character_
+  correlation_id = NA_character_,
+  deputy_execution = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -165,6 +172,7 @@ delegation metadata only; extracted claims use the manager's exact
 research run id.}
       \item{\code{expert_id}}{Optional stable expert id.}
       \item{\code{correlation_id}}{Optional progress correlation id for the turn.}
+      \item{\code{deputy_execution}}{Optional terminal Deputy trace for the answer.}
     }
     \if{html}{\out{</div>}}
   }

@@ -249,13 +249,12 @@ test_that("expert sessions resolve scoped capabilities before chat creation", {
   registered <- list()
   prompts <- character()
   roles <- character()
-  chat <- list(
-    register_tools = function(tools) {
-      events <<- c(events, "register")
-      registered <<- tools
-      invisible(NULL)
-    }
-  )
+  chat <- fake_chat()
+  chat$register_tools <- function(tools) {
+    events <<- c(events, "register")
+    registered <<- tools
+    invisible(NULL)
+  }
   config <- tempest_config(
     models = list(
       coordinator = "test/coordinator",
@@ -353,7 +352,7 @@ test_that("expert sessions validate skills and capabilities before chat", {
     ),
     chat_fn = function(role, model, system_prompt, echo) {
       chat_calls <<- chat_calls + 1L
-      list(register_tools = function(...) invisible(NULL))
+      fake_chat()
     }
   )
   expert <- tempest_expert(
@@ -395,7 +394,7 @@ test_that("expert connection grants are exact and runtime-only", {
     ),
     chat_fn = function(role, model, system_prompt, echo) {
       chat_calls <<- chat_calls + 1L
-      list(register_tools = function(...) invisible(NULL))
+      fake_chat()
     }
   )
   reference <- tempest_connection_ref(
@@ -493,7 +492,7 @@ test_that("expert sessions bind resumes and reject retired profiles", {
       expert = "test/expert"
     ),
     chat_fn = function(role, model, system_prompt, echo) {
-      list(register_tools = function(...) invisible(NULL))
+      fake_chat()
     }
   )
   first <- tempest_expert(
@@ -580,7 +579,7 @@ test_that("saved expert sessions reauthorize under exact bindings", {
     ),
     chat_fn = function(role, model, system_prompt, echo) {
       chat_calls <<- chat_calls + 1L
-      list(register_tools = function(...) invisible(NULL))
+      fake_chat()
     }
   )
   capability <- tempest_capability_spec(
@@ -730,6 +729,8 @@ test_that("one delegation tool resolves the live roster by exact expert id", {
       "expert",
       "response",
       "session_id",
+      "deputy_run_id",
+      "deputy_session_id",
       "source_ids",
       "claim_ids"
     )
@@ -766,10 +767,8 @@ test_that("expert delegation returns and commits its native evidence", {
     url = url,
     title = "Delegated native source"
   )
-  expert_chat <- list(
-    chat = function(...) claim_text,
-    last_turn = function() turn
-  )
+  expert_chat <- fake_chat(text = list(claim_text))
+  expert_chat$last_turn <- function(role = "assistant") turn
   extractor <- list(
     chat_structured = function(prompt, ...) {
       expect_match(prompt, source_id, fixed = TRUE)

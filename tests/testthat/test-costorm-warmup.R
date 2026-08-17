@@ -278,6 +278,99 @@ test_that("synchronous warmup enrichment failures remain best effort", {
   expect_identical(mindmap$value@mindmap_updated, FALSE)
 })
 
+test_that("timed out Deputy warmup stays pending until terminal trace", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  raw_expert <- fake_chat()
+  raw_expert$stream_async <- function(
+    prompt = NULL,
+    stream = c("text", "content"),
+    controller = NULL
+  ) {
+    coro::async_generator(function() {
+      content <- coro::await(promises::promise(function(resolve, reject) {
+        later::later(
+          function() resolve(ellmer::ContentText("Late answer.")),
+          0.25
+        )
+      }))
+      coro::yield(content)
+      coro::exhausted()
+    })()
+  }
+  cfg <- tempest_config(chat_fn = function(
+    role,
+    model,
+    system_prompt,
+    echo
+  ) {
+    if (identical(role, "expert")) {
+      return(raw_expert)
+    }
+    fake_chat()
+  })
+  session <- tempest_session(
+    "Timed out Deputy warmup",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.pending-timeout",
+      name = "Dr. Pending Timeout",
+      initial_questions = "What should be investigated?"
+    ))
+  )
+
+  settled <- await_tempest_promise(tempest_session_warmup_async(
+    session,
+    timeout_s = 0.02
+  ))
+  pending <- tempest:::tempest_session_pending_deputy_runs(session)
+
+  expect_null(settled$error)
+  expect_length(pending, 1L)
+  expect_length(tempest:::tempest_session_deputy_traces(session), 0L)
+  expect_identical(
+    names(pending[[1L]]),
+    c(
+      "agent_id",
+      "correlation_id",
+      "deputy_run_id",
+      "deputy_session_id",
+      "expert_id",
+      "role",
+      "stage"
+    )
+  )
+  expect_identical(pending[[1L]]$stage, "warmup")
+  expect_identical(pending[[1L]]$role, "expert")
+  expect_identical(
+    pending[[1L]]$expert_id,
+    "expert.pending-timeout"
+  )
+  expect_identical(
+    any(vapply(pending, inherits, logical(1), "Agent")),
+    FALSE
+  )
+
+  deadline <- Sys.time() + 2
+  while (
+    length(tempest:::tempest_session_deputy_traces(session)) == 0L &&
+      Sys.time() < deadline
+  ) {
+    later::run_now(0.05)
+  }
+  traces <- tempest:::tempest_session_deputy_traces(session)
+
+  expect_length(traces, 1L)
+  expect_length(tempest:::tempest_session_pending_deputy_runs(session), 0L)
+  expect_identical(traces[[1L]]$status, "interrupted")
+  expect_identical(
+    traces[[1L]][names(pending[[1L]])],
+    pending[[1L]]
+  )
+})
+
 test_that("stale warmup evidence and mind-map settlements stay silent", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
@@ -395,6 +488,8 @@ test_that("warmup result validators reject contradictory records", {
   record <- tempest:::tempest_warmup_orientation(expert, "warmup-validation")
   record$status <- "succeeded"
   record$evidence_status <- "skipped"
+  record$deputy_run_id <- "deputy-run-validation"
+  record$deputy_session_id <- "deputy-session-validation"
 
   invalid_record <- record
   invalid_record$failure_kind <- "timeout"

@@ -26,8 +26,6 @@ baseline_snapshot_json <- function(x) {
 }
 
 baseline_queue_chat <- function(structured_state = NULL, text_state = NULL) {
-  calls <- new.env(parent = emptyenv())
-  calls$value <- list()
   pop <- function(state, kind, default = NULL) {
     if (is.null(state)) {
       if (!is.null(default)) {
@@ -42,23 +40,18 @@ baseline_queue_chat <- function(structured_state = NULL, text_state = NULL) {
     state$values <- state$values[-1L]
     value
   }
-  list(
-    chat_structured = function(prompt, type = NULL, ...) {
-      calls$value <- c(
-        calls$value,
-        list(list(kind = "structured", prompt = prompt))
-      )
-      pop(structured_state, "structured")
-    },
-    chat = function(prompt, ...) {
-      calls$value <- c(
-        calls$value,
-        list(list(kind = "text", prompt = prompt))
-      )
-      pop(text_state, "text", default = "")
-    },
-    register_tools = function(...) invisible(NULL),
-    .calls = function() calls$value
+  queued <- function(state, kind) {
+    if (is.null(state)) {
+      return(list())
+    }
+    rep(
+      list(function(prompt) pop(state, kind)),
+      length(state$values)
+    )
+  }
+  fake_chat(
+    structured = queued(structured_state, "structured"),
+    text = queued(text_state, "text")
   )
 }
 

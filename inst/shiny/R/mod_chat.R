@@ -662,7 +662,15 @@ mod_chat_server <- function(
       }
       turn_session_id <- active_session_id
       turn_suggestions_enabled <- shiny::isolate(suggestions_enabled())
-      turn_id <- tempest:::tempest_uuid("chat-turn")
+      deputy_execution <- tempest:::tempest_costorm_last_deputy_execution(
+        ses$chats$moderator,
+        stage = "dialogue",
+        role = "moderator"
+      )
+      deputy_execution <- rlang::duplicate(
+        deputy_execution,
+        shallow = FALSE
+      )
       task <- work_queue$enqueue(function(queue_current) {
         current <- function() {
           queue_current() &&
@@ -674,10 +682,11 @@ mod_chat_server <- function(
           ses,
           user_text = user_text,
           assistant_text = assistant_text,
+          deputy_execution = deputy_execution,
           provider_turn = assistant_turn,
           suggest = turn_suggestions_enabled,
           n_suggestions = 4L,
-          turn_id = turn_id,
+          turn_id = NULL,
           is_current = current
         )
       })
@@ -2191,7 +2200,7 @@ session_archive_manifest_files <- function(manifest) {
       schema_version <- as.integer(value)
     }
   }
-  valid_header <- identical(schema_version, 8L) &&
+  valid_header <- identical(schema_version, 9L) &&
     identical(manifest$bundle_type %||% "", "costorm") &&
     identical(manifest$bundle_status %||% "", "complete")
   if (
