@@ -6,7 +6,13 @@ maps them back to facts. Falls back to keyword filtering otherwise.
 ## Usage
 
 ``` r
-tempest_semantic_filter_facts(retriever, query, store, max_items = 30)
+tempest_semantic_filter_facts(
+  retriever,
+  query,
+  store,
+  max_items = 30,
+  min_support_score = 0.7
+)
 ```
 
 ## Arguments

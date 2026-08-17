@@ -46,7 +46,14 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_decompose_query</span><span class="op">(</span><span class="va">chat</span>, <span class="va">question</span>, <span class="va">topic</span>, module <span class="op">=</span> <span class="cn">NULL</span>, max_queries <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_decompose_query</span><span class="op">(</span></span>
+<span>  <span class="va">chat</span>,</span>
+<span>  <span class="va">question</span>,</span>
+<span>  <span class="va">topic</span>,</span>
+<span>  <span class="va">module</span>,</span>
+<span>  max_queries <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  record_stage <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">record</span>, <span class="va">output</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="va">record</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">

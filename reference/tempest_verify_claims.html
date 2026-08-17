@@ -62,7 +62,8 @@
 
 <dl><dt id="arg-workspace">workspace<a class="anchor" aria-label="anchor" href="#arg-workspace"></a></dt>
 <dd><p>A <a href="ResearchWorkspace.html">ResearchWorkspace</a> holding proposed claims and retrieved
-sources.</p></dd>
+sources, or a <code>TempestSession</code> whose authoritative workspace and bound
+verification program should be used.</p></dd>
 
 
 <dt id="arg-verifier">verifier<a class="anchor" aria-label="anchor" href="#arg-verifier"></a></dt>
@@ -81,7 +82,9 @@ sources.</p></dd>
 <dt id="arg-program-set">program_set<a class="anchor" aria-label="anchor" href="#arg-program-set"></a></dt>
 <dd><p>A <a href="TempestProgramSet.html">TempestProgramSet</a> containing the exact
 <code>verify_claim_support</code> program. If <code>NULL</code>, <code><a href="tempest_program_set.html">tempest_program_set()</a></code> creates
-the builtin set.</p></dd>
+the builtin set. When <code>workspace</code> is a <code>TempestSession</code>, its immutable
+ProgramSet, citation policy, and support threshold are authoritative;
+supplied values must match.</p></dd>
 
 
 <dt id="arg-min-support-score">min_support_score<a class="anchor" aria-label="anchor" href="#arg-min-support-score"></a></dt>
@@ -92,6 +95,9 @@ considered supported.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>citation_audit</code> tibble (one row per verified claim).</p>
+<p>Passing a standalone <a href="ResearchWorkspace.html">ResearchWorkspace</a> returns an audit but does not own a
+durable product stage ledger. Pass the <code>TempestSession</code> for Co-STORM bundles
+so claim updates, audit rows, and verification records commit together.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

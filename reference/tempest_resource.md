@@ -64,7 +64,7 @@ tempest_resource(
 - scope_metadata:
 
   Serializable tenant or project scope metadata. Credential-like field
-  names are rejected recursively.
+  names and values are rejected recursively.
 
 - content_hash:
 
@@ -77,18 +77,18 @@ tempest_resource(
 
 - redaction:
 
-  Serializable redaction metadata. Credential-like field names are
-  rejected recursively.
+  Serializable redaction metadata. Credential-like field names and
+  values are rejected recursively.
 
 - retention:
 
-  Serializable retention metadata. Credential-like field names are
-  rejected recursively.
+  Serializable retention metadata. Credential-like field names and
+  values are rejected recursively.
 
 - metadata:
 
-  Serializable namespaced host metadata. Credential-like field names are
-  rejected recursively.
+  Serializable namespaced host metadata. Credential-like field names and
+  values are rejected recursively.
 
 - schema_version:
 

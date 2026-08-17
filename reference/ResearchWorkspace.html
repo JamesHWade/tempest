@@ -114,6 +114,9 @@ knowledge snapshot on which this workspace is based.</p></dd>
 <li><p><a href="#method-ResearchWorkspace-list_retrieved_resources"><code>ResearchWorkspace$list_retrieved_resources()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-list_retrieved_sources"><code>ResearchWorkspace$list_retrieved_sources()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-add_proposed_claim"><code>ResearchWorkspace$add_proposed_claim()</code></a></p></li>
+<li><p><a href="#method-ResearchWorkspace-add_proposed_claims"><code>ResearchWorkspace$add_proposed_claims()</code></a></p></li>
+<li><p><a href="#method-ResearchWorkspace-add_extracted_claim_batch"><code>ResearchWorkspace$add_extracted_claim_batch()</code></a></p></li>
+<li><p><a href="#method-ResearchWorkspace-verify_proposed_claims_batch"><code>ResearchWorkspace$verify_proposed_claims_batch()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-get_proposed_claim"><code>ResearchWorkspace$get_proposed_claim()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-list_proposed_claims"><code>ResearchWorkspace$list_proposed_claims()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-proposed_claims_for_resource"><code>ResearchWorkspace$proposed_claims_for_resource()</code></a></p></li>
@@ -128,6 +131,7 @@ knowledge snapshot on which this workspace is based.</p></dd>
 <li><p><a href="#method-ResearchWorkspace-record_accepted_graft_reference"><code>ResearchWorkspace$record_accepted_graft_reference()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-list_accepted_graft_references"><code>ResearchWorkspace$list_accepted_graft_references()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-set_citation_audit"><code>ResearchWorkspace$set_citation_audit()</code></a></p></li>
+<li><p><a href="#method-ResearchWorkspace-validate_integrity"><code>ResearchWorkspace$validate_integrity()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-to_tibbles"><code>ResearchWorkspace$to_tibbles()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-clone"><code>ResearchWorkspace$clone()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-ResearchWorkspace-initialize"></a><div class="section">
@@ -262,13 +266,84 @@ internal built-in web-source record.</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-ResearchWorkspace-add_proposed_claims"></a><div class="section">
+<h3 id="researchworkspace-add-proposed-claims-"><code>ResearchWorkspace$add_proposed_claims()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-add-proposed-claims-"></a></h3>
+<p>Atomically add proposed claim records to the workspace.</p><div class="section">
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">add_proposed_claims</span><span class="op">(</span><span class="va">claims</span>, commit <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>claims</code></dt>
+<dd><p>A list of <code>tempest_claim</code> S7 records.</p></dd>
+
+      <dt><code>commit</code></dt>
+<dd><p>Optional zero-argument callback committed with the batch.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-ResearchWorkspace-add_extracted_claim_batch"></a><div class="section">
+<h3 id="researchworkspace-add-extracted-claim-batch-"><code>ResearchWorkspace$add_extracted_claim_batch()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-add-extracted-claim-batch-"></a></h3>
+<p>Atomically add extracted evidence spans and claims.</p><div class="section">
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">add_extracted_claim_batch</span><span class="op">(</span></span>
+<span>  <span class="va">claims</span>,</span>
+<span>  evidence_spans <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  commit <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>claims</code></dt>
+<dd><p>A list of <code>tempest_claim</code> S7 records.</p></dd>
+
+      <dt><code>evidence_spans</code></dt>
+<dd><p>A list of <code>tempest_evidence_span</code> S7 records.</p></dd>
+
+      <dt><code>commit</code></dt>
+<dd><p>Optional zero-argument callback committed with the batch.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-ResearchWorkspace-verify_proposed_claims_batch"></a><div class="section">
+<h3 id="researchworkspace-verify-proposed-claims-batch-"><code>ResearchWorkspace$verify_proposed_claims_batch()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-verify-proposed-claims-batch-"></a></h3>
+<p>Atomically verify proposed claims and set their audit.</p><div class="section">
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">verify_proposed_claims_batch</span><span class="op">(</span></span>
+<span>  <span class="va">verifications</span>,</span>
+<span>  <span class="va">citation_audit</span>,</span>
+<span>  commit <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>verifications</code></dt>
+<dd><p>A list of claim-verification update records.</p></dd>
+
+      <dt><code>citation_audit</code></dt>
+<dd><p>The complete claim-centered citation audit.</p></dd>
+
+      <dt><code>commit</code></dt>
+<dd><p>Optional zero-argument callback committed with the batch.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-ResearchWorkspace-get_proposed_claim"></a><div class="section">
 <h3 id="researchworkspace-get-proposed-claim-"><code>ResearchWorkspace$get_proposed_claim()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-get-proposed-claim-"></a></h3>
 <p>Get a proposed claim by id.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">get_proposed_claim</span><span class="op">(</span><span class="va">claim_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim_id</code></dt>
 <dd><p>The claim id.</p></dd>
 
@@ -281,7 +356,7 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-list_proposed_claims"></a><div class="section">
 <h3 id="researchworkspace-list-proposed-claims-"><code>ResearchWorkspace$list_proposed_claims()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-list-proposed-claims-"></a></h3>
 <p>List all proposed claims.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">list_proposed_claims</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -290,10 +365,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-proposed_claims_for_resource"></a><div class="section">
 <h3 id="researchworkspace-proposed-claims-for-resource-"><code>ResearchWorkspace$proposed_claims_for_resource()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-proposed-claims-for-resource-"></a></h3>
 <p>Proposed claims that cite a retrieved resource.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">proposed_claims_for_resource</span><span class="op">(</span><span class="va">resource_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>resource_id</code></dt>
 <dd><p>Resource id.</p></dd>
 
@@ -306,10 +381,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-add_evidence_span"></a><div class="section">
 <h3 id="researchworkspace-add-evidence-span-"><code>ResearchWorkspace$add_evidence_span()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-add-evidence-span-"></a></h3>
 <p>Add an evidence span.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">add_evidence_span</span><span class="op">(</span><span class="va">span</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>span</code></dt>
 <dd><p>A <code>tempest_evidence_span</code> S7 record.</p></dd>
 
@@ -322,10 +397,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-get_evidence_span"></a><div class="section">
 <h3 id="researchworkspace-get-evidence-span-"><code>ResearchWorkspace$get_evidence_span()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-get-evidence-span-"></a></h3>
 <p>Get an evidence span by id.</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">get_evidence_span</span><span class="op">(</span><span class="va">span_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>span_id</code></dt>
 <dd><p>Evidence span id.</p></dd>
 
@@ -338,7 +413,7 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-list_evidence_spans"></a><div class="section">
 <h3 id="researchworkspace-list-evidence-spans-"><code>ResearchWorkspace$list_evidence_spans()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-list-evidence-spans-"></a></h3>
 <p>List all evidence spans in deterministic id order.</p><div class="section">
-<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">list_evidence_spans</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -347,10 +422,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-link_evidence_to_proposed_claim"></a><div class="section">
 <h3 id="researchworkspace-link-evidence-to-proposed-claim-"><code>ResearchWorkspace$link_evidence_to_proposed_claim()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-link-evidence-to-proposed-claim-"></a></h3>
 <p>Link an evidence span to a claim.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">link_evidence_to_proposed_claim</span><span class="op">(</span><span class="va">claim_id</span>, <span class="va">span_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim_id</code></dt>
 <dd><p>Claim id.</p></dd>
 
@@ -366,10 +441,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-get_evidence_for_proposed_claim"></a><div class="section">
 <h3 id="researchworkspace-get-evidence-for-proposed-claim-"><code>ResearchWorkspace$get_evidence_for_proposed_claim()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-get-evidence-for-proposed-claim-"></a></h3>
 <p>Evidence spans linked to a claim.</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">get_evidence_for_proposed_claim</span><span class="op">(</span><span class="va">claim_id</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim_id</code></dt>
 <dd><p>Claim id.</p></dd>
 
@@ -382,7 +457,7 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-verify_proposed_claim"></a><div class="section">
 <h3 id="researchworkspace-verify-proposed-claim-"><code>ResearchWorkspace$verify_proposed_claim()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-verify-proposed-claim-"></a></h3>
 <p>Update a claim's verification status.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">verify_proposed_claim</span><span class="op">(</span></span>
 <span>  <span class="va">claim_id</span>,</span>
 <span>  <span class="va">status</span>,</span>
@@ -390,7 +465,7 @@ internal built-in web-source record.</p></dd>
 <span>  verifier <span class="op">=</span> <span class="cn">NA_character_</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
+<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claim_id</code></dt>
 <dd><p>Claim id.</p></dd>
 
@@ -412,10 +487,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-add_dispute"></a><div class="section">
 <h3 id="researchworkspace-add-dispute-"><code>ResearchWorkspace$add_dispute()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-add-dispute-"></a></h3>
 <p>Add a dispute.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">add_dispute</span><span class="op">(</span><span class="va">dispute</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
+<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>dispute</code></dt>
 <dd><p>A <code>tempest_dispute</code> S7 record.</p></dd>
 
@@ -428,7 +503,7 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-list_disputes"></a><div class="section">
 <h3 id="researchworkspace-list-disputes-"><code>ResearchWorkspace$list_disputes()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-list-disputes-"></a></h3>
 <p>List all disputes.</p><div class="section">
-<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
+<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">list_disputes</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -437,10 +512,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-record_accepted_graft_reference"></a><div class="section">
 <h3 id="researchworkspace-record-accepted-graft-reference-"><code>ResearchWorkspace$record_accepted_graft_reference()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-record-accepted-graft-reference-"></a></h3>
 <p>Record a reference to accepted graft knowledge.</p><div class="section">
-<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
+<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">record_accepted_graft_reference</span><span class="op">(</span><span class="va">reference</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
+<h4 id="arguments-17">Arguments<a class="anchor" aria-label="anchor" href="#arguments-17"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>reference</code></dt>
 <dd><p>Opaque canonical JSON-compatible graft reference.</p></dd>
 
@@ -453,7 +528,7 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-list_accepted_graft_references"></a><div class="section">
 <h3 id="researchworkspace-list-accepted-graft-references-"><code>ResearchWorkspace$list_accepted_graft_references()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-list-accepted-graft-references-"></a></h3>
 <p>List accepted graft references deterministically.</p><div class="section">
-<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
+<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">list_accepted_graft_references</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -462,10 +537,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-set_citation_audit"></a><div class="section">
 <h3 id="researchworkspace-set-citation-audit-"><code>ResearchWorkspace$set_citation_audit()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-set-citation-audit-"></a></h3>
 <p>Record the latest claim-centered citation audit.</p><div class="section">
-<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
+<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">set_citation_audit</span><span class="op">(</span><span class="va">citation_audit</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
+<h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>citation_audit</code></dt>
 <dd><p>A citation-audit data frame, or <code>NULL</code> to clear it.</p></dd>
 
@@ -475,10 +550,19 @@ internal built-in web-source record.</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-ResearchWorkspace-validate_integrity"></a><div class="section">
+<h3 id="researchworkspace-validate-integrity-"><code>ResearchWorkspace$validate_integrity()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-validate-integrity-"></a></h3>
+<p>Validate all authoritative workspace cross-record links.</p><div class="section">
+<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">validate_integrity</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-ResearchWorkspace-to_tibbles"></a><div class="section">
 <h3 id="researchworkspace-to-tibbles-"><code>ResearchWorkspace$to_tibbles()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-to-tibbles-"></a></h3>
 <p>Convert sources, claims, and disputes to tibbles.</p><div class="section">
-<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
+<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">to_tibbles</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -487,10 +571,10 @@ internal built-in web-source record.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-clone"></a><div class="section">
 <h3 id="researchworkspace-clone-"><code>ResearchWorkspace$clone()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
+<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
+<h4 id="arguments-19">Arguments<a class="anchor" aria-label="anchor" href="#arguments-19"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

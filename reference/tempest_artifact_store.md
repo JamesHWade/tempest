@@ -71,7 +71,7 @@ artifact <- tempest_artifact(spec, content = "# Report")
 store$write(artifact)
 store$read(artifact@artifact_id)
 #> <tempest::tempest_artifact>
-#>  @ artifact_id          : chr "artifact_65fdf6892b7f4d03"
+#>  @ artifact_id          : chr "artifact_ecd0c99fa60e4742"
 #>  @ deliverable_id       : chr "report"
 #>  @ deliverable_version  : chr "1"
 #>  @ spec_fingerprint     : chr "c34c9d934526738c62ad2db702339f587bd7cd48ea38ffcb6547751480e6e060"
@@ -91,7 +91,7 @@ store$read(artifact@artifact_id)
 #>  @ validation_results   : list()
 #>  @ status               : chr "draft"
 #>  @ checksum             : chr "04e1d1467e73933d8841c0c22eca9710ee72d020f5d494b091d68d4d2efea89d"
-#>  @ created_at           : chr "2026-08-16 07:01:59 UTC"
-#>  @ updated_at           : chr "2026-08-16 07:01:59 UTC"
+#>  @ created_at           : chr "2026-08-17T00:13:47.110993Z"
+#>  @ updated_at           : chr "2026-08-17T00:13:47.110993Z"
 #>  @ metadata             : list()
 ```

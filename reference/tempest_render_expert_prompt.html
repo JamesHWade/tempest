@@ -46,7 +46,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_render_expert_prompt</span><span class="op">(</span>persona <span class="op">=</span> <span class="cn">NULL</span>, expert_id <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_render_expert_prompt</span><span class="op">(</span><span class="va">persona</span>, expert_id <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -54,11 +54,11 @@
 
 
 <dl><dt id="arg-persona">persona<a class="anchor" aria-label="anchor" href="#arg-persona"></a></dt>
-<dd><p>A persona object, or NULL for a generic expert.</p></dd>
+<dd><p>A validated expert profile.</p></dd>
 
 
 <dt id="arg-expert-id">expert_id<a class="anchor" aria-label="anchor" href="#arg-expert-id"></a></dt>
-<dd><p>Fallback expert ID if no persona provided.</p></dd>
+<dd><p>Expert ID used in the rendered prompt.</p></dd>
 
 </dl></div>
     <div class="section level2">

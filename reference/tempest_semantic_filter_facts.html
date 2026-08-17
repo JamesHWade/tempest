@@ -49,7 +49,13 @@ them back to facts. Falls back to keyword filtering otherwise.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_semantic_filter_facts</span><span class="op">(</span><span class="va">retriever</span>, <span class="va">query</span>, <span class="va">store</span>, max_items <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_semantic_filter_facts</span><span class="op">(</span></span>
+<span>  <span class="va">retriever</span>,</span>
+<span>  <span class="va">query</span>,</span>
+<span>  <span class="va">store</span>,</span>
+<span>  max_items <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>  min_support_score <span class="op">=</span> <span class="fl">0.7</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">

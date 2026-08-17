@@ -16,4 +16,4 @@ tempest_make_dsprrr_modules(config)
 
 ## Value
 
-A named list of dsprrr modules, or `NULL` if module creation fails.
+A named list containing every fixed-stage dsprrr module.

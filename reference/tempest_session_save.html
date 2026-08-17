@@ -73,11 +73,13 @@
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_session_save()</code> writes a schema-versioned directory bundle for a
 <a href="TempestSession.html">TempestSession</a>. The bundle stores the research manifest, authoritative
-workspace, optional immutable Graft snapshot, and narrow report product.
-Every declared file is checksummed, and the <code>session.json</code> manifest is
-written last. Generic workflow and artifact-catalog state, live chat handles,
-registered tool closures, Shiny reactive state, credentials, and raw provider
-request bodies are not serialized.</p>
+workspace, explicit stage-record history, optional immutable Graft snapshot,
+and narrow report product. Every declared file is checksummed, and the
+<code>session.json</code> manifest is written last. Generic workflow and
+artifact-catalog state, live chat handles, registered tool closures, Shiny
+reactive state, credentials, and raw provider request bodies are not
+serialized. A stage attempt that is still running is written as cancelled
+without changing the live session.</p>
 <p>Use <code><a href="tempest_session_resume.html">tempest_session_resume()</a></code> to load the bundle with a fresh runtime
 <a href="TempestConfig.html">TempestConfig</a>.</p>
     </div>

@@ -18,6 +18,7 @@ tempest_research_one_perspective(
   research_strategy,
   max_questions_per_perspective,
   programs,
-  run_id = NA_character_
+  run_id = NA_character_,
+  record_stage = function(record, output = NULL) invisible(record)
 )
 ```

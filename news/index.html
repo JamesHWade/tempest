@@ -47,11 +47,15 @@
 <li>
 <code><a href="../reference/tempest_program_set.html">tempest_program_set()</a></code>, <code><a href="../reference/tempest_compile_programs.html">tempest_compile_programs()</a></code>, <code><a href="../reference/tempest_save_program_set.html">tempest_save_program_set()</a></code>, and <code><a href="../reference/tempest_load_program_set.html">tempest_load_program_set()</a></code> make all ten STORM and Co-STORM stage programs explicitly addressable, preserve exact dsprrr artifact and evaluator identities, and fail closed on incomplete, corrupt, or mismatched program bundles. <code><a href="../reference/tempest_run.html">tempest_run()</a></code>, <code><a href="../reference/tempest_session.html">tempest_session()</a></code>, session restore/resume, and <code><a href="../reference/tempest_shiny_server.html">tempest_shiny_server()</a></code> accept and verify the ProgramSet before any stage executes.</li>
 <li>
+<code><a href="../reference/tempest_report_md.html">tempest_report_md()</a></code> and Co-STORM report rendering now preserve canonical titles and citation-policy validation when callers omit the rendered References section.</li>
+<li>
 <code><a href="../reference/tempest_research_manifest.html">tempest_research_manifest()</a></code> records the stable run, configuration, program, knowledge-snapshot, runtime, trace, and deliverable identities for STORM and Co-STORM without serializing runtime objects or credentials (04zh).</li>
 <li>
 <code><a href="../reference/tempest_research_workspace.html">tempest_research_workspace()</a></code> and <code>ResearchWorkspace</code> define the canonical provisional run-scoped evidence boundary, including an optional real path-free <code>graft::GraftSnapshot</code>, its complete scalar identity, and accepted Graft references (04zh).</li>
 <li>
 <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> expose correlated research manifests and authoritative workspaces using only the canonical 0.2 product vocabulary (04zh).</li>
+<li>
+<code><a href="../reference/tempest_run.html">tempest_run()</a></code> and <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now persist explicit product-owned execution records for every typed stage, reject unbound or malformed provider output before it can alter scientific state, commit extracted evidence and verification atomically, disclose every failure, cancellation, and fallback in the final report, and permit publication trust only when exact program, trace, claim, evidence-span, and verification provenance can be reconstructed.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="tempest-010">tempest 0.1.0<a class="anchor" aria-label="anchor" href="#tempest-010"></a></h2>

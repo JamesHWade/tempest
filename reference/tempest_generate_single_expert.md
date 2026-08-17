@@ -5,7 +5,14 @@ Generate a single expert profile for a specific area
 ## Usage
 
 ``` r
-tempest_generate_single_expert(topic, area, existing_experts, config)
+tempest_generate_single_expert(
+  topic,
+  area,
+  existing_experts,
+  config,
+  module,
+  record_stage = function(record, output = NULL) invisible(record)
+)
 ```
 
 ## Arguments
@@ -25,6 +32,14 @@ tempest_generate_single_expert(topic, area, existing_experts, config)
 - config:
 
   A `TempestConfig` object.
+
+- module:
+
+  ProgramSet-bound persona execution.
+
+- record_stage:
+
+  Product-owned stage-record callback.
 
 ## Value
 

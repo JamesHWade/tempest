@@ -89,7 +89,9 @@ snapshot created by <code><a href="tempest_session_snapshot.html">tempest_sessio
 authoritative workspace, and creates fresh chat/tool handles using <code>config</code>.</p>
 <p>Historical progress events are restored as session artifact data and can be
 reduced with <code><a href="tempest_progress_state.html">tempest_progress_state()</a></code>. They are not replayed into the new
-<code>progress</code> callback; future calls on the restored session use that callback.</p>
+<code>progress</code> callback; future calls on the restored session use that callback.
+Stage-record history is restored for audit, but running attempts are rejected
+rather than resumed.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

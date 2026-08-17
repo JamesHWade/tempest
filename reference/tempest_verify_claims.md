@@ -21,7 +21,9 @@ tempest_verify_claims(
 
   A
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  holding proposed claims and retrieved sources.
+  holding proposed claims and retrieved sources, or a `TempestSession`
+  whose authoritative workspace and bound verification program should be
+  used.
 
 - verifier:
 
@@ -42,7 +44,9 @@ tempest_verify_claims(
   [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
   containing the exact `verify_claim_support` program. If `NULL`,
   [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md)
-  creates the builtin set.
+  creates the builtin set. When `workspace` is a `TempestSession`, its
+  immutable ProgramSet, citation policy, and support threshold are
+  authoritative; supplied values must match.
 
 - min_support_score:
 
@@ -52,3 +56,9 @@ tempest_verify_claims(
 ## Value
 
 A `citation_audit` tibble (one row per verified claim).
+
+Passing a standalone
+[ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+returns an audit but does not own a durable product stage ledger. Pass
+the `TempestSession` for Co-STORM bundles so claim updates, audit rows,
+and verification records commit together.

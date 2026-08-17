@@ -106,7 +106,8 @@ Create a new ExpertSessionManager.
       extract_claims_program = NULL,
       workspace = NULL,
       progress = NULL,
-      run_id = NULL
+      run_id = NULL,
+      stage_recorder = NULL
     )
 
 #### Arguments
@@ -153,6 +154,10 @@ Create a new ExpertSessionManager.
 - `run_id`:
 
   Shared Co-STORM session id for progress events.
+
+- `stage_recorder`:
+
+  Optional callback accepting a stage record and its evaluated output.
 
 ------------------------------------------------------------------------
 
@@ -240,7 +245,8 @@ Extract facts from an expert response.
 
 - `session_id`:
 
-  Optional expert session id.
+  Optional manager-owned expert session id. This is delegation metadata
+  only; extracted claims use the manager's exact research run id.
 
 - `expert_id`:
 

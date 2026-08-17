@@ -57,4 +57,5 @@ Historical progress events are restored as session artifact data and can
 be reduced with
 [`tempest_progress_state()`](https://jameshwade.github.io/tempest/reference/tempest_progress_state.md).
 They are not replayed into the new `progress` callback; future calls on
-the restored session use that callback.
+the restored session use that callback. Stage-record history is restored
+for audit, but running attempts are rejected rather than resumed.

@@ -223,16 +223,20 @@ requires verified claims:</p>
 <code>"source_attributed"</code> converts known inline source IDs to
 footnotes without verifying the claims;</li>
 <li>
-<code>"claim_verified"</code> runs claim verification and adds
-verification status to the final references; and</li>
+<code>"claim_verified"</code> runs the exact verifier ProgramSet
+stage, atomically records its claim and citation audit result, and
+exposes that support status in the final references; and</li>
 <li>
-<code>"strict"</code> also applies the configured unsupported-claim
-behavior to inline citations.</li>
+<code>"strict"</code> fails publication unless each publishable
+assertion is bound to a completed, provenance-bound verification result
+at the configured threshold and cites that claim’s exact source
+set.</li>
 </ul>
 <p>Use <code>min_support_score</code> in <code><a href="../reference/tempest_config.html">tempest_config()</a></code>
 to set the verification threshold. Under the <code>"strict"</code>
 policy, <code>on_unsupported_claim</code> controls whether weak claims
-are flagged, dropped, revised, or retained with a warning.</p>
+are flagged, dropped, revised, or retained with an explicit warning.
+They are never presented as unmarked verified facts.</p>
 </div>
 <div class="section level2">
 <h2 id="resume-a-staged-run">Resume a staged run<a class="anchor" aria-label="anchor" href="#resume-a-staged-run"></a>
@@ -254,6 +258,12 @@ configuration, output directory, and run ID:</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.</p>
+<p>Every typed attempt is saved with its exact stage, program,
+evaluator, trace, support decision, and fallback path. Structured output
+is validated as a whole before product state changes. A resumed running
+attempt is recorded as cancelled, and the final report adds a
+deterministic <code>Execution review</code> for failed, cancelled,
+policy-fallback, or nonverified grounded outcomes.</p>
 </div>
 <div class="section level2">
 <h2 id="supply-your-own-expert-team">Supply your own expert team<a class="anchor" aria-label="anchor" href="#supply-your-own-expert-team"></a>

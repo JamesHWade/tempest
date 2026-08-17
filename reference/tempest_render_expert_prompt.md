@@ -5,18 +5,18 @@ Render Expert System Prompt for a Persona
 ## Usage
 
 ``` r
-tempest_render_expert_prompt(persona = NULL, expert_id = 1)
+tempest_render_expert_prompt(persona, expert_id = NULL)
 ```
 
 ## Arguments
 
 - persona:
 
-  A persona object, or NULL for a generic expert.
+  A validated expert profile.
 
 - expert_id:
 
-  Fallback expert ID if no persona provided.
+  Expert ID used in the rendered prompt.
 
 ## Value
 

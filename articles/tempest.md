@@ -146,16 +146,19 @@ claims:
 
 - `"source_attributed"` converts known inline source IDs to footnotes
   without verifying the claims;
-- `"claim_verified"` runs claim verification and adds verification
-  status to the final references; and
-- `"strict"` also applies the configured unsupported-claim behavior to
-  inline citations.
+- `"claim_verified"` runs the exact verifier ProgramSet stage,
+  atomically records its claim and citation audit result, and exposes
+  that support status in the final references; and
+- `"strict"` fails publication unless each publishable assertion is
+  bound to a completed, provenance-bound verification result at the
+  configured threshold and cites that claim’s exact source set.
 
 Use `min_support_score` in
 [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
 to set the verification threshold. Under the `"strict"` policy,
 `on_unsupported_claim` controls whether weak claims are flagged,
-dropped, revised, or retained with a warning.
+dropped, revised, or retained with an explicit warning. They are never
+presented as unmarked verified facts.
 
 ## Resume a staged run
 
@@ -180,6 +183,13 @@ result <- tempest_run(
 
 Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.
+
+Every typed attempt is saved with its exact stage, program, evaluator,
+trace, support decision, and fallback path. Structured output is
+validated as a whole before product state changes. A resumed running
+attempt is recorded as cancelled, and the final report adds a
+deterministic `Execution review` for failed, cancelled, policy-fallback,
+or nonverified grounded outcomes.
 
 ## Supply your own expert team
 

@@ -67,14 +67,15 @@
 of the durable state in a <a href="TempestSession.html">TempestSession</a>. It includes the research
 manifest; fixed session and configuration identity; the authoritative
 <a href="ResearchWorkspace.html">ResearchWorkspace</a>; expert profiles; transcript and mind map; the latest
-report Markdown; progress-event and expert-session metadata; and the optional
-immutable Graft snapshot. Live chat
+report Markdown; stage-record, progress-event, and expert-session metadata;
+and the optional immutable Graft snapshot. Live chat
 handles, runtime clients, tools, closures, generic workflows, generic
 artifact catalogs, Shiny reactive state, credentials, and provider request
 bodies are not included.</p>
 <p>Use <code><a href="tempest_session_restore.html">tempest_session_restore()</a></code> to rebuild a session from the returned list,
 or <code><a href="tempest_session_save.html">tempest_session_save()</a></code> to write the same durable state to a directory
-bundle.</p>
+bundle. A stage attempt that is still running is projected to a cancelled
+durable record without changing the live session.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

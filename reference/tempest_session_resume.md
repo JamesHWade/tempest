@@ -7,7 +7,8 @@ and rebuilds a
 with a fresh runtime
 [TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md).
 Historical progress events are loaded for display and reduction, but
-they are not replayed into `progress`.
+they are not replayed into `progress`. Stage-record history is restored
+for audit, but running attempts are rejected rather than resumed.
 
 ## Usage
 
@@ -41,8 +42,8 @@ tempest_session_resume(
 
   Whether to allow explicitly requested recovery when allowlisted
   presentation files are missing or fail integrity checks. All other
-  declared files, including expert, workspace, report, and Graft
-  snapshot state, must pass integrity checks.
+  declared files, including stage-record, expert, workspace, report, and
+  Graft snapshot state, must pass integrity checks.
 
 - program_set:
 

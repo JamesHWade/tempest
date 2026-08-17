@@ -68,6 +68,12 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$add_proposed_claim()`](#method-ResearchWorkspace-add_proposed_claim)
 
+- [`ResearchWorkspace$add_proposed_claims()`](#method-ResearchWorkspace-add_proposed_claims)
+
+- [`ResearchWorkspace$add_extracted_claim_batch()`](#method-ResearchWorkspace-add_extracted_claim_batch)
+
+- [`ResearchWorkspace$verify_proposed_claims_batch()`](#method-ResearchWorkspace-verify_proposed_claims_batch)
+
 - [`ResearchWorkspace$get_proposed_claim()`](#method-ResearchWorkspace-get_proposed_claim)
 
 - [`ResearchWorkspace$list_proposed_claims()`](#method-ResearchWorkspace-list_proposed_claims)
@@ -95,6 +101,8 @@ acceptance remains an explicit graft review and commit.
 - [`ResearchWorkspace$list_accepted_graft_references()`](#method-ResearchWorkspace-list_accepted_graft_references)
 
 - [`ResearchWorkspace$set_citation_audit()`](#method-ResearchWorkspace-set_citation_audit)
+
+- [`ResearchWorkspace$validate_integrity()`](#method-ResearchWorkspace-validate_integrity)
 
 - [`ResearchWorkspace$to_tibbles()`](#method-ResearchWorkspace-to_tibbles)
 
@@ -236,6 +244,82 @@ Add a proposed claim record to the workspace.
 - `claim`:
 
   A `tempest_claim` S7 record.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$add_proposed_claims()`
+
+Atomically add proposed claim records to the workspace.
+
+#### Usage
+
+    ResearchWorkspace$add_proposed_claims(claims, commit = NULL)
+
+#### Arguments
+
+- `claims`:
+
+  A list of `tempest_claim` S7 records.
+
+- `commit`:
+
+  Optional zero-argument callback committed with the batch.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$add_extracted_claim_batch()`
+
+Atomically add extracted evidence spans and claims.
+
+#### Usage
+
+    ResearchWorkspace$add_extracted_claim_batch(
+      claims,
+      evidence_spans = list(),
+      commit = NULL
+    )
+
+#### Arguments
+
+- `claims`:
+
+  A list of `tempest_claim` S7 records.
+
+- `evidence_spans`:
+
+  A list of `tempest_evidence_span` S7 records.
+
+- `commit`:
+
+  Optional zero-argument callback committed with the batch.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$verify_proposed_claims_batch()`
+
+Atomically verify proposed claims and set their audit.
+
+#### Usage
+
+    ResearchWorkspace$verify_proposed_claims_batch(
+      verifications,
+      citation_audit,
+      commit = NULL
+    )
+
+#### Arguments
+
+- `verifications`:
+
+  A list of claim-verification update records.
+
+- `citation_audit`:
+
+  The complete claim-centered citation audit.
+
+- `commit`:
+
+  Optional zero-argument callback committed with the batch.
 
 ------------------------------------------------------------------------
 
@@ -457,6 +541,16 @@ Record the latest claim-centered citation audit.
 - `citation_audit`:
 
   A citation-audit data frame, or `NULL` to clear it.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$validate_integrity()`
+
+Validate all authoritative workspace cross-record links.
+
+#### Usage
+
+    ResearchWorkspace$validate_integrity()
 
 ------------------------------------------------------------------------
 

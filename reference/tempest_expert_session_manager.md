@@ -15,7 +15,8 @@ tempest_expert_session_manager(
   extract_claims_program = NULL,
   workspace = NULL,
   progress = NULL,
-  run_id = NULL
+  run_id = NULL,
+  stage_recorder = NULL
 )
 ```
 
@@ -67,6 +68,10 @@ tempest_expert_session_manager(
 - run_id:
 
   Optional shared workflow run id.
+
+- stage_recorder:
+
+  Optional callback accepting a stage record and its evaluated output.
 
 ## Value
 

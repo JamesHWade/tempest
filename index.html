@@ -409,6 +409,7 @@
 <span>  resume <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Each run directory includes checksummed JSON state for perspectives, experts, sources, claims, outlines, and references; Markdown drafts; and the final Markdown report.</p>
+<p>Every typed ProgramSet attempt also has a durable record of its stage, program, evaluator, trace, support decision, and execution or fallback path. Tempest evaluates a complete structured output before changing product state, so malformed output cannot leave a partial update. On resume, persisted running attempts become cancelled records. Final reports append a deterministic <code>Execution review</code> when an attempt failed, was cancelled, used a policy fallback, or produced a grounded result that was not verified.</p>
 </div>
 <div class="section level3">
 <h3 id="pipeline-details">Pipeline Details<a class="anchor" aria-label="anchor" href="#pipeline-details"></a>
@@ -428,7 +429,7 @@
 <li>
 <strong>Lead section</strong> – a Wikipedia-style lead (2-3 paragraphs) is generated and prepended to the article.</li>
 <li>
-<strong>Parallel section writing</strong> – pass <code>parallel_writing = TRUE</code> to write report sections concurrently with mirai, then extract facts and assemble the article in deterministic outline order.</li>
+<strong>Parallel section writing</strong> – pass <code>parallel_writing = TRUE</code> to write report sections concurrently with mirai, then assemble the already-grounded sections and evidence in deterministic outline order.</li>
 <li>
 <strong>Governed dsprrr programs</strong> – every structured stage resolves an exact addressable program from a <code>TempestProgramSet</code>, including its verified dsprrr artifact ID, stage contract, and evaluator identity.</li>
 </ul>

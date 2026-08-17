@@ -135,7 +135,8 @@ claim-write provenance.</p></dd>
 <span>  extract_claims_program <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  run_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  run_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  stage_recorder <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
@@ -170,6 +171,10 @@ execution. Required when <code>extractor</code> is supplied.</p></dd>
 
       <dt><code>run_id</code></dt>
 <dd><p>Shared Co-STORM session id for progress events.</p></dd>
+
+      <dt><code>stage_recorder</code></dt>
+<dd><p>Optional callback accepting a stage record and its
+evaluated output.</p></dd>
 
 
 </dl><p></p></div>
@@ -247,7 +252,9 @@ execution. Required when <code>extractor</code> is supplied.</p></dd>
 <dd><p>Optional source ids already harvested for the turn.</p></dd>
 
       <dt><code>session_id</code></dt>
-<dd><p>Optional expert session id.</p></dd>
+<dd><p>Optional manager-owned expert session id. This is
+delegation metadata only; extracted claims use the manager's exact
+research run id.</p></dd>
 
       <dt><code>expert_id</code></dt>
 <dd><p>Optional stable expert id.</p></dd>

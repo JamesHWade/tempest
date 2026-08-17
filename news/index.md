@@ -30,6 +30,10 @@
   session restore/resume, and
   [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
   accept and verify the ProgramSet before any stage executes.
+- [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
+  and Co-STORM report rendering now preserve canonical titles and
+  citation-policy validation when callers omit the rendered References
+  section.
 - [`tempest_research_manifest()`](https://jameshwade.github.io/tempest/reference/tempest_research_manifest.md)
   records the stable run, configuration, program, knowledge-snapshot,
   runtime, trace, and deliverable identities for STORM and Co-STORM
@@ -44,6 +48,16 @@
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   expose correlated research manifests and authoritative workspaces
   using only the canonical 0.2 product vocabulary (04zh).
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  and
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  now persist explicit product-owned execution records for every typed
+  stage, reject unbound or malformed provider output before it can alter
+  scientific state, commit extracted evidence and verification
+  atomically, disclose every failure, cancellation, and fallback in the
+  final report, and permit publication trust only when exact program,
+  trace, claim, evidence-span, and verification provenance can be
+  reconstructed.
 
 ## tempest 0.1.0
 
