@@ -37,6 +37,7 @@ tempest_session_extract_facts_async <- function(
   } else {
     character()
   }
+  record_stage <- tempest_session_stage_recorder(session)
   request <- tempest_async_promise_try(function() {
     tempest_extract_facts_from_answer_async(
       session$chats$extractor,
@@ -47,7 +48,8 @@ tempest_session_extract_facts_async <- function(
       session_id = session_id,
       expert_id = expert_id,
       retrieval_step_id = correlation_id,
-      commit_if = is_current
+      commit_if = is_current,
+      record_stage = record_stage
     )
   })
   promises::then(
@@ -102,7 +104,7 @@ tempest_session_extract_facts_async <- function(
         correlation_id = event@correlation_id,
         payload = tempest_progress_error_payload(error)
       )
-      stop(error)
+      tempest_rethrow_operation(error, class = "tempest_session_error")
     }
   )
 }
@@ -262,6 +264,24 @@ tempest_session_update_mindmap_async <- function(
         return(NULL)
       }
       if (!is.null(mindmap$nodes) && length(mindmap$nodes) > 0L) {
+        mindmap <- tryCatch(
+          tempest_session_mindmap_validate_update(
+            mindmap,
+            session$workspace
+          ),
+          error = function(error) {
+            session$emit_progress(
+              "step",
+              "failed",
+              stage = "mindmap",
+              step = "update",
+              parent_event_id = event@event_id,
+              correlation_id = event@correlation_id,
+              payload = tempest_progress_error_payload(error)
+            )
+            tempest_rethrow_operation(error, class = "tempest_session_error")
+          }
+        )
         session$mindmap <- mindmap
       }
       session$emit_progress(
@@ -299,7 +319,7 @@ tempest_session_update_mindmap_async <- function(
         correlation_id = event@correlation_id,
         payload = tempest_progress_error_payload(error)
       )
-      stop(error)
+      tempest_rethrow_operation(error, class = "tempest_session_error")
     }
   )
 }
@@ -376,7 +396,7 @@ tempest_session_suggest_questions_async <- function(
         correlation_id = event@correlation_id,
         payload = tempest_progress_error_payload(error)
       )
-      stop(error)
+      tempest_rethrow_operation(error, class = "tempest_session_error")
     }
   )
 }
@@ -758,6 +778,18 @@ tempest_session_report_async <- function(
     step = "generate",
     payload = list(style = style, include_references = include_references)
   )
+  if (!tempest_async_is_current(is_current)) {
+    session$emit_progress(
+      "stage",
+      "cancelled",
+      stage = "report",
+      step = "generate",
+      parent_event_id = event@event_id,
+      correlation_id = event@correlation_id,
+      payload = list(reason = "stale_session")
+    )
+    return(promises::promise_resolve(NULL))
+  }
   plan <- tempest_costorm_report_plan(
     session,
     style,
@@ -812,6 +844,18 @@ tempest_session_report_async <- function(
   promises::catch(
     completed,
     onRejected = function(error) {
+      if (!tempest_async_is_current(is_current)) {
+        session$emit_progress(
+          "stage",
+          "cancelled",
+          stage = "report",
+          step = "generate",
+          parent_event_id = event@event_id,
+          correlation_id = event@correlation_id,
+          payload = list(reason = "stale_session")
+        )
+        return(NULL)
+      }
       session$emit_progress(
         "stage",
         "failed",
@@ -821,7 +865,7 @@ tempest_session_report_async <- function(
         correlation_id = event@correlation_id,
         payload = tempest_progress_error_payload(error)
       )
-      stop(error)
+      tempest_rethrow_operation(error, class = "tempest_session_error")
     }
   )
 }

@@ -1231,6 +1231,8 @@ ExpertSessionManager <- R6::R6Class(
     #' @param workspace Optional [ResearchWorkspace] for extracted facts.
     #' @param progress Optional progress callback.
     #' @param run_id Shared Co-STORM session id for progress events.
+    #' @param stage_recorder Optional callback accepting a stage record and its
+    #'   evaluated output.
     initialize = function(
       experts,
       runtime,
@@ -1241,7 +1243,8 @@ ExpertSessionManager <- R6::R6Class(
       extract_claims_program = NULL,
       workspace = NULL,
       progress = NULL,
-      run_id = NULL
+      run_id = NULL,
+      stage_recorder = NULL
     ) {
       experts <- tryCatch(
         tempest_validate_experts(experts, active_only = FALSE),
@@ -1306,6 +1309,12 @@ ExpertSessionManager <- R6::R6Class(
       self$workspace <- workspace
       self$progress <- tempest_progress_callback(progress)
       self$run_id <- run_id %||% tempest_uuid("session")
+      if (!is.null(stage_recorder) && !is.function(stage_recorder)) {
+        tempest_expert_session_abort(
+          "{.arg stage_recorder} must be a function or {.code NULL}."
+        )
+      }
+      private$stage_recorder_value <- stage_recorder
       invisible(self)
     },
 
@@ -1349,7 +1358,9 @@ ExpertSessionManager <- R6::R6Class(
     #' @param response Character string response from expert.
     #' @param turn Optional ellmer turn to inspect for provider-native sources.
     #' @param source_ids Optional source ids already harvested for the turn.
-    #' @param session_id Optional expert session id.
+    #' @param session_id Optional manager-owned expert session id. This is
+    #'   delegation metadata only; extracted claims use the manager's exact
+    #'   research run id.
     #' @param expert_id Optional stable expert id.
     #' @param correlation_id Optional progress correlation id for the turn.
     #' @return Invisibly returns NULL.
@@ -1401,9 +1412,10 @@ ExpertSessionManager <- R6::R6Class(
               self$workspace,
               module = self$extract_claims_program,
               source_ids = source_ids,
-              session_id = session_id,
+              session_id = self$run_id,
               expert_id = expert_id,
-              retrieval_step_id = correlation_id
+              retrieval_step_id = correlation_id,
+              record_stage = private$stage_recorder_value
             )
             self$emit_progress(
               "step",
@@ -1427,7 +1439,10 @@ ExpertSessionManager <- R6::R6Class(
               correlation_id = event@correlation_id,
               payload = tempest_progress_error_payload(e)
             )
-            stop(e)
+            tempest_rethrow_operation(
+              e,
+              class = "tempest_expert_session_error"
+            )
           }
         )
       }
@@ -1793,6 +1808,7 @@ ExpertSessionManager <- R6::R6Class(
     }
   ),
   private = list(
+    stage_recorder_value = NULL,
     expert_id = function(expert_id) {
       tryCatch(
         tempest_contract_id(expert_id, "expert_id"),
@@ -1909,7 +1925,7 @@ ExpertSessionManager <- R6::R6Class(
       }
       provenance <- new.env(parent = emptyenv())
       provenance$base <- list(
-        session_id = session_id,
+        session_id = self$run_id,
         expert_id = expert@expert_id
       )
       provenance$current <- list()
@@ -1949,8 +1965,7 @@ ExpertSessionManager <- R6::R6Class(
         ),
         error = function(error) {
           tempest_expert_session_abort(
-            "Expert {.val {expert@expert_id}} could not be resolved.",
-            parent = error
+            "Expert {.val {expert@expert_id}} could not be resolved."
           )
         }
       )
@@ -1965,8 +1980,7 @@ ExpertSessionManager <- R6::R6Class(
         self$runtime$attach(chat, resolution, context = context),
         error = function(error) {
           tempest_expert_session_abort(
-            "Expert {.val {expert@expert_id}} tools could not be attached.",
-            parent = error
+            "Expert {.val {expert@expert_id}} tools could not be attached."
           )
         }
       )
@@ -2053,6 +2067,8 @@ ExpertSessionManager <- R6::R6Class(
 #'   workspace.
 #' @param progress Optional progress callback.
 #' @param run_id Optional shared workflow run id.
+#' @param stage_recorder Optional callback accepting a stage record and its
+#'   evaluated output.
 #' @return An `ExpertSessionManager`.
 #' @keywords internal
 tempest_expert_session_manager <- function(
@@ -2065,7 +2081,8 @@ tempest_expert_session_manager <- function(
   extract_claims_program = NULL,
   workspace = NULL,
   progress = NULL,
-  run_id = NULL
+  run_id = NULL,
+  stage_recorder = NULL
 ) {
   ExpertSessionManager$new(
     experts = experts,
@@ -2077,7 +2094,8 @@ tempest_expert_session_manager <- function(
     extract_claims_program = extract_claims_program,
     workspace = workspace,
     progress = progress,
-    run_id = run_id
+    run_id = run_id,
+    stage_recorder = stage_recorder
   )
 }
 
@@ -2218,7 +2236,6 @@ tempest_create_expert_delegation_tool <- function(
 
     old_provenance <- provenance$current %||% list()
     provenance$current <- list(
-      session_id = sid,
       expert_id = expert@expert_id,
       retrieval_step_id = correlation_id
     )
@@ -2241,7 +2258,10 @@ tempest_create_expert_delegation_tool <- function(
             tempest_progress_error_payload(e)
           )
         )
-        stop(e)
+        tempest_rethrow_operation(
+          e,
+          class = "tempest_expert_session_error"
+        )
       },
       finally = {
         provenance$current <- old_provenance
@@ -2338,28 +2358,24 @@ tempest_create_expert_delegation_tool <- function(
 #' @param area The area of expertise needed.
 #' @param existing_experts Existing expert profiles to avoid duplicating.
 #' @param config A `TempestConfig` object.
+#' @param module ProgramSet-bound persona execution.
+#' @param record_stage Product-owned stage-record callback.
 #' @return A validated `tempest_expert` profile.
 #' @keywords internal
 tempest_generate_single_expert <- function(
   topic,
   area,
   existing_experts,
-  config
+  config,
+  module,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
-  tempest_require("ellmer", "Generating expert personas requires ellmer.")
   topic <- tempest_workflow_scalar(topic, "topic")
   area <- tempest_workflow_scalar(area, "area")
   existing_experts <- tempest_validate_experts(
     existing_experts,
     "existing_experts",
     active_only = FALSE
-  )
-
-  chat <- tempest_make_chat(
-    config,
-    "coordinator",
-    system_prompt = tempest_prompt("expert_generator_system"),
-    echo = "none"
   )
 
   existing_desc <- if (length(existing_experts) > 0) {
@@ -2382,108 +2398,35 @@ tempest_generate_single_expert <- function(
   } else {
     "(none)"
   }
-
-  type <- tempest_type_personas()
-  prompt <- paste0(
-    "Topic: ",
-    topic,
-    "\n\n",
+  requirements <- paste0(
     "Needed expertise: ",
     area,
-    "\n\n",
-    "Existing experts (do not duplicate):\n",
+    "\n\nExisting experts (do not duplicate):\n",
     existing_desc,
-    "\n\n",
-    "Generate exactly 1 expert persona to fill this knowledge gap.\n",
-    "Return structured data."
-  )
-
-  result <- tryCatch(
-    chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
-    error = function(e) {
-      tempest_warn(
-        "Failed to generate expert profile for {.val {area}}: {conditionMessage(e)}"
-      )
-      list(personas = list())
-    }
-  )
-  personas <- result$personas %||% list()
-  if (length(personas) == 0L || !is.list(personas[[1]])) {
-    tempest_warn("Using generic fallback expert for {.val {area}}.")
-    persona <- list()
-  } else {
-    persona <- personas[[1]]
-  }
-  scalar <- function(value, default) {
-    if (
-      !rlang::is_string(value) ||
-        is.na(value) ||
-        !nzchar(tempest_trim(value))
-    ) {
-      return(default)
-    }
-    tempest_trim(value)
-  }
-  characters <- function(value, default = character()) {
-    value <- unlist(value %||% character(), use.names = FALSE)
-    value <- as.character(value)
-    value <- unique(tempest_trim(value[!is.na(value)]))
-    value <- value[nzchar(value)]
-    if (length(value) == 0L) default else value
-  }
-  name <- scalar(persona$name, paste("Expert in", area))
-  title <- scalar(persona$title, area)
-  description <- scalar(
-    persona$perspective %||% persona$background,
-    paste("Specializes in", area)
-  )
-  background <- scalar(
-    persona$background,
-    paste("Expert in", area)
-  )
-  affiliation <- scalar(persona$affiliation, "Independent")
-  focus_areas <- characters(persona$focus_areas, area)
-  initial_questions <- characters(
-    persona$initial_questions,
-    paste(
-      "What are the key aspects of",
-      area,
-      "related to",
-      topic,
-      "?"
+    paste0(
+      "\n\nGenerate exactly one complementary expert persona for this ",
+      "knowledge gap."
     )
   )
-  expert_id <- tempest_generated_expert_id(
-    list(
+  expert <- tempest_generate_experts_with_program(
+    topic = topic,
+    n = 1L,
+    config = config,
+    verbose = FALSE,
+    module = module,
+    requirements = requirements,
+    record_stage = record_stage
+  )[[1]]
+  tempest_expert_update(
+    expert,
+    expert_id = tempest_generated_expert_id(list(
       kind = "dynamic",
       topic = topic,
       area = area
-    )
-  )
-
-  tempest_expert(
-    expert_id = expert_id,
-    name = name,
-    title = title,
-    description = description,
-    instructions = paste(
-      "Investigate the assigned question from the perspective of",
-      area,
-      "and preserve uncertainty and conflicting evidence."
-    ),
-    focus_areas = focus_areas,
-    required_capability_ids = c(
-      "tempest.research.web",
-      "tempest.evidence.read",
-      "tempest.evidence.write"
-    ),
-    optional_capability_ids = "tempest.retrieval.semantic",
-    model_role = "expert",
-    initial_questions = initial_questions,
-    metadata = list(
-      affiliation = affiliation,
-      background = background,
-      generated_for = list(topic = topic, area = area)
+    )),
+    metadata = utils::modifyList(
+      expert@metadata,
+      list(generated_for = list(topic = topic, area = area))
     )
   )
 }

@@ -20,8 +20,42 @@ tempest_dsprrr_execution_program <- function(program) {
 tempest_dsprrr_execution <- function(
   program,
   program_artifact_id,
-  trace_context
+  trace_context,
+  stage,
+  evaluator_id,
+  evaluator_version,
+  governed_procedure_revision_id = NULL
 ) {
+  stage <- tempest_program_set_string(stage, "stage")
+  if (!stage %in% tempest_program_set_stages()) {
+    tempest_ecosystem_contract_abort(
+      "{.arg stage} must identify an exact Tempest ProgramSet stage."
+    )
+  }
+  expected_evaluator <- tempest_program_set_default_evaluators()[[stage]]
+  evaluator_id <- tempest_program_set_string(evaluator_id, "evaluator_id")
+  evaluator_version <- tempest_program_set_string(
+    evaluator_version,
+    "evaluator_version"
+  )
+  if (
+    !identical(evaluator_id, expected_evaluator$evaluator_id) ||
+      !identical(evaluator_version, expected_evaluator$evaluator_version)
+  ) {
+    tempest_ecosystem_contract_abort(
+      "The stage execution references an unknown builtin evaluator contract."
+    )
+  }
+  governed_procedure_revision_id <- if (
+    is.null(governed_procedure_revision_id)
+  ) {
+    NULL
+  } else {
+    tempest_program_set_string(
+      governed_procedure_revision_id,
+      "governed_procedure_revision_id"
+    )
+  }
   structure(
     list(
       program = tempest_dsprrr_execution_program(program),
@@ -32,7 +66,11 @@ tempest_dsprrr_execution <- function(
       trace_context = tempest_research_manifest_canonical_value(
         trace_context,
         "trace_context"
-      )
+      ),
+      stage = stage,
+      evaluator_id = evaluator_id,
+      evaluator_version = evaluator_version,
+      governed_procedure_revision_id = governed_procedure_revision_id
     ),
     class = c("tempest_dsprrr_execution", "list")
   )

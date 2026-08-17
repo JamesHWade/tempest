@@ -4,7 +4,14 @@
 \alias{tempest_generate_single_expert}
 \title{Generate a single expert profile for a specific area}
 \usage{
-tempest_generate_single_expert(topic, area, existing_experts, config)
+tempest_generate_single_expert(
+  topic,
+  area,
+  existing_experts,
+  config,
+  module,
+  record_stage = function(record, output = NULL) invisible(record)
+)
 }
 \arguments{
 \item{topic}{The research topic.}
@@ -14,6 +21,10 @@ tempest_generate_single_expert(topic, area, existing_experts, config)
 \item{existing_experts}{Existing expert profiles to avoid duplicating.}
 
 \item{config}{A \code{TempestConfig} object.}
+
+\item{module}{ProgramSet-bound persona execution.}
+
+\item{record_stage}{Product-owned stage-record callback.}
 }
 \value{
 A validated \code{tempest_expert} profile.

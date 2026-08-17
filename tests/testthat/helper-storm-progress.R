@@ -13,6 +13,19 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
     },
     tempest_extract_toc_from_url = function(url) character(),
     tempest_wiki_page_sections = function(title) character(),
+    tempest_semantic_filter_facts = function(
+      retriever,
+      query,
+      store,
+      max_items = 30,
+      min_support_score = 0.7
+    ) {
+      facts <- tempest:::tempest_supported_claims(
+        store,
+        min_support_score = min_support_score
+      )
+      utils::head(facts, max_items)
+    },
     .env = .local_envir
   )
   source <- fake_source(
@@ -68,22 +81,30 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
             outline,
             list(
               section_text = paste0(
-                "Section body cites events [",
+                "STORM progress emits stage events [",
                 source_id,
                 "]."
               )
             ),
             list(
               lead_section = paste0(
-                "Lead body cites events [",
+                "STORM progress emits stage events [",
                 source_id,
                 "]."
               )
             )
           ),
           text = list(
-            paste0("Section body cites events [", source_id, "]."),
-            paste0("Lead body cites events [", source_id, "].")
+            paste0(
+              "STORM progress emits stage events [",
+              source_id,
+              "]."
+            ),
+            paste0(
+              "STORM progress emits stage events [",
+              source_id,
+              "]."
+            )
           )
         ))
       }
@@ -124,8 +145,8 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
             personas = list(list(
               name = "Dr. Flow",
               title = "Workflow analyst",
-              affiliation = "",
-              background = "",
+              affiliation = "Independent",
+              background = "Studies observable workflow execution.",
               focus_areas = c("Progress"),
               perspective = "Workflow progress",
               initial_questions = c("How should progress be reported?")

@@ -7,11 +7,17 @@ tempest_write_section <- function(
   section_summary,
   subsections,
   facts_txt,
-  module = NULL,
-  verbose = FALSE
+  module,
+  workspace,
+  evidence = list(),
+  verified_evidence = list(),
+  verified_facts = facts_txt,
+  min_support_score = 0.7,
+  verbose = FALSE,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
   subsections_txt <- tempest_subsections_markdown(subsections)
-  module_result <- tempest_run_dsprrr_module(
+  stage_result <- tempest_execute_stage(
     module,
     writer,
     inputs = list(
@@ -20,38 +26,18 @@ tempest_write_section <- function(
       subsections = subsections_txt,
       facts = facts_txt
     ),
-    step = "section writing"
+    context = list(
+      workspace = workspace,
+      evidence = evidence,
+      verified_evidence = verified_evidence,
+      verified_facts = verified_facts,
+      min_support_score = min_support_score
+    ),
+    record_stage = function(record, output = NULL) {
+      record_stage(record, output)
+    }
   )
-  section_text <- if (!is.null(module_result)) {
-    tempest_normalize_text_output(module_result, "section_text")
-  } else {
-    NA_character_
-  }
-  if (!is.na(section_text) && nzchar(section_text)) {
-    return(section_text)
-  }
-
-  prompt <- paste0(
-    "Write a report section in Markdown.\n\n",
-    "Section title: ",
-    section_title,
-    "\n",
-    "Section intent: ",
-    section_summary,
-    "\n\n",
-    "Planned subsections:\n",
-    subsections_txt,
-    "\n\n",
-    "Verified fact notes you MUST use (do not invent facts or fetch additional sources):\n",
-    facts_txt,
-    "\n\n",
-    "Rules:\n",
-    "- Every factual claim must end with one or more citations like [Sxxxxxxxxxxxx].\n",
-    "- Use ONLY the facts provided above. Do NOT call tools or fetch new sources.\n",
-    "- Keep the writing concise, technical, and well-structured.\n\n",
-    "Write the section now:"
-  )
-  writer$chat(prompt, echo = if (verbose) "output" else "none")
+  tempest_stage_string(stage_result$output, "section_text")
 }
 
 #' @keywords internal
@@ -75,19 +61,24 @@ tempest_section_facts_text <- function(
   retriever,
   store,
   section_title,
-  max_items
+  max_items,
+  min_support_score = 0.7
 ) {
   relevant <- tempest_semantic_filter_facts(
     retriever,
     query = section_title,
     store = store,
-    max_items = max_items
+    max_items = max_items,
+    min_support_score = min_support_score
   )
   if (length(relevant) == 0) {
-    return("(no directly matched facts; do not add unsupported factual claims)")
+    result <- "(no directly matched facts; do not add unsupported factual claims)"
+    attr(result, "verified_evidence") <- list()
+    attr(result, "verified_evidence_count") <- 0L
+    return(result)
   }
 
-  paste(
+  result <- paste(
     purrr::map_chr(relevant, function(f) {
       paste0(
         "- ",
@@ -99,24 +90,39 @@ tempest_section_facts_text <- function(
     }),
     collapse = "\n"
   )
+  attr(result, "verified_evidence") <- relevant
+  attr(result, "verified_evidence_count") <- as.integer(length(relevant))
+  result
 }
 
 #' @keywords internal
-tempest_section_jobs <- function(outline, retriever, store, retrieve_top_k) {
+tempest_section_jobs <- function(
+  outline,
+  retriever,
+  store,
+  retrieve_top_k,
+  min_support_score = 0.7
+) {
   sections <- tempest_sections_to_write(outline)
   purrr::imap(sections, function(section, i) {
     section_title <- section$title %||% "Section"
+    facts_text <- tempest_section_facts_text(
+      retriever,
+      store,
+      section_title,
+      max_items = retrieve_top_k,
+      min_support_score = min_support_score
+    )
     list(
       index = i,
       title = section_title,
       summary = section$summary %||% "",
       subsections = section$subsections %||% list(),
-      facts_text = tempest_section_facts_text(
-        retriever,
-        store,
-        section_title,
-        max_items = retrieve_top_k
-      )
+      facts_text = as.character(facts_text),
+      workspace = store,
+      evidence = attr(facts_text, "verified_evidence"),
+      verified_evidence = attr(facts_text, "verified_evidence"),
+      min_support_score = min_support_score
     )
   })
 }
@@ -125,8 +131,9 @@ tempest_section_jobs <- function(outline, retriever, store, retrieve_top_k) {
 tempest_run_section_job <- function(
   job,
   writer,
-  module = NULL,
-  verbose = FALSE
+  module,
+  verbose = FALSE,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
   section_text <- tempest_write_section(
     writer,
@@ -135,7 +142,13 @@ tempest_run_section_job <- function(
     subsections = job$subsections,
     facts_txt = job$facts_text,
     module = module,
-    verbose = verbose
+    workspace = job$workspace,
+    evidence = job$evidence,
+    verified_evidence = job$verified_evidence,
+    verified_facts = job$facts_text,
+    min_support_score = job$min_support_score,
+    verbose = verbose,
+    record_stage = record_stage
   )
   list(
     index = job$index,
@@ -150,14 +163,16 @@ tempest_write_sections_sequential <- function(
   jobs,
   writer,
   programs,
-  verbose = FALSE
+  verbose = FALSE,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
-  purrr::map(jobs, function(job) {
+  lapply(jobs, function(job) {
     tempest_run_section_job(
       job,
       writer,
       module = programs$section_writing,
-      verbose = verbose
+      verbose = verbose,
+      record_stage = record_stage
     )
   })
 }
@@ -203,19 +218,36 @@ tempest_setup_daemons <- function(n) {
 
 #' @keywords internal
 tempest_collect_parallel <- function(value) {
-  # Convert a single mirai_map result element into a value or NULL on failure.
-  if (inherits(value, "condition")) {
-    tempest_rethrow_dsprrr_contract(value)
-  }
   if (
-    is.null(value) ||
-      inherits(value, "errorValue") ||
-      inherits(value, "miraiError") ||
-      inherits(value, "condition")
+    is.list(value) &&
+      !is.data.frame(value) &&
+      setequal(names(value), c("ok", "value", "error", "records")) &&
+      rlang::is_bool(value$ok)
   ) {
-    return(NULL)
+    return(value)
   }
-  value
+  error <- if (inherits(value, "condition")) {
+    value
+  } else {
+    message <- tryCatch(
+      conditionMessage(value),
+      error = function(error) paste(as.character(value), collapse = " ")
+    )
+    rlang::error_cnd(
+      "tempest_parallel_worker_error",
+      message = message
+    )
+  }
+  list(ok = FALSE, value = NULL, error = error, records = list())
+}
+
+#' @keywords internal
+tempest_parallel_records_import <- function(records, record_stage) {
+  records <- tempest_stage_records_validate(records)
+  for (record in records) {
+    record_stage(record)
+  }
+  invisible(records)
 }
 
 #' @keywords internal
@@ -224,21 +256,13 @@ tempest_write_sections_parallel <- function(
   config,
   programs
 ) {
-  # On any failure we return a list of NULLs so the caller writes the
-  # affected sections sequentially. Real parallelism requires the installed
-  # 'tempest' package to be available to the mirai workers; in environments
-  # where it is not (e.g. `devtools::load_all()`), this falls back cleanly.
-  fallback <- vector("list", length(jobs))
   if (!tempest_has("mirai")) {
-    return(fallback)
+    return(NULL)
   }
 
   ready <- tempest_setup_daemons(tempest_parallel_workers(length(jobs)))
   if (!isTRUE(ready)) {
-    tempest_warn(
-      "Could not start mirai daemons; writing sections sequentially."
-    )
-    return(fallback)
+    return(NULL)
   }
   if (isTRUE(attr(ready, "started"))) {
     on.exit(try(mirai::daemons(0), silent = TRUE), add = TRUE)
@@ -250,11 +274,32 @@ tempest_write_sections_parallel <- function(
       function(i, jobs, config, programs, run_section_job) {
         job <- jobs[[i]]
         writer <- tempest_make_chat(config, "writer", echo = "none")
-        run_section_job(
-          job,
-          writer,
-          module = programs$section_writing,
-          verbose = FALSE
+        records <- list()
+        worker_record_stage <- function(record, output = NULL) {
+          records <<- tempest_stage_records_upsert(records, record)
+          invisible(record)
+        }
+        tryCatch(
+          list(
+            ok = TRUE,
+            value = run_section_job(
+              job,
+              writer,
+              module = programs$section_writing,
+              verbose = FALSE,
+              record_stage = worker_record_stage
+            ),
+            error = NULL,
+            records = records
+          ),
+          error = function(error) {
+            list(
+              ok = FALSE,
+              value = NULL,
+              error = error,
+              records = records
+            )
+          }
         )
       },
       .args = list(
@@ -267,11 +312,10 @@ tempest_write_sections_parallel <- function(
     error = function(e) e
   )
   if (inherits(collected, "condition")) {
-    tempest_rethrow_dsprrr_contract(collected)
-    tempest_warn(
-      "Parallel section writing failed ({conditionMessage(collected)}); writing sections sequentially."
-    )
-    return(fallback)
+    return(rep(
+      list(tempest_collect_parallel(collected)),
+      length(jobs)
+    ))
   }
 
   lapply(collected, tempest_collect_parallel)
@@ -284,35 +328,40 @@ tempest_write_section_jobs <- function(
   config,
   programs,
   parallel = FALSE,
-  verbose = FALSE
+  verbose = FALSE,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
   if (length(jobs) == 0) {
     return(list())
   }
 
   if (isTRUE(parallel) && length(jobs) > 1) {
-    if (!tempest_has("mirai")) {
-      tempest_warn(
-        "Parallel section writing requires mirai; writing sections sequentially."
-      )
-    } else {
-      parallel_results <- tempest_write_sections_parallel(
-        jobs,
-        config,
-        programs = programs
-      )
-      failed <- which(vapply(parallel_results, is.null, logical(1)))
-      if (length(failed) == 0) {
-        return(parallel_results)
+    parallel_results <- tempest_write_sections_parallel(
+      jobs,
+      config,
+      programs = programs
+    )
+    if (!is.null(parallel_results)) {
+      results <- vector("list", length(jobs))
+      for (index in seq_along(jobs)) {
+        envelope <- parallel_results[[index]]
+        tempest_parallel_records_import(envelope$records, record_stage)
+        if (isTRUE(envelope$ok)) {
+          results[[index]] <- envelope$value
+          next
+        }
+        if (!tempest_stage_error_retryable(envelope$error)) {
+          stop(envelope$error)
+        }
+        results[[index]] <- tempest_run_section_job(
+          jobs[[index]],
+          writer,
+          module = programs$section_writing,
+          verbose = verbose,
+          record_stage = record_stage
+        )
       }
-      sequential_results <- tempest_write_sections_sequential(
-        jobs[failed],
-        writer,
-        programs = programs,
-        verbose = verbose
-      )
-      parallel_results[failed] <- sequential_results
-      return(parallel_results)
+      return(results)
     }
   }
 
@@ -320,7 +369,8 @@ tempest_write_section_jobs <- function(
     jobs,
     writer,
     programs = programs,
-    verbose = verbose
+    verbose = verbose,
+    record_stage = record_stage
   )
 }
 
@@ -331,10 +381,16 @@ tempest_write_lead_section <- function(
   title,
   draft_md,
   facts_txt,
-  module = NULL,
-  verbose = FALSE
+  module,
+  workspace,
+  evidence = list(),
+  verified_evidence = list(),
+  verified_facts = facts_txt,
+  min_support_score = 0.7,
+  verbose = FALSE,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
-  module_result <- tempest_run_dsprrr_module(
+  stage_result <- tempest_execute_stage(
     module,
     writer,
     inputs = list(
@@ -343,49 +399,66 @@ tempest_write_lead_section <- function(
       article_body = substr(draft_md, 1, 3000),
       facts = facts_txt
     ),
-    step = "lead section generation"
+    context = list(
+      workspace = workspace,
+      evidence = evidence,
+      verified_evidence = verified_evidence,
+      verified_facts = verified_facts,
+      min_support_score = min_support_score
+    ),
+    record_stage = function(record, output = NULL) {
+      record_stage(record, output)
+    }
   )
-  lead <- if (!is.null(module_result)) {
-    tempest_normalize_text_output(module_result, "lead_section")
-  } else {
-    NA_character_
-  }
-  if (!is.na(lead) && nzchar(lead)) {
-    return(lead)
-  }
-
-  lead_prompt <- paste0(
-    "Write a Wikipedia-style lead section (2-3 paragraphs) for this report.\n\n",
-    "Topic: ",
-    topic,
-    "\n",
-    "Title: ",
-    title,
-    "\n\n",
-    "Article body (for context):\n",
-    substr(draft_md, 1, 3000),
-    "\n\n",
-    "Key facts:\n",
-    facts_txt,
-    "\n\n",
-    "Rules:\n",
-    "- Summarize the most important points from the article.\n",
-    "- Include citations like [Sxxxxxxxxxxxx] for key claims.\n",
-    "- The lead should be self-contained.\n",
-    "- Write 2-3 paragraphs.\n"
-  )
-  writer$chat(lead_prompt, echo = if (verbose) "output" else "none")
+  tempest_stage_string(stage_result$output, "lead_section")
 }
 
-tempest_summarize_facts_for_prompt <- function(store, max_items = 60) {
+tempest_supported_claims <- function(store, min_support_score = 0.7) {
   if (!inherits(store, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
       "{.arg store} must be a ResearchWorkspace."
     )
   }
-  facts <- store$list_proposed_claims()
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
+  purrr::keep(
+    store$list_proposed_claims(),
+    function(claim) {
+      identical(claim@verification_status, "supported") &&
+        length(claim@support_score) == 1L &&
+        !is.na(claim@support_score) &&
+        is.finite(claim@support_score) &&
+        claim@support_score >= min_support_score
+    }
+  )
+}
+
+tempest_summarize_facts_for_prompt <- function(
+  store,
+  max_items = 60,
+  verified_only = FALSE,
+  min_support_score = 0.7
+) {
+  if (!inherits(store, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "{.arg store} must be a ResearchWorkspace."
+    )
+  }
+  facts <- if (isTRUE(verified_only)) {
+    tempest_supported_claims(
+      store,
+      min_support_score = min_support_score
+    )
+  } else {
+    store$list_proposed_claims()
+  }
   if (length(facts) == 0) {
-    return("(no facts yet)")
+    return(
+      if (isTRUE(verified_only)) {
+        "(no verified facts available)"
+      } else {
+        "(no facts yet)"
+      }
+    )
   }
   facts <- facts[seq_len(min(length(facts), max_items))]
   lines <- purrr::map_chr(facts, function(f) {
@@ -396,8 +469,16 @@ tempest_summarize_facts_for_prompt <- function(store, max_items = 60) {
 }
 
 #' @keywords internal
-tempest_keyword_filter_facts <- function(store, query, max_items = 30) {
-  facts <- store$list_proposed_claims()
+tempest_keyword_filter_facts <- function(
+  store,
+  query,
+  max_items = 30,
+  min_support_score = 0.7
+) {
+  facts <- tempest_supported_claims(
+    store,
+    min_support_score = min_support_score
+  )
   if (length(facts) == 0) {
     return(list())
   }
@@ -438,39 +519,31 @@ tempest_semantic_filter_facts <- function(
   retriever,
   query,
   store,
-  max_items = 30
+  max_items = 30,
+  min_support_score = 0.7
 ) {
   # Fall back to keyword when ragnar is unavailable
   if (is.null(retriever$ragnar_store) || !tempest_has("ragnar")) {
-    return(tempest_keyword_filter_facts(store, query, max_items = max_items))
+    return(tempest_keyword_filter_facts(
+      store,
+      query,
+      max_items = max_items,
+      min_support_score = min_support_score
+    ))
   }
 
-  facts <- store$list_proposed_claims()
+  facts <- tempest_supported_claims(
+    store,
+    min_support_score = min_support_score
+  )
   if (length(facts) == 0) {
     return(list())
   }
 
-  # Retrieve semantically similar chunks
-  chunks <- tryCatch(
-    retriever$retrieve(query, k = max_items, method = "hybrid"),
-    error = function(e) {
-      tempest_warn(
-        "Hybrid retrieval failed, falling back to BM25: {conditionMessage(e)}"
-      )
-      tryCatch(
-        retriever$retrieve(query, k = max_items, method = "bm25"),
-        error = function(e2) {
-          tempest_warn(
-            "BM25 retrieval also failed, falling back to keyword filter: {conditionMessage(e2)}"
-          )
-          NULL
-        }
-      )
-    }
-  )
+  chunks <- retriever$retrieve(query, k = max_items, method = "hybrid")
 
   if (is.null(chunks) || nrow(chunks) == 0) {
-    return(tempest_keyword_filter_facts(store, query, max_items = max_items))
+    return(list())
   }
 
   # Map chunk source_ids back to facts

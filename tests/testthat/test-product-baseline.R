@@ -27,7 +27,7 @@ test_that("default dsprrr STORM semantic outcomes are frozen", {
   expect_snapshot(baseline_snapshot_json(semantics))
 })
 
-test_that("scripted STORM resumes through the public product path", {
+test_that("scripted STORM resumes its immutable full-run request", {
   baseline_local_ids()
   uninterrupted <- baseline_storm_semantics(
     storm_product_baseline_fixture()

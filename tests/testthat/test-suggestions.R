@@ -129,7 +129,8 @@ test_that("Co-STORM moderator prompt suppresses generic next-step menus", {
       nodes = list(list(
         id = "root",
         label = "Adaptive animatronics",
-        summary = "Root topic",
+        parent = NULL,
+        notes = "Root topic",
         source_ids = character()
       )),
       edges = list()

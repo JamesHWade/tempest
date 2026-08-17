@@ -120,6 +120,58 @@ test_that("built-in STORM operations execute through TempestRun", {
   expect_equal(run$artifact("report_md")@content, "# Test report")
 })
 
+test_that("built-in STORM checkpoints reject old state schemas", {
+  checkpoint <- tempest_artifact(
+    tempest:::tempest_workflow_checkpoint_spec(),
+    content = list(state = list(storm_state = list(schema_version = 1L))),
+    artifact_id = "storm.outline",
+    artifact_kind = "checkpoint",
+    media_type = "application/json"
+  )
+  context <- list(
+    step = tempest_storm_workflow_spec()@steps$write,
+    input_artifacts = list("storm.outline" = checkpoint)
+  )
+
+  expect_error(
+    tempest:::tempest_storm_workflow_input_state(context),
+    class = "tempest_unsupported_format_error"
+  )
+})
+
+test_that("built-in STORM checkpoints retain cancelled stage history", {
+  running <- tempest:::tempest_stage_record_start(
+    "perspectives",
+    paste0("sha256:", strrep("a", 64L)),
+    attempt_id = "attempt-workflow-checkpoint",
+    started_at = "2026-08-16T00:00:00Z"
+  )
+  state <- tempest:::tempest_storm_state(
+    "Workflow checkpoint",
+    stage_records = list(running)
+  )
+
+  checkpoint <- tempest:::tempest_storm_workflow_checkpoint(
+    "perspectives",
+    list(
+      state = state,
+      title = state$title,
+      experts = list(),
+      perspectives = list()
+    )
+  )
+  restored <- tempest:::tempest_storm_state_from_record(
+    checkpoint$storm_state
+  )
+
+  expect_identical(state$stage_records[[1]]@status, "running")
+  expect_identical(restored$stage_records[[1]]@status, "cancelled")
+  expect_identical(
+    restored$stage_records[[1]]@attempt_id,
+    "attempt-workflow-checkpoint"
+  )
+})
+
 test_that("generic STORM defaults to one product ResearchWorkspace", {
   local_mocked_bindings(
     tempest_run_workflow = function(...) list(...)
@@ -278,6 +330,10 @@ test_that("generic STORM run reuses existing stages and shared state", {
     c("perspectives", "research", "outline")
   )
   expect_identical(
+    outline_state$requested_steps,
+    c("perspectives", "research", "outline", "write", "polish")
+  )
+  expect_identical(
     tempest:::tempest_storm_state_from_record(
       run$artifact("storm.draft")@content$state$storm_state
     )$outline,
@@ -309,6 +365,11 @@ test_that("generic STORM recomputes research assignments after expert generation
 
 test_that("Co-STORM run owns an approval-gated interactive session", {
   skip_if_not_installed("ellmer")
+  expected_report <- paste0(
+    "# Generic Co\\-STORM\n\n",
+    "A deterministic Co-STORM report.\n"
+  )
+  report_body <- "A deterministic Co-STORM report."
   fake_session_chat <- function(text = "") {
     list(
       chat = function(prompt, ...) text,
@@ -319,7 +380,7 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
       text <- if (identical(role, "writer")) {
-        "A deterministic Co-STORM report."
+        report_body
       } else {
         ""
       }
@@ -388,7 +449,7 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
   )
   expect_equal(
     run$artifact("report_md")@content,
-    "A deterministic Co-STORM report."
+    expected_report
   )
   expect_identical(test_session_workflow_run(session), run)
 
@@ -397,7 +458,7 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
     intersect(names(snapshot), c("artifact_catalog", "workflow_run")),
     character()
   )
-  expect_identical(snapshot$report_md, "A deterministic Co-STORM report.")
+  expect_identical(snapshot$report_md, expected_report)
   bundle <- file.path(withr::local_tempdir(), "costorm-session")
   tempest_session_save(session, bundle)
   expect_equal(file.exists(file.path(bundle, "workflow_run.json")), FALSE)
@@ -405,7 +466,7 @@ test_that("Co-STORM run owns an approval-gated interactive session", {
   expect_null(test_session_workflow_run(session))
   expect_identical(
     tempest_session_report_md(session),
-    "A deterministic Co-STORM report."
+    expected_report
   )
 })
 

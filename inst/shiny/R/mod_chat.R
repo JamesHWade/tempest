@@ -700,7 +700,7 @@ mod_chat_server <- function(
               identical(turn_session_id, active_session_id) &&
               is_current()
           ) {
-            warning("Turn processing failed: ", conditionMessage(error))
+            warning("Turn processing failed.")
           }
           NULL
         }
@@ -855,27 +855,32 @@ mod_chat_server <- function(
       session_connection_permissions,
       session_id_value,
       program_set_value,
+      stage_records = list(),
       on_error = NULL
     ) {
       ses <- tryCatch(
-        tempest:::tempest_session_new(
-          topic,
-          config = config_value,
-          runtime = runtime_value,
-          n_experts = n_experts,
-          experts = session_experts,
-          connection_permissions = session_connection_permissions,
-          session_id = session_id_value,
-          progress = record_progress,
-          program_set = program_set_value
-        ),
+        {
+          value <- tempest:::tempest_session_new(
+            topic,
+            config = config_value,
+            runtime = runtime_value,
+            n_experts = n_experts,
+            experts = session_experts,
+            connection_permissions = session_connection_permissions,
+            session_id = session_id_value,
+            progress = record_progress,
+            program_set = program_set_value
+          )
+          tempest:::tempest_session_set_stage_records(value, stage_records)
+          value
+        },
         error = function(e) {
-          costorm_log("session setup failed: %s", conditionMessage(e))
+          costorm_log("session setup failed")
           if (is.function(on_error)) {
             on_error(e)
           }
           shiny::showNotification(
-            paste0("Failed to create session: ", conditionMessage(e)),
+            "Failed to create session.",
             type = "error",
             duration = 10
           )
@@ -1124,7 +1129,15 @@ mod_chat_server <- function(
                 if (!warmup_is_current()) {
                   return(NULL)
                 }
-                session_experts <- generated_experts
+                persona_record <- NULL
+                if (
+                  inherits(generated_experts, "tempest_persona_stage_result")
+                ) {
+                  persona_record <- generated_experts$record
+                  session_experts <- generated_experts$experts
+                } else {
+                  session_experts <- generated_experts
+                }
                 tryCatch(
                   {
                     schedule_start_suggestions <- function(
@@ -1178,10 +1191,7 @@ mod_chat_server <- function(
                                 },
                                 onRejected = function(error) {
                                   if (current()) {
-                                    costorm_log(
-                                      "suggestions failed: %s",
-                                      conditionMessage(error)
-                                    )
+                                    costorm_log("suggestions failed")
                                   }
                                   NULL
                                 }
@@ -1204,6 +1214,11 @@ mod_chat_server <- function(
                       session_connection_permissions = session_connection_permissions,
                       session_id_value = session_id_value,
                       program_set_value = program_set_value,
+                      stage_records = if (is.null(persona_record)) {
+                        list()
+                      } else {
+                        list(persona_record)
+                      },
                       on_error = function(error) {
                         session_error <<- error
                       }
@@ -1266,10 +1281,10 @@ mod_chat_server <- function(
                         })
                       },
                       onRejected = function(e) {
-                        costorm_log("warmup failed: %s", conditionMessage(e))
+                        costorm_log("warmup failed")
                         if (warmup_is_current()) {
                           append_chat_if_active(
-                            paste0("Warmup failed: ", conditionMessage(e)),
+                            "Warmup failed.",
                             session_id = start_session_id
                           )
                         }
@@ -1291,10 +1306,7 @@ mod_chat_server <- function(
                     )
                   },
                   error = function(error) {
-                    costorm_log(
-                      "start flow failed: %s",
-                      conditionMessage(error)
-                    )
+                    costorm_log("start flow failed")
                     record_progress(costorm_session_failed_event(
                       session_id_value,
                       error
@@ -1306,10 +1318,7 @@ mod_chat_server <- function(
             ) |>
               promises::catch(function(error) {
                 if (warmup_is_current()) {
-                  costorm_log(
-                    "expert generation failed: %s",
-                    conditionMessage(error)
-                  )
+                  costorm_log("expert generation failed")
                   record_progress(costorm_session_failed_event(
                     session_id_value,
                     error
@@ -1679,9 +1688,43 @@ chat_command_facts <- function(ses, n = 5L) {
       error = function(e) list()
     )
   }
+  execution_review <- if (inherits(ses, "TempestSession")) {
+    tempest:::tempest_costorm_execution_review_lines(ses)
+  } else {
+    character()
+  }
   if (length(claims) == 0L) {
+    if (length(execution_review) > 0L) {
+      return(paste(
+        c(
+          "**Evidence review**",
+          "",
+          "Verified evidence: 0 of 0 claims.",
+          "",
+          "No claims were collected.",
+          "",
+          "**Execution review**",
+          "",
+          execution_review
+        ),
+        collapse = "\n"
+      ))
+    }
     return("No facts collected yet. Ask a research question first.")
   }
+  min_support_score <- tryCatch(
+    ses$config@min_support_score,
+    error = function(e) 0.7
+  )
+  verified <- vapply(
+    claims,
+    function(claim) {
+      identical(claim@verification_status, "supported") &&
+        !is.na(claim@support_score) &&
+        claim@support_score >= min_support_score
+    },
+    logical(1)
+  )
   shown <- head(claims, n)
   lines <- vapply(
     shown,
@@ -1706,7 +1749,28 @@ chat_command_facts <- function(ses, n = 5L) {
   if (more > 0L) {
     lines <- c(lines, paste0("- ...and ", more, " more."))
   }
-  paste(c("**Collected facts**", "", lines), collapse = "\n")
+  execution_section <- if (length(execution_review) > 0L) {
+    c("", "**Execution review**", "", execution_review)
+  } else {
+    character()
+  }
+  paste(
+    c(
+      "**Evidence review**",
+      "",
+      paste0(
+        "Verified evidence: ",
+        sum(verified),
+        " of ",
+        length(claims),
+        " claims."
+      ),
+      "",
+      lines,
+      execution_section
+    ),
+    collapse = "\n"
+  )
 }
 
 chat_command_system_prompt <- function() {
@@ -1843,10 +1907,7 @@ generate_report_for_chat_async <- function(
     },
     onRejected = function(error) {
       if (warmup_is_current(is_current)) {
-        append_chat(paste0(
-          "Report generation failed: ",
-          conditionMessage(error)
-        ))
+        append_chat("Report generation failed.")
       }
       FALSE
     }
@@ -2106,7 +2167,7 @@ session_archive_manifest_files <- function(manifest) {
       schema_version <- as.integer(value)
     }
   }
-  valid_header <- identical(schema_version, 5L) &&
+  valid_header <- identical(schema_version, 7L) &&
     identical(manifest$bundle_type %||% "", "costorm") &&
     identical(manifest$bundle_status %||% "", "complete")
   if (
@@ -2256,7 +2317,6 @@ costorm_session_failed_event <- function(session_id, error = NULL) {
   message <- "Session setup failed."
   payload <- list(error_message = message)
   if (!is.null(error)) {
-    message <- paste0(message, " ", conditionMessage(error))
     payload <- progress_error_payload(error)
   }
   tempest::tempest_progress_event(
@@ -2278,7 +2338,7 @@ costorm_progress_state <- function(events) {
   tryCatch(
     tempest::tempest_progress_state(events),
     error = function(e) {
-      costorm_log("progress reducer failed: %s", conditionMessage(e))
+      costorm_log("progress reducer failed")
       NULL
     }
   )
@@ -2305,10 +2365,7 @@ costorm_stage_labels <- function() {
 }
 
 progress_error_payload <- function(error) {
-  list(
-    error_class = class(error)[[1]],
-    error_message = conditionMessage(error)
-  )
+  tempest:::tempest_progress_error_payload(error)
 }
 
 warmup_summary <- function(result) {

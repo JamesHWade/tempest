@@ -180,9 +180,14 @@ tempest_progress_callback <- function(progress) {
 }
 
 tempest_progress_error_payload <- function(error) {
+  known_classes <- intersect(class(error), tempest_stage_failure_classes())
   list(
-    error_class = class(error)[[1]],
-    error_message = conditionMessage(error)
+    error_class = if (length(known_classes) > 0L) {
+      known_classes[[1]]
+    } else {
+      "tempest_operation_error"
+    },
+    error_message = "The operation failed."
   )
 }
 
@@ -194,11 +199,7 @@ tempest_emit_progress <- function(progress, ...) {
   tryCatch(
     progress(event),
     error = function(e) {
-      rlang::abort(
-        "Progress callback failed.",
-        class = "tempest_progress_callback_error",
-        parent = e
-      )
+      tempest_rethrow_operation(e, class = "tempest_progress_callback_error")
     }
   )
   invisible(event)

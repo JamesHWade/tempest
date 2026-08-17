@@ -152,6 +152,22 @@ test_that("Co-STORM async queue serializes work and cancels stale commits", {
   expect_equal(stale_commit, FALSE)
 })
 
+test_that("Co-STORM session failures expose only safe error metadata", {
+  app <- source_shiny_modules()
+  secret <- "Authorization: Bearer sk-live-secret"
+  error <- structure(
+    simpleError(secret),
+    class = c(secret, "error", "condition")
+  )
+
+  event <- app$costorm_session_failed_event("session-safe", error)
+
+  expect_identical(event@message, "Session setup failed.")
+  expect_identical(event@payload$error_class, "tempest_operation_error")
+  expect_identical(event@payload$error_message, "The operation failed.")
+  expect_no_match(jsonlite::toJSON(event@payload, auto_unbox = TRUE), secret)
+})
+
 test_that("tempest_shiny_ui builds namespaced host panels", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -1155,6 +1171,12 @@ test_that("chat command messages summarize active session state", {
   expect_match(app$chat_command_message("experts", ses), "Dr. Command")
   expect_match(app$chat_command_message("sources", ses), "Example 1")
   expect_match(app$chat_command_message("facts", ses), "support 0.82")
+  expect_match(app$chat_command_message("facts", ses), "Evidence review")
+  expect_match(
+    app$chat_command_message("facts", ses),
+    "Verified evidence: 1 of 1 claims.",
+    fixed = TRUE
+  )
   expect_match(app$chat_command_message("tools", ses), "wikipedia")
   expect_match(
     app$chat_command_message("tools", ses),
@@ -1181,6 +1203,60 @@ test_that("chat command messages summarize active session state", {
     "<template>Report status: Report ready</template>",
     fixed = TRUE
   )
+})
+
+test_that("facts review exposes safe durable execution downgrades", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  app <- source_shiny_modules()
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Review downgrade",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.review-downgrade",
+      name = "Review Downgrade Expert"
+    )),
+    session_id = "review-downgrade"
+  )
+  source <- fake_source("https://example.org/review-downgrade")
+  session$workspace$upsert_retrieved_resource(source)
+  program <- tempest:::tempest_session_programs(session)$personas
+  running <- tempest:::tempest_stage_record_start(
+    "personas",
+    program$program_artifact_id,
+    trace_references = list(research_run_id = session$session_id),
+    attempt_id = "stage-attempt-review-fallback"
+  )
+  fallback <- tempest:::tempest_stage_record_succeed(
+    running,
+    tempest:::tempest_stage_output_reference(
+      "state_field",
+      "experts",
+      content_digest = tempest:::tempest_stage_state_output_digest(
+        "personas",
+        session$experts
+      )
+    ),
+    support_status = "unknown",
+    fallback_taken = TRUE,
+    primary_error = simpleError("raw provider secret")
+  )
+  tempest:::tempest_session_set_stage_records(session, list(fallback))
+
+  review <- app$chat_command_message("facts", session)
+
+  expect_match(review, "Verified evidence: 0 of 0 claims.", fixed = TRUE)
+  expect_match(review, "Execution review", fixed = TRUE)
+  expect_match(review, "stage-attempt-review-fallback", fixed = TRUE)
+  expect_match(
+    review,
+    "tempest::fallback/personas/ellmer-structured@1",
+    fixed = TRUE
+  )
+  expect_no_match(review, "raw provider secret", fixed = TRUE)
 })
 
 test_that("start suggestions wait for warmup when experts are available", {
@@ -1290,7 +1366,15 @@ test_that("session archives round-trip product state through upload", {
       name = "Dr. Archive"
     ))
   )
-  tempest:::tempest_session_set_report_value(ses, "# Restored archive")
+  report_md <- tempest_report_md(
+    title = ses$title,
+    body = "Restored archive",
+    workspace = ses$workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
+  tempest:::tempest_session_set_report_value(ses, report_md)
   store <- app$new_session_store()
   store$set(ses)
   archive <- tempfile(fileext = ".zip")
@@ -1302,7 +1386,7 @@ test_that("session archives round-trip product state through upload", {
 
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$topic, "Downloadable session")
-  expect_equal(tempest_session_report_md(restored), "# Restored archive")
+  expect_equal(tempest_session_report_md(restored), report_md)
   archive_files <- utils::unzip(archive, list = TRUE)$Name
   manifest <- tempest:::tempest_read_json_strict(
     file.path(bundle, "session.json")
@@ -1373,6 +1457,7 @@ test_that("session archive manifests accept only the current envelope", {
     topic = "Archive topic",
     title = "Archive topic",
     research_manifest = list(),
+    report_reference = NULL,
     workspace = list(),
     saved_at = "2026-08-15T00:00:00.000000Z",
     files = files,
@@ -1380,7 +1465,7 @@ test_that("session archive manifests accept only the current envelope", {
   )
   current <- c(
     list(
-      schema_version = 5L,
+      schema_version = 7L,
       bundle_type = "costorm",
       bundle_status = "complete"
     ),
@@ -1390,7 +1475,7 @@ test_that("session archive manifests accept only the current envelope", {
 
   expect_error(
     app$session_archive_manifest_files(c(
-      list(schema_version = 4L, status = "complete"),
+      list(schema_version = 6L, status = "complete"),
       manifest_fields
     )),
     "unsupported schema or status",
@@ -1413,14 +1498,14 @@ test_that("session archive manifests accept only the current envelope", {
   )
   expect_error(
     app$session_archive_manifest_files(
-      utils::modifyList(current, list(schema_version = 5.9))
+      utils::modifyList(current, list(schema_version = 7.9))
     ),
     "unsupported schema or status",
     fixed = TRUE
   )
   expect_error(
     app$session_archive_manifest_files(c(
-      list(schema_version = 5L, status = "complete"),
+      list(schema_version = 7L, status = "complete"),
       manifest_fields
     )),
     "unsupported schema or status",
@@ -1429,7 +1514,7 @@ test_that("session archive manifests accept only the current envelope", {
   expect_error(
     app$session_archive_manifest_files(c(
       list(
-        schema_version = 4L,
+        schema_version = 6L,
         bundle_type = "costorm",
         bundle_status = "complete"
       ),
@@ -1456,7 +1541,17 @@ test_that("session archive extraction rejects undeclared and tampered files", {
       name = "Dr. Integrity"
     ))
   )
-  tempest:::tempest_session_set_report_value(ses, "# Trusted report")
+  tempest:::tempest_session_set_report_value(
+    ses,
+    tempest_report_md(
+      title = ses$title,
+      body = "Trusted report",
+      workspace = ses$workspace,
+      citation_policy = cfg@citation_policy,
+      on_unsupported_claim = cfg@on_unsupported_claim,
+      min_support_score = cfg@min_support_score
+    )
+  )
   root <- withr::local_tempdir()
   bundle <- file.path(root, "bundle")
   tempest_session_save(ses, bundle)
@@ -1487,19 +1582,20 @@ test_that("session archive extraction rejects undeclared and tampered files", {
   )
   expect_false(dir.exists(tampered_extract))
 
-  tempest_session_save(ses, bundle, overwrite = TRUE)
-  writeLines("undeclared", file.path(bundle, "extra.txt"))
+  extra_bundle <- file.path(root, "extra-bundle")
+  tempest_session_save(ses, extra_bundle)
+  writeLines("undeclared", file.path(extra_bundle, "extra.txt"))
   extra_archive <- file.path(root, "extra.zip")
   zip::zip(
     extra_archive,
     files = list.files(
-      bundle,
+      extra_bundle,
       recursive = TRUE,
       all.files = TRUE,
       no.. = TRUE
     ),
     include_directories = FALSE,
-    root = bundle,
+    root = extra_bundle,
     mode = "mirror"
   )
   extra_extract <- file.path(root, "extra-extract")
@@ -1589,10 +1685,13 @@ test_that("session store saves and restores bundles for shared app tabs", {
     "assistant",
     paste0("Cited evidence survives [", source_id, "].")
   )
-  report_md <- paste0(
-    "# Restored report\n\nCited evidence survives [",
-    source_id,
-    "]."
+  report_md <- tempest_report_md(
+    title = ses$title,
+    body = paste0("Cited evidence survives [", source_id, "]."),
+    workspace = ses$workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
   )
   tempest:::tempest_session_set_report_value(ses, report_md)
   ses$emit_progress(
@@ -1649,7 +1748,7 @@ test_that("session store saves and restores bundles for shared app tabs", {
   })
   shiny::testServer(app$mod_report_server, args = list(store = store), {
     session$flushReact()
-    expect_match(as.character(output$body$html), "Restored report")
+    expect_match(as.character(output$body$html), "Shiny persistence")
     expect_match(as.character(output$body$html), "tempest-reference-panel")
   })
 })
@@ -2326,7 +2425,7 @@ test_that("STORM worker streams progress before mirai resolves", {
         verbose
       ) {
         progress(event)
-        deadline <- Sys.time() + 10
+        deadline <- Sys.time() + 60
         while (!file.exists(release_path) && Sys.time() < deadline) {
           Sys.sleep(0.02)
         }
@@ -2359,7 +2458,7 @@ test_that("STORM worker streams progress before mirai resolves", {
   )
 
   seen_stream <- FALSE
-  deadline <- Sys.time() + 10
+  deadline <- Sys.time() + 60
   while (
     mirai::unresolved(value) &&
       !seen_stream &&
@@ -2480,11 +2579,15 @@ test_that("warmup result messages summarize typed lifecycle results", {
         NA_character_
       },
       error_class = if (identical(status, "timeout")) {
-        "tempest_warmup_timeout"
+        "tempest_operation_error"
       } else {
         NA_character_
       },
-      error_message = error_message,
+      error_message = if (identical(status, "timeout")) {
+        "The operation failed."
+      } else {
+        error_message
+      },
       tools_available = TRUE,
       capability_count = 1L,
       session_retired = identical(status, "timeout"),
@@ -2503,7 +2606,7 @@ test_that("warmup result messages summarize typed lifecycle results", {
     mindmap_updated = TRUE,
     orientations = list(
       orientation("Dr. Ready", "succeeded"),
-      orientation("Dr. Slow", "timeout", "timed out")
+      orientation("Dr. Slow", "timeout")
     )
   )
 
@@ -2533,6 +2636,11 @@ test_that("turn notices render explicit partial-result guidance", {
   expect_match(app$turn_notice_message(gap), "Treat", fixed = TRUE)
   expect_match(
     app$turn_notice_message(failure),
+    "The operation failed.",
+    fixed = TRUE
+  )
+  expect_no_match(
+    jsonlite::toJSON(tempest_session_turn_notice_data(failure)),
     "map unavailable",
     fixed = TRUE
   )

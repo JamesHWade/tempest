@@ -223,6 +223,54 @@ test_that("research manifest references reject sensitive nested fields", {
   expect_match(conditionMessage(token_error), "auth")
 })
 
+test_that("manifest identifiers share the portable credential boundary", {
+  biomedical <- tempest_research_manifest(
+    "SK-BR-3",
+    "storm",
+    tempest_config(),
+    knowledge_snapshot = list(
+      snapshot_id = "SK-N-SH",
+      store_id = "SK-MEL-28",
+      commit_order = 1L
+    ),
+    traces = list(list(trace_id = "SK-OV-3"))
+  )
+  expect_identical(biomedical@research_run_id, "SK-BR-3")
+  expect_identical(
+    biomedical@knowledge_snapshot$snapshot_id,
+    "SK-N-SH"
+  )
+  expect_identical(biomedical@traces[[1]]$trace_id, "SK-OV-3")
+
+  credential <- "https://service-token@example.org/private"
+  expect_error(
+    tempest_research_manifest(credential, "storm", tempest_config()),
+    class = "tempest_research_manifest_error"
+  )
+  expect_error(
+    tempest_research_manifest(
+      "research-safe",
+      "storm",
+      tempest_config(),
+      knowledge_snapshot = list(
+        snapshot_id = credential,
+        store_id = "store-safe",
+        commit_order = 1L
+      )
+    ),
+    class = "tempest_research_manifest_error"
+  )
+  expect_error(
+    tempest_research_manifest(
+      "research-safe",
+      "storm",
+      tempest_config(),
+      traces = list(list(trace_id = credential))
+    ),
+    class = "tempest_research_manifest_error"
+  )
+})
+
 test_that("research manifest references reject runtime objects", {
   RuntimeObject <- R6::R6Class("ManifestRuntimeObject")
   connection <- file(withr::local_tempfile())
@@ -334,7 +382,7 @@ test_that("research manifest references enforce canonical plain values", {
       )
     ),
     class = "tempest_research_manifest_error",
-    regexp = "non-empty identifier"
+    regexp = "sha256"
   )
   expect_error(
     tempest_research_manifest(

@@ -244,13 +244,7 @@ mod_storm_server <- function(id, config, store) {
             " STORM run cancelled."
           ))
         }
-        msg <- tryCatch(
-          {
-            storm_task$result()
-            "Unknown error"
-          },
-          error = function(e) conditionMessage(e)
-        )
+        msg <- "The pipeline failed."
         return(shiny::div(
           class = "alert alert-danger mt-3",
           shiny::icon("triangle-exclamation"),

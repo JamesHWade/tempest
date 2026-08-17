@@ -7,6 +7,7 @@ test_that("STORM product state starts with an exact empty stage schema", {
       "schema_version",
       "topic",
       "title",
+      "requested_steps",
       "perspectives",
       "experts",
       "draft_outline",
@@ -15,16 +16,22 @@ test_that("STORM product state starts with an exact empty stage schema", {
       "draft_md",
       "report_md",
       "references",
+      "stage_records",
       "completed_stages"
     )
   )
-  expect_identical(state$schema_version, 1L)
+  expect_identical(state$schema_version, 3L)
   expect_identical(state$title, state$topic)
+  expect_identical(
+    state$requested_steps,
+    c("perspectives", "research", "outline", "write", "polish")
+  )
   expect_length(state$perspectives, 0L)
   expect_length(state$experts, 0L)
   expect_null(state$outline)
   expect_null(state$report_md)
   expect_length(state$references, 0L)
+  expect_length(state$stage_records, 0L)
   expect_length(state$completed_stages, 0L)
 })
 
@@ -90,6 +97,140 @@ test_that("STORM product state records experts without runtime objects", {
     tempest:::tempest_storm_state_record(restored),
     record
   )
+})
+
+test_that("STORM product-state records cancel running durable copies", {
+  program_id <- paste0("sha256:", strrep("a", 64L))
+  running <- tempest:::tempest_stage_record_start(
+    "perspectives",
+    program_id,
+    attempt_id = "attempt-running-state",
+    started_at = "2026-08-16T00:00:00Z"
+  )
+  state <- tempest:::tempest_storm_state(
+    "Running stage",
+    stage_records = list(running)
+  )
+  live_data <- tempest:::tempest_stage_record_data(running)
+
+  durable <- tempest:::tempest_storm_state_record(state)
+
+  expect_identical(state$stage_records[[1]]@status, "running")
+  expect_identical(
+    tempest:::tempest_stage_record_data(state$stage_records[[1]]),
+    live_data
+  )
+  expect_identical(durable$stage_records[[1]]$status, "cancelled")
+  expect_identical(
+    durable$stage_records[[1]]$failure_class,
+    "tempest_stage_cancelled"
+  )
+
+  durable$stage_records <- tempest:::tempest_stage_records_data(list(running))
+  expect_error(
+    tempest:::tempest_storm_state_from_record(durable),
+    class = "tempest_storm_state_restore_error"
+  )
+})
+
+test_that("STORM stage records bind exact non-NULL state fields", {
+  program_id <- paste0("sha256:", strrep("b", 64L))
+  outline <- list(title = "Present stage output")
+  started <- tempest:::tempest_stage_record_start(
+    "draft_outline",
+    program_id,
+    attempt_id = "attempt-draft-outline",
+    started_at = "2026-08-16T00:00:00Z"
+  )
+  succeeded <- tempest:::tempest_stage_record_succeed(
+    started,
+    tempest:::tempest_stage_output_reference(
+      "state_field",
+      "draft_outline",
+      content_digest = tempest:::tempest_stage_state_output_digest(
+        "draft_outline",
+        outline
+      )
+    ),
+    support_status = "unknown",
+    completed_at = "2026-08-16T00:01:00Z"
+  )
+
+  expect_error(
+    tempest:::tempest_storm_state(
+      "Missing stage output",
+      stage_records = list(succeeded)
+    ),
+    class = "tempest_storm_state_error"
+  )
+  expect_no_error(tempest:::tempest_storm_state(
+    "Present stage output",
+    draft_outline = outline,
+    stage_records = list(succeeded)
+  ))
+
+  expect_error(
+    tempest:::tempest_stage_record_succeed(
+      started,
+      tempest:::tempest_stage_output_reference(
+        "content_digest",
+        paste0("sha256:", strrep("c", 64L))
+      ),
+      support_status = "unknown",
+      completed_at = "2026-08-16T00:01:00Z"
+    ),
+    class = "tempest_stage_record_error"
+  )
+})
+
+test_that("STORM requested steps are immutable canonical workflow identity", {
+  state <- tempest:::tempest_storm_state(
+    "Partial research",
+    requested_steps = c("polish", "research", "write")
+  )
+
+  expect_identical(state$requested_steps, c("research", "write", "polish"))
+  expect_error(
+    tempest:::tempest_storm_state(
+      "Duplicate request",
+      requested_steps = c("research", "research")
+    ),
+    class = "tempest_storm_state_error"
+  )
+  expect_error(
+    tempest:::tempest_storm_state(
+      "Unrequested completion",
+      requested_steps = "research",
+      report_md = "# Unrequested completion",
+      completed_stages = "polish"
+    ),
+    class = "tempest_storm_state_error"
+  )
+})
+
+test_that("STORM full completion is distinct from requested-step completion", {
+  partial <- tempest:::tempest_storm_state(
+    "Partial research",
+    requested_steps = "research",
+    completed_stages = "research"
+  )
+  full <- tempest:::tempest_storm_state(
+    "Full research",
+    draft_outline = list(title = "Full research"),
+    outline = list(title = "Full research"),
+    draft_md = "# Full research",
+    report_md = "# Full research\n\nComplete.\n",
+    completed_stages = c(
+      "perspectives",
+      "research",
+      "outline",
+      "write",
+      "polish"
+    )
+  )
+
+  expect_identical(tempest:::tempest_storm_state_is_complete(partial), FALSE)
+  expect_identical(tempest:::tempest_storm_state_is_complete(full), TRUE)
 })
 
 test_that("STORM product state survives a JSON record round trip", {
@@ -188,7 +329,7 @@ test_that("STORM product state enforces ordered coherent subset stages", {
     draft_outline = outline,
     outline = outline,
     draft_md = "# Battery safety",
-    report_md = "# Battery safety report",
+    report_md = "# Battery safety\n\nComplete.\n",
     completed_stages = c("outline", "write", "polish")
   )
 
@@ -285,10 +426,11 @@ test_that("STORM product state rejects schema drift and runtime values", {
   record <- tempest:::tempest_storm_state_record(
     tempest:::tempest_storm_state("Battery safety")
   )
-  record$schema_version <- 2L
+  record$schema_version <- 1L
+  record$stage_records <- NULL
   expect_error(
     tempest:::tempest_storm_state_from_record(record),
-    class = "tempest_storm_state_restore_error"
+    class = "tempest_unsupported_format_error"
   )
 })
 

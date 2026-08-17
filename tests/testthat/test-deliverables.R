@@ -313,7 +313,8 @@ test_that("built-in Markdown operations honor the output contract", {
     spec,
     context = list(
       objective = objective,
-      include_references = FALSE
+      include_references = FALSE,
+      workspace = tempest_research_workspace()
     ),
     runtime = list(
       generate_text = function(prompt) {
@@ -328,7 +329,7 @@ test_that("built-in Markdown operations honor the output contract", {
   expect_match(generated_prompt, "Next steps", fixed = TRUE)
   expect_equal(
     result$artifacts[[1]]@content,
-    "## Next steps\n\nSend the response."
+    "# Customer response\n\n## Next steps\n\nSend the response.\n"
   )
   expect_equal(result$artifacts[[1]]@status, "valid")
 })
@@ -356,6 +357,64 @@ test_that("built-in Markdown reports render a ResearchWorkspace", {
   expect_match(representation$content, source$url, fixed = TRUE)
 })
 
+test_that("no-reference reports retain canonical policy validation", {
+  workspace <- tempest_research_workspace()
+  source <- fake_source("https://example.org/no-reference-policy")
+  workspace$upsert_retrieved_resource(source)
+  claim <- tempest_claim(
+    claim_text = "The supported finding is exact.",
+    source_ids = source$id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  workspace$add_proposed_claim(claim)
+  fake_set_citation_audit(workspace, list(claim))
+  spec <- tempest_deliverable_spec(
+    "strict-no-reference-report",
+    title = "Strict no-reference report",
+    purpose = "Render verified evidence",
+    instructions = "Use verified evidence only.",
+    evidence_policy = "strict",
+    generator_id = "tempest.generator.provided_content",
+    renderer_ids = "tempest.renderer.markdown_report"
+  )
+  context <- list(
+    workspace = workspace,
+    include_references = FALSE,
+    citation_policy = "strict",
+    min_support_score = 0.7
+  )
+  valid <- tempest:::tempest_builtin_markdown_report_renderer(
+    content = paste0(
+      "The supported finding is exact [",
+      source$id,
+      "]."
+    ),
+    deliverable = spec,
+    context = context
+  )
+
+  expect_match(valid$content, "# Strict no\\-reference report", fixed = TRUE)
+  expect_match(valid$content, paste0("[", source$id, "]"), fixed = TRUE)
+  expect_no_match(valid$content, "## References", fixed = TRUE)
+  expect_no_error(tempest:::tempest_final_report_validate(
+    valid$content,
+    workspace,
+    title = "Strict no-reference report",
+    citation_policy = "strict",
+    on_unsupported_claim = "flag",
+    min_support_score = 0.7
+  ))
+  expect_error(
+    tempest:::tempest_builtin_markdown_report_renderer(
+      content = paste0("A false finding [", source$id, "]."),
+      deliverable = spec,
+      context = context
+    ),
+    class = "tempest_deliverable_execution_error"
+  )
+})
+
 test_that("STORM report prompts preserve the existing polish contract", {
   prompt <- tempest:::tempest_storm_report_prompt(
     "# Draft",
@@ -369,6 +428,304 @@ test_that("STORM report prompts preserve the existing polish contract", {
   )
   expect_match(prompt, "<draft>\n# Draft\n</draft>", fixed = TRUE)
   expect_match(prompt, "duplicate", ignore.case = TRUE)
+})
+
+test_that("Co-STORM report prompts include only threshold-verified evidence", {
+  skip_if_not_installed("ellmer")
+  config <- tempest_config(
+    min_support_score = 0.95,
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Verified report evidence",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.verified-report",
+      name = "Verified Report Expert"
+    ))
+  )
+  source <- fake_source("https://example.org/report-evidence")
+  session$workspace$upsert_retrieved_resource(source)
+  below_threshold <- tempest_claim(
+    claim_text = "Below-threshold evidence must not enter the report prompt.",
+    source_ids = source$id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  verified <- tempest_claim(
+    claim_text = "Threshold-verified evidence enters the report prompt.",
+    source_ids = source$id,
+    verification_status = "supported",
+    support_score = 0.98
+  )
+  session$workspace$add_proposed_claim(below_threshold)
+  session$workspace$add_proposed_claim(verified)
+
+  prompt <- tempest:::tempest_costorm_report_prompt(session, "technical")
+
+  expect_match(
+    prompt,
+    "Threshold-verified evidence enters the report prompt.",
+    fixed = TRUE
+  )
+  expect_no_match(
+    prompt,
+    "Below-threshold evidence must not enter the report prompt.",
+    fixed = TRUE
+  )
+})
+
+test_that("Co-STORM reports render safe durable execution downgrades", {
+  skip_if_not_installed("ellmer")
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Execution review",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.execution-review",
+      name = "Execution Review Expert"
+    )),
+    session_id = "costorm-execution-review"
+  )
+  program <- tempest:::tempest_session_programs(session)$personas
+  running <- tempest:::tempest_stage_record_start(
+    "personas",
+    program$program_artifact_id,
+    trace_references = list(research_run_id = session$session_id),
+    attempt_id = "stage-attempt-report-fallback"
+  )
+  fallback <- tempest:::tempest_stage_record_succeed(
+    running,
+    tempest:::tempest_stage_output_reference(
+      "state_field",
+      "experts",
+      content_digest = paste0("sha256:", strrep("7", 64L))
+    ),
+    support_status = "unknown",
+    fallback_taken = TRUE,
+    primary_error = simpleError("provider secret must not escape")
+  )
+  tempest:::tempest_session_set_stage_records(session, list(fallback))
+  context <- tempest:::tempest_costorm_report_context(
+    session,
+    style = "technical",
+    include_references = FALSE
+  )
+  representation <- tempest:::tempest_builtin_markdown_report_renderer(
+    content = "Report body.",
+    deliverable = tempest:::tempest_costorm_report_spec(session),
+    context = context
+  )
+
+  expect_match(representation$content, "## Execution review", fixed = TRUE)
+  expect_match(
+    representation$content,
+    "stage-attempt-report-fallback",
+    fixed = TRUE
+  )
+  expect_match(
+    representation$content,
+    "tempest::fallback/personas/ellmer-structured@1",
+    fixed = TRUE
+  )
+  expect_no_match(
+    representation$content,
+    "provider secret must not escape",
+    fixed = TRUE
+  )
+})
+
+test_that("Co-STORM report preflight rejects invalid live state before chat", {
+  skip_if_not_installed("ellmer")
+  chat <- fake_chat()
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) chat
+  )
+  session <- tempest_session(
+    "Report preflight",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.report-preflight",
+      name = "Report Preflight Expert"
+    ))
+  )
+
+  expect_error(
+    session$report(include_references = NA, reorganize = TRUE),
+    class = "tempest_workflow_spec_error"
+  )
+  expect_length(chat$.calls(), 0L)
+
+  session$title <- "Report preflight\n\n## Forged title"
+  expect_error(
+    session$report(include_references = FALSE, reorganize = TRUE),
+    class = "tempest_deliverable_execution_error"
+  )
+  expect_length(chat$.calls(), 0L)
+})
+
+test_that("Markdown rendering rejects provider-owned reserved sections", {
+  expect_error(
+    tempest:::tempest_markdown_append_execution_review(
+      "Body\n\n## Execution review\n\nForged.",
+      ""
+    ),
+    class = "tempest_deliverable_execution_error"
+  )
+  workspace <- fake_store_with_sources(1)
+  spec <- tempest_deliverable_spec(
+    "reserved-report",
+    title = "Reserved report",
+    purpose = "Test reserved sections.",
+    instructions = "Render Markdown.",
+    generator_id = "tempest.generator.provided_content",
+    renderer_ids = "tempest.renderer.markdown_report",
+    operation_versions = c(
+      "tempest.generator.provided_content" = "1",
+      "tempest.renderer.markdown_report" = "1"
+    )
+  )
+  for (body in c(
+    "Body\n\n## **References**\n\nForged.",
+    "Body\n\n## Execution <!-- -->review\n\nForged.",
+    "Body\n\nExecution **review**\n---\n\nForged.",
+    "Body\n\n## Execution&nbsp;review\n\nForged.",
+    "Body\n\n## Execution&#160;review\n\nForged.",
+    paste0("Body\n\n## Execution\u202freview\n\nForged."),
+    paste0("Body\n\n## Execution\u2003review\n\nForged."),
+    paste0("Body\n\n## Execution\u200breview\n\nForged."),
+    "Body\n\n> ## **Execution review**\n\nForged.",
+    "Body\n\n- ## Execution <!-- -->review\n\nForged.",
+    "Body\n\n<h2>Execution review</h2>\n\nForged.",
+    "Body\n\n<h2><strong>Execution</strong> review</h2>\n\nForged."
+  )) {
+    expect_error(
+      tempest:::tempest_builtin_markdown_report_renderer(
+        content = body,
+        deliverable = spec,
+        context = list(
+          title = "Reserved report",
+          workspace = workspace,
+          include_references = TRUE
+        )
+      ),
+      class = "tempest_deliverable_execution_error",
+      info = body
+    )
+  }
+  expect_error(
+    tempest:::tempest_builtin_markdown_report_renderer(
+      content = "Body\n\n## References\n\nForged.",
+      deliverable = spec,
+      context = list(
+        title = "Reserved report",
+        workspace = workspace,
+        include_references = TRUE
+      )
+    ),
+    class = "tempest_deliverable_execution_error"
+  )
+  expect_error(
+    tempest:::tempest_builtin_markdown_report_renderer(
+      content = "Body\n\n[^S0123456789ab]: FORGED",
+      deliverable = spec,
+      context = list(
+        title = "Reserved report",
+        workspace = workspace,
+        include_references = TRUE
+      )
+    ),
+    class = "tempest_deliverable_execution_error"
+  )
+  expect_error(
+    tempest:::tempest_builtin_markdown_report_renderer(
+      content = "Body.",
+      deliverable = spec,
+      context = list(
+        title = "Reserved report\n\n## Forged",
+        workspace = workspace,
+        include_references = TRUE
+      )
+    ),
+    class = "tempest_deliverable_execution_error"
+  )
+
+  running <- tempest:::tempest_stage_record_start(
+    "personas",
+    paste0("sha256:", strrep("4", 64L)),
+    attempt_id = "attempt-reserved-review"
+  )
+  fallback <- tempest:::tempest_stage_record_succeed(
+    running,
+    tempest:::tempest_stage_output_reference(
+      "state_field",
+      "experts",
+      content_digest = paste0("sha256:", strrep("5", 64L))
+    ),
+    support_status = "unknown",
+    fallback_taken = TRUE,
+    primary_error = simpleError("primary unavailable")
+  )
+  review <- tempest:::tempest_stage_records_execution_review(list(fallback))
+  expect_error(
+    tempest:::tempest_stage_records_validate_execution_review(
+      "# Report\n\n## **Execution review**\n\nForged.\n",
+      list()
+    ),
+    class = "tempest_stage_record_error"
+  )
+  expect_error(
+    tempest:::tempest_stage_records_validate_execution_review(
+      paste0(
+        "# Report\n\n## Execution <!-- -->review\n\nForged.\n\n",
+        review,
+        "\n"
+      ),
+      list(fallback)
+    ),
+    class = "tempest_stage_record_error"
+  )
+})
+
+test_that("execution review is the final suffix after References", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  review <- paste(
+    "## Execution review",
+    "",
+    "- `personas` attempt `attempt-1`: fallback.",
+    sep = "\n"
+  )
+  spec <- tempest_deliverable_spec(
+    "ordered-report",
+    title = "Ordered report",
+    purpose = "Test canonical section order.",
+    instructions = "Render Markdown.",
+    generator_id = "tempest.generator.provided_content",
+    renderer_ids = "tempest.renderer.markdown_report",
+    operation_versions = c(
+      "tempest.generator.provided_content" = "1",
+      "tempest.renderer.markdown_report" = "1"
+    )
+  )
+  representation <- tempest:::tempest_builtin_markdown_report_renderer(
+    content = paste0("Supported body [", source_id, "]."),
+    deliverable = spec,
+    context = list(
+      title = "Ordered report",
+      workspace = workspace,
+      include_references = TRUE,
+      execution_review = review
+    )
+  )
+
+  expect_lt(
+    regexpr("## References", representation$content, fixed = TRUE)[[1]],
+    regexpr("## Execution review", representation$content, fixed = TRUE)[[1]]
+  )
+  expect_identical(endsWith(representation$content, paste0(review, "\n")), TRUE)
 })
 
 test_that("built-in Markdown exporter writes an addressable file", {

@@ -24,7 +24,8 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
   source <- tempest:::tempest_source(
     "https://example.com/workspace",
     title = "Workspace source",
-    snippet = "Workspace snippet"
+    snippet = "Workspace snippet",
+    content_text = "workspace evidence"
   )
   resource <- tempest_resource(
     resource_kind = "scientific.document",
@@ -47,6 +48,7 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
     claim_text = "Workspaces preserve provisional evidence.",
     source_ids = source$id,
     evidence_span_ids = span_id,
+    supporting_quotes = list("workspace evidence"),
     confidence = "high",
     verification_status = "supported",
     support_score = 0.95
@@ -73,6 +75,16 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
     }
   )
   snapshot <- tempest:::tempest_research_workspace_snapshot(workspace)
+  for (field in c(
+    "source_ids",
+    "evidence_span_ids",
+    "supporting_quotes",
+    "contradicting_source_ids"
+  )) {
+    expect_type(snapshot$proposed_claims[[1]][[field]], "list")
+  }
+  expect_type(snapshot$disputes[[1]]$claim_ids, "list")
+  expect_type(snapshot$disputes[[1]]$unresolved_questions, "list")
   snapshot_again <- tempest:::tempest_research_workspace_snapshot(workspace)
 
   expect_identical(snapshot, snapshot_again)
@@ -146,7 +158,8 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
   workspace$record_accepted_graft_reference(list(record_id = "record-new"))
   workspace$upsert_retrieved_resource(tempest:::tempest_source(
     "https://example.com/workspace",
-    title = "Changed after snapshot"
+    title = "Changed after snapshot",
+    content_text = "workspace evidence"
   ))
   current_audit <- workspace$citation_audit
   current_audit$support_score <- 0.25
@@ -263,7 +276,8 @@ test_that("ResearchWorkspace restore rejects orphan evidence records", {
   workspace <- tempest_research_workspace(max_sources = 8L)
   source <- tempest:::tempest_source(
     "https://example.com/orphan-integrity",
-    title = "Integrity source"
+    title = "Integrity source",
+    content_text = "Evidence remains linked."
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
@@ -275,7 +289,8 @@ test_that("ResearchWorkspace restore rejects orphan evidence records", {
     claim_id = "claim-integrity",
     claim_text = "Evidence records remain linked.",
     source_ids = source$id,
-    evidence_span_ids = span_id
+    evidence_span_ids = span_id,
+    supporting_quotes = list("Evidence remains linked.")
   ))
   workspace$add_dispute(tempest_dispute(
     dispute_id = "dispute-integrity",
@@ -311,7 +326,8 @@ test_that("ResearchWorkspace record schemas and identities are exact", {
   workspace <- tempest_research_workspace(max_sources = 8L)
   source <- tempest:::tempest_source(
     "https://example.com/exact-records",
-    title = "Exact record source"
+    title = "Exact record source",
+    content_text = "Exact evidence"
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
@@ -323,7 +339,8 @@ test_that("ResearchWorkspace record schemas and identities are exact", {
     claim_id = "claim-exact",
     claim_text = "Workspace records have exact schemas.",
     source_ids = source$id,
-    evidence_span_ids = span_id
+    evidence_span_ids = span_id,
+    supporting_quotes = list("Exact evidence")
   ))
   workspace$add_dispute(tempest_dispute(
     dispute_id = "dispute-exact",
@@ -382,6 +399,12 @@ test_that("ResearchWorkspace record schemas and identities are exact", {
   )
 
   malformed <- snapshot
+  malformed$proposed_claims[[1]]$source_ids <- source$id
+  expect_error(
+    tempest:::tempest_research_workspace_restore(malformed),
+    class = "tempest_research_workspace_restore_error"
+  )
+  malformed <- snapshot
   malformed$proposed_claims[[1]]$source_ids <- list(list(source$id))
   expect_error(
     tempest:::tempest_research_workspace_restore(malformed),
@@ -401,6 +424,12 @@ test_that("ResearchWorkspace record schemas and identities are exact", {
   )
   malformed <- snapshot
   malformed$evidence_spans[[1]]["extracted_by"] <- list(NULL)
+  expect_error(
+    tempest:::tempest_research_workspace_restore(malformed),
+    class = "tempest_research_workspace_restore_error"
+  )
+  malformed <- snapshot
+  malformed$disputes[[1]]$claim_ids <- claim_id
   expect_error(
     tempest:::tempest_research_workspace_restore(malformed),
     class = "tempest_research_workspace_restore_error"
@@ -481,8 +510,7 @@ test_that("TempestSession snapshots restore durable session state", {
   store$upsert_retrieved_resource(source)
   claim_id <- store$add_proposed_claim(tempest_claim(
     claim_text = "Session snapshots preserve claims.",
-    source_ids = source$id,
-    session_id = "session_snapshot"
+    source_ids = source$id
   ))
   expert <- tempest_expert(
     expert_id = "expert.snapshot",
@@ -509,9 +537,17 @@ test_that("TempestSession snapshots restore durable session state", {
     )),
     edges = list()
   )
-  tempest:::tempest_session_set_report_value(session, "# Restored report")
+  report_md <- tempest_report_md(
+    title = session$title,
+    body = "Restored report",
+    workspace = store,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
+  tempest:::tempest_session_set_report_value(session, report_md)
   session$artifacts[["report"]] <- "Legacy report body"
-  session$artifacts[["report_md"]] <- "# Restored report"
+  session$artifacts[["report_md"]] <- report_md
   session$artifacts[["mindmap_md"]] <- "Legacy mind map"
   session$artifacts[["suggested_questions"]] <- c("Q1", "Q2")
   expert_session <- session$expert_session_manager$get_or_create(
@@ -529,7 +565,7 @@ test_that("TempestSession snapshots restore durable session state", {
   )
 
   expect_r6_class(restored, "TempestSession")
-  expect_equal(snapshot$schema_version, 5L)
+  expect_equal(snapshot$schema_version, 7L)
   expect_identical(
     snapshot$research_manifest$research_run_id,
     snapshot$session_id
@@ -540,9 +576,10 @@ test_that("TempestSession snapshots restore durable session state", {
   expect_equal("artifacts" %in% names(snapshot), FALSE)
   expect_equal("store" %in% names(snapshot), FALSE)
   expect_named(snapshot, tempest:::tempest_session_snapshot_fields())
+  expect_identical(snapshot$stage_records, list())
   expect_false("artifact_catalog" %in% names(snapshot))
   expect_false("workflow_run" %in% names(snapshot))
-  expect_identical(snapshot$report_md, "# Restored report")
+  expect_identical(snapshot$report_md, report_md)
   expect_equal(snapshot$experts[[1]]$expert_id, "expert.snapshot")
   expect_match(snapshot$experts[[1]]$fingerprint, "^[a-f0-9]{64}$")
   expect_equal(
@@ -550,6 +587,7 @@ test_that("TempestSession snapshots restore durable session state", {
     FALSE
   )
   expect_equal(restored$session_id, "session_snapshot")
+  expect_identical(tempest:::tempest_session_stage_records(restored), list())
   expect_equal(restored$title, "Session persistence report")
   expect_equal(restored$transcript[[1]]$text, "What is durable?")
   expect_equal(restored$mindmap$nodes[[1]]$notes, "Durable state")
@@ -559,7 +597,7 @@ test_that("TempestSession snapshots restore durable session state", {
   expect_null(restored$artifacts[["report"]])
   expect_null(restored$artifacts[["report_md"]])
   expect_null(restored$artifacts[["mindmap_md"]])
-  expect_identical(tempest_session_report_md(restored), "# Restored report")
+  expect_identical(tempest_session_report_md(restored), report_md)
   expect_equal(restored$artifacts[["suggested_questions"]], c("Q1", "Q2"))
   expect_equal(
     restored$workspace$get_proposed_claim(claim_id)@claim_text,
@@ -583,6 +621,580 @@ test_that("TempestSession snapshots restore durable session state", {
     step = "test"
   )
   expect_equal(collector$data()[[1]]$run_id, "session_snapshot")
+})
+
+test_that("session snapshots reject credentials outside evidence payloads", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  token <- "sk-proj-0123456789abcdefghijklmnopqrstuv"
+  make_session <- function(topic = "Credential boundary") {
+    tempest_session(
+      topic,
+      config = cfg,
+      experts = list(test_expert(expert_id = "expert.credential-boundary"))
+    )
+  }
+
+  session <- make_session()
+  session$title <- token
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error"
+  )
+
+  session <- make_session()
+  session$artifacts[["suggested_questions"]] <- paste(
+    "Authorization: Bearer",
+    token
+  )
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error"
+  )
+
+  session <- make_session()
+  tempest:::tempest_session_set_report_value(
+    session,
+    paste0("# Credential boundary\n\nAuthorization: Bearer ", token, "\n")
+  )
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error"
+  )
+
+  for (encoded_token in c(
+    "sk\\-proj\\-0123456789abcdefghijklmnopqrstuv",
+    "sk&#45;proj&#45;0123456789abcdefghijklmnopqrstuv"
+  )) {
+    session <- make_session()
+    safe_report <- tempest_report_md(
+      title = session$title,
+      body = "A portable report body.",
+      workspace = session$workspace,
+      citation_policy = cfg@citation_policy,
+      on_unsupported_claim = cfg@on_unsupported_claim,
+      min_support_score = cfg@min_support_score
+    )
+    tempest:::tempest_session_set_report_value(
+      session,
+      sub(
+        "A portable report body.",
+        encoded_token,
+        safe_report,
+        fixed = TRUE
+      )
+    )
+    expect_error(
+      tempest_session_snapshot(session),
+      class = "tempest_session_snapshot_error"
+    )
+  }
+
+  session <- make_session()
+  claim_id <- session$workspace$add_proposed_claim(tempest_claim(
+    claim_id = "claim.credential-boundary",
+    claim_text = "The audit rationale is portable metadata."
+  ))
+  session$workspace$set_citation_audit(tibble::tibble(
+    claim_id = claim_id,
+    claim_text = "The audit rationale is portable metadata.",
+    verification_status = "unverified",
+    support_score = NA_real_,
+    rationale = "Pending review"
+  ))
+  unsafe_audit <- session$workspace$citation_audit
+  unsafe_audit$rationale[[1]] <- paste("Authorization: Bearer", token)
+  workspace_private <- session$workspace$.__enclos_env__$private
+  workspace_private$citation_audit_value <- unsafe_audit
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error"
+  )
+
+  scientific_title <- "SK-BR-3, SK-N-SH, and SK-MEL-28"
+  session <- make_session(scientific_title)
+  session$artifacts[["suggested_questions"]] <- scientific_title
+  report_md <- tempest_report_md(
+    title = scientific_title,
+    body = scientific_title,
+    workspace = session$workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
+  tempest:::tempest_session_set_report_value(session, report_md)
+  expect_no_error(tempest_session_snapshot(session))
+})
+
+test_that("no-reference Co reports remain canonical persistence products", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  source <- fake_source("https://example.org/no-reference-session-report")
+  body <- paste0("Captured session evidence [", source$id, "].")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "writer")) {
+        return(fake_chat(text = list(body)))
+      }
+      fake_chat()
+    }
+  )
+  session <- tempest_session(
+    "No reference session report",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.no-reference-report")),
+    session_id = "no-reference-session-report"
+  )
+  session$workspace$upsert_retrieved_resource(source)
+
+  report_md <- session$report(
+    include_references = FALSE,
+    reorganize = FALSE
+  )
+  expect_match(report_md, "^# No reference session report", perl = TRUE)
+  expect_match(report_md, paste0("[", source$id, "]"), fixed = TRUE)
+  expect_no_match(report_md, paste0("[^", source$id, "]"), fixed = TRUE)
+  expect_no_match(report_md, "## References", fixed = TRUE)
+  expect_no_error(tempest:::tempest_final_report_validate(
+    report_md = report_md,
+    workspace = session$workspace,
+    title = session$title,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  ))
+  expect_no_error(tempest_session_snapshot(session))
+
+  bundle <- file.path(withr::local_tempdir(), "no-reference-session-report")
+  tempest_session_save(session, bundle)
+  restored <- tempest_session_resume(bundle, config = cfg)
+  expect_identical(tempest_session_report_md(restored), report_md)
+})
+
+test_that("fenced package headings survive session report persistence", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Literal report headings",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.literal-headings")),
+    session_id = "literal-report-headings"
+  )
+  body <- paste(
+    c(
+      "Example:",
+      "",
+      "```text",
+      "## Execution review",
+      "literal execution content",
+      "",
+      "## References",
+      "",
+      "literal reference content",
+      "```"
+    ),
+    collapse = "\n"
+  )
+  report_md <- tempest_report_md(
+    title = session$title,
+    body = body,
+    workspace = session$workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
+  tempest:::tempest_session_set_report_value(session, report_md)
+
+  snapshot <- tempest_session_snapshot(session)
+  expect_identical(snapshot$report_md, report_md)
+  bundle <- file.path(withr::local_tempdir(), "literal-headings")
+  tempest_session_save(session, bundle)
+  restored <- tempest_session_resume(bundle, config = cfg)
+  expect_identical(tempest_session_report_md(restored), report_md)
+
+  reference <- session$manifest@programs$personas
+  running <- tempest:::tempest_stage_record_start(
+    "personas",
+    reference$program_artifact_id,
+    reference$governed_procedure_revision_id,
+    trace_references = list(
+      research_run_id = session$session_id,
+      mode = "costorm",
+      role = "program"
+    ),
+    attempt_id = "attempt-literal-headings",
+    started_at = "2026-08-16T00:00:00Z"
+  )
+  cancelled <- tempest:::tempest_stage_record_cancel(
+    running,
+    completed_at = "2026-08-16T00:01:00Z"
+  )
+  tempest:::tempest_session_set_stage_records(session, list(cancelled))
+  reviewed_report <- tempest:::tempest_markdown_append_execution_review(
+    report_md,
+    tempest:::tempest_stage_records_execution_review(list(cancelled)),
+    trusted_title = session$title
+  )
+  tempest:::tempest_session_set_report_value(session, reviewed_report)
+
+  reviewed_snapshot <- tempest_session_snapshot(session)
+  expect_identical(reviewed_snapshot$report_md, reviewed_report)
+  reviewed_bundle <- file.path(dirname(bundle), "literal-headings-reviewed")
+  tempest_session_save(session, reviewed_bundle)
+  reviewed_restored <- tempest_session_resume(reviewed_bundle, config = cfg)
+  expect_identical(
+    tempest_session_report_md(reviewed_restored),
+    reviewed_report
+  )
+})
+
+test_that("public session extraction persists its exact terminal record", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  source <- fake_source("https://example.org/persisted-session-extraction")
+  extracted <- list(
+    facts = list(list(
+      claim = "Session extraction is durably recorded.",
+      sources = list(list(source_id = source$id)),
+      confidence = "high"
+    ))
+  )
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      fake_chat(structured = list(extracted))
+    }
+  )
+  session <- tempest_session(
+    "Persisted session extraction",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.session-extraction")),
+    session_id = "persisted-session-extraction"
+  )
+  session$workspace$upsert_retrieved_resource(source)
+  expect_no_error(withCallingHandlers(
+    session$extract_facts(
+      paste0("Session extraction is durably recorded [", source$id, "]."),
+      source_ids = source$id
+    ),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
+  ))
+  claim <- session$workspace$list_proposed_claims()[[1]]
+  expect_identical(claim@session_id, session$session_id)
+  expect_identical(is.na(claim@expert_id), TRUE)
+  expect_identical(is.na(claim@retrieval_step_id), TRUE)
+  expect_length(claim@supporting_quotes, 0L)
+  expect_length(tempest:::tempest_session_stage_records(session), 1L)
+  expect_no_error(tempest_session_snapshot(session))
+
+  bundle <- file.path(withr::local_tempdir(), "session-extraction")
+  tempest_session_save(session, bundle)
+  expect_r6_class(
+    tempest_session_resume(bundle, config = cfg),
+    "TempestSession"
+  )
+  records_path <- file.path(bundle, "stage_records.json")
+  tempest:::tempest_write_json(records_path, list())
+  manifest_path <- file.path(bundle, "session.json")
+  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest$checksums[["stage_records.json"]] <-
+    tempest:::tempest_session_bundle_checksum(bundle, "stage_records.json")
+  tempest:::tempest_write_json(manifest_path, manifest)
+  expect_error(
+    tempest_session_resume(bundle, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+})
+
+test_that("sync and async warmups persist authoritative claim provenance", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  make_session <- function(mode) {
+    topic <- paste("Persisted warmup", mode)
+    session_id <- paste0("persisted-warmup-", mode)
+    expert_id <- paste0("expert.persisted-warmup-", mode)
+    source <- fake_source(paste0(
+      "https://example.org/persisted-warmup-",
+      mode
+    ))
+    answer <- paste0("Warmup evidence is durable [", source$id, "].")
+    extraction <- list(
+      facts = list(list(
+        claim = "Warmup evidence is durable.",
+        sources = list(list(source_id = source$id)),
+        confidence = "high"
+      ))
+    )
+    mindmap <- list(
+      nodes = list(
+        list(
+          id = "root",
+          label = topic,
+          parent = NULL,
+          notes = "",
+          source_ids = character()
+        ),
+        list(
+          id = "warmup-evidence",
+          label = "Warmup evidence",
+          parent = "root",
+          notes = "Durable evidence",
+          source_ids = source$id
+        )
+      ),
+      edges = list()
+    )
+    chat_factory <- function(role, model, system_prompt, echo) {
+      text <- if (identical(role, "expert")) answer else ""
+      structured <- switch(
+        role,
+        judge = extraction,
+        mindmap = mindmap,
+        list()
+      )
+      list(
+        chat = function(...) text,
+        chat_async = function(...) promises::promise_resolve(text),
+        chat_structured = function(...) structured,
+        chat_structured_async = function(...) {
+          promises::promise_resolve(structured)
+        },
+        last_turn = function() NULL,
+        register_tools = function(...) invisible(NULL)
+      )
+    }
+    cfg <- tempest_config(chat_fn = chat_factory)
+    session <- tempest_session(
+      topic,
+      config = cfg,
+      experts = list(test_expert(
+        expert_id = expert_id,
+        initial_questions = "What evidence should orient the panel?"
+      )),
+      session_id = session_id
+    )
+    session$workspace$upsert_retrieved_resource(source)
+    list(
+      session = session,
+      config = cfg,
+      session_id = session_id,
+      expert_id = expert_id
+    )
+  }
+
+  for (mode in c("sync", "async")) {
+    fixture <- make_session(mode)
+    if (identical(mode, "sync")) {
+      expect_no_error(withCallingHandlers(
+        fixture$session$warmup(verbose = FALSE),
+        dsprrr_cache_security_warning = function(condition) {
+          invokeRestart("muffleWarning")
+        }
+      ))
+    } else {
+      settled <- await_tempest_promise(tempest_session_warmup_async(
+        fixture$session,
+        timeout_s = 1,
+        max_parallel_experts = 1
+      ))
+      expect_null(settled$error)
+      expect_identical(settled$value@status, "succeeded")
+    }
+
+    claims <- fixture$session$workspace$list_proposed_claims()
+    records <- tempest:::tempest_session_stage_records(fixture$session)
+    expect_length(claims, 1L)
+    expect_length(records, 1L)
+    claim <- claims[[1]]
+    record <- records[[1]]
+    expect_identical(claim@session_id, fixture$session_id)
+    expect_identical(claim@expert_id, fixture$expert_id)
+    record_correlation <- record@trace_references$correlation_id
+    if (is.null(record_correlation)) {
+      record_correlation <- NA_character_
+    }
+    expect_identical(
+      claim@retrieval_step_id,
+      record_correlation
+    )
+    expect_identical(
+      record@trace_references$research_run_id,
+      fixture$session_id
+    )
+    expect_identical(record@trace_references$expert_id, fixture$expert_id)
+    snapshot <- tempest_session_snapshot(fixture$session)
+    expect_identical(
+      snapshot$workspace$proposed_claims[[1]]$session_id,
+      fixture$session_id
+    )
+
+    bundle <- file.path(withr::local_tempdir(), mode)
+    tempest_session_save(fixture$session, bundle)
+    restored <- tempest_session_resume(bundle, config = fixture$config)
+    restored_claim <- restored$workspace$list_proposed_claims()[[1]]
+    expect_identical(restored_claim@session_id, fixture$session_id)
+    expect_identical(
+      tempest:::tempest_stage_records_data(
+        tempest:::tempest_session_stage_records(restored)
+      ),
+      tempest:::tempest_stage_records_data(records)
+    )
+  }
+})
+
+test_that("public session verification persists audit and source proof", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    citation_policy = "strict",
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Persisted session verification",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.session-verification")),
+    session_id = "persisted-session-verification"
+  )
+  source <- fake_source("https://example.org/persisted-session-verification")
+  session$workspace$upsert_retrieved_resource(source)
+  session$workspace$add_proposed_claim(tempest_claim(
+    claim_id = "claim.persisted-session-verification",
+    claim_text = "Session verification commits durable proof",
+    source_ids = source$id
+  ))
+  judge <- fake_chat(
+    structured = list(list(
+      status = "supported",
+      score = 0.95,
+      rationale = "The captured source supports the claim."
+    ))
+  )
+  audit <- withCallingHandlers(
+    tempest_verify_claims(session, verifier = judge),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_identical(audit$verification_status, "supported")
+  expect_length(tempest:::tempest_session_stage_records(session), 1L)
+  report_md <- tempest_report_md(
+    title = session$title,
+    body = paste0(
+      "Session verification commits durable proof [",
+      source$id,
+      "]."
+    ),
+    workspace = session$workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
+  tempest:::tempest_session_set_report_value(session, report_md)
+  expect_no_error(tempest_session_snapshot(session))
+
+  forged_report <- sub(
+    paste0("# ", session$title, "\n\n"),
+    paste0(
+      "# ",
+      session$title,
+      "\n\n## A false factual conclusion\n\n"
+    ),
+    report_md,
+    fixed = TRUE
+  )
+  tempest:::tempest_session_set_report_value(session, forged_report)
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error"
+  )
+  tempest:::tempest_session_set_report_value(session, report_md)
+
+  bundle <- file.path(withr::local_tempdir(), "session-verification")
+  tempest_session_save(session, bundle)
+  restored <- tempest_session_resume(bundle, config = cfg)
+  expect_identical(
+    restored$workspace$citation_audit$verification_status,
+    "supported"
+  )
+  expect_length(tempest:::tempest_session_stage_records(restored), 1L)
+
+  report_path <- file.path(bundle, "report.md")
+  persisted_report <- tempest:::tempest_read_text(report_path)
+  forged_persisted <- sub(
+    paste0("# ", session$title, "\n\n"),
+    paste0(
+      "# ",
+      session$title,
+      "\n\n## A false factual conclusion\n\n"
+    ),
+    persisted_report,
+    fixed = TRUE
+  )
+  tempest:::tempest_write_text(report_path, forged_persisted)
+  manifest_path <- file.path(bundle, "session.json")
+  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest$checksums[["report.md"]] <-
+    tempest:::tempest_session_bundle_checksum(bundle, "report.md")
+  manifest$report_reference <-
+    tempest:::tempest_persistence_report_reference(forged_persisted)
+  bound_manifest <- tempest:::tempest_persistence_manifest_bind_report(
+    tempest:::tempest_research_manifest_from_record(
+      manifest$research_manifest
+    ),
+    forged_persisted
+  )
+  manifest$research_manifest <-
+    tempest:::tempest_research_manifest_record(bound_manifest)
+  tempest:::tempest_write_json(manifest_path, manifest)
+  expect_error(
+    tempest_session_resume(bundle, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  standalone <- tempest_research_workspace()
+  standalone$upsert_retrieved_resource(source)
+  standalone$add_proposed_claim(tempest_claim(
+    claim_id = "claim.standalone-verification",
+    claim_text = "Discarded records cannot become session proof.",
+    source_ids = source$id
+  ))
+  standalone_judge <- fake_chat(
+    structured = list(list(
+      status = "supported",
+      score = 0.95,
+      rationale = "Standalone verification has no session ledger."
+    ))
+  )
+  withCallingHandlers(
+    tempest_verify_claims(
+      standalone,
+      verifier = standalone_judge,
+      verifier_model = cfg@models[["judge"]]
+    ),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
+  )
+  unbound <- tempest_session(
+    "Unbound standalone verification",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.unbound-verification")),
+    retriever = tempest_retriever(config = cfg, workspace = standalone),
+    session_id = "unbound-standalone-verification"
+  )
+  expect_error(
+    tempest_session_snapshot(unbound),
+    class = "tempest_session_snapshot_error"
+  )
 })
 
 test_that("Co-STORM restore and resume require the recorded custom ProgramSet", {
@@ -686,14 +1298,125 @@ test_that("TempestSession restores progress history without replaying it", {
   expect_null(restored$artifacts[["progress_events"]])
 
   legacy_snapshot <- snapshot
-  legacy_snapshot$schema_version <- 4L
+  legacy_snapshot$schema_version <- 6L
   expect_error(
     tempest:::tempest_session_restore(legacy_snapshot, config = cfg),
     class = "tempest_unsupported_format_error"
   )
 })
 
-test_that("schema 5 session restore protects research identity", {
+test_that("Co-STORM snapshots cancel running stage attempts without mutation", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Running stage snapshot",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.running-stage")),
+    session_id = "running-stage-snapshot"
+  )
+  reference <- session$manifest@programs$personas
+  running <- tempest:::tempest_stage_record_start(
+    "personas",
+    reference$program_artifact_id,
+    reference$governed_procedure_revision_id,
+    trace_references = list(
+      research_run_id = session$session_id,
+      mode = "costorm",
+      role = "program"
+    ),
+    attempt_id = "attempt-running-session",
+    started_at = "2026-08-16T00:00:00Z"
+  )
+  tempest:::tempest_session_set_stage_records(session, list(running))
+  live_data <- tempest:::tempest_stage_record_data(running)
+
+  snapshot <- tempest_session_snapshot(session)
+
+  expect_identical(
+    tempest:::tempest_session_stage_records(session)[[1]]@status,
+    "running"
+  )
+  expect_identical(
+    tempest:::tempest_stage_record_data(
+      tempest:::tempest_session_stage_records(session)[[1]]
+    ),
+    live_data
+  )
+  expect_identical(snapshot$stage_records[[1]]$status, "cancelled")
+  restored <- tempest_session_restore(snapshot, config = cfg)
+  expect_identical(
+    tempest:::tempest_session_stage_records(restored)[[1]]@status,
+    "cancelled"
+  )
+
+  snapshot$stage_records <- tempest:::tempest_stage_records_data(list(running))
+  expect_error(
+    tempest_session_restore(snapshot, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  expect_error(
+    tempest:::tempest_stage_record_succeed(
+      running,
+      tempest:::tempest_stage_output_reference(
+        "state_field",
+        "perspectives",
+        content_digest = paste0("sha256:", strrep("1", 64L))
+      ),
+      support_status = "unknown",
+      completed_at = "2026-08-16T00:01:00Z"
+    ),
+    class = "tempest_stage_record_error"
+  )
+
+  valid_output <- tempest:::tempest_stage_record_succeed(
+    running,
+    tempest:::tempest_stage_output_reference(
+      "state_field",
+      "experts",
+      content_digest = tempest:::tempest_stage_state_output_digest(
+        "personas",
+        session$experts
+      )
+    ),
+    support_status = "unknown",
+    completed_at = "2026-08-16T00:01:00Z"
+  )
+  tempest:::tempest_session_set_stage_records(session, list(valid_output))
+  valid_snapshot <- tempest_session_snapshot(session)
+  expect_identical(valid_snapshot$stage_records[[1]]$status, "succeeded")
+
+  renamed <- valid_snapshot
+  renamed$experts[[1]]$expert_id <- "expert.forged-custom-id"
+  renamed$experts[[1]]$fingerprint <-
+    tempest:::tempest_expert_profile_fingerprint(renamed$experts[[1]])
+  expect_error(
+    tempest_session_restore(renamed, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  bundle <- file.path(withr::local_tempdir(), "persona-binding")
+  tempest_session_save(session, bundle)
+  experts_path <- file.path(bundle, "experts.json")
+  experts <- tempest:::tempest_read_json_strict(experts_path)
+  experts[[1]]$name <- "Forged but internally refingerprinted expert"
+  experts[[1]]$fingerprint <-
+    tempest:::tempest_expert_profile_fingerprint(experts[[1]])
+  tempest:::tempest_write_json(experts_path, experts)
+  manifest_path <- file.path(bundle, "session.json")
+  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest$checksums[["experts.json"]] <-
+    tempest:::tempest_session_bundle_checksum(bundle, "experts.json")
+  tempest:::tempest_write_json(manifest_path, manifest)
+  expect_error(
+    tempest_session_resume(bundle, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+})
+
+test_that("schema 7 session restore protects research identity", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -865,7 +1588,7 @@ test_that("schema 5 session restore protects research identity", {
   )
 })
 
-test_that("schema 5 progress history is exact and session-bound", {
+test_that("schema 7 progress history is exact and session-bound", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -986,7 +1709,15 @@ test_that("Tempest session bundles save and resume durable state", {
   )
   session_id <- session$session_id
   session$add_turn("User", "user", "Save this session.")
-  tempest:::tempest_session_set_report_value(session, "# Bundle report")
+  report_md <- tempest_report_md(
+    title = session$title,
+    body = "Bundle report",
+    workspace = store,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
+  tempest:::tempest_session_set_report_value(session, report_md)
   session$artifacts[["suggested_questions"]] <- c("What next?", "And then?")
   session$emit_progress(
     "stage",
@@ -1007,7 +1738,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_null(manifest$status)
   expect_equal(manifest$bundle_type, "costorm")
   expect_equal(manifest$bundle_status, "complete")
-  expect_equal(manifest$schema_version, 5L)
+  expect_equal(manifest$schema_version, 7L)
   expect_identical(
     manifest$research_manifest$research_run_id,
     session_id
@@ -1025,6 +1756,7 @@ test_that("Tempest session bundles save and resume durable state", {
     c(
       "experts.json",
       "progress_events.json",
+      "stage_records.json",
       "workspace/retrieved_resources.json",
       "workspace/proposed_claims.json",
       "workspace/citation_audit.json",
@@ -1092,7 +1824,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_null(restored$artifacts[["report"]])
   expect_null(restored$artifacts[["report_md"]])
   expect_null(restored$artifacts[["mindmap_md"]])
-  expect_identical(tempest_session_report_md(restored), "# Bundle report")
+  expect_identical(tempest_session_report_md(restored), report_md)
   expect_length(test_session_artifact_catalog(restored)$list(), 0L)
   expect_equal(
     restored$artifacts[["suggested_questions"]],
@@ -1130,15 +1862,696 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_no_error(tempest_session_save(session, bundle_dir, overwrite = TRUE))
 })
 
-test_that("schema 4 session bundles fail closed", {
+test_that("schema 5 session bundles fail closed", {
   bundle_dir <- withr::local_tempdir()
   tempest:::tempest_write_json(
     file.path(bundle_dir, "session.json"),
-    list(schema_version = 4L)
+    list(schema_version = 5L)
   )
   expect_error(
     tempest_session_resume(bundle_dir),
     class = "tempest_unsupported_format_error"
+  )
+})
+
+test_that("stage-record sidecars are mandatory regular bundle files", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Stage-record integrity",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.stage-record-integrity"))
+  )
+  bundle_dir <- file.path(withr::local_tempdir(), "session")
+  tempest_session_save(session, bundle_dir)
+  manifest_path <- file.path(bundle_dir, "session.json")
+  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest$files <- setdiff(
+    unlist(manifest$files, use.names = FALSE),
+    "stage_records.json"
+  )
+  manifest$checksums[["stage_records.json"]] <- NULL
+  unlink(file.path(bundle_dir, "stage_records.json"))
+  tempest:::tempest_write_json(manifest_path, manifest)
+
+  expect_error(
+    tempest_session_resume(
+      bundle_dir,
+      config = cfg,
+      partial_recovery = TRUE
+    ),
+    class = "tempest_session_restore_error"
+  )
+
+  program_set <- tempest_program_set()
+  run_dir <- file.path(withr::local_tempdir(), "run")
+  dir.create(run_dir)
+  tempest:::tempest_save_run_artifacts(
+    run_dir,
+    tempest_research_workspace(),
+    tempest:::tempest_storm_state("Stage-record integrity"),
+    tempest_research_manifest(
+      "stage-record-integrity",
+      config = tempest_config(),
+      programs = tempest:::tempest_program_set_manifest_programs(program_set)
+    ),
+    program_set = program_set,
+    config = tempest_config(),
+    steps = "research",
+    research_strategy = "key_questions"
+  )
+  run_manifest_path <- file.path(run_dir, "run_config.json")
+  run_manifest <- tempest:::tempest_read_json_strict(run_manifest_path)
+  run_manifest$files <- setdiff(
+    unlist(run_manifest$files, use.names = FALSE),
+    "stage_records.json"
+  )
+  run_manifest$checksums[["stage_records.json"]] <- NULL
+  unlink(file.path(run_dir, "stage_records.json"))
+  tempest:::tempest_write_json(run_manifest_path, run_manifest)
+
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = tempest_config(),
+      program_set = program_set,
+      run_id = "stage-record-integrity"
+    ),
+    class = "tempest_run_restore_error"
+  )
+})
+
+test_that("stage-record sidecars reject same-root symlinks", {
+  skip_on_os("windows")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Stage-record symlink",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.stage-record-symlink"))
+  )
+  bundle_dir <- file.path(withr::local_tempdir(), "session")
+  tempest_session_save(session, bundle_dir)
+  sidecar <- file.path(bundle_dir, "stage_records.json")
+  unlink(sidecar)
+  expect_identical(
+    file.symlink(file.path(bundle_dir, "expert_sessions.json"), sidecar),
+    TRUE
+  )
+  manifest_path <- file.path(bundle_dir, "session.json")
+  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest$checksums[["stage_records.json"]] <-
+    tempest:::tempest_session_bundle_checksum(
+      bundle_dir,
+      "stage_records.json"
+    )
+  tempest:::tempest_write_json(manifest_path, manifest)
+
+  expect_error(
+    tempest_session_resume(bundle_dir, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  program_set <- tempest_program_set()
+  run_dir <- file.path(withr::local_tempdir(), "run")
+  dir.create(run_dir)
+  tempest:::tempest_save_run_artifacts(
+    run_dir,
+    tempest_research_workspace(),
+    tempest:::tempest_storm_state("Stage-record symlink"),
+    tempest_research_manifest(
+      "stage-record-symlink",
+      config = cfg,
+      programs = tempest:::tempest_program_set_manifest_programs(program_set)
+    ),
+    program_set = program_set,
+    config = cfg,
+    steps = "research",
+    research_strategy = "key_questions"
+  )
+  run_sidecar <- file.path(run_dir, "stage_records.json")
+  unlink(run_sidecar)
+  expect_identical(
+    file.symlink(file.path(run_dir, "references.json"), run_sidecar),
+    TRUE
+  )
+  run_manifest_path <- file.path(run_dir, "run_config.json")
+  run_manifest <- tempest:::tempest_read_json_strict(run_manifest_path)
+  run_manifest$checksums[["stage_records.json"]] <-
+    tempest:::tempest_session_bundle_checksum(
+      run_dir,
+      "stage_records.json"
+    )
+  tempest:::tempest_write_json(run_manifest_path, run_manifest)
+
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = program_set,
+      run_id = "stage-record-symlink"
+    ),
+    class = "tempest_run_restore_error"
+  )
+})
+
+test_that("bundle root manifests reject internal and escaping symlinks", {
+  skip_on_os("windows")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  root <- withr::local_tempdir()
+  make_session_bundle <- function(name) {
+    bundle <- file.path(root, name)
+    session <- tempest_session(
+      "Root manifest symlink",
+      config = cfg,
+      experts = list(test_expert(expert_id = paste0("expert.", name)))
+    )
+    tempest_session_save(session, bundle)
+    bundle
+  }
+
+  internal_session <- make_session_bundle("session-internal")
+  unlink(file.path(internal_session, "session.json"))
+  expect_identical(
+    file.symlink(
+      file.path(internal_session, "experts.json"),
+      file.path(internal_session, "session.json")
+    ),
+    TRUE
+  )
+  expect_error(
+    tempest_session_resume(internal_session, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  escaping_session <- make_session_bundle("session-escaping")
+  session_manifest <- file.path(escaping_session, "session.json")
+  outside_session <- tempfile(
+    "outside-session-",
+    tmpdir = dirname(escaping_session)
+  )
+  expect_identical(file.copy(session_manifest, outside_session), TRUE)
+  unlink(session_manifest)
+  expect_identical(file.symlink(outside_session, session_manifest), TRUE)
+  expect_error(
+    tempest_session_resume(escaping_session, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  program_set <- tempest_program_set()
+  make_storm_bundle <- function(name) {
+    bundle <- file.path(root, name)
+    tempest:::tempest_save_run_artifacts(
+      bundle,
+      tempest_research_workspace(),
+      tempest:::tempest_storm_state("Root manifest symlink"),
+      tempest_research_manifest(
+        name,
+        config = cfg,
+        programs = tempest:::tempest_program_set_manifest_programs(program_set)
+      ),
+      program_set = program_set,
+      config = cfg,
+      steps = "research",
+      research_strategy = "key_questions"
+    )
+    bundle
+  }
+
+  internal_storm <- make_storm_bundle("storm-internal")
+  unlink(file.path(internal_storm, "run_config.json"))
+  expect_identical(
+    file.symlink(
+      file.path(internal_storm, "workspace.json"),
+      file.path(internal_storm, "run_config.json")
+    ),
+    TRUE
+  )
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      internal_storm,
+      config = cfg,
+      program_set = program_set,
+      run_id = "storm-internal"
+    ),
+    class = "tempest_run_restore_error"
+  )
+
+  escaping_storm <- make_storm_bundle("storm-escaping")
+  storm_manifest <- file.path(escaping_storm, "run_config.json")
+  outside_storm <- tempfile(
+    "outside-storm-",
+    tmpdir = dirname(escaping_storm)
+  )
+  expect_identical(file.copy(storm_manifest, outside_storm), TRUE)
+  unlink(storm_manifest)
+  expect_identical(file.symlink(outside_storm, storm_manifest), TRUE)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      escaping_storm,
+      config = cfg,
+      program_set = program_set,
+      run_id = "storm-escaping"
+    ),
+    class = "tempest_run_restore_error"
+  )
+})
+
+test_that("stage-record sidecars bind manifest, workspace, and output kind", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  program_set <- tempest_program_set()
+  extraction_program <-
+    tempest:::tempest_program_set_manifest_programs(program_set)$extract_claims
+  workspace <- tempest_research_workspace()
+  source <- tempest:::tempest_source(
+    "https://example.org/stage-record-binding",
+    title = "Stage record binding",
+    content_text = "Stage records bind durable claim outputs."
+  )
+  workspace$upsert_retrieved_resource(source)
+  span_id <- workspace$add_evidence_span(tempest_evidence_span(
+    evidence_span_id = "span-stage-record-binding",
+    source_id = source$id,
+    quote = "Stage records bind durable claim outputs.",
+    extracted_by = extraction_program$program_artifact_id
+  ))
+  claim_id <- workspace$add_proposed_claim(tempest_claim(
+    claim_text = "Stage records bind durable claim outputs.",
+    source_ids = source$id,
+    evidence_span_ids = span_id,
+    supporting_quotes = list("Stage records bind durable claim outputs."),
+    retrieval_step_id = "retrieval.stage-record-binding",
+    expert_id = "expert.stage-record-binding",
+    session_id = "stage-record-binding",
+    verification_status = "supported",
+    support_score = 0.9
+  ))
+  manual_claim_id <- workspace$add_proposed_claim(tempest_claim(
+    claim_text = "Manual claims do not satisfy extraction proof.",
+    source_ids = source$id
+  ))
+  workspace$set_citation_audit(tibble::tibble(
+    claim_id = claim_id,
+    claim_text = "Stage records bind durable claim outputs.",
+    verification_status = "supported",
+    support_score = 0.9,
+    rationale = "Exact persisted audit binding."
+  ))
+  session <- tempest_session(
+    "Stage-record binding",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.stage-record-binding")),
+    retriever = tempest_retriever(config = cfg, workspace = workspace),
+    session_id = "stage-record-binding",
+    program_set = program_set
+  )
+  session_private <- session$.__enclos_env__$private
+  session_private$manifest_value <- tempest:::tempest_research_manifest_update(
+    session$manifest,
+    traces = list(list(
+      trace_id = "trace.stage-record-binding",
+      expert_id = "expert.stage-record-binding",
+      correlation_id = "retrieval.stage-record-binding"
+    ))
+  )
+  reference <- session$manifest@programs$extract_claims
+  started <- tempest:::tempest_stage_record_start(
+    "extract_claims",
+    reference$program_artifact_id,
+    reference$governed_procedure_revision_id,
+    trace_references = list(
+      research_run_id = session$session_id,
+      expert_id = "expert.stage-record-binding",
+      correlation_id = "retrieval.stage-record-binding",
+      mode = "costorm",
+      role = "program"
+    ),
+    attempt_id = "attempt-stage-record-binding",
+    started_at = "2026-08-16T00:00:00Z"
+  )
+  succeeded <- tempest:::tempest_stage_record_succeed(
+    started,
+    tempest:::tempest_stage_output_reference(
+      "workspace_claims",
+      claim_id,
+      content_digest = tempest:::tempest_stage_claims_output_digest(
+        list(workspace$get_proposed_claim(claim_id)),
+        started,
+        list(workspace$get_evidence_span(span_id))
+      )
+    ),
+    support_status = "unknown",
+    completed_at = "2026-08-16T00:01:00Z"
+  )
+  audit_reference <- session$manifest@programs$verify_claim_support
+  audit_attempt <- tempest:::tempest_stage_record_start(
+    "verify_claim_support",
+    audit_reference$program_artifact_id,
+    audit_reference$governed_procedure_revision_id,
+    trace_references = list(
+      research_run_id = session$session_id,
+      mode = "costorm",
+      role = "program"
+    ),
+    attempt_id = "attempt-audit-binding",
+    started_at = "2026-08-16T00:02:00Z"
+  )
+  exact_audit <- tempest:::tempest_stage_record_succeed(
+    audit_attempt,
+    tempest:::tempest_stage_output_reference(
+      "citation_audit",
+      claim_id,
+      content_digest = tempest:::tempest_stage_verification_output_digest(
+        workspace$citation_audit,
+        audit_attempt,
+        workspace$get_proposed_claim(claim_id),
+        workspace
+      )
+    ),
+    support_status = "verified",
+    completed_at = "2026-08-16T00:03:00Z"
+  )
+  empty_audit <- tempest:::tempest_stage_record_succeed(
+    audit_attempt,
+    tempest:::tempest_stage_output_reference(
+      "citation_audit",
+      content_digest = paste0("sha256:", strrep("e", 64L))
+    ),
+    support_status = "verified",
+    completed_at = "2026-08-16T00:03:00Z"
+  )
+  expect_no_error(tempest:::tempest_stage_records_validate_workspace(
+    list(exact_audit),
+    workspace
+  ))
+  expect_error(
+    tempest:::tempest_stage_records_validate_workspace(
+      list(empty_audit),
+      workspace
+    ),
+    class = "tempest_stage_record_error"
+  )
+  tempest:::tempest_session_set_stage_records(
+    session,
+    list(succeeded, exact_audit)
+  )
+  bundle_dir <- file.path(withr::local_tempdir(), "session")
+  tempest_session_save(session, bundle_dir)
+  expect_r6_class(
+    tempest_session_resume(bundle_dir, config = cfg),
+    "TempestSession"
+  )
+
+  sidecar_path <- file.path(bundle_dir, "stage_records.json")
+  manifest_path <- file.path(bundle_dir, "session.json")
+  valid_records <- tempest:::tempest_read_json_strict(sidecar_path)
+  valid_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  write_records <- function(records) {
+    tempest:::tempest_write_json(sidecar_path, records)
+    manifest <- valid_manifest
+    manifest$checksums[["stage_records.json"]] <-
+      tempest:::tempest_session_bundle_checksum(
+        bundle_dir,
+        "stage_records.json"
+      )
+    tempest:::tempest_write_json(manifest_path, manifest)
+  }
+  expect_rejected <- function() {
+    expect_error(
+      tempest_session_resume(bundle_dir, config = cfg),
+      class = "tempest_session_restore_error"
+    )
+  }
+
+  changed_manifest_trace <- valid_manifest
+  changed_manifest_trace$research_manifest$traces[[1]]$status <- "failed"
+  tempest:::tempest_write_json(manifest_path, changed_manifest_trace)
+  expect_rejected()
+
+  extra_manifest_trace <- valid_manifest
+  extra_trace <- extra_manifest_trace$research_manifest$traces[[1]]
+  extra_trace$trace_id <- "attempt-unrecorded"
+  extra_manifest_trace$research_manifest$traces <- c(
+    extra_manifest_trace$research_manifest$traces,
+    list(extra_trace)
+  )
+  tempest:::tempest_write_json(manifest_path, extra_manifest_trace)
+  expect_rejected()
+
+  missing_manifest_trace <- valid_manifest
+  missing_manifest_trace$research_manifest$traces <-
+    missing_manifest_trace$research_manifest$traces[-1]
+  tempest:::tempest_write_json(manifest_path, missing_manifest_trace)
+  expect_rejected()
+
+  wrong_program <- valid_records
+  wrong_program[[1]]$program_artifact_id <-
+    paste0("sha256:", strrep("0", 64L))
+  write_records(wrong_program)
+  expect_rejected()
+
+  wrong_run <- valid_records
+  wrong_run[[1]]$trace_references$research_run_id <- "transplanted-run"
+  write_records(wrong_run)
+  expect_rejected()
+
+  missing_run <- valid_records
+  missing_run[[1]]$trace_references$research_run_id <- NULL
+  write_records(missing_run)
+  expect_rejected()
+
+  missing_trace <- valid_records
+  missing_trace[[1]]$trace_references$trace_id <- NULL
+  write_records(missing_trace)
+  expect_rejected()
+
+  missing_expert <- valid_records
+  missing_expert[[1]]$trace_references$expert_id <- NULL
+  write_records(missing_expert)
+  expect_rejected()
+
+  missing_correlation <- valid_records
+  missing_correlation[[1]]$trace_references$correlation_id <- NULL
+  write_records(missing_correlation)
+  expect_rejected()
+
+  unknown_claim <- valid_records
+  unknown_claim[[1]]$output_reference$ids <- list("claim.unknown")
+  write_records(unknown_claim)
+  expect_rejected()
+
+  substituted_claim <- valid_records
+  substituted_claim[[1]]$output_reference$ids <- list(manual_claim_id)
+  write_records(substituted_claim)
+  expect_rejected()
+
+  wrong_kind <- valid_records
+  wrong_kind[[1]]$output_reference <- list(
+    kind = "content_digest",
+    ids = list(paste0("sha256:", strrep("d", 64L)))
+  )
+  write_records(wrong_kind)
+  expect_rejected()
+
+  write_records(tempest:::tempest_stage_records_data(list(started)))
+  expect_rejected()
+
+  duplicated <- list(valid_records[[1]], valid_records[[1]])
+  write_records(duplicated)
+  expect_rejected()
+
+  extra_field <- valid_records
+  extra_field[[1]]$runtime <- "not durable"
+  write_records(extra_field)
+  expect_rejected()
+
+  claim_path <- file.path(bundle_dir, "workspace/proposed_claims.json")
+  span_path <- file.path(bundle_dir, "workspace/evidence_spans.json")
+  audit_path <- file.path(bundle_dir, "workspace/citation_audit.json")
+  valid_claims <- tempest:::tempest_read_json_strict(claim_path)
+  valid_spans <- tempest:::tempest_read_json_strict(span_path)
+  valid_audit <- tempest:::tempest_read_json_strict(audit_path)
+  write_workspace <- function(rel_path, value) {
+    tempest:::tempest_write_json(claim_path, valid_claims)
+    tempest:::tempest_write_json(span_path, valid_spans)
+    tempest:::tempest_write_json(audit_path, valid_audit)
+    tempest:::tempest_write_json(file.path(bundle_dir, rel_path), value)
+    tempest:::tempest_write_json(sidecar_path, valid_records)
+    manifest <- valid_manifest
+    for (workspace_path in c(
+      "workspace/proposed_claims.json",
+      "workspace/evidence_spans.json",
+      "workspace/citation_audit.json"
+    )) {
+      manifest$checksums[[workspace_path]] <-
+        tempest:::tempest_session_bundle_checksum(bundle_dir, workspace_path)
+    }
+    manifest$checksums[["stage_records.json"]] <-
+      tempest:::tempest_session_bundle_checksum(
+        bundle_dir,
+        "stage_records.json"
+      )
+    tempest:::tempest_write_json(manifest_path, manifest)
+  }
+
+  changed_claims <- valid_claims
+  extracted_index <- match(
+    claim_id,
+    vapply(valid_claims, \(claim) claim$claim_id, character(1))
+  )
+  changed_claims[[extracted_index]]$retrieval_query <-
+    "forged immutable query"
+  write_workspace("workspace/proposed_claims.json", changed_claims)
+  expect_rejected()
+
+  changed_spans <- valid_spans
+  changed_spans[[1]]$extracted_by <- audit_reference$program_artifact_id
+  write_workspace("workspace/evidence_spans.json", changed_spans)
+  expect_rejected()
+
+  changed_audit <- valid_audit
+  changed_audit[[1]]$rationale <- "Rechecksummed but not execution-bound."
+  write_workspace("workspace/citation_audit.json", changed_audit)
+  expect_rejected()
+})
+
+test_that("verification stage records collectively cover a two-claim audit", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  workspace <- tempest_research_workspace()
+  source <- fake_source(
+    url = "https://example.org/two-claim-audit",
+    title = "Two-claim audit"
+  )
+  workspace$upsert_retrieved_resource(source)
+  claim_texts <- c(
+    "The first claim is supported.",
+    "The second claim is supported."
+  )
+  claim_ids <- vapply(
+    claim_texts,
+    function(claim_text) {
+      workspace$add_proposed_claim(tempest_claim(
+        claim_text = claim_text,
+        source_ids = source$id,
+        verification_status = "supported",
+        support_score = 0.9
+      ))
+    },
+    character(1)
+  )
+  workspace$set_citation_audit(tibble::tibble(
+    claim_id = claim_ids,
+    claim_text = claim_texts,
+    verification_status = rep("supported", 2L),
+    support_score = rep(0.9, 2L),
+    rationale = c("First audit row.", "Second audit row.")
+  ))
+  session <- tempest_session(
+    "Two-claim stage audit",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.two-claim-audit")),
+    retriever = tempest_retriever(config = cfg, workspace = workspace),
+    session_id = "two-claim-audit"
+  )
+  reference <- session$manifest@programs$verify_claim_support
+  records <- lapply(seq_along(claim_ids), function(index) {
+    running <- tempest:::tempest_stage_record_start(
+      "verify_claim_support",
+      reference$program_artifact_id,
+      reference$governed_procedure_revision_id,
+      trace_references = list(
+        research_run_id = session$session_id,
+        mode = "costorm",
+        role = "program"
+      ),
+      attempt_id = paste0("attempt-two-claim-audit-", index),
+      started_at = "2026-08-16T00:00:00Z"
+    )
+    tempest:::tempest_stage_record_succeed(
+      running,
+      tempest:::tempest_stage_output_reference(
+        "citation_audit",
+        claim_ids[[index]],
+        content_digest = tempest:::tempest_stage_verification_output_digest(
+          workspace$citation_audit[index, , drop = FALSE],
+          running,
+          workspace$get_proposed_claim(claim_ids[[index]]),
+          workspace
+        )
+      ),
+      support_status = "verified",
+      completed_at = "2026-08-16T00:01:00Z"
+    )
+  })
+  tempest:::tempest_session_set_stage_records(session, records)
+  bundle_dir <- file.path(withr::local_tempdir(), "session")
+
+  tempest_session_save(session, bundle_dir)
+  restored <- tempest_session_resume(bundle_dir, config = cfg)
+  restored_records <- tempest:::tempest_session_stage_records(restored)
+
+  expect_length(restored_records, 2L)
+  expect_setequal(
+    unlist(
+      lapply(restored_records, \(record) record@output_reference$ids),
+      use.names = FALSE
+    ),
+    claim_ids
+  )
+
+  resources_path <- file.path(
+    bundle_dir,
+    "workspace/retrieved_resources.json"
+  )
+  manifest_path <- file.path(bundle_dir, "session.json")
+  valid_resources <- tempest:::tempest_read_json_strict(resources_path)
+  valid_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  expect_source_tamper_rejected <- function(content) {
+    resources <- valid_resources
+    resources[[1]]$content <- content
+    resources[[1]]$metadata$content_text <- content
+    resources[[1]]$content_hash <-
+      tempest:::tempest_artifact_codec_encode(
+        content,
+        resources[[1]]$media_type
+      )$sha256
+    resources[[1]]$fingerprint <-
+      tempest:::tempest_resource_fingerprint(resources[[1]])
+    tempest:::tempest_write_json(resources_path, resources)
+    manifest <- valid_manifest
+    manifest$checksums[["workspace/retrieved_resources.json"]] <-
+      tempest:::tempest_session_bundle_checksum(
+        bundle_dir,
+        "workspace/retrieved_resources.json"
+      )
+    tempest:::tempest_write_json(manifest_path, manifest)
+    expect_error(
+      tempest_session_resume(bundle_dir, config = cfg),
+      class = "tempest_session_restore_error"
+    )
+  }
+
+  expect_source_tamper_rejected("")
+  expect_source_tamper_rejected(
+    "This replacement body is unrelated to either verified claim."
   )
 })
 
@@ -1176,7 +2589,15 @@ test_that("session bundles do not persist generic artifact catalogs", {
   )
   test_session_artifact_catalog(session)$register(spec)
   test_session_artifact_catalog(session)$add(artifact)
-  tempest:::tempest_session_set_report_value(session, "# Durable report")
+  report_md <- tempest_report_md(
+    title = session$title,
+    body = "Durable report",
+    workspace = session$workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
+  tempest:::tempest_session_set_report_value(session, report_md)
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
 
   tempest_session_save(session, bundle_dir)
@@ -1192,7 +2613,7 @@ test_that("session bundles do not persist generic artifact catalogs", {
   expect_false("artifact_files" %in% names(manifest))
   expect_false("artifact_index" %in% names(manifest))
   expect_false("deliverable_index" %in% names(manifest))
-  expect_identical(tempest_session_report_md(restored), "# Durable report")
+  expect_identical(tempest_session_report_md(restored), report_md)
   expect_length(test_session_artifact_catalog(restored)$list(), 0L)
 })
 
@@ -1785,6 +3206,116 @@ test_that("session save refuses to overwrite a non-bundle directory", {
     class = "tempest_session_save_error"
   )
   expect_true(file.exists(keep))
+
+  invalid_bundle <- file.path(dirname(not_a_bundle), "invalid-bundle")
+  dir.create(invalid_bundle)
+  manifest_path <- file.path(invalid_bundle, "session.json")
+  precious_path <- file.path(invalid_bundle, "precious.txt")
+  writeLines("{", manifest_path)
+  writeLines("preserve these bytes", precious_path)
+  bundle_bytes <- function(path) {
+    files <- sort(list.files(path, recursive = TRUE, all.files = TRUE))
+    stats::setNames(
+      lapply(files, function(file) {
+        file_path <- file.path(path, file)
+        readBin(file_path, what = "raw", n = file.info(file_path)$size)
+      }),
+      files
+    )
+  }
+  before <- bundle_bytes(invalid_bundle)
+
+  expect_error(
+    tempest_session_save(session, invalid_bundle, overwrite = TRUE),
+    class = "tempest_session_save_error"
+  )
+  expect_identical(bundle_bytes(invalid_bundle), before)
+})
+
+test_that("session and STORM saves reject symbolic-link bundle roots", {
+  skip_on_os("windows")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  root <- withr::local_tempdir()
+
+  session_target <- file.path(root, "session-target")
+  original_session <- tempest_session(
+    "Original session root",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.root-original"))
+  )
+  tempest_session_save(original_session, session_target)
+  session_alias <- file.path(root, "session-alias")
+  expect_identical(file.symlink(session_target, session_alias), TRUE)
+  replacement_session <- tempest_session(
+    "Replacement session root",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.root-replacement"))
+  )
+
+  expect_error(
+    tempest_session_save(
+      replacement_session,
+      session_alias,
+      overwrite = TRUE
+    ),
+    class = "tempest_session_save_error"
+  )
+  expect_identical(Sys.readlink(session_alias), session_target)
+  restored_session <- tempest_session_resume(session_target, config = cfg)
+  expect_identical(restored_session$topic, "Original session root")
+
+  program_set <- tempest_program_set()
+  storm_target <- file.path(root, "storm-target")
+  storm_manifest <- tempest_research_manifest(
+    "storm-root-symlink",
+    config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  storm_workspace <- tempest_research_workspace()
+  tempest:::tempest_save_run_artifacts(
+    storm_target,
+    storm_workspace,
+    tempest:::tempest_storm_state(
+      "STORM root symlink",
+      title = "Original STORM title"
+    ),
+    storm_manifest,
+    program_set = program_set,
+    config = cfg,
+    steps = "research",
+    research_strategy = "key_questions"
+  )
+  storm_alias <- file.path(root, "storm-alias")
+  expect_identical(file.symlink(storm_target, storm_alias), TRUE)
+
+  expect_error(
+    tempest:::tempest_save_run_artifacts(
+      paste0(storm_alias, .Platform$file.sep),
+      storm_workspace,
+      tempest:::tempest_storm_state(
+        "STORM root symlink",
+        title = "Replacement STORM title"
+      ),
+      storm_manifest,
+      program_set = program_set,
+      config = cfg,
+      steps = "research",
+      research_strategy = "key_questions"
+    ),
+    class = "tempest_run_persistence_error"
+  )
+  expect_identical(Sys.readlink(storm_alias), storm_target)
+  restored_storm <- tempest:::tempest_load_run_artifacts(
+    storm_target,
+    config = cfg,
+    program_set = program_set,
+    run_id = "storm-root-symlink"
+  )
+  expect_identical(restored_storm$state$title, "Original STORM title")
 })
 
 test_that("Tempest session bundle resume reports classed file errors", {
@@ -1805,30 +3336,35 @@ test_that("Tempest session bundle resume reports classed file errors", {
     config = cfg,
     experts = list(expert)
   )
-  bundle_dir <- file.path(withr::local_tempdir(), "bundle")
-  tempest_session_save(session, bundle_dir)
+  root <- withr::local_tempdir()
+  fresh_bundle <- function(name) {
+    bundle_dir <- file.path(root, name)
+    tempest_session_save(session, bundle_dir)
+    bundle_dir
+  }
 
+  bundle_dir <- fresh_bundle("missing-experts")
   unlink(file.path(bundle_dir, "experts.json"))
   expect_error(
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
   )
 
-  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  bundle_dir <- fresh_bundle("malformed-claims")
   writeLines("{", file.path(bundle_dir, "workspace/proposed_claims.json"))
   expect_error(
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
   )
 
-  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  bundle_dir <- fresh_bundle("missing-transcript")
   unlink(file.path(bundle_dir, "transcript.json"))
   expect_error(
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
   )
 
-  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  bundle_dir <- fresh_bundle("unsupported-schema")
   manifest_path <- file.path(bundle_dir, "session.json")
   manifest <- tempest:::tempest_read_json_strict(manifest_path)
   manifest$schema_version <- 999L
@@ -1879,6 +3415,87 @@ test_that("failed session replacement preserves the previous bundle", {
     list.files(root, pattern = "staging", all.files = TRUE),
     character()
   )
+})
+
+test_that("failed STORM replacement preserves the previous bundle byte-for-byte", {
+  skip_if_not_installed("jsonlite")
+  root <- withr::local_tempdir()
+  run_dir <- file.path(root, "atomic-run")
+  cfg <- tempest_config()
+  program_set <- tempest_program_set()
+  manifest <- tempest_research_manifest(
+    "atomic-run",
+    config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  workspace <- tempest_research_workspace()
+  original <- tempest:::tempest_storm_state(
+    "Atomic STORM",
+    title = "Original title"
+  )
+  tempest:::tempest_save_run_artifacts(
+    run_dir,
+    workspace,
+    original,
+    manifest,
+    program_set = program_set,
+    config = cfg,
+    steps = "research",
+    research_strategy = "key_questions"
+  )
+  bundle_bytes <- function(path) {
+    files <- sort(list.files(path, recursive = TRUE, all.files = TRUE))
+    stats::setNames(
+      lapply(files, function(file) {
+        readBin(
+          file.path(path, file),
+          what = "raw",
+          n = file.info(
+            file.path(path, file)
+          )$size
+        )
+      }),
+      files
+    )
+  }
+  before <- bundle_bytes(run_dir)
+  replacement <- tempest:::tempest_storm_state(
+    "Atomic STORM",
+    title = "Replacement title"
+  )
+  withr::local_options(
+    tempest.run_write_hook = function(file) {
+      if (identical(file, "stage_records.json")) {
+        stop("injected STORM write failure")
+      }
+    }
+  )
+
+  expect_error(
+    tempest:::tempest_save_run_artifacts(
+      run_dir,
+      workspace,
+      replacement,
+      manifest,
+      program_set = program_set,
+      config = cfg,
+      steps = "research",
+      research_strategy = "key_questions"
+    ),
+    class = "tempest_run_persistence_error"
+  )
+
+  expect_identical(bundle_bytes(run_dir), before)
+  remnants <- list.files(root, all.files = TRUE, no.. = TRUE)
+  remnants <- remnants[grepl("^\\.atomic-run-(staging|backup)-", remnants)]
+  expect_identical(remnants, character())
+  restored <- tempest:::tempest_load_run_artifacts(
+    run_dir,
+    config = cfg,
+    program_set = program_set,
+    run_id = "atomic-run"
+  )
+  expect_identical(restored$state$title, "Original title")
 })
 
 test_that("partial session recovery is explicit and skips corrupt optional data", {
@@ -1943,7 +3560,7 @@ test_that("partial session recovery is explicit and skips corrupt optional data"
   expect_false("artifacts/suggested_questions.json" %in% declared)
 })
 
-test_that("partial recovery filters missing and unsafe suggestion files", {
+test_that("partial recovery rejects missing and unsafe suggestion files", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
@@ -1961,7 +3578,8 @@ test_that("partial recovery filters missing and unsafe suggestion files", {
     ))
   )
   session$artifacts[["suggested_questions"]] <- "What remains?"
-  bundle_dir <- file.path(withr::local_tempdir(), "bundle")
+  root <- withr::local_tempdir()
+  bundle_dir <- file.path(root, "missing-suggestions")
 
   tempest_session_save(session, bundle_dir)
   questions_path <- file.path(
@@ -1972,16 +3590,21 @@ test_that("partial recovery filters missing and unsafe suggestion files", {
   manifest <- tempest:::tempest_read_json_strict(
     file.path(bundle_dir, "session.json")
   )
-  declared <- suppressWarnings(
+  expect_error(
     tempest:::tempest_session_bundle_validate_manifest(
       bundle_dir,
       manifest,
       partial_recovery = TRUE
-    )
+    ),
+    class = "tempest_session_restore_error"
   )
-  expect_false("artifacts/suggested_questions.json" %in% declared)
 
-  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  bundle_dir <- file.path(root, "symlinked-suggestions")
+  tempest_session_save(session, bundle_dir)
+  questions_path <- file.path(
+    bundle_dir,
+    "artifacts/suggested_questions.json"
+  )
   external_path <- tempfile("tempest-external-suggestions-")
   writeLines('["Outside bundle"]', external_path)
   unlink(questions_path)
@@ -1990,14 +3613,14 @@ test_that("partial recovery filters missing and unsafe suggestion files", {
     manifest <- tempest:::tempest_read_json_strict(
       file.path(bundle_dir, "session.json")
     )
-    declared <- suppressWarnings(
+    expect_error(
       tempest:::tempest_session_bundle_validate_manifest(
         bundle_dir,
         manifest,
         partial_recovery = TRUE
-      )
+      ),
+      class = "tempest_session_restore_error"
     )
-    expect_false("artifacts/suggested_questions.json" %in% declared)
   }
 })
 
@@ -2018,24 +3641,23 @@ test_that("partial recovery rejects every non-presentation integrity failure", {
       instructions = "Never recover corrupted durable state."
     ))
   )
-  bundle_dir <- file.path(withr::local_tempdir(), "bundle")
+  root <- withr::local_tempdir()
   critical_files <- c(
     "experts.json",
     "expert_sessions.json",
     "transcript.json",
     "mindmap.json",
+    "stage_records.json",
     "workspace/retrieved_resources.json",
     "workspace/proposed_claims.json",
     "workspace/evidence_spans.json",
     "workspace/disputes.json"
   )
 
-  for (critical_file in critical_files) {
-    tempest_session_save(
-      session,
-      bundle_dir,
-      overwrite = dir.exists(bundle_dir)
-    )
+  for (index in seq_along(critical_files)) {
+    critical_file <- critical_files[[index]]
+    bundle_dir <- file.path(root, paste0("critical-", index))
+    tempest_session_save(session, bundle_dir)
     writeLines("tampered durable state", file.path(bundle_dir, critical_file))
     expect_error(
       tempest_session_resume(
@@ -2047,7 +3669,8 @@ test_that("partial recovery rejects every non-presentation integrity failure", {
     )
   }
 
-  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  bundle_dir <- file.path(root, "malformed-claims")
+  tempest_session_save(session, bundle_dir)
   manifest_path <- file.path(bundle_dir, "session.json")
   claims_path <- file.path(bundle_dir, "workspace/proposed_claims.json")
   writeLines("{", claims_path)
@@ -2067,7 +3690,9 @@ test_that("partial recovery rejects every non-presentation integrity failure", {
     class = "tempest_session_restore_error"
   )
 
-  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  bundle_dir <- file.path(root, "workflow-sidecar")
+  tempest_session_save(session, bundle_dir)
+  manifest_path <- file.path(bundle_dir, "session.json")
   workflow_path <- file.path(bundle_dir, "workflow_run.json")
   tempest:::tempest_write_json(workflow_path, list(schema_version = 2L))
   manifest <- tempest:::tempest_read_json_strict(manifest_path)
@@ -2121,7 +3746,7 @@ test_that("session resume rejects files that its manifest does not declare", {
   )
 })
 
-test_that("schema 4 run bundles restore workspace, state, and manifest", {
+test_that("schema 6 run bundles restore workspace, state, and manifest", {
   skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")
 
@@ -2140,6 +3765,20 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
     verification_status = "supported",
     support_score = 0.9
   ))
+  cfg <- tempest_config()
+  program_set <- tempest_program_set()
+  report_md <- tempest_report_md(
+    title = "Lithium Batteries",
+    body = paste0(
+      "Lithium batteries store energy. [",
+      source$id,
+      "]"
+    ),
+    workspace = workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
   expert <- tempest_expert(
     expert_id = "expert.technical",
     name = "Dr. Tech",
@@ -2159,7 +3798,7 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
     draft_outline = list(
       title = "Lithium Batteries",
       sections = list(list(
-        title = "Overview",
+        title = "Technology",
         summary = "Summary",
         subsections = list()
       ))
@@ -2167,13 +3806,18 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
     outline = list(
       title = "Lithium Batteries",
       sections = list(list(
-        title = "Overview",
+        title = "Technology",
         summary = "Summary",
         subsections = list()
       ))
     ),
-    draft_md = "Draft body",
-    report_md = "Polished body",
+    lead_section = "Lithium batteries store energy.",
+    draft_md = paste0(
+      "Lithium batteries store energy.\n\n",
+      "## Technology\n\n",
+      "Lithium batteries store energy."
+    ),
+    report_md = report_md,
     completed_stages = c(
       "perspectives",
       "research",
@@ -2190,8 +3834,6 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
     rationale = "matches source"
   ))
 
-  cfg <- tempest_config()
-  program_set <- tempest_program_set()
   research_manifest <- tempest_research_manifest(
     research_run_id = "lithium-run",
     mode = "storm",
@@ -2199,6 +3841,35 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
     programs = tempest:::tempest_program_set_manifest_programs(program_set),
     status = "succeeded"
   )
+  state$stage_records <- test_persistence_storm_stage_records(
+    state,
+    workspace,
+    research_manifest
+  )
+  state$report_md <- tempest:::tempest_markdown_append_execution_review(
+    state$report_md,
+    tempest:::tempest_stage_records_execution_review(state$stage_records)
+  )
+  state <- tempest:::tempest_storm_state_validate(state)
+  for (stage in c(
+    "perspectives",
+    "personas",
+    "query_decomposition",
+    "extract_claims",
+    "draft_outline",
+    "refined_outline",
+    "lead_section",
+    "section_writing"
+  )) {
+    erased <- Filter(
+      \(record) !identical(record@stage, stage),
+      state$stage_records
+    )
+    expect_error(
+      tempest:::tempest_stage_records_validate_storm_coverage(erased, state),
+      class = "tempest_stage_record_error"
+    )
+  }
   tempest:::tempest_save_run_artifacts(
     run_dir,
     workspace,
@@ -2227,8 +3898,21 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
   expect_equal(length(loaded$workspace$list_proposed_claims()), 1)
   expect_equal(loaded$state$title, "Lithium Batteries")
   expect_equal(loaded$state$outline$title, "Lithium Batteries")
-  expect_equal(loaded$state$draft_md, "Draft body")
-  expect_equal(loaded$state$report_md, "Polished body")
+  expect_equal(loaded$state$draft_md, state$draft_md)
+  expect_equal(loaded$state$report_md, state$report_md)
+  expect_length(loaded$state$stage_records, 9L)
+  expect_identical(loaded$state$stage_records[[1]]@status, "succeeded")
+  expect_identical(
+    loaded$state$stage_records[[1]]@output_reference,
+    tempest:::tempest_stage_output_reference(
+      "state_field",
+      c("title", "perspectives"),
+      content_digest = tempest:::tempest_stage_state_output_digest(
+        "perspectives",
+        list(title = state$title, perspectives = state$perspectives)
+      )
+    )
+  )
   expect_equal(loaded$state$experts[[1]]@expert_id, "expert.technical")
   expect_s7_class(loaded$state$experts[[1]], TempestExpertProfile)
   expect_false("artifact_catalog" %in% names(loaded))
@@ -2248,7 +3932,7 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
     unlist(loaded$metadata$files, use.names = FALSE),
     "artifacts/typed/"
   )))
-  expect_equal(loaded$metadata$schema_version, 4L)
+  expect_equal(loaded$metadata$schema_version, 6L)
   expect_identical(loaded$metadata$bundle_type, "storm")
   expect_identical(loaded$metadata$bundle_status, "complete")
   expect_type(loaded$metadata$research_manifest, "list")
@@ -2257,7 +3941,67 @@ test_that("schema 4 run bundles restore workspace, state, and manifest", {
     FALSE
   )
   expect_equal(file.exists(file.path(run_dir, "experts.json")), TRUE)
+  expect_equal(file.exists(file.path(run_dir, "stage_records.json")), TRUE)
   expect_equal(file.exists(file.path(run_dir, "personas.json")), FALSE)
+
+  sidecar_path <- file.path(run_dir, "stage_records.json")
+  manifest_path <- file.path(run_dir, "run_config.json")
+  records <- tempest:::tempest_read_json_strict(sidecar_path)
+  valid_records <- records
+  valid_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  tempest:::tempest_write_json(sidecar_path, list())
+  erased_manifest <- valid_manifest
+  erased_manifest$checksums[["stage_records.json"]] <-
+    tempest:::tempest_session_bundle_checksum(
+      run_dir,
+      "stage_records.json"
+    )
+  tempest:::tempest_write_json(manifest_path, erased_manifest)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = program_set,
+      run_id = "lithium-run"
+    ),
+    class = "tempest_run_restore_error"
+  )
+
+  tempest:::tempest_write_json(sidecar_path, valid_records)
+  tempest:::tempest_write_json(manifest_path, valid_manifest)
+  changed_manifest_trace <- valid_manifest
+  changed_manifest_trace$research_manifest$traces[[1]]$status <- "failed"
+  tempest:::tempest_write_json(manifest_path, changed_manifest_trace)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = program_set,
+      run_id = "lithium-run"
+    ),
+    class = "tempest_run_restore_error"
+  )
+
+  tempest:::tempest_write_json(manifest_path, valid_manifest)
+  records <- valid_records
+  records[[1]]$program_artifact_id <- paste0("sha256:", strrep("0", 64L))
+  tempest:::tempest_write_json(sidecar_path, records)
+  persisted_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  persisted_manifest$checksums[["stage_records.json"]] <-
+    tempest:::tempest_session_bundle_checksum(
+      run_dir,
+      "stage_records.json"
+    )
+  tempest:::tempest_write_json(manifest_path, persisted_manifest)
+  expect_error(
+    tempest:::tempest_load_run_artifacts(
+      run_dir,
+      config = cfg,
+      program_set = program_set,
+      run_id = "lithium-run"
+    ),
+    class = "tempest_run_restore_error"
+  )
 })
 
 test_that("run restore rejects tampered expert-profile records", {
@@ -2287,6 +4031,7 @@ test_that("run restore rejects tampered expert-profile records", {
     config = cfg,
     programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
+  state <- test_persistence_bind_storm_records(state, workspace, manifest)
   tempest:::tempest_save_run_artifacts(
     run_dir,
     workspace,
@@ -2350,6 +4095,7 @@ test_that("completed stage metadata controls resume state", {
     config = cfg,
     programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
+  state <- test_persistence_bind_storm_records(state, workspace, manifest)
 
   tempest:::tempest_save_run_artifacts(
     run_dir,
@@ -2383,6 +4129,107 @@ test_that("completed stage metadata controls resume state", {
     ),
     FALSE
   )
+  expect_identical(
+    loaded$state$requested_steps,
+    c("perspectives", "research", "outline", "write", "polish")
+  )
+  expect_identical(
+    unlist(loaded$metadata$requested_steps, use.names = FALSE),
+    loaded$state$requested_steps
+  )
+})
+
+test_that("STORM requested steps persist canonically and remain immutable", {
+  skip_if_not_installed("jsonlite")
+  root <- withr::local_tempdir()
+  run_dir <- file.path(root, "requested-steps")
+  cfg <- tempest_config()
+  program_set <- tempest_program_set()
+  workspace <- tempest_research_workspace()
+  manifest <- tempest_research_manifest(
+    "requested-steps",
+    config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  state <- tempest:::tempest_storm_state("Requested steps")
+
+  tempest:::tempest_save_run_artifacts(
+    run_dir,
+    workspace,
+    state,
+    manifest,
+    program_set = program_set,
+    config = cfg,
+    steps = c("polish", "research", "write"),
+    research_strategy = "key_questions"
+  )
+  loaded <- tempest:::tempest_load_run_artifacts(
+    run_dir,
+    config = cfg,
+    program_set = program_set,
+    run_id = "requested-steps"
+  )
+  expect_identical(
+    loaded$state$requested_steps,
+    c("research", "write", "polish")
+  )
+  expect_identical(loaded$completed_stages, character())
+
+  tempest:::tempest_save_run_artifacts(
+    run_dir,
+    workspace,
+    state,
+    manifest,
+    program_set = program_set,
+    config = cfg,
+    steps = c("write", "polish", "research"),
+    research_strategy = "key_questions"
+  )
+  expect_error(
+    tempest:::tempest_save_run_artifacts(
+      run_dir,
+      workspace,
+      state,
+      manifest,
+      program_set = program_set,
+      config = cfg,
+      steps = c("research", "outline"),
+      research_strategy = "key_questions"
+    ),
+    class = "tempest_run_persistence_error"
+  )
+  restored <- tempest:::tempest_load_run_artifacts(
+    run_dir,
+    config = cfg,
+    program_set = program_set,
+    run_id = "requested-steps"
+  )
+  expect_identical(restored$state$requested_steps, loaded$state$requested_steps)
+})
+
+test_that("succeeded STORM publication requires the full dependency chain", {
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config()
+  program_set <- tempest_program_set()
+  expect_error(
+    tempest:::tempest_save_run_artifacts(
+      withr::local_tempdir(),
+      tempest_research_workspace(),
+      tempest:::tempest_storm_state("Partial publication"),
+      tempest_research_manifest(
+        "partial-publication",
+        mode = "storm",
+        config = cfg,
+        programs = tempest:::tempest_program_set_manifest_programs(program_set),
+        status = "succeeded"
+      ),
+      program_set = program_set,
+      config = cfg,
+      steps = "research",
+      research_strategy = "key_questions"
+    ),
+    class = "tempest_run_persistence_error"
+  )
 })
 
 test_that("completed STORM product state fails closed when artifacts drift", {
@@ -2396,10 +4243,51 @@ test_that("completed STORM product state fails closed when artifacts drift", {
     outline <- list(
       title = "Durable state",
       sections = list(list(
-        title = "Overview",
+        title = "Findings",
         summary = "Summary",
         subsections = list()
       ))
+    )
+    workspace <- tempest_research_workspace()
+    source <- tempest:::tempest_source(
+      "https://example.com/durable-state",
+      title = "Durable source",
+      content_text = "Durable evidence supports the durable claim."
+    )
+    workspace$upsert_retrieved_resource(source)
+    span_id <- workspace$add_evidence_span(tempest_evidence_span(
+      evidence_span_id = "span-durable-state",
+      source_id = source$id,
+      quote = "Durable evidence supports the durable claim.",
+      extracted_by = program_references$extract_claims$program_artifact_id
+    ))
+    claim_id <- workspace$add_proposed_claim(tempest_claim(
+      claim_id = "claim-durable-state",
+      claim_text = "Durable evidence supports the durable claim.",
+      source_ids = source$id,
+      evidence_span_ids = span_id,
+      supporting_quotes = list("Durable evidence supports the durable claim."),
+      verification_status = "supported",
+      support_score = 0.9
+    ))
+    workspace$set_citation_audit(tibble::tibble(
+      claim_id = claim_id,
+      claim_text = "Durable evidence supports the durable claim.",
+      verification_status = "supported",
+      support_score = 0.9,
+      rationale = "The durable source directly supports the claim."
+    ))
+    report_md <- tempest_report_md(
+      title = "Durable state",
+      body = paste0(
+        "Durable evidence supports the durable claim. [",
+        source$id,
+        "]"
+      ),
+      workspace = workspace,
+      citation_policy = cfg@citation_policy,
+      on_unsupported_claim = cfg@on_unsupported_claim,
+      min_support_score = cfg@min_support_score
     )
     state <- tempest:::tempest_storm_state(
       "Durable state",
@@ -2417,8 +4305,13 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       )),
       draft_outline = outline,
       outline = outline,
-      draft_md = "# Draft\n\nDurable draft.",
-      report_md = "# Report\n\nDurable report.",
+      lead_section = "Durable evidence supports the durable claim.",
+      draft_md = paste0(
+        "Durable evidence supports the durable claim.\n\n",
+        "## Findings\n\n",
+        "Durable evidence supports the durable claim."
+      ),
+      report_md = report_md,
       completed_stages = c(
         "perspectives",
         "research",
@@ -2427,15 +4320,17 @@ test_that("completed STORM product state fails closed when artifacts drift", {
         "polish"
       )
     )
+    manifest <- tempest_research_manifest(
+      "completed-state",
+      config = cfg,
+      programs = program_references
+    )
+    state <- test_persistence_bind_storm_records(state, workspace, manifest)
     tempest:::tempest_save_run_artifacts(
       dir,
-      tempest_research_workspace(),
+      workspace,
       state,
-      tempest_research_manifest(
-        "completed-state",
-        config = cfg,
-        programs = program_references
-      ),
+      manifest,
       program_set = program_set,
       config = cfg,
       steps = state$completed_stages,
@@ -2658,25 +4553,63 @@ test_that("the run manifest is written after the artifacts it certifies", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
+  workspace <- tempest_research_workspace()
+  source <- tempest:::tempest_source(
+    "https://example.com/write-order",
+    title = "Write order source",
+    content_text = "Durable evidence is written before its manifest."
+  )
+  workspace$upsert_retrieved_resource(source)
+  span_id <- workspace$add_evidence_span(tempest_evidence_span(
+    evidence_span_id = "span-write-order",
+    source_id = source$id,
+    quote = "Durable evidence is written before its manifest.",
+    extracted_by = program_references$extract_claims$program_artifact_id
+  ))
+  claim_id <- workspace$add_proposed_claim(tempest_claim(
+    claim_id = "claim-write-order",
+    claim_text = "Durable evidence is written before its manifest.",
+    source_ids = source$id,
+    evidence_span_ids = span_id,
+    supporting_quotes = list(
+      "Durable evidence is written before its manifest."
+    ),
+    verification_status = "supported",
+    support_score = 0.9
+  ))
+  workspace$set_citation_audit(tibble::tibble(
+    claim_id = claim_id,
+    claim_text = "Durable evidence is written before its manifest.",
+    verification_status = "supported",
+    support_score = 0.9,
+    rationale = "The exact source supports the durable claim."
+  ))
   state <- tempest:::tempest_storm_state(
     "t",
     outline = list(
       title = "Draft",
-      sections = list(list(title = "Draft", summary = "Draft"))
+      sections = list(list(title = "Findings", summary = "Draft"))
     ),
-    draft_md = "# Draft",
+    lead_section = "Durable evidence is written before its manifest.",
+    draft_md = paste0(
+      "Durable evidence is written before its manifest.\n\n",
+      "## Findings\n\n",
+      "Durable evidence is written before its manifest."
+    ),
     completed_stages = c("research", "write")
   )
+  manifest <- tempest_research_manifest(
+    "write-order",
+    config = cfg,
+    programs = program_references
+  )
+  state <- test_persistence_bind_storm_records(state, workspace, manifest)
 
   tempest:::tempest_save_run_artifacts(
     dir,
-    tempest_research_workspace(),
+    workspace,
     state,
-    tempest_research_manifest(
-      "write-order",
-      config = cfg,
-      programs = program_references
-    ),
+    manifest,
     program_set = program_set,
     config = cfg,
     steps = c("research", "write"),
@@ -2702,10 +4635,18 @@ test_that("references.json holds only the cited sources and reloads", {
   s2 <- tempest:::tempest_source(url = "https://example.com/b", title = "B")
   workspace$upsert_retrieved_resource(s1)
   workspace$upsert_retrieved_resource(s2)
+  report_md <- tempest_report_md(
+    title = "t",
+    body = paste0("A cited claim [", s1$id, "]."),
+    workspace = workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
   state <- tempest:::tempest_storm_state(
     "t",
     draft_md = "# Draft",
-    report_md = paste0("A cited claim [", s1$id, "]."),
+    report_md = report_md,
     completed_stages = "polish"
   )
 
@@ -2789,11 +4730,11 @@ test_that("references.json holds only the cited sources and reloads", {
   )
 })
 
-test_that("schema 3 STORM bundles fail closed", {
+test_that("schema 4 STORM bundles fail closed", {
   dir <- withr::local_tempdir()
   tempest:::tempest_write_json(
     file.path(dir, "run_config.json"),
-    list(schema_version = 3L)
+    list(schema_version = 4L)
   )
   expect_error(
     tempest:::tempest_load_run_artifacts(dir),
@@ -2801,7 +4742,7 @@ test_that("schema 3 STORM bundles fail closed", {
   )
 })
 
-test_that("schema 4 resume protects run and config identity", {
+test_that("schema 6 resume protects run and config identity", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()
@@ -3024,7 +4965,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
   )
 })
 
-test_that("schema 4 STORM bundles round-trip the complete workspace", {
+test_that("schema 6 STORM bundles round-trip the complete workspace", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()
@@ -3056,13 +4997,15 @@ test_that("schema 4 STORM bundles round-trip the complete workspace", {
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-reviewed-assay",
     source_id = resource@resource_id,
-    quote = "The assay was reviewed before use."
+    quote = "The assay was reviewed before use.",
+    extracted_by = program_references$extract_claims$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-complete-workspace",
     claim_text = "The result used a reviewed assay.",
     source_ids = c(resource@resource_id, source$id),
     evidence_span_ids = span_id,
+    supporting_quotes = list("The assay was reviewed before use."),
     confidence = "high",
     verification_status = "supported",
     support_score = 0.92
@@ -3082,18 +5025,22 @@ test_that("schema 4 STORM bundles round-trip the complete workspace", {
   ))
   snapshot <- tempest:::tempest_research_workspace_snapshot(workspace)
 
+  state <- tempest:::tempest_storm_state(
+    "Complete workspace",
+    completed_stages = "research"
+  )
+  manifest <- tempest_research_manifest(
+    "complete-workspace",
+    config = cfg,
+    programs = program_references
+  )
+  state <- test_persistence_bind_storm_records(state, workspace, manifest)
+
   tempest:::tempest_save_run_artifacts(
     dir,
     workspace,
-    tempest:::tempest_storm_state(
-      "Complete workspace",
-      completed_stages = "research"
-    ),
-    tempest_research_manifest(
-      "complete-workspace",
-      config = cfg,
-      programs = program_references
-    ),
+    state,
+    manifest,
     program_set = program_set,
     config = cfg,
     steps = "research",
@@ -3242,33 +5189,33 @@ test_that("persistence schema dispatch rejects fractional versions", {
   run_class <- "tempest_run_restore_error"
 
   expect_error(
-    tempest_session_restore(list(schema_version = 5.5)),
+    tempest_session_restore(list(schema_version = 6.5)),
     class = session_class
   )
   expect_error(
     tempest:::tempest_session_bundle_validate_manifest(
       withr::local_tempdir(),
-      list(schema_version = 5.5)
+      list(schema_version = 6.5)
     ),
     class = session_class
   )
   expect_error(
     tempest:::tempest_run_bundle_validate_manifest(
       withr::local_tempdir(),
-      list(schema_version = 4.5)
+      list(schema_version = 5.5)
     ),
     class = run_class
   )
   expect_error(
     tempest:::tempest_storm_restore_workspace(
-      list(schema_version = 4.5),
+      list(schema_version = 5.5),
       cfg
     ),
     class = run_class
   )
   expect_error(
     tempest:::tempest_storm_restore_manifest(
-      list(schema_version = 4.5),
+      list(schema_version = 5.5),
       tempest_research_workspace(),
       tempest:::tempest_storm_state("Fractional schema"),
       cfg,
@@ -3279,7 +5226,7 @@ test_that("persistence schema dispatch rejects fractional versions", {
   )
 })
 
-test_that("schema 4 STORM manifests have an exact product envelope", {
+test_that("schema 6 STORM manifests have an exact product envelope", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
@@ -3303,15 +5250,18 @@ test_that("schema 4 STORM manifests have an exact product envelope", {
       )),
       completed_stages = c("perspectives", "research")
     )
+    workspace <- tempest_research_workspace()
+    manifest <- tempest_research_manifest(
+      "exact-storm",
+      config = cfg,
+      programs = program_references
+    )
+    state <- test_persistence_bind_storm_records(state, workspace, manifest)
     tempest:::tempest_save_run_artifacts(
       dir,
-      tempest_research_workspace(),
+      workspace,
       state,
-      tempest_research_manifest(
-        "exact-storm",
-        config = cfg,
-        programs = program_references
-      ),
+      manifest,
       program_set = program_set,
       config = cfg,
       steps = c("perspectives", "research"),
@@ -3397,7 +5347,7 @@ test_that("schema 4 STORM manifests have an exact product envelope", {
   expect_identical(restored$completed_stages, character())
 })
 
-test_that("schema 4 STORM declared JSON fails closed", {
+test_that("schema 6 STORM declared JSON fails closed", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
@@ -3421,15 +5371,18 @@ test_that("schema 4 STORM declared JSON fails closed", {
       )),
       completed_stages = "perspectives"
     )
+    workspace <- tempest_research_workspace()
+    manifest <- tempest_research_manifest(
+      "strict-storm",
+      config = cfg,
+      programs = program_references
+    )
+    state <- test_persistence_bind_storm_records(state, workspace, manifest)
     tempest:::tempest_save_run_artifacts(
       dir,
-      tempest_research_workspace(),
+      workspace,
       state,
-      tempest_research_manifest(
-        "strict-storm",
-        config = cfg,
-        programs = program_references
-      ),
+      manifest,
       program_set = program_set,
       config = cfg,
       steps = "perspectives",
@@ -3438,7 +5391,11 @@ test_that("schema 4 STORM declared JSON fails closed", {
     list(dir = dir, config = cfg)
   }
 
-  for (file in c("perspectives.json", "references.json")) {
+  for (file in c(
+    "perspectives.json",
+    "references.json",
+    "stage_records.json"
+  )) {
     bundle <- make_bundle()
     writeLines("{", file.path(bundle$dir, file))
     manifest_path <- file.path(bundle$dir, "run_config.json")
@@ -3459,7 +5416,7 @@ test_that("schema 4 STORM declared JSON fails closed", {
   }
 })
 
-test_that("schema 4 manifests require files implied by completed stages", {
+test_that("schema 6 manifests require files implied by completed stages", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
@@ -3483,15 +5440,18 @@ test_that("schema 4 manifests require files implied by completed stages", {
       )),
       completed_stages = "perspectives"
     )
+    workspace <- tempest_research_workspace()
+    manifest <- tempest_research_manifest(
+      "stage-files",
+      config = cfg,
+      programs = program_references
+    )
+    state <- test_persistence_bind_storm_records(state, workspace, manifest)
     tempest:::tempest_save_run_artifacts(
       dir,
-      tempest_research_workspace(),
+      workspace,
       state,
-      tempest_research_manifest(
-        "stage-files",
-        config = cfg,
-        programs = program_references
-      ),
+      manifest,
       program_set = program_set,
       config = cfg,
       steps = "perspectives",
@@ -3553,7 +5513,8 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   source <- tempest:::tempest_source(
     "https://example.com/authoritative",
     title = "Authoritative source",
-    snippet = "Persisted source"
+    snippet = "Persisted source",
+    content_text = "Persisted source. This span was not persisted."
   )
   resource <- tempest_resource(
     resource_kind = "scientific.document",
@@ -3588,13 +5549,15 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     config = cfg,
     programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
+  state <- tempest:::tempest_storm_state(
+    "Authoritative workspace",
+    completed_stages = "research"
+  )
+  state <- test_persistence_bind_storm_records(state, workspace, manifest)
   tempest:::tempest_save_run_artifacts(
     dir,
     workspace,
-    tempest:::tempest_storm_state(
-      "Authoritative workspace",
-      completed_stages = "research"
-    ),
+    state,
     manifest,
     program_set = program_set,
     config = cfg,

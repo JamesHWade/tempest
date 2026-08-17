@@ -22,7 +22,7 @@ test_that("TempestRun bundles round-trip durable run state", {
       media_type = "text/plain",
       resource_id = "resource.request",
       content = "The customer needs a rollout plan.",
-      retrieved_at = "2026-07-18 UTC"
+      retrieved_at = "2026-07-18T00:00:00Z"
     )
     store <- tempest_research_workspace()
     store$upsert_retrieved_resource(resource)
@@ -294,7 +294,7 @@ test_that("TempestRun bundles never serialize executable runtime values", {
     created_at = "2026-07-18 UTC"
   )
   runtime <- tempest_operation_registry(list(
-    finish = list(kind = "step", implementation = function() "done")
+    finish = list(kind = "step", implementation = \() "done")
   ))
   workflow <- tempest_workflow_spec(
     "runtime-value-workflow",
@@ -322,4 +322,79 @@ test_that("TempestRun bundles never serialize executable runtime values", {
   )
   expect_null(snapshot$runtime)
   expect_null(snapshot$runtime_context)
+})
+
+test_that("TempestRun save errors do not print file or parser details", {
+  io_secret <- "sk-proj-io-secret-ABCDEFGHIJKLMNOP"
+  blocked_path <- file.path(withr::local_tempdir(), io_secret)
+  writeLines("blocked", blocked_path)
+  missing_path <- file.path(blocked_path, "snapshot.json")
+  io_error <- tryCatch(
+    suppressWarnings(
+      tempest:::tempest_generic_run_bundle_write_json(
+        missing_path,
+        list(ok = TRUE),
+        "Tempest run snapshot"
+      )
+    ),
+    error = identity
+  )
+
+  expect_s3_class(io_error, "tempest_run_save_error")
+  expect_identical(
+    conditionMessage(io_error),
+    "Could not write Tempest run snapshot."
+  )
+  expect_no_match(
+    paste(capture.output(print(io_error)), collapse = "\n"),
+    io_secret,
+    fixed = TRUE
+  )
+  expect_null(io_error$parent)
+
+  runtime <- tempest_operation_registry(list(
+    finish = list(kind = "step", implementation = function() "done")
+  ))
+  workflow <- tempest_workflow_spec(
+    "overwrite-parser-workflow",
+    title = "Overwrite parser workflow",
+    purpose = "Exercise safe overwrite errors",
+    steps = list(tempest_workflow_step(
+      "finish",
+      title = "Finish",
+      purpose = "Finish",
+      operation_id = "finish"
+    ))
+  )
+  run <- tempest_run_workflow(
+    tempest_objective("Persist safely"),
+    workflow,
+    runtime
+  )
+  bundle <- file.path(withr::local_tempdir(), "run")
+  tempest_run_save(run, bundle)
+  parse_secret <- "Authorization: Bearer parser-secret-token"
+  writeLines(
+    paste0('{"secret": "', parse_secret, '"'),
+    file.path(bundle, "manifest.json")
+  )
+
+  parse_error <- rlang::catch_cnd(
+    tempest_run_save(run, bundle, overwrite = TRUE)
+  )
+
+  expect_s3_class(parse_error, "tempest_run_save_error")
+  expect_identical(
+    conditionMessage(parse_error),
+    paste(
+      "Refusing to overwrite a directory that is not a recognized",
+      "Tempest run bundle."
+    )
+  )
+  expect_no_match(
+    paste(capture.output(print(parse_error)), collapse = "\n"),
+    parse_secret,
+    fixed = TRUE
+  )
+  expect_null(parse_error$parent)
 })

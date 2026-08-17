@@ -7,11 +7,15 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
   # Add some claims
   store$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Quantum computing uses qubits",
-    source_ids = source_ids[[1]]
+    source_ids = source_ids[[1]],
+    verification_status = "supported",
+    support_score = 0.9
   ))
   store$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Classical computers use bits",
-    source_ids = source_ids[[2]]
+    source_ids = source_ids[[2]],
+    verification_status = "supported",
+    support_score = 0.9
   ))
 
   # Without ragnar, should fall back to keyword

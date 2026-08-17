@@ -18,17 +18,90 @@ TempestResource <- S7::new_class(
     retention = tempest_workflow_prop_list(),
     metadata = tempest_workflow_prop_list(),
     schema_version = S7::new_property(S7::class_integer, default = 1L)
-  )
+  ),
+  validator = function(self) {
+    required_ids <- c(self@resource_id, self@resource_kind)
+    if (
+      !all(vapply(
+        required_ids,
+        tempest_opaque_identifier_valid,
+        logical(1)
+      ))
+    ) {
+      return(
+        "Resource identity fields must be bounded credential-free identifiers"
+      )
+    }
+    optional_ids <- c(
+      self@storage_ref,
+      self@origin_connection_id,
+      self@content_hash
+    )
+    valid_optional <- vapply(
+      optional_ids,
+      \(value) is.na(value) || tempest_opaque_identifier_valid(value),
+      logical(1)
+    )
+    if (!all(valid_optional)) {
+      return(
+        "Resource reference fields must be NA or credential-free identifiers"
+      )
+    }
+    if (
+      !tempest_resource_single_line_valid(self@locator) ||
+        !tempest_resource_single_line_valid(self@title)
+    ) {
+      return("Resource locator and title must be non-empty single-line text")
+    }
+    if (!tempest_ledger_timestamp_valid(self@retrieved_at)) {
+      return("retrieved_at must be an exact canonical UTC timestamp")
+    }
+  }
 )
 
-tempest_resource_optional_scalar <- function(value, arg) {
+tempest_resource_safe_scalar <- function(value, arg, identifier = FALSE) {
+  value <- tempest_workflow_scalar(value, arg)
+  if (tempest_contract_sensitive_scalar(value)) {
+    tempest_workflow_abort(
+      "{.arg {arg}} cannot contain a credential or secret value."
+    )
+  }
+  if (
+    isTRUE(identifier) && !tempest_research_workspace_reference_id_valid(value)
+  ) {
+    tempest_workflow_abort(
+      "{.arg {arg}} must be a bounded credential-free identifier."
+    )
+  }
+  value
+}
+
+tempest_resource_single_line_valid <- function(value) {
+  rlang::is_string(value) &&
+    !is.na(value) &&
+    nzchar(value) &&
+    !grepl("\r", value, fixed = TRUE) &&
+    !grepl("\n", value, fixed = TRUE)
+}
+
+tempest_resource_single_line_scalar <- function(value, arg) {
+  value <- tempest_resource_safe_scalar(value, arg)
+  if (!tempest_resource_single_line_valid(value)) {
+    tempest_workflow_abort(
+      "{.arg {arg}} must be non-empty single-line text."
+    )
+  }
+  value
+}
+
+tempest_resource_optional_scalar <- function(value, arg, identifier = FALSE) {
   if (
     is.null(value) ||
       (is.character(value) && length(value) == 1L && is.na(value))
   ) {
     return(NA_character_)
   }
-  tempest_workflow_scalar(value, arg)
+  tempest_resource_safe_scalar(value, arg, identifier = identifier)
 }
 
 tempest_resource_content <- function(content) {
@@ -56,6 +129,26 @@ tempest_resource_metadata <- function(value, arg) {
     abort = tempest_workflow_abort,
     noun = "Resource metadata"
   )
+  value_for_scan <- value
+  evidence_fields <- c(
+    "snippet",
+    "content_text",
+    "context_text",
+    "citation_context",
+    "answer_context"
+  )
+  if (!is.null(names(value_for_scan))) {
+    value_for_scan <- value_for_scan[
+      !names(value_for_scan) %in% evidence_fields
+    ]
+  }
+  sensitive <- tempest_contract_sensitive_values(value_for_scan, arg)
+  if (length(sensitive) > 0L) {
+    tempest_workflow_abort(c(
+      "{.arg {arg}} cannot contain credential or secret values.",
+      x = "Sensitive field: {.field {sensitive[[1]]}}."
+    ))
+  }
   value
 }
 
@@ -82,16 +175,16 @@ tempest_resource_metadata <- function(value, arg) {
 #' @param storage_ref Optional opaque reference to externally stored content.
 #' @param origin_connection_id Optional host connection reference identifier.
 #' @param scope_metadata Serializable tenant or project scope metadata.
-#'   Credential-like field names are rejected recursively.
+#'   Credential-like field names and values are rejected recursively.
 #' @param content_hash Optional content checksum. Tempest computes one for
 #'   inline content when omitted.
 #' @param retrieved_at Retrieval timestamp.
 #' @param redaction Serializable redaction metadata. Credential-like field names
-#'   are rejected recursively.
+#'   and values are rejected recursively.
 #' @param retention Serializable retention metadata. Credential-like field names
-#'   are rejected recursively.
+#'   and values are rejected recursively.
 #' @param metadata Serializable namespaced host metadata. Credential-like field
-#'   names are rejected recursively.
+#'   names and values are rejected recursively.
 #' @param schema_version Positive resource schema version.
 #' @return A `tempest_resource` S7 object.
 #' @examples
@@ -120,14 +213,15 @@ tempest_resource <- function(
   metadata = list(),
   schema_version = 1L
 ) {
-  resource_kind <- tempest_workflow_scalar(
+  resource_kind <- tempest_resource_safe_scalar(
     resource_kind,
-    "resource_kind"
+    "resource_kind",
+    identifier = TRUE
   )
-  locator <- tempest_workflow_scalar(locator, "locator")
-  title <- tempest_workflow_scalar(title, "title")
-  media_type <- tempest_workflow_scalar(media_type, "media_type")
-  resource_id <- tempest_workflow_scalar(
+  locator <- tempest_resource_single_line_scalar(locator, "locator")
+  title <- tempest_resource_single_line_scalar(title, "title")
+  media_type <- tempest_resource_safe_scalar(media_type, "media_type")
+  resource_id <- tempest_resource_safe_scalar(
     resource_id %||%
       paste0(
         "R",
@@ -141,13 +235,19 @@ tempest_resource <- function(
           16L
         )
       ),
-    "resource_id"
+    "resource_id",
+    identifier = TRUE
   )
   content <- tempest_resource_content(content)
-  storage_ref <- tempest_resource_optional_scalar(storage_ref, "storage_ref")
+  storage_ref <- tempest_resource_optional_scalar(
+    storage_ref,
+    "storage_ref",
+    identifier = TRUE
+  )
   origin_connection_id <- tempest_resource_optional_scalar(
     origin_connection_id,
-    "origin_connection_id"
+    "origin_connection_id",
+    identifier = TRUE
   )
   scope_metadata <- tempest_resource_metadata(
     scope_metadata,
@@ -156,14 +256,18 @@ tempest_resource <- function(
   redaction <- tempest_resource_metadata(redaction, "redaction")
   retention <- tempest_resource_metadata(retention, "retention")
   metadata <- tempest_resource_metadata(metadata, "metadata")
-  retrieved_at <- tempest_workflow_scalar(
+  retrieved_at <- tempest_resource_safe_scalar(
     retrieved_at %||% tempest_now_utc(),
     "retrieved_at"
   )
   if (is.null(content_hash) && !is.null(content)) {
     content_hash <- tempest_artifact_codec_encode(content, media_type)$sha256
   }
-  content_hash <- tempest_resource_optional_scalar(content_hash, "content_hash")
+  content_hash <- tempest_resource_optional_scalar(
+    content_hash,
+    "content_hash",
+    identifier = TRUE
+  )
   if (
     !is.numeric(schema_version) ||
       length(schema_version) != 1L ||
@@ -201,6 +305,7 @@ tempest_resource_data <- function(resource, include_content = TRUE) {
       "{.arg resource} must be created by {.fn tempest_resource}."
     )
   }
+  S7::validate(resource)
   include_content <- tempest_workflow_flag(include_content, "include_content")
   fields <- S7::prop_names(resource)
   if (!include_content) {
@@ -209,6 +314,38 @@ tempest_resource_data <- function(resource, include_content = TRUE) {
   data <- stats::setNames(
     lapply(fields, function(field) S7::prop(resource, field)),
     fields
+  )
+  data$resource_kind <- tempest_resource_safe_scalar(
+    data$resource_kind,
+    "resource_kind",
+    identifier = TRUE
+  )
+  data$locator <- tempest_resource_single_line_scalar(data$locator, "locator")
+  data$title <- tempest_resource_single_line_scalar(data$title, "title")
+  data$media_type <- tempest_resource_safe_scalar(data$media_type, "media_type")
+  data$resource_id <- tempest_resource_safe_scalar(
+    data$resource_id,
+    "resource_id",
+    identifier = TRUE
+  )
+  data$retrieved_at <- tempest_resource_safe_scalar(
+    data$retrieved_at,
+    "retrieved_at"
+  )
+  data$storage_ref <- tempest_resource_optional_scalar(
+    data$storage_ref,
+    "storage_ref",
+    identifier = TRUE
+  )
+  data$origin_connection_id <- tempest_resource_optional_scalar(
+    data$origin_connection_id,
+    "origin_connection_id",
+    identifier = TRUE
+  )
+  data$content_hash <- tempest_resource_optional_scalar(
+    data$content_hash,
+    "content_hash",
+    identifier = TRUE
   )
   for (field in c("scope_metadata", "redaction", "retention", "metadata")) {
     data[[field]] <- tempest_resource_metadata(data[[field]], field)

@@ -50,6 +50,9 @@ knowledge snapshot on which this workspace is based.}
     \item \href{#method-ResearchWorkspace-list_retrieved_resources}{\code{ResearchWorkspace$list_retrieved_resources()}}
     \item \href{#method-ResearchWorkspace-list_retrieved_sources}{\code{ResearchWorkspace$list_retrieved_sources()}}
     \item \href{#method-ResearchWorkspace-add_proposed_claim}{\code{ResearchWorkspace$add_proposed_claim()}}
+    \item \href{#method-ResearchWorkspace-add_proposed_claims}{\code{ResearchWorkspace$add_proposed_claims()}}
+    \item \href{#method-ResearchWorkspace-add_extracted_claim_batch}{\code{ResearchWorkspace$add_extracted_claim_batch()}}
+    \item \href{#method-ResearchWorkspace-verify_proposed_claims_batch}{\code{ResearchWorkspace$verify_proposed_claims_batch()}}
     \item \href{#method-ResearchWorkspace-get_proposed_claim}{\code{ResearchWorkspace$get_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-list_proposed_claims}{\code{ResearchWorkspace$list_proposed_claims()}}
     \item \href{#method-ResearchWorkspace-proposed_claims_for_resource}{\code{ResearchWorkspace$proposed_claims_for_resource()}}
@@ -64,6 +67,7 @@ knowledge snapshot on which this workspace is based.}
     \item \href{#method-ResearchWorkspace-record_accepted_graft_reference}{\code{ResearchWorkspace$record_accepted_graft_reference()}}
     \item \href{#method-ResearchWorkspace-list_accepted_graft_references}{\code{ResearchWorkspace$list_accepted_graft_references()}}
     \item \href{#method-ResearchWorkspace-set_citation_audit}{\code{ResearchWorkspace$set_citation_audit()}}
+    \item \href{#method-ResearchWorkspace-validate_integrity}{\code{ResearchWorkspace$validate_integrity()}}
     \item \href{#method-ResearchWorkspace-to_tibbles}{\code{ResearchWorkspace$to_tibbles()}}
     \item \href{#method-ResearchWorkspace-clone}{\code{ResearchWorkspace$clone()}}
   }
@@ -213,6 +217,76 @@ internal built-in web-source record.}
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{claim}}{A \code{tempest_claim} S7 record.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-add_proposed_claims"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-add_proposed_claims}{}}}
+\subsection{\code{ResearchWorkspace$add_proposed_claims()}}{
+  Atomically add proposed claim records to the workspace.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$add_proposed_claims(claims, commit = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{claims}}{A list of \code{tempest_claim} S7 records.}
+      \item{\code{commit}}{Optional zero-argument callback committed with the batch.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-add_extracted_claim_batch"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-add_extracted_claim_batch}{}}}
+\subsection{\code{ResearchWorkspace$add_extracted_claim_batch()}}{
+  Atomically add extracted evidence spans and claims.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$add_extracted_claim_batch(
+  claims,
+  evidence_spans = list(),
+  commit = NULL
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{claims}}{A list of \code{tempest_claim} S7 records.}
+      \item{\code{evidence_spans}}{A list of \code{tempest_evidence_span} S7 records.}
+      \item{\code{commit}}{Optional zero-argument callback committed with the batch.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-verify_proposed_claims_batch"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-verify_proposed_claims_batch}{}}}
+\subsection{\code{ResearchWorkspace$verify_proposed_claims_batch()}}{
+  Atomically verify proposed claims and set their audit.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$verify_proposed_claims_batch(
+  verifications,
+  citation_audit,
+  commit = NULL
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{verifications}}{A list of claim-verification update records.}
+      \item{\code{citation_audit}}{The complete claim-centered citation audit.}
+      \item{\code{commit}}{Optional zero-argument callback committed with the batch.}
     }
     \if{html}{\out{</div>}}
   }
@@ -461,6 +535,18 @@ internal built-in web-source record.}
     \describe{
       \item{\code{citation_audit}}{A citation-audit data frame, or \code{NULL} to clear it.}
     }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-validate_integrity"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-validate_integrity}{}}}
+\subsection{\code{ResearchWorkspace$validate_integrity()}}{
+  Validate all authoritative workspace cross-record links.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$validate_integrity()}
     \if{html}{\out{</div>}}
   }
 }

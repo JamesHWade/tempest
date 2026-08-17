@@ -157,13 +157,15 @@ test_that("artifact stores can capture report artifacts", {
 
   report <- session$report(include_references = FALSE, reorganize = FALSE)
 
-  expect_equal(report, "Report body.")
-  expect_equal(artifacts$read("report_md")@content, "Report body.")
+  expected <- "# Artifact topic\n\nReport body.\n"
+
+  expect_equal(report, expected)
+  expect_equal(artifacts$read("report_md")@content, expected)
   expect_named(artifacts$list(), "report_md")
   expect_identical(artifacts$exists("report_md", "1"), TRUE)
   expect_equal(
     test_session_artifact_catalog(session)$get("report_md")@content,
-    "Report body."
+    expected
   )
   expect_equal(
     reporter$.calls()[[1]]$prompt,

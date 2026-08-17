@@ -36,9 +36,29 @@ test_that("outline module inputs do not collide with output fields", {
 test_that("draft outline execution uses the disjoint report title input", {
   observed_inputs <- NULL
   local_mocked_bindings(
-    tempest_run_dsprrr_module = function(module, chat, inputs, step) {
+    tempest_run_dsprrr_module_structured = function(
+      module,
+      chat,
+      inputs,
+      step
+    ) {
       observed_inputs <<- inputs
-      list(title = "Report", sections = list())
+      structure(
+        list(
+          output = list(
+            title = "Report",
+            sections = list(list(
+              title = "Section",
+              summary = "Summary",
+              subsections = list(list(
+                title = "Subsection",
+                bullets = "Finding"
+              ))
+            ))
+          )
+        ),
+        class = "dsprrr_result"
+      )
     }
   )
 
@@ -46,7 +66,7 @@ test_that("draft outline execution uses the disjoint report title input", {
     writer = NULL,
     topic = "Topic",
     title = "Report",
-    module = "module"
+    module = test_program_executions()$draft_outline
   )
 
   expect_identical(
@@ -58,9 +78,29 @@ test_that("draft outline execution uses the disjoint report title input", {
 test_that("refined outline execution uses the disjoint report title input", {
   observed_inputs <- NULL
   local_mocked_bindings(
-    tempest_run_dsprrr_module = function(module, chat, inputs, step) {
+    tempest_run_dsprrr_module_structured = function(
+      module,
+      chat,
+      inputs,
+      step
+    ) {
       observed_inputs <<- inputs
-      list(title = "Report", sections = list())
+      structure(
+        list(
+          output = list(
+            title = "Report",
+            sections = list(list(
+              title = "Section",
+              summary = "Summary",
+              subsections = list(list(
+                title = "Subsection",
+                bullets = "Finding"
+              ))
+            ))
+          )
+        ),
+        class = "dsprrr_result"
+      )
     }
   )
 
@@ -68,9 +108,20 @@ test_that("refined outline execution uses the disjoint report title input", {
     writer = NULL,
     topic = "Topic",
     title = "Report",
-    draft_outline = list(title = "Draft", sections = list()),
+    draft_outline = list(
+      title = "Draft",
+      sections = list(list(
+        title = "Draft section",
+        summary = "Draft summary",
+        subsections = list(list(
+          title = "Draft subsection",
+          bullets = "Draft finding"
+        ))
+      ))
+    ),
     facts_txt = "Facts",
-    module = "module"
+    module = test_program_executions()$refined_outline,
+    workspace = test_research_workspace()
   )
 
   expect_identical(
@@ -78,7 +129,7 @@ test_that("refined outline execution uses the disjoint report title input", {
     list(
       topic = "Topic",
       report_title = "Report",
-      draft_outline = "(no sections)",
+      draft_outline = "- Draft section: Draft summary",
       facts = "Facts"
     )
   )

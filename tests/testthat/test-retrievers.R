@@ -705,3 +705,98 @@ test_that("Azure AI Search supports upstream endpoint env alias", {
     "AZURE_AI_SEARCH_ENDPOINT"
   )
 })
+
+test_that("public retriever failures never expose credential material", {
+  secret <- "Authorization: Bearer sk-live-secret"
+  config <- tempest_config(
+    cache_dir = withr::local_tempdir(),
+    cache_enabled = FALSE
+  )
+  retriever <- tempest_retriever(config = config)
+
+  local_mocked_bindings(
+    tempest_wiki_search = function(...) stop(secret)
+  )
+  search_error <- expect_error(
+    retriever$search("evidence", provider = "wikipedia", force = TRUE),
+    class = "tempest_retriever_error"
+  )
+  expect_no_match(
+    conditionMessage(search_error),
+    "sk-live-secret",
+    fixed = TRUE
+  )
+  search_print <- paste(capture.output(print(search_error)), collapse = "\n")
+  expect_no_match(search_print, "sk-live-secret", fixed = TRUE)
+
+  local_mocked_bindings(
+    tempest_has = function(package) FALSE,
+    tempest_http_get = function(...) stop(secret)
+  )
+  fetch_error <- expect_error(
+    retriever$fetch("https://8.8.8.8/evidence", force = TRUE),
+    class = "tempest_retriever_error"
+  )
+  expect_no_match(conditionMessage(fetch_error), "sk-live-secret", fixed = TRUE)
+  fetch_print <- paste(capture.output(print(fetch_error)), collapse = "\n")
+  expect_no_match(fetch_print, "sk-live-secret", fixed = TRUE)
+
+  for (url in c(
+    "http://alice:supersecret@localhost/private",
+    paste0(
+      "http://localhost/private?token=",
+      "abcdefghijklmnopqrstuvwxyz1234567890"
+    )
+  )) {
+    blocked <- expect_error(
+      retriever$fetch(url, force = TRUE),
+      class = "tempest_retriever_url_error"
+    )
+    expect_no_match(conditionMessage(blocked), "supersecret", fixed = TRUE)
+    expect_no_match(
+      conditionMessage(blocked),
+      "abcdefghijklmnopqrstuvwxyz1234567890",
+      fixed = TRUE
+    )
+  }
+})
+
+test_that("default ragnar retrieval uses hybrid top-k semantics safely", {
+  skip_if_not_installed("ragnar")
+  store <- list(store = "test")
+  retriever <- tempest_retriever(
+    config = tempest_config(ragnar_store = store)
+  )
+  received <- NULL
+  local_mocked_bindings(
+    tempest_ragnar_retrieve = function(store, query, top_k, method) {
+      received <<- list(
+        store = store,
+        query = query,
+        top_k = top_k,
+        method = method
+      )
+      data.frame(text = "evidence")
+    }
+  )
+
+  result <- retriever$retrieve("evidence", k = 7L)
+
+  expect_identical(received$store, store)
+  expect_identical(received$query, "evidence")
+  expect_identical(received$top_k, 7L)
+  expect_identical(received$method, "hybrid")
+  expect_identical(result$text, "evidence")
+
+  secret <- "Authorization: Bearer sk-live-secret"
+  local_mocked_bindings(
+    tempest_ragnar_retrieve = function(...) stop(secret)
+  )
+  error <- expect_error(
+    retriever$retrieve("evidence"),
+    class = "tempest_retriever_error"
+  )
+  expect_no_match(conditionMessage(error), "sk-live-secret", fixed = TRUE)
+  printed <- paste(capture.output(print(error)), collapse = "\n")
+  expect_no_match(printed, "sk-live-secret", fixed = TRUE)
+})

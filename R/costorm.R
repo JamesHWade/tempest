@@ -1,5 +1,27 @@
 # Co-STORM (interactive multi-agent)
 
+tempest_session_mindmap_validate_update <- function(mindmap, workspace) {
+  mindmap <- tryCatch(
+    tempest_session_mindmap_record(mindmap, action = "snapshot"),
+    error = function(error) {
+      tempest_abort(
+        "The proposed Co-STORM mind map is malformed.",
+        class = c(
+          "tempest_session_mindmap_error",
+          "tempest_session_error",
+          "tempest_error"
+        )
+      )
+    }
+  )
+  tempest_session_mindmap_assert_binding(
+    mindmap,
+    workspace,
+    action = "update"
+  )
+  mindmap
+}
+
 #' @keywords internal
 tempest_type_mindmap <- function() {
   tempest_require("ellmer")
@@ -596,6 +618,7 @@ TempestSession <- R6::R6Class(
       )
       private$workflow_run_value <- NULL
       private$report_md_value <- NULL
+      private$stage_records_value <- list()
       self$capability_grants <- list()
 
       # Generate or use selected expert profiles.
@@ -605,7 +628,19 @@ TempestSession <- R6::R6Class(
           n = n_experts,
           config = config,
           verbose = FALSE,
-          module = private$programs_value$personas
+          module = private$programs_value$personas,
+          record_stage = function(record, output = NULL) {
+            tempest_session_record_stage(
+              self,
+              record,
+              output,
+              commit = if (is.null(output)) {
+                NULL
+              } else {
+                function() self$experts <- output
+              }
+            )
+          }
         )
       } else {
         self$experts <- tempest_validate_experts(experts)
@@ -661,7 +696,10 @@ TempestSession <- R6::R6Class(
         workspace = self$workspace,
         progress = function(event) self$record_progress_event(event),
         run_id = self$session_id,
-        extract_claims_program = private$programs_value$extract_claims
+        extract_claims_program = private$programs_value$extract_claims,
+        stage_recorder = function(record, output = NULL) {
+          tempest_session_record_stage(self, record, output)
+        }
       )
 
       moderator_resolution <- self$runtime$resolve_role(
@@ -753,10 +791,9 @@ TempestSession <- R6::R6Class(
         tryCatch(
           self$progress(event),
           error = function(error) {
-            rlang::abort(
-              "Progress callback failed.",
-              class = "tempest_progress_callback_error",
-              parent = error
+            tempest_rethrow_operation(
+              error,
+              class = "tempest_progress_callback_error"
             )
           }
         )
@@ -906,6 +943,10 @@ TempestSession <- R6::R6Class(
             convert = FALSE
           )
           if (!is.null(new_mm$nodes) && length(new_mm$nodes) > 0) {
+            new_mm <- tempest_session_mindmap_validate_update(
+              new_mm,
+              self$workspace
+            )
             self$mindmap <- new_mm
             # Check for oversized nodes and split if needed
             self$check_and_expand_nodes()
@@ -930,7 +971,7 @@ TempestSession <- R6::R6Class(
             correlation_id = event@correlation_id,
             payload = tempest_progress_error_payload(e)
           )
-          stop(e)
+          tempest_rethrow_operation(e, class = "tempest_session_error")
         }
       )
       invisible(TRUE)
@@ -1000,7 +1041,10 @@ TempestSession <- R6::R6Class(
             source_ids = source_ids,
             session_id = session_id,
             expert_id = expert_id,
-            retrieval_step_id = correlation_id
+            retrieval_step_id = correlation_id,
+            record_stage = function(record, output = NULL) {
+              tempest_session_record_stage(self, record, output)
+            }
           )
           self$emit_progress(
             "step",
@@ -1024,7 +1068,7 @@ TempestSession <- R6::R6Class(
             correlation_id = event@correlation_id,
             payload = tempest_progress_error_payload(e)
           )
-          stop(e)
+          tempest_rethrow_operation(e, class = "tempest_session_error")
         }
       )
       invisible(TRUE)
@@ -1106,7 +1150,7 @@ TempestSession <- R6::R6Class(
             correlation_id = event@correlation_id,
             payload = tempest_progress_error_payload(e)
           )
-          stop(e)
+          tempest_rethrow_operation(e, class = "tempest_session_error")
         }
       )
     },
@@ -1283,7 +1327,7 @@ TempestSession <- R6::R6Class(
             correlation_id = turn_id,
             payload = tempest_progress_error_payload(e)
           )
-          stop(e)
+          tempest_rethrow_operation(e, class = "tempest_session_error")
         }
       )
     },
@@ -1423,7 +1467,7 @@ TempestSession <- R6::R6Class(
                     {
                       old_provenance <- provenance$current %||% list()
                       provenance$current <- list(
-                        session_id = session_id,
+                        session_id = self$session_id,
                         expert_id = expert_id,
                         retrieval_step_id = question_event@correlation_id
                       )
@@ -1448,7 +1492,7 @@ TempestSession <- R6::R6Class(
                         response,
                         turn = turn,
                         source_ids = source_ids,
-                        session_id = session_id,
+                        session_id = self$session_id,
                         expert_id = expert_id,
                         correlation_id = question_event@correlation_id
                       )
@@ -1498,7 +1542,10 @@ TempestSession <- R6::R6Class(
                           tempest_progress_error_payload(e)
                         )
                       )
-                      stop(e)
+                      tempest_rethrow_operation(
+                        e,
+                        class = "tempest_session_error"
+                      )
                     }
                   )
 
@@ -1528,7 +1575,7 @@ TempestSession <- R6::R6Class(
                     tempest_progress_error_payload(e)
                   )
                 )
-                stop(e)
+                tempest_rethrow_operation(e, class = "tempest_session_error")
               }
             )
 
@@ -1586,7 +1633,7 @@ TempestSession <- R6::R6Class(
             correlation_id = warmup_event@correlation_id,
             payload = tempest_progress_error_payload(e)
           )
-          stop(e)
+          tempest_rethrow_operation(e, class = "tempest_session_error")
         }
       )
     },
@@ -1603,6 +1650,7 @@ TempestSession <- R6::R6Class(
       reorganize = TRUE
     ) {
       style <- match.arg(style)
+      tempest_costorm_report_context(self, style, include_references)
       report_event <- self$emit_progress(
         "stage",
         "started",
@@ -1659,7 +1707,7 @@ TempestSession <- R6::R6Class(
             correlation_id = report_event@correlation_id,
             payload = tempest_progress_error_payload(e)
           )
-          stop(e)
+          tempest_rethrow_operation(e, class = "tempest_session_error")
         }
       )
     },
@@ -1681,7 +1729,11 @@ TempestSession <- R6::R6Class(
         self$topic,
         area,
         self$experts,
-        self$config
+        self$config,
+        module = private$programs_value$personas,
+        record_stage = function(record, output = NULL) {
+          tempest_session_record_stage(self, record, output)
+        }
       )
       if (!is.null(name)) {
         new_expert <- tempest_expert_update(new_expert, name = name)
@@ -1838,13 +1890,17 @@ TempestSession <- R6::R6Class(
           convert = FALSE
         ),
         error = function(e) {
-          tempest_warn("Mind map reorganization failed: {conditionMessage(e)}")
+          tempest_warn("Mind map reorganization failed.")
           NULL
         }
       )
       if (
         !is.null(new_mm) && !is.null(new_mm$nodes) && length(new_mm$nodes) > 0
       ) {
+        new_mm <- tempest_session_mindmap_validate_update(
+          new_mm,
+          self$workspace
+        )
         self$mindmap <- new_mm
       }
       invisible(TRUE)
@@ -2013,7 +2069,8 @@ TempestSession <- R6::R6Class(
     workspace_value = NULL,
     artifact_catalog_value = NULL,
     workflow_run_value = NULL,
-    report_md_value = NULL
+    report_md_value = NULL,
+    stage_records_value = list()
   )
 )
 
@@ -2035,6 +2092,93 @@ tempest_session_programs <- function(session) {
     )
   }
   session$.__enclos_env__$private$programs_value
+}
+
+tempest_session_stage_records <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  records <- tempest_stage_records_validate(
+    session$.__enclos_env__$private$stage_records_value
+  )
+  rlang::duplicate(records, shallow = FALSE)
+}
+
+tempest_session_stage_recorder <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    return(tempest_stage_record_discard)
+  }
+  function(record, output = NULL) {
+    tempest_session_record_stage(session, record, output)
+  }
+}
+
+tempest_session_stage_batch_recorder <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    return(function(records, outputs = NULL) invisible(records))
+  }
+  function(records, outputs = NULL) {
+    tempest_session_record_stages(session, records, outputs)
+  }
+}
+
+tempest_session_record_stage <- function(
+  session,
+  record,
+  output = NULL,
+  commit = NULL
+) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  record <- rlang::duplicate(record, shallow = FALSE)
+  records <- tempest_stage_records_upsert(
+    session$.__enclos_env__$private$stage_records_value,
+    record
+  )
+  if (!is.null(commit)) {
+    if (!is.function(commit)) {
+      tempest_costorm_session_abort(
+        "{.arg commit} must be a function or {.code NULL}."
+      )
+    }
+    commit()
+  }
+  session$.__enclos_env__$private$stage_records_value <- records
+  invisible(record)
+}
+
+tempest_session_record_stages <- function(session, records, outputs = NULL) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  records <- rlang::duplicate(records, shallow = FALSE)
+  updated <- tempest_stage_records_upsert_many(
+    session$.__enclos_env__$private$stage_records_value,
+    records
+  )
+  session$.__enclos_env__$private$stage_records_value <- updated
+  invisible(records)
+}
+
+tempest_session_set_stage_records <- function(session, records) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  records <- tempest_stage_records_validate(records)
+  session$.__enclos_env__$private$stage_records_value <- rlang::duplicate(
+    records,
+    shallow = FALSE
+  )
+  invisible(session)
 }
 
 #' @keywords internal

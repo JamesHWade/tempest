@@ -85,6 +85,22 @@ test_that("tempest_progress_event records cancellation and failure progress", {
   expect_equal(failed@payload$error_class, "tempest_error")
 })
 
+test_that("progress error payloads never retain condition details", {
+  error <- structure(
+    list(message = "Authorization: Bearer sk-live-secret"),
+    class = c("sk-live-secret", "error", "condition")
+  )
+
+  payload <- tempest_progress_error_payload(error)
+
+  expect_identical(payload$error_class, "tempest_operation_error")
+  expect_identical(payload$error_message, "The operation failed.")
+  expect_no_match(
+    jsonlite::toJSON(payload, auto_unbox = TRUE),
+    "sk-live-secret"
+  )
+})
+
 test_that("tempest_progress_event rejects malformed core fields", {
   expect_error(
     tempest_progress_event(

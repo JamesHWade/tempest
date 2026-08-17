@@ -114,9 +114,7 @@ DiscourseManager <- R6::R6Class(
           convert = FALSE
         ),
         error = function(e) {
-          tempest_warn(
-            "Discourse manager decision failed: {conditionMessage(e)}"
-          )
+          tempest_warn("Discourse manager decision failed.")
           list(
             action = "moderator_probes",
             expert_id = "",

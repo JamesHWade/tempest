@@ -1091,14 +1091,13 @@ tempest_create_ragnar_store <- function(
 
   if (!identical(location, ":memory:") && file.exists(location) && !reset) {
     store <- tryCatch(
-      ragnar::ragnar_store_connect(location, read_only = FALSE),
+      tempest_ragnar_store_connect(location),
       error = function(error) {
         tempest_config_abort(
           c(
             "Existing Ragnar store is not compatible.",
             i = "Use {.code reset = TRUE} only when replacement is intended."
-          ),
-          parent = error
+          )
         )
       }
     )
@@ -1140,12 +1139,25 @@ tempest_create_ragnar_store <- function(
     return(store)
   }
 
-  ragnar::ragnar_store_create(
-    location = location,
-    embed = embed_fn,
-    extra_cols = extra_cols,
-    name = name,
-    title = title,
-    overwrite = reset
+  tryCatch(
+    tempest_ragnar_store_create(
+      location = location,
+      embed = embed_fn,
+      extra_cols = extra_cols,
+      name = name,
+      title = title,
+      overwrite = reset
+    ),
+    error = function(error) {
+      tempest_rethrow_operation(error, class = "tempest_config_error")
+    }
   )
+}
+
+tempest_ragnar_store_connect <- function(location) {
+  ragnar::ragnar_store_connect(location, read_only = FALSE)
+}
+
+tempest_ragnar_store_create <- function(...) {
+  ragnar::ragnar_store_create(...)
 }

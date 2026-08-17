@@ -435,6 +435,14 @@ Each run directory includes checksummed JSON state for perspectives, experts,
 sources, claims, outlines, and references; Markdown drafts; and the final
 Markdown report.
 
+Every typed ProgramSet attempt also has a durable record of its stage, program,
+evaluator, trace, support decision, and execution or fallback path. Tempest
+evaluates a complete structured output before changing product state, so
+malformed output cannot leave a partial update. On resume, persisted running
+attempts become cancelled records. Final reports append a deterministic
+`Execution review` when an attempt failed, was cancelled, used a policy
+fallback, or produced a grounded result that was not verified.
+
 ### Pipeline Details
 
 `tempest_run()` executes five steps: `perspectives`, `research`, `outline`, `write`, `polish`. Key features:
@@ -448,8 +456,8 @@ Markdown report.
 - **Two-step outline** -- a draft outline is generated from the LLM's parametric knowledge, then refined with research findings.
 - **Lead section** -- a Wikipedia-style lead (2-3 paragraphs) is generated and prepended to the article.
 - **Parallel section writing** -- pass `parallel_writing = TRUE` to write
-  report sections concurrently with mirai, then extract facts and assemble the
-  article in deterministic outline order.
+  report sections concurrently with mirai, then assemble the already-grounded
+  sections and evidence in deterministic outline order.
 - **Governed dsprrr programs** -- every structured stage resolves an exact
   addressable program from a `TempestProgramSet`, including its verified dsprrr
   artifact ID, stage contract, and evaluator identity.

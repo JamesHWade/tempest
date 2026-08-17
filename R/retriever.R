@@ -49,14 +49,19 @@ tempest_normalize_url <- function(url) {
 }
 
 tempest_url_abort <- function(message, url, parent = NULL) {
+  safe_url <- if (is.character(url) && tempest_contract_sensitive_scalar(url)) {
+    "<redacted>"
+  } else {
+    url
+  }
   tempest_abort(
-    c(message, x = "Blocked URL: {.url {url}}"),
+    c(message, x = "Blocked URL: {.url {safe_url}}"),
     class = c(
       "tempest_retriever_url_error",
       "tempest_retriever_error",
       "tempest_error"
     ),
-    url = url,
+    url = safe_url,
     parent = parent
   )
 }
@@ -407,12 +412,41 @@ tempest_fetch_url_markdown <- function(url, user_agent = NULL) {
         kind = kind,
         text = NA_character_,
         title = NA_character_,
-        error = conditionMessage(e)
+        error = "The operation failed."
       )
     }
   )
 
   result
+}
+
+tempest_ragnar_retrieve <- function(store, query, top_k, method) {
+  switch(
+    method,
+    hybrid = ragnar::ragnar_retrieve(
+      store,
+      text = query,
+      top_k = top_k
+    ),
+    vss = ragnar::ragnar_retrieve_vss(
+      store,
+      query = query,
+      top_k = top_k
+    ),
+    bm25 = ragnar::ragnar_retrieve_bm25(
+      store,
+      text = query,
+      top_k = top_k
+    )
+  )
+}
+
+tempest_ragnar_store_insert <- function(store, chunks) {
+  ragnar::ragnar_store_insert(store, chunks)
+}
+
+tempest_ragnar_store_build_index <- function(store) {
+  ragnar::ragnar_store_build_index(store)
 }
 
 #' @keywords internal
@@ -759,22 +793,27 @@ TempestRetriever <- R6::R6Class(
         provider
       }
 
-      out <- switch(
-        effective_provider,
-        wikipedia = tempest_wiki_search(query, limit = k),
-        you = tempest_search_you(query, k = k),
-        bing = tempest_search_bing(query, k = k),
-        serper = tempest_search_serper(query, k = k),
-        brave = tempest_search_brave(query, k = k),
-        duckduckgo = tempest_search_duckduckgo(query, k = k),
-        tavily = tempest_search_tavily(query, k = k),
-        searxng = tempest_search_searxng(query, k = k),
-        google = tempest_search_google(query, k = k),
-        azure_ai_search = tempest_search_azure_ai_search(query, k = k),
-        tempest_abort(c(
-          "Unknown search provider: {.val {provider}}",
-          i = "Available providers: {.val {tempest_search_provider_choices()}}"
-        ))
+      out <- tryCatch(
+        switch(
+          effective_provider,
+          wikipedia = tempest_wiki_search(query, limit = k),
+          you = tempest_search_you(query, k = k),
+          bing = tempest_search_bing(query, k = k),
+          serper = tempest_search_serper(query, k = k),
+          brave = tempest_search_brave(query, k = k),
+          duckduckgo = tempest_search_duckduckgo(query, k = k),
+          tavily = tempest_search_tavily(query, k = k),
+          searxng = tempest_search_searxng(query, k = k),
+          google = tempest_search_google(query, k = k),
+          azure_ai_search = tempest_search_azure_ai_search(query, k = k),
+          tempest_abort(c(
+            "Unknown search provider: {.val {provider}}",
+            i = "Available providers: {.val {tempest_search_provider_choices()}}"
+          ))
+        ),
+        error = function(error) {
+          tempest_rethrow_operation(error, class = "tempest_retriever_error")
+        }
       )
 
       # Normalize URLs without aborting on missing/unsafe values, then drop
@@ -830,7 +869,12 @@ TempestRetriever <- R6::R6Class(
         private$record_cache("fetch", "bypass")
       }
 
-      res <- tempest_fetch_url_text(url, user_agent = self$config@user_agent)
+      res <- tryCatch(
+        tempest_fetch_url_text(url, user_agent = self$config@user_agent),
+        error = function(error) {
+          tempest_rethrow_operation(error, class = "tempest_retriever_error")
+        }
+      )
       fetched_at <- tempest_now_utc()
 
       if (!is.null(res$error)) {
@@ -849,7 +893,7 @@ TempestRetriever <- R6::R6Class(
 
       txt <- res$text %||% NA_character_
       txt_hash <- if (!is.na(txt) && nzchar(txt)) {
-        digest::digest(txt, algo = "xxhash64")
+        tempest_artifact_codec_encode(txt, "text/html")$sha256
       } else {
         NA_character_
       }
@@ -922,35 +966,36 @@ TempestRetriever <- R6::R6Class(
       }
       tempest_require("ragnar", "RAG capabilities require the ragnar package.")
 
-      # Create markdown document and chunk it
-      doc <- ragnar::MarkdownDocument(text, origin = url)
-      chunks <- ragnar::markdown_chunk(
-        doc,
-        target_size = 512,
-        target_overlap = 0.25
+      tryCatch(
+        {
+          doc <- ragnar::MarkdownDocument(text, origin = url)
+          chunks <- ragnar::markdown_chunk(
+            doc,
+            target_size = 512,
+            target_overlap = 0.25
+          )
+
+          n_chunks <- nrow(chunks)
+          chunks$source_id <- rep(source_id, n_chunks)
+          chunks$url <- rep(url, n_chunks)
+          chunks$title <- rep(title %||% NA_character_, n_chunks)
+          chunks$fetched_at <- rep(fetched_at, n_chunks)
+          chunks$content_type <- rep(content_type %||% NA_character_, n_chunks)
+          chunks$perspective <- rep(perspective %||% NA_character_, n_chunks)
+          chunks$context <- paste0(
+            "[Source: ",
+            source_id,
+            "] ",
+            ifelse(!is.na(title), paste0(title, " - "), "")
+          )
+
+          tempest_ragnar_store_insert(self$ragnar_store, chunks)
+          invisible(n_chunks)
+        },
+        error = function(error) {
+          tempest_rethrow_operation(error, class = "tempest_retriever_error")
+        }
       )
-
-      # Add tempest metadata to chunks
-      n_chunks <- nrow(chunks)
-      chunks$source_id <- rep(source_id, n_chunks)
-      chunks$url <- rep(url, n_chunks)
-      chunks$title <- rep(title %||% NA_character_, n_chunks)
-      chunks$fetched_at <- rep(fetched_at, n_chunks)
-      chunks$content_type <- rep(content_type %||% NA_character_, n_chunks)
-      chunks$perspective <- rep(perspective %||% NA_character_, n_chunks)
-
-      # Add context for better retrieval (source info prepended)
-      chunks$context <- paste0(
-        "[Source: ",
-        source_id,
-        "] ",
-        ifelse(!is.na(title), paste0(title, " - "), "")
-      )
-
-      # Insert into ragnar store
-      ragnar::ragnar_store_insert(self$ragnar_store, chunks)
-
-      invisible(n_chunks)
     },
 
     #' @description
@@ -960,7 +1005,12 @@ TempestRetriever <- R6::R6Class(
         return(invisible(NULL))
       }
       tempest_require("ragnar", "RAG capabilities require the ragnar package.")
-      ragnar::ragnar_store_build_index(self$ragnar_store)
+      tryCatch(
+        tempest_ragnar_store_build_index(self$ragnar_store),
+        error = function(error) {
+          tempest_rethrow_operation(error, class = "tempest_retriever_error")
+        }
+      )
       invisible(TRUE)
     },
 
@@ -978,15 +1028,19 @@ TempestRetriever <- R6::R6Class(
       }
       tempest_require("ragnar", "RAG capabilities require the ragnar package.")
       method <- match.arg(method)
+      k <- tempest_config_count(k, "k")
 
-      retrieve_fn <- switch(
-        method,
-        hybrid = ragnar::ragnar_retrieve_vss_and_bm25,
-        vss = ragnar::ragnar_retrieve_vss,
-        bm25 = ragnar::ragnar_retrieve_bm25
+      tryCatch(
+        tempest_ragnar_retrieve(
+          self$ragnar_store,
+          query,
+          top_k = k,
+          method = method
+        ),
+        error = function(error) {
+          tempest_rethrow_operation(error, class = "tempest_retriever_error")
+        }
       )
-
-      retrieve_fn(self$ragnar_store, query, k = k)
     },
 
     #' @description
@@ -1553,9 +1607,7 @@ tempest_extract_toc_from_url <- function(url) {
       paste0(indents, "- ", texts)
     },
     error = function(e) {
-      tempest_warn(
-        "Failed to extract ToC from {.url {url}}: {conditionMessage(e)}"
-      )
+      tempest_warn("Failed to extract the table of contents from {.url {url}}.")
       character()
     }
   )
@@ -1592,9 +1644,7 @@ tempest_wiki_page_sections <- function(title) {
       paste0(indents, "- ", texts)
     },
     error = function(e) {
-      tempest_warn(
-        "Failed to get Wikipedia sections for {.val {title}}: {conditionMessage(e)}"
-      )
+      tempest_warn("Failed to get Wikipedia sections for {.val {title}}.")
       character()
     }
   )

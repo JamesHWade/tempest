@@ -4,12 +4,12 @@
 \alias{tempest_render_expert_prompt}
 \title{Render Expert System Prompt for a Persona}
 \usage{
-tempest_render_expert_prompt(persona = NULL, expert_id = 1)
+tempest_render_expert_prompt(persona, expert_id = NULL)
 }
 \arguments{
-\item{persona}{A persona object, or NULL for a generic expert.}
+\item{persona}{A validated expert profile.}
 
-\item{expert_id}{Fallback expert ID if no persona provided.}
+\item{expert_id}{Expert ID used in the rendered prompt.}
 }
 \value{
 A rendered system prompt string.

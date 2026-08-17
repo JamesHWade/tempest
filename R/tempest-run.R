@@ -15,6 +15,57 @@ tempest_run_abort <- function(
   )
 }
 
+tempest_run_failure_classes <- function() {
+  unique(c(
+    tempest_stage_failure_classes(),
+    "tempest_approval_error",
+    "tempest_approval_rejected_error",
+    "tempest_policy_denied_error",
+    "tempest_policy_error",
+    "tempest_run_completion_error",
+    "tempest_run_progress_error",
+    "tempest_step_dependency_error",
+    "tempest_step_execution_error",
+    "tempest_step_input_error",
+    "tempest_step_output_error",
+    "tempest_step_output_validation_error"
+  ))
+}
+
+tempest_run_failure_class <- function(
+  error,
+  default = "tempest_run_error"
+) {
+  known <- intersect(class(error), tempest_run_failure_classes())
+  if (length(known) == 0L) {
+    return(default)
+  }
+  known[[1]]
+}
+
+tempest_run_error_record <- function(error) {
+  list(
+    class = tempest_run_failure_class(
+      error,
+      default = "tempest_operation_error"
+    ),
+    message = "The operation failed."
+  )
+}
+
+tempest_run_signal_failure <- function(error, run) {
+  rlang::abort(
+    "The workflow run failed.",
+    class = unique(c(
+      tempest_run_failure_class(error),
+      "tempest_run_error",
+      "tempest_error"
+    )),
+    run = run,
+    run_id = run$run_id
+  )
+}
+
 tempest_run_statuses <- function() {
   c(
     "pending",
@@ -831,16 +882,16 @@ TempestRun <- R6::R6Class(
         if (!is.null(outcome)) {
           if (identical(step@failure_policy, "stop")) {
             self$status <- "failed"
+            failure <- tempest_run_error_record(outcome)
             private$emit(
               "workflow.failed",
               "failed",
               step_id = step_id,
-              message = conditionMessage(outcome)
+              message = failure$message
             )
             tempest_run_abort(
-              "Step {.val {step_id}} failed.",
-              class = "tempest_step_execution_error",
-              parent = outcome
+              "Workflow step execution failed.",
+              class = "tempest_step_execution_error"
             )
           }
         }
@@ -864,12 +915,16 @@ TempestRun <- R6::R6Class(
           )
           if (!is.null(completion_error)) {
             self$status <- "failed"
+            failure <- tempest_run_error_record(completion_error)
             private$emit(
               "workflow.failed",
               "failed",
-              message = conditionMessage(completion_error)
+              message = failure$message
             )
-            stop(completion_error)
+            tempest_run_abort(
+              "Workflow deliverable validation failed.",
+              class = "tempest_run_completion_error"
+            )
           }
         }
         self$status <- if (
@@ -1217,8 +1272,7 @@ TempestRun <- R6::R6Class(
           error = function(error) {
             tempest_run_abort(
               "Run progress callback failed.",
-              class = "tempest_run_progress_error",
-              parent = error
+              class = "tempest_run_progress_error"
             )
           }
         )
@@ -1274,8 +1328,7 @@ TempestRun <- R6::R6Class(
           error = function(error) {
             tempest_run_abort(
               "Policy adapter evaluation failed.",
-              class = "tempest_policy_error",
-              parent = error
+              class = "tempest_policy_error"
             )
           }
         )
@@ -1542,15 +1595,17 @@ TempestRun <- R6::R6Class(
               expert_resolutions,
               \(value) value$grants
             )
-            expert_grants[[expert_id]] <-
-              resolution$capability_grants %||% list()
+            expert_grants[[expert_id]] <- list()
             private$record_capability_grants(
               step@step_id,
               attempt,
               expert_grants,
               list()
             )
-            stop(resolution)
+            tempest_run_abort(
+              "Runtime expert resolution failed.",
+              class = "tempest_step_execution_error"
+            )
           }
           expert_resolutions[[expert_id]] <- resolution
         }
@@ -1580,9 +1635,12 @@ TempestRun <- R6::R6Class(
                 expert_resolutions,
                 \(resolution) resolution$grants
               ),
-              capability_resolution$capability_grants %||% list()
+              list()
             )
-            stop(capability_resolution)
+            tempest_run_abort(
+              "Runtime capability resolution failed.",
+              class = "tempest_step_execution_error"
+            )
           }
         }
       }
@@ -1969,15 +2027,13 @@ TempestRun <- R6::R6Class(
           return(NULL)
         }
         last_error <- result
+        failure <- tempest_run_error_record(result)
         state$attempts[[length(state$attempts) + 1L]] <- list(
           attempt = attempt,
           status = "failed",
           started_at = started_at,
           completed_at = completed_at,
-          error = list(
-            class = class(result)[[1]],
-            message = conditionMessage(result)
-          )
+          error = failure
         )
         self$step_states[[step_id]] <- state
         private$emit(
@@ -1985,15 +2041,12 @@ TempestRun <- R6::R6Class(
           "failed",
           step_id = step_id,
           attempt = attempt,
-          message = conditionMessage(result)
+          message = failure$message
         )
       }
       state <- self$step_states[[step_id]]
       state$status <- "failed"
-      state$error <- list(
-        class = class(last_error)[[1]],
-        message = conditionMessage(last_error)
-      )
+      state$error <- tempest_run_error_record(last_error)
       state$completed_at <- tempest_now_utc()
       self$step_states[[step_id]] <- state
       private$emit(
@@ -2001,7 +2054,7 @@ TempestRun <- R6::R6Class(
         "failed",
         step_id = step_id,
         attempt = max_attempts,
-        message = conditionMessage(last_error)
+        message = state$error$message
       )
       last_error
     },
@@ -2252,9 +2305,7 @@ tempest_run_workflow <- function(
     error = function(error) error
   )
   if (!is.null(execution_error)) {
-    execution_error$run <- run
-    execution_error$run_id <- run$run_id
-    stop(execution_error)
+    tempest_run_signal_failure(execution_error, run)
   }
   run
 }
@@ -3561,11 +3612,10 @@ tempest_generic_run_bundle_write_json <- function(path, value, what) {
       )
       tempest_atomic_write_lines(json, path)
     },
-    error = function(error) {
+    error = function(...) {
       tempest_generic_run_bundle_abort(
         paste0("Could not write ", what, "."),
-        class = "tempest_run_save_error",
-        parent = error
+        class = "tempest_run_save_error"
       )
     }
   )
@@ -3657,14 +3707,13 @@ tempest_generic_run_bundle_prepare_dir <- function(
             "tempest_run_save_error"
           )
         ),
-        error = function(error) {
+        error = function(...) {
           tempest_generic_run_bundle_abort(
             paste0(
               "Refusing to overwrite a directory that is not a recognized ",
               "Tempest run bundle."
             ),
-            class = "tempest_run_save_error",
-            parent = error
+            class = "tempest_run_save_error"
           )
         }
       )
@@ -4071,7 +4120,10 @@ tempest_run_save <- function(run, path, overwrite = FALSE) {
   }
   bundle_dir <- tempest_generic_run_bundle_prepare_dir(path, overwrite)
   snapshot <- tempest_run_snapshot(run)
-  sensitive <- tempest_contract_sensitive_names(snapshot, "snapshot")
+  sensitive <- setdiff(
+    tempest_contract_sensitive_names(snapshot, "snapshot"),
+    "snapshot$cancel_token"
+  )
   if (length(sensitive) > 0L) {
     tempest_generic_run_bundle_abort(
       c(

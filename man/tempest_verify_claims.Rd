@@ -15,7 +15,8 @@ tempest_verify_claims(
 }
 \arguments{
 \item{workspace}{A \link{ResearchWorkspace} holding proposed claims and retrieved
-sources.}
+sources, or a \code{TempestSession} whose authoritative workspace and bound
+verification program should be used.}
 
 \item{verifier}{A chat object (e.g. from \code{tempest_make_chat(config, "judge")}).}
 
@@ -26,13 +27,19 @@ sources.}
 
 \item{program_set}{A \link{TempestProgramSet} containing the exact
 \code{verify_claim_support} program. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates
-the builtin set.}
+the builtin set. When \code{workspace} is a \code{TempestSession}, its immutable
+ProgramSet, citation policy, and support threshold are authoritative;
+supplied values must match.}
 
 \item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
 considered supported.}
 }
 \value{
 A \code{citation_audit} tibble (one row per verified claim).
+
+Passing a standalone \link{ResearchWorkspace} returns an audit but does not own a
+durable product stage ledger. Pass the \code{TempestSession} for Co-STORM bundles
+so claim updates, audit rows, and verification records commit together.
 }
 \description{
 Verify claim citations against their sources

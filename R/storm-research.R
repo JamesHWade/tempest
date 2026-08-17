@@ -24,10 +24,10 @@ tempest_generate_next_question <- function(
   perspective,
   answered_md,
   facts_md,
-  module = NULL
+  module,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
-  type <- tempest_type_next_question()
-  module_result <- tempest_run_dsprrr_module(
+  stage_result <- tempest_execute_stage(
     module,
     writer_chat,
     inputs = list(
@@ -40,39 +40,28 @@ tempest_generate_next_question <- function(
       answered = answered_md,
       facts = facts_md
     ),
-    step = "next-question generation"
+    record_stage = record_stage
   )
-  if (!is.null(module_result)) {
-    return(module_result)
-  }
+  stage_result$output
+}
 
-  prompt <- paste0(
-    "You are interviewing an expert to build a factual knowledge base.\n\n",
-    "Topic: ",
-    topic,
-    "\n",
-    "Perspective: ",
-    (perspective$name %||% ""),
-    "\n",
-    "Description: ",
-    (perspective$description %||% ""),
-    "\n\n",
-    "Answered Q&A so far:\n",
-    answered_md,
-    "\n\n",
-    "Current fact notes summary:\n",
-    facts_md,
-    "\n\n",
-    "Propose the single most useful next question to ask.\n",
-    "If this perspective is sufficiently covered, set done = true.\n",
-    "Return structured data."
-  )
-  writer_chat$chat_structured(
-    prompt,
-    type = type,
-    echo = "none",
-    convert = FALSE
-  )
+#' @keywords internal
+tempest_normalize_next_question <- function(output) {
+  if (!is.list(output) || is.data.frame(output)) {
+    tempest_abort(
+      "Next-question stage output must be a record.",
+      class = "tempest_stage_output_error"
+    )
+  }
+  question <- tempest_stage_string(output$question, "question")
+  done <- output$done %||% FALSE
+  if (!is.logical(done) || length(done) != 1L || is.na(done)) {
+    tempest_abort(
+      "Next-question stage output field {.field done} must be `TRUE` or `FALSE`.",
+      class = "tempest_stage_output_error"
+    )
+  }
+  list(question = question, done = done)
 }
 
 #' Decompose a research question into targeted search queries
@@ -88,100 +77,123 @@ tempest_decompose_query <- function(
   chat,
   question,
   topic,
-  module = NULL,
-  max_queries = 3
+  module,
+  max_queries = 3,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
-  type <- tempest_type_query_decomposition()
-  module_result <- tempest_run_dsprrr_module(
+  stage_result <- tempest_execute_stage(
     module,
     chat,
     inputs = list(question = question, topic = topic),
-    step = "query decomposition"
+    context = list(max_queries = as.integer(max_queries)),
+    record_stage = record_stage
   )
-  if (!is.null(module_result)) {
-    return(tempest_normalize_query_decomposition(
-      module_result,
-      question,
-      max_queries = max_queries
-    ))
-  }
-
-  prompt <- paste0(
-    "Topic: ",
-    topic,
-    "\n\n",
-    "Research question: ",
-    question,
-    "\n\n",
-    "Decompose this into 2-3 targeted search queries.\n",
-    "Each query should be specific and cover a different aspect.\n",
-    "Return structured data."
-  )
-  out <- chat$chat_structured(
-    prompt,
-    type = type,
-    echo = "none",
-    convert = FALSE
-  )
-  tempest_normalize_query_decomposition(
-    out,
-    question,
-    max_queries = max_queries
-  )
+  stage_result$output
 }
 
 #' @keywords internal
 tempest_normalize_query_decomposition <- function(
   x,
-  fallback,
   max_queries = 4
 ) {
   queries <- if (is.list(x) && !is.null(x$queries)) x$queries else x
-  queries <- tempest_as_character_vector(queries)
-  if (length(queries) == 0) {
-    queries <- fallback
-  }
+  queries <- tempest_stage_string_array(queries, "queries")
   max_queries <- as.integer(max_queries %||% 4L)
   if (is.na(max_queries) || max_queries < 1) {
-    max_queries <- 4L
+    tempest_abort(
+      "{.arg max_queries} must be a positive whole number.",
+      class = "tempest_config_error"
+    )
   }
   list(queries = queries[seq_len(min(length(queries), max_queries))])
 }
 
 #' @keywords internal
 tempest_normalize_optional_score <- function(x) {
-  score <- suppressWarnings(as.numeric(x %||% NA_real_))
-  if (length(score) != 1L || is.na(score)) {
+  if (is.null(x)) {
     return(NA_real_)
   }
-  max(0, min(1, score))
+  if (
+    !is.numeric(x) ||
+      length(x) != 1L ||
+      (!is.na(x) && (!is.finite(x) || x < 0 || x > 1))
+  ) {
+    tempest_abort(
+      "Claim-extraction support scores must be `NA` or finite values in [0, 1].",
+      class = "tempest_stage_output_error"
+    )
+  }
+  as.double(x)
 }
 
 #' @keywords internal
 tempest_normalize_fact_output <- function(x) {
-  facts <- if (is.list(x) && !is.null(x$facts)) x$facts else x
-  if (is.null(facts) || length(facts) == 0 || !is.list(facts)) {
-    return(list())
+  if (!is.list(x) || is.data.frame(x) || is.null(x$facts)) {
+    tempest_abort(
+      "Claim-extraction stage output must contain a {.field facts} list.",
+      class = "tempest_stage_output_error"
+    )
   }
-  if (is.data.frame(facts)) {
-    facts <- split(facts, seq_len(nrow(facts)))
+  facts <- x$facts
+  if (!is.list(facts) || is.data.frame(facts) || !is.null(names(facts))) {
+    tempest_abort(
+      "Claim-extraction stage field {.field facts} must be a list.",
+      class = "tempest_stage_output_error"
+    )
   }
   purrr::map(facts, function(f) {
-    sources <- f$sources %||% f$source_ids %||% list()
-    if (is.data.frame(sources)) {
-      sources <- split(sources, seq_len(nrow(sources)))
+    if (!is.list(f) || is.data.frame(f)) {
+      tempest_abort(
+        "Claim-extraction fact entries must be records.",
+        class = "tempest_stage_output_error"
+      )
     }
-    if (is.character(sources)) {
-      sources <- purrr::map(sources, ~ list(source_id = .x))
+    claim <- tempest_stage_string(f$claim, "claim")
+    sources <- f$sources
+    if (
+      !is.list(sources) ||
+        is.data.frame(sources) ||
+        !is.null(names(sources)) ||
+        length(sources) == 0L
+    ) {
+      tempest_abort(
+        "Claim-extraction facts require a non-empty {.field sources} list.",
+        class = "tempest_stage_output_error"
+      )
+    }
+    confidence <- f$confidence %||% "medium"
+    if (
+      !rlang::is_string(confidence) ||
+        !confidence %in% c("low", "medium", "high")
+    ) {
+      tempest_abort(
+        paste0(
+          "Claim-extraction confidence must be one of ",
+          "{.val {c('low', 'medium', 'high')}}."
+        ),
+        class = "tempest_stage_output_error"
+      )
+    }
+    note <- f$note %||% NA_character_
+    if (
+      !is.character(note) ||
+        is.object(note) ||
+        !is.null(names(note)) ||
+        length(note) != 1L
+    ) {
+      tempest_abort(
+        "Claim-extraction note must be a single string or `NA`.",
+        class = "tempest_stage_output_error"
+      )
     }
     list(
-      claim = f$claim %||% "",
+      claim = claim,
       sources = sources,
-      confidence = f$confidence %||% NA_character_,
+      confidence = confidence,
       support_score = tempest_normalize_optional_score(
         f$support_score %||% f$score
       ),
-      note = f$note %||% NA_character_
+      note = note
     )
   })
 }
@@ -232,28 +244,6 @@ tempest_answer_source_context <- function(
 }
 
 #' @keywords internal
-tempest_resolve_fact_source_ids <- function(source_refs, store) {
-  source_refs <- unique(source_refs[!is.na(source_refs) & nzchar(source_refs)])
-  if (length(source_refs) == 0) {
-    return(character())
-  }
-  ids <- purrr::map_chr(source_refs, function(ref) {
-    if (!is.null(store$get_retrieved_source(ref))) {
-      return(ref)
-    }
-    url <- tryCatch(tempest_normalize_url(ref), error = function(e) {
-      NA_character_
-    })
-    if (is.na(url) || !nzchar(url)) {
-      return(NA_character_)
-    }
-    id <- tempest_source_id(url)
-    if (!is.null(store$get_retrieved_source(id))) id else NA_character_
-  })
-  unique(ids[!is.na(ids) & nzchar(ids)])
-}
-
-#' @keywords internal
 tempest_claim_extraction_citation_mode <- function(
   answer_text,
   source_ids = NULL,
@@ -298,116 +288,90 @@ tempest_claim_extraction_inputs <- function(answer_text, store, source_ids) {
 }
 
 #' @keywords internal
-tempest_fact_extraction_prompt <- function(extraction_inputs, source_ids) {
-  source_context <- extraction_inputs$source_context
-  citation_rule <- if (nzchar(source_context) && length(source_ids) > 0) {
-    paste0(
-      "- Only extract claims explicitly supported by citations in the answer, including Tempest source IDs like [Sxxxxxxxxxxxx] or provider-native citation markers attached to this turn.\n",
-      "- When using provider-native citations, return only source_id values listed in <known_sources>.\n"
-    )
-  } else {
-    paste0(
-      "- Only extract claims that are explicitly supported by one or more citations in the form [Sxxxxxxxxxxxx].\n"
+tempest_extracted_evidence_spans <- function(claims) {
+  spans <- attr(claims, "tempest_evidence_spans", exact = TRUE) %||% list()
+  if (
+    !is.list(spans) ||
+      is.data.frame(spans) ||
+      !is.null(names(spans)) ||
+      !all(vapply(
+        spans,
+        \(span) S7::S7_inherits(span, tempest_evidence_span),
+        logical(1)
+      ))
+  ) {
+    tempest_stage_evaluator_abort(
+      "Claim evaluator returned malformed evidence-span lineage."
     )
   }
-  source_rule <- if (nzchar(source_context)) {
-    if (length(source_ids) > 0) {
-      paste0(
-        "- Sources listed in <known_sources> were attached to this answer turn; return the matching source_id when the answer text directly supports the claim.\n"
-      )
-    } else {
-      paste0(
-        "- URL citations listed in <known_sources> count as citations to their source_id; return the matching source_id.\n",
-        "- Do not use a known source unless its URL or source_id appears in the answer text.\n"
-      )
-    }
-  } else {
-    ""
-  }
-  paste0(
-    "Extract atomic factual claims from the following answer.\n\n",
-    "Rules:\n",
-    citation_rule,
-    source_rule,
-    "- For each claim, list the source_id(s) that support it.\n",
-    "- Include support_score in [0,1] when source support is clear; omit it when unscored.\n",
-    "- Do NOT invent or infer new facts.\n\n",
-    "<answer>\n",
-    extraction_inputs$answer_text,
-    "\n</answer>\n",
-    if (nzchar(source_context)) {
-      paste0("\n<known_sources>\n", source_context, "\n</known_sources>\n")
-    } else {
-      ""
-    }
-  )
+  spans
 }
 
 #' @keywords internal
-tempest_commit_extracted_facts <- function(
-  out,
-  store,
-  session_id = NA_character_,
-  expert_id = NA_character_,
-  retrieval_step_id = NA_character_,
-  perspective_id = NA_character_,
-  section_id = NA_character_
+tempest_extract_claims_execution_bind <- function(
+  module,
+  session_id,
+  expert_id,
+  retrieval_step_id,
+  perspective_id,
+  section_id
 ) {
-  facts <- tempest_normalize_fact_output(out)
-  if (length(facts) == 0) {
-    return(invisible(NULL))
-  }
-  for (f in facts) {
-    claim <- tempest_trim(as.character(f$claim %||% ""))
-    if (length(claim) != 1 || is.na(claim) || !nzchar(claim)) {
-      next
-    }
-    source_refs <- unlist(
-      purrr::map(f$sources %||% list(), function(source) {
-        if (is.null(source)) {
-          return(NA_character_)
-        }
-        if (is.character(source)) {
-          return(source)
-        }
-        ref <- source$source_id %||%
-          source$id %||%
-          source$url %||%
-          NA_character_
-        as.character(ref)
-      }),
-      recursive = TRUE,
-      use.names = FALSE
-    )
-    src_ids <- tempest_resolve_fact_source_ids(source_refs, store)
-    known <- src_ids[
-      !purrr::map_lgl(src_ids, ~ is.null(store$get_retrieved_source(.x)))
-    ]
-    if (length(known) == 0) {
-      next
-    }
-    conf <- as.character(f$confidence %||% NA_character_)
+  module <- tempest_dsprrr_execution_verify(module, "extract_claims")
+  claim_context <- list(
+    claim_type = "finding",
+    session_id = session_id,
+    expert_id = expert_id,
+    retrieval_step_id = retrieval_step_id,
+    perspective_id = perspective_id,
+    section_id = section_id
+  )
+  identifier_fields <- setdiff(names(claim_context), "claim_type")
+  for (field in identifier_fields) {
+    value <- claim_context[[field]]
     if (
-      length(conf) != 1 ||
-        is.na(conf) ||
-        !conf %in% c("low", "medium", "high")
+      !is.character(value) ||
+        length(value) != 1L ||
+        (!is.na(value) && !tempest_opaque_identifier_valid(value))
     ) {
-      conf <- "medium"
+      tempest_stage_governance_abort(
+        "Claim context field {.field {field}} is not a safe opaque identifier."
+      )
     }
-    store$add_proposed_claim(tempest_claim(
-      claim_text = claim,
-      source_ids = known,
-      claim_type = "finding",
-      confidence = conf,
-      support_score = f$support_score,
-      session_id = session_id,
-      expert_id = expert_id,
-      retrieval_step_id = retrieval_step_id,
-      perspective_id = perspective_id,
-      section_id = section_id
-    ))
   }
-  invisible(TRUE)
+  trace <- module$trace_context
+  if (!is.na(session_id)) {
+    if (!identical(trace$research_run_id %||% NULL, session_id)) {
+      tempest_stage_governance_abort(
+        paste0(
+          "Claim session identity must match the ProgramSet research-run ",
+          "trace before provider execution."
+        )
+      )
+    }
+  }
+  dynamic_bindings <- c(
+    expert_id = "expert_id",
+    retrieval_step_id = "correlation_id"
+  )
+  for (claim_field in names(dynamic_bindings)) {
+    value <- claim_context[[claim_field]]
+    if (is.na(value)) {
+      next
+    }
+    trace_field <- dynamic_bindings[[claim_field]]
+    existing <- trace[[trace_field]] %||% NULL
+    if (!is.null(existing) && !identical(existing, value)) {
+      tempest_stage_governance_abort(
+        "Claim context identity conflicts with the bound ProgramSet trace."
+      )
+    }
+    trace[[trace_field]] <- value
+  }
+  module$trace_context <- tempest_research_manifest_canonical_value(
+    trace,
+    "trace_context"
+  )
+  list(module = module, claim_context = claim_context)
 }
 
 #' @keywords internal
@@ -415,47 +379,71 @@ tempest_extract_facts_from_answer <- function(
   chat,
   answer_text,
   store,
-  module = NULL,
+  module,
   source_ids = NULL,
   session_id = NA_character_,
   expert_id = NA_character_,
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
-  section_id = NA_character_
+  section_id = NA_character_,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
+  record_stage_callback <- record_stage %||% tempest_stage_record_discard
+  binding <- tempest_extract_claims_execution_bind(
+    module,
+    session_id,
+    expert_id,
+    retrieval_step_id,
+    perspective_id,
+    section_id
+  )
+  module <- binding$module
   # Use a separate extraction call to minimize hallucinated facts. dsprrr gets
   # the same source context as the fallback prompt so native-provider citations
   # can still use the optimized module path when available.
-  type <- tempest_type_fact_extract()
   source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
   extraction_inputs <- tempest_claim_extraction_inputs(
     answer_text,
     store,
     source_ids
   )
-  out <- tempest_run_dsprrr_module(
+  stage_result <- tempest_execute_stage(
     module,
     chat,
     inputs = extraction_inputs,
-    step = "fact extraction"
+    context = list(
+      workspace = store,
+      known_source_ids = vapply(
+        store$list_retrieved_sources(),
+        `[[`,
+        character(1),
+        "id"
+      ),
+      claim_context = binding$claim_context
+    ),
+    output_reference = function(output, running_record, context) {
+      tempest_stage_output_reference(
+        "workspace_claims",
+        vapply(output, \(claim) claim@claim_id, character(1)),
+        content_digest = tempest_stage_claims_output_digest(
+          output,
+          running_record
+        )
+      )
+    },
+    record_stage = function(record, output = NULL) {
+      if (is.null(output)) {
+        return(record_stage_callback(record))
+      }
+      store$add_extracted_claim_batch(
+        claims = output,
+        evidence_spans = tempest_extracted_evidence_spans(output),
+        commit = function() record_stage_callback(record, output)
+      )
+      invisible(record)
+    }
   )
-  if (is.null(out)) {
-    out <- chat$chat_structured(
-      tempest_fact_extraction_prompt(extraction_inputs, source_ids),
-      type = type,
-      echo = "none",
-      convert = FALSE
-    )
-  }
-  tempest_commit_extracted_facts(
-    out,
-    store,
-    session_id = session_id,
-    expert_id = expert_id,
-    retrieval_step_id = retrieval_step_id,
-    perspective_id = perspective_id,
-    section_id = section_id
-  )
+  invisible(stage_result)
 }
 
 #' @keywords internal
@@ -470,54 +458,73 @@ tempest_extract_facts_from_answer_async <- function(
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
   section_id = NA_character_,
-  commit_if = function() TRUE
+  commit_if = function() TRUE,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
   tempest_require("promises", "Async fact extraction requires promises.")
+  record_stage_callback <- record_stage %||% tempest_stage_record_discard
+  binding <- tempest_extract_claims_execution_bind(
+    module,
+    session_id,
+    expert_id,
+    retrieval_step_id,
+    perspective_id,
+    section_id
+  )
+  module <- binding$module
   source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
   inputs <- tempest_claim_extraction_inputs(answer_text, store, source_ids)
-  request <- tempest_run_dsprrr_module_async(
+  request <- tempest_execute_stage_async(
     module,
     chat,
     inputs = inputs,
-    step = "fact extraction"
-  )
-  if (is.null(request)) {
-    request <- chat$chat_structured_async(
-      tempest_fact_extraction_prompt(inputs, source_ids),
-      type = tempest_type_fact_extract(),
-      echo = "none",
-      convert = FALSE
-    )
-  }
-  promises::then(request, function(out) {
-    if (!tempest_async_is_current(commit_if)) {
-      return(NULL)
+    context = list(
+      workspace = store,
+      known_source_ids = vapply(
+        store$list_retrieved_sources(),
+        `[[`,
+        character(1),
+        "id"
+      ),
+      claim_context = binding$claim_context
+    ),
+    output_reference = function(output, running_record, context) {
+      tempest_stage_output_reference(
+        "workspace_claims",
+        vapply(output, \(claim) claim@claim_id, character(1)),
+        content_digest = tempest_stage_claims_output_digest(
+          output,
+          running_record
+        )
+      )
+    },
+    is_current = commit_if,
+    record_stage = function(record, output = NULL) {
+      if (is.null(output)) {
+        return(record_stage_callback(record))
+      }
+      if (!tempest_async_is_current(commit_if)) {
+        return(invisible(record))
+      }
+      store$add_extracted_claim_batch(
+        claims = output,
+        evidence_spans = tempest_extracted_evidence_spans(output),
+        commit = function() record_stage_callback(record, output)
+      )
+      invisible(record)
     }
-    tempest_commit_extracted_facts(
-      out,
-      store,
-      session_id = session_id,
-      expert_id = expert_id,
-      retrieval_step_id = retrieval_step_id,
-      perspective_id = perspective_id,
-      section_id = section_id
-    )
-  })
+  )
+  promises::then(request, function(stage_result) invisible(stage_result))
 }
 
 #' @keywords internal
 tempest_turn_answer_and_sources <- function(expert, fallback_answer, store) {
-  turn <- tryCatch(expert$last_turn(), error = function(e) NULL)
-  answer_text <- tryCatch(
-    {
-      if (!is.null(turn)) {
-        ellmer::contents_markdown(turn)
-      } else {
-        fallback_answer
-      }
-    },
-    error = function(e) fallback_answer
-  )
+  turn <- if (is.function(expert$last_turn)) expert$last_turn() else NULL
+  answer_text <- if (!is.null(turn)) {
+    ellmer::contents_markdown(turn)
+  } else {
+    fallback_answer
+  }
   source_ids <- tempest_harvest_native_sources_from_turn(turn, store)
   list(answer_text = answer_text, source_ids = source_ids)
 }
@@ -539,18 +546,21 @@ tempest_research_one_perspective <- function(
   research_strategy,
   max_questions_per_perspective,
   programs,
-  run_id = NA_character_
+  run_id = NA_character_,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
   connection_permissions <- tempest_run_connection_permissions(
     connection_permissions,
     runtime
   )
   p <- perspectives[[i]]
-  expert_profile <- if (i <= length(experts)) {
-    experts[[i]]
-  } else {
-    tempest_fallback_expert_profile(i)
+  if (i > length(experts)) {
+    tempest_abort(
+      "Every research perspective requires an explicit expert profile.",
+      class = "tempest_config_error"
+    )
   }
+  expert_profile <- experts[[i]]
   expert_record <- tempest_expert_runtime_record(expert_profile)
   expert_id <- expert_record$expert_id
   perspective_id <- as.character(p$id %||% i)
@@ -608,32 +618,24 @@ tempest_research_one_perspective <- function(
     system_prompt = tempest_prompt("fact_extractor_system"),
     echo = "none"
   )
-  p_name <- p$name %||% "Perspective"
-  p_desc <- p$description %||% ""
-  qs <- p$key_questions %||% c(topic)
+  p_name <- p$name
+  p_desc <- p$description
+  qs <- p$key_questions
 
   if (identical(research_strategy, "key_questions")) {
     qs_limited <- utils::head(qs, max_questions_per_perspective)
     for (q in qs_limited) {
-      decomposed <- tryCatch(
-        tempest_decompose_query(
-          writer,
-          q,
-          topic,
-          module = programs$query_decomposition,
-          max_queries = config@max_search_queries_per_turn
-        ),
-        error = function(e) {
-          tempest_rethrow_dsprrr_contract(e)
-          tempest_warn(
-            "Query decomposition failed, using original query: {conditionMessage(e)}"
-          )
-          list(queries = list(q))
-        }
+      decomposed <- tempest_decompose_query(
+        writer,
+        q,
+        topic,
+        module = programs$query_decomposition,
+        max_queries = config@max_search_queries_per_turn,
+        record_stage = record_stage
       )
       search_instructions <- paste0(
         "Suggested search queries:\n",
-        paste0("- ", decomposed$queries %||% q, collapse = "\n"),
+        paste0("- ", decomposed$queries, collapse = "\n"),
         "\n\n"
       )
 
@@ -659,44 +661,30 @@ tempest_research_one_perspective <- function(
         "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
         "Answer:"
       )
-      ans <- tryCatch(
-        expert_chat$chat(prompt, echo = "none"),
-        error = function(e) {
-          tempest_warn(
-            "Expert answer failed for {.val {p_name}}: {conditionMessage(e)}"
-          )
-          NULL
-        }
+      ans <- expert_chat$chat(prompt, echo = "none")
+      harvest <- tempest_turn_answer_and_sources(
+        expert_chat,
+        ans,
+        local_workspace
       )
-      if (!is.null(ans)) {
-        harvest <- tempest_turn_answer_and_sources(
-          expert_chat,
-          ans,
-          local_workspace
-        )
-        tryCatch(
-          tempest_extract_facts_from_answer(
-            extractor,
-            harvest$answer_text,
-            local_workspace,
-            module = programs$extract_claims,
-            source_ids = harvest$source_ids,
-            session_id = run_id,
-            expert_id = expert_id,
-            perspective_id = perspective_id
-          ),
-          error = function(e) {
-            tempest_rethrow_dsprrr_contract(e)
-            tempest_warn("Fact extraction failed: {conditionMessage(e)}")
-          }
-        )
-      }
+      tempest_extract_facts_from_answer(
+        extractor,
+        harvest$answer_text,
+        local_workspace,
+        module = programs$extract_claims,
+        source_ids = harvest$source_ids,
+        session_id = run_id,
+        expert_id = expert_id,
+        perspective_id = perspective_id,
+        record_stage = record_stage
+      )
     }
   }
 
   list(
     retrieved_resources = local_workspace$list_retrieved_sources(),
-    proposed_claims = local_workspace$list_proposed_claims()
+    proposed_claims = local_workspace$list_proposed_claims(),
+    evidence_spans = local_workspace$list_evidence_spans()
   )
 }
 
@@ -722,27 +710,43 @@ tempest_research_parallel <- function(
   max_questions_per_perspective,
   programs,
   verbose,
-  run_id = NA_character_
+  run_id = NA_character_,
+  record_stage = function(record, output = NULL) invisible(record)
 ) {
   n <- length(perspectives)
-  run_one <- function(i) {
-    tempest_research_one_perspective(
-      i,
-      perspectives = perspectives,
-      experts = experts,
-      config = config,
-      runtime = runtime,
-      connection_permissions = connection_permissions,
-      topic = topic,
-      research_strategy = research_strategy,
-      max_questions_per_perspective = max_questions_per_perspective,
-      programs = programs,
-      run_id = run_id
+  run_one <- function(i, runtime_value = runtime) {
+    records <- list()
+    collect_record <- function(record, output = NULL) {
+      records <<- tempest_stage_records_upsert(records, record)
+      invisible(record)
+    }
+    tryCatch(
+      list(
+        ok = TRUE,
+        value = tempest_research_one_perspective(
+          i,
+          perspectives = perspectives,
+          experts = experts,
+          config = config,
+          runtime = runtime_value,
+          connection_permissions = connection_permissions,
+          topic = topic,
+          research_strategy = research_strategy,
+          max_questions_per_perspective = max_questions_per_perspective,
+          programs = programs,
+          run_id = run_id,
+          record_stage = collect_record
+        ),
+        error = NULL,
+        records = records
+      ),
+      error = function(error) {
+        list(ok = FALSE, value = NULL, error = error, records = records)
+      }
     )
   }
 
-  collected <- vector("list", n)
-  used_parallel <- FALSE
+  collected <- NULL
   if (tempest_has("mirai")) {
     ready <- tempest_setup_daemons(tempest_parallel_workers(n))
     if (isTRUE(ready)) {
@@ -766,18 +770,39 @@ tempest_research_parallel <- function(
             run_id,
             research_one
           ) {
-            research_one(
-              i,
-              perspectives = perspectives,
-              experts = experts,
-              config = config,
-              runtime = runtime_factory(),
-              connection_permissions = connection_permissions,
-              topic = topic,
-              research_strategy = research_strategy,
-              max_questions_per_perspective = max_questions_per_perspective,
-              programs = programs,
-              run_id = run_id
+            records <- list()
+            collect_record <- function(record, output = NULL) {
+              records <<- tempest_stage_records_upsert(records, record)
+              invisible(record)
+            }
+            tryCatch(
+              list(
+                ok = TRUE,
+                value = research_one(
+                  i,
+                  perspectives = perspectives,
+                  experts = experts,
+                  config = config,
+                  runtime = runtime_factory(),
+                  connection_permissions = connection_permissions,
+                  topic = topic,
+                  research_strategy = research_strategy,
+                  max_questions_per_perspective = max_questions_per_perspective,
+                  programs = programs,
+                  run_id = run_id,
+                  record_stage = collect_record
+                ),
+                error = NULL,
+                records = records
+              ),
+              error = function(error) {
+                list(
+                  ok = FALSE,
+                  value = NULL,
+                  error = error,
+                  records = records
+                )
+              }
             )
           },
           .args = list(
@@ -797,50 +822,43 @@ tempest_research_parallel <- function(
         error = function(e) e
       )
       if (inherits(mapped, "condition")) {
-        tempest_rethrow_dsprrr_contract(mapped)
-        tempest_warn(
-          "Parallel research failed ({conditionMessage(mapped)}); researching sequentially."
+        collected <- rep(
+          list(tempest_collect_parallel(mapped)),
+          n
         )
       } else {
         collected <- lapply(mapped, tempest_collect_parallel)
-        used_parallel <- TRUE
       }
-    } else {
-      tempest_warn("Could not start mirai daemons; researching sequentially.")
     }
   }
+  if (is.null(collected)) {
+    collected <- lapply(seq_len(n), run_one)
+  }
 
-  # Merge results, retrying any failed (or unrun) perspective sequentially so
-  # no perspective's evidence is silently dropped.
   for (i in seq_len(n)) {
-    val <- collected[[i]]
-    if (is.null(val)) {
-      p_name <- perspectives[[i]]$name %||% paste("Perspective", i)
-      if (used_parallel) {
-        tempest_warn(
-          "Research for {.val {p_name}} failed in parallel; retrying sequentially."
-        )
+    envelope <- collected[[i]]
+    if (!isTRUE(envelope$ok)) {
+      tempest_parallel_records_import(envelope$records, record_stage)
+      if (!tempest_stage_error_retryable(envelope$error)) {
+        stop(envelope$error)
       }
-      val <- tryCatch(
-        run_one(i),
-        error = function(e) {
-          tempest_rethrow_dsprrr_contract(e)
-          tempest_warn(
-            "Research failed for {.val {p_name}}: {conditionMessage(e)}"
-          )
-          NULL
-        }
-      )
+      envelope <- run_one(i)
+      if (!isTRUE(envelope$ok)) {
+        tempest_parallel_records_import(envelope$records, record_stage)
+        stop(envelope$error)
+      }
     }
-    if (is.null(val)) {
-      next
-    }
-    for (src in val$retrieved_resources %||% list()) {
+    value <- envelope$value
+    for (src in value$retrieved_resources) {
       store$upsert_retrieved_resource(src)
     }
-    for (claim in val$proposed_claims %||% list()) {
-      store$add_proposed_claim(claim)
-    }
+    store$add_extracted_claim_batch(
+      claims = value$proposed_claims,
+      evidence_spans = value$evidence_spans,
+      commit = function() {
+        tempest_parallel_records_import(envelope$records, record_stage)
+      }
+    )
   }
 
   invisible(TRUE)

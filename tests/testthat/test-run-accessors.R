@@ -52,6 +52,28 @@ test_that("run status and event accessors preserve ordered cursors", {
   )
 })
 
+test_that("run accessor operations discard external condition details", {
+  secret <- "Authorization: Bearer accessor-secret-token"
+  condition <- rlang::catch_cnd(
+    tempest:::tempest_run_accessor_call(
+      "resume",
+      \() stop(secret)
+    )
+  )
+
+  expect_s3_class(condition, "tempest_run_accessor_error")
+  expect_identical(
+    conditionMessage(condition),
+    "Tempest run operation `resume` failed."
+  )
+  expect_no_match(
+    paste(capture.output(print(condition)), collapse = "\n"),
+    secret,
+    fixed = TRUE
+  )
+  expect_null(condition$parent)
+})
+
 test_that("approval accessors resume only until the next checkpoint", {
   calls <- character()
   registry <- tempest_operation_registry(list(

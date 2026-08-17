@@ -20,7 +20,8 @@ test_that("tempest_decompose_query returns structured output", {
   result <- tempest:::tempest_decompose_query(
     chat,
     "What are the environmental impacts of electric vehicles?",
-    "Electric vehicles"
+    "Electric vehicles",
+    module = test_program_executions()$query_decomposition
   )
 
   expect_type(result, "list")

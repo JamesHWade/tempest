@@ -59,14 +59,14 @@ test_that("retrieval tools expose canonical research vocabulary", {
 
   span <- tempest:::tempest_evidence_span(
     source_id = source_id,
-    quote = "supporting excerpt",
+    quote = "Photosynthesis",
     relevance_score = 0.8
   )
   span_id <- store$add_evidence_span(span)
   store$link_evidence_to_proposed_claim(added$claim_id, span_id)
   evidence <- by_name("get_evidence_for_proposed_claim")(added$claim_id)
   expect_equal(evidence$claim$claim_id, added$claim_id)
-  expect_equal(evidence$evidence_spans[[1]]$quote, "supporting excerpt")
+  expect_equal(evidence$evidence_spans[[1]]$quote, "Photosynthesis")
   expect_equal(evidence$cited_sources[[1]]$source_id, source_id)
   expect_equal(by_name("get_evidence_for_proposed_claim")("Cmissing"), NULL)
 
@@ -865,13 +865,21 @@ test_that("single expert generation returns deterministic scoped profiles", {
     "Battery circularity",
     "Policy analysis",
     list(),
-    config
+    config,
+    module = test_program_executions(
+      config,
+      "tools-single-expert"
+    )$personas
   )
   second <- tempest:::tempest_generate_single_expert(
     "Battery circularity",
     "Policy analysis",
     list(),
-    config
+    config,
+    module = test_program_executions(
+      config,
+      "tools-single-expert"
+    )$personas
   )
 
   expect_identical(

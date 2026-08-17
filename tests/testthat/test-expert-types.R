@@ -104,6 +104,72 @@ test_that("connection references contain non-secret durable metadata", {
 test_that("contract constructors reject invalid and executable definitions", {
   expect_error(
     tempest_expert(
+      expert_id = "sk-live-secret",
+      name = "Unsafe Expert",
+      title = "Unsafe",
+      description = "Should never be persisted.",
+      instructions = "Do not run."
+    ),
+    class = "tempest_workflow_spec_error"
+  )
+  expect_error(
+    tempest_expert(
+      expert_id = "expert.unsafe-metadata",
+      name = "Unsafe Expert",
+      title = "Unsafe",
+      description = "Should never be persisted.",
+      instructions = "Do not run.",
+      metadata = list(
+        note = "sk-proj-0123456789abcdefghijklmnopqrstuv"
+      )
+    ),
+    class = "tempest_workflow_spec_error"
+  )
+  expect_error(
+    tempest_expert(
+      expert_id = "expert.unsafe-google-key",
+      name = "Unsafe Expert",
+      title = "Unsafe",
+      description = "Should never be persisted.",
+      instructions = "Do not run.",
+      metadata = list(note = paste0("AIza", strrep("A", 35L)))
+    ),
+    class = "tempest_workflow_spec_error"
+  )
+  expect_error(
+    tempest_connection_ref(
+      "https://service-token@example.org/private",
+      provider_id = "provider.safe",
+      connection_type = "search",
+      title = "Unsafe connection"
+    ),
+    class = "tempest_workflow_spec_error"
+  )
+  benign <- tempest_expert(
+    expert_id = "expert.safe-metadata",
+    name = "Safe Expert",
+    title = "Safe",
+    description = "Keeps ordinary prose.",
+    instructions = "Document uncertainty.",
+    metadata = list(
+      note = "A secret ballot is documented.",
+      max_tokens = 128L
+    )
+  )
+  expect_identical(benign@metadata$max_tokens, 128L)
+  benign@metadata$note <- "sk-proj-0123456789abcdefghijklmnopqrstuv"
+  expect_error(
+    tempest:::tempest_expert_profile_record(benign),
+    class = "tempest_workflow_spec_error"
+  )
+  benign@metadata$note <- "Safe metadata"
+  benign@name <- "sk-proj-0123456789abcdefghijklmnopqrstuv"
+  expect_error(
+    tempest:::tempest_expert_profile_record(benign),
+    class = "tempest_workflow_spec_error"
+  )
+  expect_error(
+    tempest_expert(
       expert_id = "bad id",
       name = "Expert",
       title = "Title",
@@ -154,6 +220,199 @@ test_that("contract constructors reject invalid and executable definitions", {
       metadata = list(api_key = "not-allowed")
     ),
     class = "tempest_workflow_spec_error"
+  )
+})
+
+test_that("credential-like metadata names fail after display normalization", {
+  sensitive_names <- c(
+    "ａｐｉ＿ｋｅｙ",
+    "api&#95;key",
+    "api&lowbar;key"
+  )
+
+  for (sensitive_name in sensitive_names) {
+    metadata <- stats::setNames(list("hunter2hunter2"), sensitive_name)
+    expect_error(
+      tempest_expert(
+        expert_id = "expert.sensitive-name",
+        name = "Sensitive Name",
+        title = "Researcher",
+        description = "Tests portable metadata.",
+        instructions = "Inspect evidence.",
+        metadata = metadata
+      ),
+      class = "tempest_workflow_spec_error"
+    )
+  }
+
+  expert <- tempest_expert(
+    expert_id = "expert.sensitive-name",
+    name = "Sensitive Name",
+    title = "Researcher",
+    description = "Tests portable metadata.",
+    instructions = "Inspect evidence."
+  )
+  expert@metadata <- stats::setNames(
+    list("hunter2hunter2"),
+    sensitive_names[[1L]]
+  )
+  expect_error(
+    tempest:::tempest_expert_profile_record(expert),
+    class = "tempest_workflow_spec_error"
+  )
+})
+
+test_that("session snapshots reject normalized credential metadata", {
+  skip_if_not_installed("ellmer")
+  sensitive_name <- "api&#95;key"
+  session <- tempest_session(
+    "Sensitive metadata name",
+    config = tempest_config(
+      chat_fn = function(role, model, system_prompt, echo) fake_chat()
+    ),
+    experts = list(test_expert(expert_id = "expert.sensitive-session"))
+  )
+  session$experts[[1L]]@metadata <- stats::setNames(
+    list("hunter2hunter2"),
+    sensitive_name
+  )
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error"
+  )
+
+  session <- tempest_session(
+    "Sensitive metadata value",
+    config = tempest_config(
+      chat_fn = function(role, model, system_prompt, echo) fake_chat()
+    ),
+    experts = list(test_expert(expert_id = "expert.sensitive-session"))
+  )
+  session$experts[[1L]]@metadata <- list(
+    note = paste0("AIza", strrep("A", 35L))
+  )
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error"
+  )
+})
+
+test_that("credential detection preserves scientific SK identifiers", {
+  scientific_ids <- c(
+    "SK-BR-3 cells",
+    "SK-N-SH neuroblastoma",
+    "SK-MEL-28 melanoma",
+    "SK-OV-3 cells",
+    "SK-MEL-28-derived-resistant-subline",
+    "SK\\-BR\\-3 cells",
+    "SK\\-MEL\\-28 melanoma",
+    "SK&#45;BR&#45;3 cells",
+    "SK-**BR**-3 cells",
+    paste0("SK-", intToUtf8(0x200B), "BR-3 cells"),
+    paste0(
+      "https://example.org/redirect?next=",
+      "https%3A%2F%2Fexample.net%2Fpath"
+    ),
+    "https://example.org/search?token_count=12&signature_method=sha256",
+    "sklearn",
+    "secretome"
+  )
+  credentials <- c(
+    "sk-proj-0123456789abcdefghijklmnopqrstuv",
+    "sk-0123456789abcdefghijklmnopqrstuv",
+    paste0(
+      "sk-ant-api03-",
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    paste0(
+      "sk-or-v1-",
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    paste0("sk", "_live_51Abcdefghijklmnopqrstuvwxyz0123456789"),
+    paste0("AIza", strrep("A", 35L)),
+    paste0("ASIA", strrep("A", 16L)),
+    paste0("glpat-", strrep("a", 20L)),
+    paste0("hf_", strrep("a", 34L)),
+    paste0("npm_", strrep("a", 36L)),
+    paste0("SG.", strrep("a", 22L), ".", strrep("b", 43L)),
+    "sk-live-secret",
+    "sk\\-proj\\-abcdefghijklmnopqrstuvwxyz1234567890",
+    "sk&#45;proj&#45;abcdefghijklmnopqrstuvwxyz1234567890",
+    "sk&#x2d;proj&#x2d;abcdefghijklmnopqrstuvwxyz1234567890",
+    "sk&lowbar;live&lowbar;abcd1234",
+    "eyJabcd&period;efghijkl&period;sigvalue",
+    "https&colon;&sol;&sol;user&colon;pass&commat;example.org",
+    "sk-**proj**-abcdefghijklmnopqrstuvwxyz1234567890",
+    "sk<!-- -->-proj-abcdefghijklmnopqrstuvwxyz1234567890",
+    paste0(
+      "sk-",
+      intToUtf8(0x200B),
+      "proj-abcdefghijklmnopqrstuvwxyz1234567890"
+    ),
+    paste0(
+      "sk-",
+      intToUtf8(0x2060),
+      "proj-abcdefghijklmnopqrstuvwxyz1234567890"
+    ),
+    paste0(
+      "sk-",
+      intToUtf8(0xFEFF),
+      "proj-abcdefghijklmnopqrstuvwxyz1234567890"
+    ),
+    "https://alice:supersecret@example.org/private",
+    "postgresql://service:p%40ssword@example.org/research",
+    "https://abcdefghijklmnopqrstuvwxyz0123456789@example.org/private",
+    "https://alice%3Asupersecret@example.org/private",
+    "https://alice:@example.org/private",
+    "https://:supersecret@example.org/private",
+    "postgresql://service@example.org/research",
+    paste0(
+      "https://example.org/evidence?api%5Fkey=",
+      "sk%2Dproj%2Dabcdefghijklmnopqrstuvwxyz1234567890"
+    ),
+    "https://example.org/download?token=abcdefghijklmnopqrstuvwxyz1234567890",
+    "https://blob.example.org/object?sig=abcdefghijklmnopqrstuvwxyz1234567890",
+    paste0(
+      "https://example.org/object?X-Amz-Security-Token=",
+      "abcdefghijklmnopqrstuvwxyz1234567890"
+    ),
+    paste0(
+      "https://example.org/object?key=",
+      "AIzaSyDUMMYEXAMPLE01234567890123456"
+    ),
+    paste0(
+      "https://example.org/object?X-Goog-Signature=",
+      strrep("a", 64L)
+    ),
+    paste0(
+      "https://example.org/object?X-Amz-Credential=",
+      "ASIAEXAMPLE%2F20260816%2Fus-east-1%2Fs3%2Faws4_request"
+    ),
+    "Authorization: Bearer sk-live-secret",
+    "Authorization: Basic YWxpY2U6c2VjcmV0",
+    "Proxy-Authorization: Basic YWxpY2U6c2VjcmV0",
+    "Cookie: sessionid=abc123secret",
+    "Set-Cookie: sessionid=abc123secret; Secure",
+    "-----BEGIN OPENSSH PRIVATE KEY-----",
+    "-----BEGIN RSA PRIVATE KEY-----",
+    "AWS_SECRET_ACCESS_KEY=abcdefghijklmnopqrstuvwxyz"
+  )
+
+  expect_identical(
+    unname(vapply(
+      scientific_ids,
+      tempest:::tempest_contract_sensitive_scalar,
+      logical(1)
+    )),
+    rep(FALSE, length(scientific_ids))
+  )
+  expect_identical(
+    unname(vapply(
+      credentials,
+      tempest:::tempest_contract_sensitive_scalar,
+      logical(1)
+    )),
+    rep(TRUE, length(credentials))
   )
 })
 

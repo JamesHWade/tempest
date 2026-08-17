@@ -40,10 +40,11 @@ test_that("run preflights every operation before executing any step", {
 })
 
 test_that("execution errors retain the inspectable failed run", {
+  secret <- "Authorization: Bearer run-secret-token-123456"
   registry <- tempest_operation_registry(list(
     fail = list(
       kind = "step",
-      implementation = function() stop("operation failed")
+      implementation = \() stop(secret)
     )
   ))
   workflow <- tempest_workflow_spec(
@@ -66,12 +67,258 @@ test_that("execution errors retain the inspectable failed run", {
   ))
 
   expect_s3_class(condition, "tempest_step_execution_error")
+  expect_identical(conditionMessage(condition), "The workflow run failed.")
+  expect_no_match(
+    paste(capture.output(print(condition)), collapse = "\n"),
+    secret,
+    fixed = TRUE
+  )
+  expect_null(condition$parent)
   expect_r6_class(condition$run, "TempestRun")
   expect_identical(condition$run_id, "failed-run")
   expect_identical(condition$run$status, "failed")
   expect_identical(
     tail(condition$run$events, 1L)[[1]]$event_type,
     "workflow.failed"
+  )
+  expect_identical(
+    condition$run$step_states$fail$error,
+    list(
+      class = "tempest_operation_error",
+      message = "The operation failed."
+    )
+  )
+  expect_identical(
+    condition$run$step_states$fail$attempts[[1]]$error,
+    condition$run$step_states$fail$error
+  )
+  expect_identical(
+    vapply(
+      condition$run$events,
+      \(event) event$message %||% "",
+      character(1)
+    ) |>
+      unique() |>
+      setdiff(""),
+    "The operation failed."
+  )
+
+  snapshot <- tempest_run_snapshot(condition$run)
+  encoded <- tempest:::tempest_canonical_json(snapshot)
+  expect_no_match(encoded, secret, fixed = TRUE)
+
+  bundle <- file.path(withr::local_tempdir(), "failed-run")
+  expect_no_error(tempest_run_save(condition$run, bundle))
+  persisted <- paste(
+    readLines(file.path(bundle, "snapshot.json"), warn = FALSE),
+    collapse = "\n"
+  )
+  expect_no_match(persisted, secret, fixed = TRUE)
+})
+
+test_that("retry state retains only controlled error records", {
+  secret <- "sk-proj-retry-secret-ABCDEFGHIJKLMNOP"
+  attempts <- 0L
+  registry <- tempest_operation_registry(list(
+    retry = list(
+      kind = "step",
+      implementation = function() {
+        attempts <<- attempts + 1L
+        if (attempts == 1L) {
+          stop(secret)
+        }
+        "complete"
+      }
+    )
+  ))
+  workflow <- tempest_workflow_spec(
+    "retry-safe-workflow",
+    title = "Retry secret workflow",
+    purpose = "Exercise ephemeral retry errors",
+    steps = list(tempest_workflow_step(
+      "retry",
+      title = "Retry",
+      purpose = "Retry after one failure",
+      operation_id = "retry",
+      retry_policy = list(max_attempts = 2L)
+    ))
+  )
+
+  run <- tempest_run_workflow(
+    tempest_objective("Complete after one retry"),
+    workflow,
+    registry
+  )
+
+  expect_identical(run$status, "succeeded")
+  expect_identical(
+    run$step_states$retry$attempts[[1]]$error,
+    list(
+      class = "tempest_operation_error",
+      message = "The operation failed."
+    )
+  )
+  expect_no_match(
+    tempest:::tempest_canonical_json(tempest_run_snapshot(run)),
+    secret,
+    fixed = TRUE
+  )
+})
+
+test_that("run callbacks and policy adapters discard external errors", {
+  registry <- tempest_operation_registry(list(
+    complete = list(
+      kind = "step",
+      implementation = \() "complete"
+    )
+  ))
+  workflow <- function(side_effecting = FALSE) {
+    tempest_workflow_spec(
+      if (side_effecting) "policy-safe-workflow" else "progress-safe-workflow",
+      title = "Safe callback workflow",
+      purpose = "Exercise external callback errors",
+      steps = list(tempest_workflow_step(
+        "complete",
+        title = "Complete",
+        purpose = "Complete the work",
+        operation_id = "complete",
+        side_effecting = side_effecting
+      ))
+    )
+  }
+  assert_safe <- function(condition, secret, error_class, message) {
+    expect_s3_class(condition, error_class)
+    expect_identical(conditionMessage(condition), message)
+    expect_no_match(
+      paste(capture.output(print(condition)), collapse = "\n"),
+      secret,
+      fixed = TRUE
+    )
+    expect_null(condition$parent)
+  }
+
+  progress_secret <- "Authorization: Bearer progress-secret-token"
+  progress_error <- tryCatch(
+    tempest_run_workflow(
+      tempest_objective("Exercise progress failure"),
+      workflow(),
+      registry,
+      progress = \(event) stop(progress_secret)
+    ),
+    error = identity
+  )
+  assert_safe(
+    progress_error,
+    progress_secret,
+    "tempest_run_progress_error",
+    "Run progress callback failed."
+  )
+
+  policy_secret <- "Authorization: Bearer policy-secret-token"
+  policy_error <- tryCatch(
+    tempest_run_workflow(
+      tempest_objective("Exercise policy failure"),
+      workflow(side_effecting = TRUE),
+      registry,
+      policy_adapter = \(...) stop(policy_secret)
+    ),
+    error = identity
+  )
+  assert_safe(
+    policy_error,
+    policy_secret,
+    "tempest_policy_error",
+    "The workflow run failed."
+  )
+})
+
+test_that("runtime resolution errors remain ephemeral", {
+  secret <- "Authorization: Bearer runtime-secret-token"
+  operation_calls <- 0L
+  operations <- tempest_operation_registry(list(
+    act = list(
+      kind = "step",
+      implementation = function() {
+        operation_calls <<- operation_calls + 1L
+        "complete"
+      }
+    )
+  ))
+  connection <- tempest_connection_ref(
+    "connection.safe",
+    provider_id = "test.host",
+    connection_type = "document-search",
+    title = "Safe connection",
+    description = "Exercise runtime resolution"
+  )
+  capability <- tempest_capability_spec(
+    "documents.search",
+    purpose = "Search approved documents",
+    instructions = "Use only the approved connection.",
+    operation_id = "capability.documents.search",
+    connection_ref_ids = connection@connection_id,
+    model_roles = "expert"
+  )
+  runtime <- tempest_runtime(
+    operations = operations,
+    capability_specs = list(capability),
+    capability_implementations = list(
+      "documents.search" = \(...) list(tools = list())
+    ),
+    connection_refs = list(connection),
+    connection_bindings = list(
+      "connection.safe" = \(...) stop(secret)
+    ),
+    include_builtins = FALSE
+  )
+  expert <- tempest_expert(
+    "expert.safe",
+    name = "Safe expert",
+    title = "Expert",
+    description = "Exercise safe runtime errors.",
+    instructions = "Use only approved capabilities.",
+    model_role = "expert",
+    required_capability_ids = capability@capability_id
+  )
+  workflow <- tempest_workflow_spec(
+    "runtime-safe-workflow",
+    title = "Runtime safe workflow",
+    purpose = "Exercise runtime resolution errors",
+    steps = list(tempest_workflow_step(
+      "act",
+      title = "Act",
+      purpose = "Resolve the runtime",
+      operation_id = "act",
+      assignment_rule = expert@expert_id
+    ))
+  )
+
+  condition <- tryCatch(
+    tempest_run_workflow(
+      tempest_objective("Exercise runtime resolution"),
+      workflow,
+      runtime,
+      experts = list(expert),
+      connection_permissions = list(
+        "expert.safe" = connection@connection_id
+      )
+    ),
+    error = identity
+  )
+
+  expect_s3_class(condition, "tempest_step_execution_error")
+  expect_identical(conditionMessage(condition), "The workflow run failed.")
+  expect_no_match(
+    paste(capture.output(print(condition)), collapse = "\n"),
+    secret,
+    fixed = TRUE
+  )
+  expect_null(condition$parent)
+  expect_identical(operation_calls, 0L)
+  expect_no_match(
+    tempest:::tempest_canonical_json(tempest_run_snapshot(condition$run)),
+    secret,
+    fixed = TRUE
   )
 })
 

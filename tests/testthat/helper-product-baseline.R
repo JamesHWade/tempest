@@ -305,7 +305,7 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
             stage <- "section_writing"
             value <- list(
               section_text = paste0(
-                "Section body cites events [",
+                "STORM progress emits stage events [",
                 source_id,
                 "]."
               )
@@ -319,7 +319,7 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
             stage <- "lead_section"
             value <- list(
               lead_section = paste0(
-                "Lead body cites events [",
+                "STORM progress emits stage events [",
                 source_id,
                 "]."
               )
@@ -353,7 +353,9 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
           record_program_stage("extract_claims")
           claim <- if (grepl("Expert answer", prompt, fixed = TRUE)) {
             "STORM progress emits stage events."
-          } else if (grepl("Section body", prompt, fixed = TRUE)) {
+          } else if (
+            grepl("STORM progress emits stage events", prompt, fixed = TRUE)
+          ) {
             "STORM progress persists artifacts."
           } else {
             stop("Unexpected STORM product-baseline extraction prompt.")
@@ -409,13 +411,15 @@ storm_resume_baseline_fixture <- function() {
   fixture <- storm_product_fixture()
   output_root <- withr::local_tempdir(.local_envir = parent.frame())
   first_events <- tempest_progress_collector(include_payload = TRUE)
-  first <- tempest_run(
+  requested_steps <- tempest:::tempest_storm_stage_order()
+  first <- tempest:::tempest_run_internal(
     "Progress events",
     config = fixture$config,
     retriever = fixture$retriever,
     n_experts = 1,
     max_questions_per_perspective = 1,
     steps = c("perspectives", "research"),
+    .requested_steps = requested_steps,
     output_dir = output_root,
     run_id = "storm-resume-baseline",
     progress = first_events$record,
@@ -424,7 +428,7 @@ storm_resume_baseline_fixture <- function() {
 
   restored_store <- tempest_research_workspace()
   restored_events <- tempest_progress_collector(include_payload = TRUE)
-  restored <- tempest_run(
+  restored <- tempest:::tempest_run_internal(
     "Progress events",
     config = fixture$config,
     retriever = tempest_retriever(
@@ -433,6 +437,7 @@ storm_resume_baseline_fixture <- function() {
     ),
     n_experts = 1,
     max_questions_per_perspective = 1,
+    .requested_steps = requested_steps,
     output_dir = output_root,
     resume = TRUE,
     run_id = "storm-resume-baseline",

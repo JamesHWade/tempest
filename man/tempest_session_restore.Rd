@@ -38,4 +38,6 @@ authoritative workspace, and creates fresh chat/tool handles using \code{config}
 Historical progress events are restored as session artifact data and can be
 reduced with \code{\link[=tempest_progress_state]{tempest_progress_state()}}. They are not replayed into the new
 \code{progress} callback; future calls on the restored session use that callback.
+Stage-record history is restored for audit, but running attempts are rejected
+rather than resumed.
 }

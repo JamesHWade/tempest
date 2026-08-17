@@ -10,18 +10,62 @@ tempest_research_manifest_abort <- function(message, ..., parent = NULL) {
   )
 }
 
-tempest_research_manifest_string <- function(value, arg) {
+tempest_opaque_identifier_valid <- function(value) {
   if (
-    !is.character(value) ||
-      length(value) != 1L ||
+    !rlang::is_string(value) ||
       is.na(value) ||
-      !nzchar(tempest_trim(value))
+      nchar(value, type = "bytes") > 128L
   ) {
+    return(FALSE)
+  }
+  stages <- c(
+    "perspectives",
+    "personas",
+    "query_decomposition",
+    "extract_claims",
+    "verify_claim_support",
+    "next_question",
+    "draft_outline",
+    "refined_outline",
+    "section_writing",
+    "lead_section"
+  )
+  builtin_ids <- c(
+    paste0("tempest::", stages),
+    paste0("tempest::evaluator/", stages)
+  )
+  safe_builtin <- value %in% builtin_ids
+  safe_sha256 <- grepl("^sha256:[a-f0-9]{64}$", value)
+  safe_namespaced <- grepl(
+    "^[A-Za-z][A-Za-z0-9._-]*::[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,120}$",
+    value
+  )
+  safe_opaque <- grepl("^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,127}$", value)
+  credential_marker <- grepl(
+    paste0(
+      "(^|[:/@._+-])(?:bearer|authorization|api[-_]?key|",
+      "access[-_]?token|refresh[-_]?token|token|secret|password|",
+      "client[-_]?secret|private[-_]?key)(?:$|[:/@._+-])"
+    ),
+    value,
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+  (safe_builtin || safe_sha256 || safe_namespaced || safe_opaque) &&
+    !credential_marker &&
+    !tempest_contract_sensitive_scalar(value)
+}
+
+tempest_research_manifest_string <- function(value, arg) {
+  if (!tempest_opaque_identifier_valid(value)) {
     tempest_research_manifest_abort(
-      "{.arg {arg}} must be a single non-empty string."
+      paste0(
+        "{.arg {arg}} must be a bounded opaque identifier, not prose or ",
+        "credentials."
+      )
     )
   }
-  tempest_trim(value)
+  value
 }
 
 tempest_research_manifest_choice <- function(value, arg, choices) {
@@ -248,17 +292,15 @@ tempest_research_manifest_id <- function(value, path, nullable = FALSE) {
   if (is.null(value) && isTRUE(nullable)) {
     return(NULL)
   }
-  if (
-    !is.character(value) ||
-      length(value) != 1L ||
-      is.na(value) ||
-      !nzchar(tempest_trim(value))
-  ) {
+  if (!tempest_opaque_identifier_valid(value)) {
     tempest_research_manifest_abort(
-      "{.field {path}} must be a single non-empty identifier."
+      paste0(
+        "{.field {path}} must be a bounded opaque identifier, not prose or ",
+        "credentials."
+      )
     )
   }
-  tempest_trim(value)
+  value
 }
 
 tempest_research_manifest_ids <- function(value, path) {
@@ -298,8 +340,11 @@ tempest_research_manifest_program_contract_version <- function(value, path) {
 }
 
 tempest_research_manifest_program_artifact_id <- function(value, path) {
-  value <- tempest_research_manifest_id(value, path)
-  if (!grepl("^sha256:[a-f0-9]{64}$", value)) {
+  if (
+    !rlang::is_string(value) ||
+      is.na(value) ||
+      !grepl("^sha256:[a-f0-9]{64}$", value)
+  ) {
     tempest_research_manifest_abort(
       paste0(
         "{.field {path}} must use the form ",
@@ -698,6 +743,7 @@ tempest_research_manifest_traces <- function(value) {
     "traces",
     allowed = c(
       "agent_id",
+      "correlation_id",
       "delegation_id",
       "deputy_run_id",
       "deputy_session_id",
@@ -715,6 +761,7 @@ tempest_research_manifest_traces <- function(value) {
     required_any = "trace_id",
     id_fields = c(
       "agent_id",
+      "correlation_id",
       "delegation_id",
       "deputy_run_id",
       "deputy_session_id",
