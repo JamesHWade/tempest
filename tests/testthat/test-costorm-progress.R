@@ -179,10 +179,9 @@ test_that("TempestSession emits Co-STORM progress events", {
 test_that("warmup failure emits failed expert and tool events", {
   skip_if_not_installed("ellmer")
   collector <- tempest_progress_collector(include_payload = TRUE)
-  failing_chat <- list(
-    chat = function(...) stop("warmup unavailable"),
-    register_tools = function(...) invisible(NULL)
-  )
+  failing_chat <- fake_chat()
+  failing_chat$stream <- function(...) stop("warmup unavailable")
+  failing_chat$chat <- function(...) stop("warmup unavailable")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
       if (identical(role, "expert")) failing_chat else fake_chat()
@@ -203,7 +202,7 @@ test_that("warmup failure emits failed expert and tool events", {
 
   error <- expect_error(
     session$warmup(verbose = FALSE),
-    class = "tempest_session_error"
+    class = "tempest_deputy_adapter_error"
   )
   expect_no_match(conditionMessage(error), "warmup unavailable", fixed = TRUE)
 
@@ -397,10 +396,9 @@ test_that("expert tools emit failed progress events", {
   secret <- "Authorization: Bearer sk-live-secret"
   store <- test_research_workspace()
   collector <- tempest_progress_collector(include_payload = TRUE)
-  failing_chat <- list(
-    chat = function(...) stop(secret),
-    register_tools = function(...) invisible(NULL)
-  )
+  failing_chat <- fake_chat()
+  failing_chat$stream <- function(...) stop(secret)
+  failing_chat$chat <- function(...) stop(secret)
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
       if (identical(role, "expert")) failing_chat else fake_chat()
@@ -427,7 +425,7 @@ test_that("expert tools emit failed progress events", {
       expert_id = "expert.failure",
       question = "Will this fail?"
     ),
-    class = "tempest_expert_session_error"
+    class = "tempest_deputy_adapter_error"
   )
   expect_no_match(conditionMessage(error), "sk-live-secret", fixed = TRUE)
   printed <- paste(capture.output(print(error)), collapse = "\n")
