@@ -656,7 +656,7 @@ test_that("TempestSession snapshots restore durable session state", {
   )
 
   expect_r6_class(restored, "TempestSession")
-  expect_equal(snapshot$schema_version, 8L)
+  expect_equal(snapshot$schema_version, 9L)
   expect_identical(
     snapshot$research_manifest$research_run_id,
     snapshot$session_id
@@ -714,6 +714,582 @@ test_that("TempestSession snapshots restore durable session state", {
     step = "test"
   )
   expect_equal(collector$data()[[1]]$run_id, "session_snapshot")
+})
+
+test_that("schema 9 persists exact Deputy execution authority", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+
+  moderator_source <- fake_source(
+    "https://example.org/schema-9-moderator",
+    content_text = "Moderator evidence is durable."
+  )
+  expert_source <- fake_source(
+    "https://example.org/schema-9-expert",
+    content_text = "Expert evidence is durable."
+  )
+  extractions <- list(
+    list(
+      facts = list(list(
+        claim = "Moderator evidence is durable.",
+        sources = list(list(source_id = moderator_source$id)),
+        confidence = "high"
+      ))
+    ),
+    list(
+      facts = list(list(
+        claim = "Expert evidence is durable.",
+        sources = list(list(source_id = expert_source$id)),
+        confidence = "high"
+      ))
+    )
+  )
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "judge")) {
+        return(fake_chat(structured = extractions))
+      }
+      fake_chat()
+    }
+  )
+  expert <- test_expert(expert_id = "expert.schema-9-a")
+  other_expert <- test_expert(expert_id = "expert.schema-9-b")
+  session <- tempest_session(
+    "Schema 9 Deputy authority",
+    config = cfg,
+    experts = list(expert, other_expert),
+    session_id = "schema-9-deputy-authority"
+  )
+  session$workspace$upsert_retrieved_resource(moderator_source)
+  session$workspace$upsert_retrieved_resource(expert_source)
+  expert_session <- session$expert_session_manager$get_or_create(
+    expert@expert_id
+  )
+  other_expert_session <- session$expert_session_manager$get_or_create(
+    other_expert@expert_id
+  )
+  make_trace <- function(
+    target,
+    run_id,
+    deputy_session_id,
+    role,
+    correlation_id,
+    expert_id = NULL,
+    status = "complete",
+    stage = "dialogue"
+  ) {
+    context <- tempest:::tempest_deputy_run_context(
+      target$manifest,
+      stage = "dialogue",
+      role = role,
+      expert_id = expert_id
+    )
+    trace <- list(
+      agent_id = tempest:::tempest_deputy_adapter_agent_id(context),
+      correlation_id = correlation_id,
+      deputy_run_id = run_id,
+      deputy_session_id = deputy_session_id
+    )
+    if (!is.null(expert_id)) {
+      trace$expert_id <- expert_id
+    }
+    trace$role <- role
+    trace$stage <- stage
+    trace$status <- status
+    trace$trace_id <- run_id
+    trace$trace_type <- "deputy_run"
+    trace
+  }
+  moderator_trace <- make_trace(
+    session,
+    "deputy-run-b-moderator",
+    tempest:::tempest_costorm_deputy_session_id(
+      session$session_id,
+      "moderator"
+    ),
+    "moderator",
+    "turn-schema-9-moderator"
+  )
+  expert_trace <- make_trace(
+    session,
+    "deputy-run-d-expert",
+    expert_session$session_id,
+    "expert",
+    "turn-schema-9-expert",
+    expert_id = expert@expert_id
+  )
+  tempest:::tempest_session_record_deputy_trace(session, moderator_trace)
+  tempest:::tempest_session_record_deputy_trace(session, expert_trace)
+  withCallingHandlers(
+    session$extract_facts(
+      paste0(
+        "Moderator evidence is durable [",
+        moderator_source$id,
+        "]."
+      ),
+      source_ids = moderator_source$id,
+      expert_id = "moderator",
+      correlation_id = moderator_trace$correlation_id,
+      deputy_execution = moderator_trace
+    ),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
+  )
+  withCallingHandlers(
+    session$extract_facts(
+      paste0("Expert evidence is durable [", expert_source$id, "]."),
+      source_ids = expert_source$id,
+      expert_id = expert@expert_id,
+      correlation_id = expert_trace$correlation_id,
+      deputy_execution = expert_trace
+    ),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
+  )
+
+  snapshot <- tempest_session_snapshot(session)
+  deputy_traces <- tempest:::tempest_session_deputy_traces(session)
+  trace_types <- vapply(
+    snapshot$research_manifest$traces,
+    `[[`,
+    character(1),
+    "trace_type"
+  )
+  expect_identical(snapshot$schema_version, 9L)
+  expect_identical(
+    trace_types,
+    c("stage_attempt", "stage_attempt", "deputy_run", "deputy_run")
+  )
+  expect_identical(
+    tail(snapshot$research_manifest$traces, 2L),
+    deputy_traces
+  )
+  expect_identical(
+    snapshot$research_manifest$runtime,
+    list(
+      deputy_run_ids = as.list(c(
+        "deputy-run-b-moderator",
+        "deputy-run-d-expert"
+      )),
+      deputy_session_ids = as.list(sort(c(
+        moderator_trace$deputy_session_id,
+        expert_trace$deputy_session_id
+      )))
+    )
+  )
+  expect_identical(
+    snapshot$research_manifest$traces[[1L]]$expert_id,
+    "moderator"
+  )
+  expect_null(moderator_trace$expert_id)
+
+  contains_runtime_object <- function(value) {
+    if (
+      inherits(
+        value,
+        c(
+          "Agent",
+          "TempestDeputyChatAdapter",
+          "TempestRuntime",
+          "R6"
+        )
+      )
+    ) {
+      return(TRUE)
+    }
+    if (!is.list(value)) {
+      return(FALSE)
+    }
+    any(vapply(value, contains_runtime_object, logical(1)))
+  }
+  expect_identical(contains_runtime_object(snapshot), FALSE)
+
+  restored <- tempest_session_restore(snapshot, config = cfg)
+  expect_identical(
+    tempest:::tempest_session_deputy_traces(restored),
+    deputy_traces
+  )
+  bundle_dir <- file.path(withr::local_tempdir(), "schema-9-deputy")
+  tempest_session_save(session, bundle_dir)
+  resumed <- tempest_session_resume(bundle_dir, config = cfg)
+  expect_identical(
+    tempest:::tempest_session_deputy_traces(resumed),
+    deputy_traces
+  )
+  bundle_files <- list.files(
+    bundle_dir,
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  bundle_text <- paste(
+    vapply(
+      bundle_files,
+      function(path) paste(readLines(path, warn = FALSE), collapse = "\n"),
+      character(1)
+    ),
+    collapse = "\n"
+  )
+  expect_no_match(
+    bundle_text,
+    "Agent|TempestDeputyChatAdapter|TempestRuntime|R6"
+  )
+
+  continued_moderator <- make_trace(
+    resumed,
+    "deputy-run-a-continued-moderator",
+    moderator_trace$deputy_session_id,
+    "moderator",
+    "turn-schema-9-continued-moderator"
+  )
+  continued_expert <- make_trace(
+    resumed,
+    "deputy-run-e-continued-expert",
+    expert_trace$deputy_session_id,
+    "expert",
+    "turn-schema-9-continued-expert",
+    expert_id = expert@expert_id
+  )
+  tempest:::tempest_session_record_deputy_trace(
+    resumed,
+    continued_moderator
+  )
+  tempest:::tempest_session_record_deputy_trace(resumed, continued_expert)
+  continued_snapshot <- tempest_session_snapshot(resumed)
+  expect_length(
+    Filter(
+      \(trace) identical(trace$trace_type, "deputy_run"),
+      continued_snapshot$research_manifest$traces
+    ),
+    4L
+  )
+  continued_dir <- file.path(dirname(bundle_dir), "schema-9-continued")
+  tempest_session_save(resumed, continued_dir)
+  continued <- tempest_session_resume(continued_dir, config = cfg)
+  expect_identical(
+    tempest:::tempest_session_deputy_traces(continued),
+    tempest:::tempest_session_deputy_traces(resumed)
+  )
+
+  historical_session <- tempest_session(
+    "Retired Deputy history",
+    config = cfg,
+    experts = list(expert),
+    session_id = "schema-9-retired-history"
+  )
+  retired_binding <- historical_session$expert_session_manager$get_or_create(
+    expert@expert_id
+  )
+  retired_trace <- make_trace(
+    historical_session,
+    "deputy-run-retired-expert",
+    retired_binding$session_id,
+    "expert",
+    "turn-schema-9-retired-expert",
+    expert_id = expert@expert_id,
+    status = "interrupted",
+    stage = "warmup"
+  )
+  tempest:::tempest_session_record_deputy_trace(
+    historical_session,
+    retired_trace
+  )
+  historical_session$expert_session_manager$retire_session(
+    retired_binding$session_id
+  )
+  expect_no_error(tempest_session_snapshot(historical_session))
+  historical_dir <- file.path(dirname(bundle_dir), "schema-9-historical")
+  tempest_session_save(historical_session, historical_dir)
+  historical <- tempest_session_resume(historical_dir, config = cfg)
+  replacement_binding <- historical$expert_session_manager$get_or_create(
+    expert@expert_id
+  )
+  expect_identical(
+    identical(
+      replacement_binding$session_id,
+      retired_binding$session_id
+    ),
+    FALSE
+  )
+  replacement_trace <- make_trace(
+    historical,
+    "deputy-run-replacement-expert",
+    replacement_binding$session_id,
+    "expert",
+    "turn-schema-9-replacement-expert",
+    expert_id = expert@expert_id
+  )
+  tempest:::tempest_session_record_deputy_trace(
+    historical,
+    replacement_trace
+  )
+  expect_no_error(tempest_session_snapshot(historical))
+  historical_continued_dir <- file.path(
+    dirname(bundle_dir),
+    "schema-9-historical-continued"
+  )
+  tempest_session_save(historical, historical_continued_dir)
+  historical_continued <- tempest_session_resume(
+    historical_continued_dir,
+    config = cfg
+  )
+  expect_identical(
+    tempest:::tempest_session_deputy_traces(historical_continued),
+    tempest:::tempest_session_deputy_traces(historical)
+  )
+
+  expect_rejected <- function(candidate) {
+    expect_error(
+      tempest_session_restore(candidate, config = cfg),
+      class = "tempest_session_restore_error"
+    )
+  }
+  stage_indexes <- which(trace_types == "stage_attempt")
+  moderator_index <- which(vapply(
+    snapshot$research_manifest$traces,
+    \(trace) {
+      identical(trace$trace_type, "deputy_run") &&
+        identical(trace$role, "moderator")
+    },
+    logical(1)
+  ))
+  expert_index <- which(vapply(
+    snapshot$research_manifest$traces,
+    \(trace) {
+      identical(trace$trace_type, "deputy_run") &&
+        identical(trace$role, "expert")
+    },
+    logical(1)
+  ))
+
+  unknown_trace <- rlang::duplicate(snapshot, shallow = FALSE)
+  unknown_trace$research_manifest$traces[[expert_index]]$trace_type <-
+    "unknown_run"
+  expect_rejected(unknown_trace)
+
+  duplicate_trace <- rlang::duplicate(snapshot, shallow = FALSE)
+  duplicate_trace$research_manifest$traces <- c(
+    duplicate_trace$research_manifest$traces,
+    list(duplicate_trace$research_manifest$traces[[expert_index]])
+  )
+  expect_rejected(duplicate_trace)
+
+  reordered_traces <- rlang::duplicate(snapshot, shallow = FALSE)
+  reordered_traces$research_manifest$traces <-
+    rev(reordered_traces$research_manifest$traces)
+  expect_rejected(reordered_traces)
+
+  missing_run <- rlang::duplicate(snapshot, shallow = FALSE)
+  missing_run$research_manifest$runtime$deputy_run_ids <-
+    missing_run$research_manifest$runtime$deputy_run_ids[-1L]
+  expect_rejected(missing_run)
+
+  extra_session <- rlang::duplicate(snapshot, shallow = FALSE)
+  extra_session$research_manifest$runtime$deputy_session_ids <- as.list(
+    sort(c(
+      unlist(
+        extra_session$research_manifest$runtime$deputy_session_ids,
+        use.names = FALSE
+      ),
+      "expert-session_ffffffffffffffff"
+    ))
+  )
+  expect_rejected(extra_session)
+
+  missing_terminal <- rlang::duplicate(snapshot, shallow = FALSE)
+  missing_terminal$research_manifest$traces <-
+    missing_terminal$research_manifest$traces[-expert_index]
+  expect_rejected(missing_terminal)
+
+  failed_terminal <- rlang::duplicate(snapshot, shallow = FALSE)
+  failed_terminal$research_manifest$traces[[expert_index]]$status <-
+    "provider_error"
+  expect_rejected(failed_terminal)
+
+  changed_correlation <- rlang::duplicate(snapshot, shallow = FALSE)
+  changed_correlation$research_manifest$traces[[expert_index]]$correlation_id <-
+    "turn-schema-9-changed"
+  expect_rejected(changed_correlation)
+
+  changed_expert <- rlang::duplicate(snapshot, shallow = FALSE)
+  changed_expert$research_manifest$traces[[expert_index]]$expert_id <-
+    other_expert@expert_id
+  other_context <- tempest:::tempest_deputy_run_context(
+    session$manifest,
+    stage = "dialogue",
+    role = "expert",
+    expert_id = other_expert@expert_id
+  )
+  changed_expert$research_manifest$traces[[expert_index]]$agent_id <-
+    tempest:::tempest_deputy_adapter_agent_id(other_context)
+  expect_rejected(changed_expert)
+
+  changed_expert_session <- rlang::duplicate(snapshot, shallow = FALSE)
+  changed_expert_session$research_manifest$traces[[
+    expert_index
+  ]]$deputy_session_id <-
+    other_expert_session$session_id
+  changed_expert_session$research_manifest$runtime$deputy_session_ids <-
+    as.list(sort(c(
+      moderator_trace$deputy_session_id,
+      other_expert_session$session_id
+    )))
+  expect_rejected(changed_expert_session)
+
+  changed_moderator_session <- rlang::duplicate(snapshot, shallow = FALSE)
+  changed_moderator_session$research_manifest$traces[[
+    moderator_index
+  ]]$deputy_session_id <-
+    "tempest-moderator-000000000000000000000000"
+  changed_moderator_session$research_manifest$runtime$deputy_session_ids <-
+    as.list(sort(c(
+      "tempest-moderator-000000000000000000000000",
+      expert_trace$deputy_session_id
+    )))
+  expect_rejected(changed_moderator_session)
+
+  changed_agent <- rlang::duplicate(snapshot, shallow = FALSE)
+  changed_agent$research_manifest$traces[[moderator_index]]$agent_id <-
+    "forged-moderator-agent"
+  expect_rejected(changed_agent)
+
+  changed_trace_id <- rlang::duplicate(snapshot, shallow = FALSE)
+  changed_trace_id$research_manifest$traces[[expert_index]]$trace_id <-
+    "forged-trace-id"
+  expect_rejected(changed_trace_id)
+
+  credential_trace <- rlang::duplicate(snapshot, shallow = FALSE)
+  credential_trace$research_manifest$traces[[expert_index]]$correlation_id <-
+    "sk-proj-0123456789abcdefghijklmnopqrstuv"
+  expect_rejected(credential_trace)
+
+  runtime_values <- list(
+    deputy::Agent$new(chat = fake_chat()),
+    session$chats$moderator,
+    session$runtime
+  )
+  for (runtime_value in runtime_values) {
+    runtime_snapshot <- rlang::duplicate(snapshot, shallow = FALSE)
+    runtime_snapshot$research_manifest$traces[[
+      moderator_index
+    ]]$runtime_object <-
+      runtime_value
+    expect_rejected(runtime_snapshot)
+  }
+
+  expect_length(stage_indexes, 2L)
+})
+
+test_that("pending Deputy runs block schema 9 persistence", {
+  skip_if_not_installed("coro")
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("jsonlite")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  raw_chat <- fake_chat()
+  raw_chat$stream_async <- function(
+    prompt = NULL,
+    stream = c("text", "content"),
+    controller = NULL
+  ) {
+    coro::async_generator(function() {
+      chunk <- coro::await(promises::promise(function(resolve, reject) {
+        later::later(
+          function() {
+            resolve(ellmer::ContentText("Late expert answer"))
+          },
+          0.25
+        )
+      }))
+      coro::yield(chunk)
+      coro::exhausted()
+    })()
+  }
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "expert")) {
+        return(raw_chat)
+      }
+      fake_chat()
+    }
+  )
+  expert <- test_expert(
+    expert_id = "expert.pending-timeout",
+    name = "Pending Timeout Expert",
+    initial_questions = "What remains pending?"
+  )
+  session <- tempest_session(
+    "Pending Deputy persistence",
+    config = cfg,
+    experts = list(expert),
+    session_id = "pending-deputy-persistence"
+  )
+
+  settled <- await_tempest_promise(tempest_session_warmup_async(
+    session,
+    timeout_s = 0.02,
+    max_parallel_experts = 1L
+  ))
+  expect_null(settled$error)
+  expect_identical(
+    settled$value@orientations[[1L]]$failure_kind,
+    "timeout"
+  )
+  expect_length(tempest:::tempest_session_deputy_traces(session), 0L)
+  expect_length(
+    tempest:::tempest_session_pending_deputy_runs(session),
+    1L
+  )
+  expect_error(
+    tempest_session_snapshot(session),
+    class = "tempest_session_snapshot_error"
+  )
+  immediate_dir <- file.path(withr::local_tempdir(), "pending")
+  expect_error(
+    tempest_session_save(session, immediate_dir),
+    class = "tempest_session_save_error"
+  )
+  expect_identical(dir.exists(immediate_dir), FALSE)
+
+  deadline <- Sys.time() + 2
+  while (
+    length(tempest:::tempest_session_pending_deputy_runs(session)) > 0L &&
+      Sys.time() < deadline
+  ) {
+    later::run_now(0.05)
+  }
+  traces <- tempest:::tempest_session_deputy_traces(session)
+  expect_length(
+    tempest:::tempest_session_pending_deputy_runs(session),
+    0L
+  )
+  expect_length(traces, 1L)
+  expect_identical(traces[[1L]]$status, "interrupted")
+
+  snapshot <- tempest_session_snapshot(session)
+  expect_identical("pending_deputy_runs" %in% names(snapshot), FALSE)
+  expect_identical(
+    Filter(
+      \(trace) identical(trace$trace_type, "deputy_run"),
+      snapshot$research_manifest$traces
+    ),
+    traces
+  )
+  bundle_dir <- file.path(withr::local_tempdir(), "settled")
+  tempest_session_save(session, bundle_dir)
+  resumed <- tempest_session_resume(bundle_dir, config = cfg)
+  expect_identical(
+    tempest:::tempest_session_deputy_traces(resumed),
+    traces
+  )
+  expect_length(
+    tempest:::tempest_session_pending_deputy_runs(resumed),
+    0L
+  )
 })
 
 test_that("session snapshots reject credentials outside evidence payloads", {
@@ -1049,15 +1625,13 @@ test_that("sync and async warmups persist authoritative claim provenance", {
         mindmap = mindmap,
         list()
       )
-      list(
-        chat = function(...) text,
-        chat_async = function(...) promises::promise_resolve(text),
-        chat_structured = function(...) structured,
-        chat_structured_async = function(...) {
-          promises::promise_resolve(structured)
-        },
-        last_turn = function() NULL,
-        register_tools = function(...) invisible(NULL)
+      fake_chat(
+        text = list(text),
+        structured = if (length(structured) > 0L) {
+          list(structured)
+        } else {
+          list()
+        }
       )
     }
     cfg <- tempest_config(chat_fn = chat_factory)
@@ -1399,7 +1973,7 @@ test_that("TempestSession restores progress history without replaying it", {
   expect_null(restored$artifacts[["progress_events"]])
 
   legacy_snapshot <- snapshot
-  legacy_snapshot$schema_version <- 7L
+  legacy_snapshot$schema_version <- 8L
   expect_error(
     tempest:::tempest_session_restore(legacy_snapshot, config = cfg),
     class = "tempest_unsupported_format_error"
@@ -1527,7 +2101,7 @@ test_that("Co-STORM snapshots cancel running stage attempts without mutation", {
   )
 })
 
-test_that("schema 8 session restore protects research identity", {
+test_that("schema 9 session restore protects research identity", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -1771,7 +2345,7 @@ test_that("schema 8 session restore protects research identity", {
   )
 })
 
-test_that("schema 8 progress history is exact and session-bound", {
+test_that("schema 9 progress history is exact and session-bound", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -1947,7 +2521,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_null(manifest$status)
   expect_equal(manifest$bundle_type, "costorm")
   expect_equal(manifest$bundle_status, "complete")
-  expect_equal(manifest$schema_version, 8L)
+  expect_equal(manifest$schema_version, 9L)
   expect_identical(
     manifest$research_manifest$research_run_id,
     session_id
@@ -1981,6 +2555,17 @@ test_that("Tempest session bundles save and resume durable state", {
     "artifacts/typed/"
   )))
   expect_false("config.json" %in% manifest$files)
+
+  schema_eight_manifest <- manifest
+  schema_eight_manifest$schema_version <- 8L
+  tempest:::tempest_write_json(
+    file.path(bundle_dir, "session.json"),
+    schema_eight_manifest
+  )
+  expect_error(
+    tempest_session_resume(bundle_dir, config = cfg),
+    class = "tempest_unsupported_format_error"
+  )
 
   reordered_manifest <- manifest[rev(names(manifest))]
   tempest:::tempest_write_json(
@@ -2095,11 +2680,11 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_no_error(tempest_session_save(session, bundle_dir, overwrite = TRUE))
 })
 
-test_that("schema 5 session bundles fail closed", {
+test_that("schema 8 session bundles are rejected", {
   bundle_dir <- withr::local_tempdir()
   tempest:::tempest_write_json(
     file.path(bundle_dir, "session.json"),
-    list(schema_version = 5L)
+    list(schema_version = 8L)
   )
   expect_error(
     tempest_session_resume(bundle_dir),
@@ -2412,14 +2997,29 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     session_id = "stage-record-binding",
     program_set = program_set
   )
-  session_private <- session$.__enclos_env__$private
-  session_private$manifest_value <- tempest:::tempest_research_manifest_update(
+  expert_session <- session$expert_session_manager$get_or_create(
+    "expert.stage-record-binding"
+  )
+  run_context <- tempest:::tempest_deputy_run_context(
     session$manifest,
-    traces = list(list(
-      trace_id = "trace.stage-record-binding",
+    stage = "dialogue",
+    role = "expert",
+    expert_id = "expert.stage-record-binding"
+  )
+  tempest:::tempest_session_record_deputy_trace(
+    session,
+    list(
+      agent_id = tempest:::tempest_deputy_adapter_agent_id(run_context),
+      correlation_id = "retrieval.stage-record-binding",
+      deputy_run_id = "trace.stage-record-binding",
+      deputy_session_id = expert_session$session_id,
       expert_id = "expert.stage-record-binding",
-      correlation_id = "retrieval.stage-record-binding"
-    ))
+      role = "expert",
+      stage = "dialogue",
+      status = "complete",
+      trace_id = "trace.stage-record-binding",
+      trace_type = "deputy_run"
+    )
   )
   judge <- fake_chat(
     structured = list(

@@ -86,6 +86,8 @@ tempest_warmup_orientation_error <- function(orientation) {
     "expert_id",
     "expert_name",
     "expert_session_id",
+    "deputy_run_id",
+    "deputy_session_id",
     "correlation_id",
     "status",
     "evidence_status",
@@ -110,6 +112,8 @@ tempest_warmup_orientation_error <- function(orientation) {
     "expert_id",
     "expert_name",
     "expert_session_id",
+    "deputy_run_id",
+    "deputy_session_id",
     "correlation_id",
     "status",
     "evidence_status",
@@ -125,6 +129,20 @@ tempest_warmup_orientation_error <- function(orientation) {
     if (!is.na(value) && tempest_contract_sensitive_scalar(value)) {
       return(paste0("has credential-like `", field, "`"))
     }
+  }
+  deputy_ids <- c(
+    orientation$deputy_run_id,
+    orientation$deputy_session_id
+  )
+  present_deputy_ids <- !is.na(deputy_ids)
+  if (xor(present_deputy_ids[[1L]], present_deputy_ids[[2L]])) {
+    return("must bind Deputy run and session identifiers together")
+  }
+  if (
+    any(present_deputy_ids) &&
+      !all(vapply(deputy_ids, tempest_opaque_identifier_valid, logical(1)))
+  ) {
+    return("has invalid Deputy execution identifiers")
   }
   if (!orientation$status %in% c("succeeded", "failed", "timeout")) {
     return("has invalid `status`")
@@ -186,6 +204,9 @@ tempest_warmup_orientation_error <- function(orientation) {
     return("has an invalid `error_message`")
   }
   if (identical(orientation$status, "succeeded")) {
+    if (anyNA(deputy_ids)) {
+      return("succeeded orientations must identify their Deputy execution")
+    }
     if (!is.na(orientation$failure_kind)) {
       return("cannot have `failure_kind` when `status` is succeeded")
     }
@@ -441,9 +462,20 @@ tempest_warmup_response_text <- function(expert_chat, response) {
   ""
 }
 
-tempest_warmup_chat_response <- function(expert_chat, prompt) {
+tempest_warmup_chat_response <- function(
+  expert_chat,
+  prompt,
+  correlation_id
+) {
   request <- tryCatch(
-    expert_chat$chat_async(prompt),
+    expert_chat$chat_async(
+      prompt,
+      run_context = list(
+        correlation_id = correlation_id,
+        role = "expert",
+        stage = "warmup"
+      )
+    ),
     error = function(error) promises::promise_reject(error)
   )
   promises::then(
@@ -457,6 +489,8 @@ tempest_warmup_orientation <- function(expert, correlation_id) {
     expert_id = expert@expert_id,
     expert_name = expert@name,
     expert_session_id = NA_character_,
+    deputy_run_id = NA_character_,
+    deputy_session_id = NA_character_,
     correlation_id = correlation_id,
     status = "failed",
     evidence_status = "not_run",
@@ -598,6 +632,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
           session_id = session$session_id,
           expert_id = orientation$expert_id,
           correlation_id = orientation$correlation_id,
+          deputy_execution = orientation$deputy_execution,
           is_current = is_current,
           emit_stale_progress = FALSE
         )
@@ -913,7 +948,8 @@ tempest_session_warmup_async <- function(
       orientation_active <<- TRUE
       request <- tempest_warmup_chat_response(
         expert_chat,
-        tempest_warmup_prompt(session$topic, expert)
+        tempest_warmup_prompt(session$topic, expert),
+        correlation_id = correlation_id
       )
       work <- promises::then(request, function(response) {
         if (!orientation_active) {
@@ -929,11 +965,18 @@ tempest_session_warmup_async <- function(
         if (!nzchar(trimws(response))) {
           stop("The expert returned an empty orientation.")
         }
+        deputy_execution <- tempest_costorm_last_deputy_execution(
+          expert_chat,
+          stage = "warmup",
+          role = "expert"
+        )
         turn <- tryCatch(
           expert_chat$last_turn(),
           error = function(error) NULL
         )
         record$status <<- "succeeded"
+        record$deputy_run_id <<- deputy_execution$deputy_run_id
+        record$deputy_session_id <<- deputy_execution$deputy_session_id
         state$records[[index]] <- record
         state$pending[[index]] <- list(
           expert_id = expert_id,
@@ -941,7 +984,8 @@ tempest_session_warmup_async <- function(
           expert_session_id = expert_session_id,
           correlation_id = correlation_id,
           response = response,
-          turn = turn
+          turn = turn,
+          deputy_execution = deputy_execution
         )
         orientation_active <<- FALSE
         restore_provenance()
@@ -957,6 +1001,8 @@ tempest_session_warmup_async <- function(
             expert_name = expert_name,
             mode = "bounded_research",
             session_id = expert_session_id,
+            deputy_run_id = deputy_execution$deputy_run_id,
+            deputy_session_id = deputy_execution$deputy_session_id,
             tools_available = record$tools_available,
             capability_count = record$capability_count
           )
@@ -982,6 +1028,17 @@ tempest_session_warmup_async <- function(
           record$session_retired <<- isTRUE(retirement$retired)
           record$cancellation_supported <<-
             isTRUE(retirement$cancellation_supported)
+          deputy_execution <- tryCatch(
+            tempest_deputy_chat_last_execution(expert_chat),
+            error = function(error) NULL
+          )
+          if (!is.null(deputy_execution)) {
+            deputy_execution <- tempest_costorm_deputy_trace(
+              deputy_execution
+            )
+            record$deputy_run_id <<- deputy_execution$deputy_run_id
+            record$deputy_session_id <<- deputy_execution$deputy_session_id
+          }
           record <<- tempest_warmup_error_record(
             record,
             error,

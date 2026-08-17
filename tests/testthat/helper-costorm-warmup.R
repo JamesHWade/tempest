@@ -6,6 +6,7 @@ fake_costorm_warmup_session <- function(
   mindmap_async = NULL
 ) {
   local_mocked_bindings(
+    tempest_deputy_chat_last_execution = function(chat) chat$last_execution(),
     tempest_session_programs = function(session) session$programs,
     tempest_session_stage_recorder = function(session) {
       tempest:::tempest_stage_record_discard
@@ -75,6 +76,7 @@ fake_costorm_warmup_session <- function(
   state$generations <- new.env(parent = emptyenv())
   state$chats <- new.env(parent = emptyenv())
   state$session_keys <- new.env(parent = emptyenv())
+  state$run_count <- 0L
 
   call_chat <- function(prompt, expert, generation) {
     args <- names(formals(chat_async))
@@ -100,11 +102,33 @@ fake_costorm_warmup_session <- function(
     if (is.null(chat)) {
       generation <- generation + 1L
       state$generations[[expert_id]] <- generation
+      execution <- new.env(parent = emptyenv())
+      execution$value <- NULL
       chat <- list(
-        chat_async = function(prompt) {
+        chat_async = function(prompt, run_context = list()) {
+          state$run_count <- state$run_count + 1L
+          deputy_run_id <- paste0("fake-deputy-run-", state$run_count)
+          execution$value <- list(
+            agent_id = paste0("fake-agent-", expert_id),
+            correlation_id = run_context$correlation_id,
+            deputy_run_id = deputy_run_id,
+            deputy_session_id = paste0(
+              "fake-",
+              expert_id,
+              "-",
+              generation
+            ),
+            expert_id = expert_id,
+            role = run_context$role %||% "expert",
+            stage = run_context$stage %||% "warmup",
+            status = "complete",
+            trace_id = deputy_run_id,
+            trace_type = "deputy_run"
+          )
           call_chat(prompt, expert, generation)
         },
-        last_turn = function() NULL
+        last_turn = function() NULL,
+        last_execution = function() execution$value
       )
       state$chats[[expert_id]] <- chat
     }
@@ -187,4 +211,35 @@ fake_costorm_warmup_session <- function(
     event
   }
   session
+}
+
+test_costorm_deputy_trace <- function(
+  run_id = "deputy-run-test",
+  session_id = "deputy-session-test",
+  stage = "dialogue",
+  role = "moderator",
+  correlation_id = paste0(run_id, "-correlation"),
+  expert_id = NULL
+) {
+  trace <- list(
+    agent_id = paste0("test-agent-", role),
+    deputy_run_id = run_id,
+    deputy_session_id = session_id,
+    role = role,
+    stage = stage,
+    status = "complete",
+    trace_id = run_id,
+    trace_type = "deputy_run"
+  )
+  trace$correlation_id <- correlation_id
+  if (!is.null(expert_id)) {
+    trace$expert_id <- expert_id
+  }
+  trace
+}
+
+test_record_costorm_deputy_trace <- function(session, ...) {
+  trace <- test_costorm_deputy_trace(...)
+  tempest:::tempest_session_record_deputy_trace(session, trace)
+  tempest:::tempest_costorm_deputy_trace(trace)
 }

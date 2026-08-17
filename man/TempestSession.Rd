@@ -334,7 +334,8 @@ restoration.}
   source_ids = NULL,
   session_id = self$session_id,
   expert_id = NA_character_,
-  correlation_id = NA_character_
+  correlation_id = NA_character_,
+  deputy_execution = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -347,6 +348,7 @@ restoration.}
       \item{\code{session_id}}{Optional Co-STORM or expert session id.}
       \item{\code{expert_id}}{Optional expert id.}
       \item{\code{correlation_id}}{Optional progress correlation id for the turn.}
+      \item{\code{deputy_execution}}{Optional terminal Deputy trace for the answer.}
     }
     \if{html}{\out{</div>}}
   }
@@ -614,7 +616,9 @@ This primes the knowledge base with foundational research before interactive Q&A
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    Character vector of questions, or NULL if none.
+    An exact record containing \code{questions}, \code{correlation_id},
+\code{deputy_run_id}, and \code{deputy_session_id}, or \code{NULL} when there is no
+unseen evidence and no moderator run occurred.
   }
 }
 

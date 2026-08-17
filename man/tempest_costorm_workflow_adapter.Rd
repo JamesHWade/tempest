@@ -35,6 +35,9 @@ No compatibility shim is planned; see
 \link{tempest-generic-kernel-retirement}.
 
 Warmup and report operations call the existing \code{TempestSession} methods.
-The dialogue operation records the current session boundary; individual
-interactive turns remain host-driven while the run awaits approval.
+Moderator and expert execution therefore remains inside the session's
+persistent, permission-bounded Deputy agents. The dialogue operation records
+the current session boundary; individual interactive turns remain
+host-driven while the run awaits approval. Checkpoints never serialize a
+Deputy Agent; canonical opaque traces remain in Co-STORM persistence.
 }

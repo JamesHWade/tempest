@@ -156,11 +156,8 @@ test_that("expert delegation harvests native sources before extraction", {
       ellmer::ContentText(paste("Native-backed claim", url))
     )
   )
-  expert_chat <- list(
-    chat = function(prompt, ...) paste("Native-backed claim", url),
-    last_turn = function() turn,
-    register_tools = function(...) invisible(NULL)
-  )
+  expert_chat <- fake_chat(text = list(paste("Native-backed claim", url)))
+  expert_chat$last_turn <- function(role = "assistant") turn
   extractor <- fake_chat(
     structured = list(list(
       facts = list(list(
@@ -222,11 +219,8 @@ test_that("expert delegation harvests OpenAI native annotations", {
     url = url,
     title = "OpenAI Native Source"
   )
-  expert_chat <- list(
-    chat = function(prompt, ...) "OpenAI native-backed claim.",
-    last_turn = function() turn,
-    register_tools = function(...) invisible(NULL)
-  )
+  expert_chat <- fake_chat(text = list("OpenAI native-backed claim."))
+  expert_chat$last_turn <- function(role = "assistant") turn
   extractor <- fake_chat(
     structured = list(list(
       facts = list(list(

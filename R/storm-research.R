@@ -325,7 +325,9 @@ tempest_extract_claims_execution_bind <- function(
   expert_id,
   retrieval_step_id,
   perspective_id,
-  section_id
+  section_id,
+  deputy_run_id = NA_character_,
+  deputy_session_id = NA_character_
 ) {
   module <- tempest_dsprrr_execution_verify(module, "extract_claims")
   claim_context <- list(
@@ -348,6 +350,27 @@ tempest_extract_claims_execution_bind <- function(
         "Claim context field {.field {field}} is not a safe opaque identifier."
       )
     }
+  }
+  deputy_context <- list(
+    deputy_run_id = deputy_run_id,
+    deputy_session_id = deputy_session_id
+  )
+  for (field in names(deputy_context)) {
+    value <- deputy_context[[field]]
+    if (
+      !is.character(value) ||
+        length(value) != 1L ||
+        (!is.na(value) && !tempest_opaque_identifier_valid(value))
+    ) {
+      tempest_stage_governance_abort(
+        "Claim execution field {.field {field}} is not a safe opaque identifier."
+      )
+    }
+  }
+  if (xor(is.na(deputy_run_id), is.na(deputy_session_id))) {
+    tempest_stage_governance_abort(
+      "Claim execution must bind Deputy run and session identifiers together."
+    )
   }
   trace <- module$trace_context
   if (!is.na(session_id)) {
@@ -382,7 +405,16 @@ tempest_extract_claims_execution_bind <- function(
     trace,
     "trace_context"
   )
-  list(module = module, claim_context = claim_context)
+  deputy_execution <- if (is.na(deputy_run_id)) {
+    NULL
+  } else {
+    deputy_context
+  }
+  list(
+    module = module,
+    claim_context = claim_context,
+    deputy_execution = deputy_execution
+  )
 }
 
 #' @keywords internal
@@ -397,6 +429,8 @@ tempest_extract_facts_from_answer <- function(
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
   section_id = NA_character_,
+  deputy_run_id = NA_character_,
+  deputy_session_id = NA_character_,
   knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
@@ -407,7 +441,9 @@ tempest_extract_facts_from_answer <- function(
     expert_id,
     retrieval_step_id,
     perspective_id,
-    section_id
+    section_id,
+    deputy_run_id,
+    deputy_session_id
   )
   module <- binding$module
   # Use a separate extraction call to minimize hallucinated facts. dsprrr gets
@@ -432,7 +468,8 @@ tempest_extract_facts_from_answer <- function(
           character(1),
           "id"
         ),
-        claim_context = binding$claim_context
+        claim_context = binding$claim_context,
+        deputy_execution = binding$deputy_execution
       ),
       module,
       knowledge_view
@@ -474,6 +511,8 @@ tempest_extract_facts_from_answer_async <- function(
   retrieval_step_id = NA_character_,
   perspective_id = NA_character_,
   section_id = NA_character_,
+  deputy_run_id = NA_character_,
+  deputy_session_id = NA_character_,
   knowledge_view = module$knowledge_view %||% NULL,
   commit_if = function() TRUE,
   record_stage = function(record, output = NULL) invisible(record)
@@ -486,7 +525,9 @@ tempest_extract_facts_from_answer_async <- function(
     expert_id,
     retrieval_step_id,
     perspective_id,
-    section_id
+    section_id,
+    deputy_run_id,
+    deputy_session_id
   )
   module <- binding$module
   source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
@@ -504,7 +545,8 @@ tempest_extract_facts_from_answer_async <- function(
           character(1),
           "id"
         ),
-        claim_context = binding$claim_context
+        claim_context = binding$claim_context,
+        deputy_execution = binding$deputy_execution
       ),
       module,
       knowledge_view

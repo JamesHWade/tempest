@@ -3577,7 +3577,13 @@ tempest_stage_execution_contract_preflight <- function(
     "inputs"
   )
   common_context <- intersect(
-    c("attempt_id", "now", "stage_records", "knowledge_view"),
+    c(
+      "attempt_id",
+      "now",
+      "stage_records",
+      "knowledge_view",
+      "deputy_execution"
+    ),
     names(context) %||% character()
   )
   required_context <- tempest_stage_context_fields(stage)
@@ -3586,6 +3592,7 @@ tempest_stage_execution_contract_preflight <- function(
     c(required_context, common_context),
     "context"
   )
+  tempest_stage_deputy_execution_references(context)
   if (!is.null(context$attempt_id)) {
     tempest_stage_trace_identifier(context$attempt_id, "attempt_id")
   }
@@ -3994,6 +4001,44 @@ tempest_stage_context_claim_ids <- function(context, field) {
   unname(ids)
 }
 
+tempest_stage_deputy_execution_references <- function(context) {
+  deputy_execution <- context$deputy_execution %||% NULL
+  if (is.null(deputy_execution)) {
+    return(list())
+  }
+  fields <- c("deputy_run_id", "deputy_session_id")
+  if (
+    !is.list(deputy_execution) ||
+      is.data.frame(deputy_execution) ||
+      !identical(names(deputy_execution), fields)
+  ) {
+    tempest_stage_governance_abort(
+      paste0(
+        "Stage Deputy execution context must contain exactly ",
+        "{.field deputy_run_id} and {.field deputy_session_id}."
+      )
+    )
+  }
+  for (field in fields) {
+    value <- deputy_execution[[field]]
+    if (
+      !is.character(value) ||
+        length(value) != 1L ||
+        is.object(value) ||
+        !is.null(names(value)) ||
+        !tempest_opaque_identifier_valid(value)
+    ) {
+      tempest_stage_governance_abort(
+        paste0(
+          "Stage Deputy execution field {.field {field}} must be a bounded ",
+          "opaque identifier, not prose or credentials."
+        )
+      )
+    }
+  }
+  deputy_execution
+}
+
 tempest_stage_execution_trace_references <- function(execution, context) {
   execution_fields <- c(
     "research_run_id",
@@ -4013,6 +4058,16 @@ tempest_stage_execution_trace_references <- function(execution, context) {
   references <- execution$trace_context[
     intersect(execution_fields, names(execution$trace_context))
   ]
+  deputy_execution <- tempest_stage_deputy_execution_references(context)
+  for (field in names(deputy_execution)) {
+    existing <- references[[field]] %||% NULL
+    if (!is.null(existing) && !identical(existing, deputy_execution[[field]])) {
+      tempest_stage_governance_abort(
+        "Stage Deputy execution identity conflicts with the ProgramSet trace."
+      )
+    }
+    references[[field]] <- deputy_execution[[field]]
+  }
   if (identical(execution$stage, "verify_claim_support")) {
     references$min_support_score <-
       tempest_stage_support_threshold_string(context$min_support_score)

@@ -40,8 +40,12 @@ test_that("fresh governed workflows require a live pinned view", {
 test_that("a supplied view defines new workspace snapshot authority", {
   skip_if_not_installed("graft")
   fixture <- test_knowledge_view()
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
   session <- tempest_session(
     "Pinned Co-STORM",
+    config = config,
     experts = list(test_expert()),
     knowledge_view = fixture$view
   )
@@ -156,8 +160,12 @@ test_that("restored governed sessions stay inspectable without a live view", {
       fixture$snapshot
     )
   )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
   session <- tempest_session(
     "Restored governed Co-STORM",
+    config = config,
     experts = list(test_expert()),
     program_set = program_set,
     knowledge_view = fixture$view

@@ -1233,6 +1233,9 @@ ExpertSessionManager <- R6::R6Class(
     #' @param run_id Shared Co-STORM session id for progress events.
     #' @param stage_recorder Optional callback accepting a stage record and its
     #'   evaluated output.
+    #' @param manifest Research manifest that owns Deputy execution identity.
+    #' @param on_start Callback accepting one pending Deputy run record.
+    #' @param on_run Callback accepting one terminal Deputy run trace.
     initialize = function(
       experts,
       runtime,
@@ -1244,7 +1247,10 @@ ExpertSessionManager <- R6::R6Class(
       workspace = NULL,
       progress = NULL,
       run_id = NULL,
-      stage_recorder = NULL
+      stage_recorder = NULL,
+      manifest = NULL,
+      on_start = function(pending_run) invisible(pending_run),
+      on_run = function(trace) invisible(trace)
     ) {
       experts <- tryCatch(
         tempest_validate_experts(experts, active_only = FALSE),
@@ -1308,13 +1314,46 @@ ExpertSessionManager <- R6::R6Class(
       }
       self$workspace <- workspace
       self$progress <- tempest_progress_callback(progress)
-      self$run_id <- run_id %||% tempest_uuid("session")
+      self$run_id <- run_id %||%
+        if (S7::S7_inherits(manifest, TempestResearchManifest)) {
+          manifest@research_run_id
+        } else {
+          tempest_uuid("session")
+        }
       if (!is.null(stage_recorder) && !is.function(stage_recorder)) {
         tempest_expert_session_abort(
           "{.arg stage_recorder} must be a function or {.code NULL}."
         )
       }
       private$stage_recorder_value <- stage_recorder
+      private$manifest_value <- if (is.null(manifest)) {
+        tempest_research_manifest(
+          research_run_id = self$run_id,
+          mode = "costorm",
+          config = self$config,
+          knowledge_snapshot = tempest_costorm_manifest_snapshot_reference(
+            self$workspace
+          ),
+          runtime = list(),
+          traces = list(),
+          deliverables = list(),
+          status = "running"
+        )
+      } else {
+        tempest_costorm_manifest_validate(
+          manifest,
+          self$run_id,
+          self$config,
+          self$workspace
+        )
+      }
+      if (!is.function(on_start) || !is.function(on_run)) {
+        tempest_expert_session_abort(
+          "{.arg on_start} and {.arg on_run} must be functions."
+        )
+      }
+      private$on_start_value <- on_start
+      private$on_run_value <- on_run
       invisible(self)
     },
 
@@ -1363,6 +1402,7 @@ ExpertSessionManager <- R6::R6Class(
     #'   research run id.
     #' @param expert_id Optional stable expert id.
     #' @param correlation_id Optional progress correlation id for the turn.
+    #' @param deputy_execution Optional terminal Deputy trace for the answer.
     #' @return Invisibly returns NULL.
     extract_facts = function(
       response,
@@ -1370,8 +1410,12 @@ ExpertSessionManager <- R6::R6Class(
       source_ids = NULL,
       session_id = NA_character_,
       expert_id = NA_character_,
-      correlation_id = NA_character_
+      correlation_id = NA_character_,
+      deputy_execution = NULL
     ) {
+      if (!is.null(deputy_execution)) {
+        deputy_execution <- tempest_costorm_deputy_trace(deputy_execution)
+      }
       if (!is.null(self$extractor) && !is.null(self$workspace)) {
         event <- self$emit_progress(
           "step",
@@ -1415,6 +1459,10 @@ ExpertSessionManager <- R6::R6Class(
               session_id = self$run_id,
               expert_id = expert_id,
               retrieval_step_id = correlation_id,
+              deputy_run_id = deputy_execution$deputy_run_id %||%
+                NA_character_,
+              deputy_session_id = deputy_execution$deputy_session_id %||%
+                NA_character_,
               record_stage = private$stage_recorder_value
             )
             self$emit_progress(
@@ -1809,6 +1857,9 @@ ExpertSessionManager <- R6::R6Class(
   ),
   private = list(
     stage_recorder_value = NULL,
+    manifest_value = NULL,
+    on_start_value = NULL,
+    on_run_value = NULL,
     expert_id = function(expert_id) {
       tryCatch(
         tempest_contract_id(expert_id, "expert_id"),
@@ -1984,6 +2035,24 @@ ExpertSessionManager <- R6::R6Class(
           )
         }
       )
+      chat <- tryCatch(
+        tempest_deputy_chat_adapter(
+          chat,
+          manifest = private$manifest_value,
+          deputy_session_id = session_id,
+          agent_name = expert@name,
+          stage = "dialogue",
+          role = "expert",
+          expert_id = expert@expert_id,
+          on_start = private$on_start_value,
+          on_run = private$on_run_value
+        ),
+        error = function(error) {
+          tempest_expert_session_abort(
+            "Expert {.val {expert@expert_id}} execution session could not be created."
+          )
+        }
+      )
       binding <- list(
         session_id = session_id,
         expert_id = expert@expert_id,
@@ -2069,6 +2138,8 @@ ExpertSessionManager <- R6::R6Class(
 #' @param run_id Optional shared workflow run id.
 #' @param stage_recorder Optional callback accepting a stage record and its
 #'   evaluated output.
+#' @param manifest Research manifest that owns Deputy execution identity.
+#' @param on_run Callback accepting one terminal Deputy run trace.
 #' @return An `ExpertSessionManager`.
 #' @keywords internal
 tempest_expert_session_manager <- function(
@@ -2082,7 +2153,9 @@ tempest_expert_session_manager <- function(
   workspace = NULL,
   progress = NULL,
   run_id = NULL,
-  stage_recorder = NULL
+  stage_recorder = NULL,
+  manifest = NULL,
+  on_run = function(trace) invisible(trace)
 ) {
   ExpertSessionManager$new(
     experts = experts,
@@ -2095,7 +2168,9 @@ tempest_expert_session_manager <- function(
     workspace = workspace,
     progress = progress,
     run_id = run_id,
-    stage_recorder = stage_recorder
+    stage_recorder = stage_recorder,
+    manifest = manifest,
+    on_run = on_run
   )
 }
 
@@ -2240,7 +2315,15 @@ tempest_create_expert_delegation_tool <- function(
       retrieval_step_id = correlation_id
     )
     response <- tryCatch(
-      chat$chat(prompt, echo = "none"),
+      chat$chat(
+        prompt,
+        echo = "none",
+        run_context = list(
+          correlation_id = correlation_id,
+          role = "expert",
+          stage = "dialogue"
+        )
+      ),
       error = function(e) {
         mgr$emit_progress(
           "tool",
@@ -2267,6 +2350,11 @@ tempest_create_expert_delegation_tool <- function(
         provenance$current <- old_provenance
       }
     )
+    deputy_execution <- tempest_costorm_last_deputy_execution(
+      chat,
+      stage = "dialogue",
+      role = "expert"
+    )
 
     last_turn <- tryCatch(chat$last_turn(), error = function(e) NULL)
     response_text <- if (
@@ -2292,7 +2380,8 @@ tempest_create_expert_delegation_tool <- function(
       source_ids = native_source_ids,
       session_id = sid,
       expert_id = expert@expert_id,
-      correlation_id = correlation_id
+      correlation_id = correlation_id,
+      deputy_execution = deputy_execution
     )
     current_source_ids <- source_ids_in_store()
     cited_source_ids <- intersect(
@@ -2315,7 +2404,9 @@ tempest_create_expert_delegation_tool <- function(
       payload = list(
         expert_id = expert@expert_id,
         expert_name = expert_name,
-        session_id = sid
+        session_id = sid,
+        deputy_run_id = deputy_execution$deputy_run_id,
+        deputy_session_id = deputy_execution$deputy_session_id
       )
     )
 
@@ -2324,6 +2415,8 @@ tempest_create_expert_delegation_tool <- function(
       expert = expert_name,
       response = response_text,
       session_id = sid,
+      deputy_run_id = deputy_execution$deputy_run_id,
+      deputy_session_id = deputy_execution$deputy_session_id,
       source_ids = evidence_source_ids,
       claim_ids = evidence_claim_ids
     )

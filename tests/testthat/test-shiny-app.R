@@ -476,6 +476,27 @@ test_that("chat module delegates native chat and session lifecycle work", {
 
   expect_match(server_code, "tempest_shinychat_adapter", fixed = TRUE)
   expect_match(server_code, "tempest_session_process_turn_async", fixed = TRUE)
+  expect_match(
+    server_code,
+    "tempest_costorm_last_deputy_execution",
+    fixed = TRUE
+  )
+  expect_match(server_code, "rlang::duplicate", fixed = TRUE)
+  expect_match(
+    server_code,
+    "deputy_execution = deputy_execution",
+    fixed = TRUE
+  )
+  expect_lt(
+    regexpr(
+      "tempest_costorm_last_deputy_execution",
+      server_code,
+      fixed = TRUE
+    )[[1L]],
+    regexpr("work_queue$enqueue", server_code, fixed = TRUE)[[1L]]
+  )
+  expect_match(server_code, "turn_id = NULL", fixed = TRUE)
+  expect_no_match(server_code, "tempest_uuid(\"chat-turn\")", fixed = TRUE)
   expect_match(server_code, "tempest_session_warmup_async", fixed = TRUE)
   expect_match(server_code, "tempest_session_new", fixed = TRUE)
   expect_match(
@@ -1503,7 +1524,7 @@ test_that("session archive manifests accept only the current envelope", {
   )
   current <- c(
     list(
-      schema_version = 8L,
+      schema_version = 9L,
       bundle_type = "costorm",
       bundle_status = "complete"
     ),
@@ -1536,14 +1557,14 @@ test_that("session archive manifests accept only the current envelope", {
   )
   expect_error(
     app$session_archive_manifest_files(
-      utils::modifyList(current, list(schema_version = 8.9))
+      utils::modifyList(current, list(schema_version = 9.9))
     ),
     "unsupported schema or status",
     fixed = TRUE
   )
   expect_error(
     app$session_archive_manifest_files(c(
-      list(schema_version = 8L, status = "complete"),
+      list(schema_version = 9L, status = "complete"),
       manifest_fields
     )),
     "unsupported schema or status",
@@ -1552,7 +1573,7 @@ test_that("session archive manifests accept only the current envelope", {
   expect_error(
     app$session_archive_manifest_files(c(
       list(
-        schema_version = 7L,
+        schema_version = 10L,
         bundle_type = "costorm",
         bundle_status = "complete"
       ),
@@ -2597,6 +2618,16 @@ test_that("warmup result messages summarize typed lifecycle results", {
       expert_id = paste0("expert.", tolower(name)),
       expert_name = name,
       expert_session_id = NA_character_,
+      deputy_run_id = if (identical(status, "succeeded")) {
+        "deputy-run-ready"
+      } else {
+        NA_character_
+      },
+      deputy_session_id = if (identical(status, "succeeded")) {
+        "deputy-session-ready"
+      } else {
+        NA_character_
+      },
       correlation_id = paste0("warmup-", tolower(name)),
       status = status,
       evidence_status = if (identical(status, "succeeded")) {

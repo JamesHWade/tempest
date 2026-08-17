@@ -88,6 +88,8 @@ TempestSessionTurnResult <- S7::new_class(
   properties = list(
     session_id = prop_chr(),
     turn_id = prop_chr(),
+    deputy_run_id = prop_chr(),
+    deputy_session_id = prop_chr(),
     status = prop_enum(c("succeeded", "partial", "cancelled")),
     evidence_status = prop_enum(c(
       "committed",
@@ -118,10 +120,21 @@ TempestSessionTurnResult <- S7::new_class(
     completed_at = prop_chr()
   ),
   validator = function(self) {
-    for (field in c("session_id", "turn_id", "completed_at")) {
+    for (field in c(
+      "session_id",
+      "turn_id",
+      "deputy_run_id",
+      "deputy_session_id",
+      "completed_at"
+    )) {
       value <- S7::prop(self, field)
       if (length(value) != 1L || is.na(value) || !nzchar(tempest_trim(value))) {
         return(paste0(field, " must be a single non-empty string"))
+      }
+    }
+    for (field in c("deputy_run_id", "deputy_session_id")) {
+      if (!tempest_opaque_identifier_valid(S7::prop(self, field))) {
+        return(paste0(field, " must be a safe opaque identifier"))
       }
     }
     if (any(is.na(self@source_ids)) || any(!nzchar(self@source_ids))) {
@@ -265,6 +278,8 @@ tempest_session_turn_error_notice <- function(code, stage, message, error) {
 tempest_session_turn_result <- function(
   session_id,
   turn_id,
+  deputy_run_id,
+  deputy_session_id,
   status,
   evidence_status,
   source_ids = character(),
@@ -282,6 +297,8 @@ tempest_session_turn_result <- function(
   TempestSessionTurnResult(
     session_id = session_id,
     turn_id = turn_id,
+    deputy_run_id = deputy_run_id,
+    deputy_session_id = deputy_session_id,
     status = status,
     evidence_status = evidence_status,
     source_ids = unique(source_ids),

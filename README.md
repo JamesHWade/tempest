@@ -29,6 +29,7 @@ Built on the R AI ecosystem:
 - [ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration: tool calling, structured output, streaming
 - [ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking, embedding, semantic retrieval
 - [dsprrr](https://github.com/JamesHWade/dsprrr) — structured extraction/generation modules
+- [Deputy](https://github.com/JamesHWade/deputy) — persistent, permission-bounded Co-STORM agent execution
 - [shinychat](https://github.com/posit-dev/shinychat) — interactive chat UI
 - [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
 
@@ -126,6 +127,13 @@ workspace contains only provisional run material and opaque references to
 accepted knowledge; acceptance still requires an explicit graft review and
 commit.
 
+Co-STORM moderator and expert chats run through required persistent Deputy
+agents. Tempest disables ambient file, shell, R, web, and package-install
+authority at that boundary and allowlists only the Tempest tools already
+attached to each chat. Session persistence stores credential-safe opaque run,
+session, agent, stage, role, expert, and correlation references; it never
+serializes a Deputy Agent or provider credentials.
+
 Graft can export current or historical accepted revisions directly into this
 format. Read [Use Open Knowledge Format with
 Tempest](https://jameshwade.github.io/tempest/articles/open-knowledge-format.html)
@@ -185,7 +193,7 @@ consistency but are not a signature. A `GovernedProcedure` is accepted through
 a separate reviewed Graft flow; research promotion never mints one.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 8, STORM bundle schema 7 with state schema
+Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state schema
 4, ProgramSet and research-manifest schema 2, StageRecord output-digest payload
 schema 3, and promotion-bundle schema 1. Readers reject every other version;
 missing fields, extra fields, and values that only become valid after coercion
@@ -765,13 +773,15 @@ The moderator receives one scoped
 `delegate_to_expert(expert_id, question)` tool. It resolves the active roster by
 stable expert id, so display-name changes cannot redirect work. Each expert:
 
-- Has their own chat session with conversation continuity
+- Has one persistent Deputy-backed chat session with conversation continuity
 - Receives only the role-specific tools needed for that run
 - Can use host-provided web or evidence tools to find and cite sources
 - Extracts claims automatically after each response
 - Keeps an opaque, host-inaccessible chat session binding for continuity
 
-This pattern provides clean separation of concerns and leverages ellmer's native tool calling.
+The moderator uses the same bounded Deputy runtime. Each completed moderator or
+expert run records an opaque terminal trace that is carried through Co-STORM
+snapshot and bundle persistence.
 
 ### Warmup Phase
 

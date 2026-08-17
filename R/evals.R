@@ -150,6 +150,9 @@ tempest_task <- function(
 #' Create a Co-STORM evaluation task using SimulatedUser
 #'
 #' Runs automated Co-STORM sessions with a simulated user for evaluation.
+#' Moderator and expert turns use the same persistent Deputy agents as normal
+#' Co-STORM sessions. The built-in solver includes credential-safe terminal
+#' Deputy traces in `solver_metadata`; it never returns Deputy Agent objects.
 #'
 #' @param dataset Which built-in dataset to use. Currently "qa".
 #' @param config A `TempestConfig`.
@@ -208,6 +211,7 @@ tempest_costorm_task <- function(
         chats[[i]] <- session$chats$moderator
         meta[[i]] <- list(
           turns = sim_user$turn_count,
+          deputy_traces = tempest_session_deputy_traces(session),
           retrieved_resources = session$workspace$to_tibbles()$retrieved_resources,
           proposed_claims = session$workspace$to_tibbles()$proposed_claims
         )

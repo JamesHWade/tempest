@@ -16,6 +16,7 @@ tempest_session_extract_facts_async <- function(
   session_id = session$session_id,
   expert_id = NA_character_,
   correlation_id = NA_character_,
+  deputy_execution = NULL,
   is_current = function() TRUE,
   emit_stale_progress = TRUE
 ) {
@@ -24,6 +25,9 @@ tempest_session_extract_facts_async <- function(
     tempest_research_workspace_abort(
       "The Co-STORM session must expose a ResearchWorkspace."
     )
+  }
+  if (!is.null(deputy_execution)) {
+    deputy_execution <- tempest_costorm_deputy_trace(deputy_execution)
   }
   event <- session$emit_progress(
     "step",
@@ -48,6 +52,9 @@ tempest_session_extract_facts_async <- function(
       session_id = session_id,
       expert_id = expert_id,
       retrieval_step_id = correlation_id,
+      deputy_run_id = deputy_execution$deputy_run_id %||% NA_character_,
+      deputy_session_id = deputy_execution$deputy_session_id %||%
+        NA_character_,
       commit_if = is_current,
       record_stage = record_stage
     )
@@ -128,6 +135,7 @@ tempest_session_commit_evidence_async <- function(
   session_id = session$session_id,
   expert_id = NA_character_,
   correlation_id = NA_character_,
+  deputy_execution = NULL,
   is_current = function() TRUE,
   emit_stale_progress = TRUE
 ) {
@@ -197,6 +205,7 @@ tempest_session_commit_evidence_async <- function(
       session_id = session_id,
       expert_id = expert_id,
       correlation_id = correlation_id,
+      deputy_execution = deputy_execution,
       is_current = is_current,
       emit_stale_progress = emit_stale_progress
     )
@@ -411,6 +420,51 @@ tempest_session_turn_text <- function(value, arg) {
   value
 }
 
+tempest_session_turn_deputy_execution <- function(
+  session,
+  deputy_execution
+) {
+  trace <- tryCatch(
+    tempest_costorm_deputy_trace(
+      rlang::duplicate(deputy_execution, shallow = FALSE)
+    ),
+    error = function(error) {
+      tempest_abort(
+        paste0(
+          "{.arg deputy_execution} must be one exact canonical ",
+          "Co-STORM Deputy trace."
+        ),
+        class = c("tempest_session_turn_error", "tempest_error")
+      )
+    }
+  )
+  if (
+    !identical(trace$stage, "dialogue") ||
+      !identical(trace$role, "moderator") ||
+      !identical(trace$status, "complete")
+  ) {
+    tempest_abort(
+      paste0(
+        "{.arg deputy_execution} must be one completed dialogue moderator ",
+        "trace."
+      ),
+      class = c("tempest_session_turn_error", "tempest_error")
+    )
+  }
+  recorded <- tempest_session_deputy_traces(session)
+  matches <- vapply(recorded, identical, logical(1), y = trace)
+  if (sum(matches) != 1L) {
+    tempest_abort(
+      paste0(
+        "{.arg deputy_execution} must be the exact session-recorded ",
+        "terminal trace."
+      ),
+      class = c("tempest_session_turn_error", "tempest_error")
+    )
+  }
+  trace
+}
+
 tempest_session_turn_append_notice <- function(state, notice) {
   state$notices <- c(state$notices, list(notice))
   invisible(state)
@@ -436,11 +490,15 @@ tempest_session_turn_cancel <- function(state) {
 #' @param session A [TempestSession] object.
 #' @param user_text Completed user input as a single string.
 #' @param assistant_text Completed moderator response as a single string.
+#' @param deputy_execution Exact completed moderator Deputy trace captured with
+#'   the response before any asynchronous queueing.
 #' @param provider_turn Optional process-local provider turn used to harvest
 #'   native sources. It is never retained in the result.
 #' @param suggest Whether to generate follow-up questions.
 #' @param n_suggestions Maximum number of follow-up questions.
-#' @param turn_id Optional stable correlation identifier.
+#' @param turn_id Optional stable correlation identifier. When supplied, it
+#'   must equal the completed moderator Deputy trace correlation. When `NULL`,
+#'   that trace correlation is authoritative.
 #' @param is_current Process-local predicate returning `TRUE` while this work is
 #'   allowed to commit. It is never retained in the result.
 #' @return A promise resolving to a typed, serializable
@@ -450,6 +508,7 @@ tempest_session_process_turn_async <- function(
   session,
   user_text,
   assistant_text,
+  deputy_execution,
   provider_turn = NULL,
   suggest = TRUE,
   n_suggestions = 4L,
@@ -463,6 +522,16 @@ tempest_session_process_turn_async <- function(
       class = c("tempest_session_turn_error", "tempest_error")
     )
   }
+  if (missing(deputy_execution)) {
+    tempest_abort(
+      "{.arg deputy_execution} must be supplied.",
+      class = c("tempest_session_turn_error", "tempest_error")
+    )
+  }
+  deputy_execution <- tempest_session_turn_deputy_execution(
+    session,
+    deputy_execution
+  )
   user_text <- tempest_session_turn_text(user_text, "user_text")
   assistant_text <- tempest_session_turn_text(
     assistant_text,
@@ -476,20 +545,35 @@ tempest_session_process_turn_async <- function(
   }
   suggest <- tempest_workflow_flag(suggest, "suggest")
   n_suggestions <- tempest_config_count(n_suggestions, "n_suggestions")
-  turn_id <- turn_id %||% tempest_uuid("turn")
-  if (!rlang::is_string(turn_id) || !nzchar(tempest_trim(turn_id))) {
+  if (
+    !is.null(turn_id) &&
+      (!rlang::is_string(turn_id) ||
+        !tempest_opaque_identifier_valid(turn_id))
+  ) {
     tempest_abort(
-      "{.arg turn_id} must be a single non-empty string or {.code NULL}.",
+      paste0(
+        "{.arg turn_id} must be a safe opaque identifier or {.code NULL}."
+      ),
       class = c("tempest_session_turn_error", "tempest_error")
     )
   }
-  turn_id <- tempest_trim(turn_id)
   if (!is.function(is_current)) {
     tempest_abort(
       "{.arg is_current} must be a function.",
       class = c("tempest_session_turn_error", "tempest_error")
     )
   }
+  trace_turn_id <- deputy_execution$correlation_id
+  if (!is.null(turn_id) && !identical(turn_id, trace_turn_id)) {
+    tempest_abort(
+      paste0(
+        "{.arg turn_id} must equal the completed moderator Deputy trace ",
+        "correlation."
+      ),
+      class = c("tempest_session_turn_error", "tempest_error")
+    )
+  }
+  turn_id <- trace_turn_id
 
   state <- new.env(parent = emptyenv())
   state$cancelled <- !tempest_async_is_current(is_current)
@@ -539,6 +623,8 @@ tempest_session_process_turn_async <- function(
     tempest_session_turn_result(
       session_id = session$session_id,
       turn_id = turn_id,
+      deputy_run_id = deputy_execution$deputy_run_id,
+      deputy_session_id = deputy_execution$deputy_session_id,
       status = status,
       evidence_status = state$evidence_status,
       source_ids = state$source_ids,
@@ -596,6 +682,7 @@ tempest_session_process_turn_async <- function(
       session_id = session$session_id,
       expert_id = "moderator",
       correlation_id = turn_id,
+      deputy_execution = deputy_execution,
       is_current = is_current
     )
   })

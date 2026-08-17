@@ -21,8 +21,10 @@ Depends:
 Imports:
     cli,
     commonmark,
+    coro,
     curl,
     DBI,
+    deputy,
     digest,
     dsprrr,
     ellmer (>= 0.4.2.9000),
@@ -41,8 +43,6 @@ Imports:
     yaml
 Suggests:
     bslib (>= 0.6.0),
-    coro,
-    deputy,
     dplyr,
     DT,
     graft,
@@ -95,6 +95,7 @@ Collate:
     'evals.R'
     'models.R'
     'research-manifest.R'
+    'deputy-adapter.R'
     'governed-procedure.R'
     'ecosystem-contracts.R'
     'program-set.R'
