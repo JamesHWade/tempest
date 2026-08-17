@@ -1665,7 +1665,6 @@ test_that("sync and async warmups persist authoritative claim provenance", {
     } else {
       settled <- await_tempest_promise(tempest_session_warmup_async(
         fixture$session,
-        timeout_s = 1,
         max_parallel_experts = 1
       ))
       expect_null(settled$error)
