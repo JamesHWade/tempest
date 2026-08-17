@@ -50,6 +50,7 @@
 <span>  <span class="va">session</span>,</span>
 <span>  <span class="va">user_text</span>,</span>
 <span>  <span class="va">assistant_text</span>,</span>
+<span>  <span class="va">deputy_execution</span>,</span>
 <span>  provider_turn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  suggest <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  n_suggestions <span class="op">=</span> <span class="fl">4L</span>,</span>
@@ -74,6 +75,11 @@
 <dd><p>Completed moderator response as a single string.</p></dd>
 
 
+<dt id="arg-deputy-execution">deputy_execution<a class="anchor" aria-label="anchor" href="#arg-deputy-execution"></a></dt>
+<dd><p>Exact completed moderator Deputy trace captured with
+the response before any asynchronous queueing.</p></dd>
+
+
 <dt id="arg-provider-turn">provider_turn<a class="anchor" aria-label="anchor" href="#arg-provider-turn"></a></dt>
 <dd><p>Optional process-local provider turn used to harvest
 native sources. It is never retained in the result.</p></dd>
@@ -88,7 +94,9 @@ native sources. It is never retained in the result.</p></dd>
 
 
 <dt id="arg-turn-id">turn_id<a class="anchor" aria-label="anchor" href="#arg-turn-id"></a></dt>
-<dd><p>Optional stable correlation identifier.</p></dd>
+<dd><p>Optional stable correlation identifier. When supplied, it
+must equal the completed moderator Deputy trace correlation. When <code>NULL</code>,
+that trace correlation is authoritative.</p></dd>
 
 
 <dt id="arg-is-current">is_current<a class="anchor" aria-label="anchor" href="#arg-is-current"></a></dt>

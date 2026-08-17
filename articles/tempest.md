@@ -231,7 +231,7 @@ Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.
 
 Current readers accept only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 8, STORM bundle schema 7 with state
+Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state
 schema 4, ProgramSet and research-manifest schema 2, StageRecord
 output-digest payload schema 3, and promotion-bundle schema 1. Every
 other version is rejected, as is any missing or extra field or value
@@ -352,6 +352,13 @@ state, but not credentials, live chat handles, tools, authenticated
 clients, generic workflow state, or runtime registries. Configure fresh
 supported chats and retrieval dependencies through `config` before
 resuming.
+
+The moderator and experts use persistent Deputy agents as the required
+Co-STORM runtime. Tempest disables ambient file, shell, R, web, and
+package-install capabilities, then allowlists only the tools already
+attached for that role. Snapshots persist canonical opaque terminal
+traces for each run and never serialize the Deputy Agent or provider
+credentials.
 
 ## Frozen generic-kernel deletion inventory
 

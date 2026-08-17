@@ -9,6 +9,7 @@ tempest_session_process_turn_async(
   session,
   user_text,
   assistant_text,
+  deputy_execution,
   provider_turn = NULL,
   suggest = TRUE,
   n_suggestions = 4L,
@@ -33,6 +34,11 @@ tempest_session_process_turn_async(
 
   Completed moderator response as a single string.
 
+- deputy_execution:
+
+  Exact completed moderator Deputy trace captured with the response
+  before any asynchronous queueing.
+
 - provider_turn:
 
   Optional process-local provider turn used to harvest native sources.
@@ -48,7 +54,9 @@ tempest_session_process_turn_async(
 
 - turn_id:
 
-  Optional stable correlation identifier.
+  Optional stable correlation identifier. When supplied, it must equal
+  the completed moderator Deputy trace correlation. When `NULL`, that
+  trace correlation is authoritative.
 
 - is_current:
 

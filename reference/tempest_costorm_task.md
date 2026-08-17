@@ -1,6 +1,10 @@
 # Create a Co-STORM evaluation task using SimulatedUser
 
 Runs automated Co-STORM sessions with a simulated user for evaluation.
+Moderator and expert turns use the same persistent Deputy agents as
+normal Co-STORM sessions. The built-in solver includes credential-safe
+terminal Deputy traces in `solver_metadata`; it never returns Deputy
+Agent objects.
 
 ## Usage
 

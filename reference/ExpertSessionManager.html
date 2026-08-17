@@ -136,7 +136,10 @@ claim-write provenance.</p></dd>
 <span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  run_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  stage_recorder <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  stage_recorder <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  manifest <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  on_start <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">pending_run</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="va">pending_run</span><span class="op">)</span>,</span>
+<span>  on_run <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">trace</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="va">trace</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
@@ -175,6 +178,15 @@ execution. Required when <code>extractor</code> is supplied.</p></dd>
       <dt><code>stage_recorder</code></dt>
 <dd><p>Optional callback accepting a stage record and its
 evaluated output.</p></dd>
+
+      <dt><code>manifest</code></dt>
+<dd><p>Research manifest that owns Deputy execution identity.</p></dd>
+
+      <dt><code>on_start</code></dt>
+<dd><p>Callback accepting one pending Deputy run record.</p></dd>
+
+      <dt><code>on_run</code></dt>
+<dd><p>Callback accepting one terminal Deputy run trace.</p></dd>
 
 
 </dl><p></p></div>
@@ -238,7 +250,8 @@ evaluated output.</p></dd>
 <span>  source_ids <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  expert_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  correlation_id <span class="op">=</span> <span class="cn">NA_character_</span></span>
+<span>  correlation_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  deputy_execution <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
@@ -261,6 +274,9 @@ research run id.</p></dd>
 
       <dt><code>correlation_id</code></dt>
 <dd><p>Optional progress correlation id for the turn.</p></dd>
+
+      <dt><code>deputy_execution</code></dt>
+<dd><p>Optional terminal Deputy trace for the answer.</p></dd>
 
 
 </dl><p></p></div>

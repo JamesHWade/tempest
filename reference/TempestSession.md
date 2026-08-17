@@ -437,7 +437,8 @@ Extract facts from text into the store.
       source_ids = NULL,
       session_id = self$session_id,
       expert_id = NA_character_,
-      correlation_id = NA_character_
+      correlation_id = NA_character_,
+      deputy_execution = NULL
     )
 
 #### Arguments
@@ -465,6 +466,10 @@ Extract facts from text into the store.
 - `correlation_id`:
 
   Optional progress correlation id for the turn.
+
+- `deputy_execution`:
+
+  Optional terminal Deputy trace for the answer.
 
 ------------------------------------------------------------------------
 
@@ -725,7 +730,9 @@ Generate questions about undiscussed sources.
 
 #### Returns
 
-Character vector of questions, or NULL if none.
+An exact record containing `questions`, `correlation_id`,
+`deputy_run_id`, and `deputy_session_id`, or `NULL` when there is no
+unseen evidence and no moderator run occurred.
 
 ------------------------------------------------------------------------
 

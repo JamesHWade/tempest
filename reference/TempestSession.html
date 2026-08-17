@@ -423,7 +423,8 @@ restoration.</p></dd>
 <span>  source_ids <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="va">self</span><span class="op">$</span><span class="va">session_id</span>,</span>
 <span>  expert_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  correlation_id <span class="op">=</span> <span class="cn">NA_character_</span></span>
+<span>  correlation_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  deputy_execution <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
@@ -444,6 +445,9 @@ restoration.</p></dd>
 
       <dt><code>correlation_id</code></dt>
 <dd><p>Optional progress correlation id for the turn.</p></dd>
+
+      <dt><code>deputy_execution</code></dt>
+<dd><p>Optional terminal Deputy trace for the answer.</p></dd>
 
 
 </dl><p></p></div>
@@ -683,7 +687,9 @@ This primes the knowledge base with foundational research before interactive Q&a
 </dl><p></p></div>
 </div><p></p><div class="section">
 <h4 id="returns-16">Returns<a class="anchor" aria-label="anchor" href="#returns-16"></a></h4>
-<p>Character vector of questions, or NULL if none.</p>
+<p>An exact record containing <code>questions</code>, <code>correlation_id</code>,
+<code>deputy_run_id</code>, and <code>deputy_session_id</code>, or <code>NULL</code> when there is no
+unseen evidence and no moderator run occurred.</p>
 </div>
 
 </div>

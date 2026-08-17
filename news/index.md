@@ -14,7 +14,7 @@
   unsupported; and manifests carry exact dsprrr program, Graft snapshot,
   and Deputy correlation identities.
 - Current persistence accepts only ResearchWorkspace snapshot schema 5,
-  Co-STORM snapshot and bundle schema 8, STORM bundle schema 7 with
+  Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with
   state schema 4, ProgramSet and research-manifest schema 2, StageRecord
   output-digest payload schema 3, and promotion-bundle schema 1; readers
   reject every other version, missing or extra fields, and values that
@@ -91,6 +91,12 @@
   final report, and permit publication trust only when exact program,
   trace, claim, evidence-span, and verification provenance can be
   reconstructed.
+- [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  now routes its moderator and every expert through persistent,
+  permission-bounded Deputy agents. Co-STORM snapshots and bundles
+  retain only credential-safe opaque run, session, agent, stage, role,
+  expert, and correlation traces; provider execution and trace recording
+  fail closed, and no Deputy Agent is serialized.
 
 ## tempest 0.1.0
 

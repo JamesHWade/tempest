@@ -99,6 +99,8 @@
 <li>
 <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> — structured extraction/generation modules</li>
 <li>
+<a href="https://github.com/JamesHWade/deputy" class="external-link">Deputy</a> — persistent, permission-bounded Co-STORM agent execution</li>
+<li>
 <a href="https://github.com/posit-dev/shinychat" class="external-link">shinychat</a> — interactive chat UI</li>
 <li>
 <a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a> — evaluation tasks</li>
@@ -179,6 +181,7 @@
 <span><span class="op">)</span></span></code></pre></div>
 <p>The reader preserves each Markdown document and its metadata, derives advisory trust and freshness signals, and never follows links or executes referenced code. Reading, converting, and adding resources are separate operations so the host retains the write boundary. An OKF document cannot grant capabilities, change policy, approve output, or authorize an action.</p>
 <p>STORM results expose a <code>manifest</code>, validated <code>state</code>, and authoritative <code>workspace</code>; Co-STORM sessions expose the same manifest/workspace identity. Session correlation fields and retriever configuration are read-only, while the pinned workspace remains mutable through its explicit methods. The workspace contains only provisional run material and opaque references to accepted knowledge; acceptance still requires an explicit graft review and commit.</p>
+<p>Co-STORM moderator and expert chats run through required persistent Deputy agents. Tempest disables ambient file, shell, R, web, and package-install authority at that boundary and allowlists only the Tempest tools already attached to each chat. Session persistence stores credential-safe opaque run, session, agent, stage, role, expert, and correlation references; it never serializes a Deputy Agent or provider credentials.</p>
 <p>Graft can export current or historical accepted revisions directly into this format. Read <a href="https://jameshwade.github.io/tempest/articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a> for the complete handoff and safety model.</p>
 </div>
 <div class="section level2">
@@ -210,7 +213,7 @@
 <span><span class="va">receipt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_promotion_receipt.html">tempest_promotion_receipt</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">bundle</span>, <span class="va">plan</span>, <span class="va">commit_result</span><span class="op">)</span></span></code></pre></div>
 <p>The packaged schema is compiled against Graft accessor commit <code>81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5</code>; runtime loading checks its exact immutable build digest and never recompiles LinkML.</p>
 <p>The bundle contains the selected Sources, Claims, EvidenceSpans, ClaimSupports, and exact extraction and verification ProgramArtifacts. Its closed proof projection retains the exact resources, claims, spans, and supports needed to recompute each retained StageRecord digest. A selection must include every output bound by each retained extraction or verification record; Tempest rejects partial stage-output selection instead of packaging unselected evidence. Planning is read-only: Tempest does not call <code><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft::graft_commit()</a></code> on the host’s behalf. The promotion directory is a closed current-format bundle, its destination must not already exist, and any older or extra shape is rejected. Reading requires the original bundle id as an out-of-band trust pin; checksums stored inside the directory establish internal consistency but are not a signature. A <code>GovernedProcedure</code> is accepted through a separate reviewed Graft flow; research promotion never mints one.</p>
-<p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 5, Co-STORM snapshot and bundle schema 8, STORM bundle schema 7 with state schema 4, ProgramSet and research-manifest schema 2, StageRecord output-digest payload schema 3, and promotion-bundle schema 1. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
+<p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 5, Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state schema 4, ProgramSet and research-manifest schema 2, StageRecord output-digest payload schema 3, and promotion-bundle schema 1. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
 </div>
 <div class="section level2">
 <h2 id="frozen-generic-kernel-deletion-inventory">Frozen generic-kernel deletion inventory<a class="anchor" aria-label="anchor" href="#frozen-generic-kernel-deletion-inventory"></a>
@@ -730,13 +733,13 @@
 </h3>
 <p>The moderator receives one scoped <code>delegate_to_expert(expert_id, question)</code> tool. It resolves the active roster by stable expert id, so display-name changes cannot redirect work. Each expert:</p>
 <ul>
-<li>Has their own chat session with conversation continuity</li>
+<li>Has one persistent Deputy-backed chat session with conversation continuity</li>
 <li>Receives only the role-specific tools needed for that run</li>
 <li>Can use host-provided web or evidence tools to find and cite sources</li>
 <li>Extracts claims automatically after each response</li>
 <li>Keeps an opaque, host-inaccessible chat session binding for continuity</li>
 </ul>
-<p>This pattern provides clean separation of concerns and leverages ellmer’s native tool calling.</p>
+<p>The moderator uses the same bounded Deputy runtime. Each completed moderator or expert run records an opaque terminal trace that is carried through Co-STORM snapshot and bundle persistence.</p>
 </div>
 <div class="section level3">
 <h3 id="warmup-phase">Warmup Phase<a class="anchor" aria-label="anchor" href="#warmup-phase"></a>

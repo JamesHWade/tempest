@@ -8,6 +8,8 @@
 
 ## Core workflows
 
+Run scripted STORM or persistent Deputy-backed Co-STORM research.
+
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   : Run the STORM pipeline
 - [`tempest_run_async()`](https://jameshwade.github.io/tempest/reference/tempest_run_async.md)

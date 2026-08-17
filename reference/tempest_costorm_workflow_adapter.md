@@ -47,5 +47,9 @@ This experimental API is frozen and scheduled for removal in Tempest
 [tempest-generic-kernel-retirement](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
 
 Warmup and report operations call the existing `TempestSession` methods.
-The dialogue operation records the current session boundary; individual
-interactive turns remain host-driven while the run awaits approval.
+Moderator and expert execution therefore remains inside the session's
+persistent, permission-bounded Deputy agents. The dialogue operation
+records the current session boundary; individual interactive turns
+remain host-driven while the run awaits approval. Checkpoints never
+serialize a Deputy Agent; canonical opaque traces remain in Co-STORM
+persistence.

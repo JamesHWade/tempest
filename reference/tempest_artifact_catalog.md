@@ -60,71 +60,71 @@ catalog <- tempest_artifact_catalog(deliverables = list(spec))
 artifact <- tempest_artifact(spec, content = "# Brief")
 catalog$add(artifact)
 catalog$list()
-#> $artifact_56e973fce401722a
-#> $artifact_56e973fce401722a$artifact_id
-#> [1] "artifact_56e973fce401722a"
+#> $artifact_eccc22c1fc37a8be
+#> $artifact_eccc22c1fc37a8be$artifact_id
+#> [1] "artifact_eccc22c1fc37a8be"
 #> 
-#> $artifact_56e973fce401722a$deliverable_id
+#> $artifact_eccc22c1fc37a8be$deliverable_id
 #> [1] "brief"
 #> 
-#> $artifact_56e973fce401722a$deliverable_version
+#> $artifact_eccc22c1fc37a8be$deliverable_version
 #> [1] "1"
 #> 
-#> $artifact_56e973fce401722a$spec_fingerprint
+#> $artifact_eccc22c1fc37a8be$spec_fingerprint
 #> [1] "7163d0f76e102677ea68a30af5b96c74655df967c758356e45fe39defa69bb71"
 #> 
-#> $artifact_56e973fce401722a$artifact_kind
+#> $artifact_eccc22c1fc37a8be$artifact_kind
 #> [1] "primary"
 #> 
-#> $artifact_56e973fce401722a$media_type
+#> $artifact_eccc22c1fc37a8be$media_type
 #> [1] "text/markdown"
 #> 
-#> $artifact_56e973fce401722a$schema_version
+#> $artifact_eccc22c1fc37a8be$schema_version
 #> [1] 1
 #> 
-#> $artifact_56e973fce401722a$storage_ref
+#> $artifact_eccc22c1fc37a8be$storage_ref
 #> [1] NA
 #> 
-#> $artifact_56e973fce401722a$producer_operation_id
+#> $artifact_eccc22c1fc37a8be$producer_operation_id
 #> [1] NA
 #> 
-#> $artifact_56e973fce401722a$run_id
+#> $artifact_eccc22c1fc37a8be$run_id
 #> [1] NA
 #> 
-#> $artifact_56e973fce401722a$step_id
+#> $artifact_eccc22c1fc37a8be$step_id
 #> [1] NA
 #> 
-#> $artifact_56e973fce401722a$expert_id
+#> $artifact_eccc22c1fc37a8be$expert_id
 #> [1] NA
 #> 
-#> $artifact_56e973fce401722a$resource_ids
+#> $artifact_eccc22c1fc37a8be$resource_ids
 #> character(0)
 #> 
-#> $artifact_56e973fce401722a$claim_ids
+#> $artifact_eccc22c1fc37a8be$claim_ids
 #> character(0)
 #> 
-#> $artifact_56e973fce401722a$evidence_span_ids
+#> $artifact_eccc22c1fc37a8be$evidence_span_ids
 #> character(0)
 #> 
-#> $artifact_56e973fce401722a$parent_artifact_ids
+#> $artifact_eccc22c1fc37a8be$parent_artifact_ids
 #> character(0)
 #> 
-#> $artifact_56e973fce401722a$validation_results
+#> $artifact_eccc22c1fc37a8be$validation_results
 #> list()
 #> 
-#> $artifact_56e973fce401722a$status
+#> $artifact_eccc22c1fc37a8be$status
 #> [1] "draft"
 #> 
-#> $artifact_56e973fce401722a$checksum
+#> $artifact_eccc22c1fc37a8be$checksum
 #> [1] "fd55350669a978d5a8cde0218d92baa5d6f8e1c9102f40cc42301a56543cc99d"
 #> 
-#> $artifact_56e973fce401722a$created_at
-#> [1] "2026-08-17T00:17:23.953043Z"
+#> $artifact_eccc22c1fc37a8be$created_at
+#> [1] "2026-08-17T21:22:08.913950Z"
 #> 
-#> $artifact_56e973fce401722a$updated_at
-#> [1] "2026-08-17T00:17:23.953043Z"
+#> $artifact_eccc22c1fc37a8be$updated_at
+#> [1] "2026-08-17T21:22:08.913950Z"
 #> 
-#> $artifact_56e973fce401722a$metadata
+#> $artifact_eccc22c1fc37a8be$metadata
 #> list()
 #> 
 #> 

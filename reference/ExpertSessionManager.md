@@ -107,7 +107,10 @@ Create a new ExpertSessionManager.
       workspace = NULL,
       progress = NULL,
       run_id = NULL,
-      stage_recorder = NULL
+      stage_recorder = NULL,
+      manifest = NULL,
+      on_start = function(pending_run) invisible(pending_run),
+      on_run = function(trace) invisible(trace)
     )
 
 #### Arguments
@@ -158,6 +161,18 @@ Create a new ExpertSessionManager.
 - `stage_recorder`:
 
   Optional callback accepting a stage record and its evaluated output.
+
+- `manifest`:
+
+  Research manifest that owns Deputy execution identity.
+
+- `on_start`:
+
+  Callback accepting one pending Deputy run record.
+
+- `on_run`:
+
+  Callback accepting one terminal Deputy run trace.
 
 ------------------------------------------------------------------------
 
@@ -226,7 +241,8 @@ Extract facts from an expert response.
       source_ids = NULL,
       session_id = NA_character_,
       expert_id = NA_character_,
-      correlation_id = NA_character_
+      correlation_id = NA_character_,
+      deputy_execution = NULL
     )
 
 #### Arguments
@@ -255,6 +271,10 @@ Extract facts from an expert response.
 - `correlation_id`:
 
   Optional progress correlation id for the turn.
+
+- `deputy_execution`:
+
+  Optional terminal Deputy trace for the answer.
 
 #### Returns
 

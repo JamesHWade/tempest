@@ -16,7 +16,9 @@ tempest_expert_session_manager(
   workspace = NULL,
   progress = NULL,
   run_id = NULL,
-  stage_recorder = NULL
+  stage_recorder = NULL,
+  manifest = NULL,
+  on_run = function(trace) invisible(trace)
 )
 ```
 
@@ -72,6 +74,14 @@ tempest_expert_session_manager(
 - stage_recorder:
 
   Optional callback accepting a stage record and its evaluated output.
+
+- manifest:
+
+  Research manifest that owns Deputy execution identity.
+
+- on_run:
+
+  Callback accepting one terminal Deputy run trace.
 
 ## Value
 

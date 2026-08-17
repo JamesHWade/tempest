@@ -57,7 +57,9 @@
 <span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  run_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  stage_recorder <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  stage_recorder <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  manifest <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  on_run <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">trace</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="va">trace</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -111,6 +113,14 @@ workspace.</p></dd>
 <dt id="arg-stage-recorder">stage_recorder<a class="anchor" aria-label="anchor" href="#arg-stage-recorder"></a></dt>
 <dd><p>Optional callback accepting a stage record and its
 evaluated output.</p></dd>
+
+
+<dt id="arg-manifest">manifest<a class="anchor" aria-label="anchor" href="#arg-manifest"></a></dt>
+<dd><p>Research manifest that owns Deputy execution identity.</p></dd>
+
+
+<dt id="arg-on-run">on_run<a class="anchor" aria-label="anchor" href="#arg-on-run"></a></dt>
+<dd><p>Callback accepting one terminal Deputy run trace.</p></dd>
 
 </dl></div>
     <div class="section level2">
