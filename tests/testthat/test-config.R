@@ -20,6 +20,41 @@ test_that("tempest_config creates valid config", {
   expect_null(cfg@chat)
 })
 
+test_that("tempest_config has only the frozen T7 product surface", {
+  expect_identical(
+    intersect(names(formals(tempest_config)), "artifact_store"),
+    character()
+  )
+
+  cfg <- tempest_config()
+  expect_identical(
+    intersect(S7::prop_names(cfg), "artifact_store"),
+    character()
+  )
+
+  error <- tryCatch(
+    {
+      do.call(tempest_config, list(artifact_store = NULL))
+      NULL
+    },
+    error = identity
+  )
+  expect_s3_class(error, "simpleError")
+  if (inherits(error, "error")) {
+    expect_identical(
+      conditionMessage(error),
+      "unused argument (artifact_store = NULL)"
+    )
+  }
+  expect_identical(
+    tempest:::tempest_research_config_digest(cfg),
+    paste0(
+      "sha256:",
+      "e351787b5eae9d04d9b9d7fe029aeff6f4aed69fe82e797dca955e70fb8378a5"
+    )
+  )
+})
+
 test_that("tempest_config accepts cache controls", {
   cfg <- tempest_config(
     cache_dir = withr::local_tempdir(),

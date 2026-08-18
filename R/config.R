@@ -555,7 +555,6 @@ TempestConfig <- S7::new_class(
     chat_fn = S7::new_property(S7::class_function | NULL, default = NULL),
     embed_fn = S7::new_property(S7::class_function | NULL, default = NULL),
     ragnar_store = S7::new_property(S7::class_any, default = NULL),
-    artifact_store = S7::new_property(S7::class_any, default = NULL),
     search_provider = prop_chr("native"),
     cache_dir = prop_chr(),
     cache_enabled = S7::new_property(S7::class_logical, default = TRUE),
@@ -610,10 +609,6 @@ TempestConfig <- S7::new_class(
 #'   is automatically created.
 #' @param ragnar_store A pre-built ragnar store. If NULL and `embed_fn` is
 #'   provided, a store is created automatically with the tempest metadata schema.
-#' @param artifact_store Frozen Tempest 0.1 artifact-store adapter from
-#'   `tempest_artifact_store()` or `tempest_memory_artifact_store()`. Existing
-#'   integrations only; new code should consume `report_md` and scientific
-#'   evidence directly.
 #' @param search_provider Search provider: "native" (use provider's built-in web
 #'   search when available), "wikipedia", "you", "bing", "serper", "brave",
 #'   "duckduckgo", "tavily", "searxng", "google", or "azure_ai_search". Default
@@ -665,7 +660,6 @@ tempest_config <- function(
   chat_fn = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
-  artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
   cache_enabled = TRUE,
@@ -784,23 +778,6 @@ tempest_config <- function(
   if (is.null(ragnar_store) && !is.null(embed_fn)) {
     ragnar_store <- tempest_create_ragnar_store(embed_fn, ragnar_cache_dir)
   }
-  if (
-    !is.null(artifact_store) &&
-      !inherits(artifact_store, "tempest_artifact_store")
-  ) {
-    tempest_abort(
-      c(
-        "{.arg artifact_store} must be created by {.fn tempest_artifact_store}.",
-        i = "Use {.fn tempest_memory_artifact_store} for a simple in-memory adapter."
-      ),
-      class = c(
-        "tempest_artifact_store_error",
-        "tempest_config_error",
-        "tempest_error"
-      )
-    )
-  }
-
   TempestConfig(
     models = models,
     params = params %||% list(),
@@ -808,7 +785,6 @@ tempest_config <- function(
     chat_fn = chat_fn,
     embed_fn = embed_fn,
     ragnar_store = ragnar_store,
-    artifact_store = artifact_store,
     search_provider = tempest_normalize_search_provider(search_provider),
     cache_dir = cache_dir %||% NA_character_,
     cache_enabled = cache_enabled,

@@ -1919,10 +1919,10 @@ ResearchWorkspace <- R6::R6Class(
         }
       )
       if (!is.null(resource@content)) {
-        expected_hash <- tempest_artifact_codec_encode(
+        expected_hash <- tempest_product_content_hash(
           resource@content,
           resource@media_type
-        )$sha256
+        )
         if (
           is.na(resource@content_hash) ||
             !identical(resource@content_hash, expected_hash)

@@ -85,6 +85,7 @@ Collate:
     'ledger-types.R'
     'claim-support.R'
     'config.R'
+    'product-hash.R'
     'costorm-turn-types.R'
     'costorm-async.R'
     'costorm-discourse.R'

@@ -134,7 +134,7 @@ tempest_resource_content <- function(content) {
   }
   # Validate canonical encodability without rewriting caller-visible content.
   tryCatch(
-    tempest_canonical_value(content),
+    tempest_product_canonical_value(content),
     error = function(error) {
       tempest_workflow_abort(
         "{.arg content} must be canonical JSON-compatible content or a single string.",
@@ -146,7 +146,20 @@ tempest_resource_content <- function(content) {
 }
 
 tempest_resource_metadata <- function(value, arg) {
-  value <- tempest_workflow_serializable_list(value, arg)
+  if (!is.list(value) || is.data.frame(value)) {
+    tempest_workflow_abort(
+      "{.arg {arg}} must be an explicit non-data-frame list."
+    )
+  }
+  tryCatch(
+    tempest_product_canonical_json(value),
+    error = function(error) {
+      tempest_workflow_abort(
+        "{.arg {arg}} must contain only canonical JSON-compatible values.",
+        parent = error
+      )
+    }
+  )
   tempest_research_reference_value(
     value,
     path = arg,
@@ -285,7 +298,7 @@ tempest_resource <- function(
     "retrieved_at"
   )
   if (is.null(content_hash) && !is.null(content)) {
-    content_hash <- tempest_artifact_codec_encode(content, media_type)$sha256
+    content_hash <- tempest_product_content_hash(content, media_type)
   }
   content_hash <- tempest_resource_optional_scalar(
     content_hash,
@@ -389,7 +402,7 @@ tempest_resource_fingerprint <- function(resource_or_data) {
     resource_or_data
   }
   data$fingerprint <- NULL
-  tempest_deliverable_spec_checksum(data)
+  tempest_product_record_hash(data)
 }
 
 tempest_resource_record <- function(resource, include_content = TRUE) {
@@ -405,7 +418,7 @@ tempest_resource_from_data <- function(data) {
       is.data.frame(data) ||
       !identical(names(data), expected_fields)
   ) {
-    tempest_artifact_codec_abort(
+    tempest_product_hash_abort(
       paste0(
         "{.arg data} must be a typed evidence-resource record in exact ",
         "current field order."
@@ -413,9 +426,22 @@ tempest_resource_from_data <- function(data) {
     )
   }
   if (!identical(data$schema_version, 1L)) {
-    tempest_artifact_codec_abort(
+    tempest_product_hash_abort(
       "Evidence-resource data must carry exact integer schema_version 1."
     )
+  }
+  metadata_fields <- c(
+    "scope_metadata",
+    "redaction",
+    "retention",
+    "metadata"
+  )
+  for (field in metadata_fields) {
+    if (!is.list(data[[field]]) || is.data.frame(data[[field]])) {
+      tempest_product_hash_abort(
+        "Evidence-resource field {.field {field}} must be an explicit list."
+      )
+    }
   }
   expected <- tempest_workflow_scalar(data$fingerprint, "fingerprint")
   data$fingerprint <- NULL
@@ -429,23 +455,23 @@ tempest_resource_from_data <- function(data) {
       content = data$content %||% NULL,
       storage_ref = data$storage_ref %||% NULL,
       origin_connection_id = data$origin_connection_id %||% NULL,
-      scope_metadata = tempest_codec_list(data$scope_metadata),
+      scope_metadata = data$scope_metadata,
       content_hash = data$content_hash %||% NULL,
       retrieved_at = data$retrieved_at,
-      redaction = tempest_codec_list(data$redaction),
-      retention = tempest_codec_list(data$retention),
-      metadata = tempest_codec_list(data$metadata),
+      redaction = data$redaction,
+      retention = data$retention,
+      metadata = data$metadata,
       schema_version = data$schema_version
     ),
     error = function(error) {
-      tempest_artifact_codec_abort(
+      tempest_product_hash_abort(
         "Could not restore a typed evidence-resource record.",
         parent = error
       )
     }
   )
   if (!identical(tempest_resource_fingerprint(value), expected)) {
-    tempest_artifact_codec_abort(
+    tempest_product_hash_abort(
       "Evidence-resource fingerprint validation failed."
     )
   }
