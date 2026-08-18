@@ -416,6 +416,202 @@ test_that("manifest identifiers share the portable credential boundary", {
   )
 })
 
+test_that("opaque identifier caching preserves the existing boundary", {
+  legacy_identifier_valid <- function(value) {
+    if (
+      !rlang::is_string(value) ||
+        is.na(value) ||
+        nchar(value, type = "bytes") > 128L
+    ) {
+      return(FALSE)
+    }
+    stages <- c(
+      "perspectives",
+      "personas",
+      "query_decomposition",
+      "extract_claims",
+      "verify_claim_support",
+      "next_question",
+      "draft_outline",
+      "refined_outline",
+      "section_writing",
+      "lead_section"
+    )
+    builtin_ids <- c(
+      paste0("tempest::", stages),
+      paste0("tempest::evaluator/", stages)
+    )
+    safe_builtin <- value %in% builtin_ids
+    safe_sha256 <- grepl("^sha256:[a-f0-9]{64}$", value)
+    safe_namespaced <- grepl(
+      paste0(
+        "^[A-Za-z][A-Za-z0-9._-]*::",
+        "[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,120}$"
+      ),
+      value
+    )
+    safe_opaque <- grepl(
+      "^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,127}$",
+      value
+    )
+    credential_marker <- grepl(
+      paste0(
+        "(^|[:/@._+-])(?:bearer|authorization|api[-_]?key|",
+        "access[-_]?token|refresh[-_]?token|token|secret|password|",
+        "client[-_]?secret|private[-_]?key)(?:$|[:/@._+-])"
+      ),
+      value,
+      ignore.case = TRUE,
+      perl = TRUE
+    )
+    (safe_builtin || safe_sha256 || safe_namespaced || safe_opaque) &&
+      !credential_marker &&
+      !tempest:::tempest_contract_sensitive_scalar(value)
+  }
+
+  values <- list(
+    NULL,
+    NA_character_,
+    character(),
+    c("run-a", "run-b"),
+    TRUE,
+    1L,
+    "",
+    "run-safe",
+    "SK-BR-3",
+    "tempest::extract_claims",
+    "tempest::evaluator/extract_claims",
+    paste0("sha256:", strrep("a", 64L)),
+    paste0("SHA256:", strrep("A", 64L)),
+    "package::artifact/v1",
+    strrep("a", 128L),
+    strrep("a", 129L),
+    "research id",
+    "_leading",
+    "résumé",
+    "https://service-token@example.org/private",
+    "sk-proj-0123456789abcdefghijklmnopqrstuv"
+  )
+  expected <- vapply(values, legacy_identifier_valid, logical(1))
+  tempest:::tempest_opaque_identifier_cache_clear()
+  withr::defer(tempest:::tempest_opaque_identifier_cache_clear())
+
+  first <- vapply(
+    values,
+    tempest:::tempest_opaque_identifier_valid,
+    logical(1)
+  )
+  second <- vapply(
+    values,
+    tempest:::tempest_opaque_identifier_valid,
+    logical(1)
+  )
+
+  expect_identical(first, expected)
+  expect_identical(second, expected)
+  expect_setequal(
+    ls(envir = tempest:::tempest_opaque_identifier_cache),
+    unique(unlist(values[expected], use.names = FALSE))
+  )
+})
+
+test_that("opaque identifier caching reuses only positive validation", {
+  tempest:::tempest_opaque_identifier_cache_clear()
+  withr::defer(tempest:::tempest_opaque_identifier_cache_clear())
+  checks <- 0L
+  local_mocked_bindings(
+    tempest_contract_sensitive_scalar = function(value) {
+      checks <<- checks + 1L
+      FALSE
+    }
+  )
+  identifier <- "positive-cache-reuse"
+
+  expect_identical(
+    tempest:::tempest_opaque_identifier_valid(identifier),
+    TRUE
+  )
+  expect_identical(
+    tempest:::tempest_opaque_identifier_valid(identifier),
+    TRUE
+  )
+  expect_identical(checks, 1L)
+  expect_identical(
+    get(
+      identifier,
+      envir = tempest:::tempest_opaque_identifier_cache,
+      inherits = FALSE
+    ),
+    TRUE
+  )
+})
+
+test_that("rejected identifiers are revalidated and never retained", {
+  tempest:::tempest_opaque_identifier_cache_clear()
+  withr::defer(tempest:::tempest_opaque_identifier_cache_clear())
+  checks <- 0L
+  local_mocked_bindings(
+    tempest_contract_sensitive_scalar = function(value) {
+      checks <<- checks + 1L
+      TRUE
+    }
+  )
+  credential <- "sk-proj-0123456789abcdefghijklmnopqrstuv"
+
+  expect_identical(
+    tempest:::tempest_opaque_identifier_valid(credential),
+    FALSE
+  )
+  expect_identical(
+    tempest:::tempest_opaque_identifier_valid(credential),
+    FALSE
+  )
+  expect_identical(checks, 2L)
+  expect_identical(
+    exists(
+      credential,
+      envir = tempest:::tempest_opaque_identifier_cache,
+      inherits = FALSE
+    ),
+    FALSE
+  )
+})
+
+test_that("opaque identifier caching clears at its fixed bound", {
+  tempest:::tempest_opaque_identifier_cache_clear()
+  withr::defer(tempest:::tempest_opaque_identifier_cache_clear())
+  local_mocked_bindings(
+    tempest_contract_sensitive_scalar = function(value) FALSE
+  )
+  capacity <- tempest:::tempest_opaque_identifier_cache_capacity
+  identifiers <- sprintf("bounded-cache-%04d", seq_len(capacity + 1L))
+
+  valid <- vapply(
+    identifiers,
+    tempest:::tempest_opaque_identifier_valid,
+    logical(1)
+  )
+
+  expect_identical(unname(valid), rep(TRUE, capacity + 1L))
+  expect_identical(length(tempest:::tempest_opaque_identifier_cache), 1L)
+  expect_identical(
+    exists(
+      identifiers[[1]],
+      envir = tempest:::tempest_opaque_identifier_cache,
+      inherits = FALSE
+    ),
+    FALSE
+  )
+  expect_identical(
+    exists(
+      identifiers[[capacity + 1L]],
+      envir = tempest:::tempest_opaque_identifier_cache,
+      inherits = FALSE
+    ),
+    TRUE
+  )
+})
+
 test_that("research manifest references reject runtime objects", {
   RuntimeObject <- R6::R6Class("ManifestRuntimeObject")
   connection <- file(withr::local_tempfile())

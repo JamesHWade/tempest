@@ -758,7 +758,10 @@ tempest_session_process_turn_async <- function(
   tryCatch(
     tempest_session_agent_completion_consume(session, claim),
     error = function(error) {
-      tempest_session_agent_completion_release(session, claim)
+      try(
+        tempest_session_agent_completion_release(session, claim),
+        silent = TRUE
+      )
       stop(error)
     }
   )

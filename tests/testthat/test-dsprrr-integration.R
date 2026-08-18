@@ -307,6 +307,47 @@ test_that("ProgramSet access fails closed after live module mutation", {
   )
 })
 
+test_that("single-stage ProgramSet access avoids whole-set revalidation", {
+  program_set <- tempest_program_set()
+  expected_entry <- program_set@entries$personas
+
+  local_mocked_bindings(
+    tempest_program_set_assert = function(...) {
+      stop("whole-set validation reached", call. = FALSE)
+    }
+  )
+
+  expect_identical(
+    tempest:::tempest_program_set_entry(program_set, "personas"),
+    expected_entry
+  )
+  expect_identical(
+    tempest:::tempest_program_set_program(program_set, "personas"),
+    program_set@programs$personas
+  )
+  expect_error(
+    tempest:::tempest_program_set_programs(program_set),
+    regexp = "whole-set validation reached"
+  )
+})
+
+test_that("single-stage ProgramSet access checks file-backed inventory", {
+  root <- file.path(withr::local_tempdir(), "program-set")
+  file_backed <- tempest_program_set(path = root)
+  writeLines("undeclared", file.path(root, "rogue.txt"))
+
+  expect_error(
+    tempest:::tempest_program_set_entry(file_backed, "personas"),
+    class = "tempest_program_set_verification_error",
+    regexp = "failed live stage validation"
+  )
+  expect_error(
+    tempest:::tempest_program_set_program(file_backed, "personas"),
+    class = "tempest_program_set_verification_error",
+    regexp = "failed live stage validation"
+  )
+})
+
 test_that("ProgramSet save and load use exact closed file bundles", {
   root <- withr::local_tempdir()
   path <- file.path(root, "program-set")

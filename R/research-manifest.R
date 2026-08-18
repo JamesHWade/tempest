@@ -10,50 +10,99 @@ tempest_research_manifest_abort <- function(message, ..., parent = NULL) {
   )
 }
 
+tempest_opaque_identifier_stages <- c(
+  "perspectives",
+  "personas",
+  "query_decomposition",
+  "extract_claims",
+  "verify_claim_support",
+  "next_question",
+  "draft_outline",
+  "refined_outline",
+  "section_writing",
+  "lead_section"
+)
+
+tempest_opaque_identifier_builtin_ids <- c(
+  paste0("tempest::", tempest_opaque_identifier_stages),
+  paste0("tempest::evaluator/", tempest_opaque_identifier_stages)
+)
+
+tempest_opaque_identifier_sha256_pattern <- "^sha256:[a-f0-9]{64}$"
+tempest_opaque_identifier_namespaced_pattern <- paste0(
+  "^[A-Za-z][A-Za-z0-9._-]*::",
+  "[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,120}$"
+)
+tempest_opaque_identifier_pattern <- "^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,127}$"
+tempest_opaque_identifier_credential_marker_pattern <- paste0(
+  "(^|[:/@._+-])(?:bearer|authorization|api[-_]?key|",
+  "access[-_]?token|refresh[-_]?token|token|secret|password|",
+  "client[-_]?secret|private[-_]?key)(?:$|[:/@._+-])"
+)
+
+tempest_opaque_identifier_cache_capacity <- 512L
+tempest_opaque_identifier_cache <- new.env(hash = TRUE, parent = emptyenv())
+
+tempest_opaque_identifier_cache_clear <- function() {
+  identifiers <- ls(
+    envir = tempest_opaque_identifier_cache,
+    all.names = TRUE
+  )
+  if (length(identifiers) > 0L) {
+    rm(list = identifiers, envir = tempest_opaque_identifier_cache)
+  }
+  invisible(NULL)
+}
+
+tempest_opaque_identifier_cache_store <- function(value) {
+  if (
+    length(tempest_opaque_identifier_cache) >=
+      tempest_opaque_identifier_cache_capacity
+  ) {
+    tempest_opaque_identifier_cache_clear()
+  }
+  assign(value, TRUE, envir = tempest_opaque_identifier_cache)
+  invisible(NULL)
+}
+
 tempest_opaque_identifier_valid <- function(value) {
   if (
     !rlang::is_string(value) ||
       is.na(value) ||
+      !nzchar(value) ||
       nchar(value, type = "bytes") > 128L
   ) {
     return(FALSE)
   }
-  stages <- c(
-    "perspectives",
-    "personas",
-    "query_decomposition",
-    "extract_claims",
-    "verify_claim_support",
-    "next_question",
-    "draft_outline",
-    "refined_outline",
-    "section_writing",
-    "lead_section"
-  )
-  builtin_ids <- c(
-    paste0("tempest::", stages),
-    paste0("tempest::evaluator/", stages)
-  )
-  safe_builtin <- value %in% builtin_ids
-  safe_sha256 <- grepl("^sha256:[a-f0-9]{64}$", value)
+  if (
+    exists(
+      value,
+      envir = tempest_opaque_identifier_cache,
+      inherits = FALSE
+    )
+  ) {
+    return(TRUE)
+  }
+  safe_builtin <- value %in% tempest_opaque_identifier_builtin_ids
+  safe_sha256 <- grepl(tempest_opaque_identifier_sha256_pattern, value)
   safe_namespaced <- grepl(
-    "^[A-Za-z][A-Za-z0-9._-]*::[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,120}$",
+    tempest_opaque_identifier_namespaced_pattern,
     value
   )
-  safe_opaque <- grepl("^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,127}$", value)
+  safe_opaque <- grepl(tempest_opaque_identifier_pattern, value)
   credential_marker <- grepl(
-    paste0(
-      "(^|[:/@._+-])(?:bearer|authorization|api[-_]?key|",
-      "access[-_]?token|refresh[-_]?token|token|secret|password|",
-      "client[-_]?secret|private[-_]?key)(?:$|[:/@._+-])"
-    ),
+    tempest_opaque_identifier_credential_marker_pattern,
     value,
     ignore.case = TRUE,
     perl = TRUE
   )
-  (safe_builtin || safe_sha256 || safe_namespaced || safe_opaque) &&
+  valid <- (safe_builtin || safe_sha256 || safe_namespaced || safe_opaque) &&
     !credential_marker &&
     !tempest_contract_sensitive_scalar(value)
+  if (valid) {
+    tempest_opaque_identifier_cache_store(value)
+  }
+  valid
 }
 
 tempest_research_manifest_string <- function(value, arg) {

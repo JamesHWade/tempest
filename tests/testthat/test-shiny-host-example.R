@@ -1,12 +1,11 @@
 test_that("example host uses only the scripted STORM product API", {
-  app_path <- test_path(
-    "..",
-    "..",
-    "inst",
+  app_path <- system.file(
     "examples",
     "shiny-host",
-    "app.R"
+    "app.R",
+    package = "tempest"
   )
+  expect_identical(file.exists(app_path), TRUE)
   symbols <- all.names(
     parse(app_path),
     functions = TRUE,

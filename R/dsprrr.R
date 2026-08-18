@@ -32,8 +32,13 @@ tempest_program_set_execution <- function(
       )
     )
   }
-  declared_reference <- tempest_program_set_entry(program_set, stage)
-  program <- tempest_program_set_program(program_set, stage)
+  state <- tempest_program_set_stage_state(program_set, stage)
+  declared_reference <- state$entry
+  program <- tempest_program_set_verify_program(
+    program_set,
+    stage,
+    state = state
+  )
   declared_program_artifact_id <- declared_reference$program_artifact_id
   tempest_dsprrr_execution(
     program = program,

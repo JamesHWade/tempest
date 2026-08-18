@@ -229,11 +229,49 @@ tempest_agent_completion_digest <- function(
   provider_turn,
   deputy_execution
 ) {
+  canonical_value <- function(value) {
+    if (is.null(value)) {
+      return(NULL)
+    }
+    if (
+      is.function(value) ||
+        is.environment(value) ||
+        typeof(value) %in% c("externalptr", "weakref")
+    ) {
+      tempest_agent_completion_binding_abort()
+    }
+    if (inherits(value, "S7_object")) {
+      properties <- tryCatch(
+        S7::props(value),
+        error = function(error) NULL
+      )
+      if (!is.list(properties)) {
+        tempest_agent_completion_binding_abort()
+      }
+      return(list(
+        class = unname(class(value)),
+        properties = lapply(properties, canonical_value)
+      ))
+    }
+    if (is.object(value)) {
+      return(list(
+        class = unname(class(value)),
+        data = canonical_value(unclass(value))
+      ))
+    }
+    if (is.list(value)) {
+      return(lapply(value, canonical_value))
+    }
+    if (!is.atomic(value)) {
+      tempest_agent_completion_binding_abort()
+    }
+    value
+  }
   payload <- serialize(
     list(
       prompt = charToRaw(prompt),
       response = charToRaw(response),
-      provider_turn = provider_turn,
+      provider_turn = canonical_value(provider_turn),
       deputy_execution = deputy_execution
     ),
     connection = NULL,

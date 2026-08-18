@@ -405,12 +405,17 @@ tempest_program_set_new <- function(entries, programs, bundle_root = NULL) {
   )
 }
 
-tempest_program_set_assert <- function(value) {
+tempest_program_set_assert_type <- function(value) {
   if (!S7::S7_inherits(value, TempestProgramSet)) {
     tempest_program_set_abort(
       "{.arg program_set} must be a TempestProgramSet."
     )
   }
+  value
+}
+
+tempest_program_set_assert <- function(value) {
+  value <- tempest_program_set_assert_type(value)
   tryCatch(
     S7::validate(value),
     error = function(error) {
@@ -422,6 +427,60 @@ tempest_program_set_assert <- function(value) {
     }
   )
   value
+}
+
+tempest_program_set_stage_state <- function(program_set, stage) {
+  program_set <- tempest_program_set_assert_type(program_set)
+  tryCatch(
+    {
+      stages <- tempest_program_set_stages()
+      if (!identical(program_set@schema_version, 2L)) {
+        stop("schema_version must be the supported version 2")
+      }
+      if (
+        !is.list(program_set@entries) ||
+          !identical(names(program_set@entries), stages) ||
+          !is.list(program_set@programs) ||
+          !identical(names(program_set@programs), stages)
+      ) {
+        stop("entries and programs must use the exact Tempest stage order")
+      }
+      root <- program_set@bundle_root
+      if (
+        !is.character(root) ||
+          !(length(root) %in% c(0L, 1L)) ||
+          (length(root) == 1L &&
+            (is.na(root) ||
+              !nzchar(root) ||
+              !fs::is_absolute_path(root)))
+      ) {
+        stop("bundle_root must be empty or one absolute directory path")
+      }
+      if (length(root) == 1L) {
+        tempest_program_set_validate_inventory(root)
+      }
+      entry <- tempest_program_set_validate_entries(
+        stats::setNames(list(program_set@entries[[stage]]), stage),
+        require_all = FALSE
+      )[[stage]]
+      expected_type <- if (length(root) == 0L) "builtin" else "file"
+      if (!identical(entry$artifact_reference$type, expected_type)) {
+        stop("artifact reference type must agree with bundle_root")
+      }
+      program <- program_set@programs[[stage]]
+      if (!inherits(program, "Module")) {
+        stop("the selected program must be a dsprrr Module")
+      }
+      list(entry = entry, program = program)
+    },
+    error = function(error) {
+      tempest_program_set_abort(
+        "The TempestProgramSet failed live stage validation.",
+        parent = error,
+        class = "tempest_program_set_verification_error"
+      )
+    }
+  )
 }
 
 tempest_program_set_metadata <- function(program_set) {
@@ -663,17 +722,23 @@ tempest_program_set_entries <- function(program_set) {
 }
 
 tempest_program_set_entry <- function(program_set, stage) {
-  tempest_program_set_assert(program_set)
   stage <- tempest_program_set_string(stage, "stage")
   if (!stage %in% tempest_program_set_stages()) {
     tempest_program_set_abort("Unknown Tempest program stage {.val {stage}}.")
   }
-  program_set@entries[[stage]]
+  tempest_program_set_stage_state(program_set, stage)$entry
 }
 
-tempest_program_set_verify_program <- function(program_set, stage) {
-  entry <- program_set@entries[[stage]]
-  program <- program_set@programs[[stage]]
+tempest_program_set_verify_program <- function(
+  program_set,
+  stage,
+  state = NULL
+) {
+  if (is.null(state)) {
+    state <- tempest_program_set_stage_state(program_set, stage)
+  }
+  entry <- state$entry
+  program <- state$program
   actual <- tempest_program_set_program_id(program, stage)
   if (!identical(actual, entry$program_artifact_id)) {
     tempest_program_set_abort(
@@ -685,12 +750,12 @@ tempest_program_set_verify_program <- function(program_set, stage) {
 }
 
 tempest_program_set_program <- function(program_set, stage) {
-  tempest_program_set_assert(program_set)
   stage <- tempest_program_set_string(stage, "stage")
   if (!stage %in% tempest_program_set_stages()) {
     tempest_program_set_abort("Unknown Tempest program stage {.val {stage}}.")
   }
-  tempest_program_set_verify_program(program_set, stage)
+  state <- tempest_program_set_stage_state(program_set, stage)
+  tempest_program_set_verify_program(program_set, stage, state = state)
 }
 
 tempest_program_set_programs <- function(program_set) {
@@ -699,7 +764,16 @@ tempest_program_set_programs <- function(program_set) {
   stats::setNames(
     lapply(
       stages,
-      \(stage) tempest_program_set_verify_program(program_set, stage)
+      \(stage) {
+        tempest_program_set_verify_program(
+          program_set,
+          stage,
+          state = list(
+            entry = program_set@entries[[stage]],
+            program = program_set@programs[[stage]]
+          )
+        )
+      }
     ),
     stages
   )

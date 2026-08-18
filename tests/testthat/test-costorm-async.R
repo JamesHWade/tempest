@@ -1421,6 +1421,26 @@ test_that("queued turns are claimed by completion ID instead of latest run", {
     ),
     "issued"
   )
+  completion_context <- tempest:::tempest_session_agent_completion_context(
+    session
+  )
+  for (completion_id in c(first$value, second$value)) {
+    entry <- tempest:::tempest_agent_completion_entry(
+      completion_context$registry,
+      completion_id,
+      completion_context$owner
+    )
+    duplicated <- tempest:::tempest_agent_completion_claim_value(entry)
+    expect_identical(
+      tempest:::tempest_agent_completion_digest(
+        duplicated$prompt,
+        duplicated$response,
+        duplicated$provider_turn,
+        duplicated$deputy_execution
+      ),
+      entry$digest
+    )
+  }
 
   first_result <- await_tempest_promise(
     tempest_session_process_turn_async(
@@ -1494,6 +1514,113 @@ test_that("queued turns are claimed by completion ID instead of latest run", {
     evidence[[2L]]$deputy_execution$deputy_run_id,
     second_result$value@deputy_run_id
   )
+})
+
+test_that("turn processing preserves the original consume failure", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  moderator <- fake_chat(text = list("Bound response."))
+  config <- tempest_config(chat_fn = function(
+    role,
+    model,
+    system_prompt,
+    echo
+  ) {
+    if (identical(role, "coordinator")) {
+      return(moderator)
+    }
+    fake_chat()
+  })
+  session <- tempest_session(
+    "Consume failure identity",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.consume-failure",
+      name = "Dr. Consume"
+    ))
+  )
+  completion <- await_tempest_promise(
+    session$request_completion_async("Keep the original failure.")
+  )
+  expect_null(completion$error)
+  local_mocked_bindings(
+    tempest_session_agent_completion_consume = function(...) {
+      rlang::abort(
+        "original consume failure",
+        class = "tempest_test_consume_error"
+      )
+    },
+    tempest_session_agent_completion_release = function(...) {
+      tempest:::tempest_agent_completion_binding_abort()
+    }
+  )
+
+  error <- tryCatch(
+    tempest_session_process_turn_async(
+      session,
+      completion$value,
+      suggest = FALSE
+    ),
+    error = identity
+  )
+
+  expect_s3_class(error, "tempest_test_consume_error")
+  expect_identical(conditionMessage(error), "original consume failure")
+})
+
+test_that("promise waits time out only while the event loop is idle", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  request <- promises::promise(function(resolve, reject) {
+    later::later(function() {
+      Sys.sleep(0.03)
+      later::later(\() resolve("settled"), delay = 0.001)
+    })
+  })
+
+  settled <- await_tempest_promise(request, timeout_s = 0.02)
+
+  expect_null(settled$error)
+  expect_identical(settled$value, "settled")
+})
+
+test_that("promise waits retain a non-resetting hard deadline", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  active <- TRUE
+  heartbeat_count <- 0L
+  heartbeat <- function() {
+    if (!active) {
+      return(invisible(NULL))
+    }
+    heartbeat_count <<- heartbeat_count + 1L
+    later::later(heartbeat, delay = 0.001)
+  }
+  later::later(heartbeat)
+  request <- promises::promise(function(resolve, reject) invisible(NULL))
+
+  error <- tryCatch(
+    await_tempest_promise(
+      request,
+      timeout_s = 0.02,
+      hard_timeout_s = 0.06
+    ),
+    error = identity
+  )
+  active <- FALSE
+  later::run_now(0.01)
+
+  expect_s3_class(error, "simpleError")
+  expect_identical(
+    conditionMessage(error),
+    "Promise did not settle before the test timeout."
+  )
+  expect_gte(heartbeat_count, 2L)
 })
 
 test_that("stale work cancels before mutation and later failure stays consumed", {
