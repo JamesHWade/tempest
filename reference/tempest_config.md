@@ -11,7 +11,6 @@ tempest_config(
   chat_fn = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
-  artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
   cache_enabled = TRUE,
@@ -21,10 +20,7 @@ tempest_config(
   retrieve_top_k = 25,
   max_sources = 24,
   user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
-  node_expansion_trigger_count = NULL,
-  enable_discourse_manager = FALSE,
   max_active_experts = 5L,
-  enable_unseen_surfacing = FALSE,
   citation_policy = "source_attributed",
   min_support_score = 0.7,
   on_unsupported_claim = "flag"
@@ -63,15 +59,6 @@ tempest_config(
 
   A pre-built ragnar store. If NULL and `embed_fn` is provided, a store
   is created automatically with the tempest metadata schema.
-
-- artifact_store:
-
-  Frozen Tempest 0.1 artifact-store adapter from
-  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
-  or
-  [`tempest_memory_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.md).
-  Existing integrations only; new code should consume `report_md` and
-  scientific evidence directly.
 
 - search_provider:
 
@@ -115,27 +102,15 @@ tempest_config(
 
   User agent string for HTTP requests.
 
-- node_expansion_trigger_count:
-
-  Number of notes/sources per node that triggers expansion (NULL =
-  disabled).
-
-- enable_discourse_manager:
-
-  Whether to enable LLM-driven discourse management in Co-STORM.
-
 - max_active_experts:
 
   Maximum number of active expert agents in Co-STORM.
 
-- enable_unseen_surfacing:
-
-  Whether to surface undiscussed sources in Co-STORM.
-
 - citation_policy:
 
-  Citation enforcement policy: one of "none", "source_attributed",
-  "claim_verified", or "strict".
+  Report citation-rendering and unsupported-claim handling policy: one
+  of "none", "source_attributed", "claim_verified", or "strict". Product
+  publication always runs exact claim verification.
 
 - min_support_score:
 

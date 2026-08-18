@@ -12,37 +12,50 @@ workspace, transcript, mind map, experts, progress events, and canonical
 report. Process-local execution members are internal and are not part of
 the persistence or public API contract.
 
-## Public fields
+## Active bindings
+
+- `topic`:
+
+  Read-only research topic fixed at construction.
 
 - `title`:
 
   The report title.
 
-- `runtime`:
+- `config`:
 
-  Internal process-local execution member; not part of the public or
-  persistence contract.
+  Read-only `TempestConfig` fixed at construction.
 
-- `connection_permissions`:
+- `session_id`:
 
-  Internal process-local execution member; not part of the public or
-  persistence contract.
+  Read-only stable identifier shared by the manifest and progress events
+  for the session.
 
 - `progress`:
 
   Optional progress callback.
 
+- `manifest`:
+
+  Immutable
+  [TempestResearchManifest](https://jameshwade.github.io/tempest/reference/TempestResearchManifest.md)
+  for this research run.
+
+- `workspace`:
+
+  Read-only reference to the authoritative
+  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
+  containing provisional research material. Workspace mutation is
+  available only while the session is active and no publication lock is
+  held; a succeeded session's workspace is sealed.
+
+- `retriever`:
+
+  Read-only `TempestRetriever` reference.
+
 - `experts`:
 
   List of validated `tempest_expert` profiles.
-
-- `expert_session_manager`:
-
-  Manages expert chat sessions.
-
-- `chats`:
-
-  List of chat objects for each role.
 
 - `transcript`:
 
@@ -56,57 +69,13 @@ the persistence or public API contract.
 
   Ordered normalized progress-event history.
 
-- `artifacts`:
-
-  Internal process-local presentation state; not part of the public or
-  persistence contract.
-
-- `capability_grants`:
-
-  Internal process-local execution state; not part of the public or
-  persistence contract.
-
-- `discourse_manager`:
-
-  A `DiscourseManager` object (NULL when disabled).
-
-## Active bindings
-
-- `topic`:
-
-  Read-only research topic fixed at construction.
-
-- `config`:
-
-  Read-only `TempestConfig` fixed at construction.
-
-- `session_id`:
-
-  Read-only stable identifier shared by the manifest and progress events
-  for the session.
-
-- `manifest`:
-
-  Immutable
-  [TempestResearchManifest](https://jameshwade.github.io/tempest/reference/TempestResearchManifest.md)
-  for this research run.
-
-- `workspace`:
-
-  Read-only reference to the authoritative
-  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  containing provisional research material. Workspace mutation methods
-  remain available.
-
-- `retriever`:
-
-  Read-only `TempestRetriever` reference.
-
 ## Methods
 
 ### Public methods
 
 - [`TempestSession$new()`](#method-TempestSession-initialize)
+
+- [`TempestSession$request_completion_async()`](#method-TempestSession-request_completion_async)
 
 - [`TempestSession$record_progress_event()`](#method-TempestSession-record_progress_event)
 
@@ -171,10 +140,8 @@ for the supported API.
     TempestSession$new(
       topic,
       config = tempest_config(),
-      runtime = tempest_runtime(),
       n_experts = 3,
       experts = NULL,
-      connection_permissions = list(),
       retriever = NULL,
       progress = NULL,
       session_id = NULL,
@@ -194,10 +161,6 @@ for the supported API.
 
   A `TempestConfig` object.
 
-- `runtime`:
-
-  Internal process-local runtime implementation.
-
 - `n_experts`:
 
   Number of expert agents.
@@ -207,10 +170,6 @@ for the supported API.
   Optional list of validated expert profiles. If `NULL`, experts are
   generated automatically using
   [`tempest_generate_experts()`](https://jameshwade.github.io/tempest/reference/tempest_generate_experts.md).
-
-- `connection_permissions`:
-
-  Internal process-local connection policy.
 
 - `retriever`:
 
@@ -247,6 +206,33 @@ for the supported API.
 - `.restore_token`:
 
   Internal authorization token for bundle restoration.
+
+------------------------------------------------------------------------
+
+### `TempestSession$request_completion_async()`
+
+Request one Deputy-backed moderator completion.
+
+#### Usage
+
+    TempestSession$request_completion_async(
+      prompt,
+      on_chunk = function(chunk) invisible(chunk)
+    )
+
+#### Arguments
+
+- `prompt`:
+
+  Exact moderator prompt.
+
+- `on_chunk`:
+
+  Optional process-local display callback.
+
+#### Returns
+
+A promise resolving only to an opaque completion identifier.
 
 ------------------------------------------------------------------------
 
@@ -541,7 +527,7 @@ Index of the expert, or NULL if not found.
 
 ### `TempestSession$step()`
 
-Process one step of the conversation.
+Process one explicit user turn through the Deputy moderator.
 
 #### Usage
 
@@ -551,16 +537,15 @@ Process one step of the conversation.
 
 - `user_input`:
 
-  User's input message.
+  User input.
 
 - `auto`:
 
-  If TRUE and discourse manager is enabled, let the discourse manager
-  decide.
+  Must be `FALSE`; generic automatic discourse is unavailable.
 
 #### Returns
 
-A list with speaker, answer, and mindmap_md.
+A list with the moderator answer and exact Deputy identity.
 
 ------------------------------------------------------------------------
 
@@ -594,8 +579,7 @@ Generate a report from the session.
 
     TempestSession$report(
       style = c("technical", "executive"),
-      include_references = TRUE,
-      reorganize = TRUE
+      include_references = TRUE
     )
 
 #### Arguments
@@ -607,10 +591,6 @@ Generate a report from the session.
 - `include_references`:
 
   Include references section.
-
-- `reorganize`:
-
-  Whether to reorganize mind map before generating.
 
 #### Returns
 
@@ -762,7 +742,8 @@ Execute a discourse manager turn decision.
 
 #### Returns
 
-A list with speaker, answer, and mindmap_md.
+This method always errors; automatic discourse routing is not a
+supported Co-STORM product path.
 
 ------------------------------------------------------------------------
 

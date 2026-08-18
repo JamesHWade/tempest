@@ -38,9 +38,10 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
-    <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
+<li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -109,17 +110,11 @@ provider credentials.</p>
 <td>A continuing Co-STORM conversation, mind map, evidence, and
 report</td>
 </tr>
-<tr class="odd">
-<td>Inspect the frozen generic kernel</td>
-<td><code><a href="../reference/tempest_run_workflow.html">tempest_run_workflow()</a></code></td>
-<td>Frozen experimental 0.1 behavior scheduled for removal in 0.2.0</td>
-</tr>
 </tbody>
 </table>
 <p>Most package users should begin with scripted STORM. Co-STORM is
-useful when the research question should evolve through dialogue. The
-experimental generic workflow kernel is frozen; do not use it for new
-integrations.</p>
+useful when the research question should evolve through dialogue.
+Tempest 0.2 has no application-neutral workflow or runtime API.</p>
 </div>
 <div class="section level2">
 <h2 id="install-and-load-tempest">Install and load Tempest<a class="anchor" aria-label="anchor" href="#install-and-load-tempest"></a>
@@ -220,17 +215,17 @@ flattened into report text. The pair records are authoritative; claim
 summaries and citation-audit tables are derived projections. The product
 report is available directly in <code>result$report_md</code>; new
 callers should not depend on the frozen 0.1 artifact catalog.</p>
-<p>Choose a stronger <code>citation_policy</code> when a workflow
-requires verified claims:</p>
+<p>Every STORM and Co-STORM publication runs the exact verifier
+ProgramSet stage and atomically binds claim-by-evidence-span support.
+<code>citation_policy</code> controls only report rendering and
+unsupported-claim handling:</p>
 <ul>
 <li>
 <code>"source_attributed"</code> converts known inline source IDs to
-footnotes without verifying the claims;</li>
+footnotes without disabling product verification;</li>
 <li>
-<code>"claim_verified"</code> runs the exact verifier ProgramSet
-stage, atomically replaces the complete claim-by-evidence-span support
-set, and exposes the derived claim status in the final references;
-and</li>
+<code>"claim_verified"</code> exposes threshold-verified support in
+the rendered report and final references; and</li>
 <li>
 <code>"strict"</code> fails publication unless each publishable
 assertion is bound to a completed, provenance-bound verification result
@@ -304,7 +299,7 @@ configuration, output directory, and run ID:</p>
 and workflow settings stable when continuing an existing run.</p>
 <p>Current readers accept only <code>ResearchWorkspace</code> snapshot
 schema 5, Co-STORM snapshot and bundle schema 9, STORM bundle schema 7
-with state schema 4, ProgramSet and research-manifest schema 2,
+with state schema 4, ProgramSet schema 2, research-manifest schema 3,
 StageRecord output-digest payload schema 3, and promotion-bundle schema
 1. Every other version is rejected, as is any missing or extra field or
 value that becomes valid only after coercion.</p>
@@ -349,8 +344,8 @@ profiles from its own expert pool:</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Profiles describe a scientific perspective and stable expert
 identity. Keep live tools, clients, and credentials outside the
-serialized profile. The 0.1 skill, capability, and connection fields are
-frozen and should not be used for new integrations.</p>
+serialized profile. Product code attaches only the tools required for
+its STORM or Co-STORM role.</p>
 </div>
 <div class="section level2">
 <h2 id="explore-interactively-with-co-storm">Explore interactively with Co-STORM<a class="anchor" aria-label="anchor" href="#explore-interactively-with-co-storm"></a>
@@ -409,42 +404,27 @@ not already available:</p>
 the role-specific tools needed for that session. The moderator delegates
 by stable expert ID, and evidence collected during dialogue remains
 available to the final report. Session bundles preserve durable research
-state, but not credentials, live chat handles, tools, authenticated
-clients, generic workflow state, or runtime registries. Configure fresh
-supported chats and retrieval dependencies through <code>config</code>
-before resuming.</p>
+state, but not credentials, live chat handles, tools, or authenticated
+clients. Configure fresh supported chats and retrieval dependencies
+through <code>config</code> before resuming.</p>
 <p>The moderator and experts use persistent Deputy agents as the
 required Co-STORM runtime. Tempest disables ambient file, shell, R, web,
 and package-install capabilities, then allowlists only the tools already
 attached for that role. Snapshots persist canonical opaque terminal
 traces for each run and never serialize the Deputy Agent or provider
-credentials.</p>
+credentials. Those execution identities support correlation and audit
+joins only; they do not claim that an execution caused, authored, or
+validated report content.</p>
 </div>
 <div class="section level2">
-<h2 id="frozen-generic-kernel-deletion-inventory">Frozen generic-kernel deletion inventory<a class="anchor" aria-label="anchor" href="#frozen-generic-kernel-deletion-inventory"></a>
+<h2 id="generic-kernel-cutover">Generic-kernel cutover<a class="anchor" aria-label="anchor" href="#generic-kernel-cutover"></a>
 </h2>
-<blockquote>
-<p><strong>Lifecycle notice:</strong> The experimental generic workflow
-kernel is frozen and retained only for the section-10 deletion PR. It is
-not a supported Tempest 0.2 product surface.</p>
-</blockquote>
-<p>The <code>reusable-workflows</code> vignette is an offline
-deletion-owned fixture that records:</p>
-<ul>
-<li>an application-neutral objective;</li>
-<li>a host-selected expert;</li>
-<li>a versioned output template;</li>
-<li>runtime generator, validator, renderer, and step operations;</li>
-<li>artifact approval and ordered events;</li>
-<li>typed output inspection; and</li>
-<li>the former generic runtime boundary, which supported product bundles
-do not restore.</li>
-</ul>
-<p>Open it from an installed package:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"reusable-workflows"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span></span></code></pre></div>
-<p>On the pkgdown website, see the <a href="reusable-workflows.html">frozen generic workflow deletion
-inventory</a>.</p>
+<p>Tempest 0.2 supports only <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and
+<code><a href="../reference/tempest_session.html">tempest_session()</a></code> as research product entry points. The
+experimental application-neutral kernel is unavailable, and retained
+symbols fail immediately with
+<code>tempest_generic_kernel_cutover_error</code>. No compatibility
+layer is provided.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-go-next">Where to go next<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>

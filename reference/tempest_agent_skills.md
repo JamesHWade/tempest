@@ -1,13 +1,10 @@
 # Discover and install bundled Agent Skills
 
-`tempest_agent_skills()` lists the portable Agent Skill directories
-shipped with Tempest. These `SKILL.md` bundles guide agents through
-using the built-in research workflows, conducting the portable STORM
-protocol, and designing, building, or verifying a custom Tempest
-workflow. They are distinct from
-[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md),
-which creates a serializable procedure assigned to a Tempest expert
-inside a workflow.
+`tempest_agent_skills()` lists the two supported research Agent Skill
+directories shipped with Tempest. These `SKILL.md` bundles guide agents
+through using the STORM and Co-STORM product APIs or conducting the
+portable STORM protocol. Generic-workflow skill directories are
+unavailable and are not discoverable or installable through this API.
 
 ## Usage
 
@@ -27,7 +24,8 @@ tempest_install_agent_skills(path, skills = NULL, overwrite = FALSE)
 
 - skills:
 
-  Bundled skill names to install. `NULL` installs all bundled skills.
+  Supported research skill names to install. `NULL` installs both
+  supported skills.
 
 - overwrite:
 
@@ -45,16 +43,10 @@ vector of installed skill directories.
 
 ``` r
 tempest_agent_skills()
-#>                                                   build-tempest-workflow 
-#>  "/home/runner/work/_temp/Library/tempest/skills/build-tempest-workflow" 
-#>                                                   conduct-storm-research 
-#>  "/home/runner/work/_temp/Library/tempest/skills/conduct-storm-research" 
-#>                                                  design-tempest-workflow 
-#> "/home/runner/work/_temp/Library/tempest/skills/design-tempest-workflow" 
-#>                                                     use-tempest-research 
-#>    "/home/runner/work/_temp/Library/tempest/skills/use-tempest-research" 
-#>                                                  verify-tempest-workflow 
-#> "/home/runner/work/_temp/Library/tempest/skills/verify-tempest-workflow" 
+#>                                                  conduct-storm-research 
+#> "/home/runner/work/_temp/Library/tempest/skills/conduct-storm-research" 
+#>                                                    use-tempest-research 
+#>   "/home/runner/work/_temp/Library/tempest/skills/use-tempest-research" 
 if (FALSE) { # \dontrun{
 tempest_install_agent_skills("~/.codex/skills")
 } # }

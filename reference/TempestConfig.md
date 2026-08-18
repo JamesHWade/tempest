@@ -13,7 +13,6 @@ TempestConfig(
   chat_fn = function() NULL,
   embed_fn = function() NULL,
   ragnar_store = NULL,
-  artifact_store = NULL,
   search_provider = "native",
   cache_dir = NA_character_,
   cache_enabled = TRUE,
@@ -23,10 +22,7 @@ TempestConfig(
   retrieve_top_k = 25L,
   max_sources = 24,
   user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
-  node_expansion_trigger_count = NULL,
-  enable_discourse_manager = FALSE,
   max_active_experts = 5L,
-  enable_unseen_surfacing = FALSE,
   citation_policy = "source_attributed",
   min_support_score = 0.7,
   on_unsupported_claim = "flag"

@@ -13,8 +13,7 @@ tempest_shiny_server(
   experts = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
-  run = NULL
+  knowledge_view = NULL
 )
 ```
 
@@ -65,18 +64,11 @@ tempest_shiny_server(
   view before any provider call; the view remains process-local and is
   never serialized.
 
-- run:
-
-  Optional `TempestRun`, function, or reactive. This lets a host expose
-  a custom headless workflow through the same generic adapter reactives
-  as built-in workflows.
-
 ## Value
 
-A list with the shared `store`; reactive `run`, `status`, `events`,
-`approvals`, `assignments`, `artifacts`, `evidence`, `grants`,
-`session`, `report`, and `report_ready` accessors; and `approve()`,
-`cancel()`, and `touch()` controls.
+A list with the shared `store`; reactive `session`, `events`,
+`evidence`, `report`, and `report_ready` accessors; and a
+product-session `touch()` control.
 
 ## Details
 
@@ -85,9 +77,8 @@ A list with the shared `store`; reactive `run`, `status`, `events`,
 and lets a host app provide a
 [TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md),
 optional expert profiles, a stable session id, and an optional shared
-store. The returned handle exposes the shared store and reactive
-accessors for generic run, event, approval, capability-grant, artifact,
-session, and report state.
+store. The returned handle exposes only product session, event,
+evidence, and report state.
 
 ## Examples
 

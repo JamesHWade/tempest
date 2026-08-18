@@ -20,7 +20,7 @@ tempest_research_manifest(
   traces = list(),
   deliverables = list(),
   status = "running",
-  schema_version = 2L
+  schema_version = 3L
 )
 ```
 
@@ -70,7 +70,7 @@ tempest_research_manifest(
 
 - schema_version:
 
-  Manifest record schema. Only version 2 is supported.
+  Manifest record schema. Only version 3 is supported.
 
 ## Value
 

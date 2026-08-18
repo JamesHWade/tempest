@@ -58,30 +58,23 @@ tempest_expert(
 
   Character vector of focus areas.
 
-- skill_ids:
+- skill_ids, skill_versions:
 
-  Skill identifiers assigned to the expert.
+  Reserved current-schema fields. They must be empty because scientific
+  experts use fixed product roles and tools.
 
-- skill_versions:
+- required_capability_ids, optional_capability_ids:
 
-  Optional named character vector mapping assigned skill identifiers to
-  required versions.
-
-- required_capability_ids:
-
-  Capabilities that must be granted before the expert can run.
-
-- optional_capability_ids:
-
-  Capabilities the expert may use when granted.
+  Reserved current-schema fields that must be empty.
 
 - model_role:
 
-  Default model role.
+  One fixed scientific model role: `"coordinator"`, `"expert"`,
+  `"writer"`, `"mindmap"`, or `"judge"`.
 
 - model_policy_ref:
 
-  Optional host model-policy reference.
+  Reserved current-schema field that must be `NA`.
 
 - selection_metadata:
 
@@ -110,9 +103,9 @@ A `tempest_expert` S7 object.
 
 ## Details
 
-Expert profiles are serializable definitions of identity, procedure, and
-permission requirements. Runtime chats, tools, clients, and credentials
-are resolved separately for each execution context.
+Expert profiles are serializable definitions of scientific identity and
+procedure. Runtime chats, fixed role tools, clients, and credentials are
+resolved separately for each execution context.
 
 ## Examples
 
@@ -122,8 +115,6 @@ expert <- tempest_expert(
   name = "Dr. Rivera",
   title = "Battery policy analyst",
   description = "Policy and market incentives",
-  instructions = "Compare policy mechanisms and preserve uncertainty.",
-  skill_ids = "evidence-synthesis",
-  required_capability_ids = "evidence.search"
+  instructions = "Compare policy mechanisms and preserve uncertainty."
 )
 ```

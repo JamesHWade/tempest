@@ -38,9 +38,10 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
-    <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
+<li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -206,29 +207,23 @@ or character truncation and begins with an explicit trust notice. That
 notice states that the material is evidence, not instructions, and
 cannot grant tools, change workflow policy, approve an artifact, or
 authorize an external action.</p>
-<p>A Tempest 0.1 host can make the selected packet available to an
-existing generic runtime operation:</p>
-<blockquote>
-<p><strong>Lifecycle notice:</strong> This integration path is frozen
-and scheduled for removal in Tempest 0.2.0. Do not adopt
-<code><a href="../reference/tempest_run_workflow.html">tempest_run_workflow()</a></code> for new work; the replacement
-product path will bind scientific context to an immutable graft
-snapshot.</p>
-</blockquote>
+<p>The supported product path gives the selected resources to a
+run-scoped retriever, then calls <code><a href="../reference/tempest_run.html">tempest_run()</a></code>
+directly:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">run</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run_workflow.html">tempest_run_workflow</a></span><span class="op">(</span></span>
-<span>  <span class="va">objective</span>,</span>
-<span>  <span class="va">workflow</span>,</span>
-<span>  <span class="va">runtime</span>,</span>
-<span>  experts <span class="op">=</span> <span class="va">experts</span>,</span>
-<span>  deliverables <span class="op">=</span> <span class="va">deliverables</span>,</span>
-<span>  source_store <span class="op">=</span> <span class="va">evidence</span>,</span>
-<span>  runtime_context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    organizational_knowledge <span class="op">=</span> <span class="va">okf_context</span></span>
-<span>  <span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">retriever</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_retriever.html">tempest_retriever</a></span><span class="op">(</span></span>
+<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
+<span>  workspace <span class="op">=</span> <span class="va">workspace</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Assess the accepted organizational evidence"</span>,</span>
+<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
+<span>  retriever <span class="op">=</span> <span class="va">retriever</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The operation decides how to use that named runtime value. Tempest
-does not inject every imported concept into every model turn.</p>
+<p>Tempest does not inject every imported concept into every model turn.
+The retriever selects from the explicit provisional workspace as the
+STORM product needs evidence.</p>
 </div>
 <div class="section level2">
 <h2 id="exchange-accepted-graft-knowledge">Exchange accepted Graft knowledge<a class="anchor" aria-label="anchor" href="#exchange-accepted-graft-knowledge"></a>
@@ -280,9 +275,10 @@ at a committed batch or time.</p>
 <p>OKF can describe an Attested Computation, including a runtime, source
 files, inputs, and expected outputs. Tempest validates useful metadata
 when present but never executes the computation. Do not route a new
-executor through the frozen generic operation and capability APIs. The
-Tempest 0.2 direction is to reference an exact dsprrr program artifact
-and preserve the execution identity in product provenance.</p>
+executor through the unavailable generic operation and capability APIs.
+A Tempest product references an exact dsprrr program artifact and
+preserves execution identity for correlation and audit joins, not as a
+claim of causal content provenance.</p>
 <p>Continue with <a href="tempest.html">Get started with Tempest</a> to
 use imported context in STORM or Co-STORM research.</p>
 </div>

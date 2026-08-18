@@ -19,9 +19,10 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
-    <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -36,7 +37,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Create a Tempest expert profile</h1>
-      <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/R/expert-types.R" class="external-link"><code>R/expert-types.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/R/research-expert.R" class="external-link"><code>R/research-expert.R</code></a></small>
       <div class="d-none name"><code>tempest_expert.Rd</code></div>
     </div>
 
@@ -101,30 +102,23 @@
 <dd><p>Character vector of focus areas.</p></dd>
 
 
-<dt id="arg-skill-ids">skill_ids<a class="anchor" aria-label="anchor" href="#arg-skill-ids"></a></dt>
-<dd><p>Skill identifiers assigned to the expert.</p></dd>
+<dt id="arg-skill-ids-skill-versions">skill_ids, skill_versions<a class="anchor" aria-label="anchor" href="#arg-skill-ids-skill-versions"></a></dt>
+<dd><p>Reserved current-schema fields. They must be
+empty because scientific experts use fixed product roles and tools.</p></dd>
 
 
-<dt id="arg-skill-versions">skill_versions<a class="anchor" aria-label="anchor" href="#arg-skill-versions"></a></dt>
-<dd><p>Optional named character vector mapping assigned skill
-identifiers to required versions.</p></dd>
-
-
-<dt id="arg-required-capability-ids">required_capability_ids<a class="anchor" aria-label="anchor" href="#arg-required-capability-ids"></a></dt>
-<dd><p>Capabilities that must be granted before the
-expert can run.</p></dd>
-
-
-<dt id="arg-optional-capability-ids">optional_capability_ids<a class="anchor" aria-label="anchor" href="#arg-optional-capability-ids"></a></dt>
-<dd><p>Capabilities the expert may use when granted.</p></dd>
+<dt id="arg-required-capability-ids-optional-capability-ids">required_capability_ids, optional_capability_ids<a class="anchor" aria-label="anchor" href="#arg-required-capability-ids-optional-capability-ids"></a></dt>
+<dd><p>Reserved
+current-schema fields that must be empty.</p></dd>
 
 
 <dt id="arg-model-role">model_role<a class="anchor" aria-label="anchor" href="#arg-model-role"></a></dt>
-<dd><p>Default model role.</p></dd>
+<dd><p>One fixed scientific model role: <code>"coordinator"</code>,
+<code>"expert"</code>, <code>"writer"</code>, <code>"mindmap"</code>, or <code>"judge"</code>.</p></dd>
 
 
 <dt id="arg-model-policy-ref">model_policy_ref<a class="anchor" aria-label="anchor" href="#arg-model-policy-ref"></a></dt>
-<dd><p>Optional host model-policy reference.</p></dd>
+<dd><p>Reserved current-schema field that must be <code>NA</code>.</p></dd>
 
 
 <dt id="arg-selection-metadata">selection_metadata<a class="anchor" aria-label="anchor" href="#arg-selection-metadata"></a></dt>
@@ -155,8 +149,8 @@ contain credentials or executable values.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Expert profiles are serializable definitions of identity, procedure, and
-permission requirements. Runtime chats, tools, clients, and credentials are
+    <p>Expert profiles are serializable definitions of scientific identity and
+procedure. Runtime chats, fixed role tools, clients, and credentials are
 resolved separately for each execution context.</p>
     </div>
 
@@ -167,9 +161,7 @@ resolved separately for each execution context.</p>
 <span class="r-in"><span>  name <span class="op">=</span> <span class="st">"Dr. Rivera"</span>,</span></span>
 <span class="r-in"><span>  title <span class="op">=</span> <span class="st">"Battery policy analyst"</span>,</span></span>
 <span class="r-in"><span>  description <span class="op">=</span> <span class="st">"Policy and market incentives"</span>,</span></span>
-<span class="r-in"><span>  instructions <span class="op">=</span> <span class="st">"Compare policy mechanisms and preserve uncertainty."</span>,</span></span>
-<span class="r-in"><span>  skill_ids <span class="op">=</span> <span class="st">"evidence-synthesis"</span>,</span></span>
-<span class="r-in"><span>  required_capability_ids <span class="op">=</span> <span class="st">"evidence.search"</span></span></span>
+<span class="r-in"><span>  instructions <span class="op">=</span> <span class="st">"Compare policy mechanisms and preserve uncertainty."</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>

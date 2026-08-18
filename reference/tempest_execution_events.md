@@ -1,4 +1,4 @@
-# Query events from a Tempest execution
+# Query events from a Tempest product execution
 
 **\[experimental\]**
 
@@ -12,7 +12,7 @@ tempest_execution_events(x, after_sequence = 0L)
 
 - x:
 
-  A `TempestRun` or
+  A
   [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
 
 - after_sequence:
@@ -26,14 +26,6 @@ An ordered list of normalized event records.
 
 ## Details
 
-`tempest_execution_events()` gives host adapters one cursor-based event
-query for generic `TempestRun` workflows and interactive
-[TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md)
-sessions. It returns immutable list records rather than requiring
-callers to reach into mutable R6 fields.
-
-Every record contains `event_id`, a positive execution-local `sequence`,
-`run_id`, `event_type`, `status`, `timestamp`, and a serializable
-`payload`. Generic-run records also contain `workflow_id` and step,
-attempt, expert, artifact, and approval context. Co-STORM records
-contain `workflow`, `stage`, `step`, parent, and correlation context.
+`tempest_execution_events()` gives host adapters one cursor-based query
+for immutable Co-STORM progress records. Generic `TempestRun` histories
+are outside the supported product boundary and reject immediately.

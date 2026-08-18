@@ -33,8 +33,7 @@ tempest_run(
   run_id = NULL,
   remove_duplicate = FALSE,
   progress = NULL,
-  verbose = TRUE,
-  .state = NULL
+  verbose = TRUE
 )
 ```
 
@@ -123,8 +122,8 @@ tempest_run(
 
 - remove_duplicate:
 
-  If `TRUE`, ask the polish step to remove duplicate or highly
-  repetitive content while preserving unique cited claims.
+  Must be `FALSE`. Duplicate removal is unavailable on the authoritative
+  deterministic STORM report path.
 
 - progress:
 
@@ -135,11 +134,6 @@ tempest_run(
 - verbose:
 
   If `TRUE`, prints progress messages.
-
-- .state:
-
-  Internal adapter-only fixed STORM product state. This is not a public
-  continuation API.
 
 ## Value
 

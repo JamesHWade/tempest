@@ -11,16 +11,6 @@ Install Tempest and run your first workflow.
   evidence-backed report, and continue into interactive scientific
   research.
 
-### Retiring experimental generic kernel
-
-Review the deletion-owned baseline scheduled for the section-10 PR.
-
-- [Inspect the Tempest 0.1 generic-kernel deletion
-  inventory](https://jameshwade.github.io/tempest/articles/reusable-workflows.md):
-
-  Review the frozen Tempest 0.1 generic workflow baseline owned by the
-  section-10 deletion PR.
-
 ### Bring organizational knowledge
 
 Read portable knowledge as bounded evidence for Tempest workflows.

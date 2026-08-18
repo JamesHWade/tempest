@@ -32,8 +32,10 @@ tempest_verify_claims(
 
 - policy:
 
-  Citation policy; verification runs only for "claim_verified" or
-  "strict". Defaults to "claim_verified".
+  Citation policy for standalone workspaces; verification runs only for
+  "claim_verified" or "strict". A `TempestSession` always runs
+  product-required claim verification and rejects non-verifying
+  policies.
 
 - verifier_model:
 

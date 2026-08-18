@@ -1,12 +1,12 @@
 # Use Tempest Agent Skills
 
-Tempest ships Agent Skills alongside its R APIs. Two research skills
-remain supported; three custom-workflow skills document the frozen
-Tempest 0.1 kernel and will be removed in Tempest 0.2.0. Each skill is a
-portable directory containing a `SKILL.md` file, supporting references,
-and agent metadata. A compatible agent can load those instructions when
-it needs to operate Tempest or conduct STORM research in another
-framework.
+Tempest ships Agent Skills alongside its R APIs. Two research skills are
+supported. Three generic-workflow directories remain only as unavailable
+deletion inventory until T8 removes them physically. Each supported
+skill is a portable directory containing a `SKILL.md` file, supporting
+references, and agent metadata. A compatible agent can load those
+instructions when it needs to operate Tempest or conduct STORM research
+in another framework.
 
 This article covers two deployment shapes:
 
@@ -17,18 +17,18 @@ The second shape makes a skill callable, but the skill remains
 instructions. The host application must still provide the tools,
 authorization, state, and lifecycle needed to perform the research.
 
-## Agent Skills and workflow skills are different
+## Agent Skills and product APIs are different
 
 Tempest has two concepts with similar names:
 
-| Concept | Created by | Purpose |
-|----|----|----|
-| Agent Skill | [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md) or [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md) | Teaches an external agent how to use or extend Tempest |
-| Workflow skill | [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md) | Frozen 0.1 runtime contract scheduled for removal in 0.2.0 |
-
-An Agent Skill is external operating guidance. The similarly named
-workflow skill belongs to the retiring generic runtime and should not be
-adopted for a new integration.
+An Agent Skill is external operating guidance installed with
+[`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+or
+[`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md).
+It does not grant runtime authority. The former
+[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+generic-kernel symbol is unavailable in Tempest 0.2 and is unrelated to
+these instructions.
 
 ## Choose a supported research skill
 
@@ -38,13 +38,10 @@ Use the smallest skill that matches the task:
 |----|----|----|
 | `use-tempest-research` | Supported | Choose, configure, run, resume, inspect, or embed Tempest’s built-in STORM and Co-STORM workflows |
 | `conduct-storm-research` | Supported | Follow a provider- and framework-neutral STORM or Co-STORM protocol outside Tempest |
-| `design-tempest-workflow` | Tempest 0.1 only | Maintain an existing generic workflow design |
-| `build-tempest-workflow` | Tempest 0.1 only | Maintain an existing generic workflow implementation |
-| `verify-tempest-workflow` | Tempest 0.1 only | Audit an existing generic workflow before its migration |
 
 The two research skills describe complete operating modes and can be
-used independently. Do not start new work with the three retiring
-workflow skills.
+used independently. The three generic-workflow skill entrypoints contain
+only an unavailable notice and must not be used.
 
 ## Discover and install the skills
 
@@ -56,9 +53,7 @@ library(tempest)
 
 skills <- tempest_agent_skills()
 names(skills)
-#> [1] "build-tempest-workflow"  "conduct-storm-research" 
-#> [3] "design-tempest-workflow" "use-tempest-research"   
-#> [5] "verify-tempest-workflow"
+#> [1] "conduct-storm-research" "use-tempest-research"
 ```
 
 Install the supported skills into a directory used by the agent:

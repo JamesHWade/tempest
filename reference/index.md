@@ -21,7 +21,7 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
 - [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
   : Create a Co-STORM evaluation task using SimulatedUser
 - [`tempest_execution_events()`](https://jameshwade.github.io/tempest/reference/tempest_execution_events.md)
-  **\[experimental\]** : Query events from a Tempest execution
+  **\[experimental\]** : Query events from a Tempest product execution
 - [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   : Create a Co-STORM session
 - [`tempest_session_process_turn_async()`](https://jameshwade.github.io/tempest/reference/tempest_session_process_turn_async.md)
@@ -106,96 +106,53 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
 - [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
   **\[experimental\]** : Run embedded Tempest Shiny panels
 
-## Retiring experimental generic kernel
+## Generic-kernel cutover
 
-Deletion-owned baseline scheduled for the section-10 PR.
+Immediate Tempest 0.2 cutover to the STORM and Co-STORM product APIs.
 
 - [`tempest-generic-kernel-retirement`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  **\[experimental\]** : Retirement of Tempest's experimental generic
-  kernel
-- [`tempest_objective()`](https://jameshwade.github.io/tempest/reference/tempest_objective.md)
-  **\[experimental\]** : Create a Tempest objective
-- [`tempest_deliverable_spec()`](https://jameshwade.github.io/tempest/reference/tempest_deliverable_spec.md)
-  **\[experimental\]** : Create a Tempest deliverable specification
-- [`tempest_artifact()`](https://jameshwade.github.io/tempest/reference/tempest_artifact.md)
-  **\[experimental\]** : Create a typed Tempest artifact
-- [`tempest_artifact_representation()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_representation.md)
-  **\[experimental\]** : Describe one renderer-produced artifact
-  representation
-- [`tempest_artifact_catalog()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_catalog.md)
-  **\[experimental\]** : Create a typed Tempest artifact catalog
-- [`tempest_artifact_catalog_restore()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_catalog_restore.md)
-  **\[experimental\]** : Restore a typed Tempest artifact catalog
-- [`tempest_artifact_codec_definition()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_codec_definition.md)
-  [`tempest_artifact_codec()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_codec_definition.md)
-  **\[experimental\]** : Define a typed artifact codec
-- [`tempest_artifact_codec_registry()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_codec_registry.md)
-  **\[experimental\]** : Create a typed artifact codec registry
-- [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
-  **\[experimental\]** : Create a Tempest artifact store adapter
-- [`tempest_memory_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_memory_artifact_store.md)
-  **\[experimental\]** : Create an in-memory Tempest artifact store
-- [`tempest_operation_registry()`](https://jameshwade.github.io/tempest/reference/tempest_operation_registry.md)
-  **\[experimental\]** : Create a Tempest runtime operation registry
-- [`tempest_builtin_operation_registry()`](https://jameshwade.github.io/tempest/reference/tempest_builtin_operation_registry.md)
-  **\[experimental\]** : Create a registry containing Tempest's built-in
-  deliverable operations
-- [`tempest_workflow_step()`](https://jameshwade.github.io/tempest/reference/tempest_workflow_step.md)
-  **\[experimental\]** : Create a Tempest workflow step
-- [`tempest_workflow_spec()`](https://jameshwade.github.io/tempest/reference/tempest_workflow_spec.md)
-  **\[experimental\]** : Create a Tempest workflow specification
-- [`tempest_storm_workflow_spec()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_spec.md)
-  **\[experimental\]** : Create the built-in STORM workflow
-  specification
-- [`tempest_costorm_workflow_spec()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_spec.md)
-  **\[experimental\]** : Create the built-in Co-STORM workflow
-  specification
-- [`tempest_builtin_workflow_operation_registry()`](https://jameshwade.github.io/tempest/reference/tempest_builtin_workflow_operation_registry.md)
-  **\[experimental\]** : Create a registry for Tempest's built-in
-  research workflows
-- [`tempest_generate_deliverable()`](https://jameshwade.github.io/tempest/reference/tempest_generate_deliverable.md)
-  **\[experimental\]** : Generate and finalize a Tempest deliverable
-- [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest_run_workflow.md)
-  **\[experimental\]** : Execute an application-neutral Tempest workflow
-- [`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_run.md)
-  **\[experimental\]** : Run STORM through the generic Tempest workflow
-  kernel
-- [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_run.md)
-  **\[experimental\]** : Attach and start the generic workflow for a
-  Co-STORM session
-- [`tempest_run_status()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
-  [`tempest_run_events()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
-  [`tempest_run_approvals()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
-  [`tempest_run_artifacts()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
-  [`tempest_run_capability_grants()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
-  [`tempest_run_artifact()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
-  [`tempest_run_record_approval()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
-  [`tempest_run_request_cancel()`](https://jameshwade.github.io/tempest/reference/tempest_run_accessors.md)
-  **\[experimental\]** : Inspect and control a generic Tempest run
-- [`tempest_run_snapshot()`](https://jameshwade.github.io/tempest/reference/tempest_run_snapshot.md)
-  **\[experimental\]** : Snapshot generic Tempest run state
-- [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md)
-  **\[experimental\]** : Save a generic Tempest run bundle
-- [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md)
-  **\[experimental\]** : Create a Tempest skill specification
-- [`tempest_skill_registry()`](https://jameshwade.github.io/tempest/reference/tempest_skill_registry.md)
-  **\[experimental\]** : Create a Tempest skill registry
-- [`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest_capability_spec.md)
-  **\[experimental\]** : Create a Tempest capability specification
-- [`tempest_capability_resolver()`](https://jameshwade.github.io/tempest/reference/tempest_capability_resolver.md)
-  **\[experimental\]** : Create a Tempest capability resolver
-- [`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest_connection_ref.md)
-  **\[experimental\]** : Create an opaque Tempest connection reference
-- [`tempest_connection_provider()`](https://jameshwade.github.io/tempest/reference/tempest_connection_provider.md)
-  **\[experimental\]** : Create a Tempest runtime connection provider
-- [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
-  **\[experimental\]** : Create a Tempest runtime
-- [`tempest_storm_workflow_adapter()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_adapter.md)
-  **\[experimental\]** : Create an adapter for the built-in STORM
-  workflow
-- [`tempest_costorm_workflow_adapter()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_adapter.md)
-  **\[experimental\]** : Create an adapter for the built-in Co-STORM
-  workflow
+  [`tempest_artifact`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_artifact_catalog`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_artifact_catalog_restore`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_artifact_codec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_artifact_codec_definition`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_artifact_codec_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_artifact_representation`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_artifact_store`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_builtin_operation_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_builtin_workflow_operation_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_capability_resolver`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_capability_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_connection_provider`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_connection_ref`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_costorm_workflow_adapter`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_costorm_workflow_run`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_costorm_workflow_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_deliverable_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_generate_deliverable`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_memory_artifact_store`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_objective`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_operation_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_approvals`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_artifact`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_artifacts`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_capability_grants`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_events`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_record_approval`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_request_cancel`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_save`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_snapshot`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_status`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_run_workflow`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_runtime`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_skill`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_skill_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_storm_workflow_adapter`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_storm_workflow_run`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_storm_workflow_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_workflow_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  [`tempest_workflow_step`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+  : Tempest 0.2 generic-kernel cutover
 
 ## Session persistence
 

@@ -38,9 +38,10 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
-    <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
+<li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,12 +74,12 @@
     
     
 <p>Tempest ships Agent Skills alongside its R APIs. Two research skills
-remain supported; three custom-workflow skills document the frozen
-Tempest 0.1 kernel and will be removed in Tempest 0.2.0. Each skill is a
-portable directory containing a <code>SKILL.md</code> file, supporting
-references, and agent metadata. A compatible agent can load those
-instructions when it needs to operate Tempest or conduct STORM research
-in another framework.</p>
+are supported. Three generic-workflow directories remain only as
+unavailable deletion inventory until T8 removes them physically. Each
+supported skill is a portable directory containing a
+<code>SKILL.md</code> file, supporting references, and agent metadata. A
+compatible agent can load those instructions when it needs to operate
+Tempest or conduct STORM research in another framework.</p>
 <p>This article covers two deployment shapes:</p>
 <ol style="list-style-type: decimal">
 <li>install the skills for a coding or research agent; or</li>
@@ -88,39 +89,15 @@ in another framework.</p>
 instructions. The host application must still provide the tools,
 authorization, state, and lifecycle needed to perform the research.</p>
 <div class="section level2">
-<h2 id="agent-skills-and-workflow-skills-are-different">Agent Skills and workflow skills are different<a class="anchor" aria-label="anchor" href="#agent-skills-and-workflow-skills-are-different"></a>
+<h2 id="agent-skills-and-product-apis-are-different">Agent Skills and product APIs are different<a class="anchor" aria-label="anchor" href="#agent-skills-and-product-apis-are-different"></a>
 </h2>
 <p>Tempest has two concepts with similar names:</p>
-<table class="table">
-<colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
-</colgroup>
-<thead><tr class="header">
-<th>Concept</th>
-<th>Created by</th>
-<th>Purpose</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>Agent Skill</td>
-<td>
+<p>An Agent Skill is external operating guidance installed with
 <code><a href="../reference/tempest_agent_skills.html">tempest_agent_skills()</a></code> or
-<code><a href="../reference/tempest_agent_skills.html">tempest_install_agent_skills()</a></code>
-</td>
-<td>Teaches an external agent how to use or extend Tempest</td>
-</tr>
-<tr class="even">
-<td>Workflow skill</td>
-<td><code><a href="../reference/tempest_skill.html">tempest_skill()</a></code></td>
-<td>Frozen 0.1 runtime contract scheduled for removal in 0.2.0</td>
-</tr>
-</tbody>
-</table>
-<p>An Agent Skill is external operating guidance. The similarly named
-workflow skill belongs to the retiring generic runtime and should not be
-adopted for a new integration.</p>
+<code><a href="../reference/tempest_agent_skills.html">tempest_install_agent_skills()</a></code>. It does not grant runtime
+authority. The former <code><a href="../reference/tempest-generic-kernel-retirement.html">tempest_skill()</a></code> generic-kernel symbol
+is unavailable in Tempest 0.2 and is unrelated to these
+instructions.</p>
 </div>
 <div class="section level2">
 <h2 id="choose-a-supported-research-skill">Choose a supported research skill<a class="anchor" aria-label="anchor" href="#choose-a-supported-research-skill"></a>
@@ -150,26 +127,11 @@ STORM and Co-STORM workflows</td>
 <td>Follow a provider- and framework-neutral STORM or Co-STORM protocol
 outside Tempest</td>
 </tr>
-<tr class="odd">
-<td><code>design-tempest-workflow</code></td>
-<td>Tempest 0.1 only</td>
-<td>Maintain an existing generic workflow design</td>
-</tr>
-<tr class="even">
-<td><code>build-tempest-workflow</code></td>
-<td>Tempest 0.1 only</td>
-<td>Maintain an existing generic workflow implementation</td>
-</tr>
-<tr class="odd">
-<td><code>verify-tempest-workflow</code></td>
-<td>Tempest 0.1 only</td>
-<td>Audit an existing generic workflow before its migration</td>
-</tr>
 </tbody>
 </table>
 <p>The two research skills describe complete operating modes and can be
-used independently. Do not start new work with the three retiring
-workflow skills.</p>
+used independently. The three generic-workflow skill entrypoints contain
+only an unavailable notice and must not be used.</p>
 </div>
 <div class="section level2">
 <h2 id="discover-and-install-the-skills">Discover and install the skills<a class="anchor" aria-label="anchor" href="#discover-and-install-the-skills"></a>
@@ -180,9 +142,7 @@ workflow skills.</p>
 <span></span>
 <span><span class="va">skills</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_agent_skills.html">tempest_agent_skills</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">skills</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "build-tempest-workflow"  "conduct-storm-research" </span></span>
-<span><span class="co">#&gt; [3] "design-tempest-workflow" "use-tempest-research"   </span></span>
-<span><span class="co">#&gt; [5] "verify-tempest-workflow"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "conduct-storm-research" "use-tempest-research"</span></span></code></pre></div>
 <p>Install the supported skills into a directory used by the agent:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/tempest_agent_skills.html">tempest_install_agent_skills</a></span><span class="op">(</span></span>

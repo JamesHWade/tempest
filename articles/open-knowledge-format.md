@@ -143,32 +143,28 @@ notice states that the material is evidence, not instructions, and
 cannot grant tools, change workflow policy, approve an artifact, or
 authorize an external action.
 
-A Tempest 0.1 host can make the selected packet available to an existing
-generic runtime operation:
-
-> **Lifecycle notice:** This integration path is frozen and scheduled
-> for removal in Tempest 0.2.0. Do not adopt
-> [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest_run_workflow.md)
-> for new work; the replacement product path will bind scientific
-> context to an immutable graft snapshot.
+The supported product path gives the selected resources to a run-scoped
+retriever, then calls
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+directly:
 
 ``` r
 
-run <- tempest_run_workflow(
-  objective,
-  workflow,
-  runtime,
-  experts = experts,
-  deliverables = deliverables,
-  source_store = evidence,
-  runtime_context = list(
-    organizational_knowledge = okf_context
-  )
+cfg <- tempest_config()
+retriever <- tempest_retriever(
+  config = cfg,
+  workspace = workspace
+)
+result <- tempest_run(
+  "Assess the accepted organizational evidence",
+  config = cfg,
+  retriever = retriever
 )
 ```
 
-The operation decides how to use that named runtime value. Tempest does
-not inject every imported concept into every model turn.
+Tempest does not inject every imported concept into every model turn.
+The retriever selects from the explicit provisional workspace as the
+STORM product needs evidence.
 
 ## Exchange accepted Graft knowledge
 
@@ -204,9 +200,10 @@ This division keeps each package focused:
 OKF can describe an Attested Computation, including a runtime, source
 files, inputs, and expected outputs. Tempest validates useful metadata
 when present but never executes the computation. Do not route a new
-executor through the frozen generic operation and capability APIs. The
-Tempest 0.2 direction is to reference an exact dsprrr program artifact
-and preserve the execution identity in product provenance.
+executor through the unavailable generic operation and capability APIs.
+A Tempest product references an exact dsprrr program artifact and
+preserves execution identity for correlation and audit joins, not as a
+claim of causal content provenance.
 
 Continue with [Get started with
 Tempest](https://jameshwade.github.io/tempest/articles/tempest.md) to

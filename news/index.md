@@ -5,24 +5,32 @@
 - Tempest is now explicitly scoped as a scientific-research product. Its
   experimental application-neutral workflow, runtime, capability,
   connection, skill, deliverable, artifact, and generic host-state APIs
-  are frozen and scheduled for removal in the deliberate 0.2.0 breaking
-  release (v659).
+  are unavailable immediately; the 41 retained export names and two
+  internal run restore/resume symbols fail with
+  `tempest_generic_kernel_cutover_error` until T8 removes them
+  physically (an7p).
 - Tempest 0.2 is a hard cut to canonical research-product contracts:
   `ResearchWorkspace` replaces `SourceStore`; STORM and Co-STORM expose
   no `store` aliases, legacy collection names, generic runtime
   injection, or generic result projections; old product bundles fail as
   unsupported; and manifests carry exact dsprrr program, Graft snapshot,
-  and Deputy correlation identities.
+  and Deputy execution identities. Deputy identities support correlation
+  and audit joins only, not claims of causal content provenance.
 - Current persistence accepts only ResearchWorkspace snapshot schema 5,
   Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with
-  state schema 4, ProgramSet and research-manifest schema 2, StageRecord
-  output-digest payload schema 3, and promotion-bundle schema 1; readers
-  reject every other version, missing or extra fields, and values that
-  only become valid after coercion.
+  state schema 4, ProgramSet schema 2, research-manifest schema 3,
+  StageRecord output-digest payload schema 3, and promotion-bundle
+  schema 1; readers reject every other version, missing or extra fields,
+  and values that only become valid after coercion.
 - The bundled Shiny app now presents Co-STORM setup as a one-time native
   shinychat greeting with consistently sized controls, lets users
   replace generated panels with up to five named expert perspectives,
   and reserves the footer for active-session status and actions.
+- [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+  and
+  [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
+  expose and install only the two supported research skills; the three
+  generic-workflow skill names are unknown and unavailable.
 - [`tempest_claim_support()`](https://jameshwade.github.io/tempest/reference/tempest_claim_support.md)
   and
   [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md)
@@ -32,6 +40,10 @@
   [`tempest_verify_claims()`](https://jameshwade.github.io/tempest/reference/tempest_verify_claims.md)
   replaces the complete pair set atomically, while claim summaries and
   citation audits are derived projections.
+- [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+  removes the obsolete `artifact_store`, `enable_discourse_manager`,
+  `node_expansion_trigger_count`, and `enable_unseen_surfacing`
+  controls; passing any of them is an error.
 - [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md)
   resolves an accepted `GovernedProcedure` and exact dsprrr
   `ProgramArtifact` only through a pinned Graft view. ProgramSets
@@ -91,12 +103,29 @@
   final report, and permit publication trust only when exact program,
   trace, claim, evidence-span, and verification provenance can be
   reconstructed.
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  continues only from an exact `output_dir` bundle when `resume = TRUE`;
+  the internal state-only continuation seam has been removed.
+- `tempest_run(parallel_research = TRUE)` rejects before any provider
+  work because every open-ended expert turn must synchronously bind one
+  terminal Deputy completion.
 - [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   now routes its moderator and every expert through persistent,
   permission-bounded Deputy agents. Co-STORM snapshots and bundles
   retain only credential-safe opaque run, session, agent, stage, role,
   expert, and correlation traces; provider execution and trace recording
   fail closed, and no Deputy Agent is serialized.
+- [`tempest_session_process_turn_async()`](https://jameshwade.github.io/tempest/reference/tempest_session_process_turn_async.md)
+  accepts and commits only completion-ID-bound Deputy results; raw chat
+  payloads and legacy execution hints are unsupported.
+- [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
+  and
+  [`tempest_shiny_store()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_store.md)
+  expose only STORM and Co-STORM product state, with no generic run,
+  capability, connection, workflow, deliverable, or artifact accessors.
+- [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md)
+  is a deterministic projection and no longer accepts chat or
+  configuration controls.
 
 ## tempest 0.1.0
 
@@ -132,26 +161,25 @@
 - [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
   and
   [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
-  expose and install five bundled Agent Skills for using Tempest STORM
-  and Co-STORM, conducting the portable research protocol in other
-  hosts, and designing, building, or verifying custom Tempest workflows
-  (cheg).
-- [`tempest_artifact()`](https://jameshwade.github.io/tempest/reference/tempest_artifact.md),
-  [`tempest_artifact_catalog()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_catalog.md),
-  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),
-  [`tempest_deliverable_spec()`](https://jameshwade.github.io/tempest/reference/tempest_deliverable_spec.md),
-  [`tempest_generate_deliverable()`](https://jameshwade.github.io/tempest/reference/tempest_generate_deliverable.md),
-  [`tempest_objective()`](https://jameshwade.github.io/tempest/reference/tempest_objective.md),
+  expose and install the two supported research skills; three
+  generic-workflow directories remain only as inactive deletion
+  inventory until T8 removes them physically (cheg).
+- [`tempest_artifact()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  [`tempest_artifact_catalog()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  [`tempest_deliverable_spec()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  [`tempest_generate_deliverable()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  [`tempest_objective()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
   and
-  [`tempest_operation_registry()`](https://jameshwade.github.io/tempest/reference/tempest_operation_registry.md)
+  [`tempest_operation_registry()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
   add an application-neutral output lifecycle with versioned operation
   references, validation, evidence lineage, typed multi-format
   artifacts, approval-before-export enforcement, safe invalid-output
   retries, host storage adapters, and checksummed persistence shared by
   STORM, Co-STORM, and host-defined outcomes (xbwy).
-- [`tempest_artifact_codec_registry()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_codec_registry.md)
+- [`tempest_artifact_codec_registry()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
   and
-  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md)
+  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
   provide versioned runtime codecs and complete typed storage adapters
   for inline or external custom artifact representations without
   serializing executable codec functions (fr54).
@@ -173,9 +201,9 @@
 - [`tempest_create_ragnar_store()`](https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.md)
   preserves and validates compatible persistent stores by default;
   destructive replacement now requires `reset = TRUE` (yb8s).
-- [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_workflow_run.md)
+- [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
   and
-  [`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest_storm_workflow_run.md)
+  [`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
   expose the built-in research workflows as executable `TempestRun`
   specifications with shared evidence, typed checkpoints, selected
   expert teams, scoped connections, and an approval-gated Co-STORM
@@ -211,11 +239,11 @@
   UI integration boundaries now have deterministic fixture-based
   contract coverage without API keys or network access (kqgx).
 - [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md),
-  [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest_skill.md),
-  [`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest_capability_spec.md),
-  [`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest_connection_ref.md),
+  [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  [`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  [`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
   and
-  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest_runtime.md)
+  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
   add stable expert profiles, reusable skill contracts, per-context
   least-privilege capability resolution, opaque host connection
   bindings, exact expert-session restoration, and durable per-step grant
@@ -223,7 +251,7 @@
   `tempest_config(tools = )` argument have been removed, so hosts should
   attach tool implementations through scoped runtime capabilities
   (wgr8).
-- [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_store.md),
+- [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
   [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md),
   [`tempest_progress_event()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event.md),
   [`tempest_session_save()`](https://jameshwade.github.io/tempest/reference/tempest_session_save.md),
@@ -277,17 +305,17 @@
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   now executes STORM structured steps through dsprrr modules, with
   ellmer fallbacks for module creation or runtime failures.
-- [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest_run_save.md),
+- [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
   `tempest_run_resume()`, and the `tempest_run_*()` accessors give host
   applications checksummed generic run bundles plus stable status,
   event, approval, per-attempt capability-grant, artifact, cancellation,
   strict restore-integrity, permission-narrowing, and explicit
   partial-recovery controls without reaching into mutable R6 internals
   (vtvt).
-- [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest_run_workflow.md),
-  [`tempest_workflow_spec()`](https://jameshwade.github.io/tempest/reference/tempest_workflow_spec.md),
+- [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  [`tempest_workflow_spec()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
   and
-  [`tempest_workflow_step()`](https://jameshwade.github.io/tempest/reference/tempest_workflow_step.md)
+  [`tempest_workflow_step()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
   add a generic deterministic run shell with expert assignments, bounded
   retry history, ordered events, typed artifacts, requested-output
   completion checks, pre-execution policy gates, post-generation output

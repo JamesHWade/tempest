@@ -9,7 +9,7 @@ excluded.
 
 ``` r
 TempestResearchManifest(
-  schema_version = 2L,
+  schema_version = 3L,
   research_run_id = character(0),
   mode = character(0),
   config_digest = character(0),

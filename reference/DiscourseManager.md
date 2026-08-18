@@ -1,13 +1,8 @@
 # DiscourseManager
 
-LLM-driven discourse management for Co-STORM sessions. Decides which
-agent should speak next and what action to take.
+Retired generic discourse manager for Co-STORM sessions.
 
 ## Public fields
-
-- `chat`:
-
-  An ellmer chat object for making decisions.
 
 - `config`:
 

@@ -18,12 +18,10 @@ Start with the interface that matches the outcome you need:
 |----|----|----|
 | Create an evidence-backed report | [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md) | A report, sources, claims, outline, and run state |
 | Explore a topic interactively | [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md) or [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md) | A continuing Co-STORM conversation, mind map, evidence, and report |
-| Inspect the frozen generic kernel | [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest_run_workflow.md) | Frozen experimental 0.1 behavior scheduled for removal in 0.2.0 |
 
 Most package users should begin with scripted STORM. Co-STORM is useful
-when the research question should evolve through dialogue. The
-experimental generic workflow kernel is frozen; do not use it for new
-integrations.
+when the research question should evolve through dialogue. Tempest 0.2
+has no application-neutral workflow or runtime API.
 
 ## Install and load Tempest
 
@@ -145,14 +143,15 @@ and citation-audit tables are derived projections. The product report is
 available directly in `result$report_md`; new callers should not depend
 on the frozen 0.1 artifact catalog.
 
-Choose a stronger `citation_policy` when a workflow requires verified
-claims:
+Every STORM and Co-STORM publication runs the exact verifier ProgramSet
+stage and atomically binds claim-by-evidence-span support.
+`citation_policy` controls only report rendering and unsupported-claim
+handling:
 
 - `"source_attributed"` converts known inline source IDs to footnotes
-  without verifying the claims;
-- `"claim_verified"` runs the exact verifier ProgramSet stage,
-  atomically replaces the complete claim-by-evidence-span support set,
-  and exposes the derived claim status in the final references; and
+  without disabling product verification;
+- `"claim_verified"` exposes threshold-verified support in the rendered
+  report and final references; and
 - `"strict"` fails publication unless each publishable assertion is
   bound to a completed, provenance-bound verification result at the
   configured threshold and cites that claim’s exact source set.
@@ -232,7 +231,7 @@ and workflow settings stable when continuing an existing run.
 
 Current readers accept only `ResearchWorkspace` snapshot schema 5,
 Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state
-schema 4, ProgramSet and research-manifest schema 2, StageRecord
+schema 4, ProgramSet schema 2, research-manifest schema 3, StageRecord
 output-digest payload schema 3, and promotion-bundle schema 1. Every
 other version is rejected, as is any missing or extra field or value
 that becomes valid only after coercion.
@@ -281,8 +280,8 @@ result <- tempest_run(
 
 Profiles describe a scientific perspective and stable expert identity.
 Keep live tools, clients, and credentials outside the serialized
-profile. The 0.1 skill, capability, and connection fields are frozen and
-should not be used for new integrations.
+profile. Product code attaches only the tools required for its STORM or
+Co-STORM role.
 
 ## Explore interactively with Co-STORM
 
@@ -348,45 +347,29 @@ Each expert keeps its own conversation continuity and receives only the
 role-specific tools needed for that session. The moderator delegates by
 stable expert ID, and evidence collected during dialogue remains
 available to the final report. Session bundles preserve durable research
-state, but not credentials, live chat handles, tools, authenticated
-clients, generic workflow state, or runtime registries. Configure fresh
-supported chats and retrieval dependencies through `config` before
-resuming.
+state, but not credentials, live chat handles, tools, or authenticated
+clients. Configure fresh supported chats and retrieval dependencies
+through `config` before resuming.
 
 The moderator and experts use persistent Deputy agents as the required
 Co-STORM runtime. Tempest disables ambient file, shell, R, web, and
 package-install capabilities, then allowlists only the tools already
 attached for that role. Snapshots persist canonical opaque terminal
 traces for each run and never serialize the Deputy Agent or provider
-credentials.
+credentials. Those execution identities support correlation and audit
+joins only; they do not claim that an execution caused, authored, or
+validated report content.
 
-## Frozen generic-kernel deletion inventory
+## Generic-kernel cutover
 
-> **Lifecycle notice:** The experimental generic workflow kernel is
-> frozen and retained only for the section-10 deletion PR. It is not a
-> supported Tempest 0.2 product surface.
-
-The `reusable-workflows` vignette is an offline deletion-owned fixture
-that records:
-
-- an application-neutral objective;
-- a host-selected expert;
-- a versioned output template;
-- runtime generator, validator, renderer, and step operations;
-- artifact approval and ordered events;
-- typed output inspection; and
-- the former generic runtime boundary, which supported product bundles
-  do not restore.
-
-Open it from an installed package:
-
-``` r
-
-vignette("reusable-workflows", package = "tempest")
-```
-
-On the pkgdown website, see the [frozen generic workflow deletion
-inventory](https://jameshwade.github.io/tempest/articles/reusable-workflows.md).
+Tempest 0.2 supports only
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+and
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+as research product entry points. The experimental application-neutral
+kernel is unavailable, and retained symbols fail immediately with
+`tempest_generic_kernel_cutover_error`. No compatibility layer is
+provided.
 
 ## Where to go next
 

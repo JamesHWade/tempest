@@ -19,9 +19,10 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/reusable-workflows.html">Inspect the Tempest 0.1 generic-kernel deletion inventory</a></li>
-    <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -54,8 +55,7 @@
 <span>  experts <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  run <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -103,27 +103,19 @@ builtin set.</p></dd>
 requires its exact pinned view before any provider call; the view remains
 process-local and is never serialized.</p></dd>
 
-
-<dt id="arg-run">run<a class="anchor" aria-label="anchor" href="#arg-run"></a></dt>
-<dd><p>Optional <code>TempestRun</code>, function, or reactive. This lets a host
-expose a custom headless workflow through the same generic adapter
-reactives as built-in workflows.</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with the shared <code>store</code>; reactive <code>run</code>, <code>status</code>, <code>events</code>,
-<code>approvals</code>, <code>assignments</code>, <code>artifacts</code>, <code>evidence</code>, <code>grants</code>, <code>session</code>,
-<code>report</code>, and <code>report_ready</code> accessors; and <code>approve()</code>, <code>cancel()</code>, and
-<code>touch()</code> controls.</p>
+    <p>A list with the shared <code>store</code>; reactive <code>session</code>, <code>events</code>,
+<code>evidence</code>, <code>report</code>, and <code>report_ready</code> accessors; and a product-session
+<code>touch()</code> control.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_shiny_server()</code> pairs with <code><a href="tempest_shiny_ui.html">tempest_shiny_ui()</a></code> and lets a host app
 provide a <a href="TempestConfig.html">TempestConfig</a>, optional expert profiles, a stable session id, and
-an optional shared store. The returned
-handle exposes the shared store and reactive accessors for generic run,
-event, approval, capability-grant, artifact, session, and report state.</p>
+an optional shared store. The returned handle exposes only product session,
+event, evidence, and report state.</p>
     </div>
 
     <div class="section level2">
