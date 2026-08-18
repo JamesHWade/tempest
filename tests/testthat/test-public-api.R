@@ -43,23 +43,21 @@ test_that("the 0.2 public export surface is exact", {
 })
 
 test_that("the frozen generic-kernel retirement set is explicit", {
-  expected <- readLines(
+  frozen <- readLines(
     test_path("fixtures", "generic-kernel-exports-0.1.0.txt"),
     warn = FALSE
   )
-  expected <- setdiff(
-    expected,
-    c("tempest_run_restore", "tempest_run_resume")
-  )
-  scheduled <- sort(
-    tempest:::tempest_generic_kernel_exports,
-    method = "radix"
-  )
+  internal <- c("tempest_run_restore", "tempest_run_resume")
+  expected <- setdiff(frozen, internal)
+  scheduled <- tempest:::tempest_generic_kernel_exports
   public <- getNamespaceExports("tempest")
 
+  expect_length(frozen, 43L)
   expect_identical(scheduled, expected)
   expect_setequal(intersect(scheduled, public), scheduled)
+  expect_identical(intersect(internal, public), character())
   expect_length(scheduled, 41L)
+  expect_length(public, 103L)
 })
 
 test_that("the pre-0.2 S3 registration baseline is exact", {

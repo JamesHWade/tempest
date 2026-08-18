@@ -819,6 +819,13 @@ tempest_research_workspace_bind_verification_owner <- function(workspace) {
     workspace,
     restoring = TRUE
   )
+  if (
+    !identical(tempest_research_workspace_mutation_state(workspace), "open")
+  ) {
+    tempest_research_workspace_abort(
+      "Verification ownership requires an open ResearchWorkspace."
+    )
+  }
   token <- new.env(parent = emptyenv())
   workspace$.__enclos_env__$private$verification_owner_token_value <- token
   token
@@ -841,6 +848,86 @@ tempest_research_workspace_assert_standalone_verification <- function(
       )
     )
   }
+  invisible(workspace)
+}
+
+tempest_research_workspace_mutation_state <- function(workspace) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_research_workspace_abort(
+      "Workspace mutation state requires a ResearchWorkspace."
+    )
+  }
+  state <- workspace$.__enclos_env__$private$mutation_state_value
+  if (
+    !rlang::is_string(state) ||
+      !state %in%
+        c(
+          "open",
+          "publication_locked",
+          "sealed"
+        )
+  ) {
+    tempest_research_workspace_abort(
+      "ResearchWorkspace mutation state is invalid."
+    )
+  }
+  state
+}
+
+tempest_research_workspace_publication_lock <- function(workspace, owner) {
+  state <- tempest_research_workspace_mutation_state(workspace)
+  private <- workspace$.__enclos_env__$private
+  if (
+    !identical(state, "open") ||
+      !is.environment(owner) ||
+      !identical(owner, private$verification_owner_token_value)
+  ) {
+    tempest_research_workspace_abort(
+      "ResearchWorkspace publication requires its exact open-session owner."
+    )
+  }
+  private$publication_owner_token_value <- owner
+  private$mutation_state_value <- "publication_locked"
+  invisible(workspace)
+}
+
+tempest_research_workspace_publication_release <- function(workspace, owner) {
+  state <- tempest_research_workspace_mutation_state(workspace)
+  private <- workspace$.__enclos_env__$private
+  if (
+    !identical(state, "publication_locked") ||
+      !is.environment(owner) ||
+      !identical(owner, private$publication_owner_token_value)
+  ) {
+    tempest_research_workspace_abort(
+      "ResearchWorkspace publication lock cannot be released by this owner."
+    )
+  }
+  private$publication_owner_token_value <- NULL
+  private$mutation_state_value <- "open"
+  invisible(workspace)
+}
+
+tempest_research_workspace_seal <- function(workspace, owner = NULL) {
+  state <- tempest_research_workspace_mutation_state(workspace)
+  private <- workspace$.__enclos_env__$private
+  expected_owner <- if (identical(state, "publication_locked")) {
+    private$publication_owner_token_value
+  } else {
+    private$verification_owner_token_value
+  }
+  if (
+    identical(state, "sealed") ||
+      !identical(state %in% c("open", "publication_locked"), TRUE) ||
+      (!is.null(expected_owner) && !identical(owner, expected_owner)) ||
+      (is.null(expected_owner) && !is.null(owner))
+  ) {
+    tempest_research_workspace_abort(
+      "ResearchWorkspace cannot be sealed by this product owner."
+    )
+  }
+  private$publication_owner_token_value <- NULL
+  private$mutation_state_value <- "sealed"
   invisible(workspace)
 }
 
@@ -889,6 +976,8 @@ ResearchWorkspace <- R6::R6Class(
       max_sources = Inf,
       accepted_graft_references = list()
     ) {
+      private$mutation_state_value <- "open"
+      private$publication_owner_token_value <- NULL
       private$resources_value <- new.env(parent = emptyenv())
       private$claims_value <- new.env(parent = emptyenv())
       private$evidence_spans_value <- new.env(parent = emptyenv())
@@ -929,6 +1018,7 @@ ResearchWorkspace <- R6::R6Class(
     #' @description Set the maximum number of unique sources.
     #' @param max_sources A positive whole number or `Inf`.
     set_max_sources = function(max_sources) {
+      private$assert_mutation_open()
       if (
         !is.numeric(max_sources) ||
           length(max_sources) != 1L ||
@@ -963,6 +1053,7 @@ ResearchWorkspace <- R6::R6Class(
     #' @param resource A resource created by [tempest_resource()] or an
     #'   internal built-in web-source record.
     upsert_retrieved_resource = function(resource) {
+      private$assert_mutation_open()
       if (!S7::S7_inherits(resource, TempestResource)) {
         resource <- tempest_source_as_resource(resource)
       }
@@ -1082,6 +1173,7 @@ ResearchWorkspace <- R6::R6Class(
     #' @param claims A list of `tempest_claim` S7 records.
     #' @param commit Optional zero-argument callback committed with the batch.
     add_proposed_claims = function(claims, commit = NULL) {
+      private$assert_mutation_open()
       if (!is.list(claims) || is.data.frame(claims)) {
         tempest_research_workspace_abort(
           "{.arg claims} must be a list of {.cls tempest_claim} records."
@@ -1158,6 +1250,7 @@ ResearchWorkspace <- R6::R6Class(
       evidence_spans = list(),
       commit = NULL
     ) {
+      private$assert_mutation_open()
       if (
         !is.list(claims) ||
           is.data.frame(claims) ||
@@ -1319,6 +1412,7 @@ ResearchWorkspace <- R6::R6Class(
       .verification_owner_token = NULL,
       commit = NULL
     ) {
+      private$assert_verification_write(.verification_owner_token)
       if (
         !is.list(claim_supports) ||
           is.data.frame(claim_supports) ||
@@ -1436,6 +1530,7 @@ ResearchWorkspace <- R6::R6Class(
     #' @description Add an evidence span.
     #' @param span A `tempest_evidence_span` S7 record.
     add_evidence_span = function(span) {
+      private$assert_mutation_open()
       span <- private$validate_evidence_span(span)
       id <- span@evidence_span_id
       previous <- private$evidence_spans_value[[id]]
@@ -1487,6 +1582,7 @@ ResearchWorkspace <- R6::R6Class(
     #' @param claim_id Claim id.
     #' @param span_id Evidence span id.
     link_evidence_to_proposed_claim = function(claim_id, span_id) {
+      private$assert_mutation_open()
       claim <- self$get_proposed_claim(claim_id)
       if (is.null(claim)) {
         tempest_research_workspace_abort("Unknown claim id: {.val {claim_id}}.")
@@ -1545,6 +1641,7 @@ ResearchWorkspace <- R6::R6Class(
     #' @description Add a dispute.
     #' @param dispute A `tempest_dispute` S7 record.
     add_dispute = function(dispute) {
+      private$assert_mutation_open()
       if (!S7::S7_inherits(dispute, tempest_dispute)) {
         tempest_research_workspace_abort(
           "{.arg dispute} must be a {.cls tempest_dispute} record."
@@ -1591,6 +1688,7 @@ ResearchWorkspace <- R6::R6Class(
     #' @description Record a reference to accepted graft knowledge.
     #' @param reference Opaque canonical JSON-compatible graft reference.
     record_accepted_graft_reference = function(reference) {
+      private$assert_mutation_open()
       private$accepted_graft_references_value <-
         tempest_research_workspace_references(
           c(
@@ -1888,6 +1986,8 @@ ResearchWorkspace <- R6::R6Class(
     }
   ),
   private = list(
+    mutation_state_value = "open",
+    publication_owner_token_value = NULL,
     resources_value = NULL,
     claims_value = NULL,
     evidence_spans_value = NULL,
@@ -1900,6 +2000,42 @@ ResearchWorkspace <- R6::R6Class(
     accepted_graft_references_value = NULL,
     citation_audit_value = NULL,
     verification_owner_token_value = NULL,
+    assert_mutation_open = function() {
+      if (!identical(private$mutation_state_value, "open")) {
+        tempest_research_workspace_abort(
+          paste0(
+            "ResearchWorkspace is read-only during or after terminal ",
+            "product publication."
+          )
+        )
+      }
+      invisible(NULL)
+    },
+    assert_verification_write = function(owner) {
+      state <- private$mutation_state_value
+      if (identical(state, "sealed")) {
+        tempest_research_workspace_abort(
+          "A sealed ResearchWorkspace cannot be verified again."
+        )
+      }
+      if (
+        identical(state, "publication_locked") &&
+          !identical(owner, private$publication_owner_token_value)
+      ) {
+        tempest_research_workspace_abort(
+          paste0(
+            "Only the exact publication owner may verify a locked ",
+            "ResearchWorkspace."
+          )
+        )
+      }
+      if (!state %in% c("open", "publication_locked")) {
+        tempest_research_workspace_abort(
+          "ResearchWorkspace mutation state is invalid."
+        )
+      }
+      invisible(NULL)
+    },
     validate_resource = function(resource) {
       if (!S7::S7_inherits(resource, TempestResource)) {
         tempest_research_workspace_abort(
@@ -1919,10 +2055,10 @@ ResearchWorkspace <- R6::R6Class(
         }
       )
       if (!is.null(resource@content)) {
-        expected_hash <- tempest_artifact_codec_encode(
+        expected_hash <- tempest_product_content_hash(
           resource@content,
           resource@media_type
-        )$sha256
+        )
         if (
           is.na(resource@content_hash) ||
             !identical(resource@content_hash, expected_hash)

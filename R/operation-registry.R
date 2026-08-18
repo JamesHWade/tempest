@@ -305,6 +305,7 @@ TempestOperationRegistry <- R6::R6Class(
 #' ))
 #' registry$has("summarize", kind = "generator")
 #' @export
+#' @noRd
 tempest_operation_registry <- function(operations = list()) {
   TempestOperationRegistry$new(operations = operations)
 }

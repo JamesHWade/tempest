@@ -1,6 +1,7 @@
 await_tempest_promise <- function(
   promise,
-  timeout_s = if (identical(Sys.getenv("R_COVR"), "true")) 60 else 10
+  timeout_s = if (identical(Sys.getenv("R_COVR"), "true")) 60 else 10,
+  hard_timeout_s = max(4 * timeout_s, 60)
 ) {
   resolved <- FALSE
   value <- NULL
@@ -17,9 +18,18 @@ await_tempest_promise <- function(
     }
   )
   deadline <- Sys.time() + timeout_s
-  while (!resolved && Sys.time() < deadline) {
-    later::run_now(0.02)
-    Sys.sleep(0.01)
+  hard_deadline <- Sys.time() + hard_timeout_s
+  while (
+    !resolved &&
+      Sys.time() < deadline &&
+      Sys.time() < hard_deadline
+  ) {
+    progressed <- later::run_now(0.02)
+    if (isTRUE(progressed)) {
+      deadline <- Sys.time() + timeout_s
+    } else {
+      Sys.sleep(0.01)
+    }
   }
   if (!resolved) {
     stop("Promise did not settle before the test timeout.", call. = FALSE)

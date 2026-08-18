@@ -1,270 +1,3 @@
-test_that("async fact extraction keeps the event loop responsive", {
-  skip_if_not_installed("promises")
-  skip_if_not_installed("later")
-  skip_if_not_installed("ellmer")
-  store <- tempest_research_workspace()
-  store$upsert_retrieved_resource(fake_source("https://example.org/1"))
-  source_id <- store$list_retrieved_sources()[[1]]$id
-  resolve_request <- NULL
-  heartbeat <- FALSE
-  extractor <- list(
-    chat_structured_async = function(...) {
-      promises::promise(function(resolve, reject) {
-        resolve_request <<- resolve
-      })
-    }
-  )
-  session <- list(
-    session_id = "async-session",
-    programs = test_program_executions(run_id = "async-session"),
-    workspace = store,
-    chats = list(extractor = extractor),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      tempest_progress_event(
-        run_id = "async-session",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-    }
-  )
-  local_mocked_bindings(
-    tempest_session_programs = function(session) session$programs
-  )
-
-  request <- tempest:::tempest_session_extract_facts_async(
-    session,
-    paste0("Responsive claim [", source_id, "]."),
-    source_ids = source_id
-  )
-  later::later(function() heartbeat <<- TRUE, delay = 0)
-  later::run_now(0.02)
-
-  expect_equal(heartbeat, TRUE)
-  expect_equal(is.null(resolve_request), FALSE)
-  expect_length(store$list_proposed_claims(), 0L)
-  resolve_request(list(
-    facts = list(list(
-      claim = "Responsive claim",
-      sources = list(list(source_id = source_id)),
-      confidence = "high",
-      support_score = 0.9
-    ))
-  ))
-  settled <- await_tempest_promise(request)
-
-  expect_null(settled$error)
-  expect_equal(store$list_proposed_claims()[[1]]@claim_text, "Responsive claim")
-})
-
-test_that("stale async evidence cannot commit or report success", {
-  skip_if_not_installed("promises")
-  skip_if_not_installed("later")
-  skip_if_not_installed("ellmer")
-  store <- fake_store_with_sources(1)
-  source_id <- store$list_retrieved_sources()[[1]]$id
-  resolve_request <- NULL
-  current <- TRUE
-  session <- list(
-    session_id = "stale-session",
-    programs = test_program_executions(run_id = "stale-session"),
-    workspace = store,
-    chats = list(
-      extractor = list(
-        chat_structured_async = function(...) {
-          promises::promise(function(resolve, reject) {
-            resolve_request <<- resolve
-          })
-        }
-      )
-    ),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      tempest_progress_event(
-        run_id = "stale-session",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-    }
-  )
-  local_mocked_bindings(
-    tempest_session_programs = function(session) session$programs
-  )
-  request <- tempest:::tempest_session_commit_evidence_async(
-    session,
-    paste0("Stale claim [", source_id, "]."),
-    source_ids = source_id,
-    is_current = function() current
-  )
-  current <- FALSE
-  resolve_request(list(
-    facts = list(list(
-      claim = "Stale claim",
-      sources = list(list(source_id = source_id)),
-      confidence = "high"
-    ))
-  ))
-  settled <- await_tempest_promise(request)
-
-  expect_null(settled$error)
-  expect_length(store$list_proposed_claims(), 0L)
-  expect_identical(settled$value$cancelled, TRUE)
-})
-
-test_that("evidence commitment skips extraction when a turn cites no source", {
-  skip_if_not_installed("promises")
-  skip_if_not_installed("later")
-  extractor_calls <- 0L
-  events <- list()
-  workspace <- tempest_research_workspace()
-  session <- list(
-    session_id = "unsupported-session",
-    programs = test_program_executions(run_id = "unsupported-session"),
-    workspace = workspace,
-    chats = list(
-      extractor = list(
-        chat_structured_async = function(...) {
-          extractor_calls <<- extractor_calls + 1L
-          promises::promise_resolve(list(facts = list()))
-        }
-      )
-    ),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      event <- tempest_progress_event(
-        run_id = "unsupported-session",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-      events[[length(events) + 1L]] <<- event
-      event
-    }
-  )
-  local_mocked_bindings(
-    tempest_session_programs = function(session) session$programs
-  )
-
-  request <- tempest:::tempest_session_commit_evidence_async(
-    session,
-    "An unsupported answer.",
-    correlation_id = "turn-unsupported"
-  )
-  settled <- await_tempest_promise(request)
-
-  expect_null(settled$error)
-  expect_equal(extractor_calls, 0L)
-  expect_identical(settled$value$extraction_skipped, "no_cited_sources")
-  expect_length(settled$value$source_ids, 0L)
-  expect_equal(events[[1]]@status, "skipped")
-  expect_identical(events[[1]]@payload$reason, "no_cited_sources")
-})
-
-test_that("evidence commitment extracts claims from cited session sources", {
-  skip_if_not_installed("promises")
-  skip_if_not_installed("later")
-  store <- fake_store_with_sources(1)
-  source_id <- store$list_retrieved_sources()[[1]]$id
-  extractor <- list(
-    chat_structured_async = function(...) {
-      promises::promise_resolve(list(
-        facts = list(list(
-          claim = "A cited claim",
-          sources = list(list(source_id = source_id)),
-          confidence = "high"
-        ))
-      ))
-    }
-  )
-  session <- list(
-    session_id = "cited-session",
-    programs = test_program_executions(run_id = "cited-session"),
-    workspace = store,
-    chats = list(extractor = extractor),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      tempest_progress_event(
-        run_id = "cited-session",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-    }
-  )
-  local_mocked_bindings(
-    tempest_session_programs = function(session) session$programs
-  )
-
-  request <- tempest:::tempest_session_commit_evidence_async(
-    session,
-    paste0("A cited claim [", source_id, "].")
-  )
-  settled <- await_tempest_promise(request)
-
-  expect_null(settled$error)
-  expect_equal(settled$value$source_ids, source_id)
-  expect_equal(settled$value$claims_added, 1L)
-  expect_equal(store$list_proposed_claims()[[1]]@claim_text, "A cited claim")
-})
-
 test_that("async ProgramSet execution preserves authoritative metadata", {
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
@@ -475,9 +208,19 @@ test_that("stale async extraction persists one cancelled attempt", {
       })
     }
   )
+  source <- fake_source("https://example.org/cancelled")
+  moderator <- fake_chat(
+    text = list(paste0("Cancelled claim [", source$id, "]."))
+  )
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
-      if (identical(role, "judge")) extractor else fake_chat()
+      if (identical(role, "judge")) {
+        extractor
+      } else if (identical(role, "coordinator")) {
+        moderator
+      } else {
+        fake_chat()
+      }
     }
   )
   session <- tempest_session(
@@ -489,13 +232,25 @@ test_that("stale async extraction persists one cancelled attempt", {
     )),
     session_id = "costorm-cancelled-extraction"
   )
-  source <- fake_source("https://example.org/cancelled")
   session$workspace$upsert_retrieved_resource(source)
+  completion <- await_tempest_promise(
+    session$request_completion_async("Inspect the cancelled claim.")
+  )
+  expect_null(completion$error)
+  work_id <- tempest:::tempest_session_async_work_start(
+    session,
+    "dialogue",
+    work_id = paste0("turn-", completion$value)
+  )
+  claim <- tempest:::tempest_session_agent_completion_claim(
+    session,
+    completion$value
+  )
+  tempest:::tempest_session_agent_completion_consume(session, claim)
 
   request <- tempest:::tempest_session_extract_facts_async(
     session,
-    paste0("Cancelled claim [", source$id, "]."),
-    source_ids = source$id,
+    claim,
     is_current = function() current
   )
   later::run_now(0.02)
@@ -513,6 +268,7 @@ test_that("stale async extraction persists one cancelled attempt", {
     ))
   ))
   settled <- await_tempest_promise(request)
+  tempest:::tempest_session_async_work_finish(session, work_id)
   terminal <- tempest:::tempest_session_stage_records(session)
 
   expect_null(settled$error)
@@ -537,9 +293,19 @@ test_that("failed async extraction remains durable without raw errors", {
       ))
     }
   )
+  source <- fake_source("https://example.org/failed")
+  moderator <- fake_chat(
+    text = list(paste0("Failed claim [", source$id, "]."))
+  )
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
-      if (identical(role, "judge")) extractor else fake_chat()
+      if (identical(role, "judge")) {
+        extractor
+      } else if (identical(role, "coordinator")) {
+        moderator
+      } else {
+        fake_chat()
+      }
     }
   )
   session <- tempest_session(
@@ -551,16 +317,29 @@ test_that("failed async extraction remains durable without raw errors", {
     )),
     session_id = "costorm-failed-extraction"
   )
-  source <- fake_source("https://example.org/failed")
   session$workspace$upsert_retrieved_resource(source)
+  completion <- await_tempest_promise(
+    session$request_completion_async("Inspect the failed claim.")
+  )
+  expect_null(completion$error)
+  work_id <- tempest:::tempest_session_async_work_start(
+    session,
+    "dialogue",
+    work_id = paste0("turn-", completion$value)
+  )
+  claim <- tempest:::tempest_session_agent_completion_claim(
+    session,
+    completion$value
+  )
+  tempest:::tempest_session_agent_completion_consume(session, claim)
 
   settled <- await_tempest_promise(
     tempest:::tempest_session_extract_facts_async(
       session,
-      paste0("Failed claim [", source$id, "]."),
-      source_ids = source$id
+      claim
     )
   )
+  tempest:::tempest_session_async_work_finish(session, work_id)
   records <- tempest:::tempest_session_stage_records(session)
 
   expect_s3_class(settled$error, "tempest_session_error")
@@ -583,7 +362,7 @@ test_that("failed async extraction remains durable without raw errors", {
     fixed = TRUE
   )
   expect_no_match(
-    tempest:::tempest_canonical_json(lapply(
+    tempest:::tempest_product_canonical_json(lapply(
       Filter(
         \(event) S7::S7_inherits(event, tempest_progress_event),
         session$events
@@ -596,6 +375,139 @@ test_that("failed async extraction remains durable without raw errors", {
   expect_length(session$workspace$list_proposed_claims(), 0L)
 })
 
+test_that("agent-derived evidence rejects missing and forged claims", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  session <- tempest_session(
+    "Bound evidence claims",
+    config = tempest_config(
+      chat_fn = function(role, model, system_prompt, echo) {
+        if (identical(role, "coordinator")) {
+          return(fake_chat(text = list("Bound response.")))
+        }
+        fake_chat()
+      }
+    ),
+    experts = list(test_expert(expert_id = "expert.bound-evidence"))
+  )
+  workspace_before <- tempest:::tempest_research_workspace_snapshot(
+    session$workspace
+  )
+
+  expect_error(
+    tempest:::tempest_session_commit_evidence_async(session, NULL),
+    class = "tempest_agent_completion_binding_error"
+  )
+  completion <- await_tempest_promise(
+    session$request_completion_async("Bind this prompt.")
+  )
+  expect_null(completion$error)
+  claim <- tempest:::tempest_session_agent_completion_claim(
+    session,
+    completion$value
+  )
+  tempest:::tempest_session_agent_completion_consume(session, claim)
+  forged <- claim
+  forged$response <- "Different response."
+
+  expect_error(
+    tempest:::tempest_session_commit_evidence_async(session, forged),
+    class = "tempest_agent_completion_binding_error"
+  )
+  expect_error(
+    tempest:::tempest_session_commit_evidence_async(session, claim),
+    class = "tempest_session_async_work_error"
+  )
+  expect_identical(
+    tempest:::tempest_research_workspace_snapshot(session$workspace),
+    workspace_before
+  )
+  expect_length(tempest:::tempest_session_stage_records(session), 0L)
+  expect_length(session$transcript, 0L)
+  expect_length(tempest_session_pending_deputy_runs(session), 0L)
+})
+
+test_that("stale provider turns cannot splice evidence into a completion", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  stale_turn <- ellmer::AssistantTurn(
+    contents = list(ellmer::ContentText("Old assistant evidence.")),
+    json = list(
+      output = list(list(
+        type = "message",
+        content = list(list(
+          type = "output_text",
+          text = "Old assistant evidence.",
+          annotations = list(list(
+            type = "url_citation",
+            title = "Old source",
+            url = "https://example.org/old-source"
+          ))
+        ))
+      ))
+    )
+  )
+  moderator <- fake_chat(
+    text = list("Fresh assistant response with no citation.")
+  )
+  moderator$set_turns(list(stale_turn))
+  moderator$last_turn <- function(role = "assistant") stale_turn
+  config <- tempest_config(chat_fn = function(
+    role,
+    model,
+    system_prompt,
+    echo
+  ) {
+    if (
+      identical(role, "coordinator") &&
+        !identical(
+          system_prompt,
+          tempest_prompt("question_suggester_system")
+        )
+    ) {
+      return(moderator)
+    }
+    fake_chat()
+  })
+  session <- tempest_session(
+    "Provider turn freshness",
+    config = config,
+    experts = list(test_expert(expert_id = "expert.provider-freshness"))
+  )
+  workspace_before <- tempest:::tempest_research_workspace_snapshot(
+    session$workspace
+  )
+
+  result <- await_tempest_promise(
+    session$request_completion_async("Give a fresh answer.")
+  )
+
+  expect_s3_class(result$error, "tempest_agent_completion_binding_error")
+  expect_identical(
+    tempest:::tempest_research_workspace_snapshot(session$workspace),
+    workspace_before
+  )
+  expect_length(tempest:::tempest_session_stage_records(session), 0L)
+  expect_length(session$transcript, 0L)
+  expect_length(tempest_session_pending_deputy_runs(session), 0L)
+  expect_length(
+    tempest:::tempest_session_agent_completion_active(session),
+    0L
+  )
+  traces <- tempest:::tempest_session_deputy_traces(session)
+  expect_length(traces, 1L)
+  expect_identical(traces[[1L]]$status, "complete")
+  expect_identical(traces[[1L]]$completion_disposition, "discarded")
+  expect_error(
+    tempest:::tempest_session_turn_deputy_execution(session, traces[[1L]]),
+    class = "tempest_session_turn_error"
+  )
+  expect_no_error(tempest_session_snapshot(session))
+})
+
 test_that("post-turn processing owns sequencing and returns typed results", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
@@ -603,8 +515,18 @@ test_that("post-turn processing owns sequencing and returns typed results", {
   calls <- character()
   evidence_correlation <- NULL
   events <- list()
+  source <- fake_source()
+  source_id <- source$id
+  moderator <- fake_chat(
+    text = list(paste0("A cited answer [", source_id, "]."))
+  )
   cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "coordinator")) {
+        return(moderator)
+      }
+      fake_chat()
+    }
   )
   session <- tempest_session(
     "Typed async turns",
@@ -617,22 +539,20 @@ test_that("post-turn processing owns sequencing and returns typed results", {
       events[[length(events) + 1L]] <<- event
     }
   )
-  source <- fake_source()
   session$workspace$upsert_retrieved_resource(source)
-  source_id <- source$id
-  deputy_execution <- test_record_costorm_deputy_trace(
-    session,
-    run_id = "deputy-run-turn-typed",
-    correlation_id = "turn-typed"
-  )
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(
       session,
-      correlation_id,
+      claim,
       ...
     ) {
       calls <<- c(calls, "evidence")
-      evidence_correlation <<- correlation_id
+      checked <- tempest:::tempest_session_agent_completion_assert_claim(
+        session,
+        claim,
+        state = "consumed"
+      )
+      evidence_correlation <<- checked$deputy_execution$correlation_id
       session$workspace$add_proposed_claim(tempest_claim(
         claim_text = "A cited answer",
         source_ids = source_id
@@ -648,15 +568,18 @@ test_that("post-turn processing owns sequencing and returns typed results", {
     },
     tempest_session_update_mindmap_async = function(session, ...) {
       calls <<- c(calls, "mindmap")
-      session$mindmap <- list(
-        nodes = list(list(
-          id = "root",
-          label = "Typed async turns",
-          parent = NULL,
-          notes = "Updated",
-          source_ids = source_id
-        )),
-        edges = list()
+      tempest:::tempest_session_commit_mindmap(
+        session,
+        list(
+          nodes = list(list(
+            id = "root",
+            label = "Typed async turns",
+            parent = NULL,
+            notes = "Updated",
+            source_ids = source_id
+          )),
+          edges = list()
+        )
       )
       promises::promise_resolve(TRUE)
     },
@@ -669,19 +592,19 @@ test_that("post-turn processing owns sequencing and returns typed results", {
     }
   )
 
+  completion <- await_tempest_promise(
+    session$request_completion_async("What is known?")
+  )
+  expect_null(completion$error)
   request <- tempest_session_process_turn_async(
     session,
-    user_text = "What is known?",
-    assistant_text = paste0("A cited answer [", source_id, "]."),
-    deputy_execution = deputy_execution,
-    turn_id = NULL
+    completion$value
   )
   settled <- await_tempest_promise(request)
 
   expect_null(settled$error)
   expect_equal(calls, c("evidence", "mindmap", "suggestions"))
-  expect_identical(evidence_correlation, "turn-typed")
-  expect_identical(settled$value@turn_id, "turn-typed")
+  expect_identical(evidence_correlation, settled$value@turn_id)
   expect_equal(
     vapply(session$transcript, `[[`, character(1), "role"),
     c("user", "assistant")
@@ -702,18 +625,17 @@ test_that("post-turn processing owns sequencing and returns typed results", {
     c("What evidence remains?", "How can it be verified?")
   )
   expect_equal(settled$value@claims_added, 1L)
-  expect_identical(
+  traces <- tempest:::tempest_session_deputy_traces(session)
+  trace <- traces[[match(
     settled$value@deputy_run_id,
-    "deputy-run-turn-typed"
-  )
-  expect_identical(
-    settled$value@deputy_session_id,
-    "deputy-session-test"
-  )
+    vapply(traces, `[[`, character(1), "deputy_run_id")
+  )]]
+  expect_identical(settled$value@turn_id, trace$correlation_id)
+  expect_identical(settled$value@deputy_session_id, trace$deputy_session_id)
   expect_equal(
     vapply(
       Filter(
-        \(event) identical(event@correlation_id, "turn-typed"),
+        \(event) identical(event@correlation_id, settled$value@turn_id),
         events
       ),
       \(event) event@status,
@@ -721,15 +643,29 @@ test_that("post-turn processing owns sequencing and returns typed results", {
     ),
     c("started", "succeeded", "succeeded", "succeeded")
   )
-  expect_no_error(tempest:::tempest_canonical_json(
+  expect_no_error(tempest:::tempest_product_canonical_json(
     tempest:::tempest_session_turn_result_data(settled$value)
   ))
 })
 
-test_that("post-turn rejects correlation mismatch before session mutation", {
+test_that("post-turn rejects a completion owned by another session", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
   skip_if_not_installed("promises")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+    if (identical(role, "coordinator")) {
+      return(fake_chat(text = list("A completed response.")))
+    }
+    fake_chat()
+  })
+  source_session <- tempest_session(
+    "Source async turn",
+    config = cfg,
+    experts = list(test_expert(
+      expert_id = "expert.turn-source",
+      name = "Dr. Source"
+    ))
   )
   session <- tempest_session(
     "Mismatched async turn",
@@ -739,13 +675,11 @@ test_that("post-turn rejects correlation mismatch before session mutation", {
       name = "Dr. Mismatch"
     ))
   )
+  completion <- await_tempest_promise(
+    source_session$request_completion_async("What is known?")
+  )
   evidence_calls <- 0L
   event_count <- length(session$events)
-  deputy_execution <- test_record_costorm_deputy_trace(
-    session,
-    run_id = "deputy-run-turn-authoritative",
-    correlation_id = "turn-authoritative"
-  )
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
       evidence_calls <<- evidence_calls + 1L
@@ -753,167 +687,17 @@ test_that("post-turn rejects correlation mismatch before session mutation", {
     }
   )
 
+  expect_null(completion$error)
   expect_error(
     tempest_session_process_turn_async(
       session,
-      user_text = "What is known?",
-      assistant_text = "A completed response.",
-      deputy_execution = deputy_execution,
-      turn_id = "turn-mismatched"
+      completion$value
     ),
-    class = "tempest_session_turn_error"
+    class = "tempest_agent_completion_binding_error"
   )
   expect_length(session$transcript, 0L)
   expect_length(session$events, event_count)
   expect_identical(evidence_calls, 0L)
-})
-
-test_that("queued post-turn work binds its immutable moderator execution", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  moderator_chat <- fake_chat(
-    text = list("First response.", "Second response.")
-  )
-  cfg <- tempest_config(chat_fn = function(
-    role,
-    model,
-    system_prompt,
-    echo
-  ) {
-    if (identical(role, "coordinator")) {
-      return(moderator_chat)
-    }
-    fake_chat()
-  })
-  session <- tempest_session(
-    "Backlogged async turns",
-    config = cfg,
-    experts = list(test_expert(
-      expert_id = "expert.backlog",
-      name = "Dr. Backlog"
-    ))
-  )
-  first_response <- session$chats$moderator$chat(
-    "First question",
-    run_context = list(correlation_id = "turn-backlog-first")
-  )
-  first_execution <- rlang::duplicate(
-    tempest:::tempest_deputy_chat_last_execution(
-      session$chats$moderator
-    ),
-    shallow = FALSE
-  )
-  session$chats$moderator$chat(
-    "Second question",
-    run_context = list(correlation_id = "turn-backlog-second")
-  )
-  second_execution <- tempest:::tempest_deputy_chat_last_execution(
-    session$chats$moderator
-  )
-  local_mocked_bindings(
-    tempest_session_commit_evidence_async = function(...) {
-      promises::promise_resolve(list(
-        source_count = 0L,
-        claim_count = 0L,
-        source_ids = character(),
-        sources_added = 0L,
-        claims_added = 0L,
-        cancelled = FALSE
-      ))
-    },
-    tempest_session_update_mindmap_async = function(...) {
-      promises::promise_resolve(TRUE)
-    }
-  )
-
-  settled <- await_tempest_promise(tempest_session_process_turn_async(
-    session,
-    user_text = "First question",
-    assistant_text = first_response,
-    deputy_execution = first_execution,
-    suggest = FALSE
-  ))
-
-  expect_null(settled$error)
-  expect_identical(settled$value@turn_id, "turn-backlog-first")
-  expect_identical(
-    settled$value@deputy_run_id,
-    first_execution$deputy_run_id
-  )
-  expect_identical(
-    settled$value@deputy_session_id,
-    first_execution$deputy_session_id
-  )
-  expect_identical(
-    tempest:::tempest_deputy_chat_last_execution(
-      session$chats$moderator
-    ),
-    second_execution
-  )
-  expect_identical(
-    first_execution$deputy_run_id == second_execution$deputy_run_id,
-    FALSE
-  )
-  expect_identical(
-    vapply(moderator_chat$.calls(), `[[`, character(1), "transport"),
-    rep("stream", 2L)
-  )
-})
-
-test_that("unrecorded or mutated Deputy traces fail before turn side effects", {
-  skip_if_not_installed("promises")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  session <- tempest_session(
-    "Invalid post-turn traces",
-    config = cfg,
-    experts = list(test_expert(
-      expert_id = "expert.invalid-trace",
-      name = "Dr. Invalid Trace"
-    ))
-  )
-  recorded <- test_record_costorm_deputy_trace(
-    session,
-    run_id = "deputy-run-turn-recorded",
-    correlation_id = "turn-recorded"
-  )
-  mutated <- rlang::duplicate(recorded, shallow = FALSE)
-  mutated$agent_id <- "test-agent-mutated"
-  unrecorded <- test_costorm_deputy_trace(
-    run_id = "deputy-run-turn-unrecorded",
-    correlation_id = "turn-unrecorded"
-  )
-  evidence_calls <- 0L
-  local_mocked_bindings(
-    tempest_session_commit_evidence_async = function(...) {
-      evidence_calls <<- evidence_calls + 1L
-      promises::promise_resolve(NULL)
-    }
-  )
-  transcript_count <- length(session$transcript)
-  event_count <- length(session$events)
-  mindmap <- rlang::duplicate(session$mindmap, shallow = FALSE)
-
-  for (execution in list(mutated, unrecorded)) {
-    expect_error(
-      tempest_session_process_turn_async(
-        session,
-        user_text = "Should not be recorded.",
-        assistant_text = "Should not be enriched.",
-        deputy_execution = execution
-      ),
-      class = "tempest_session_turn_error"
-    )
-  }
-
-  expect_identical(evidence_calls, 0L)
-  expect_length(session$transcript, transcript_count)
-  expect_length(session$events, event_count)
-  expect_identical(session$mindmap, mindmap)
-  expect_length(session$workspace$list_proposed_claims(), 0L)
 })
 
 test_that("post-turn processing exposes evidence gaps without UI callbacks", {
@@ -921,9 +705,12 @@ test_that("post-turn processing exposes evidence gaps without UI callbacks", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   exchange <- NULL
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
+  cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+    if (identical(role, "coordinator")) {
+      return(fake_chat(text = list("An unsupported factual answer.")))
+    }
+    fake_chat()
+  })
   session <- tempest_session(
     "Evidence gaps",
     config = cfg,
@@ -931,11 +718,6 @@ test_that("post-turn processing exposes evidence gaps without UI callbacks", {
       expert_id = "expert.gap",
       name = "Dr. Gap"
     ))
-  )
-  deputy_execution <- test_record_costorm_deputy_trace(
-    session,
-    run_id = "deputy-run-turn-gap",
-    correlation_id = "turn-gap"
   )
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
@@ -958,13 +740,14 @@ test_that("post-turn processing exposes evidence gaps without UI callbacks", {
     }
   )
 
+  completion <- await_tempest_promise(
+    session$request_completion_async("What is known?")
+  )
+  expect_null(completion$error)
   request <- tempest_session_process_turn_async(
     session,
-    user_text = "What is known?",
-    assistant_text = "An unsupported factual answer.",
-    deputy_execution = deputy_execution,
-    suggest = FALSE,
-    turn_id = "turn-gap"
+    completion$value,
+    suggest = FALSE
   )
   settled <- await_tempest_promise(request)
 
@@ -983,9 +766,12 @@ test_that("post-turn enrichment failures are typed and best effort", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   calls <- character()
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
+  cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+    if (identical(role, "coordinator")) {
+      return(fake_chat(text = list("A response.")))
+    }
+    fake_chat()
+  })
   session <- tempest_session(
     "Partial async turn",
     config = cfg,
@@ -993,11 +779,6 @@ test_that("post-turn enrichment failures are typed and best effort", {
       expert_id = "expert.partial",
       name = "Dr. Partial"
     ))
-  )
-  deputy_execution <- test_record_costorm_deputy_trace(
-    session,
-    run_id = "deputy-run-turn-partial",
-    correlation_id = "turn-partial"
   )
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
@@ -1014,12 +795,13 @@ test_that("post-turn enrichment failures are typed and best effort", {
     }
   )
 
+  completion <- await_tempest_promise(
+    session$request_completion_async("Continue?")
+  )
+  expect_null(completion$error)
   request <- tempest_session_process_turn_async(
     session,
-    user_text = "Continue?",
-    assistant_text = "A response.",
-    deputy_execution = deputy_execution,
-    turn_id = "turn-partial"
+    completion$value
   )
   settled <- await_tempest_promise(request)
 
@@ -1050,9 +832,12 @@ test_that("stale post-turn work cannot run later enrichment stages", {
   resolve_evidence <- NULL
   current <- TRUE
   later_stage_calls <- 0L
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
+  cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+    if (identical(role, "coordinator")) {
+      return(fake_chat(text = list("This turn has completed.")))
+    }
+    fake_chat()
+  })
   session <- tempest_session(
     "Stale async turn",
     config = cfg,
@@ -1060,11 +845,6 @@ test_that("stale post-turn work cannot run later enrichment stages", {
       expert_id = "expert.stale-turn",
       name = "Dr. Stale"
     ))
-  )
-  deputy_execution <- test_record_costorm_deputy_trace(
-    session,
-    run_id = "deputy-run-turn-stale",
-    correlation_id = "turn-stale"
   )
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
@@ -1082,13 +862,14 @@ test_that("stale post-turn work cannot run later enrichment stages", {
     }
   )
 
+  completion <- await_tempest_promise(
+    session$request_completion_async("Will this be stale?")
+  )
+  expect_null(completion$error)
   request <- tempest_session_process_turn_async(
     session,
-    user_text = "Will this be stale?",
-    assistant_text = "This turn has completed.",
-    deputy_execution = deputy_execution,
-    is_current = function() current,
-    turn_id = "turn-stale"
+    completion$value,
+    is_current = function() current
   )
   later::run_now(0.02)
   current <- FALSE
@@ -1110,308 +891,6 @@ test_that("stale post-turn work cannot run later enrichment stages", {
   expect_length(session$transcript, 2L)
 })
 
-test_that("stale mind-map failures are recorded as cancellation", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  reject_request <- NULL
-  current <- TRUE
-  events <- list()
-  session <- list(
-    session_id = "stale-map-session",
-    topic = "Stale map",
-    mindmap = tempest:::tempest_mindmap_init("Stale map"),
-    chats = list(
-      mindmap = list(
-        chat_structured_async = function(...) {
-          promises::promise(function(resolve, reject) {
-            reject_request <<- reject
-          })
-        }
-      )
-    ),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      event <- tempest_progress_event(
-        run_id = "stale-map-session",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-      events[[length(events) + 1L]] <<- event
-      event
-    }
-  )
-
-  request <- tempest:::tempest_session_update_mindmap_async(
-    session,
-    "Late exchange",
-    is_current = function() current
-  )
-  current <- FALSE
-  reject_request(simpleError("provider timed out"))
-  settled <- await_tempest_promise(request)
-
-  expect_null(settled$error)
-  expect_equal(
-    vapply(events, \(event) event@status, character(1)),
-    c("started", "cancelled")
-  )
-})
-
-test_that("async mind-map updates reject unbound evidence atomically", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  invalid_map <- list(
-    nodes = list(
-      list(id = "root", label = "Async map", source_ids = character()),
-      list(
-        id = "finding",
-        label = "Unbound finding",
-        parent = "root",
-        source_ids = "Sffffffffffff"
-      )
-    ),
-    edges = list(list(from = "root", to = "finding", relation = "contains"))
-  )
-  config <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  session <- tempest_session(
-    "Async map",
-    config = config,
-    experts = list(test_expert(
-      expert_id = "expert.async-map",
-      name = "Async Map Expert"
-    )),
-    session_id = "async-map-integrity"
-  )
-  session$chats$mindmap$chat_structured_async <- function(...) {
-    promises::promise_resolve(invalid_map)
-  }
-  original <- session$mindmap
-
-  settled <- await_tempest_promise(
-    tempest:::tempest_session_update_mindmap_async(
-      session,
-      "An unsupported finding appeared."
-    )
-  )
-
-  expect_s3_class(settled$error, "tempest_session_mindmap_error")
-  expect_identical(session$mindmap, original)
-  mindmap_events <- Filter(
-    function(event) {
-      identical(event$stage, "mindmap") &&
-        identical(event$step, "update")
-    },
-    session$events
-  )
-  expect_equal(
-    vapply(
-      mindmap_events,
-      function(event) {
-        event$status
-      },
-      character(1)
-    ),
-    c("started", "failed")
-  )
-})
-
-test_that("stale suggestion failures are recorded as cancellation", {
-  skip_if_not_installed("later")
-  skip_if_not_installed("promises")
-  reject_request <- NULL
-  current <- TRUE
-  events <- list()
-  session <- list(
-    session_id = "stale-suggestions",
-    topic = "Stale suggestions",
-    transcript = list(),
-    config = tempest_config(),
-    transcript_markdown = function(max_turns = 12) "Conversation",
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      event <- tempest_progress_event(
-        run_id = "stale-suggestions",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-      events[[length(events) + 1L]] <<- event
-      event
-    }
-  )
-  local_mocked_bindings(
-    tempest_suggest_questions_async = function(...) {
-      promises::promise(function(resolve, reject) {
-        reject_request <<- reject
-      })
-    }
-  )
-
-  request <- tempest:::tempest_session_suggest_questions_async(
-    session,
-    is_current = function() current
-  )
-  current <- FALSE
-  reject_request(simpleError("provider timed out"))
-  settled <- await_tempest_promise(request)
-
-  expect_null(settled$error)
-  expect_length(settled$value, 0L)
-  expect_equal(
-    vapply(events, \(event) event@status, character(1)),
-    c("started", "cancelled")
-  )
-})
-
-test_that("async report generation commits only after provider settlement", {
-  skip_if_not_installed("promises")
-  skip_if_not_installed("later")
-  store <- fake_store_with_sources(1)
-  source_id <- store$list_retrieved_sources()[[1]]$id
-  store$add_proposed_claim(tempest_claim(
-    claim_text = "Report claim",
-    source_ids = source_id,
-    verification_status = "supported",
-    support_score = 0.9
-  ))
-  resolve_report <- NULL
-  heartbeat <- FALSE
-  async_prompt <- NULL
-  artifacts <- new.env(parent = emptyenv())
-  artifact_catalog <- tempest_artifact_catalog()
-  cfg <- tempest_config()
-  session <- list(
-    topic = "Async report",
-    title = "Async report",
-    config = cfg,
-    workspace = store,
-    mindmap = tempest:::tempest_mindmap_init("Async report"),
-    transcript = list(),
-    artifacts = artifacts,
-    transcript_markdown = function(max_turns = 80) "Conversation",
-    chats = list(
-      reporter = list(
-        chat_async = function(prompt) {
-          async_prompt <<- prompt
-          promises::promise(function(resolve, reject) {
-            resolve_report <<- resolve
-          })
-        }
-      )
-    ),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      tempest_progress_event(
-        run_id = "report-session",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-    }
-  )
-  local_mocked_bindings(
-    tempest_costorm_report_context = function(
-      session,
-      style,
-      include_references
-    ) {
-      list(
-        prompt = tempest:::tempest_costorm_report_prompt(session, style),
-        title = session$title,
-        workspace = session$workspace,
-        include_references = include_references,
-        citation_policy = session$config@citation_policy,
-        on_unsupported_claim = session$config@on_unsupported_claim,
-        min_support_score = session$config@min_support_score,
-        execution_review = "",
-        style = style
-      )
-    }
-  )
-
-  request <- tempest:::tempest_session_report_async(
-    session,
-    .artifact_catalog = artifact_catalog
-  )
-  later::later(function() heartbeat <<- TRUE, delay = 0)
-  later::run_now(0.02)
-
-  expect_equal(heartbeat, TRUE)
-  expect_null(artifacts[["report_md"]])
-  expect_identical(artifact_catalog$has("report_md"), FALSE)
-  resolve_report(paste0("Report claim [", source_id, "]."))
-  settled <- await_tempest_promise(request)
-
-  expect_null(settled$error)
-  expect_equal(
-    async_prompt,
-    tempest:::tempest_costorm_report_prompt(session, "technical")
-  )
-  report_md <- artifact_catalog$get("report_md")@content
-  expect_null(artifacts[["report"]])
-  expect_null(artifacts[["report_md"]])
-  expect_match(report_md, "# Async report", fixed = TRUE)
-  expect_match(
-    report_md,
-    paste0("[^", source_id, "]"),
-    fixed = TRUE
-  )
-  expect_equal(settled$value, report_md)
-})
-
-test_that("Co-STORM report generation requires the session catalog", {
-  expect_error(
-    tempest:::tempest_costorm_artifact_catalog(list()),
-    class = "tempest_deliverable_execution_error"
-  )
-})
 
 test_that("synchronous post-turn setup failures return typed notices", {
   skip_if_not_installed("later")
@@ -1452,9 +931,12 @@ test_that("synchronous post-turn setup failures return typed notices", {
 
   for (stage_name in names(expected_codes)) {
     stage <- stage_name
-    cfg <- tempest_config(
-      chat_fn = function(role, model, system_prompt, echo) fake_chat()
-    )
+    cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "coordinator")) {
+        return(fake_chat(text = list("A response.")))
+      }
+      fake_chat()
+    })
     session <- tempest_session(
       paste("Synchronous", stage_name, "failure"),
       config = cfg,
@@ -1463,17 +945,13 @@ test_that("synchronous post-turn setup failures return typed notices", {
         name = "Dr. Sync"
       ))
     )
-    deputy_execution <- test_record_costorm_deputy_trace(
-      session,
-      run_id = paste0("deputy-run-turn-sync-", stage_name),
-      correlation_id = paste0("turn-sync-", stage_name)
+    completion <- await_tempest_promise(
+      session$request_completion_async("Continue?")
     )
+    expect_null(completion$error)
     settled <- await_tempest_promise(tempest_session_process_turn_async(
       session,
-      user_text = "Continue?",
-      assistant_text = "A response.",
-      deputy_execution = deputy_execution,
-      turn_id = paste0("turn-sync-", stage_name)
+      completion$value
     ))
 
     expect_null(settled$error)
@@ -1490,6 +968,11 @@ test_that("synchronous post-turn setup failures return typed notices", {
 })
 
 test_that("turn result validators reject contradictory records", {
+  local_mocked_bindings(
+    tempest_canonical_json = function(...) {
+      stop("generic canonical JSON must not be called", call. = FALSE)
+    }
+  )
   notice_error <- tryCatch(
     tempest:::tempest_session_turn_notice(
       code = "evidence_failed",
@@ -1540,258 +1023,814 @@ test_that("turn result validators reject contradictory records", {
   expect_match(conditionMessage(missing_notice_error), "matching warning")
 })
 
-test_that("async report finalization failures emit failed progress", {
-  skip_if_not_installed("promises")
+test_that("default Co-STORM reporting verifies and publishes atomically", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
-  resolve_report <- NULL
-  events <- list()
-  artifacts <- new.env(parent = emptyenv())
-  artifact_catalog <- tempest_artifact_catalog()
-  cfg <- tempest_config()
-  workspace <- tempest_research_workspace()
-  session <- list(
-    session_id = "failed-report",
-    topic = "Failed report",
-    title = "Failed report",
-    config = cfg,
-    workspace = workspace,
-    mindmap = tempest:::tempest_mindmap_init("Failed report"),
-    artifacts = artifacts,
-    transcript_markdown = function(max_turns = 80) "Conversation",
-    chats = list(
-      reporter = list(
-        chat_async = function(...) {
-          promises::promise(function(resolve, reject) {
-            resolve_report <<- resolve
-          })
+  skip_if_not_installed("promises")
+  claim_text <- paste0(
+    "Captured [evidence]\n## References cannot replace the report boundary."
+  )
+  quote <- claim_text
+  source_id <- "source.default-report"
+  extractor <- fake_chat(
+    structured = list(
+      list(
+        facts = list(list(
+          claim = claim_text,
+          sources = list(list(source_id = source_id, quote = quote)),
+          confidence = "high"
+        ))
+      )
+    )
+  )
+  moderator <- fake_chat(
+    text = list(paste0(claim_text, " [", source_id, "]."))
+  )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(system_prompt, tempest_prompt("fact_extractor_system"))) {
+        return(extractor)
+      }
+      if (identical(role, "coordinator")) {
+        return(moderator)
+      }
+      fake_chat()
+    }
+  )
+  expect_identical(config@citation_policy, "source_attributed")
+  session <- tempest_session(
+    "Default report publication",
+    config = config,
+    experts = list(test_expert(expert_id = "expert.default-report"))
+  )
+  session$workspace$upsert_retrieved_resource(tempest_resource(
+    resource_kind = "web.page",
+    locator = "https://example.org/default-report",
+    title = "Default report evidence",
+    media_type = "text/plain",
+    content = quote,
+    resource_id = source_id,
+    retrieved_at = "2026-08-18T12:00:00Z"
+  ))
+  completion <- await_tempest_promise(
+    session$request_completion_async("What does the captured evidence show?")
+  )
+  expect_null(completion$error)
+  evidence <- await_tempest_promise(
+    tempest_session_process_turn_async(
+      session,
+      completion$value,
+      suggest = FALSE
+    )
+  )
+  expect_null(evidence$error)
+  expect_identical(evidence$value@claims_added, 1L)
+  expect_length(session$workspace$list_claim_supports(), 0L)
+
+  resolve_verification <- NULL
+  verification_attempt <- 0L
+  local_mocked_bindings(
+    tempest_dsprrr_run_async = function(
+      module,
+      ...,
+      .llm = NULL,
+      .trace_context = list()
+    ) {
+      verification_attempt <<- verification_attempt + 1L
+      request <- if (identical(verification_attempt, 1L)) {
+        promises::promise(function(resolve, reject) {
+          reject(rlang::error_cnd(
+            "tempest_program_execution_error",
+            message = "verification failed before publication"
+          ))
+        })
+      } else {
+        promises::promise(function(resolve, reject) {
+          resolve_verification <<- resolve
+        })
+      }
+      attr(request, "dsprrr_trace_context") <- list(
+        program_artifact_id = dsprrr::program_artifact_id(module),
+        trace_context = .trace_context
+      )
+      request
+    }
+  )
+  failed_publication <- await_tempest_promise(
+    tempest:::tempest_session_report_async(session)
+  )
+  expect_s3_class(
+    failed_publication$error,
+    "tempest_session_error"
+  )
+  expect_identical(session$manifest@status, "running")
+  expect_null(tempest:::tempest_session_report_value(session))
+  expect_identical(
+    tempest:::tempest_research_workspace_mutation_state(session$workspace),
+    "open"
+  )
+  title_before <- session$title
+  transcript_before <- session$transcript
+  mindmap_before <- session$mindmap
+  experts_before <- session$experts
+  injected <- tempest_resource(
+    resource_kind = "web.page",
+    locator = "https://example.org/workspace-injected",
+    title = "Injected during publication",
+    media_type = "text/plain",
+    content = "This source must never enter the publication workspace.",
+    resource_id = "source.workspace-injected",
+    retrieved_at = "2026-08-18T12:01:00Z"
+  )
+  mutation_errors <- list()
+  progress_callback <- function(event) {
+    event_data <- tempest_progress_event_data(event)
+    if (
+      identical(event_data$stage, "report") &&
+        identical(event_data$status, "started")
+    ) {
+      probes <- list(
+        title = function() session$title <- "Injected title",
+        transcript = function() {
+          session$transcript[[2L]]$text <- "Injected assistant text"
+        },
+        mindmap = function() {
+          session$mindmap$nodes[[1L]]$label <- "Injected map"
+        },
+        experts = function() session$experts <- list(),
+        events = function() session$events <- list(),
+        progress = function() session$progress <- NULL,
+        workspace = function() {
+          session$workspace$upsert_retrieved_resource(injected)
         }
       )
+      mutation_errors <<- lapply(probes, function(probe) {
+        tryCatch(
+          {
+            probe()
+            NULL
+          },
+          error = identity
+        )
+      })
+    }
+    stop("host progress observer failed", call. = FALSE)
+  }
+  tempest:::tempest_session_set_progress(session, progress_callback)
+  request <- tempest:::tempest_session_report_async(session)
+  for (index in seq_len(100L)) {
+    later::run_now(timeoutSecs = 0.01)
+    if (!is.null(resolve_verification)) {
+      break
+    }
+  }
+  expect_identical(is.function(resolve_verification), TRUE)
+  expect_error(
+    session$request_completion_async("Overlapping moderator request."),
+    class = "tempest_session_async_work_error"
+  )
+  expect_error(
+    session$step("Overlapping synchronous moderator request."),
+    class = "tempest_session_async_work_error"
+  )
+  expect_error(
+    session$add_expert("Overlapping publication expert"),
+    class = "tempest_session_async_work_error"
+  )
+  expect_error(
+    tempest_verify_claims(session, verifier = fake_chat()),
+    class = "tempest_session_async_work_error"
+  )
+  expect_length(tempest_session_pending_deputy_runs(session), 0L)
+  expect_length(
+    tempest:::tempest_session_agent_completion_active(session),
+    0L
+  )
+  resolve_verification(list(
+    status = "supported",
+    score = 0.95,
+    rationale = "The exact captured excerpt supports the claim."
+  ))
+  publication <- await_tempest_promise(request)
+
+  expect_null(publication$error)
+  expect_match(
+    publication$value,
+    paste0(
+      "Captured \\[evidence\\] \\#\\# References cannot replace the report ",
+      "boundary\\."
     ),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      event <- tempest_progress_event(
-        run_id = "failed-report",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-      events <<- c(events, list(event))
-      event
-    }
+    fixed = TRUE
   )
-  report_spec <- tempest:::tempest_costorm_report_spec(session)
-  existing <- tempest_artifact(
-    report_spec,
-    content = "# Existing report",
-    artifact_id = "report_md",
-    producer_operation_id = "tempest.renderer.markdown_report",
-    run_id = "another-run",
-    step_id = "report",
-    status = "valid"
+  expect_no_match(
+    publication$value,
+    "\n## References cannot replace the report boundary.",
+    fixed = TRUE
   )
-  artifact_catalog$register(report_spec)
-  artifact_catalog$add(existing)
-  local_mocked_bindings(
-    tempest_costorm_report_context = function(
-      session,
-      style,
-      include_references
-    ) {
-      list(
-        prompt = tempest:::tempest_costorm_report_prompt(session, style),
-        title = session$title,
-        workspace = session$workspace,
-        include_references = include_references,
-        citation_policy = session$config@citation_policy,
-        on_unsupported_claim = session$config@on_unsupported_claim,
-        min_support_score = session$config@min_support_score,
-        execution_review = "",
-        style = style
-      )
-    }
+  expect_identical(session$manifest@status, "succeeded")
+  expect_identical(tempest_session_report_md(session), publication$value)
+  expect_identical(session$title, title_before)
+  expect_identical(session$transcript, transcript_before)
+  expect_identical(session$mindmap, mindmap_before)
+  expect_identical(session$experts, experts_before)
+  expect_identical(session$progress, progress_callback)
+  expect_length(mutation_errors, 7L)
+  expect_all_true(vapply(
+    mutation_errors[c(
+      "title",
+      "transcript",
+      "mindmap",
+      "experts",
+      "events",
+      "progress"
+    )],
+    inherits,
+    logical(1),
+    what = "tempest_session_error"
+  ))
+  expect_s3_class(
+    mutation_errors$workspace,
+    "tempest_research_workspace_error"
   )
-
-  request <- tempest:::tempest_session_report_async(
-    session,
-    .artifact_catalog = artifact_catalog
+  expect_null(
+    session$workspace$get_retrieved_resource("source.workspace-injected")
   )
-  resolve_report("Replacement report body")
-  settled <- await_tempest_promise(request)
-
-  expect_s3_class(settled$error, "tempest_deliverable_execution_error")
-  expect_identical(artifact_catalog$get("report_md"), existing)
-  expect_null(artifacts[["report"]])
-  expect_null(artifacts[["report_md"]])
-  failed <- Filter(
-    function(event) {
-      identical(event@stage, "report") &&
-        identical(event@status, "failed")
-    },
-    events
+  expect_identical(
+    tempest:::tempest_research_workspace_mutation_state(session$workspace),
+    "sealed"
   )
-  expect_length(failed, 1L)
-  succeeded <- Filter(
-    function(event) {
-      identical(event@stage, "report") &&
-        identical(event@status, "succeeded")
-    },
-    events
+  expect_error(
+    session$transcript[[2L]]$text <- "Post-publication replacement",
+    class = "tempest_session_error"
   )
-  expect_length(succeeded, 0L)
-  available <- Filter(
-    function(event) {
-      identical(event@event_type, "artifact") &&
-        identical(event@status, "available")
-    },
-    events
+  expect_error(
+    session$workspace$upsert_retrieved_resource(injected),
+    class = "tempest_research_workspace_error"
   )
-  expect_length(available, 0L)
+  snapshot <- tempest_session_snapshot(session)
+  restored <- tempest_session_restore(snapshot, config = config)
+  expect_identical(restored$manifest@status, "succeeded")
+  expect_identical(restored$transcript, transcript_before)
+  expect_identical(
+    tempest:::tempest_research_workspace_mutation_state(restored$workspace),
+    "sealed"
+  )
+  expect_error(
+    restored$transcript[[2L]]$text <- "Restored transcript replacement",
+    class = "tempest_session_error"
+  )
+  expect_error(
+    restored$workspace$upsert_retrieved_resource(injected),
+    class = "tempest_research_workspace_error"
+  )
+  expect_length(session$workspace$list_claim_supports(), 1L)
+  verification <- Filter(
+    \(record) identical(record@stage, "verify_claim_support"),
+    tempest:::tempest_session_stage_records(session)
+  )
+  expect_length(verification, 2L)
+  expect_identical(
+    vapply(verification, \(record) record@status, character(1)),
+    c("failed", "succeeded")
+  )
+  report_events <- Filter(
+    \(event) identical(event$stage, "report"),
+    tempest_execution_events(session)
+  )
+  expect_identical(
+    vapply(report_events, \(event) event$status, character(1)),
+    c("started", "failed", "started", "available", "succeeded")
+  )
+  expect_no_error(tempest:::tempest_session_async_work_assert_quiescent(
+    session
+  ))
+  expect_error(
+    session$add_turn("User", "user", "Try to resume."),
+    class = "tempest_session_error"
+  )
 })
 
-test_that("stale async reports do not publish artifacts", {
-  skip_if_not_installed("promises")
-  skip_if_not_installed("later")
-  resolve_report <- NULL
-  reject_report <- NULL
-  report_calls <- 0L
-  current <- TRUE
-  events <- list()
-  artifacts <- new.env(parent = emptyenv())
-  artifact_catalog <- tempest_artifact_catalog()
-  cfg <- tempest_config()
-  workspace <- tempest_research_workspace()
-  session <- list(
-    session_id = "stale-report",
-    topic = "Stale report",
-    title = "Stale report",
-    config = cfg,
-    workspace = workspace,
-    mindmap = tempest:::tempest_mindmap_init("Stale report"),
-    artifacts = artifacts,
-    transcript_markdown = function(max_turns = 80) "Conversation",
-    chats = list(
-      reporter = list(
-        chat_async = function(...) {
-          report_calls <<- report_calls + 1L
-          promises::promise(function(resolve, reject) {
-            resolve_report <<- resolve
-            reject_report <<- reject
-          })
-        }
-      )
-    ),
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      event <- tempest_progress_event(
-        run_id = "stale-report",
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-      events <<- c(events, list(event))
-      event
-    }
+test_that("post-turn processing has the exact completion-only signature", {
+  expected <- c(
+    "session",
+    "completion_id",
+    "suggest",
+    "n_suggestions",
+    "is_current"
   )
+  removed <- c(
+    "user_text",
+    "assistant_text",
+    "deputy_execution",
+    "provider_turn",
+    "turn_id"
+  )
+  actual <- names(formals(tempest_session_process_turn_async))
+
+  expect_identical(actual, expected)
+  expect_identical(intersect(actual, removed), character())
+})
+
+test_that("queued turns are claimed by completion ID instead of latest run", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  moderator <- fake_chat(
+    text = list(
+      enc2utf8("First queued response — café."),
+      enc2utf8("Second queued response — 東京.")
+    )
+  )
+  config <- tempest_config(chat_fn = function(
+    role,
+    model,
+    system_prompt,
+    echo
+  ) {
+    if (identical(role, "coordinator")) {
+      return(moderator)
+    }
+    fake_chat()
+  })
+  session <- tempest_session(
+    "Queued capability turns",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.queued-capability",
+      name = "Dr. Queue"
+    ))
+  )
+  first <- await_tempest_promise(
+    session$request_completion_async(
+      enc2utf8("First queued prompt — naïve.")
+    )
+  )
+  second <- await_tempest_promise(
+    session$request_completion_async(
+      enc2utf8("Second queued prompt — résumé.")
+    )
+  )
+  evidence <- list()
   local_mocked_bindings(
-    tempest_costorm_report_context = function(
+    tempest_session_commit_evidence_async = function(
       session,
-      style,
-      include_references
+      claim,
+      ...
     ) {
-      list(
-        prompt = tempest:::tempest_costorm_report_prompt(session, style),
-        title = session$title,
-        workspace = session$workspace,
-        include_references = include_references,
-        citation_policy = session$config@citation_policy,
-        on_unsupported_claim = session$config@on_unsupported_claim,
-        min_support_score = session$config@min_support_score,
-        execution_review = "",
-        style = style
+      claim <- tempest:::tempest_session_agent_completion_assert_claim(
+        session,
+        claim,
+        state = "consumed"
       )
+      evidence[[length(evidence) + 1L]] <<- list(
+        text = claim$response,
+        turn = claim$provider_turn,
+        deputy_execution = claim$deputy_execution
+      )
+      promises::promise_resolve(list(
+        source_count = 0L,
+        claim_count = 0L,
+        source_ids = character(),
+        sources_added = 0L,
+        claims_added = 0L,
+        cancelled = FALSE
+      ))
+    },
+    tempest_session_update_mindmap_async = function(...) {
+      promises::promise_resolve(NULL)
     }
   )
 
-  request <- tempest:::tempest_session_report_async(
-    session,
-    is_current = function() current,
-    .artifact_catalog = artifact_catalog
+  expect_null(first$error)
+  expect_null(second$error)
+  expect_identical(first$value == second$value, FALSE)
+  expect_identical(
+    tempest:::tempest_session_agent_completion_status(
+      session,
+      first$value
+    ),
+    "issued"
   )
-  current <- FALSE
-  resolve_report("Stale body")
-  settled <- await_tempest_promise(request)
+  expect_identical(
+    tempest:::tempest_session_agent_completion_status(
+      session,
+      second$value
+    ),
+    "issued"
+  )
+  completion_context <- tempest:::tempest_session_agent_completion_context(
+    session
+  )
+  for (completion_id in c(first$value, second$value)) {
+    entry <- tempest:::tempest_agent_completion_entry(
+      completion_context$registry,
+      completion_id,
+      completion_context$owner
+    )
+    duplicated <- tempest:::tempest_agent_completion_claim_value(entry)
+    expect_identical(
+      tempest:::tempest_agent_completion_digest(
+        duplicated$prompt,
+        duplicated$response,
+        duplicated$provider_turn,
+        duplicated$deputy_execution
+      ),
+      entry$digest
+    )
+  }
+
+  first_result <- await_tempest_promise(
+    tempest_session_process_turn_async(
+      session,
+      first$value,
+      suggest = FALSE
+    )
+  )
+
+  expect_null(first_result$error)
+  expect_length(evidence, 1L)
+  expect_identical(
+    charToRaw(evidence[[1L]]$text),
+    charToRaw(enc2utf8("First queued response — café."))
+  )
+  expect_identical(
+    ellmer::contents_markdown(evidence[[1L]]$turn),
+    enc2utf8("First queued response — café.")
+  )
+  expect_identical(
+    tempest:::tempest_session_agent_completion_status(
+      session,
+      first$value
+    ),
+    "consumed"
+  )
+  expect_identical(
+    tempest:::tempest_session_agent_completion_status(
+      session,
+      second$value
+    ),
+    "issued"
+  )
+
+  second_result <- await_tempest_promise(
+    tempest_session_process_turn_async(
+      session,
+      second$value,
+      suggest = FALSE
+    )
+  )
+
+  expect_null(second_result$error)
+  expect_length(evidence, 2L)
+  expect_identical(
+    vapply(evidence, `[[`, character(1), "text"),
+    c(
+      enc2utf8("First queued response — café."),
+      enc2utf8("Second queued response — 東京.")
+    )
+  )
+  expect_identical(
+    vapply(session$transcript, `[[`, character(1), "text"),
+    c(
+      enc2utf8("First queued prompt — naïve."),
+      enc2utf8("First queued response — café."),
+      enc2utf8("Second queued prompt — résumé."),
+      enc2utf8("Second queued response — 東京.")
+    )
+  )
+  expect_identical(
+    vapply(
+      evidence,
+      \(item) item$deputy_execution$deputy_run_id,
+      character(1)
+    ) ==
+      first_result$value@deputy_run_id,
+    c(TRUE, FALSE)
+  )
+  expect_identical(
+    evidence[[2L]]$deputy_execution$deputy_run_id,
+    second_result$value@deputy_run_id
+  )
+})
+
+test_that("turn processing preserves the original consume failure", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  moderator <- fake_chat(text = list("Bound response."))
+  config <- tempest_config(chat_fn = function(
+    role,
+    model,
+    system_prompt,
+    echo
+  ) {
+    if (identical(role, "coordinator")) {
+      return(moderator)
+    }
+    fake_chat()
+  })
+  session <- tempest_session(
+    "Consume failure identity",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.consume-failure",
+      name = "Dr. Consume"
+    ))
+  )
+  completion <- await_tempest_promise(
+    session$request_completion_async("Keep the original failure.")
+  )
+  expect_null(completion$error)
+  local_mocked_bindings(
+    tempest_session_agent_completion_consume = function(...) {
+      rlang::abort(
+        "original consume failure",
+        class = "tempest_test_consume_error"
+      )
+    },
+    tempest_session_agent_completion_release = function(...) {
+      tempest:::tempest_agent_completion_binding_abort()
+    }
+  )
+
+  error <- tryCatch(
+    tempest_session_process_turn_async(
+      session,
+      completion$value,
+      suggest = FALSE
+    ),
+    error = identity
+  )
+
+  expect_s3_class(error, "tempest_test_consume_error")
+  expect_identical(conditionMessage(error), "original consume failure")
+})
+
+test_that("promise waits time out only while the event loop is idle", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  request <- promises::promise(function(resolve, reject) {
+    later::later(function() {
+      Sys.sleep(0.03)
+      later::later(\() resolve("settled"), delay = 0.001)
+    })
+  })
+
+  settled <- await_tempest_promise(request, timeout_s = 0.02)
 
   expect_null(settled$error)
-  expect_null(artifacts[["report"]])
-  expect_null(artifacts[["report_md"]])
-  expect_identical(artifact_catalog$has("report_md"), FALSE)
-  expect_contains(
-    vapply(events, function(event) event@status, character(1)),
-    "cancelled"
+  expect_identical(settled$value, "settled")
+})
+
+test_that("promise waits retain a non-resetting hard deadline", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  active <- TRUE
+  heartbeat_count <- 0L
+  heartbeat <- function() {
+    if (!active) {
+      return(invisible(NULL))
+    }
+    heartbeat_count <<- heartbeat_count + 1L
+    later::later(heartbeat, delay = 0.001)
+  }
+  later::later(heartbeat)
+  request <- promises::promise(function(resolve, reject) invisible(NULL))
+
+  error <- tryCatch(
+    await_tempest_promise(
+      request,
+      timeout_s = 0.02,
+      hard_timeout_s = 0.06
+    ),
+    error = identity
   )
-  expect_false(any(
-    vapply(
-      events,
-      function(event) {
-        identical(event@event_type, "artifact") &&
-          identical(event@status, "available")
-      },
-      logical(1)
+  active <- FALSE
+  later::run_now(0.01)
+
+  expect_s3_class(error, "simpleError")
+  expect_identical(
+    conditionMessage(error),
+    "Promise did not settle before the test timeout."
+  )
+  expect_gte(heartbeat_count, 2L)
+})
+
+test_that("stale work cancels before mutation and later failure stays consumed", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  moderator <- fake_chat(
+    text = list(
+      "Discarded response.",
+      "Committed response."
     )
+  )
+  config <- tempest_config(chat_fn = function(
+    role,
+    model,
+    system_prompt,
+    echo
+  ) {
+    if (identical(role, "coordinator")) {
+      return(moderator)
+    }
+    fake_chat()
+  })
+  session <- tempest_session(
+    "Completion cancellation boundary",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.completion-cancel",
+      name = "Dr. Cancellation"
+    ))
+  )
+  discarded <- await_tempest_promise(
+    session$request_completion_async("Discard this prompt.")
+  )
+  committed <- await_tempest_promise(
+    session$request_completion_async("Commit this prompt.")
+  )
+  transcript_count <- length(session$transcript)
+  event_count <- length(session$events)
+
+  stale <- await_tempest_promise(tempest_session_process_turn_async(
+    session,
+    discarded$value,
+    suggest = FALSE,
+    is_current = \() FALSE
   ))
 
-  current <- TRUE
-  rejected_request <- tempest:::tempest_session_report_async(
-    session,
-    is_current = function() current,
-    .artifact_catalog = artifact_catalog
+  expect_null(discarded$error)
+  expect_null(committed$error)
+  expect_null(stale$error)
+  expect_identical(stale$value@status, "cancelled")
+  expect_identical(
+    tempest:::tempest_session_agent_completion_status(
+      session,
+      discarded$value
+    ),
+    "cancelled"
   )
-  current <- FALSE
-  reject_report(simpleError("Authorization: Bearer sk-live-secret"))
-  rejected <- await_tempest_promise(rejected_request)
+  expect_length(session$transcript, transcript_count)
+  expect_length(session$events, event_count)
 
-  expect_null(rejected$error)
-  expect_identical(artifact_catalog$has("report_md"), FALSE)
-  statuses <- vapply(events, function(event) event@status, character(1))
-  expect_identical(sum(statuses == "cancelled"), 2L)
-  expect_identical(sum(statuses == "failed"), 0L)
-
-  stale_at_entry <- tempest:::tempest_session_report_async(
-    session,
-    is_current = function() FALSE,
-    .artifact_catalog = artifact_catalog
+  local_mocked_bindings(
+    tempest_session_commit_evidence_async = function(...) {
+      promises::promise_reject(structure(
+        list(message = "enrichment failed after transcript mutation"),
+        class = c("test_enrichment_error", "error", "condition")
+      ))
+    },
+    tempest_session_update_mindmap_async = function(...) {
+      promises::promise_resolve(NULL)
+    }
   )
-  entry_result <- await_tempest_promise(stale_at_entry)
+  failed_enrichment <- await_tempest_promise(
+    tempest_session_process_turn_async(
+      session,
+      committed$value,
+      suggest = FALSE
+    )
+  )
 
-  expect_null(entry_result$error)
-  expect_null(entry_result$value)
-  expect_identical(report_calls, 2L)
+  expect_null(failed_enrichment$error)
+  expect_identical(failed_enrichment$value@status, "partial")
+  expect_identical(
+    tempest:::tempest_session_agent_completion_status(
+      session,
+      committed$value
+    ),
+    "consumed"
+  )
+  expect_identical(
+    vapply(session$transcript, `[[`, character(1), "text"),
+    c("Commit this prompt.", "Committed response.")
+  )
+  replay <- tryCatch(
+    tempest_session_process_turn_async(
+      session,
+      committed$value,
+      suggest = FALSE
+    ),
+    error = identity
+  )
+  expect_s3_class(replay, "tempest_agent_completion_state_error")
+})
+
+test_that("progress callback failure keeps the consumed dialogue coherent", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  moderator <- fake_chat(text = list("Atomic response."))
+  config <- tempest_config(chat_fn = function(
+    role,
+    model,
+    system_prompt,
+    echo
+  ) {
+    if (identical(role, "coordinator")) {
+      return(moderator)
+    }
+    fake_chat()
+  })
+  session <- tempest_session(
+    "Progress callback atomicity",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.progress-atomicity",
+      name = "Dr. Progress"
+    ))
+  )
+  completion <- await_tempest_promise(
+    session$request_completion_async("Atomic prompt.")
+  )
+  expect_null(completion$error)
+  tempest:::tempest_session_set_progress(session, function(event) {
+    stop("private host progress detail")
+  })
+  local_mocked_bindings(
+    tempest_session_commit_evidence_async = function(...) {
+      promises::promise_resolve(list(
+        source_count = 0L,
+        claim_count = 0L,
+        source_ids = character(),
+        sources_added = 0L,
+        claims_added = 0L,
+        cancelled = FALSE
+      ))
+    },
+    tempest_session_update_mindmap_async = function(...) {
+      promises::promise_resolve(NULL)
+    }
+  )
+
+  settled <- await_tempest_promise(tempest_session_process_turn_async(
+    session,
+    completion$value,
+    suggest = FALSE
+  ))
+
+  expect_null(settled$error)
+  expect_identical(settled$value@status, "partial")
+  progress_notices <- Filter(
+    \(notice) identical(notice@code, "progress_failed"),
+    settled$value@notices
+  )
+  expect_length(progress_notices, 1L)
+  expect_identical(progress_notices[[1L]]@stage, "dialogue")
+  expect_identical(progress_notices[[1L]]@severity, "warning")
+  expect_identical(
+    progress_notices[[1L]]@message,
+    "The host progress callback failed."
+  )
+  expect_identical(
+    progress_notices[[1L]]@details,
+    list(
+      error_class = "tempest_operation_error",
+      error_message = "The operation failed."
+    )
+  )
+  expect_no_match(
+    tempest:::tempest_product_canonical_json(
+      tempest:::tempest_session_turn_result_data(settled$value)
+    ),
+    "private host progress detail",
+    fixed = TRUE
+  )
+  expect_identical(
+    vapply(session$transcript, `[[`, character(1), "role"),
+    c("user", "assistant")
+  )
+  expect_identical(
+    vapply(session$transcript, `[[`, character(1), "text"),
+    c("Atomic prompt.", "Atomic response.")
+  )
+  expect_identical(
+    tempest:::tempest_session_agent_completion_status(
+      session,
+      completion$value
+    ),
+    "consumed"
+  )
+  replay <- tryCatch(
+    tempest_session_process_turn_async(
+      session,
+      completion$value,
+      suggest = FALSE
+    ),
+    error = identity
+  )
+  expect_s3_class(replay, "tempest_agent_completion_state_error")
 })

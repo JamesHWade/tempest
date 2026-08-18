@@ -2269,6 +2269,7 @@ TempestRun <- R6::R6Class(
 #' @param progress Optional generic event callback.
 #' @return A mutable `TempestRun`.
 #' @export
+#' @noRd
 tempest_run_workflow <- function(
   objective,
   workflow,
@@ -2388,6 +2389,7 @@ tempest_run_evidence_restore <- function(snapshot) {
 #' @param run A `TempestRun`.
 #' @return An in-memory serializable run record.
 #' @export
+#' @noRd
 tempest_run_snapshot <- function(run) {
   if (!inherits(run, "TempestRun")) {
     tempest_run_abort("{.arg run} must be a TempestRun.")
@@ -4143,6 +4145,7 @@ tempest_generic_run_snapshot_from_json <- function(snapshot) {
 #'   Tempest run bundle.
 #' @return The normalized bundle directory, invisibly.
 #' @export
+#' @noRd
 tempest_run_save <- function(run, path, overwrite = FALSE) {
   if (!inherits(run, "TempestRun")) {
     tempest_generic_run_bundle_abort(

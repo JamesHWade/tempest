@@ -893,7 +893,7 @@ TempestRetriever <- R6::R6Class(
 
       txt <- res$text %||% NA_character_
       txt_hash <- if (!is.na(txt) && nzchar(txt)) {
-        tempest_artifact_codec_encode(txt, "text/html")$sha256
+        tempest_product_content_hash(txt, "text/html")
       } else {
         NA_character_
       }

@@ -12,8 +12,7 @@ tempest_shiny_server(
   experts = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
-  run = NULL
+  knowledge_view = NULL
 )
 }
 \arguments{
@@ -41,16 +40,11 @@ builtin set.}
 \code{program_set}. May be a value, function, or reactive. A governed ProgramSet
 requires its exact pinned view before any provider call; the view remains
 process-local and is never serialized.}
-
-\item{run}{Optional \code{TempestRun}, function, or reactive. This lets a host
-expose a custom headless workflow through the same generic adapter
-reactives as built-in workflows.}
 }
 \value{
-A list with the shared \code{store}; reactive \code{run}, \code{status}, \code{events},
-\code{approvals}, \code{assignments}, \code{artifacts}, \code{evidence}, \code{grants}, \code{session},
-\code{report}, and \code{report_ready} accessors; and \code{approve()}, \code{cancel()}, and
-\code{touch()} controls.
+A list with the shared \code{store}; reactive \code{session}, \code{events},
+\code{evidence}, \code{report}, and \code{report_ready} accessors; and a product-session
+\code{touch()} control.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -58,9 +52,8 @@ A list with the shared \code{store}; reactive \code{run}, \code{status}, \code{e
 \details{
 \code{tempest_shiny_server()} pairs with \code{\link[=tempest_shiny_ui]{tempest_shiny_ui()}} and lets a host app
 provide a \link{TempestConfig}, optional expert profiles, a stable session id, and
-an optional shared store. The returned
-handle exposes the shared store and reactive accessors for generic run,
-event, approval, capability-grant, artifact, session, and report state.
+an optional shared store. The returned handle exposes only product session,
+event, evidence, and report state.
 }
 \examples{
 \dontrun{

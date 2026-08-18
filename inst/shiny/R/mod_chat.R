@@ -466,8 +466,6 @@ mod_chat_server <- function(
   config,
   store,
   experts = NULL,
-  runtime = tempest::tempest_runtime(),
-  connection_permissions = list(),
   session_id = NULL,
   program_set = NULL,
   knowledge_view = NULL,
@@ -497,7 +495,7 @@ mod_chat_server <- function(
       knowledge_view_value <- shiny::isolate(
         reactive_or_value(knowledge_view)
       )
-      knowledge <- tempest:::tempest_workflow_knowledge_view(
+      knowledge <- tempest:::tempest_product_knowledge_view(
         program_set_value,
         knowledge_view_value
       )
@@ -651,49 +649,64 @@ mod_chat_server <- function(
       invisible(NULL)
     }
     process_completed_turn <- function(
-      user_text,
-      assistant_text,
-      assistant_turn,
+      ses,
+      turn_session_id,
+      completion_id,
       is_current
     ) {
-      ses <- tryCatch(shiny::isolate(store$get()), error = function(error) NULL)
-      if (is.null(ses)) {
+      turn_suggestions_enabled <- shiny::isolate(suggestions_enabled())
+      cancel_completion <- function() {
+        tryCatch(
+          {
+            status <- tempest:::tempest_session_agent_completion_status(
+              ses,
+              completion_id
+            )
+            if (identical(status, "issued")) {
+              tempest:::tempest_session_agent_completion_cancel(
+                ses,
+                completion_id
+              )
+            }
+          },
+          error = function(error) NULL
+        )
+        invisible(NULL)
+      }
+      task <- tryCatch(
+        work_queue$enqueue(
+          function(queue_current) {
+            current <- function() {
+              queue_current() &&
+                is_current() &&
+                !isTRUE(session_ended) &&
+                identical(turn_session_id, active_session_id)
+            }
+            tempest::tempest_session_process_turn_async(
+              ses,
+              completion_id = completion_id,
+              suggest = turn_suggestions_enabled,
+              n_suggestions = 4L,
+              is_current = current
+            )
+          },
+          on_cancel = cancel_completion
+        ),
+        error = function(error) {
+          cancel_completion()
+          NULL
+        }
+      )
+      if (is.null(task)) {
         return(invisible(NULL))
       }
-      turn_session_id <- active_session_id
-      turn_suggestions_enabled <- shiny::isolate(suggestions_enabled())
-      deputy_execution <- tempest:::tempest_costorm_last_deputy_execution(
-        ses$chats$moderator,
-        stage = "dialogue",
-        role = "moderator"
-      )
-      deputy_execution <- rlang::duplicate(
-        deputy_execution,
-        shallow = FALSE
-      )
-      task <- work_queue$enqueue(function(queue_current) {
-        current <- function() {
-          queue_current() &&
-            is_current() &&
-            !isTRUE(session_ended) &&
-            identical(turn_session_id, active_session_id)
-        }
-        tempest::tempest_session_process_turn_async(
-          ses,
-          user_text = user_text,
-          assistant_text = assistant_text,
-          deputy_execution = deputy_execution,
-          provider_turn = assistant_turn,
-          suggest = turn_suggestions_enabled,
-          n_suggestions = 4L,
-          turn_id = NULL,
-          is_current = current
-        )
-      })
       promises::then(
         task,
         onFulfilled = function(result) {
           shiny::withReactiveDomain(session, {
+            if (is.null(result)) {
+              return(NULL)
+            }
             current <- !isTRUE(session_ended) &&
               identical(turn_session_id, active_session_id) &&
               is_current() &&
@@ -732,13 +745,25 @@ mod_chat_server <- function(
       )
       invisible(task)
     }
+    session_turn_callback <- function(ses, turn_session_id) {
+      force(ses)
+      force(turn_session_id)
+      function(completion_id, is_current) {
+        process_completed_turn(
+          ses = ses,
+          turn_session_id = turn_session_id,
+          completion_id = completion_id,
+          is_current = is_current
+        )
+      }
+    }
     # Tempest owns complete session restoration. shinychat history remains off
     # because it cannot restore evidence, experts, mind-map, or artifact state.
     chat <- tempest:::tempest_shinychat_adapter(
       "chat",
       initial_client = initial_chat,
       session = session,
-      on_turn = process_completed_turn,
+      on_turn = function(...) invisible(NULL),
       source_store = current_source_store,
       render_message = function(text, role, source_store) {
         citation_markdown(text, store = source_store)
@@ -796,9 +821,10 @@ mod_chat_server <- function(
         report_available = report_available
       )
       chat$bind(
-        ses$chats$moderator,
+        tempest:::tempest_session_chat(ses, "moderator"),
         messages = messages,
-        client_history = "keep"
+        client_history = "keep",
+        on_turn = session_turn_callback(ses, active_session_id)
       )
       ses
     }
@@ -877,9 +903,7 @@ mod_chat_server <- function(
       topic,
       n_experts,
       config_value,
-      runtime_value,
       session_experts,
-      session_connection_permissions,
       session_id_value,
       program_set_value,
       knowledge_view_value,
@@ -891,10 +915,8 @@ mod_chat_server <- function(
           value <- tempest:::tempest_session_new(
             topic,
             config = config_value,
-            runtime = runtime_value,
             n_experts = n_experts,
             experts = session_experts,
-            connection_permissions = session_connection_permissions,
             session_id = session_id_value,
             progress = record_progress,
             program_set = program_set_value,
@@ -922,7 +944,7 @@ mod_chat_server <- function(
       active_session_id <<- active_session_id + 1L
       store$set(ses)
       chat$bind(
-        ses$chats$moderator,
+        tempest:::tempest_session_chat(ses, "moderator"),
         messages = list(list(
           role = "assistant",
           content = paste0(
@@ -933,7 +955,8 @@ mod_chat_server <- function(
             "\n\nAsk questions, request sources, or ask for a report.\n"
           )
         )),
-        client_history = "clear"
+        client_history = "clear",
+        on_turn = session_turn_callback(ses, active_session_id)
       )
       costorm_log(
         "session ready: %s with %d experts",
@@ -949,7 +972,6 @@ mod_chat_server <- function(
       work_queue$cancel()
       progress_events(list())
       store$set(NULL)
-      store$set_report(NULL)
       chat$reset()
       if (isTRUE(allow_user_experts)) {
         later::later(
@@ -1093,16 +1115,12 @@ mod_chat_server <- function(
         return()
       }
       config_value <- shiny::isolate(config())
-      runtime_value <- shiny::isolate(reactive_or_value(runtime))
       session_experts <- shiny::isolate(reactive_or_value(experts))
       session_experts <- costorm_session_experts(
         host_experts = session_experts,
         custom_experts = shiny::isolate(user_experts()),
         allow_user_experts = allow_user_experts,
         mode = shiny::isolate(expert_setup_mode())
-      )
-      session_connection_permissions <- shiny::isolate(
-        reactive_or_value(connection_permissions)
       )
       session_id_value <- shiny::isolate(reactive_or_value(session_id))
       session_id_value <- session_id_value %||%
@@ -1241,9 +1259,7 @@ mod_chat_server <- function(
                       topic,
                       n_experts,
                       config_value = config_value,
-                      runtime_value = runtime_value,
                       session_experts = session_experts,
-                      session_connection_permissions = session_connection_permissions,
                       session_id_value = session_id_value,
                       program_set_value = program_set_value,
                       knowledge_view_value = knowledge_view_value,
@@ -1817,36 +1833,11 @@ chat_command_system_prompt <- function() {
 chat_command_tools <- function(ses, config = NULL) {
   config <- if (is.null(ses)) config else ses$config %||% config
   provider <- tryCatch(config@search_provider, error = function(e) "unknown")
-  grants <- if (is.null(ses)) list() else ses$capability_grants %||% list()
-  grant_lines <- unlist(
-    lapply(names(grants), function(context_id) {
-      records <- grants[[context_id]] %||% list()
-      vapply(
-        records,
-        function(grant) {
-          paste0(
-            "- `",
-            context_id,
-            "` / `",
-            grant$capability_id,
-            "`: ",
-            grant$status
-          )
-        },
-        character(1)
-      )
-    }),
-    use.names = FALSE
-  )
-  if (length(grant_lines) == 0L) {
-    grant_lines <- "- No session capability grants are active."
-  }
   paste(
     "**Tools and commands**",
     "",
     paste0("- Search provider: `", provider, "`."),
-    "**Scoped capability grants**",
-    paste(grant_lines, collapse = "\n"),
+    "- Expert research executes through Deputy-owned session adapters.",
     "- Commands: `/new`, `/experts`, `/sources`, `/facts`, `/report`, `/system`, `/tools`.",
     sep = "\n"
   )
@@ -1857,13 +1848,15 @@ costorm_async_queue <- function() {
   tail <- promises::promise_resolve(NULL)
   pending <- 0L
   list(
-    enqueue = function(task) {
+    enqueue = function(task, on_cancel = function() invisible(NULL)) {
       stopifnot(is.function(task))
+      stopifnot(is.function(on_cancel))
       ticket <- generation
       pending <<- pending + 1L
       is_current <- function() identical(ticket, generation)
       result <- promises::then(tail, function(...) {
         if (!is_current()) {
+          on_cancel()
           return(NULL)
         }
         task(is_current)
@@ -1929,7 +1922,7 @@ generate_report_for_chat_async <- function(
       ) {
         return(FALSE)
       }
-      store$set_report(markdown, ses$topic, source_store = ses$workspace)
+      store$set_session_report(ses)
       store$touch()
       append_chat(sprintf(
         "Report generated (%d chars). See the **Report** tab.",
@@ -2146,7 +2139,7 @@ session_archive_listing_is_safe <- function(
     !anyDuplicated(declared_files) &&
     all(vapply(
       declared_files,
-      tempest:::tempest_artifact_bundle_path_is_safe,
+      tempest:::tempest_product_path_is_safe,
       logical(1)
     ))
   declared_safe &&
@@ -2228,7 +2221,7 @@ session_archive_manifest_files <- function(manifest) {
       any(
         !vapply(
           files,
-          tempest:::tempest_artifact_bundle_path_is_safe,
+          tempest:::tempest_product_path_is_safe,
           logical(1)
         )
       )

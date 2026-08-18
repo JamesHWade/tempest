@@ -149,17 +149,6 @@ TempestDeliverableSpec <- S7::new_class(
   )
 )
 
-TempestValidationResult <- S7::new_class(
-  "tempest_validation_result",
-  properties = list(
-    validator_id = tempest_workflow_prop_chr(),
-    status = prop_enum(c("passed", "failed", "warning"), "passed"),
-    message = tempest_workflow_prop_chr(NA_character_),
-    details = tempest_workflow_prop_list(),
-    created_at = tempest_workflow_prop_chr()
-  )
-)
-
 TempestArtifact <- S7::new_class(
   "tempest_artifact",
   properties = list(
@@ -231,6 +220,7 @@ TempestArtifact <- S7::new_class(
 #'   deliverable_ids = "customer-response"
 #' )
 #' @export
+#' @noRd
 tempest_objective <- function(
   description,
   title = description,
@@ -340,6 +330,7 @@ tempest_objective <- function(
 #'   renderer_ids = "tempest.renderer.markdown"
 #' )
 #' @export
+#' @noRd
 tempest_deliverable_spec <- function(
   deliverable_id,
   title,
@@ -499,70 +490,6 @@ tempest_deliverable_fingerprint <- function(spec) {
   tempest_deliverable_spec_checksum(spec)
 }
 
-#' Create a Tempest validation result
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' @param validator_id Stable validator operation identifier.
-#' @param status One of `"passed"`, `"failed"`, or `"warning"`.
-#' @param message Optional human-readable result.
-#' @param details Serializable diagnostic details.
-#' @param created_at Optional creation timestamp.
-#' @return A `tempest_validation_result` S7 object.
-#' @export
-tempest_validation_result <- function(
-  validator_id,
-  status = c("passed", "failed", "warning"),
-  message = NA_character_,
-  details = list(),
-  created_at = NULL
-) {
-  validator_id <- tempest_workflow_scalar(validator_id, "validator_id")
-  status <- match.arg(status)
-  if (
-    !is.character(message) ||
-      length(message) != 1L ||
-      (!is.na(message) && !nzchar(tempest_trim(message)))
-  ) {
-    tempest_workflow_abort(
-      "{.arg message} must be a non-empty string or `NA`."
-    )
-  }
-  details <- tempest_workflow_serializable_list(details, "details")
-  created_at <- tempest_workflow_scalar(
-    created_at %||% tempest_now_utc(),
-    "created_at"
-  )
-  TempestValidationResult(
-    validator_id = validator_id,
-    status = status,
-    message = message,
-    details = details,
-    created_at = created_at
-  )
-}
-
-tempest_validation_results <- function(results) {
-  results <- results %||% list()
-  if (
-    !is.list(results) ||
-      any(
-        !vapply(
-          results,
-          function(result) {
-            S7::S7_inherits(result, TempestValidationResult)
-          },
-          logical(1)
-        )
-      )
-  ) {
-    tempest_workflow_abort(
-      "{.arg validation_results} must contain only results from {.fn tempest_validation_result}."
-    )
-  }
-  results
-}
-
 #' Create a typed Tempest artifact
 #'
 #' `r lifecycle::badge("experimental")`
@@ -601,6 +528,7 @@ tempest_validation_results <- function(results) {
 #' )
 #' artifact <- tempest_artifact(spec, content = "# Brief")
 #' @export
+#' @noRd
 tempest_artifact <- function(
   deliverable,
   content = NULL,

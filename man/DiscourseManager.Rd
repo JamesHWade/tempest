@@ -4,15 +4,12 @@
 \alias{DiscourseManager}
 \title{DiscourseManager}
 \description{
-LLM-driven discourse management for Co-STORM sessions.
-Decides which agent should speak next and what action to take.
+Retired generic discourse manager for Co-STORM sessions.
 }
 \keyword{internal}
 \section{Public fields}{
   \if{html}{\out{<div class="r6-fields">}}
   \describe{
-    \item{\code{chat}}{An ellmer chat object for making decisions.}
-
     \item{\code{config}}{A \code{TempestConfig} object.}
   }
   \if{html}{\out{</div>}}

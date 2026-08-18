@@ -10,7 +10,6 @@ tempest_config(
   chat_fn = NULL,
   embed_fn = NULL,
   ragnar_store = NULL,
-  artifact_store = NULL,
   search_provider = "native",
   cache_dir = NULL,
   cache_enabled = TRUE,
@@ -20,10 +19,7 @@ tempest_config(
   retrieve_top_k = 25,
   max_sources = 24,
   user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
-  node_expansion_trigger_count = NULL,
-  enable_discourse_manager = FALSE,
   max_active_experts = 5L,
-  enable_unseen_surfacing = FALSE,
   citation_policy = "source_attributed",
   min_support_score = 0.7,
   on_unsupported_claim = "flag"
@@ -47,11 +43,6 @@ is automatically created.}
 
 \item{ragnar_store}{A pre-built ragnar store. If NULL and \code{embed_fn} is
 provided, a store is created automatically with the tempest metadata schema.}
-
-\item{artifact_store}{Frozen Tempest 0.1 artifact-store adapter from
-\code{tempest_artifact_store()} or \code{tempest_memory_artifact_store()}. Existing
-integrations only; new code should consume \code{report_md} and scientific
-evidence directly.}
 
 \item{search_provider}{Search provider: "native" (use provider's built-in web
 search when available), "wikipedia", "you", "bing", "serper", "brave",
@@ -78,19 +69,11 @@ turn.}
 
 \item{user_agent}{User agent string for HTTP requests.}
 
-\item{node_expansion_trigger_count}{Number of notes/sources per node that
-triggers expansion (NULL = disabled).}
-
-\item{enable_discourse_manager}{Whether to enable LLM-driven discourse
-management in Co-STORM.}
-
 \item{max_active_experts}{Maximum number of active expert agents in Co-STORM.}
 
-\item{enable_unseen_surfacing}{Whether to surface undiscussed sources in
-Co-STORM.}
-
-\item{citation_policy}{Citation enforcement policy: one of "none",
-"source_attributed", "claim_verified", or "strict".}
+\item{citation_policy}{Report citation-rendering and unsupported-claim
+handling policy: one of "none", "source_attributed", "claim_verified", or
+"strict". Product publication always runs exact claim verification.}
 
 \item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
 considered supported.}

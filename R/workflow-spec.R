@@ -140,6 +140,7 @@ TempestWorkflowSpec <- S7::new_class(
 #' @param schema_version Serializable record schema version.
 #' @return A `tempest_workflow_step` S7 object.
 #' @export
+#' @noRd
 tempest_workflow_step <- function(
   step_id,
   title,
@@ -346,6 +347,7 @@ tempest_workflow_validate_graph <- function(steps) {
 #' @param schema_version Serializable record schema version.
 #' @return A validated `tempest_workflow_spec` S7 object.
 #' @export
+#' @noRd
 tempest_workflow_spec <- function(
   workflow_id,
   title,

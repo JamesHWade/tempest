@@ -2,29 +2,62 @@
 % Please edit documentation in R/package-lifecycle.R
 \name{tempest-generic-kernel-retirement}
 \alias{tempest-generic-kernel-retirement}
-\title{Retirement of Tempest's experimental generic kernel}
+\alias{tempest_artifact}
+\alias{tempest_artifact_catalog}
+\alias{tempest_artifact_catalog_restore}
+\alias{tempest_artifact_codec}
+\alias{tempest_artifact_codec_definition}
+\alias{tempest_artifact_codec_registry}
+\alias{tempest_artifact_representation}
+\alias{tempest_artifact_store}
+\alias{tempest_builtin_operation_registry}
+\alias{tempest_builtin_workflow_operation_registry}
+\alias{tempest_capability_resolver}
+\alias{tempest_capability_spec}
+\alias{tempest_connection_provider}
+\alias{tempest_connection_ref}
+\alias{tempest_costorm_workflow_adapter}
+\alias{tempest_costorm_workflow_run}
+\alias{tempest_costorm_workflow_spec}
+\alias{tempest_deliverable_spec}
+\alias{tempest_generate_deliverable}
+\alias{tempest_memory_artifact_store}
+\alias{tempest_objective}
+\alias{tempest_operation_registry}
+\alias{tempest_run_approvals}
+\alias{tempest_run_artifact}
+\alias{tempest_run_artifacts}
+\alias{tempest_run_capability_grants}
+\alias{tempest_run_events}
+\alias{tempest_run_record_approval}
+\alias{tempest_run_request_cancel}
+\alias{tempest_run_save}
+\alias{tempest_run_snapshot}
+\alias{tempest_run_status}
+\alias{tempest_run_workflow}
+\alias{tempest_runtime}
+\alias{tempest_skill}
+\alias{tempest_skill_registry}
+\alias{tempest_storm_workflow_adapter}
+\alias{tempest_storm_workflow_run}
+\alias{tempest_storm_workflow_spec}
+\alias{tempest_workflow_spec}
+\alias{tempest_workflow_step}
+\title{Tempest 0.2 generic-kernel cutover}
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+Tempest 0.2 supports the STORM and Co-STORM scientific-research products
+through \code{\link[=tempest_run]{tempest_run()}} and \code{\link[=tempest_session]{tempest_session()}}. The former experimental
+application-neutral workflow, runtime, capability, connection, skill,
+deliverable, and artifact APIs are unavailable. Every retained symbol fails
+immediately with class \code{tempest_generic_kernel_cutover_error} and identifies
+the symbol that was called.
 }
 \details{
-Tempest 0.2 becomes a focused scientific-research product. The experimental
-application-neutral workflow, runtime, capability, connection, skill,
-deliverable, and artifact APIs are frozen and scheduled for removal in
-the section-10 deletion PR of the Tempest 0.2 migration train. They remain
-in source only as deletion-owned baseline inventory, not as a compatibility
-path.
-
-No compatibility framework or generic-kernel migration layer will be added.
-STORM and Co-STORM product bundles will receive direct, product-specific
-replacements before the generic implementation is deleted.
+This is an immediate cutover. There is no compatibility framework, fallback,
+or generic-kernel migration layer. Retained names exist only as cutover
+sentinels until T8 removes them physically.
 }
-\section{Retirement}{
-
-This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
-No compatibility shim is planned.
-}
-
-\section{Scheduled API families}{
+\section{Unavailable API families}{
 
 \itemize{
 \item Generic workflows: \code{tempest_workflow_spec()}, \code{tempest_workflow_step()},
@@ -35,8 +68,8 @@ No compatibility shim is planned.
 \code{tempest_run_artifact()}, \code{tempest_run_artifacts()},
 \code{tempest_run_record_approval()}, \code{tempest_run_request_cancel()},
 \code{tempest_run_snapshot()}, and \code{tempest_run_save()}. The shared
-\code{tempest_execution_events()} query
-remains a product seam and will be narrowed to STORM and Co-STORM state.
+\code{tempest_execution_events()} query remains a Co-STORM-only product seam
+for \code{TempestSession} event history.
 \item Runtime contracts: \code{tempest_operation_registry()},
 \code{tempest_builtin_operation_registry()},
 \code{tempest_builtin_workflow_operation_registry()}, \code{tempest_runtime()},
@@ -45,18 +78,19 @@ remains a product seam and will be narrowed to STORM and Co-STORM state.
 \code{tempest_connection_ref()}, and \code{tempest_connection_provider()}.
 \item Generic outputs: \code{tempest_objective()}, \code{tempest_deliverable_spec()},
 \code{tempest_generate_deliverable()}, and the \verb{tempest_artifact*()} and
-\code{tempest_*artifact_store()} families. Product validation results remain
-available for report bundles.
+\code{tempest_*artifact_store()} families.
 }
 }
 
-\section{Replacement direction}{
+\section{Supported product boundary}{
 
 
-Fixed scientific transformations become dsprrr program references;
-open-ended agent work uses Deputy; accepted knowledge uses graft snapshots
-and commits; provisional scientific evidence remains in Tempest; and reports
-and promotion plans become product-specific bundles.
+Use \code{\link[=tempest_run]{tempest_run()}} for scripted STORM research and \code{\link[=tempest_session]{tempest_session()}} for
+interactive Co-STORM research. Fixed scientific transformations carry dsprrr
+program identity, open-ended agent work carries Deputy execution identity,
+and accepted knowledge uses graft snapshots and commits. Execution identity
+supports correlation and audit joins only; it does not claim that an agent
+execution caused, authored, or validated report content.
 }
 
 \seealso{

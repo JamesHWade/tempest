@@ -27,20 +27,20 @@ tempest_resource_record_fields <- function() {
 TempestResource <- S7::new_class(
   "tempest_resource",
   properties = list(
-    resource_id = tempest_workflow_prop_chr(),
-    resource_kind = tempest_workflow_prop_chr(),
-    locator = tempest_workflow_prop_chr(),
-    title = tempest_workflow_prop_chr(),
-    media_type = tempest_workflow_prop_chr(),
+    resource_id = tempest_product_prop_chr(),
+    resource_kind = tempest_product_prop_chr(),
+    locator = tempest_product_prop_chr(),
+    title = tempest_product_prop_chr(),
+    media_type = tempest_product_prop_chr(),
     content = S7::new_property(S7::class_any, default = NULL),
-    storage_ref = tempest_workflow_prop_chr(NA_character_),
-    origin_connection_id = tempest_workflow_prop_chr(NA_character_),
-    scope_metadata = tempest_workflow_prop_list(),
-    content_hash = tempest_workflow_prop_chr(NA_character_),
-    retrieved_at = tempest_workflow_prop_chr(),
-    redaction = tempest_workflow_prop_list(),
-    retention = tempest_workflow_prop_list(),
-    metadata = tempest_workflow_prop_list(),
+    storage_ref = tempest_product_prop_chr(NA_character_),
+    origin_connection_id = tempest_product_prop_chr(NA_character_),
+    scope_metadata = tempest_product_prop_list(),
+    content_hash = tempest_product_prop_chr(NA_character_),
+    retrieved_at = tempest_product_prop_chr(),
+    redaction = tempest_product_prop_list(),
+    retention = tempest_product_prop_list(),
+    metadata = tempest_product_prop_list(),
     schema_version = S7::new_property(S7::class_integer, default = 1L)
   ),
   validator = function(self) {
@@ -84,16 +84,16 @@ TempestResource <- S7::new_class(
 )
 
 tempest_resource_safe_scalar <- function(value, arg, identifier = FALSE) {
-  value <- tempest_workflow_scalar(value, arg)
+  value <- tempest_product_scalar(value, arg)
   if (tempest_contract_sensitive_scalar(value)) {
-    tempest_workflow_abort(
+    tempest_product_validation_abort(
       "{.arg {arg}} cannot contain a credential or secret value."
     )
   }
   if (
     isTRUE(identifier) && !tempest_research_workspace_reference_id_valid(value)
   ) {
-    tempest_workflow_abort(
+    tempest_product_validation_abort(
       "{.arg {arg}} must be a bounded credential-free identifier."
     )
   }
@@ -111,7 +111,7 @@ tempest_resource_single_line_valid <- function(value) {
 tempest_resource_single_line_scalar <- function(value, arg) {
   value <- tempest_resource_safe_scalar(value, arg)
   if (!tempest_resource_single_line_valid(value)) {
-    tempest_workflow_abort(
+    tempest_product_validation_abort(
       "{.arg {arg}} must be non-empty single-line text."
     )
   }
@@ -134,9 +134,9 @@ tempest_resource_content <- function(content) {
   }
   # Validate canonical encodability without rewriting caller-visible content.
   tryCatch(
-    tempest_canonical_value(content),
+    tempest_product_canonical_value(content),
     error = function(error) {
-      tempest_workflow_abort(
+      tempest_product_validation_abort(
         "{.arg content} must be canonical JSON-compatible content or a single string.",
         parent = error
       )
@@ -146,11 +146,24 @@ tempest_resource_content <- function(content) {
 }
 
 tempest_resource_metadata <- function(value, arg) {
-  value <- tempest_workflow_serializable_list(value, arg)
+  if (!is.list(value) || is.data.frame(value)) {
+    tempest_product_validation_abort(
+      "{.arg {arg}} must be an explicit non-data-frame list."
+    )
+  }
+  tryCatch(
+    tempest_product_canonical_json(value),
+    error = function(error) {
+      tempest_product_validation_abort(
+        "{.arg {arg}} must contain only canonical JSON-compatible values.",
+        parent = error
+      )
+    }
+  )
   tempest_research_reference_value(
     value,
     path = arg,
-    abort = tempest_workflow_abort,
+    abort = tempest_product_validation_abort,
     noun = "Resource metadata"
   )
   value_for_scan <- value
@@ -168,7 +181,7 @@ tempest_resource_metadata <- function(value, arg) {
   }
   sensitive <- tempest_contract_sensitive_values(value_for_scan, arg)
   if (length(sensitive) > 0L) {
-    tempest_workflow_abort(c(
+    tempest_product_validation_abort(c(
       "{.arg {arg}} cannot contain credential or secret values.",
       x = "Sensitive field: {.field {sensitive[[1]]}}."
     ))
@@ -285,7 +298,7 @@ tempest_resource <- function(
     "retrieved_at"
   )
   if (is.null(content_hash) && !is.null(content)) {
-    content_hash <- tempest_artifact_codec_encode(content, media_type)$sha256
+    content_hash <- tempest_product_content_hash(content, media_type)
   }
   content_hash <- tempest_resource_optional_scalar(
     content_hash,
@@ -299,7 +312,7 @@ tempest_resource <- function(
       schema_version < 1L ||
       schema_version != as.integer(schema_version)
   ) {
-    tempest_workflow_abort(
+    tempest_product_validation_abort(
       "{.arg schema_version} must be a positive whole number."
     )
   }
@@ -325,12 +338,12 @@ tempest_resource <- function(
 
 tempest_resource_data <- function(resource, include_content = TRUE) {
   if (!S7::S7_inherits(resource, TempestResource)) {
-    tempest_workflow_abort(
+    tempest_product_validation_abort(
       "{.arg resource} must be created by {.fn tempest_resource}."
     )
   }
   S7::validate(resource)
-  include_content <- tempest_workflow_flag(include_content, "include_content")
+  include_content <- tempest_product_flag(include_content, "include_content")
   fields <- tempest_resource_data_fields()
   if (!include_content) {
     fields <- setdiff(fields, "content")
@@ -389,7 +402,7 @@ tempest_resource_fingerprint <- function(resource_or_data) {
     resource_or_data
   }
   data$fingerprint <- NULL
-  tempest_deliverable_spec_checksum(data)
+  tempest_product_record_hash(data)
 }
 
 tempest_resource_record <- function(resource, include_content = TRUE) {
@@ -405,7 +418,7 @@ tempest_resource_from_data <- function(data) {
       is.data.frame(data) ||
       !identical(names(data), expected_fields)
   ) {
-    tempest_artifact_codec_abort(
+    tempest_product_hash_abort(
       paste0(
         "{.arg data} must be a typed evidence-resource record in exact ",
         "current field order."
@@ -413,11 +426,24 @@ tempest_resource_from_data <- function(data) {
     )
   }
   if (!identical(data$schema_version, 1L)) {
-    tempest_artifact_codec_abort(
+    tempest_product_hash_abort(
       "Evidence-resource data must carry exact integer schema_version 1."
     )
   }
-  expected <- tempest_workflow_scalar(data$fingerprint, "fingerprint")
+  metadata_fields <- c(
+    "scope_metadata",
+    "redaction",
+    "retention",
+    "metadata"
+  )
+  for (field in metadata_fields) {
+    if (!is.list(data[[field]]) || is.data.frame(data[[field]])) {
+      tempest_product_hash_abort(
+        "Evidence-resource field {.field {field}} must be an explicit list."
+      )
+    }
+  }
+  expected <- tempest_product_scalar(data$fingerprint, "fingerprint")
   data$fingerprint <- NULL
   value <- tryCatch(
     tempest_resource(
@@ -429,23 +455,23 @@ tempest_resource_from_data <- function(data) {
       content = data$content %||% NULL,
       storage_ref = data$storage_ref %||% NULL,
       origin_connection_id = data$origin_connection_id %||% NULL,
-      scope_metadata = tempest_codec_list(data$scope_metadata),
+      scope_metadata = data$scope_metadata,
       content_hash = data$content_hash %||% NULL,
       retrieved_at = data$retrieved_at,
-      redaction = tempest_codec_list(data$redaction),
-      retention = tempest_codec_list(data$retention),
-      metadata = tempest_codec_list(data$metadata),
+      redaction = data$redaction,
+      retention = data$retention,
+      metadata = data$metadata,
       schema_version = data$schema_version
     ),
     error = function(error) {
-      tempest_artifact_codec_abort(
+      tempest_product_hash_abort(
         "Could not restore a typed evidence-resource record.",
         parent = error
       )
     }
   )
   if (!identical(tempest_resource_fingerprint(value), expected)) {
-    tempest_artifact_codec_abort(
+    tempest_product_hash_abort(
       "Evidence-resource fingerprint validation failed."
     )
   }

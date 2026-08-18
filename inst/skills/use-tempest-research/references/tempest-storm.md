@@ -57,8 +57,10 @@ cancellation contract before integrating it.
 - Configure `embed_fn` or a prebuilt ragnar store only when semantic retrieval
   is needed.
 - Choose `citation_policy` deliberately:
-  - `"source_attributed"` preserves attribution;
-  - `"claim_verified"` verifies extracted claims;
+  - every publication verifies exact claim-by-evidence-span pairs regardless of
+    rendering policy;
+  - `"source_attributed"` preserves attribution while verification still runs;
+  - `"claim_verified"` renders threshold-verified support;
   - `"strict"` also applies the unsupported-claim policy.
 - Bound experts, questions, searches, sources, and retrieved facts before
   increasing quality or coverage budgets.

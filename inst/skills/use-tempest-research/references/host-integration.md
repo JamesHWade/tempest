@@ -43,12 +43,13 @@ UI and should present research results in that conversation.
 
 ## Observe product state
 
-Use the direct STORM and Co-STORM APIs. Consume product events through
-`tempest_execution_events()` and keep host UI state as a projection over the
-research result or session:
+Use the direct STORM and Co-STORM APIs, and keep host UI state as a projection
+over the research result or session:
 
-- `tempest_run()` or `tempest_run_async()` for scripted STORM;
-- `tempest_session()` for interactive Co-STORM;
+- pass a progress callback to `tempest_run()` or `tempest_run_async()` for
+  scripted STORM events;
+- use `tempest_execution_events(session)` only for interactive Co-STORM event
+  history;
 - `tempest_progress_state()` for normalized event state.
 
 Feed events into a host-neutral reducer before rendering them. Keep Shiny

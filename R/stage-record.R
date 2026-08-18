@@ -853,8 +853,22 @@ tempest_stage_publication_allowed <- function(
   support_status
 ) {
   identical(status, "succeeded") &&
-    identical(execution_path, "grounded") &&
+    execution_path %in% c("governed", "grounded") &&
     identical(support_status, "verified")
+}
+
+tempest_stage_execution_path_derive <- function(
+  status,
+  policy,
+  governed_procedure_revision_id,
+  trace_references,
+  fallback_taken
+) {
+  governed <- identical(status, "succeeded") &&
+    !isTRUE(fallback_taken) &&
+    !is.na(governed_procedure_revision_id) &&
+    !is.null(trace_references$governed_procedure %||% NULL)
+  if (isTRUE(governed)) "governed" else policy$execution_path
 }
 
 tempest_stage_record_validation_message <- function(self) {
@@ -895,11 +909,15 @@ tempest_stage_record_validation_message <- function(self) {
       if (!identical(self@fallback_policy, policy$fallback_policy)) {
         stop("fallback_policy must match the exact stage policy")
       }
-      if (!identical(self@execution_path, policy$execution_path)) {
-        stop("execution_path must be derived from the exact stage policy")
-      }
-      if (identical(self@execution_path, "governed")) {
-        stop("current-schema stage records cannot assert governed execution")
+      expected_path <- tempest_stage_execution_path_derive(
+        self@status,
+        policy,
+        self@governed_procedure_revision_id,
+        self@trace_references,
+        self@fallback_taken
+      )
+      if (!identical(self@execution_path, expected_path)) {
+        stop("execution_path must be derived from exact terminal authority")
       }
       canonical_output_reference <- tempest_stage_output_reference_validate(
         self@output_reference,
@@ -1157,17 +1175,6 @@ tempest_stage_record <- function(
       "{.arg fallback_taken} must be `TRUE` or `FALSE`."
     )
   }
-  execution_path <- execution_path %||% policy$execution_path
-  if (!execution_path %in% tempest_execution_paths()) {
-    tempest_stage_record_abort(
-      "{.arg execution_path} must be one of {.val {tempest_execution_paths()}}."
-    )
-  }
-  if (identical(execution_path, "governed")) {
-    tempest_stage_record_abort(
-      "Current-schema stage records cannot assert governed execution."
-    )
-  }
   if (!support_status %in% tempest_support_statuses()) {
     tempest_stage_record_abort(
       "{.arg support_status} must be one of {.val {tempest_support_statuses()}}."
@@ -1181,6 +1188,22 @@ tempest_stage_record <- function(
     trace_references,
     attempt_id
   )
+  derived_execution_path <- tempest_stage_execution_path_derive(
+    status,
+    policy,
+    governed_procedure_revision_id,
+    trace_references,
+    fallback_taken
+  )
+  if (
+    !is.null(execution_path) &&
+      !identical(execution_path, derived_execution_path)
+  ) {
+    tempest_stage_record_abort(
+      "{.arg execution_path} must equal the derived terminal authority path."
+    )
+  }
+  execution_path <- derived_execution_path
   derived_publication <- tempest_stage_publication_allowed(
     status,
     execution_path,
@@ -1300,7 +1323,6 @@ tempest_stage_record_succeed <- function(
     fallback_policy = record@fallback_policy,
     fallback_implementation = fallback_implementation,
     fallback_taken = fallback_taken,
-    execution_path = record@execution_path,
     support_status = support_status
   )
 }
@@ -1333,7 +1355,6 @@ tempest_stage_record_fail <- function(
       NA_character_
     },
     fallback_taken = fallback_taken,
-    execution_path = record@execution_path,
     support_status = "unknown"
   )
 }
@@ -1355,7 +1376,6 @@ tempest_stage_record_cancel <- function(
     failure_class = "tempest_stage_cancelled",
     failure_message = tempest_stage_failure_message(kind = "cancelled"),
     fallback_policy = record@fallback_policy,
-    execution_path = record@execution_path,
     support_status = "unknown"
   )
 }
@@ -1568,8 +1588,7 @@ tempest_stage_record_same_attempt <- function(x, y) {
     "governed_procedure_revision_id",
     "trace_references",
     "started_at",
-    "fallback_policy",
-    "execution_path"
+    "fallback_policy"
   )
   all(vapply(
     fields,

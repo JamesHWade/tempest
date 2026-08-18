@@ -83,8 +83,8 @@ tempest_type_node_expansion <- function() {
 
 #' Expand an oversized mind map node into subtopics
 #'
-#' Uses an LLM to split a single oversized node into 2-4 child subtopics,
-#' distributing notes and source_ids appropriately.
+#' This legacy generic expansion route is unavailable. Co-STORM mind maps are
+#' deterministic projections of committed product evidence and transcript state.
 #'
 #' @param chat An ellmer chat object (typically the mindmap chat).
 #' @param mindmap A mind map list with `nodes` and `edges`.
@@ -93,82 +93,10 @@ tempest_type_node_expansion <- function() {
 #'   mind map if expansion fails.
 #' @keywords internal
 tempest_mindmap_expand_node <- function(chat, mindmap, node_id) {
-  nodes <- mindmap$nodes %||% list()
-  node_by_id <- setNames(nodes, purrr::map_chr(nodes, "id"))
-  target <- node_by_id[[node_id]]
-
-  if (is.null(target)) {
-    return(mindmap)
-  }
-
-  type <- tempest_type_node_expansion()
-  prompt <- paste0(
-    "A mind map node has grown too large and needs to be split into subtopics.\n\n",
-    "Node label: ",
-    target$label %||% node_id,
-    "\n",
-    "Node notes: ",
-    target$notes %||% "(none)",
-    "\n",
-    "Source IDs: ",
-    paste(target$source_ids %||% character(), collapse = ", "),
-    "\n\n",
-    "Split this node into 2-4 meaningful subtopic children.\n",
-    "Distribute the notes and source_ids to the most relevant children.\n",
-    "Keep any general notes with the parent.\n",
-    "Return structured data."
-  )
-
-  result <- tryCatch(
-    chat$chat_structured(prompt, type = type, echo = "none", convert = FALSE),
-    error = function(e) {
-      tempest_warn("Failed to expand the mind map node.")
-      NULL
-    }
-  )
-
-  if (
-    is.null(result) || is.null(result$children) || length(result$children) == 0
-  ) {
-    return(mindmap)
-  }
-
-  # Update the parent node
-  for (i in seq_along(mindmap$nodes)) {
-    if (identical(mindmap$nodes[[i]]$id, node_id)) {
-      mindmap$nodes[[i]]$notes <- result$parent_notes %||% ""
-      # Remove source_ids that were distributed to children
-      child_sources <- unique(unlist(purrr::map(result$children, "source_ids")))
-      remaining_sources <- setdiff(
-        target$source_ids %||% character(),
-        child_sources
-      )
-      mindmap$nodes[[i]]$source_ids <- remaining_sources
-      break
-    }
-  }
-
-  # Add child nodes
-  for (j in seq_along(result$children)) {
-    child <- result$children[[j]]
-    child_id <- paste0(node_id, "_", j)
-    new_node <- list(
-      id = child_id,
-      label = child$label %||% paste("Subtopic", j),
-      parent = node_id,
-      notes = child$notes %||% "",
-      source_ids = child$source_ids %||% character()
+  tempest_costorm_session_abort(
+    paste0(
+      "Generic mind-map expansion is unavailable; project the mind map from ",
+      "the authoritative Co-STORM session instead."
     )
-    mindmap$nodes <- c(mindmap$nodes, list(new_node))
-    mindmap$edges <- c(
-      mindmap$edges,
-      list(list(
-        from = node_id,
-        to = child_id,
-        relation = "subtopic"
-      ))
-    )
-  }
-
-  mindmap
+  )
 }

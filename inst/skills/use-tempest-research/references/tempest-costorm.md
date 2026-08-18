@@ -55,16 +55,8 @@ cat(answer$answer)
 
 Let the user observe, question, challenge, and redirect. Preserve the returned
 turn, expert delegation, newly discovered evidence, transcript, and mind-map
-updates. Do not fabricate autonomous turns when the configured mode expects
-user initiative.
-
-Enable the discourse manager only when autonomous turn selection is desired:
-
-```r
-config <- tempest_config(enable_discourse_manager = TRUE)
-session <- tempest_session("Grid-scale battery recycling", config = config)
-session$step(auto = TRUE)
-```
+updates. Co-STORM uses deterministic dialogue projections and explicit user
+turns; there is no autonomous generic discourse-manager mode.
 
 Respect the active-expert budget. Adding or retiring experts changes the
 available roster but must not redirect stable expert IDs or erase prior
@@ -73,10 +65,10 @@ evidence.
 ## Generate and inspect a report
 
 ```r
+session$reorganize_mindmap()
 report <- session$report(
   style = "executive",
-  include_references = TRUE,
-  reorganize = TRUE
+  include_references = TRUE
 )
 cat(report)
 ```

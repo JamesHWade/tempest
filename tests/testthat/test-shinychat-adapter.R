@@ -297,7 +297,54 @@ test_that("shinychat adapter suppresses stale turns and defers client binding", 
   calls <- list()
   disposed <- 0L
   shell <- new.env(parent = emptyenv())
-  replacement <- new.env(parent = emptyenv())
+  issued <- 0L
+  replacement <- structure(
+    list(
+      stream_async = function(...) {
+        issued <<- issued + 1L
+        completion_id <- paste0("completion-", issued)
+        stream <- coro::generator(function() {
+          coro::yield(paste0("answer-", issued))
+          coro::exhausted()
+        })()
+        tempest:::tempest_agent_completion_tag(stream, completion_id)
+      }
+    ),
+    class = c("TempestDeputyChatAdapter", "Chat", "list")
+  )
+  drain <- function(stream) {
+    settled <- FALSE
+    failure <- NULL
+    task <- coro::async(function() {
+      repeat {
+        value <- stream()
+        if (promises::is.promising(value)) {
+          value <- coro::await(value)
+        }
+        if (coro::is_exhausted(value)) {
+          break
+        }
+      }
+      NULL
+    })()
+    promises::then(
+      task,
+      onFulfilled = function(value) settled <<- TRUE,
+      onRejected = function(error) {
+        failure <<- error
+        settled <<- TRUE
+      }
+    )
+    for (index in seq_len(100L)) {
+      later::run_now(timeoutSecs = 0.01)
+      if (settled) {
+        break
+      }
+    }
+    expect_identical(settled, TRUE)
+    expect_null(failure)
+    invisible(NULL)
+  }
 
   server <- function(id) {
     shiny::moduleServer(id, function(input, output, session) {
@@ -305,15 +352,9 @@ test_that("shinychat adapter suppresses stale turns and defers client binding", 
         "chat",
         initial_client = shell,
         session = session,
-        on_turn = function(
-          user_text,
-          assistant_text,
-          assistant_turn,
-          is_current
-        ) {
+        on_turn = function(completion_id, is_current) {
           calls[[length(calls) + 1L]] <<- list(
-            user = user_text,
-            assistant = assistant_text,
+            completion_id = completion_id,
             current = is_current(),
             domain = shiny::getDefaultReactiveDomain()
           )
@@ -333,16 +374,6 @@ test_that("shinychat adapter suppresses stale turns and defers client binding", 
     session$flushReact()
     expect_length(calls, 0L)
 
-    state$last_input("New question")
-    session$flushReact()
-    state$last_turn("New answer")
-    session$flushReact()
-    expect_length(calls, 1L)
-    expect_identical(calls[[1L]]$user, "New question")
-    expect_identical(calls[[1L]]$assistant, "New answer")
-    expect_identical(calls[[1L]]$current, TRUE)
-    expect_identical(calls[[1L]]$domain, session)
-
     state$status("streaming")
     session$flushReact()
     expect_identical(
@@ -355,17 +386,133 @@ test_that("shinychat adapter suppresses stale turns and defers client binding", 
     expect_length(state$set_clients, 0L)
     state$status("idle")
     session$flushReact()
-    expect_identical(state$set_clients[[1L]], replacement)
+    bound_client <- state$set_clients[[1L]]
+    expect_s3_class(bound_client, "TempestShinyChatCompletionClient")
     expect_identical(state$clears[[1L]], "clear")
     expect_identical(state$appends[[1L]], "Replacement")
+
+    state$last_input("New question")
+    session$flushReact()
+    drain(bound_client$stream_async("New question"))
+    state$last_turn("New answer")
+    session$flushReact()
+    expect_length(calls, 1L)
+    expect_identical(calls[[1L]]$completion_id, "completion-1")
+    expect_identical(calls[[1L]]$current, TRUE)
+    expect_identical(calls[[1L]]$domain, session)
+
+    state$last_input("Stale question")
+    session$flushReact()
+    drain(bound_client$stream_async("Stale question"))
+    adapter$invalidate()
+    state$last_turn("Stale answer")
+    session$flushReact()
+    expect_length(calls, 2L)
+    expect_identical(calls[[2L]]$completion_id, "completion-2")
+    expect_identical(calls[[2L]]$current, FALSE)
+
+    state$last_turn("Duplicate notification")
+    session$flushReact()
+    expect_length(calls, 2L)
 
     adapter$dispose()
     state$last_input("Disposed question")
     state$last_turn("Disposed answer")
     session$flushReact()
-    expect_length(calls, 1L)
+    expect_length(calls, 2L)
     expect_identical(disposed, 1L)
   })
+})
+
+test_that("shinychat completion client preserves one-use stream identities", {
+  issued <- 0L
+  fail_next <- FALSE
+  client <- structure(
+    list(
+      stream_async = function(...) {
+        issued <<- issued + 1L
+        completion_id <- paste0("completion-", issued)
+        should_fail <- fail_next
+        fail_next <<- FALSE
+        source <- coro::generator(function() {
+          if (should_fail) {
+            stop("stream interrupted", call. = FALSE)
+          }
+          coro::yield(paste0("answer-", completion_id))
+          coro::exhausted()
+        })()
+        tempest:::tempest_agent_completion_tag(source, completion_id)
+      }
+    ),
+    class = c("TempestDeputyChatAdapter", "Chat", "list")
+  )
+  ready <- character()
+  proxy <- tempest:::tempest_shinychat_completion_client(
+    client,
+    function(completion_id) ready <<- c(ready, completion_id)
+  )
+  drain <- function(stream) {
+    settled <- FALSE
+    failure <- NULL
+    request <- tryCatch(
+      coro::async(function() {
+        repeat {
+          value <- stream()
+          if (promises::is.promising(value)) {
+            value <- coro::await(value)
+          }
+          if (coro::is_exhausted(value)) {
+            break
+          }
+        }
+        NULL
+      })(),
+      error = function(error) {
+        failure <<- error
+        settled <<- TRUE
+        NULL
+      }
+    )
+    if (is.null(request)) {
+      return(list(settled = settled, error = failure))
+    }
+    promises::then(
+      request,
+      onFulfilled = function(value) settled <<- TRUE,
+      onRejected = function(error) {
+        failure <<- error
+        settled <<- TRUE
+      }
+    )
+    for (index in seq_len(100L)) {
+      later::run_now(timeoutSecs = 0.01)
+      if (settled) {
+        break
+      }
+    }
+    list(settled = settled, error = failure)
+  }
+
+  first <- proxy$stream_async("first")
+  second <- proxy$stream_async("second")
+  expect_identical(
+    tempest:::tempest_agent_completion_id(first),
+    "completion-1"
+  )
+  expect_identical(
+    tempest:::tempest_agent_completion_id(second),
+    "completion-2"
+  )
+  expect_null(drain(second)$error)
+  expect_null(drain(first)$error)
+  expect_identical(ready, c("completion-2", "completion-1"))
+
+  fail_next <- TRUE
+  interrupted <- proxy$stream_async("interrupted")
+  result <- drain(interrupted)
+  expect_identical(result$settled, TRUE)
+  expect_s3_class(result$error, "error")
+  expect_identical(ready, c("completion-2", "completion-1"))
 })
 
 test_that("shinychat adapter normalizes content and suggestion cards", {

@@ -30,6 +30,7 @@ tempest_builtin_workflow_abort <- function(message, ..., parent = NULL) {
 #' workflow <- tempest_storm_workflow_spec()
 #' names(workflow@steps)
 #' @export
+#' @noRd
 tempest_storm_workflow_spec <- function() {
   tempest_workflow_spec(
     workflow_id = "tempest.storm",
@@ -110,6 +111,7 @@ tempest_storm_workflow_spec <- function() {
 #' workflow <- tempest_costorm_workflow_spec()
 #' workflow@steps$dialogue@approval_checkpoint
 #' @export
+#' @noRd
 tempest_costorm_workflow_spec <- function() {
   tempest_workflow_spec(
     workflow_id = "tempest.costorm",
@@ -335,6 +337,7 @@ tempest_builtin_workflow_adapter <- function(
 #'   built-in deliverable operations are included.
 #' @return A `TempestOperationRegistry`.
 #' @export
+#' @noRd
 tempest_builtin_workflow_operation_registry <- function(
   storm_adapter = NULL,
   costorm_adapter = NULL,
@@ -650,6 +653,7 @@ tempest_storm_workflow_update_experts <- function(run, experts, stage) {
 #'   `research_strategy` or `max_rounds`.
 #' @return A process-local workflow adapter function.
 #' @export
+#' @noRd
 tempest_storm_workflow_adapter <- function(
   config = tempest_config(),
   retriever = NULL,
@@ -794,6 +798,7 @@ tempest_storm_workflow_adapter <- function(
 #' @param progress Optional generic run event callback.
 #' @return A `TempestRun`.
 #' @export
+#' @noRd
 tempest_storm_workflow_run <- function(
   topic,
   config = tempest_config(),
@@ -909,6 +914,7 @@ tempest_storm_workflow_run <- function(
 #' @param verbose Whether warmup prints progress.
 #' @return A process-local workflow adapter function.
 #' @export
+#' @noRd
 tempest_costorm_workflow_adapter <- function(
   session,
   style = c("technical", "executive"),
@@ -1031,6 +1037,7 @@ tempest_costorm_workflow_adapter <- function(
 #' @param progress Optional generic run event callback.
 #' @return The session-owned `TempestRun` in `awaiting_approval`.
 #' @export
+#' @noRd
 tempest_costorm_workflow_run <- function(
   session,
   style = c("technical", "executive"),

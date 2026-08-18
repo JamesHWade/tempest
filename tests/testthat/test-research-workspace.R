@@ -364,6 +364,31 @@ test_that("ResearchWorkspace exposes copies instead of mutable backing stores", 
   )
 })
 
+test_that("ResearchWorkspace revalidates product-owned content hashes", {
+  workspace <- tempest_research_workspace()
+  resource <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/content-hash",
+    title = "Content hash",
+    media_type = "text/plain",
+    content = "Exact evidence bytes."
+  )
+  tampered <- S7::set_props(
+    resource,
+    content_hash = strrep("0", 64L)
+  )
+
+  expect_error(
+    workspace$upsert_retrieved_resource(tampered),
+    class = "tempest_research_workspace_integrity_error"
+  )
+  expect_length(workspace$list_retrieved_resources(), 0L)
+  expect_identical(
+    workspace$upsert_retrieved_resource(resource),
+    resource@resource_id
+  )
+})
+
 test_that("claims and evidence spans retain source coherence", {
   workspace <- tempest_research_workspace()
   source_a <- fake_source("https://example.org/source-a")

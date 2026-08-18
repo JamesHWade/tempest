@@ -469,6 +469,51 @@ test_that("session verification commits pair records and support state atomicall
   )
 })
 
+test_that("default session verification is product-required", {
+  skip_if_not_installed("ellmer")
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  expect_identical(config@citation_policy, "source_attributed")
+  session <- tempest_session(
+    "Default product verification",
+    config = config,
+    experts = list(test_expert(expert_id = "expert.default-verifier"))
+  )
+  test_add_verifiable_claim(session$workspace, "default-policy")
+  judge <- fake_chat(
+    structured = list(list(
+      status = "supported",
+      score = 0.95,
+      rationale = "The exact captured excerpt supports the claim."
+    ))
+  )
+
+  audit <- tempest_verify_claims(session, verifier = judge)
+
+  expect_identical(nrow(audit), 1L)
+  expect_length(session$workspace$list_claim_supports(), 1L)
+  expect_identical(
+    tempest:::tempest_session_stage_records(session)[[1L]]@stage,
+    "verify_claim_support"
+  )
+
+  other <- tempest_session(
+    "Non-verifying override",
+    config = config,
+    experts = list(test_expert(expert_id = "expert.override-verifier"))
+  )
+  test_add_verifiable_claim(other$workspace, "override-policy")
+  expect_error(
+    tempest_verify_claims(
+      other,
+      verifier = fake_chat(),
+      policy = "source_attributed"
+    ),
+    class = "tempest_stage_governance_error"
+  )
+})
+
 test_that("session verification rejects policy and ProgramSet drift pre-provider", {
   skip_if_not_installed("ellmer")
   calls <- 0L
@@ -495,7 +540,7 @@ test_that("session verification rejects policy and ProgramSet drift pre-provider
     tempest_verify_claims(
       session,
       verifier = fake_chat(),
-      policy = "claim_verified"
+      policy = "source_attributed"
     ),
     class = "tempest_stage_governance_error"
   )

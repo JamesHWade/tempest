@@ -15,7 +15,7 @@ tempest_research_manifest(
   traces = list(),
   deliverables = list(),
   status = "running",
-  schema_version = 2L
+  schema_version = 3L
 )
 }
 \arguments{
@@ -42,7 +42,7 @@ only when \code{config} is unavailable during restoration.}
 \item{status}{Run status: \code{"running"}, \code{"succeeded"}, \code{"failed"}, or
 \code{"cancelled"}.}
 
-\item{schema_version}{Manifest record schema. Only version 2 is supported.}
+\item{schema_version}{Manifest record schema. Only version 3 is supported.}
 }
 \value{
 A \code{TempestResearchManifest} S7 object.

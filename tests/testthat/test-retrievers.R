@@ -282,6 +282,10 @@ test_that("fetch() caches content and force refreshes", {
   expect_equal(calls, 2L)
   expect_equal(second$title, first$title)
   expect_equal(forced$title, "Title 2")
+  expect_identical(
+    first$content_hash,
+    "f52748fc8a9dfb6adc2dbe7e5a4171a89dbadfda31bd4b786a2dec9c81700ba8"
+  )
   expect_equal(fetch_stats$misses, 1L)
   expect_equal(fetch_stats$hits, 1L)
   expect_equal(fetch_stats$bypasses, 1L)

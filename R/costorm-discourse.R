@@ -32,31 +32,26 @@ tempest_type_turn_policy <- function() {
 
 #' DiscourseManager
 #'
-#' LLM-driven discourse management for Co-STORM sessions.
-#' Decides which agent should speak next and what action to take.
+#' Retired generic discourse manager for Co-STORM sessions.
 #'
-#' @field chat An ellmer chat object for making decisions.
 #' @field config A `TempestConfig` object.
 #'
 #' @keywords internal
 DiscourseManager <- R6::R6Class(
   "DiscourseManager",
   public = list(
-    chat = NULL,
     config = NULL,
 
     #' @description
     #' Create a new DiscourseManager.
     #' @param config A `TempestConfig` object.
     initialize = function(config) {
-      self$config <- config
-      self$chat <- tempest_make_chat(
-        config,
-        "coordinator",
-        system_prompt = tempest_prompt("discourse_manager_system"),
-        echo = "none"
+      tempest_costorm_session_abort(
+        paste0(
+          "The generic discourse manager is unavailable; Co-STORM accepts ",
+          "only explicit moderator turns through its completion boundary."
+        )
       )
-      invisible(self)
     },
 
     #' @description
@@ -74,54 +69,11 @@ DiscourseManager <- R6::R6Class(
       expert_descriptions,
       unseen_sources = character()
     ) {
-      type <- tempest_type_turn_policy()
-
-      unseen_txt <- if (length(unseen_sources) > 0) {
+      tempest_costorm_session_abort(
         paste0(
-          "\n\nUndiscussed sources (",
-          length(unseen_sources),
-          " total):\n",
-          paste0("- ", head(unseen_sources, 10), collapse = "\n")
+          "Automatic discourse decisions are unavailable; submit an explicit ",
+          "moderator turn through the session completion boundary."
         )
-      } else {
-        ""
-      }
-
-      prompt <- paste0(
-        "Topic: ",
-        topic,
-        "\n\n",
-        "Expert panel:\n",
-        expert_descriptions,
-        "\n\n",
-        "Mind map:\n",
-        mindmap_md,
-        "\n\n",
-        "Recent conversation:\n",
-        transcript_md,
-        "\n",
-        unseen_txt,
-        "\n\n",
-        "Decide the next action for the conversation.\n",
-        "Return structured data."
-      )
-
-      tryCatch(
-        self$chat$chat_structured(
-          prompt,
-          type = type,
-          echo = "none",
-          convert = FALSE
-        ),
-        error = function(e) {
-          tempest_warn("Discourse manager decision failed.")
-          list(
-            action = "moderator_probes",
-            expert_id = "",
-            instruction = "Continue exploring the topic.",
-            rationale = "Fallback due to discourse manager error."
-          )
-        }
       )
     }
   )

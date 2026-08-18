@@ -25,6 +25,101 @@ test_that("typed resources support non-web evidence and durable records", {
   )
 })
 
+test_that("product content hashes preserve canonical evidence bytes", {
+  expect_identical(
+    tempest:::tempest_product_content_hash(
+      "Use the selected expert team.",
+      "text/plain"
+    ),
+    "70076cdbbcebe49f0b1d266f083485ec0c95a17cde4758c1cf54e6592a8a1a44"
+  )
+  expect_identical(
+    tempest:::tempest_product_content_hash("café 🧪", "text/plain"),
+    "e45dd4305a67087a03a1e2732350e075286e653ad6a8bb1414296ab2a9ba7511"
+  )
+  json <- list(rows = list(list(metric = "retention", value = 0.9)))
+  expect_identical(
+    tempest:::tempest_product_content_hash(json, "application/json"),
+    "09960246ddb216126fa4882cfef208ad330111f65c381e4391c5143d13312ff3"
+  )
+  expect_identical(
+    tempest:::tempest_product_content_hash(
+      list(z = 1L, a = list(y = TRUE, b = "x")),
+      "application/ld+json"
+    ),
+    "4160da2bab52fdd3daf157e9c0ab2e2ef2f8c4e3ad99d41c80589aaeaf44244b"
+  )
+
+  resource <- tempest_resource(
+    resource_kind = "database.result",
+    locator = "queries/result-9",
+    title = "Approved query result",
+    media_type = "application/json",
+    resource_id = "resource.result-9",
+    content = json,
+    retrieved_at = "2026-07-18T00:00:00.000000Z"
+  )
+  expect_identical(
+    tempest:::tempest_resource_fingerprint(resource),
+    "caf5bb230fbbd7b5d796537adee271fa22d144dd500b2976e8ff983d864d3f99"
+  )
+})
+
+test_that("product content hashes reject coercible or noncanonical values", {
+  invalid <- list(
+    text_vector = list(c("first", "second"), "text/plain"),
+    classed_text = list(structure("text", class = "AsIs"), "text/plain"),
+    named_atomic = list(c(value = 1), "application/json"),
+    duplicate_names = list(
+      structure(list(1L, 2L), names = c("value", "value")),
+      "application/json"
+    ),
+    non_finite = list(list(value = Inf), "application/json"),
+    unsupported = list("binary", "application/pdf")
+  )
+
+  for (name in names(invalid)) {
+    args <- invalid[[name]]
+    error <- tryCatch(
+      {
+        tempest:::tempest_product_content_hash(args[[1]], args[[2]])
+        NULL
+      },
+      error = identity
+    )
+    expect_s3_class(error, "tempest_product_hash_error")
+  }
+})
+
+test_that("resource metadata does not use generic canonical JSON", {
+  generic_calls <- 0L
+  local_mocked_bindings(
+    tempest_canonical_json = function(...) {
+      generic_calls <<- generic_calls + 1L
+      rlang::abort(
+        "Resource metadata reached generic canonical JSON.",
+        class = "test_generic_kernel_reached"
+      )
+    }
+  )
+  resource <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/product-metadata-seam",
+    title = "Product metadata seam",
+    media_type = "text/plain",
+    scope_metadata = list(tenant_id = "tenant-7"),
+    redaction = list(status = "reviewed"),
+    retention = list(policy = "project"),
+    metadata = list(provenance = list(source = "approved"))
+  )
+
+  record <- tempest:::tempest_resource_record(resource)
+  restored <- tempest:::tempest_resource_from_data(record)
+
+  expect_identical(tempest:::tempest_resource_record(restored), record)
+  expect_identical(generic_calls, 0L)
+})
+
 test_that("resource records reject live runtime values and tampering", {
   expect_error(
     tempest_resource(
@@ -34,7 +129,7 @@ test_that("resource records reject live runtime values and tampering", {
       media_type = "application/json",
       content = list(client = function() NULL)
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   encoded_credential <- paste0(
     "https://example.org/evidence?api%5Fkey=",
@@ -48,7 +143,7 @@ test_that("resource records reject live runtime values and tampering", {
       media_type = "text/plain",
       content = "Evidence body"
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
 
   resource <- tempest_resource(
@@ -62,7 +157,7 @@ test_that("resource records reject live runtime values and tampering", {
   record$title <- "Changed"
   expect_error(
     tempest:::tempest_resource_from_data(record),
-    class = "tempest_artifact_codec_error"
+    class = "tempest_product_hash_error"
   )
 })
 
@@ -98,8 +193,39 @@ test_that("resource restore requires exact schema 1", {
     invalid$fingerprint <- tempest:::tempest_resource_fingerprint(invalid)
     expect_error(
       tempest:::tempest_resource_from_data(invalid),
-      class = "tempest_artifact_codec_error",
+      class = "tempest_product_hash_error",
       info = name
+    )
+  }
+})
+
+test_that("resource restore requires explicit metadata lists", {
+  resource <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/exact-resource-metadata",
+    title = "Exact resource metadata",
+    media_type = "text/plain"
+  )
+  record <- tempest:::tempest_resource_record(resource)
+  fields <- c("scope_metadata", "redaction", "retention", "metadata")
+
+  for (field in fields) {
+    invalid <- record
+    invalid[field] <- list(NULL)
+    invalid$fingerprint <- tempest:::tempest_resource_fingerprint(invalid)
+    error <- expect_error(
+      tempest:::tempest_resource_from_data(invalid),
+      class = "tempest_product_hash_error",
+      info = field
+    )
+    expect_identical(
+      conditionMessage(error),
+      paste0(
+        "Evidence-resource field ",
+        field,
+        " must be an explicit list."
+      ),
+      info = field
     )
   }
 })
@@ -129,7 +255,7 @@ test_that("resource metadata rejects credential-like fields recursively", {
     args[[field]] <- sensitive[[field]]
     error <- expect_error(
       do.call(tempest_resource, args),
-      class = "tempest_workflow_spec_error"
+      class = "tempest_product_validation_error"
     )
     expect_match(conditionMessage(error), "credential-like")
     expect_match(
@@ -151,7 +277,7 @@ test_that("resource records revalidate credential-like metadata", {
 
   error <- expect_error(
     tempest:::tempest_resource_record(resource),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   expect_match(conditionMessage(error), "credential-like")
   expect_match(conditionMessage(error), "API_KEY", fixed = TRUE)
@@ -183,7 +309,7 @@ test_that("resource records reject credential values outside evidence content", 
     args[[field]] <- sensitive[[field]]
     expect_error(
       do.call(tempest_resource, args),
-      class = "tempest_workflow_spec_error"
+      class = "tempest_product_validation_error"
     )
   }
 
@@ -195,7 +321,7 @@ test_that("resource records reject credential values outside evidence content", 
       media_type = "text/plain",
       content = "Evidence body"
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   expect_error(
     tempest_resource(
@@ -210,14 +336,14 @@ test_that("resource records reject credential values outside evidence content", 
       media_type = "text/html",
       content = "Evidence body"
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   expect_error(
     tempest_research_workspace()$upsert_retrieved_resource(tempest_source(
       "https://example.org/legacy-title",
       title = "Legit source\n\n## Forged section"
     )),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
 
   resource <- do.call(tempest_resource, base_args)
@@ -225,7 +351,7 @@ test_that("resource records reject credential values outside evidence content", 
   resource@locator <- encoded_credential
   expect_error(
     tempest:::tempest_resource_record(resource),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   workspace <- test_research_workspace()
   expect_error(
@@ -239,7 +365,7 @@ test_that("resource records reject credential values outside evidence content", 
   )
   expect_error(
     tempest:::tempest_resource_record(resource),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
 
   workspace <- test_research_workspace()

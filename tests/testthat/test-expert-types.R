@@ -1,4 +1,4 @@
-test_that("expert profiles declare durable skills and scoped capabilities", {
+test_that("expert profiles preserve the fixed scientific product shape", {
   expert <- tempest_expert(
     expert_id = "expert.policy",
     name = "Dr. Rivera",
@@ -7,12 +7,7 @@ test_that("expert profiles declare durable skills and scoped capabilities", {
     instructions = "Use verified evidence and preserve uncertainty.",
     version = "2026.1",
     focus_areas = c("policy", "markets"),
-    skill_ids = "evidence-synthesis",
-    skill_versions = c("evidence-synthesis" = "2"),
-    required_capability_ids = "evidence.search",
-    optional_capability_ids = "evidence.fetch",
-    model_role = NA_character_,
-    model_policy_ref = "policy.expert",
+    model_role = "expert",
     selection_metadata = list(regions = list("US", "CA")),
     initial_work_items = "Map active policies",
     initial_questions = "Which incentives affect adoption?"
@@ -20,88 +15,65 @@ test_that("expert profiles declare durable skills and scoped capabilities", {
 
   expect_identical(S7::S7_inherits(expert, TempestExpertProfile), TRUE)
   expect_equal(expert@expert_id, "expert.policy")
-  expect_equal(expert@skill_ids, "evidence-synthesis")
-  expect_equal(expert@skill_versions[["evidence-synthesis"]], "2")
-  expect_equal(expert@model_policy_ref, "policy.expert")
+  expect_identical(expert@skill_ids, character())
+  expect_identical(expert@skill_versions, character())
+  expect_identical(expert@required_capability_ids, character())
+  expect_identical(expert@optional_capability_ids, character())
+  expect_identical(expert@model_role, "expert")
+  expect_identical(expert@model_policy_ref, NA_character_)
   expect_equal(expert@state, "active")
 })
 
-test_that("skills keep procedures separate from runtime operations", {
-  skill <- tempest_skill(
-    "evidence-synthesis",
-    purpose = "Synthesize verified evidence",
-    instructions = "Compare sources and preserve disagreements.",
-    version = "2",
-    input_schema = list(type = "object"),
-    output_schema = list(type = "object"),
-    required_capability_ids = c("evidence.search", "evidence.read"),
-    operation_ids = "tempest.skill.synthesize",
-    operation_versions = c("tempest.skill.synthesize" = "3"),
-    metadata = list(owner = "research")
+test_that("expert profiles reject generic resolver semantics", {
+  arguments <- list(
+    skill_ids = list(skill_ids = "evidence-synthesis"),
+    skill_versions = list(
+      skill_ids = "evidence-synthesis",
+      skill_versions = c("evidence-synthesis" = "2")
+    ),
+    required_capability_ids = list(
+      required_capability_ids = "evidence.search"
+    ),
+    optional_capability_ids = list(
+      optional_capability_ids = "evidence.fetch"
+    ),
+    model_policy_ref = list(model_policy_ref = "policy.expert"),
+    model_role = list(model_role = "moderator")
   )
 
-  expect_identical(S7::S7_inherits(skill, TempestSkill), TRUE)
-  expect_equal(
-    skill@required_capability_ids,
-    c(
-      "evidence.search",
-      "evidence.read"
+  for (argument in arguments) {
+    expect_error(
+      do.call(
+        tempest_expert,
+        c(
+          list(
+            expert_id = "expert.fixed",
+            name = "Fixed expert",
+            title = "Researcher",
+            description = "Reviews scientific evidence.",
+            instructions = "Preserve uncertainty."
+          ),
+          argument
+        )
+      ),
+      class = "tempest_research_expert_error"
     )
-  )
-  expect_equal(
-    skill@operation_versions[["tempest.skill.synthesize"]],
-    "3"
+  }
+
+  expect_error(
+    tempest_expert(
+      expert_id = "expert.schema",
+      name = "Schema expert",
+      title = "Researcher",
+      description = "Reviews scientific evidence.",
+      instructions = "Preserve uncertainty.",
+      schema_version = 1
+    ),
+    class = "tempest_research_expert_error"
   )
 })
 
-test_that("capabilities reference operations and opaque connections", {
-  capability <- tempest_capability_spec(
-    "evidence.search",
-    purpose = "Find approved evidence",
-    instructions = "Use only granted read-only connections.",
-    operation_id = "tempest.capability.search",
-    operation_version = "2",
-    connection_ref_ids = "connection.knowledge-base",
-    model_roles = c("expert", "coordinator"),
-    input_schema = list(query = list(type = "string")),
-    output_schema = list(results = list(type = "array")),
-    side_effecting = FALSE
-  )
-
-  expect_identical(
-    S7::S7_inherits(capability, TempestCapabilitySpec),
-    TRUE
-  )
-  expect_equal(capability@operation_id, "tempest.capability.search")
-  expect_equal(
-    capability@connection_ref_ids,
-    "connection.knowledge-base"
-  )
-  expect_identical(capability@side_effecting, FALSE)
-})
-
-test_that("connection references contain non-secret durable metadata", {
-  connection <- tempest_connection_ref(
-    "connection.knowledge-base",
-    provider_id = "host.connections",
-    connection_type = "document-search",
-    title = "Approved knowledge base",
-    description = "Read-only customer documentation",
-    scopes = c("documents.read", "metadata.read"),
-    state = "retired",
-    metadata = list(region = "us-east")
-  )
-
-  expect_identical(
-    S7::S7_inherits(connection, TempestConnectionRef),
-    TRUE
-  )
-  expect_equal(connection@provider_id, "host.connections")
-  expect_equal(connection@scopes, c("documents.read", "metadata.read"))
-  expect_equal(connection@state, "retired")
-})
-
-test_that("contract constructors reject invalid and executable definitions", {
+test_that("expert constructors reject invalid and executable definitions", {
   expect_error(
     tempest_expert(
       expert_id = "sk-live-secret",
@@ -110,7 +82,7 @@ test_that("contract constructors reject invalid and executable definitions", {
       description = "Should never be persisted.",
       instructions = "Do not run."
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_research_expert_error"
   )
   expect_error(
     tempest_expert(
@@ -123,7 +95,7 @@ test_that("contract constructors reject invalid and executable definitions", {
         note = "sk-proj-0123456789abcdefghijklmnopqrstuv"
       )
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_research_expert_error"
   )
   expect_error(
     tempest_expert(
@@ -134,16 +106,7 @@ test_that("contract constructors reject invalid and executable definitions", {
       instructions = "Do not run.",
       metadata = list(note = paste0("AIza", strrep("A", 35L)))
     ),
-    class = "tempest_workflow_spec_error"
-  )
-  expect_error(
-    tempest_connection_ref(
-      "https://service-token@example.org/private",
-      provider_id = "provider.safe",
-      connection_type = "search",
-      title = "Unsafe connection"
-    ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_research_expert_error"
   )
   benign <- tempest_expert(
     expert_id = "expert.safe-metadata",
@@ -160,13 +123,13 @@ test_that("contract constructors reject invalid and executable definitions", {
   benign@metadata$note <- "sk-proj-0123456789abcdefghijklmnopqrstuv"
   expect_error(
     tempest:::tempest_expert_profile_record(benign),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_research_expert_error"
   )
   benign@metadata$note <- "Safe metadata"
   benign@name <- "sk-proj-0123456789abcdefghijklmnopqrstuv"
   expect_error(
     tempest:::tempest_expert_profile_record(benign),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_research_expert_error"
   )
   expect_error(
     tempest_expert(
@@ -176,7 +139,7 @@ test_that("contract constructors reject invalid and executable definitions", {
       description = "Description",
       instructions = "Instructions"
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_research_expert_error"
   )
   expect_error(
     tempest_expert(
@@ -188,38 +151,7 @@ test_that("contract constructors reject invalid and executable definitions", {
       required_capability_ids = "search",
       optional_capability_ids = "search"
     ),
-    class = "tempest_workflow_spec_error"
-  )
-  expect_error(
-    tempest_skill(
-      "skill.one",
-      purpose = "Purpose",
-      instructions = "Instructions",
-      operation_ids = "operation.one",
-      operation_versions = c(other = "1")
-    ),
-    class = "tempest_workflow_spec_error"
-  )
-  expect_error(
-    tempest_capability_spec(
-      "capability.one",
-      purpose = "Purpose",
-      instructions = "Instructions",
-      operation_id = "operation.one",
-      input_schema = list(callback = function() NULL)
-    ),
-    class = "tempest_workflow_spec_error"
-  )
-  expect_error(
-    tempest_connection_ref(
-      "connection.one",
-      provider_id = "host",
-      connection_type = "documents",
-      title = "Documents",
-      description = "Approved documents",
-      metadata = list(api_key = "not-allowed")
-    ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_research_expert_error"
   )
 })
 
@@ -241,7 +173,7 @@ test_that("credential-like metadata names fail after display normalization", {
         instructions = "Inspect evidence.",
         metadata = metadata
       ),
-      class = "tempest_workflow_spec_error"
+      class = "tempest_research_expert_error"
     )
   }
 
@@ -258,43 +190,37 @@ test_that("credential-like metadata names fail after display normalization", {
   )
   expect_error(
     tempest:::tempest_expert_profile_record(expert),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_research_expert_error"
   )
 })
 
 test_that("session snapshots reject normalized credential metadata", {
   skip_if_not_installed("ellmer")
   sensitive_name <- "api&#95;key"
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
   session <- tempest_session(
-    "Sensitive metadata name",
-    config = tempest_config(
-      chat_fn = function(role, model, system_prompt, echo) fake_chat()
-    ),
+    "Sensitive metadata",
+    config = cfg,
     experts = list(test_expert(expert_id = "expert.sensitive-session"))
   )
-  session$experts[[1L]]@metadata <- stats::setNames(
-    list("hunter2hunter2"),
-    sensitive_name
-  )
-  expect_error(
-    tempest_session_snapshot(session),
-    class = "tempest_session_snapshot_error"
-  )
+  snapshot <- tempest_session_snapshot(session)
+  expect_identical(session$experts[[1L]]@metadata, list())
 
-  session <- tempest_session(
-    "Sensitive metadata value",
-    config = tempest_config(
-      chat_fn = function(role, model, system_prompt, echo) fake_chat()
-    ),
-    experts = list(test_expert(expert_id = "expert.sensitive-session"))
+  metadata_values <- list(
+    stats::setNames(list("hunter2hunter2"), sensitive_name),
+    list(note = paste0("AIza", strrep("A", 35L)))
   )
-  session$experts[[1L]]@metadata <- list(
-    note = paste0("AIza", strrep("A", 35L))
-  )
-  expect_error(
-    tempest_session_snapshot(session),
-    class = "tempest_session_snapshot_error"
-  )
+  for (metadata in metadata_values) {
+    candidate <- snapshot
+    candidate$experts[[1L]]$metadata <- metadata
+    expect_error(
+      tempest_session_restore(candidate, config = cfg),
+      class = "tempest_session_restore_error",
+      regexp = "credential-like"
+    )
+  }
 })
 
 test_that("credential detection preserves scientific SK identifiers", {
@@ -416,10 +342,15 @@ test_that("credential detection preserves scientific SK identifiers", {
   )
 })
 
-test_that("contract records round-trip with stable fingerprints", {
-  canonical_record <- function(record) {
+test_that("expert records round-trip with stable fingerprints", {
+  expert_record <- function(record) {
     jsonlite::fromJSON(
-      tempest_canonical_json(record),
+      jsonlite::toJSON(
+        record,
+        auto_unbox = TRUE,
+        null = "null",
+        na = "null"
+      ),
       simplifyVector = FALSE
     )
   }
@@ -428,85 +359,59 @@ test_that("contract records round-trip with stable fingerprints", {
     name = "Expert",
     title = "Analyst",
     description = "Analyzes evidence.",
-    instructions = "Be precise.",
-    skill_ids = "skill.one",
-    required_capability_ids = "capability.one"
+    instructions = "Be precise."
   )
-  skill <- tempest_skill(
-    "skill.one",
-    purpose = "Analyze evidence",
-    instructions = "Compare claims.",
-    required_capability_ids = "capability.one"
-  )
-  capability <- tempest_capability_spec(
-    "capability.one",
-    purpose = "Read evidence",
-    instructions = "Use approved sources.",
-    operation_id = "operation.read",
-    connection_ref_ids = "connection.one"
-  )
-  connection <- tempest_connection_ref(
-    "connection.one",
-    provider_id = "host",
-    connection_type = "documents",
-    title = "Documents",
-    description = "Approved documents"
-  )
-
   restored_expert <- tempest_expert_profile_from_data(
-    canonical_record(tempest_expert_profile_record(expert))
-  )
-  restored_skill <- tempest_skill_from_data(
-    canonical_record(tempest_skill_record(skill))
-  )
-  restored_capability <- tempest_capability_spec_from_data(
-    canonical_record(tempest_capability_spec_record(capability))
-  )
-  restored_connection <- tempest_connection_ref_from_data(
-    canonical_record(tempest_connection_ref_record(connection))
+    expert_record(tempest_expert_profile_record(expert))
   )
 
   expect_equal(restored_expert@expert_id, expert@expert_id)
-  expect_equal(restored_skill@skill_id, skill@skill_id)
-  expect_equal(
-    restored_capability@capability_id,
-    capability@capability_id
-  )
-  expect_equal(
-    restored_connection@connection_id,
-    connection@connection_id
-  )
   expect_match(
     tempest_expert_profile_record(expert)$fingerprint,
     "^[a-f0-9]{64}$"
   )
 })
 
-test_that("contract restoration rejects tampering and unknown schemas", {
-  skill <- tempest_skill(
-    "skill.one",
-    purpose = "Analyze evidence",
-    instructions = "Compare claims."
+test_that("expert profile rows restore only the exact current product shape", {
+  expert <- tempest_expert(
+    expert_id = "expert.current",
+    name = "Current expert",
+    title = "Researcher",
+    description = "Reviews scientific evidence.",
+    instructions = "Preserve uncertainty."
   )
-  record <- tempest_skill_record(skill)
-  record$instructions <- "Tampered"
+  record <- tempest_expert_profile_record(expert)
 
+  expect_identical(
+    names(record),
+    c(S7::prop_names(expert), "fingerprint")
+  )
+  expect_identical(record$schema_version, 1L)
+  expect_identical(record$skill_ids, list())
+  expect_identical(record$required_capability_ids, list())
+
+  missing <- record
+  missing$skill_ids <- NULL
   expect_error(
-    tempest_skill_from_data(record),
-    class = "tempest_artifact_codec_error"
+    tempest_expert_profile_from_data(missing),
+    class = "tempest_research_expert_error"
   )
 
-  record <- tempest_skill_record(skill)
-  record$schema_version <- 2L
+  wrong_schema <- record
+  wrong_schema$schema_version <- 1
+  wrong_schema$fingerprint <- tempest_expert_profile_fingerprint(
+    wrong_schema
+  )
   expect_error(
-    tempest_skill_from_data(record),
-    class = "tempest_artifact_codec_error"
+    tempest_expert_profile_from_data(wrong_schema),
+    class = "tempest_research_expert_error"
   )
 
-  record <- tempest_skill_record(skill)
-  record$fingerprint <- NULL
+  generic <- record
+  generic$required_capability_ids <- list("evidence.search")
+  generic$fingerprint <- tempest_expert_profile_fingerprint(generic)
   expect_error(
-    tempest_skill_from_data(record),
-    class = "tempest_artifact_codec_error"
+    tempest_expert_profile_from_data(generic),
+    class = "tempest_research_expert_error"
   )
 })

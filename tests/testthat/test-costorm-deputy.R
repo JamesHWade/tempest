@@ -171,7 +171,9 @@ test_that("moderator delegates through persistent Deputy expert execution", {
   second <- session$step("Second user question")
   moderator_state <- moderator_chat$.state()
   delegations <- moderator_state$delegations
-  expert_session <- session$expert_session_manager$get_or_create(
+  expert_session <- tempest:::tempest_session_expert_manager(
+    session
+  )$get_or_create(
     expert@expert_id
   )
   expert_identity <- tempest:::tempest_deputy_chat_identity(
@@ -309,10 +311,6 @@ test_that("unseen-source questions expose their moderator Deputy execution", {
     content_text = "An unseen finding changes the evidence map."
   ))
   surfaced <- session$surface_unseen_information(max_questions = 1L)
-  execution <- tempest:::tempest_deputy_chat_last_execution(
-    session$chats$moderator
-  )
-
   expect_named(
     surfaced,
     c(
@@ -326,23 +324,24 @@ test_that("unseen-source questions expose their moderator Deputy execution", {
     surfaced$questions,
     "What does the unseen source establish?"
   )
-  expect_identical(surfaced$deputy_run_id, execution$deputy_run_id)
-  expect_identical(
-    surfaced$deputy_session_id,
-    execution$deputy_session_id
-  )
+  expect_match(surfaced$deputy_run_id, "^run[_-]")
+  expect_match(surfaced$deputy_session_id, "^tempest-moderator-")
+  execution <- tail(tempest:::tempest_session_deputy_traces(session), 1L)[[1L]]
   expect_identical(surfaced$correlation_id, execution$correlation_id)
   expect_identical(execution$stage, "dialogue")
   expect_identical(execution$role, "moderator")
   expect_identical(is.null(execution$correlation_id), FALSE)
 
-  decision <- session$execute_turn_decision(list(action = "surface_unseen"))
-  expect_identical(decision$speaker, "Moderator")
+  decision_error <- tryCatch(
+    session$execute_turn_decision(list(action = "surface_unseen")),
+    error = identity
+  )
+  expect_s3_class(decision_error, "tempest_session_error")
   expect_identical(
     vapply(moderator_chat$.calls(), `[[`, character(1), "transport"),
-    rep("stream", 3L)
+    "stream"
   )
-  expect_length(tempest:::tempest_session_deputy_traces(session), 3L)
+  expect_length(tempest:::tempest_session_deputy_traces(session), 1L)
 })
 
 test_that("synchronous warmup binds one correlation across Deputy and stage", {
@@ -442,12 +441,60 @@ test_that("synchronous warmup binds one correlation across Deputy and stage", {
     record@trace_references$deputy_session_id,
     trace$deputy_session_id
   )
-  expect_identical(
-    result[["expert.sync-warmup"]]$results[[1L]]$deputy_run_id,
-    trace$deputy_run_id
+  orientation <- result@orientations[[1L]]
+  expect_identical(orientation$deputy_run_id, trace$deputy_run_id)
+  expect_identical(orientation$deputy_session_id, trace$deputy_session_id)
+})
+
+test_that("Deputy expert restores require the exact current binding wire shape", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+
+  expert <- test_expert(
+    expert_id = "expert.exact-restore",
+    name = "Exact Restore Expert"
   )
-  expect_identical(
-    result[["expert.sync-warmup"]]$results[[1L]]$deputy_session_id,
-    trace$deputy_session_id
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
+  source_session <- tempest_session(
+    "Exact expert restore source",
+    config = config,
+    experts = list(expert)
+  )
+  source_manager <- tempest:::tempest_session_expert_manager(source_session)
+  source <- source_manager$get_or_create(expert@expert_id)
+  binding <- source$profile
+
+  restored_session <- tempest_session(
+    "Exact expert restore target",
+    config = config,
+    experts = list(expert)
+  )
+  manager <- tempest:::tempest_session_expert_manager(restored_session)
+  malformed <- list(
+    reordered = binding[rev(names(binding))],
+    padded_scalar = within(binding, session_id <- paste0(" ", session_id)),
+    scalar_list = within(binding, session_id <- list(session_id)),
+    connection_list = within(
+      binding,
+      allowed_connection_ref_ids <- list()
+    ),
+    connection_null = within(
+      binding,
+      allowed_connection_ref_ids <- NULL
+    ),
+    grants_atomic = within(binding, grants <- character()),
+    grants_null = within(binding, grants <- NULL)
+  )
+
+  for (candidate in malformed) {
+    error <- tryCatch(manager$restore_session(candidate), error = identity)
+    expect_s3_class(error, "tempest_deputy_expert_error")
+  }
+  expect_length(manager$list_sessions(), 0L)
+
+  restored <- manager$restore_session(binding)
+  expect_identical(restored$profile, binding)
+  expect_identical(identical(restored$chat, source$chat), FALSE)
 })

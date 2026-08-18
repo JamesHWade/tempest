@@ -7,11 +7,6 @@ articles:
   navbar: ~
   contents:
   - tempest
-- title: Retiring experimental generic kernel
-  desc: Review the deletion-owned baseline scheduled for the section-10 PR.
-  navbar: ~
-  contents:
-  - reusable-workflows
 - title: Bring organizational knowledge
   desc: Read portable knowledge as bounded evidence for Tempest workflows.
   navbar: ~
@@ -22,6 +17,9 @@ articles:
   navbar: ~
   contents:
   - agent-skills
+- title: internal
+  contents:
+  - reusable-workflows
 reference:
 - title: Agent integrations
   contents:
@@ -79,43 +77,10 @@ reference:
   - tempest_shiny_store
   - tempest_shiny_ui
   - tempest_shiny_server
-- title: Retiring experimental generic kernel
-  desc: Deletion-owned baseline scheduled for the section-10 PR.
+- title: Generic-kernel cutover
+  desc: Immediate Tempest 0.2 cutover to the STORM and Co-STORM product APIs.
   contents:
   - tempest-generic-kernel-retirement
-  - tempest_objective
-  - tempest_deliverable_spec
-  - tempest_artifact
-  - tempest_artifact_representation
-  - tempest_artifact_catalog
-  - tempest_artifact_catalog_restore
-  - tempest_artifact_codec_definition
-  - tempest_artifact_codec_registry
-  - tempest_artifact_store
-  - tempest_memory_artifact_store
-  - tempest_operation_registry
-  - tempest_builtin_operation_registry
-  - tempest_workflow_step
-  - tempest_workflow_spec
-  - tempest_storm_workflow_spec
-  - tempest_costorm_workflow_spec
-  - tempest_builtin_workflow_operation_registry
-  - tempest_generate_deliverable
-  - tempest_run_workflow
-  - tempest_storm_workflow_run
-  - tempest_costorm_workflow_run
-  - tempest_run_accessors
-  - tempest_run_snapshot
-  - tempest_run_save
-  - tempest_skill
-  - tempest_skill_registry
-  - tempest_capability_spec
-  - tempest_capability_resolver
-  - tempest_connection_ref
-  - tempest_connection_provider
-  - tempest_runtime
-  - tempest_storm_workflow_adapter
-  - tempest_costorm_workflow_adapter
 - title: Session persistence
   contents:
   - tempest_session_snapshot

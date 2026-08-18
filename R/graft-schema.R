@@ -31,16 +31,29 @@ tempest_graft_remote_sha <- function() {
   utils::packageDescription("graft")[["RemoteSha"]]
 }
 
+tempest_graft_deparse <- function(value) {
+  paste(
+    deparse(
+      value,
+      width.cutoff = 500L,
+      control = c(
+        "keepInteger",
+        "quoteExpressions",
+        "showAttributes",
+        "useSource",
+        "keepNA",
+        "digits17",
+        "niceNames"
+      )
+    ),
+    collapse = "\n"
+  )
+}
+
 tempest_graft_function_descriptor <- function(value) {
   list(
-    formals = paste(
-      deparse(formals(value), width.cutoff = 500L, control = "all"),
-      collapse = "\n"
-    ),
-    body = paste(
-      deparse(body(value), width.cutoff = 500L, control = "all"),
-      collapse = "\n"
-    )
+    formals = tempest_graft_deparse(formals(value)),
+    body = tempest_graft_deparse(body(value))
   )
 }
 

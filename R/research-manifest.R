@@ -10,50 +10,99 @@ tempest_research_manifest_abort <- function(message, ..., parent = NULL) {
   )
 }
 
+tempest_opaque_identifier_stages <- c(
+  "perspectives",
+  "personas",
+  "query_decomposition",
+  "extract_claims",
+  "verify_claim_support",
+  "next_question",
+  "draft_outline",
+  "refined_outline",
+  "section_writing",
+  "lead_section"
+)
+
+tempest_opaque_identifier_builtin_ids <- c(
+  paste0("tempest::", tempest_opaque_identifier_stages),
+  paste0("tempest::evaluator/", tempest_opaque_identifier_stages)
+)
+
+tempest_opaque_identifier_sha256_pattern <- "^sha256:[a-f0-9]{64}$"
+tempest_opaque_identifier_namespaced_pattern <- paste0(
+  "^[A-Za-z][A-Za-z0-9._-]*::",
+  "[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,120}$"
+)
+tempest_opaque_identifier_pattern <- "^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,127}$"
+tempest_opaque_identifier_credential_marker_pattern <- paste0(
+  "(^|[:/@._+-])(?:bearer|authorization|api[-_]?key|",
+  "access[-_]?token|refresh[-_]?token|token|secret|password|",
+  "client[-_]?secret|private[-_]?key)(?:$|[:/@._+-])"
+)
+
+tempest_opaque_identifier_cache_capacity <- 512L
+tempest_opaque_identifier_cache <- new.env(hash = TRUE, parent = emptyenv())
+
+tempest_opaque_identifier_cache_clear <- function() {
+  identifiers <- ls(
+    envir = tempest_opaque_identifier_cache,
+    all.names = TRUE
+  )
+  if (length(identifiers) > 0L) {
+    rm(list = identifiers, envir = tempest_opaque_identifier_cache)
+  }
+  invisible(NULL)
+}
+
+tempest_opaque_identifier_cache_store <- function(value) {
+  if (
+    length(tempest_opaque_identifier_cache) >=
+      tempest_opaque_identifier_cache_capacity
+  ) {
+    tempest_opaque_identifier_cache_clear()
+  }
+  assign(value, TRUE, envir = tempest_opaque_identifier_cache)
+  invisible(NULL)
+}
+
 tempest_opaque_identifier_valid <- function(value) {
   if (
     !rlang::is_string(value) ||
       is.na(value) ||
+      !nzchar(value) ||
       nchar(value, type = "bytes") > 128L
   ) {
     return(FALSE)
   }
-  stages <- c(
-    "perspectives",
-    "personas",
-    "query_decomposition",
-    "extract_claims",
-    "verify_claim_support",
-    "next_question",
-    "draft_outline",
-    "refined_outline",
-    "section_writing",
-    "lead_section"
-  )
-  builtin_ids <- c(
-    paste0("tempest::", stages),
-    paste0("tempest::evaluator/", stages)
-  )
-  safe_builtin <- value %in% builtin_ids
-  safe_sha256 <- grepl("^sha256:[a-f0-9]{64}$", value)
+  if (
+    exists(
+      value,
+      envir = tempest_opaque_identifier_cache,
+      inherits = FALSE
+    )
+  ) {
+    return(TRUE)
+  }
+  safe_builtin <- value %in% tempest_opaque_identifier_builtin_ids
+  safe_sha256 <- grepl(tempest_opaque_identifier_sha256_pattern, value)
   safe_namespaced <- grepl(
-    "^[A-Za-z][A-Za-z0-9._-]*::[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,120}$",
+    tempest_opaque_identifier_namespaced_pattern,
     value
   )
-  safe_opaque <- grepl("^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,127}$", value)
+  safe_opaque <- grepl(tempest_opaque_identifier_pattern, value)
   credential_marker <- grepl(
-    paste0(
-      "(^|[:/@._+-])(?:bearer|authorization|api[-_]?key|",
-      "access[-_]?token|refresh[-_]?token|token|secret|password|",
-      "client[-_]?secret|private[-_]?key)(?:$|[:/@._+-])"
-    ),
+    tempest_opaque_identifier_credential_marker_pattern,
     value,
     ignore.case = TRUE,
     perl = TRUE
   )
-  (safe_builtin || safe_sha256 || safe_namespaced || safe_opaque) &&
+  valid <- (safe_builtin || safe_sha256 || safe_namespaced || safe_opaque) &&
     !credential_marker &&
     !tempest_contract_sensitive_scalar(value)
+  if (valid) {
+    tempest_opaque_identifier_cache_store(value)
+  }
+  valid
 }
 
 tempest_research_manifest_string <- function(value, arg) {
@@ -121,9 +170,9 @@ tempest_research_provenance_record <- function(
 }
 
 tempest_research_manifest_schema_version <- function(value) {
-  if (!tempest_exact_integer_scalar_valid(value, 2L, 2L)) {
+  if (!tempest_exact_integer_scalar_valid(value, 3L, 3L)) {
     tempest_research_manifest_abort(
-      "{.arg schema_version} must be the supported version `2`."
+      "{.arg schema_version} must be the supported version `3`."
     )
   }
   value
@@ -831,11 +880,12 @@ tempest_research_manifest_reference_tree <- function(
 }
 
 tempest_research_manifest_traces <- function(value) {
-  tempest_research_manifest_reference_tree(
+  traces <- tempest_research_manifest_reference_tree(
     value %||% list(),
     "traces",
     allowed = c(
       "agent_id",
+      "completion_disposition",
       "correlation_id",
       "delegation_id",
       "deputy_run_id",
@@ -865,9 +915,59 @@ tempest_research_manifest_traces <- function(value) {
       "tool_call_id",
       "trace_id"
     ),
-    scalar_fields = c("role", "stage", "status", "trace_type"),
+    scalar_fields = c(
+      "completion_disposition",
+      "role",
+      "stage",
+      "status",
+      "trace_type"
+    ),
     allow_empty = TRUE
   )
+  validate_disposition <- function(trace) {
+    if (!"trace_id" %in% (names(trace) %||% character())) {
+      invisible(lapply(trace, validate_disposition))
+      return(invisible(NULL))
+    }
+    trace_type <- trace$trace_type %||% NULL
+    disposition <- trace$completion_disposition %||% NULL
+    if (isTRUE(trace_type %in% c("deputy_run", "deputy_delegation"))) {
+      if (
+        is.null(disposition) ||
+          !disposition %in% c("issued", "discarded", "terminal")
+      ) {
+        tempest_research_manifest_abort(
+          paste0(
+            "Every terminal Deputy trace requires one exact ",
+            "{.field completion_disposition}."
+          )
+        )
+      }
+      valid_status <- if (identical(disposition, "terminal")) {
+        !identical(trace$status %||% NULL, "complete")
+      } else {
+        identical(trace$status %||% NULL, "complete")
+      }
+      if (!valid_status) {
+        tempest_research_manifest_abort(
+          paste0(
+            "Deputy trace status and completion disposition must form one ",
+            "exact terminal outcome."
+          )
+        )
+      }
+    } else if (!is.null(disposition)) {
+      tempest_research_manifest_abort(
+        paste0(
+          "Only a terminal Deputy trace can carry ",
+          "{.field completion_disposition}."
+        )
+      )
+    }
+    invisible(NULL)
+  }
+  invisible(lapply(traces, validate_disposition))
+  traces
 }
 
 tempest_research_manifest_deliverables <- function(value) {
@@ -1000,10 +1100,7 @@ tempest_research_config_projection <- function(config) {
     retrieve_top_k = config@retrieve_top_k,
     max_sources = config@max_sources,
     user_agent = config@user_agent,
-    node_expansion_trigger_count = config@node_expansion_trigger_count,
-    enable_discourse_manager = config@enable_discourse_manager,
     max_active_experts = config@max_active_experts,
-    enable_unseen_surfacing = config@enable_unseen_surfacing,
     citation_policy = config@citation_policy,
     min_support_score = config@min_support_score,
     on_unsupported_claim = config@on_unsupported_claim
@@ -1058,8 +1155,8 @@ tempest_research_manifest_prop_enum <- function(choices) {
 }
 
 tempest_research_manifest_s7_validator <- function(self) {
-  if (!identical(self@schema_version, 2L)) {
-    return("schema_version must be the supported version 2")
+  if (!identical(self@schema_version, 3L)) {
+    return("schema_version must be the supported version 3")
   }
   if (!grepl("^sha256:[a-f0-9]{64}$", self@config_digest)) {
     return("config_digest must be a SHA-256 identifier")
@@ -1098,7 +1195,7 @@ tempest_research_manifest_s7_validator <- function(self) {
 TempestResearchManifest <- S7::new_class(
   "TempestResearchManifest",
   properties = list(
-    schema_version = S7::new_property(S7::class_integer, default = 2L),
+    schema_version = S7::new_property(S7::class_integer, default = 3L),
     research_run_id = tempest_research_manifest_prop_string(),
     mode = tempest_research_manifest_prop_enum(c("storm", "costorm")),
     config_digest = tempest_research_manifest_prop_string(),
@@ -1138,7 +1235,7 @@ TempestResearchManifest <- S7::new_class(
 #' @param deliverables References to product deliverables.
 #' @param status Run status: `"running"`, `"succeeded"`, `"failed"`, or
 #'   `"cancelled"`.
-#' @param schema_version Manifest record schema. Only version 2 is supported.
+#' @param schema_version Manifest record schema. Only version 3 is supported.
 #' @return A `TempestResearchManifest` S7 object.
 #' @examples
 #' manifest <- tempest_research_manifest(
@@ -1162,7 +1259,7 @@ tempest_research_manifest <- function(
   traces = list(),
   deliverables = list(),
   status = "running",
-  schema_version = 2L
+  schema_version = 3L
 ) {
   if (missing(mode)) {
     mode <- "storm"
@@ -1246,7 +1343,7 @@ tempest_research_manifest_from_record <- function(record) {
   if (!identical(record_names, fields)) {
     tempest_research_manifest_abort(
       paste0(
-        "{.arg record} must contain exactly the schema version 2 manifest ",
+        "{.arg record} must contain exactly the schema version 3 manifest ",
         "fields in writer order."
       )
     )

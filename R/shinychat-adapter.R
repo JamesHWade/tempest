@@ -413,6 +413,44 @@ tempest_shinychat_suggestion_cards <- function(
   )
 }
 
+tempest_shinychat_completion_client <- function(client, on_completion) {
+  if (!inherits(client, "TempestDeputyChatAdapter")) {
+    return(client)
+  }
+  if (!is.function(on_completion)) {
+    tempest_shinychat_error("The completion callback must be a function.")
+  }
+
+  stream_async <- client$stream_async
+  proxy <- client
+  proxy$stream_async <- function(...) {
+    source <- stream_async(...)
+    completion_id <- tempest_agent_completion_id(source)
+    completed <- FALSE
+    stream <- coro::async_generator(function() {
+      repeat {
+        value <- source()
+        if (promises::is.promising(value)) {
+          value <- coro::await(value)
+        }
+        if (coro::is_exhausted(value)) {
+          if (!completed) {
+            completed <<- TRUE
+            on_completion(completion_id)
+          }
+          break
+        }
+        coro::yield(value)
+      }
+      coro::exhausted()
+    })()
+    tempest_agent_completion_tag(stream, completion_id)
+  }
+  proxy$clone <- function(...) proxy
+  class(proxy) <- unique(c("TempestShinyChatCompletionClient", class(client)))
+  proxy
+}
+
 TempestShinyChatAdapter <- R6::R6Class(
   "TempestShinyChatAdapter",
   public = list(
@@ -470,15 +508,24 @@ TempestShinyChatAdapter <- R6::R6Class(
     bind = function(
       client,
       messages = list(),
-      client_history = c("clear", "keep")
+      client_history = c("clear", "keep"),
+      on_turn = NULL
     ) {
       private$assert_active()
       client_history <- match.arg(client_history)
-      private$next_generation()
+      if (is.null(on_turn)) {
+        on_turn <- private$on_turn
+      }
+      if (!is.function(on_turn)) {
+        tempest_shinychat_error("The turn callback must be a function.")
+      }
+      generation <- private$next_generation()
       transition <- list(
         client = client,
         messages = private$validate_messages(messages),
-        client_history = client_history
+        client_history = client_history,
+        generation = generation,
+        on_turn = on_turn
       )
       status <- shiny::isolate(private$chat$status())
       if (identical(status, "streaming")) {
@@ -601,6 +648,7 @@ TempestShinyChatAdapter <- R6::R6Class(
     turn_observer = NULL,
     status_observer = NULL,
     command_cancels = list(),
+    completed_streams = list(),
 
     assert_active = function() {
       if (isTRUE(private$disposed)) {
@@ -646,8 +694,18 @@ TempestShinyChatAdapter <- R6::R6Class(
     apply_bind = function(transition) {
       force(transition)
       private$pending_bind <- NULL
+      client <- tempest_shinychat_completion_client(
+        transition$client,
+        function(completion_id) {
+          private$completion_ready(
+            completion_id,
+            transition$generation,
+            transition$on_turn
+          )
+        }
+      )
       private$in_domain(function() {
-        private$chat$set_client(transition$client, sync = FALSE)
+        private$chat$set_client(client, sync = FALSE)
         private$chat$clear(
           messages = NULL,
           greeting = FALSE,
@@ -665,6 +723,36 @@ TempestShinyChatAdapter <- R6::R6Class(
       invisible(NULL)
     },
 
+    completion_ready = function(completion_id, generation, on_turn) {
+      entry <- list(
+        completion_id = completion_id,
+        generation = generation,
+        on_turn = on_turn
+      )
+      if (isTRUE(private$disposed)) {
+        tryCatch(
+          on_turn(
+            completion_id = completion_id,
+            is_current = function() FALSE
+          ),
+          error = function(error) NULL
+        )
+        return(invisible(NULL))
+      }
+      private$completed_streams[[length(private$completed_streams) + 1L]] <-
+        entry
+      invisible(NULL)
+    },
+
+    take_completed_stream = function() {
+      if (length(private$completed_streams) == 0L) {
+        return(NULL)
+      }
+      entry <- private$completed_streams[[1L]]
+      private$completed_streams <- private$completed_streams[-1L]
+      entry
+    },
+
     install_observers = function() {
       private$input_observer <- shiny::observeEvent(
         private$chat$last_input(),
@@ -677,26 +765,20 @@ TempestShinyChatAdapter <- R6::R6Class(
       private$turn_observer <- shiny::observeEvent(
         private$chat$last_turn(),
         {
-          generation <- private$input_generation
-          private$input_generation <- NULL
-          if (
-            is.null(generation) ||
-              isTRUE(private$disposed) ||
-              !identical(generation, private$generation)
-          ) {
+          entry <- private$take_completed_stream()
+          if (is.null(entry)) {
             return()
           }
-          turn <- private$chat$last_turn()
-          input <- private$chat$last_input()
+          input_generation <- private$input_generation
+          private$input_generation <- NULL
           is_current <- function() {
             !isTRUE(private$disposed) &&
-              identical(generation, private$generation)
+              identical(input_generation, entry$generation) &&
+              identical(entry$generation, private$generation)
           }
           private$in_domain(function() {
-            private$on_turn(
-              user_text = tempest_shinychat_input_text(input),
-              assistant_text = tempest_shinychat_turn_text(turn),
-              assistant_turn = turn,
+            entry$on_turn(
+              completion_id = entry$completion_id,
               is_current = is_current
             )
           })

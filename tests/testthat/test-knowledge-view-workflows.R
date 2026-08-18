@@ -28,7 +28,7 @@ test_that("fresh governed workflows require a live pinned view", {
     class = "tempest_governed_procedure_error",
     regexp = "never serializes a live pinned"
   )
-  restored <- tempest:::tempest_workflow_knowledge_view(
+  restored <- tempest:::tempest_product_knowledge_view(
     program_set,
     knowledge_view = NULL,
     restoring = TRUE
@@ -107,7 +107,7 @@ test_that("governed references must belong to the supplied view", {
   program_set <- test_governed_program_set()
 
   expect_error(
-    tempest:::tempest_workflow_knowledge_view(
+    tempest:::tempest_product_knowledge_view(
       program_set,
       fixture$view
     ),

@@ -399,6 +399,7 @@ TempestSkillRegistry <- R6::R6Class(
 #' )
 #' skills$resolve("compare")$prompt
 #' @export
+#' @noRd
 tempest_skill_registry <- function(
   skills = list(),
   operations = tempest_operation_registry()
@@ -655,6 +656,7 @@ TempestConnectionProvider <- R6::R6Class(
 #' )
 #' provider$resolve("documents", allowed_ref_ids = "documents")
 #' @export
+#' @noRd
 tempest_connection_provider <- function(
   connections = list(),
   bindings = list()
@@ -1499,6 +1501,7 @@ TempestCapabilityResolver <- R6::R6Class(
 #' )
 #' resolver$resolve(required_capability_ids = "documents.search")
 #' @export
+#' @noRd
 tempest_capability_resolver <- function(
   specifications = list(),
   implementations = list(),

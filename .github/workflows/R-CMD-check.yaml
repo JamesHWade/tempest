@@ -8,10 +8,19 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  release:
+    types: [published]
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
 
 name: R-CMD-check.yaml
 
 permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   R-CMD-check:
@@ -26,7 +35,7 @@ jobs:
           - {os: macos-latest,   r: 'release'}
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest,  r: 'release'}
-          
+
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
@@ -48,6 +57,32 @@ jobs:
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
+        env:
+          TESTTHAT_CPUS: ${{ runner.os == 'Linux' && '4' || '' }}
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          # PRs and pushes run the complete suite once, on Ubuntu. Scheduled,
+          # manually dispatched, and release checks retain full three-OS tests.
+          args: ${{ (runner.os == 'Linux' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'release') && 'c("--no-manual", "--as-cran")' || 'c("--no-manual", "--as-cran", "--no-tests")' }}
+
+      - name: Run platform contracts
+        if: runner.os != 'Linux' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && github.event_name != 'release'
+        run: testthat::test_local(".", filter = "^platform-contracts$")
+        shell: Rscript {0}
+
+  required:
+    name: required
+    if: always()
+    needs: R-CMD-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Confirm package checks passed
+        env:
+          CHECK_RESULT: ${{ needs.R-CMD-check.result }}
+        run: |
+          if [[ "$CHECK_RESULT" != "success" ]]; then
+            echo "Package checks finished with result: $CHECK_RESULT"
+            exit 1
+          fi

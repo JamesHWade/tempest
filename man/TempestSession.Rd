@@ -18,58 +18,36 @@ part of the persistence or public API contract.
 }
 
 \keyword{internal}
-\section{Public fields}{
-  \if{html}{\out{<div class="r6-fields">}}
-  \describe{
-    \item{\code{title}}{The report title.}
-
-    \item{\code{runtime}}{Internal process-local execution member; not part of the
-public or persistence contract.}
-
-    \item{\code{connection_permissions}}{Internal process-local execution member; not
-part of the public or persistence contract.}
-
-    \item{\code{progress}}{Optional progress callback.}
-
-    \item{\code{experts}}{List of validated \code{tempest_expert} profiles.}
-
-    \item{\code{expert_session_manager}}{Manages expert chat sessions.}
-
-    \item{\code{chats}}{List of chat objects for each role.}
-
-    \item{\code{transcript}}{List of dialog turns.}
-
-    \item{\code{mindmap}}{The mind map data structure.}
-
-    \item{\code{events}}{Ordered normalized progress-event history.}
-
-    \item{\code{artifacts}}{Internal process-local presentation state; not part of the
-public or persistence contract.}
-
-    \item{\code{capability_grants}}{Internal process-local execution state; not part
-of the public or persistence contract.}
-
-    \item{\code{discourse_manager}}{A \code{DiscourseManager} object (NULL when disabled).}
-  }
-  \if{html}{\out{</div>}}
-}
 \section{Active bindings}{
   \if{html}{\out{<div class="r6-active-bindings">}}
   \describe{
     \item{\code{topic}}{Read-only research topic fixed at construction.}
+
+    \item{\code{title}}{The report title.}
 
     \item{\code{config}}{Read-only \code{TempestConfig} fixed at construction.}
 
     \item{\code{session_id}}{Read-only stable identifier shared by the manifest and
 progress events for the session.}
 
+    \item{\code{progress}}{Optional progress callback.}
+
     \item{\code{manifest}}{Immutable \link{TempestResearchManifest} for this research run.}
 
     \item{\code{workspace}}{Read-only reference to the authoritative
 \link{ResearchWorkspace} containing provisional research material. Workspace
-mutation methods remain available.}
+mutation is available only while the session is active and no publication
+lock is held; a succeeded session's workspace is sealed.}
 
     \item{\code{retriever}}{Read-only \code{TempestRetriever} reference.}
+
+    \item{\code{experts}}{List of validated \code{tempest_expert} profiles.}
+
+    \item{\code{transcript}}{List of dialog turns.}
+
+    \item{\code{mindmap}}{The mind map data structure.}
+
+    \item{\code{events}}{Ordered normalized progress-event history.}
   }
   \if{html}{\out{</div>}}
 }
@@ -77,6 +55,7 @@ mutation methods remain available.}
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-TempestSession-initialize}{\code{TempestSession$new()}}
+    \item \href{#method-TempestSession-request_completion_async}{\code{TempestSession$request_completion_async()}}
     \item \href{#method-TempestSession-record_progress_event}{\code{TempestSession$record_progress_event()}}
     \item \href{#method-TempestSession-emit_progress}{\code{TempestSession$emit_progress()}}
     \item \href{#method-TempestSession-add_turn}{\code{TempestSession$add_turn()}}
@@ -114,10 +93,8 @@ mutation methods remain available.}
     \preformatted{TempestSession$new(
   topic,
   config = tempest_config(),
-  runtime = tempest_runtime(),
   n_experts = 3,
   experts = NULL,
-  connection_permissions = list(),
   retriever = NULL,
   progress = NULL,
   session_id = NULL,
@@ -133,11 +110,9 @@ mutation methods remain available.}
     \describe{
       \item{\code{topic}}{The research topic.}
       \item{\code{config}}{A \code{TempestConfig} object.}
-      \item{\code{runtime}}{Internal process-local runtime implementation.}
       \item{\code{n_experts}}{Number of expert agents.}
       \item{\code{experts}}{Optional list of validated expert profiles. If \code{NULL},
 experts are generated automatically using \code{tempest_generate_experts()}.}
-      \item{\code{connection_permissions}}{Internal process-local connection policy.}
       \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
 object with a \link{ResearchWorkspace} at \verb{$workspace}.}
       \item{\code{progress}}{Optional function called with \code{tempest_progress_event}
@@ -154,6 +129,32 @@ Tempest's bundle-restoration seam.}
 restoration.}
     }
     \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TempestSession-request_completion_async"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-request_completion_async}{}}}
+\subsection{\code{TempestSession$request_completion_async()}}{
+  Request one Deputy-backed moderator completion.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TempestSession$request_completion_async(
+  prompt,
+  on_chunk = function(chunk) invisible(chunk)
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{prompt}}{Exact moderator prompt.}
+      \item{\code{on_chunk}}{Optional process-local display callback.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A promise resolving only to an opaque completion identifier.
   }
 }
 
@@ -426,7 +427,7 @@ web tool responses.
 \if{html}{\out{<a id="method-TempestSession-step"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-step}{}}}
 \subsection{\code{TempestSession$step()}}{
-  Process one step of the conversation.
+  Process one explicit user turn through the Deputy moderator.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{TempestSession$step(user_input = NULL, auto = FALSE)}
@@ -435,13 +436,13 @@ web tool responses.
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{user_input}}{User's input message.}
-      \item{\code{auto}}{If TRUE and discourse manager is enabled, let the discourse manager decide.}
+      \item{\code{user_input}}{User input.}
+      \item{\code{auto}}{Must be \code{FALSE}; generic automatic discourse is unavailable.}
     }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    A list with speaker, answer, and mindmap_md.
+    A list with the moderator answer and exact Deputy identity.
   }
 }
 
@@ -477,8 +478,7 @@ This primes the knowledge base with foundational research before interactive Q&A
     \if{html}{\out{<div class="r">}}
     \preformatted{TempestSession$report(
   style = c("technical", "executive"),
-  include_references = TRUE,
-  reorganize = TRUE
+  include_references = TRUE
 )}
     \if{html}{\out{</div>}}
   }
@@ -487,7 +487,6 @@ This primes the knowledge base with foundational research before interactive Q&A
     \describe{
       \item{\code{style}}{Report style: "technical" or "executive".}
       \item{\code{include_references}}{Include references section.}
-      \item{\code{reorganize}}{Whether to reorganize mind map before generating.}
     }
     \if{html}{\out{</div>}}
   }
@@ -652,7 +651,8 @@ unseen evidence and no moderator run occurred.
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    A list with speaker, answer, and mindmap_md.
+    This method always errors; automatic discourse routing is not a
+supported Co-STORM product path.
   }
 }
 

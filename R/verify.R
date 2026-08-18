@@ -163,8 +163,9 @@ tempest_empty_claim_supports <- function() {
 #'   sources, or a `TempestSession` whose authoritative workspace and bound
 #'   verification program should be used.
 #' @param verifier A chat object (e.g. from `tempest_make_chat(config, "judge")`).
-#' @param policy Citation policy; verification runs only for "claim_verified" or
-#'   "strict". Defaults to "claim_verified".
+#' @param policy Citation policy for standalone workspaces; verification runs
+#'   only for "claim_verified" or "strict". A `TempestSession` always runs
+#'   product-required claim verification and rejects non-verifying policies.
 #' @param verifier_model Optional model id bound into every verification-stage
 #'   proof and projected onto each verified claim.
 #' @param program_set A [TempestProgramSet] containing the exact
@@ -198,6 +199,7 @@ tempest_verify_claims <- function(
   model_supplied <- !missing(verifier_model)
   session <- if (inherits(workspace, "TempestSession")) workspace else NULL
   if (!is.null(session)) {
+    tempest_session_assert_mutable(session, "verify claims")
     if (!is.null(program_set)) {
       tempest_stage_governance_abort(
         paste0(
@@ -218,13 +220,18 @@ tempest_verify_claims <- function(
     if (!model_supplied) {
       verifier_model <- config@models[["judge"]] %||% NA_character_
     }
-    if (!policy_supplied) {
-      policy <- config@citation_policy
-    } else if (!identical(policy, config@citation_policy)) {
+    if (
+      policy_supplied &&
+        !policy %in% c("claim_verified", "strict")
+    ) {
       tempest_stage_governance_abort(
-        "Session verification policy must match the session configuration."
+        paste0(
+          "Session product verification requires claim-verified semantics; ",
+          "citation rendering policy cannot disable execution."
+        )
       )
     }
+    policy <- "claim_verified"
     if (!threshold_supplied) {
       min_support_score <- config@min_support_score
     } else if (
@@ -240,29 +247,25 @@ tempest_verify_claims <- function(
         )
       )
     }
-    program <- NULL
-    if (policy %in% c("claim_verified", "strict")) {
-      existing_records <- tempest_session_stage_records(session)
-      already_verified <- length(session$workspace$list_claim_supports()) >
-        0L ||
-        any(vapply(
-          existing_records,
-          function(record) {
-            identical(record@stage, "verify_claim_support") &&
-              identical(record@status, "succeeded")
-          },
-          logical(1)
-        ))
-      if (already_verified) {
-        tempest_stage_governance_abort(
-          paste0(
-            "Session-owned claim verification is one-shot; existing ",
-            "claim-support proof must not be superseded."
-          )
+    existing_records <- tempest_session_stage_records(session)
+    already_verified <- length(session$workspace$list_claim_supports()) > 0L ||
+      any(vapply(
+        existing_records,
+        function(record) {
+          identical(record@stage, "verify_claim_support") &&
+            identical(record@status, "succeeded")
+        },
+        logical(1)
+      ))
+    if (already_verified) {
+      tempest_stage_governance_abort(
+        paste0(
+          "Session-owned claim verification is one-shot; existing ",
+          "claim-support proof must not be superseded."
         )
-      }
-      program <- tempest_session_programs(session)$verify_claim_support
+      )
     }
+    program <- tempest_session_programs(session)$verify_claim_support
     return(tempest_verify_claims_internal(
       workspace = session$workspace,
       verifier = verifier,
@@ -286,11 +289,11 @@ tempest_verify_claims <- function(
   program <- NULL
   if (policy %in% c("claim_verified", "strict")) {
     program_set <- program_set %||% tempest_program_set()
-    knowledge <- tempest_workflow_knowledge_view(
+    knowledge <- tempest_product_knowledge_view(
       program_set,
       knowledge_view
     )
-    workspace <- tempest_workflow_workspace_validate(
+    workspace <- tempest_product_workspace_validate(
       workspace,
       knowledge,
       arg = "workspace"

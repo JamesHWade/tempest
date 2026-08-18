@@ -183,11 +183,7 @@ mod_storm_server <- function(id, config, store) {
         if (is.null(result)) {
           return()
         }
-        store$set_report(
-          result$report_md %||% "",
-          shiny::isolate(input$topic) %||% "STORM Report",
-          source_store = result$workspace %||% NULL
-        )
+        store$set_storm_result(result, config = config())
         storm_cleanup_progress_stream(progress_stream$path)
       } else if (identical(storm_task$status(), "error")) {
         progress_stream$active <- FALSE

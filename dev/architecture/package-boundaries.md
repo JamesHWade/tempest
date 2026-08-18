@@ -215,15 +215,15 @@ they require no API keys, network access, or live provider responses.
 
 | Product behavior | Deterministic evidence |
 |---|---|
-| Scripted STORM stage sequence and terminal status | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-storm.R` |
-| Co-STORM warmup and one moderator turn | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-costorm-progress.R`, `tests/testthat/test-costorm-warmup.R` |
+| Scripted STORM stage sequence and terminal status | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-storm.R` |
+| Co-STORM warmup and one moderator turn | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-costorm-progress.R`, `tests/testthat/test-costorm-warmup.R` |
 | Custom expert roster construction and session controls | `tests/testthat/test-shiny-app.R` |
-| Claim extraction | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-claim-extraction.R` |
-| Claim support verification | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-verify.R` |
-| Source and citation rendering | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-citations-policy.R` |
-| Report generation and section identity | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-writing.R`, `tests/testthat/test-costorm-async.R` |
-| Cancellation | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-async.R`, `tests/testthat/test-run-accessors.R` |
-| STORM and Co-STORM save/resume | `tests/testthat/test-product-baseline.R`, `tests/testthat/test-run-persistence.R`, `tests/testthat/test-tempest-run-bundle.R` |
+| Claim extraction | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-claim-extraction.R` |
+| Claim support verification | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-verify.R` |
+| Source and citation rendering | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-citations-policy.R` |
+| Report generation and section identity | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-writing.R`, `tests/testthat/test-costorm-async.R` |
+| Cancellation | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-async.R`, `tests/testthat/test-run-accessors.R` |
+| STORM and Co-STORM save/resume | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-run-persistence-*.R`, `tests/testthat/test-tempest-run-bundle.R` |
 | Research manifest, state, and workspace correlation | `tests/testthat/test-research-manifest.R`, `tests/testthat/test-research-session.R`, `tests/testthat/test-research-workspace.R`, `tests/testthat/test-storm-state.R` |
 | Current public exports and retirement set | `tests/testthat/test-public-api.R` |
 

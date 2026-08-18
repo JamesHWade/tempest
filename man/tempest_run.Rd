@@ -23,8 +23,7 @@ tempest_run(
   run_id = NULL,
   remove_duplicate = FALSE,
   progress = NULL,
-  verbose = TRUE,
-  .state = NULL
+  verbose = TRUE
 )
 }
 \arguments{
@@ -72,17 +71,14 @@ artifacts and skip stages recorded as complete.}
 
 \item{run_id}{Optional run directory name. Defaults to a slug of \code{topic}.}
 
-\item{remove_duplicate}{If \code{TRUE}, ask the polish step to remove duplicate
-or highly repetitive content while preserving unique cited claims.}
+\item{remove_duplicate}{Must be \code{FALSE}. Duplicate removal is unavailable on
+the authoritative deterministic STORM report path.}
 
 \item{progress}{Optional function called with a \code{tempest_progress_event}
 object as STORM workflow stages start, finish, fail, persist artifacts, or
 make final artifacts available.}
 
 \item{verbose}{If \code{TRUE}, prints progress messages.}
-
-\item{.state}{Internal adapter-only fixed STORM product state. This is not a
-public continuation API.}
 }
 \value{
 A list with product fields \code{title}, \code{perspectives}, \code{experts},

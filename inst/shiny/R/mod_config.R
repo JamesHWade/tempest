@@ -45,20 +45,6 @@ mod_config_ui <- function(id) {
         choices = search_provider_choices(),
         selected = "native"
       )
-    ),
-    bslib::accordion_panel(
-      title = "Advanced",
-      icon = shiny::icon("sliders"),
-      bslib::input_switch(ns("discourse"), "Enable discourse manager", FALSE),
-      bslib::input_switch(ns("unseen"), "Surface unseen sources", FALSE),
-      shiny::numericInput(
-        ns("node_trigger"),
-        "Node expansion trigger",
-        value = NA,
-        min = 1,
-        max = 50,
-        step = 1
-      )
     )
   )
 }
@@ -67,16 +53,9 @@ mod_config_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     shiny::reactive({
       default_models <- shiny_default_models()
-      trigger <- input$node_trigger
-      if (isTRUE(is.na(trigger))) {
-        trigger <- NULL
-      }
       tempest::tempest_config(
         models = shiny_config_models(input, default_models),
-        search_provider = input$search_provider %||% "native",
-        enable_discourse_manager = input$discourse %||% FALSE,
-        enable_unseen_surfacing = input$unseen %||% FALSE,
-        node_expansion_trigger_count = trigger
+        search_provider = input$search_provider %||% "native"
       )
     })
   })

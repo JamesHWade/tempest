@@ -87,10 +87,10 @@ test_that("schema runtime assumption names the approved Graft accessor commit", 
     tempest:::tempest_graft_required_exports(),
     "graft_view_snapshot"
   )
-  expect_identical(
-    tempest:::tempest_graft_behavior_fingerprint(),
-    tempest:::tempest_graft_behavior_digest
+  expect_no_warning(
+    actual <- tempest:::tempest_graft_behavior_fingerprint()
   )
+  expect_identical(actual, tempest:::tempest_graft_behavior_digest)
 })
 
 test_that("schema runtime rejects a mismatched Graft RemoteSha", {
