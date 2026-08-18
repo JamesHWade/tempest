@@ -20,6 +20,5 @@ An ordered list of normalized event records.
 }
 \details{
 \code{tempest_execution_events()} gives host adapters one cursor-based query for
-immutable Co-STORM progress records. Generic \code{TempestRun} histories are
-outside the supported product boundary and reject immediately.
+immutable Co-STORM progress records from a \link{TempestSession}.
 }

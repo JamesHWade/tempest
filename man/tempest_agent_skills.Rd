@@ -31,8 +31,7 @@ vector of installed skill directories.
 \code{tempest_agent_skills()} lists the two supported research Agent Skill
 directories shipped with Tempest. These \code{SKILL.md} bundles guide agents
 through using the STORM and Co-STORM product APIs or conducting the portable
-STORM protocol. Generic-workflow skill directories are unavailable and are
-not discoverable or installable through this API.
+STORM protocol.
 }
 \examples{
 tempest_agent_skills()
