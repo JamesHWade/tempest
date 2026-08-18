@@ -30,8 +30,9 @@ Package-specific conventions:
 - Treat `dsprrr` as a required dependency. Do not preserve or add optional
   missing-package branches for it; fallbacks should cover module construction or
   runtime failures only.
-- Keep mutable execution state in R6 classes such as `TempestSession`,
-  `ResearchWorkspace`, `TempestRetriever`, and `ExpertSessionManager`.
+- Keep mutable execution state in product R6 classes such as `TempestSession`,
+  `ResearchWorkspace`, and `TempestRetriever`; do not reintroduce a generic
+  runtime, workflow, artifact, capability, connection, or expert-session layer.
 - Use S7 for validated value boundaries, including `TempestConfig` and evidence
   records such as claims, evidence spans, disputes, and sources.
 - Prefer the current public research adapters and constructors

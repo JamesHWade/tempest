@@ -17,9 +17,6 @@ articles:
   navbar: ~
   contents:
   - agent-skills
-- title: internal
-  contents:
-  - reusable-workflows
 reference:
 - title: Agent integrations
   contents:
@@ -77,10 +74,6 @@ reference:
   - tempest_shiny_store
   - tempest_shiny_ui
   - tempest_shiny_server
-- title: Generic-kernel cutover
-  desc: Immediate Tempest 0.2 cutover to the STORM and Co-STORM product APIs.
-  contents:
-  - tempest-generic-kernel-retirement
 - title: Session persistence
   contents:
   - tempest_session_snapshot

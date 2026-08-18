@@ -350,12 +350,11 @@ and never serialize the Deputy Agent or provider credentials. Those execution
 identities support correlation and audit joins only; they do not claim that an
 execution caused, authored, or validated report content.
 
-## Generic-kernel cutover
+## Product boundary
 
 Tempest 0.2 supports only `tempest_run()` and `tempest_session()` as research
 product entry points. The experimental application-neutral kernel is
-unavailable, and retained symbols fail immediately with
-`tempest_generic_kernel_cutover_error`. No compatibility layer is provided.
+removed, including its former symbols. No compatibility layer is provided.
 
 ## Where to go next
 

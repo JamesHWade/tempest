@@ -6,24 +6,23 @@ Decision owner: Tempest maintainers
 
 ## Decision
 
-Tempest 0.2 will be a scientific-research product, not an
-application-neutral framework. It will retain the STORM and Co-STORM product
-flows, scientific retrieval, claim-centered evidence, research reports, and
-research UI. The experimental generic workflow, runtime, capability,
-connection, skill, deliverable, and artifact kernel will be removed in the
-0.2.0 release.
+Tempest 0.2 is a scientific-research product, not an application-neutral
+framework. It retains the STORM and Co-STORM product flows, scientific
+retrieval, claim-centered evidence, research reports, and research UI. The
+experimental generic workflow, runtime, capability,
+connection, skill, deliverable, and artifact kernel has been removed.
 
-The removed kernel will not be extracted into another package. Its useful
+The removed kernel was not extracted into another package. Its useful
 responsibilities already have narrower owners in the ecosystem; preserving the
 kernel elsewhere would preserve the coordination cost this migration is meant
 to eliminate.
 
-This is one deliberate breaking release. The migration sequence is:
+This is one deliberate breaking release. The completed migration sequence was:
 
-1. Add replacement seams.
-2. Prove one end-to-end path in shadow mode.
+1. Added replacement seams.
+2. Proved one end-to-end path in shadow mode.
 3. Cut the product paths over.
-4. Delete the redundant kernel.
+4. Deleted the redundant kernel.
 
 ## Logical dependency direction
 
@@ -44,9 +43,9 @@ flowchart TD
 
 An arrow points from a lower-level owner to a package that consumes its
 contract; it does not imply that the lower-level package imports the consumer.
-During the transition, graft may be added to Suggests and remain there. Deputy
-should move to Imports only after Co-STORM uses it by default. Dsprrr, Deputy,
-and graft must not import Tempest to support this migration.
+Graft remains in Suggests. Deputy is in Imports now that Co-STORM uses it by
+default. Dsprrr, Deputy, and graft do not import Tempest to support this
+migration.
 
 ## Package ownership
 
@@ -133,13 +132,13 @@ A dsprrr execution is governed only when an accepted governed-procedure
 revision references the exact program artifact, that exact artifact executed,
 and no lower-trust fallback occurred. Using dsprrr alone is not sufficient.
 
-## Generic-kernel retirement
+## Removed generic kernel
 
-Development of the following application-neutral subsystems is frozen. Only
-changes needed to preserve the product baseline or complete their replacement
-are in scope before removal in 0.2.0.
+The following application-neutral subsystems were frozen during the migration
+and removed in T8 after their product responsibilities moved to narrower
+owners.
 
-| Current subsystem | Primary files | Destination |
+| Removed subsystem | Former primary files | Destination |
 |---|---|---|
 | Operation registry | `R/operation-registry.R`, generic portions of `R/deliverables.R` | Direct product flow, dsprrr programs, or Deputy tools |
 | Workflow specifications and generic runs | `R/workflow-types.R`, `R/workflow-spec.R`, `R/tempest-run.R`, `R/run-accessors.R`, `R/builtin-workflows.R` | Explicit STORM/Co-STORM flow plus dsprrr and Deputy execution |
@@ -148,44 +147,44 @@ are in scope before removal in 0.2.0.
 | Generic persistence and host UI | Generic portions of `R/run-persistence.R` and `R/shiny-adapter.R`; `inst/examples/shiny-host/` | Product-specific STORM/Co-STORM bundles and research UI |
 | Runtime skills | Generic portions of `R/expert-types.R` and `R/capabilities.R` | Deputy skills and tools; slim Tempest scientific expert profiles |
 
-The public export families scheduled for removal are documented in
-`tempest-generic-kernel-retirement`. No new feature may depend on them. The
-`SourceStore` rename, transition from Tempest's checksummed dsprrr
-ProgramArtifact bundle to `TempestProgramSet`, and expert-runtime cutover happen
-through additive product seams before deletion.
+The 41 public export names and two internal generic restore/resume functions
+were removed in T8. The `SourceStore` rename, transition from Tempest's
+checksummed dsprrr ProgramArtifact bundle to `TempestProgramSet`, and
+expert-runtime cutover happened through additive product seams before deletion.
 
-Several retirement files contain product code and must be split before they are
-deleted:
+Several retirement files contained product code and were split before
+deletion:
 
-- `R/runtime.R` also constructs scientific retrieval, evidence, web, and
-  delegation tools;
-- `R/expert-types.R` also defines the slim scientific expert profile;
-- `R/deliverables.R` also implements STORM and Co-STORM report generation;
-- `R/shiny-adapter.R` also implements product research panels;
-- `R/config.R` also defines the product configuration while carrying the
-  generic artifact-store adapter;
-- `R/models.R` contains ResearchWorkspace plus the deprecated SourceStore
-  compatibility subclass whose arbitrary artifact environment must be removed.
-- `R/resources.R` exposes application-neutral resource kinds today. Its public
-  seam must narrow to scientific sources and context evidence; host connection
-  identifiers remain opaque injected references rather than a general
-  connection-management framework.
+- scientific retrieval, evidence, web, and delegation tools moved out of
+  `R/runtime.R`;
+- the slim scientific expert profile moved out of `R/expert-types.R`;
+- STORM and Co-STORM report generation moved out of `R/deliverables.R`;
+- `R/shiny-adapter.R` was retained for product research panels;
+- `R/config.R` was retained for product configuration after its generic
+  artifact-store adapter was removed;
+- `R/models.R` was retained for `ResearchWorkspace` after its deprecated
+  `SourceStore` compatibility subclass and arbitrary artifact environment were
+  removed;
+- `R/resources.R` was retained and narrowed to scientific sources and context
+  evidence; host connection identifiers remain opaque injected references,
+  not a connection-management framework.
 
-Deleting a filename is never the goal by itself. Product behavior moves to a
-narrower product file first; only the application-neutral portion is removed.
-Generic validation helpers currently used by product code must likewise be
-extracted before `R/workflow-types.R` is deleted.
+Deleting filenames was not itself the goal. Product behavior moved to narrower
+product files before application-neutral portions were removed. Generic
+validation helpers used by product code were extracted before
+`R/workflow-types.R` was deleted.
 
-The T0 retirement manifest contains 43 generic-kernel exports. The three
-Tempest-specific dsprrr program-bundle and optimization exports are tracked
-separately for narrowing into `TempestProgramSet` and exact program identities
-in T2. Shared product seams such as `tempest_execution_events()`,
-`tempest_validation_result()`, and `tempest_shiny_store()` are narrowed during
-the cutover rather than preemptively classified as deleted.
+The T0 deletion inventory contained 43 symbols: 41 public generic-kernel
+exports and the internal `tempest_run_restore()` and `tempest_run_resume()`
+functions. The three Tempest-specific dsprrr program-bundle and optimization
+exports were tracked separately and narrowed into `TempestProgramSet` and exact
+program identities in T2. Shared product seams such as
+`tempest_execution_events()`, `tempest_validation_result()`, and
+`tempest_shiny_store()` were retained and narrowed during the cutover.
 
-Old generic workflow and artifact bundles will not receive migration
-machinery. After the cutover they must fail with a direct explanation that
-Tempest 0.2 supports only STORM and Co-STORM product bundles.
+Old generic workflow and artifact bundles have no migration machinery. Tempest
+0.2 readers accept only current STORM and Co-STORM product bundles and reject
+older or other formats.
 
 ## Tempest migration train
 
@@ -199,7 +198,7 @@ Tempest 0.2 supports only STORM and Co-STORM product bundles.
 | T5 | Move Co-STORM expert execution beneath a Deputy adapter. |
 | T6 | Prove claim extraction and verification across all four packages in shadow mode. |
 | T7 | Make the new STORM and Co-STORM paths authoritative. |
-| T8 | Delete the experimental generic kernel and its exports. |
+| T8 | Deleted the experimental generic kernel, its 41 exports, and two internal restore/resume functions. |
 | T9 | Retain only product-specific persistence, reports, and UI. |
 | T10 | Add joined trajectory review, improvement loops, and release 0.2.0. |
 
@@ -222,10 +221,10 @@ they require no API keys, network access, or live provider responses.
 | Claim support verification | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-verify.R` |
 | Source and citation rendering | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-citations-policy.R` |
 | Report generation and section identity | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-writing.R`, `tests/testthat/test-costorm-async.R` |
-| Cancellation | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-async.R`, `tests/testthat/test-run-accessors.R` |
-| STORM and Co-STORM save/resume | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-run-persistence-*.R`, `tests/testthat/test-tempest-run-bundle.R` |
+| Cancellation | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-async.R` |
+| STORM and Co-STORM save/resume | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-run-persistence-*.R` |
 | Research manifest, state, and workspace correlation | `tests/testthat/test-research-manifest.R`, `tests/testthat/test-research-session.R`, `tests/testthat/test-research-workspace.R`, `tests/testthat/test-storm-state.R` |
-| Current public exports and retirement set | `tests/testthat/test-public-api.R` |
+| Historical and current public exports | `tests/testthat/test-public-api.R` |
 
 The semantic projections assert:
 
@@ -246,11 +245,11 @@ work from PR #28, the full package suite completed with 2,535 passing
 expectations and no failures, warnings, or skips.
 
 The T0 pre-0.2 namespace baseline contains 96 explicit exports and two
-registered S3 print methods. T1 adds exactly three product exports:
-`ResearchWorkspace`, `tempest_research_manifest()`, and
-`tempest_research_workspace()`, bringing the current additive surface to 99
-exports. The versioned T0 fixture remains unchanged through the additive train;
-T8 must make the removal diff explicit rather than silently rewriting history.
+registered S3 print methods. T8 preserves
+`tests/testthat/fixtures/public-exports-0.1.0.txt` unchanged and adds
+`tests/testthat/fixtures/public-exports-0.2.0.txt` for the exact 62 product
+exports. The explicit difference records the breaking removal without
+rewriting history.
 
 ## Superseded decisions
 
@@ -286,6 +285,6 @@ semantic baseline and must maintain these invariants:
   clients, connections, store handles, Agent objects, or code-runner objects;
 - no forbidden reverse dependency is introduced.
 
-Deletion begins only after the claim extraction and support-verification shadow
-slice meets these invariants and is no worse than the current correctness and
-citation-support baseline.
+Deletion began only after the claim extraction and support-verification shadow
+slice met these invariants and was no worse than the current correctness and
+citation-support baseline. Those product invariants remain release gates.

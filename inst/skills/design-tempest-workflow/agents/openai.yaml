@@ -1,4 +1,0 @@
-interface:
-  display_name: "Unavailable Tempest 0.1 workflow design"
-  short_description: "Deletion inventory; do not use"
-  default_prompt: "Do not use this skill. Use $use-tempest-research with tempest_run() or tempest_session()."

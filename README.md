@@ -199,14 +199,13 @@ schema 3, and promotion-bundle schema 1. Readers reject every other version;
 missing fields, extra fields, and values that only become valid after coercion
 are errors.
 
-## Generic-kernel cutover
+## Product boundary
 
 Tempest 0.2 supports only the STORM and Co-STORM product APIs. Use
 `tempest_run()` for scripted research and `tempest_session()` for interactive
 research. The former application-neutral workflow, runtime, capability,
-connection, skill, deliverable, and artifact APIs are unavailable; retained
-symbols fail immediately with class `tempest_generic_kernel_cutover_error`.
-There is no compatibility or generic-kernel migration layer.
+connection, skill, deliverable, and artifact kernel and its symbols have been
+removed. There is no compatibility or generic-kernel migration layer.
 
 Product bundles contain the exact research manifest, provisional workspace,
 product state, report, and optional immutable Graft snapshot. Fixed scientific
@@ -217,9 +216,7 @@ validated report content.
 
 ## Agent skills
 
-Tempest ships two supported research skills. Three generic-workflow skill
-directories remain only as unavailable deletion inventory until T8 removes
-them physically.
+Tempest ships two supported research skills.
 
 - `use-tempest-research` chooses, configures, runs, resumes, inspects, and
   embeds Tempest's scripted STORM and interactive Co-STORM workflows.
@@ -245,8 +242,8 @@ loader can also discover the bundled skills from an attached Tempest package
 and expose `conduct-storm-research` inside a tool-capable chat application.
 The host must still provide retrieval, evidence, state, and output tools.
 
-These Agent Skills are external operating guidance, not the unavailable 0.1
-generic runtime contract that used the similarly named `tempest_skill()`.
+These Agent Skills are external operating guidance. They do not grant runtime
+authority; the host still owns tools, authorization, state, and lifecycle.
 
 Read `vignette("agent-skills", package = "tempest")` to install a supported
 research skill or expose portable STORM research through an ellmer client and
