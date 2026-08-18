@@ -1,14 +1,11 @@
-test_that("Tempest ships a complete Agent Skill suite", {
+test_that("Tempest exposes only its supported research Agent Skills", {
   skills <- tempest_agent_skills()
 
   expect_named(
     skills,
     c(
-      "build-tempest-workflow",
       "conduct-storm-research",
-      "design-tempest-workflow",
-      "use-tempest-research",
-      "verify-tempest-workflow"
+      "use-tempest-research"
     )
   )
   expect_equal(
@@ -112,15 +109,26 @@ test_that("tempest_install_agent_skills refuses unknown or existing skills", {
     tempest_install_agent_skills(destination, skills = "missing-skill"),
     class = "tempest_agent_skill_error"
   )
+  expect_error(
+    tempest_install_agent_skills(
+      destination,
+      skills = c(
+        "build-tempest-workflow",
+        "design-tempest-workflow",
+        "verify-tempest-workflow"
+      )
+    ),
+    class = "tempest_agent_skill_error"
+  )
 
   tempest_install_agent_skills(
     destination,
-    skills = "verify-tempest-workflow"
+    skills = "use-tempest-research"
   )
   expect_snapshot(
     tempest_install_agent_skills(
       destination,
-      skills = "verify-tempest-workflow"
+      skills = "use-tempest-research"
     ),
     error = TRUE
   )
@@ -130,14 +138,14 @@ test_that("tempest_install_agent_skills replaces only requested skills", {
   destination <- file.path(withr::local_tempdir(), "skills")
   installed <- tempest_install_agent_skills(
     destination,
-    skills = "build-tempest-workflow"
+    skills = "conduct-storm-research"
   )
   stale <- file.path(installed, "stale.txt")
   writeLines("stale", stale)
 
   replaced <- tempest_install_agent_skills(
     destination,
-    skills = "build-tempest-workflow",
+    skills = "conduct-storm-research",
     overwrite = TRUE
   )
 

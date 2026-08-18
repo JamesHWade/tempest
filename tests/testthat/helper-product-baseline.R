@@ -506,8 +506,21 @@ costorm_baseline_runtime <- function(
       ) {
         return(fake_chat(
           structured = list(list(
-            questions = "Which evidence should be reviewed next?"
+            question = "Which evidence should be reviewed next?",
+            done = FALSE
           ))
+        ))
+      }
+      if (identical(role, "judge")) {
+        return(fake_chat(
+          structured = rep(
+            list(list(
+              status = "supported",
+              score = 0.95,
+              rationale = "The captured excerpt supports the exact claim."
+            )),
+            length(claim_texts)
+          )
         ))
       }
       if (identical(role, "coordinator")) {
@@ -595,7 +608,21 @@ costorm_product_baseline_fixture <- function() {
   session$warmup(verbose = FALSE)
   session$step("What should we inspect?")
   questions <- session$suggest_questions(n = 1)
-  report <- session$report(reorganize = FALSE)
+  tempest_verify_claims(
+    session,
+    verifier = fake_chat(
+      structured = rep(
+        list(list(
+          status = "supported",
+          score = 0.95,
+          rationale = "The captured excerpt supports the exact claim."
+        )),
+        length(session$workspace$list_evidence_spans())
+      )
+    )
+  )
+  session$reorganize_mindmap()
+  report <- session$report()
 
   list(
     config = config,
@@ -669,19 +696,16 @@ baseline_costorm_durable_state <- function(session, report) {
 
 baseline_costorm_semantics <- function(fixture) {
   session <- fixture$session
-  report_artifact <- test_session_artifact_catalog(session)$get("report_md")
   c(
     baseline_costorm_durable_state(session, fixture$report),
     list(
       completed_stages = baseline_succeeded_stages(fixture$events),
       suggestion_count = length(fixture$questions),
-      report_artifact_matches = identical(
-        report_artifact@content,
+      report_product_matches = identical(
+        tempest_session_report_md(session),
         fixture$report
       ),
-      terminal_status = tempest_progress_state(
-        tempest_execution_events(session)
-      )$status,
+      terminal_status = session$manifest@status,
       event_sequence = baseline_event_labels(fixture$events)
     )
   )

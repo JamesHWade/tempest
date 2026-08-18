@@ -292,7 +292,6 @@ tempest_stage_records_validate_storm_coverage <- function(records, state) {
       "perspectives",
       "perspectives"
     )
-    tempest_storm_require_succeeded_stage(records, "personas", "perspectives")
   }
   if ("research" %in% completed) {
     tempest_storm_require_succeeded_stage(
@@ -405,7 +404,7 @@ tempest_storm_state_record_value <- function(value, path) {
           "Lists in {.field {path}} must be fully named or fully unnamed."
         )
       }
-      if (!any(named)) names(value) <- NULL
+      if (length(value) > 0L && !any(named)) names(value) <- NULL
     }
     return(stats::setNames(
       lapply(seq_along(value), function(index) {

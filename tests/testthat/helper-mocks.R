@@ -4,10 +4,15 @@
 # A deterministic Chat-compatible fake. Direct structured and text calls retain
 # their original queue behavior, while the stream and state methods satisfy the
 # ellmer Chat boundary used by Deputy.
-fake_chat <- function(structured = list(), text = list()) {
+fake_chat <- function(
+  structured = list(),
+  text = list(),
+  provider_turns = list()
+) {
   state <- new.env(parent = emptyenv())
   state$structured <- structured
   state$text <- text
+  state$provider_turns <- provider_turns
   state$calls <- list()
   state$turns <- list()
   state$tools <- list()
@@ -56,14 +61,15 @@ fake_chat <- function(structured = list(), text = list()) {
       )
     }
     response <- paste(as.character(response), collapse = "")
-    state$turns <- c(
-      state$turns,
-      list(ellmer::AssistantTurn(
+    provider_turn <- pop("provider_turns", prompt, NULL)
+    if (is.null(provider_turn)) {
+      provider_turn <- ellmer::AssistantTurn(
         list(ellmer::ContentText(response)),
         tokens = c(0, 0, 0),
         cost = 0
-      ))
-    )
+      )
+    }
+    state$turns <- c(state$turns, list(provider_turn))
     state$tokens <- rbind(
       state$tokens,
       data.frame(input = 0, output = 0, cached_input = 0, cost = 0)
@@ -206,7 +212,11 @@ fake_chat <- function(structured = list(), text = list()) {
         )
       },
       .queues = function() {
-        list(structured = state$structured, text = state$text)
+        list(
+          structured = state$structured,
+          text = state$text,
+          provider_turns = state$provider_turns
+        )
       }
     ),
     class = c("Chat", "list")

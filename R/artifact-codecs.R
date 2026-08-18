@@ -185,6 +185,7 @@ tempest_artifact_codec_media_supported <- function(patterns, media_type) {
 #' @param metadata Canonical JSON-compatible descriptive metadata.
 #' @return A runtime artifact codec definition.
 #' @export
+#' @noRd
 tempest_artifact_codec_definition <- function(
   codec_id,
   encode = NULL,
@@ -260,6 +261,7 @@ tempest_artifact_codec_definition <- function(
 #' @rdname tempest_artifact_codec_definition
 #' @param ... Arguments forwarded to [tempest_artifact_codec_definition()].
 #' @export
+#' @noRd
 tempest_artifact_codec <- function(...) {
   tempest_artifact_codec_definition(...)
 }
@@ -686,6 +688,7 @@ TempestArtifactCodecRegistry <- R6::R6Class(
 #'   external-reference codecs.
 #' @return A `TempestArtifactCodecRegistry`.
 #' @export
+#' @noRd
 tempest_artifact_codec_registry <- function(
   codecs = list(),
   include_builtins = TRUE

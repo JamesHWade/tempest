@@ -55,19 +55,46 @@ test_promotion_fixture <- function() {
     mode = "storm",
     config = tempest_config(),
     programs = programs,
-    traces = list(
-      list(
-        trace_id = "attempt-promotion-extraction",
-        stage = "extract_claims"
-      ),
-      list(
-        trace_id = "attempt-promotion-verification",
-        stage = "verify_claim_support"
-      )
-    ),
+    traces = list(),
     status = "succeeded"
   )
-  trace <- list(research_run_id = run_id, mode = "storm", role = "program")
+  deputy_expert_id <- "expert.promotion"
+  deputy_context <- tempest:::tempest_deputy_run_context(
+    manifest,
+    stage = "research",
+    role = "expert",
+    expert_id = deputy_expert_id
+  )
+  deputy_trace <- tempest:::tempest_research_manifest_traces(list(list(
+    agent_id = tempest:::tempest_deputy_adapter_agent_id(deputy_context),
+    correlation_id = "promotion-extraction-correlation",
+    deputy_run_id = "promotion-extraction-run",
+    deputy_session_id = tempest:::tempest_storm_deputy_session_id(
+      run_id,
+      deputy_expert_id
+    ),
+    expert_id = deputy_expert_id,
+    role = "expert",
+    stage = "research",
+    status = "complete",
+    completion_disposition = "issued",
+    trace_id = "promotion-extraction-run",
+    trace_type = "deputy_run"
+  )))[[1L]]
+  base_trace <- list(
+    research_run_id = run_id,
+    mode = "storm",
+    role = "program"
+  )
+  trace <- c(
+    base_trace,
+    list(
+      deputy_run_id = deputy_trace$deputy_run_id,
+      deputy_session_id = deputy_trace$deputy_session_id,
+      expert_id = deputy_trace$expert_id,
+      correlation_id = deputy_trace$correlation_id
+    )
+  )
   extraction <- tempest:::tempest_stage_record_start(
     "extract_claims",
     programs$extract_claims$program_artifact_id,
@@ -96,7 +123,7 @@ test_promotion_fixture <- function() {
     programs$verify_claim_support$program_artifact_id,
     programs$verify_claim_support$governed_procedure_ref$revision_id,
     trace_references = c(
-      trace,
+      base_trace,
       list(
         min_support_score = tempest:::tempest_stage_support_threshold_string(
           0.7
@@ -125,6 +152,21 @@ test_promotion_fixture <- function() {
     completed_at = "2026-08-16T12:06:00Z"
   )
   stage_records <- list(extraction, verification)
+  manifest <- tempest:::tempest_persistence_manifest_bind_stage_records(
+    manifest,
+    stage_records,
+    deputy_traces = list(deputy_trace)
+  )
+  manifest <- tempest:::tempest_persistence_manifest_bind_report(
+    manifest,
+    paste0(
+      "# Promotion evidence\n\n",
+      "The intervention improved the measured outcome ",
+      "[",
+      resource@resource_id,
+      "]."
+    )
+  )
   list(
     workspace = workspace,
     manifest = manifest,
@@ -133,7 +175,8 @@ test_promotion_fixture <- function() {
     span = span,
     resource = resource,
     support = support,
-    programs = programs
+    programs = programs,
+    deputy_trace = deputy_trace
   )
 }
 

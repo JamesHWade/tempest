@@ -8,56 +8,80 @@ tempest_async_promise_try <- function(callback) {
   )
 }
 
-tempest_session_extract_facts_async <- function(
-  session,
-  text,
-  turn = NULL,
-  source_ids = NULL,
-  session_id = session$session_id,
-  expert_id = NA_character_,
-  correlation_id = NA_character_,
-  deputy_execution = NULL,
-  is_current = function() TRUE,
-  emit_stale_progress = TRUE
-) {
+tempest_session_completion_evidence_binding <- function(session, claim) {
+  claim <- tempest_session_agent_completion_assert_claim(
+    session,
+    claim,
+    state = "consumed"
+  )
+  tempest_session_async_work_assert_completion(
+    session,
+    claim$completion_id
+  )
+  trace <- tempest_session_turn_deputy_execution(
+    session,
+    claim$deputy_execution
+  )
   workspace <- session$workspace %||% NULL
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
       "The Co-STORM session must expose a ResearchWorkspace."
     )
   }
-  if (!is.null(deputy_execution)) {
-    deputy_execution <- tempest_costorm_deputy_trace(deputy_execution)
-  }
+  response <- tempest_session_turn_text(claim$response, "response")
+  provider_turn <- tempest_agent_completion_provider_turn(claim$provider_turn)
+  source_ids <- tempest_harvest_native_sources_from_turn(
+    provider_turn,
+    workspace
+  )
+  source_ids <- tempest_session_answer_source_ids(
+    session,
+    response,
+    source_ids
+  )
+  list(
+    completion_id = claim$completion_id,
+    response = response,
+    provider_turn = provider_turn,
+    source_ids = source_ids,
+    correlation_id = trace$correlation_id,
+    deputy_execution = trace
+  )
+}
+
+tempest_session_extract_facts_async <- function(
+  session,
+  claim,
+  is_current = function() TRUE,
+  emit_stale_progress = TRUE
+) {
+  binding <- tempest_session_completion_evidence_binding(session, claim)
+  workspace <- session$workspace
   event <- session$emit_progress(
     "step",
     "started",
     stage = "evidence",
     step = "fact_extraction",
-    correlation_id = correlation_id
+    correlation_id = binding$correlation_id
   )
-  harvested <- if (is.null(source_ids)) {
-    tempest_harvest_native_sources_from_turn(turn, workspace)
-  } else {
-    character()
-  }
   record_stage <- tempest_session_stage_recorder(session)
   request <- tempest_async_promise_try(function() {
     tempest_extract_facts_from_answer_async(
-      session$chats$extractor,
-      text,
+      tempest_session_chat(session, "extractor"),
+      binding$response,
       workspace,
       module = tempest_session_programs(session)$extract_claims,
-      source_ids = unique(c(source_ids, harvested)),
-      session_id = session_id,
-      expert_id = expert_id,
-      retrieval_step_id = correlation_id,
-      deputy_run_id = deputy_execution$deputy_run_id %||% NA_character_,
-      deputy_session_id = deputy_execution$deputy_session_id %||%
+      source_ids = binding$source_ids,
+      session_id = session$session_id,
+      expert_id = "moderator",
+      retrieval_step_id = binding$correlation_id,
+      deputy_run_id = binding$deputy_execution$deputy_run_id,
+      deputy_session_id = binding$deputy_execution$deputy_session_id,
+      parent_run_id = binding$deputy_execution$parent_run_id %||%
         NA_character_,
-      parent_run_id = deputy_execution$parent_run_id %||% NA_character_,
-      delegation_id = deputy_execution$delegation_id %||% NA_character_,
-      tool_call_id = deputy_execution$tool_call_id %||% NA_character_,
+      delegation_id = binding$deputy_execution$delegation_id %||%
+        NA_character_,
+      tool_call_id = binding$deputy_execution$tool_call_id %||% NA_character_,
       commit_if = is_current,
       record_stage = record_stage
     )
@@ -132,23 +156,12 @@ tempest_session_evidence_counts <- function(session) {
 
 tempest_session_commit_evidence_async <- function(
   session,
-  text,
-  turn = NULL,
-  source_ids = NULL,
-  session_id = session$session_id,
-  expert_id = NA_character_,
-  correlation_id = NA_character_,
-  deputy_execution = NULL,
+  claim,
   is_current = function() TRUE,
   emit_stale_progress = TRUE
 ) {
   tempest_require("promises", "Async evidence commitment requires promises.")
-  workspace <- session$workspace %||% NULL
-  if (!inherits(workspace, "ResearchWorkspace")) {
-    tempest_research_workspace_abort(
-      "The Co-STORM session must expose a ResearchWorkspace."
-    )
-  }
+  binding <- tempest_session_completion_evidence_binding(session, claim)
   before <- tempest_session_evidence_counts(session)
   if (!tempest_async_is_current(is_current)) {
     return(promises::promise_resolve(c(
@@ -161,15 +174,7 @@ tempest_session_commit_evidence_async <- function(
       )
     )))
   }
-  if (is.null(source_ids)) {
-    source_ids <- if (!is.null(session$harvest_native_sources)) {
-      session$harvest_native_sources(turn = turn)
-    } else {
-      tempest_harvest_native_sources_from_turn(turn, workspace)
-    }
-  }
-  source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
-  source_ids <- tempest_session_answer_source_ids(session, text, source_ids)
+  source_ids <- binding$source_ids
 
   summarize <- function(
     extraction_skipped = NA_character_,
@@ -193,7 +198,7 @@ tempest_session_commit_evidence_async <- function(
       "skipped",
       stage = "evidence",
       step = "fact_extraction",
-      correlation_id = correlation_id,
+      correlation_id = binding$correlation_id,
       payload = list(reason = "no_cited_sources")
     )
     return(promises::promise_resolve(summarize("no_cited_sources")))
@@ -202,13 +207,7 @@ tempest_session_commit_evidence_async <- function(
   request <- tempest_async_promise_try(function() {
     tempest_session_extract_facts_async(
       session,
-      text,
-      turn = turn,
-      source_ids = source_ids,
-      session_id = session_id,
-      expert_id = expert_id,
-      correlation_id = correlation_id,
-      deputy_execution = deputy_execution,
+      claim,
       is_current = is_current,
       emit_stale_progress = emit_stale_progress
     )
@@ -233,31 +232,10 @@ tempest_session_update_mindmap_async <- function(
     stage = "mindmap",
     step = "update"
   )
-  prompt <- paste0(
-    "Update the research mind map based on the latest exchange.\n\n",
-    "Topic: ",
-    session$topic,
-    "\n\nCurrent mind map:\n",
-    tempest_mindmap_to_markdown(session$mindmap),
-    "\n\nLatest exchange:\n",
-    last_exchange,
-    "\n\nRules:\n",
-    "- Keep node ids stable where possible.\n",
-    "- Keep the map concise with no more than 24 nodes.\n",
-    "- Add nodes for new subtopics, hypotheses, and open questions.\n",
-    "- Add source_ids to nodes when the exchange included citations like [Sxxxxxxxxxxxx].\n",
-    "- When the exchange marks content as scoping-only or an evidence gap, add only open-question or gap nodes; do not turn unsupported statements into findings.\n",
-    "- Do not fabricate sources.\n\n",
-    "Return an updated mind map as structured data."
+  tempest_agent_completion_text(last_exchange)
+  request <- promises::promise_resolve(
+    tempest_costorm_mindmap_projection(session)
   )
-  request <- tempest_async_promise_try(function() {
-    session$chats$mindmap$chat_structured_async(
-      prompt,
-      type = tempest_type_mindmap(),
-      echo = "none",
-      convert = FALSE
-    )
-  })
   promises::then(
     request,
     onFulfilled = function(mindmap) {
@@ -294,7 +272,7 @@ tempest_session_update_mindmap_async <- function(
             tempest_rethrow_operation(error, class = "tempest_session_error")
           }
         )
-        session$mindmap <- mindmap
+        tempest_session_commit_mindmap(session, mindmap)
       }
       session$emit_progress(
         "step",
@@ -341,28 +319,73 @@ tempest_session_suggest_questions_async <- function(
   n = 4,
   is_current = function() TRUE
 ) {
+  n <- tempest_config_count(n, "n")
   event <- session$emit_progress(
     "step",
     "started",
     stage = "suggestions",
     step = "question_generation"
   )
-  context <- if (length(session$transcript) > 0L) {
+  answered <- if (length(session$transcript) > 0L) {
     session$transcript_markdown(max_turns = 12)
   } else {
-    NULL
+    "(none yet)"
   }
-  request <- tempest_async_promise_try(function() {
-    tempest_suggest_questions_async(
-      topic = session$topic,
-      context = context,
-      n = n,
-      config = session$config
-    )
-  })
+  facts <- tempest_summarize_facts_for_prompt(
+    session$workspace,
+    max_items = 60L,
+    verified_only = TRUE,
+    min_support_score = session$config@min_support_score
+  )
+  module <- tempest_session_programs(session)$next_question
+  chat <- tempest_session_chat(session, "next_question")
+  questions <- character()
+  run_one <- function(previous, index) {
+    promises::then(previous, function(...) {
+      if (!tempest_async_is_current(is_current)) {
+        return(NULL)
+      }
+      request <- tempest_execute_stage_async(
+        module,
+        chat,
+        inputs = list(
+          topic = session$topic,
+          perspective = paste0(
+            "Follow-up research suggestion ",
+            index,
+            " of ",
+            n
+          ),
+          answered = answered,
+          facts = facts
+        ),
+        context = tempest_stage_context_knowledge_view(
+          list(),
+          module,
+          tempest_session_knowledge_view(session)
+        ),
+        record_stage = function(record, output = NULL) {
+          tempest_session_record_stage(session, record, output)
+        },
+        is_current = is_current
+      )
+      promises::then(request, function(stage_result) {
+        output <- tempest_normalize_next_question(stage_result$output)
+        if (!isTRUE(output$done) && nzchar(tempest_trim(output$question))) {
+          questions <<- unique(c(questions, tempest_trim(output$question)))
+        }
+        output
+      })
+    })
+  }
+  request <- Reduce(
+    run_one,
+    seq_len(n),
+    init = promises::promise_resolve(NULL)
+  )
   promises::then(
     request,
-    onFulfilled = function(questions) {
+    onFulfilled = function(...) {
       if (!tempest_async_is_current(is_current)) {
         session$emit_progress(
           "step",
@@ -375,6 +398,8 @@ tempest_session_suggest_questions_async <- function(
         )
         return(character())
       }
+      questions <- utils::head(questions, n)
+      tempest_session_set_suggestions(session, questions)
       session$emit_progress(
         "step",
         "succeeded",
@@ -444,7 +469,8 @@ tempest_session_turn_deputy_execution <- function(
   if (
     !identical(trace$stage, "dialogue") ||
       !identical(trace$role, "moderator") ||
-      !identical(trace$status, "complete")
+      !identical(trace$status, "complete") ||
+      !identical(trace$completion_disposition, "issued")
   ) {
     tempest_abort(
       paste0(
@@ -473,6 +499,69 @@ tempest_session_turn_append_notice <- function(state, notice) {
   invisible(state)
 }
 
+tempest_session_turn_append_progress_notice <- function(state, error) {
+  codes <- vapply(
+    state$notices,
+    \(notice) notice@code,
+    character(1)
+  )
+  if (!"progress_failed" %in% codes) {
+    tempest_session_turn_append_notice(
+      state,
+      tempest_session_turn_error_notice(
+        code = "progress_failed",
+        stage = "dialogue",
+        message = "The host progress callback failed.",
+        error = error
+      )
+    )
+  }
+  invisible(state)
+}
+
+tempest_session_turn_progress_event <- function(session, state, ...) {
+  before <- length(session$events)
+  tryCatch(
+    session$emit_progress(...),
+    error = function(error) {
+      if (!inherits(error, "tempest_progress_callback_error")) {
+        stop(error)
+      }
+      tempest_session_turn_append_progress_notice(state, error)
+      if (!identical(length(session$events), before + 1L)) {
+        tempest_abort(
+          "A Co-STORM progress event was not recorded atomically.",
+          class = c("tempest_session_turn_error", "tempest_error")
+        )
+      }
+      event <- session$events[[before + 1L]]
+      event$sequence <- NULL
+      do.call(tempest_progress_event, event)
+    }
+  )
+}
+
+tempest_session_completion_transcript <- function(user_text, assistant_text) {
+  turns <- list()
+  if (nzchar(user_text)) {
+    turns[[length(turns) + 1L]] <- list(
+      speaker = "user",
+      role = "user",
+      text = user_text,
+      at = tempest_now_utc()
+    )
+  }
+  if (nzchar(assistant_text)) {
+    turns[[length(turns) + 1L]] <- list(
+      speaker = "Moderator",
+      role = "assistant",
+      text = assistant_text,
+      at = tempest_now_utc()
+    )
+  }
+  turns
+}
+
 tempest_session_turn_cancel <- function(state) {
   state$cancelled <- TRUE
   state$suggestion_status <- "cancelled"
@@ -491,17 +580,10 @@ tempest_session_turn_cancel <- function(state) {
 #' before it can commit later pipeline stages.
 #'
 #' @param session A [TempestSession] object.
-#' @param user_text Completed user input as a single string.
-#' @param assistant_text Completed moderator response as a single string.
-#' @param deputy_execution Exact completed moderator Deputy trace captured with
-#'   the response before any asynchronous queueing.
-#' @param provider_turn Optional process-local provider turn used to harvest
-#'   native sources. It is never retained in the result.
+#' @param completion_id Opaque, process-local completion identifier returned by
+#'   `session$request_completion_async()`.
 #' @param suggest Whether to generate follow-up questions.
 #' @param n_suggestions Maximum number of follow-up questions.
-#' @param turn_id Optional stable correlation identifier. When supplied, it
-#'   must equal the completed moderator Deputy trace correlation. When `NULL`,
-#'   that trace correlation is authoritative.
 #' @param is_current Process-local predicate returning `TRUE` while this work is
 #'   allowed to commit. It is never retained in the result.
 #' @return A promise resolving to a typed, serializable
@@ -509,13 +591,9 @@ tempest_session_turn_cancel <- function(state) {
 #' @export
 tempest_session_process_turn_async <- function(
   session,
-  user_text,
-  assistant_text,
-  deputy_execution,
-  provider_turn = NULL,
+  completion_id,
   suggest = TRUE,
   n_suggestions = 4L,
-  turn_id = NULL,
   is_current = function() TRUE
 ) {
   tempest_require("promises", "Async turn processing requires promises.")
@@ -525,58 +603,77 @@ tempest_session_process_turn_async <- function(
       class = c("tempest_session_turn_error", "tempest_error")
     )
   }
-  if (missing(deputy_execution)) {
-    tempest_abort(
-      "{.arg deputy_execution} must be supplied.",
-      class = c("tempest_session_turn_error", "tempest_error")
-    )
-  }
-  deputy_execution <- tempest_session_turn_deputy_execution(
-    session,
-    deputy_execution
-  )
-  user_text <- tempest_session_turn_text(user_text, "user_text")
-  assistant_text <- tempest_session_turn_text(
-    assistant_text,
-    "assistant_text"
-  )
-  if (!nzchar(user_text) && !nzchar(assistant_text)) {
-    tempest_abort(
-      "At least one of {.arg user_text} or {.arg assistant_text} must be non-empty.",
-      class = c("tempest_session_turn_error", "tempest_error")
-    )
-  }
-  suggest <- tempest_workflow_flag(suggest, "suggest")
+  tempest_session_assert_mutable(session, "process a dialogue turn")
+  suggest <- tempest_product_flag(suggest, "suggest")
   n_suggestions <- tempest_config_count(n_suggestions, "n_suggestions")
-  if (
-    !is.null(turn_id) &&
-      (!rlang::is_string(turn_id) ||
-        !tempest_opaque_identifier_valid(turn_id))
-  ) {
-    tempest_abort(
-      paste0(
-        "{.arg turn_id} must be a safe opaque identifier or {.code NULL}."
-      ),
-      class = c("tempest_session_turn_error", "tempest_error")
-    )
-  }
   if (!is.function(is_current)) {
     tempest_abort(
       "{.arg is_current} must be a function.",
       class = c("tempest_session_turn_error", "tempest_error")
     )
   }
-  trace_turn_id <- deputy_execution$correlation_id
-  if (!is.null(turn_id) && !identical(turn_id, trace_turn_id)) {
-    tempest_abort(
-      paste0(
-        "{.arg turn_id} must equal the completed moderator Deputy trace ",
-        "correlation."
-      ),
-      class = c("tempest_session_turn_error", "tempest_error")
+  claim <- tempest_session_agent_completion_claim(session, completion_id)
+  prepared <- tryCatch(
+    {
+      user_text <- tempest_session_turn_text(claim$prompt, "prompt")
+      assistant_text <- tempest_session_turn_text(
+        claim$response,
+        "response"
+      )
+      if (!nzchar(user_text) && !nzchar(assistant_text)) {
+        tempest_abort(
+          "An agent completion must contain a prompt or response.",
+          class = c("tempest_session_turn_error", "tempest_error")
+        )
+      }
+      deputy_execution <- tempest_session_turn_deputy_execution(
+        session,
+        claim$deputy_execution
+      )
+      list(
+        user_text = user_text,
+        assistant_text = assistant_text,
+        provider_turn = claim$provider_turn,
+        deputy_execution = deputy_execution,
+        turn_id = deputy_execution$correlation_id,
+        transcript = tempest_session_completion_transcript(
+          user_text,
+          assistant_text
+        )
+      )
+    },
+    error = function(error) {
+      tempest_session_agent_completion_release(session, claim)
+      stop(error)
+    }
+  )
+  user_text <- prepared$user_text
+  assistant_text <- prepared$assistant_text
+  provider_turn <- prepared$provider_turn
+  deputy_execution <- prepared$deputy_execution
+  turn_id <- prepared$turn_id
+  transcript <- prepared$transcript
+  work_id <- tempest_session_async_work_start(
+    session,
+    "dialogue",
+    work_id = paste0("turn-", completion_id)
+  )
+  promise_owns_work <- FALSE
+  on.exit(
+    {
+      if (!promise_owns_work) {
+        tempest_session_async_work_finish(session, work_id)
+      }
+    },
+    add = TRUE
+  )
+  finalize_work <- function(promise) {
+    promise_owns_work <<- TRUE
+    promises::finally(
+      promise,
+      function() tempest_session_async_work_finish(session, work_id)
     )
   }
-  turn_id <- trace_turn_id
 
   state <- new.env(parent = emptyenv())
   state$cancelled <- !tempest_async_is_current(is_current)
@@ -610,7 +707,9 @@ tempest_session_process_turn_async <- function(
       "succeeded"
     }
     if (!is.null(turn_event)) {
-      session$emit_progress(
+      tempest_session_turn_progress_event(
+        session,
+        state,
         "stage",
         if (state$cancelled) "cancelled" else "succeeded",
         stage = "dialogue",
@@ -622,6 +721,14 @@ tempest_session_process_turn_async <- function(
           notice_count = length(state$notices)
         )
       )
+      warning_count <- sum(vapply(
+        state$notices,
+        \(notice) identical(notice@severity, "warning"),
+        logical(1)
+      ))
+      if (!state$cancelled && warning_count > 0L) {
+        status <- "partial"
+      }
     }
     tempest_session_turn_result(
       session_id = session$session_id,
@@ -644,10 +751,25 @@ tempest_session_process_turn_async <- function(
   }
 
   if (state$cancelled) {
-    return(promises::promise_resolve(finish()))
+    tempest_session_agent_completion_cancel(session, completion_id)
+    return(finalize_work(promises::promise_resolve(finish())))
   }
 
-  turn_event <- session$emit_progress(
+  tryCatch(
+    tempest_session_agent_completion_consume(session, claim),
+    error = function(error) {
+      tempest_session_agent_completion_release(session, claim)
+      stop(error)
+    }
+  )
+
+  tempest_session_commit_transcript(
+    session,
+    c(session$transcript, transcript)
+  )
+  turn_event <- tempest_session_turn_progress_event(
+    session,
+    state,
     "stage",
     "started",
     stage = "dialogue",
@@ -655,8 +777,9 @@ tempest_session_process_turn_async <- function(
     correlation_id = turn_id
   )
   if (nzchar(user_text)) {
-    session$add_turn("user", "user", user_text)
-    session$emit_progress(
+    tempest_session_turn_progress_event(
+      session,
+      state,
       "step",
       "succeeded",
       stage = "dialogue",
@@ -666,8 +789,9 @@ tempest_session_process_turn_async <- function(
     )
   }
   if (nzchar(assistant_text)) {
-    session$add_turn("Moderator", "assistant", assistant_text)
-    session$emit_progress(
+    tempest_session_turn_progress_event(
+      session,
+      state,
       "step",
       "succeeded",
       stage = "dialogue",
@@ -680,12 +804,7 @@ tempest_session_process_turn_async <- function(
   evidence <- tempest_async_promise_try(function() {
     tempest_session_commit_evidence_async(
       session,
-      assistant_text,
-      turn = provider_turn,
-      session_id = session$session_id,
-      expert_id = "moderator",
-      correlation_id = turn_id,
-      deputy_execution = deputy_execution,
+      claim,
       is_current = is_current
     )
   })
@@ -845,31 +964,120 @@ tempest_session_process_turn_async <- function(
     )
   })
 
-  promises::then(suggestions, function(...) {
+  completed <- promises::then(suggestions, function(...) {
     if (!tempest_async_is_current(is_current)) {
       tempest_session_turn_cancel(state)
     }
     finish()
   })
+  finalize_work(completed)
+}
+
+tempest_session_report_progress_event <- function(session, ...) {
+  before <- length(session$events)
+  tryCatch(
+    session$emit_progress(...),
+    error = function(error) {
+      if (!inherits(error, "tempest_progress_callback_error")) {
+        stop(error)
+      }
+      if (!identical(length(session$events), before + 1L)) {
+        tempest_costorm_session_abort(
+          "A Co-STORM report progress event was not recorded atomically."
+        )
+      }
+      event <- session$events[[before + 1L]]
+      event$sequence <- NULL
+      do.call(tempest_progress_event, event)
+    }
+  )
 }
 
 tempest_session_report_async <- function(
   session,
   style = c("technical", "executive"),
   include_references = TRUE,
-  is_current = function() TRUE,
-  .artifact_catalog = NULL
+  is_current = function() TRUE
 ) {
+  tempest_require("promises", "Async report generation requires promises.")
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  if (!is.function(is_current)) {
+    tempest_costorm_session_abort("{.arg is_current} must be a function.")
+  }
   style <- match.arg(style)
-  event <- session$emit_progress(
+  include_references <- tempest_product_flag(
+    include_references,
+    "include_references"
+  )
+  tempest_session_assert_mutable(session, "generate a report")
+  tempest_costorm_report_assert_quiescent(session)
+  workspace <- session$workspace
+  publication_owner <- tempest_session_verification_owner_token(session)
+  tempest_research_workspace_publication_lock(
+    workspace,
+    publication_owner
+  )
+  lock_owned <- TRUE
+  release_publication_lock <- function() {
+    if (
+      lock_owned &&
+        identical(
+          tempest_research_workspace_mutation_state(workspace),
+          "publication_locked"
+        )
+    ) {
+      tempest_research_workspace_publication_release(
+        workspace,
+        publication_owner
+      )
+    }
+    lock_owned <<- FALSE
+    invisible(NULL)
+  }
+  work_id <- tryCatch(
+    tempest_session_async_work_start(session, "report"),
+    error = function(error) {
+      release_publication_lock()
+      stop(error)
+    }
+  )
+  promise_owns_work <- FALSE
+  on.exit(
+    {
+      if (!promise_owns_work) {
+        tempest_session_async_work_finish(session, work_id)
+        release_publication_lock()
+      }
+    },
+    add = TRUE
+  )
+  event <- tempest_session_report_progress_event(
+    session,
     "stage",
     "started",
     stage = "report",
     step = "generate",
     payload = list(style = style, include_references = include_references)
   )
+  finish_work <- function(promise) {
+    promise_owns_work <<- TRUE
+    promises::finally(
+      promise,
+      function() {
+        tempest_session_async_work_finish(session, work_id)
+        release_publication_lock()
+      }
+    )
+  }
+  observe_progress <- function(...) {
+    tempest_session_report_progress_event(session, ...)
+  }
   if (!tempest_async_is_current(is_current)) {
-    session$emit_progress(
+    observe_progress(
       "stage",
       "cancelled",
       stage = "report",
@@ -878,23 +1086,25 @@ tempest_session_report_async <- function(
       correlation_id = event@correlation_id,
       payload = list(reason = "stale_session")
     )
-    return(promises::promise_resolve(NULL))
+    return(finish_work(promises::promise_resolve(NULL)))
   }
-  plan <- tempest_costorm_report_plan(
-    session,
-    style,
-    include_references,
-    generate_text = function(prompt) {
-      session$chats$reporter$chat_async(prompt)
-    },
-    .artifact_catalog = .artifact_catalog
-  )
-  request <- tempest_deliverable_generate(plan)
+  request <- tempest_async_promise_try(function() {
+    tempest_costorm_report_verify_async(session, is_current)
+  })
+  request <- promises::then(request, function(...) {
+    tempest_costorm_report_finalize(
+      session,
+      style,
+      include_references,
+      is_current,
+      work_id
+    )
+  })
   completed <- promises::then(
     request,
-    onFulfilled = function(body) {
-      if (!tempest_async_is_current(is_current)) {
-        session$emit_progress(
+    onFulfilled = function(markdown) {
+      if (is.null(markdown)) {
+        observe_progress(
           "stage",
           "cancelled",
           stage = "report",
@@ -905,37 +1115,32 @@ tempest_session_report_async <- function(
         )
         return(NULL)
       }
-      result <- tempest_deliverable_finalize(plan, body)
-      artifact <- tempest_deliverable_primary_artifact(result)
-      markdown <- artifact@content
-      if (inherits(session, "TempestSession")) {
-        tempest_session_set_report_value(session, markdown)
-      }
-      session$emit_progress(
+      observe_progress(
         "artifact",
         "available",
         stage = "report",
         step = "report_md",
         parent_event_id = event@event_id,
         correlation_id = event@correlation_id,
-        payload = list(artifact = "report_md")
+        payload = list(artifact = "report_md", published = TRUE)
       )
-      session$emit_progress(
+      observe_progress(
         "stage",
         "succeeded",
         stage = "report",
         step = "generate",
         parent_event_id = event@event_id,
-        correlation_id = event@correlation_id
+        correlation_id = event@correlation_id,
+        payload = list(published = TRUE)
       )
       markdown
     }
   )
-  promises::catch(
+  completed <- promises::catch(
     completed,
     onRejected = function(error) {
       if (!tempest_async_is_current(is_current)) {
-        session$emit_progress(
+        observe_progress(
           "stage",
           "cancelled",
           stage = "report",
@@ -946,7 +1151,7 @@ tempest_session_report_async <- function(
         )
         return(NULL)
       }
-      session$emit_progress(
+      observe_progress(
         "stage",
         "failed",
         stage = "report",
@@ -958,4 +1163,5 @@ tempest_session_report_async <- function(
       tempest_rethrow_operation(error, class = "tempest_session_error")
     }
   )
+  finish_work(completed)
 }

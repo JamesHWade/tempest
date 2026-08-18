@@ -5,27 +5,17 @@ test_that("tempest_type_turn_policy returns valid type", {
   expect_s7_class(type, getFromNamespace("TypeObject", "ellmer"))
 })
 
-test_that("DiscourseManager initializes correctly", {
+test_that("generic discourse manager construction fails closed", {
   skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
-    "No API key available"
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-
-  cfg <- tempest_config(enable_discourse_manager = TRUE)
-  dm <- tempest:::DiscourseManager$new(cfg)
-
-  expect_s3_class(dm, "DiscourseManager")
-  expect_s3_class(dm$chat, "Chat")
-  expect_identical(dm$config, cfg)
+  error <- tryCatch(tempest:::DiscourseManager$new(cfg), error = identity)
+  expect_s3_class(error, "tempest_session_error")
 })
 
-test_that("TempestSession creates discourse manager when enabled", {
+test_that("TempestSession has no generic discourse manager surface", {
   skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
-    "No API key available"
-  )
 
   experts <- list(test_expert(
     expert_id = "expert.alice",
@@ -35,7 +25,6 @@ test_that("TempestSession creates discourse manager when enabled", {
   ))
 
   cfg <- tempest_config(
-    enable_discourse_manager = TRUE,
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   session <- tempest_session(
@@ -44,42 +33,11 @@ test_that("TempestSession creates discourse manager when enabled", {
     experts = experts
   )
 
-  expect_s3_class(session$discourse_manager, "DiscourseManager")
+  expect_identical("discourse_manager" %in% names(session), FALSE)
 })
 
-test_that("TempestSession discourse manager is NULL when disabled", {
+test_that("execute_turn_decision rejects automatic routing", {
   skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
-    "No API key available"
-  )
-
-  experts <- list(test_expert(
-    expert_id = "expert.alice",
-    name = "Dr. Alice",
-    title = "Scientist",
-    description = "Technical"
-  ))
-
-  cfg <- tempest_config(
-    enable_discourse_manager = FALSE,
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  session <- tempest_session(
-    "Test topic",
-    config = cfg,
-    experts = experts
-  )
-
-  expect_null(session$discourse_manager)
-})
-
-test_that("execute_turn_decision handles end_round", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("OPENAI_API_KEY") == "" && Sys.getenv("ANTHROPIC_API_KEY") == "",
-    "No API key available"
-  )
 
   experts <- list(test_expert(
     expert_id = "expert.alice",
@@ -98,8 +56,6 @@ test_that("execute_turn_decision handles end_round", {
   )
 
   decision <- list(action = "end_round", instruction = "", rationale = "test")
-  result <- session$execute_turn_decision(decision)
-
-  expect_equal(result$speaker, "System")
-  expect_equal(result$answer, "Round complete.")
+  error <- tryCatch(session$execute_turn_decision(decision), error = identity)
+  expect_s3_class(error, "tempest_session_error")
 })

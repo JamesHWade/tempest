@@ -447,43 +447,6 @@ tempest_warmup_prompt <- function(topic, expert) {
   )
 }
 
-tempest_warmup_response_text <- function(expert_chat, response) {
-  turn <- tryCatch(expert_chat$last_turn(), error = function(error) NULL)
-  text <- tryCatch(
-    if (is.null(turn)) "" else ellmer::contents_markdown(turn),
-    error = function(error) ""
-  )
-  if (nzchar(text)) {
-    return(text)
-  }
-  if (is.character(response) && length(response) > 0L) {
-    return(paste(response, collapse = ""))
-  }
-  ""
-}
-
-tempest_warmup_chat_response <- function(
-  expert_chat,
-  prompt,
-  correlation_id
-) {
-  request <- tryCatch(
-    expert_chat$chat_async(
-      prompt,
-      run_context = list(
-        correlation_id = correlation_id,
-        role = "expert",
-        stage = "warmup"
-      )
-    ),
-    error = function(error) promises::promise_reject(error)
-  )
-  promises::then(
-    promises::promise_resolve(request),
-    function(value) tempest_warmup_response_text(expert_chat, value)
-  )
-}
-
 tempest_warmup_orientation <- function(expert, correlation_id) {
   list(
     expert_id = expert@expert_id,
@@ -589,33 +552,15 @@ tempest_warmup_result <- function(
 }
 
 tempest_warmup_commit_async <- function(session, state, is_current) {
-  successful <- which(vapply(
-    state$records,
-    function(record) {
-      !is.null(record) && identical(record$status, "succeeded")
-    },
-    logical(1)
-  ))
-  if (length(successful) == 0L) {
+  pending <- which(!vapply(state$pending, is.null, logical(1)))
+  if (length(pending) == 0L) {
     return(promises::promise_resolve(list(
       evidence_failure_count = 0L,
       mindmap_updated = FALSE
     )))
   }
-  for (index in successful) {
-    if (!tempest_async_is_current(is_current)) {
-      state$cancelled <- TRUE
-      return(promises::promise_resolve(NULL))
-    }
-    orientation <- state$pending[[index]]
-    session$add_turn(
-      orientation$expert_name,
-      "assistant",
-      orientation$response
-    )
-  }
-
-  evidence_results <- vector("list", length(state$records))
+  manager <- tempest_session_expert_manager(session)
+  committed <- vector("list", length(state$records))
   evidence_failure_count <- 0L
   commit_one <- function(previous, index) {
     promises::then(previous, function(...) {
@@ -625,26 +570,34 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
       }
       orientation <- state$pending[[index]]
       request <- tempest_async_promise_try(function() {
-        tempest_session_commit_evidence_async(
-          session,
-          orientation$response,
-          turn = orientation$turn,
-          session_id = session$session_id,
+        manager$commit_completion(
+          orientation$completion_id,
           expert_id = orientation$expert_id,
-          correlation_id = orientation$correlation_id,
-          deputy_execution = orientation$deputy_execution,
-          is_current = is_current,
-          emit_stale_progress = FALSE
+          stage = "warmup",
+          is_current = is_current
         )
       })
       promises::then(
         request,
         onFulfilled = function(result) {
-          if (!tempest_async_is_current(is_current)) {
+          if (
+            !tempest_async_is_current(is_current) ||
+              isTRUE(result$cancelled %||% FALSE)
+          ) {
             state$cancelled <- TRUE
             return(NULL)
           }
-          evidence_results[[index]] <<- result
+          committed[[index]] <<- result
+          tempest_session_append_transcript(
+            session,
+            orientation$expert_name,
+            "assistant",
+            result$response
+          )
+          trace <- result$deputy_execution
+          state$records[[index]]$status <- "succeeded"
+          state$records[[index]]$deputy_run_id <- trace$deputy_run_id
+          state$records[[index]]$deputy_session_id <- trace$deputy_session_id
           state$records[[index]]$source_ids <- result$source_ids %||%
             character()
           state$records[[index]]$sources_added <- as.integer(
@@ -654,26 +607,78 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
             result$claims_added %||% 0L
           )
           state$records[[index]]$evidence_status <- if (
-            !is.na(result$extraction_skipped %||% NA_character_)
+            !is.null(result$evidence_error)
           ) {
+            evidence_failure_count <<- evidence_failure_count + 1L
+            state$records[[index]]$error_class <-
+              result$evidence_error$error_class
+            state$records[[index]]$error_message <-
+              result$evidence_error$error_message
+            "failed"
+          } else if (!isTRUE(result$evidence_committed)) {
             "skipped"
           } else {
             "committed"
           }
+          session$emit_progress(
+            "expert",
+            "succeeded",
+            stage = "warmup",
+            step = "expert_fanout",
+            parent_event_id = tempest_warmup_progress_id(
+              orientation$expert_event
+            ),
+            correlation_id = orientation$correlation_id,
+            payload = list(
+              expert_id = orientation$expert_id,
+              expert_name = orientation$expert_name,
+              mode = "bounded_research",
+              session_id = result$session_id,
+              deputy_run_id = trace$deputy_run_id,
+              deputy_session_id = trace$deputy_session_id,
+              tools_available = state$records[[index]]$tools_available,
+              capability_count = state$records[[index]]$capability_count,
+              evidence_status = state$records[[index]]$evidence_status
+            )
+          )
           result
         },
         onRejected = function(error) {
           tempest_rethrow_dsprrr_contract(error)
+          try(
+            manager$cancel_completion(orientation$completion_id),
+            silent = TRUE
+          )
           if (!tempest_async_is_current(is_current)) {
             state$cancelled <- TRUE
             return(NULL)
           }
-          evidence_failure_count <<- evidence_failure_count + 1L
-          evidence_results[[index]] <<- list(error = error)
-          state$records[[index]]$evidence_status <- "failed"
-          payload <- tempest_progress_error_payload(error)
-          state$records[[index]]$error_class <- payload$error_class
-          state$records[[index]]$error_message <- payload$error_message
+          record <- tempest_warmup_error_record(
+            state$records[[index]],
+            error,
+            "provider_error"
+          )
+          state$records[[index]] <- record
+          session$emit_progress(
+            "expert",
+            "failed",
+            stage = "warmup",
+            step = "expert_fanout",
+            parent_event_id = tempest_warmup_progress_id(
+              orientation$expert_event
+            ),
+            correlation_id = orientation$correlation_id,
+            payload = c(
+              list(
+                expert_id = orientation$expert_id,
+                expert_name = orientation$expert_name,
+                mode = "bounded_research",
+                session_id = orientation$expert_session_id,
+                failure_kind = record$failure_kind
+              ),
+              tempest_progress_error_payload(error)
+            )
+          )
           NULL
         }
       )
@@ -681,7 +686,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
   }
   evidence <- Reduce(
     commit_one,
-    successful,
+    pending,
     init = promises::promise_resolve(NULL)
   )
   promises::then(evidence, function(...) {
@@ -689,13 +694,23 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
       state$cancelled <- TRUE
       return(NULL)
     }
+    successful <- pending[!vapply(committed[pending], is.null, logical(1))]
+    if (length(successful) == 0L) {
+      return(list(
+        evidence_failure_count = evidence_failure_count,
+        mindmap_updated = FALSE
+      ))
+    }
     exchange <- paste(
       vapply(
         successful,
         function(index) {
           tempest_warmup_evidence_exchange(
-            state$pending[[index]],
-            evidence_results[[index]] %||% list()
+            c(
+              state$pending[[index]],
+              list(response = committed[[index]]$response %||% "")
+            ),
+            committed[[index]] %||% list()
           )
         },
         character(1)
@@ -778,6 +793,7 @@ tempest_session_warmup_async <- function(
       class = c("tempest_warmup_error", "tempest_error")
     )
   }
+  tempest_session_assert_mutable(session, "warm up experts")
   experts <- tempest_validate_experts(session$experts %||% list())
   expert_count <- length(experts)
   if (is.null(max_parallel_experts) || length(max_parallel_experts) == 0L) {
@@ -799,33 +815,16 @@ tempest_session_warmup_async <- function(
     }
     timeout_s <- as.numeric(timeout_s)
   }
-  if (
-    expert_count > 0L &&
-      (is.null(session$expert_session_manager) ||
-        !is.function(session$expert_session_manager$get_or_create))
-  ) {
-    tempest_abort(
-      "{.arg session} must have an expert-session manager.",
-      class = c("tempest_warmup_error", "tempest_error")
-    )
-  }
-  extractor <- session$chats$extractor %||% NULL
-  if (
-    expert_count > 0L &&
-      (is.null(extractor) || !is.function(extractor$chat_structured_async))
-  ) {
-    tempest_abort(
-      "Async warmup requires an asynchronous evidence extractor.",
-      class = c("tempest_warmup_error", "tempest_error")
-    )
-  }
+  manager <- tempest_session_expert_manager(session)
 
   lease <- tempest_warmup_acquire_lease(session)
   promise_owns_lease <- FALSE
+  work_id <- tempest_session_async_work_start(session, "warmup")
   on.exit(
     {
       if (!promise_owns_lease) {
         tempest_warmup_release_lease(session, lease)
+        tempest_session_async_work_finish(session, work_id)
       }
     },
     add = TRUE
@@ -874,21 +873,9 @@ tempest_session_warmup_async <- function(
     correlation_id <- paste("warmup-expert", expert_id, sep = "-")
     record <- tempest_warmup_orientation(expert, correlation_id)
     expert_event <- NULL
-    expert_chat <- NULL
     expert_session_id <- NULL
-    provenance <- NULL
-    old_provenance <- list()
     orientation_active <- FALSE
     retirement <- list(retired = FALSE, cancellation_supported = FALSE)
-    restore_provenance <- function() {
-      if (
-        tempest_warmup_lease_owned(session, lease) &&
-          !is.null(provenance)
-      ) {
-        provenance$current <- old_provenance
-      }
-      invisible(NULL)
-    }
     retire_session <- function() {
       if (
         !tempest_warmup_lease_owned(session, lease) ||
@@ -898,7 +885,7 @@ tempest_session_warmup_async <- function(
         return(retirement)
       }
       retirement <<- tryCatch(
-        session$expert_session_manager$retire_session(expert_session_id),
+        manager$retire_session(expert_session_id),
         error = function(error) {
           list(retired = FALSE, cancellation_supported = FALSE)
         }
@@ -910,22 +897,9 @@ tempest_session_warmup_async <- function(
         state$cancelled <- TRUE
         return(NULL)
       }
-      session_result <- session$expert_session_manager$get_or_create(expert_id)
-      expert_chat <<- session_result$chat
+      session_result <- manager$get_or_create(expert_id)
       expert_session_id <<- session_result$session_id
-      provenance <<- session_result$provenance
-      old_provenance <<- provenance$current %||% list()
-      provenance$current <- list(
-        session_id = expert_session_id,
-        expert_id = expert_id,
-        retrieval_step_id = correlation_id
-      )
-      grants <- session_result$grants %||% list()
-      capability_count <- sum(vapply(
-        grants,
-        \(grant) identical(grant$status, "granted"),
-        logical(1)
-      ))
+      capability_count <- length(session_result$chat$get_tools())
       record$expert_session_id <<- expert_session_id
       record$capability_count <<- as.integer(capability_count)
       record$tools_available <<- capability_count > 0L
@@ -946,67 +920,34 @@ tempest_session_warmup_async <- function(
         )
       )
       orientation_active <<- TRUE
-      request <- tempest_warmup_chat_response(
-        expert_chat,
+      request <- manager$request_completion_async(
+        expert_id,
         tempest_warmup_prompt(session$topic, expert),
+        stage = "warmup",
         correlation_id = correlation_id
       )
-      work <- promises::then(request, function(response) {
+      work <- promises::then(request, function(completion_id) {
         if (!orientation_active) {
+          try(manager$cancel_completion(completion_id), silent = TRUE)
           return(NULL)
         }
         if (!tempest_async_is_current(is_current)) {
           state$cancelled <- TRUE
           orientation_active <<- FALSE
-          restore_provenance()
+          try(manager$cancel_completion(completion_id), silent = TRUE)
           retire_session()
           return(NULL)
         }
-        if (!nzchar(trimws(response))) {
-          stop("The expert returned an empty orientation.")
-        }
-        deputy_execution <- tempest_costorm_last_deputy_execution(
-          expert_chat,
-          stage = "warmup",
-          role = "expert"
-        )
-        turn <- tryCatch(
-          expert_chat$last_turn(),
-          error = function(error) NULL
-        )
-        record$status <<- "succeeded"
-        record$deputy_run_id <<- deputy_execution$deputy_run_id
-        record$deputy_session_id <<- deputy_execution$deputy_session_id
-        state$records[[index]] <- record
         state$pending[[index]] <- list(
           expert_id = expert_id,
           expert_name = expert_name,
           expert_session_id = expert_session_id,
           correlation_id = correlation_id,
-          response = response,
-          turn = turn,
-          deputy_execution = deputy_execution
+          completion_id = completion_id,
+          expert_event = expert_event
         )
+        state$records[[index]] <- record
         orientation_active <<- FALSE
-        restore_provenance()
-        session$emit_progress(
-          "expert",
-          "succeeded",
-          stage = "warmup",
-          step = "expert_fanout",
-          parent_event_id = tempest_warmup_progress_id(expert_event),
-          correlation_id = correlation_id,
-          payload = list(
-            expert_id = expert_id,
-            expert_name = expert_name,
-            mode = "bounded_research",
-            session_id = expert_session_id,
-            deputy_run_id = deputy_execution$deputy_run_id,
-            deputy_session_id = deputy_execution$deputy_session_id,
-            tools_available = record$tools_available,
-            capability_count = record$capability_count
-          )
-        )
         NULL
       })
       tempest_warmup_with_timeout(
@@ -1016,7 +957,6 @@ tempest_session_warmup_async <- function(
       ) |>
         promises::catch(function(error) {
           orientation_active <<- FALSE
-          restore_provenance()
           timed_out <- inherits(error, "tempest_warmup_timeout")
           if (timed_out || !tempest_async_is_current(is_current)) {
             retire_session()
@@ -1028,16 +968,18 @@ tempest_session_warmup_async <- function(
           record$session_retired <<- isTRUE(retirement$retired)
           record$cancellation_supported <<-
             isTRUE(retirement$cancellation_supported)
-          deputy_execution <- tryCatch(
-            tempest_deputy_chat_last_execution(expert_chat),
-            error = function(error) NULL
+          terminal <- Filter(
+            function(trace) {
+              identical(trace$role, "expert") &&
+                identical(trace$stage, "warmup") &&
+                identical(trace$expert_id, expert_id) &&
+                identical(trace$correlation_id, correlation_id)
+            },
+            tempest_session_deputy_traces(session)
           )
-          if (!is.null(deputy_execution)) {
-            deputy_execution <- tempest_costorm_deputy_trace(
-              deputy_execution
-            )
-            record$deputy_run_id <<- deputy_execution$deputy_run_id
-            record$deputy_session_id <<- deputy_execution$deputy_session_id
+          if (length(terminal) == 1L) {
+            record$deputy_run_id <<- terminal[[1L]]$deputy_run_id
+            record$deputy_session_id <<- terminal[[1L]]$deputy_session_id
           }
           record <<- tempest_warmup_error_record(
             record,
@@ -1072,7 +1014,6 @@ tempest_session_warmup_async <- function(
     }) |>
       promises::catch(function(error) {
         orientation_active <<- FALSE
-        restore_provenance()
         if (!tempest_async_is_current(is_current)) {
           state$cancelled <- TRUE
           retire_session()
@@ -1191,7 +1132,10 @@ tempest_session_warmup_async <- function(
   })
   finalized <- promises::finally(
     finalized,
-    function() tempest_warmup_release_lease(session, lease)
+    function() {
+      tempest_warmup_release_lease(session, lease)
+      tempest_session_async_work_finish(session, work_id)
+    }
   )
   promise_owns_lease <- TRUE
   finalized

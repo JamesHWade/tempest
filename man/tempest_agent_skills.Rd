@@ -14,8 +14,8 @@ tempest_install_agent_skills(path, skills = NULL, overwrite = FALSE)
 \verb{~/.codex/skills} for a user-level Codex installation or a project-local
 directory supported by the active agent.}
 
-\item{skills}{Bundled skill names to install. \code{NULL} installs all bundled
-skills.}
+\item{skills}{Supported research skill names to install. \code{NULL} installs
+both supported skills.}
 
 \item{overwrite}{Whether to replace existing directories with the same
 skill names.}
@@ -28,12 +28,11 @@ skill directories.
 vector of installed skill directories.
 }
 \description{
-\code{tempest_agent_skills()} lists the portable Agent Skill directories shipped
-with Tempest. These \code{SKILL.md} bundles guide agents through using the
-built-in research workflows, conducting the portable STORM protocol, and
-designing, building, or verifying a custom Tempest workflow. They are
-distinct from \code{\link[=tempest_skill]{tempest_skill()}}, which creates a serializable procedure
-assigned to a Tempest expert inside a workflow.
+\code{tempest_agent_skills()} lists the two supported research Agent Skill
+directories shipped with Tempest. These \code{SKILL.md} bundles guide agents
+through using the STORM and Co-STORM product APIs or conducting the portable
+STORM protocol. Generic-workflow skill directories are unavailable and are
+not discoverable or installable through this API.
 }
 \examples{
 tempest_agent_skills()

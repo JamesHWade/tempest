@@ -117,7 +117,7 @@ test_that("Co-STORM warmup and one moderator turn are frozen", {
   expect_snapshot(baseline_snapshot_json(semantics))
 })
 
-test_that("a resumed Co-STORM session can continue product dialogue", {
+test_that("a resumed published Co-STORM session is read-only", {
   baseline_local_ids()
   fixture <- costorm_product_baseline_fixture()
   bundle <- file.path(withr::local_tempdir(), "costorm-session")
@@ -137,42 +137,27 @@ test_that("a resumed Co-STORM session can continue product dialogue", {
   )
 
   expect_equal(before, original)
-
-  restored$step("What else should we inspect?")
-  restored_events <- tempest_execution_events(restored)
-  continued <- baseline_costorm_durable_state(
-    restored,
-    tempest_session_report_md(restored)
+  continuation_error <- expect_error(
+    restored$step("What else should we inspect?"),
+    class = "tempest_session_error",
+    regexp = "product has been finalized"
   )
-
+  expect_length(fixture$resume_runtime$moderator_calls(), 0L)
   expect_identical(
-    continued$claims[[3L]]$claim_text,
-    "Continued moderator research is preserved."
-  )
-  moderator_calls <- fixture$resume_runtime$moderator_calls()
-  expect_length(moderator_calls, 1L)
-  expect_identical(moderator_calls[[1L]]$kind, "text")
-  expect_match(
-    moderator_calls[[1L]]$prompt,
-    "Expert orientation cites evidence",
-    fixed = TRUE
-  )
-  expect_match(
-    moderator_calls[[1L]]$prompt,
-    "Moderator research cites evidence",
-    fixed = TRUE
-  )
-  expect_match(
-    moderator_calls[[1L]]$prompt,
-    "What should we inspect?",
-    fixed = TRUE
+    tempest:::tempest_research_workspace_mutation_state(restored$workspace),
+    "sealed"
   )
   expect_snapshot(baseline_snapshot_json(
     list(
       restored = before,
-      continued = continued,
-      continued_status = tempest_progress_state(restored_events)$status,
-      continued_event_sequence = baseline_event_labels(restored_events)
+      restored_status = restored$manifest@status,
+      workspace_state = tempest:::tempest_research_workspace_mutation_state(
+        restored$workspace
+      ),
+      continuation_error_class = class(continuation_error),
+      moderator_call_count = length(
+        fixture$resume_runtime$moderator_calls()
+      )
     )
   ))
 })
@@ -180,8 +165,6 @@ test_that("a resumed Co-STORM session can continue product dialogue", {
 test_that("STORM cancellation is terminal and publishes no report", {
   baseline_local_ids()
   fixture <- storm_product_fixture()
-  artifacts <- tempest_memory_artifact_store()
-  fixture$config@artifact_store <- artifacts
   output_root <- withr::local_tempdir()
   collector <- tempest_progress_collector(include_payload = TRUE)
   progress <- function(event) {
@@ -223,11 +206,12 @@ test_that("STORM cancellation is terminal and publishes no report", {
 
   expect_identical(state$status, "cancelled")
   expect_identical(state$terminal, TRUE)
-  expect_identical(artifacts$exists("report_md"), FALSE)
   expect_identical(
     persisted$research_manifest$status,
-    "cancelled"
+    "running"
   )
+  expect_null(persisted$research_manifest$deliverables$report_md)
+  expect_equal("report.md" %in% unlist(persisted$files), FALSE)
   expect_equal("research" %in% unlist(persisted$completed_stages), FALSE)
   expect_identical(
     fixture$program_stages(),
@@ -240,7 +224,9 @@ test_that("STORM cancellation is terminal and publishes no report", {
       completed_stages = baseline_succeeded_stages(events),
       terminal_status = state$status,
       terminal = state$terminal,
-      catalog_report_published = artifacts$exists("report_md"),
+      report_published = !is.null(
+        persisted$research_manifest$deliverables$report_md
+      ),
       program_stages = fixture$program_stages(),
       event_sequence = baseline_event_labels(events)
     )

@@ -46,16 +46,24 @@ test_that("tempest_run_verification passes configured min_support_score", {
   )
 })
 
-test_that("verification is skipped under the default policy", {
+test_that("verification runs under the default rendering policy", {
   store <- fake_store_with_sources(1)
-  store$add_proposed_claim(tempest_claim(
+  test_add_verifiable_claim(
+    store,
+    key = "run-verification-default",
     claim_text = "c",
-    source_ids = store$list_retrieved_sources()[[1]]$id
-  ))
-  cfg <- tempest_config() # source_attributed
-  tempest_run_verification(store, cfg, verifier = fake_chat())
+    quote = "c"
+  )
+  judge <- fake_chat(
+    structured = list(list(status = "supported", score = 0.9, rationale = "ok"))
+  )
+  cfg <- tempest_config()
+  program <- test_program_executions(cfg)$verify_claim_support
+
+  tempest_run_verification(store, cfg, verifier = judge, program = program)
+
   expect_equal(
     store$list_proposed_claims()[[1]]@verification_status,
-    "unverified"
+    "supported"
   )
 })

@@ -74,6 +74,23 @@ test_that("promotion fails closed without exact pair support", {
   )
 })
 
+test_that("promotion requires a durable succeeded report binding", {
+  fixture <- test_promotion_fixture()
+  manifest <- tempest_research_manifest_update(
+    fixture$manifest,
+    deliverables = list()
+  )
+
+  expect_error(
+    tempest_promotion_bundle(
+      fixture$workspace,
+      manifest,
+      fixture$stage_records
+    ),
+    class = "tempest_promotion_error"
+  )
+})
+
 test_that("promotion selection is closed over retained stage outputs", {
   fixture <- test_promotion_fixture()
   extraction <- fixture$stage_records[[1L]]

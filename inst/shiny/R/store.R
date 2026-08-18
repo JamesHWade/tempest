@@ -10,10 +10,7 @@
 new_session_store <- function() {
   rv <- shiny::reactiveValues(
     session = NULL,
-    run = NULL,
-    prefer_run_evidence = FALSE,
     version = 0L,
-    run_version = 0L,
     # Separate counter for autosave. It tracks in-place content changes (`set()`
     # and `touch()`) but not `restore()`, so loading a bundle re-renders outputs
     # without immediately writing the just-loaded session back to disk and
@@ -52,6 +49,15 @@ new_session_store <- function() {
   }
 
   set_report_from_session <- function(session) {
+    if (is.null(session)) {
+      rv$report_md <- NULL
+      rv$report_topic <- NULL
+      rv$report_source_store <- NULL
+      return(invisible(NULL))
+    }
+    if (!inherits(session, "TempestSession")) {
+      stop("session must be a TempestSession.", call. = FALSE)
+    }
     report_md <- tryCatch(
       tempest:::tempest_session_report_value(session),
       error = function(error) NULL
@@ -90,77 +96,22 @@ new_session_store <- function() {
       rv$session
     }),
 
-    # Version-aware read of a generic TempestRun supplied by the host or owned
-    # by a built-in workflow.
-    get_run = shiny::reactive({
-      rv$run_version
-      rv$run
-    }),
-
-    # Prefer Co-STORM session evidence when a session is active. Otherwise,
-    # expose the evidence ledger owned by a generic workflow run.
+    # Expose only the authoritative Co-STORM ResearchWorkspace.
     evidence_store = shiny::reactive({
-      rv$run_version
-      current_run <- rv$run
-      if (
-        isTRUE(rv$prefer_run_evidence) &&
-          !is.null(current_run)
-      ) {
-        return(current_run$source_store)
-      }
-
       rv$version
       current_session <- rv$session
-      if (!is.null(current_session)) {
-        return(current_session$workspace)
-      }
-
-      if (is.null(current_run)) {
-        return(NULL)
-      }
-      current_run$source_store
+      if (is.null(current_session)) NULL else current_session$workspace
     }),
-
-    peek_run = function() {
-      shiny::isolate(rv$run)
-    },
 
     # Replace the session (e.g. on session start).
     set = function(session) {
-      rv$session <- session
-      workflow_run <- tryCatch(
-        tempest:::tempest_session_workflow_run(session),
-        error = function(error) NULL
-      )
-      if (inherits(workflow_run, "TempestRun")) {
-        rv$run <- workflow_run
-        rv$prefer_run_evidence <- FALSE
-        rv$run_version <- shiny::isolate(rv$run_version) + 1L
+      if (!is.null(session) && !inherits(session, "TempestSession")) {
+        stop("session must be NULL or a TempestSession.", call. = FALSE)
       }
+      rv$session <- session
+      set_report_from_session(session)
       bump_version()
       invisible(session)
-    },
-
-    set_run = function(run, prefer_evidence = FALSE) {
-      if (!is.null(run) && !inherits(run, "TempestRun")) {
-        stop("run must be NULL or a TempestRun.", call. = FALSE)
-      }
-      if (
-        !is.logical(prefer_evidence) ||
-          length(prefer_evidence) != 1L ||
-          is.na(prefer_evidence)
-      ) {
-        stop("prefer_evidence must be TRUE or FALSE.", call. = FALSE)
-      }
-      rv$run <- run
-      rv$prefer_run_evidence <- prefer_evidence
-      rv$run_version <- shiny::isolate(rv$run_version) + 1L
-      invisible(run)
-    },
-
-    touch_run = function() {
-      rv$run_version <- shiny::isolate(rv$run_version) + 1L
-      invisible()
     },
 
     # Signal that the current session was mutated in place.
@@ -205,15 +156,6 @@ new_session_store <- function() {
         knowledge_view = knowledge_view
       )
       rv$session <- session
-      workflow_run <- tryCatch(
-        tempest:::tempest_session_workflow_run(session),
-        error = function(error) NULL
-      )
-      if (inherits(workflow_run, "TempestRun")) {
-        rv$run <- workflow_run
-        rv$prefer_run_evidence <- FALSE
-        rv$run_version <- shiny::isolate(rv$run_version) + 1L
-      }
       set_report_from_session(session)
       set_persistence(
         "restored",
@@ -237,7 +179,7 @@ new_session_store <- function() {
     }),
     set_persistence = set_persistence,
 
-    # Generated report, shared across the Chat and STORM tabs.
+    # Published product report, shared across the Chat and STORM tabs.
     report = shiny::reactive(rv$report_md),
     report_store = shiny::reactive(rv$report_source_store),
     report_topic = shiny::reactive({
@@ -247,15 +189,53 @@ new_session_store <- function() {
           if (is.null(ses)) NULL else ses$topic
         }
     }),
-    set_report = function(md, topic = NULL, source_store = NULL) {
-      rv$report_md <- md
-      if (is.null(md) && is.null(topic)) {
-        rv$report_topic <- NULL
-      } else if (!is.null(topic)) {
-        rv$report_topic <- topic
+    set_session_report = function(session) {
+      if (
+        !inherits(session, "TempestSession") ||
+          !identical(session$manifest@status, "succeeded")
+      ) {
+        stop("session must be a succeeded TempestSession.", call. = FALSE)
       }
-      rv$report_source_store <- source_store
-      invisible()
+      set_report_from_session(session)
+    },
+    set_storm_result = function(result, config) {
+      valid <- is.list(result) &&
+        inherits(result$workspace %||% NULL, "ResearchWorkspace") &&
+        S7::S7_inherits(
+          result$manifest %||% NULL,
+          tempest:::TempestResearchManifest
+        ) &&
+        identical(result$manifest@mode, "storm") &&
+        identical(result$manifest@status, "succeeded") &&
+        is.list(result$state) &&
+        is.list(result$state$stage_records) &&
+        is.character(result$report_md) &&
+        length(result$report_md) == 1L &&
+        !is.na(result$report_md)
+      if (!isTRUE(valid)) {
+        stop("result must be a succeeded STORM product.", call. = FALSE)
+      }
+      tempest:::tempest_product_report_reference_validate(
+        result$manifest@deliverables$report_md[c("report_id", "sha256")],
+        result$report_md
+      )
+      tempest:::tempest_product_authority_validate(
+        manifest = result$manifest,
+        stage_records = result$state$stage_records,
+        workspace = result$workspace,
+        report_md = result$report_md,
+        report_reference = result$manifest@deliverables$report_md[
+          c("report_id", "sha256")
+        ],
+        config = config,
+        experts = result$experts %||% list(),
+        product_state = result$state,
+        require_publishable = TRUE
+      )
+      rv$report_md <- result$report_md
+      rv$report_topic <- result$title
+      rv$report_source_store <- result$workspace
+      invisible(result$report_md)
     }
   )
 }

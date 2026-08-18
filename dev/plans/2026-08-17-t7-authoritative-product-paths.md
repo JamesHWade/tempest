@@ -2,7 +2,7 @@
 
 Tracking issue: kata `an7p`
 
-Status: implementation-ready
+Status: implemented and verified
 
 ## Goal
 
@@ -39,11 +39,14 @@ restore/resume entry points become uniformly inert.
 | Co-STORM snapshot/bundle | 9 |
 | STORM bundle | 7 |
 | STORM product state | 4 |
-| `TempestResearchManifest` | 2 |
+| `TempestResearchManifest` | 3 |
 | `TempestStageRecord` | Current exact fields |
 
-No migration, proof sidecar, completion field, receipt field, or authority
-projection is added. Existing content/report digests remain unchanged.
+No migration, proof sidecar, receipt field, or authority projection is added.
+Every canonical terminal Deputy trace carries mandatory
+`completion_disposition` (`issued`, `discarded`, or `terminal`). Bundles still
+forbid serialized completion capabilities, private content/proof digests, and
+receipts. Existing public content/report digests remain unchanged.
 
 ### Supported surface
 
@@ -58,8 +61,8 @@ projection is added. Existing content/report digests remain unchanged.
   `tempest_session_process_turn_async(session, completion_id, suggest=TRUE, n_suggestions=4L, is_current=function() TRUE)`.
   Remove `user_text`, `assistant_text`, `deputy_execution`, `provider_turn`, and
   `turn_id`; add no alias.
-- `tempest_execution_events()` accepts product histories only and rejects
-  `TempestRun`.
+- `tempest_execution_events()` accepts only Co-STORM `TempestSession` event
+  history and rejects `TempestRun` and non-session inputs.
 - All names in `tempest_generic_kernel_exports` remain exported but reject
   immediately. Internal `tempest_run_restore()` and `tempest_run_resume()` do
   the same.
@@ -137,25 +140,25 @@ Files: `tests/testthat/test-public-api.R`,
 `tests/testthat/test-research-workspace.R`, create
 `tests/testthat/test-agent-completion.R`, and update Deputy/Co-STORM async tests.
 
-- [ ] Assert the frozen schema versions, exact StageRecord serialized fields,
+- [x] Assert the frozen schema versions, exact StageRecord serialized fields,
   103 exports, and exact 41-name retirement vector.
-- [ ] Assert no capability, private digest, receipt, proof, or authority
+- [x] Assert no capability, private digest, receipt, proof, or authority
   projection appears in any snapshot/bundle.
-- [ ] Specify exact UTF-8 preservation, substitution rejection, lifecycle
+- [x] Specify exact UTF-8 preservation, substitution rejection, lifecycle
   transitions, safe pre-mutation release, stale/discard cancellation,
   mutation-boundary consumption, and replay/wrong-owner/cross-session
   rejection.
-- [ ] Specify that `SessionEnd` captures trace only, registry settlement binds
+- [x] Specify that `SessionEnd` captures trace only, registry settlement binds
   exact prompt/assembled response/provider Turn/trace before pending clearance,
   and recorder failure leaves the run pending.
-- [ ] Specify correct ID-based handling of multiple queued completions and
+- [x] Specify correct ID-based handling of multiple queued completions and
   prove `last_execution` is not used as a join key.
-- [ ] Specify direct and delegated terminal tuples, including parent,
+- [x] Specify direct and delegated terminal tuples, including parent,
   delegation, tool-call, child run/session, expert, and correlation identity.
-- [ ] Assert `request_completion_async()` streams display chunks but resolves
+- [x] Assert `request_completion_async()` streams display chunks but resolves
   to an opaque ID, and assert the exact processing signature plus absence of
   all five removed formals.
-- [ ] Assert snapshot/save/report rejection for issued/processing capabilities
+- [x] Assert snapshot/save/report rejection for issued/processing capabilities
   and queued/active work.
 
 ### Product cutover and authority
@@ -165,21 +168,21 @@ create `tests/testthat/test-product-boundaries.R`, rename
 `test-shadow-provenance.R` to `test-product-authority.R`, and update
 stage-record, promotion, persistence, and builtin-workflow tests.
 
-- [ ] Assert every open-ended STORM expert answer resolves one completed Deputy
+- [x] Assert every open-ended STORM expert answer resolves one completed Deputy
   terminal trace; fixed typed transforms still resolve their ProgramSet entry.
-- [ ] Assert `parallel_research = TRUE` rejects until Deputy manages it.
-- [ ] Assert arbitrary assistant text/trace pairs cannot mutate Co-STORM and a
+- [x] Assert `parallel_research = TRUE` rejects until Deputy manages it.
+- [x] Assert arbitrary assistant text/trace pairs cannot mutate Co-STORM and a
   pre-mutation claim failure leaves transcript, Workspace, StageRecords, and
   Manifest unchanged; post-mutation enrichment failure leaves the ID consumed.
-- [ ] Assert product state exposes no chats, generic runtime/catalog/run, or
+- [x] Assert product state exposes no chats, generic runtime/catalog/run, or
   capability registry.
-- [ ] Specify mode-specific direct/delegated authority, governed exact-program
+- [x] Specify mode-specific direct/delegated authority, governed exact-program
   success, fallback downgrade, atomic rollback, tamper rejection, publication,
   and restore behavior.
-- [ ] Assert quiescent partial bundles restore as nonpublishable.
-- [ ] Create a table-driven test for all 41 retirement exports plus internal
+- [x] Assert quiescent partial bundles restore as nonpublishable.
+- [x] Create a table-driven test for all 41 retirement exports plus internal
   restore/resume: one exact class/message and no argument evaluation.
-- [ ] Add a static/call-boundary test for retained product files and the
+- [x] Add a static/call-boundary test for retained product files and the
   forbidden generic dependencies extracted in Batch 1.
 
 Batch gate: record the expected failures and confirm no test proposes a schema
@@ -193,26 +196,26 @@ causation claim.
 Create `R/product-validation.R`, `R/product-hash.R`, `R/product-report.R`,
 `R/research-expert.R`, `R/research-tools.R`, and `R/execution-events.R`.
 
-- [ ] Move product scalar/flag/canonical-list validation out of generic
+- [x] Move product scalar/flag/canonical-list validation out of generic
   workflow helpers without changing product validation behavior.
-- [ ] Move `TempestValidationResult` and `tempest_validation_result()` out of
+- [x] Move `TempestValidationResult` and `tempest_validation_result()` out of
   `R/workflow-types.R`.
-- [ ] Replace product artifact-codec use with direct canonical content hashing
+- [x] Replace product artifact-codec use with direct canonical content hashing
   and product errors across Workspace resources, retrieval cache identity,
   experts, and report references.
-- [ ] Move `TempestExpertProfile`, `tempest_expert()`, and exact product
+- [x] Move `TempestExpertProfile`, `tempest_expert()`, and exact product
   record/fingerprint/restore helpers out of `R/expert-types.R`; leave generic
   skill/capability/connection types inert for T8.
-- [ ] Move product role/model selection and fixed scientific tool construction
+- [x] Move product role/model selection and fixed scientific tool construction
   out of `R/runtime.R`; expose no generic resolver.
-- [ ] Move STORM/Co-STORM prompts, rendering, execution review, and final-report
+- [x] Move STORM/Co-STORM prompts, rendering, execution review, and final-report
   helpers out of `R/deliverables.R`; use a product report condition.
-- [ ] Move `tempest_execution_events()` out of `R/run-accessors.R`, retain only
+- [x] Move `tempest_execution_events()` out of `R/run-accessors.R`, retain only
   product histories, and remove its `TempestRun` branch.
-- [ ] Rename internal product ProgramSet/Graft helpers whose
+- [x] Rename internal product ProgramSet/Graft helpers whose
   `tempest_workflow_*` names imply a generic dependency.
-- [ ] Keep `tempest_shiny_store()` product-only and remove generic-run behavior.
-- [ ] Add fixture tests proving retained canonical hashes/report output remain
+- [x] Keep `tempest_shiny_store()` product-only and remove generic-run behavior.
+- [x] Add fixture tests proving retained canonical hashes/report output remain
   exact.
 
 ### Remove generic configuration/expert semantics
@@ -220,13 +223,13 @@ Create `R/product-validation.R`, `R/product-hash.R`, `R/product-report.R`,
 Files: `R/config.R`, `R/research-expert.R`, `R/storm-perspectives.R`,
 `R/run-persistence.R`, config/expert/host tests, and fixture helpers.
 
-- [ ] Remove `TempestConfig@artifact_store`, constructor input, validation,
+- [x] Remove `TempestConfig@artifact_store`, constructor input, validation,
   digest input, docs, and fixtures; add no deprecated/ignored argument.
-- [ ] Restrict product expert profiles to fixed scientific roles; reject
+- [x] Restrict product expert profiles to fixed scientific roles; reject
   nonempty generic skill, capability, model-policy, and connection requests.
-- [ ] Retain generic expert-record arrays only where a frozen schema requires
+- [x] Retain generic expert-record arrays only where a frozen schema requires
   their fields, force them empty, and never resolve them.
-- [ ] Preserve exact persona-to-expert identity through StageRecord and
+- [x] Preserve exact persona-to-expert identity through StageRecord and
   persistence.
 
 ### Add completion registry and path-derived StageRecords
@@ -234,24 +237,24 @@ Files: `R/config.R`, `R/research-expert.R`, `R/storm-perspectives.R`,
 Files: create `R/agent-completion.R`; update `R/deputy-adapter.R`,
 `R/stage-record.R`, and their focused tests.
 
-- [ ] Implement execution-owned `issue`, `claim`, `consume`, `cancel`,
+- [x] Implement execution-owned `issue`, `claim`, `consume`, `cancel`,
   safe pre-mutation `release`, `active`, and `assert_quiescent` operations.
-- [ ] Validate exact prompt, assembled response, provider Turn, and complete
+- [x] Validate exact prompt, assembled response, provider Turn, and complete
   terminal identity at issue; keep the private digest inaccessible and
   noncanonical.
-- [ ] For sync and streaming Deputy calls, make `SessionEnd` trace-only and
+- [x] For sync and streaming Deputy calls, make `SessionEnd` trace-only and
   settle all four values into the registry before pending-run clearance.
-- [ ] Make settlement transactional: recorder failure rolls back and leaves the
+- [x] Make settlement transactional: recorder failure rolls back and leaves the
   run pending; remove `last_execution` as a join key.
-- [ ] Encode the mutation boundary exactly: pre-mutation retry may release,
+- [x] Encode the mutation boundary exactly: pre-mutation retry may release,
   stale/discard cancels, and first transcript/event/Workspace mutation consumes
   even when later enrichment fails or is cancelled.
-- [ ] Derive `governed` only from succeeded exact-program execution with exact
+- [x] Derive `governed` only from succeeded exact-program execution with exact
   accepted procedure and `fallback_taken = FALSE`; derive other paths from
   stage policy.
-- [ ] Remove `execution_path` from same-attempt immutable comparison so running
+- [x] Remove `execution_path` from same-attempt immutable comparison so running
   attempts can transition to a derived terminal path.
-- [ ] Reject forged governed paths or identity mismatches without changing the
+- [x] Reject forged governed paths or identity mismatches without changing the
   existing StageRecord shape.
 
 Batch gate: focused foundation tests pass; schemas/export count stay frozen;
@@ -267,36 +270,36 @@ Files: `R/costorm.R`, `R/costorm-async.R`, `R/costorm-turn-types.R`,
 `R/shinychat-adapter.R`, `inst/shiny/R/mod_chat.R`, `inst/shiny/R/store.R`, and
 Co-STORM-focused tests.
 
-- [ ] Remove session ownership of generic runtime, connections, artifact
+- [x] Remove session ownership of generic runtime, connections, artifact
   catalog, workflow run, capability grants, and generic discourse manager.
-- [ ] Replace `ExpertSessionManager` with a private Deputy-specific manager
+- [x] Replace `ExpertSessionManager` with a private Deputy-specific manager
   that attaches fixed Tempest tools and records exact terminal identities.
-- [ ] Keep chats, managers, active jobs, and capability registry private;
+- [x] Keep chats, managers, active jobs, and capability registry private;
   expose immutable product records only.
-- [ ] Implement `request_completion_async()` through the private Deputy
+- [x] Implement `request_completion_async()` through the private Deputy
   moderator; callbacks/adapters receive display chunks, while the promise
   resolves only to `completion_id`.
-- [ ] Make `tempest_session_process_turn_async()` claim that ID from its owning
+- [x] Make `tempest_session_process_turn_async()` claim that ID from its owning
   session and obtain prompt, response, provider Turn, and trace only from the
   registry; accept no independently supplied turn content or identity.
-- [ ] Before mutation, atomically release retryable claim failures or cancel
+- [x] Before mutation, atomically release retryable claim failures or cancel
   stale/discarded work. At the first transcript/event/Workspace mutation,
   terminalize consumed; later enrichment failure/cancellation may not release
   or replay the ID.
-- [ ] Reject arbitrary assistant `add_turn()`, caller-supplied extraction text,
+- [x] Reject arbitrary assistant `add_turn()`, caller-supplied extraction text,
   native-source harvesting from caller chats, and raw `step(auto = TRUE)`.
-- [ ] Persist and validate the full delegation tuple in existing
+- [x] Persist and validate the full delegation tuple in existing
   Manifest/StageRecord fields; preserve multiple queued completions by ID.
-- [ ] Keep failed warmup extraction non-authoritative; record an evidence gap
+- [x] Keep failed warmup extraction non-authoritative; record an evidence gap
   only when no claim was asserted.
-- [ ] Keep mind map/suggestions as frozen presentation projections, never
+- [x] Keep mind map/suggestions as frozen presentation projections, never
   authority or report evidence; prevent expert identity drift after persona.
-- [ ] Build reports only from verified Workspace evidence/disputes,
+- [x] Build reports only from verified Workspace evidence/disputes,
   ProgramSet, and StageRecords; render/validate directly with product helpers.
-- [ ] Gate report start/completion and save on quiescence plus authority; remove
+- [x] Gate report start/completion and save on quiescence plus authority; remove
   catalog, deliverable-plan, artifact, reporter-chat, and generic Shiny-store
   paths.
-- [ ] Update Shiny to display callback/adapter chunks and pass only
+- [x] Update Shiny to display callback/adapter chunks and pass only
   `completion_id` into processing; reset/cancelled work cannot commit later.
 
 ### STORM lane
@@ -304,24 +307,24 @@ Co-STORM-focused tests.
 Files: `R/storm.R`, `R/storm-research.R`, `R/storm-polish.R`,
 `tests/testthat/test-storm.R`, and `tests/testthat/test-storm-state.R`.
 
-- [ ] Remove runtime/factory, connection permissions, and artifact catalog from
+- [x] Remove runtime/factory, connection permissions, and artifact catalog from
   `tempest_run_internal()` and its callers.
-- [ ] Attach fixed writer/evidence and expert web/evidence tools explicitly.
-- [ ] Wrap every open-ended expert chat in
+- [x] Attach fixed writer/evidence and expert web/evidence tools explicitly.
+- [x] Wrap every open-ended expert chat in
   `tempest_deputy_chat_adapter()` with deterministic run/session/expert identity
   and one correlation ID per question.
-- [ ] Issue/consume the shared completion capability internally before claim
+- [x] Issue/consume the shared completion capability internally before claim
   extraction; bind retrieval step, Deputy terminal tuple, expert, and
   correlation identity into the extraction StageRecord.
-- [ ] Collect terminal traces in the live Manifest and require no pending or
+- [x] Collect terminal traces in the live Manifest and require no pending or
   unconsumed work before checkpoint, return, cancellation, or success.
-- [ ] Hard-reject `parallel_research = TRUE`; do not invoke the non-Deputy
+- [x] Hard-reject `parallel_research = TRUE`; do not invoke the non-Deputy
   worker path or silently run sequentially.
-- [ ] Keep perspectives, personas, query decomposition, extraction,
+- [x] Keep perspectives, personas, query decomposition, extraction,
   verification, outline, and writing as direct exact-program dsprrr transforms.
-- [ ] Replace generic polish/catalog behavior with direct product prompt,
+- [x] Replace generic polish/catalog behavior with direct product prompt,
   render, execution review, final validation, and Manifest report binding.
-- [ ] Finalize authority even with `output_dir = NULL`; returned and persisted
+- [x] Finalize authority even with `output_dir = NULL`; returned and persisted
   manifests must be identical.
 
 Batch gate: rebase both lanes on Batch 1, run each focused suite independently,
@@ -335,23 +338,23 @@ Rename `R/shadow-provenance.R` to `R/product-authority.R` and the matching
 helper/test files. Then update `R/verify.R`, `R/storm.R`, `R/costorm.R`, and
 `R/run-persistence.R` under the shared owner.
 
-- [ ] Replace observational shadow terminology with a mode-specific authority
+- [x] Replace observational shadow terminology with a mode-specific authority
   validator; retain `binding_scope = "execution_identity"` and the explicit
   response-content disclaimer.
-- [ ] Derive a canonical, nonpersisted projection from candidate Manifest,
+- [x] Derive a canonical, nonpersisted projection from candidate Manifest,
   exact ProgramSet, StageRecords, Workspace, optional report, and mode.
-- [ ] Validate config/run/mode, program artifacts, required Graft snapshot,
+- [x] Validate config/run/mode, program artifacts, required Graft snapshot,
   stage outputs, Workspace coverage/support, report policy, and exact direct or
   delegated terminal traces.
-- [ ] Enforce STORM `research/expert` and Co-STORM `dialogue|warmup`
+- [x] Enforce STORM `research/expert` and Co-STORM `dialogue|warmup`
   moderator/expert rules; reject partial delegation tuples and orphan traces.
-- [ ] Fail incomplete applicable provenance; allow only explicitly partial,
+- [x] Fail incomplete applicable provenance; allow only explicitly partial,
   quiescent, report-free, nonpublishable state.
-- [ ] Create one finalizer that binds candidate StageRecords/traces/report,
+- [x] Create one finalizer that binds candidate StageRecords/traces/report,
   derives run/session references, validates authority, then commits atomically.
-- [ ] Co-STORM verification commits candidate support records, successful
+- [x] Co-STORM verification commits candidate support records, successful
   StageRecords, and Manifest only after authority succeeds.
-- [ ] STORM finalizes before every durable checkpoint and before partial or
+- [x] STORM finalizes before every durable checkpoint and before partial or
   succeeded return; set success only after authority and quiescence pass.
 
 ### Persistence, publication, promotion
@@ -359,17 +362,17 @@ helper/test files. Then update `R/verify.R`, `R/storm.R`, `R/costorm.R`, and
 Files: `R/run-persistence.R`, `R/promotion-types.R`, `R/evals.R`, and their
 focused tests.
 
-- [ ] Replace pending-run-only checks with one quiescence assertion covering
+- [x] Replace pending-run-only checks with one quiescence assertion covering
   pending runs, capability lifecycle, queued/active jobs, and running stages.
-- [ ] Validate exact direct/delegated terminal records by mode within Manifest
-  schema 2.
-- [ ] Require authority before saving/restoring succeeded or report-bearing
+- [x] Validate exact direct/delegated terminal records by mode within Manifest
+  schema 3.
+- [x] Require authority before saving/restoring succeeded or report-bearing
   state, report publication, promotion, and authoritative evaluation.
-- [ ] On restore, re-derive identity authority only; never recreate a
+- [x] On restore, re-derive identity authority only; never recreate a
   completion or compare a persisted response digest.
-- [ ] Accept current-schema partial bundles only when consistent, quiescent,
+- [x] Accept current-schema partial bundles only when consistent, quiescent,
   provisional, and report-free.
-- [ ] Require loaded/returned Manifests to equal persisted canonical records,
+- [x] Require loaded/returned Manifests to equal persisted canonical records,
   including report and trace references; retain exact version rejection.
 
 Batch gate: authority, verification, persistence, promotion, and evaluation
@@ -381,17 +384,17 @@ identity and every governed stage resolves exact procedure/program identity.
 Files: retained product files found by the boundary test, `R/shiny-adapter.R`,
 `inst/examples/shiny-host/app.R`, product tests, and fixtures.
 
-- [ ] Remove remaining product construction/calls/fields for `TempestRuntime`,
+- [x] Remove remaining product construction/calls/fields for `TempestRuntime`,
   `TempestRun`, `TempestArtifact`, `TempestArtifactCatalog`, WorkflowSpec,
   operation registries, deliverable plans, artifact stores, generic capability
   or connection providers, and generic skill registries.
-- [ ] Restore only product chats/adapters, fixed tools, ProgramSet, retriever,
+- [x] Restore only product chats/adapters, fixed tools, ProgramSet, retriever,
   Workspace, Manifest, and Graft view.
-- [ ] Narrow Shiny host/example to `tempest_run()` and `tempest_session()`;
+- [x] Narrow Shiny host/example to `tempest_run()` and `tempest_session()`;
   remove generic workflow/run controls and artifact inspection.
-- [ ] Convert fixtures to exact Workspace/report/Manifest state without generic
+- [x] Convert fixtures to exact Workspace/report/Manifest state without generic
   runtime, catalog, connection, expert, or artifact-store setup.
-- [ ] Run product baseline, Shiny, ecosystem, and persistence tests while the
+- [x] Run product baseline, Shiny, ecosystem, and persistence tests while the
   boundary test instruments forbidden generic entry points.
 
 Gate: zero retained product call reaches the generic kernel before Batch 5.
@@ -407,17 +410,17 @@ Files: `R/package-lifecycle.R`, `R/capabilities.R`, `R/config.R`,
 `R/artifact-catalog.R`, `R/builtin-workflows.R`, and create
 `tests/testthat/test-generic-kernel-cutover.R`.
 
-- [ ] Add internal `tempest_generic_kernel_abort()` with exact class
+- [x] Add internal `tempest_generic_kernel_abort()` with exact class
   `tempest_generic_kernel_cutover_error` and message:
   `Tempest 0.2 supports only the STORM and Co-STORM product APIs; the experimental generic kernel is unavailable.`
-- [ ] Make that abort the first executable expression in all 41 functions in
+- [x] Make that abort the first executable expression in all 41 functions in
   `tempest_generic_kernel_exports`, plus internal `tempest_run_restore()` and
   `tempest_run_resume()`.
-- [ ] Preserve lazy arguments so even missing/default/side-effecting arguments
+- [x] Preserve lazy arguments so even missing/default/side-effecting arguments
   are not evaluated before the cutover condition.
-- [ ] Add no option, environment flag, test hook, alias, or private route back
+- [x] Add no option, environment flag, test hook, alias, or private route back
   to generic execution.
-- [ ] Leave all names/classes/exports physically present; keep product
+- [x] Leave all names/classes/exports physically present; keep product
   `tempest_execution_events()` outside the hard cut.
 
 ### Retire behavior tests without deleting files
@@ -426,13 +429,13 @@ Update generic tests for artifact bundle/catalog/codecs, capabilities,
 deliverables, operation registry, run accessors, runtime, generic/host Shiny,
 TempestRun/bundle, WorkflowSpec/types, and builtin workflows.
 
-- [ ] Replace generic behavior assertions with small local hard-cut assertions;
+- [x] Replace generic behavior assertions with small local hard-cut assertions;
   do not skip or retain a test-only working kernel.
-- [ ] Keep the table-driven 41-export test as the canonical complete gate and
+- [x] Keep the table-driven 41-export test as the canonical complete gate and
   `test-public-api.R` as the T7 export-presence gate.
-- [ ] Verify all 41 exports and both internal functions return identical
+- [x] Verify all 41 exports and both internal functions return identical
   class/message before argument evaluation.
-- [ ] Run the complete product suite after the cut; any residual dependency
+- [x] Run the complete product suite after the cut; any residual dependency
   must now fail immediately.
 
 ## Batch 6: Documentation
@@ -441,17 +444,17 @@ Files: `NEWS.md`, `README.md`, `_pkgdown.yml`, changed roxygen/generated topics,
 `vignettes/reusable-workflows.Rmd`, `vignettes/tempest.Rmd`,
 `vignettes/open-knowledge-format.Rmd`, host example, and workflow skill files.
 
-- [ ] Add one unwrapped `NEWS.md` bullet for `an7p` covering authoritative
+- [x] Add one unwrapped `NEWS.md` bullet for `an7p` covering authoritative
   product paths and immediate generic rejection.
-- [ ] Document `tempest_run()` and `tempest_session()` as the only working
+- [x] Document `tempest_run()` and `tempest_session()` as the only working
   execution paths and the capability-only turn-processing break.
-- [ ] State that live capability consumption detects in-process substitution,
+- [x] State that live capability consumption detects in-process substitution,
   while durable provenance proves execution identity only.
-- [ ] Give generic API topics the exact hard-cut message/T8 removal status;
+- [x] Give generic API topics the exact hard-cut message/T8 removal status;
   remove generic runtime/workflow/artifact guidance and examples.
-- [ ] Keep historical specifications unchanged; this accepted plan and package
+- [x] Keep historical specifications unchanged; this accepted plan and package
   boundary govern conflicts.
-- [ ] Run `devtools::document()` and inspect generated topics; do not delete
+- [x] Run `devtools::document()` and inspect generated topics; do not delete
   generic topics before T8.
 
 ## Batch 7: Verification and acceptance
@@ -487,33 +490,33 @@ git diff --check
 
 Acceptance checklist:
 
-- [ ] STORM and Co-STORM baselines pass without constructing or invoking
+- [x] STORM and Co-STORM baselines pass without constructing or invoking
   generic runtime/artifact/workflow state.
-- [ ] Every open-ended durable result resolves exact Deputy
+- [x] Every open-ended durable result resolves exact Deputy
   run/session/correlation identity; delegated results resolve the full tuple.
-- [ ] Every fixed transform resolves its exact ProgramSet artifact; every
+- [x] Every fixed transform resolves its exact ProgramSet artifact; every
   governed result resolves accepted procedure/program/Graft snapshot with no
   fallback.
-- [ ] Wrong/replayed/cross-session capabilities and terminal-to-consumption
+- [x] Wrong/replayed/cross-session capabilities and terminal-to-consumption
   races fail atomically; retry release is pre-mutation only, and the first
   transcript/event/Workspace mutation makes the ID consumed.
-- [ ] Snapshot/save/report/promotion/success fail until fully quiescent.
-- [ ] Reports use verified Workspace state and direct product rendering only;
+- [x] Snapshot/save/report/promotion/success fail until fully quiescent.
+- [x] Reports use verified Workspace state and direct product rendering only;
   transcript/mind-map prose cannot become report evidence.
-- [ ] Succeeded/report-bearing restore and promotion re-derive durable identity
+- [x] Succeeded/report-bearing restore and promotion re-derive durable identity
   authority; partial quiescent state remains provisional.
-- [ ] Returned and persisted Manifests agree exactly.
-- [ ] Workspace 5, Co-STORM 9, STORM bundle 7/state 4, Manifest 2, and current
+- [x] Returned and persisted Manifests agree exactly.
+- [x] Workspace 5, Co-STORM 9, STORM bundle 7/state 4, Manifest 3, and current
   StageRecord fields remain exact.
-- [ ] No bundle contains a completion/digest/proof sidecar, chat, function,
-  tool, Agent, runtime, connection, or store handle.
-- [ ] All 41 retirement exports plus internal restore/resume hard-reject through
+- [x] No bundle contains a completion capability, private digest/proof/receipt,
+  chat, function, tool, Agent, runtime, connection, or store handle.
+- [x] All 41 retirement exports plus internal restore/resume hard-reject through
   the shared condition while names remain physically present/exported.
-- [ ] `tempest_execution_events()` works for product state and rejects
-  `TempestRun`.
-- [ ] Tests make no response-content-causation claim and need no API key,
+- [x] `tempest_execution_events()` works only for Co-STORM `TempestSession`
+  state and rejects `TempestRun` and non-session inputs.
+- [x] Tests make no response-content-causation claim and need no API key,
   network, or live provider.
-- [ ] Formatting, full tests, pkgdown, R CMD check, and `git diff --check` pass.
+- [x] Formatting, full tests, pkgdown, R CMD check, and `git diff --check` pass.
 
 ## T8 exclusions
 

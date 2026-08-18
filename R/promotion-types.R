@@ -40,7 +40,7 @@ tempest_promotion_digest <- function(value) {
   paste0(
     "sha256:",
     digest::digest(
-      tempest_canonical_json(value),
+      tempest_product_canonical_json(value),
       algo = "sha256",
       serialize = FALSE
     )
@@ -271,7 +271,7 @@ tempest_promotion_validate_rows <- function(rows, record_class) {
         "Promotion class {.val {record_class}} has a malformed current-schema row."
       )
     }
-    tempest_canonical_value(row)
+    tempest_product_canonical_value(row)
     evidence_text_fields <- switch(
       record_class,
       Claim = "statement_text",
@@ -1664,6 +1664,19 @@ tempest_promotion_bundle <- function(
       )
     }
   )
+  tryCatch(
+    tempest_product_authority_validate(
+      manifest,
+      stage_records,
+      workspace
+    ),
+    error = function(error) {
+      tempest_promotion_abort(
+        "The completed research product lacks exact execution authority.",
+        parent = error
+      )
+    }
+  )
   min_support_score <- tempest_promotion_stage_support_threshold(stage_records)
   tryCatch(
     {
@@ -2358,7 +2371,7 @@ tempest_promotion_receipt_validation_message <- function(self) {
         self@counts,
         self@record_revisions
       )
-      tempest_canonical_value(payload)
+      tempest_product_canonical_value(payload)
       if (!identical(self@receipt_id, tempest_promotion_digest(payload))) {
         stop("receipt_id does not match the exact receipt payload")
       }

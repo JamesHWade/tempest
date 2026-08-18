@@ -30,7 +30,7 @@
         },
         "outline_sections": "Workflow evidence",
         "outline_subsections": "Signals",
-        "report_sections": ["Progress report", "References", "Execution review"],
+        "report_sections": ["Progress report", "Workflow evidence", "References", "Execution review"],
         "terminal_status": "succeeded",
         "event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:started", "step:persistence:perspectives_artifacts:started", "step:persistence:perspectives_artifacts:succeeded", "stage:perspectives:NA:succeeded", "stage:research:NA:started", "step:persistence:research_artifacts:started", "step:persistence:research_artifacts:succeeded", "stage:research:NA:succeeded", "stage:outline:NA:started", "stage:verification:NA:started", "stage:verification:NA:succeeded", "step:persistence:outline_artifacts:started", "step:persistence:outline_artifacts:succeeded", "stage:outline:NA:succeeded", "stage:write:NA:started", "step:persistence:write_artifacts:started", "step:persistence:write_artifacts:succeeded", "stage:write:NA:succeeded", "stage:polish:NA:started", "step:persistence:polish_artifacts:started", "step:persistence:polish_artifacts:succeeded", "stage:polish:NA:succeeded", "artifact:polish:report_md:available", "workflow:NA:NA:succeeded"]
       }
@@ -71,7 +71,7 @@
           ]
         },
         "resumed_outline_sections": "Workflow evidence",
-        "resumed_report_sections": ["Progress report", "References", "Execution review"],
+        "resumed_report_sections": ["Progress report", "Workflow evidence", "References", "Execution review"],
         "terminal_status": "succeeded",
         "resumed_event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:skipped", "stage:research:NA:skipped", "stage:outline:NA:started", "stage:verification:NA:started", "stage:verification:NA:succeeded", "step:persistence:outline_artifacts:started", "step:persistence:outline_artifacts:succeeded", "stage:outline:NA:succeeded", "stage:write:NA:started", "step:persistence:write_artifacts:started", "step:persistence:write_artifacts:succeeded", "stage:write:NA:succeeded", "stage:polish:NA:started", "step:persistence:polish_artifacts:started", "step:persistence:polish_artifacts:succeeded", "stage:polish:NA:succeeded", "artifact:polish:report_md:available", "workflow:NA:NA:succeeded"]
       }
@@ -92,8 +92,8 @@
             "source_ids": "S43d2118e4326",
             "evidence_span_ids": "E_0000000000000001",
             "confidence": "high",
-            "verification_status": "unverified",
-            "support_score": null
+            "verification_status": "supported",
+            "support_score": 0.95
           },
           {
             "claim_id": "C_0000000000000002",
@@ -102,8 +102,8 @@
             "source_ids": "S43d2118e4326",
             "evidence_span_ids": "E_0000000000000002",
             "confidence": "high",
-            "verification_status": "unverified",
-            "support_score": null
+            "verification_status": "supported",
+            "support_score": 0.95
           }
         ],
         "transcript": [
@@ -126,15 +126,49 @@
         "mindmap": {
           "nodes": [
             {
+              "id": "claim-49eac80939ae926c5f148a4766553ebebdf7690bcebabb908283559cb8ce8c2b",
+              "label": "Moderator research is preserved.",
+              "parent": "root",
+              "source_ids": "S43d2118e4326"
+            },
+            {
+              "id": "claim-6d6ddd56d054a332a4486e1a62e9bda62abfb00b91b6914e2975f1f89d123d07",
+              "label": "Warmup research is preserved.",
+              "parent": "root",
+              "source_ids": "S43d2118e4326"
+            },
+            {
+              "id": "question-78333868b6bdba8dc04928f436d5f854b6566fcc8cbe80347932dcda38999bd3",
+              "label": "What should we inspect?",
+              "parent": "root",
+              "source_ids": []
+            },
+            {
               "id": "root",
               "label": "Co-STORM baseline",
               "parent": null,
-              "source_ids": "S43d2118e4326"
+              "source_ids": []
             }
           ],
-          "edges": []
+          "edges": [
+            {
+              "from": "root",
+              "to": "claim-49eac80939ae926c5f148a4766553ebebdf7690bcebabb908283559cb8ce8c2b",
+              "relation": "contains"
+            },
+            {
+              "from": "root",
+              "to": "claim-6d6ddd56d054a332a4486e1a62e9bda62abfb00b91b6914e2975f1f89d123d07",
+              "relation": "contains"
+            },
+            {
+              "from": "root",
+              "to": "question-78333868b6bdba8dc04928f436d5f854b6566fcc8cbe80347932dcda38999bd3",
+              "relation": "contains"
+            }
+          ]
         },
-        "report_sections": ["Co\\-STORM baseline", "Findings", "References", "Execution review"],
+        "report_sections": ["Co\\-STORM baseline", "Evidence", "References", "Execution review"],
         "report_citations": {
           "uses": "S43d2118e4326",
           "definitions": [
@@ -146,17 +180,18 @@
         },
         "completed_stages": ["warmup", "dialogue", "report"],
         "suggestion_count": 1,
-        "report_artifact_matches": true,
-        "terminal_status": "running",
-        "event_sequence": ["workflow:session:created:started", "stage:warmup:expert_fanout:started", "expert:warmup:expert_fanout:started", "tool:warmup:expert_question:started", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "tool:warmup:expert_question:succeeded", "expert:warmup:expert_fanout:succeeded", "stage:warmup:expert_fanout:succeeded", "stage:dialogue:turn:started", "step:dialogue:user_turn:succeeded", "step:dialogue:moderator_response:started", "step:dialogue:moderator_response:succeeded", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "stage:dialogue:turn:succeeded", "step:suggestions:question_generation:started", "step:suggestions:question_generation:succeeded", "stage:report:generate:started", "artifact:report:report_md:available", "stage:report:generate:succeeded"]
+        "report_product_matches": true,
+        "terminal_status": "succeeded",
+        "event_sequence": ["workflow:session:created:started", "stage:warmup:expert_fanout:started", "expert:warmup:expert_fanout:started", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "expert:warmup:expert_fanout:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "stage:warmup:expert_fanout:succeeded", "stage:dialogue:turn:started", "step:dialogue:user_turn:succeeded", "step:dialogue:moderator_response:succeeded", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "stage:dialogue:turn:succeeded", "step:suggestions:question_generation:started", "step:suggestions:question_generation:succeeded", "stage:report:generate:started", "artifact:report:report_md:available", "stage:report:generate:succeeded"]
       }
 
-# a resumed Co-STORM session can continue product dialogue
+# a resumed published Co-STORM session is read-only
 
     Code
-      baseline_snapshot_json(list(restored = before, continued = continued,
-        continued_status = tempest_progress_state(restored_events)$status,
-        continued_event_sequence = baseline_event_labels(restored_events)))
+      baseline_snapshot_json(list(restored = before, restored_status = restored$
+        manifest@status, workspace_state = tempest:::tempest_research_workspace_mutation_state(
+        restored$workspace), continuation_error_class = class(continuation_error),
+      moderator_call_count = length(fixture$resume_runtime$moderator_calls())))
     Output
       {
         "restored": {
@@ -170,8 +205,8 @@
               "source_ids": "S43d2118e4326",
               "evidence_span_ids": "E_0000000000000001",
               "confidence": "high",
-              "verification_status": "unverified",
-              "support_score": null
+              "verification_status": "supported",
+              "support_score": 0.95
             },
             {
               "claim_id": "C_0000000000000002",
@@ -180,8 +215,8 @@
               "source_ids": "S43d2118e4326",
               "evidence_span_ids": "E_0000000000000002",
               "confidence": "high",
-              "verification_status": "unverified",
-              "support_score": null
+              "verification_status": "supported",
+              "support_score": 0.95
             }
           ],
           "transcript": [
@@ -204,15 +239,49 @@
           "mindmap": {
             "nodes": [
               {
+                "id": "claim-49eac80939ae926c5f148a4766553ebebdf7690bcebabb908283559cb8ce8c2b",
+                "label": "Moderator research is preserved.",
+                "parent": "root",
+                "source_ids": "S43d2118e4326"
+              },
+              {
+                "id": "claim-6d6ddd56d054a332a4486e1a62e9bda62abfb00b91b6914e2975f1f89d123d07",
+                "label": "Warmup research is preserved.",
+                "parent": "root",
+                "source_ids": "S43d2118e4326"
+              },
+              {
+                "id": "question-78333868b6bdba8dc04928f436d5f854b6566fcc8cbe80347932dcda38999bd3",
+                "label": "What should we inspect?",
+                "parent": "root",
+                "source_ids": []
+              },
+              {
                 "id": "root",
                 "label": "Co-STORM baseline",
                 "parent": null,
-                "source_ids": "S43d2118e4326"
+                "source_ids": []
               }
             ],
-            "edges": []
+            "edges": [
+              {
+                "from": "root",
+                "to": "claim-49eac80939ae926c5f148a4766553ebebdf7690bcebabb908283559cb8ce8c2b",
+                "relation": "contains"
+              },
+              {
+                "from": "root",
+                "to": "claim-6d6ddd56d054a332a4486e1a62e9bda62abfb00b91b6914e2975f1f89d123d07",
+                "relation": "contains"
+              },
+              {
+                "from": "root",
+                "to": "question-78333868b6bdba8dc04928f436d5f854b6566fcc8cbe80347932dcda38999bd3",
+                "relation": "contains"
+              }
+            ]
           },
-          "report_sections": ["Co\\-STORM baseline", "Findings", "References", "Execution review"],
+          "report_sections": ["Co\\-STORM baseline", "Evidence", "References", "Execution review"],
           "report_citations": {
             "uses": "S43d2118e4326",
             "definitions": [
@@ -223,92 +292,10 @@
             ]
           }
         },
-        "continued": {
-          "session_id": "costorm-product-baseline",
-          "source_ids": "S43d2118e4326",
-          "claims": [
-            {
-              "claim_id": "C_0000000000000001",
-              "claim_text": "Warmup research is preserved.",
-              "claim_type": "finding",
-              "source_ids": "S43d2118e4326",
-              "evidence_span_ids": "E_0000000000000001",
-              "confidence": "high",
-              "verification_status": "unverified",
-              "support_score": null
-            },
-            {
-              "claim_id": "C_0000000000000002",
-              "claim_text": "Moderator research is preserved.",
-              "claim_type": "finding",
-              "source_ids": "S43d2118e4326",
-              "evidence_span_ids": "E_0000000000000002",
-              "confidence": "high",
-              "verification_status": "unverified",
-              "support_score": null
-            },
-            {
-              "claim_id": "C_0000000000000003",
-              "claim_text": "Continued moderator research is preserved.",
-              "claim_type": "finding",
-              "source_ids": "S43d2118e4326",
-              "evidence_span_ids": "E_0000000000000003",
-              "confidence": "high",
-              "verification_status": "unverified",
-              "support_score": null
-            }
-          ],
-          "transcript": [
-            {
-              "speaker": "Dr. Baseline",
-              "role": "assistant",
-              "source_ids": "S43d2118e4326"
-            },
-            {
-              "speaker": "user",
-              "role": "user",
-              "source_ids": []
-            },
-            {
-              "speaker": "Moderator",
-              "role": "assistant",
-              "source_ids": "S43d2118e4326"
-            },
-            {
-              "speaker": "user",
-              "role": "user",
-              "source_ids": []
-            },
-            {
-              "speaker": "Moderator",
-              "role": "assistant",
-              "source_ids": "S43d2118e4326"
-            }
-          ],
-          "mindmap": {
-            "nodes": [
-              {
-                "id": "root",
-                "label": "Co-STORM baseline",
-                "parent": null,
-                "source_ids": "S43d2118e4326"
-              }
-            ],
-            "edges": []
-          },
-          "report_sections": ["Co\\-STORM baseline", "Findings", "References", "Execution review"],
-          "report_citations": {
-            "uses": "S43d2118e4326",
-            "definitions": [
-              {
-                "citation_id": "S43d2118e4326",
-                "reference": "Co\\-STORM baseline source. <https://example.org/costorm-product-baseline> (retrieved 2026-01-01T00:00:00Z)."
-              }
-            ]
-          }
-        },
-        "continued_status": "running",
-        "continued_event_sequence": ["workflow:session:created:started", "stage:warmup:expert_fanout:started", "expert:warmup:expert_fanout:started", "tool:warmup:expert_question:started", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "tool:warmup:expert_question:succeeded", "expert:warmup:expert_fanout:succeeded", "stage:warmup:expert_fanout:succeeded", "stage:dialogue:turn:started", "step:dialogue:user_turn:succeeded", "step:dialogue:moderator_response:started", "step:dialogue:moderator_response:succeeded", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "stage:dialogue:turn:succeeded", "step:suggestions:question_generation:started", "step:suggestions:question_generation:succeeded", "stage:report:generate:started", "artifact:report:report_md:available", "stage:report:generate:succeeded", "stage:dialogue:turn:started", "step:dialogue:user_turn:succeeded", "step:dialogue:moderator_response:started", "step:dialogue:moderator_response:succeeded", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "stage:dialogue:turn:succeeded"]
+        "restored_status": "succeeded",
+        "workspace_state": "sealed",
+        "continuation_error_class": ["tempest_session_error", "tempest_error", "rlang_error", "error", "condition"],
+        "moderator_call_count": 0
       }
 
 # STORM cancellation is terminal and publishes no report
@@ -316,16 +303,16 @@
     Code
       baseline_snapshot_json(list(condition_class = class(condition),
       completed_stages = baseline_succeeded_stages(events), terminal_status = state$
-        status, terminal = state$terminal, catalog_report_published = artifacts$
-      exists("report_md"), program_stages = fixture$program_stages(), event_sequence = baseline_event_labels(
-        events)))
+        status, terminal = state$terminal, report_published = !is.null(persisted$
+        research_manifest$deliverables$report_md), program_stages = fixture$
+        program_stages(), event_sequence = baseline_event_labels(events)))
     Output
       {
         "condition_class": ["tempest_run_cancelled", "tempest_run_error", "tempest_error", "interrupt", "rlang_error", "error", "condition"],
         "completed_stages": "perspectives",
         "terminal_status": "cancelled",
         "terminal": true,
-        "catalog_report_published": false,
+        "report_published": false,
         "program_stages": ["perspectives", "personas"],
         "event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:started", "step:persistence:perspectives_artifacts:started", "step:persistence:perspectives_artifacts:succeeded", "stage:perspectives:NA:succeeded", "stage:research:NA:started", "cancellation:research:NA:cancelled"]
       }

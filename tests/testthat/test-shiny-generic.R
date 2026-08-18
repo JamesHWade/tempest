@@ -1,131 +1,123 @@
-test_that("Shiny adapter exposes and controls generic run state", {
+test_that("Shiny adapter excludes the generic run surface", {
+  expect_identical("run" %in% names(formals(tempest_shiny_server)), FALSE)
+  server_code <- paste(deparse(body(tempest_shiny_server)), collapse = "\n")
+
+  expect_no_match(server_code, "TempestRun", fixed = TRUE)
+  expect_no_match(server_code, "tempest_run_", fixed = TRUE)
+  expect_no_match(server_code, "set_run", fixed = TRUE)
+})
+
+test_that("public Shiny store exposes only product state", {
   skip_if_not_installed("shiny")
+  store <- tempest_shiny_store()
 
-  objective <- tempest_objective(
-    "Publish an approved action",
-    objective_id = "objective-shiny",
-    created_at = "2026-07-18 UTC"
-  )
-  registry <- tempest_operation_registry(list(
-    publish = list(
-      kind = "step",
-      implementation = function() "published"
+  expect_named(
+    store,
+    c(
+      "peek",
+      "autosave_trigger",
+      "get",
+      "evidence_store",
+      "set",
+      "touch",
+      "save",
+      "restore",
+      "persistence",
+      "set_persistence",
+      "report",
+      "report_store",
+      "report_topic",
+      "set_session_report",
+      "set_storm_result"
     )
-  ))
-  workflow <- tempest_workflow_spec(
-    "host-action",
-    title = "Host action",
-    purpose = "Exercise generic host controls",
-    steps = list(tempest_workflow_step(
-      "publish",
-      title = "Publish",
-      purpose = "Publish the action",
-      operation_id = "publish",
-      approval_checkpoint = TRUE
-    ))
   )
-  run <- tempest_run_workflow(objective, workflow, registry)
-  expect_identical(run$status, "awaiting_approval")
-
-  shiny::testServer(
-    tempest_shiny_server,
-    args = list(
-      panels = "sources",
-      run = run
+  expect_identical(
+    intersect(
+      names(store),
+      c("run", "get_run", "peek_run", "set_run", "touch_run", "set_report")
     ),
-    {
-      session$flushReact()
-      expect_identical(shiny::isolate(run_status()), "awaiting_approval")
-      pending <- shiny::isolate(run_approvals())
-      expect_length(pending, 1L)
-      expect_identical(shiny::isolate(run_assignments())$publish, character())
-      expect_identical(shiny::isolate(run_events())[[1]]$sequence, 1L)
-      expect_identical(
-        shiny::isolate(run_events()),
-        tempest_execution_events(run)
-      )
-      expect_identical(shiny::isolate(run_grants()), list())
-
-      approve(names(pending)[[1]], "approved")
-      session$flushReact()
-      expect_identical(run$status, "succeeded")
-      expect_identical(shiny::isolate(run_status()), "succeeded")
-      expect_length(shiny::isolate(run_approvals()), 0L)
-      grant <- shiny::isolate(run_grants())$publish
-      expect_identical(grant$experts, list())
-      expect_identical(grant$step, list())
-      expect_identical(grant$attempt, 1L)
-      expect_named(grant$attempts, "1")
-    }
+    character()
   )
 })
 
-test_that("Shiny shared store publishes custom run evidence and cancellation", {
+test_that("Shiny accepts only an authority-validated STORM result", {
   skip_if_not_installed("shiny")
-
-  objective <- tempest_objective(
-    "Review private evidence",
-    objective_id = "objective-evidence",
-    created_at = "2026-07-18 UTC"
+  config <- tempest_config()
+  fixture <- test_persistence_complete_storm_product(
+    "Shiny authority",
+    "shiny-authority",
+    config,
+    tempest_program_set(),
+    manifest_status = "running"
   )
-  registry <- tempest_operation_registry(list(
-    review = list(kind = "step", implementation = function() "reviewed")
-  ))
-  workflow <- tempest_workflow_spec(
-    "host-review",
-    title = "Host review",
-    purpose = "Review evidence",
-    steps = list(tempest_workflow_step(
-      "review",
-      title = "Review",
-      purpose = "Review evidence",
-      operation_id = "review"
-    ))
+  manifest <- tempest:::tempest_product_authority_finalize_manifest(
+    manifest = fixture$manifest,
+    stage_records = fixture$state$stage_records,
+    workspace = fixture$workspace,
+    report_md = fixture$state$report_md,
+    config = config,
+    experts = fixture$state$experts,
+    product_state = fixture$state,
+    status = "succeeded",
+    require_publishable = TRUE
   )
-  evidence <- test_research_workspace()
-  resource <- tempest_resource(
-    resource_kind = "host.document",
-    locator = "documents/private-1",
-    title = "Private brief",
-    media_type = "text/plain",
-    content = "Approved evidence."
-  )
-  evidence$upsert_retrieved_resource(resource)
-  run <- TempestRun$new(
-    objective = objective,
-    workflow = workflow,
-    runtime = registry,
-    source_store = evidence
+  result <- list(
+    title = fixture$state$title,
+    experts = fixture$state$experts,
+    report_md = fixture$state$report_md,
+    manifest = manifest,
+    state = fixture$state,
+    workspace = fixture$workspace
   )
   store <- tempest_shiny_store()
-  store$set(list(
-    store = test_research_workspace(),
-    workflow_run = NULL
-  ))
+
+  expect_identical(
+    store$set_storm_result(result, config),
+    result$report_md
+  )
+  before <- shiny::isolate(store$report())
+  tampered <- result
+  tampered$report_md <- paste0(result$report_md, "\n\nTampered.")
+  expect_error(
+    store$set_storm_result(tampered, config),
+    class = "tempest_product_report_error"
+  )
+  expect_identical(shiny::isolate(store$report()), before)
+})
+
+test_that("Shiny adapter exposes product session state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  store <- tempest_shiny_store()
+  product_session <- tempest_session(
+    "Shiny product boundary",
+    config = config,
+    experts = list(test_expert()),
+    retriever = tempest_retriever(
+      config = config,
+      workspace = test_research_workspace()
+    )
+  )
 
   shiny::testServer(
     tempest_shiny_server,
-    args = list(
-      panels = "sources",
-      store = store,
-      run = run
-    ),
+    args = list(config = config, store = store, panels = "sources"),
     {
+      shared_store$set(product_session)
       session$flushReact()
-      expect_identical(store$peek_run(), run)
-      expect_identical(
-        shiny::isolate(store$evidence_store()),
-        evidence
-      )
-      records <- shiny::isolate(run_evidence())$resources
-      expect_identical(records[[1]]$resource_kind, "host.document")
-      expect_false("content" %in% names(records[[1]]))
 
-      cancel("Host stopped the run.")
-      session$flushReact()
-      active <- shiny::isolate(run_reactive())
-      expect_identical(active$status, "cancel_requested")
-      expect_identical(shiny::isolate(run_status()), "cancel_requested")
+      expect_identical(current_session(), product_session)
+      expect_identical(
+        shiny::isolate(product_events()),
+        tempest_execution_events(product_session)
+      )
+      expect_named(
+        shiny::isolate(product_evidence()),
+        c("resources", "claims", "disputes")
+      )
     }
   )
 })

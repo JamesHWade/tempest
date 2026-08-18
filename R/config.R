@@ -1,423 +1,5 @@
 # Configuration
 
-tempest_artifact_store_abort <- function(message, ..., parent = NULL) {
-  tempest_abort(
-    message,
-    ...,
-    class = c("tempest_artifact_store_error", "tempest_error"),
-    parent = parent,
-    .envir = rlang::caller_env()
-  )
-}
-
-tempest_artifact_store_call <- function(operation, callback) {
-  tryCatch(
-    callback(),
-    error = function(error) {
-      if (inherits(error, "tempest_artifact_store_error")) {
-        stop(error)
-      }
-      tempest_artifact_store_abort(
-        "Artifact store operation {.val {operation}} failed.",
-        parent = error
-      )
-    }
-  )
-}
-
-tempest_artifact_store_runtime_value <- function(value) {
-  if (
-    is.function(value) ||
-      is.environment(value) ||
-      typeof(value) %in% c("externalptr", "weakref") ||
-      inherits(value, "S7_object")
-  ) {
-    return(TRUE)
-  }
-  is.list(value) &&
-    any(vapply(value, tempest_artifact_store_runtime_value, logical(1)))
-}
-
-tempest_artifact_store_validate_listing <- function(value) {
-  if (!is.list(value) || is.data.frame(value)) {
-    tempest_artifact_store_abort(
-      "Artifact store metadata listings must be a named list."
-    )
-  }
-  ids <- names(value)
-  if (
-    length(value) > 0L &&
-      (is.null(ids) ||
-        anyNA(ids) ||
-        any(!nzchar(ids)) ||
-        anyDuplicated(ids))
-  ) {
-    tempest_artifact_store_abort(
-      "Artifact store metadata listings require unique artifact-id names."
-    )
-  }
-  for (artifact_id in ids %||% character()) {
-    record <- value[[artifact_id]]
-    if (
-      !is.list(record) ||
-        is.data.frame(record) ||
-        !is.null(record$content) ||
-        tempest_artifact_store_runtime_value(record)
-    ) {
-      tempest_artifact_store_abort(
-        "Artifact metadata for {.val {artifact_id}} is not a durable content-free record."
-      )
-    }
-    if (
-      !is.null(record$artifact_id) &&
-        !identical(record$artifact_id, artifact_id)
-    ) {
-      tempest_artifact_store_abort(
-        "Artifact metadata key does not match its artifact id."
-      )
-    }
-  }
-  value
-}
-
-tempest_artifact_store_validate_read <- function(
-  value,
-  artifact_id,
-  default
-) {
-  if (is.null(value) || identical(value, default)) {
-    return(value)
-  }
-  if (!S7::S7_inherits(value, TempestArtifact)) {
-    tempest_artifact_store_abort(
-      "Artifact store reads must return a typed artifact or the supplied default."
-    )
-  }
-  if (!identical(value@artifact_id, artifact_id)) {
-    tempest_artifact_store_abort(
-      "Artifact store read returned an artifact with a mismatched id."
-    )
-  }
-  value
-}
-
-#' Create a Tempest artifact store adapter
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
-#' No compatibility shim is planned; see
-#' [tempest-generic-kernel-retirement].
-#'
-#' Artifact stores let host applications observe or persist typed Tempest
-#' outputs without replacing the live in-memory artifact catalog. The default
-#' store is a no-op adapter.
-#'
-#' @param write Function with signature `function(artifact)` used to persist a
-#'   typed artifact.
-#' @param read Function with signature `function(artifact_id, default)` that
-#'   returns a typed artifact.
-#' @param list_metadata Function with no arguments that returns a named list of
-#'   artifact metadata records without inline content.
-#' @param exists Function with signature `function(artifact_id, version)` used
-#'   to test artifact identity and optional deliverable version.
-#' @param version Function with signature `function(artifact_id, default)` that
-#'   returns the persisted deliverable version.
-#' @return A typed artifact-store adapter.
-#' @examples
-#' store <- tempest_memory_artifact_store()
-#' spec <- tempest_deliverable_spec(
-#'   "report",
-#'   title = "Report",
-#'   purpose = "Explain the result",
-#'   instructions = "Be concise.",
-#'   generator_id = "tempest.generator.provided_content",
-#'   renderer_ids = "tempest.renderer.markdown"
-#' )
-#' artifact <- tempest_artifact(spec, content = "# Report")
-#' store$write(artifact)
-#' store$read(artifact@artifact_id)
-#' @export
-tempest_artifact_store <- function(
-  write = NULL,
-  read = NULL,
-  list_metadata = NULL,
-  exists = NULL,
-  version = NULL
-) {
-  write_impl <- write %||%
-    function(artifact) {
-      invisible(artifact@artifact_id)
-    }
-  read_impl <- read %||%
-    function(artifact_id, default = NULL) {
-      default
-    }
-  list_impl <- list_metadata %||%
-    function() {
-      list()
-    }
-  exists_impl <- exists %||%
-    function(artifact_id, version = NULL) {
-      FALSE
-    }
-  version_impl <- version %||%
-    function(artifact_id, default = NULL) {
-      artifact <- tempest_artifact_store_validate_read(
-        read_impl(artifact_id, default = NULL),
-        artifact_id,
-        NULL
-      )
-      if (S7::S7_inherits(artifact, TempestArtifact)) {
-        artifact@deliverable_version
-      } else {
-        default
-      }
-    }
-  for (fn in list(
-    write = write_impl,
-    read = read_impl,
-    list = list_impl,
-    exists = exists_impl,
-    version = version_impl
-  )) {
-    if (!is.function(fn)) {
-      tempest_abort(
-        c(
-          "Artifact store entries must be functions.",
-          i = "Use {.fn tempest_artifact_store} with function values for its adapter arguments."
-        ),
-        class = c(
-          "tempest_artifact_store_error",
-          "tempest_config_error",
-          "tempest_error"
-        )
-      )
-    }
-  }
-  write_fn <- function(artifact) {
-    if (!S7::S7_inherits(artifact, TempestArtifact)) {
-      tempest_artifact_store_abort(
-        "{.arg artifact} must be created by {.fn tempest_artifact}."
-      )
-    }
-    tempest_artifact_store_call("write", function() {
-      write_impl(artifact)
-    })
-    invisible(artifact@artifact_id)
-  }
-  read_fn <- function(artifact_id, default = NULL) {
-    artifact_id <- tempest_workflow_scalar(artifact_id, "artifact_id")
-    value <- tempest_artifact_store_call("read", function() {
-      read_impl(artifact_id, default = default)
-    })
-    tempest_artifact_store_validate_read(value, artifact_id, default)
-  }
-  list_fn <- function() {
-    value <- tempest_artifact_store_call("list", list_impl)
-    tempest_artifact_store_validate_listing(value)
-  }
-  exists_fn <- function(artifact_id, version = NULL) {
-    artifact_id <- tempest_workflow_scalar(artifact_id, "artifact_id")
-    if (!is.null(version)) {
-      version <- tempest_workflow_version(version)
-    }
-    value <- tempest_artifact_store_call("exists", function() {
-      exists_impl(artifact_id, version = version)
-    })
-    if (!is.logical(value) || length(value) != 1L || is.na(value)) {
-      tempest_artifact_store_abort(
-        "Artifact store exists checks must return `TRUE` or `FALSE`."
-      )
-    }
-    value
-  }
-  version_fn <- function(artifact_id, default = NULL) {
-    artifact_id <- tempest_workflow_scalar(artifact_id, "artifact_id")
-    value <- tempest_artifact_store_call("version", function() {
-      version_impl(artifact_id, default = default)
-    })
-    if (is.null(value) || identical(value, default)) {
-      return(default)
-    }
-    tryCatch(
-      tempest_workflow_version(value),
-      error = function(error) {
-        tempest_artifact_store_abort(
-          "Artifact store versions must be stable non-empty version strings.",
-          parent = error
-        )
-      }
-    )
-  }
-  structure(
-    list(
-      write = write_fn,
-      read = read_fn,
-      list = list_fn,
-      exists = exists_fn,
-      version = version_fn
-    ),
-    class = "tempest_artifact_store"
-  )
-}
-
-#' Create an in-memory Tempest artifact store
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' This experimental API is frozen and scheduled for removal in Tempest 0.2.0.
-#' No compatibility shim is planned; see
-#' [tempest-generic-kernel-retirement].
-#'
-#' This is useful for tests and host apps that want to capture artifacts before
-#' deciding where to persist them.
-#'
-#' @return A `tempest_artifact_store`.
-#' @examples
-#' store <- tempest_memory_artifact_store()
-#' # Stores accept typed artifacts produced by a deliverable lifecycle.
-#' store$list()
-#' @export
-tempest_memory_artifact_store <- function() {
-  artifacts <- new.env(parent = emptyenv())
-  tempest_artifact_store(
-    write = function(artifact) {
-      if (!S7::S7_inherits(artifact, TempestArtifact)) {
-        tempest_abort(
-          "{.arg artifact} must be created by {.fn tempest_artifact}.",
-          class = c("tempest_artifact_store_error", "tempest_error")
-        )
-      }
-      artifacts[[artifact@artifact_id]] <- artifact
-      invisible(artifact@artifact_id)
-    },
-    read = function(artifact_id, default = NULL) {
-      artifact <- artifacts[[artifact_id]]
-      if (is.null(artifact)) default else artifact
-    },
-    list_metadata = function() {
-      ids <- sort(ls(artifacts, all.names = TRUE))
-      stats::setNames(
-        lapply(
-          ids,
-          function(id) {
-            tempest_artifact_data(
-              artifacts[[id]],
-              include_content = FALSE
-            )
-          }
-        ),
-        ids
-      )
-    },
-    exists = function(artifact_id, version = NULL) {
-      artifact <- artifacts[[artifact_id]]
-      if (is.null(artifact)) {
-        return(FALSE)
-      }
-      is.null(version) || identical(artifact@deliverable_version, version)
-    },
-    version = function(artifact_id, default = NULL) {
-      artifact <- artifacts[[artifact_id]]
-      if (is.null(artifact)) {
-        default
-      } else {
-        artifact@deliverable_version
-      }
-    }
-  )
-}
-
-#' @keywords internal
-tempest_artifact_store_write <- function(store, artifact) {
-  if (is.null(store)) {
-    return(invisible(artifact@artifact_id))
-  }
-  if (!inherits(store, "tempest_artifact_store")) {
-    tempest_abort(
-      c(
-        "{.arg artifact_store} must be created by {.fn tempest_artifact_store}.",
-        i = "Use {.fn tempest_memory_artifact_store} for a simple in-memory adapter."
-      ),
-      class = c(
-        "tempest_artifact_store_error",
-        "tempest_config_error",
-        "tempest_error"
-      )
-    )
-  }
-  if (!S7::S7_inherits(artifact, TempestArtifact)) {
-    tempest_abort(
-      "{.arg artifact} must be created by {.fn tempest_artifact}.",
-      class = c("tempest_artifact_store_error", "tempest_error")
-    )
-  }
-  tryCatch(
-    store$write(artifact),
-    error = function(error) {
-      tempest_abort(
-        "Could not persist artifact {.val {artifact@artifact_id}}.",
-        class = c("tempest_artifact_store_error", "tempest_error"),
-        parent = error
-      )
-    }
-  )
-  invisible(artifact@artifact_id)
-}
-
-#' @keywords internal
-tempest_artifact_store_read <- function(
-  store,
-  artifact_id,
-  default = NULL
-) {
-  if (!inherits(store, "tempest_artifact_store")) {
-    tempest_artifact_store_abort(
-      "{.arg store} must be a Tempest artifact store."
-    )
-  }
-  store$read(artifact_id, default = default)
-}
-
-#' @keywords internal
-tempest_artifact_store_list <- function(store) {
-  if (!inherits(store, "tempest_artifact_store")) {
-    tempest_artifact_store_abort(
-      "{.arg store} must be a Tempest artifact store."
-    )
-  }
-  store$list()
-}
-
-#' @keywords internal
-tempest_artifact_store_exists <- function(
-  store,
-  artifact_id,
-  version = NULL
-) {
-  if (!inherits(store, "tempest_artifact_store")) {
-    tempest_artifact_store_abort(
-      "{.arg store} must be a Tempest artifact store."
-    )
-  }
-  store$exists(artifact_id, version = version)
-}
-
-#' @keywords internal
-tempest_artifact_store_version <- function(
-  store,
-  artifact_id,
-  default = NULL
-) {
-  if (!inherits(store, "tempest_artifact_store")) {
-    tempest_artifact_store_abort(
-      "{.arg store} must be a Tempest artifact store."
-    )
-  }
-  store$version(artifact_id, default = default)
-}
-
 #' @keywords internal
 tempest_config_abort <- function(message, ..., parent = NULL) {
   tempest_abort(
@@ -569,19 +151,7 @@ TempestConfig <- S7::new_class(
     user_agent = prop_chr(
       "tempest (R; +https://github.com/JamesHWade/tempest)"
     ),
-    node_expansion_trigger_count = S7::new_property(
-      S7::class_any,
-      default = NULL
-    ),
-    enable_discourse_manager = S7::new_property(
-      S7::class_logical,
-      default = FALSE
-    ),
     max_active_experts = S7::new_property(S7::class_integer, default = 5L),
-    enable_unseen_surfacing = S7::new_property(
-      S7::class_logical,
-      default = FALSE
-    ),
     citation_policy = prop_enum(
       c("none", "source_attributed", "claim_verified", "strict"),
       "source_attributed"
@@ -625,15 +195,10 @@ TempestConfig <- S7::new_class(
 #' @param retrieve_top_k Maximum facts/chunks retrieved for each section.
 #' @param max_sources Maximum sources to keep.
 #' @param user_agent User agent string for HTTP requests.
-#' @param node_expansion_trigger_count Number of notes/sources per node that
-#'   triggers expansion (NULL = disabled).
-#' @param enable_discourse_manager Whether to enable LLM-driven discourse
-#'   management in Co-STORM.
 #' @param max_active_experts Maximum number of active expert agents in Co-STORM.
-#' @param enable_unseen_surfacing Whether to surface undiscussed sources in
-#'   Co-STORM.
-#' @param citation_policy Citation enforcement policy: one of "none",
-#'   "source_attributed", "claim_verified", or "strict".
+#' @param citation_policy Report citation-rendering and unsupported-claim
+#'   handling policy: one of "none", "source_attributed", "claim_verified", or
+#'   "strict". Product publication always runs exact claim verification.
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
 #' @param on_unsupported_claim Action for unsupported claims: one of "flag",
@@ -669,10 +234,7 @@ tempest_config <- function(
   retrieve_top_k = 25,
   max_sources = 24,
   user_agent = "tempest (R; +https://github.com/JamesHWade/tempest)",
-  node_expansion_trigger_count = NULL,
-  enable_discourse_manager = FALSE,
   max_active_experts = 5L,
-  enable_unseen_surfacing = FALSE,
   citation_policy = "source_attributed",
   min_support_score = 0.7,
   on_unsupported_claim = "flag"
@@ -720,23 +282,9 @@ tempest_config <- function(
   rk <- tempest_config_count(retrieve_top_k, "retrieve_top_k")
   max_sources <- tempest_config_count(max_sources, "max_sources")
   user_agent <- tempest_config_string(user_agent, "user_agent")
-  if (!is.null(node_expansion_trigger_count)) {
-    node_expansion_trigger_count <- tempest_config_count(
-      node_expansion_trigger_count,
-      "node_expansion_trigger_count"
-    )
-  }
-  enable_discourse_manager <- tempest_config_flag(
-    enable_discourse_manager,
-    "enable_discourse_manager"
-  )
   max_active_experts <- tempest_config_count(
     max_active_experts,
     "max_active_experts"
-  )
-  enable_unseen_surfacing <- tempest_config_flag(
-    enable_unseen_surfacing,
-    "enable_unseen_surfacing"
   )
   if (
     !is.character(citation_policy) ||
@@ -794,10 +342,7 @@ tempest_config <- function(
     retrieve_top_k = rk,
     max_sources = max_sources,
     user_agent = user_agent,
-    node_expansion_trigger_count = node_expansion_trigger_count,
-    enable_discourse_manager = enable_discourse_manager,
     max_active_experts = max_active_experts,
-    enable_unseen_surfacing = enable_unseen_surfacing,
     citation_policy = citation_policy,
     min_support_score = min_support_score,
     on_unsupported_claim = on_unsupported_claim

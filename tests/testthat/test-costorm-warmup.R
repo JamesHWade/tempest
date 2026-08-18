@@ -186,7 +186,7 @@ test_that("async warmup records evidence failures without failing the panel", {
   )
   expect_identical(
     settled$value@orientations[[1]]$error_class,
-    "tempest_operation_error"
+    "tempest_stage_execution_error"
   )
   expect_identical(
     settled$value@orientations[[1]]$error_message,
@@ -334,6 +334,7 @@ test_that("timed out Deputy warmup stays pending until terminal trace", {
     names(pending[[1L]]),
     c(
       "agent_id",
+      "completion_id",
       "correlation_id",
       "deputy_run_id",
       "deputy_session_id",
@@ -365,9 +366,10 @@ test_that("timed out Deputy warmup stays pending until terminal trace", {
   expect_length(traces, 1L)
   expect_length(tempest:::tempest_session_pending_deputy_runs(session), 0L)
   expect_identical(traces[[1L]]$status, "interrupted")
+  identity_fields <- setdiff(names(pending[[1L]]), "completion_id")
   expect_identical(
-    traces[[1L]][names(pending[[1L]])],
-    pending[[1L]]
+    traces[[1L]][identity_fields],
+    pending[[1L]][identity_fields]
   )
 })
 

@@ -4,13 +4,30 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   extracted <- list(
     facts = list(list(
       claim = "The session owns ProgramSet-bound extraction.",
-      sources = list(list(source_id = source$id)),
+      sources = list(list(
+        source_id = source$id,
+        quote = source$content_text
+      )),
       confidence = "high"
     ))
   )
+  moderator <- fake_chat(
+    text = list(paste0(
+      "ProgramSet-bound extraction [",
+      source$id,
+      "]."
+    ))
+  )
+  extractor <- fake_chat(structured = list(extracted))
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
-      fake_chat(structured = list(extracted))
+      if (identical(system_prompt, tempest_prompt("fact_extractor_system"))) {
+        return(extractor)
+      }
+      if (identical(role, "coordinator")) {
+        return(moderator)
+      }
+      fake_chat()
     }
   )
   program_set <- tempest_program_set()
@@ -54,9 +71,9 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     )),
     rep(TRUE, length(stages))
   )
-  expect_identical(
-    session$expert_session_manager$extract_claims_program,
-    programs$extract_claims
+  expect_r6_class(
+    tempest:::tempest_session_expert_manager(session),
+    "TempestDeputyExpertManager"
   )
   expect_identical(
     programs$extract_claims$trace_context$research_run_id,
@@ -126,15 +143,21 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     session$workspace$get_retrieved_source(source$id)$id,
     source$id
   )
-  expect_no_error(withCallingHandlers(
-    session$extract_facts(
-      paste0("ProgramSet-bound extraction [", source$id, "]."),
-      source_ids = source$id
-    ),
+  completion <- await_tempest_promise(
+    session$request_completion_async("What does the bound source establish?")
+  )
+  expect_null(completion$error)
+  processed <- withCallingHandlers(
+    await_tempest_promise(tempest_session_process_turn_async(
+      session,
+      completion$value,
+      suggest = FALSE
+    )),
     dsprrr_cache_security_warning = function(condition) {
       invokeRestart("muffleWarning")
     }
-  ))
+  )
+  expect_null(processed$error)
   expect_equal(
     session$workspace$list_proposed_claims()[[1]]@claim_text,
     "The session owns ProgramSet-bound extraction."
@@ -240,7 +263,7 @@ test_that("Co-STORM stage ledger batches commit atomically", {
   )
 })
 
-test_that("Co-STORM rejects unbound mind maps before live assignment", {
+test_that("Co-STORM mind maps ignore raw chat output", {
   skip_if_not_installed("ellmer")
   invalid_map <- list(
     nodes = list(
@@ -271,11 +294,11 @@ test_that("Co-STORM rejects unbound mind maps before live assignment", {
   )
   original <- session$mindmap
 
-  expect_error(
-    session$update_mindmap("An unsupported finding appeared."),
-    class = "tempest_session_mindmap_error"
+  expect_no_error(
+    session$update_mindmap("An unsupported finding appeared.")
   )
   expect_identical(session$mindmap, original)
+  expect_length(mindmap_chat$.calls(), 0L)
 })
 
 test_that("automatic Co-STORM personas record the exact product attempt", {
@@ -426,8 +449,8 @@ test_that("Co-STORM sessions reject retriever lookalikes", {
       )),
       retriever = retriever
     ),
-    class = "tempest_expert_session_error",
-    regexp = "must be a <TempestRetriever>"
+    class = "tempest_deputy_expert_error",
+    regexp = "must be a TempestRetriever"
   )
 })
 
@@ -472,17 +495,9 @@ test_that("Co-STORM restoration preserves manifest identity", {
     program_set = program_set,
     manifest = manifest
   )
-  report <- session$report(
-    include_references = FALSE,
-    reorganize = FALSE
-  )
-
   expect_identical(session$manifest, manifest)
   expect_identical(session$session_id, manifest@research_run_id)
-  expect_identical(
-    report,
-    "# Restored research session\n\nReport body.\n"
-  )
+  expect_null(tempest:::tempest_session_report_value(session))
   expect_identical(session$manifest@status, "running")
   expect_error(
     session$manifest <- tempest_research_manifest_update(
@@ -493,65 +508,6 @@ test_that("Co-STORM restoration preserves manifest identity", {
     regexp = "immutable"
   )
   expect_identical(session$manifest, manifest)
-})
-
-test_that("Co-STORM snapshots never retain provider error details", {
-  skip_if_not_installed("ellmer")
-  secret <- "Authorization: Bearer sk-live-secret"
-  config <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) {
-      chat <- fake_chat()
-      if (identical(role, "writer")) {
-        chat$chat <- function(...) stop(secret)
-      }
-      chat
-    }
-  )
-  session <- tempest_session(
-    "Credential-safe progress",
-    config = config,
-    experts = list(test_expert(
-      expert_id = "expert.safe-progress",
-      name = "Safe Progress Expert"
-    )),
-    session_id = "credential-safe-progress"
-  )
-
-  error <- expect_error(
-    session$report(include_references = FALSE, reorganize = FALSE),
-    class = "tempest_deliverable_execution_error"
-  )
-  expect_no_match(conditionMessage(error), "sk-live-secret", fixed = TRUE)
-  printed <- paste(capture.output(print(error)), collapse = "\n")
-  expect_no_match(printed, "sk-live-secret", fixed = TRUE)
-  snapshot <- tempest_session_snapshot(session)
-  snapshot_json <- jsonlite::toJSON(snapshot, auto_unbox = TRUE, null = "null")
-
-  expect_no_match(snapshot_json, "sk-live-secret")
-  failed <- Filter(
-    function(event) {
-      identical(event$status, "failed") && identical(event$stage, "report")
-    },
-    snapshot$progress_events
-  )
-  expect_length(failed, 1L)
-  expect_identical(
-    failed[[1]]$payload$error_class,
-    "tempest_operation_error"
-  )
-  expect_identical(failed[[1]]$payload$error_message, "The operation failed.")
-
-  session$chats$mindmap$chat_structured <- function(...) stop(secret)
-  warnings <- character()
-  withCallingHandlers(
-    session$reorganize_mindmap(),
-    warning = function(warning) {
-      warnings <<- c(warnings, conditionMessage(warning))
-      invokeRestart("muffleWarning")
-    }
-  )
-  expect_identical(warnings, "Mind map reorganization failed.")
-  expect_no_match(warnings, "sk-live-secret")
 })
 
 test_that("Co-STORM restoration rejects mismatched manifests", {
@@ -630,7 +586,7 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
   expect_error(
     create_session(manifest(status = "succeeded")),
     class = "tempest_session_error",
-    regexp = "terminal manifests cannot be resumed"
+    regexp = "canonical durable report binding"
   )
   expect_error(
     create_session(manifest(snapshot_id = "snapshot:mismatched")),

@@ -129,7 +129,7 @@ test_that("resource records reject live runtime values and tampering", {
       media_type = "application/json",
       content = list(client = function() NULL)
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   encoded_credential <- paste0(
     "https://example.org/evidence?api%5Fkey=",
@@ -143,7 +143,7 @@ test_that("resource records reject live runtime values and tampering", {
       media_type = "text/plain",
       content = "Evidence body"
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
 
   resource <- tempest_resource(
@@ -255,7 +255,7 @@ test_that("resource metadata rejects credential-like fields recursively", {
     args[[field]] <- sensitive[[field]]
     error <- expect_error(
       do.call(tempest_resource, args),
-      class = "tempest_workflow_spec_error"
+      class = "tempest_product_validation_error"
     )
     expect_match(conditionMessage(error), "credential-like")
     expect_match(
@@ -277,7 +277,7 @@ test_that("resource records revalidate credential-like metadata", {
 
   error <- expect_error(
     tempest:::tempest_resource_record(resource),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   expect_match(conditionMessage(error), "credential-like")
   expect_match(conditionMessage(error), "API_KEY", fixed = TRUE)
@@ -309,7 +309,7 @@ test_that("resource records reject credential values outside evidence content", 
     args[[field]] <- sensitive[[field]]
     expect_error(
       do.call(tempest_resource, args),
-      class = "tempest_workflow_spec_error"
+      class = "tempest_product_validation_error"
     )
   }
 
@@ -321,7 +321,7 @@ test_that("resource records reject credential values outside evidence content", 
       media_type = "text/plain",
       content = "Evidence body"
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   expect_error(
     tempest_resource(
@@ -336,14 +336,14 @@ test_that("resource records reject credential values outside evidence content", 
       media_type = "text/html",
       content = "Evidence body"
     ),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   expect_error(
     tempest_research_workspace()$upsert_retrieved_resource(tempest_source(
       "https://example.org/legacy-title",
       title = "Legit source\n\n## Forged section"
     )),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
 
   resource <- do.call(tempest_resource, base_args)
@@ -351,7 +351,7 @@ test_that("resource records reject credential values outside evidence content", 
   resource@locator <- encoded_credential
   expect_error(
     tempest:::tempest_resource_record(resource),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
   workspace <- test_research_workspace()
   expect_error(
@@ -365,7 +365,7 @@ test_that("resource records reject credential values outside evidence content", 
   )
   expect_error(
     tempest:::tempest_resource_record(resource),
-    class = "tempest_workflow_spec_error"
+    class = "tempest_product_validation_error"
   )
 
   workspace <- test_research_workspace()

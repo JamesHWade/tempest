@@ -81,7 +81,7 @@ test_that("report rendering rejects policy values outside the closed contract", 
 
   expect_error(
     tempest_report_md("Title", "Body.", store, citation_policy = "unknown"),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
   expect_error(
     tempest_report_md(
@@ -90,7 +90,7 @@ test_that("report rendering rejects policy values outside the closed contract", 
       store,
       on_unsupported_claim = "unknown"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -111,7 +111,7 @@ test_that("report assembly rejects reserved source footnotes under every policy"
         store,
         citation_policy = policy
       ),
-      class = "tempest_deliverable_execution_error"
+      class = "tempest_product_report_error"
     )
   }
 })
@@ -126,7 +126,7 @@ test_that("report titles are single-line and rendered as escaped plain text", {
       store,
       citation_policy = "strict"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
   rendered <- tempest_report_md(
     "<Report> *draft* [link]",
@@ -178,7 +178,7 @@ test_that("reference metadata is escaped before Markdown interpolation", {
       paste0("Captured evidence [", unsafe_source$id, "]."),
       unsafe_store
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -387,7 +387,7 @@ test_that("strict policy refuses publication without completed verification", {
       store,
       citation_policy = "strict"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -414,7 +414,7 @@ test_that("strict policy requires each citation to bind to exact support", {
       store,
       citation_policy = "strict"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -435,7 +435,7 @@ test_that("strict policy rejects citation-free reports when claims exist", {
       store,
       citation_policy = "strict"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -447,7 +447,7 @@ test_that("strict policy rejects citation-free reports with an empty workspace",
       tempest_research_workspace(),
       citation_policy = "strict"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -478,7 +478,7 @@ test_that("strict policy binds every assertion and factual heading exactly", {
   )) {
     expect_error(
       tempest_report_md("Title", body, store, citation_policy = "strict"),
-      class = "tempest_deliverable_execution_error"
+      class = "tempest_product_report_error"
     )
   }
 })
@@ -505,7 +505,7 @@ test_that("strict publication requires exact captured source evidence", {
       store,
       citation_policy = "strict"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -533,7 +533,7 @@ test_that("strict policy rejects malformed and partial multi-source citations", 
       store,
       citation_policy = "strict"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
   expect_error(
     tempest_report_md(
@@ -546,7 +546,7 @@ test_that("strict policy rejects malformed and partial multi-source citations", 
       store,
       citation_policy = "strict"
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -585,7 +585,7 @@ test_that("final report validation rebinds canonical rendered citations", {
       on_unsupported_claim = "flag",
       min_support_score = 0.7
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -697,7 +697,7 @@ test_that("verified no-reference reports reject non-supported citations", {
           min_support_score = 0.7,
           include_references = FALSE
         ),
-        class = "tempest_deliverable_execution_error",
+        class = "tempest_product_report_error",
         info = paste(policy, status)
       )
     }
@@ -749,7 +749,7 @@ test_that("verified no-reference reports reject non-supported citations", {
       min_support_score = 0.7,
       include_references = FALSE
     ),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })
 
@@ -815,9 +815,26 @@ test_that("session report Markdown comes from narrow product state", {
       name = "Dr. Canonical"
     ))
   )
-  report_md <- "# Canonical report\n\nDurable body."
-  tempest:::tempest_session_set_report_value(session, report_md)
+  fixture <- test_persistence_add_costorm_evidence(
+    session,
+    key = "canonical-report"
+  )
+  report_md <- tempest_report_md(
+    title = session$title,
+    body = paste0(
+      fixture$claim@claim_text,
+      " [",
+      fixture$span@source_id,
+      "]."
+    ),
+    workspace = session$workspace,
+    citation_policy = cfg@citation_policy,
+    on_unsupported_claim = cfg@on_unsupported_claim,
+    min_support_score = cfg@min_support_score
+  )
+  report_md <- test_persistence_commit_costorm_report(session, report_md)
 
+  expect_identical(session$manifest@status, "succeeded")
   expect_identical(tempest_session_report_md(session), report_md)
 })
 
@@ -837,6 +854,6 @@ test_that("session report Markdown requires a canonical report artifact", {
 
   expect_error(
     tempest_session_report_md(session),
-    class = "tempest_deliverable_execution_error"
+    class = "tempest_product_report_error"
   )
 })

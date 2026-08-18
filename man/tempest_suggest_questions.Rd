@@ -4,39 +4,25 @@
 \alias{tempest_suggest_questions}
 \title{Suggest follow-up research questions for a topic}
 \usage{
-tempest_suggest_questions(
-  topic,
-  context = NULL,
-  n = 4,
-  chat = NULL,
-  config = tempest_config()
-)
+tempest_suggest_questions(topic, context = NULL, n = 4)
 }
 \arguments{
 \item{topic}{The research topic.}
 
 \item{context}{Optional character string with the recent conversation. When
-\code{NULL}, questions are generated from the topic alone.}
+nonempty, the first question asks about evidence missing from the current
+discussion.}
 
 \item{n}{Maximum number of questions to return.}
-
-\item{chat}{Optional ellmer Chat to use. When \code{NULL}, a chat is created from
-\code{config} using the coordinator model; the structured call does not invoke
-tools.}
-
-\item{config}{A \code{TempestConfig} object.}
 }
 \value{
 A character vector of at most \code{n} questions (possibly empty).
 }
 \description{
-Generates a short list of concise, user-facing questions to ask next about a
-topic, optionally conditioned on the conversation so far. The tempest Shiny
-app uses this to render clickable suggestion cards. The call is a single
-tool-free structured completion: any error yields an empty result.
+Projects a short, deterministic list of user-facing research questions from
+a topic and whether prior conversation context is present. Session-bound
+suggestions use the session's authoritative \code{next_question} program instead.
 }
 \examples{
-\dontrun{
 tempest_suggest_questions("History of jazz", n = 4)
-}
 }

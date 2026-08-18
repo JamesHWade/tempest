@@ -46,7 +46,7 @@ tempest_read_okf <- function(
   max_concepts = 5000,
   max_bytes = 20 * 1024^2
 ) {
-  path <- tempest_workflow_scalar(path, "path")
+  path <- tempest_product_scalar(path, "path")
   max_concepts <- tempest_okf_limit(
     max_concepts,
     "max_concepts",
@@ -513,7 +513,7 @@ tempest_okf_concepts <- function(
   types <- if (is.null(types)) {
     NULL
   } else {
-    tempest_workflow_character(types, "types")
+    tempest_product_character(types, "types")
   }
   today <- tempest_okf_date(today, "today")
   rows <- lapply(concept_ids, function(concept_id) {
@@ -582,7 +582,7 @@ tempest_okf_select_ids <- function(bundle, concept_ids) {
   if (is.null(concept_ids)) {
     return(available)
   }
-  concept_ids <- tempest_workflow_character(concept_ids, "concept_ids")
+  concept_ids <- tempest_product_character(concept_ids, "concept_ids")
   unknown <- setdiff(concept_ids, available)
   if (length(unknown) > 0L) {
     tempest_okf_abort(
@@ -681,7 +681,7 @@ tempest_okf_resources <- function(
   today = Sys.Date()
 ) {
   tempest_okf_check_bundle(bundle)
-  include_stale <- tempest_workflow_flag(include_stale, "include_stale")
+  include_stale <- tempest_product_flag(include_stale, "include_stale")
   today <- tempest_okf_date(today, "today")
   catalog <- tempest_okf_concepts(
     bundle,
@@ -806,7 +806,7 @@ tempest_okf_context <- function(
   max_chars = 100000
 ) {
   tempest_okf_check_bundle(bundle)
-  include_stale <- tempest_workflow_flag(include_stale, "include_stale")
+  include_stale <- tempest_product_flag(include_stale, "include_stale")
   max_concepts <- tempest_okf_limit(
     max_concepts,
     "max_concepts",

@@ -61,6 +61,16 @@ test_shadow_deputy_execution <- function(
       stage = "dialogue",
       role = "moderator",
       status = parent$stop_reason,
+      completion_disposition = if (
+        identical(
+          parent$stop_reason,
+          "complete"
+        )
+      ) {
+        "issued"
+      } else {
+        "terminal"
+      },
       correlation_id = correlation_id,
       deputy_run_id = parent$run_id,
       deputy_session_id = parent$session_id,
@@ -72,6 +82,16 @@ test_shadow_deputy_execution <- function(
       stage = "dialogue",
       role = "expert",
       status = child$stop_reason,
+      completion_disposition = if (
+        identical(
+          child$stop_reason,
+          "complete"
+        )
+      ) {
+        "issued"
+      } else {
+        "terminal"
+      },
       correlation_id = correlation_id,
       expert_id = expert_id,
       deputy_run_id = child$run_id,

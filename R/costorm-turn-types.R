@@ -36,9 +36,10 @@ TempestSessionTurnNotice <- S7::new_class(
       "evidence_gap",
       "evidence_failed",
       "mindmap_failed",
-      "suggestions_failed"
+      "suggestions_failed",
+      "progress_failed"
     )),
-    stage = prop_enum(c("evidence", "mindmap", "suggestions")),
+    stage = prop_enum(c("dialogue", "evidence", "mindmap", "suggestions")),
     severity = prop_enum(c("info", "warning")),
     message = prop_chr(),
     details = S7::new_property(S7::class_list, default = list())
@@ -68,14 +69,15 @@ TempestSessionTurnNotice <- S7::new_class(
       evidence_gap = "evidence",
       evidence_failed = "evidence",
       mindmap_failed = "mindmap",
-      suggestions_failed = "suggestions"
+      suggestions_failed = "suggestions",
+      progress_failed = "dialogue"
     )
     if (!identical(self@stage, expected_stage)) {
       return("notice code and stage must agree")
     }
     tryCatch(
       {
-        tempest_canonical_json(self@details)
+        tempest_product_canonical_json(self@details)
         NULL
       },
       error = function(error) "details must contain only serializable values"
@@ -255,7 +257,7 @@ tempest_session_turn_notice <- function(
   message,
   details = list()
 ) {
-  details <- tempest_workflow_serializable_list(details, "details")
+  details <- tempest_product_canonical_list(details, "details")
   TempestSessionTurnNotice(
     code = code,
     stage = stage,

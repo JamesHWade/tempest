@@ -18,7 +18,7 @@ The updated mind map with the node expanded, or the original
 mind map if expansion fails.
 }
 \description{
-Uses an LLM to split a single oversized node into 2-4 child subtopics,
-distributing notes and source_ids appropriately.
+This legacy generic expansion route is unavailable. Co-STORM mind maps are
+deterministic projections of committed product evidence and transcript state.
 }
 \keyword{internal}

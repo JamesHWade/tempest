@@ -21,8 +21,9 @@ verification program should be used.}
 
 \item{verifier}{A chat object (e.g. from \code{tempest_make_chat(config, "judge")}).}
 
-\item{policy}{Citation policy; verification runs only for "claim_verified" or
-"strict". Defaults to "claim_verified".}
+\item{policy}{Citation policy for standalone workspaces; verification runs
+only for "claim_verified" or "strict". A \code{TempestSession} always runs
+product-required claim verification and rejects non-verifying policies.}
 
 \item{verifier_model}{Optional model id bound into every verification-stage
 proof and projected onto each verified claim.}

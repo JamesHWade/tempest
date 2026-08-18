@@ -600,6 +600,16 @@ test_that("Tempest context survives Deputy delegation and hooks", {
         stage = "evidence_review",
         role = "moderator",
         status = parent_result$stop_reason,
+        completion_disposition = if (
+          identical(
+            parent_result$stop_reason,
+            "complete"
+          )
+        ) {
+          "issued"
+        } else {
+          "terminal"
+        },
         deputy_run_id = parent_result$run_id,
         deputy_session_id = parent_result$session_id,
         agent_id = parent_result$agent_id
@@ -610,6 +620,16 @@ test_that("Tempest context survives Deputy delegation and hooks", {
         stage = "evidence_review",
         role = "expert",
         status = child_result$stop_reason,
+        completion_disposition = if (
+          identical(
+            child_result$stop_reason,
+            "complete"
+          )
+        ) {
+          "issued"
+        } else {
+          "terminal"
+        },
         expert_id = "expert.evidence-reviewer",
         deputy_run_id = child_result$run_id,
         deputy_session_id = child_result$session_id,

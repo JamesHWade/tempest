@@ -42,7 +42,7 @@ tempest_generate_experts <- function(
     )
   }
   program_set <- program_set %||% tempest_program_set()
-  knowledge <- tempest_workflow_knowledge_view(program_set, knowledge_view)
+  knowledge <- tempest_product_knowledge_view(program_set, knowledge_view)
   module <- tempest_program_set_execution(
     program_set,
     "personas",
@@ -430,12 +430,6 @@ tempest_generated_expert_profile <- function(value, index) {
     description = description,
     instructions = instructions,
     focus_areas = focus_areas,
-    required_capability_ids = c(
-      "tempest.research.web",
-      "tempest.evidence.read",
-      "tempest.evidence.write"
-    ),
-    optional_capability_ids = "tempest.retrieval.semantic",
     selection_metadata = list(
       origin = "tempest.generated",
       position = as.integer(index)

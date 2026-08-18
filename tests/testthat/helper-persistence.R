@@ -2,7 +2,8 @@ test_persistence_storm_stage_records <- function(
   state,
   workspace,
   manifest,
-  min_support_score = 0.7
+  min_support_score = 0.7,
+  deputy_trace = NULL
 ) {
   records <- list()
   sequence <- 0L
@@ -15,6 +16,10 @@ test_persistence_storm_stage_records <- function(
         tempest:::tempest_governed_procedure_trace_binding(
           governed_reference
         )
+    }
+    snapshot_id <- manifest@knowledge_snapshot$snapshot_id %||% NULL
+    if (!is.null(snapshot_id)) {
+      trace$knowledge_snapshot_id <- snapshot_id
     }
     tempest:::tempest_stage_record_start(
       stage,
@@ -105,6 +110,17 @@ test_persistence_storm_stage_records <- function(
           }
         ]] <- values[[1]]
       }
+    }
+    if (length(claim_ids) > 0L) {
+      stopifnot(!is.null(deputy_trace))
+      trace$deputy_run_id <- deputy_trace$deputy_run_id
+      trace$deputy_session_id <- deputy_trace$deputy_session_id
+      trace$expert_id <- if (identical(deputy_trace$role, "moderator")) {
+        "moderator"
+      } else {
+        deputy_trace$expert_id
+      }
+      trace$correlation_id <- deputy_trace$correlation_id
     }
     running <- start("extract_claims", trace)
     succeed(
@@ -199,17 +215,206 @@ test_persistence_storm_stage_records <- function(
   records
 }
 
+test_persistence_storm_deputy_trace <- function(state, workspace, manifest) {
+  claims <- workspace$list_proposed_claims()
+  if (
+    !"research" %in% state$completed_stages ||
+      length(claims) == 0L
+  ) {
+    return(list(state = state, trace = NULL))
+  }
+  claim_expert_ids <- unique(vapply(
+    claims,
+    function(claim) {
+      value <- claim@expert_id
+      if (is.na(value)) "" else value
+    },
+    character(1)
+  ))
+  claim_expert_ids <- claim_expert_ids[nzchar(claim_expert_ids)]
+  stopifnot(length(claim_expert_ids) <= 1L)
+  expert_ids <- vapply(
+    state$experts,
+    \(expert) expert@expert_id,
+    character(1)
+  )
+  expert_id <- if (length(claim_expert_ids) == 1L) {
+    claim_expert_ids[[1L]]
+  } else if (length(expert_ids) > 0L) {
+    expert_ids[[1L]]
+  } else {
+    paste0("expert.persistence-", manifest@research_run_id)
+  }
+  if (!expert_id %in% expert_ids) {
+    state$experts <- c(
+      state$experts,
+      list(tempest_expert(
+        expert_id = expert_id,
+        name = "Persistence Fixture Expert",
+        title = "Research persistence analyst",
+        description = "Binds durable fixture evidence to one execution.",
+        instructions = "Preserve exact execution identity."
+      ))
+    )
+  }
+  correlations <- unique(vapply(
+    claims,
+    function(claim) {
+      value <- claim@retrieval_step_id
+      if (is.na(value)) "" else value
+    },
+    character(1)
+  ))
+  correlations <- correlations[nzchar(correlations)]
+  stopifnot(length(correlations) <= 1L)
+  correlation_id <- if (length(correlations) == 1L) {
+    correlations[[1L]]
+  } else {
+    paste0("correlation.persistence-", manifest@research_run_id)
+  }
+  deputy_context <- tempest:::tempest_deputy_run_context(
+    manifest,
+    stage = "research",
+    role = "expert",
+    expert_id = expert_id
+  )
+  deputy_run_id <- paste0("deputy.persistence-", manifest@research_run_id)
+  trace <- tempest:::tempest_research_manifest_traces(list(list(
+    agent_id = tempest:::tempest_deputy_adapter_agent_id(deputy_context),
+    correlation_id = correlation_id,
+    deputy_run_id = deputy_run_id,
+    deputy_session_id = tempest:::tempest_storm_deputy_session_id(
+      manifest@research_run_id,
+      expert_id
+    ),
+    expert_id = expert_id,
+    role = "expert",
+    stage = "research",
+    status = "complete",
+    completion_disposition = "issued",
+    trace_id = deputy_run_id,
+    trace_type = "deputy_run"
+  )))[[1L]]
+  list(state = state, trace = trace)
+}
+
+test_persistence_add_costorm_evidence <- function(
+  session,
+  key,
+  claim_text = "Durable session evidence supports this report."
+) {
+  programs <- tempest:::tempest_program_set_manifest_programs(
+    tempest:::tempest_session_program_set(session)
+  )
+  fixture <- test_add_verifiable_claim(
+    session$workspace,
+    key = key,
+    claim_text = claim_text,
+    quote = claim_text,
+    extracted_by = programs$extract_claims$program_artifact_id
+  )
+  session$workspace$verify_proposed_claims_batch(
+    list(test_claim_support(fixture$claim, fixture$span)),
+    verified_at = "2026-08-16T00:00:00Z",
+    verifier = programs$verify_claim_support$program_artifact_id,
+    .verification_owner_token = tempest:::tempest_session_verification_owner_token(
+      session
+    )
+  )
+  fixture
+}
+
+test_persistence_commit_costorm_report <- function(session, report_md) {
+  correlation_id <- paste0(
+    "correlation.persistence-",
+    session$session_id
+  )
+  deputy_context <- tempest:::tempest_deputy_run_context(
+    session$manifest,
+    stage = "dialogue",
+    role = "moderator"
+  )
+  deputy_run_id <- paste0("deputy.persistence-", session$session_id)
+  deputy_trace <- tempest:::tempest_research_manifest_traces(list(list(
+    agent_id = tempest:::tempest_deputy_adapter_agent_id(deputy_context),
+    correlation_id = correlation_id,
+    deputy_run_id = deputy_run_id,
+    deputy_session_id = tempest:::tempest_costorm_deputy_session_id(
+      session$session_id,
+      "moderator"
+    ),
+    role = "moderator",
+    stage = "dialogue",
+    status = "complete",
+    completion_disposition = "issued",
+    trace_id = deputy_run_id,
+    trace_type = "deputy_run"
+  )))[[1L]]
+  state <- tempest:::tempest_storm_state(
+    session$topic,
+    completed_stages = "research"
+  )
+  records <- test_persistence_storm_stage_records(
+    state,
+    session$workspace,
+    session$manifest,
+    min_support_score = session$config@min_support_score,
+    deputy_trace = deputy_trace
+  )
+  tempest:::tempest_session_record_deputy_trace(session, deputy_trace)
+  tempest:::tempest_session_set_stage_records(session, records)
+  test_persistence_commit_existing_costorm_report(session, report_md)
+}
+
+test_persistence_commit_existing_costorm_report <- function(
+  session,
+  report_md
+) {
+  records <- tempest:::tempest_session_stage_records(session)
+  report_md <- tempest:::tempest_persistence_report_for_records(
+    report_md,
+    records,
+    trusted_title = session$title
+  )
+  manifest <- tempest:::tempest_product_authority_finalize_manifest(
+    manifest = session$manifest,
+    stage_records = records,
+    workspace = session$workspace,
+    deputy_traces = tempest:::tempest_session_deputy_traces(session),
+    report_md = report_md,
+    config = session$config,
+    experts = session$experts,
+    expert_sessions = tempest:::tempest_expert_sessions_snapshot(session),
+    product_state = list(title = session$title),
+    status = "succeeded",
+    require_publishable = TRUE
+  )
+  tempest:::tempest_session_commit_terminal_report(
+    session,
+    manifest,
+    report_md
+  )
+  report_md
+}
+
 test_persistence_bind_storm_records <- function(
   state,
   workspace,
   manifest,
   min_support_score = 0.7
 ) {
+  deputy <- test_persistence_storm_deputy_trace(
+    state,
+    workspace,
+    manifest
+  )
+  state <- deputy$state
   state$stage_records <- test_persistence_storm_stage_records(
     state,
     workspace,
     manifest,
-    min_support_score = min_support_score
+    min_support_score = min_support_score,
+    deputy_trace = deputy$trace
   )
   if (!is.null(state$report_md)) {
     state$report_md <- tempest:::tempest_persistence_report_for_records(
@@ -217,7 +422,19 @@ test_persistence_bind_storm_records <- function(
       state$stage_records
     )
   }
-  tempest:::tempest_storm_state_validate(state)
+  state <- tempest:::tempest_storm_state_validate(state)
+  expert_ids <- vapply(
+    state$experts,
+    \(expert) expert@expert_id,
+    character(1)
+  )
+  manifest <- tempest:::tempest_persistence_manifest_bind_stage_records(
+    manifest,
+    state$stage_records,
+    deputy_traces = if (is.null(deputy$trace)) list() else list(deputy$trace),
+    expert_ids = expert_ids
+  )
+  list(state = state, manifest = manifest)
 }
 
 test_persistence_complete_storm_product <- function(
@@ -225,7 +442,8 @@ test_persistence_complete_storm_product <- function(
   run_id,
   config,
   program_set,
-  manifest_status = "succeeded"
+  manifest_status = "succeeded",
+  extra_sources = list()
 ) {
   programs <- tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace()
@@ -235,6 +453,9 @@ test_persistence_complete_storm_product <- function(
     content_text = "Durable evidence supports the completed research product."
   )
   workspace$upsert_retrieved_resource(source)
+  for (extra_source in extra_sources) {
+    workspace$upsert_retrieved_resource(extra_source)
+  }
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = paste0("span.", run_id),
     source_id = source$id,
@@ -322,12 +543,14 @@ test_persistence_complete_storm_product <- function(
     programs = programs,
     status = manifest_status
   )
-  state <- test_persistence_bind_storm_records(
+  bound <- test_persistence_bind_storm_records(
     state,
     workspace,
     manifest,
     min_support_score = config@min_support_score
   )
+  state <- bound$state
+  manifest <- bound$manifest
   list(
     workspace = workspace,
     state = state,

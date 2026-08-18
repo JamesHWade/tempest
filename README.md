@@ -19,9 +19,9 @@ This package reproduces the core workflow primitives:
 - **Resumable research state** for scripted STORM and interactive Co-STORM
 - **Two-step outline refinement** and **lead section generation**
 - **Query decomposition** and **semantic fact retrieval**
-- **Parallel research** across perspectives (optional)
+- **Parallel section writing** from already-grounded evidence (optional)
 - **Interactive multi-agent moderation** with mind map (Co-STORM)
-- **LLM-driven discourse management** with dynamic expert roster (Co-STORM)
+- **Deterministic dialogue projections** with an explicit expert roster
 - **Automated evaluation** with simulated users
 
 Built on the R AI ecosystem:
@@ -194,225 +194,41 @@ a separate reviewed Graft flow; research promotion never mints one.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
 Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state schema
-4, ProgramSet and research-manifest schema 2, StageRecord output-digest payload
+4, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload
 schema 3, and promotion-bundle schema 1. Readers reject every other version;
 missing fields, extra fields, and values that only become valid after coercion
 are errors.
 
-## Frozen generic-kernel deletion inventory
+## Generic-kernel cutover
 
-> **Warning:** The experimental generic deliverable and workflow kernel remains
-> only as section-10 deletion inventory in the Tempest 0.2 migration train. It
-> is not a compatibility path, and no migration shim is planned. Use the STORM
-> and Co-STORM product APIs for research workflows.
+Tempest 0.2 supports only the STORM and Co-STORM product APIs. Use
+`tempest_run()` for scripted research and `tempest_session()` for interactive
+research. The former application-neutral workflow, runtime, capability,
+connection, skill, deliverable, and artifact APIs are unavailable; retained
+symbols fail immediately with class `tempest_generic_kernel_cutover_error`.
+There is no compatibility or generic-kernel migration layer.
 
-The frozen 0.1 output kernel previously let host applications define an
-objective, versioned output contract, and runtime operations. This example is
-retained only to make the deletion boundary reviewable:
-
-```r
-objective <- tempest_objective(
-  "Turn the supplied request into a concise action brief",
-  constraints = "Do not invent unsupported commitments",
-  acceptance_criteria = c(
-    "The brief includes a summary",
-    "The brief includes explicit actions"
-  ),
-  deliverable_ids = "action-brief"
-)
-
-registry <- tempest_builtin_operation_registry()
-registry$register(
-  "example.generator.action_brief",
-  kind = "generator",
-  version = "1",
-  implementation = function(context) {
-    list(
-      summary = context$objective@description,
-      actions = context$actions
-    )
-  }
-)
-registry$register(
-  "example.renderer.action_brief",
-  kind = "renderer",
-  version = "1",
-  implementation = function(content) {
-    list(
-      tempest_artifact_representation(
-        content = paste0(
-          "# Action brief\n\n",
-          content$summary,
-          "\n\n## Actions\n\n- ",
-          paste(content$actions, collapse = "\n- ")
-        ),
-        artifact_kind = "brief",
-        media_type = "text/markdown"
-      ),
-      tempest_artifact_representation(
-        content = content,
-        artifact_kind = "structured",
-        media_type = "application/json"
-      )
-    )
-  }
-)
-
-spec <- tempest_deliverable_spec(
-  "action-brief",
-  version = "1",
-  title = "Action brief",
-  purpose = "Make the requested outcome actionable",
-  instructions = "Preserve constraints and uncertainty.",
-  required_fields = c("summary", "actions"),
-  generator_id = "example.generator.action_brief",
-  validator_ids = "tempest.validator.required_fields",
-  renderer_ids = "example.renderer.action_brief",
-  operation_versions = c(
-    "example.generator.action_brief" = "1",
-    "tempest.validator.required_fields" = "1",
-    "example.renderer.action_brief" = "1"
-  ),
-  media_types = c("text/markdown", "application/json")
-)
-
-catalog <- tempest_artifact_catalog(
-  store = tempest_memory_artifact_store()
-)
-result <- tempest_generate_deliverable(
-  spec,
-  context = list(
-    objective = objective,
-    actions = c("Confirm scope", "Prepare evidence", "Review outcome")
-  ),
-  registry = registry,
-  catalog = catalog
-)
-
-catalog$list()
-```
-
-Specifications contain only serializable values and stable operation ids.
-Runtime functions stay in the operation registry, while artifacts retain their
-specification fingerprint, validation state, provenance, and content checksum.
-When `requires_approval = TRUE`, a `TempestRun` publishes the validated
-artifact as `awaiting_approval`, pauses without rerunning its producer, and
-invokes exporters only after the host approves the output. Invalid output stays
-inspectable and is never exported. A retry can explicitly replace a stable
-invalid artifact from the same run, step, and specification while retaining
-the prior validation diagnostics.
-Inline structured content uses canonical JSON semantics: objects and arrays
-restore as lists, while classed R objects, missing values, and binary content
-should use an external `storage_ref`.
-Supported STORM and Co-STORM bundles persist only their explicit research
-manifest, workspace, product state, report, and optional immutable Graft
-snapshot. They do not persist or restore generic artifact catalogs, workflow
-runs, codec registries, or process-local runtime objects.
-
-## Frozen generic-kernel deletion inventory
-
-> **Warning:** The experimental generic workflow kernel is retained only so the
-> section-10 deletion PR can remove it as a coherent unit. It is not a supported
-> Tempest 0.2 product surface and must not be used for new work.
-
-The following offline example is a deletion-owned fixture. It records the old
-run model without promising bundle restoration or compatibility:
-
-```r
-expert <- tempest_expert(
-  expert_id = "expert.delivery",
-  name = "Delivery Analyst",
-  title = "Implementation specialist",
-  description = "Turns evidence into executable plans.",
-  instructions = "Surface dependencies, risks, and unresolved decisions."
-)
-
-objective <- tempest_objective(
-  "Prepare a reviewable implementation plan",
-  acceptance_criteria = "Every action has an owner and completion signal"
-)
-
-operations <- tempest_operation_registry()
-operations$register(
-  "host.step.plan",
-  kind = "step",
-  implementation = function(objective, expert_ids) {
-    list(
-      objective = objective@description,
-      assigned_experts = expert_ids,
-      actions = c("Confirm scope", "Collect evidence", "Review outcome")
-    )
-  }
-)
-
-workflow <- tempest_workflow_spec(
-  "host.action-plan",
-  title = "Action plan",
-  purpose = "Turn an objective into an actionable outcome",
-  steps = list(tempest_workflow_step(
-    "plan",
-    title = "Plan",
-    purpose = "Create the action plan",
-    operation_id = "host.step.plan",
-    assignment_rule = "expert.delivery"
-  ))
-)
-
-run <- tempest_run_workflow(
-  objective,
-  workflow,
-  runtime = operations,
-  experts = list(expert)
-)
-tempest_run_status(run)
-tempest_run_events(run)
-```
-
-In the frozen kernel, `tempest_runtime()` adds least-privilege skills,
-capabilities, and opaque connection references. An expert profile declares what
-it needs; the host grants connection IDs for that run; a connection provider
-rehydrates authenticated clients only after authorization. Profiles, snapshots,
-and events never contain tool closures, clients, or credentials.
-
-The deletion-owned kernel passes process-local services through
-`runtime_context` and records the resulting per-step and per-expert
-authorization decisions with
-`tempest_run_capability_grants()`, including per-attempt grant history for
-retries, while leaving the live services themselves out of snapshots and run
-bundles. Side-effecting capabilities pass through policy and approval before
-their factories or step operation can execute.
-
-`tempest_storm_workflow_run()` and `tempest_costorm_workflow_run()` are frozen
-for the section-10 deletion PR; they are not supported 0.2 product entry
-points. Research integrations should call `tempest_run()` or
-`tempest_session()` directly.
-Classed execution errors retain the failed run in `condition$run` for the
-offline deletion fixture. No supported 0.2 product bundle restores that generic
-state.
-
-Run `vignette("reusable-workflows", package = "tempest")` to inspect the
-offline deletion-owned baseline.
+Product bundles contain the exact research manifest, provisional workspace,
+product state, report, and optional immutable Graft snapshot. Fixed scientific
+transformations carry dsprrr program identity, while open-ended agent calls
+carry Deputy execution identity. Those identities support correlation and
+audit joins only; they do not claim that an execution caused, authored, or
+validated report content.
 
 ## Agent skills
 
-Tempest ships two supported research skills and three retiring Tempest 0.1
-workflow skills:
-
-The custom-workflow design, build, and verification skills document the frozen
-generic kernel and will be removed with it in Tempest 0.2.0. The two research
-skills remain the supported product direction.
+Tempest ships two supported research skills. Three generic-workflow skill
+directories remain only as unavailable deletion inventory until T8 removes
+them physically.
 
 - `use-tempest-research` chooses, configures, runs, resumes, inspects, and
   embeds Tempest's scripted STORM and interactive Co-STORM workflows.
 - `conduct-storm-research` carries the provider- and framework-neutral STORM
   and Co-STORM protocols. It can guide another implementation or be loaded by
   a tool-capable chat host without calling Tempest APIs.
-- `design-tempest-workflow`, `build-tempest-workflow`, and
-  `verify-tempest-workflow` are frozen deletion-owned 0.1 artifacts and are not
-  part of the 0.2 product contract.
 
-List the bundled skill directories or install them into the directory used by
-your agent:
+List the supported skill directories or install them into the directory used
+by your agent:
 
 ```r
 tempest_agent_skills()
@@ -429,8 +245,8 @@ loader can also discover the bundled skills from an attached Tempest package
 and expose `conduct-storm-research` inside a tool-capable chat application.
 The host must still provide retrieval, evidence, state, and output tools.
 
-These Agent Skills are distinct from the frozen 0.1 `tempest_skill()` runtime
-contract, which is also scheduled for removal in Tempest 0.2.0.
+These Agent Skills are external operating guidance, not the unavailable 0.1
+generic runtime contract that used the similarly named `tempest_skill()`.
 
 Read `vignette("agent-skills", package = "tempest")` to install a supported
 research skill or expose portable STORM research through an ellmer client and
@@ -457,8 +273,8 @@ res <- tempest_run("Life cycle assessment of lithium-ion batteries", config = cf
 cat(res$report_md)
 ```
 
-Use `remove_duplicate = TRUE` to ask the polishing step to collapse repeated
-content while preserving unique cited claims.
+Report polishing is deterministic. `remove_duplicate = TRUE` is unsupported
+and fails before report publication.
 
 You can also use a single model for all roles:
 
@@ -466,16 +282,18 @@ You can also use a single model for all roles:
 cfg <- tempest_config(models = "anthropic/claude-sonnet-4-20250514")
 ```
 
-### Parallel Research
+### Parallel section writing
 
-Run perspective research in parallel using [mirai](https://github.com/shikokuchuo/mirai):
+Perspective research is deliberately sequential so each open-ended expert turn
+can be synchronously bound to one terminal Deputy trace. Setting
+`parallel_research = TRUE` is an error. Already-grounded report sections can be
+written in parallel using [mirai](https://github.com/shikokuchuo/mirai):
 
 ```r
 res <- tempest_run(
   "Quantum computing applications",
   config = cfg,
-  parallel_research = TRUE,  # requires mirai
-  parallel_writing = TRUE,   # also requires mirai
+  parallel_writing = TRUE,  # requires mirai
   verbose = TRUE
 )
 ```
@@ -626,7 +444,6 @@ execution.
 | `search_provider` | `"native"` | Search backend: `"native"`, `"wikipedia"`, `"you"`, `"bing"`, `"serper"`, `"brave"`, `"duckduckgo"`, `"tavily"`, `"searxng"`, `"google"`, `"azure_ai_search"` |
 | `embed_fn` | `NULL` | Embedding function for RAG (e.g., `ragnar::embed_openai()`) |
 | `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
-| `artifact_store` | `NULL` | Frozen Tempest 0.1 host adapter; do not use for new integrations |
 | `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
 | `cache_dir` | `NULL` | Cache directory; defaults to `tempdir()/tempest-cache` or `TEMPEST_CACHE_DIR` env var |
 | `cache_enabled` | `TRUE` | Whether search and fetch calls read from and write to the cache |
@@ -635,10 +452,7 @@ execution.
 | `max_search_queries_per_turn` | `3` | Maximum decomposed search queries per research turn |
 | `retrieve_top_k` | `25` | Maximum facts/chunks retrieved for each section |
 | `max_sources` | `24` | Maximum sources to track per session |
-| `node_expansion_trigger_count` | `NULL` | Co-STORM: auto-split oversized mind map nodes when note count exceeds this (NULL = disabled) |
-| `enable_discourse_manager` | `FALSE` | Co-STORM: use LLM-driven turn management |
 | `max_active_experts` | `5` | Co-STORM: maximum concurrent active experts |
-| `enable_unseen_surfacing` | `FALSE` | Co-STORM: surface undiscussed sources as moderator questions |
 
 By default, coordinator and writer roles use `openai/gpt-5.6-sol`; expert,
 mind map, and judge roles use `openai/gpt-5.6-luna`. Tempest constructs
@@ -724,14 +538,12 @@ cfg <- tempest_config(
 )
 ```
 
-## Frozen 0.1 scoped runtime
+## Deputy execution identity
 
-This experimental runtime layer remains solely as section-10 deletion
-inventory in the Tempest 0.2 migration train. It is not a compatibility path.
-Co-STORM moves to Deputy-managed agents, permissions, and tools; hosts inject
-connection implementations directly. Do not adopt or extend
-`tempest_skill()`, `tempest_capability_spec()`, `tempest_connection_ref()`, or
-`tempest_runtime()`.
+Co-STORM moderator and expert calls run through Deputy with product-owned tools.
+Tempest persists only credential-safe terminal execution identities for
+correlation and audit joins. These references do not grant authority and do not
+assert causal content provenance.
 
 ## Interactive Co-STORM
 
@@ -798,21 +610,6 @@ session$warmup()  # Each expert answers 2-4 initial questions
 session$step("What is quantum supremacy?")  # Benefits from prior research
 ```
 
-### Discourse Manager
-
-Enable LLM-driven turn management for autonomous multi-agent conversations:
-
-```r
-cfg <- tempest_config(enable_discourse_manager = TRUE)
-session <- tempest_session("CRISPR gene editing", config = cfg)
-session$warmup()
-
-# Autonomous mode: the discourse manager decides who speaks next
-result <- session$step(auto = TRUE)
-```
-
-The discourse manager decides each turn's action: which expert speaks, whether to add or retire experts, whether to probe for deeper questions, or when to end the round.
-
 ### Dynamic Expert Roster
 
 Experts can be added or retired during a session:
@@ -825,19 +622,11 @@ session$get_active_experts()
 
 The roster respects `max_active_experts` (default 5). Retired experts' tools return a notice that the expert is no longer available.
 
-### Mind Map Node Expansion
-
-When `node_expansion_trigger_count` is set, oversized mind map nodes are automatically split into subtopics:
-```r
-cfg <- tempest_config(node_expansion_trigger_count = 8)
-session <- tempest_session("AI safety", config = cfg)
-```
-
 ### Report Generation
 
 ```r
-# Reorganize the mind map before generating the report
-report <- session$report(style = "technical", reorganize = TRUE)
+session$reorganize_mindmap()
+report <- session$report(style = "technical", include_references = TRUE)
 ```
 
 ### Shiny App

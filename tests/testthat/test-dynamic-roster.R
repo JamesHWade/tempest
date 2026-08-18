@@ -91,10 +91,7 @@ test_that("tempest_generate_single_expert returns an expert profile", {
   expect_s7_class(expert, tempest:::TempestExpertProfile)
   expect_equal(expert@name, "Dr. Policy")
   expect_equal(expert@model_role, "expert")
-  expect_contains(
-    expert@required_capability_ids,
-    "tempest.evidence.read"
-  )
+  expect_identical(expert@required_capability_ids, character())
 })
 
 test_that("transcript_markdown returns the most recent turns", {
@@ -111,7 +108,7 @@ test_that("transcript_markdown returns the most recent turns", {
     ))
   )
   for (i in seq_len(5)) {
-    ses$add_turn(paste0("S", i), "assistant", paste("turn", i))
+    ses$add_turn(paste0("User ", i), "user", paste("turn", i))
   }
 
   md <- ses$transcript_markdown(max_turns = 2)

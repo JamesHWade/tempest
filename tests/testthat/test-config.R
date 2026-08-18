@@ -21,36 +21,45 @@ test_that("tempest_config creates valid config", {
 })
 
 test_that("tempest_config has only the frozen T7 product surface", {
+  removed <- c(
+    "artifact_store",
+    "node_expansion_trigger_count",
+    "enable_discourse_manager",
+    "enable_unseen_surfacing"
+  )
   expect_identical(
-    intersect(names(formals(tempest_config)), "artifact_store"),
+    intersect(names(formals(tempest_config)), removed),
     character()
   )
 
   cfg <- tempest_config()
   expect_identical(
-    intersect(S7::prop_names(cfg), "artifact_store"),
+    intersect(S7::prop_names(cfg), removed),
     character()
   )
 
-  error <- tryCatch(
-    {
-      do.call(tempest_config, list(artifact_store = NULL))
-      NULL
-    },
-    error = identity
-  )
-  expect_s3_class(error, "simpleError")
-  if (inherits(error, "error")) {
-    expect_identical(
+  for (arg in removed) {
+    value <- if (identical(arg, "artifact_store")) NULL else FALSE
+    error <- tryCatch(
+      {
+        do.call(tempest_config, stats::setNames(list(value), arg))
+        NULL
+      },
+      error = identity
+    )
+    expect_s3_class(error, "simpleError")
+    expect_match(
       conditionMessage(error),
-      "unused argument (artifact_store = NULL)"
+      paste0("unused argument (", arg, " ="),
+      fixed = TRUE,
+      info = arg
     )
   }
   expect_identical(
     tempest:::tempest_research_config_digest(cfg),
     paste0(
       "sha256:",
-      "e351787b5eae9d04d9b9d7fe029aeff6f4aed69fe82e797dca955e70fb8378a5"
+      "d3476d16504db1a7ca93f3eb50c038e26deffda9f8d25cd972419b996ea9957b"
     )
   )
 })
@@ -101,7 +110,7 @@ test_that("tempest_config validates logical and model controls", {
     class = "tempest_config_error"
   )
   expect_error(
-    tempest_config(enable_discourse_manager = c(TRUE, FALSE)),
+    tempest_config(cache_enabled = c(TRUE, FALSE)),
     class = "tempest_config_error"
   )
   expect_error(

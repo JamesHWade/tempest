@@ -6,10 +6,32 @@ fake_costorm_warmup_session <- function(
   mindmap_async = NULL
 ) {
   local_mocked_bindings(
-    tempest_deputy_chat_last_execution = function(chat) chat$last_execution(),
+    tempest_session_assert_mutable = function(session, action) {
+      invisible(session)
+    },
+    tempest_session_expert_manager = function(session) session$fake_manager,
+    tempest_session_chat = function(session, role) session$fake_chats[[role]],
+    tempest_session_append_transcript = function(session, speaker, role, text) {
+      if (!identical(role, "assistant")) {
+        stop("The fake warmup manager commits only expert completions.")
+      }
+      session$state$turns[[length(session$state$turns) + 1L]] <- list(
+        speaker = speaker,
+        role = role,
+        text = text
+      )
+      invisible(session)
+    },
+    tempest_session_async_work_start = function(...) "fake-warmup-work",
+    tempest_session_async_work_finish = function(...) invisible(NULL),
+    tempest_session_deputy_traces = function(session) session$state$traces,
     tempest_session_programs = function(session) session$programs,
     tempest_session_stage_recorder = function(session) {
       tempest:::tempest_stage_record_discard
+    },
+    tempest_costorm_mindmap_projection = function(session) {
+      session$state$map_updates <- session$state$map_updates + 1L
+      mindmap_async()
     },
     .env = parent.frame()
   )
@@ -77,6 +99,8 @@ fake_costorm_warmup_session <- function(
   state$chats <- new.env(parent = emptyenv())
   state$session_keys <- new.env(parent = emptyenv())
   state$run_count <- 0L
+  state$traces <- list()
+  state$completions <- new.env(parent = emptyenv())
 
   call_chat <- function(prompt, expert, generation) {
     args <- names(formals(chat_async))
@@ -105,6 +129,7 @@ fake_costorm_warmup_session <- function(
       execution <- new.env(parent = emptyenv())
       execution$value <- NULL
       chat <- list(
+        get_tools = function() list(research = TRUE),
         chat_async = function(prompt, run_context = list()) {
           state$run_count <- state$run_count + 1L
           deputy_run_id <- paste0("fake-deputy-run-", state$run_count)
@@ -119,16 +144,17 @@ fake_costorm_warmup_session <- function(
               generation
             ),
             expert_id = expert_id,
+            completion_disposition = "issued",
             role = run_context$role %||% "expert",
             stage = run_context$stage %||% "warmup",
             status = "complete",
             trace_id = deputy_run_id,
             trace_type = "deputy_run"
           )
+          state$traces[[length(state$traces) + 1L]] <- execution$value
           call_chat(prompt, expert, generation)
         },
-        last_turn = function() NULL,
-        last_execution = function() execution$value
+        .trace = function() execution$value
       )
       state$chats[[expert_id]] <- chat
     }
@@ -153,35 +179,152 @@ fake_costorm_warmup_session <- function(
     state$retired <- state$retired + 1L
     list(retired = TRUE, cancellation_supported = FALSE)
   }
+  manager$request_completion_async <- function(
+    expert_id,
+    prompt,
+    stage,
+    correlation_id
+  ) {
+    session_result <- manager$get_or_create(expert_id)
+    request <- session_result$chat$chat_async(
+      prompt,
+      run_context = list(
+        correlation_id = correlation_id,
+        role = "expert",
+        stage = stage
+      )
+    )
+    trace <- session_result$chat$.trace()
+    completion_id <- paste0("fake-completion-", trace$deputy_run_id)
+    promises::then(
+      request,
+      function(response) {
+        assign(
+          completion_id,
+          list(
+            response = response,
+            trace = trace,
+            session_id = session_result$session_id,
+            expert_id = expert_id
+          ),
+          state$completions
+        )
+        completion_id
+      }
+    )
+  }
+  manager$commit_completion <- function(
+    completion_id,
+    expert_id,
+    stage,
+    is_current
+  ) {
+    completion <- get(completion_id, state$completions, inherits = FALSE)
+    rm(list = completion_id, envir = state$completions)
+    if (!isTRUE(is_current())) {
+      return(list(cancelled = TRUE))
+    }
+    before_sources <- length(session$workspace$list_retrieved_sources())
+    before_claims <- length(session$workspace$list_proposed_claims())
+    source_ids <- tempest:::tempest_session_answer_source_ids(
+      list(workspace = session$workspace),
+      completion$response,
+      character()
+    )
+    request <- tempest:::tempest_extract_facts_from_answer_async(
+      session$fake_chats$extractor,
+      completion$response,
+      session$workspace,
+      module = session$programs$extract_claims,
+      source_ids = source_ids,
+      session_id = session$session_id,
+      expert_id = expert_id,
+      retrieval_step_id = completion$trace$correlation_id,
+      deputy_run_id = completion$trace$deputy_run_id,
+      deputy_session_id = completion$trace$deputy_session_id,
+      commit_if = is_current,
+      record_stage = tempest:::tempest_stage_record_discard
+    )
+    request <- promises::then(request, function(...) {
+      after_sources <- length(session$workspace$list_retrieved_sources())
+      after_claims <- length(session$workspace$list_proposed_claims())
+      list(
+        source_ids = source_ids,
+        sources_added = max(0L, after_sources - before_sources),
+        claims_added = max(0L, after_claims - before_claims),
+        extraction_skipped = NA_character_
+      )
+    })
+    promises::then(
+      request,
+      onFulfilled = function(evidence) {
+        list(
+          cancelled = FALSE,
+          response = completion$response,
+          deputy_execution = completion$trace,
+          session_id = completion$session_id,
+          source_ids = evidence$source_ids,
+          claim_ids = if (evidence$claims_added > 0L) {
+            tail(
+              vapply(
+                session$workspace$list_proposed_claims(),
+                \(claim) claim@claim_id,
+                character(1)
+              ),
+              evidence$claims_added
+            )
+          } else {
+            character()
+          },
+          sources_added = evidence$sources_added,
+          claims_added = evidence$claims_added,
+          evidence_committed = is.na(
+            evidence$extraction_skipped %||% NA_character_
+          ),
+          evidence_error = NULL
+        )
+      },
+      onRejected = function(error) {
+        list(
+          cancelled = FALSE,
+          response = completion$response,
+          deputy_execution = completion$trace,
+          session_id = completion$session_id,
+          source_ids = character(),
+          claim_ids = character(),
+          evidence_committed = FALSE,
+          evidence_error = tempest:::tempest_progress_error_payload(error)
+        )
+      }
+    )
+  }
+  manager$cancel_completion <- function(completion_id) {
+    if (exists(completion_id, state$completions, inherits = FALSE)) {
+      rm(list = completion_id, envir = state$completions)
+    }
+    invisible(completion_id)
+  }
 
-  session <- new.env(parent = emptyenv())
+  session <- list2env(
+    list(
+      experts = experts,
+      mindmap = tempest:::tempest_mindmap_init("Test topic")
+    ),
+    parent = emptyenv()
+  )
   class(session) <- "TempestSession"
   session$session_id <- "warmup-session"
   session$programs <- test_program_executions(run_id = session$session_id)
   session$topic <- "Test topic"
-  session$experts <- experts
-  session$expert_session_manager <- manager
+  session$fake_manager <- manager
   session$workspace <- store
-  session$mindmap <- tempest:::tempest_mindmap_init(session$topic)
-  session$artifacts <- new.env(parent = emptyenv())
   session$state <- state
-  session$chats <- list(
+  session$fake_chats <- list(
     extractor = list(chat_structured_async = extractor_async),
-    mindmap = list(chat_structured_async = function(...) {
-      state$map_updates <- state$map_updates + 1L
-      mindmap_async(...)
-    })
+    mindmap = list()
   )
   session$harvest_native_sources <- function(chat = NULL, turn = NULL) {
     character()
-  }
-  session$add_turn <- function(speaker, role, text) {
-    state$turns[[length(state$turns) + 1L]] <- list(
-      speaker = speaker,
-      role = role,
-      text = text
-    )
-    invisible(TRUE)
   }
   session$emit_progress <- function(
     event_type,
@@ -223,6 +366,7 @@ test_costorm_deputy_trace <- function(
 ) {
   trace <- list(
     agent_id = paste0("test-agent-", role),
+    completion_disposition = "issued",
     deputy_run_id = run_id,
     deputy_session_id = session_id,
     role = role,

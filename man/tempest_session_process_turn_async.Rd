@@ -6,36 +6,21 @@
 \usage{
 tempest_session_process_turn_async(
   session,
-  user_text,
-  assistant_text,
-  deputy_execution,
-  provider_turn = NULL,
+  completion_id,
   suggest = TRUE,
   n_suggestions = 4L,
-  turn_id = NULL,
   is_current = function() TRUE
 )
 }
 \arguments{
 \item{session}{A \link{TempestSession} object.}
 
-\item{user_text}{Completed user input as a single string.}
-
-\item{assistant_text}{Completed moderator response as a single string.}
-
-\item{deputy_execution}{Exact completed moderator Deputy trace captured with
-the response before any asynchronous queueing.}
-
-\item{provider_turn}{Optional process-local provider turn used to harvest
-native sources. It is never retained in the result.}
+\item{completion_id}{Opaque, process-local completion identifier returned by
+\code{session$request_completion_async()}.}
 
 \item{suggest}{Whether to generate follow-up questions.}
 
 \item{n_suggestions}{Maximum number of follow-up questions.}
-
-\item{turn_id}{Optional stable correlation identifier. When supplied, it
-must equal the completed moderator Deputy trace correlation. When \code{NULL},
-that trace correlation is authoritative.}
 
 \item{is_current}{Process-local predicate returning \code{TRUE} while this work is
 allowed to commit. It is never retained in the result.}

@@ -6,7 +6,7 @@ test_that("research manifests validate schema and lifecycle enums", {
   )
 
   expect_identical(S7::S7_inherits(manifest, TempestResearchManifest), TRUE)
-  expect_identical(manifest@schema_version, 2L)
+  expect_identical(manifest@schema_version, 3L)
   expect_identical(manifest@research_run_id, "research-123")
   expect_identical(manifest@mode, "storm")
   expect_identical(manifest@status, "running")
@@ -35,7 +35,7 @@ test_that("research manifests validate schema and lifecycle enums", {
       schema_version = 1L
     ),
     class = "tempest_research_manifest_error",
-    regexp = "schema_version.*version.*2"
+    regexp = "schema_version.*version.*3"
   )
 })
 
@@ -127,10 +127,17 @@ test_that("research manifest readers require exact current records", {
   ))
 
   whole_double_schema <- record
-  whole_double_schema$schema_version <- 2
+  whole_double_schema$schema_version <- 3
   expect_error(
     tempest_research_manifest_from_record(whole_double_schema),
     class = "tempest_research_manifest_error"
+  )
+  prior_schema <- record
+  prior_schema$schema_version <- 2L
+  expect_error(
+    tempest_research_manifest_from_record(prior_schema),
+    class = "tempest_research_manifest_error",
+    regexp = "supported version.*3"
   )
 
   for (field in c(
@@ -159,6 +166,72 @@ test_that("research manifest readers require exact current records", {
   whole_double_contract$programs$extract_claims$contract_version <- 1
   expect_error(
     tempest_research_manifest_from_record(whole_double_contract),
+    class = "tempest_research_manifest_error"
+  )
+})
+
+test_that("Deputy terminal traces require exact completion disposition", {
+  trace <- list(
+    agent_id = "agent.disposition",
+    correlation_id = "correlation.disposition",
+    deputy_run_id = "run.disposition",
+    deputy_session_id = "session.disposition",
+    role = "expert",
+    stage = "research",
+    status = "complete",
+    trace_id = "run.disposition",
+    trace_type = "deputy_run"
+  )
+  expect_error(
+    tempest:::tempest_research_manifest_traces(list(trace)),
+    class = "tempest_research_manifest_error"
+  )
+
+  for (disposition in c("issued", "discarded")) {
+    candidate <- trace
+    candidate$completion_disposition <- disposition
+    expect_no_error(tempest:::tempest_research_manifest_traces(
+      list(candidate)
+    ))
+  }
+  delegation <- trace
+  delegation$trace_type <- "deputy_delegation"
+  expect_error(
+    tempest:::tempest_research_manifest_traces(list(delegation)),
+    class = "tempest_research_manifest_error"
+  )
+  delegation$completion_disposition <- "issued"
+  expect_no_error(tempest:::tempest_research_manifest_traces(
+    list(delegation)
+  ))
+
+  nested <- list(group = list(trace))
+  expect_error(
+    tempest:::tempest_research_manifest_traces(nested),
+    class = "tempest_research_manifest_error"
+  )
+  nested$group[[1]]$completion_disposition <- "issued"
+  expect_no_error(tempest:::tempest_research_manifest_traces(nested))
+
+  terminal <- trace
+  terminal$status <- "error"
+  terminal$completion_disposition <- "terminal"
+  expect_no_error(tempest:::tempest_research_manifest_traces(list(terminal)))
+
+  incoherent <- trace
+  incoherent$completion_disposition <- "terminal"
+  expect_error(
+    tempest:::tempest_research_manifest_traces(list(incoherent)),
+    class = "tempest_research_manifest_error"
+  )
+  stage_trace <- list(
+    completion_disposition = "issued",
+    status = "succeeded",
+    trace_id = "attempt.disposition",
+    trace_type = "stage_attempt"
+  )
+  expect_error(
+    tempest:::tempest_research_manifest_traces(list(stage_trace)),
     class = "tempest_research_manifest_error"
   )
 })

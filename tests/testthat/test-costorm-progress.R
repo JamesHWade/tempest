@@ -22,7 +22,10 @@ test_that("TempestSession emits Co-STORM progress events", {
     list(
       facts = list(list(
         claim = claim,
-        sources = list(list(source_id = source_id)),
+        sources = list(list(
+          source_id = source_id,
+          quote = "Co-STORM progress uses compact event metadata."
+        )),
         confidence = "high"
       ))
     )
@@ -48,7 +51,17 @@ test_that("TempestSession emits Co-STORM progress events", {
         return(fake_chat(
           structured = list(
             claim_result("Warmup progress is observable."),
-            claim_result("Dialogue progress is observable.")
+            claim_result("Dialogue progress is observable."),
+            list(
+              status = "supported",
+              score = 0.95,
+              rationale = "The captured excerpt supports the warmup claim."
+            ),
+            list(
+              status = "supported",
+              score = 0.95,
+              rationale = "The captured excerpt supports the dialogue claim."
+            )
           )
         ))
       }
@@ -56,7 +69,12 @@ test_that("TempestSession emits Co-STORM progress events", {
         identical(role, "coordinator") &&
           identical(system_prompt, tempest_prompt("question_suggester_system"))
       ) {
-        return(fake_chat(structured = list(list(questions = "What next?"))))
+        return(fake_chat(
+          structured = list(list(
+            question = "What next?",
+            done = FALSE
+          ))
+        ))
       }
       if (identical(role, "coordinator")) {
         return(fake_chat(
@@ -93,10 +111,15 @@ test_that("TempestSession emits Co-STORM progress events", {
     progress = collector$record
   )
 
-  session$warmup(verbose = FALSE)
+  withCallingHandlers(
+    session$warmup(verbose = FALSE),
+    dsprrr_cache_security_warning = function(condition) {
+      invokeRestart("muffleWarning")
+    }
+  )
   session$step("What should we inspect?")
   questions <- session$suggest_questions(n = 1)
-  report <- session$report(include_references = FALSE, reorganize = FALSE)
+  report <- session$report(include_references = FALSE)
   claims <- session$workspace$list_proposed_claims()
   expect_gt(length(claims), 0L)
   expect_identical(
@@ -126,13 +149,10 @@ test_that("TempestSession emits Co-STORM progress events", {
       "workflow:session:created:started",
       "stage:warmup:expert_fanout:started",
       "expert:warmup:expert_fanout:started",
-      "tool:warmup:expert_question:started",
-      "tool:warmup:expert_question:succeeded",
       "expert:warmup:expert_fanout:succeeded",
       "stage:warmup:expert_fanout:succeeded",
       "stage:dialogue:turn:started",
       "step:dialogue:user_turn:succeeded",
-      "step:dialogue:moderator_response:started",
       "step:dialogue:moderator_response:succeeded",
       "step:evidence:fact_extraction:succeeded",
       "step:mindmap:update:succeeded",
@@ -142,14 +162,9 @@ test_that("TempestSession emits Co-STORM progress events", {
     )
   )
   expect_equal(questions, "What next?")
-  expect_match(report, "Report body")
-  expect_null(session$artifacts[["report"]])
-  expect_null(session$artifacts[["report_md"]])
-  expect_null(session$artifacts[["mindmap_md"]])
-  expect_equal(
-    test_session_artifact_catalog(session)$get("report_md")@content,
-    report
-  )
+  expect_match(report, "Warmup progress is observable")
+  expect_identical(tempest_session_report_md(session), report)
+  expect_identical(session$manifest@status, "succeeded")
   expect_equal(
     session$mindmap_markdown(),
     tempest:::tempest_mindmap_to_markdown(session$mindmap)
@@ -176,12 +191,18 @@ test_that("TempestSession emits Co-STORM progress events", {
   expect_null(expert_payload$response)
 })
 
-test_that("warmup failure emits failed expert and tool events", {
+test_that("warmup failure emits a safe failed expert event", {
   skip_if_not_installed("ellmer")
   collector <- tempest_progress_collector(include_payload = TRUE)
   failing_chat <- fake_chat()
   failing_chat$stream <- function(...) stop("warmup unavailable")
   failing_chat$chat <- function(...) stop("warmup unavailable")
+  failing_chat$stream_async <- function(...) {
+    promises::promise_reject(simpleError("warmup unavailable"))
+  }
+  failing_chat$chat_async <- function(...) {
+    promises::promise_reject(simpleError("warmup unavailable"))
+  }
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
       if (identical(role, "expert")) failing_chat else fake_chat()
@@ -200,21 +221,14 @@ test_that("warmup failure emits failed expert and tool events", {
     progress = collector$record
   )
 
-  error <- expect_error(
-    session$warmup(verbose = FALSE),
-    class = "tempest_deputy_adapter_error"
-  )
-  expect_no_match(conditionMessage(error), "warmup unavailable", fixed = TRUE)
-
-  tool_events <- collector$data(event_type = "tool", stage = "warmup")
-  expect_equal(
-    vapply(tool_events, `[[`, character(1), "status"),
-    c("started", "failed")
-  )
-  expect_equal(tool_events[[2]]$parent_event_id, tool_events[[1]]$event_id)
-  expect_equal(
-    tool_events[[2]]$payload$error_class,
-    "tempest_operation_error"
+  result <- session$warmup(verbose = FALSE)
+  expect_identical(result@status, "succeeded")
+  expect_identical(result@failure_count, 1L)
+  expect_identical(result@orientations[[1L]]$status, "failed")
+  expect_no_match(
+    result@orientations[[1L]]$error_message,
+    "warmup unavailable",
+    fixed = TRUE
   )
 
   expert_events <- collector$data(event_type = "expert", stage = "warmup")
@@ -224,214 +238,10 @@ test_that("warmup failure emits failed expert and tool events", {
   )
   expect_equal(expert_events[[2]]$parent_event_id, expert_events[[1]]$event_id)
 
-  stage_failed <- collector$data(
+  stage_complete <- collector$data(
     event_type = "stage",
-    status = "failed",
+    status = "succeeded",
     stage = "warmup"
   )[[1]]
-  expect_equal(stage_failed$payload$error_class, "tempest_operation_error")
-})
-
-test_that("expert tools emit correlated progress events", {
-  skip_if_not_installed("ellmer")
-  source <- fake_source(url = "https://example.org/expert-tool")
-  store <- test_research_workspace()
-  store$upsert_retrieved_resource(source)
-  collector <- tempest_progress_collector(include_payload = TRUE)
-  expert_chat <- fake_chat(
-    text = list(paste0(
-      "Expert answer cites source [",
-      source$id,
-      "]."
-    ))
-  )
-  extractor <- fake_chat(
-    structured = list(list(
-      facts = list(list(
-        claim = "Expert tool progress is observable.",
-        sources = list(list(source_id = source$id)),
-        confidence = "high"
-      ))
-    ))
-  )
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) {
-      if (identical(role, "expert")) expert_chat else fake_chat()
-    }
-  )
-  retriever <- tempest_retriever(config = cfg, workspace = store)
-  expert <- test_expert(
-    expert_id = "expert.tool",
-    name = "Dr. Tool",
-    title = "Tool specialist"
-  )
-  mgr <- tempest:::ExpertSessionManager$new(
-    experts = list(expert),
-    runtime = tempest_runtime(),
-    config = cfg,
-    retriever = retriever,
-    extractor = extractor,
-    extract_claims_program = tempest:::tempest_costorm_program_execution(
-      tempest_program_set(),
-      "extract_claims",
-      "session-1"
-    ),
-    workspace = store,
-    progress = collector$record,
-    run_id = "session-1"
-  )
-  tool <- tempest:::tempest_create_expert_delegation_tool(
-    mgr,
-    "Progress"
-  )
-
-  result <- tool(
-    expert_id = "expert.tool",
-    question = "What should we know?"
-  )
-
-  tool_events <- collector$data(event_type = "tool", stage = "dialogue")
-  expect_equal(
-    vapply(tool_events, `[[`, character(1), "status"),
-    c("started", "succeeded")
-  )
-  expect_equal(tool_events[[1]]$correlation_id, tool_events[[2]]$correlation_id)
-  expect_equal(tool_events[[2]]$parent_event_id, tool_events[[1]]$event_id)
-  expect_equal(tool_events[[1]]$payload$expert_name, "Dr. Tool")
-  expect_null(tool_events[[2]]$payload$response)
-  expect_equal(result$expert, "Dr. Tool")
-
-  claims <- store$list_proposed_claims()
-  expect_length(claims, 1)
-  expect_identical(claims[[1]]@session_id, mgr$run_id)
-  expect_equal(claims[[1]]@expert_id, "expert.tool")
-  expect_equal(claims[[1]]@retrieval_step_id, tool_events[[1]]$correlation_id)
-  fact_events <- collector$data(event_type = "step", stage = "evidence")
-  fact_events <- Filter(
-    function(event) identical(event$step, "fact_extraction"),
-    fact_events
-  )
-  expect_equal(
-    unique(vapply(fact_events, `[[`, character(1), "correlation_id")),
-    tool_events[[1]]$correlation_id
-  )
-})
-
-test_that("expert tools reuse sessions and provenance", {
-  skip_if_not_installed("ellmer")
-  source <- fake_source(url = "https://example.org/expert-reuse")
-  store <- test_research_workspace()
-  store$upsert_retrieved_resource(source)
-  expert_chat <- fake_chat(
-    text = list(
-      paste0("First expert answer cites [", source$id, "]."),
-      paste0("Second expert answer cites [", source$id, "].")
-    )
-  )
-  extractor <- fake_chat(
-    structured = list(
-      list(
-        facts = list(list(
-          claim = "First expert claim is recorded.",
-          sources = list(list(source_id = source$id)),
-          confidence = "high"
-        ))
-      ),
-      list(
-        facts = list(list(
-          claim = "Second expert claim is recorded.",
-          sources = list(list(source_id = source$id)),
-          confidence = "high"
-        ))
-      )
-    )
-  )
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) {
-      if (identical(role, "expert")) expert_chat else fake_chat()
-    }
-  )
-  retriever <- tempest_retriever(config = cfg, workspace = store)
-  expert <- test_expert(
-    expert_id = "expert.reuse",
-    name = "Dr. Reuse",
-    title = "Tool specialist"
-  )
-  mgr <- tempest:::ExpertSessionManager$new(
-    experts = list(expert),
-    runtime = tempest_runtime(),
-    config = cfg,
-    retriever = retriever,
-    extractor = extractor,
-    extract_claims_program = tempest:::tempest_costorm_program_execution(
-      tempest_program_set(),
-      "extract_claims",
-      "session-1"
-    ),
-    workspace = store,
-    run_id = "session-1"
-  )
-  tool <- tempest:::tempest_create_expert_delegation_tool(mgr, "Progress")
-
-  first <- tool(expert_id = "expert.reuse", question = "First?")
-  second <- tool(expert_id = "expert.reuse", question = "Second?")
-
-  expect_equal(second$session_id, first$session_id)
-  expect_length(mgr$list_sessions(), 1)
-  expect_equal(length(expert_chat$.calls()), 2)
-  claims <- store$list_proposed_claims()
-  expect_length(claims, 2)
-  expect_equal(
-    vapply(claims, function(claim) claim@session_id, character(1)),
-    rep(mgr$run_id, 2)
-  )
-  expect_equal(
-    vapply(claims, function(claim) claim@expert_id, character(1)),
-    rep("expert.reuse", 2)
-  )
-})
-
-test_that("expert tools emit failed progress events", {
-  skip_if_not_installed("ellmer")
-  secret <- "Authorization: Bearer sk-live-secret"
-  store <- test_research_workspace()
-  collector <- tempest_progress_collector(include_payload = TRUE)
-  failing_chat <- fake_chat()
-  failing_chat$stream <- function(...) stop(secret)
-  failing_chat$chat <- function(...) stop(secret)
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) {
-      if (identical(role, "expert")) failing_chat else fake_chat()
-    }
-  )
-  retriever <- tempest_retriever(config = cfg, workspace = store)
-  expert <- test_expert(
-    expert_id = "expert.failure",
-    name = "Dr. Failure",
-    title = "Specialist"
-  )
-  mgr <- tempest:::ExpertSessionManager$new(
-    experts = list(expert),
-    runtime = tempest_runtime(),
-    config = cfg,
-    retriever = retriever,
-    progress = collector$record,
-    run_id = "session-1"
-  )
-  tool <- tempest:::tempest_create_expert_delegation_tool(mgr, "Progress")
-
-  error <- expect_error(
-    tool(
-      expert_id = "expert.failure",
-      question = "Will this fail?"
-    ),
-    class = "tempest_deputy_adapter_error"
-  )
-  expect_no_match(conditionMessage(error), "sk-live-secret", fixed = TRUE)
-  printed <- paste(capture.output(print(error)), collapse = "\n")
-  expect_no_match(printed, "sk-live-secret", fixed = TRUE)
-
-  failed <- collector$data(event_type = "tool", status = "failed")[[1]]
-  expect_equal(failed$payload$expert_name, "Dr. Failure")
-  expect_equal(failed$payload$error_class, "tempest_operation_error")
+  expect_identical(stage_complete$payload$failure_count, 1L)
 })

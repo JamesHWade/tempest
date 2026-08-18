@@ -11,7 +11,10 @@ tempest_deputy_adapter_guard <- function(expr) {
   tryCatch(
     expr,
     error = function(error) {
-      if (inherits(error, "tempest_deputy_adapter_error")) {
+      if (
+        inherits(error, "tempest_deputy_adapter_error") ||
+          inherits(error, "tempest_agent_completion_error")
+      ) {
         stop(error)
       }
       tempest_deputy_adapter_error()
@@ -144,20 +147,25 @@ tempest_deputy_adapter_trace <- function(
   if (!is.null(run_context$correlation_id)) {
     trace$correlation_id <- run_context$correlation_id
   }
-  tempest_research_manifest_traces(list(trace))[[1L]]
+  tempest_research_manifest_canonical_value(trace, "terminal_deputy_trace")
 }
 
 tempest_deputy_adapter_pending_run <- function(
   context,
   fallback_context,
   deputy_session_id,
-  agent_id
+  agent_id,
+  completion_id
 ) {
   run_context <- context$run_context %||% fallback_context
   pending <- list(
     agent_id = tempest_research_manifest_id(
       context$agent_id %||% agent_id,
       "pending_deputy_run$agent_id"
+    ),
+    completion_id = tempest_research_manifest_id(
+      completion_id,
+      "pending_deputy_run$completion_id"
     ),
     correlation_id = tempest_research_manifest_id(
       run_context$correlation_id,
@@ -233,36 +241,48 @@ tempest_deputy_adapter_run_context <- function(run_context) {
   tempest_research_manifest_canonical_value(run_context, "run_context")
 }
 
-tempest_deputy_adapter_assert_recorded <- function(
+tempest_deputy_adapter_assert_terminal <- function(
   state,
   starts_before,
-  records_before,
+  terminals_before,
+  completion_id,
   deputy_run_id = NULL
 ) {
   started <- identical(state$start_count, starts_before + 1L) &&
     !isTRUE(state$start_hook_failed) &&
-    !is.null(state$last_started_run)
-  recorded <- identical(state$record_count, records_before + 1L) &&
+    exists(completion_id, state$pending_runs, inherits = FALSE)
+  terminal <- identical(state$terminal_count, terminals_before + 1L) &&
     !isTRUE(state$hook_failed) &&
-    !is.null(state$last_execution)
+    exists(completion_id, state$terminal_traces, inherits = FALSE)
+  pending_run <- if (started) {
+    get(completion_id, state$pending_runs, inherits = FALSE)
+  } else {
+    NULL
+  }
+  trace <- if (terminal) {
+    get(completion_id, state$terminal_traces, inherits = FALSE)
+  } else {
+    NULL
+  }
   if (
     started &&
       !is.null(deputy_run_id) &&
-      !identical(state$last_started_run$deputy_run_id, deputy_run_id)
+      !identical(pending_run$deputy_run_id, deputy_run_id)
   ) {
     started <- FALSE
   }
   if (
-    recorded &&
-      !is.null(deputy_run_id) &&
-      !identical(state$last_execution$deputy_run_id, deputy_run_id)
+    terminal &&
+      (!identical(trace$deputy_run_id, pending_run$deputy_run_id) ||
+        (!is.null(deputy_run_id) &&
+          !identical(trace$deputy_run_id, deputy_run_id)))
   ) {
-    recorded <- FALSE
+    terminal <- FALSE
   }
-  if (!started || !recorded) {
+  if (!started || !terminal) {
     tempest_deputy_adapter_error()
   }
-  invisible(state$last_execution)
+  trace
 }
 
 tempest_deputy_adapter_content_text <- function(content) {
@@ -275,11 +295,225 @@ tempest_deputy_adapter_content_text <- function(content) {
   ""
 }
 
+tempest_deputy_adapter_turns <- function(value) {
+  if (!is.list(value) || is.data.frame(value)) {
+    tempest_agent_completion_binding_abort()
+  }
+  value
+}
+
+tempest_deputy_adapter_turn_boundary <- function(state) {
+  turns <- tryCatch(
+    state$agent$turns(),
+    error = function(error) NULL
+  )
+  tempest_deputy_adapter_turns(turns)
+}
+
+tempest_deputy_adapter_provider_turn <- function(
+  state,
+  turns_before,
+  turns_after,
+  response
+) {
+  turns_before <- tempest_deputy_adapter_turns(turns_before)
+  turns_after <- tempest_deputy_adapter_turns(turns_after)
+  before_count <- length(turns_before)
+  advanced <- length(turns_after) > before_count
+  preserved <- before_count == 0L ||
+    identical(
+      turns_after[seq_len(before_count)],
+      turns_before
+    )
+  if (!advanced || !preserved) {
+    tempest_agent_completion_binding_abort()
+  }
+  provider_turn <- utils::tail(turns_after, 1L)[[1L]]
+  provider_turn <- tempest_agent_completion_provider_turn(provider_turn)
+  selected_turn <- tryCatch(
+    state$agent$last_turn(role = "assistant"),
+    error = function(error) NULL
+  )
+  if (!identical(selected_turn, provider_turn)) {
+    tempest_agent_completion_binding_abort()
+  }
+  turn_response <- tryCatch(
+    tempest_agent_completion_text(provider_turn@text),
+    error = function(error) NULL
+  )
+  if (is.null(turn_response) || !identical(turn_response, response)) {
+    tempest_agent_completion_binding_abort()
+  }
+  provider_turn
+}
+
+tempest_deputy_adapter_settle_trace <- function(
+  state,
+  completion_id,
+  starts_before,
+  terminals_before,
+  disposition,
+  deputy_run_id = NULL
+) {
+  trace <- tempest_deputy_adapter_assert_terminal(
+    state,
+    starts_before,
+    terminals_before,
+    completion_id,
+    deputy_run_id = deputy_run_id
+  )
+  disposition <- tempest_research_manifest_choice(
+    disposition,
+    "completion_disposition",
+    c("issued", "discarded", "terminal")
+  )
+  status_valid <- if (identical(disposition, "terminal")) {
+    !identical(trace$status, "complete")
+  } else {
+    identical(trace$status, "complete")
+  }
+  if (!status_valid) {
+    tempest_deputy_adapter_error()
+  }
+  trace$completion_disposition <- disposition
+  trace <- trace[c(
+    "agent_id",
+    "completion_disposition",
+    setdiff(names(trace), c("agent_id", "completion_disposition"))
+  )]
+  trace <- tempest_agent_completion_trace(trace)
+  state$on_run(trace)
+  trace
+}
+
+tempest_deputy_adapter_terminal_without_completion <- function(
+  state,
+  completion_id,
+  starts_before,
+  terminals_before,
+  deputy_run_id = NULL
+) {
+  trace <- tempest_deputy_adapter_settle_trace(
+    state,
+    completion_id,
+    starts_before,
+    terminals_before,
+    disposition = "terminal",
+    deputy_run_id = deputy_run_id
+  )
+  state$on_terminal(list(
+    completion_id = completion_id,
+    deputy_execution = trace,
+    disposition = "terminal"
+  ))
+  rm(list = completion_id, envir = state$pending_runs)
+  rm(list = completion_id, envir = state$terminal_traces)
+  tempest_deputy_adapter_error()
+}
+
+tempest_deputy_adapter_discard_completion <- function(
+  state,
+  completion_id,
+  starts_before,
+  terminals_before,
+  deputy_run_id = NULL
+) {
+  trace <- tempest_deputy_adapter_settle_trace(
+    state,
+    completion_id,
+    starts_before,
+    terminals_before,
+    disposition = "discarded",
+    deputy_run_id = deputy_run_id
+  )
+  state$on_terminal(list(
+    completion_id = completion_id,
+    deputy_execution = trace,
+    disposition = "discarded"
+  ))
+  rm(list = completion_id, envir = state$pending_runs)
+  rm(list = completion_id, envir = state$terminal_traces)
+  tempest_agent_completion_binding_abort()
+}
+
+tempest_deputy_adapter_complete <- function(
+  state,
+  completion_id,
+  prompt,
+  response,
+  starts_before,
+  terminals_before,
+  turns_before,
+  turns_after,
+  deputy_run_id = NULL
+) {
+  trace <- tempest_deputy_adapter_assert_terminal(
+    state,
+    starts_before,
+    terminals_before,
+    completion_id,
+    deputy_run_id = deputy_run_id
+  )
+  if (!identical(trace$status, "complete")) {
+    return(tempest_deputy_adapter_terminal_without_completion(
+      state,
+      completion_id,
+      starts_before,
+      terminals_before,
+      deputy_run_id = deputy_run_id
+    ))
+  }
+  prompt <- tempest_agent_completion_text(prompt)
+  response <- tempest_agent_completion_text(response)
+  provider_turn <- tryCatch(
+    tempest_deputy_adapter_provider_turn(
+      state,
+      turns_before,
+      turns_after,
+      response
+    ),
+    error = function(error) {
+      tempest_deputy_adapter_discard_completion(
+        state,
+        completion_id,
+        starts_before,
+        terminals_before,
+        deputy_run_id = deputy_run_id
+      )
+    }
+  )
+  trace <- tempest_deputy_adapter_settle_trace(
+    state,
+    completion_id,
+    starts_before,
+    terminals_before,
+    disposition = "issued",
+    deputy_run_id = deputy_run_id
+  )
+  completion <- list(
+    completion_id = completion_id,
+    prompt = prompt,
+    response = response,
+    provider_turn = provider_turn,
+    deputy_execution = trace
+  )
+  state$on_completion(completion)
+  state$completion_count <- state$completion_count + 1L
+  rm(list = completion_id, envir = state$pending_runs)
+  rm(list = completion_id, envir = state$terminal_traces)
+  tempest_agent_completion_tag(response, completion_id)
+}
+
 tempest_deputy_adapter_async_stream <- function(
   state,
   prompt,
   run_context
 ) {
+  prompt <- tempest_agent_completion_text(prompt)
+  completion_id <- tempest_agent_completion_new_id(
+    state$completion_registry
+  )
+  run_context$completion_id <- completion_id
   source <- tempest_deputy_adapter_guard(state$agent$run_shiny(
     prompt = prompt,
     max_tool_calls = state$max_tool_calls,
@@ -288,11 +522,13 @@ tempest_deputy_adapter_async_stream <- function(
   if (!inherits(source, "coro_generator_instance")) {
     tempest_deputy_adapter_error()
   }
-  coro::async_generator(function() {
+  stream <- coro::async_generator(function() {
     starts_before <- state$start_count
-    records_before <- state$record_count
+    terminals_before <- state$terminal_count
+    turns_before <- tempest_deputy_adapter_turn_boundary(state)
     state$start_hook_failed <- FALSE
     state$hook_failed <- FALSE
+    text <- character()
     repeat {
       stream_error <- FALSE
       content <- tryCatch(
@@ -309,25 +545,32 @@ tempest_deputy_adapter_async_stream <- function(
         }
       )
       if (isTRUE(stream_error)) {
-        tempest_deputy_adapter_assert_recorded(
+        tempest_deputy_adapter_guard(tempest_deputy_adapter_terminal_without_completion(
           state,
+          completion_id,
           starts_before,
-          records_before
-        )
-        tempest_deputy_adapter_error()
+          terminals_before
+        ))
       }
       if (coro::is_exhausted(content)) {
         break
       }
+      text <- c(text, tempest_deputy_adapter_content_text(content))
       coro::yield(content)
     }
-    tempest_deputy_adapter_assert_recorded(
+    tempest_deputy_adapter_guard(tempest_deputy_adapter_complete(
       state,
+      completion_id,
+      prompt,
+      paste(text, collapse = ""),
       starts_before,
-      records_before
-    )
+      terminals_before,
+      turns_before,
+      tempest_deputy_adapter_turn_boundary(state)
+    ))
     coro::exhausted()
   })()
+  tempest_agent_completion_tag(stream, completion_id)
 }
 
 tempest_deputy_chat_adapter <- function(
@@ -339,8 +582,11 @@ tempest_deputy_chat_adapter <- function(
   stage,
   role,
   expert_id = NULL,
+  completion_registry = NULL,
   on_start = function(pending_run) invisible(pending_run),
   on_run = function(trace) invisible(trace),
+  on_completion = function(completion) invisible(completion),
+  on_terminal = function(terminal) invisible(terminal),
   max_requests = 25L,
   max_tool_calls = 25L
 ) {
@@ -348,9 +594,20 @@ tempest_deputy_chat_adapter <- function(
     if (
       !inherits(chat, "Chat") ||
         !is.function(on_start) ||
-        !is.function(on_run)
+        !is.function(on_run) ||
+        !is.function(on_completion) ||
+        !is.function(on_terminal)
     ) {
       tempest_deputy_adapter_error()
+    }
+    if (is.null(completion_registry)) {
+      completion_registry <- tempest_agent_completion_registry(
+        new.env(parent = emptyenv())
+      )
+    } else {
+      completion_registry <- tempest_agent_completion_registry_validate(
+        completion_registry
+      )
     }
     required_methods <- c(
       "get_model",
@@ -410,12 +667,17 @@ tempest_deputy_chat_adapter <- function(
     state$agent_id <- agent$agent_id
     state$agent_name <- agent$agent_name
     state$max_tool_calls <- max_tool_calls
+    state$completion_registry <- completion_registry
+    state$on_run <- on_run
+    state$on_completion <- on_completion
+    state$on_terminal <- on_terminal
     state$start_count <- 0L
-    state$record_count <- 0L
+    state$terminal_count <- 0L
+    state$completion_count <- 0L
     state$start_hook_failed <- FALSE
     state$hook_failed <- FALSE
-    state$last_started_run <- NULL
-    state$last_execution <- NULL
+    state$pending_runs <- new.env(hash = TRUE, parent = emptyenv())
+    state$terminal_traces <- new.env(hash = TRUE, parent = emptyenv())
     state$identity <- tempest_research_manifest_canonical_value(list(
       agent_id = agent$agent_id,
       agent_name = agent$agent_name,
@@ -432,14 +694,16 @@ tempest_deputy_chat_adapter <- function(
       callback = function(context) {
         started <- tryCatch(
           {
+            completion_id <- context$run_context$completion_id %||% NULL
             pending_run <- tempest_deputy_adapter_pending_run(
               context,
               fallback_context = state$base_run_context,
               deputy_session_id = state$deputy_session_id,
-              agent_id = state$agent_id
+              agent_id = state$agent_id,
+              completion_id = completion_id
             )
             on_start(pending_run)
-            state$last_started_run <- pending_run
+            assign(completion_id, pending_run, state$pending_runs)
             state$start_count <- state$start_count + 1L
             TRUE
           },
@@ -455,6 +719,7 @@ tempest_deputy_chat_adapter <- function(
       callback = function(reason, context) {
         completed <- tryCatch(
           {
+            completion_id <- context$run_context$completion_id %||% NULL
             trace <- tempest_deputy_adapter_trace(
               reason,
               context,
@@ -462,9 +727,8 @@ tempest_deputy_chat_adapter <- function(
               deputy_session_id = state$deputy_session_id,
               agent_id = state$agent_id
             )
-            on_run(trace)
-            state$last_execution <- trace
-            state$record_count <- state$record_count + 1L
+            assign(completion_id, trace, state$terminal_traces)
+            state$terminal_count <- state$terminal_count + 1L
             TRUE
           },
           error = function(error) FALSE
@@ -486,26 +750,44 @@ tempest_deputy_chat_adapter <- function(
           ...
         ) {
           tempest_deputy_adapter_guard({
+            prompt <- tempest_agent_completion_text(prompt)
             run_context <- tempest_deputy_adapter_run_context(run_context)
+            completion_id <- tempest_agent_completion_new_id(
+              state$completion_registry
+            )
+            run_context$completion_id <- completion_id
             starts_before <- state$start_count
-            records_before <- state$record_count
+            terminals_before <- state$terminal_count
+            turns_before <- tempest_deputy_adapter_turn_boundary(state)
             state$start_hook_failed <- FALSE
             state$hook_failed <- FALSE
-            result <- suppressWarnings(state$agent$run_sync(
-              task = prompt,
-              include_partial_messages = FALSE,
-              run_context = run_context
-            ))
-            tempest_deputy_adapter_assert_recorded(
+            result <- tryCatch(
+              suppressWarnings(state$agent$run_sync(
+                task = prompt,
+                include_partial_messages = FALSE,
+                run_context = run_context
+              )),
+              error = function(error) {
+                tempest_deputy_adapter_terminal_without_completion(
+                  state,
+                  completion_id,
+                  starts_before,
+                  terminals_before
+                )
+              }
+            )
+            response <- result$response %||% ""
+            tempest_deputy_adapter_complete(
               state,
+              completion_id,
+              prompt,
+              response,
               starts_before,
-              records_before,
+              terminals_before,
+              turns_before,
+              result$turns,
               deputy_run_id = result$run_id
             )
-            if (result$stop_reason %in% c("error", "provider_error")) {
-              tempest_deputy_adapter_error()
-            }
-            result$response %||% ""
           })
         },
         chat_async = function(
@@ -521,6 +803,7 @@ tempest_deputy_chat_adapter <- function(
                 run_context = run_context
               )
               coro::async(function() {
+                completion_id <- tempest_agent_completion_id(stream)
                 text <- character()
                 repeat {
                   content <- stream()
@@ -535,7 +818,10 @@ tempest_deputy_chat_adapter <- function(
                     tempest_deputy_adapter_content_text(content)
                   )
                 }
-                paste(text, collapse = "")
+                tempest_agent_completion_tag(
+                  paste(text, collapse = ""),
+                  completion_id
+                )
               })()
             })
         },
@@ -547,9 +833,11 @@ tempest_deputy_chat_adapter <- function(
           ...
         ) {
           response <- adapter$chat(prompt, run_context = run_context)
-          coro::generator(function() {
-            coro::yield(ellmer::ContentText(response))
+          completion_id <- tempest_agent_completion_id(response)
+          output <- coro::generator(function() {
+            coro::yield(ellmer::ContentText(as.character(response)))
           })()
+          tempest_agent_completion_tag(output, completion_id)
         },
         stream_async = function(
           prompt = NULL,
@@ -599,12 +887,8 @@ tempest_deputy_chat_adapter <- function(
         stop = function(reason = "interrupted") {
           state$agent$interrupt(reason = "interrupted")
         },
-        last_execution = function() {
-          tempest_deputy_chat_last_execution(adapter)
-        },
         .tempest_deputy_identity = function() state$identity,
-        .tempest_deputy_permissions = function() state$permission_reference,
-        .tempest_deputy_last_execution = function() state$last_execution
+        .tempest_deputy_permissions = function() state$permission_reference
       ),
       class = c("TempestDeputyChatAdapter", "Chat", "list")
     )
@@ -637,15 +921,5 @@ tempest_deputy_chat_permissions <- function(x) {
 }
 
 tempest_deputy_chat_last_execution <- function(x) {
-  if (
-    !inherits(x, "TempestDeputyChatAdapter") ||
-      !is.function(x$.tempest_deputy_last_execution)
-  ) {
-    tempest_deputy_adapter_error()
-  }
-  execution <- x$.tempest_deputy_last_execution()
-  if (is.null(execution)) {
-    return(NULL)
-  }
-  tempest_research_manifest_traces(list(execution))[[1L]]
+  tempest_deputy_adapter_error()
 }
