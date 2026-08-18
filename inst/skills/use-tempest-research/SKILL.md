@@ -55,7 +55,9 @@ Read the mode-specific reference before implementing or operating it:
   evidence-grounded writing, and polishing as distinct stages.
 - Do not describe Co-STORM as batch STORM with a chat box. Preserve persistent
   experts, moderated turns, user steering, shared evidence, and mind-map state.
-- Do not use the generic workflow kernel merely to rename built-in stages.
+- Use `tempest_run()` and `tempest_session()` as the product execution paths.
+  Preserve built-in stage identities instead of inventing alternate execution
+  paths.
 - Do not serialize functions, chat clients, credentials, callbacks, or
   authenticated connection bindings.
 - Do not let tests require API keys, network access, or live provider
