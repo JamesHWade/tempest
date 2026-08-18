@@ -2,7 +2,7 @@
 
 Tracking issue: kata `an7p`
 
-Status: in progress
+Status: implemented and verified
 
 ## Goal
 
@@ -118,7 +118,7 @@ Also remove the internal `tempest_run_restore()` and
 `tempest_run_resume()` functions. Update `DESCRIPTION` `Collate` entries after
 the source deletions; do not disturb package dependencies or product files.
 
-Gate: the package loads with none of the 43 removed entry points or definitions,
+Gate: ✅ The package loads with none of the 43 removed entry points or definitions,
 and retained product code contains no call to a deleted binding.
 
 ## Batch 2: Replace temporary tests and fixtures
@@ -227,7 +227,7 @@ product-boundary coverage if useful. Retain `test-shiny-host-example.R`, all
 product baseline tests and snapshots, persistence tests, authority tests,
 schema tests, and deterministic no-network fixtures.
 
-Gate: focused public API, product boundary, Co-STORM, STORM, persistence,
+Gate: ✅ Focused public API, product boundary, Co-STORM, STORM, persistence,
 authority, skills, and Shiny tests pass without defining or mocking a deleted
 generic symbol.
 
@@ -281,7 +281,7 @@ Do not delete or stage ignored local vignette HTML. Preserve
 `inst/examples/shiny-host/app.R`, all of `inst/shiny/`, and both supported skill
 trees.
 
-Gate: `devtools::document()` does not recreate a retired export or topic, and
+Gate: ✅ `devtools::document()` does not recreate a retired export or topic, and
 `pkgdown::check_pkgdown()` reports no missing or unindexed product topic.
 
 ## Batch 4: Static, installed, and full verification
@@ -330,3 +330,18 @@ Acceptance requires all product baselines and frozen schemas to remain exact,
 no generic or shadow execution path to exist in the source or installed
 namespace, no stale documentation or skill inventory, and a reviewable diff
 limited to T8 removal and the product-surface migration.
+
+## Verified acceptance
+
+- [x] Deleted all 18 generic-kernel R files.
+- [x] Removed 41 public exports and two internal restore/resume symbols; the
+  namespace contains the exact 62 product exports and two S3 registrations.
+- [x] Removed obsolete tests, documentation, assets, inactive skills, legacy
+  prompts, shadow provenance, and retirement sentinels.
+- [x] Preserved every frozen product schema and authority contract unchanged.
+- [x] Passed 2,373 focused assertions and the clean installed-package audit.
+- [x] `pkgdown::check_pkgdown()` reported no problems.
+- [x] Passed the definitive full suite with 4,453 assertions, 0 failures,
+  0 errors, 0 warnings, and 0 skips in 404.286 seconds.
+- [x] Package check completed with 0 errors, 0 warnings, and 0 notes.
+- [x] `air format .` and `git diff --check` completed cleanly.
