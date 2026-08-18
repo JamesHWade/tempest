@@ -10,9 +10,10 @@ Description: Implements an R-native clone of the STORM and Co-STORM
     'shinychat' for an interactive Shiny UI. Includes web retrieval tools,
     evidence tracking with citations, mind-map style topic planning, and
     evaluation helpers built on 'vitals'. Tempest owns provisional scientific
-    research state, claim-centered evidence, STORM and Co-STORM product flows,
-    and scientific reports. Its 0.2 migration will delegate generic agent
-    runtime, program, and accepted-knowledge concerns to narrower packages.
+    research state, claim-centered evidence, authoritative STORM and Co-STORM
+    product flows, and scientific reports. It delegates execution to 'deputy',
+    structured research programs to 'dsprrr', and accepted-knowledge
+    publication to 'graft'.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd"))
@@ -89,9 +90,6 @@ Config/roxygen2/version: 8.0.0
 Collate: 
     'agent-skills.R'
     'app.R'
-    'artifact-bundle.R'
-    'artifact-catalog.R'
-    'artifact-codecs.R'
     'cache.R'
     'citations.R'
     'ledger-types.R'
@@ -102,10 +100,7 @@ Collate:
     'research-expert.R'
     'costorm-turn-types.R'
     'costorm-async.R'
-    'costorm-discourse.R'
-    'costorm-mindmap.R'
     'costorm.R'
-    'deliverables.R'
     'dsprrr.R'
     'evals.R'
     'models.R'
@@ -120,15 +115,12 @@ Collate:
     'product-report.R'
     'product-authority.R'
     'costorm-report.R'
-    'operation-registry.R'
-    'package-lifecycle.R'
     'progress-events.R'
     'execution-events.R'
     'costorm-warmup.R'
     'prompts.R'
     'retriever.R'
     'run-persistence.R'
-    'shadow-provenance.R'
     'promotion-types.R'
     'graft-schema.R'
     'promotion-persistence.R'
@@ -149,15 +141,6 @@ Collate:
     'research-tools.R'
     'utils.R'
     'verify.R'
-    'workflow-types.R'
-    'expert-types.R'
-    'capabilities.R'
-    'runtime.R'
     'resources.R'
     'open-knowledge-format.R'
-    'workflow-spec.R'
-    'tempest-run.R'
-    'run-accessors.R'
-    'builtin-workflows.R'
-    'generic-kernel-cutover.R'
 Config/usethis/last-upkeep: 2026-06-27
