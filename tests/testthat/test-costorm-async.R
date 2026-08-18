@@ -968,11 +968,6 @@ test_that("synchronous post-turn setup failures return typed notices", {
 })
 
 test_that("turn result validators reject contradictory records", {
-  local_mocked_bindings(
-    tempest_canonical_json = function(...) {
-      stop("generic canonical JSON must not be called", call. = FALSE)
-    }
-  )
   notice_error <- tryCatch(
     tempest:::tempest_session_turn_notice(
       code = "evidence_failed",

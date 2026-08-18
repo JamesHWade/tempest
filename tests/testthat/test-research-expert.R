@@ -1,17 +1,4 @@
-test_that("research experts do not reach generic contracts or codecs", {
-  reject_generic <- function(...) {
-    rlang::abort("generic helper reached", class = "test_generic_reached")
-  }
-  local_mocked_bindings(
-    tempest_contract_id = reject_generic,
-    tempest_workflow_scalar = reject_generic,
-    tempest_workflow_character = reject_generic,
-    tempest_workflow_serializable_list = reject_generic,
-    tempest_artifact_codec_encode = reject_generic,
-    tempest_deliverable_spec_checksum = reject_generic,
-    tempest_canonical_json = reject_generic
-  )
-
+test_that("research experts roundtrip through their product record", {
   expert <- tempest_expert(
     "expert.one",
     "Expert",

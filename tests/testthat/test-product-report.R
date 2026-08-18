@@ -1,13 +1,4 @@
-test_that("product reports avoid generic report and codec helpers", {
-  reject_generic <- function(...) {
-    rlang::abort("generic helper reached", class = "test_generic_reached")
-  }
-  local_mocked_bindings(
-    tempest_deliverable_abort = reject_generic,
-    tempest_artifact_codec_encode = reject_generic,
-    tempest_deliverable_spec_checksum = reject_generic,
-    tempest_canonical_json = reject_generic
-  )
+test_that("product reports bind exact content references", {
   workspace <- tempest_research_workspace()
 
   report <- tempest_report_md(

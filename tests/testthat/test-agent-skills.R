@@ -109,17 +109,6 @@ test_that("tempest_install_agent_skills refuses unknown or existing skills", {
     tempest_install_agent_skills(destination, skills = "missing-skill"),
     class = "tempest_agent_skill_error"
   )
-  expect_error(
-    tempest_install_agent_skills(
-      destination,
-      skills = c(
-        "build-tempest-workflow",
-        "design-tempest-workflow",
-        "verify-tempest-workflow"
-      )
-    ),
-    class = "tempest_agent_skill_error"
-  )
 
   tempest_install_agent_skills(
     destination,

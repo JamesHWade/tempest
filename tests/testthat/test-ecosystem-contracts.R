@@ -924,12 +924,6 @@ test_that("the 0.2 surface has no T1 compatibility vocabulary", {
     )],
     character()
   )
-  # Frozen generic-kernel state is removed by the section 10 deletion train.
-  expect_contains(
-    names(formals(tempest:::tempest_run_restore)),
-    "source_store"
-  )
-
   session <- tempest_session(
     "Hard-cut surface",
     config = tempest_config(

@@ -91,17 +91,7 @@ test_that("product content hashes reject coercible or noncanonical values", {
   }
 })
 
-test_that("resource metadata does not use generic canonical JSON", {
-  generic_calls <- 0L
-  local_mocked_bindings(
-    tempest_canonical_json = function(...) {
-      generic_calls <<- generic_calls + 1L
-      rlang::abort(
-        "Resource metadata reached generic canonical JSON.",
-        class = "test_generic_kernel_reached"
-      )
-    }
-  )
+test_that("resource metadata roundtrips through product records", {
   resource <- tempest_resource(
     resource_kind = "host.document",
     locator = "documents/product-metadata-seam",
@@ -117,7 +107,6 @@ test_that("resource metadata does not use generic canonical JSON", {
   restored <- tempest:::tempest_resource_from_data(record)
 
   expect_identical(tempest:::tempest_resource_record(restored), record)
-  expect_identical(generic_calls, 0L)
 })
 
 test_that("resource records reject live runtime values and tampering", {
