@@ -55,6 +55,9 @@ tempest_session_extract_facts_async <- function(
       deputy_run_id = deputy_execution$deputy_run_id %||% NA_character_,
       deputy_session_id = deputy_execution$deputy_session_id %||%
         NA_character_,
+      parent_run_id = deputy_execution$parent_run_id %||% NA_character_,
+      delegation_id = deputy_execution$delegation_id %||% NA_character_,
+      tool_call_id = deputy_execution$tool_call_id %||% NA_character_,
       commit_if = is_current,
       record_stage = record_stage
     )

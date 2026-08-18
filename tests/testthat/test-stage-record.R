@@ -1017,7 +1017,10 @@ test_that("Deputy execution binds StageRecords without changing module traces", 
       max_queries = 2L,
       deputy_execution = list(
         deputy_run_id = "deputy-run-succeeded",
-        deputy_session_id = "deputy-session-succeeded"
+        deputy_session_id = "deputy-session-succeeded",
+        parent_run_id = "deputy-parent-succeeded",
+        delegation_id = "delegation-succeeded",
+        tool_call_id = "tool-call-succeeded"
       )
     )
   )
@@ -1035,6 +1038,18 @@ test_that("Deputy execution binds StageRecords without changing module traces", 
   expect_identical(
     deputy$record@trace_references$deputy_session_id,
     "deputy-session-succeeded"
+  )
+  expect_identical(
+    deputy$record@trace_references$parent_run_id,
+    "deputy-parent-succeeded"
+  )
+  expect_identical(
+    deputy$record@trace_references$delegation_id,
+    "delegation-succeeded"
+  )
+  expect_identical(
+    deputy$record@trace_references$tool_call_id,
+    "tool-call-succeeded"
   )
   expect_length(seen_traces, 2L)
   expect_all_true(vapply(
@@ -1076,6 +1091,25 @@ test_that("malformed Deputy stage context fails before provider execution", {
       deputy_run_id = "run-extra",
       deputy_session_id = "session-extra",
       secret = "not-allowed"
+    ),
+    list(
+      deputy_run_id = "run-partial",
+      deputy_session_id = "session-partial",
+      parent_run_id = "parent-partial"
+    ),
+    list(
+      deputy_run_id = "run-self-parent",
+      deputy_session_id = "session-self-parent",
+      parent_run_id = "run-self-parent",
+      delegation_id = "delegation-self-parent",
+      tool_call_id = "tool-self-parent"
+    ),
+    list(
+      deputy_run_id = "run-reordered",
+      deputy_session_id = "session-reordered",
+      delegation_id = "delegation-reordered",
+      parent_run_id = "parent-reordered",
+      tool_call_id = "tool-reordered"
     )
   )
 
