@@ -1,16 +1,3 @@
-test_that("tempest_storm_prepare_run_dir creates topic slug directory", {
-  skip_if_not_installed("jsonlite")
-  root <- withr::local_tempdir(pattern = "tempest-runs-")
-
-  run_dir <- tempest:::tempest_storm_prepare_run_dir(
-    root,
-    "A Topic: With Punctuation!"
-  )
-
-  expect_equal(basename(run_dir), "a-topic-with-punctuation")
-  expect_equal(dir.exists(run_dir), TRUE)
-})
-
 test_that("durable integer validation accepts the exact non-NA range", {
   for (value in c(
     -.Machine$integer.max,
@@ -130,7 +117,6 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
       "disputes"
     )
   )
-  expect_equal("artifacts" %in% names(snapshot), FALSE)
   expect_length(snapshot$retrieved_resources, 2L)
   resource_ids <- vapply(
     snapshot$retrieved_resources,

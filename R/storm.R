@@ -495,10 +495,7 @@ tempest_run_internal <- function(
       research_manifest,
       program_set = program_set,
       config = config,
-      steps = requested_steps,
-      research_strategy = research_strategy,
-      parallel_writing = parallel_writing,
-      remove_duplicate = remove_duplicate
+      steps = requested_steps
     )
     if (!is.null(bound_manifest)) {
       research_manifest <<- bound_manifest

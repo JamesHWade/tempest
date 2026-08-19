@@ -67,8 +67,7 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
     ),
     program_set = program_set,
     config = cfg,
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
 
   session_manifest <- tempest:::tempest_product_read_json(

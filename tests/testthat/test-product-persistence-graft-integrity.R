@@ -59,8 +59,7 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
     ),
     program_set = program_set,
     config = cfg,
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
 
   sidecar <- "knowledge/graft-snapshot.rds"

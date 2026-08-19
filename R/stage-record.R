@@ -4159,7 +4159,7 @@ tempest_stage_error_record <- function(error) {
   error$stage_record %||% NULL
 }
 
-tempest_storm_stage_complete_success <- function(
+tempest_stage_complete_success <- function(
   evaluated,
   running,
   context,
@@ -4179,7 +4179,7 @@ tempest_storm_stage_complete_success <- function(
     error = identity
   )
   if (inherits(reference, "condition")) {
-    tempest_storm_stage_complete_failure(
+    tempest_stage_complete_failure(
       reference,
       running,
       record_stage,
@@ -4213,7 +4213,7 @@ tempest_storm_stage_complete_success <- function(
   tempest_stage_result(evaluated$output, terminal)
 }
 
-tempest_storm_stage_complete_failure <- function(
+tempest_stage_complete_failure <- function(
   error,
   running,
   record_stage,
@@ -4274,7 +4274,7 @@ tempest_stage_run_fallback <- function(
     } else {
       "execution"
     }
-    tempest_storm_stage_complete_failure(
+    tempest_stage_complete_failure(
       primary_error,
       running,
       record_stage,
@@ -4289,7 +4289,7 @@ tempest_stage_run_fallback <- function(
       error = identity
     )
     if (inherits(grounding, "condition")) {
-      tempest_storm_stage_complete_failure(
+      tempest_stage_complete_failure(
         grounding,
         running,
         record_stage,
@@ -4303,7 +4303,7 @@ tempest_stage_run_fallback <- function(
   fallback_output <- tryCatch(
     fallback(chat, inputs, context),
     error = function(error) {
-      tempest_storm_stage_complete_failure(
+      tempest_stage_complete_failure(
         error,
         running,
         record_stage,
@@ -4316,7 +4316,7 @@ tempest_stage_run_fallback <- function(
   evaluated <- tryCatch(
     tempest_stage_evaluate(execution, fallback_output, context),
     error = function(error) {
-      tempest_storm_stage_complete_failure(
+      tempest_stage_complete_failure(
         error,
         running,
         record_stage,
@@ -4326,7 +4326,7 @@ tempest_stage_run_fallback <- function(
       )
     }
   )
-  tempest_storm_stage_complete_success(
+  tempest_stage_complete_success(
     evaluated,
     running,
     context,
@@ -4421,7 +4421,7 @@ tempest_execute_stage <- function(
       now
     ))
   }
-  tempest_storm_stage_complete_success(
+  tempest_stage_complete_success(
     evaluated,
     running,
     context,
@@ -4438,7 +4438,7 @@ tempest_stage_cancel_attempt <- function(running, record_stage, now) {
   tryCatch(
     tempest_stage_record_call(record_stage, terminal),
     error = function(error) {
-      tempest_storm_stage_complete_failure(
+      tempest_stage_complete_failure(
         error,
         running,
         record_stage,
@@ -4484,7 +4484,7 @@ tempest_stage_async_fallback <- function(
     } else {
       "execution"
     }
-    tempest_storm_stage_complete_failure(
+    tempest_stage_complete_failure(
       primary_error,
       running,
       record_stage,
@@ -4499,7 +4499,7 @@ tempest_stage_async_fallback <- function(
       error = identity
     )
     if (inherits(grounding, "condition")) {
-      tempest_storm_stage_complete_failure(
+      tempest_stage_complete_failure(
         grounding,
         running,
         record_stage,
@@ -4525,7 +4525,7 @@ tempest_stage_async_fallback <- function(
         error = identity
       )
       if (inherits(evaluated, "condition")) {
-        tempest_storm_stage_complete_failure(
+        tempest_stage_complete_failure(
           evaluated,
           running,
           record_stage,
@@ -4534,7 +4534,7 @@ tempest_stage_async_fallback <- function(
           now
         )
       }
-      tempest_storm_stage_complete_success(
+      tempest_stage_complete_success(
         evaluated,
         running,
         context,
@@ -4549,7 +4549,7 @@ tempest_stage_async_fallback <- function(
       if (!isTRUE(is_current())) {
         tempest_stage_cancel_attempt(running, record_stage, now)
       }
-      tempest_storm_stage_complete_failure(
+      tempest_stage_complete_failure(
         error,
         running,
         record_stage,
@@ -4647,7 +4647,7 @@ tempest_execute_stage_async <- function(
           now
         ))
       }
-      tempest_storm_stage_complete_success(
+      tempest_stage_complete_success(
         evaluated,
         running,
         context,

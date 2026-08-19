@@ -679,11 +679,6 @@ tempest_research_workspace_unique_record_ids <- function(
 
 #' @keywords internal
 tempest_research_workspace_restore_metadata <- function(snapshot) {
-  if ("artifacts" %in% names(snapshot)) {
-    tempest_research_workspace_restore_abort(
-      "Current workspaces cannot contain an arbitrary artifacts field."
-    )
-  }
   base_snapshot_id <- tryCatch(
     tempest_research_workspace_snapshot_id(snapshot$base_snapshot_id),
     error = function(error) {

@@ -102,8 +102,7 @@ test_that("schema 7 STORM bundles round-trip the complete workspace", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
 
   metadata <- tempest:::tempest_product_read_json(
@@ -185,8 +184,7 @@ test_that("STORM workspace files match the exact manifest identity", {
       ),
       program_set = program_set,
       config = cfg,
-      steps = "research",
-      research_strategy = "key_questions"
+      steps = "research"
     )
     list(dir = dir, config = cfg)
   }
@@ -244,8 +242,7 @@ test_that("STORM workspace files match the exact manifest identity", {
   )
   expect_error(
     tempest:::tempest_storm_restore_workspace(
-      manifest,
-      bundle$config
+      manifest
     ),
     class = "tempest_run_restore_error"
   )

@@ -44,8 +44,7 @@ test_that("stage-record sidecars are mandatory regular bundle files", {
     ),
     program_set = program_set,
     config = tempest_config(),
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
   run_manifest_path <- file.path(run_dir, "run_config.json")
   run_manifest <- tempest:::tempest_product_read_json(run_manifest_path)
@@ -116,8 +115,7 @@ test_that("stage-record sidecars reject same-root symlinks", {
     ),
     program_set = program_set,
     config = cfg,
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
   run_sidecar <- file.path(run_dir, "stage_records.json")
   unlink(run_sidecar)
@@ -206,8 +204,7 @@ test_that("bundle root manifests reject internal and escaping symlinks", {
       ),
       program_set = program_set,
       config = cfg,
-      steps = "research",
-      research_strategy = "key_questions"
+      steps = "research"
     )
     bundle
   }

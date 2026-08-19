@@ -66,21 +66,6 @@ tempest_storm_bundle_write_json <- function(path, rel_path, value) {
       )
     }
   )
-  hook <- getOption("tempest.run_write_hook")
-  if (is.function(hook)) {
-    tryCatch(
-      hook(rel_path),
-      error = function(error) {
-        tempest_abort(
-          "STORM bundle write was interrupted after {.path {rel_path}}.",
-          class = tempest_persistence_error_class(
-            "tempest_run_persistence_error"
-          ),
-          parent = error
-        )
-      }
-    )
-  }
   rel_path
 }
 
@@ -101,21 +86,6 @@ tempest_storm_bundle_write_text <- function(path, rel_path, value) {
       )
     }
   )
-  hook <- getOption("tempest.run_write_hook")
-  if (is.function(hook)) {
-    tryCatch(
-      hook(rel_path),
-      error = function(error) {
-        tempest_abort(
-          "STORM bundle write was interrupted after {.path {rel_path}}.",
-          class = tempest_persistence_error_class(
-            "tempest_run_persistence_error"
-          ),
-          parent = error
-        )
-      }
-    )
-  }
   rel_path
 }
 
@@ -959,7 +929,6 @@ tempest_storm_program_set_validate <- function(
 #' @keywords internal
 tempest_storm_restore_workspace <- function(
   metadata,
-  config,
   graft_snapshot = NULL
 ) {
   tempest_storm_require_current_schema(metadata)
@@ -1137,7 +1106,6 @@ tempest_storm_restore_manifest <- function(
   state,
   config,
   program_set,
-  run_dir,
   run_id = NULL
 ) {
   tempest_storm_require_current_schema(metadata)
@@ -1260,7 +1228,6 @@ tempest_storm_restore_manifest <- function(
 
 #' @keywords internal
 tempest_storm_read_state <- function(
-  run_dir,
   paths,
   metadata,
   path_is_declared,
@@ -1485,7 +1452,6 @@ tempest_storm_load_artifacts <- function(
 
   workspace <- tempest_storm_restore_workspace(
     metadata,
-    config,
     graft_snapshot = graft_snapshot
   )
   manifest_workspace_identity <- tempest_storm_workspace_identity_record(
@@ -1526,7 +1492,6 @@ tempest_storm_load_artifacts <- function(
     )
   }
   state <- tempest_storm_read_state(
-    run_dir,
     paths,
     metadata,
     path_is_declared,
@@ -1539,7 +1504,6 @@ tempest_storm_load_artifacts <- function(
     state,
     config,
     program_set,
-    run_dir,
     run_id = run_id
   )
 
@@ -1588,10 +1552,7 @@ tempest_storm_save_artifacts <- function(
   research_manifest,
   program_set = NULL,
   config,
-  steps,
-  research_strategy,
-  parallel_writing = FALSE,
-  remove_duplicate = FALSE
+  steps
 ) {
   if (is.null(run_dir)) {
     return(invisible(NULL))

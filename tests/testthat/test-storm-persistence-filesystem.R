@@ -1,4 +1,70 @@
-test_that("run restore rejects undeclared product files", {
+test_that("tempest_storm_prepare_run_dir creates a topic slug directory", {
+  skip_if_not_installed("jsonlite")
+  root <- withr::local_tempdir(pattern = "tempest-runs-")
+
+  run_dir <- tempest:::tempest_storm_prepare_run_dir(
+    root,
+    "A Topic: With Punctuation!"
+  )
+
+  expect_equal(basename(run_dir), "a-topic-with-punctuation")
+  expect_equal(dir.exists(run_dir), TRUE)
+})
+
+test_that("STORM saves reject symbolic-link bundle roots", {
+  skip_on_os("windows")
+  skip_if_not_installed("jsonlite")
+  cfg <- tempest_config()
+  root <- withr::local_tempdir()
+  program_set <- tempest_program_set()
+  storm_target <- file.path(root, "storm-target")
+  storm_manifest <- tempest_research_manifest(
+    "storm-root-symlink",
+    config = cfg,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
+  )
+  storm_workspace <- tempest_research_workspace()
+  tempest:::tempest_storm_save_artifacts(
+    storm_target,
+    storm_workspace,
+    tempest:::tempest_storm_state(
+      "STORM root symlink",
+      title = "Original STORM title"
+    ),
+    storm_manifest,
+    program_set = program_set,
+    config = cfg,
+    steps = "research"
+  )
+  storm_alias <- file.path(root, "storm-alias")
+  expect_identical(file.symlink(storm_target, storm_alias), TRUE)
+
+  expect_error(
+    tempest:::tempest_storm_save_artifacts(
+      paste0(storm_alias, .Platform$file.sep),
+      storm_workspace,
+      tempest:::tempest_storm_state(
+        "STORM root symlink",
+        title = "Replacement STORM title"
+      ),
+      storm_manifest,
+      program_set = program_set,
+      config = cfg,
+      steps = "research"
+    ),
+    class = "tempest_run_persistence_error"
+  )
+  expect_identical(Sys.readlink(storm_alias), storm_target)
+  restored_storm <- tempest:::tempest_storm_load_artifacts(
+    storm_target,
+    config = cfg,
+    program_set = program_set,
+    run_id = "storm-root-symlink"
+  )
+  expect_identical(restored_storm$state$title, "Original STORM title")
+})
+
+test_that("STORM restore rejects undeclared product files", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()
@@ -16,8 +82,7 @@ test_that("run restore rejects undeclared product files", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = "polish",
-    research_strategy = "key_questions"
+    steps = "polish"
   )
   writeLines("UNDECLARED", file.path(dir, "storm_gen_article_polished.md"))
 
@@ -32,7 +97,7 @@ test_that("run restore rejects undeclared product files", {
   )
 })
 
-test_that("run save refuses pre-existing unowned files", {
+test_that("STORM save refuses pre-existing unowned files", {
   dir <- withr::local_tempdir()
   credentials <- file.path(dir, "credentials.json")
   writeLines("user-owned", credentials)
@@ -51,8 +116,7 @@ test_that("run save refuses pre-existing unowned files", {
       ),
       program_set = program_set,
       config = cfg,
-      steps = "research",
-      research_strategy = "key_questions"
+      steps = "research"
     ),
     class = "tempest_run_persistence_error"
   )
@@ -60,7 +124,7 @@ test_that("run save refuses pre-existing unowned files", {
   expect_false(file.exists(file.path(dir, "run_config.json")))
 })
 
-test_that("run manifest failures are classed and reject escaping symlinks", {
+test_that("STORM manifest failures are classed and reject escaping symlinks", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
@@ -79,8 +143,7 @@ test_that("run manifest failures are classed and reject escaping symlinks", {
       ),
       program_set = program_set,
       config = cfg,
-      steps = "polish",
-      research_strategy = "key_questions"
+      steps = "polish"
     )
     dir
   }
@@ -131,7 +194,7 @@ test_that("tempest_atomic_write_lines writes content and leaves no temp files", 
   expect_length(list.files(dir, pattern = "\\.tmp$"), 0L)
 })
 
-test_that("the run manifest is written after the artifacts it certifies", {
+test_that("the STORM manifest follows the artifacts it certifies", {
   skip_if_not_installed("jsonlite")
   dir <- withr::local_tempdir()
   paths <- tempest:::tempest_storm_artifact_paths(dir)
@@ -204,8 +267,7 @@ test_that("the run manifest is written after the artifacts it certifies", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = c("research", "write"),
-    research_strategy = "key_questions"
+    steps = c("research", "write")
   )
 
   # If the manifest claims "write" is complete, its artifact must exist.
@@ -240,8 +302,7 @@ test_that("references.json holds only the cited sources and reloads", {
     research_manifest,
     program_set = program_set,
     config = cfg,
-    steps = state$completed_stages,
-    research_strategy = "key_questions"
+    steps = state$completed_stages
   )
 
   refs <- tempest:::tempest_product_read_json(
@@ -282,8 +343,7 @@ test_that("references.json holds only the cited sources and reloads", {
     research_manifest,
     program_set = program_set,
     config = cfg,
-    steps = state$completed_stages,
-    research_strategy = "key_questions"
+    steps = state$completed_stages
   )
   report_path <- file.path(dir, "storm_gen_article_polished.md")
   writeLines(paste0("Unknown citation [", s2$id, "]."), report_path)
@@ -324,14 +384,13 @@ test_that("schema 6 STORM bundles fail closed", {
           max_sources = "unbounded",
           accepted_graft_references = list()
         )
-      ),
-      tempest_config()
+      )
     ),
     class = "tempest_unsupported_format_error"
   )
 })
 
-test_that("schema 7 resume protects run and config identity", {
+test_that("schema 7 resume protects STORM run and config identity", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()
@@ -349,8 +408,7 @@ test_that("schema 7 resume protects run and config identity", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
 
   expect_error(

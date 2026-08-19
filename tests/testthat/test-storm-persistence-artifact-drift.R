@@ -116,8 +116,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       manifest,
       program_set = program_set,
       config = cfg,
-      steps = state$completed_stages,
-      research_strategy = "key_questions"
+      steps = state$completed_stages
     )
     list(dir = dir, config = cfg)
   }

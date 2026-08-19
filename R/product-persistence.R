@@ -384,6 +384,11 @@ tempest_product_bundle_checksum <- function(bundle_dir, rel_path) {
 }
 
 #' @keywords internal
+tempest_product_install_bundle <- function(staging_dir, bundle_dir) {
+  file.rename(staging_dir, bundle_dir)
+}
+
+#' @keywords internal
 tempest_product_atomic_commit_bundle <- function(
   staging_dir,
   bundle_dir,
@@ -404,7 +409,7 @@ tempest_product_atomic_commit_bundle <- function(
     }
   }
 
-  if (!file.rename(staging_dir, bundle_dir)) {
+  if (!tempest_product_install_bundle(staging_dir, bundle_dir)) {
     restored <- is.null(backup_dir) || file.rename(backup_dir, bundle_dir)
     if (!isTRUE(restored)) {
       tempest_abort(

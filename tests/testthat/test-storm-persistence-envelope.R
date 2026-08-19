@@ -38,8 +38,7 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
       manifest,
       program_set = program_set,
       config = cfg,
-      steps = c("perspectives", "research"),
-      research_strategy = "key_questions"
+      steps = c("perspectives", "research")
     )
     list(dir = dir, config = cfg)
   }

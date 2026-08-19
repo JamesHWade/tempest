@@ -19,8 +19,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
   manifest_path <- file.path(run_dir, "run_config.json")
   persisted <- tempest:::tempest_product_read_json(manifest_path)
@@ -146,8 +145,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
       state,
       manifest,
       config = cfg,
-      steps = "research",
-      research_strategy = "key_questions"
+      steps = "research"
     ),
     class = "tempest_run_persistence_error",
     regexp = "explicit complete TempestProgramSet"

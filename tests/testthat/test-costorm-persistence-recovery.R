@@ -71,6 +71,61 @@ test_that("partial session recovery is explicit and skips corrupt optional data"
   expect_false("artifacts/suggested_questions.json" %in% declared)
 })
 
+test_that("explicit partial recovery is isolated across overlapping readers", {
+  outer_path <- withr::local_tempfile(fileext = ".json")
+  inner_path <- withr::local_tempfile(fileext = ".json")
+  writeLines("{", outer_path)
+  writeLines("{", inner_path)
+  inner_error <- NULL
+  withr::local_options(tempest.session_partial_recovery = "sentinel")
+  local_mocked_bindings(
+    tempest_product_read_json = function(path, ...) {
+      if (identical(path, outer_path)) {
+        inner_error <<- tryCatch(
+          tempest:::tempest_session_bundle_optional_json(
+            inner_path,
+            what = "inner optional product",
+            partial_recovery = FALSE
+          ),
+          error = identity
+        )
+      }
+      stop("injected malformed optional product")
+    }
+  )
+
+  warnings <- character()
+  recovered <- withCallingHandlers(
+    tempest:::tempest_session_bundle_optional_json(
+      outer_path,
+      default = "outer default",
+      what = "outer optional product",
+      partial_recovery = TRUE
+    ),
+    warning = function(warning) {
+      warnings <<- c(warnings, conditionMessage(warning))
+      invokeRestart("muffleWarning")
+    }
+  )
+
+  expect_identical(recovered, "outer default")
+  expect_s3_class(inner_error, "error")
+  expect_match(
+    conditionMessage(inner_error),
+    "injected malformed optional product",
+    fixed = TRUE
+  )
+  expect_match(
+    paste(warnings, collapse = "\n"),
+    "Skipping malformed outer optional product",
+    fixed = TRUE
+  )
+  expect_identical(
+    getOption("tempest.session_partial_recovery"),
+    "sentinel"
+  )
+})
+
 test_that("partial recovery rejects a re-signed running report splice", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("jsonlite")

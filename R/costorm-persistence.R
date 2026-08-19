@@ -1450,21 +1450,6 @@ tempest_session_bundle_write_json <- function(path, rel_path, value) {
       )
     }
   )
-  hook <- getOption("tempest.session_write_hook")
-  if (is.function(hook)) {
-    tryCatch(
-      hook(rel_path),
-      error = function(error) {
-        tempest_abort(
-          "Session bundle write was interrupted after {.path {rel_path}}.",
-          class = tempest_session_persistence_error_class(
-            "tempest_session_save_error"
-          ),
-          parent = error
-        )
-      }
-    )
-  }
   rel_path
 }
 
@@ -1485,21 +1470,6 @@ tempest_session_bundle_write_text <- function(path, rel_path, value) {
       )
     }
   )
-  hook <- getOption("tempest.session_write_hook")
-  if (is.function(hook)) {
-    tryCatch(
-      hook(rel_path),
-      error = function(error) {
-        tempest_abort(
-          "Session bundle write was interrupted after {.path {rel_path}}.",
-          class = tempest_session_persistence_error_class(
-            "tempest_session_save_error"
-          ),
-          parent = error
-        )
-      }
-    )
-  }
   rel_path
 }
 
@@ -1788,7 +1758,12 @@ tempest_session_save <- function(
 }
 
 #' @keywords internal
-tempest_session_bundle_optional_json <- function(path, default = NULL, what) {
+tempest_session_bundle_optional_json <- function(
+  path,
+  default = NULL,
+  what,
+  partial_recovery = FALSE
+) {
   if (!file.exists(path)) {
     return(default)
   }
@@ -1801,7 +1776,7 @@ tempest_session_bundle_optional_json <- function(path, default = NULL, what) {
       )
     ),
     error = function(error) {
-      if (!isTRUE(getOption("tempest.session_partial_recovery", FALSE))) {
+      if (!isTRUE(partial_recovery)) {
         stop(error)
       }
       tempest_warn("Skipping malformed {what} during partial recovery.")
@@ -2278,6 +2253,53 @@ tempest_session_bundle_validate_manifest <- function(
   invisible(setdiff(files, invalid_optional))
 }
 
+#' @keywords internal
+tempest_costorm_archive_read <- function(path) {
+  if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
+    tempest_session_restore_abort(
+      "{.arg path} must be a single non-empty extracted bundle directory."
+    )
+  }
+  bundle_dir <- normalizePath(
+    path.expand(path),
+    winslash = "/",
+    mustWork = FALSE
+  )
+  tempest_persistence_require_regular_bundle_files(
+    bundle_dir,
+    "session.json",
+    "Extracted Co-STORM archive root manifest",
+    tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  manifest_path <- file.path(bundle_dir, "session.json")
+  manifest_size <- file.info(manifest_path)$size
+  if (
+    length(manifest_size) != 1L ||
+      is.na(manifest_size) ||
+      !is.finite(manifest_size) ||
+      manifest_size > 50 * 1024^2
+  ) {
+    tempest_session_restore_abort(
+      "Extracted Co-STORM archive has an unbounded session manifest."
+    )
+  }
+  manifest <- tempest_product_read_json(
+    manifest_path,
+    what = "extracted Co-STORM archive manifest",
+    class = tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  tempest_session_bundle_validate_manifest(
+    bundle_dir,
+    manifest,
+    partial_recovery = FALSE
+  )
+  normalizePath(bundle_dir, winslash = "/", mustWork = TRUE)
+}
+
 #' Resume a saved Co-STORM session bundle
 #'
 #' `tempest_session_resume()` reads a directory bundle written by
@@ -2330,12 +2352,6 @@ tempest_session_resume_internal <- function(
   program_set = NULL,
   knowledge_view = NULL
 ) {
-  previous_partial <- getOption("tempest.session_partial_recovery")
-  options(tempest.session_partial_recovery = isTRUE(partial_recovery))
-  on.exit(
-    options(tempest.session_partial_recovery = previous_partial),
-    add = TRUE
-  )
   if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
     tempest_abort(
       "{.arg path} must be a single non-empty path string.",
@@ -2402,7 +2418,8 @@ tempest_session_resume_internal <- function(
     tempest_session_bundle_optional_json(
       file.path(bundle_dir, rel_path),
       default = default,
-      what = what
+      what = what,
+      partial_recovery = partial_recovery
     )
   }
   report_md <- if ("report.md" %in% declared_files) {

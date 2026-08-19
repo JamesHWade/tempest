@@ -23,8 +23,7 @@ test_that("persistence schema dispatch rejects fractional versions", {
   )
   expect_error(
     tempest:::tempest_storm_restore_workspace(
-      list(schema_version = 6.5),
-      cfg
+      list(schema_version = 6.5)
     ),
     class = run_class
   )
@@ -34,8 +33,7 @@ test_that("persistence schema dispatch rejects fractional versions", {
       tempest_research_workspace(),
       tempest:::tempest_storm_state("Fractional schema"),
       cfg,
-      program_set = NULL,
-      run_dir = withr::local_tempdir()
+      program_set = NULL
     ),
     class = run_class
   )

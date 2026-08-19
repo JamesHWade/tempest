@@ -38,8 +38,7 @@ test_that("schema 7 STORM declared JSON fails closed", {
       manifest,
       program_set = program_set,
       config = cfg,
-      steps = "perspectives",
-      research_strategy = "key_questions"
+      steps = "perspectives"
     )
     list(dir = dir, config = cfg)
   }
@@ -109,8 +108,7 @@ test_that("schema 7 manifests require files implied by completed stages", {
       manifest,
       program_set = program_set,
       config = cfg,
-      steps = "perspectives",
-      research_strategy = "key_questions"
+      steps = "perspectives"
     )
     dir
   }

@@ -327,8 +327,7 @@ test_that("tempest_run rejects a resumed checkpoint for another topic", {
     ),
     program_set = program_set,
     config = config,
-    steps = "write",
-    research_strategy = "key_questions"
+    steps = "write"
   )
 
   expect_error(
@@ -381,8 +380,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
       manifest,
       program_set = program_set,
       config = cfg,
-      steps = "write",
-      research_strategy = "key_questions"
+      steps = "write"
     )
 
     expect_error(
@@ -430,8 +428,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     completed$manifest,
     program_set = program_set,
     config = cfg,
-    steps = c("perspectives", "research", "outline", "write", "polish"),
-    research_strategy = "key_questions"
+    steps = c("perspectives", "research", "outline", "write", "polish")
   )
   expected_state <- tempest:::tempest_storm_load_artifacts(
     run_dir,

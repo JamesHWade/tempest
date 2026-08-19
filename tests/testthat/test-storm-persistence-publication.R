@@ -19,8 +19,7 @@ test_that("STORM requested steps persist canonically and remain immutable", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = c("polish", "research", "write"),
-    research_strategy = "key_questions"
+    steps = c("polish", "research", "write")
   )
   loaded <- tempest:::tempest_storm_load_artifacts(
     run_dir,
@@ -41,8 +40,7 @@ test_that("STORM requested steps persist canonically and remain immutable", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = c("write", "polish", "research"),
-    research_strategy = "key_questions"
+    steps = c("write", "polish", "research")
   )
   expect_error(
     tempest:::tempest_storm_save_artifacts(
@@ -52,8 +50,7 @@ test_that("STORM requested steps persist canonically and remain immutable", {
       manifest,
       program_set = program_set,
       config = cfg,
-      steps = c("research", "outline"),
-      research_strategy = "key_questions"
+      steps = c("research", "outline")
     ),
     class = "tempest_run_persistence_error"
   )
@@ -84,8 +81,7 @@ test_that("succeeded STORM publication requires the full dependency chain", {
       ),
       program_set = program_set,
       config = cfg,
-      steps = "research",
-      research_strategy = "key_questions"
+      steps = "research"
     ),
     class = "tempest_run_persistence_error"
   )

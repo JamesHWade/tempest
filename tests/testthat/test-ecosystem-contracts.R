@@ -397,8 +397,7 @@ test_that("Graft snapshots retain their immutable restoration boundary", {
     manifest,
     program_set = program_set,
     config = config,
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
   serialized_snapshot <- serialize(snapshot, NULL, version = 3L)
   snapshot_id_raw <- charToRaw(reference$snapshot_id)

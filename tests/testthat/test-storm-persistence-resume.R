@@ -81,8 +81,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = "research",
-    research_strategy = "key_questions"
+    steps = "research"
   )
 
   snapshot <- tempest:::tempest_research_workspace_snapshot(workspace)

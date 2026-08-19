@@ -1,4 +1,4 @@
-test_that("schema 7 run bundles restore workspace, state, and manifest", {
+test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
   skip_if_not_installed("jsonlite")
   test_env <- environment()
   root <- withr::local_tempdir(pattern = "tempest-runs-")
@@ -139,10 +139,7 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
     research_manifest,
     program_set = program_set,
     config = cfg,
-    steps = c("perspectives", "research", "outline", "write", "polish"),
-    research_strategy = "key_questions",
-    parallel_writing = TRUE,
-    remove_duplicate = TRUE
+    steps = c("perspectives", "research", "outline", "write", "polish")
   )
   pristine_dir <- run_dir
   clone_bundle <- function() {
@@ -310,7 +307,7 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
   )
 })
 
-test_that("run restore rejects tampered expert-profile records", {
+test_that("STORM restore rejects tampered expert-profile records", {
   skip_if_not_installed("jsonlite")
   run_dir <- withr::local_tempdir()
   cfg <- tempest_config()
@@ -347,8 +344,7 @@ test_that("run restore rejects tampered expert-profile records", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = "perspectives",
-    research_strategy = "key_questions"
+    steps = "perspectives"
   )
   experts_path <- file.path(run_dir, "experts.json")
   records <- tempest:::tempest_product_read_json(experts_path)
@@ -445,8 +441,7 @@ test_that("completed stage metadata controls resume state", {
     manifest,
     program_set = program_set,
     config = cfg,
-    steps = c("perspectives", "research", "outline", "write", "polish"),
-    research_strategy = "key_questions"
+    steps = c("perspectives", "research", "outline", "write", "polish")
   )
 
   loaded <- tempest:::tempest_storm_load_artifacts(

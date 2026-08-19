@@ -300,6 +300,43 @@ test_that("former run persistence definitions have one product owner", {
     any(definitions$name %in% c(deleted, names(renames), names(consolidated))),
     FALSE
   )
+  expect_identical(
+    vapply(
+      c("tempest_stage_complete_success", "tempest_stage_complete_failure"),
+      function(name) sum(definitions$name == name),
+      integer(1)
+    ),
+    c(
+      tempest_stage_complete_success = 1L,
+      tempest_stage_complete_failure = 1L
+    )
+  )
+  expect_identical(
+    any(
+      definitions$name %in%
+        c(
+          "tempest_storm_stage_complete_success",
+          "tempest_storm_stage_complete_failure"
+        )
+    ),
+    FALSE
+  )
+  expect_disjoint(
+    names(formals(tempest:::tempest_storm_save_artifacts)),
+    c("research_strategy", "parallel_writing", "remove_duplicate")
+  )
+  expect_disjoint(
+    names(formals(tempest:::tempest_storm_restore_workspace)),
+    "config"
+  )
+  expect_disjoint(
+    names(formals(tempest:::tempest_storm_restore_manifest)),
+    "run_dir"
+  )
+  expect_disjoint(
+    names(formals(tempest:::tempest_storm_read_state)),
+    "run_dir"
+  )
 
   description <- read.dcf(
     testthat::test_path("..", "..", "DESCRIPTION"),
