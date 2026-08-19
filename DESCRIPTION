@@ -60,7 +60,7 @@ Suggests:
     testthat (>= 3.2.0),
     tidyr,
     visNetwork,
-    vitals,
+    vitals (>= 0.3.0),
     withr,
     zip
 Remotes:

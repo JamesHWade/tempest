@@ -113,9 +113,16 @@ A promotion proposal accepts the succeeded session directly:
 bundle <- tempest_promotion_bundle(session)
 ```
 
+`tempest_trajectory_review(session)` accepts only the same succeeded,
+quiescent, publication-authorized product. It returns bounded safe identities
+and non-causal joins; it does not persist mutable progress or grant promotion
+authority. Supply the exact bundle, and optionally its receipt, only when the
+review should distinguish `proposed` from `accepted` promotion state.
+
 The default `tempest_costorm_task()` solver completes the real session product,
-reads its committed report, and returns credential-safe product summaries plus
-terminal Deputy traces, never Agent objects or live chats.
+reads its committed report, and returns a bounded credential-safe trajectory
+summary, never Agent objects or live chats. Exact ProgramSet and knowledge-view
+evaluation is available only through the built-in solver.
 
 ## Verify
 

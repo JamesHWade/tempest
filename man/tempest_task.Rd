@@ -5,16 +5,19 @@
 \title{Create a vitals Task for tempest}
 \usage{
 tempest_task(
-  dataset = c("qa"),
+  dataset = "qa",
   solver = NULL,
   scorer = NULL,
   scorer_chat = NULL,
   config = tempest_config(),
+  program_set = NULL,
+  knowledge_view = NULL,
   ...
 )
 }
 \arguments{
-\item{dataset}{Which built-in dataset to use. Currently "qa".}
+\item{dataset}{The built-in \code{"qa"} smoke dataset or an exact data frame with
+\code{input}, \code{target}, and optional unique \code{id} columns.}
 
 \item{solver}{Optional vitals-compatible solver. When \code{NULL}, evaluates the
 authoritative \code{\link[=tempest_run]{tempest_run()}} product.}
@@ -27,6 +30,11 @@ scoring.}
 
 \item{config}{A \code{TempestConfig} passed to the solver.}
 
+\item{program_set}{Optional \link{TempestProgramSet} evaluated by the built-in
+solver.}
+
+\item{knowledge_view}{Optional immutable Graft view used by governed programs.}
+
 \item{...}{Passed to \code{vitals::Task$new()}.}
 }
 \value{
@@ -34,9 +42,12 @@ A \code{vitals::Task}.
 }
 \description{
 The built-in solver runs a real \code{\link[=tempest_run]{tempest_run()}} product for each input and
-returns its authoritative report. \code{solver_metadata} contains only
-credential-safe Manifest, Workspace, and StageRecord summaries; live chats,
-clients, tools, and credentials are not returned as metadata.
+returns its authoritative report. \code{solver_metadata} contains only a
+versioned, credential-safe trajectory summary; live chats, clients, tools,
+evidence identifiers, source content, and credentials are excluded.
+Caller datasets are validated and bound to the Task name and metadata by a
+canonical digest. Custom solvers cannot claim \code{program_set} or
+\code{knowledge_view} inputs on Tempest's behalf.
 }
 \examples{
 \dontrun{

@@ -191,6 +191,41 @@ out-of-band trust pin; checksums stored inside the directory establish internal
 consistency but are not a signature. A `GovernedProcedure` is accepted through
 a separate reviewed Graft flow; research promotion never mints one.
 
+## Review a completed run
+
+`tempest_trajectory_review()` reconstructs a bounded, read-only review from one
+exact completed STORM result or succeeded, quiescent Co-STORM session:
+
+```r
+review <- tempest_trajectory_review(result)
+proposed_review <- tempest_trajectory_review(
+  result,
+  promotion_bundle = bundle
+)
+accepted_review <- tempest_trajectory_review(
+  result,
+  promotion_bundle = bundle,
+  promotion_receipt = receipt
+)
+```
+
+The ten-field value identifies the product and contains ordered StageRecord
+summaries, safe terminal Deputy identities, the fixed ProgramSet references,
+input and optional promotion knowledge, evidence identities, explicit joins,
+and structural findings. Variable lanes retain at most 250 records and report
+the complete count and digest when rows are omitted. The review contains no
+prompts, responses, source text, paths, credentials, live objects, or
+capabilities, and it is reconstructable rather than persisted.
+
+Every join names its relation and proof. Exact run, stage, program, snapshot,
+bundle, and receipt identities can establish a validated binding;
+`correlation_id` can establish only `correlated_with` with
+`correlation_only` proof. It never establishes authorship or causation.
+Mutable progress events are intentionally outside the review identity. A
+promotion bundle is shown as proposed, and an exact matching bundle plus
+receipt is shown as accepted; a receipt alone or a cross-run product fails
+closed.
+
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
 Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state schema
 4, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload
@@ -664,6 +699,8 @@ The app provides:
 - **Facts tab**: Extracted facts with citations and confidence
 - **Transcript tab**: Ordered public Co-STORM turns
 - **Report tab**: Rendered markdown report with footnotes
+- **Run review tab**: Bounded authoritative StageRecord review beside clearly
+  labeled, untrusted live progress observations
 
 Features:
 
@@ -727,8 +764,12 @@ tsk$get_samples()
 
 Unless a solver is supplied explicitly, each sample runs a real
 `tempest_run()` product and returns its authoritative report. Solver metadata
-contains credential-safe Manifest, Workspace, and StageRecord summaries, not
-live chats, clients, tools, or credentials.
+contains only a versioned review reference, exact product identity, fixed
+program artifact and evaluator identities, and a ten-stage structural summary.
+It never logs the full trajectory review, live chats, clients, tools, prompts,
+responses, paths, or credentials. Pass a caller data frame with exact `input`,
+`target`, and optional unique `id` columns to evaluate a content-addressed local
+benchmark.
 
 ### Co-STORM evaluation with SimulatedUser
 
@@ -748,8 +789,64 @@ tsk <- tempest_costorm_task(dataset = "qa", max_turns = 5, scorer_chat = judge)
 
 The default Co-STORM solver likewise completes a real `TempestSession`, reads
 its committed report through `tempest_session_report_md()`, and records only
-credential-safe product summaries and terminal Deputy traces in solver
-metadata.
+the same bounded credential-safe product, program, and stage summary.
+
+### Explicit program improvement loop
+
+Tempest keeps evaluation, compilation, and adoption separate. Use distinct
+vitals tasks for an exact baseline and candidate, compile only explicitly
+selected dsprrr stages, and adopt the candidate only after reviewing its
+scores and trajectory summaries:
+
+```r
+baseline_task <- tempest_task(
+  dataset = held_out,
+  config = cfg,
+  scorer_chat = judge,
+  program_set = program_set,
+  knowledge_view = knowledge_view
+)
+baseline_task$eval()
+
+candidate_program_set <- tempest_compile_programs(
+  program_set,
+  trainsets = stage_trainsets,
+  valsets = stage_validation_sets,
+  teleprompters = teleprompters,
+  path = "candidate-programs"
+)
+
+candidate_task <- tempest_task(
+  dataset = held_out,
+  config = cfg,
+  scorer_chat = judge,
+  program_set = candidate_program_set,
+  knowledge_view = knowledge_view
+)
+candidate_task$eval()
+
+# Inspect baseline and candidate samples/metrics, then make an explicit choice.
+baseline_samples <- baseline_task$get_samples()
+candidate_samples <- candidate_task$get_samples()
+chosen_program_set <- candidate_program_set
+
+next_result <- tempest_run(
+  "Grid-scale battery recycling",
+  config = cfg,
+  program_set = chosen_program_set,
+  knowledge_view = knowledge_view
+)
+```
+
+Keep compilation training and validation examples separate from the held-out
+evaluation set to avoid leakage, overfitting, and optimistic scores. Compare
+the same sample IDs, inputs, targets, and scorer before selecting a candidate.
+Tempest does not invent training data, choose a teleprompter, optimize
+automatically, accept a changed governed artifact, or replace the baseline
+ProgramSet. Supply an explicit scorer or let the task use
+`vitals::model_graded_qa()` with the chosen judge chat. Compilation uses
+isolated Module copies; a changed artifact loses the baseline stage's governed
+reference until the new artifact is reviewed and accepted separately.
 
 ## Notes
 

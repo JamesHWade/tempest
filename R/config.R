@@ -398,7 +398,7 @@ tempest_default_chat <- function(model, system_prompt, params, echo, role) {
   )
 }
 
-#' Create a chat object for a given role.
+#' Create a chat object for a given role
 #'
 #' @param config A `TempestConfig` object.
 #' @param role Role name (e.g., "coordinator", "writer", "expert").

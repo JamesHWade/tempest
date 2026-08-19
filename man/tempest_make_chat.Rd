@@ -2,7 +2,7 @@
 % Please edit documentation in R/config.R
 \name{tempest_make_chat}
 \alias{tempest_make_chat}
-\title{Create a chat object for a given role.}
+\title{Create a chat object for a given role}
 \usage{
 tempest_make_chat(config, role, system_prompt = NULL, echo = "none")
 }
@@ -19,6 +19,6 @@ tempest_make_chat(config, role, system_prompt = NULL, echo = "none")
 An ellmer-compatible Chat object.
 }
 \description{
-Create a chat object for a given role.
+Create a chat object for a given role
 }
 \keyword{internal}

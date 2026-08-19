@@ -2650,6 +2650,8 @@ tempest_session_set_report_value <- function(session, report_md) {
 #'   builtin set.
 #' @param knowledge_view Optional immutable Graft view. It is required for a
 #'   fresh session when `program_set` contains governed procedures.
+#' @return A `TempestSession` R6 object for the active Co-STORM research
+#'   session.
 #' @examples
 #' \dontrun{
 #' session <- tempest_session("History of jazz", config = tempest_config())

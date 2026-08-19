@@ -42,6 +42,10 @@ builtin set.}
 \item{knowledge_view}{Optional immutable Graft view. It is required for a
 fresh session when \code{program_set} contains governed procedures.}
 }
+\value{
+A \code{TempestSession} R6 object for the active Co-STORM research
+session.
+}
 \description{
 Create a Co-STORM session
 }

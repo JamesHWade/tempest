@@ -1,4 +1,4 @@
-test_that("T9 product entry points have exact source owners", {
+test_that("product entry points have exact source owners", {
   context <- test_source_inventory_context()
   entry_points <- c(
     run_app = "app.R",
@@ -9,6 +9,7 @@ test_that("T9 product entry points have exact source owners", {
     tempest_product_report_reference = "product-report.R",
     tempest_product_report_reference_validate = "product-report.R",
     tempest_task = "evals.R",
+    tempest_trajectory_review = "trajectory-review.R",
     tempest_costorm_task = "evals.R",
     tempest_promotion_bundle = "promotion-types.R",
     tempest_research_workspace_snapshot = "research-workspace-persistence.R",
@@ -96,7 +97,14 @@ test_that("T9 product entry points have exact source owners", {
         "scorer",
         "scorer_chat",
         "config",
+        "program_set",
+        "knowledge_view",
         "..."
+      ),
+      tempest_trajectory_review = c(
+        "research",
+        "promotion_bundle",
+        "promotion_receipt"
       ),
       tempest_costorm_task = c(
         "dataset",
@@ -105,6 +113,8 @@ test_that("T9 product entry points have exact source owners", {
         "solver",
         "scorer",
         "scorer_chat",
+        "program_set",
+        "knowledge_view",
         "..."
       ),
       tempest_promotion_bundle = c("research", "claim_ids"),

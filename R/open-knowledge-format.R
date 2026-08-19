@@ -23,8 +23,8 @@ tempest_okf_abort <- function(message, ..., parent = NULL) {
 #' resources. Concept files remain evidence inputs: reading a bundle does not
 #' approve its contents, grant capabilities, or publish artifacts.
 #'
-#' Tempest enforces the OKF v0.2 conformance boundary—parseable YAML
-#' frontmatter and a non-empty `type` for every concept—while tolerating
+#' Tempest enforces the OKF v0.2 conformance boundary: parseable YAML
+#' frontmatter and a non-empty `type` for every concept, while tolerating
 #' unknown types, extension keys, missing indexes, and broken links as the
 #' specification requires. Optional trust, lifecycle, provenance, and
 #' attestation problems are retained as diagnostics in `bundle$issues`.

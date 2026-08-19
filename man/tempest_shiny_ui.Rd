@@ -14,9 +14,9 @@ tempest_shiny_ui(
 \item{id}{Shiny module id.}
 
 \item{panels}{Character vector containing any of \code{"chat"}, \code{"sources"},
-\code{"facts"}, \code{"mindmap"}, \code{"transcript"}, \code{"report"}, and \code{"storm"}. Use
-\code{"all"} for every panel. The default embeds the Co-STORM chat and durable
-research views.}
+\code{"facts"}, \code{"mindmap"}, \code{"transcript"}, \code{"report"}, \code{"storm"}, and
+\code{"review"}. Use \code{"all"} for every panel. The default embeds the Co-STORM
+chat and durable research views.}
 
 \item{show_config}{If \code{TRUE}, include the bundled configuration controls in
 the Chat settings drawer. Hosts that provide their own config should leave

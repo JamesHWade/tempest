@@ -16,7 +16,8 @@ A Shiny app object (invisibly, from \code{shiny::runApp()}).
 Launches an interactive app that provides:
 \itemize{
 \item Co-STORM chat, sources, facts, mind map, transcript, and committed reports;
-\item asynchronous scripted STORM research and report publication; and
+\item asynchronous scripted STORM research and report publication;
+\item a bounded, read-only Run review with separately labeled live progress; and
 \item bounded Co-STORM session archive download and upload without autosave.
 }
 }

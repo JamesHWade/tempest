@@ -99,6 +99,7 @@ T9 made the retained surface ownership physical and current-only:
 | Report references, integrity, Markdown rendering, citations, and execution review | `R/product-report.R` |
 | Co-STORM report finalization and committed-report access | `R/costorm-report.R` |
 | Product publication and promotion eligibility | `R/product-authority.R`, `R/promotion-types.R`, and `R/promotion-persistence.R` |
+| Bounded, reconstructable completed-product trajectory review | `R/trajectory-review.R` |
 | Real STORM and Co-STORM evaluation tasks | `R/evals.R` |
 | Product research UI and asynchronous host adapter | `R/shiny-adapter.R`, `inst/shiny/`, and `inst/examples/shiny-host/` |
 
@@ -128,13 +129,33 @@ optional suggested-questions presentation file; it never relaxes durable
 expert, transcript, mind-map, StageRecord, Workspace, report, or Graft
 snapshot integrity.
 
-The public namespace remains exactly the 62 exports in
+The public namespace contains exactly the 63 exports in
 `tests/testthat/fixtures/public-exports-0.2.0.txt` and two registered S3
 methods. The Shiny store exposes exactly 13 product-named members, and
 `tempest_shiny_server()` returns exactly 10 product-specific members. The UI
 has no autosave claim or parallel-research control; its host example uses the
-same asynchronous STORM adapter as the bundled app, with polite live status
-for progress and success and alerts for failures.
+same asynchronous STORM adapter as the bundled app. The internal Run review
+panel renders bounded authoritative StageRecords beside separately labeled
+untrusted progress, with polite live status for progress and success and alerts
+for failures.
+
+`tempest_trajectory_review()` reuses complete publication-authority validation
+for one completed STORM or Co-STORM product. Its reconstructable ten-field S7
+projection is not persisted and grants no promotion or governance authority.
+StageRecord order is authoritative; other variable lanes are canonical sets
+with a 250-row retained cap and complete count and digest. Joins distinguish
+authority validation, exact identity, and correlation-only grouping. A
+`correlation_id` never establishes causation. Mutable product progress, raw
+payloads, prompts, responses, source content, paths, credentials, capabilities,
+and live objects are excluded.
+
+The evaluation loop is deliberately explicit: vitals evaluates an exact
+baseline ProgramSet, callers supply stage-labeled training and validation data
+to dsprrr compilation, a separate vitals Task evaluates the candidate, and an
+operator decides whether to adopt it. Tempest supplies no optimizer, scorer
+engine, synthetic training data, or automatic adoption. Compilation isolates
+the baseline Modules, and a changed candidate artifact loses its prior
+governed-procedure reference until separately reviewed and accepted.
 
 ## Explicit non-goals
 
@@ -274,6 +295,7 @@ they require no API keys, network access, or live provider responses.
 | Cancellation | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-async.R` |
 | Product persistence and STORM/Co-STORM save/resume | `tests/testthat/test-product-persistence*.R`, `tests/testthat/test-research-workspace-persistence*.R`, `tests/testthat/test-storm-persistence*.R`, `tests/testthat/test-costorm-persistence*.R` |
 | Product-only Shiny state and asynchronous publication | `tests/testthat/test-shiny-product-boundary.R`, `tests/testthat/test-shiny-app.R`, `tests/testthat/test-shiny-host-example.R` |
+| Bounded trajectory identity, joins, findings, and Run review UI | `tests/testthat/test-trajectory-review.R`, `tests/testthat/test-shiny-run-review.R` |
 | Research manifest, state, and workspace correlation | `tests/testthat/test-research-manifest.R`, `tests/testthat/test-research-session.R`, `tests/testthat/test-research-workspace.R`, `tests/testthat/test-storm-state.R` |
 | Historical and current public exports | `tests/testthat/test-public-api.R` |
 
@@ -298,9 +320,10 @@ expectations and no failures, warnings, or skips.
 The T0 pre-0.2 namespace baseline contains 96 explicit exports and two
 registered S3 print methods. T8 preserves
 `tests/testthat/fixtures/public-exports-0.1.0.txt` unchanged and adds
-`tests/testthat/fixtures/public-exports-0.2.0.txt` for the exact 62 product
-exports. The explicit difference records the breaking removal without
-rewriting history.
+`tests/testthat/fixtures/public-exports-0.2.0.txt` with 62 product exports. T10
+adds only `tempest_trajectory_review()` to the current fixture, yielding 63.
+The explicit difference records the breaking removal without rewriting
+history.
 
 ## Superseded decisions
 
