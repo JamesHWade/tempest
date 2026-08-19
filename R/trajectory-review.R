@@ -298,7 +298,12 @@ tempest_trajectory_whole_number <- function(value, noun) {
   invisible(value)
 }
 
-tempest_trajectory_collection <- function(items) {
+tempest_trajectory_collection <- function(items, preserve_order = TRUE) {
+  if (!rlang::is_bool(preserve_order)) {
+    tempest_trajectory_review_abort(
+      "{.arg preserve_order} must be `TRUE` or `FALSE`."
+    )
+  }
   if (
     !is.list(items) ||
       is.data.frame(items) ||
@@ -313,7 +318,7 @@ tempest_trajectory_collection <- function(items) {
   if (length(items) > .Machine$integer.max) {
     tempest_trajectory_review_abort("A trajectory collection is too large.")
   }
-  if (length(items) > 1L) {
+  if (!preserve_order && length(items) > 1L) {
     keys <- vapply(items, tempest_product_canonical_json, character(1))
     items <- items[order(keys, method = "radix")]
   }
@@ -610,7 +615,10 @@ tempest_trajectory_knowledge <- function(
       schema_build_digest = promotion_receipt$schema_build_digest,
       snapshot = promotion_receipt$snapshot,
       counts = promotion_receipt$counts,
-      record_revisions = tempest_trajectory_collection(unname(revisions))
+      record_revisions = tempest_trajectory_collection(
+        unname(revisions),
+        preserve_order = FALSE
+      )
     )
   }
   state <- if (!is.null(acceptance)) {
@@ -1528,13 +1536,16 @@ tempest_trajectory_review <- function(
       payload <- tempest_trajectory_review_payload(
         tempest_trajectory_schema_version,
         product,
-        tempest_trajectory_collection(stage_items),
-        tempest_trajectory_collection(agent_items),
+        tempest_trajectory_collection(stage_items, preserve_order = TRUE),
+        tempest_trajectory_collection(agent_items, preserve_order = FALSE),
         programs,
         knowledge,
-        tempest_trajectory_collection(evidence_items),
-        tempest_trajectory_collection(joined$joins),
-        tempest_trajectory_collection(findings)
+        tempest_trajectory_collection(evidence_items, preserve_order = FALSE),
+        tempest_trajectory_collection(
+          joined$joins,
+          preserve_order = FALSE
+        ),
+        tempest_trajectory_collection(findings, preserve_order = FALSE)
       )
       do.call(
         TempestTrajectoryReview,

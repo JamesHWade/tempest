@@ -52,10 +52,19 @@ test_that("trajectory review accepts the exact public tempest_run outline", {
   result <- storm_product_baseline_fixture()$result
   public_bullets <- result$outline$sections[[1L]]$subsections[[1L]]$bullets
   state_bullets <- result$state$outline$sections[[1L]]$subsections[[1L]]$bullets
+  expected_attempts <- vapply(
+    result$state$stage_records,
+    \(record) record@attempt_id,
+    character(1)
+  )
 
   expect_type(public_bullets, "character")
   expect_type(state_bullets, "list")
-  expect_no_error(tempest_trajectory_review(result))
+  review <- tempest_trajectory_review(result)
+  expect_identical(
+    vapply(review@stages$items, `[[`, character(1), "attempt_id"),
+    expected_attempts
+  )
 })
 
 test_that("trajectory review retains exact noncausal Deputy identities", {
@@ -129,15 +138,49 @@ test_that("trajectory collections cap retained records and digest omissions", {
       record_id = sprintf("claim-%04d", index)
     )
   })
-  first <- tempest:::tempest_trajectory_collection(items)
+  first <- tempest:::tempest_trajectory_collection(
+    items,
+    preserve_order = FALSE
+  )
+  reversed <- tempest:::tempest_trajectory_collection(
+    rev(items),
+    preserve_order = FALSE
+  )
   changed <- items
   changed[[251L]]$record_id <- "claim-9999"
-  second <- tempest:::tempest_trajectory_collection(changed)
+  second <- tempest:::tempest_trajectory_collection(
+    changed,
+    preserve_order = FALSE
+  )
 
   expect_identical(
     first[c("total", "retained", "omitted")],
     list(total = 251L, retained = 250L, omitted = 1L)
   )
+  expect_identical(first, reversed)
+  expect_identical(first$items, second$items)
+  expect_identical(identical(first$digest, second$digest), FALSE)
+})
+
+test_that("trajectory ordered collections preserve authoritative prefixes", {
+  items <- lapply(seq_len(251L), function(index) {
+    list(
+      record_type = "claim",
+      record_id = sprintf("claim-%04d", 252L - index)
+    )
+  })
+  first <- tempest:::tempest_trajectory_collection(
+    items,
+    preserve_order = TRUE
+  )
+  changed <- items
+  changed[[251L]]$record_id <- "claim-9999"
+  second <- tempest:::tempest_trajectory_collection(
+    changed,
+    preserve_order = TRUE
+  )
+
+  expect_identical(first$items, unname(items[seq_len(250L)]))
   expect_identical(first$items, second$items)
   expect_identical(identical(first$digest, second$digest), FALSE)
 })
