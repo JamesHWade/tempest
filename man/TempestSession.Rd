@@ -64,8 +64,6 @@ lock is held; a succeeded session's workspace is sealed.}
     \item \href{#method-TempestSession-get_expert_descriptions}{\code{TempestSession$get_expert_descriptions()}}
     \item \href{#method-TempestSession-update_mindmap}{\code{TempestSession$update_mindmap()}}
     \item \href{#method-TempestSession-mindmap_markdown}{\code{TempestSession$mindmap_markdown()}}
-    \item \href{#method-TempestSession-extract_facts}{\code{TempestSession$extract_facts()}}
-    \item \href{#method-TempestSession-harvest_native_sources}{\code{TempestSession$harvest_native_sources()}}
     \item \href{#method-TempestSession-suggest_questions}{\code{TempestSession$suggest_questions()}}
     \item \href{#method-TempestSession-find_expert}{\code{TempestSession$find_expert()}}
     \item \href{#method-TempestSession-step}{\code{TempestSession$step()}}
@@ -79,7 +77,6 @@ lock is held; a succeeded session's workspace is sealed.}
     \item \href{#method-TempestSession-find_undiscussed_sources}{\code{TempestSession$find_undiscussed_sources()}}
     \item \href{#method-TempestSession-surface_unseen_information}{\code{TempestSession$surface_unseen_information()}}
     \item \href{#method-TempestSession-reorganize_mindmap}{\code{TempestSession$reorganize_mindmap()}}
-    \item \href{#method-TempestSession-execute_turn_decision}{\code{TempestSession$execute_turn_decision()}}
     \item \href{#method-TempestSession-clone}{\code{TempestSession$clone()}}
   }
 }
@@ -323,63 +320,6 @@ restoration.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-extract_facts"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-extract_facts}{}}}
-\subsection{\code{TempestSession$extract_facts()}}{
-  Extract facts from text into the store.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$extract_facts(
-  text,
-  turn = NULL,
-  source_ids = NULL,
-  session_id = self$session_id,
-  expert_id = NA_character_,
-  correlation_id = NA_character_,
-  deputy_execution = NULL
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{text}}{Text containing factual claims.}
-      \item{\code{turn}}{Optional ellmer turn to inspect for provider-native sources.}
-      \item{\code{source_ids}}{Optional source ids already harvested for the turn.}
-      \item{\code{session_id}}{Optional Co-STORM or expert session id.}
-      \item{\code{expert_id}}{Optional expert id.}
-      \item{\code{correlation_id}}{Optional progress correlation id for the turn.}
-      \item{\code{deputy_execution}}{Optional terminal Deputy trace for the answer.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-harvest_native_sources"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-harvest_native_sources}{}}}
-\subsection{\code{TempestSession$harvest_native_sources()}}{
-  Experimental helper for harvesting source metadata from provider-native
-web tool responses.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$harvest_native_sources(chat = NULL, turn = NULL)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{chat}}{Optional chat whose last turn should be inspected.}
-      \item{\code{turn}}{Optional explicit ellmer turn.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Character vector of source ids added or updated.
-  }
-}
-
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-suggest_questions"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-suggest_questions}{}}}
 \subsection{\code{TempestSession$suggest_questions()}}{
@@ -430,14 +370,13 @@ web tool responses.
   Process one explicit user turn through the Deputy moderator.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$step(user_input = NULL, auto = FALSE)}
+    \preformatted{TempestSession$step(user_input = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{user_input}}{User input.}
-      \item{\code{auto}}{Must be \code{FALSE}; generic automatic discourse is unavailable.}
     }
     \if{html}{\out{</div>}}
   }
@@ -630,29 +569,6 @@ unseen evidence and no moderator run occurred.
     \if{html}{\out{<div class="r">}}
     \preformatted{TempestSession$reorganize_mindmap()}
     \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-execute_turn_decision"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-execute_turn_decision}{}}}
-\subsection{\code{TempestSession$execute_turn_decision()}}{
-  Execute a discourse manager turn decision.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$execute_turn_decision(decision)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{decision}}{A turn decision from the discourse manager.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    This method always errors; automatic discourse routing is not a
-supported Co-STORM product path.
   }
 }
 

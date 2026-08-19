@@ -1,16 +1,4 @@
-test_that("product validation is detached from generic workflow helpers", {
-  reject_generic <- function(...) {
-    rlang::abort("generic helper reached", class = "test_generic_reached")
-  }
-  local_mocked_bindings(
-    tempest_workflow_scalar = reject_generic,
-    tempest_workflow_character = reject_generic,
-    tempest_workflow_list = reject_generic,
-    tempest_workflow_serializable_list = reject_generic,
-    tempest_workflow_flag = reject_generic,
-    tempest_canonical_json = reject_generic
-  )
-
+test_that("product validation returns canonical scientific records", {
   result <- tempest_validation_result(
     "validator.product",
     status = "warning",

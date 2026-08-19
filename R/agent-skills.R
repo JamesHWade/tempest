@@ -20,8 +20,7 @@ tempest_supported_agent_skills <- c(
 #' `tempest_agent_skills()` lists the two supported research Agent Skill
 #' directories shipped with Tempest. These `SKILL.md` bundles guide agents
 #' through using the STORM and Co-STORM product APIs or conducting the portable
-#' STORM protocol. Generic-workflow skill directories are unavailable and are
-#' not discoverable or installable through this API.
+#' STORM protocol.
 #'
 #' @return `tempest_agent_skills()` returns a named character vector of bundled
 #'   skill directories.

@@ -332,11 +332,6 @@ test_that("unseen-source questions expose their moderator Deputy execution", {
   expect_identical(execution$role, "moderator")
   expect_identical(is.null(execution$correlation_id), FALSE)
 
-  decision_error <- tryCatch(
-    session$execute_turn_decision(list(action = "surface_unseen")),
-    error = identity
-  )
-  expect_s3_class(decision_error, "tempest_session_error")
   expect_identical(
     vapply(moderator_chat$.calls(), `[[`, character(1), "transport"),
     "stream"

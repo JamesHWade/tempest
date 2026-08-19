@@ -1331,47 +1331,6 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
-    #' Extract facts from text into the store.
-    #' @param text Text containing factual claims.
-    #' @param turn Optional ellmer turn to inspect for provider-native sources.
-    #' @param source_ids Optional source ids already harvested for the turn.
-    #' @param session_id Optional Co-STORM or expert session id.
-    #' @param expert_id Optional expert id.
-    #' @param correlation_id Optional progress correlation id for the turn.
-    #' @param deputy_execution Optional terminal Deputy trace for the answer.
-    extract_facts = function(
-      text,
-      turn = NULL,
-      source_ids = NULL,
-      session_id = self$session_id,
-      expert_id = NA_character_,
-      correlation_id = NA_character_,
-      deputy_execution = NULL
-    ) {
-      tempest_costorm_session_abort(
-        paste0(
-          "Fact extraction requires a claimed session-owned completion; ",
-          "caller-supplied answer text is unavailable."
-        )
-      )
-    },
-
-    #' @description
-    #' Experimental helper for harvesting source metadata from provider-native
-    #' web tool responses.
-    #' @param chat Optional chat whose last turn should be inspected.
-    #' @param turn Optional explicit ellmer turn.
-    #' @return Character vector of source ids added or updated.
-    harvest_native_sources = function(chat = NULL, turn = NULL) {
-      tempest_costorm_session_abort(
-        paste0(
-          "Native sources require a claimed session-owned provider turn; ",
-          "caller-supplied chats and turns are unavailable."
-        )
-      )
-    },
-
-    #' @description
     #' Suggest follow-up questions for the user based on the conversation so far.
     #' @param n Maximum number of questions to return.
     #' @return A character vector of questions (possibly empty).
@@ -1393,17 +1352,10 @@ TempestSession <- R6::R6Class(
     #' @description
     #' Process one explicit user turn through the Deputy moderator.
     #' @param user_input User input.
-    #' @param auto Must be `FALSE`; generic automatic discourse is unavailable.
     #' @return A list with the moderator answer and exact Deputy identity.
-    step = function(user_input = NULL, auto = FALSE) {
+    step = function(user_input = NULL) {
       tempest_session_assert_mutable(self, "process a dialogue turn")
       tempest_session_async_work_assert_startable(self, "dialogue")
-      auto <- tempest_product_flag(auto, "auto")
-      if (auto) {
-        tempest_costorm_session_abort(
-          "Automatic discourse is unavailable; provide one explicit user prompt."
-        )
-      }
       user_input <- tempest_trim(user_input %||% "")
       if (is.na(user_input) || !nzchar(user_input)) {
         return(invisible(NULL))
@@ -1654,20 +1606,6 @@ TempestSession <- R6::R6Class(
         tempest_costorm_mindmap_projection(self)
       )
       invisible(TRUE)
-    },
-
-    #' @description
-    #' Execute a discourse manager turn decision.
-    #' @param decision A turn decision from the discourse manager.
-    #' @return This method always errors; automatic discourse routing is not a
-    #'   supported Co-STORM product path.
-    execute_turn_decision = function(decision) {
-      tempest_costorm_session_abort(
-        paste0(
-          "Automatic discourse decisions are unavailable; submit an explicit ",
-          "moderator turn through the session completion boundary."
-        )
-      )
     }
   ),
   active = list(

@@ -1,12 +1,4 @@
-test_that("research model selection is detached from generic runtime", {
-  reject_generic <- function(...) {
-    rlang::abort("generic helper reached", class = "test_generic_reached")
-  }
-  local_mocked_bindings(
-    tempest_contract_id = reject_generic,
-    tempest_runtime_abort = reject_generic,
-    tempest_runtime = reject_generic
-  )
+test_that("research model selection uses fixed product roles", {
   config <- tempest_config(
     models = list(
       coordinator = "test/coordinator",

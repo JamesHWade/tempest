@@ -56,7 +56,7 @@ cat(answer$answer)
 Let the user observe, question, challenge, and redirect. Preserve the returned
 turn, expert delegation, newly discovered evidence, transcript, and mind-map
 updates. Co-STORM uses deterministic dialogue projections and explicit user
-turns; there is no autonomous generic discourse-manager mode.
+turns through the Deputy-backed `TempestSession` product path.
 
 Respect the active-expert budget. Adding or retiring experts changes the
 available roster but must not redirect stable expert IDs or erase prior

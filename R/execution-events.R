@@ -26,14 +26,6 @@ tempest_execution_events_count <- function(value) {
 }
 
 tempest_execution_event_history <- function(x) {
-  if (inherits(x, "TempestRun")) {
-    tempest_execution_events_abort(
-      paste0(
-        "{.fn tempest_execution_events} accepts only product execution ",
-        "histories, not a generic {.cls TempestRun}."
-      )
-    )
-  }
   if (!inherits(x, "TempestSession")) {
     tempest_execution_events_abort(
       "{.arg x} must be a TempestSession."
@@ -91,8 +83,7 @@ tempest_execution_event_sequences <- function(events) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_execution_events()` gives host adapters one cursor-based query for
-#' immutable Co-STORM progress records. Generic `TempestRun` histories are
-#' outside the supported product boundary and reject immediately.
+#' immutable Co-STORM progress records from a [TempestSession].
 #'
 #' @param x A [TempestSession].
 #' @param after_sequence Return only events whose sequence is greater than this

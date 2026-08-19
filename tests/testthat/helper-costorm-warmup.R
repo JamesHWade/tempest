@@ -323,9 +323,6 @@ fake_costorm_warmup_session <- function(
     extractor = list(chat_structured_async = extractor_async),
     mindmap = list()
   )
-  session$harvest_native_sources <- function(chat = NULL, turn = NULL) {
-    character()
-  }
   session$emit_progress <- function(
     event_type,
     status,
