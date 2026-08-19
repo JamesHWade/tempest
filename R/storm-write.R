@@ -132,8 +132,8 @@ tempest_section_jobs <- function(
   })
 }
 
-#' @keywords internal
-tempest_run_section_job <- function(
+# Run one STORM section-writing job.
+tempest_storm_section_job <- function(
   job,
   writer,
   module,
@@ -172,7 +172,7 @@ tempest_write_sections_sequential <- function(
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   lapply(jobs, function(job) {
-    tempest_run_section_job(
+    tempest_storm_section_job(
       job,
       writer,
       module = programs$section_writing,
@@ -312,7 +312,7 @@ tempest_write_sections_parallel <- function(
         jobs = jobs,
         config = config,
         programs = programs,
-        run_section_job = tempest_run_section_job
+        run_section_job = tempest_storm_section_job
       )
     )[],
     error = function(e) e
@@ -362,7 +362,7 @@ tempest_write_section_jobs <- function(
         if (!tempest_stage_error_retryable(envelope$error)) {
           stop(envelope$error)
         }
-        results[[index]] <- tempest_run_section_job(
+        results[[index]] <- tempest_storm_section_job(
           jobs[[index]],
           writer,
           module = programs$section_writing,

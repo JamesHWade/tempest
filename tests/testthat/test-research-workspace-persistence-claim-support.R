@@ -372,16 +372,39 @@ test_that("stage output digests use only schema 3", {
     running,
     "content_digest"
   )
-  old <- tempest:::tempest_stage_content_digest_id(list(
-    schema_version = 2L,
+  payload <- list(
+    schema_version = 3L,
     stage = running@stage,
     attempt_id = running@attempt_id,
     program_artifact_id = running@program_artifact_id,
     trace_references = running@trace_references,
     record_kind = "content_digest",
     records = records
-  ))
+  )
+  expected <- tempest:::tempest_stage_content_digest_id(payload)
+  future <- payload
+  future$schema_version <- 4L
+  future <- tempest:::tempest_stage_content_digest_id(future)
 
-  expect_match(current, "^sha256:[a-f0-9]{64}$")
-  expect_identical(identical(current, old), FALSE)
+  expect_named(
+    payload,
+    c(
+      "schema_version",
+      "stage",
+      "attempt_id",
+      "program_artifact_id",
+      "trace_references",
+      "record_kind",
+      "records"
+    )
+  )
+  expect_identical(
+    expected,
+    paste0(
+      "sha256:",
+      "c27b08986158557201023543aa1031375babc40127e1ff735f520ec7627afbd2"
+    )
+  )
+  expect_identical(current, expected)
+  expect_identical(identical(current, future), FALSE)
 })

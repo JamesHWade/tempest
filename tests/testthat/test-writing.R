@@ -32,7 +32,7 @@ test_that("empty section fact context does not tell the writer to call tools", {
   expect_no_match(facts, "call tools")
 })
 
-test_that("tempest_run_section_job wraps section text as markdown", {
+test_that("tempest_storm_section_job wraps section text as markdown", {
   writer <- list()
   workspace <- fake_store_with_sources(1)
   source_id <- workspace$list_retrieved_sources()[[1]]$id
@@ -68,7 +68,7 @@ test_that("tempest_run_section_job wraps section text as markdown", {
     min_support_score = 0.7
   )
 
-  result <- tempest:::tempest_run_section_job(
+  result <- tempest:::tempest_storm_section_job(
     job,
     writer,
     module = test_program_executions()$section_writing
@@ -95,7 +95,7 @@ test_that("section prompts reject vector subsection titles", {
   )
 
   expect_error(
-    tempest:::tempest_run_section_job(
+    tempest:::tempest_storm_section_job(
       job,
       writer = list(),
       module = test_program_executions()$section_writing
@@ -347,7 +347,7 @@ test_that("parallel writing preserves failed and retry stage records", {
         )
       )
     },
-    tempest_run_section_job = function(
+    tempest_storm_section_job = function(
       job,
       writer,
       module,
@@ -433,7 +433,7 @@ test_that("parallel writing never retries static stage errors", {
         )
       )
     },
-    tempest_run_section_job = function(...) {
+    tempest_storm_section_job = function(...) {
       retry_calls <<- retry_calls + 1L
       stop("unexpected retry")
     }

@@ -29,10 +29,11 @@ test_that("the pre-0.2 public export fixture remains historical", {
   expect_identical(baseline, sort(unique(baseline), method = "radix"))
 })
 
-test_that("the pre-0.2 S3 registration baseline is exact", {
+test_that("the 0.2 S3 registration surface is exact", {
   methods <- getNamespaceInfo(asNamespace("tempest"), "S3methods")
   registrations <- paste(methods[, 1], methods[, 2], sep = ".")
 
+  expect_identical(nrow(methods), 2L)
   expect_setequal(
     registrations,
     c("print.tempest_okf_bundle", "print.tempest_okf_context")
