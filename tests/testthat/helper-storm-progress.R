@@ -13,7 +13,7 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
     },
     tempest_extract_toc_from_url = function(url) character(),
     tempest_wiki_page_sections = function(title) character(),
-    tempest_semantic_filter_facts = function(
+    tempest_storm_semantic_filter_facts = function(
       retriever,
       query,
       store,

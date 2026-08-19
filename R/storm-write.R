@@ -69,7 +69,7 @@ tempest_section_facts_text <- function(
   max_items,
   min_support_score = 0.7
 ) {
-  relevant <- tempest_semantic_filter_facts(
+  relevant <- tempest_storm_semantic_filter_facts(
     retriever,
     query = section_title,
     store = store,
@@ -182,9 +182,8 @@ tempest_write_sections_sequential <- function(
   })
 }
 
-#' Choose a worker count for parallel execution
-#' @keywords internal
-tempest_parallel_workers <- function(n_items = NULL) {
+# Choose a worker count for parallel STORM writing.
+tempest_storm_parallel_workers <- function(n_items = NULL) {
   workers <- getOption("tempest.parallel_workers", NULL)
   if (is.null(workers)) {
     cores <- tryCatch(parallel::detectCores(), error = function(e) NA_integer_)
@@ -200,13 +199,12 @@ tempest_parallel_workers <- function(n_items = NULL) {
   as.integer(workers)
 }
 
-#' Ensure mirai daemons are available
-#'
-#' Returns `TRUE` if daemons are ready, with a `started` attribute recording
-#' whether this call created them (so the caller can tear them down). Returns
-#' `FALSE` if mirai daemons could not be started.
-#' @keywords internal
-tempest_setup_daemons <- function(n) {
+# Ensure mirai daemons are available for parallel STORM writing.
+#
+# Returns `TRUE` if daemons are ready, with a `started` attribute recording
+# whether this call created them so the caller can tear them down. Returns
+# `FALSE` if mirai daemons could not be started.
+tempest_storm_setup_daemons <- function(n) {
   started <- FALSE
   ok <- tryCatch(
     {
@@ -221,8 +219,7 @@ tempest_setup_daemons <- function(n) {
   structure(isTRUE(ok), started = started)
 }
 
-#' @keywords internal
-tempest_collect_parallel <- function(value) {
+tempest_storm_collect_parallel <- function(value) {
   if (
     is.list(value) &&
       !is.data.frame(value) &&
@@ -246,8 +243,7 @@ tempest_collect_parallel <- function(value) {
   list(ok = FALSE, value = NULL, error = error, records = list())
 }
 
-#' @keywords internal
-tempest_parallel_records_import <- function(records, record_stage) {
+tempest_storm_parallel_records_import <- function(records, record_stage) {
   records <- tempest_stage_records_validate(records)
   for (record in records) {
     record_stage(record)
@@ -268,7 +264,9 @@ tempest_write_sections_parallel <- function(
     return(NULL)
   }
 
-  ready <- tempest_setup_daemons(tempest_parallel_workers(length(jobs)))
+  ready <- tempest_storm_setup_daemons(
+    tempest_storm_parallel_workers(length(jobs))
+  )
   if (!isTRUE(ready)) {
     return(NULL)
   }
@@ -321,12 +319,12 @@ tempest_write_sections_parallel <- function(
   )
   if (inherits(collected, "condition")) {
     return(rep(
-      list(tempest_collect_parallel(collected)),
+      list(tempest_storm_collect_parallel(collected)),
       length(jobs)
     ))
   }
 
-  lapply(collected, tempest_collect_parallel)
+  lapply(collected, tempest_storm_collect_parallel)
 }
 
 #' @keywords internal
@@ -353,7 +351,10 @@ tempest_write_section_jobs <- function(
       results <- vector("list", length(jobs))
       for (index in seq_along(jobs)) {
         envelope <- parallel_results[[index]]
-        tempest_parallel_records_import(envelope$records, record_stage)
+        tempest_storm_parallel_records_import(
+          envelope$records,
+          record_stage
+        )
         if (isTRUE(envelope$ok)) {
           results[[index]] <- envelope$value
           next
@@ -517,18 +518,11 @@ tempest_keyword_filter_facts <- function(
   keep[seq_len(min(length(keep), max_items))]
 }
 
-#' Semantic fact retrieval
-#'
-#' When ragnar is configured, retrieves semantically similar chunks and maps
-#' them back to facts. Falls back to keyword filtering otherwise.
-#'
-#' @param retriever A `TempestRetriever` object.
-#' @param query Search query.
-#' @param store A [ResearchWorkspace].
-#' @param max_items Maximum facts to return.
-#' @return A list of fact objects.
-#' @keywords internal
-tempest_semantic_filter_facts <- function(
+# Retrieve facts semantically for STORM writing.
+#
+# When ragnar is configured, retrieve semantically similar chunks and map them
+# back to facts. Fall back to keyword filtering otherwise.
+tempest_storm_semantic_filter_facts <- function(
   retriever,
   query,
   store,

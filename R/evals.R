@@ -1,10 +1,6 @@
 # vitals evaluation helpers
 
-#' Load an included evaluation dataset
-#'
-#' @param name Dataset name. Currently supports "qa".
-#' @return A tibble with columns `input` and `target`.
-#' @keywords internal
+# Load an included evaluation dataset.
 tempest_eval_dataset <- function(name = c("qa")) {
   name <- match.arg(name)
   path <- system.file(

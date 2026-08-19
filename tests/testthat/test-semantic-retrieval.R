@@ -1,4 +1,4 @@
-test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", {
+test_that("STORM semantic facts fall back to keyword without ragnar", {
   store <- test_research_workspace()
   cfg <- tempest_config()
   retriever <- tempest_retriever(config = cfg, workspace = store)
@@ -26,7 +26,7 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
   )
 
   # Without ragnar, should fall back to keyword
-  result <- tempest:::tempest_semantic_filter_facts(
+  result <- tempest:::tempest_storm_semantic_filter_facts(
     retriever,
     "quantum qubits",
     store,
@@ -39,12 +39,12 @@ test_that("tempest_semantic_filter_facts falls back to keyword without ragnar", 
   expect_match(claims, "qubit", ignore.case = TRUE, all = FALSE)
 })
 
-test_that("tempest_semantic_filter_facts returns empty for empty store", {
+test_that("STORM semantic facts return empty for an empty store", {
   store <- test_research_workspace()
   cfg <- tempest_config()
   retriever <- tempest_retriever(config = cfg, workspace = store)
 
-  result <- tempest:::tempest_semantic_filter_facts(
+  result <- tempest:::tempest_storm_semantic_filter_facts(
     retriever,
     "anything",
     store,
@@ -67,7 +67,7 @@ test_that("tempest_keyword_filter_facts handles empty query", {
   expect_length(result, 0)
 })
 
-test_that("tempest_semantic_filter_facts with ragnar configured", {
+test_that("STORM semantic facts use configured ragnar retrieval", {
   skip_if_not_installed("ragnar")
 
   mock_embed <- function(x) matrix(stats::rnorm(length(x) * 3), ncol = 3)
@@ -94,7 +94,7 @@ test_that("tempest_semantic_filter_facts with ragnar configured", {
   )
   retriever$build_ragnar_index()
 
-  result <- suppressWarnings(tempest:::tempest_semantic_filter_facts(
+  result <- suppressWarnings(tempest:::tempest_storm_semantic_filter_facts(
     retriever,
     "neural networks",
     store,

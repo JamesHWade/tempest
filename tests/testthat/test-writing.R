@@ -17,7 +17,9 @@ test_that("tempest_sections_to_write skips lead-style sections", {
 })
 
 test_that("empty section fact context does not tell the writer to call tools", {
-  local_mocked_bindings(tempest_semantic_filter_facts = function(...) list())
+  local_mocked_bindings(
+    tempest_storm_semantic_filter_facts = function(...) list()
+  )
 
   facts <- tempest:::tempest_section_facts_text(
     retriever = NULL,
@@ -183,30 +185,30 @@ test_that("tempest_write_sections_sequential preserves job order", {
   )
 })
 
-test_that("tempest_parallel_workers respects option and item cap", {
+test_that("tempest_storm_parallel_workers respects option and item cap", {
   withr::local_options(tempest.parallel_workers = 4)
-  expect_identical(tempest:::tempest_parallel_workers(), 4L)
-  expect_identical(tempest:::tempest_parallel_workers(2), 2L)
-  expect_identical(tempest:::tempest_parallel_workers(10), 4L)
+  expect_identical(tempest:::tempest_storm_parallel_workers(), 4L)
+  expect_identical(tempest:::tempest_storm_parallel_workers(2), 2L)
+  expect_identical(tempest:::tempest_storm_parallel_workers(10), 4L)
 })
 
-test_that("tempest_parallel_workers defaults to a positive integer", {
+test_that("tempest_storm_parallel_workers defaults to a positive integer", {
   withr::local_options(tempest.parallel_workers = NULL)
-  workers <- tempest:::tempest_parallel_workers()
+  workers <- tempest:::tempest_storm_parallel_workers()
   expect_type(workers, "integer")
   expect_gte(workers, 1L)
 })
 
-test_that("tempest_collect_parallel preserves explicit result envelopes", {
+test_that("tempest_storm_collect_parallel preserves result envelopes", {
   success <- list(
     ok = TRUE,
     value = list(a = 1),
     error = NULL,
     records = list()
   )
-  expect_identical(tempest:::tempest_collect_parallel(success), success)
+  expect_identical(tempest:::tempest_storm_collect_parallel(success), success)
 
-  failure <- tempest:::tempest_collect_parallel(simpleError("boom"))
+  failure <- tempest:::tempest_storm_collect_parallel(simpleError("boom"))
   expect_identical(failure$ok, FALSE)
   expect_null(failure$value)
   expect_s3_class(failure$error, "simpleError")
@@ -216,7 +218,7 @@ test_that("tempest_collect_parallel preserves explicit result envelopes", {
     list(message = "x"),
     class = c("miraiError", "errorValue", "try-error")
   )
-  envelope <- tempest:::tempest_collect_parallel(err)
+  envelope <- tempest:::tempest_storm_collect_parallel(err)
   expect_identical(envelope$ok, FALSE)
   expect_s3_class(envelope$error, "tempest_parallel_worker_error")
 })
