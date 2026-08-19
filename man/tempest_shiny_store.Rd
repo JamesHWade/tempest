@@ -7,7 +7,12 @@
 tempest_shiny_store()
 }
 \value{
-A Tempest Shiny store handle.
+A 13-member product handle containing \code{peek_costorm_session},
+\code{costorm_session}, \code{costorm_workspace}, \code{set_costorm_session},
+\code{touch_costorm_session}, \code{save_costorm_session},
+\code{resume_costorm_session}, \code{costorm_persistence_status}, \code{report_md},
+\code{report_workspace}, \code{report_topic}, \code{publish_costorm_report}, and
+\code{publish_storm_report}.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -16,7 +21,7 @@ A Tempest Shiny store handle.
 \code{tempest_shiny_store()} creates the small reactive store used by the
 embeddable Tempest Shiny adapter. Host apps can pass the returned store to
 \code{\link[=tempest_shiny_server]{tempest_shiny_server()}} when they want to share state across adapter
-instances or inspect the current \code{TempestSession}.
+instances or inspect the current Co-STORM session and report product.
 
 The returned object should be treated as an adapter handle; prefer its
 public methods over relying on its internal representation.

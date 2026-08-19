@@ -13,8 +13,10 @@ tempest_shiny_ui(
 \arguments{
 \item{id}{Shiny module id.}
 
-\item{panels}{Character vector of panels to include. Use \code{"all"} for every
-panel. The default embeds the Co-STORM chat and durable research views.}
+\item{panels}{Character vector containing any of \code{"chat"}, \code{"sources"},
+\code{"facts"}, \code{"mindmap"}, \code{"transcript"}, \code{"report"}, and \code{"storm"}. Use
+\code{"all"} for every panel. The default embeds the Co-STORM chat and durable
+research views.}
 
 \item{show_config}{If \code{TRUE}, include the bundled configuration controls in
 the Chat settings drawer. Hosts that provide their own config should leave
@@ -31,6 +33,10 @@ A Shiny tag object.
 want to embed Tempest without sourcing files from \code{inst/shiny/R}. It reuses
 the bundled app's panels while letting the host provide the page shell,
 configuration, storage policy, and surrounding controls.
+
+The STORM panel runs through the maintained asynchronous worker path. It has
+no parallel-research control. The Co-STORM Chat panel offers bounded session
+archive download and upload, not browser-temporary autosave.
 }
 \examples{
 \dontrun{

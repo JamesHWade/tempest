@@ -2,7 +2,7 @@
 % Please edit documentation in R/app.R
 \name{run_app}
 \alias{run_app}
-\title{Run the tempest Shiny chat application}
+\title{Run the Tempest research application}
 \usage{
 run_app(...)
 }
@@ -15,9 +15,15 @@ A Shiny app object (invisibly, from \code{shiny::runApp()}).
 \description{
 Launches an interactive app that provides:
 \itemize{
-\item Co-STORM multi-agent chat with a live mind map and source list
-\item One-click report generation with citations
+\item Co-STORM chat, sources, facts, mind map, transcript, and committed reports;
+\item asynchronous scripted STORM research and report publication; and
+\item bounded Co-STORM session archive download and upload without autosave.
 }
+}
+\details{
+Live progress, persistence, and successful publication are announced through
+polite status regions. Validation, cancellation, and publication failures
+are announced as alerts.
 }
 \examples{
 \dontrun{

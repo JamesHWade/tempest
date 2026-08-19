@@ -109,17 +109,17 @@ Files: `tests/testthat/test-public-api.R`, create
 `tests/testthat/test-product-surface-inventory.R`, and focused existing schema
 tests.
 
-- [ ] Assert the exact 62 exported names from
+- [x] Assert the exact 62 exported names from
   `public-exports-0.2.0.txt` and the exact two S3 registrations.
-- [ ] Assert absence of every T8 generic export and internal restore/resume
+- [x] Assert absence of every T8 generic export and internal restore/resume
   symbol without carrying a second deletion-inventory fixture.
-- [ ] Assert the eight frozen schema versions and exact current envelope fields.
-- [ ] Assert no supported bundle contains a chat, function, tool, credential,
+- [x] Assert the eight frozen schema versions and exact current envelope fields.
+- [x] Assert no supported bundle contains a chat, function, tool, credential,
   client, connection, Agent, reactive, live view, or completion capability.
-- [ ] Add a static source inventory for current report, persistence, promotion,
+- [x] Add a static source inventory for current report, persistence, promotion,
   evaluation, and UI entry points. Fail on retired prompt seams, generic
   persistence names, global persistence hooks, or old Shiny handle members.
-- [ ] Record the current expected failures before implementation. Do not commit
+- [x] Record the current expected failures before implementation. Do not commit
   a deliberately failing test state.
 
 ### Report and promotion contracts
@@ -128,25 +128,25 @@ Files: `tests/testthat/test-product-report.R`,
 `tests/testthat/test-run-verification.R`, `tests/testthat/test-evals.R`, and
 `tests/testthat/test-promotion-bundle.R`.
 
-- [ ] Specify one exact report-reference constructor and validator shared by
+- [x] Specify one exact report-reference constructor and validator shared by
   STORM and Co-STORM.
-- [ ] Prove `tempest_report_md()` is deterministic rendering only and cannot
+- [x] Prove `tempest_report_md()` is deterministic rendering only and cannot
   create a succeeded Manifest or promotable product.
-- [ ] Prove `tempest_session_report_md()` accepts only a `TempestSession` with
+- [x] Prove `tempest_session_report_md()` accepts only a `TempestSession` with
   an exact committed report/reference binding and fails on absent, running,
   corrupt, or mismatched state.
-- [ ] Prove the default `tempest_task()` solver runs the real STORM product and
+- [x] Prove the default `tempest_task()` solver runs the real STORM product and
   returns its authoritative report plus credential-safe product metadata.
-- [ ] Prove the default `tempest_costorm_task()` solver uses a real
+- [x] Prove the default `tempest_costorm_task()` solver uses a real
   `TempestSession` and its internal moderator chat accessor rather than a
   removed `$chats` projection.
-- [ ] Specify the exact new promotion signature:
+- [x] Specify the exact new promotion signature:
   `tempest_promotion_bundle(research, claim_ids = NULL)`, where `research` is a
   completed STORM result or a succeeded `TempestSession`.
-- [ ] Reject loose workspace/Manifest/StageRecord tuples, incomplete products,
+- [x] Reject loose workspace/Manifest/StageRecord tuples, incomplete products,
   report tampering, wrong mode, nonpublishable paths, and claim selections not
   closed over exact verified evidence.
-- [ ] Assert the promotion payload remains the exact schema-1 evidence-only
+- [x] Assert the promotion payload remains the exact schema-1 evidence-only
   shape and does not acquire report content or generic run state.
 
 ### Persistence and UI contracts
@@ -154,18 +154,18 @@ Files: `tests/testthat/test-product-report.R`,
 Files: focused persistence contract tests, create
 `tests/testthat/test-shiny-product-boundary.R`, and update host-example tests.
 
-- [ ] Inventory every top-level definition in `R/run-persistence.R`, record its
+- [x] Inventory every top-level definition in `R/run-persistence.R`, record its
   final product owner, and fail if an unassigned definition remains after the
   split.
-- [ ] Assert current schemas are dispatched by explicit STORM, Co-STORM,
+- [x] Assert current schemas are dispatched by explicit STORM, Co-STORM,
   ResearchWorkspace, ProgramSet, Manifest, StageRecord, or product-envelope
   names rather than a generic run path.
-- [ ] Assert the four UI exports remain and the public Shiny store/server handle
+- [x] Assert the four UI exports remain and the public Shiny store/server handle
   exposes distinct Co-STORM session state, STORM state/events, and shared
   authoritative report state.
-- [ ] Assert removed Shiny handle members and formals are absent; add no member
+- [x] Assert removed Shiny handle members and formals are absent; add no member
   alias.
-- [ ] Specify report-publication failure behavior, launch-config binding, exact
+- [x] Specify report-publication failure behavior, launch-config binding, exact
   worker result envelope, supported controls, archive validation delegation,
   and accessible live status markup.
 
@@ -181,21 +181,21 @@ Files: `R/product-report.R`, `R/costorm-report.R`, `R/storm-polish.R`,
 `inst/prompts/polisher_system.md`, `inst/prompts/reporter_system.md`, report
 tests, and prompt-aware test helpers.
 
-- [ ] Delete `tempest_storm_report_prompt()` and
+- [x] Delete `tempest_storm_report_prompt()` and
   `tempest_costorm_report_prompt()`. Remove the unused prompt member from the
   Co-STORM report context.
-- [ ] Delete `inst/prompts/polisher_system.md` and
+- [x] Delete `inst/prompts/polisher_system.md` and
   `inst/prompts/reporter_system.md`.
-- [ ] Remove polisher/reporter prompt dispatch from
+- [x] Remove polisher/reporter prompt dispatch from
   `tests/testthat/helper-product-baseline.R`,
   `tests/testthat/helper-storm-progress.R`,
   `tests/testthat/test-product-boundaries.R`, and
   `tests/testthat/test-storm.R`.
-- [ ] Move still-valid deterministic report assertions out of
+- [x] Move still-valid deterministic report assertions out of
   `tests/testthat/test-polish.R` and
   `tests/testthat/test-deliverables.R`; delete those files after no owned
   behavior remains.
-- [ ] Keep provider calls only where a current product stage explicitly owns
+- [x] Keep provider calls only where a current product stage explicitly owns
   them. Do not retain an unused prompt merely because a fake-chat fixture
   recognizes it.
 
@@ -204,57 +204,57 @@ tests, and prompt-aware test helpers.
 Files: `R/product-report.R`, `R/storm-polish.R`, `R/costorm-report.R`, create
 focused report owner files if needed, and report/persistence tests.
 
-- [ ] Give the exact `{report_id, sha256}` record one owner used by STORM,
+- [x] Give the exact `{report_id, sha256}` record one owner used by STORM,
   Co-STORM, persistence, promotion, UI, and verification.
-- [ ] Keep shared Markdown escaping, citation rendering, final-report
+- [x] Keep shared Markdown escaping, citation rendering, final-report
   validation, and execution-review logic in narrowly named report helpers.
-- [ ] Move STORM-only assembly and validation to a STORM report owner and
+- [x] Move STORM-only assembly and validation to a STORM report owner and
   Co-STORM-only assembly/finalization to `R/costorm-report.R`.
-- [ ] Keep `tempest_report_md()` documented as a renderer over an explicit
+- [x] Keep `tempest_report_md()` documented as a renderer over an explicit
   `ResearchWorkspace`; it must not infer authority from loose arguments.
-- [ ] Keep `tempest_session_report_md()` as a read accessor over the committed
+- [x] Keep `tempest_session_report_md()` as a read accessor over the committed
   Co-STORM product report; it must not generate, repair, or silently coerce one.
-- [ ] Preserve exact canonical report bytes and existing deterministic report
+- [x] Preserve exact canonical report bytes and existing deterministic report
   fixtures where the product behavior has not changed.
 
 ### Repair product evaluation tasks
 
 Files: `R/evals.R`, `tests/testthat/test-evals.R`, and generated task topics.
 
-- [ ] Replace the lightweight cited-answer default behind `tempest_task()` with
+- [x] Replace the lightweight cited-answer default behind `tempest_task()` with
   a solver that invokes `tempest_run()` and returns the authoritative STORM
   report and credential-safe Manifest/workspace/StageRecord summaries.
-- [ ] Keep explicit solver injection for vitals composition, but remove unused
+- [x] Keep explicit solver injection for vitals composition, but remove unused
   or ignored default-solver formals. Do not add a generic solver registry.
-- [ ] Make the built-in `tempest_costorm_task()` solver create and complete a
+- [x] Make the built-in `tempest_costorm_task()` solver create and complete a
   real `TempestSession`, read the moderator chat only through the internal
   current session accessor, and return the committed session report.
-- [ ] Return no Deputy Agent, live chat, tool, client, or completion capability
+- [x] Return no Deputy Agent, live chat, tool, client, or completion capability
   in solver metadata. A `solver_chat` required by vitals stays process-local.
-- [ ] Use deterministic fake chats and local workspaces in tests; require no
+- [x] Use deterministic fake chats and local workspaces in tests; require no
   API key or network access.
-- [ ] Leave scorer selection and optimization policy unchanged for T10.
+- [x] Leave scorer selection and optimization policy unchanged for T10.
 
 ### Narrow promotion to completed products
 
 Files: `R/promotion-types.R`, `R/promotion-persistence.R`, promotion helpers,
 tests, roxygen, and generated documentation.
 
-- [ ] Change `tempest_promotion_bundle()` to accept only
+- [x] Change `tempest_promotion_bundle()` to accept only
   `research` plus optional `claim_ids`; remove the loose
   `workspace`, `manifest`, and `stage_records` formals without aliases.
-- [ ] For a STORM result, require the exact completed result shape, succeeded
+- [x] For a STORM result, require the exact completed result shape, succeeded
   STORM Manifest, authoritative StageRecords, sealed Workspace, and exact
   report/reference match before deriving promotion inputs.
-- [ ] For a Co-STORM input, require a succeeded `TempestSession`, quiescent
+- [x] For a Co-STORM input, require a succeeded `TempestSession`, quiescent
   execution, sealed Workspace, exact committed report/reference match, and
   authoritative session StageRecords.
-- [ ] Reuse the shared product authority and report-reference validators. Do
+- [x] Reuse the shared product authority and report-reference validators. Do
   not reconstruct success from independently supplied pieces.
-- [ ] Preserve claim selection, evidence closure, ProgramArtifact identity,
+- [x] Preserve claim selection, evidence closure, ProgramArtifact identity,
   bundle ID, and schema-1 persistence bytes except where the new constructor
   removes caller ambiguity.
-- [ ] Update helpers and every promotion test to build a completed STORM result
+- [x] Update helpers and every promotion test to build a completed STORM result
   or succeeded session. Add adversarial cross-product and tamper cases.
 
 Batch gate: focused report, evaluation, promotion, authority, STORM, and
@@ -280,15 +280,15 @@ Delete `R/run-persistence.R` after moving every retained definition into:
 Then update `DESCRIPTION` `Collate` so shared validators load before product
 readers. Do not change package dependencies as a side effect.
 
-- [ ] Move every top-level definition according to the Batch 0 inventory;
+- [x] Move every top-level definition according to the Batch 0 inventory;
   leave no forwarding wrapper in `R/run-persistence.R`.
-- [ ] Use explicit `storm`, `costorm`, `research_workspace`, `program_set`, or
+- [x] Use explicit `storm`, `costorm`, `research_workspace`, `program_set`, or
   `product` names. Remove surviving internal `run_*` names that refer only to
   STORM, while preserving the public `tempest_run()` product name.
-- [ ] Keep only genuinely shared serialization primitives in
+- [x] Keep only genuinely shared serialization primitives in
   `R/product-persistence.R`; product dispatch and schema knowledge belong in
   the relevant product file.
-- [ ] Preserve exact canonical JSON, file names, checksums, bundle IDs, report
+- [x] Preserve exact canonical JSON, file names, checksums, bundle IDs, report
   bytes, snapshot identities, error classes, and atomic replacement behavior.
 
 ### Return helpers to their domain owners
@@ -297,42 +297,42 @@ Files include `R/product-authority.R`, report owner files,
 `R/research-expert.R`, `R/stage-record.R`, `R/program-set.R`, and the new
 persistence files.
 
-- [ ] Move authority validation and publication gates to
+- [x] Move authority validation and publication gates to
   `R/product-authority.R`.
-- [ ] Move report-reference and report-integrity helpers to the single report
+- [x] Move report-reference and report-integrity helpers to the single report
   owner established in Batch 1.
-- [ ] Move expert record/fingerprint/restore helpers to
+- [x] Move expert record/fingerprint/restore helpers to
   `R/research-expert.R`.
-- [ ] Move StageRecord payload, digest, and restoration helpers to
+- [x] Move StageRecord payload, digest, and restoration helpers to
   `R/stage-record.R`.
-- [ ] Keep ProgramSet and Manifest codecs with their current product owners
+- [x] Keep ProgramSet and Manifest codecs with their current product owners
   when they are not genuinely shared persistence primitives.
-- [ ] Prove moved helpers have one definition and no circular `Collate`
+- [x] Prove moved helpers have one definition and no circular `Collate`
   dependency.
 
 ### Remove global hooks and unused flexibility
 
-- [ ] Inventory and remove package-global persistence options, callback hooks,
+- [x] Inventory and remove package-global persistence options, callback hooks,
   injection points, and mutable registries that exist only for tests or former
   generic hosts.
-- [ ] Remove unused formals and permissive fallback branches from internal
+- [x] Remove unused formals and permissive fallback branches from internal
   readers/writers. Tests inject at a narrow caller boundary rather than through
   production persistence APIs.
-- [ ] Reject missing, extra, coerced, old, future, wrong-mode, or wrong-status
+- [x] Reject missing, extra, coerced, old, future, wrong-mode, or wrong-status
   envelopes exactly as before. Simplification must not make a reader lenient.
-- [ ] Preserve explicit partial recovery only where the current Co-STORM
+- [x] Preserve explicit partial recovery only where the current Co-STORM
   product contract already permits it; do not generalize recovery.
 
 ### Own browser archive validation in Co-STORM persistence
 
-- [ ] Add one internal Co-STORM archive-reader helper that validates the
+- [x] Add one internal Co-STORM archive-reader helper that validates the
   bounded `session.json`, exact schema-9 manifest, declared file set, safe
   relative paths, and checksums before UI restore.
-- [ ] Keep browser upload/download policy, size quota, private temporary
+- [x] Keep browser upload/download policy, size quota, private temporary
   permissions, and zip transport in the Shiny layer.
-- [ ] Remove duplicated schema and manifest-field knowledge from
+- [x] Remove duplicated schema and manifest-field knowledge from
   `inst/shiny/R/mod_chat.R`.
-- [ ] Move exact archive-envelope tests to Co-STORM persistence tests while
+- [x] Move exact archive-envelope tests to Co-STORM persistence tests while
   retaining Shiny traversal, duplicate-entry, size, tamper, and cleanup tests.
 
 ### Migrate tests by owner
@@ -340,16 +340,16 @@ persistence files.
 Keep behavioral coverage but split the current persistence test family so each
 file names one product contract:
 
-- [ ] Move workspace tests to
+- [x] Move workspace tests to
   `test-research-workspace-persistence-*.R`.
-- [ ] Move Co-STORM tests to `test-costorm-persistence-*.R`.
-- [ ] Move STORM tests to `test-storm-persistence-*.R`.
-- [ ] Move genuinely shared envelope/checksum/path tests to
+- [x] Move Co-STORM tests to `test-costorm-persistence-*.R`.
+- [x] Move STORM tests to `test-storm-persistence-*.R`.
+- [x] Move genuinely shared envelope/checksum/path tests to
   `test-product-persistence.R`.
-- [ ] Rename tests and helpers that still say generic `run` when they exercise
+- [x] Rename tests and helpers that still say generic `run` when they exercise
   only STORM. Delete an old file after all of its retained assertions have a
   product owner.
-- [ ] Preserve frozen baseline snapshots and current schema fixtures
+- [x] Preserve frozen baseline snapshots and current schema fixtures
   byte-for-byte unless the plan explicitly changes a caller boundary.
 
 Batch gate: `R/run-persistence.R` no longer exists; every inventoried
@@ -364,92 +364,92 @@ eight schemas remain exact.
 Files: `R/shiny-adapter.R`, `inst/shiny/R/store.R`, bundled modules, Shiny
 tests, and generated documentation.
 
-- [ ] Keep the four UI exports and their package topics.
-- [ ] Replace generic store members such as `peek`, `get`, `set`, `touch`,
+- [x] Keep the four UI exports and their package topics.
+- [x] Replace generic store members such as `peek`, `get`, `set`, `touch`,
   `save`, `restore`, `evidence_store`, `report_store`, and mutable
   `set_persistence` with exact Co-STORM session/workspace and authoritative
   report names. Add no old-member aliases.
-- [ ] Distinguish Co-STORM session/events/evidence from STORM events in the
+- [x] Distinguish Co-STORM session/events/evidence from STORM events in the
   `tempest_shiny_server()` return handle. Expose the authoritative shared
   report and report Workspace explicitly.
-- [ ] Name and document the report navigation signal as a monotonic event
+- [x] Name and document the report navigation signal as a monotonic event
   counter rather than a Boolean readiness value.
-- [ ] Keep internal mutable UI state product-specific; do not create a generic
+- [x] Keep internal mutable UI state product-specific; do not create a generic
   host store or expose arbitrary state slots.
 
 ### Make publication fail closed
 
-- [ ] Stop converting report-integrity or authority errors to a missing report
+- [x] Stop converting report-integrity or authority errors to a missing report
   in `inst/shiny/R/store.R`. Only a genuinely absent report becomes `NULL`.
-- [ ] Announce Co-STORM report readiness only after the exact committed session
+- [x] Announce Co-STORM report readiness only after the exact committed session
   report/reference validates and enters the shared report state.
-- [ ] Capture the exact config used when a STORM task launches and use that
+- [x] Capture the exact config used when a STORM task launches and use that
   config when validating its returned product. A later UI edit cannot change
   the validation identity of an in-flight run.
-- [ ] Treat STORM product-publication rejection as failure. Do not show
+- [x] Treat STORM product-publication rejection as failure. Do not show
   “Pipeline complete” or a Report link when shared report publication failed.
-- [ ] Expose only credential-safe error text and keep the previously published
+- [x] Expose only credential-safe error text and keep the previously published
   report unchanged after any rejection.
 
 ### Remove dead or unsupported behavior
 
-- [ ] Remove the STORM `parallel` control and never request
+- [x] Remove the STORM `parallel` control and never request
   `parallel_research = TRUE` while Deputy does not own that path.
-- [ ] Remove the ineffective browser-temp autosave checkbox, counter, server,
+- [x] Remove the ineffective browser-temp autosave checkbox, counter, server,
   and tests. Retain safe session download/upload; do not invent a durable host
   filesystem policy.
-- [ ] Require the exact STORM worker envelope containing `result` and
+- [x] Require the exact STORM worker envelope containing `result` and
   `progress`; remove raw-result compatibility branches.
-- [ ] Remove the redundant internal `tempest_run` injection formal in favor of
+- [x] Remove the redundant internal `tempest_run` injection formal in favor of
   one narrow worker factory seam.
-- [ ] Delete unused shinychat input/turn text conversion helpers left behind by
+- [x] Delete unused shinychat input/turn text conversion helpers left behind by
   the completion-ID cutover and their direct tests.
-- [ ] Delete non-`TempestSession` report/count branches and other generic
+- [x] Delete non-`TempestSession` report/count branches and other generic
   object fallbacks. Store validation already makes those branches unreachable.
-- [ ] Delete production-dead Co-STORM progress-label helpers instead of keeping
+- [x] Delete production-dead Co-STORM progress-label helpers instead of keeping
   them alive through tests.
 
 ### Use Workspace vocabulary and one async host path
 
-- [ ] Rename `source_store`, `report_store`, and related UI/citation callback
+- [x] Rename `source_store`, `report_store`, and related UI/citation callback
   variables to `workspace`, `evidence_workspace`, or `report_workspace`.
   Accepted values remain only `ResearchWorkspace` and the current
   `TempestRetriever` workspace adapter.
-- [ ] Keep the bundled app's modules as presentation/reactivity wrappers over
+- [x] Keep the bundled app's modules as presentation/reactivity wrappers over
   package product APIs. Do not duplicate claim extraction, report authority,
   persistence schemas, or STORM/Co-STORM execution logic in `inst/shiny/`.
-- [ ] Replace `inst/examples/shiny-host/app.R` with an example built from
+- [x] Replace `inst/examples/shiny-host/app.R` with an example built from
   `tempest_shiny_ui(..., panels = "storm")` and
   `tempest_shiny_server()`. It must use the maintained asynchronous STORM
   adapter, not call `tempest_run()` synchronously in the Shiny main process.
-- [ ] Update `test-shiny-host-example.R` to require the exported adapter calls
+- [x] Update `test-shiny-host-example.R` to require the exported adapter calls
   and reject direct or generic execution logic.
 
 ### Accessible live behavior
 
-- [ ] Give STORM progress, persistence state, and successful publication a
+- [x] Give STORM progress, persistence state, and successful publication a
   polite atomic status live region.
-- [ ] Give cancellation, validation failure, and publication failure an alert
+- [x] Give cancellation, validation failure, and publication failure an alert
   role without exposing provider or credential details.
-- [ ] Make blank STORM and Co-STORM topics produce an accessible validation
+- [x] Make blank STORM and Co-STORM topics produce an accessible validation
   message rather than silently resetting a task button.
-- [ ] Preserve the keyboard-operable mind-map outline, source/fact table
+- [x] Preserve the keyboard-operable mind-map outline, source/fact table
   labels, citation safety, escaped model/source content, and report download
   content-security policy.
-- [ ] Preserve session-end cancellation, stale async guards, bounded archive
+- [x] Preserve session-end cancellation, stale async guards, bounded archive
   handling, and cleanup behavior.
 
 ### UI test migration
 
-- [ ] Rename `tests/testthat/test-shiny-generic.R` to
+- [x] Rename `tests/testthat/test-shiny-generic.R` to
   `tests/testthat/test-shiny-product-boundary.R` and assert only positive
   current-product boundaries plus exact absence of old handle members.
-- [ ] Update `test-shiny-app.R`, `test-shinychat-adapter.R`,
+- [x] Update `test-shiny-app.R`, `test-shinychat-adapter.R`,
   `test-shiny-host-example.R`, and `test-app.R` for the narrowed contract.
-- [ ] Add focused tests for launch-config binding, report publication failure,
+- [x] Add focused tests for launch-config binding, report publication failure,
   exact worker envelope, removed parallel/autosave controls, distinct STORM and
   Co-STORM handle state, and live-region markup.
-- [ ] Retain deterministic `testServer` coverage, async cancellation tests,
+- [x] Retain deterministic `testServer` coverage, async cancellation tests,
   archive safety tests, citation escaping, and no-network fake chats.
 
 Batch gate: the example and bundled app use the same exported asynchronous
@@ -463,19 +463,20 @@ Files: roxygen sources, generated `man/`, `README.md`, `NEWS.md`,
 `vignettes/tempest.Rmd`, `_pkgdown.yml`,
 `dev/architecture/package-boundaries.md`, and this plan.
 
-- [ ] Update `tempest_report_md()`, `tempest_session_report_md()`, evaluation,
+- [x] Update `tempest_report_md()`, `tempest_session_report_md()`, evaluation,
   promotion, persistence, and Shiny documentation for exact current-only
   inputs and authority.
-- [ ] Regenerate all affected `.Rd` files from roxygen. Do not hand-edit a
+- [x] Regenerate all affected `.Rd` files from roxygen. Do not hand-edit a
   generated topic that still has a source.
-- [ ] Keep `_pkgdown.yml` complete for the same 62 public topics; reorganize
-  descriptions only if needed to distinguish rendering, committed reports,
-  promotion, and research UI.
-- [ ] Update the README Shiny section to include STORM, Transcript, safe session
+- [x] Keep `_pkgdown.yml` complete for all 62 public exports. It has 61 topics
+  because `tempest_agent_skills()` and `tempest_install_agent_skills()` share
+  one generated topic. Reorganize descriptions only if needed to distinguish
+  rendering, committed reports, promotion, and research UI.
+- [x] Update the README Shiny section to include STORM, Transcript, safe session
   download/upload, and the embeddable async example.
-- [ ] Update `vignettes/tempest.Rmd` to show only current STORM/Co-STORM report,
+- [x] Update `vignettes/tempest.Rmd` to show only current STORM/Co-STORM report,
   persistence, evaluation, promotion, and UI paths.
-- [ ] Add concise, single-line, alphabetically placed `NEWS.md` bullets for
+- [x] Add concise, single-line, alphabetically placed `NEWS.md` bullets for
   changed public constructor/handle behavior. Preserve the released 0.1.0
   section as history.
 - [ ] Update `dev/architecture/package-boundaries.md` to mark T9 implemented

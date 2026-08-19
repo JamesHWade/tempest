@@ -4,15 +4,13 @@
 \alias{tempest_promotion_bundle}
 \title{Build a deterministic proposal for reviewed Graft promotion}
 \usage{
-tempest_promotion_bundle(workspace, manifest, stage_records, claim_ids = NULL)
+tempest_promotion_bundle(research, claim_ids = NULL)
 }
 \arguments{
-\item{workspace}{A completed \link{ResearchWorkspace}.}
-
-\item{manifest}{Its succeeded \link{TempestResearchManifest}.}
-
-\item{stage_records}{Canonically ordered terminal \code{TempestStageRecord}
-values for the research product.}
+\item{research}{A completed result returned by \code{\link[=tempest_run]{tempest_run()}} or a succeeded
+\code{TempestSession} returned by \code{\link[=tempest_session]{tempest_session()}}. Tempest requires the
+product's exact sealed Workspace, terminal execution records, committed
+report, configuration, and publication authority.}
 
 \item{claim_ids}{Optional exact claim selection. By default all supported or
 partially supported claims are selected. Selection must be closed over
@@ -27,4 +25,7 @@ A deterministic \code{TempestPromotionBundle} proposal.
 packages only promotable claims and their exact pair-level evidence. It does
 not write accepted knowledge. Review \code{\link[=tempest_graft_plan]{tempest_graft_plan()}} and call
 \code{graft::graft_commit()} explicitly to exercise acceptance authority.
+Loose Workspace, Manifest, or StageRecord tuples are not accepted. The
+promotion payload remains the exact schema-1 evidence-only product shape;
+the terminal report is an eligibility gate and is not copied into it.
 }

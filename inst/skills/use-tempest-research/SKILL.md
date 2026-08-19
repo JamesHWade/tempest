@@ -37,16 +37,17 @@ Read the mode-specific reference before implementing or operating it:
    source-budget choices. Keep credentials outside R source and durable state.
 4. Start with a narrow topic, small expert pool, and bounded question count.
    Expand only after the first run or session behaves correctly.
-5. Preserve the research store, claims, evidence spans, citations, events, and
-   run or session identifiers. Do not reduce the result to report text when the
-   host needs auditability or resume support.
-6. Inspect terminal or paused product state explicitly. A report string alone
-   does not prove that the configured evidence policy succeeded.
+5. Preserve the ResearchWorkspace, claims, evidence spans, citations, events,
+   and run or session identifiers. Do not reduce the result to report text when
+   the host needs auditability or resume support.
+6. Inspect terminal or paused product state explicitly. Markdown rendered by
+   `tempest_report_md()` is not publication authority, and a report string
+   alone does not prove that the configured evidence policy succeeded.
 7. Save durable state at intentional boundaries and recreate live chats,
    credentials, callbacks, tools, and other host dependencies before resuming.
 8. Exercise the actual host path when correctness depends on asynchronous work,
    cancellation, Shiny session lifetime, reactive invalidation, tool display,
-   approval UI, or downloads.
+   archive transport, report publication, or downloads.
 
 ## Guardrails
 

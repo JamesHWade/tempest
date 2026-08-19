@@ -27,14 +27,17 @@ reference:
   - tempest_run
   - tempest_run_async
   - tempest_run_cancel
-  - tempest_task
-  - tempest_costorm_task
   - tempest_execution_events
   - tempest_session
   - tempest_session_process_turn_async
   - tempest_session_warmup_async
   - SimulatedUser
   - run_app
+- title: Product evaluation
+  desc: Evaluate complete STORM and Co-STORM research products with vitals.
+  contents:
+  - tempest_task
+  - tempest_costorm_task
 - title: Configuration and retrieval
   contents:
   - tempest_config
@@ -48,6 +51,7 @@ reference:
   - tempest_research_workspace
   - ResearchWorkspace
 - title: Evidence and reports
+  desc: Inspect evidence, render Markdown, or read a committed product report.
   contents:
   - tempest_claims
   - tempest_claim_support
@@ -70,11 +74,13 @@ reference:
   - tempest_expert
   - tempest_generate_experts
 - title: Research UI
+  desc: Embed product-specific, asynchronous Tempest research panels in Shiny.
   contents:
   - tempest_shiny_store
   - tempest_shiny_ui
   - tempest_shiny_server
-- title: Session persistence
+- title: Co-STORM persistence
+  desc: Snapshot, save, restore, or resume the exact current session product.
   contents:
   - tempest_session_snapshot
   - tempest_session_restore

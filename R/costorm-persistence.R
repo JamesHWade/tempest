@@ -626,7 +626,9 @@ tempest_session_assert_persistence_quiescent <- function(
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_snapshot()` returns a structured, in-memory representation
-#' of the durable state in a [TempestSession]. It includes the research
+#' of the durable state in a [TempestSession]. The only supported snapshot is
+#' the exact current schema-9 product shape; no legacy or migration reader is
+#' provided. It includes the research
 #' manifest; fixed session and configuration identity; the authoritative
 #' [ResearchWorkspace]; expert profiles; transcript and mind map; the latest
 #' report Markdown; stage-record, progress-event, and expert-session metadata;
@@ -641,7 +643,7 @@ tempest_session_assert_persistence_quiescent <- function(
 #' durable record without changing the live session.
 #'
 #' @param session A [TempestSession] object.
-#' @return A list containing a schema-versioned session snapshot.
+#' @return A list containing an exact schema-9 session snapshot.
 #' @export
 tempest_session_snapshot <- function(session) {
   if (!inherits(session, "TempestSession")) {
@@ -1063,6 +1065,8 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #' snapshot created by [tempest_session_snapshot()] or read by
 #' [tempest_session_resume()]. It restores the research manifest and
 #' authoritative workspace, and creates fresh chat/tool handles using `config`.
+#' Only the exact current schema-9 snapshot is accepted; older, future, missing,
+#' extra, coerced, or mismatched shapes are rejected rather than migrated.
 #'
 #' Historical progress events are restored as session artifact data and can be
 #' reduced with [tempest_progress_state()]. They are not replayed into the new
@@ -1577,7 +1581,8 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_save()` writes a schema-versioned directory bundle for a
-#' [TempestSession]. The bundle stores the research manifest, authoritative
+#' [TempestSession]. The exact current format is schema 9, with no legacy or
+#' compatibility writer. The bundle stores the research manifest, authoritative
 #' workspace, explicit stage-record history, optional immutable Graft snapshot,
 #' and narrow report product. Every declared file is checksummed, and the
 #' `session.json` manifest is written last. Generic workflow and
@@ -2681,7 +2686,8 @@ tempest_costorm_archive_read <- function(path) {
 #'
 #' `tempest_session_resume()` reads a directory bundle written by
 #' [tempest_session_save()] and rebuilds a [TempestSession] with a fresh runtime
-#' [TempestConfig]. Historical progress events are
+#' [TempestConfig]. Only the exact current schema-9 bundle is accepted; no
+#' compatibility or migration reader is provided. Historical progress events are
 #' loaded for display and reduction, but they are not replayed into `progress`.
 #' Stage-record history is restored for audit, but running attempts are rejected
 #' rather than resumed.
@@ -2691,10 +2697,11 @@ tempest_costorm_archive_read <- function(path) {
 #'   tools.
 #' @param progress Optional callback for future `tempest_progress_event`
 #'   objects.
-#' @param partial_recovery Whether to allow explicitly requested recovery when
-#'   allowlisted presentation files are missing or fail integrity checks. All
-#'   other declared files, including stage-record, expert, workspace, report,
-#'   and Graft snapshot state, must pass integrity checks.
+#' @param partial_recovery Whether to allow explicitly requested recovery of
+#'   the optional `artifacts/suggested_questions.json` presentation file when
+#'   it fails integrity checks. All durable state, including stage records,
+#'   experts, Workspace, report, and Graft snapshot state, remains mandatory
+#'   and must pass integrity checks.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the bundle. If `NULL`, the builtin set is used.
 #' @param knowledge_view Optional transient immutable Graft view required by

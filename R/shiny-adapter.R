@@ -100,7 +100,12 @@ tempest_shiny_as_reactive <- function(value) {
 #' The returned object should be treated as an adapter handle; prefer its
 #' public methods over relying on its internal representation.
 #'
-#' @return A Tempest Shiny store handle.
+#' @return A 13-member product handle containing `peek_costorm_session`,
+#'   `costorm_session`, `costorm_workspace`, `set_costorm_session`,
+#'   `touch_costorm_session`, `save_costorm_session`,
+#'   `resume_costorm_session`, `costorm_persistence_status`, `report_md`,
+#'   `report_workspace`, `report_topic`, `publish_costorm_report`, and
+#'   `publish_storm_report`.
 #' @export
 tempest_shiny_store <- function() {
   tempest_require("shiny", "tempest_shiny_store() creates Shiny reactives.")
@@ -116,9 +121,15 @@ tempest_shiny_store <- function() {
 #' the bundled app's panels while letting the host provide the page shell,
 #' configuration, storage policy, and surrounding controls.
 #'
+#' The STORM panel runs through the maintained asynchronous worker path. It has
+#' no parallel-research control. The Co-STORM Chat panel offers bounded session
+#' archive download and upload, not browser-temporary autosave.
+#'
 #' @param id Shiny module id.
-#' @param panels Character vector of panels to include. Use `"all"` for every
-#'   panel. The default embeds the Co-STORM chat and durable research views.
+#' @param panels Character vector containing any of `"chat"`, `"sources"`,
+#'   `"facts"`, `"mindmap"`, `"transcript"`, `"report"`, and `"storm"`. Use
+#'   `"all"` for every panel. The default embeds the Co-STORM chat and durable
+#'   research views.
 #' @param show_config If `TRUE`, include the bundled configuration controls in
 #'   the Chat settings drawer. Hosts that provide their own config should leave
 #'   this as `FALSE`.
@@ -171,6 +182,11 @@ tempest_shiny_ui <- function(
 #' provide a [TempestConfig], optional expert profiles, a stable session id, and
 #' an optional shared store. The returned handle exposes only product session,
 #' event, evidence, and report state.
+#'
+#' Progress, persistence, and successful publication use polite atomic status
+#' regions in the bundled UI. Validation, cancellation, and publication
+#' failures use alerts and never convert a rejected product into report-ready
+#' state.
 #'
 #' @param id Shiny module id.
 #' @param config A `TempestConfig`, a reactive returning one, a function

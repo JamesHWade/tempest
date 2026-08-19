@@ -262,11 +262,18 @@ tempest_solver_costorm <- function(
 
 #' Create a vitals Task for tempest
 #'
+#' The built-in solver runs a real [tempest_run()] product for each input and
+#' returns its authoritative report. `solver_metadata` contains only
+#' credential-safe Manifest, Workspace, and StageRecord summaries; live chats,
+#' clients, tools, and credentials are not returned as metadata.
+#'
 #' @param dataset Which built-in dataset to use. Currently "qa".
 #' @param solver Optional vitals-compatible solver. When `NULL`, evaluates the
 #'   authoritative [tempest_run()] product.
-#' @param scorer A vitals scorer. If `NULL`, defaults to `vitals::model_graded_qa()`.
-#' @param scorer_chat Chat used by the scorer (required for model-graded scoring).
+#' @param scorer A vitals scorer. If `NULL`, defaults to
+#'   `vitals::model_graded_qa()`.
+#' @param scorer_chat Chat used by the scorer. Required for model-graded
+#'   scoring.
 #' @param config A `TempestConfig` passed to the solver.
 #' @param ... Passed to `vitals::Task$new()`.
 #' @return A `vitals::Task`.
@@ -326,8 +333,10 @@ tempest_task <- function(
 #'
 #' Runs automated Co-STORM sessions with a simulated user for evaluation.
 #' Moderator and expert turns use the same persistent Deputy agents as normal
-#' Co-STORM sessions. The built-in solver includes credential-safe terminal
-#' Deputy traces in `solver_metadata`; it never returns Deputy Agent objects.
+#' Co-STORM sessions. The built-in solver completes a real [tempest_session()],
+#' reads its exact committed report, and includes credential-safe product
+#' summaries and terminal Deputy traces in `solver_metadata`; it never returns
+#' Deputy Agent objects, chats, clients, tools, or credentials as metadata.
 #'
 #' @param dataset Which built-in dataset to use. Currently "qa".
 #' @param config A `TempestConfig`.

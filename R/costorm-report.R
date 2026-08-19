@@ -499,6 +499,11 @@ tempest_costorm_report_finalize <- function(
 
 #' Read the committed Markdown report from a Co-STORM session
 #'
+#' This accessor returns the exact bytes already committed during Co-STORM
+#' publication. It never generates, repairs, or republishes a report, and it
+#' fails unless the session is succeeded, quiescent, and bound to the same
+#' report reference as its research Manifest.
+#'
 #' @param session A `TempestSession`.
 #' @return The exact committed Markdown report.
 #' @examples

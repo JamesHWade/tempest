@@ -1038,10 +1038,18 @@ tempest_report_md_render <- function(
   paste0("# ", rendered_title, "\n\n", rendered_text, "\n")
 }
 
-#' Assemble a Markdown report with footnotes
+#' Render non-authoritative Markdown with footnotes
+#'
+#' `tempest_report_md()` deterministically renders caller-supplied Markdown and
+#' evidence from an explicit [ResearchWorkspace]. It does not commit a report,
+#' finalize a research Manifest, publish a product, or grant promotion
+#' authority. Read `result$report_md` from a completed [tempest_run()] product,
+#' or use [tempest_session_report_md()] after Co-STORM publication, when the
+#' exact authoritative product report is required.
 #'
 #' @param title Document title.
-#' @param body Markdown body text that may include inline citations like `[Sxxxxxxxxxxxx]`.
+#' @param body Markdown body text that may include inline citations like
+#'   `[Sxxxxxxxxxxxx]`.
 #' @param workspace A [ResearchWorkspace] or [TempestRetriever] containing
 #'   retrieved sources.
 #' @param citation_policy One of "none", "source_attributed" (default),
@@ -1054,7 +1062,8 @@ tempest_report_md_render <- function(
 #'   unsupported assertion and `revise` replaces it with a revision notice.
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
-#' @return Markdown with footnotes.
+#' @return Rendered Markdown with footnotes. This value alone is not an
+#'   authoritative product report.
 #' @examples
 #' \dontrun{
 #' result <- tempest_run("History of jazz", config = tempest_config())

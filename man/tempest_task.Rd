@@ -6,7 +6,7 @@
 \usage{
 tempest_task(
   dataset = c("qa"),
-  solver = tempest_solver_cited_answer,
+  solver = NULL,
   scorer = NULL,
   scorer_chat = NULL,
   config = tempest_config(),
@@ -16,11 +16,14 @@ tempest_task(
 \arguments{
 \item{dataset}{Which built-in dataset to use. Currently "qa".}
 
-\item{solver}{A vitals-compatible solver. Defaults to \code{tempest_solver_cited_answer}.}
+\item{solver}{Optional vitals-compatible solver. When \code{NULL}, evaluates the
+authoritative \code{\link[=tempest_run]{tempest_run()}} product.}
 
-\item{scorer}{A vitals scorer. If \code{NULL}, defaults to \code{vitals::model_graded_qa()}.}
+\item{scorer}{A vitals scorer. If \code{NULL}, defaults to
+\code{vitals::model_graded_qa()}.}
 
-\item{scorer_chat}{Chat used by the scorer (required for model-graded scoring).}
+\item{scorer_chat}{Chat used by the scorer. Required for model-graded
+scoring.}
 
 \item{config}{A \code{TempestConfig} passed to the solver.}
 
@@ -30,7 +33,10 @@ tempest_task(
 A \code{vitals::Task}.
 }
 \description{
-Create a vitals Task for tempest
+The built-in solver runs a real \code{\link[=tempest_run]{tempest_run()}} product for each input and
+returns its authoritative report. \code{solver_metadata} contains only
+credential-safe Manifest, Workspace, and StageRecord summaries; live chats,
+clients, tools, and credentials are not returned as metadata.
 }
 \examples{
 \dontrun{

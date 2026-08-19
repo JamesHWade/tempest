@@ -2,7 +2,7 @@
 % Please edit documentation in R/product-report.R
 \name{tempest_report_md}
 \alias{tempest_report_md}
-\title{Assemble a Markdown report with footnotes}
+\title{Render non-authoritative Markdown with footnotes}
 \usage{
 tempest_report_md(
   title,
@@ -16,7 +16,8 @@ tempest_report_md(
 \arguments{
 \item{title}{Document title.}
 
-\item{body}{Markdown body text that may include inline citations like \verb{[Sxxxxxxxxxxxx]}.}
+\item{body}{Markdown body text that may include inline citations like
+\verb{[Sxxxxxxxxxxxx]}.}
 
 \item{workspace}{A \link{ResearchWorkspace} or \link{TempestRetriever} containing
 retrieved sources.}
@@ -35,10 +36,16 @@ unsupported assertion and \code{revise} replaces it with a revision notice.}
 considered supported.}
 }
 \value{
-Markdown with footnotes.
+Rendered Markdown with footnotes. This value alone is not an
+authoritative product report.
 }
 \description{
-Assemble a Markdown report with footnotes
+\code{tempest_report_md()} deterministically renders caller-supplied Markdown and
+evidence from an explicit \link{ResearchWorkspace}. It does not commit a report,
+finalize a research Manifest, publish a product, or grant promotion
+authority. Read \code{result$report_md} from a completed \code{\link[=tempest_run]{tempest_run()}} product,
+or use \code{\link[=tempest_session_report_md]{tempest_session_report_md()}} after Co-STORM publication, when the
+exact authoritative product report is required.
 }
 \examples{
 \dontrun{

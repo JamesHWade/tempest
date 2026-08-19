@@ -13,8 +13,9 @@ Preserve Tempest's five STORM stages:
    extract claims, and preserve source relationships.
 3. `outline`: draft an outline and refine it against the collected evidence.
 4. `write`: select relevant facts and write cited sections plus the lead.
-5. `polish`: assemble the report, remove duplication when requested, enforce
-   citation policy, and publish the product report.
+5. `polish`: deterministically assemble the report, enforce citation policy,
+   validate product authority, and publish the product report. Duplicate
+   removal is unavailable on the authoritative path.
 
 Do not collapse these stages when progress, resume, provenance, or failure
 recovery matters.
@@ -85,6 +86,12 @@ Verify the report, source relationships, claim support, citation references,
 and evidence lineage required by the configured policy. Inspect warnings and
 unsupported claims instead of hiding them in final prose.
 
+`result$report_md` is the authoritative report committed by a completed STORM
+product. `tempest_report_md()` only renders caller-supplied Markdown against an
+explicit ResearchWorkspace; that value alone does not finalize a Manifest or
+grant promotion authority. Construct a promotion proposal only from the
+completed product with `tempest_promotion_bundle(result)`.
+
 ## Persist and resume
 
 Pass `output_dir` and a stable `run_id` to persist direct STORM stage
@@ -105,6 +112,17 @@ Keep durable research state and checksums. Recreate process-local functions,
 clients, credentials, callbacks, and host dependencies after process restart.
 Do not silently continue a run whose topic, evidence policy, or runtime
 assumptions no longer match.
+
+Current STORM persistence accepts only a schema-7 bundle with schema-4 state.
+Older, future, missing, extra, coerced, or mismatched shapes are rejected rather
+than migrated. `parallel_research` must remain `FALSE`; use
+`parallel_writing = TRUE` only for already-grounded section writing when
+appropriate.
+
+The default `tempest_task()` solver evaluates this real product path and returns
+the authoritative report with credential-safe Manifest, Workspace, and
+StageRecord summaries. Supply a custom solver only when explicitly required by
+the evaluation design.
 
 ## Verify
 

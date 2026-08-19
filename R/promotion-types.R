@@ -1896,6 +1896,9 @@ tempest_promotion_research_context <- function(research) {
 #' packages only promotable claims and their exact pair-level evidence. It does
 #' not write accepted knowledge. Review [tempest_graft_plan()] and call
 #' `graft::graft_commit()` explicitly to exercise acceptance authority.
+#' Loose Workspace, Manifest, or StageRecord tuples are not accepted. The
+#' promotion payload remains the exact schema-1 evidence-only product shape;
+#' the terminal report is an eligibility gate and is not copied into it.
 #'
 #' @param research A completed result returned by [tempest_run()] or a succeeded
 #'   `TempestSession` returned by [tempest_session()]. Tempest requires the
