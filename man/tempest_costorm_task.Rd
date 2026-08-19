@@ -5,17 +5,20 @@
 \title{Create a Co-STORM evaluation task using SimulatedUser}
 \usage{
 tempest_costorm_task(
-  dataset = c("qa"),
+  dataset = "qa",
   config = tempest_config(),
   max_turns = 5L,
   solver = NULL,
   scorer = NULL,
   scorer_chat = NULL,
+  program_set = NULL,
+  knowledge_view = NULL,
   ...
 )
 }
 \arguments{
-\item{dataset}{Which built-in dataset to use. Currently "qa".}
+\item{dataset}{The built-in \code{"qa"} smoke dataset or an exact data frame with
+\code{input}, \code{target}, and optional unique \code{id} columns.}
 
 \item{config}{A \code{TempestConfig}.}
 
@@ -30,6 +33,11 @@ built-in simulated Co-STORM session solver.}
 \item{scorer_chat}{Optional chat for the default model-graded scorer. When
 \code{NULL}, a judge chat is created from \code{config}.}
 
+\item{program_set}{Optional \link{TempestProgramSet} evaluated by the built-in
+solver.}
+
+\item{knowledge_view}{Optional immutable Graft view used by governed programs.}
+
 \item{...}{Passed to \code{vitals::Task$new()}.}
 }
 \value{
@@ -39,9 +47,13 @@ A \code{vitals::Task}.
 Runs automated Co-STORM sessions with a simulated user for evaluation.
 Moderator and expert turns use the same persistent Deputy agents as normal
 Co-STORM sessions. The built-in solver completes a real \code{\link[=tempest_session]{tempest_session()}},
-reads its exact committed report, and includes credential-safe product
-summaries and terminal Deputy traces in \code{solver_metadata}; it never returns
-Deputy Agent objects, chats, clients, tools, or credentials as metadata.
+reads its exact committed report, and includes a versioned, credential-safe
+trajectory summary in \code{solver_metadata}; it never returns complete review
+lanes, Deputy Agent objects, chats, clients, tools, or credentials as
+metadata.
+Caller datasets are validated and bound to the Task name and metadata by a
+canonical digest. Custom solvers cannot claim \code{program_set} or
+\code{knowledge_view} inputs on Tempest's behalf.
 }
 \examples{
 \dontrun{

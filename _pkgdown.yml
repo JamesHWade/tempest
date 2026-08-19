@@ -34,8 +34,9 @@ reference:
   - SimulatedUser
   - run_app
 - title: Product evaluation
-  desc: Evaluate complete STORM and Co-STORM research products with vitals.
+  desc: Review completed trajectories and evaluate exact research products.
   contents:
+  - tempest_trajectory_review
   - tempest_task
   - tempest_costorm_task
 - title: Configuration and retrieval

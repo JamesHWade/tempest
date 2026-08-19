@@ -6,8 +6,8 @@ the host actually needs.
 ## Embed the Tempest panels
 
 Use `tempest_shiny_ui()` and `tempest_shiny_server()` when a Shiny host wants
-Tempest's existing chat, sources, facts, mind map, transcript, report, or STORM
-panels inside its own page shell.
+Tempest's existing chat, sources, facts, mind map, transcript, report, STORM,
+or Run review panels inside its own page shell.
 
 Let the host supply:
 
@@ -31,6 +31,13 @@ The exact `tempest_shiny_server()` handle contains `store`, `costorm_session`,
 `report_workspace`, `report_topic`, `report_navigation_event`, and
 `touch_costorm_session`. The navigation value is a monotonic event counter, not
 a Boolean readiness flag.
+
+The internal `"review"` panel adds no store member or public server-handle
+member. It reconstructs the latest valid completed STORM or Co-STORM review,
+caps visible rows at 250, and renders only fixed escaped review fields and
+opaque identifiers. Mutable progress appears in a separately labeled untrusted
+observation table and never changes the review id, joins, findings, or
+persistence state.
 
 ## Keep an existing shinychat interface
 

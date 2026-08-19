@@ -571,6 +571,7 @@ tempest_program_set_write_bundle <- function(
     reference_type = "file",
     registry = registry
   )
+  entries <- tempest_program_set_validate_entries(entries)
   restored <- stats::setNames(vector("list", length(programs)), names(programs))
   for (stage in tempest_program_set_stages()) {
     artifact_path <- file.path(programs_dir, paste0(stage, ".rds"))
@@ -1055,12 +1056,55 @@ tempest_program_set_stage_values <- function(
   value[selected]
 }
 
+tempest_program_set_compile_isolate <- function(
+  program,
+  stage,
+  expected_id,
+  registry = list()
+) {
+  isolated <- tryCatch(
+    program$copy(deep = TRUE),
+    error = function(error) {
+      tempest_program_set_abort(
+        "Could not isolate the program for stage {.val {stage}}.",
+        parent = error,
+        class = "tempest_program_set_compile_error"
+      )
+    }
+  )
+  if (!inherits(isolated, "Module")) {
+    tempest_program_set_abort(
+      "Program isolation did not return a dsprrr Module for stage {.val {stage}}.",
+      class = "tempest_program_set_compile_error"
+    )
+  }
+  isolated_id <- tempest_program_set_program_id(
+    isolated,
+    stage,
+    registry = registry
+  )
+  if (!identical(isolated_id, expected_id)) {
+    tempest_program_set_abort(
+      "Program isolation changed artifact identity for stage {.val {stage}}.",
+      class = "tempest_program_set_verification_error"
+    )
+  }
+  isolated
+}
+
+tempest_program_set_compile_module <- function(...) {
+  dsprrr::compile_module(...)
+}
+
 #' Compile programs in a Tempest program set
 #'
 #' Compiles the selected stages through [dsprrr::compile_module()] and only
 #' publishes a new complete ProgramSet after every requested compilation and
 #' artifact verification succeeds. Compilation errors are never replaced with
-#' the original uncompiled program.
+#' the original uncompiled program. Every selected baseline Module is copied
+#' with cleared execution state and identity-checked before compilation. When
+#' compilation changes a program artifact, the candidate drops that stage's old
+#' governed-procedure reference.
 #'
 #' @param program_set A `TempestProgramSet`.
 #' @param trainsets Named list of training data by stage. Its names select the
@@ -1150,6 +1194,11 @@ tempest_compile_programs <- function(
   }
   programs <- tempest_program_set_programs(program_set)
   compiled <- programs
+  baseline_ids <- vapply(
+    selected,
+    \(stage) program_set@entries[[stage]]$program_artifact_id,
+    character(1)
+  )
   for (stage in selected) {
     managed <- c("program", "teleprompter", "trainset", "valset", ".llm")
     duplicates <- intersect(names(compile_args[[stage]]), managed)
@@ -1163,7 +1212,12 @@ tempest_compile_programs <- function(
     }
     args <- c(
       list(
-        program = programs[[stage]],
+        program = tempest_program_set_compile_isolate(
+          programs[[stage]],
+          stage,
+          expected_id = baseline_ids[[stage]],
+          registry = registry
+        ),
         teleprompter = teleprompters[[stage]],
         trainset = trainsets[[stage]],
         valset = valsets[[stage]],
@@ -1172,7 +1226,7 @@ tempest_compile_programs <- function(
       compile_args[[stage]]
     )
     compiled[[stage]] <- tryCatch(
-      do.call(dsprrr::compile_module, args),
+      do.call(tempest_program_set_compile_module, args),
       error = function(error) {
         tempest_program_set_abort(
           "Compilation failed for stage {.val {stage}}.",
@@ -1188,7 +1242,23 @@ tempest_compile_programs <- function(
       )
     }
   }
+  compiled_ids <- vapply(
+    selected,
+    \(stage) {
+      tempest_program_set_program_id(
+        compiled[[stage]],
+        stage,
+        registry = registry
+      )
+    },
+    character(1)
+  )
   metadata <- tempest_program_set_metadata(program_set)
+  for (stage in selected) {
+    if (!identical(compiled_ids[[stage]], baseline_ids[[stage]])) {
+      metadata$governed_references[[stage]] <- NULL
+    }
+  }
   tempest_program_set_write_bundle(
     compiled,
     path,

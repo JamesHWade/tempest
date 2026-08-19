@@ -5,7 +5,7 @@ test_that("the 0.2 public export surface is exact", {
   )
   actual <- sort(getNamespaceExports("tempest"), method = "radix")
 
-  expect_length(expected, 62L)
+  expect_length(expected, 63L)
   expect_identical(expected, sort(unique(expected), method = "radix"))
   expect_identical(actual, expected)
   namespace <- asNamespace("tempest")

@@ -58,5 +58,6 @@ tempest_shiny_ui
 tempest_sources
 tempest_suggest_questions
 tempest_task
+tempest_trajectory_review
 tempest_validation_result
 tempest_verify_claims

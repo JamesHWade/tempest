@@ -43,9 +43,12 @@ Read the mode-specific reference before implementing or operating it:
 6. Inspect terminal or paused product state explicitly. Markdown rendered by
    `tempest_report_md()` is not publication authority, and a report string
    alone does not prove that the configured evidence policy succeeded.
-7. Save durable state at intentional boundaries and recreate live chats,
+7. Use `tempest_trajectory_review()` only for an exact completed product. Treat
+   its bounded identity and join projection as reconstructable review, not as
+   persistence, causation, governance, or promotion authority.
+8. Save durable state at intentional boundaries and recreate live chats,
    credentials, callbacks, tools, and other host dependencies before resuming.
-8. Exercise the actual host path when correctness depends on asynchronous work,
+9. Exercise the actual host path when correctness depends on asynchronous work,
    cancellation, Shiny session lifetime, reactive invalidation, tool display,
    archive transport, report publication, or downloads.
 
@@ -61,6 +64,11 @@ Read the mode-specific reference before implementing or operating it:
   paths.
 - Do not serialize functions, chat clients, credentials, callbacks, or
   authenticated connection bindings.
+- Do not turn correlation identifiers into causal claims. Mutable progress is
+  an observation outside the non-authoritative trajectory review.
+- Keep improvement explicit: separate training, validation, and held-out
+  evaluation data; compile selected dsprrr programs; evaluate a separate
+  candidate Task; and let an operator decide whether to adopt it.
 - Do not let tests require API keys, network access, or live provider
   responses. Use fake chats, local stores, fixtures, and focused Shiny tests.
 - Do not claim a host integration is verified until the relevant live or

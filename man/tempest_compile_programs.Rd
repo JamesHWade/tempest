@@ -45,5 +45,8 @@ A new verified, file-backed \code{TempestProgramSet}.
 Compiles the selected stages through \code{\link[dsprrr:compile_module]{dsprrr::compile_module()}} and only
 publishes a new complete ProgramSet after every requested compilation and
 artifact verification succeeds. Compilation errors are never replaced with
-the original uncompiled program.
+the original uncompiled program. Every selected baseline Module is copied
+with cleared execution state and identity-checked before compilation. When
+compilation changes a program artifact, the candidate drops that stage's old
+governed-procedure reference.
 }

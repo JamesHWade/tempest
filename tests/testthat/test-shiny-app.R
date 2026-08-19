@@ -23,6 +23,7 @@ test_that("every module UI builds a Shiny tag", {
     "shiny.tag"
   )
   expect_s3_class(app$mod_storm_ui("storm"), "shiny.tag")
+  expect_s3_class(app$mod_run_review_ui("review"), "shiny.tag")
   expect_s3_class(app$mod_mindmap_ui("mindmap"), "shiny.tag")
   expect_s3_class(app$mod_sources_ui("sources"), "shiny.tag")
   expect_s3_class(app$mod_facts_ui("facts"), "shiny.tag")
@@ -66,6 +67,13 @@ test_that("module UIs namespace their input ids", {
   expect_no_match(paste(html, collapse = ""), "parallel", fixed = TRUE)
   expect_match(paste(html, collapse = ""), 'role="status"', fixed = TRUE)
   expect_match(paste(html, collapse = ""), 'aria-live="polite"', fixed = TRUE)
+  review_html <- paste(
+    as.character(app$mod_run_review_ui("review")),
+    collapse = ""
+  )
+  expect_match(review_html, "review-product_source", fixed = TRUE)
+  expect_match(review_html, "review-stage_detail", fixed = TRUE)
+  expect_match(review_html, 'aria-atomic="true"', fixed = TRUE)
   chat_html <- paste(
     as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
     collapse = ""
@@ -250,6 +258,13 @@ test_that("tempest_shiny_ui builds namespaced host panels", {
   expect_match(html, "host-sources-body")
   expect_match(html, "host-report-body")
   expect_match(html, "host-config-coordinator")
+
+  review_html <- paste(
+    as.character(tempest_shiny_ui("host", panels = "review")),
+    collapse = ""
+  )
+  expect_match(review_html, "host-review-product_source", fixed = TRUE)
+  expect_match(review_html, "Run review", fixed = TRUE)
 })
 
 test_that("chat UI uses the Tempest assistant icon", {

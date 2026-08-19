@@ -19,3 +19,4 @@
 ^AGENTS\.md$
 ^.*[.]dsprrr_cache$
 ^inst/shiny/[.]shinychat$
+^vignettes/.*[.]html$

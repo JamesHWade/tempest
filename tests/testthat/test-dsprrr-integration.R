@@ -823,6 +823,53 @@ test_that("registry-backed programs retain live bindings without metadata", {
   expect_identical(result$output, "bound:value")
 })
 
+test_that("ProgramSet compilation preserves detached runtime bindings", {
+  root <- withr::local_tempdir()
+  programs <- test_program_set_programs()
+  forward <- function(input) list(output = paste0("bound:", input))
+  programs$extract_claims <- dsprrr::module_fn(
+    "input -> output",
+    forward,
+    name = "registry compile fixture"
+  )
+  registry <- list("fixture-forward-v1" = forward)
+  source_path <- file.path(root, "source")
+  source_written <- tempest_program_set(
+    programs = programs,
+    path = source_path,
+    registry = registry
+  )
+  source <- tempest_load_program_set(source_path, registry = registry)
+  expect_identical(
+    source_written@entries$extract_claims$program_artifact_id,
+    source@entries$extract_claims$program_artifact_id
+  )
+  local_mocked_bindings(
+    tempest_program_set_compile_module = function(program, ...) program
+  )
+
+  candidate <- tempest_compile_programs(
+    source,
+    trainsets = list(
+      extract_claims = data.frame(input = "a", output = "A")
+    ),
+    teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 1L),
+    path = file.path(root, "candidate"),
+    registry = registry
+  )
+
+  rm(registry, forward)
+  result <- dsprrr::run(
+    tempest:::tempest_program_set_program(candidate, "extract_claims"),
+    input = "value"
+  )
+  expect_identical(result$output, "bound:value")
+  expect_identical(
+    candidate@entries$extract_claims$program_artifact_id,
+    source@entries$extract_claims$program_artifact_id
+  )
+})
+
 test_that("ProgramSet compilation publishes only complete verified results", {
   root <- withr::local_tempdir()
   source <- test_program_set(file.path(root, "source"))
@@ -900,4 +947,316 @@ test_that("ProgramSet compilation publishes only complete verified results", {
     class = "tempest_program_set_error",
     regexp = "managed arguments"
   )
+})
+
+test_that("ProgramSet publication rolls back invalid governed bindings", {
+  root <- withr::local_tempdir()
+  programs <- test_program_set_programs()
+  governed_reference <- test_governed_procedure_ref(
+    "personas",
+    dsprrr::program_artifact_id(programs$personas)
+  )
+  source <- tempest_program_set(
+    programs = programs,
+    path = file.path(root, "source"),
+    governed_procedure_refs = list(personas = governed_reference)
+  )
+  candidate_programs <- tempest:::tempest_program_set_programs(source)
+  candidate_programs$personas <- candidate_programs$personas$copy(deep = TRUE)
+  candidate_programs$personas$config$temperature <- 0.321
+  metadata <- tempest:::tempest_program_set_metadata(source)
+  output <- file.path(root, "candidate")
+
+  expect_error(
+    tempest:::tempest_program_set_write_bundle(
+      candidate_programs,
+      output,
+      metadata$contract_versions,
+      metadata$evaluators,
+      metadata$governed_references
+    ),
+    class = "tempest_research_manifest_error",
+    regexp = "governed_procedure_ref.*must match"
+  )
+  expect_identical(unname(fs::file_exists(output)), FALSE)
+  expect_identical(unname(fs::dir_exists(output)), FALSE)
+})
+
+test_that("ProgramSet compilation isolates modules and clears stale governance", {
+  root <- withr::local_tempdir()
+  programs <- test_program_set_programs()
+  governed_stages <- c("perspectives", "personas")
+  governed_references <- stats::setNames(
+    lapply(
+      governed_stages,
+      \(stage) {
+        test_governed_procedure_ref(
+          stage,
+          dsprrr::program_artifact_id(programs[[stage]])
+        )
+      }
+    ),
+    governed_stages
+  )
+  source <- tempest_program_set(
+    programs = programs,
+    path = file.path(root, "source"),
+    governed_procedure_refs = governed_references
+  )
+  baseline_ids <- vapply(
+    source@entries,
+    `[[`,
+    character(1),
+    "program_artifact_id"
+  )
+  baseline_config <- rlang::duplicate(
+    source@programs$personas$config,
+    shallow = FALSE
+  )
+  source@programs$personas$state$traces <- list(list(
+    prompt = "private baseline prompt",
+    response = "private baseline response"
+  ))
+  source@programs$personas$state$cache <- list(
+    private = "private baseline cache"
+  )
+  baseline_state <- rlang::duplicate(
+    source@programs$personas$state,
+    shallow = FALSE
+  )
+  baseline_runtime <- attr(
+    source@programs$personas,
+    "dsprrr_artifact_runtime",
+    exact = TRUE
+  )
+  compiled_program <- NULL
+  local_mocked_bindings(
+    tempest_program_set_compile_module = function(program, ...) {
+      compiled_program <<- program
+      program$config$temperature <- 0.123
+      program
+    }
+  )
+
+  candidate <- tempest_compile_programs(
+    source,
+    trainsets = list(personas = data.frame(input = "a", output = "A")),
+    teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 1L),
+    path = file.path(root, "candidate")
+  )
+
+  expect_identical(
+    identical(compiled_program, source@programs$personas),
+    FALSE
+  )
+  expect_identical(source@programs$personas$config, baseline_config)
+  expect_identical(source@programs$personas$state, baseline_state)
+  expect_length(compiled_program$state$traces, 0L)
+  expect_length(compiled_program$state$cache, 0L)
+  expect_identical(
+    attr(
+      compiled_program,
+      "dsprrr_artifact_runtime",
+      exact = TRUE
+    ),
+    baseline_runtime
+  )
+  expect_identical(
+    vapply(
+      tempest:::tempest_program_set_programs(source),
+      dsprrr::program_artifact_id,
+      character(1)
+    ),
+    baseline_ids
+  )
+  expect_null(candidate@entries$personas$governed_procedure_ref)
+  expect_identical(
+    candidate@entries$perspectives$governed_procedure_ref,
+    source@entries$perspectives$governed_procedure_ref
+  )
+  expect_identical(
+    identical(
+      candidate@entries$personas$program_artifact_id,
+      baseline_ids[["personas"]]
+    ),
+    FALSE
+  )
+
+  local_mocked_bindings(
+    tempest_program_set_compile_module = function(program, ...) program
+  )
+  unchanged <- tempest_compile_programs(
+    source,
+    trainsets = list(personas = data.frame(input = "a", output = "A")),
+    teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 1L),
+    path = file.path(root, "unchanged")
+  )
+  expect_identical(
+    unchanged@entries$personas$governed_procedure_ref,
+    source@entries$personas$governed_procedure_ref
+  )
+})
+
+test_that("cross-stage compiler mutations are reverified before publication", {
+  root <- withr::local_tempdir()
+  programs <- test_program_set_programs()
+  selected <- c("perspectives", "personas")
+  governed_references <- stats::setNames(
+    lapply(
+      selected,
+      \(stage) {
+        test_governed_procedure_ref(
+          stage,
+          dsprrr::program_artifact_id(programs[[stage]])
+        )
+      }
+    ),
+    selected
+  )
+  source <- tempest_program_set(
+    programs = programs,
+    path = file.path(root, "source"),
+    governed_procedure_refs = governed_references
+  )
+  baseline_ids <- vapply(
+    source@entries,
+    `[[`,
+    character(1),
+    "program_artifact_id"
+  )
+  baseline_configs <- lapply(
+    source@programs[selected],
+    \(program) rlang::duplicate(program$config, shallow = FALSE)
+  )
+  first_program <- NULL
+  compile_call <- 0L
+  mutation <- "changed"
+  local_mocked_bindings(
+    tempest_program_set_compile_module = function(program, ...) {
+      compile_call <<- compile_call + 1L
+      if (compile_call == 1L) {
+        first_program <<- program
+      } else if (identical(mutation, "changed")) {
+        first_program$config$temperature <- 0.456
+      } else {
+        first_program$config$unregistered_runtime <- new.env(
+          parent = emptyenv()
+        )
+      }
+      program
+    }
+  )
+  trainsets <- stats::setNames(
+    rep(list(data.frame(input = "a", output = "A")), length(selected)),
+    selected
+  )
+
+  candidate <- tempest_compile_programs(
+    source,
+    trainsets = trainsets,
+    teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 1L),
+    path = file.path(root, "candidate")
+  )
+
+  expect_null(candidate@entries$perspectives$governed_procedure_ref)
+  expect_identical(
+    candidate@entries$personas$governed_procedure_ref,
+    source@entries$personas$governed_procedure_ref
+  )
+  expect_identical(
+    identical(
+      candidate@entries$perspectives$program_artifact_id,
+      baseline_ids[["perspectives"]]
+    ),
+    FALSE
+  )
+
+  mutation <- "invalid"
+  compile_call <- 0L
+  first_program <- NULL
+  failed_path <- file.path(root, "failed")
+  expect_error(
+    tempest_compile_programs(
+      source,
+      trainsets = trainsets,
+      teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 1L),
+      path = failed_path
+    ),
+    class = "tempest_program_set_verification_error",
+    regexp = "Could not verify"
+  )
+  expect_identical(unname(fs::file_exists(failed_path)), FALSE)
+  expect_identical(unname(fs::dir_exists(failed_path)), FALSE)
+  expect_identical(
+    source@programs$perspectives$config,
+    baseline_configs$perspectives
+  )
+  expect_identical(
+    source@programs$personas$config,
+    baseline_configs$personas
+  )
+  expect_identical(
+    vapply(
+      tempest:::tempest_program_set_programs(source),
+      dsprrr::program_artifact_id,
+      character(1)
+    ),
+    baseline_ids
+  )
+})
+
+test_that("throwing mutating compilers cannot alter a baseline ProgramSet", {
+  root <- withr::local_tempdir()
+  source <- test_program_set(file.path(root, "source"))
+  baseline_ids <- vapply(
+    source@entries,
+    `[[`,
+    character(1),
+    "program_artifact_id"
+  )
+  baseline_config <- rlang::duplicate(
+    source@programs$personas$config,
+    shallow = FALSE
+  )
+  source@programs$personas$state$traces <- list(list(
+    prompt = "private baseline prompt",
+    response = "private baseline response"
+  ))
+  source@programs$personas$state$cache <- list(
+    private = "private baseline cache"
+  )
+  baseline_state <- rlang::duplicate(
+    source@programs$personas$state,
+    shallow = FALSE
+  )
+  local_mocked_bindings(
+    tempest_program_set_compile_module = function(program, ...) {
+      program$config$temperature <- 0.987
+      stop("adversarial compiler failure")
+    }
+  )
+  output <- file.path(root, "candidate")
+
+  expect_error(
+    tempest_compile_programs(
+      source,
+      trainsets = list(personas = data.frame(input = "a", output = "A")),
+      teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 1L),
+      path = output
+    ),
+    class = "tempest_program_set_compile_error",
+    regexp = "Compilation failed"
+  )
+  expect_identical(source@programs$personas$config, baseline_config)
+  expect_identical(source@programs$personas$state, baseline_state)
+  expect_identical(
+    vapply(
+      tempest:::tempest_program_set_programs(source),
+      dsprrr::program_artifact_id,
+      character(1)
+    ),
+    baseline_ids
+  )
+  expect_identical(unname(fs::file_exists(output)), FALSE)
+  expect_identical(unname(fs::dir_exists(output)), FALSE)
 })

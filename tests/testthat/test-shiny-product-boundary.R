@@ -24,9 +24,75 @@ test_that("STORM publication uses the exact launch configuration", {
   expect_match(server_code, "store$publish_storm_report", fixed = TRUE)
   expect_match(server_code, "config = worker_state$config", fixed = TRUE)
   expect_match(server_code, "report_navigation_event", fixed = TRUE)
+  expect_match(
+    server_code,
+    "last_successful_product(envelope$result)",
+    fixed = TRUE
+  )
+  expect_no_match(server_code, "last_successful_product(NULL)", fixed = TRUE)
   expect_no_match(server_code, "report_ready", fixed = TRUE)
   expect_no_match(runner_code, "parallel_research", fixed = TRUE)
   expect_no_match(runner_code, "tempest_run =", fixed = TRUE)
+})
+
+test_that("Run review is internal and leaves public adapter shapes exact", {
+  skip_if_not_installed("shiny")
+  expect_identical(
+    tempest:::tempest_shiny_panel_choices(),
+    c(
+      "chat",
+      "sources",
+      "facts",
+      "mindmap",
+      "transcript",
+      "report",
+      "storm",
+      "review"
+    )
+  )
+  server_code <- paste(deparse(body(tempest_shiny_server)), collapse = "\n")
+  store_code <- paste(deparse(body(tempest_shiny_store)), collapse = "\n")
+
+  expect_match(server_code, "mod_run_review_server", fixed = TRUE)
+  expect_match(server_code, "last_successful_product", fixed = TRUE)
+  expect_no_match(server_code, "review =", fixed = TRUE)
+  expect_no_match(store_code, "review", fixed = TRUE)
+  expect_identical(length(tempest_shiny_store()), 13L)
+})
+
+test_that("Run review panel does not widen the public server handle", {
+  skip_if_not_installed("shiny")
+  store <- tempest_shiny_store()
+
+  shiny::testServer(
+    tempest_shiny_server,
+    args = list(
+      config = tempest_config(),
+      store = store,
+      panels = "review"
+    ),
+    {
+      expect_named(
+        session$returned,
+        c(
+          "store",
+          "costorm_session",
+          "costorm_events",
+          "costorm_evidence",
+          "storm_events",
+          "report_md",
+          "report_workspace",
+          "report_topic",
+          "report_navigation_event",
+          "touch_costorm_session"
+        )
+      )
+      expect_disjoint(
+        names(session$returned),
+        c("review", "review_id", "storm_product")
+      )
+    }
+  )
 })
 
 test_that("STORM run identity mismatches fail closed and clean worker state", {
@@ -262,11 +328,27 @@ test_that("STORM cancellation clears active worker state", {
       session$flushReact()
       expect_s3_class(worker_state$job, "mirai")
       expect_identical(file.exists(stream_path), TRUE)
+      cancelled_job <- worker_state$job
 
       session$setInputs(cancel = 1)
       session$flushReact()
+      expect_identical(worker_state$job, cancelled_job)
+
+      deadline <- Sys.time() + 2
+      task_status <- shiny::isolate(storm_task$status())
+      while (
+        (mirai::unresolved(cancelled_job) ||
+          identical(task_status, "running")) &&
+          Sys.time() < deadline
+      ) {
+        later::run_now(0.05)
+        session$flushReact()
+        task_status <- shiny::isolate(storm_task$status())
+      }
 
       expect_identical(worker_state$cancelled, TRUE)
+      expect_identical(mirai::unresolved(cancelled_job), FALSE)
+      expect_identical(task_status, "success")
       expect_identical(progress_stream$active, FALSE)
       expect_null(progress_stream$path)
       expect_null(worker_state$job)
@@ -280,6 +362,101 @@ test_that("STORM cancellation clears active worker state", {
         shiny::isolate(session$returned$report_navigation_event()),
         0L
       )
+    }
+  )
+})
+
+test_that("STORM rejects a queued launch without orphaning worker state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("later")
+  skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
+  env <- tempest:::tempest_shiny_module_env()
+  stream_paths <- character()
+  published <- character()
+  store <- list(
+    publish_storm_report = function(result, config) {
+      published <<- c(published, result$report_md)
+      invisible(result$report_md)
+    }
+  )
+
+  original_poll <- env$storm_poll_progress_stream
+  original_run_id <- env$storm_result_run_id
+  original_runner <- env$storm_run_with_progress
+  withr::defer({
+    env$storm_poll_progress_stream <- original_poll
+    env$storm_result_run_id <- original_run_id
+    env$storm_run_with_progress <- original_runner
+  })
+  env$storm_poll_progress_stream <- function(path, ...) {
+    stream_paths <<- c(stream_paths, path)
+    invisible(path)
+  }
+  env$storm_result_run_id <- function(result) result$run_id
+  env$storm_run_with_progress <- function(
+    topic,
+    progress_run_id,
+    ...
+  ) {
+    Sys.sleep(0.25)
+    list(
+      result = list(run_id = progress_run_id, report_md = topic),
+      progress = list()
+    )
+  }
+
+  shiny::testServer(
+    env$mod_storm_server,
+    args = list(
+      config = shiny::reactive(tempest_config()),
+      store = store
+    ),
+    {
+      wait_for_terminal <- function() {
+        deadline <- Sys.time() + 10
+        status <- shiny::isolate(storm_task$status())
+        while (identical(status, "running") && Sys.time() < deadline) {
+          later::run_now(0.05)
+          session$flushReact()
+          status <- shiny::isolate(storm_task$status())
+        }
+        later::run_now(0.01)
+        session$flushReact()
+        status
+      }
+
+      session$setInputs(topic = "First", run = 1)
+      session$flushReact()
+      first_job <- worker_state$job
+      first_stream <- progress_stream$path
+      expect_s3_class(first_job, "mirai")
+
+      session$setInputs(topic = "Second", run = 2)
+      session$flushReact()
+      expect_identical(worker_state$job, first_job)
+      expect_identical(worker_state$topic, "First")
+      expect_identical(progress_stream$path, first_stream)
+      expect_length(stream_paths, 1L)
+
+      expect_identical(wait_for_terminal(), "success")
+      expect_identical(mirai::unresolved(first_job), FALSE)
+      expect_identical(published, "First")
+      expect_identical(
+        shiny::isolate(session$returned$last_successful_product())$report_md,
+        "First"
+      )
+      expect_identical(file.exists(first_stream), FALSE)
+
+      session$setInputs(topic = "Second", run = 3)
+      session$flushReact()
+      second_job <- worker_state$job
+      expect_s3_class(second_job, "mirai")
+      expect_identical(wait_for_terminal(), "success")
+      expect_identical(mirai::unresolved(second_job), FALSE)
+      expect_identical(published, c("First", "Second"))
+      expect_identical(file.exists(stream_paths), c(FALSE, FALSE))
     }
   )
 })

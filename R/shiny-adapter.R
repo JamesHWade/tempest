@@ -27,7 +27,16 @@ tempest_shiny_module_env <- local({
 })
 
 tempest_shiny_panel_choices <- function() {
-  c("chat", "sources", "facts", "mindmap", "transcript", "report", "storm")
+  c(
+    "chat",
+    "sources",
+    "facts",
+    "mindmap",
+    "transcript",
+    "report",
+    "storm",
+    "review"
+  )
 }
 
 tempest_shiny_panels <- function(panels) {
@@ -127,9 +136,9 @@ tempest_shiny_store <- function() {
 #'
 #' @param id Shiny module id.
 #' @param panels Character vector containing any of `"chat"`, `"sources"`,
-#'   `"facts"`, `"mindmap"`, `"transcript"`, `"report"`, and `"storm"`. Use
-#'   `"all"` for every panel. The default embeds the Co-STORM chat and durable
-#'   research views.
+#'   `"facts"`, `"mindmap"`, `"transcript"`, `"report"`, `"storm"`, and
+#'   `"review"`. Use `"all"` for every panel. The default embeds the Co-STORM
+#'   chat and durable research views.
 #' @param show_config If `TRUE`, include the bundled configuration controls in
 #'   the Chat settings drawer. Hosts that provide their own config should leave
 #'   this as `FALSE`.
@@ -167,7 +176,8 @@ tempest_shiny_ui <- function(
       mindmap = env$mod_mindmap_ui(ns("mindmap")),
       transcript = env$mod_transcript_ui(ns("transcript")),
       report = env$mod_report_ui(ns("report")),
-      storm = env$mod_storm_ui(ns("storm"))
+      storm = env$mod_storm_ui(ns("storm")),
+      review = env$mod_run_review_ui(ns("review"))
     )
   })
 
@@ -325,6 +335,20 @@ tempest_shiny_server <- function(
       shiny::reactive(list())
     } else {
       module_handles$storm$storm_events
+    }
+    storm_product <- if (is.null(module_handles$storm)) {
+      shiny::reactive(NULL)
+    } else {
+      module_handles$storm$last_successful_product
+    }
+    if ("review" %in% panels) {
+      env$mod_run_review_server(
+        "review",
+        costorm_product = shiny::reactive(current_costorm_session()),
+        storm_product = storm_product,
+        costorm_events = costorm_events,
+        storm_events = storm_events
+      )
     }
 
     list(

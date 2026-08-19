@@ -4,7 +4,8 @@
 #'
 #' Launches an interactive app that provides:
 #' - Co-STORM chat, sources, facts, mind map, transcript, and committed reports;
-#' - asynchronous scripted STORM research and report publication; and
+#' - asynchronous scripted STORM research and report publication;
+#' - a bounded, read-only Run review with separately labeled live progress; and
 #' - bounded Co-STORM session archive download and upload without autosave.
 #'
 #' Live progress, persistence, and successful publication are announced through

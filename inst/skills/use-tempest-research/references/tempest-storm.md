@@ -92,6 +92,13 @@ explicit ResearchWorkspace; that value alone does not finalize a Manifest or
 grant promotion authority. Construct a promotion proposal only from the
 completed product with `tempest_promotion_bundle(result)`.
 
+Use `tempest_trajectory_review(result)` to inspect the completed product's
+ordered StageRecords, exact program and knowledge identities, safe Deputy
+references, evidence identities, joins, and structural findings. The review is
+bounded and reconstructable. It excludes mutable progress, raw content,
+credentials, and capabilities; correlation proves grouping only, not
+causation.
+
 ## Persist and resume
 
 Pass `output_dir` and a stable `run_id` to persist direct STORM stage
@@ -120,9 +127,11 @@ than migrated. `parallel_research` must remain `FALSE`; use
 appropriate.
 
 The default `tempest_task()` solver evaluates this real product path and returns
-the authoritative report with credential-safe Manifest, Workspace, and
-StageRecord summaries. Supply a custom solver only when explicitly required by
-the evaluation design.
+the authoritative report with a bounded credential-safe trajectory summary.
+It can evaluate an exact caller dataset and optional ProgramSet/knowledge view.
+Those controls are unavailable to a custom solver because Tempest could not
+verify that it used them. Keep baseline and candidate vitals Tasks separate;
+compile selected stages explicitly and never imply automatic adoption.
 
 ## Verify
 
