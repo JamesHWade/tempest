@@ -24,9 +24,75 @@ test_that("STORM publication uses the exact launch configuration", {
   expect_match(server_code, "store$publish_storm_report", fixed = TRUE)
   expect_match(server_code, "config = worker_state$config", fixed = TRUE)
   expect_match(server_code, "report_navigation_event", fixed = TRUE)
+  expect_match(
+    server_code,
+    "last_successful_product(envelope$result)",
+    fixed = TRUE
+  )
+  expect_no_match(server_code, "last_successful_product(NULL)", fixed = TRUE)
   expect_no_match(server_code, "report_ready", fixed = TRUE)
   expect_no_match(runner_code, "parallel_research", fixed = TRUE)
   expect_no_match(runner_code, "tempest_run =", fixed = TRUE)
+})
+
+test_that("Run review is internal and leaves public adapter shapes exact", {
+  skip_if_not_installed("shiny")
+  expect_identical(
+    tempest:::tempest_shiny_panel_choices(),
+    c(
+      "chat",
+      "sources",
+      "facts",
+      "mindmap",
+      "transcript",
+      "report",
+      "storm",
+      "review"
+    )
+  )
+  server_code <- paste(deparse(body(tempest_shiny_server)), collapse = "\n")
+  store_code <- paste(deparse(body(tempest_shiny_store)), collapse = "\n")
+
+  expect_match(server_code, "mod_run_review_server", fixed = TRUE)
+  expect_match(server_code, "last_successful_product", fixed = TRUE)
+  expect_no_match(server_code, "review =", fixed = TRUE)
+  expect_no_match(store_code, "review", fixed = TRUE)
+  expect_identical(length(tempest_shiny_store()), 13L)
+})
+
+test_that("Run review panel does not widen the public server handle", {
+  skip_if_not_installed("shiny")
+  store <- tempest_shiny_store()
+
+  shiny::testServer(
+    tempest_shiny_server,
+    args = list(
+      config = tempest_config(),
+      store = store,
+      panels = "review"
+    ),
+    {
+      expect_named(
+        session$returned,
+        c(
+          "store",
+          "costorm_session",
+          "costorm_events",
+          "costorm_evidence",
+          "storm_events",
+          "report_md",
+          "report_workspace",
+          "report_topic",
+          "report_navigation_event",
+          "touch_costorm_session"
+        )
+      )
+      expect_disjoint(
+        names(session$returned),
+        c("review", "review_id", "storm_product")
+      )
+    }
+  )
 })
 
 test_that("STORM run identity mismatches fail closed and clean worker state", {
@@ -262,11 +328,26 @@ test_that("STORM cancellation clears active worker state", {
       session$flushReact()
       expect_s3_class(worker_state$job, "mirai")
       expect_identical(file.exists(stream_path), TRUE)
+      cancelled_job <- worker_state$job
 
       session$setInputs(cancel = 1)
       session$flushReact()
 
+      deadline <- Sys.time() + 2
+      task_status <- shiny::isolate(storm_task$status())
+      while (
+        (mirai::unresolved(cancelled_job) ||
+          identical(task_status, "running")) &&
+          Sys.time() < deadline
+      ) {
+        later::run_now(0.05)
+        session$flushReact()
+        task_status <- shiny::isolate(storm_task$status())
+      }
+
       expect_identical(worker_state$cancelled, TRUE)
+      expect_identical(mirai::unresolved(cancelled_job), FALSE)
+      expect_identical(task_status, "success")
       expect_identical(progress_stream$active, FALSE)
       expect_null(progress_stream$path)
       expect_null(worker_state$job)

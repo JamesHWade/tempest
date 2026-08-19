@@ -30,6 +30,7 @@ ui <- page_navbar(
     allow_user_experts = TRUE
   ),
   mod_storm_ui("storm"),
+  mod_run_review_ui("review"),
   mod_mindmap_ui("mindmap"),
   mod_sources_ui("sources"),
   mod_facts_ui("facts"),
@@ -51,6 +52,17 @@ server <- function(input, output, session) {
     "storm",
     config = config,
     store = store
+  )
+  costorm_events <- reactive({
+    active <- store$costorm_session()
+    if (is.null(active)) list() else tempest::tempest_execution_events(active)
+  })
+  mod_run_review_server(
+    "review",
+    costorm_product = store$costorm_session,
+    storm_product = storm_handle$last_successful_product,
+    costorm_events = costorm_events,
+    storm_events = storm_handle$storm_events
   )
   mod_mindmap_server("mindmap", store = store)
   mod_sources_server("sources", store = store)

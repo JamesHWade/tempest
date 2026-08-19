@@ -69,6 +69,7 @@ mod_storm_server <- function(id, config, store) {
     validation_error <- shiny::reactiveVal(NULL)
     publication_error <- shiny::reactiveVal(NULL)
     published_result <- shiny::reactiveVal(NULL)
+    last_successful_product <- shiny::reactiveVal(NULL)
     progress_stream <- new.env(parent = emptyenv())
     progress_stream$path <- NULL
     progress_stream$token <- 0L
@@ -137,7 +138,12 @@ mod_storm_server <- function(id, config, store) {
           tempest_run_factory = storm_worker_tempest_run
         )
         worker_state$job <- job
-        job
+        promises::catch(job, function(error) {
+          if (storm_task_was_cancelled(job, error)) {
+            return(NULL)
+          }
+          stop(error)
+        })
       }
     ) |>
       bslib::bind_task_button("run")
@@ -254,6 +260,7 @@ mod_storm_server <- function(id, config, store) {
           return()
         }
         published_result(envelope$result)
+        last_successful_product(envelope$result)
         finish_storm_worker()
       } else if (identical(storm_task$status(), "error")) {
         progress_events(storm_merge_progress_events(
@@ -370,6 +377,9 @@ mod_storm_server <- function(id, config, store) {
 
     list(
       storm_events = shiny::reactive(progress_events()),
+      last_successful_product = shiny::reactive(
+        last_successful_product()
+      ),
       report_navigation_event = shiny::reactive(
         report_navigation_event()
       )
@@ -731,6 +741,13 @@ storm_cancel_worker <- function(job) {
   }
   mirai::stop_mirai(job)
   TRUE
+}
+
+storm_task_was_cancelled <- function(job, error) {
+  value <- tryCatch(job$data, error = function(...) NULL)
+  inherits(value, "errorValue") &&
+    identical(unclass(value), 20L) &&
+    identical(conditionMessage(error), "20 | Operation canceled")
 }
 
 storm_cancelled_event <- function(topic, run_id) {
