@@ -1,4 +1,4 @@
-test_that("example host uses only the scripted STORM product API", {
+test_that("example host uses the exported asynchronous Shiny adapter", {
   app_path <- system.file(
     "examples",
     "shiny-host",
@@ -21,6 +21,9 @@ test_that("example host uses only the scripted STORM product API", {
     value = TRUE
   )
 
-  expect_contains(symbols, "tempest_run")
+  expect_contains(symbols, "tempest_shiny_ui")
+  expect_contains(symbols, "tempest_shiny_server")
+  expect_contains(symbols, "tempest_config")
+  expect_identical("tempest_run" %in% symbols, FALSE)
   expect_identical(sort(generic), character())
 })

@@ -63,6 +63,9 @@ test_that("module UIs namespace their input ids", {
   expect_match(paste(html, collapse = ""), "storm-run")
   expect_match(paste(html, collapse = ""), "storm-topic")
   expect_match(paste(html, collapse = ""), "storm-cancel_control")
+  expect_no_match(paste(html, collapse = ""), "parallel", fixed = TRUE)
+  expect_match(paste(html, collapse = ""), 'role="status"', fixed = TRUE)
+  expect_match(paste(html, collapse = ""), 'aria-live="polite"', fixed = TRUE)
   chat_html <- paste(
     as.character(app$mod_chat_ui("chat", app$mod_config_ui("config"))),
     collapse = ""
@@ -71,6 +74,67 @@ test_that("module UIs namespace their input ids", {
   expect_match(chat_html, "shiny-chat-footer")
   expect_match(chat_html, "chat-runtime_footer")
   expect_match(chat_html, "tempestCitationSanitizer")
+})
+
+test_that("STORM blank topics render an accessible validation error", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("mirai")
+  app <- source_shiny_modules()
+  store <- app$new_session_store()
+
+  shiny::testServer(
+    app$mod_storm_server,
+    args = list(
+      config = shiny::reactive(tempest_config()),
+      store = store
+    ),
+    {
+      session$setInputs(topic = "   ", run = 1)
+      session$flushReact()
+      html <- paste(as.character(output$result$html), collapse = "")
+
+      expect_match(html, 'role="alert"', fixed = TRUE)
+      expect_match(html, "Enter a research topic", fixed = TRUE)
+      expect_null(shiny::isolate(store$report_md()))
+      session$setInputs(view_report = 1)
+      session$flushReact()
+      expect_identical(
+        shiny::isolate(session$returned$report_navigation_event()),
+        0L
+      )
+    }
+  )
+})
+
+test_that("persistence feedback uses status and alert live regions", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  saved <- paste(
+    as.character(app$session_persistence_status_ui(list(
+      status = "saved",
+      message = "Saved session bundle."
+    ))),
+    collapse = ""
+  )
+  failed <- paste(
+    as.character(app$session_persistence_status_ui(list(
+      status = "error",
+      message = "Could not save the session bundle."
+    ))),
+    collapse = ""
+  )
+  transport <- paste(
+    as.character(app$session_persistence_error_ui(
+      "Could not read the uploaded bundle."
+    )),
+    collapse = ""
+  )
+
+  expect_match(saved, 'role="status"', fixed = TRUE)
+  expect_match(saved, 'aria-live="polite"', fixed = TRUE)
+  expect_match(failed, 'role="alert"', fixed = TRUE)
+  expect_match(transport, 'role="alert"', fixed = TRUE)
 })
 
 test_that("STORM worker cancellation stops Mirai work and records progress", {
@@ -551,8 +615,8 @@ test_that("the report module starts report-free", {
 test_that("citation_markdown renders numbered references from cited sources", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
-  source_store <- fake_store_with_sources(2)
-  sources <- source_store$list_retrieved_sources()
+  workspace <- fake_store_with_sources(2)
+  sources <- workspace$list_retrieved_sources()
   first_id <- sources[[1]]$id
   second_id <- sources[[2]]$id
   missing_id <- "S000000000000"
@@ -570,7 +634,7 @@ test_that("citation_markdown renders numbered references from cited sources", {
 
   rendered <- app$citation_markdown(
     md,
-    store = source_store,
+    workspace = workspace,
     include_references = TRUE
   )
 
@@ -601,11 +665,11 @@ test_that("citation rendering uses the retriever's T1 workspace", {
 
   rendered <- app$citation_markdown(
     paste0("Workspace-backed claim [", source_id, "]."),
-    store = retriever,
+    workspace = retriever,
     include_references = TRUE
   )
 
-  expect_identical(app$citation_source_store(retriever), workspace)
+  expect_identical(app$citation_workspace(retriever), workspace)
   expect_match(rendered, "T1 Workspace Source", fixed = TRUE)
   expect_match(rendered, "https://example.org/t1-workspace", fixed = TRUE)
   expect_no_match(rendered, "Missing source metadata", fixed = TRUE)
@@ -618,8 +682,8 @@ test_that("citation rendering uses the retriever's T1 workspace", {
     list(workspace = workspace, store = tempest_research_workspace()),
     class = "TempestRetriever"
   )
-  expect_null(app$citation_source_store(removed_alias))
-  expect_identical(app$citation_source_store(canonical), workspace)
+  expect_null(app$citation_workspace(removed_alias))
+  expect_identical(app$citation_workspace(canonical), workspace)
 })
 
 test_that("citation_markdown strips private external citation markers", {
@@ -661,8 +725,8 @@ test_that("citation_markdown strips private external citation markers", {
 test_that("citation_markdown replaces Tempest footnotes with a reference panel", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
-  source_store <- fake_store_with_sources(2)
-  sources <- source_store$list_retrieved_sources()
+  workspace <- fake_store_with_sources(2)
+  sources <- workspace$list_retrieved_sources()
   cited_id <- sources[[1]]$id
   unused_title <- sources[[2]]$title
   md <- paste0(
@@ -675,7 +739,7 @@ test_that("citation_markdown replaces Tempest footnotes with a reference panel",
 
   rendered <- app$citation_markdown(
     md,
-    store = source_store,
+    workspace = workspace,
     include_references = TRUE
   )
 
@@ -690,8 +754,8 @@ test_that("Shiny rendering escapes untrusted HTML and unsafe links", {
   skip_if_not_installed("commonmark")
   skip_if_not_installed("DT")
   app <- source_shiny_modules()
-  source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_retrieved_sources()[[1]]$id
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
   malicious <- paste0(
     "<script>globalThis.tempestXss = true</script>",
     "<img src=x onerror=alert(1)>",
@@ -700,7 +764,7 @@ test_that("Shiny rendering escapes untrusted HTML and unsafe links", {
     "]."
   )
 
-  rendered <- as.character(app$markdown_ui(malicious, store = source_store))
+  rendered <- as.character(app$markdown_ui(malicious, workspace = workspace))
   expect_no_match(rendered, "<script", fixed = TRUE)
   expect_no_match(rendered, "<img", fixed = TRUE)
   expect_match(rendered, "&lt;script&gt;", fixed = TRUE)
@@ -749,9 +813,9 @@ test_that("session store mutations work outside reactive consumers", {
     experts = list(test_expert(expert_id = "expert.store"))
   )
 
-  expect_silent(store$touch())
-  expect_silent(store$set(ses))
-  expect_identical(shiny::isolate(store$get()), ses)
+  expect_silent(store$touch_costorm_session())
+  expect_silent(store$set_costorm_session(ses))
+  expect_identical(shiny::isolate(store$costorm_session()), ses)
 })
 
 test_that("the transcript module shows recent turns from the store", {
@@ -782,7 +846,7 @@ test_that("the transcript module shows recent turns from the store", {
       "assistant",
       "answer text"
     )
-    store$set(ses)
+    store$set_costorm_session(ses)
     session$flushReact()
     body <- as.character(output$body$html)
     expect_match(body, "hello world")
@@ -797,8 +861,8 @@ test_that("the transcript module renders citations in completed answers", {
   skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   store <- app$new_session_store()
-  source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_retrieved_sources()[[1]]$id
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -809,7 +873,7 @@ test_that("the transcript module renders citations in completed answers", {
       expert_id = "expert.citations",
       name = "Dr. Citations"
     )),
-    retriever = tempest_retriever(config = cfg, workspace = source_store)
+    retriever = tempest_retriever(config = cfg, workspace = workspace)
   )
 
   shiny::testServer(app$mod_transcript_server, args = list(store = store), {
@@ -819,7 +883,7 @@ test_that("the transcript module renders citations in completed answers", {
       "assistant",
       paste0("Cited answer [", source_id, "].")
     )
-    store$set(ses)
+    store$set_costorm_session(ses)
     session$flushReact()
     body <- as.character(output$body$html)
     expect_match(body, "tempest-citation")
@@ -849,7 +913,7 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
   ses$add_turn("user", "user", "q1")
 
   shiny::testServer(app$mod_mindmap_server, args = list(store = store), {
-    store$set(ses)
+    store$set_costorm_session(ses)
     session$flushReact()
     expect_equal(output$n_turns, "1")
     expect_match(output$n_sources, "^[0-9]+$")
@@ -864,8 +928,8 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
 test_that("mind map accessible view exposes relationships, notes, and sources", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
-  source_store <- fake_store_with_sources(1)
-  source <- source_store$list_retrieved_sources()[[1]]
+  workspace <- fake_store_with_sources(1)
+  source <- workspace$list_retrieved_sources()[[1]]
   mindmap <- list(
     nodes = list(
       list(
@@ -886,7 +950,7 @@ test_that("mind map accessible view exposes relationships, notes, and sources", 
     edges = list(list(from = "root", to = "child", relation = "supports"))
   )
 
-  html <- as.character(app$mindmap_accessible_tree(mindmap, source_store))
+  html <- as.character(app$mindmap_accessible_tree(mindmap, workspace))
 
   expect_match(html, "Root topic", fixed = TRUE)
   expect_match(html, "Child finding", fixed = TRUE)
@@ -925,14 +989,14 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_retrieved_sources()[[1]]$id
-  source_store$add_proposed_claim(tempest_claim(
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  workspace$add_proposed_claim(tempest_claim(
     claim_text = "Integrated evidence is available.",
     source_ids = source_id,
     confidence = "high"
   ))
-  retriever <- tempest_retriever(config = cfg, workspace = source_store)
+  retriever <- tempest_retriever(config = cfg, workspace = workspace)
   ses <- tempest_session(
     "Integration topic",
     config = cfg,
@@ -974,7 +1038,7 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
     "assistant",
     paste0("Integrated evidence is available [", source_id, "].")
   )
-  shared$set(ses)
+  shared$set_costorm_session(ses)
 
   shiny::testServer(app$mod_sources_server, args = list(store = shared), {
     session$flushReact()
@@ -1004,33 +1068,45 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
 test_that("chat command messages summarize active session state", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
+  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
-  source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_retrieved_sources()[[1]]$id
-  claim <- tempest_claim(
-    claim_text = "Command summaries include facts.",
-    source_ids = source_id,
-    verification_status = "supported",
-    support_score = 0.82
+  workspace <- tempest_research_workspace()
+  cfg <- tempest_config(
+    search_provider = "wikipedia",
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  source_store$add_proposed_claim(claim)
-  fake_verify_claim_supports(source_store, list(claim))
-  ses <- list(
-    topic = "Command topic",
-    report_md = "# Command report",
+  ses <- tempest_session(
+    "Command topic",
+    config = cfg,
     experts = list(test_expert(
       expert_id = "expert.command",
       name = "Dr. Command",
       title = "Interaction specialist",
       description = "Runtime controls"
     )),
-    workspace = source_store,
-    config = tempest_config(search_provider = "wikipedia")
+    retriever = tempest_retriever(config = cfg, workspace = workspace)
+  )
+  test_persistence_add_costorm_evidence(
+    ses,
+    key = "shiny-command",
+    claim_text = "Command summaries include facts."
+  )
+  test_persistence_commit_costorm_report(
+    ses,
+    paste0(
+      "# ",
+      ses$title,
+      "\n\n",
+      "Command summaries include facts [source.verify.shiny-command]."
+    )
   )
 
   expect_match(app$chat_command_message("experts", ses), "Dr. Command")
-  expect_match(app$chat_command_message("sources", ses), "Example 1")
-  expect_match(app$chat_command_message("facts", ses), "support 0.82")
+  expect_match(
+    app$chat_command_message("sources", ses),
+    "Verification source shiny-command"
+  )
+  expect_match(app$chat_command_message("facts", ses), "support 0.9")
   expect_match(app$chat_command_message("facts", ses), "Evidence review")
   expect_match(
     app$chat_command_message("facts", ses),
@@ -1152,7 +1228,7 @@ test_that("the chat greeting prioritizes one-time session controls", {
   expect_no_match(html, "tempest-chat-card-header", fixed = TRUE)
   expect_no_match(html, "chat-progress", fixed = TRUE)
   expect_no_match(html, "detailed workspace settings", fixed = TRUE)
-  expect_match(html, 'role="switch"', fixed = TRUE)
+  expect_match(html, 'role=\\&quot;switch\\&quot;', fixed = TRUE)
   expect_match(html, "chat-suggest")
   expect_match(html, "Suggest follow-up questions")
 })
@@ -1187,7 +1263,8 @@ test_that("the chat settings drawer holds secondary workspace controls", {
   expect_match(html, "Session storage", fixed = TRUE)
   expect_match(html, "chat-save_session")
   expect_match(html, "chat-load_session")
-  expect_match(html, "chat-autosave_session")
+  expect_no_match(html, "chat-autosave_session")
+  expect_match(html, "chat-start_validation")
   expect_no_match(html, "Research configuration", fixed = TRUE)
   expect_no_match(html, "Bundle directory", fixed = TRUE)
 })
@@ -1227,7 +1304,7 @@ test_that("session archives round-trip product state through upload", {
     ))
   )
   store <- app$new_session_store()
-  store$set(ses)
+  store$set_costorm_session(ses)
   archive <- tempfile(fileext = ".zip")
   extract_root <- file.path(withr::local_tempdir(), "archive")
 
@@ -1278,101 +1355,12 @@ test_that("session archive validation rejects unsafe entries and large files", {
     TRUE
   )
   expect_equal(
-    app$session_archive_listing_is_safe(
-      c("session.json", "unexpected.txt"),
-      c(100, 100),
-      declared_files = "experts.json"
-    ),
-    FALSE
-  )
-  expect_equal(
     app$session_archive_listing_is_safe("/session.json", 100),
     FALSE
   )
   expect_equal(
     app$session_archive_listing_is_safe("a/./session.json", 100),
     FALSE
-  )
-})
-
-test_that("session archive manifests accept only the current envelope", {
-  skip_if_not_installed("shiny")
-  app <- source_shiny_modules()
-  files <- c(
-    "experts.json",
-    "report.md"
-  )
-  manifest_fields <- list(
-    package_version = "0.2.0.9000",
-    session_id = "session-1",
-    topic = "Archive topic",
-    title = "Archive topic",
-    research_manifest = list(),
-    report_reference = NULL,
-    workspace = list(),
-    saved_at = "2026-08-15T00:00:00.000000Z",
-    files = files,
-    checksums = stats::setNames(as.list(rep("checksum", length(files))), files)
-  )
-  current <- c(
-    list(
-      schema_version = 9L,
-      bundle_type = "costorm",
-      bundle_status = "complete"
-    ),
-    manifest_fields
-  )
-  expect_identical(app$session_archive_manifest_files(current), files)
-
-  expect_error(
-    app$session_archive_manifest_files(c(
-      list(schema_version = 7L, status = "complete"),
-      manifest_fields
-    )),
-    "unsupported schema or status",
-    fixed = TRUE
-  )
-
-  expect_error(
-    app$session_archive_manifest_files(
-      utils::modifyList(current, list(bundle_type = "storm"))
-    ),
-    "unsupported schema or status",
-    fixed = TRUE
-  )
-  expect_error(
-    app$session_archive_manifest_files(
-      utils::modifyList(current, list(bundle_status = "running"))
-    ),
-    "unsupported schema or status",
-    fixed = TRUE
-  )
-  expect_error(
-    app$session_archive_manifest_files(
-      utils::modifyList(current, list(schema_version = 9.9))
-    ),
-    "unsupported schema or status",
-    fixed = TRUE
-  )
-  expect_error(
-    app$session_archive_manifest_files(c(
-      list(schema_version = 9L, status = "complete"),
-      manifest_fields
-    )),
-    "unsupported schema or status",
-    fixed = TRUE
-  )
-  expect_error(
-    app$session_archive_manifest_files(c(
-      list(
-        schema_version = 10L,
-        bundle_type = "costorm",
-        bundle_status = "complete"
-      ),
-      manifest_fields
-    )),
-    "unsupported schema or status",
-    fixed = TRUE
   )
 })
 
@@ -1443,7 +1431,7 @@ test_that("session archive extraction rejects undeclared and tampered files", {
 
   expect_error(
     app$session_archive_extract(extra_archive, extra_extract),
-    "do not match"
+    class = "tempest_session_restore_error"
   )
   expect_false(dir.exists(extra_extract))
 })
@@ -1482,9 +1470,9 @@ test_that("session store saves and restores bundles for shared app tabs", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_retrieved_sources()[[1]]$id
-  source_store$add_proposed_claim(tempest_claim(
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  workspace$add_proposed_claim(tempest_claim(
     claim_text = "Shiny restore preserves cited evidence.",
     source_ids = source_id,
     confidence = "high"
@@ -1499,7 +1487,7 @@ test_that("session store saves and restores bundles for shared app tabs", {
       description = "Session durability",
       instructions = "Inspect session durability."
     )),
-    retriever = tempest_retriever(config = cfg, workspace = source_store)
+    retriever = tempest_retriever(config = cfg, workspace = workspace)
   )
   tempest:::tempest_session_commit_mindmap(
     ses,
@@ -1539,17 +1527,20 @@ test_that("session store saves and restores bundles for shared app tabs", {
 
   store <- app$new_session_store()
   bundle_dir <- file.path(withr::local_tempdir(), "session-bundle")
-  store$set(ses)
-  saved <- store$save(bundle_dir)
-  store$set(NULL)
+  store$set_costorm_session(ses)
+  saved <- store$save_costorm_session(bundle_dir)
+  store$set_costorm_session(NULL)
 
-  restored <- store$restore(saved, config = cfg)
+  restored <- store$resume_costorm_session(saved, config = cfg)
 
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$topic, "Shiny persistence")
   expect_null(restored$artifacts[["report_md"]])
-  expect_null(shiny::isolate(store$report()))
-  expect_equal(shiny::isolate(store$persistence())$status, "restored")
+  expect_null(shiny::isolate(store$report_md()))
+  expect_equal(
+    shiny::isolate(store$costorm_persistence_status())$status,
+    "restored"
+  )
   expect_equal(
     tempest_progress_state(tempest_execution_events(restored))$run_id,
     restored$session_id
@@ -1588,125 +1579,15 @@ test_that("session store saves and restores bundles for shared app tabs", {
   })
 })
 
-test_that("session autosave debounces store mutations", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
-  app <- source_shiny_modules()
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  ses <- tempest_session(
-    "Autosave topic",
-    config = cfg,
-    experts = list(tempest_expert(
-      expert_id = "expert.autosave",
-      name = "Dr. Autosave",
-      title = "Researcher",
-      description = "Persistence",
-      instructions = "Inspect autosave persistence."
-    ))
-  )
-  store <- app$new_session_store()
-  bundle_dir <- file.path(withr::local_tempdir(), "autosave-bundle")
-  saved_paths <- character()
-  errors <- list()
-
-  autosave_server <- function(id, app, store, bundle_dir) {
-    shiny::moduleServer(id, function(input, output, session) {
-      app$session_autosave_server(
-        store = store,
-        path = shiny::reactive(bundle_dir),
-        enabled = shiny::reactive(TRUE),
-        delay_ms = 1,
-        on_saved = function(path) {
-          saved_paths <<- c(saved_paths, path)
-        },
-        on_error = function(error) {
-          errors[[length(errors) + 1L]] <<- error
-        }
-      )
-    })
-  }
-
-  shiny::testServer(
-    autosave_server,
-    args = list(app = app, store = store, bundle_dir = bundle_dir),
-    {
-      session$flushReact()
-      store$set(ses)
-      store$touch()
-      store$touch()
-      session$flushReact()
-      session$elapse(10)
-      session$flushReact()
-
-      expect_length(errors, 0L)
-      expect_length(saved_paths, 1L)
-      expect_true(file.exists(file.path(bundle_dir, "session.json")))
-      expect_equal(shiny::isolate(store$persistence())$status, "autosaved")
-    }
-  )
-})
-
-test_that("session autosave does not fire after restoring a bundle", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
-  app <- source_shiny_modules()
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  ses <- tempest_session(
-    "Restore autosave topic",
-    config = cfg,
-    experts = list(test_expert(
-      expert_id = "expert.restore",
-      name = "Dr. Restore"
-    ))
-  )
-  store <- app$new_session_store()
-  bundle_dir <- file.path(withr::local_tempdir(), "restore-bundle")
-  tempest_session_save(ses, bundle_dir)
-  saved_paths <- character()
-
-  autosave_server <- function(id, app, store, bundle_dir) {
-    shiny::moduleServer(id, function(input, output, session) {
-      app$session_autosave_server(
-        store = store,
-        path = shiny::reactive(bundle_dir),
-        enabled = shiny::reactive(TRUE),
-        delay_ms = 1,
-        on_saved = function(path) {
-          saved_paths <<- c(saved_paths, path)
-        }
-      )
-    })
-  }
-
-  shiny::testServer(
-    autosave_server,
-    args = list(app = app, store = store, bundle_dir = bundle_dir),
-    {
-      session$flushReact()
-      store$restore(bundle_dir, config = cfg)
-      session$flushReact()
-      session$elapse(10)
-      session$flushReact()
-
-      expect_length(saved_paths, 0L)
-      expect_equal(shiny::isolate(store$persistence())$status, "restored")
-    }
-  )
-})
-
 test_that("tempest_shiny_server renders host-managed shared state", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  source_store <- fake_store_with_sources(1)
-  source_id <- source_store$list_retrieved_sources()[[1]]$id
-  source_store$add_proposed_claim(tempest_claim(
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  workspace$add_proposed_claim(tempest_claim(
     claim_text = "Host adapter evidence renders.",
     source_ids = source_id
   ))
@@ -1718,7 +1599,7 @@ test_that("tempest_shiny_server renders host-managed shared state", {
       expert_id = "expert.host",
       name = "Host Expert"
     )),
-    retriever = tempest_retriever(config = cfg, workspace = source_store),
+    retriever = tempest_retriever(config = cfg, workspace = workspace),
     session_id = "host-session-1"
   )
   tempest:::tempest_session_commit_mindmap(
@@ -1745,11 +1626,11 @@ test_that("tempest_shiny_server renders host-managed shared state", {
     ),
     {
       expect_identical(shared_store, store)
-      shared_store$set(ses)
+      shared_store$set_costorm_session(ses)
       session$flushReact()
 
       expect_equal(
-        shiny::isolate(shared_store$get())$session_id,
+        shiny::isolate(shared_store$costorm_session())$session_id,
         "host-session-1"
       )
       expect_no_match(
@@ -1816,7 +1697,12 @@ test_that("workflow_progress_ui renders reducer state", {
   ))
 
   html <- paste(
-    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    as.character(
+      app$workflow_progress_ui(
+        state,
+        tempest_progress_labels("costorm", kind = "stage")
+      )
+    ),
     collapse = ""
   )
 
@@ -1835,7 +1721,12 @@ test_that("Co-STORM startup progress renders before warmup starts", {
   event <- app$costorm_starting_event("session-startup")
   state <- app$costorm_progress_state(list(event))
   html <- paste(
-    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    as.character(
+      app$workflow_progress_ui(
+        state,
+        tempest_progress_labels("costorm", kind = "stage")
+      )
+    ),
     collapse = ""
   )
 
@@ -1849,16 +1740,27 @@ test_that("Co-STORM startup progress renders before warmup starts", {
 
 test_that("Co-STORM startup progress closes when the session is ready", {
   skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Startup topic",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.startup"))
+  )
   state <- app$costorm_progress_state(list(
     app$costorm_starting_event("session-startup"),
-    app$costorm_session_ready_event(
-      "session-startup",
-      list(experts = list("one"))
-    )
+    app$costorm_session_ready_event("session-startup", ses)
   ))
   html <- paste(
-    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    as.character(
+      app$workflow_progress_ui(
+        state,
+        tempest_progress_labels("costorm", kind = "stage")
+      )
+    ),
     collapse = ""
   )
 
@@ -1894,7 +1796,12 @@ test_that("workflow_progress_ui renders compact Co-STORM answer labels", {
   ))
 
   html <- paste(
-    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    as.character(
+      app$workflow_progress_ui(
+        state,
+        tempest_progress_labels("costorm", kind = "stage")
+      )
+    ),
     collapse = ""
   )
 
@@ -1916,7 +1823,10 @@ test_that("async Co-STORM progress renders warmup state before completion", {
       progress_events <- shiny::reactiveVal(list())
       output$progress <- shiny::renderUI({
         state <- app$costorm_progress_state(progress_events())
-        app$workflow_progress_ui(state, app$costorm_stage_labels())
+        app$workflow_progress_ui(
+          state,
+          tempest_progress_labels("costorm", kind = "stage")
+        )
       })
       record <- function(event) {
         app$record_costorm_progress_event(progress_events, event, session)
@@ -2144,6 +2054,31 @@ test_that("STORM progress stream renders while a task is still active", {
   )
 })
 
+test_that("STORM task output requires the exact worker envelope", {
+  app <- source_shiny_modules()
+  result <- list(report_md = "# Report")
+  progress <- list(list(event_id = "event-1"))
+  envelope <- list(result = result, progress = progress)
+
+  expect_identical(app$storm_task_envelope(envelope), envelope)
+  expect_error(
+    app$storm_task_envelope(result),
+    class = "simpleError"
+  )
+  expect_error(
+    app$storm_task_envelope(list(progress = progress, result = result)),
+    class = "simpleError"
+  )
+  expect_error(
+    app$storm_task_envelope(c(envelope, list(legacy = TRUE))),
+    class = "simpleError"
+  )
+  expect_error(
+    app$storm_task_envelope(list(result = result, progress = data.frame())),
+    class = "simpleError"
+  )
+})
+
 test_that("STORM worker requires current run and progress contracts", {
   app <- source_shiny_modules()
   old_run <- function(
@@ -2152,7 +2087,6 @@ test_that("STORM worker requires current run and progress contracts", {
     n_experts,
     research_strategy,
     max_rounds,
-    parallel_research,
     verbose
   ) {
     list(report_md = "old run")
@@ -2165,8 +2099,7 @@ test_that("STORM worker requires current run and progress contracts", {
       n_experts = 1,
       strategy = "key_questions",
       max_rounds = 1,
-      parallel = FALSE,
-      tempest_run = old_run
+      tempest_run_factory = function(package_root) old_run
     ),
     class = "simpleError"
   )
@@ -2178,7 +2111,6 @@ test_that("STORM worker requires current run and progress contracts", {
     n_experts,
     research_strategy,
     max_rounds,
-    parallel_research,
     run_id,
     progress,
     verbose
@@ -2207,9 +2139,8 @@ test_that("STORM worker requires current run and progress contracts", {
       n_experts = 1,
       strategy = "key_questions",
       max_rounds = 1,
-      parallel = FALSE,
       progress_collector = old_collector,
-      tempest_run = new_run
+      tempest_run_factory = function(package_root) new_run
     ),
     class = "simpleError"
   )
@@ -2220,9 +2151,8 @@ test_that("STORM worker requires current run and progress contracts", {
     n_experts = 1,
     strategy = "key_questions",
     max_rounds = 1,
-    parallel = FALSE,
     progress_run_id = "shiny-run",
-    tempest_run = new_run
+    tempest_run_factory = function(package_root) new_run
   )
 
   expect_equal(value$result$report_md, "new run")
@@ -2255,7 +2185,6 @@ test_that("STORM worker streams progress before mirai resolves", {
         n_experts,
         research_strategy,
         max_rounds,
-        parallel_research,
         run_id,
         progress,
         verbose
@@ -2274,10 +2203,9 @@ test_that("STORM worker streams progress before mirai resolves", {
         n_experts = n_experts,
         strategy = strategy,
         max_rounds = max_rounds,
-        parallel = parallel,
         progress_stream_path = progress_stream_path,
         progress_collector = progress_collector,
-        tempest_run = fake_run
+        tempest_run_factory = function(package_root) fake_run
       )
     },
     topic = "Topic",
@@ -2285,7 +2213,6 @@ test_that("STORM worker streams progress before mirai resolves", {
     n_experts = 1,
     strategy = "key_questions",
     max_rounds = 1,
-    parallel = FALSE,
     progress_stream_path = stream_path,
     progress_collector = app$storm_worker_progress_collector,
     storm_runner = app$storm_run_with_progress,
@@ -2344,11 +2271,20 @@ test_that("workflow_progress_ui hides recorded failures once succeeded", {
 
 test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
   skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   run_id <- "session-1"
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  ses <- tempest_session(
+    "Idle topic",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.idle"))
+  )
   state <- app$costorm_progress_state(list(
     app$costorm_starting_event(run_id),
-    app$costorm_session_ready_event(run_id, list(experts = list("one"))),
+    app$costorm_session_ready_event(run_id, ses),
     tempest_progress_event(
       run_id = run_id,
       workflow = "costorm",
@@ -2377,7 +2313,12 @@ test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
     )
   ))
   html <- paste(
-    as.character(app$workflow_progress_ui(state, app$costorm_stage_labels())),
+    as.character(
+      app$workflow_progress_ui(
+        state,
+        tempest_progress_labels("costorm", kind = "stage")
+      )
+    ),
     collapse = ""
   )
 

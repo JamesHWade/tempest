@@ -20,16 +20,10 @@ mod_transcript_ui <- function(id) {
 mod_transcript_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     turns <- shiny::reactive({
-      ses <- store$get()
+      ses <- store$costorm_session()
       if (is.null(ses)) list() else ses$transcript %||% list()
     })
-    source_store <- shiny::reactive({
-      ses <- store$get()
-      if (is.null(ses)) {
-        return(NULL)
-      }
-      citation_source_store(ses$workspace %||% NULL)
-    })
+    workspace <- shiny::reactive(store$costorm_workspace())
 
     output$header <- shiny::renderUI({
       n_turns <- length(turns())
@@ -52,7 +46,7 @@ mod_transcript_server <- function(id, store) {
       is_user <- identical(role, "user")
 
       text_html <- if (nzchar(text)) {
-        markdown_ui(text, store = source_store())
+        markdown_ui(text, workspace = workspace())
       } else {
         shiny::p(text)
       }

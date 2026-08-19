@@ -95,7 +95,7 @@ tempest_shiny_as_reactive <- function(value) {
 #' `tempest_shiny_store()` creates the small reactive store used by the
 #' embeddable Tempest Shiny adapter. Host apps can pass the returned store to
 #' [tempest_shiny_server()] when they want to share state across adapter
-#' instances or inspect the current `TempestSession`.
+#' instances or inspect the current Co-STORM session and report product.
 #'
 #' The returned object should be treated as an adapter handle; prefer its
 #' public methods over relying on its internal representation.
@@ -189,9 +189,10 @@ tempest_shiny_ui <- function(
 #'   `program_set`. May be a value, function, or reactive. A governed ProgramSet
 #'   requires its exact pinned view before any provider call; the view remains
 #'   process-local and is never serialized.
-#' @return A list with the shared `store`; reactive `session`, `events`,
-#'   `evidence`, `report`, and `report_ready` accessors; and a product-session
-#'   `touch()` control.
+#' @return A list with the shared `store`; reactive `costorm_session`,
+#'   `costorm_events`, `costorm_evidence`, `storm_events`, `report_md`,
+#'   `report_workspace`, and `report_topic` accessors; a monotonic
+#'   `report_navigation_event` counter; and a `touch_costorm_session()` control.
 #' @examples
 #' \dontrun{
 #' server <- function(input, output, session) {
@@ -221,9 +222,9 @@ tempest_shiny_server <- function(
       tempest_shiny_as_reactive(config)
     }
 
-    ready_signals <- list()
+    module_handles <- list()
     if ("chat" %in% panels) {
-      ready_signals$chat <- env$mod_chat_server(
+      module_handles$chat <- env$mod_chat_server(
         "chat",
         config = config_reactive,
         store = shared_store,
@@ -234,7 +235,7 @@ tempest_shiny_server <- function(
       )
     }
     if ("storm" %in% panels) {
-      ready_signals$storm <- env$mod_storm_server(
+      module_handles$storm <- env$mod_storm_server(
         "storm",
         config = config_reactive,
         store = shared_store
@@ -256,18 +257,18 @@ tempest_shiny_server <- function(
       env$mod_report_server("report", store = shared_store)
     }
 
-    report_ready <- shiny::reactive({
+    report_navigation_event <- shiny::reactive({
       sum(vapply(
-        ready_signals,
-        function(signal) {
-          as.integer(signal() %||% 0L)
+        module_handles,
+        function(handle) {
+          as.integer(handle$report_navigation_event() %||% 0L)
         },
         integer(1)
       ))
     })
 
-    current_session <- function() {
-      candidate <- shared_store$get()
+    current_costorm_session <- function() {
+      candidate <- shared_store$costorm_session()
       if (is.null(candidate)) {
         return(NULL)
       }
@@ -279,12 +280,12 @@ tempest_shiny_server <- function(
       }
       candidate
     }
-    product_events <- shiny::reactive({
-      active <- current_session()
+    costorm_events <- shiny::reactive({
+      active <- current_costorm_session()
       if (is.null(active)) list() else tempest_execution_events(active)
     })
-    product_evidence <- shiny::reactive({
-      active <- current_session()
+    costorm_evidence <- shiny::reactive({
+      active <- current_costorm_session()
       if (is.null(active) || !inherits(active$workspace, "ResearchWorkspace")) {
         return(list(resources = list(), claims = list(), disputes = list()))
       }
@@ -304,15 +305,23 @@ tempest_shiny_server <- function(
         )
       )
     })
+    storm_events <- if (is.null(module_handles$storm)) {
+      shiny::reactive(list())
+    } else {
+      module_handles$storm$storm_events
+    }
 
     list(
       store = shared_store,
-      session = shared_store$get,
-      events = product_events,
-      evidence = product_evidence,
-      report = shared_store$report,
-      report_ready = report_ready,
-      touch = shared_store$touch
+      costorm_session = shared_store$costorm_session,
+      costorm_events = costorm_events,
+      costorm_evidence = costorm_evidence,
+      storm_events = storm_events,
+      report_md = shared_store$report_md,
+      report_workspace = shared_store$report_workspace,
+      report_topic = shared_store$report_topic,
+      report_navigation_event = report_navigation_event,
+      touch_costorm_session = shared_store$touch_costorm_session
     )
   })
 }

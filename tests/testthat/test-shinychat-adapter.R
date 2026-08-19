@@ -527,11 +527,6 @@ test_that("shinychat adapter normalizes content and suggestion cards", {
     tempest_shinychat_sanitize_text(paste("Visible", marker, "text.")),
     "Visible text."
   )
-  expect_identical(
-    tempest_shinychat_input_text(list("Question", "Attachment text")),
-    "Question\nAttachment text"
-  )
-
   cards <- tempest_shinychat_suggestion_cards(stats::setNames(
     c("What differs?", "What evidence is missing?"),
     c("Compare", "")
