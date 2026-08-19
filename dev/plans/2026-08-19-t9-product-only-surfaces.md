@@ -2,7 +2,7 @@
 
 Tracking issue: unavailable; the kata daemon did not start during planning
 
-Status: in progress
+Status: implemented and verified
 
 ## Goal
 
@@ -479,10 +479,10 @@ Files: roxygen sources, generated `man/`, `README.md`, `NEWS.md`,
 - [x] Add concise, single-line, alphabetically placed `NEWS.md` bullets for
   changed public constructor/handle behavior. Preserve the released 0.1.0
   section as history.
-- [ ] Update `dev/architecture/package-boundaries.md` to mark T9 implemented
+- [x] Update `dev/architecture/package-boundaries.md` to mark T9 implemented
   only after all verification gates pass. Preserve T7/T8 plans and superseded
   historical specifications.
-- [ ] Mark this plan implemented and verified only after the final installed,
+- [x] Mark this plan implemented and verified only after the final installed,
   focused, and full gates pass.
 
 ## Batch 5: Static, installed, and full verification
@@ -576,6 +576,20 @@ to T9; zero R CMD check errors, warnings, or notes; no pkgdown problems; clean
 Air and diff checks; an exact installed 62-export/two-S3 surface; and a
 reviewable diff limited to product-only report, evaluation, promotion,
 persistence, UI, test, and documentation ownership.
+
+### Final verification evidence
+
+- Exact-pin full suite at `41389d2`: 763 cases and 4,648 expectations; 4,648
+  passed, with 0 failures, errors, warnings, or skips, in 480.784 seconds using
+  4 workers.
+- Clean installed archive: exactly 62 exports and two S3 registrations; exact
+  13-member store and 10-member server handle; all eight current schema gates;
+  current STORM and Co-STORM report round-trips; and evidence-only promotion.
+- Pkgdown reported no problems. R CMD check completed with 0 errors, 0 warnings,
+  and 0 notes in 41.9 seconds.
+- Air was clean; all 178 R and test files parsed; the diff, index, and worktree
+  were clean; and adversarial review returned APPROVE after the async-quiescence
+  and product-surface inventory fixes.
 
 ## T10 handoff
 

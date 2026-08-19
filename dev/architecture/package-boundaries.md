@@ -249,7 +249,7 @@ older or other formats.
 | T6 | Prove claim extraction and verification across all four packages in shadow mode. |
 | T7 | Make the new STORM and Co-STORM paths authoritative. |
 | T8 | Deleted the experimental generic kernel, its 41 exports, and two internal restore/resume functions. |
-| T9 | Split persistence by product owner and narrowed reports, evaluation, promotion, and UI to current STORM and Co-STORM contracts. |
+| T9 | Implemented and verified: split persistence by product owner and narrowed reports, evaluation, promotion, and UI to current STORM and Co-STORM contracts. |
 | T10 | Add joined trajectory review, improvement loops, and release 0.2.0. |
 
 Dsprrr program identity and trace context, graft snapshot views, and Deputy run
