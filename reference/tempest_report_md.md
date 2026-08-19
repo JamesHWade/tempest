@@ -1,6 +1,16 @@
-# Assemble a Markdown report with footnotes
+# Render non-authoritative Markdown with footnotes
 
-Assemble a Markdown report with footnotes
+`tempest_report_md()` deterministically renders caller-supplied Markdown
+and evidence from an explicit
+[ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md).
+It does not commit a report, finalize a research Manifest, publish a
+product, or grant promotion authority. Read `result$report_md` from a
+completed
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+product, or use
+[`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md)
+after Co-STORM publication, when the exact authoritative product report
+is required.
 
 ## Usage
 
@@ -55,7 +65,8 @@ tempest_report_md(
 
 ## Value
 
-Markdown with footnotes.
+Rendered Markdown with footnotes. This value alone is not an
+authoritative product report.
 
 ## Examples
 

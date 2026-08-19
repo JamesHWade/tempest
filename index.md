@@ -172,11 +172,7 @@ A succeeded STORM product can be packaged for explicit Graft review:
 
 supports <- tempest_claim_supports(result$workspace)
 
-bundle <- tempest_promotion_bundle(
-  workspace = result$workspace,
-  manifest = result$manifest,
-  stage_records = result$state$stage_records
-)
+bundle <- tempest_promotion_bundle(result)
 trusted_bundle_id <- bundle@bundle_id
 tempest_save_promotion_bundle(bundle, "promotion/grid-battery-recycling")
 bundle <- tempest_read_promotion_bundle(
@@ -197,6 +193,10 @@ The packaged schema is compiled against Graft accessor commit
 `81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5`; runtime loading checks its
 exact immutable build digest and never recompiles LinkML.
 
+Promotion accepts only a completed
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+result or a succeeded, quiescent `TempestSession`. A loose Workspace,
+Manifest, or StageRecord tuple cannot reconstruct publication authority.
 The bundle contains the selected Sources, Claims, EvidenceSpans,
 ClaimSupports, and exact extraction and verification ProgramArtifacts.
 Its closed proof projection retains the exact resources, claims, spans,
@@ -329,7 +329,7 @@ res <- tempest_run(
 )
 ```
 
-### Persistent Runs
+### STORM persistence
 
 Save intermediate STORM artifacts to disk and resume interrupted runs:
 
@@ -351,9 +351,12 @@ res <- tempest_run(
 )
 ```
 
-Each run directory includes checksummed JSON state for perspectives,
-experts, sources, claims, outlines, and references; Markdown drafts; and
-the final Markdown report.
+Each run directory is an exact current schema-7 STORM product bundle
+with schema-4 state. It includes checksummed JSON state for
+perspectives, experts, sources, claims, outlines, and references;
+Markdown drafts; and the final Markdown report. Resume rejects older,
+future, missing, extra, coerced, or mismatched shapes rather than
+migrating them.
 
 Every typed ProgramSet attempt also has a durable record of its stage,
 program, evaluator, trace, support decision, and execution or fallback
@@ -636,10 +639,20 @@ session$warmup(verbose = TRUE)
 result <- session$step("What are the main risks from advanced AI systems?")
 cat(result$answer)
 
-# Generate report (styles: "technical" or "executive")
-report <- session$report(style = "technical", include_references = TRUE)
-cat(report)
+# Generate and commit a report (styles: "technical" or "executive")
+session$report(style = "technical", include_references = TRUE)
+committed_report <- tempest_session_report_md(session)
+cat(committed_report)
 ```
+
+`session$report()` validates and commits the canonical Co-STORM report.
+[`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md)
+only reads those exact committed bytes from a succeeded, quiescent
+session; it does not generate or repair a report.
+[`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
+is a separate deterministic renderer over caller-supplied Markdown and
+an explicit `ResearchWorkspace`. Rendering alone does not finalize a
+Manifest, publish a product, or grant promotion authority.
 
 ### Expert delegation
 
@@ -658,6 +671,14 @@ work. Each expert:
 The moderator uses the same bounded Deputy runtime. Each completed
 moderator or expert run records an opaque terminal trace that is carried
 through Co-STORM snapshot and bundle persistence.
+
+Co-STORM save, snapshot, restore, and resume accept only the exact
+current schema-9 product. `partial_recovery = TRUE` is an explicit
+narrow exception for the optional `artifacts/suggested_questions.json`
+presentation file; expert, transcript, mind-map, StageRecord, Workspace,
+report, and Graft snapshot state must always pass integrity checks. Live
+chats, tools, credentials, clients, callbacks, and Shiny reactives are
+recreated rather than serialized.
 
 ### Warmup Phase
 
@@ -717,16 +738,59 @@ The app provides:
 - **Chat tab**: Multi-expert conversation with selected or generated
   experts, shinychat `chat_server()` streaming, cancellation, and
   greeting support
+- **STORM tab**: Scripted research through a responsive asynchronous
+  worker
 - **Mind Map tab**: Real-time knowledge graph visualization
 - **Sources tab**: Table of all retrieved sources with metadata
 - **Facts tab**: Extracted facts with citations and confidence
+- **Transcript tab**: Ordered public Co-STORM turns
 - **Report tab**: Rendered markdown report with footnotes
 
 Features:
 
 - Configurable number of experts and optional warmup phase
 - Report style selection (technical or executive)
+- Bounded Co-STORM session download and upload with archive validation
+- Polite live status for progress, persistence, and publication, with
+  alerts for validation, cancellation, and publication failures
 - Dark mode toggle
+
+Session archives are explicit downloads and uploads. The app does not
+claim browser-temporary autosave, and its STORM panel does not expose
+unsupported parallel perspective research. STORM runs in a
+[`shiny::ExtendedTask`](https://rdrr.io/pkg/shiny/man/ExtendedTask.html)
+backed by Mirai so the Shiny session remains responsive.
+
+Host apps can embed the same maintained asynchronous STORM path:
+
+``` r
+
+ui <- bslib::page_fillable(
+  tempest_shiny_ui("research", panels = "storm")
+)
+
+server <- function(input, output, session) {
+  tempest_shiny_server(
+    "research",
+    config = tempest_config(),
+    panels = "storm"
+  )
+}
+
+shiny::shinyApp(ui, server)
+```
+
+The installed minimal example is available at
+`system.file("examples/shiny-host/app.R", package = "tempest")`. The
+public store has 13 product-named members: `peek_costorm_session`,
+`costorm_session`, `costorm_workspace`, `set_costorm_session`,
+`touch_costorm_session`, `save_costorm_session`,
+`resume_costorm_session`, `costorm_persistence_status`, `report_md`,
+`report_workspace`, `report_topic`, `publish_costorm_report`, and
+`publish_storm_report`. The server returns exactly 10 members: `store`,
+`costorm_session`, `costorm_events`, `costorm_evidence`, `storm_events`,
+`report_md`, `report_workspace`, `report_topic`,
+`report_navigation_event`, and `touch_costorm_session`.
 
 The app currently depends on the shinychat development version that
 provides `chat_server()`, pinned in `DESCRIPTION`.
@@ -746,6 +810,12 @@ tsk <- tempest_task(dataset = "qa", scorer_chat = judge)
 tsk$get_samples()
 ```
 
+Unless a solver is supplied explicitly, each sample runs a real
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+product and returns its authoritative report. Solver metadata contains
+credential-safe Manifest, Workspace, and StageRecord summaries, not live
+chats, clients, tools, or credentials.
+
 ### Co-STORM evaluation with SimulatedUser
 
 Run automated Co-STORM sessions with a simulated curious researcher:
@@ -756,11 +826,18 @@ Run automated Co-STORM sessions with a simulated curious researcher:
 session <- tempest_session("AI safety")
 sim <- SimulatedUser$new("AI safety", max_turns = 5)
 sim$run_session(session, warmup = TRUE, verbose = TRUE)
-report <- session$report()
+session$report()
+report <- tempest_session_report_md(session)
 
 # As a vitals task
 tsk <- tempest_costorm_task(dataset = "qa", max_turns = 5, scorer_chat = judge)
 ```
+
+The default Co-STORM solver likewise completes a real `TempestSession`,
+reads its committed report through
+[`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md),
+and records only credential-safe product summaries and terminal Deputy
+traces in solver metadata.
 
 ## Notes
 

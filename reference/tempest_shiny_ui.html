@@ -61,8 +61,10 @@
 
 
 <dt id="arg-panels">panels<a class="anchor" aria-label="anchor" href="#arg-panels"></a></dt>
-<dd><p>Character vector of panels to include. Use <code>"all"</code> for every
-panel. The default embeds the Co-STORM chat and durable research views.</p></dd>
+<dd><p>Character vector containing any of <code>"chat"</code>, <code>"sources"</code>,
+<code>"facts"</code>, <code>"mindmap"</code>, <code>"transcript"</code>, <code>"report"</code>, and <code>"storm"</code>. Use
+<code>"all"</code> for every panel. The default embeds the Co-STORM chat and durable
+research views.</p></dd>
 
 
 <dt id="arg-show-config">show_config<a class="anchor" aria-label="anchor" href="#arg-show-config"></a></dt>
@@ -81,6 +83,9 @@ this as <code>FALSE</code>.</p></dd>
 want to embed Tempest without sourcing files from <code>inst/shiny/R</code>. It reuses
 the bundled app's panels while letting the host provide the page shell,
 configuration, storage policy, and surrounding controls.</p>
+<p>The STORM panel runs through the maintained asynchronous worker path. It has
+no parallel-research control. The Co-STORM Chat panel offers bounded session
+archive download and upload, not browser-temporary autosave.</p>
     </div>
 
     <div class="section level2">

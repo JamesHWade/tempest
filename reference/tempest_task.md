@@ -1,13 +1,18 @@
 # Create a vitals Task for tempest
 
-Create a vitals Task for tempest
+The built-in solver runs a real
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+product for each input and returns its authoritative report.
+`solver_metadata` contains only credential-safe Manifest, Workspace, and
+StageRecord summaries; live chats, clients, tools, and credentials are
+not returned as metadata.
 
 ## Usage
 
 ``` r
 tempest_task(
   dataset = c("qa"),
-  solver = tempest_solver_cited_answer,
+  solver = NULL,
   scorer = NULL,
   scorer_chat = NULL,
   config = tempest_config(),
@@ -23,7 +28,10 @@ tempest_task(
 
 - solver:
 
-  A vitals-compatible solver. Defaults to `tempest_solver_cited_answer`.
+  Optional vitals-compatible solver. When `NULL`, evaluates the
+  authoritative
+  [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  product.
 
 - scorer:
 
@@ -32,7 +40,7 @@ tempest_task(
 
 - scorer_chat:
 
-  Chat used by the scorer (required for model-graded scoring).
+  Chat used by the scorer. Required for model-graded scoring.
 
 - config:
 

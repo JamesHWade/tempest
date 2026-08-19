@@ -50,14 +50,19 @@
 
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A Tempest Shiny store handle.</p>
+    <p>A 13-member product handle containing <code>peek_costorm_session</code>,
+<code>costorm_session</code>, <code>costorm_workspace</code>, <code>set_costorm_session</code>,
+<code>touch_costorm_session</code>, <code>save_costorm_session</code>,
+<code>resume_costorm_session</code>, <code>costorm_persistence_status</code>, <code>report_md</code>,
+<code>report_workspace</code>, <code>report_topic</code>, <code>publish_costorm_report</code>, and
+<code>publish_storm_report</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_shiny_store()</code> creates the small reactive store used by the
 embeddable Tempest Shiny adapter. Host apps can pass the returned store to
 <code><a href="tempest_shiny_server.html">tempest_shiny_server()</a></code> when they want to share state across adapter
-instances or inspect the current <code>TempestSession</code>.</p>
+instances or inspect the current Co-STORM session and report product.</p>
 <p>The returned object should be treated as an adapter handle; prefer its
 public methods over relying on its internal representation.</p>
     </div>

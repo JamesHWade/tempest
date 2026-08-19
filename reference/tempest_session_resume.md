@@ -6,9 +6,11 @@ and rebuilds a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md)
 with a fresh runtime
 [TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md).
-Historical progress events are loaded for display and reduction, but
-they are not replayed into `progress`. Stage-record history is restored
-for audit, but running attempts are rejected rather than resumed.
+Only the exact current schema-9 bundle is accepted; no compatibility or
+migration reader is provided. Historical progress events are loaded for
+display and reduction, but they are not replayed into `progress`.
+Stage-record history is restored for audit, but running attempts are
+rejected rather than resumed.
 
 ## Usage
 
@@ -41,10 +43,11 @@ tempest_session_resume(
 
 - partial_recovery:
 
-  Whether to allow explicitly requested recovery when allowlisted
-  presentation files are missing or fail integrity checks. All other
-  declared files, including stage-record, expert, workspace, report, and
-  Graft snapshot state, must pass integrity checks.
+  Whether to allow explicitly requested recovery of the optional
+  `artifacts/suggested_questions.json` presentation file when it fails
+  integrity checks. All durable state, including stage records, experts,
+  Workspace, report, and Graft snapshot state, remains mandatory and
+  must pass integrity checks.
 
 - program_set:
 

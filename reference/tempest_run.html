@@ -96,7 +96,8 @@ writes a cited report in Markdown.
 
 
 <dt id="arg-retriever">retriever<a class="anchor" aria-label="anchor" href="#arg-retriever"></a></dt>
-<dd><p>Optional <code>TempestRetriever</code>. If <code>NULL</code>, created from <code>config</code>.</p></dd>
+<dd><p>Optional <code>TempestRetriever</code>. If <code>NULL</code>, created from
+<code>config</code>.</p></dd>
 
 
 <dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
@@ -116,23 +117,25 @@ not generate experts.</p></dd>
 
 
 <dt id="arg-research-strategy">research_strategy<a class="anchor" aria-label="anchor" href="#arg-research-strategy"></a></dt>
-<dd><p>Either "key_questions" (default, faster) or "conversation"
-(more thorough but slower). Key questions uses predefined questions; conversation
-dynamically generates follow-up questions.</p></dd>
+<dd><p>Either "key_questions" (default, faster) or
+"conversation" (more thorough but slower). Key questions uses predefined
+questions; conversation dynamically generates follow-up questions.</p></dd>
 
 
 <dt id="arg-max-rounds">max_rounds<a class="anchor" aria-label="anchor" href="#arg-max-rounds"></a></dt>
-<dd><p>Maximum rounds per perspective for "conversation" strategy (default 3).</p></dd>
-
-
-<dt id="arg-max-questions-per-perspective">max_questions_per_perspective<a class="anchor" aria-label="anchor" href="#arg-max-questions-per-perspective"></a></dt>
-<dd><p>Maximum questions per perspective for "key_questions"
+<dd><p>Maximum rounds per perspective for the "conversation"
 strategy (default 3).</p></dd>
 
 
+<dt id="arg-max-questions-per-perspective">max_questions_per_perspective<a class="anchor" aria-label="anchor" href="#arg-max-questions-per-perspective"></a></dt>
+<dd><p>Maximum questions per perspective for
+the "key_questions" strategy (default 3).</p></dd>
+
+
 <dt id="arg-parallel-research">parallel_research<a class="anchor" aria-label="anchor" href="#arg-parallel-research"></a></dt>
-<dd><p>If <code>TRUE</code>, run research perspectives in parallel using
-the mirai package. Requires mirai to be installed. Default <code>FALSE</code>.</p></dd>
+<dd><p>Must be <code>FALSE</code>. Parallel perspective research is
+unavailable while every open-ended expert turn requires one synchronously
+bound terminal Deputy execution; <code>TRUE</code> fails before provider work.</p></dd>
 
 
 <dt id="arg-parallel-writing">parallel_writing<a class="anchor" aria-label="anchor" href="#arg-parallel-writing"></a></dt>
@@ -146,17 +149,21 @@ used by STORM. If <code>NULL</code>, <code><a href="tempest_program_set.html">te
 
 
 <dt id="arg-steps">steps<a class="anchor" aria-label="anchor" href="#arg-steps"></a></dt>
-<dd><p>Character vector controlling which steps to run. Defaults to all.</p></dd>
+<dd><p>Character vector controlling which steps to run. Defaults to
+all.</p></dd>
 
 
 <dt id="arg-output-dir">output_dir<a class="anchor" aria-label="anchor" href="#arg-output-dir"></a></dt>
 <dd><p>Optional directory for persisted STORM run artifacts. When
-supplied, artifacts are written under a topic-specific subdirectory.</p></dd>
+supplied, a current schema-7 product bundle with schema-4 STORM state is
+written under a topic-specific subdirectory.</p></dd>
 
 
 <dt id="arg-resume">resume<a class="anchor" aria-label="anchor" href="#arg-resume"></a></dt>
 <dd><p>If <code>TRUE</code> and <code>output_dir</code> contains a previous run, load saved
-artifacts and skip stages recorded as complete.</p></dd>
+current-format artifacts and skip stages recorded as complete. Older,
+future, missing, extra, or mismatched product shapes are rejected rather
+than migrated.</p></dd>
 
 
 <dt id="arg-run-id">run_id<a class="anchor" aria-label="anchor" href="#arg-run-id"></a></dt>

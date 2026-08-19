@@ -16,10 +16,6 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
   : Run STORM asynchronously (Shiny-friendly)
 - [`tempest_run_cancel()`](https://jameshwade.github.io/tempest/reference/tempest_run_cancel.md)
   : Cancel an asynchronous STORM run
-- [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
-  : Create a vitals Task for tempest
-- [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
-  : Create a Co-STORM evaluation task using SimulatedUser
 - [`tempest_execution_events()`](https://jameshwade.github.io/tempest/reference/tempest_execution_events.md)
   **\[experimental\]** : Query events from a Tempest product execution
 - [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
@@ -32,7 +28,16 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
 - [`SimulatedUser`](https://jameshwade.github.io/tempest/reference/SimulatedUser.md)
   : SimulatedUser
 - [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
-  : Run the tempest Shiny chat application
+  : Run the Tempest research application
+
+## Product evaluation
+
+Evaluate complete STORM and Co-STORM research products with vitals.
+
+- [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
+  : Create a vitals Task for tempest
+- [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
+  : Create a Co-STORM evaluation task using SimulatedUser
 
 ## Configuration and retrieval
 
@@ -58,6 +63,8 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
 
 ## Evidence and reports
 
+Inspect evidence, render Markdown, or read a committed product report.
+
 - [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md)
   : Return claims as a tibble
 - [`tempest_claim_support()`](https://jameshwade.github.io/tempest/reference/tempest_claim_support.md)
@@ -73,9 +80,9 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
 - [`tempest_validation_result()`](https://jameshwade.github.io/tempest/reference/tempest_validation_result.md)
   **\[experimental\]** : Create a Tempest validation result
 - [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
-  : Assemble a Markdown report with footnotes
+  : Render non-authoritative Markdown with footnotes
 - [`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md)
-  : Assemble a Markdown report from a Co-STORM session
+  : Read the committed Markdown report from a Co-STORM session
 - [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md)
   : Suggest follow-up research questions for a topic
 
@@ -99,6 +106,8 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
 
 ## Research UI
 
+Embed product-specific, asynchronous Tempest research panels in Shiny.
+
 - [`tempest_shiny_store()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_store.md)
   **\[experimental\]** : Create a shared Tempest Shiny store
 - [`tempest_shiny_ui()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_ui.md)
@@ -106,7 +115,9 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
 - [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
   **\[experimental\]** : Run embedded Tempest Shiny panels
 
-## Session persistence
+## Co-STORM persistence
+
+Snapshot, save, restore, or resume the exact current session product.
 
 - [`tempest_session_snapshot()`](https://jameshwade.github.io/tempest/reference/tempest_session_snapshot.md)
   **\[experimental\]** : Snapshot a Co-STORM session

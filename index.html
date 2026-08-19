@@ -191,11 +191,7 @@
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">supports</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_claim_supports.html">tempest_claim_supports</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">workspace</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_promotion_bundle.html">tempest_promotion_bundle</a></span><span class="op">(</span></span>
-<span>  workspace <span class="op">=</span> <span class="va">result</span><span class="op">$</span><span class="va">workspace</span>,</span>
-<span>  manifest <span class="op">=</span> <span class="va">result</span><span class="op">$</span><span class="va">manifest</span>,</span>
-<span>  stage_records <span class="op">=</span> <span class="va">result</span><span class="op">$</span><span class="va">state</span><span class="op">$</span><span class="va">stage_records</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_promotion_bundle.html">tempest_promotion_bundle</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="va">trusted_bundle_id</span> <span class="op">&lt;-</span> <span class="va">bundle</span><span class="op">@</span><span class="va">bundle_id</span></span>
 <span><span class="fu"><a href="reference/tempest_save_promotion_bundle.html">tempest_save_promotion_bundle</a></span><span class="op">(</span><span class="va">bundle</span>, <span class="st">"promotion/grid-battery-recycling"</span><span class="op">)</span></span>
 <span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_read_promotion_bundle.html">tempest_read_promotion_bundle</a></span><span class="op">(</span></span>
@@ -211,7 +207,7 @@
 <span><span class="va">commit_result</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft_commit</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">plan</span><span class="op">)</span></span>
 <span><span class="va">receipt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_promotion_receipt.html">tempest_promotion_receipt</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">bundle</span>, <span class="va">plan</span>, <span class="va">commit_result</span><span class="op">)</span></span></code></pre></div>
 <p>The packaged schema is compiled against Graft accessor commit <code>81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5</code>; runtime loading checks its exact immutable build digest and never recompiles LinkML.</p>
-<p>The bundle contains the selected Sources, Claims, EvidenceSpans, ClaimSupports, and exact extraction and verification ProgramArtifacts. Its closed proof projection retains the exact resources, claims, spans, and supports needed to recompute each retained StageRecord digest. A selection must include every output bound by each retained extraction or verification record; Tempest rejects partial stage-output selection instead of packaging unselected evidence. Planning is read-only: Tempest does not call <code><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft::graft_commit()</a></code> on the host’s behalf. The promotion directory is a closed current-format bundle, its destination must not already exist, and any older or extra shape is rejected. Reading requires the original bundle id as an out-of-band trust pin; checksums stored inside the directory establish internal consistency but are not a signature. A <code>GovernedProcedure</code> is accepted through a separate reviewed Graft flow; research promotion never mints one.</p>
+<p>Promotion accepts only a completed <code><a href="reference/tempest_run.html">tempest_run()</a></code> result or a succeeded, quiescent <code>TempestSession</code>. A loose Workspace, Manifest, or StageRecord tuple cannot reconstruct publication authority. The bundle contains the selected Sources, Claims, EvidenceSpans, ClaimSupports, and exact extraction and verification ProgramArtifacts. Its closed proof projection retains the exact resources, claims, spans, and supports needed to recompute each retained StageRecord digest. A selection must include every output bound by each retained extraction or verification record; Tempest rejects partial stage-output selection instead of packaging unselected evidence. Planning is read-only: Tempest does not call <code><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft::graft_commit()</a></code> on the host’s behalf. The promotion directory is a closed current-format bundle, its destination must not already exist, and any older or extra shape is rejected. Reading requires the original bundle id as an out-of-band trust pin; checksums stored inside the directory establish internal consistency but are not a signature. A <code>GovernedProcedure</code> is accepted through a separate reviewed Graft flow; research promotion never mints one.</p>
 <p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 5, Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state schema 4, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload schema 3, and promotion-bundle schema 1. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
 </div>
 <div class="section level2">
@@ -280,7 +276,7 @@
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="persistent-runs">Persistent Runs<a class="anchor" aria-label="anchor" href="#persistent-runs"></a>
+<h3 id="storm-persistence">STORM persistence<a class="anchor" aria-label="anchor" href="#storm-persistence"></a>
 </h3>
 <p>Save intermediate STORM artifacts to disk and resume interrupted runs:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -298,7 +294,7 @@
 <span>  output_dir <span class="op">=</span> <span class="st">"storm-runs"</span>,</span>
 <span>  resume <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Each run directory includes checksummed JSON state for perspectives, experts, sources, claims, outlines, and references; Markdown drafts; and the final Markdown report.</p>
+<p>Each run directory is an exact current schema-7 STORM product bundle with schema-4 state. It includes checksummed JSON state for perspectives, experts, sources, claims, outlines, and references; Markdown drafts; and the final Markdown report. Resume rejects older, future, missing, extra, coerced, or mismatched shapes rather than migrating them.</p>
 <p>Every typed ProgramSet attempt also has a durable record of its stage, program, evaluator, trace, support decision, and execution or fallback path. Tempest evaluates a complete structured output before changing product state, so malformed output cannot leave a partial update. On resume, persisted running attempts become cancelled records. Final reports append a deterministic <code>Execution review</code> when an attempt failed, was cancelled, used a policy fallback, or produced a grounded result that was not verified.</p>
 </div>
 <div class="section level3">
@@ -556,9 +552,11 @@
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">step</span><span class="op">(</span><span class="st">"What are the main risks from advanced AI systems?"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">answer</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Generate report (styles: "technical" or "executive")</span></span>
-<span><span class="va">report</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">report</span><span class="op">(</span>style <span class="op">=</span> <span class="st">"technical"</span>, include_references <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">report</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># Generate and commit a report (styles: "technical" or "executive")</span></span>
+<span><span class="va">session</span><span class="op">$</span><span class="fu">report</span><span class="op">(</span>style <span class="op">=</span> <span class="st">"technical"</span>, include_references <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">committed_report</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_session_report_md.html">tempest_session_report_md</a></span><span class="op">(</span><span class="va">session</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">committed_report</span><span class="op">)</span></span></code></pre></div>
+<p><code>session$report()</code> validates and commits the canonical Co-STORM report. <code><a href="reference/tempest_session_report_md.html">tempest_session_report_md()</a></code> only reads those exact committed bytes from a succeeded, quiescent session; it does not generate or repair a report. <code><a href="reference/tempest_report_md.html">tempest_report_md()</a></code> is a separate deterministic renderer over caller-supplied Markdown and an explicit <code>ResearchWorkspace</code>. Rendering alone does not finalize a Manifest, publish a product, or grant promotion authority.</p>
 </div>
 <div class="section level3">
 <h3 id="expert-delegation">Expert delegation<a class="anchor" aria-label="anchor" href="#expert-delegation"></a>
@@ -572,6 +570,7 @@
 <li>Keeps an opaque, host-inaccessible chat session binding for continuity</li>
 </ul>
 <p>The moderator uses the same bounded Deputy runtime. Each completed moderator or expert run records an opaque terminal trace that is carried through Co-STORM snapshot and bundle persistence.</p>
+<p>Co-STORM save, snapshot, restore, and resume accept only the exact current schema-9 product. <code>partial_recovery = TRUE</code> is an explicit narrow exception for the optional <code>artifacts/suggested_questions.json</code> presentation file; expert, transcript, mind-map, StageRecord, Workspace, report, and Graft snapshot state must always pass integrity checks. Live chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated rather than serialized.</p>
 </div>
 <div class="section level3">
 <h3 id="warmup-phase">Warmup Phase<a class="anchor" aria-label="anchor" href="#warmup-phase"></a>
@@ -616,11 +615,15 @@
 <li>
 <strong>Chat tab</strong>: Multi-expert conversation with selected or generated experts, shinychat <code>chat_server()</code> streaming, cancellation, and greeting support</li>
 <li>
+<strong>STORM tab</strong>: Scripted research through a responsive asynchronous worker</li>
+<li>
 <strong>Mind Map tab</strong>: Real-time knowledge graph visualization</li>
 <li>
 <strong>Sources tab</strong>: Table of all retrieved sources with metadata</li>
 <li>
 <strong>Facts tab</strong>: Extracted facts with citations and confidence</li>
+<li>
+<strong>Transcript tab</strong>: Ordered public Co-STORM turns</li>
 <li>
 <strong>Report tab</strong>: Rendered markdown report with footnotes</li>
 </ul>
@@ -628,8 +631,27 @@
 <ul>
 <li>Configurable number of experts and optional warmup phase</li>
 <li>Report style selection (technical or executive)</li>
+<li>Bounded Co-STORM session download and upload with archive validation</li>
+<li>Polite live status for progress, persistence, and publication, with alerts for validation, cancellation, and publication failures</li>
 <li>Dark mode toggle</li>
 </ul>
+<p>Session archives are explicit downloads and uploads. The app does not claim browser-temporary autosave, and its STORM panel does not expose unsupported parallel perspective research. STORM runs in a <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code> backed by Mirai so the Shiny session remains responsive.</p>
+<p>Host apps can embed the same maintained asynchronous STORM path:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">bslib</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/bslib/reference/page_fillable.html" class="external-link">page_fillable</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="reference/tempest_shiny_ui.html">tempest_shiny_ui</a></span><span class="op">(</span><span class="st">"research"</span>, panels <span class="op">=</span> <span class="st">"storm"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="reference/tempest_shiny_server.html">tempest_shiny_server</a></span><span class="op">(</span></span>
+<span>    <span class="st">"research"</span>,</span>
+<span>    config <span class="op">=</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    panels <span class="op">=</span> <span class="st">"storm"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
+<p>The installed minimal example is available at <code>system.file("examples/shiny-host/app.R", package = "tempest")</code>. The public store has 13 product-named members: <code>peek_costorm_session</code>, <code>costorm_session</code>, <code>costorm_workspace</code>, <code>set_costorm_session</code>, <code>touch_costorm_session</code>, <code>save_costorm_session</code>, <code>resume_costorm_session</code>, <code>costorm_persistence_status</code>, <code>report_md</code>, <code>report_workspace</code>, <code>report_topic</code>, <code>publish_costorm_report</code>, and <code>publish_storm_report</code>. The server returns exactly 10 members: <code>store</code>, <code>costorm_session</code>, <code>costorm_events</code>, <code>costorm_evidence</code>, <code>storm_events</code>, <code>report_md</code>, <code>report_workspace</code>, <code>report_topic</code>, <code>report_navigation_event</code>, and <code>touch_costorm_session</code>.</p>
 <p>The app currently depends on the shinychat development version that provides <code>chat_server()</code>, pinned in <code>DESCRIPTION</code>.</p>
 </div>
 </div>
@@ -639,7 +661,7 @@
 <div class="section level3">
 <h3 id="storm-evaluation-with-vitals">STORM evaluation with vitals<a class="anchor" aria-label="anchor" href="#storm-evaluation-with-vitals"></a>
 </h3>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a></span><span class="op">)</span></span>
@@ -647,20 +669,23 @@
 <span><span class="va">judge</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">chat</a></span><span class="op">(</span><span class="st">"openai/gpt-5.6-luna"</span><span class="op">)</span></span>
 <span><span class="va">tsk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_task.html">tempest_task</a></span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"qa"</span>, scorer_chat <span class="op">=</span> <span class="va">judge</span><span class="op">)</span></span>
 <span><span class="va">tsk</span><span class="op">$</span><span class="fu">get_samples</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>Unless a solver is supplied explicitly, each sample runs a real <code><a href="reference/tempest_run.html">tempest_run()</a></code> product and returns its authoritative report. Solver metadata contains credential-safe Manifest, Workspace, and StageRecord summaries, not live chats, clients, tools, or credentials.</p>
 </div>
 <div class="section level3">
 <h3 id="co-storm-evaluation-with-simulateduser">Co-STORM evaluation with SimulatedUser<a class="anchor" aria-label="anchor" href="#co-storm-evaluation-with-simulateduser"></a>
 </h3>
 <p>Run automated Co-STORM sessions with a simulated curious researcher:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Standalone SimulatedUser</span></span>
 <span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_session.html">tempest_session</a></span><span class="op">(</span><span class="st">"AI safety"</span><span class="op">)</span></span>
 <span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="va"><a href="reference/SimulatedUser.html">SimulatedUser</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="st">"AI safety"</span>, max_turns <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">sim</span><span class="op">$</span><span class="fu">run_session</span><span class="op">(</span><span class="va">session</span>, warmup <span class="op">=</span> <span class="cn">TRUE</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">report</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">report</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">session</span><span class="op">$</span><span class="fu">report</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">report</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_session_report_md.html">tempest_session_report_md</a></span><span class="op">(</span><span class="va">session</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># As a vitals task</span></span>
 <span><span class="va">tsk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_costorm_task.html">tempest_costorm_task</a></span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"qa"</span>, max_turns <span class="op">=</span> <span class="fl">5</span>, scorer_chat <span class="op">=</span> <span class="va">judge</span><span class="op">)</span></span></code></pre></div>
+<p>The default Co-STORM solver likewise completes a real <code>TempestSession</code>, reads its committed report through <code><a href="reference/tempest_session_report_md.html">tempest_session_report_md()</a></code>, and records only credential-safe product summaries and terminal Deputy traces in solver metadata.</p>
 </div>
 </div>
 <div class="section level2">

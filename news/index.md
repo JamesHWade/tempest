@@ -16,19 +16,27 @@
   `ResearchWorkspace` replaces `SourceStore`; STORM and Co-STORM expose
   no `store` aliases, legacy collection names, generic runtime
   injection, or generic result projections; old product bundles fail as
-  unsupported; and manifests carry exact dsprrr program, Graft snapshot,
-  and Deputy execution identities. Deputy identities support correlation
-  and audit joins only, not claims of causal content provenance.
-- Current persistence accepts only ResearchWorkspace snapshot schema 5,
-  Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with
-  state schema 4, ProgramSet schema 2, research-manifest schema 3,
-  StageRecord output-digest payload schema 3, and promotion-bundle
-  schema 1; readers reject every other version, missing or extra fields,
-  and values that only become valid after coercion.
+  unsupported; manifests carry exact dsprrr program, Graft snapshot, and
+  Deputy execution identities; and the namespace remains exactly 62
+  exports with two registered S3 methods. Deputy identities support
+  correlation and audit joins only, not claims of causal content
+  provenance.
+- Current persistence is split among shared product-envelope primitives,
+  ResearchWorkspace snapshots, Co-STORM bundles, and STORM bundles; it
+  accepts only ResearchWorkspace snapshot schema 5, Co-STORM snapshot
+  and bundle schema 9, STORM bundle schema 7 with state schema 4,
+  ProgramSet schema 2, research-manifest schema 3, StageRecord
+  output-digest payload schema 3, and promotion-bundle schema 1. Readers
+  reject every other version, missing or extra fields, and values that
+  only become valid after coercion; explicit Co-STORM partial recovery
+  can skip only the optional suggested-questions presentation file.
 - The bundled Shiny app now presents Co-STORM setup as a one-time native
   shinychat greeting with consistently sized controls, lets users
   replace generated panels with up to five named expert perspectives,
-  and reserves the footer for active-session status and actions.
+  adds asynchronous STORM and Transcript panels, retains explicit
+  bounded session download/upload without autosave or parallel-research
+  controls, and announces progress and success with polite status
+  regions and failures with alerts.
 - [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
   and
   [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
@@ -47,6 +55,13 @@
   removes the obsolete `artifact_store`, `enable_discourse_manager`,
   `node_expansion_trigger_count`, and `enable_unseen_surfacing`
   controls; passing any of them is an error.
+- [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
+  and
+  [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
+  now evaluate real completed Co-STORM and STORM products by default,
+  return their exact committed reports, and expose only credential-safe
+  Manifest, Workspace, StageRecord, and terminal Deputy trace summaries
+  as solver metadata.
 - [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md)
   resolves an accepted `GovernedProcedure` and exact dsprrr
   `ProgramArtifact` only through a pinned Graft view. ProgramSets
@@ -55,16 +70,18 @@
   themselves.
 - [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
   loads the immutable compiled scientific schema, while
-  [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md),
+  `tempest_promotion_bundle(research, claim_ids = NULL)`,
   [`tempest_save_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_save_promotion_bundle.md),
   [`tempest_read_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.md),
   [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md),
   and
   [`tempest_promotion_receipt()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.md)
-  provide a deterministic review-only path from completed provisional
-  research to exact accepted Graft revisions. Reading requires the
-  original bundle id as an out-of-band trust pin; Tempest never commits
-  a promotion implicitly, and prior promotion formats are rejected.
+  provide a deterministic review-only path from a completed STORM result
+  or succeeded `TempestSession` to exact accepted Graft revisions. Loose
+  Workspace, Manifest, and StageRecord tuples are rejected; reading
+  requires the original bundle id as an out-of-band trust pin; Tempest
+  never commits a promotion implicitly; and prior promotion formats are
+  rejected.
 - [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md),
   [`tempest_compile_programs()`](https://jameshwade.github.io/tempest/reference/tempest_compile_programs.md),
   [`tempest_save_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_save_program_set.md),
@@ -79,7 +96,12 @@
   [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
   accept and verify the ProgramSet before any stage executes.
 - [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
-  and Co-STORM report rendering now preserve canonical titles and
+  is now explicitly a deterministic, non-authoritative renderer that
+  cannot finalize a Manifest, publish a product, or grant promotion
+  authority, while
+  [`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md)
+  reads only the exact report already committed to a succeeded,
+  quiescent Co-STORM session; both preserve canonical titles and
   citation-policy validation when callers omit the rendered References
   section.
 - [`tempest_research_manifest()`](https://jameshwade.github.io/tempest/reference/tempest_research_manifest.md)
@@ -122,10 +144,14 @@
   accepts and commits only completion-ID-bound Deputy results; raw chat
   payloads and legacy execution hints are unsupported.
 - [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
-  and
+  returns exactly ten product-specific members and
   [`tempest_shiny_store()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_store.md)
-  expose only STORM and Co-STORM product state, with no generic run,
-  capability, connection, workflow, deliverable, or artifact accessors.
+  exposes exactly thirteen product-named members, with distinct Co-STORM
+  session/evidence/events, STORM events, authoritative report state, and
+  a monotonic report-navigation event; the installed host example uses
+  the same asynchronous STORM adapter as the bundled app, with no
+  generic run, capability, connection, workflow, deliverable, or
+  artifact accessors.
 - [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md)
   is a deterministic projection and no longer accepts chat or
   configuration controls.

@@ -6,30 +6,28 @@ does not write accepted knowledge. Review
 [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
 and call
 [`graft::graft_commit()`](https://jameshwade.github.io/graft/reference/graft_commit.html)
-explicitly to exercise acceptance authority.
+explicitly to exercise acceptance authority. Loose Workspace, Manifest,
+or StageRecord tuples are not accepted. The promotion payload remains
+the exact schema-1 evidence-only product shape; the terminal report is
+an eligibility gate and is not copied into it.
 
 ## Usage
 
 ``` r
-tempest_promotion_bundle(workspace, manifest, stage_records, claim_ids = NULL)
+tempest_promotion_bundle(research, claim_ids = NULL)
 ```
 
 ## Arguments
 
-- workspace:
+- research:
 
-  A completed
-  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md).
-
-- manifest:
-
-  Its succeeded
-  [TempestResearchManifest](https://jameshwade.github.io/tempest/reference/TempestResearchManifest.md).
-
-- stage_records:
-
-  Canonically ordered terminal `TempestStageRecord` values for the
-  research product.
+  A completed result returned by
+  [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  or a succeeded `TempestSession` returned by
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
+  Tempest requires the product's exact sealed Workspace, terminal
+  execution records, committed report, configuration, and publication
+  authority.
 
 - claim_ids:
 

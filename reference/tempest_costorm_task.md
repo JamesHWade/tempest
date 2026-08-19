@@ -2,9 +2,12 @@
 
 Runs automated Co-STORM sessions with a simulated user for evaluation.
 Moderator and expert turns use the same persistent Deputy agents as
-normal Co-STORM sessions. The built-in solver includes credential-safe
-terminal Deputy traces in `solver_metadata`; it never returns Deputy
-Agent objects.
+normal Co-STORM sessions. The built-in solver completes a real
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md),
+reads its exact committed report, and includes credential-safe product
+summaries and terminal Deputy traces in `solver_metadata`; it never
+returns Deputy Agent objects, chats, clients, tools, or credentials as
+metadata.
 
 ## Usage
 

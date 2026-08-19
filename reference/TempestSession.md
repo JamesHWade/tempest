@@ -490,7 +490,7 @@ A list with results from each expert's warmup.
 
 ### `TempestSession$report()`
 
-Generate a report from the session.
+Generate, validate, and commit the canonical report for the session.
 
 #### Usage
 
@@ -511,7 +511,9 @@ Generate a report from the session.
 
 #### Returns
 
-Markdown report string.
+The committed Markdown report. Use
+[`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md)
+to read the exact committed bytes later.
 
 ------------------------------------------------------------------------
 

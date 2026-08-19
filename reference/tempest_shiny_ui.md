@@ -20,8 +20,10 @@ tempest_shiny_ui(
 
 - panels:
 
-  Character vector of panels to include. Use `"all"` for every panel.
-  The default embeds the Co-STORM chat and durable research views.
+  Character vector containing any of `"chat"`, `"sources"`, `"facts"`,
+  `"mindmap"`, `"transcript"`, `"report"`, and `"storm"`. Use `"all"`
+  for every panel. The default embeds the Co-STORM chat and durable
+  research views.
 
 - show_config:
 
@@ -39,6 +41,10 @@ A Shiny tag object.
 that want to embed Tempest without sourcing files from `inst/shiny/R`.
 It reuses the bundled app's panels while letting the host provide the
 page shell, configuration, storage policy, and surrounding controls.
+
+The STORM panel runs through the maintained asynchronous worker path. It
+has no parallel-research control. The Co-STORM Chat panel offers bounded
+session archive download and upload, not browser-temporary autosave.
 
 ## Examples
 

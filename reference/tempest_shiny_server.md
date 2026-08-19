@@ -66,9 +66,11 @@ tempest_shiny_server(
 
 ## Value
 
-A list with the shared `store`; reactive `session`, `events`,
-`evidence`, `report`, and `report_ready` accessors; and a
-product-session `touch()` control.
+A list with the shared `store`; reactive `costorm_session`,
+`costorm_events`, `costorm_evidence`, `storm_events`, `report_md`,
+`report_workspace`, and `report_topic` accessors; a monotonic
+`report_navigation_event` counter; and a `touch_costorm_session()`
+control.
 
 ## Details
 
@@ -79,6 +81,11 @@ and lets a host app provide a
 optional expert profiles, a stable session id, and an optional shared
 store. The returned handle exposes only product session, event,
 evidence, and report state.
+
+Progress, persistence, and successful publication use polite atomic
+status regions in the bundled UI. Validation, cancellation, and
+publication failures use alerts and never convert a rejected product
+into report-ready state.
 
 ## Examples
 

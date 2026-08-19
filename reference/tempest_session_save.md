@@ -33,10 +33,11 @@ Invisibly returns the normalized bundle directory.
 `tempest_session_save()` writes a schema-versioned directory bundle for
 a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
-The bundle stores the research manifest, authoritative workspace,
-explicit stage-record history, optional immutable Graft snapshot, and
-narrow report product. Every declared file is checksummed, and the
-`session.json` manifest is written last. Generic workflow and
+The exact current format is schema 9, with no legacy or compatibility
+writer. The bundle stores the research manifest, authoritative
+workspace, explicit stage-record history, optional immutable Graft
+snapshot, and narrow report product. Every declared file is checksummed,
+and the `session.json` manifest is written last. Generic workflow and
 artifact-catalog state, live chat handles, registered tool closures,
 Shiny reactive state, credentials, and raw provider request bodies are
 not serialized. A stage attempt that is still running is written as

@@ -35,7 +35,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Restore a Co-STORM session from a snapshot</h1>
-      <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/R/run-persistence.R" class="external-link"><code>R/run-persistence.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/R/costorm-persistence.R" class="external-link"><code>R/costorm-persistence.R</code></a></small>
       <div class="d-none name"><code>tempest_session_restore.Rd</code></div>
     </div>
 
@@ -92,7 +92,9 @@ never reconstructed from or written to persistence.</p></dd>
     <p><code>tempest_session_restore()</code> rebuilds a <a href="TempestSession.html">TempestSession</a> from a structured
 snapshot created by <code><a href="tempest_session_snapshot.html">tempest_session_snapshot()</a></code> or read by
 <code><a href="tempest_session_resume.html">tempest_session_resume()</a></code>. It restores the research manifest and
-authoritative workspace, and creates fresh chat/tool handles using <code>config</code>.</p>
+authoritative workspace, and creates fresh chat/tool handles using <code>config</code>.
+Only the exact current schema-9 snapshot is accepted; older, future, missing,
+extra, coerced, or mismatched shapes are rejected rather than migrated.</p>
 <p>Historical progress events are restored as session artifact data and can be
 reduced with <code><a href="tempest_progress_state.html">tempest_progress_state()</a></code>. They are not replayed into the new
 <code>progress</code> callback; future calls on the restored session use that callback.

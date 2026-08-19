@@ -213,6 +213,14 @@ flattened into report text. The pair records are authoritative; claim
 summaries and citation-audit tables are derived projections. The product
 report is available directly in <code>result$report_md</code>; new
 callers should not depend on the frozen 0.1 artifact catalog.</p>
+<p><code><a href="../reference/tempest_report_md.html">tempest_report_md()</a></code> is useful when a caller needs
+deterministic citation rendering over its own Markdown and an explicit
+<code>ResearchWorkspace</code>. That rendered value is not a published
+product: it does not finalize a Manifest or grant promotion authority.
+Use <code>result$report_md</code> for the authoritative STORM report.
+For Co-STORM, generate and commit with <code>session$report()</code> and
+read the exact committed bytes with
+<code><a href="../reference/tempest_session_report_md.html">tempest_session_report_md()</a></code>.</p>
 <p>Every STORM and Co-STORM publication runs the exact verifier
 ProgramSet stage and atomically binds claim-by-evidence-span support.
 <code>citation_policy</code> controls only report rendering and
@@ -242,11 +250,7 @@ They are never presented as unmarked verified facts.</p>
 <p>A succeeded product can become a deterministic proposal for Graft
 review without granting Tempest acceptance authority:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_promotion_bundle.html">tempest_promotion_bundle</a></span><span class="op">(</span></span>
-<span>  workspace <span class="op">=</span> <span class="va">result</span><span class="op">$</span><span class="va">workspace</span>,</span>
-<span>  manifest <span class="op">=</span> <span class="va">result</span><span class="op">$</span><span class="va">manifest</span>,</span>
-<span>  stage_records <span class="op">=</span> <span class="va">result</span><span class="op">$</span><span class="va">state</span><span class="op">$</span><span class="va">stage_records</span></span>
-<span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_promotion_bundle.html">tempest_promotion_bundle</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="va">trusted_bundle_id</span> <span class="op">&lt;-</span> <span class="va">bundle</span><span class="op">@</span><span class="va">bundle_id</span></span>
 <span><span class="fu"><a href="../reference/tempest_save_promotion_bundle.html">tempest_save_promotion_bundle</a></span><span class="op">(</span><span class="va">bundle</span>, <span class="st">"promotion/grid-battery-recycling"</span><span class="op">)</span></span>
 <span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_read_promotion_bundle.html">tempest_read_promotion_bundle</a></span><span class="op">(</span></span>
@@ -274,6 +278,10 @@ bundle-local checksums establish internal consistency, not authenticity.
 Older bundle shapes are rejected. Research promotion never mints a
 <code>GovernedProcedure</code>; that record requires its own reviewed
 Graft acceptance flow.</p>
+<p>The constructor accepts only a completed <code><a href="../reference/tempest_run.html">tempest_run()</a></code>
+result or a succeeded, quiescent <code>TempestSession</code>.
+Independently supplied Workspace, Manifest, and StageRecord values
+cannot prove the exact completed product or its committed report.</p>
 </div>
 <div class="section level2">
 <h2 id="resume-a-staged-run">Resume a staged run<a class="anchor" aria-label="anchor" href="#resume-a-staged-run"></a>
@@ -300,7 +308,10 @@ schema 5, Co-STORM snapshot and bundle schema 9, STORM bundle schema 7
 with state schema 4, ProgramSet schema 2, research-manifest schema 3,
 StageRecord output-digest payload schema 3, and promotion-bundle schema
 1. Every other version is rejected, as is any missing or extra field or
-value that becomes valid only after coercion.</p>
+value that becomes valid only after coercion. Shared envelope
+primitives, ResearchWorkspace snapshots, Co-STORM bundles, and STORM
+bundles have separate product owners; no generic run-persistence reader
+or compatibility layer remains.</p>
 <p>Every typed attempt is saved with its exact stage, program,
 evaluator, trace, support decision, and fallback path. Structured output
 is validated as a whole before product state changes. A resumed running
@@ -382,11 +393,12 @@ not already available:</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">answer</span><span class="op">$</span><span class="va">answer</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">report</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">report</span><span class="op">(</span></span>
+<span><span class="va">session</span><span class="op">$</span><span class="fu">report</span><span class="op">(</span></span>
 <span>  style <span class="op">=</span> <span class="st">"executive"</span>,</span>
 <span>  include_references <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">report</span><span class="op">)</span></span>
+<span><span class="va">committed_report</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_session_report_md.html">tempest_session_report_md</a></span><span class="op">(</span><span class="va">session</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">committed_report</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/tempest_session_save.html">tempest_session_save</a></span><span class="op">(</span></span>
 <span>  <span class="va">session</span>,</span>
@@ -405,6 +417,11 @@ available to the final report. Session bundles preserve durable research
 state, but not credentials, live chat handles, tools, or authenticated
 clients. Configure fresh supported chats and retrieval dependencies
 through <code>config</code> before resuming.</p>
+<p>Snapshot, save, restore, and resume accept only the exact schema-9
+Co-STORM product. <code>partial_recovery = TRUE</code> is limited to the
+optional <code>artifacts/suggested_questions.json</code> presentation
+file. Expert, transcript, mind-map, StageRecord, Workspace, report, and
+Graft snapshot state must always pass integrity checks.</p>
 <p>The moderator and experts use persistent Deputy agents as the
 required Co-STORM runtime. Tempest disables ambient file, shell, R, web,
 and package-install capabilities, then allowlists only the tools already
@@ -413,6 +430,58 @@ traces for each run and never serialize the Deputy Agent or provider
 credentials. Those execution identities support correlation and audit
 joins only; they do not claim that an execution caused, authored, or
 validated report content.</p>
+<p>The bundled app includes Chat, STORM, Mind Map, Sources, Facts,
+Transcript, and Report panels. Co-STORM persistence is explicit bounded
+archive download and upload; there is no browser-temporary autosave. The
+STORM panel has no parallel perspective control and runs through the
+maintained asynchronous worker path. Progress, persistence, and
+successful publication use polite live status; validation, cancellation,
+and publication failures use alerts.</p>
+<p>A host app can embed that same asynchronous STORM adapter without
+calling <code><a href="../reference/tempest_run.html">tempest_run()</a></code> in the Shiny main process:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">bslib</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/bslib/reference/page_fillable.html" class="external-link">page_fillable</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/tempest_shiny_ui.html">tempest_shiny_ui</a></span><span class="op">(</span><span class="st">"research"</span>, panels <span class="op">=</span> <span class="st">"storm"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/tempest_shiny_server.html">tempest_shiny_server</a></span><span class="op">(</span></span>
+<span>    <span class="st">"research"</span>,</span>
+<span>    config <span class="op">=</span> <span class="va">cfg</span>,</span>
+<span>    panels <span class="op">=</span> <span class="st">"storm"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
+<p>The installed example lives at
+<code>system.file("examples/shiny-host/app.R", package = "tempest")</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="evaluate-complete-products">Evaluate complete products<a class="anchor" aria-label="anchor" href="#evaluate-complete-products"></a>
+</h2>
+<p>The default evaluation solvers exercise the actual product paths.
+Each <code><a href="../reference/tempest_task.html">tempest_task()</a></code> sample runs <code><a href="../reference/tempest_run.html">tempest_run()</a></code>
+and returns its authoritative report. Each
+<code><a href="../reference/tempest_costorm_task.html">tempest_costorm_task()</a></code> sample completes a real
+<code>TempestSession</code> and reads its committed report. Metadata
+contains credential-safe Manifest, Workspace, and StageRecord summaries;
+Co-STORM also includes terminal Deputy traces, never Agent objects,
+chats, clients, tools, or credentials.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">judge</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">chat</a></span><span class="op">(</span><span class="st">"openai/gpt-5.6-luna"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">storm_task</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_task.html">tempest_task</a></span><span class="op">(</span></span>
+<span>  dataset <span class="op">=</span> <span class="st">"qa"</span>,</span>
+<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
+<span>  scorer_chat <span class="op">=</span> <span class="va">judge</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">costorm_task</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_costorm_task.html">tempest_costorm_task</a></span><span class="op">(</span></span>
+<span>  dataset <span class="op">=</span> <span class="st">"qa"</span>,</span>
+<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
+<span>  max_turns <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  scorer_chat <span class="op">=</span> <span class="va">judge</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="product-boundary">Product boundary<a class="anchor" aria-label="anchor" href="#product-boundary"></a>

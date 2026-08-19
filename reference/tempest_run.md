@@ -76,18 +76,19 @@ tempest_run(
 
 - max_rounds:
 
-  Maximum rounds per perspective for "conversation" strategy (default
-  3).
+  Maximum rounds per perspective for the "conversation" strategy
+  (default 3).
 
 - max_questions_per_perspective:
 
-  Maximum questions per perspective for "key_questions" strategy
+  Maximum questions per perspective for the "key_questions" strategy
   (default 3).
 
 - parallel_research:
 
-  If `TRUE`, run research perspectives in parallel using the mirai
-  package. Requires mirai to be installed. Default `FALSE`.
+  Must be `FALSE`. Parallel perspective research is unavailable while
+  every open-ended expert turn requires one synchronously bound terminal
+  Deputy execution; `TRUE` fails before provider work.
 
 - parallel_writing:
 
@@ -108,13 +109,16 @@ tempest_run(
 
 - output_dir:
 
-  Optional directory for persisted STORM run artifacts. When supplied,
-  artifacts are written under a topic-specific subdirectory.
+  Optional directory for persisted STORM run artifacts. When supplied, a
+  current schema-7 product bundle with schema-4 STORM state is written
+  under a topic-specific subdirectory.
 
 - resume:
 
   If `TRUE` and `output_dir` contains a previous run, load saved
-  artifacts and skip stages recorded as complete.
+  current-format artifacts and skip stages recorded as complete. Older,
+  future, missing, extra, or mismatched product shapes are rejected
+  rather than migrated.
 
 - run_id:
 

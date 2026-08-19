@@ -104,9 +104,10 @@ process-local and is never serialized.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with the shared <code>store</code>; reactive <code>session</code>, <code>events</code>,
-<code>evidence</code>, <code>report</code>, and <code>report_ready</code> accessors; and a product-session
-<code>touch()</code> control.</p>
+    <p>A list with the shared <code>store</code>; reactive <code>costorm_session</code>,
+<code>costorm_events</code>, <code>costorm_evidence</code>, <code>storm_events</code>, <code>report_md</code>,
+<code>report_workspace</code>, and <code>report_topic</code> accessors; a monotonic
+<code>report_navigation_event</code> counter; and a <code>touch_costorm_session()</code> control.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -114,6 +115,10 @@ process-local and is never serialized.</p></dd>
 provide a <a href="TempestConfig.html">TempestConfig</a>, optional expert profiles, a stable session id, and
 an optional shared store. The returned handle exposes only product session,
 event, evidence, and report state.</p>
+<p>Progress, persistence, and successful publication use polite atomic status
+regions in the bundled UI. Validation, cancellation, and publication
+failures use alerts and never convert a rejected product into report-ready
+state.</p>
     </div>
 
     <div class="section level2">

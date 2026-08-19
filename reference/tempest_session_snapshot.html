@@ -35,7 +35,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Snapshot a Co-STORM session</h1>
-      <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/R/run-persistence.R" class="external-link"><code>R/run-persistence.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/R/costorm-persistence.R" class="external-link"><code>R/costorm-persistence.R</code></a></small>
       <div class="d-none name"><code>tempest_session_snapshot.Rd</code></div>
     </div>
 
@@ -58,12 +58,14 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list containing a schema-versioned session snapshot.</p>
+    <p>A list containing an exact schema-9 session snapshot.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_session_snapshot()</code> returns a structured, in-memory representation
-of the durable state in a <a href="TempestSession.html">TempestSession</a>. It includes the research
+of the durable state in a <a href="TempestSession.html">TempestSession</a>. The only supported snapshot is
+the exact current schema-9 product shape; no legacy or migration reader is
+provided. It includes the research
 manifest; fixed session and configuration identity; the authoritative
 <a href="ResearchWorkspace.html">ResearchWorkspace</a>; expert profiles; transcript and mind map; the latest
 report Markdown; stage-record, progress-event, and expert-session metadata;

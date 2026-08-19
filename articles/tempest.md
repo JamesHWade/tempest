@@ -143,6 +143,15 @@ and citation-audit tables are derived projections. The product report is
 available directly in `result$report_md`; new callers should not depend
 on the frozen 0.1 artifact catalog.
 
+[`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
+is useful when a caller needs deterministic citation rendering over its
+own Markdown and an explicit `ResearchWorkspace`. That rendered value is
+not a published product: it does not finalize a Manifest or grant
+promotion authority. Use `result$report_md` for the authoritative STORM
+report. For Co-STORM, generate and commit with `session$report()` and
+read the exact committed bytes with
+[`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md).
+
 Every STORM and Co-STORM publication runs the exact verifier ProgramSet
 stage and atomically binds claim-by-evidence-span support.
 `citation_policy` controls only report rendering and unsupported-claim
@@ -170,11 +179,7 @@ without granting Tempest acceptance authority:
 
 ``` r
 
-bundle <- tempest_promotion_bundle(
-  workspace = result$workspace,
-  manifest = result$manifest,
-  stage_records = result$state$stage_records
-)
+bundle <- tempest_promotion_bundle(result)
 trusted_bundle_id <- bundle@bundle_id
 tempest_save_promotion_bundle(bundle, "promotion/grid-battery-recycling")
 bundle <- tempest_read_promotion_bundle(
@@ -205,6 +210,12 @@ Older bundle shapes are rejected. Research promotion never mints a
 `GovernedProcedure`; that record requires its own reviewed Graft
 acceptance flow.
 
+The constructor accepts only a completed
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+result or a succeeded, quiescent `TempestSession`. Independently
+supplied Workspace, Manifest, and StageRecord values cannot prove the
+exact completed product or its committed report.
+
 ## Resume a staged run
 
 When `output_dir` is supplied, Tempest saves completed stages, source
@@ -234,7 +245,10 @@ Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state
 schema 4, ProgramSet schema 2, research-manifest schema 3, StageRecord
 output-digest payload schema 3, and promotion-bundle schema 1. Every
 other version is rejected, as is any missing or extra field or value
-that becomes valid only after coercion.
+that becomes valid only after coercion. Shared envelope primitives,
+ResearchWorkspace snapshots, Co-STORM bundles, and STORM bundles have
+separate product owners; no generic run-persistence reader or
+compatibility layer remains.
 
 Every typed attempt is saved with its exact stage, program, evaluator,
 trace, support decision, and fallback path. Structured output is
@@ -325,11 +339,12 @@ answer <- session$step(
 )
 cat(answer$answer)
 
-report <- session$report(
+session$report(
   style = "executive",
   include_references = TRUE
 )
-cat(report)
+committed_report <- tempest_session_report_md(session)
+cat(committed_report)
 
 tempest_session_save(
   session,
@@ -351,6 +366,12 @@ state, but not credentials, live chat handles, tools, or authenticated
 clients. Configure fresh supported chats and retrieval dependencies
 through `config` before resuming.
 
+Snapshot, save, restore, and resume accept only the exact schema-9
+Co-STORM product. `partial_recovery = TRUE` is limited to the optional
+`artifacts/suggested_questions.json` presentation file. Expert,
+transcript, mind-map, StageRecord, Workspace, report, and Graft snapshot
+state must always pass integrity checks.
+
 The moderator and experts use persistent Deputy agents as the required
 Co-STORM runtime. Tempest disables ambient file, shell, R, web, and
 package-install capabilities, then allowlists only the tools already
@@ -359,6 +380,70 @@ traces for each run and never serialize the Deputy Agent or provider
 credentials. Those execution identities support correlation and audit
 joins only; they do not claim that an execution caused, authored, or
 validated report content.
+
+The bundled app includes Chat, STORM, Mind Map, Sources, Facts,
+Transcript, and Report panels. Co-STORM persistence is explicit bounded
+archive download and upload; there is no browser-temporary autosave. The
+STORM panel has no parallel perspective control and runs through the
+maintained asynchronous worker path. Progress, persistence, and
+successful publication use polite live status; validation, cancellation,
+and publication failures use alerts.
+
+A host app can embed that same asynchronous STORM adapter without
+calling
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+in the Shiny main process:
+
+``` r
+
+ui <- bslib::page_fillable(
+  tempest_shiny_ui("research", panels = "storm")
+)
+
+server <- function(input, output, session) {
+  tempest_shiny_server(
+    "research",
+    config = cfg,
+    panels = "storm"
+  )
+}
+
+shiny::shinyApp(ui, server)
+```
+
+The installed example lives at
+`system.file("examples/shiny-host/app.R", package = "tempest")`.
+
+## Evaluate complete products
+
+The default evaluation solvers exercise the actual product paths. Each
+[`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
+sample runs
+[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+and returns its authoritative report. Each
+[`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
+sample completes a real `TempestSession` and reads its committed report.
+Metadata contains credential-safe Manifest, Workspace, and StageRecord
+summaries; Co-STORM also includes terminal Deputy traces, never Agent
+objects, chats, clients, tools, or credentials.
+
+``` r
+
+judge <- ellmer::chat("openai/gpt-5.6-luna")
+
+storm_task <- tempest_task(
+  dataset = "qa",
+  config = cfg,
+  scorer_chat = judge
+)
+
+costorm_task <- tempest_costorm_task(
+  dataset = "qa",
+  config = cfg,
+  max_turns = 5,
+  scorer_chat = judge
+)
+```
 
 ## Product boundary
 
