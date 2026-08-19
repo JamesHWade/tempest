@@ -2254,105 +2254,224 @@ tempest_session_bundle_validate_manifest <- function(
 }
 
 #' @keywords internal
-tempest_costorm_archive_read <- function(path) {
-  if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
-    tempest_session_restore_abort(
-      "{.arg path} must be a single non-empty extracted bundle directory."
-    )
-  }
-  bundle_dir <- normalizePath(
-    path.expand(path),
-    winslash = "/",
-    mustWork = FALSE
-  )
-  tempest_persistence_require_regular_bundle_files(
-    bundle_dir,
-    "session.json",
-    "Extracted Co-STORM archive root manifest",
+tempest_costorm_bundle_validate_product <- function(snapshot) {
+  schema_version <- tempest_persistence_schema_version(
+    snapshot$schema_version %||% NA_integer_,
+    "Session snapshot schema version",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
-  manifest_path <- file.path(bundle_dir, "session.json")
-  manifest_size <- file.info(manifest_path)$size
-  if (
-    length(manifest_size) != 1L ||
-      is.na(manifest_size) ||
-      !is.finite(manifest_size) ||
-      manifest_size > 50 * 1024^2
-  ) {
-    tempest_session_restore_abort(
-      "Extracted Co-STORM archive has an unbounded session manifest."
+  if (!identical(schema_version, 9L)) {
+    tempest_product_unsupported_format_abort(
+      "TempestSession snapshot format",
+      schema_version,
+      tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
     )
   }
-  manifest <- tempest_product_read_json(
-    manifest_path,
-    what = "extracted Co-STORM archive manifest",
+  if (!identical(names(snapshot), tempest_session_snapshot_fields())) {
+    tempest_product_unsupported_format_abort(
+      "TempestSession snapshot format",
+      schema_version,
+      tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      )
+    )
+  }
+  tempest_persistence_credential_audit(
+    snapshot,
+    "Co-STORM session snapshot",
+    tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
+  )
+  tempest_session_portable_snapshot(snapshot, action = "restore")
+  tempest_session_transcript_record(
+    snapshot$transcript,
+    action = "restore"
+  )
+  mindmap <- tempest_session_mindmap_record(
+    snapshot$mindmap,
+    action = "restore"
+  )
+  tempest_session_suggested_questions(
+    snapshot$suggested_questions,
+    action = "restore"
+  )
+  tempest_session_restore_progress_events(
+    snapshot$progress_events,
+    session_id = snapshot$session_id,
+    action = "restore"
+  )
+  experts <- tempest_experts_from_records(
+    snapshot$experts,
+    what = "session expert profiles",
     class = tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
-  tempest_session_bundle_validate_manifest(
-    bundle_dir,
-    manifest,
-    partial_recovery = FALSE
+  expert_ids <- vapply(experts, \(expert) expert@expert_id, character(1))
+  research_manifest <- tryCatch(
+    tempest_research_manifest_from_record(snapshot$research_manifest),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Snapshot contains an invalid research manifest: ",
+          conditionMessage(error)
+        )
+      )
+    }
   )
-  normalizePath(bundle_dir, winslash = "/", mustWork = TRUE)
-}
-
-#' Resume a saved Co-STORM session bundle
-#'
-#' `tempest_session_resume()` reads a directory bundle written by
-#' [tempest_session_save()] and rebuilds a [TempestSession] with a fresh runtime
-#' [TempestConfig]. Historical progress events are
-#' loaded for display and reduction, but they are not replayed into `progress`.
-#' Stage-record history is restored for audit, but running attempts are rejected
-#' rather than resumed.
-#'
-#' @param path Directory containing a session bundle.
-#' @param config Runtime [TempestConfig] used to recreate chats, retrievers, and
-#'   tools.
-#' @param progress Optional callback for future `tempest_progress_event`
-#'   objects.
-#' @param partial_recovery Whether to allow explicitly requested recovery when
-#'   allowlisted presentation files are missing or fail integrity checks. All
-#'   other declared files, including stage-record, expert, workspace, report,
-#'   and Graft snapshot state, must pass integrity checks.
-#' @param program_set A [TempestProgramSet] carrying the same program
-#'   identities recorded in the bundle. If `NULL`, the builtin set is used.
-#' @param knowledge_view Optional transient immutable Graft view required by
-#'   future execution when `program_set` contains governed procedures. It is
-#'   never reconstructed from or written to persistence.
-#' @return A restored [TempestSession].
-#' @export
-tempest_session_resume <- function(
-  path,
-  config = tempest_config(),
-  progress = NULL,
-  partial_recovery = FALSE,
-  program_set = NULL,
-  knowledge_view = NULL
-) {
-  tempest_session_resume_internal(
-    path = path,
-    config = config,
-    progress = progress,
-    partial_recovery = partial_recovery,
-    program_set = program_set,
-    knowledge_view = knowledge_view
+  if (!identical(research_manifest@mode, "costorm")) {
+    tempest_session_restore_abort(
+      "Snapshot research manifest is not a Co-STORM product."
+    )
+  }
+  if (!research_manifest@status %in% c("running", "succeeded")) {
+    tempest_session_restore_abort(
+      paste0(
+        "A Co-STORM session can restore only a running or succeeded research ",
+        "manifest."
+      )
+    )
+  }
+  if (!identical(research_manifest@research_run_id, snapshot$session_id)) {
+    tempest_session_restore_abort(
+      "Snapshot session id does not match its research manifest run id."
+    )
+  }
+  if (
+    !setequal(names(research_manifest@programs), tempest_program_set_stages())
+  ) {
+    tempest_session_restore_abort(
+      "Snapshot research manifest does not record the complete ProgramSet."
+    )
+  }
+  stage_records <- tryCatch(
+    {
+      records <- tempest_stage_records_from_data(
+        snapshot$stage_records,
+        allow_running = FALSE
+      )
+      tempest_product_authority_validate_stage_records(
+        research_manifest,
+        records,
+        expert_ids = expert_ids,
+        expert_sessions = snapshot$expert_sessions
+      )
+      records
+    },
+    error = function(error) {
+      tempest_session_restore_abort(
+        "Snapshot contains invalid or mismatched stage-record history.",
+        parent = error
+      )
+    }
   )
+  workspace <- tryCatch(
+    tempest_research_workspace_restore(
+      snapshot$workspace,
+      graft_snapshot = snapshot$graft_snapshot
+    ),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Snapshot contains an invalid ResearchWorkspace: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
+  knowledge_snapshot <- research_manifest@knowledge_snapshot
+  snapshot_id <- knowledge_snapshot$snapshot_id %||% NULL
+  workspace_snapshot <- tryCatch(
+    tempest_costorm_manifest_snapshot_reference(workspace),
+    error = function(error) {
+      tempest_session_restore_abort(
+        "Snapshot workspace lacks its exact accepted-knowledge identity.",
+        parent = error
+      )
+    }
+  )
+  if (
+    !identical(snapshot_id, workspace$base_snapshot_id) ||
+      !identical(knowledge_snapshot, workspace_snapshot)
+  ) {
+    tempest_session_restore_abort(
+      paste0(
+        "Snapshot research manifest does not match the exact ",
+        "ResearchWorkspace base snapshot."
+      )
+    )
+  }
+  tryCatch(
+    {
+      tempest_product_authority_validate_report(
+        research_manifest,
+        snapshot$report_reference,
+        snapshot$report_md
+      )
+      tempest_stage_records_validate_execution_review(
+        snapshot$report_md,
+        stage_records,
+        trusted_title = snapshot$title
+      )
+      tempest_stage_records_validate_generated_experts(stage_records, experts)
+      tempest_stage_records_validate_claim_provenance(
+        stage_records,
+        workspace,
+        research_manifest@research_run_id,
+        experts
+      )
+      tempest_stage_records_validate_product_outputs(
+        stage_records,
+        list(experts = snapshot$experts)
+      )
+    },
+    error = function(error) {
+      tempest_session_restore_abort(
+        "Snapshot product history or report binding is invalid.",
+        parent = error
+      )
+    }
+  )
+  tryCatch(
+    tempest_graft_snapshot_assert_binding(
+      snapshot$graft_snapshot,
+      knowledge_snapshot,
+      workspace,
+      tempest_session_persistence_error_class(
+        "tempest_session_restore_error"
+      ),
+      "Restored Co-STORM Graft snapshot"
+    ),
+    error = function(error) {
+      tempest_session_restore_abort(
+        paste0(
+          "Snapshot accepted-knowledge identity is invalid: ",
+          conditionMessage(error)
+        )
+      )
+    }
+  )
+  tempest_session_mindmap_assert_binding(mindmap, workspace)
+  invisible(snapshot)
 }
 
 #' @keywords internal
-tempest_session_resume_internal <- function(
+tempest_costorm_bundle_read <- function(
   path,
-  config = tempest_config(),
-  progress = NULL,
   partial_recovery = FALSE,
-  program_set = NULL,
-  knowledge_view = NULL
+  archive = FALSE
 ) {
   if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
+    if (isTRUE(archive)) {
+      tempest_session_restore_abort(
+        "{.arg path} must be a single non-empty extracted bundle directory."
+      )
+    }
     tempest_abort(
       "{.arg path} must be a single non-empty path string.",
       class = tempest_session_persistence_error_class(
@@ -2360,23 +2479,55 @@ tempest_session_resume_internal <- function(
       )
     )
   }
+  expanded_path <- path.expand(path)
+  if (
+    isTRUE(archive) &&
+      tempest_persistence_leaf_path_is_symlink(expanded_path)
+  ) {
+    tempest_session_restore_abort(
+      "Extracted Co-STORM archive directory cannot be a symbolic link."
+    )
+  }
   bundle_dir <- normalizePath(
-    path.expand(path),
+    expanded_path,
     winslash = "/",
     mustWork = FALSE
   )
+  root_what <- if (isTRUE(archive)) {
+    "Extracted Co-STORM archive root manifest"
+  } else {
+    "Co-STORM root manifest"
+  }
   tempest_persistence_require_regular_bundle_files(
     bundle_dir,
     "session.json",
-    "Co-STORM root manifest",
+    root_what,
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
-
+  manifest_path <- file.path(bundle_dir, "session.json")
+  if (isTRUE(archive)) {
+    manifest_size <- file.info(manifest_path)$size
+    if (
+      length(manifest_size) != 1L ||
+        is.na(manifest_size) ||
+        !is.finite(manifest_size) ||
+        manifest_size > 50 * 1024^2
+    ) {
+      tempest_session_restore_abort(
+        "Extracted Co-STORM archive has an unbounded session manifest."
+      )
+    }
+  }
+  manifest_what <- if (isTRUE(archive)) {
+    "extracted Co-STORM archive manifest"
+  } else {
+    "session bundle manifest"
+  }
   manifest <- tempest_product_read_json(
-    file.path(bundle_dir, "session.json"),
-    what = "session bundle manifest",
+    manifest_path,
+    what = manifest_what,
     class = tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -2446,7 +2597,6 @@ tempest_session_resume_internal <- function(
       "tempest_session_restore_error"
     )
   )
-
   snapshot <- list(
     schema_version = schema_version,
     package_version = manifest$package_version %||% NA_character_,
@@ -2515,9 +2665,76 @@ tempest_session_resume_internal <- function(
   workspace <- workspace[tempest_research_workspace_snapshot_fields()]
   snapshot$workspace <- workspace
   snapshot <- snapshot[tempest_session_snapshot_fields()]
+  tempest_costorm_bundle_validate_product(snapshot)
+  list(
+    path = normalizePath(bundle_dir, winslash = "/", mustWork = TRUE),
+    snapshot = snapshot
+  )
+}
 
+#' @keywords internal
+tempest_costorm_archive_read <- function(path) {
+  tempest_costorm_bundle_read(path, archive = TRUE)$path
+}
+
+#' Resume a saved Co-STORM session bundle
+#'
+#' `tempest_session_resume()` reads a directory bundle written by
+#' [tempest_session_save()] and rebuilds a [TempestSession] with a fresh runtime
+#' [TempestConfig]. Historical progress events are
+#' loaded for display and reduction, but they are not replayed into `progress`.
+#' Stage-record history is restored for audit, but running attempts are rejected
+#' rather than resumed.
+#'
+#' @param path Directory containing a session bundle.
+#' @param config Runtime [TempestConfig] used to recreate chats, retrievers, and
+#'   tools.
+#' @param progress Optional callback for future `tempest_progress_event`
+#'   objects.
+#' @param partial_recovery Whether to allow explicitly requested recovery when
+#'   allowlisted presentation files are missing or fail integrity checks. All
+#'   other declared files, including stage-record, expert, workspace, report,
+#'   and Graft snapshot state, must pass integrity checks.
+#' @param program_set A [TempestProgramSet] carrying the same program
+#'   identities recorded in the bundle. If `NULL`, the builtin set is used.
+#' @param knowledge_view Optional transient immutable Graft view required by
+#'   future execution when `program_set` contains governed procedures. It is
+#'   never reconstructed from or written to persistence.
+#' @return A restored [TempestSession].
+#' @export
+tempest_session_resume <- function(
+  path,
+  config = tempest_config(),
+  progress = NULL,
+  partial_recovery = FALSE,
+  program_set = NULL,
+  knowledge_view = NULL
+) {
+  tempest_session_resume_internal(
+    path = path,
+    config = config,
+    progress = progress,
+    partial_recovery = partial_recovery,
+    program_set = program_set,
+    knowledge_view = knowledge_view
+  )
+}
+
+#' @keywords internal
+tempest_session_resume_internal <- function(
+  path,
+  config = tempest_config(),
+  progress = NULL,
+  partial_recovery = FALSE,
+  program_set = NULL,
+  knowledge_view = NULL
+) {
+  bundle <- tempest_costorm_bundle_read(
+    path,
+    partial_recovery = partial_recovery
+  )
   tempest_session_restore_internal(
-    snapshot,
+    bundle$snapshot,
     config = config,
     progress = progress,
     program_set = program_set,
