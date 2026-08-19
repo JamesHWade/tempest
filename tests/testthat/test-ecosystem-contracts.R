@@ -390,7 +390,7 @@ test_that("Graft snapshots retain their immutable restoration boundary", {
   )
   workspace <- tempest_research_workspace(graft_snapshot = snapshot)
   run_dir <- file.path(dirname(store_path), "storm-bundle")
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     workspace,
     tempest:::tempest_storm_state("Graft contract"),
@@ -428,7 +428,7 @@ test_that("Graft snapshots retain their immutable restoration boundary", {
       idempotency_key = "tempest-contract-2"
     )
   )
-  restored_run <- tempest:::tempest_load_run_artifacts(
+  restored_run <- tempest:::tempest_storm_load_artifacts(
     run_dir,
     config = config,
     program_set = program_set,
@@ -958,7 +958,7 @@ test_that("legacy product bundles fail closed", {
     class = "tempest_unsupported_format_error"
   )
   expect_error(
-    tempest:::tempest_run_bundle_validate_manifest(
+    tempest:::tempest_storm_bundle_validate_manifest(
       bundle_dir,
       list(schema_version = 4L)
     ),

@@ -95,7 +95,7 @@ test_that("schema 7 STORM bundles round-trip the complete workspace", {
   state <- bound$state
   manifest <- bound$manifest
 
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     dir,
     workspace,
     state,
@@ -106,7 +106,7 @@ test_that("schema 7 STORM bundles round-trip the complete workspace", {
     research_strategy = "key_questions"
   )
 
-  metadata <- tempest:::tempest_read_json_strict(
+  metadata <- tempest:::tempest_product_read_json(
     file.path(dir, "run_config.json")
   )
   declared <- unlist(metadata$files, use.names = FALSE)
@@ -120,7 +120,7 @@ test_that("schema 7 STORM bundles round-trip the complete workspace", {
   expect_equal(file.exists(file.path(dir, "claims.json")), FALSE)
   expect_equal(file.exists(file.path(dir, "claim_supports.json")), FALSE)
 
-  loaded <- tempest:::tempest_load_run_artifacts(
+  loaded <- tempest:::tempest_storm_load_artifacts(
     dir,
     config = cfg,
     program_set = program_set,
@@ -133,14 +133,17 @@ test_that("schema 7 STORM bundles round-trip the complete workspace", {
   )
 
   workspace_path <- file.path(dir, "workspace.json")
-  downgraded <- tempest:::tempest_read_json_strict(workspace_path)
+  downgraded <- tempest:::tempest_product_read_json(workspace_path)
   downgraded$schema_version <- 4L
-  tempest:::tempest_write_json(workspace_path, downgraded)
+  tempest:::tempest_product_write_json(workspace_path, downgraded)
   metadata$checksums[["workspace.json"]] <-
-    tempest:::tempest_session_bundle_checksum(dir, "workspace.json")
-  tempest:::tempest_write_json(file.path(dir, "run_config.json"), metadata)
+    tempest:::tempest_product_bundle_checksum(dir, "workspace.json")
+  tempest:::tempest_product_write_json(
+    file.path(dir, "run_config.json"),
+    metadata
+  )
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       dir,
       config = cfg,
       program_set = program_set,
@@ -168,7 +171,7 @@ test_that("STORM workspace files match the exact manifest identity", {
         revision_id = "revision-1"
       ))
     )
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       dir,
       workspace,
       tempest:::tempest_storm_state("Workspace identity"),
@@ -189,21 +192,21 @@ test_that("STORM workspace files match the exact manifest identity", {
   }
   mutate_workspace <- function(bundle, mutate) {
     workspace_path <- file.path(bundle$dir, "workspace.json")
-    workspace <- tempest:::tempest_read_json_strict(workspace_path)
+    workspace <- tempest:::tempest_product_read_json(workspace_path)
     workspace <- mutate(workspace)
-    tempest:::tempest_write_json(workspace_path, workspace)
+    tempest:::tempest_product_write_json(workspace_path, workspace)
     manifest_path <- file.path(bundle$dir, "run_config.json")
-    manifest <- tempest:::tempest_read_json_strict(manifest_path)
+    manifest <- tempest:::tempest_product_read_json(manifest_path)
     manifest$checksums[["workspace.json"]] <-
-      tempest:::tempest_session_bundle_checksum(
+      tempest:::tempest_product_bundle_checksum(
         bundle$dir,
         "workspace.json"
       )
-    tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_write_json(manifest_path, manifest)
   }
   expect_rejected <- function(bundle) {
     expect_error(
-      tempest:::tempest_load_run_artifacts(
+      tempest:::tempest_storm_load_artifacts(
         bundle$dir,
         config = bundle$config,
         program_set = program_set,
@@ -231,7 +234,7 @@ test_that("STORM workspace files match the exact manifest identity", {
   expect_rejected(bundle)
 
   bundle <- make_bundle()
-  manifest <- tempest:::tempest_read_json_strict(
+  manifest <- tempest:::tempest_product_read_json(
     file.path(bundle$dir, "run_config.json")
   )
   names(manifest$workspace) <- c(

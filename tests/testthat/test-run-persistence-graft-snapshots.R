@@ -55,7 +55,7 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
     graft_snapshot = graft_snapshot
   )
   storm_dir <- file.path(root, "storm")
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     storm_dir,
     storm_workspace,
     tempest:::tempest_storm_state("Graft STORM persistence"),
@@ -71,10 +71,10 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
     research_strategy = "key_questions"
   )
 
-  session_manifest <- tempest:::tempest_read_json_strict(
+  session_manifest <- tempest:::tempest_product_read_json(
     file.path(session_dir, "session.json")
   )
-  storm_manifest <- tempest:::tempest_read_json_strict(
+  storm_manifest <- tempest:::tempest_product_read_json(
     file.path(storm_dir, "run_config.json")
   )
   sidecar <- "knowledge/graft-snapshot.rds"
@@ -82,11 +82,11 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
   expect_contains(unlist(storm_manifest$files, use.names = FALSE), sidecar)
   expect_identical(
     session_manifest$checksums[[sidecar]],
-    tempest:::tempest_session_bundle_checksum(session_dir, sidecar)
+    tempest:::tempest_product_bundle_checksum(session_dir, sidecar)
   )
   expect_identical(
     storm_manifest$checksums[[sidecar]],
-    tempest:::tempest_session_bundle_checksum(storm_dir, sidecar)
+    tempest:::tempest_product_bundle_checksum(storm_dir, sidecar)
   )
 
   rm(session, session_workspace, storm_workspace, graft_snapshot)
@@ -104,7 +104,7 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
 
   restored_memory <- tempest_session_restore(in_memory, config = cfg)
   restored_session <- tempest_session_resume(session_dir, config = cfg)
-  restored_storm <- tempest:::tempest_load_run_artifacts(
+  restored_storm <- tempest:::tempest_storm_load_artifacts(
     storm_dir,
     config = cfg,
     program_set = program_set,

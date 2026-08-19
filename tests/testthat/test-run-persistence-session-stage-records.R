@@ -12,14 +12,14 @@ test_that("stage-record sidecars are mandatory regular bundle files", {
   bundle_dir <- file.path(withr::local_tempdir(), "session")
   tempest_session_save(session, bundle_dir)
   manifest_path <- file.path(bundle_dir, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$files <- setdiff(
     unlist(manifest$files, use.names = FALSE),
     "stage_records.json"
   )
   manifest$checksums[["stage_records.json"]] <- NULL
   unlink(file.path(bundle_dir, "stage_records.json"))
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
 
   expect_error(
     tempest_session_resume(
@@ -33,7 +33,7 @@ test_that("stage-record sidecars are mandatory regular bundle files", {
   program_set <- tempest_program_set()
   run_dir <- file.path(withr::local_tempdir(), "run")
   dir.create(run_dir)
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     tempest_research_workspace(),
     tempest:::tempest_storm_state("Stage-record integrity"),
@@ -48,17 +48,17 @@ test_that("stage-record sidecars are mandatory regular bundle files", {
     research_strategy = "key_questions"
   )
   run_manifest_path <- file.path(run_dir, "run_config.json")
-  run_manifest <- tempest:::tempest_read_json_strict(run_manifest_path)
+  run_manifest <- tempest:::tempest_product_read_json(run_manifest_path)
   run_manifest$files <- setdiff(
     unlist(run_manifest$files, use.names = FALSE),
     "stage_records.json"
   )
   run_manifest$checksums[["stage_records.json"]] <- NULL
   unlink(file.path(run_dir, "stage_records.json"))
-  tempest:::tempest_write_json(run_manifest_path, run_manifest)
+  tempest:::tempest_product_write_json(run_manifest_path, run_manifest)
 
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = tempest_config(),
       program_set = program_set,
@@ -89,13 +89,13 @@ test_that("stage-record sidecars reject same-root symlinks", {
     TRUE
   )
   manifest_path <- file.path(bundle_dir, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["stage_records.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       bundle_dir,
       "stage_records.json"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
 
   expect_error(
     tempest_session_resume(bundle_dir, config = cfg),
@@ -105,7 +105,7 @@ test_that("stage-record sidecars reject same-root symlinks", {
   program_set <- tempest_program_set()
   run_dir <- file.path(withr::local_tempdir(), "run")
   dir.create(run_dir)
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     tempest_research_workspace(),
     tempest:::tempest_storm_state("Stage-record symlink"),
@@ -126,16 +126,16 @@ test_that("stage-record sidecars reject same-root symlinks", {
     TRUE
   )
   run_manifest_path <- file.path(run_dir, "run_config.json")
-  run_manifest <- tempest:::tempest_read_json_strict(run_manifest_path)
+  run_manifest <- tempest:::tempest_product_read_json(run_manifest_path)
   run_manifest$checksums[["stage_records.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       run_dir,
       "stage_records.json"
     )
-  tempest:::tempest_write_json(run_manifest_path, run_manifest)
+  tempest:::tempest_product_write_json(run_manifest_path, run_manifest)
 
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -195,7 +195,7 @@ test_that("bundle root manifests reject internal and escaping symlinks", {
   program_set <- tempest_program_set()
   make_storm_bundle <- function(name) {
     bundle <- file.path(root, name)
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       bundle,
       tempest_research_workspace(),
       tempest:::tempest_storm_state("Root manifest symlink"),
@@ -222,7 +222,7 @@ test_that("bundle root manifests reject internal and escaping symlinks", {
     TRUE
   )
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       internal_storm,
       config = cfg,
       program_set = program_set,
@@ -241,7 +241,7 @@ test_that("bundle root manifests reject internal and escaping symlinks", {
   unlink(storm_manifest)
   expect_identical(file.symlink(outside_storm, storm_manifest), TRUE)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       escaping_storm,
       config = cfg,
       program_set = program_set,
@@ -432,17 +432,17 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
 
   sidecar_path <- file.path(bundle_dir, "stage_records.json")
   manifest_path <- file.path(bundle_dir, "session.json")
-  valid_records <- tempest:::tempest_read_json_strict(sidecar_path)
-  valid_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  valid_records <- tempest:::tempest_product_read_json(sidecar_path)
+  valid_manifest <- tempest:::tempest_product_read_json(manifest_path)
   write_records <- function(records) {
-    tempest:::tempest_write_json(sidecar_path, records)
+    tempest:::tempest_product_write_json(sidecar_path, records)
     manifest <- valid_manifest
     manifest$checksums[["stage_records.json"]] <-
-      tempest:::tempest_session_bundle_checksum(
+      tempest:::tempest_product_bundle_checksum(
         bundle_dir,
         "stage_records.json"
       )
-    tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_write_json(manifest_path, manifest)
   }
   expect_rejected <- function() {
     expect_error(
@@ -453,7 +453,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
 
   changed_manifest_trace <- valid_manifest
   changed_manifest_trace$research_manifest$traces[[1]]$status <- "failed"
-  tempest:::tempest_write_json(manifest_path, changed_manifest_trace)
+  tempest:::tempest_product_write_json(manifest_path, changed_manifest_trace)
   expect_rejected()
 
   extra_manifest_trace <- valid_manifest
@@ -463,13 +463,13 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     extra_manifest_trace$research_manifest$traces,
     list(extra_trace)
   )
-  tempest:::tempest_write_json(manifest_path, extra_manifest_trace)
+  tempest:::tempest_product_write_json(manifest_path, extra_manifest_trace)
   expect_rejected()
 
   missing_manifest_trace <- valid_manifest
   missing_manifest_trace$research_manifest$traces <-
     missing_manifest_trace$research_manifest$traces[-1]
-  tempest:::tempest_write_json(manifest_path, missing_manifest_trace)
+  tempest:::tempest_product_write_json(manifest_path, missing_manifest_trace)
   expect_rejected()
 
   wrong_program <- valid_records
@@ -536,15 +536,15 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
   claim_path <- file.path(bundle_dir, "workspace/proposed_claims.json")
   span_path <- file.path(bundle_dir, "workspace/evidence_spans.json")
   support_path <- file.path(bundle_dir, "workspace/claim_supports.json")
-  valid_claims <- tempest:::tempest_read_json_strict(claim_path)
-  valid_spans <- tempest:::tempest_read_json_strict(span_path)
-  valid_supports <- tempest:::tempest_read_json_strict(support_path)
+  valid_claims <- tempest:::tempest_product_read_json(claim_path)
+  valid_spans <- tempest:::tempest_product_read_json(span_path)
+  valid_supports <- tempest:::tempest_product_read_json(support_path)
   write_workspace <- function(rel_path, value) {
-    tempest:::tempest_write_json(claim_path, valid_claims)
-    tempest:::tempest_write_json(span_path, valid_spans)
-    tempest:::tempest_write_json(support_path, valid_supports)
-    tempest:::tempest_write_json(file.path(bundle_dir, rel_path), value)
-    tempest:::tempest_write_json(sidecar_path, valid_records)
+    tempest:::tempest_product_write_json(claim_path, valid_claims)
+    tempest:::tempest_product_write_json(span_path, valid_spans)
+    tempest:::tempest_product_write_json(support_path, valid_supports)
+    tempest:::tempest_product_write_json(file.path(bundle_dir, rel_path), value)
+    tempest:::tempest_product_write_json(sidecar_path, valid_records)
     manifest <- valid_manifest
     for (workspace_path in c(
       "workspace/proposed_claims.json",
@@ -552,14 +552,14 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
       "workspace/claim_supports.json"
     )) {
       manifest$checksums[[workspace_path]] <-
-        tempest:::tempest_session_bundle_checksum(bundle_dir, workspace_path)
+        tempest:::tempest_product_bundle_checksum(bundle_dir, workspace_path)
     }
     manifest$checksums[["stage_records.json"]] <-
-      tempest:::tempest_session_bundle_checksum(
+      tempest:::tempest_product_bundle_checksum(
         bundle_dir,
         "stage_records.json"
       )
-    tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_write_json(manifest_path, manifest)
   }
 
   changed_claims <- valid_claims
@@ -675,8 +675,8 @@ test_that("verification stage records cover every claim-span support pair", {
     "workspace/retrieved_resources.json"
   )
   manifest_path <- file.path(bundle_dir, "session.json")
-  valid_resources <- tempest:::tempest_read_json_strict(resources_path)
-  valid_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  valid_resources <- tempest:::tempest_product_read_json(resources_path)
+  valid_manifest <- tempest:::tempest_product_read_json(manifest_path)
   expect_source_tamper_rejected <- function(content) {
     resources <- valid_resources
     resources[[1]]$content <- content
@@ -687,14 +687,14 @@ test_that("verification stage records cover every claim-span support pair", {
     )
     resources[[1]]$fingerprint <-
       tempest:::tempest_resource_fingerprint(resources[[1]])
-    tempest:::tempest_write_json(resources_path, resources)
+    tempest:::tempest_product_write_json(resources_path, resources)
     manifest <- valid_manifest
     manifest$checksums[["workspace/retrieved_resources.json"]] <-
-      tempest:::tempest_session_bundle_checksum(
+      tempest:::tempest_product_bundle_checksum(
         bundle_dir,
         "workspace/retrieved_resources.json"
       )
-    tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_write_json(manifest_path, manifest)
     expect_error(
       tempest_session_resume(bundle_dir, config = cfg),
       class = "tempest_session_restore_error"
@@ -728,7 +728,7 @@ test_that("session bundles expose only product persistence inventory", {
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
 
   tempest_session_save(session, bundle_dir)
-  manifest <- tempest:::tempest_read_json_strict(
+  manifest <- tempest:::tempest_product_read_json(
     file.path(bundle_dir, "session.json")
   )
   restored <- tempest_session_resume(bundle_dir, config = cfg)

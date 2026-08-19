@@ -317,17 +317,17 @@ test_that("schema 9 progress history is exact and session-bound", {
   bundle_dir <- file.path(withr::local_tempdir(), "progress-bundle")
   tempest_session_save(session, bundle_dir)
   events_path <- file.path(bundle_dir, "progress_events.json")
-  events <- tempest:::tempest_read_json_strict(events_path)
+  events <- tempest:::tempest_product_read_json(events_path)
   events[[1]]$run_id <- "other-session"
-  tempest:::tempest_write_json(events_path, events)
+  tempest:::tempest_product_write_json(events_path, events)
   manifest_path <- file.path(bundle_dir, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["progress_events.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       bundle_dir,
       "progress_events.json"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
 
   expect_error(
     tempest_session_resume(

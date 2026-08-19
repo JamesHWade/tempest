@@ -109,7 +109,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       manifest,
       status = "succeeded"
     )
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       dir,
       workspace,
       state,
@@ -133,19 +133,19 @@ test_that("completed STORM product state fails closed when artifacts drift", {
   rewrite_checked <- function(bundle, file, value, json = TRUE) {
     path <- file.path(bundle$dir, file)
     if (json) {
-      tempest:::tempest_write_json(path, value)
+      tempest:::tempest_product_write_json(path, value)
     } else {
       writeLines(value, path)
     }
     manifest_path <- file.path(bundle$dir, "run_config.json")
-    manifest <- tempest:::tempest_read_json_strict(manifest_path)
+    manifest <- tempest:::tempest_product_read_json(manifest_path)
     manifest$checksums[[file]] <-
-      tempest:::tempest_session_bundle_checksum(bundle$dir, file)
-    tempest:::tempest_write_json(manifest_path, manifest)
+      tempest:::tempest_product_bundle_checksum(bundle$dir, file)
+    tempest:::tempest_product_write_json(manifest_path, manifest)
   }
   expect_rejected <- function(bundle) {
     expect_error(
-      tempest:::tempest_load_run_artifacts(
+      tempest:::tempest_storm_load_artifacts(
         bundle$dir,
         config = bundle$config,
         program_set = program_set,
@@ -157,7 +157,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
 
   pristine <- make_bundle()
   bundle <- pristine
-  loaded <- tempest:::tempest_load_run_artifacts(
+  loaded <- tempest:::tempest_storm_load_artifacts(
     bundle$dir,
     config = bundle$config,
     program_set = program_set,
@@ -181,7 +181,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
   )
 
   bundle <- clone_bundle(pristine)
-  perspectives <- tempest:::tempest_read_json_strict(
+  perspectives <- tempest:::tempest_product_read_json(
     file.path(bundle$dir, "perspectives.json")
   )
   perspectives[[1]] <- perspectives[[1]][rev(names(perspectives[[1]]))]
@@ -189,7 +189,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
   expect_rejected(bundle)
 
   bundle <- clone_bundle(pristine)
-  outline <- tempest:::tempest_read_json_strict(
+  outline <- tempest:::tempest_product_read_json(
     file.path(bundle$dir, "direct_gen_outline.json")
   )
   outline <- outline[rev(names(outline))]
@@ -197,7 +197,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
   expect_rejected(bundle)
 
   bundle <- clone_bundle(pristine)
-  outline <- tempest:::tempest_read_json_strict(
+  outline <- tempest:::tempest_product_read_json(
     file.path(bundle$dir, "storm_gen_outline.json")
   )
   outline$sections[[1]] <- outline$sections[[1]][
@@ -207,7 +207,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
   expect_rejected(bundle)
 
   bundle <- clone_bundle(pristine)
-  outline <- tempest:::tempest_read_json_strict(
+  outline <- tempest:::tempest_product_read_json(
     file.path(bundle$dir, "storm_gen_outline.json")
   )
   outline$sections[[1]]$subsections[[1]] <-
@@ -222,7 +222,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
   expect_rejected(bundle)
 
   bundle <- clone_bundle(pristine)
-  perspectives <- tempest:::tempest_read_json_strict(
+  perspectives <- tempest:::tempest_product_read_json(
     file.path(bundle$dir, "perspectives.json")
   )
   perspectives[[1]]$key_questions <- list(list("What is authoritative?"))
@@ -230,7 +230,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
   expect_rejected(bundle)
 
   bundle <- clone_bundle(pristine)
-  perspectives <- tempest:::tempest_read_json_strict(
+  perspectives <- tempest:::tempest_product_read_json(
     file.path(bundle$dir, "perspectives.json")
   )
   second <- perspectives[[1]]
@@ -244,7 +244,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
     expect_rejected(bundle)
 
     bundle <- clone_bundle(pristine)
-    outline <- tempest:::tempest_read_json_strict(
+    outline <- tempest:::tempest_product_read_json(
       file.path(bundle$dir, file)
     )
     outline$sections[[1]]$subsections <- list(list(

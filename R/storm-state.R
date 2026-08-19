@@ -716,7 +716,7 @@ tempest_storm_state_from_record <- function(record) {
     )
   }
   if (!identical(schema_version, 4L)) {
-    tempest_unsupported_format_abort(
+    tempest_product_unsupported_format_abort(
       "STORM product-state format",
       schema_version,
       c(
@@ -780,4 +780,17 @@ tempest_storm_state_from_record <- function(record) {
       )
     }
   )
+}
+
+
+#' @keywords internal
+tempest_storm_stage_complete <- function(completed_stages, stage) {
+  stage %in% completed_stages
+}
+
+#' @keywords internal
+tempest_storm_mark_stage_complete <- function(completed_stages, stage) {
+  allowed <- c("perspectives", "research", "outline", "write", "polish")
+  completed_stages <- unique(c(completed_stages, stage))
+  completed_stages[order(match(completed_stages, allowed))]
 }

@@ -58,7 +58,7 @@ test_that("partial session recovery is explicit and skips corrupt optional data"
     expert_sessions = tempest:::tempest_expert_sessions_snapshot(restored)
   )
   expect_identical(authority$publishable, FALSE)
-  manifest <- tempest:::tempest_read_json_strict(
+  manifest <- tempest:::tempest_product_read_json(
     file.path(bundle_dir, "session.json")
   )
   declared <- suppressWarnings(
@@ -92,18 +92,18 @@ test_that("partial recovery rejects a re-signed running report splice", {
     report_md
   )
   manifest_path <- file.path(bundle_dir, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   research_manifest <- tempest:::tempest_research_manifest_from_record(
     manifest$research_manifest
   )
-  research_manifest <- tempest:::tempest_persistence_manifest_bind_report(
+  research_manifest <- tempest:::tempest_product_authority_bind_report(
     research_manifest,
     report_md
   )
   manifest$research_manifest <- tempest_research_manifest_record(
     research_manifest
   )
-  manifest$report_reference <- tempest:::tempest_persistence_report_reference(
+  manifest$report_reference <- tempest:::tempest_product_report_reference(
     report_md
   )
   manifest$files <- as.list(sort(c(
@@ -111,8 +111,8 @@ test_that("partial recovery rejects a re-signed running report splice", {
     "report.md"
   )))
   manifest$checksums[["report.md"]] <-
-    tempest:::tempest_session_bundle_checksum(bundle_dir, "report.md")
-  tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_bundle_checksum(bundle_dir, "report.md")
+  tempest:::tempest_product_write_json(manifest_path, manifest)
 
   expect_error(
     tempest_session_resume(
@@ -151,7 +151,7 @@ test_that("partial recovery rejects missing and unsafe suggestion files", {
     "artifacts/suggested_questions.json"
   )
   unlink(questions_path)
-  manifest <- tempest:::tempest_read_json_strict(
+  manifest <- tempest:::tempest_product_read_json(
     file.path(bundle_dir, "session.json")
   )
   expect_error(
@@ -174,7 +174,7 @@ test_that("partial recovery rejects missing and unsafe suggestion files", {
   unlink(questions_path)
   linked <- file.symlink(external_path, questions_path)
   if (isTRUE(linked)) {
-    manifest <- tempest:::tempest_read_json_strict(
+    manifest <- tempest:::tempest_product_read_json(
       file.path(bundle_dir, "session.json")
     )
     expect_error(
@@ -238,13 +238,13 @@ test_that("partial recovery rejects every non-presentation integrity failure", {
   manifest_path <- file.path(bundle_dir, "session.json")
   claims_path <- file.path(bundle_dir, "workspace/proposed_claims.json")
   writeLines("{", claims_path)
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["workspace/proposed_claims.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       bundle_dir,
       "workspace/proposed_claims.json"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
     tempest_session_resume(
       bundle_dir,
@@ -258,18 +258,18 @@ test_that("partial recovery rejects every non-presentation integrity failure", {
   tempest_session_save(session, bundle_dir)
   manifest_path <- file.path(bundle_dir, "session.json")
   workflow_path <- file.path(bundle_dir, "workflow_run.json")
-  tempest:::tempest_write_json(workflow_path, list(schema_version = 2L))
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  tempest:::tempest_product_write_json(workflow_path, list(schema_version = 2L))
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$files <- sort(c(
     unlist(manifest$files, use.names = FALSE),
     "workflow_run.json"
   ))
   manifest$checksums[["workflow_run.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       bundle_dir,
       "workflow_run.json"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   writeLines("tampered workflow state", workflow_path)
   expect_error(
     tempest_session_resume(
@@ -299,7 +299,7 @@ test_that("session resume rejects files that its manifest does not declare", {
   )
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
   tempest_session_save(session, bundle_dir)
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(bundle_dir, "artifacts/suggested_questions.json"),
     "undeclared"
   )

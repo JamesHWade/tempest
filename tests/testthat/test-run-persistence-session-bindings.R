@@ -113,17 +113,17 @@ test_that("session restore rejects contract and expert-binding tampering", {
   tempest_session_save(session, bundle_dir)
 
   experts_path <- file.path(bundle_dir, "experts.json")
-  experts <- tempest:::tempest_read_json_strict(experts_path)
+  experts <- tempest:::tempest_product_read_json(experts_path)
   experts[[1]]$fingerprint <- strrep("0", 64)
-  tempest:::tempest_write_json(experts_path, experts)
+  tempest:::tempest_product_write_json(experts_path, experts)
   manifest_path <- file.path(bundle_dir, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["experts.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       bundle_dir,
       "experts.json"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
 
   expect_error(
     tempest:::tempest_session_resume_internal(
@@ -146,17 +146,17 @@ test_that("session restore rejects contract and expert-binding tampering", {
   tamper_expert_sessions <- function(mutate) {
     tempest_session_save(session, bundle_dir, overwrite = TRUE)
     sessions_path <- file.path(bundle_dir, "expert_sessions.json")
-    sessions <- tempest:::tempest_read_json_strict(sessions_path)
+    sessions <- tempest:::tempest_product_read_json(sessions_path)
     sessions[[1]] <- mutate(sessions[[1]])
-    tempest:::tempest_write_json(sessions_path, sessions)
+    tempest:::tempest_product_write_json(sessions_path, sessions)
     manifest_path <- file.path(bundle_dir, "session.json")
-    manifest <- tempest:::tempest_read_json_strict(manifest_path)
+    manifest <- tempest:::tempest_product_read_json(manifest_path)
     manifest$checksums[["expert_sessions.json"]] <-
-      tempest:::tempest_session_bundle_checksum(
+      tempest:::tempest_product_bundle_checksum(
         bundle_dir,
         "expert_sessions.json"
       )
-    tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_write_json(manifest_path, manifest)
     expect_error(
       tempest:::tempest_session_resume_internal(
         bundle_dir,
@@ -220,18 +220,18 @@ test_that("session restore rejects contract and expert-binding tampering", {
 
   tempest_session_save(session, bundle_dir, overwrite = TRUE)
   sessions_path <- file.path(bundle_dir, "expert_sessions.json")
-  sessions <- tempest:::tempest_read_json_strict(sessions_path)
+  sessions <- tempest:::tempest_product_read_json(sessions_path)
   duplicate <- sessions[[1]]
   duplicate$session_id <- "session.duplicate"
   sessions[[2]] <- duplicate
-  tempest:::tempest_write_json(sessions_path, sessions)
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  tempest:::tempest_product_write_json(sessions_path, sessions)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["expert_sessions.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       bundle_dir,
       "expert_sessions.json"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
     tempest:::tempest_session_resume_internal(
       bundle_dir,
@@ -242,16 +242,16 @@ test_that("session restore rejects contract and expert-binding tampering", {
 
   tempest_session_save(session, bundle_dir, overwrite = TRUE)
   sessions_path <- file.path(bundle_dir, "expert_sessions.json")
-  sessions <- tempest:::tempest_read_json_strict(sessions_path)
+  sessions <- tempest:::tempest_product_read_json(sessions_path)
   sessions[[1]]$expert_fingerprint <- strrep("f", 64)
-  tempest:::tempest_write_json(sessions_path, sessions)
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  tempest:::tempest_product_write_json(sessions_path, sessions)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["expert_sessions.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       bundle_dir,
       "expert_sessions.json"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
 
   expect_error(
     tempest:::tempest_session_resume_internal(

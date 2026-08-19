@@ -1216,3 +1216,120 @@ tempest_final_report_validate <- function(
   }
   invisible(report_md)
 }
+
+
+#' @keywords internal
+tempest_product_report_execution_review_candidates <- function(...) {
+  histories <- list(...)
+  candidates <- unlist(
+    lapply(histories, function(records) {
+      records <- tempest_stage_records_validate(records)
+      vapply(
+        seq.int(0L, length(records)),
+        function(size) {
+          tempest_stage_records_execution_review(records[seq_len(size)])
+        },
+        character(1)
+      )
+    }),
+    use.names = FALSE
+  )
+  candidates <- unique(candidates[nzchar(candidates)])
+  candidates[order(nchar(candidates), decreasing = TRUE)]
+}
+
+#' @keywords internal
+tempest_product_report_without_execution_review <- function(
+  value,
+  records,
+  prior_records = records,
+  trusted_title = NULL
+) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  value <- enc2utf8(value)
+  body <- tempest_markdown_without_trusted_title(value, trusted_title)
+  if (!tempest_markdown_has_heading(body, "Execution review")) {
+    return(value)
+  }
+  candidates <- tempest_product_report_execution_review_candidates(
+    prior_records,
+    records
+  )
+  matches <- candidates[vapply(
+    candidates,
+    \(review) endsWith(value, paste0("\n\n", review, "\n")),
+    logical(1)
+  )]
+  if (length(matches) == 0L) {
+    tempest_stage_record_abort(
+      paste0(
+        "A durable report can remove only an exact package-owned terminal ",
+        "Execution review."
+      )
+    )
+  }
+  suffix <- paste0("\n", matches[[1]], "\n")
+  prefix_length <- nchar(value) - nchar(suffix)
+  if (prefix_length == 0L) {
+    return("")
+  }
+  substr(value, 1L, prefix_length)
+}
+
+#' @keywords internal
+tempest_product_report_for_stage_records <- function(
+  value,
+  records,
+  prior_records = records,
+  trusted_title = NULL
+) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  base <- tempest_product_report_without_execution_review(
+    value,
+    records,
+    prior_records = prior_records,
+    trusted_title = trusted_title
+  )
+  review <- tempest_stage_records_execution_review(records)
+  tempest_markdown_append_execution_review(
+    base,
+    review,
+    trusted_title = trusted_title
+  )
+}
+
+#' @keywords internal
+tempest_product_report_inline_citations <- function(value) {
+  gsub(
+    "\\[\\^(S[0-9a-f]{12})\\]",
+    "[\\1]",
+    value,
+    perl = TRUE
+  )
+}
+
+#' @keywords internal
+tempest_product_report_validate_policy <- function(
+  report_md,
+  title,
+  workspace,
+  config,
+  records
+) {
+  if (is.null(report_md)) {
+    return(invisible(NULL))
+  }
+  tempest_final_report_validate(
+    report_md = report_md,
+    workspace = workspace,
+    title = title,
+    citation_policy = config@citation_policy,
+    on_unsupported_claim = config@on_unsupported_claim,
+    min_support_score = config@min_support_score,
+    stage_records = records
+  )
+}

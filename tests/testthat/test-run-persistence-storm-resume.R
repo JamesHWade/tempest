@@ -74,7 +74,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   bound <- test_persistence_bind_storm_records(state, workspace, manifest)
   state <- bound$state
   manifest <- bound$manifest
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     dir,
     workspace,
     state,
@@ -96,7 +96,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     snapshot,
     graft_snapshot = knowledge$snapshot
   )
-  loaded <- tempest:::tempest_load_run_artifacts(
+  loaded <- tempest:::tempest_storm_load_artifacts(
     dir,
     workspace = equivalent,
     config = cfg,
@@ -113,7 +113,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     graft_snapshot = knowledge$snapshot,
     max_sources = 2L
   )
-  loaded_empty <- tempest:::tempest_load_run_artifacts(
+  loaded_empty <- tempest:::tempest_storm_load_artifacts(
     dir,
     workspace = empty,
     config = cfg,
@@ -273,7 +273,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   )
 
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       dir,
       workspace = changed_supports,
       config = cfg,

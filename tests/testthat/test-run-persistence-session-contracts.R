@@ -218,16 +218,16 @@ test_that("Co-STORM snapshots require terminal stage attempts", {
   bundle <- file.path(withr::local_tempdir(), "persona-binding")
   tempest_session_save(session, bundle)
   experts_path <- file.path(bundle, "experts.json")
-  experts <- tempest:::tempest_read_json_strict(experts_path)
+  experts <- tempest:::tempest_product_read_json(experts_path)
   experts[[1]]$name <- "Forged but internally refingerprinted expert"
   experts[[1]]$fingerprint <-
     tempest:::tempest_expert_profile_fingerprint(experts[[1]])
-  tempest:::tempest_write_json(experts_path, experts)
+  tempest:::tempest_product_write_json(experts_path, experts)
   manifest_path <- file.path(bundle, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["experts.json"]] <-
-    tempest:::tempest_session_bundle_checksum(bundle, "experts.json")
-  tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_bundle_checksum(bundle, "experts.json")
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
     tempest_session_resume(bundle, config = cfg),
     class = "tempest_session_restore_error"

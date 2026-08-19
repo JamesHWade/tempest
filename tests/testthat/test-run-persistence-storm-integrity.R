@@ -31,7 +31,7 @@ test_that("schema 7 STORM declared JSON fails closed", {
     bound <- test_persistence_bind_storm_records(state, workspace, manifest)
     state <- bound$state
     manifest <- bound$manifest
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       dir,
       workspace,
       state,
@@ -52,13 +52,13 @@ test_that("schema 7 STORM declared JSON fails closed", {
     bundle <- make_bundle()
     writeLines("{", file.path(bundle$dir, file))
     manifest_path <- file.path(bundle$dir, "run_config.json")
-    manifest <- tempest:::tempest_read_json_strict(manifest_path)
+    manifest <- tempest:::tempest_product_read_json(manifest_path)
     manifest$checksums[[file]] <-
-      tempest:::tempest_session_bundle_checksum(bundle$dir, file)
-    tempest:::tempest_write_json(manifest_path, manifest)
+      tempest:::tempest_product_bundle_checksum(bundle$dir, file)
+    tempest:::tempest_product_write_json(manifest_path, manifest)
 
     expect_error(
-      tempest:::tempest_load_run_artifacts(
+      tempest:::tempest_storm_load_artifacts(
         bundle$dir,
         config = bundle$config,
         program_set = program_set,
@@ -102,7 +102,7 @@ test_that("schema 7 manifests require files implied by completed stages", {
     bound <- test_persistence_bind_storm_records(state, workspace, manifest)
     state <- bound$state
     manifest <- bound$manifest
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       dir,
       workspace,
       state,
@@ -116,14 +116,14 @@ test_that("schema 7 manifests require files implied by completed stages", {
   }
   remove_perspectives <- function(dir) {
     manifest_path <- file.path(dir, "run_config.json")
-    manifest <- tempest:::tempest_read_json_strict(manifest_path)
+    manifest <- tempest:::tempest_product_read_json(manifest_path)
     manifest$files <- setdiff(
       unlist(manifest$files, use.names = FALSE),
       "perspectives.json"
     )
     manifest$checksums[["perspectives.json"]] <- NULL
     unlink(file.path(dir, "perspectives.json"))
-    tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_write_json(manifest_path, manifest)
     dir
   }
 
@@ -145,7 +145,7 @@ test_that("schema 7 manifests require files implied by completed stages", {
 
   current_dir <- remove_perspectives(make_bundle())
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       current_dir,
       config = tempest_config(),
       program_set = program_set,

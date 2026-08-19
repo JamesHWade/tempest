@@ -31,7 +31,7 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
     bound <- test_persistence_bind_storm_records(state, workspace, manifest)
     state <- bound$state
     manifest <- bound$manifest
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       dir,
       workspace,
       state,
@@ -46,16 +46,16 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
 
   bundle <- make_bundle()
   manifest_path <- file.path(bundle$dir, "run_config.json")
-  original <- tempest:::tempest_read_json_strict(manifest_path)
+  original <- tempest:::tempest_product_read_json(manifest_path)
   expect_identical(
     names(original),
-    tempest:::tempest_run_bundle_manifest_fields()
+    tempest:::tempest_storm_bundle_manifest_fields()
   )
 
   reordered <- original[rev(names(original))]
-  tempest:::tempest_write_json(manifest_path, reordered)
+  tempest:::tempest_product_write_json(manifest_path, reordered)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       bundle$dir,
       config = bundle$config,
       program_set = program_set,
@@ -68,9 +68,9 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
   reordered_workspace$workspace <- reordered_workspace$workspace[
     rev(names(reordered_workspace$workspace))
   ]
-  tempest:::tempest_write_json(manifest_path, reordered_workspace)
+  tempest:::tempest_product_write_json(manifest_path, reordered_workspace)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       bundle$dir,
       config = bundle$config,
       program_set = program_set,
@@ -82,9 +82,9 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
   for (field in c("topic", "title")) {
     invalid <- original
     invalid[[field]] <- NULL
-    tempest:::tempest_write_json(manifest_path, invalid)
+    tempest:::tempest_product_write_json(manifest_path, invalid)
     expect_error(
-      tempest:::tempest_load_run_artifacts(
+      tempest:::tempest_storm_load_artifacts(
         bundle$dir,
         config = bundle$config,
         program_set = program_set,
@@ -96,9 +96,9 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
 
   invalid <- original
   invalid$workflow_run <- list()
-  tempest:::tempest_write_json(manifest_path, invalid)
+  tempest:::tempest_product_write_json(manifest_path, invalid)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       bundle$dir,
       config = bundle$config,
       program_set = program_set,
@@ -109,9 +109,9 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
 
   nested_files <- original
   nested_files$files[[1]] <- list(nested_files$files[[1]])
-  tempest:::tempest_write_json(manifest_path, nested_files)
+  tempest:::tempest_product_write_json(manifest_path, nested_files)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       bundle$dir,
       config = bundle$config,
       program_set = program_set,
@@ -125,9 +125,9 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
   nested_checksums$checksums[[first_checksum]] <- list(
     nested_checksums$checksums[[first_checksum]]
   )
-  tempest:::tempest_write_json(manifest_path, nested_checksums)
+  tempest:::tempest_product_write_json(manifest_path, nested_checksums)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       bundle$dir,
       config = bundle$config,
       program_set = program_set,
@@ -138,8 +138,8 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
 
   explicit_empty <- original
   explicit_empty$completed_stages <- character()
-  tempest:::tempest_write_json(manifest_path, explicit_empty)
-  restored <- tempest:::tempest_load_run_artifacts(
+  tempest:::tempest_product_write_json(manifest_path, explicit_empty)
+  restored <- tempest:::tempest_storm_load_artifacts(
     bundle$dir,
     config = bundle$config,
     program_set = program_set,

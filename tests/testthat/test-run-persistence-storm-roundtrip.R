@@ -3,7 +3,7 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
   test_env <- environment()
   root <- withr::local_tempdir(pattern = "tempest-runs-")
 
-  run_dir <- tempest:::tempest_prepare_run_dir(root, "Lithium Batteries")
+  run_dir <- tempest:::tempest_storm_prepare_run_dir(root, "Lithium Batteries")
   cfg <- tempest_config()
   program_set <- tempest_program_set()
   program_references <-
@@ -132,7 +132,7 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
       class = "tempest_stage_record_error"
     )
   }
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     workspace,
     state,
@@ -155,7 +155,7 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
     clone
   }
 
-  loaded <- tempest:::tempest_load_run_artifacts(
+  loaded <- tempest:::tempest_storm_load_artifacts(
     pristine_dir,
     config = cfg,
     program_set = program_set,
@@ -241,7 +241,7 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
   )
   tempest:::tempest_atomic_write_lines(double_schema, manifest_path)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -253,16 +253,16 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
   run_dir <- clone_bundle()
   sidecar_path <- file.path(run_dir, "stage_records.json")
   manifest_path <- file.path(run_dir, "run_config.json")
-  tempest:::tempest_write_json(sidecar_path, list())
-  erased_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  tempest:::tempest_product_write_json(sidecar_path, list())
+  erased_manifest <- tempest:::tempest_product_read_json(manifest_path)
   erased_manifest$checksums[["stage_records.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       run_dir,
       "stage_records.json"
     )
-  tempest:::tempest_write_json(manifest_path, erased_manifest)
+  tempest:::tempest_product_write_json(manifest_path, erased_manifest)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -273,11 +273,11 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
 
   run_dir <- clone_bundle()
   manifest_path <- file.path(run_dir, "run_config.json")
-  changed_manifest_trace <- tempest:::tempest_read_json_strict(manifest_path)
+  changed_manifest_trace <- tempest:::tempest_product_read_json(manifest_path)
   changed_manifest_trace$research_manifest$traces[[1]]$status <- "failed"
-  tempest:::tempest_write_json(manifest_path, changed_manifest_trace)
+  tempest:::tempest_product_write_json(manifest_path, changed_manifest_trace)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -289,18 +289,18 @@ test_that("schema 7 run bundles restore workspace, state, and manifest", {
   run_dir <- clone_bundle()
   sidecar_path <- file.path(run_dir, "stage_records.json")
   manifest_path <- file.path(run_dir, "run_config.json")
-  records <- tempest:::tempest_read_json_strict(sidecar_path)
+  records <- tempest:::tempest_product_read_json(sidecar_path)
   records[[1]]$program_artifact_id <- paste0("sha256:", strrep("0", 64L))
-  tempest:::tempest_write_json(sidecar_path, records)
-  persisted_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  tempest:::tempest_product_write_json(sidecar_path, records)
+  persisted_manifest <- tempest:::tempest_product_read_json(manifest_path)
   persisted_manifest$checksums[["stage_records.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       run_dir,
       "stage_records.json"
     )
-  tempest:::tempest_write_json(manifest_path, persisted_manifest)
+  tempest:::tempest_product_write_json(manifest_path, persisted_manifest)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -340,7 +340,7 @@ test_that("run restore rejects tampered expert-profile records", {
   bound <- test_persistence_bind_storm_records(state, workspace, manifest)
   state <- bound$state
   manifest <- bound$manifest
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     workspace,
     state,
@@ -351,7 +351,7 @@ test_that("run restore rejects tampered expert-profile records", {
     research_strategy = "key_questions"
   )
   experts_path <- file.path(run_dir, "experts.json")
-  records <- tempest:::tempest_read_json_strict(experts_path)
+  records <- tempest:::tempest_product_read_json(experts_path)
   for (field in c(
     "version",
     "state",
@@ -384,18 +384,18 @@ test_that("run restore rejects tampered expert-profile records", {
     regexp = "non-null writer fields"
   )
   records[[1]]$fingerprint <- strrep("0", 64)
-  tempest:::tempest_write_json(experts_path, records)
+  tempest:::tempest_product_write_json(experts_path, records)
   manifest_path <- file.path(run_dir, "run_config.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["experts.json"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       run_dir,
       "experts.json"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
 
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -409,7 +409,7 @@ test_that("completed stage metadata controls resume state", {
   skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")
 
-  run_dir <- tempest:::tempest_prepare_run_dir(root, "Partial Run")
+  run_dir <- tempest:::tempest_storm_prepare_run_dir(root, "Partial Run")
   cfg <- tempest_config()
   program_set <- tempest_program_set()
   workspace <- tempest_research_workspace()
@@ -438,7 +438,7 @@ test_that("completed stage metadata controls resume state", {
   state <- bound$state
   manifest <- bound$manifest
 
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     workspace,
     state,
@@ -449,7 +449,7 @@ test_that("completed stage metadata controls resume state", {
     research_strategy = "key_questions"
   )
 
-  loaded <- tempest:::tempest_load_run_artifacts(
+  loaded <- tempest:::tempest_storm_load_artifacts(
     run_dir,
     config = cfg,
     program_set = program_set,
@@ -461,14 +461,14 @@ test_that("completed stage metadata controls resume state", {
   )
 
   expect_equal(
-    tempest:::tempest_stage_complete(
+    tempest:::tempest_storm_stage_complete(
       loaded$completed_stages,
       "perspectives"
     ),
     TRUE
   )
   expect_equal(
-    tempest:::tempest_stage_complete(
+    tempest:::tempest_storm_stage_complete(
       loaded$completed_stages,
       "research"
     ),

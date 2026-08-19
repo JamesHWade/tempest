@@ -246,7 +246,7 @@ test_that("no-reference Co reports remain canonical persistence products", {
   expect_identical(restored$manifest@status, "succeeded")
   expect_identical(
     restored$manifest@deliverables$report_md$sha256,
-    tempest:::tempest_persistence_report_reference(report_md)$sha256
+    tempest:::tempest_product_report_reference(report_md)$sha256
   )
 })
 
@@ -375,12 +375,12 @@ test_that("public session extraction persists its exact terminal record", {
     "TempestSession"
   )
   records_path <- file.path(bundle, "stage_records.json")
-  tempest:::tempest_write_json(records_path, list())
+  tempest:::tempest_product_write_json(records_path, list())
   manifest_path <- file.path(bundle, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["stage_records.json"]] <-
-    tempest:::tempest_session_bundle_checksum(bundle, "stage_records.json")
-  tempest:::tempest_write_json(manifest_path, manifest)
+    tempest:::tempest_product_bundle_checksum(bundle, "stage_records.json")
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
     tempest_session_resume(bundle, config = cfg),
     class = "tempest_session_restore_error"

@@ -271,9 +271,9 @@ test_that("public partial STORM resumes cannot expand their request", {
 test_that("tempest_run resume starts fresh when no manifest exists", {
   provider_started <- FALSE
   loaded_before_provider <- FALSE
-  original_loader <- tempest:::tempest_load_run_artifacts
+  original_loader <- tempest:::tempest_storm_load_artifacts
   local_mocked_bindings(
-    tempest_load_run_artifacts = function(...) {
+    tempest_storm_load_artifacts = function(...) {
       if (!provider_started) {
         loaded_before_provider <<- TRUE
       }
@@ -310,13 +310,13 @@ test_that("tempest_run rejects a resumed checkpoint for another topic", {
   )
   output_root <- withr::local_tempdir()
   run_id <- "topic-identity"
-  run_dir <- tempest:::tempest_prepare_run_dir(
+  run_dir <- tempest:::tempest_storm_prepare_run_dir(
     output_root,
     "Persisted topic",
     run_id = run_id
   )
   program_set <- tempest_program_set()
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     tempest_research_workspace(),
     tempest:::tempest_storm_state("Persisted topic"),
@@ -361,7 +361,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
 
   for (terminal_status in c("failed", "cancelled")) {
     run_id <- paste0("terminal-", terminal_status)
-    run_dir <- tempest:::tempest_prepare_run_dir(
+    run_dir <- tempest:::tempest_storm_prepare_run_dir(
       output_root,
       "Terminal resume",
       run_id = run_id
@@ -374,7 +374,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
       programs = tempest:::tempest_program_set_manifest_programs(program_set),
       status = terminal_status
     )
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       run_dir,
       workspace,
       tempest:::tempest_storm_state("Terminal resume"),
@@ -399,7 +399,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
       ),
       class = "tempest_run_resume_error"
     )
-    persisted <- tempest:::tempest_read_json_strict(file.path(
+    persisted <- tempest:::tempest_product_read_json(file.path(
       run_dir,
       "run_config.json"
     ))
@@ -411,7 +411,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     )
   }
 
-  run_dir <- tempest:::tempest_prepare_run_dir(
+  run_dir <- tempest:::tempest_storm_prepare_run_dir(
     output_root,
     "Completed resume",
     run_id = "terminal-succeeded"
@@ -423,7 +423,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     cfg,
     program_set
   )
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     completed$workspace,
     completed$state,
@@ -433,7 +433,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     steps = c("perspectives", "research", "outline", "write", "polish"),
     research_strategy = "key_questions"
   )
-  expected_state <- tempest:::tempest_load_run_artifacts(
+  expected_state <- tempest:::tempest_storm_load_artifacts(
     run_dir,
     config = cfg,
     program_set = program_set,
@@ -499,7 +499,7 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
     ),
     class = "tempest_run_resume_error"
   )
-  persisted <- tempest:::tempest_read_json_strict(file.path(
+  persisted <- tempest:::tempest_product_read_json(file.path(
     run_dir,
     "run_config.json"
   ))
@@ -1044,7 +1044,7 @@ test_that("tempest_run emits terminal progress events on failure", {
       "workflow:NA:failed"
     )
   )
-  persisted <- tempest:::tempest_read_json_strict(file.path(
+  persisted <- tempest:::tempest_product_read_json(file.path(
     output_root,
     "failed-storm-run",
     "run_config.json"
@@ -1086,9 +1086,9 @@ test_that("final STORM persistence failure is recorded without masking it", {
   skip_if_not_installed("ellmer")
   fixture <- storm_progress_fixture()
   output_root <- withr::local_tempdir()
-  original_save <- tempest:::tempest_save_run_artifacts
+  original_save <- tempest:::tempest_storm_save_artifacts
   local_mocked_bindings(
-    tempest_save_run_artifacts = function(
+    tempest_storm_save_artifacts = function(
       run_dir,
       workspace,
       state,
@@ -1125,7 +1125,7 @@ test_that("final STORM persistence failure is recorded without masking it", {
     ),
     error = \(error) error
   )
-  persisted <- tempest:::tempest_read_json_strict(file.path(
+  persisted <- tempest:::tempest_product_read_json(file.path(
     output_root,
     "terminal-persistence",
     "run_config.json"
@@ -1151,9 +1151,9 @@ test_that("STORM publishes report authority atomically and restores it", {
   program_set <- tempest_program_set()
   observations <- list()
   mutation_conditions <- list()
-  original_save <- tempest:::tempest_save_run_artifacts
+  original_save <- tempest:::tempest_storm_save_artifacts
   local_mocked_bindings(
-    tempest_save_run_artifacts = function(
+    tempest_storm_save_artifacts = function(
       run_dir,
       workspace,
       state,
@@ -1210,17 +1210,17 @@ test_that("STORM publishes report authority atomically and restores it", {
     progress = progress,
     verbose = FALSE
   )
-  persisted <- tempest:::tempest_read_json_strict(file.path(
+  persisted <- tempest:::tempest_product_read_json(file.path(
     result$output_dir,
     "run_config.json"
   ))$research_manifest
-  restored <- tempest:::tempest_load_run_artifacts(
+  restored <- tempest:::tempest_storm_load_artifacts(
     result$output_dir,
     config = fixture$config,
     program_set = program_set,
     run_id = "atomic-storm-publication"
   )
-  persisted_workspace <- tempest:::tempest_read_json_strict(file.path(
+  persisted_workspace <- tempest:::tempest_product_read_json(file.path(
     result$output_dir,
     "workspace.json"
   ))
@@ -1336,7 +1336,7 @@ test_that("STORM finalization failure preserves a running report-free bundle", {
       ),
       error = \(error) error
     )
-    persisted <- tempest:::tempest_read_json_strict(file.path(
+    persisted <- tempest:::tempest_product_read_json(file.path(
       output_root,
       run_id,
       "run_config.json"
@@ -1389,7 +1389,7 @@ test_that("STORM preserves a terminal Deputy attempt when extraction fails", {
     ),
     error = \(error) error
   )
-  restored <- tempest:::tempest_load_run_artifacts(
+  restored <- tempest:::tempest_storm_load_artifacts(
     file.path(output_root, "storm-post-completion-extraction-failure"),
     config = fixture$config,
     program_set = program_set,

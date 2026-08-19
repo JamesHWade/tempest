@@ -1239,7 +1239,7 @@ test_that("session archives round-trip product state through upload", {
   expect_equal(restored$topic, "Downloadable session")
   expect_null(tempest:::tempest_session_report_value(restored))
   archive_files <- utils::unzip(archive, list = TRUE)$Name
-  manifest <- tempest:::tempest_read_json_strict(
+  manifest <- tempest:::tempest_product_read_json(
     file.path(bundle, "session.json")
   )
   expect_setequal(
@@ -1395,7 +1395,7 @@ test_that("session archive extraction rejects undeclared and tampered files", {
   root <- withr::local_tempdir()
   bundle <- file.path(root, "bundle")
   tempest_session_save(ses, bundle)
-  manifest <- tempest:::tempest_read_json_strict(
+  manifest <- tempest:::tempest_product_read_json(
     file.path(bundle, "session.json")
   )
   content_files <- as.character(unlist(manifest$files))

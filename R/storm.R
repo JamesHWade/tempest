@@ -347,7 +347,7 @@ tempest_run_internal <- function(
     )
   }
   store <- workspace
-  run_dir <- tempest_prepare_run_dir(output_dir, topic, run_id = run_id)
+  run_dir <- tempest_storm_prepare_run_dir(output_dir, topic, run_id = run_id)
   progress <- tempest_progress_callback(progress)
   supplied_run_id <- if (
     rlang::is_string(run_id) &&
@@ -488,7 +488,7 @@ tempest_run_internal <- function(
     if (is.null(run_dir)) {
       return(invisible(NULL))
     }
-    bound_manifest <- tempest_save_run_artifacts(
+    bound_manifest <- tempest_storm_save_artifacts(
       run_dir,
       workspace,
       state,
@@ -593,14 +593,14 @@ tempest_run_internal <- function(
   run_manifest <- if (is.null(run_dir)) {
     NULL
   } else {
-    tempest_run_artifact_paths(run_dir)$run_config
+    tempest_storm_artifact_paths(run_dir)$run_config
   }
   if (
     !is.null(run_manifest) &&
       isTRUE(resume) &&
       file.exists(run_manifest)
   ) {
-    loaded_run <- tempest_load_run_artifacts(
+    loaded_run <- tempest_storm_load_artifacts(
       run_dir,
       workspace = workspace,
       config = config,
@@ -963,7 +963,7 @@ tempest_run_internal <- function(
       if (
         "perspectives" %in%
           steps &&
-          !tempest_stage_complete(completed_stages, "perspectives")
+          !tempest_storm_stage_complete(completed_stages, "perspectives")
       ) {
         emit_stage_started(
           "perspectives",
@@ -1046,7 +1046,7 @@ tempest_run_internal <- function(
             "Every research perspective requires one explicit expert profile."
           )
         }
-        completed_stages <- tempest_mark_stage_complete(
+        completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "perspectives"
         )
@@ -1065,7 +1065,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "perspectives" %in% steps &&
-            tempest_stage_complete(completed_stages, "perspectives")
+            tempest_storm_stage_complete(completed_stages, "perspectives")
         ) {
           tempest_inform("Using persisted perspectives from {.path {run_dir}}")
         }
@@ -1085,7 +1085,7 @@ tempest_run_internal <- function(
       if (
         "research" %in%
           steps &&
-          !tempest_stage_complete(completed_stages, "research")
+          !tempest_storm_stage_complete(completed_stages, "research")
       ) {
         emit_stage_started(
           "research",
@@ -1355,7 +1355,7 @@ tempest_run_internal <- function(
           }
         }
 
-        completed_stages <- tempest_mark_stage_complete(
+        completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "research"
         )
@@ -1374,7 +1374,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "research" %in% steps &&
-            tempest_stage_complete(completed_stages, "research")
+            tempest_storm_stage_complete(completed_stages, "research")
         ) {
           tempest_inform(
             "Using persisted research artifacts from {.path {run_dir}}"
@@ -1383,7 +1383,7 @@ tempest_run_internal <- function(
         if (
           "research" %in%
             steps &&
-            tempest_stage_complete(completed_stages, "research")
+            tempest_storm_stage_complete(completed_stages, "research")
         ) {
           emit_stage_skipped(
             "research",
@@ -1396,7 +1396,7 @@ tempest_run_internal <- function(
       if (
         "outline" %in%
           steps &&
-          !tempest_stage_complete(completed_stages, "outline")
+          !tempest_storm_stage_complete(completed_stages, "outline")
       ) {
         emit_stage_started(
           "outline",
@@ -1443,7 +1443,7 @@ tempest_run_internal <- function(
             next_state
           })
         )
-        completed_stages <- tempest_mark_stage_complete(
+        completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "outline"
         )
@@ -1459,7 +1459,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "outline" %in% steps &&
-            tempest_stage_complete(completed_stages, "outline")
+            tempest_storm_stage_complete(completed_stages, "outline")
         ) {
           tempest_inform("Using persisted outline from {.path {run_dir}}")
         }
@@ -1474,7 +1474,9 @@ tempest_run_internal <- function(
       }
 
       if (
-        "write" %in% steps && !tempest_stage_complete(completed_stages, "write")
+        "write" %in%
+          steps &&
+          !tempest_storm_stage_complete(completed_stages, "write")
       ) {
         emit_stage_started(
           "write",
@@ -1542,7 +1544,7 @@ tempest_run_internal <- function(
           })
         )
         draft_md <- paste0(lead_section, "\n\n", draft_md)
-        completed_stages <- tempest_mark_stage_complete(
+        completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "write"
         )
@@ -1558,7 +1560,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "write" %in% steps &&
-            tempest_stage_complete(completed_stages, "write")
+            tempest_storm_stage_complete(completed_stages, "write")
         ) {
           tempest_inform("Using persisted draft article from {.path {run_dir}}")
         }
@@ -1575,7 +1577,7 @@ tempest_run_internal <- function(
       if (
         "polish" %in%
           steps &&
-          !tempest_stage_complete(completed_stages, "polish")
+          !tempest_storm_stage_complete(completed_stages, "polish")
       ) {
         emit_stage_started(
           "polish",
@@ -1598,7 +1600,7 @@ tempest_run_internal <- function(
           state$stage_records,
           title = title
         )
-        candidate_completed_stages <- tempest_mark_stage_complete(
+        candidate_completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "polish"
         )
@@ -1642,7 +1644,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "polish" %in% steps &&
-            tempest_stage_complete(completed_stages, "polish")
+            tempest_storm_stage_complete(completed_stages, "polish")
         ) {
           tempest_inform(
             "Using persisted polished report from {.path {run_dir}}"

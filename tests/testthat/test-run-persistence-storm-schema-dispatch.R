@@ -15,7 +15,7 @@ test_that("persistence schema dispatch rejects fractional versions", {
     class = session_class
   )
   expect_error(
-    tempest:::tempest_run_bundle_validate_manifest(
+    tempest:::tempest_storm_bundle_validate_manifest(
       withr::local_tempdir(),
       list(schema_version = 6.5)
     ),

@@ -12,7 +12,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
   )
   state <- tempest:::tempest_storm_state("ProgramSet resume")
 
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     tempest_research_workspace(),
     state,
@@ -23,7 +23,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
     research_strategy = "key_questions"
   )
   manifest_path <- file.path(run_dir, "run_config.json")
-  persisted <- tempest:::tempest_read_json_strict(manifest_path)
+  persisted <- tempest:::tempest_product_read_json(manifest_path)
   restored_manifest <- tempest:::tempest_research_manifest_from_record(
     persisted$research_manifest
   )
@@ -36,7 +36,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
   program_files <- unlist(persisted$files, use.names = FALSE)
   expect_length(program_files[startsWith(program_files, "programs/")], 0L)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       run_id = "program-set-resume"
@@ -49,7 +49,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
     program_set,
     file.path(root, "program-set")
   )
-  relocated <- tempest:::tempest_load_run_artifacts(
+  relocated <- tempest:::tempest_storm_load_artifacts(
     run_dir,
     config = cfg,
     program_set = file_program_set,
@@ -66,9 +66,9 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
 
   tampered <- persisted
   tampered$research_manifest$programs$personas <- NULL
-  tempest:::tempest_write_json(manifest_path, tampered)
+  tempest:::tempest_product_write_json(manifest_path, tampered)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -81,9 +81,9 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
   tampered <- persisted
   tampered$research_manifest$programs$perspectives$program_artifact_id <-
     paste0("sha256:", strrep("0", 64L))
-  tempest:::tempest_write_json(manifest_path, tampered)
+  tempest:::tempest_product_write_json(manifest_path, tampered)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -95,9 +95,9 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
 
   tampered <- persisted
   tampered$research_manifest$programs$perspectives$evaluator_version <- "999"
-  tempest:::tempest_write_json(manifest_path, tampered)
+  tempest:::tempest_product_write_json(manifest_path, tampered)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -109,9 +109,9 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
 
   tampered <- persisted
   tampered$research_manifest$programs$perspectives$artifact_reference <- NULL
-  tempest:::tempest_write_json(manifest_path, tampered)
+  tempest:::tempest_product_write_json(manifest_path, tampered)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = program_set,
@@ -120,7 +120,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
     class = "tempest_run_restore_error",
     regexp = "research manifest is invalid"
   )
-  tempest:::tempest_write_json(manifest_path, persisted)
+  tempest:::tempest_product_write_json(manifest_path, persisted)
 
   corrupt_program_set <- tempest_program_set()
   corrupt_program <- tempest:::tempest_program_set_program(
@@ -129,7 +129,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
   )
   corrupt_program$config$identity_corruption <- "changed"
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       run_dir,
       config = cfg,
       program_set = corrupt_program_set,
@@ -140,7 +140,7 @@ test_that("STORM persistence verifies complete ProgramSet identity on resume", {
 
   missing_save_dir <- file.path(root, "missing-program-set")
   expect_error(
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       missing_save_dir,
       tempest_research_workspace(),
       state,

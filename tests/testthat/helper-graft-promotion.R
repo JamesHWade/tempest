@@ -57,7 +57,7 @@ test_promotion_storm_fixture <- function() {
     programs = tempest:::tempest_program_set_manifest_programs(program_set),
     status = "succeeded"
   )
-  authority_manifest <- tempest:::tempest_persistence_manifest_bind_stage_records(
+  authority_manifest <- tempest:::tempest_product_authority_bind_stage_records(
     authority_manifest,
     stage_records,
     deputy_traces = deputy_traces,
@@ -67,9 +67,9 @@ test_promotion_storm_fixture <- function() {
       character(1)
     )
   )
-  authority_manifest <- tempest:::tempest_persistence_manifest_bind_report(
+  authority_manifest <- tempest:::tempest_product_authority_bind_report(
     authority_manifest,
-    tempest:::tempest_persistence_report_for_records(
+    tempest:::tempest_product_report_for_stage_records(
       completed$state$report_md,
       stage_records,
       prior_records = product_stage_records

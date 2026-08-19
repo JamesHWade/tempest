@@ -259,12 +259,12 @@ test_that("public session verification persists pair support and source proof", 
   )
   tempest:::tempest_write_text(report_path, forged_persisted)
   manifest_path <- file.path(bundle, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["report.md"]] <-
-    tempest:::tempest_session_bundle_checksum(bundle, "report.md")
+    tempest:::tempest_product_bundle_checksum(bundle, "report.md")
   manifest$report_reference <-
-    tempest:::tempest_persistence_report_reference(forged_persisted)
-  bound_manifest <- tempest:::tempest_persistence_manifest_bind_report(
+    tempest:::tempest_product_report_reference(forged_persisted)
+  bound_manifest <- tempest:::tempest_product_authority_bind_report(
     tempest:::tempest_research_manifest_from_record(
       manifest$research_manifest
     ),
@@ -272,7 +272,7 @@ test_that("public session verification persists pair support and source proof", 
   )
   manifest$research_manifest <-
     tempest:::tempest_research_manifest_record(bound_manifest)
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
     tempest_session_resume(bundle, config = cfg),
     class = "tempest_session_restore_error"

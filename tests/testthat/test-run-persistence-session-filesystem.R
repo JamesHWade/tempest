@@ -96,7 +96,7 @@ test_that("session and STORM saves reject symbolic-link bundle roots", {
     programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
   storm_workspace <- tempest_research_workspace()
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     storm_target,
     storm_workspace,
     tempest:::tempest_storm_state(
@@ -113,7 +113,7 @@ test_that("session and STORM saves reject symbolic-link bundle roots", {
   expect_identical(file.symlink(storm_target, storm_alias), TRUE)
 
   expect_error(
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       paste0(storm_alias, .Platform$file.sep),
       storm_workspace,
       tempest:::tempest_storm_state(
@@ -129,7 +129,7 @@ test_that("session and STORM saves reject symbolic-link bundle roots", {
     class = "tempest_run_persistence_error"
   )
   expect_identical(Sys.readlink(storm_alias), storm_target)
-  restored_storm <- tempest:::tempest_load_run_artifacts(
+  restored_storm <- tempest:::tempest_storm_load_artifacts(
     storm_target,
     config = cfg,
     program_set = program_set,
@@ -186,9 +186,9 @@ test_that("Tempest session bundle resume reports classed file errors", {
 
   bundle_dir <- fresh_bundle("unsupported-schema")
   manifest_path <- file.path(bundle_dir, "session.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$schema_version <- 999L
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
@@ -253,7 +253,7 @@ test_that("failed STORM replacement preserves the previous bundle byte-for-byte"
     "Atomic STORM",
     title = "Original title"
   )
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     workspace,
     original,
@@ -292,7 +292,7 @@ test_that("failed STORM replacement preserves the previous bundle byte-for-byte"
   )
 
   expect_error(
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       run_dir,
       workspace,
       replacement,
@@ -309,7 +309,7 @@ test_that("failed STORM replacement preserves the previous bundle byte-for-byte"
   remnants <- list.files(root, all.files = TRUE, no.. = TRUE)
   remnants <- remnants[grepl("^\\.atomic-run-(staging|backup)-", remnants)]
   expect_identical(remnants, character())
-  restored <- tempest:::tempest_load_run_artifacts(
+  restored <- tempest:::tempest_storm_load_artifacts(
     run_dir,
     config = cfg,
     program_set = program_set,

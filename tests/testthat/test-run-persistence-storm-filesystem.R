@@ -9,7 +9,7 @@ test_that("run restore rejects undeclared product files", {
     config = cfg,
     programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     dir,
     workspace,
     state,
@@ -22,7 +22,7 @@ test_that("run restore rejects undeclared product files", {
   writeLines("UNDECLARED", file.path(dir, "storm_gen_article_polished.md"))
 
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       dir,
       config = cfg,
       program_set = program_set,
@@ -40,7 +40,7 @@ test_that("run save refuses pre-existing unowned files", {
   program_set <- tempest_program_set()
 
   expect_error(
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       dir,
       tempest_research_workspace(),
       tempest:::tempest_storm_state("Unowned files"),
@@ -68,7 +68,7 @@ test_that("run manifest failures are classed and reject escaping symlinks", {
     dir <- tempfile("tempest-run-")
     dir.create(dir)
     cfg <- tempest_config()
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       dir,
       tempest_research_workspace(),
       tempest:::tempest_storm_state("t"),
@@ -87,11 +87,11 @@ test_that("run manifest failures are classed and reject escaping symlinks", {
 
   missing_checksum_dir <- make_bundle()
   manifest_path <- file.path(missing_checksum_dir, "run_config.json")
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[[manifest$files[[1]]]] <- NULL
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       missing_checksum_dir,
       config = tempest_config(),
       program_set = program_set,
@@ -108,7 +108,7 @@ test_that("run manifest failures are classed and reject escaping symlinks", {
   unlink(source_path)
   expect_true(file.symlink(outside_path, source_path))
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       symlink_dir,
       config = tempest_config(),
       program_set = program_set,
@@ -134,7 +134,7 @@ test_that("tempest_atomic_write_lines writes content and leaves no temp files", 
 test_that("the run manifest is written after the artifacts it certifies", {
   skip_if_not_installed("jsonlite")
   dir <- withr::local_tempdir()
-  paths <- tempest:::tempest_run_artifact_paths(dir)
+  paths <- tempest:::tempest_storm_artifact_paths(dir)
   cfg <- tempest_config()
   program_set <- tempest_program_set()
   program_references <-
@@ -197,7 +197,7 @@ test_that("the run manifest is written after the artifacts it certifies", {
   state <- bound$state
   manifest <- bound$manifest
 
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     dir,
     workspace,
     state,
@@ -233,7 +233,7 @@ test_that("references.json holds only the cited sources and reloads", {
   research_manifest <- fixture$manifest
   s1 <- fixture$source
 
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     dir,
     workspace,
     state,
@@ -244,12 +244,12 @@ test_that("references.json holds only the cited sources and reloads", {
     research_strategy = "key_questions"
   )
 
-  refs <- tempest:::tempest_read_json_strict(
+  refs <- tempest:::tempest_product_read_json(
     file.path(dir, "references.json")
   )
   expect_setequal(vapply(refs, function(r) r$id, character(1)), s1$id)
 
-  loaded <- tempest:::tempest_load_run_artifacts(
+  loaded <- tempest:::tempest_storm_load_artifacts(
     dir,
     config = cfg,
     program_set = program_set,
@@ -259,14 +259,14 @@ test_that("references.json holds only the cited sources and reloads", {
 
   refs[[1]]$title <- "Forged title"
   references_path <- file.path(dir, "references.json")
-  tempest:::tempest_write_json(references_path, refs)
+  tempest:::tempest_product_write_json(references_path, refs)
   manifest_path <- file.path(dir, "run_config.json")
-  bundle_manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  bundle_manifest <- tempest:::tempest_product_read_json(manifest_path)
   bundle_manifest$checksums[["references.json"]] <-
-    tempest:::tempest_session_bundle_checksum(dir, "references.json")
-  tempest:::tempest_write_json(manifest_path, bundle_manifest)
+    tempest:::tempest_product_bundle_checksum(dir, "references.json")
+  tempest:::tempest_product_write_json(manifest_path, bundle_manifest)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       dir,
       config = cfg,
       program_set = program_set,
@@ -275,7 +275,7 @@ test_that("references.json holds only the cited sources and reloads", {
     class = "tempest_run_restore_error"
   )
 
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     dir,
     workspace,
     state,
@@ -287,15 +287,15 @@ test_that("references.json holds only the cited sources and reloads", {
   )
   report_path <- file.path(dir, "storm_gen_article_polished.md")
   writeLines(paste0("Unknown citation [", s2$id, "]."), report_path)
-  manifest <- tempest:::tempest_read_json_strict(manifest_path)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["storm_gen_article_polished.md"]] <-
-    tempest:::tempest_session_bundle_checksum(
+    tempest:::tempest_product_bundle_checksum(
       dir,
       "storm_gen_article_polished.md"
     )
-  tempest:::tempest_write_json(manifest_path, manifest)
+  tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       dir,
       config = cfg,
       program_set = program_set,
@@ -307,12 +307,12 @@ test_that("references.json holds only the cited sources and reloads", {
 
 test_that("schema 6 STORM bundles fail closed", {
   dir <- withr::local_tempdir()
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(dir, "run_config.json"),
     list(schema_version = 6L)
   )
   expect_error(
-    tempest:::tempest_load_run_artifacts(dir),
+    tempest:::tempest_storm_load_artifacts(dir),
     class = "tempest_unsupported_format_error"
   )
   expect_error(
@@ -342,7 +342,7 @@ test_that("schema 7 resume protects run and config identity", {
     programs = tempest:::tempest_program_set_manifest_programs(program_set),
     status = "failed"
   )
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     dir,
     workspace,
     tempest:::tempest_storm_state("Protected run"),
@@ -354,7 +354,7 @@ test_that("schema 7 resume protects run and config identity", {
   )
 
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       dir,
       config = cfg,
       program_set = program_set,
@@ -363,7 +363,7 @@ test_that("schema 7 resume protects run and config identity", {
     class = "tempest_run_restore_error"
   )
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       dir,
       config = tempest_config(max_search_results = 4L),
       program_set = program_set,
@@ -372,7 +372,7 @@ test_that("schema 7 resume protects run and config identity", {
     class = "tempest_run_restore_error"
   )
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       dir,
       workspace = tempest_research_workspace(
         base_snapshot_id = "snapshot-b"
@@ -384,7 +384,7 @@ test_that("schema 7 resume protects run and config identity", {
     class = "tempest_run_restore_error"
   )
 
-  restored <- tempest:::tempest_load_run_artifacts(
+  restored <- tempest:::tempest_storm_load_artifacts(
     dir,
     config = cfg,
     program_set = program_set,

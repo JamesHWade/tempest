@@ -12,7 +12,7 @@ test_that("STORM requested steps persist canonically and remain immutable", {
   )
   state <- tempest:::tempest_storm_state("Requested steps")
 
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     workspace,
     state,
@@ -22,7 +22,7 @@ test_that("STORM requested steps persist canonically and remain immutable", {
     steps = c("polish", "research", "write"),
     research_strategy = "key_questions"
   )
-  loaded <- tempest:::tempest_load_run_artifacts(
+  loaded <- tempest:::tempest_storm_load_artifacts(
     run_dir,
     config = cfg,
     program_set = program_set,
@@ -34,7 +34,7 @@ test_that("STORM requested steps persist canonically and remain immutable", {
   )
   expect_identical(loaded$completed_stages, character())
 
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     run_dir,
     workspace,
     state,
@@ -45,7 +45,7 @@ test_that("STORM requested steps persist canonically and remain immutable", {
     research_strategy = "key_questions"
   )
   expect_error(
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       run_dir,
       workspace,
       state,
@@ -57,7 +57,7 @@ test_that("STORM requested steps persist canonically and remain immutable", {
     ),
     class = "tempest_run_persistence_error"
   )
-  restored <- tempest:::tempest_load_run_artifacts(
+  restored <- tempest:::tempest_storm_load_artifacts(
     run_dir,
     config = cfg,
     program_set = program_set,
@@ -71,7 +71,7 @@ test_that("succeeded STORM publication requires the full dependency chain", {
   cfg <- tempest_config()
   program_set <- tempest_program_set()
   expect_error(
-    tempest:::tempest_save_run_artifacts(
+    tempest:::tempest_storm_save_artifacts(
       withr::local_tempdir(),
       tempest_research_workspace(),
       tempest:::tempest_storm_state("Partial publication"),

@@ -104,7 +104,7 @@ test_that("Tempest session bundles save and resume durable state", {
 
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
   saved <- tempest_session_save(session, bundle_dir)
-  manifest <- tempest:::tempest_read_json_strict(
+  manifest <- tempest:::tempest_product_read_json(
     file.path(bundle_dir, "session.json")
   )
   expect_equal(
@@ -151,7 +151,7 @@ test_that("Tempest session bundles save and resume durable state", {
 
   schema_eight_manifest <- manifest
   schema_eight_manifest$schema_version <- 8L
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     schema_eight_manifest
   )
@@ -161,7 +161,7 @@ test_that("Tempest session bundles save and resume durable state", {
   )
 
   reordered_manifest <- manifest[rev(names(manifest))]
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     reordered_manifest
   )
@@ -174,7 +174,7 @@ test_that("Tempest session bundles save and resume durable state", {
   reordered_workspace$workspace <- reordered_workspace$workspace[
     rev(names(reordered_workspace$workspace))
   ]
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     reordered_workspace
   )
@@ -182,11 +182,14 @@ test_that("Tempest session bundles save and resume durable state", {
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
   )
-  tempest:::tempest_write_json(file.path(bundle_dir, "session.json"), manifest)
+  tempest:::tempest_product_write_json(
+    file.path(bundle_dir, "session.json"),
+    manifest
+  )
 
   downgraded_manifest <- manifest
   downgraded_manifest$workspace$schema_version <- 4L
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     downgraded_manifest
   )
@@ -194,11 +197,14 @@ test_that("Tempest session bundles save and resume durable state", {
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
   )
-  tempest:::tempest_write_json(file.path(bundle_dir, "session.json"), manifest)
+  tempest:::tempest_product_write_json(
+    file.path(bundle_dir, "session.json"),
+    manifest
+  )
 
   nested_files <- manifest
   nested_files$files[[1]] <- list(nested_files$files[[1]])
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     nested_files
   )
@@ -212,7 +218,7 @@ test_that("Tempest session bundles save and resume durable state", {
   nested_checksums$checksums[[first_checksum]] <- list(
     nested_checksums$checksums[[first_checksum]]
   )
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     nested_checksums
   )
@@ -220,7 +226,10 @@ test_that("Tempest session bundles save and resume durable state", {
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
   )
-  tempest:::tempest_write_json(file.path(bundle_dir, "session.json"), manifest)
+  tempest:::tempest_product_write_json(
+    file.path(bundle_dir, "session.json"),
+    manifest
+  )
 
   restore_collector <- tempest_progress_collector(include_payload = TRUE)
   restored <- tempest_session_resume(
@@ -271,7 +280,7 @@ test_that("Tempest session bundles save and resume durable state", {
 
 test_that("schema 8 session bundles are rejected", {
   bundle_dir <- withr::local_tempdir()
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     list(schema_version = 8L)
   )

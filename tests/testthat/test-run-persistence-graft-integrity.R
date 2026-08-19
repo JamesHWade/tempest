@@ -47,7 +47,7 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
   session_dir <- file.path(root, "session")
   tempest_session_save(session, session_dir)
   storm_dir <- file.path(root, "storm")
-  tempest:::tempest_save_run_artifacts(
+  tempest:::tempest_storm_save_artifacts(
     storm_dir,
     tempest_research_workspace(graft_snapshot = snapshot),
     tempest:::tempest_storm_state("Graft sidecar integrity"),
@@ -92,7 +92,7 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
 
   unlink(storm_sidecar)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       storm_dir,
       config = cfg,
       program_set = program_set
@@ -102,7 +102,7 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
   writeBin(storm_bytes, storm_sidecar)
   writeBin(charToRaw("corrupt snapshot"), storm_sidecar)
   expect_error(
-    tempest:::tempest_load_run_artifacts(
+    tempest:::tempest_storm_load_artifacts(
       storm_dir,
       config = cfg,
       program_set = program_set
@@ -112,7 +112,7 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
   writeBin(storm_bytes, storm_sidecar)
 
   session_manifest_path <- file.path(session_dir, "session.json")
-  session_manifest <- tempest:::tempest_read_json_strict(
+  session_manifest <- tempest:::tempest_product_read_json(
     session_manifest_path
   )
   mismatches <- list(
@@ -130,14 +130,14 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
     tampered <- session_manifest
     tampered$research_manifest$knowledge_snapshot[[field]] <-
       mismatches[[field]]
-    tempest:::tempest_write_json(session_manifest_path, tampered)
+    tempest:::tempest_product_write_json(session_manifest_path, tampered)
     expect_error(
       tempest_session_resume(session_dir, config = cfg),
       class = "tempest_session_restore_error",
       info = field
     )
   }
-  tempest:::tempest_write_json(session_manifest_path, session_manifest)
+  tempest:::tempest_product_write_json(session_manifest_path, session_manifest)
 
   foreign_store <- graft::graft_open(
     schema,
@@ -156,8 +156,8 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
   saveRDS(graft::graft_snapshot(foreign_store), session_sidecar, version = 3L)
   foreign_manifest <- session_manifest
   foreign_manifest$checksums[[sidecar]] <-
-    tempest:::tempest_session_bundle_checksum(session_dir, sidecar)
-  tempest:::tempest_write_json(session_manifest_path, foreign_manifest)
+    tempest:::tempest_product_bundle_checksum(session_dir, sidecar)
+  tempest:::tempest_product_write_json(session_manifest_path, foreign_manifest)
   expect_error(
     tempest_session_resume(session_dir, config = cfg),
     class = "tempest_session_restore_error"

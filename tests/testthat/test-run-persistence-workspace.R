@@ -1,8 +1,8 @@
-test_that("tempest_prepare_run_dir creates topic slug directory", {
+test_that("tempest_storm_prepare_run_dir creates topic slug directory", {
   skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")
 
-  run_dir <- tempest:::tempest_prepare_run_dir(
+  run_dir <- tempest:::tempest_storm_prepare_run_dir(
     root,
     "A Topic: With Punctuation!"
   )
@@ -150,9 +150,9 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
   )
 
   path <- withr::local_tempfile(fileext = ".json")
-  tempest:::tempest_write_json(path, snapshot)
+  tempest:::tempest_product_write_json(path, snapshot)
   restored <- tempest:::tempest_research_workspace_restore(
-    tempest:::tempest_read_json_strict(path)
+    tempest:::tempest_product_read_json(path)
   )
   restored_snapshot <- tempest:::tempest_research_workspace_snapshot(restored)
 
