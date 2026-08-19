@@ -571,6 +571,7 @@ tempest_program_set_write_bundle <- function(
     reference_type = "file",
     registry = registry
   )
+  entries <- tempest_program_set_validate_entries(entries)
   restored <- stats::setNames(vector("list", length(programs)), names(programs))
   for (stage in tempest_program_set_stages()) {
     artifact_path <- file.path(programs_dir, paste0(stage, ".rds"))
@@ -1062,7 +1063,7 @@ tempest_program_set_compile_isolate <- function(
   registry = list()
 ) {
   isolated <- tryCatch(
-    program$clone(deep = TRUE),
+    program$copy(deep = TRUE),
     error = function(error) {
       tempest_program_set_abort(
         "Could not isolate the program for stage {.val {stage}}.",
@@ -1100,9 +1101,10 @@ tempest_program_set_compile_module <- function(...) {
 #' Compiles the selected stages through [dsprrr::compile_module()] and only
 #' publishes a new complete ProgramSet after every requested compilation and
 #' artifact verification succeeds. Compilation errors are never replaced with
-#' the original uncompiled program. Every selected baseline Module is cloned
-#' and identity-checked before compilation. When compilation changes a program
-#' artifact, the candidate drops that stage's old governed-procedure reference.
+#' the original uncompiled program. Every selected baseline Module is copied
+#' with cleared execution state and identity-checked before compilation. When
+#' compilation changes a program artifact, the candidate drops that stage's old
+#' governed-procedure reference.
 #'
 #' @param program_set A `TempestProgramSet`.
 #' @param trainsets Named list of training data by stage. Its names select the
@@ -1197,7 +1199,6 @@ tempest_compile_programs <- function(
     \(stage) program_set@entries[[stage]]$program_artifact_id,
     character(1)
   )
-  compiled_ids <- baseline_ids
   for (stage in selected) {
     managed <- c("program", "teleprompter", "trainset", "valset", ".llm")
     duplicates <- intersect(names(compile_args[[stage]]), managed)
@@ -1240,12 +1241,18 @@ tempest_compile_programs <- function(
         class = "tempest_program_set_compile_error"
       )
     }
-    compiled_ids[[stage]] <- tempest_program_set_program_id(
-      compiled[[stage]],
-      stage,
-      registry = registry
-    )
   }
+  compiled_ids <- vapply(
+    selected,
+    \(stage) {
+      tempest_program_set_program_id(
+        compiled[[stage]],
+        stage,
+        registry = registry
+      )
+    },
+    character(1)
+  )
   metadata <- tempest_program_set_metadata(program_set)
   for (stage in selected) {
     if (!identical(compiled_ids[[stage]], baseline_ids[[stage]])) {
