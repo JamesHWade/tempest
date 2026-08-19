@@ -80,6 +80,25 @@ mod_storm_server <- function(id, config, store) {
     worker_state$run_id <- NULL
     worker_state$config <- NULL
 
+    finish_storm_worker <- function() {
+      stream_path <- progress_stream$path
+      progress_stream$active <- FALSE
+      progress_stream$path <- NULL
+      worker_state$job <- NULL
+      worker_state$topic <- NULL
+      worker_state$run_id <- NULL
+      worker_state$config <- NULL
+      storm_cleanup_progress_stream(stream_path)
+      invisible(stream_path)
+    }
+
+    fail_storm_publication <- function(message) {
+      publication_error(message)
+      published_result(NULL)
+      finish_storm_worker()
+      invisible(FALSE)
+    }
+
     storm_task <- shiny::ExtendedTask$new(
       function(
         topic,
@@ -180,12 +199,16 @@ mod_storm_server <- function(id, config, store) {
           worker_state$run_id %||% storm_progress_run_id()
         ))
       ))
-      storm_cleanup_progress_stream(progress_stream$path)
+      finish_storm_worker()
     })
 
     # Share the report once the pipeline succeeds.
     shiny::observeEvent(storm_task$status(), {
       if (identical(storm_task$status(), "success")) {
+        if (isTRUE(worker_state$cancelled)) {
+          finish_storm_worker()
+          return()
+        }
         value <- storm_task$result()
         envelope <- tryCatch(
           storm_task_envelope(value),
@@ -197,19 +220,15 @@ mod_storm_server <- function(id, config, store) {
           storm_result_run_id(envelope$result)
         }
         if (!identical(result_run_id, worker_state$run_id)) {
-          return()
-        }
-        progress_stream$active <- FALSE
-        worker_state$job <- NULL
-        if (isTRUE(worker_state$cancelled)) {
-          storm_cleanup_progress_stream(progress_stream$path)
+          fail_storm_publication(
+            "The STORM result could not be published."
+          )
           return()
         }
         if (is.null(envelope)) {
-          publication_error(
+          fail_storm_publication(
             "The STORM result could not be published."
           )
-          storm_cleanup_progress_stream(progress_stream$path)
           return()
         }
         progress_events(storm_merge_progress_events(
@@ -225,32 +244,29 @@ mod_storm_server <- function(id, config, store) {
             TRUE
           },
           error = function(error) {
-            publication_error(
+            fail_storm_publication(
               "The STORM report failed product integrity validation."
             )
             FALSE
           }
         )
-        if (isTRUE(published)) {
-          published_result(envelope$result)
+        if (!isTRUE(published)) {
+          return()
         }
-        storm_cleanup_progress_stream(progress_stream$path)
+        published_result(envelope$result)
+        finish_storm_worker()
       } else if (identical(storm_task$status(), "error")) {
-        progress_stream$active <- FALSE
-        worker_state$job <- NULL
         progress_events(storm_merge_progress_events(
           shiny::isolate(progress_events()),
           storm_read_progress_stream(progress_stream$path)
         ))
-        storm_cleanup_progress_stream(progress_stream$path)
+        finish_storm_worker()
       }
     })
 
     session$onSessionEnded(function() {
-      progress_stream$active <- FALSE
       storm_cancel_worker(worker_state$job)
-      worker_state$job <- NULL
-      storm_cleanup_progress_stream(progress_stream$path)
+      finish_storm_worker()
     })
 
     output$cancel_control <- shiny::renderUI({

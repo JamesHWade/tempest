@@ -23,16 +23,265 @@ test_that("STORM publication uses the exact launch configuration", {
   )
   expect_match(server_code, "store$publish_storm_report", fixed = TRUE)
   expect_match(server_code, "config = worker_state$config", fixed = TRUE)
-  expect_match(
-    server_code,
-    "identical(result_run_id, worker_state$run_id)",
-    fixed = TRUE
-  )
-  expect_match(server_code, "isTRUE(worker_state$cancelled)", fixed = TRUE)
   expect_match(server_code, "report_navigation_event", fixed = TRUE)
   expect_no_match(server_code, "report_ready", fixed = TRUE)
   expect_no_match(runner_code, "parallel_research", fixed = TRUE)
   expect_no_match(runner_code, "tempest_run =", fixed = TRUE)
+})
+
+test_that("STORM run identity mismatches fail closed and clean worker state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("later")
+  skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
+  env <- tempest:::tempest_shiny_module_env()
+  stream_path <- NULL
+  prior_report <- "# Previously published report"
+  publish_calls <- 0L
+  store <- list(
+    publish_storm_report = function(...) {
+      publish_calls <<- publish_calls + 1L
+      prior_report <<- "mutated"
+    }
+  )
+
+  if (!methods::isClass("TempestTestMismatchedManifest")) {
+    methods::setClass(
+      "TempestTestMismatchedManifest",
+      slots = c(research_run_id = "character")
+    )
+  }
+  original_poll <- env$storm_poll_progress_stream
+  original_runner <- env$storm_run_with_progress
+  withr::defer({
+    env$storm_poll_progress_stream <- original_poll
+    env$storm_run_with_progress <- original_runner
+  })
+  env$storm_poll_progress_stream <- function(path, ...) {
+    stream_path <<- path
+    invisible(path)
+  }
+  env$storm_run_with_progress <- function(topic, cfg, ...) {
+    if (
+      !methods::isClass(
+        "TempestTestMismatchedManifest",
+        where = globalenv()
+      )
+    ) {
+      methods::setClass(
+        "TempestTestMismatchedManifest",
+        slots = c(research_run_id = "character"),
+        where = globalenv()
+      )
+    }
+    list(
+      result = list(
+        manifest = methods::new(
+          "TempestTestMismatchedManifest",
+          research_run_id = "shiny-storm-stale"
+        )
+      ),
+      progress = list()
+    )
+  }
+
+  shiny::testServer(
+    env$mod_storm_server,
+    args = list(
+      config = shiny::reactive(tempest_config()),
+      store = store
+    ),
+    {
+      session$setInputs(topic = "Run identity", run = 1)
+      session$flushReact()
+      deadline <- Sys.time() + 10
+      status <- shiny::isolate(storm_task$status())
+      while (status %in% c("initial", "running") && Sys.time() < deadline) {
+        later::run_now(0.05)
+        session$flushReact()
+        status <- shiny::isolate(storm_task$status())
+      }
+      session$flushReact()
+
+      expect_identical(status, "success")
+      expect_identical(
+        shiny::isolate(publication_error()),
+        "The STORM result could not be published."
+      )
+      expect_null(shiny::isolate(published_result()))
+      expect_identical(progress_stream$active, FALSE)
+      expect_null(progress_stream$path)
+      expect_null(worker_state$job)
+      expect_null(worker_state$topic)
+      expect_null(worker_state$run_id)
+      expect_null(worker_state$config)
+      expect_identical(file.exists(stream_path), FALSE)
+      expect_identical(publish_calls, 0L)
+      expect_identical(prior_report, "# Previously published report")
+      expect_identical(
+        shiny::isolate(session$returned$report_navigation_event()),
+        0L
+      )
+      result_html <- paste(as.character(output$result$html), collapse = "")
+      expect_match(result_html, 'role="alert"', fixed = TRUE)
+      expect_match(result_html, "could not be published", fixed = TRUE)
+      expect_no_match(result_html, "Pipeline complete", fixed = TRUE)
+    }
+  )
+})
+
+test_that("STORM authority rejection fails closed and cleans worker state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("later")
+  skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
+  env <- tempest:::tempest_shiny_module_env()
+  stream_path <- NULL
+  prior_report <- "# Previously published report"
+  publish_calls <- 0L
+  store <- list(
+    publish_storm_report = function(...) {
+      publish_calls <<- publish_calls + 1L
+      stop("Authorization: Bearer provider-secret")
+    }
+  )
+
+  original_poll <- env$storm_poll_progress_stream
+  original_run_id <- env$storm_result_run_id
+  original_runner <- env$storm_run_with_progress
+  withr::defer({
+    env$storm_poll_progress_stream <- original_poll
+    env$storm_result_run_id <- original_run_id
+    env$storm_run_with_progress <- original_runner
+  })
+  env$storm_poll_progress_stream <- function(path, ...) {
+    stream_path <<- path
+    invisible(path)
+  }
+  env$storm_result_run_id <- function(result) result$run_id
+  env$storm_run_with_progress <- function(
+    topic,
+    cfg,
+    progress_run_id,
+    ...
+  ) {
+    list(
+      result = list(run_id = progress_run_id),
+      progress = list()
+    )
+  }
+
+  shiny::testServer(
+    env$mod_storm_server,
+    args = list(
+      config = shiny::reactive(tempest_config()),
+      store = store
+    ),
+    {
+      session$setInputs(topic = "Authority rejection", run = 1)
+      session$flushReact()
+      deadline <- Sys.time() + 10
+      status <- shiny::isolate(storm_task$status())
+      while (status %in% c("initial", "running") && Sys.time() < deadline) {
+        later::run_now(0.05)
+        session$flushReact()
+        status <- shiny::isolate(storm_task$status())
+      }
+      session$flushReact()
+
+      expect_identical(status, "success")
+      expect_identical(
+        shiny::isolate(publication_error()),
+        "The STORM report failed product integrity validation."
+      )
+      expect_null(shiny::isolate(published_result()))
+      expect_identical(progress_stream$active, FALSE)
+      expect_null(progress_stream$path)
+      expect_null(worker_state$job)
+      expect_null(worker_state$topic)
+      expect_null(worker_state$run_id)
+      expect_null(worker_state$config)
+      expect_identical(file.exists(stream_path), FALSE)
+      expect_identical(publish_calls, 1L)
+      expect_identical(prior_report, "# Previously published report")
+      expect_identical(
+        shiny::isolate(session$returned$report_navigation_event()),
+        0L
+      )
+      result_html <- paste(as.character(output$result$html), collapse = "")
+      expect_match(result_html, 'role="alert"', fixed = TRUE)
+      expect_match(result_html, "product integrity validation", fixed = TRUE)
+      expect_no_match(result_html, "provider-secret", fixed = TRUE)
+      expect_no_match(result_html, "Pipeline complete", fixed = TRUE)
+    }
+  )
+})
+
+test_that("STORM cancellation clears active worker state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("later")
+  skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
+  env <- tempest:::tempest_shiny_module_env()
+  stream_path <- NULL
+  prior_report <- "# Previously published report"
+  publish_calls <- 0L
+  store <- list(
+    publish_storm_report = function(...) {
+      publish_calls <<- publish_calls + 1L
+      prior_report <<- "mutated"
+    }
+  )
+
+  original_poll <- env$storm_poll_progress_stream
+  original_runner <- env$storm_run_with_progress
+  withr::defer({
+    env$storm_poll_progress_stream <- original_poll
+    env$storm_run_with_progress <- original_runner
+  })
+  env$storm_poll_progress_stream <- function(path, ...) {
+    stream_path <<- path
+    invisible(path)
+  }
+  env$storm_run_with_progress <- function(...) {
+    Sys.sleep(5)
+    list(result = list(), progress = list())
+  }
+
+  shiny::testServer(
+    env$mod_storm_server,
+    args = list(
+      config = shiny::reactive(tempest_config()),
+      store = store
+    ),
+    {
+      session$setInputs(topic = "Cancellation", run = 1)
+      session$flushReact()
+      expect_s3_class(worker_state$job, "mirai")
+      expect_identical(file.exists(stream_path), TRUE)
+
+      session$setInputs(cancel = 1)
+      session$flushReact()
+
+      expect_identical(worker_state$cancelled, TRUE)
+      expect_identical(progress_stream$active, FALSE)
+      expect_null(progress_stream$path)
+      expect_null(worker_state$job)
+      expect_null(worker_state$topic)
+      expect_null(worker_state$run_id)
+      expect_null(worker_state$config)
+      expect_identical(file.exists(stream_path), FALSE)
+      expect_identical(publish_calls, 0L)
+      expect_identical(prior_report, "# Previously published report")
+      expect_identical(
+        shiny::isolate(session$returned$report_navigation_event()),
+        0L
+      )
+    }
+  )
 })
 
 test_that("Shiny archive transport delegates product validation", {
