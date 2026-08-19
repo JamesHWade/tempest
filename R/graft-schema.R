@@ -516,24 +516,58 @@ tempest_graft_plan_timestamp_value <- function(value) {
 }
 
 tempest_graft_plan_posix_value <- function(value) {
-  value <- as.POSIXct(value, tz = "UTC")
   result <- rep(NA_character_, length(value))
-  valid <- !is.na(value)
-  if (!any(valid)) {
+  value <- tryCatch(
+    suppressWarnings(as.POSIXct(value)),
+    error = \(error) NULL
+  )
+  if (is.null(value) || length(value) != length(result)) {
     return(result)
   }
-  microseconds <- round(as.numeric(value[valid]) * 1e6)
+  numeric_value <- suppressWarnings(as.numeric(value))
+  valid <- !is.na(numeric_value) & is.finite(numeric_value)
+  indices <- which(valid)
+  if (length(indices) == 0L) {
+    return(result)
+  }
+  microseconds <- round(numeric_value[indices] * 1e6)
   seconds <- floor(microseconds / 1e6)
-  fractions <- as.integer(microseconds - seconds * 1e6)
-  result[valid] <- paste0(
-    format(
+  fractions <- microseconds - seconds * 1e6
+  finite <- is.finite(microseconds) &
+    is.finite(seconds) &
+    is.finite(fractions) &
+    fractions >= 0 &
+    fractions < 1e6
+  indices <- indices[finite]
+  seconds <- seconds[finite]
+  fractions <- fractions[finite]
+  if (length(indices) == 0L) {
+    return(result)
+  }
+  rendered <- tryCatch(
+    suppressWarnings(format(
       as.POSIXct(seconds, origin = "1970-01-01", tz = "UTC"),
       "%Y-%m-%dT%H:%M:%S",
       tz = "UTC"
-    ),
+    )),
+    error = \(error) rep(NA_character_, length(seconds))
+  )
+  candidates <- paste0(
+    rendered,
     ".",
-    sprintf("%06d", fractions),
+    sprintf("%06d", as.integer(fractions)),
     "Z"
+  )
+  result[indices] <- vapply(
+    candidates,
+    function(candidate) {
+      canonical <- tempest_graft_plan_timestamp_value(candidate)
+      if (is.null(canonical) || !identical(canonical, candidate)) {
+        return(NA_character_)
+      }
+      canonical
+    },
+    character(1)
   )
   result
 }
