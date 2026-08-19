@@ -227,35 +227,12 @@ test_that("former run persistence definitions have one product owner", {
     "storm-state.R" = 2L
   )
 
-  r_dir <- testthat::test_path("..", "..", "R")
-  r_files <- list.files(r_dir, pattern = "[.]R$", full.names = TRUE)
-  definitions <- do.call(
-    rbind,
-    lapply(r_files, function(path) {
-      expressions <- parse(path)
-      names <- vapply(
-        expressions,
-        function(expression) {
-          if (
-            is.call(expression) &&
-              identical(expression[[1L]], as.name("<-")) &&
-              is.call(expression[[3L]]) &&
-              identical(expression[[3L]][[1L]], as.name("function"))
-          ) {
-            return(as.character(expression[[2L]]))
-          }
-          NA_character_
-        },
-        character(1)
-      )
-      count <- sum(!is.na(names))
-      data.frame(
-        name = names[!is.na(names)],
-        owner = rep(basename(path), count),
-        stringsAsFactors = FALSE
-      )
-    })
-  )
+  context <- test_source_inventory_context()
+  definitions <- if (identical(context$mode, "source")) {
+    test_source_inventory_definitions(context)
+  } else {
+    NULL
+  }
 
   expect_identical(length(original), 150L)
   expect_identical(anyDuplicated(original), 0L)
@@ -267,60 +244,111 @@ test_that("former run persistence definitions have one product owner", {
     ))),
     unname(expected_counts)
   )
-  expect_identical(file.exists(file.path(r_dir, "run-persistence.R")), FALSE)
-
-  retained_counts <- vapply(
-    final_names[retained],
-    function(name) {
-      sum(definitions$name == name)
-    },
-    integer(1)
-  )
-  expect_identical(unname(retained_counts), rep(1L, 145L))
-  retained_rows <- match(final_names[retained], definitions$name)
-  expect_identical(
-    definitions$owner[retained_rows],
-    unname(owners[retained])
-  )
-
-  consolidated_counts <- vapply(
-    consolidated,
-    function(name) {
-      sum(definitions$name == name)
-    },
-    integer(1)
-  )
-  expect_identical(unname(consolidated_counts), c(1L, 1L))
-  consolidated_rows <- match(unname(consolidated), definitions$name)
-  expect_identical(
-    definitions$owner[consolidated_rows],
-    rep("product-report.R", 2L)
-  )
-  expect_identical(
-    any(definitions$name %in% c(deleted, names(renames), names(consolidated))),
-    FALSE
-  )
-  expect_identical(
-    vapply(
-      c("tempest_stage_complete_success", "tempest_stage_complete_failure"),
-      function(name) sum(definitions$name == name),
-      integer(1)
-    ),
-    c(
-      tempest_stage_complete_success = 1L,
-      tempest_stage_complete_failure = 1L
+  if (identical(context$mode, "source")) {
+    r_dir <- file.path(context$root, "R")
+    expect_identical(
+      file.exists(file.path(r_dir, "run-persistence.R")),
+      FALSE
     )
-  )
-  expect_identical(
-    any(
-      definitions$name %in%
-        c(
-          "tempest_storm_stage_complete_success",
-          "tempest_storm_stage_complete_failure"
-        )
-    ),
-    FALSE
-  )
+
+    retained_counts <- vapply(
+      final_names[retained],
+      function(name) {
+        sum(definitions$name == name)
+      },
+      integer(1)
+    )
+    expect_identical(unname(retained_counts), rep(1L, 145L))
+    retained_rows <- match(final_names[retained], definitions$name)
+    expect_identical(
+      definitions$owner[retained_rows],
+      unname(owners[retained])
+    )
+
+    consolidated_counts <- vapply(
+      consolidated,
+      function(name) {
+        sum(definitions$name == name)
+      },
+      integer(1)
+    )
+    expect_identical(unname(consolidated_counts), c(1L, 1L))
+    consolidated_rows <- match(unname(consolidated), definitions$name)
+    expect_identical(
+      definitions$owner[consolidated_rows],
+      rep("product-report.R", 2L)
+    )
+    expect_identical(
+      any(
+        definitions$name %in%
+          c(deleted, names(renames), names(consolidated))
+      ),
+      FALSE
+    )
+    expect_identical(
+      vapply(
+        c("tempest_stage_complete_success", "tempest_stage_complete_failure"),
+        function(name) sum(definitions$name == name),
+        integer(1)
+      ),
+      c(
+        tempest_stage_complete_success = 1L,
+        tempest_stage_complete_failure = 1L
+      )
+    )
+    expect_identical(
+      any(
+        definitions$name %in%
+          c(
+            "tempest_storm_stage_complete_success",
+            "tempest_storm_stage_complete_failure"
+          )
+      ),
+      FALSE
+    )
+  } else {
+    namespace <- asNamespace("tempest")
+    current <- c(final_names[retained], unname(consolidated))
+    current_functions <- vapply(
+      current,
+      function(name) {
+        exists(name, envir = namespace, inherits = FALSE) &&
+          is.function(get(name, envir = namespace, inherits = FALSE))
+      },
+      logical(1)
+    )
+    retired <- unique(c(
+      deleted,
+      names(renames),
+      names(consolidated),
+      "tempest_storm_stage_complete_success",
+      "tempest_storm_stage_complete_failure"
+    ))
+    retired_present <- vapply(
+      retired,
+      exists,
+      logical(1),
+      envir = namespace,
+      inherits = FALSE
+    )
+
+    expect_identical(anyDuplicated(current), 0L)
+    expect_identical(unname(current_functions), rep(TRUE, length(current)))
+    expect_identical(unname(retired_present), rep(FALSE, length(retired)))
+    expect_identical(
+      vapply(
+        c("tempest_stage_complete_success", "tempest_stage_complete_failure"),
+        exists,
+        logical(1),
+        envir = namespace,
+        inherits = FALSE
+      ),
+      c(
+        tempest_stage_complete_success = TRUE,
+        tempest_stage_complete_failure = TRUE
+      )
+    )
+  }
   expect_disjoint(
     names(formals(tempest:::tempest_storm_save_artifacts)),
     c("research_strategy", "parallel_writing", "remove_duplicate")
@@ -339,7 +367,7 @@ test_that("former run persistence definitions have one product owner", {
   )
 
   description <- read.dcf(
-    testthat::test_path("..", "..", "DESCRIPTION"),
+    test_source_inventory_description(context),
     fields = "Collate"
   )[[1L]]
   collate <- strsplit(description, "[[:space:]]+")[[1L]]
