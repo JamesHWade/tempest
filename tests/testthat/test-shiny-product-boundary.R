@@ -161,14 +161,7 @@ test_that("STORM run identity mismatches fail closed and clean worker state", {
     {
       session$setInputs(topic = "Run identity", run = 1)
       session$flushReact()
-      deadline <- Sys.time() + 10
-      status <- shiny::isolate(storm_task$status())
-      while (status %in% c("initial", "running") && Sys.time() < deadline) {
-        later::run_now(0.05)
-        session$flushReact()
-        status <- shiny::isolate(storm_task$status())
-      }
-      session$flushReact()
+      status <- await_tempest_extended_task(storm_task, session)
 
       expect_identical(status, "success")
       expect_identical(
@@ -248,14 +241,7 @@ test_that("STORM authority rejection fails closed and cleans worker state", {
     {
       session$setInputs(topic = "Authority rejection", run = 1)
       session$flushReact()
-      deadline <- Sys.time() + 10
-      status <- shiny::isolate(storm_task$status())
-      while (status %in% c("initial", "running") && Sys.time() < deadline) {
-        later::run_now(0.05)
-        session$flushReact()
-        status <- shiny::isolate(storm_task$status())
-      }
-      session$flushReact()
+      status <- await_tempest_extended_task(storm_task, session)
 
       expect_identical(status, "success")
       expect_identical(
@@ -415,16 +401,7 @@ test_that("STORM rejects a queued launch without orphaning worker state", {
     ),
     {
       wait_for_terminal <- function() {
-        deadline <- Sys.time() + 10
-        status <- shiny::isolate(storm_task$status())
-        while (identical(status, "running") && Sys.time() < deadline) {
-          later::run_now(0.05)
-          session$flushReact()
-          status <- shiny::isolate(storm_task$status())
-        }
-        later::run_now(0.01)
-        session$flushReact()
-        status
+        await_tempest_extended_task(storm_task, session)
       }
 
       session$setInputs(topic = "First", run = 1)
