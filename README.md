@@ -5,7 +5,7 @@
 [![Codecov test coverage](https://codecov.io/gh/JamesHWade/tempest/graph/badge.svg)](https://app.codecov.io/gh/JamesHWade/tempest)
 <!-- badges: end -->
 
-An R-native implementation of [STORM](https://storm.genie.stanford.edu/) (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and [Co-STORM](https://co-storm.genie.stanford.edu/) from Stanford's STORM project.
+An R-native implementation of [STORM](https://storm.genie.stanford.edu/) (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and [Co-STORM](https://github.com/stanford-oval/storm) from Stanford's STORM project.
 
 This package reproduces the core workflow primitives:
 
@@ -283,7 +283,7 @@ cfg <- tempest_config(models = "anthropic/claude-sonnet-4-20250514")
 Perspective research is deliberately sequential so each open-ended expert turn
 can be synchronously bound to one terminal Deputy trace. Setting
 `parallel_research = TRUE` is an error. Already-grounded report sections can be
-written in parallel using [mirai](https://github.com/shikokuchuo/mirai):
+written in parallel using [mirai](https://github.com/r-lib/mirai):
 
 ```r
 res <- tempest_run(
