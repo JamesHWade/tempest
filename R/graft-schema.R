@@ -483,6 +483,61 @@ tempest_graft_plan_provenance <- function(
   )
 }
 
+tempest_graft_plan_timestamp_value <- function(value) {
+  if (
+    !rlang::is_string(value) ||
+      is.na(value) ||
+      !grepl(
+        paste0(
+          "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:",
+          "[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+        ),
+        value
+      )
+  ) {
+    return(NULL)
+  }
+  parsed <- suppressWarnings(tempest_stage_time_parse(value))
+  if (length(parsed) != 1L || is.na(parsed)) {
+    return(NULL)
+  }
+  fraction <- if (nchar(value) == 20L) {
+    ""
+  } else {
+    substr(value, 21L, nchar(value) - 1L)
+  }
+  paste0(
+    substr(value, 1L, 19L),
+    ".",
+    fraction,
+    strrep("0", 6L - nchar(fraction)),
+    "Z"
+  )
+}
+
+tempest_graft_plan_posix_value <- function(value) {
+  value <- as.POSIXct(value, tz = "UTC")
+  result <- rep(NA_character_, length(value))
+  valid <- !is.na(value)
+  if (!any(valid)) {
+    return(result)
+  }
+  microseconds <- round(as.numeric(value[valid]) * 1e6)
+  seconds <- floor(microseconds / 1e6)
+  fractions <- as.integer(microseconds - seconds * 1e6)
+  result[valid] <- paste0(
+    format(
+      as.POSIXct(seconds, origin = "1970-01-01", tz = "UTC"),
+      "%Y-%m-%dT%H:%M:%S",
+      tz = "UTC"
+    ),
+    ".",
+    sprintf("%06d", fractions),
+    "Z"
+  )
+  result
+}
+
 tempest_graft_plan_value <- function(value) {
   if (
     is.null(value) ||
@@ -492,31 +547,11 @@ tempest_graft_plan_value <- function(value) {
     return(NULL)
   }
   if (inherits(value, "POSIXt")) {
-    return(format(
-      as.POSIXct(value, tz = "UTC"),
-      "%Y-%m-%dT%H:%M:%OS6Z",
-      tz = "UTC"
-    ))
+    return(tempest_graft_plan_posix_value(value))
   }
-  if (
-    rlang::is_string(value) &&
-      !is.na(value) &&
-      grepl(
-        paste0(
-          "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:",
-          "[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
-        ),
-        value
-      )
-  ) {
-    parsed <- suppressWarnings(tempest_stage_time_parse(value))
-    if (!is.na(parsed)) {
-      return(format(
-        parsed,
-        "%Y-%m-%dT%H:%M:%OS6Z",
-        tz = "UTC"
-      ))
-    }
+  timestamp <- tempest_graft_plan_timestamp_value(value)
+  if (!is.null(timestamp)) {
+    return(timestamp)
   }
   if (is.factor(value)) {
     value <- as.character(value)
