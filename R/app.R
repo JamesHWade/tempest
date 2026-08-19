@@ -1,10 +1,15 @@
 # Shiny app launcher
 
-#' Run the tempest Shiny chat application
+#' Run the Tempest research application
 #'
 #' Launches an interactive app that provides:
-#' - Co-STORM multi-agent chat with a live mind map and source list
-#' - One-click report generation with citations
+#' - Co-STORM chat, sources, facts, mind map, transcript, and committed reports;
+#' - asynchronous scripted STORM research and report publication; and
+#' - bounded Co-STORM session archive download and upload without autosave.
+#'
+#' Live progress, persistence, and successful publication are announced through
+#' polite status regions. Validation, cancellation, and publication failures
+#' are announced as alerts.
 #'
 #' @param ... Passed to `shiny::runApp()`.
 #' @return A Shiny app object (invisibly, from `shiny::runApp()`).

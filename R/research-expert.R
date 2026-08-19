@@ -692,3 +692,165 @@ tempest_expert_profile_from_data <- function(data) {
   )
   value
 }
+
+
+#' @keywords internal
+tempest_expert_records <- function(experts) {
+  experts <- tempest_validate_experts(experts, active_only = FALSE)
+  unname(lapply(experts, tempest_expert_profile_record))
+}
+
+#' @keywords internal
+tempest_expert_record_fields <- function() {
+  c(
+    "expert_id",
+    "version",
+    "name",
+    "title",
+    "description",
+    "instructions",
+    "focus_areas",
+    "skill_ids",
+    "skill_versions",
+    "required_capability_ids",
+    "optional_capability_ids",
+    "model_role",
+    "model_policy_ref",
+    "selection_metadata",
+    "initial_work_items",
+    "initial_questions",
+    "state",
+    "metadata",
+    "schema_version",
+    "fingerprint"
+  )
+}
+
+#' @keywords internal
+tempest_experts_from_records <- function(
+  records,
+  what = "expert profiles",
+  class = tempest_persistence_error_class()
+) {
+  if (!is.list(records) || is.data.frame(records)) {
+    tempest_abort(
+      "Cannot restore {what}; expected a list of expert-profile records.",
+      class = class
+    )
+  }
+  records <- tempest_persistence_exact_records(
+    records,
+    tempest_expert_record_fields(),
+    what,
+    class
+  )
+  valid_writer_fields <- vapply(
+    records,
+    function(record) {
+      rlang::is_string(record$version) &&
+        !is.na(record$version) &&
+        rlang::is_string(record$state) &&
+        !is.na(record$state) &&
+        identical(record$schema_version, 1L) &&
+        is.list(record$focus_areas) &&
+        !is.data.frame(record$focus_areas) &&
+        is.null(names(record$focus_areas)) &&
+        all(vapply(
+          record$focus_areas,
+          \(value) rlang::is_string(value) && !is.na(value),
+          logical(1)
+        )) &&
+        is.list(record$selection_metadata) &&
+        !is.data.frame(record$selection_metadata) &&
+        !is.null(names(record$selection_metadata)) &&
+        is.list(record$metadata) &&
+        !is.data.frame(record$metadata) &&
+        !is.null(names(record$metadata))
+    },
+    logical(1)
+  )
+  if (!all(valid_writer_fields)) {
+    tempest_abort(
+      paste0(
+        "Cannot restore {what}; expert-profile records must retain exact ",
+        "non-null writer fields."
+      ),
+      class = class
+    )
+  }
+  tryCatch(
+    {
+      experts <- lapply(records, tempest_expert_profile_from_data)
+      tempest_validate_experts(experts, active_only = FALSE)
+    },
+    error = function(error) {
+      tempest_abort(
+        "Cannot restore {what}; an expert-profile record is invalid.",
+        class = class,
+        parent = error
+      )
+    }
+  )
+}
+
+#' @keywords internal
+tempest_expert_session_record_fields <- function() {
+  c(
+    "session_id",
+    "expert_id",
+    "expert_version",
+    "expert_fingerprint",
+    "model_role",
+    "allowed_connection_ref_ids",
+    "grants",
+    "created_at"
+  )
+}
+
+#' @keywords internal
+tempest_expert_session_snapshot_record <- function(binding) {
+  fields <- tempest_expert_session_record_fields()
+  invalid <- !is.list(binding) ||
+    is.data.frame(binding) ||
+    !identical(names(binding), fields) ||
+    any(vapply(fields, \(field) is.null(binding[[field]]), logical(1)))
+  if (invalid) {
+    tempest_abort(
+      paste0(
+        "A live expert-session binding must retain every exact current ",
+        "writer field."
+      ),
+      class = tempest_session_persistence_error_class(
+        "tempest_session_snapshot_error"
+      )
+    )
+  }
+  if (
+    !is.character(binding$allowed_connection_ref_ids) ||
+      !is.null(names(binding$allowed_connection_ref_ids)) ||
+      length(binding$allowed_connection_ref_ids) > 0L ||
+      !is.list(binding$grants) ||
+      is.data.frame(binding$grants) ||
+      !is.null(names(binding$grants)) ||
+      length(binding$grants) > 0L
+  ) {
+    tempest_abort(
+      "A live product expert session cannot contain generic capabilities.",
+      class = tempest_session_persistence_error_class(
+        "tempest_session_snapshot_error"
+      )
+    )
+  }
+  tempest_product_serializable_list(binding, "expert_session")
+}
+
+#' @keywords internal
+tempest_expert_sessions_snapshot <- function(session) {
+  manager <- tempest_session_expert_manager(session)
+  session_ids <- sort(manager$list_sessions())
+  lapply(session_ids, function(session_id) {
+    tempest_expert_session_snapshot_record(
+      manager$session_profile(session_id)
+    )
+  })
+}

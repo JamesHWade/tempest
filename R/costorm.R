@@ -1397,10 +1397,11 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
-    #' Generate a report from the session.
+    #' Generate, validate, and commit the canonical report for the session.
     #' @param style Report style: "technical" or "executive".
     #' @param include_references Include references section.
-    #' @return Markdown report string.
+    #' @return The committed Markdown report. Use
+    #'   [tempest_session_report_md()] to read the exact committed bytes later.
     report = function(
       style = c("technical", "executive"),
       include_references = TRUE

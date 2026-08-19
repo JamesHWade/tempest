@@ -5,7 +5,7 @@ test_that("promotion bundle contains only exact promotable research records", {
   expect_s7_class(bundle, TempestPromotionBundle)
   expect_named(
     formals(tempest_promotion_bundle),
-    c("workspace", "manifest", "stage_records", "claim_ids")
+    c("research", "claim_ids")
   )
   expect_identical(bundle@claim_ids, fixture$claim@claim_id)
   expect_identical(bundle@min_support_score, 0.7)
@@ -51,57 +51,254 @@ test_that("promotion bundle contains only exact promotable research records", {
   )
   expect_identical(
     bundle@bundle_id,
-    tempest_promotion_bundle(
-      fixture$workspace,
-      fixture$manifest,
-      fixture$stage_records
-    )@bundle_id
+    tempest_promotion_bundle(fixture$research)@bundle_id
   )
+  data <- tempest:::tempest_promotion_bundle_data(bundle)
+  repeated_data <- tempest:::tempest_promotion_bundle_data(
+    tempest_promotion_bundle(fixture$research)
+  )
+  expect_identical(
+    tempest:::tempest_product_canonical_json(data),
+    tempest:::tempest_product_canonical_json(repeated_data)
+  )
+  expect_named(
+    data,
+    c(
+      "bundle_id",
+      "schema_version",
+      "schema_build_digest",
+      "research_run_id",
+      "min_support_score",
+      "research_manifest",
+      "stage_records",
+      "proof",
+      "claim_ids",
+      "records"
+    )
+  )
+  expect_length(
+    intersect(c("report_md", "report_reference", "product_state"), names(data)),
+    0L
+  )
+})
+
+test_that("promotion accepts an exact succeeded Co-STORM session", {
+  fixture <- test_promotion_bundle("costorm")
+  bundle <- fixture$bundle
+  deputy_traces <- tempest:::tempest_session_deputy_traces(fixture$research)
+
+  expect_s7_class(bundle, TempestPromotionBundle)
+  expect_identical(bundle@research_run_id, fixture$research$session_id)
+  expect_identical(bundle@claim_ids, fixture$claim@claim_id)
+  expect_identical(
+    bundle@bundle_id,
+    tempest_promotion_bundle(fixture$research)@bundle_id
+  )
+  expect_identical(
+    tempest:::tempest_research_workspace_mutation_state(fixture$workspace),
+    "sealed"
+  )
+  expect_identical(
+    tempest:::tempest_session_deputy_traces(fixture$research),
+    deputy_traces
+  )
+})
+
+test_that("promotion requires the exact live Co-STORM Deputy trace ledger", {
+  session <- test_promotion_fixture("costorm")$research
+  private <- session$.__enclos_env__$private
+  original_traces <- private$deputy_traces_value
+  withr::defer(private$deputy_traces_value <- original_traces)
+  expect_gt(length(original_traces), 0L)
+
+  private$deputy_traces_value <- list(list(malformed = "trace"))
+  expect_error(
+    tempest_promotion_bundle(session),
+    class = "tempest_promotion_error"
+  )
+
+  private$deputy_traces_value <- list()
+  expect_identical(tempest:::tempest_session_deputy_traces(session), list())
+  expect_error(
+    tempest_promotion_bundle(session),
+    class = "tempest_promotion_error"
+  )
+
+  mismatched_traces <- original_traces
+  mismatched_traces[[1L]]$correlation_id <-
+    "correlation.promotion-costorm-mismatch"
+  private$deputy_traces_value <- mismatched_traces
+  expect_no_error(tempest:::tempest_session_deputy_traces(session))
+  expect_error(
+    tempest_promotion_bundle(session),
+    class = "tempest_promotion_error"
+  )
+})
+
+test_that("promotion rejects loose and incomplete STORM inputs", {
+  fixture <- test_promotion_fixture()
+  loose <- list(
+    workspace = fixture$workspace,
+    manifest = fixture$manifest,
+    stage_records = fixture$stage_records
+  )
+  expect_error(
+    tempest_promotion_bundle(loose),
+    class = "tempest_promotion_error"
+  )
+
+  incomplete <- fixture$research
+  incomplete$state$completed_stages <- head(
+    incomplete$state$completed_stages,
+    -1L
+  )
+  expect_error(
+    tempest_promotion_bundle(incomplete),
+    class = "tempest_promotion_error"
+  )
+})
+
+test_that("promotion rejects tampered and cross-product STORM results", {
+  fixture <- test_promotion_fixture()
+  other <- test_promotion_fixture("costorm")
+
+  tampered <- fixture$research
+  tampered$report_md <- paste0(tampered$report_md, "\n\nTampered.")
+  expect_error(
+    tempest_promotion_bundle(tampered),
+    class = "tempest_promotion_error"
+  )
+
+  wrong_mode <- fixture$research
+  wrong_mode$manifest <- other$manifest
+  expect_error(
+    tempest_promotion_bundle(wrong_mode),
+    class = "tempest_promotion_error"
+  )
+
+  cross_product <- fixture$research
+  cross_product$workspace <- other$workspace
+  expect_error(
+    tempest_promotion_bundle(cross_product),
+    class = "tempest_promotion_error"
+  )
+})
+
+test_that("promotion rejects unsealed STORM products", {
+  fixture <- test_promotion_fixture()
+  private <- fixture$workspace$.__enclos_env__$private
+  original_state <- private$mutation_state_value
+  withr::defer(private$mutation_state_value <- original_state)
+  private$mutation_state_value <- "open"
+
+  expect_error(
+    tempest_promotion_bundle(fixture$research),
+    class = "tempest_promotion_error"
+  )
+})
+
+test_that("promotion rejects invalid and nonquiescent Co-STORM sessions", {
+  tampered <- test_promotion_fixture("costorm")$research
+  private <- tampered$.__enclos_env__$private
+  original_report <- private$report_md_value
+  withr::defer(private$report_md_value <- original_report)
+  private$report_md_value <- paste0(
+    tempest_session_report_md(tampered),
+    "\n\nTampered."
+  )
+  expect_error(
+    tempest_promotion_bundle(tampered),
+    class = "tempest_promotion_error"
+  )
+  private$report_md_value <- original_report
+
+  active <- test_promotion_fixture("costorm")$research
+  work_id <- tempest:::tempest_session_async_work_start(
+    active,
+    "dialogue",
+    work_id = "promotion-active-work"
+  )
+  withr::defer(tempest:::tempest_session_async_work_finish(active, work_id))
+  expect_error(
+    tempest_promotion_bundle(active),
+    class = "tempest_promotion_error"
+  )
+  tempest:::tempest_session_async_work_finish(active, work_id)
+
+  unsealed <- test_promotion_fixture("costorm")$research
+  workspace_private <- unsealed$workspace$.__enclos_env__$private
+  original_state <- workspace_private$mutation_state_value
+  withr::defer(workspace_private$mutation_state_value <- original_state)
+  workspace_private$mutation_state_value <- "open"
+  expect_error(
+    tempest_promotion_bundle(unsealed),
+    class = "tempest_promotion_error"
+  )
+  workspace_private$mutation_state_value <- original_state
+})
+
+test_that("promotion rejects cross-mode Co-STORM state", {
+  costorm <- test_promotion_fixture("costorm")$research
+  storm <- test_promotion_fixture()$research
+  private <- costorm$.__enclos_env__$private
+  original_manifest <- private$manifest_value
+  withr::defer(private$manifest_value <- original_manifest)
+  private$manifest_value <- storm$manifest
+
+  expect_error(
+    tempest_promotion_bundle(costorm),
+    class = "tempest_promotion_error"
+  )
+  private$manifest_value <- original_manifest
 })
 
 test_that("promotion fails closed without exact pair support", {
   fixture <- test_promotion_fixture()
   private <- fixture$workspace$.__enclos_env__$private
+  original_supports <- private$claim_supports_value
+  withr::defer(private$claim_supports_value <- original_supports)
   private$claim_supports_value <- new.env(parent = emptyenv())
 
   expect_error(
-    tempest_promotion_bundle(
-      fixture$workspace,
-      fixture$manifest,
-      fixture$stage_records
-    ),
+    tempest_promotion_bundle(fixture$research),
     class = "tempest_promotion_error"
   )
 })
 
 test_that("promotion requires a durable succeeded report binding", {
   fixture <- test_promotion_fixture()
-  manifest <- tempest_research_manifest_update(
+  research <- fixture$research
+  research$manifest <- tempest_research_manifest_update(
     fixture$manifest,
     deliverables = list()
   )
 
   expect_error(
-    tempest_promotion_bundle(
-      fixture$workspace,
-      manifest,
-      fixture$stage_records
-    ),
+    tempest_promotion_bundle(research),
     class = "tempest_promotion_error"
   )
 })
 
 test_that("promotion selection is closed over retained stage outputs", {
   fixture <- test_promotion_fixture()
-  extraction <- fixture$stage_records[[1L]]
-  extraction@output_reference$ids <- list(
-    fixture$claim@claim_id,
-    "claim-unselected"
+  stages <- vapply(
+    fixture$stage_records,
+    function(record) record@stage,
+    character(1)
+  )
+  extraction_index <- which(stages == "extract_claims")
+  extraction <- fixture$stage_records[[extraction_index]]
+  extraction@output_reference <- tempest:::tempest_stage_output_reference(
+    "workspace_claims",
+    c(fixture$claim@claim_id, "claim-unselected"),
+    content_digest = extraction@output_reference$content_digest
   )
 
+  records <- fixture$stage_records
+  records[[extraction_index]] <- extraction
   expect_error(
     tempest:::tempest_promotion_stage_selection(
-      c(list(extraction), fixture$stage_records[-1L]),
+      records,
       fixture$claim@claim_id,
       fixture$support@claim_support_id,
       c(fixture$claim@claim_id, "claim-unselected"),

@@ -31,7 +31,8 @@ tempest_run(
 
 \item{config}{A \code{TempestConfig}.}
 
-\item{retriever}{Optional \code{TempestRetriever}. If \code{NULL}, created from \code{config}.}
+\item{retriever}{Optional \code{TempestRetriever}. If \code{NULL}, created from
+\code{config}.}
 
 \item{knowledge_view}{Optional immutable Graft view. It is required when
 \code{program_set} contains any governed procedure and is never persisted.}
@@ -43,17 +44,19 @@ tempest_run(
 \code{\link[=tempest_expert]{tempest_expert()}}. When supplied, STORM uses this selected team and does
 not generate experts.}
 
-\item{research_strategy}{Either "key_questions" (default, faster) or "conversation"
-(more thorough but slower). Key questions uses predefined questions; conversation
-dynamically generates follow-up questions.}
+\item{research_strategy}{Either "key_questions" (default, faster) or
+"conversation" (more thorough but slower). Key questions uses predefined
+questions; conversation dynamically generates follow-up questions.}
 
-\item{max_rounds}{Maximum rounds per perspective for "conversation" strategy (default 3).}
-
-\item{max_questions_per_perspective}{Maximum questions per perspective for "key_questions"
+\item{max_rounds}{Maximum rounds per perspective for the "conversation"
 strategy (default 3).}
 
-\item{parallel_research}{If \code{TRUE}, run research perspectives in parallel using
-the mirai package. Requires mirai to be installed. Default \code{FALSE}.}
+\item{max_questions_per_perspective}{Maximum questions per perspective for
+the "key_questions" strategy (default 3).}
+
+\item{parallel_research}{Must be \code{FALSE}. Parallel perspective research is
+unavailable while every open-ended expert turn requires one synchronously
+bound terminal Deputy execution; \code{TRUE} fails before provider work.}
 
 \item{parallel_writing}{If \code{TRUE}, write report sections in parallel using
 the mirai package. Failed parallel sections are retried sequentially.}
@@ -61,13 +64,17 @@ the mirai package. Failed parallel sections are retried sequentially.}
 \item{program_set}{A \link{TempestProgramSet} containing the exact dsprrr programs
 used by STORM. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates the default set.}
 
-\item{steps}{Character vector controlling which steps to run. Defaults to all.}
+\item{steps}{Character vector controlling which steps to run. Defaults to
+all.}
 
 \item{output_dir}{Optional directory for persisted STORM run artifacts. When
-supplied, artifacts are written under a topic-specific subdirectory.}
+supplied, a current schema-7 product bundle with schema-4 STORM state is
+written under a topic-specific subdirectory.}
 
 \item{resume}{If \code{TRUE} and \code{output_dir} contains a previous run, load saved
-artifacts and skip stages recorded as complete.}
+current-format artifacts and skip stages recorded as complete. Older,
+future, missing, extra, or mismatched product shapes are rejected rather
+than migrated.}
 
 \item{run_id}{Optional run directory name. Defaults to a slug of \code{topic}.}
 

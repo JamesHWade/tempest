@@ -27,7 +27,7 @@ mod_facts_ui <- function(id) {
 mod_facts_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     facts <- shiny::reactive({
-      evidence <- store$evidence_store()
+      evidence <- store$costorm_workspace()
       if (is.null(evidence)) {
         return(NULL)
       }

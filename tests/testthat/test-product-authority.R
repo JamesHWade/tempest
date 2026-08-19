@@ -22,7 +22,7 @@ test_that("product authority separates execution identity from publication", {
     class = "tempest_product_authority_error"
   )
 
-  report_md <- tempest:::tempest_persistence_report_for_records(
+  report_md <- tempest:::tempest_product_report_for_stage_records(
     paste0(
       "# Promotion evidence\n\n",
       "The intervention improved the measured outcome [",
@@ -32,7 +32,7 @@ test_that("product authority separates execution identity from publication", {
     fixture$stage_records
   )
   publication_manifest <-
-    tempest:::tempest_persistence_manifest_bind_report(
+    tempest:::tempest_product_authority_bind_report(
       fixture$manifest,
       report_md
     )
@@ -41,7 +41,7 @@ test_that("product authority separates execution identity from publication", {
     fixture$stage_records,
     fixture$workspace,
     report_md = report_md,
-    report_reference = tempest:::tempest_persistence_report_reference(
+    report_reference = tempest:::tempest_product_report_reference(
       report_md
     ),
     config = tempest_config(),
@@ -83,7 +83,7 @@ test_that("product authority separates execution identity from publication", {
       fixture$stage_records,
       fixture$workspace,
       report_md = "# Forged partial report",
-      report_reference = tempest:::tempest_persistence_report_reference(
+      report_reference = tempest:::tempest_product_report_reference(
         "# Forged partial report"
       )
     ),
@@ -118,11 +118,11 @@ test_that("publication authority is non-vacuous", {
     traces = list(),
     status = "succeeded"
   )
-  manifest <- tempest:::tempest_persistence_manifest_bind_stage_records(
+  manifest <- tempest:::tempest_product_authority_bind_stage_records(
     manifest,
     list()
   )
-  manifest <- tempest:::tempest_persistence_manifest_bind_report(
+  manifest <- tempest:::tempest_product_authority_bind_report(
     manifest,
     report_md
   )
@@ -133,7 +133,7 @@ test_that("publication authority is non-vacuous", {
       list(),
       tempest_research_workspace(),
       report_md = report_md,
-      report_reference = tempest:::tempest_persistence_report_reference(
+      report_reference = tempest:::tempest_product_report_reference(
         report_md
       ),
       config = config,
@@ -292,12 +292,12 @@ test_that("publication authority is non-vacuous", {
       completed_at = "2026-08-16T12:06:00Z"
     )
     stages <- list(extraction, verification)
-    manifest <- tempest:::tempest_persistence_manifest_bind_stage_records(
+    manifest <- tempest:::tempest_product_authority_bind_stage_records(
       manifest,
       stages,
       deputy_traces = list(deputy_trace)
     )
-    manifest <- tempest:::tempest_persistence_manifest_bind_report(
+    manifest <- tempest:::tempest_product_authority_bind_report(
       manifest,
       paste("#", case$suffix, "publication")
     )
@@ -405,7 +405,7 @@ test_that("Deputy traces reject cross-mode execution identity splices", {
     list(cross_mode)
   )[[1L]]
   expect_error(
-    tempest:::tempest_persistence_deputy_manifest_traces(
+    tempest:::tempest_product_authority_deputy_manifest_traces(
       list(cross_mode),
       manifest
     ),
@@ -419,7 +419,7 @@ test_that("Deputy traces reject cross-mode execution identity splices", {
     list(partial_delegation)
   )[[1L]]
   expect_error(
-    tempest:::tempest_persistence_deputy_manifest_traces(
+    tempest:::tempest_product_authority_deputy_manifest_traces(
       list(partial_delegation),
       manifest
     ),
@@ -516,7 +516,7 @@ test_that("STORM Deputy extraction rejects terminal tuple tampering", {
       ),
       traces = list(candidate_trace)
     )
-    tempest:::tempest_persistence_manifest_bind_stage_records(
+    tempest:::tempest_product_authority_bind_stage_records(
       manifest,
       records,
       deputy_traces = list(candidate_trace),
@@ -637,7 +637,7 @@ test_that("STORM finalization preserves discarded Deputy attempt history", {
   ))
 
   validate <- function(manifest) {
-    tempest:::tempest_persistence_manifest_validate_trace_ids(
+    tempest:::tempest_product_authority_manifest_validate_trace_ids(
       prior_stage,
       list(deputy_trace),
       manifest
@@ -661,7 +661,7 @@ test_that("STORM finalization preserves discarded Deputy attempt history", {
   duplicate_binding <- bound_stage
   duplicate_binding$trace_id <- "authority-bound-stage-two"
   expect_error(
-    tempest:::tempest_persistence_manifest_validate_trace_ids(
+    tempest:::tempest_product_authority_manifest_validate_trace_ids(
       list(bound_stage),
       list(deputy_trace),
       succeeded
@@ -669,7 +669,7 @@ test_that("STORM finalization preserves discarded Deputy attempt history", {
     class = "tempest_stage_record_error"
   )
   expect_error(
-    tempest:::tempest_persistence_manifest_validate_trace_ids(
+    tempest:::tempest_product_authority_manifest_validate_trace_ids(
       list(bound_stage, duplicate_binding),
       list(deputy_trace),
       succeeded

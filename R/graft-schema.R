@@ -483,6 +483,95 @@ tempest_graft_plan_provenance <- function(
   )
 }
 
+tempest_graft_plan_timestamp_value <- function(value) {
+  if (
+    !rlang::is_string(value) ||
+      is.na(value) ||
+      !grepl(
+        paste0(
+          "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:",
+          "[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+        ),
+        value
+      )
+  ) {
+    return(NULL)
+  }
+  parsed <- suppressWarnings(tempest_stage_time_parse(value))
+  if (length(parsed) != 1L || is.na(parsed)) {
+    return(NULL)
+  }
+  fraction <- if (nchar(value) == 20L) {
+    ""
+  } else {
+    substr(value, 21L, nchar(value) - 1L)
+  }
+  paste0(
+    substr(value, 1L, 19L),
+    ".",
+    fraction,
+    strrep("0", 6L - nchar(fraction)),
+    "Z"
+  )
+}
+
+tempest_graft_plan_posix_value <- function(value) {
+  result <- rep(NA_character_, length(value))
+  value <- tryCatch(
+    suppressWarnings(as.POSIXct(value)),
+    error = \(error) NULL
+  )
+  if (is.null(value) || length(value) != length(result)) {
+    return(result)
+  }
+  numeric_value <- suppressWarnings(as.numeric(value))
+  valid <- !is.na(numeric_value) & is.finite(numeric_value)
+  indices <- which(valid)
+  if (length(indices) == 0L) {
+    return(result)
+  }
+  microseconds <- round(numeric_value[indices] * 1e6)
+  seconds <- floor(microseconds / 1e6)
+  fractions <- microseconds - seconds * 1e6
+  finite <- is.finite(microseconds) &
+    is.finite(seconds) &
+    is.finite(fractions) &
+    fractions >= 0 &
+    fractions < 1e6
+  indices <- indices[finite]
+  seconds <- seconds[finite]
+  fractions <- fractions[finite]
+  if (length(indices) == 0L) {
+    return(result)
+  }
+  rendered <- tryCatch(
+    suppressWarnings(format(
+      as.POSIXct(seconds, origin = "1970-01-01", tz = "UTC"),
+      "%Y-%m-%dT%H:%M:%S",
+      tz = "UTC"
+    )),
+    error = \(error) rep(NA_character_, length(seconds))
+  )
+  candidates <- paste0(
+    rendered,
+    ".",
+    sprintf("%06d", as.integer(fractions)),
+    "Z"
+  )
+  result[indices] <- vapply(
+    candidates,
+    function(candidate) {
+      canonical <- tempest_graft_plan_timestamp_value(candidate)
+      if (is.null(canonical) || !identical(canonical, candidate)) {
+        return(NA_character_)
+      }
+      canonical
+    },
+    character(1)
+  )
+  result
+}
+
 tempest_graft_plan_value <- function(value) {
   if (
     is.null(value) ||
@@ -492,31 +581,11 @@ tempest_graft_plan_value <- function(value) {
     return(NULL)
   }
   if (inherits(value, "POSIXt")) {
-    return(format(
-      as.POSIXct(value, tz = "UTC"),
-      "%Y-%m-%dT%H:%M:%OS6Z",
-      tz = "UTC"
-    ))
+    return(tempest_graft_plan_posix_value(value))
   }
-  if (
-    rlang::is_string(value) &&
-      !is.na(value) &&
-      grepl(
-        paste0(
-          "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:",
-          "[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
-        ),
-        value
-      )
-  ) {
-    parsed <- suppressWarnings(tempest_stage_time_parse(value))
-    if (!is.na(parsed)) {
-      return(format(
-        parsed,
-        "%Y-%m-%dT%H:%M:%OS6Z",
-        tz = "UTC"
-      ))
-    }
+  timestamp <- tempest_graft_plan_timestamp_value(value)
+  if (!is.null(timestamp)) {
+    return(timestamp)
   }
   if (is.factor(value)) {
     value <- as.character(value)

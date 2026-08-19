@@ -26,13 +26,13 @@ search_provider_choices <- function() {
 
 # Render markdown to HTML when commonmark is available, otherwise show the
 # source text in a <pre> block.
-markdown_ui <- function(md, store = NULL, include_references = FALSE) {
+markdown_ui <- function(md, workspace = NULL, include_references = FALSE) {
   if (!nzchar(md %||% "")) {
     return(NULL)
   }
   md <- citation_markdown(
     md,
-    store = store,
+    workspace = workspace,
     include_references = include_references
   )
   if (has_pkg("commonmark")) {
@@ -49,13 +49,17 @@ markdown_escape_raw_html <- function(md) {
   htmltools::htmlEscape(as.character(md), attribute = FALSE)
 }
 
-citation_markdown <- function(md, store = NULL, include_references = FALSE) {
+citation_markdown <- function(
+  md,
+  workspace = NULL,
+  include_references = FALSE
+) {
   if (!nzchar(md %||% "")) {
     return("")
   }
   md <- sanitize_external_citation_markers(md)
   md <- markdown_escape_raw_html(md)
-  model <- citation_reference_model(md, store = store)
+  model <- citation_reference_model(md, workspace = workspace)
   if (nrow(model$matches) == 0) {
     return(model$markdown)
   }
@@ -123,13 +127,13 @@ sanitize_external_citation_markers <- function(text) {
   out
 }
 
-citation_reference_model <- function(md, store = NULL) {
+citation_reference_model <- function(md, workspace = NULL) {
   markdown <- citation_strip_tempest_footnotes(md)
   matches <- citation_marker_matches(markdown)
   ids <- unique(matches$id)
-  source_store <- citation_source_store(store)
+  workspace <- citation_workspace(workspace)
   references <- lapply(seq_along(ids), function(i) {
-    citation_reference(ids[[i]], i, source_store)
+    citation_reference(ids[[i]], i, workspace)
   })
   names(references) <- ids
   list(markdown = markdown, matches = matches, references = references)
@@ -179,25 +183,27 @@ citation_marker_matches <- function(text) {
   )
 }
 
-citation_source_store <- function(store = NULL) {
-  if (is.null(store)) {
+citation_workspace <- function(workspace = NULL) {
+  if (is.null(workspace)) {
     return(NULL)
   }
-  if (inherits(store, "TempestRetriever")) {
-    workspace <- tryCatch(store[["workspace"]], error = function(e) NULL)
-    store <- workspace
+  if (inherits(workspace, "TempestRetriever")) {
+    workspace <- tryCatch(
+      workspace[["workspace"]],
+      error = function(e) NULL
+    )
   }
-  if (inherits(store, "ResearchWorkspace")) {
-    return(store)
+  if (inherits(workspace, "ResearchWorkspace")) {
+    return(workspace)
   }
   NULL
 }
 
-citation_reference <- function(id, number, store = NULL) {
-  source <- if (is.null(store)) {
+citation_reference <- function(id, number, workspace = NULL) {
+  source <- if (is.null(workspace)) {
     NULL
   } else {
-    tryCatch(store$get_retrieved_source(id), error = function(e) NULL)
+    tryCatch(workspace$get_retrieved_source(id), error = function(e) NULL)
   }
   known <- !is.null(source)
   url <- citation_safe_url(source$url %||% "")

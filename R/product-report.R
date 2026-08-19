@@ -1,4 +1,4 @@
-# Product-owned citations and report assembly
+# Shared product report citations, references, and canonical rendering
 
 tempest_product_report_abort <- function(message, ..., parent = NULL) {
   tempest_abort(
@@ -46,49 +46,6 @@ tempest_product_report_reference_validate <- function(reference, value) {
     )
   }
   invisible(reference)
-}
-
-tempest_storm_report_prompt <- function(draft_md, remove_duplicate) {
-  paste0(
-    "Polish the following Markdown report.\n\n",
-    "Rules:\n",
-    tempest_polish_rules(remove_duplicate = remove_duplicate),
-    "\n\n",
-    "<draft>\n",
-    draft_md,
-    "\n</draft>\n"
-  )
-}
-
-tempest_costorm_report_prompt <- function(session, style) {
-  paste0(
-    "Write a comprehensive report based on the session.\n\n",
-    "Topic: ",
-    session$topic,
-    "\n\n",
-    "Mind map:\n",
-    tempest_mindmap_to_markdown(session$mindmap),
-    "\n\n",
-    "Verified facts:\n",
-    tempest_summarize_facts_for_prompt(
-      session$workspace,
-      max_items = 120,
-      verified_only = TRUE,
-      min_support_score = session$config@min_support_score
-    ),
-    "\n\n",
-    "Conversation (summary):\n",
-    session$transcript_markdown(max_turns = 80),
-    "\n\n",
-    "Style: ",
-    style,
-    "\n\n",
-    "Rules:\n",
-    "- Use only verified facts (with citations).\n",
-    "- Preserve citations like [Sxxxxxxxxxxxx].\n",
-    "- Do not invent facts.\n\n",
-    "Write the report body in Markdown (no title)."
-  )
 }
 
 tempest_stage_execution_review_token <- function(value) {
@@ -182,24 +139,6 @@ tempest_stage_records_execution_review <- function(records) {
   paste(c("## Execution review", "", lines), collapse = "\n")
 }
 
-tempest_costorm_execution_review_lines <- function(session) {
-  if (!inherits(session, "TempestSession")) {
-    return(character())
-  }
-  tempest_stage_records_execution_review_lines(
-    tempest_session_stage_records(session)
-  )
-}
-
-tempest_costorm_execution_review <- function(session) {
-  if (!inherits(session, "TempestSession")) {
-    return("")
-  }
-  tempest_stage_records_execution_review(
-    tempest_session_stage_records(session)
-  )
-}
-
 tempest_markdown_without_trusted_title <- function(content, trusted_title) {
   if (is.null(trusted_title)) {
     return(content)
@@ -279,58 +218,6 @@ tempest_stage_records_validate_execution_review <- function(
     )
   }
   invisible(content)
-}
-
-tempest_costorm_report_context <- function(
-  session,
-  style,
-  include_references
-) {
-  if (!inherits(session, "TempestSession")) {
-    tempest_product_report_abort(
-      "Co-STORM report generation requires a TempestSession."
-    )
-  }
-  if (!rlang::is_string(style) || !style %in% c("technical", "executive")) {
-    tempest_product_report_abort(
-      "Co-STORM report style must be `technical` or `executive`."
-    )
-  }
-  include_references <- tempest_product_flag(
-    include_references,
-    "include_references"
-  )
-  title <- tempest_report_title_validate(session$title %||% session$topic)
-  if (!inherits(session$workspace, "ResearchWorkspace")) {
-    tempest_product_report_abort(
-      "Co-STORM report generation requires a ResearchWorkspace."
-    )
-  }
-  tryCatch(
-    S7::validate(session$config),
-    error = function(error) {
-      tempest_product_report_abort(
-        "Co-STORM report configuration failed live validation."
-      )
-    }
-  )
-  citation_policy <- session$config@citation_policy
-  on_unsupported_claim <- session$config@on_unsupported_claim
-  min_support_score <- tempest_normalize_min_support_score(
-    session$config@min_support_score
-  )
-  execution_review <- tempest_costorm_execution_review(session)
-  list(
-    prompt = tempest_costorm_report_prompt(session, style),
-    title = title,
-    workspace = session$workspace,
-    include_references = include_references,
-    citation_policy = citation_policy,
-    on_unsupported_claim = on_unsupported_claim,
-    min_support_score = min_support_score,
-    execution_review = execution_review,
-    style = style
-  )
 }
 
 #' @keywords internal
@@ -1151,10 +1038,18 @@ tempest_report_md_render <- function(
   paste0("# ", rendered_title, "\n\n", rendered_text, "\n")
 }
 
-#' Assemble a Markdown report with footnotes
+#' Render non-authoritative Markdown with footnotes
+#'
+#' `tempest_report_md()` deterministically renders caller-supplied Markdown and
+#' evidence from an explicit [ResearchWorkspace]. It does not commit a report,
+#' finalize a research Manifest, publish a product, or grant promotion
+#' authority. Read `result$report_md` from a completed [tempest_run()] product,
+#' or use [tempest_session_report_md()] after Co-STORM publication, when the
+#' exact authoritative product report is required.
 #'
 #' @param title Document title.
-#' @param body Markdown body text that may include inline citations like `[Sxxxxxxxxxxxx]`.
+#' @param body Markdown body text that may include inline citations like
+#'   `[Sxxxxxxxxxxxx]`.
 #' @param workspace A [ResearchWorkspace] or [TempestRetriever] containing
 #'   retrieved sources.
 #' @param citation_policy One of "none", "source_attributed" (default),
@@ -1167,7 +1062,8 @@ tempest_report_md_render <- function(
 #'   unsupported assertion and `revise` replaces it with a revision notice.
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
-#' @return Markdown with footnotes.
+#' @return Rendered Markdown with footnotes. This value alone is not an
+#'   authoritative product report.
 #' @examples
 #' \dontrun{
 #' result <- tempest_run("History of jazz", config = tempest_config())
@@ -1330,28 +1226,119 @@ tempest_final_report_validate <- function(
   invisible(report_md)
 }
 
-#' Assemble a Markdown report from a Co-STORM session
-#'
-#' @param session A `TempestSession`.
-#' @return Markdown with footnotes.
-#' @examples
-#' \dontrun{
-#' session <- tempest_session("History of jazz", config = tempest_config())
-#' session$step("Tell me about bebop.")
-#' md <- tempest_session_report_md(session)
-#' }
-#' @export
-tempest_session_report_md <- function(session) {
-  stopifnot(inherits(session, "TempestSession"))
-  report_md <- tempest_session_report_value(session)
-  if (
-    !rlang::is_string(report_md) ||
-      is.na(report_md) ||
-      !nzchar(report_md)
-  ) {
-    tempest_product_report_abort(
-      "The canonical Co-STORM report artifact has no Markdown content."
+
+#' @keywords internal
+tempest_product_report_execution_review_candidates <- function(...) {
+  histories <- list(...)
+  candidates <- unlist(
+    lapply(histories, function(records) {
+      records <- tempest_stage_records_validate(records)
+      vapply(
+        seq.int(0L, length(records)),
+        function(size) {
+          tempest_stage_records_execution_review(records[seq_len(size)])
+        },
+        character(1)
+      )
+    }),
+    use.names = FALSE
+  )
+  candidates <- unique(candidates[nzchar(candidates)])
+  candidates[order(nchar(candidates), decreasing = TRUE)]
+}
+
+#' @keywords internal
+tempest_product_report_without_execution_review <- function(
+  value,
+  records,
+  prior_records = records,
+  trusted_title = NULL
+) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  value <- enc2utf8(value)
+  body <- tempest_markdown_without_trusted_title(value, trusted_title)
+  if (!tempest_markdown_has_heading(body, "Execution review")) {
+    return(value)
+  }
+  candidates <- tempest_product_report_execution_review_candidates(
+    prior_records,
+    records
+  )
+  matches <- candidates[vapply(
+    candidates,
+    \(review) endsWith(value, paste0("\n\n", review, "\n")),
+    logical(1)
+  )]
+  if (length(matches) == 0L) {
+    tempest_stage_record_abort(
+      paste0(
+        "A durable report can remove only an exact package-owned terminal ",
+        "Execution review."
+      )
     )
   }
-  report_md
+  suffix <- paste0("\n", matches[[1]], "\n")
+  prefix_length <- nchar(value) - nchar(suffix)
+  if (prefix_length == 0L) {
+    return("")
+  }
+  substr(value, 1L, prefix_length)
+}
+
+#' @keywords internal
+tempest_product_report_for_stage_records <- function(
+  value,
+  records,
+  prior_records = records,
+  trusted_title = NULL
+) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  base <- tempest_product_report_without_execution_review(
+    value,
+    records,
+    prior_records = prior_records,
+    trusted_title = trusted_title
+  )
+  review <- tempest_stage_records_execution_review(records)
+  tempest_markdown_append_execution_review(
+    base,
+    review,
+    trusted_title = trusted_title
+  )
+}
+
+#' @keywords internal
+tempest_product_report_inline_citations <- function(value) {
+  gsub(
+    "\\[\\^(S[0-9a-f]{12})\\]",
+    "[\\1]",
+    value,
+    perl = TRUE
+  )
+}
+
+#' @keywords internal
+tempest_product_report_validate_policy <- function(
+  report_md,
+  title,
+  workspace,
+  config,
+  records
+) {
+  if (is.null(report_md)) {
+    return(invisible(NULL))
+  }
+  tempest_final_report_validate(
+    report_md = report_md,
+    workspace = workspace,
+    title = title,
+    citation_policy = config@citation_policy,
+    on_unsupported_claim = config@on_unsupported_claim,
+    min_support_score = config@min_support_score,
+    stage_records = records
+  )
 }

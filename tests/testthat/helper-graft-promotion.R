@@ -1,194 +1,185 @@
-test_promotion_fixture <- function() {
-  run_id <- "research-promotion-1"
-  program_set <- test_program_set()
-  programs <- tempest:::tempest_program_set_manifest_programs(program_set)
-  resource <- tempest_resource(
-    resource_kind = "scientific.document",
-    locator = "document:promotion-1",
-    title = "Promotion evidence",
-    media_type = "text/plain",
-    resource_id = "source-promotion-1",
-    content = "The intervention improved the measured outcome.",
-    retrieved_at = "2026-08-16T12:00:00Z"
-  )
-  workspace <- tempest_research_workspace()
-  workspace$upsert_retrieved_resource(resource)
-  span <- tempest:::tempest_evidence_span(
-    source_id = resource@resource_id,
-    quote = "The intervention improved the measured outcome.",
-    chunk_id = "chunk-promotion-1",
-    start_offset = 0L,
-    end_offset = 47L,
-    relevance_score = 0.95,
-    extracted_by = programs$extract_claims$program_artifact_id,
-    evidence_span_id = "evidence-promotion-1",
-    created_at = "2026-08-16T12:01:00Z"
-  )
-  claim <- tempest:::tempest_claim(
-    claim_text = "The intervention improved the measured outcome.",
-    source_ids = resource@resource_id,
-    evidence_span_ids = span@evidence_span_id,
-    supporting_quotes = list(span@quote),
-    claim_type = "finding",
-    confidence = "high",
-    claim_id = "claim-promotion-1",
-    created_at = "2026-08-16T12:02:00Z"
-  )
-  workspace$add_extracted_claim_batch(list(claim), list(span))
-  support <- tempest_claim_support(
-    claim_id = claim@claim_id,
-    evidence_span_id = span@evidence_span_id,
-    source_id = resource@resource_id,
-    verification_status = "supported",
-    support_score = 0.95,
-    rationale = "The exact source excerpt directly states the claim."
-  )
-  workspace$verify_proposed_claims_batch(
-    list(support),
-    verified_at = "2026-08-16T12:03:00Z",
-    min_support_score = 0.7,
-    verifier = "verifier-promotion-1"
-  )
+test_promotion_program_set <- local({
+  value <- NULL
+  function() {
+    if (is.null(value)) {
+      value <<- test_program_set()
+    }
+    value
+  }
+})
 
-  manifest <- tempest_research_manifest(
+test_promotion_storm_fixture <- function() {
+  run_id <- "research-promotion-1"
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  program_set <- test_promotion_program_set()
+  completed <- test_persistence_complete_storm_product(
+    topic = "Promotion evidence",
+    run_id = run_id,
+    config = config,
+    program_set = program_set
+  )
+  manifest <- tempest:::tempest_product_authority_finalize_manifest(
+    manifest = completed$manifest,
+    stage_records = completed$state$stage_records,
+    workspace = completed$workspace,
+    report_md = completed$state$report_md,
+    config = config,
+    experts = completed$state$experts,
+    product_state = completed$state,
+    status = "succeeded",
+    require_publishable = TRUE
+  )
+  retriever <- tempest_retriever(
+    config = config,
+    workspace = completed$workspace
+  )
+  product_stage_records <- completed$state$stage_records
+  stages <- vapply(
+    product_stage_records,
+    function(record) record@stage,
+    character(1)
+  )
+  stage_records <- product_stage_records[
+    stages %in% c("extract_claims", "verify_claim_support")
+  ]
+  trace_types <- vapply(
+    completed$manifest@traces,
+    function(trace) trace$trace_type,
+    character(1)
+  )
+  deputy_traces <- completed$manifest@traces[
+    trace_types %in% c("deputy_run", "deputy_delegation")
+  ]
+  authority_manifest <- tempest_research_manifest(
     research_run_id = run_id,
     mode = "storm",
-    config = tempest_config(),
-    programs = programs,
-    traces = list(),
+    config = config,
+    programs = tempest:::tempest_program_set_manifest_programs(program_set),
     status = "succeeded"
   )
-  deputy_expert_id <- "expert.promotion"
-  deputy_context <- tempest:::tempest_deputy_run_context(
-    manifest,
-    stage = "research",
-    role = "expert",
-    expert_id = deputy_expert_id
-  )
-  deputy_trace <- tempest:::tempest_research_manifest_traces(list(list(
-    agent_id = tempest:::tempest_deputy_adapter_agent_id(deputy_context),
-    correlation_id = "promotion-extraction-correlation",
-    deputy_run_id = "promotion-extraction-run",
-    deputy_session_id = tempest:::tempest_storm_deputy_session_id(
-      run_id,
-      deputy_expert_id
-    ),
-    expert_id = deputy_expert_id,
-    role = "expert",
-    stage = "research",
-    status = "complete",
-    completion_disposition = "issued",
-    trace_id = "promotion-extraction-run",
-    trace_type = "deputy_run"
-  )))[[1L]]
-  base_trace <- list(
-    research_run_id = run_id,
-    mode = "storm",
-    role = "program"
-  )
-  trace <- c(
-    base_trace,
-    list(
-      deputy_run_id = deputy_trace$deputy_run_id,
-      deputy_session_id = deputy_trace$deputy_session_id,
-      expert_id = deputy_trace$expert_id,
-      correlation_id = deputy_trace$correlation_id
-    )
-  )
-  extraction <- tempest:::tempest_stage_record_start(
-    "extract_claims",
-    programs$extract_claims$program_artifact_id,
-    programs$extract_claims$governed_procedure_ref$revision_id,
-    trace_references = trace,
-    attempt_id = "attempt-promotion-extraction",
-    started_at = "2026-08-16T12:03:00Z"
-  )
-  exact_claim <- workspace$get_proposed_claim(claim@claim_id)
-  extraction <- tempest:::tempest_stage_record_succeed(
-    extraction,
-    tempest:::tempest_stage_output_reference(
-      "workspace_claims",
-      claim@claim_id,
-      content_digest = tempest:::tempest_stage_claims_output_digest(
-        list(exact_claim),
-        extraction,
-        list(span)
-      )
-    ),
-    support_status = "unknown",
-    completed_at = "2026-08-16T12:04:00Z"
-  )
-  verification <- tempest:::tempest_stage_record_start(
-    "verify_claim_support",
-    programs$verify_claim_support$program_artifact_id,
-    programs$verify_claim_support$governed_procedure_ref$revision_id,
-    trace_references = c(
-      base_trace,
-      list(
-        min_support_score = tempest:::tempest_stage_support_threshold_string(
-          0.7
-        ),
-        verified_at = "2026-08-16T12:03:00Z",
-        verifier_model = "verifier-promotion-1"
-      )
-    ),
-    attempt_id = "attempt-promotion-verification",
-    started_at = "2026-08-16T12:05:00Z"
-  )
-  verification <- tempest:::tempest_stage_record_succeed(
-    verification,
-    tempest:::tempest_stage_output_reference(
-      "claim_supports",
-      support@claim_support_id,
-      content_digest = tempest:::tempest_stage_verification_output_digest(
-        support,
-        verification,
-        exact_claim,
-        span,
-        workspace
-      )
-    ),
-    support_status = "verified",
-    completed_at = "2026-08-16T12:06:00Z"
-  )
-  stage_records <- list(extraction, verification)
-  manifest <- tempest:::tempest_persistence_manifest_bind_stage_records(
-    manifest,
+  authority_manifest <- tempest:::tempest_product_authority_bind_stage_records(
+    authority_manifest,
     stage_records,
-    deputy_traces = list(deputy_trace)
-  )
-  manifest <- tempest:::tempest_persistence_manifest_bind_report(
-    manifest,
-    paste0(
-      "# Promotion evidence\n\n",
-      "The intervention improved the measured outcome ",
-      "[",
-      resource@resource_id,
-      "]."
+    deputy_traces = deputy_traces,
+    expert_ids = vapply(
+      completed$state$experts,
+      function(expert) expert@expert_id,
+      character(1)
     )
   )
-  list(
-    workspace = workspace,
+  authority_manifest <- tempest:::tempest_product_authority_bind_report(
+    authority_manifest,
+    tempest:::tempest_product_report_for_stage_records(
+      completed$state$report_md,
+      stage_records,
+      prior_records = product_stage_records
+    )
+  )
+  tempest:::tempest_research_workspace_seal(completed$workspace)
+  research <- list(
+    title = completed$state$title,
+    perspectives = completed$state$perspectives,
+    experts = completed$state$experts,
+    outline = completed$state$outline,
+    draft_md = completed$state$draft_md,
+    report_md = completed$state$report_md,
     manifest = manifest,
+    state = completed$state,
+    workspace = completed$workspace,
+    retriever = retriever,
+    output_dir = NULL
+  )
+  claim <- completed$workspace$get_proposed_claim(completed$claim_id)
+  span <- completed$workspace$get_evidence_span(completed$span_id)
+  support <- completed$workspace$list_claim_supports()[[1L]]
+  list(
+    research = research,
+    workspace = completed$workspace,
+    manifest = authority_manifest,
     stage_records = stage_records,
-    claim = exact_claim,
+    claim = claim,
     span = span,
-    resource = resource,
+    resource = completed$workspace$get_retrieved_resource(completed$source$id),
     support = support,
-    programs = programs,
-    deputy_trace = deputy_trace
+    programs = tempest:::tempest_program_set_manifest_programs(program_set),
+    config = config
   )
 }
 
-test_promotion_bundle <- function() {
-  fixture <- test_promotion_fixture()
-  fixture$bundle <- tempest_promotion_bundle(
-    fixture$workspace,
-    fixture$manifest,
-    fixture$stage_records
+test_promotion_costorm_fixture <- function() {
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  session <- tempest_session(
+    "CoSTORM promotion evidence",
+    config = config,
+    experts = list(tempest_expert(
+      expert_id = "expert.promotion-costorm",
+      name = "Promotion Analyst",
+      title = "Scientific evidence reviewer",
+      description = "Reviews exact evidence for promotion.",
+      instructions = "Retain only verified evidence."
+    )),
+    session_id = "research-promotion-costorm",
+    program_set = test_promotion_program_set()
   )
-  fixture
+  evidence <- test_persistence_add_costorm_evidence(
+    session,
+    key = "promotion-costorm",
+    claim_text = "Co-STORM evidence is eligible for reviewed promotion."
+  )
+  report_md <- paste0(
+    "# CoSTORM promotion evidence\n\n",
+    evidence$claim@claim_text,
+    " [",
+    evidence$source@resource_id,
+    "]."
+  )
+  report_md <- test_persistence_commit_costorm_report(session, report_md)
+  support <- session$workspace$list_claim_supports()[[1L]]
+  list(
+    research = session,
+    workspace = session$workspace,
+    manifest = session$manifest,
+    stage_records = tempest:::tempest_session_stage_records(session),
+    claim = session$workspace$get_proposed_claim(evidence$claim@claim_id),
+    span = evidence$span,
+    resource = evidence$source,
+    support = support,
+    programs = tempest:::tempest_program_set_manifest_programs(
+      tempest:::tempest_session_program_set(session)
+    ),
+    config = config,
+    report_md = report_md
+  )
 }
+
+test_promotion_fixture <- local({
+  fixtures <- new.env(parent = emptyenv())
+  function(mode = c("storm", "costorm")) {
+    mode <- match.arg(mode)
+    if (!exists(mode, fixtures, inherits = FALSE)) {
+      value <- if (identical(mode, "storm")) {
+        test_promotion_storm_fixture()
+      } else {
+        test_promotion_costorm_fixture()
+      }
+      assign(mode, value, fixtures)
+    }
+    get(mode, fixtures, inherits = FALSE)
+  }
+})
+
+test_promotion_bundle <- local({
+  fixtures <- new.env(parent = emptyenv())
+  function(mode = c("storm", "costorm")) {
+    mode <- match.arg(mode)
+    if (!exists(mode, fixtures, inherits = FALSE)) {
+      fixture <- test_promotion_fixture(mode)
+      fixture$bundle <- tempest_promotion_bundle(fixture$research)
+      assign(mode, fixture, fixtures)
+    }
+    get(mode, fixtures, inherits = FALSE)
+  }
+})
 
 test_promotion_store <- function() {
   graft::graft_open(

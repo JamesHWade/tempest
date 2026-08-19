@@ -41,13 +41,13 @@ server <- function(input, output, session) {
   store <- new_session_store()
   config <- mod_config_server("config")
 
-  chat_report_ready <- mod_chat_server(
+  chat_handle <- mod_chat_server(
     "chat",
     config = config,
     store = store,
     allow_user_experts = TRUE
   )
-  storm_report_ready <- mod_storm_server(
+  storm_handle <- mod_storm_server(
     "storm",
     config = config,
     store = store
@@ -58,10 +58,18 @@ server <- function(input, output, session) {
   mod_transcript_server("transcript", store = store)
   mod_report_server("report", store = store)
 
-  # Modules signal when a report is ready; navigation lives here, in the parent.
+  # Modules emit monotonic navigation events only after report publication.
   show_report <- function() nav_select("nav", "Report")
-  observeEvent(chat_report_ready(), show_report(), ignoreInit = TRUE)
-  observeEvent(storm_report_ready(), show_report(), ignoreInit = TRUE)
+  observeEvent(
+    chat_handle$report_navigation_event(),
+    show_report(),
+    ignoreInit = TRUE
+  )
+  observeEvent(
+    storm_handle$report_navigation_event(),
+    show_report(),
+    ignoreInit = TRUE
+  )
 }
 
 shinyApp(ui, server)

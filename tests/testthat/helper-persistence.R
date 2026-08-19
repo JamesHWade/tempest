@@ -371,7 +371,7 @@ test_persistence_commit_existing_costorm_report <- function(
   report_md
 ) {
   records <- tempest:::tempest_session_stage_records(session)
-  report_md <- tempest:::tempest_persistence_report_for_records(
+  report_md <- tempest:::tempest_product_report_for_stage_records(
     report_md,
     records,
     trusted_title = session$title
@@ -417,7 +417,7 @@ test_persistence_bind_storm_records <- function(
     deputy_trace = deputy$trace
   )
   if (!is.null(state$report_md)) {
-    state$report_md <- tempest:::tempest_persistence_report_for_records(
+    state$report_md <- tempest:::tempest_product_report_for_stage_records(
       state$report_md,
       state$stage_records
     )
@@ -428,7 +428,7 @@ test_persistence_bind_storm_records <- function(
     \(expert) expert@expert_id,
     character(1)
   )
-  manifest <- tempest:::tempest_persistence_manifest_bind_stage_records(
+  manifest <- tempest:::tempest_product_authority_bind_stage_records(
     manifest,
     state$stage_records,
     deputy_traces = if (is.null(deputy$trace)) list() else list(deputy$trace),

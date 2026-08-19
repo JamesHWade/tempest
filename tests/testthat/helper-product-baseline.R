@@ -259,10 +259,7 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
         "Plan a comprehensive STORM research report."
       ))
     }
-    if (
-      identical(role, "writer") &&
-        !identical(system_prompt, tempest_prompt("polisher_system"))
-    ) {
+    if (identical(role, "writer")) {
       return(list(
         chat_structured = function(prompt, type = NULL, ...) {
           if (

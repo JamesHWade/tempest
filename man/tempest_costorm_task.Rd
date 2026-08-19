@@ -38,8 +38,10 @@ A \code{vitals::Task}.
 \description{
 Runs automated Co-STORM sessions with a simulated user for evaluation.
 Moderator and expert turns use the same persistent Deputy agents as normal
-Co-STORM sessions. The built-in solver includes credential-safe terminal
-Deputy traces in \code{solver_metadata}; it never returns Deputy Agent objects.
+Co-STORM sessions. The built-in solver completes a real \code{\link[=tempest_session]{tempest_session()}},
+reads its exact committed report, and includes credential-safe product
+summaries and terminal Deputy traces in \code{solver_metadata}; it never returns
+Deputy Agent objects, chats, clients, tools, or credentials as metadata.
 }
 \examples{
 \dontrun{

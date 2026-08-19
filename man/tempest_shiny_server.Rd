@@ -42,9 +42,10 @@ requires its exact pinned view before any provider call; the view remains
 process-local and is never serialized.}
 }
 \value{
-A list with the shared \code{store}; reactive \code{session}, \code{events},
-\code{evidence}, \code{report}, and \code{report_ready} accessors; and a product-session
-\code{touch()} control.
+A list with the shared \code{store}; reactive \code{costorm_session},
+\code{costorm_events}, \code{costorm_evidence}, \code{storm_events}, \code{report_md},
+\code{report_workspace}, and \code{report_topic} accessors; a monotonic
+\code{report_navigation_event} counter; and a \code{touch_costorm_session()} control.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -54,6 +55,11 @@ A list with the shared \code{store}; reactive \code{session}, \code{events},
 provide a \link{TempestConfig}, optional expert profiles, a stable session id, and
 an optional shared store. The returned handle exposes only product session,
 event, evidence, and report state.
+
+Progress, persistence, and successful publication use polite atomic status
+regions in the bundled UI. Validation, cancellation, and publication
+failures use alerts and never convert a rejected product into report-ready
+state.
 }
 \examples{
 \dontrun{

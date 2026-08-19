@@ -4675,3 +4675,735 @@ tempest_execute_stage_async <- function(
     }
   )
 }
+
+
+#' @keywords internal
+tempest_stage_records_verification_projection <- function(records, workspace) {
+  records <- tempest_stage_records_validate(records)
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_stage_record_abort(
+      "{.arg workspace} must be a ResearchWorkspace."
+    )
+  }
+  supports <- workspace$list_claim_supports()
+  verification <- Filter(
+    function(record) {
+      identical(record@stage, "verify_claim_support") &&
+        identical(record@status, "succeeded")
+    },
+    records
+  )
+  if (length(supports) == 0L) {
+    if (length(verification) > 0L) {
+      tempest_stage_record_abort(
+        paste0(
+          "Succeeded verification records cannot exist without the exact ",
+          "durable claim-support set."
+        )
+      )
+    }
+    return(invisible(list(
+      verified_at = NA_character_,
+      verifier_model = NA_character_
+    )))
+  }
+
+  support_ids <- vapply(
+    supports,
+    \(support) support@claim_support_id,
+    character(1)
+  )
+  record_ids <- vapply(
+    verification,
+    function(record) {
+      ids <- unlist(record@output_reference$ids, use.names = FALSE)
+      if (
+        !identical(record@output_reference$kind, "claim_supports") ||
+          length(ids) != 1L
+      ) {
+        tempest_stage_record_abort(
+          paste0(
+            "Each succeeded verification record must bind exactly one ",
+            "claim-support assessment."
+          )
+        )
+      }
+      ids[[1]]
+    },
+    character(1)
+  )
+  if (
+    length(record_ids) != length(support_ids) ||
+      anyDuplicated(record_ids) ||
+      !setequal(record_ids, support_ids)
+  ) {
+    tempest_stage_record_abort(
+      paste0(
+        "Succeeded verification records must bind every durable ",
+        "claim-support assessment exactly once."
+      )
+    )
+  }
+  verification <- verification[match(support_ids, record_ids)]
+  verified_at <- vapply(
+    verification,
+    \(record) record@trace_references$verified_at,
+    character(1)
+  )
+  verifier_model <- vapply(
+    verification,
+    function(record) {
+      record@trace_references$verifier_model %||% NA_character_
+    },
+    character(1)
+  )
+  if (
+    !all(vapply(
+      verified_at,
+      tempest_ledger_timestamp_valid,
+      logical(1)
+    )) ||
+      !all(vapply(
+        verifier_model,
+        tempest_ledger_identifier_valid,
+        logical(1),
+        optional = TRUE
+      )) ||
+      !all(vapply(verified_at, identical, logical(1), verified_at[[1]])) ||
+      !all(vapply(
+        verifier_model,
+        identical,
+        logical(1),
+        verifier_model[[1]]
+      ))
+  ) {
+    tempest_stage_record_abort(
+      paste0(
+        "A verification batch must bind one exact canonical timestamp and ",
+        "optional verifier identity across every claim-support record."
+      )
+    )
+  }
+  batch_time <- tempest_stage_time_parse(verified_at[[1]])
+  starts <- vapply(
+    verification,
+    function(record) as.numeric(tempest_stage_time_parse(record@started_at)),
+    numeric(1)
+  )
+  if (is.na(batch_time) || any(as.numeric(batch_time) > starts)) {
+    tempest_stage_record_abort(
+      paste0(
+        "Verification batch time must be at or before every bound stage ",
+        "attempt start."
+      )
+    )
+  }
+  for (index in seq_along(supports)) {
+    support <- supports[[index]]
+    claim <- workspace$get_proposed_claim(support@claim_id)
+    if (
+      is.null(claim) ||
+        !identical(claim@verified_at, verified_at[[index]]) ||
+        !identical(claim@verifier_model, verifier_model[[index]])
+    ) {
+      tempest_stage_record_abort(
+        paste0(
+          "Claim verifier metadata must be the exact projection of its ",
+          "authoritative verification-stage proof."
+        )
+      )
+    }
+  }
+  invisible(list(
+    verified_at = verified_at[[1]],
+    verifier_model = verifier_model[[1]]
+  ))
+}
+
+#' @keywords internal
+tempest_stage_records_validate_workspace <- function(
+  records,
+  workspace,
+  min_support_score = 0.7
+) {
+  records <- tempest_stage_records_validate(records)
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    tempest_stage_record_abort(
+      "{.arg workspace} must be a ResearchWorkspace."
+    )
+  }
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
+  claim_ids <- vapply(
+    workspace$list_proposed_claims(),
+    \(claim) claim@claim_id,
+    character(1)
+  )
+  claim_supports <- workspace$list_claim_supports()
+  support_ids <- vapply(
+    claim_supports,
+    \(support) support@claim_support_id,
+    character(1)
+  )
+  verification_reference_ids <- list()
+  for (record in records) {
+    if (identical(record@stage, "verify_claim_support")) {
+      expected_threshold <- tempest_stage_support_threshold_string(
+        min_support_score
+      )
+      actual_threshold <-
+        record@trace_references$min_support_score %||% NULL
+      if (!identical(actual_threshold, expected_threshold)) {
+        tempest_stage_record_abort(
+          paste0(
+            "Verification-stage threshold trace does not match the exact ",
+            "configured min_support_score."
+          )
+        )
+      }
+    }
+    reference <- record@output_reference
+    if (length(reference) == 0L) {
+      next
+    }
+    ids <- unlist(reference$ids, use.names = FALSE)
+    mismatched <- switch(
+      reference$kind,
+      workspace_claims = length(setdiff(ids, claim_ids)) > 0L,
+      claim_supports = {
+        verification_reference_ids <- c(
+          verification_reference_ids,
+          list(ids)
+        )
+        length(ids) == 0L || length(setdiff(ids, support_ids)) > 0L
+      },
+      FALSE
+    )
+    if (isTRUE(mismatched)) {
+      tempest_stage_record_abort(
+        paste0(
+          "Stage-record output references do not match the durable ",
+          "ResearchWorkspace."
+        )
+      )
+    }
+    if (identical(reference$kind, "workspace_claims")) {
+      referenced_claims <- lapply(ids, workspace$get_proposed_claim)
+      referenced_span_ids <- unname(unlist(
+        lapply(referenced_claims, \(claim) claim@evidence_span_ids),
+        use.names = FALSE
+      ))
+      referenced_spans <- lapply(
+        referenced_span_ids,
+        workspace$get_evidence_span
+      )
+      expected_digest <- tempest_stage_claims_output_digest(
+        referenced_claims,
+        record,
+        referenced_spans
+      )
+      if (!identical(reference$content_digest, expected_digest)) {
+        tempest_stage_record_abort(
+          paste0(
+            "Extraction-stage output digest does not match the exact ",
+            "durable claim records."
+          )
+        )
+      }
+    }
+    if (identical(reference$kind, "claim_supports")) {
+      support <- if (length(ids) == 1L) {
+        workspace$get_claim_support(ids[[1]])
+      } else {
+        NULL
+      }
+      claim <- if (is.null(support)) {
+        NULL
+      } else {
+        workspace$get_proposed_claim(support@claim_id)
+      }
+      evidence_span <- if (is.null(support)) {
+        NULL
+      } else {
+        workspace$get_evidence_span(support@evidence_span_id)
+      }
+      expected_digest <- tempest_stage_verification_output_digest(
+        support,
+        record,
+        claim,
+        evidence_span,
+        workspace
+      )
+      if (!identical(reference$content_digest, expected_digest)) {
+        tempest_stage_record_abort(
+          paste0(
+            "Verification-stage output digest does not match the exact ",
+            "durable claim-span support and authoritative source evidence."
+          )
+        )
+      }
+    }
+    if (identical(record@stage, "verify_claim_support")) {
+      if (length(ids) != 1L) {
+        tempest_stage_record_abort(
+          paste0(
+            "Each verification-stage record must reference exactly one ",
+            "claim-support assessment."
+          )
+        )
+      }
+      support <- workspace$get_claim_support(ids[[1]])
+      normalized_status <- tempest_apply_min_support_score(
+        support@verification_status,
+        support@support_score,
+        min_support_score = min_support_score
+      )
+      if (!identical(support@verification_status, normalized_status)) {
+        tempest_stage_record_abort(
+          paste0(
+            "Persisted claim-span status is not the exact normalized ",
+            "verification result at the configured threshold."
+          )
+        )
+      }
+      expected_support <- tempest_stage_verification_support_status(
+        support@verification_status,
+        support@support_score,
+        min_support_score
+      )
+      if (!identical(record@support_status, expected_support)) {
+        tempest_stage_record_abort(
+          paste0(
+            "Verification-stage trust does not match the durable claim-span ",
+            "support at the configured threshold."
+          )
+        )
+      }
+    }
+    if (
+      record@stage %in%
+        c(
+          "refined_outline",
+          "section_writing",
+          "lead_section"
+        )
+    ) {
+      evidence_field <- if (isTRUE(record@fallback_taken)) {
+        "verified_evidence_claim_ids"
+      } else {
+        "evidence_claim_ids"
+      }
+      evidence_ids <- unlist(
+        record@trace_references[[evidence_field]] %||% list(),
+        use.names = FALSE
+      )
+      unknown_evidence <- setdiff(evidence_ids, claim_ids)
+      if (length(unknown_evidence) > 0L) {
+        tempest_stage_record_abort(
+          "Grounded stage trace references unknown evidence claims."
+        )
+      }
+      evidence <- lapply(
+        evidence_ids,
+        workspace$get_proposed_claim
+      )
+      expected_support <- tempest_stage_evidence_support(
+        evidence,
+        list(min_support_score = min_support_score)
+      )
+      if (
+        isTRUE(record@fallback_taken) &&
+          (length(evidence) == 0L ||
+            !identical(expected_support, "verified"))
+      ) {
+        tempest_stage_record_abort(
+          "Grounded fallback trace must bind exact threshold-supported claims."
+        )
+      }
+      persisted_support <- if (identical(record@stage, "refined_outline")) {
+        "unknown"
+      } else {
+        expected_support
+      }
+      if (
+        !identical(record@support_status, persisted_support) ||
+          (identical(record@stage, "refined_outline") &&
+            isTRUE(record@publication_allowed))
+      ) {
+        tempest_stage_record_abort(
+          paste0(
+            "Grounded stage support does not match its durable evidence ",
+            "claims at the configured threshold."
+          )
+        )
+      }
+    }
+  }
+  if (length(verification_reference_ids) > 0L) {
+    covered_ids <- unique(unlist(
+      verification_reference_ids,
+      use.names = FALSE
+    ))
+    if (!setequal(covered_ids, support_ids)) {
+      tempest_stage_record_abort(
+        paste0(
+          "Successful verification-stage references must cover the durable ",
+          "claim-support ledger."
+        )
+      )
+    }
+  }
+  tempest_stage_records_verification_projection(records, workspace)
+  invisible(records)
+}
+
+#' @keywords internal
+tempest_stage_records_validate_workspace_coverage <- function(
+  records,
+  workspace,
+  require_extraction = FALSE,
+  require_verification = FALSE
+) {
+  records <- tempest_stage_records_validate(records)
+  claims <- workspace$list_proposed_claims()
+  claim_ids <- vapply(claims, \(claim) claim@claim_id, character(1))
+  succeeded <- Filter(\(record) identical(record@status, "succeeded"), records)
+  extraction <- Filter(
+    \(record) identical(record@stage, "extract_claims"),
+    succeeded
+  )
+  verification <- Filter(
+    \(record) identical(record@stage, "verify_claim_support"),
+    succeeded
+  )
+  extracted_ids <- unname(unlist(lapply(
+    extraction,
+    \(record) record@output_reference$ids
+  )))
+  if (
+    isTRUE(require_extraction) &&
+      (length(extraction) == 0L || !setequal(extracted_ids, claim_ids))
+  ) {
+    tempest_stage_record_abort(
+      paste0(
+        "Succeeded extraction-stage records must exactly cover the ",
+        "durable workspace claim ledger."
+      )
+    )
+  }
+
+  support_ids <- vapply(
+    workspace$list_claim_supports(),
+    \(support) support@claim_support_id,
+    character(1)
+  )
+  verified_ids <- unname(unlist(lapply(
+    verification,
+    \(record) record@output_reference$ids
+  )))
+  if (
+    isTRUE(require_verification) &&
+      length(claim_ids) > 0L &&
+      (length(support_ids) == 0L ||
+        length(verification) == 0L ||
+        !setequal(verified_ids, support_ids))
+  ) {
+    tempest_stage_record_abort(
+      paste0(
+        "Succeeded verification-stage records must exactly cover the ",
+        "durable claim-support ledger."
+      )
+    )
+  }
+  invisible(records)
+}
+
+#' @keywords internal
+tempest_stage_records_validate_generated_experts <- function(records, experts) {
+  records <- tempest_stage_records_validate(records)
+  experts <- tempest_validate_experts(experts, active_only = FALSE)
+  expert_ids <- vapply(experts, \(expert) expert@expert_id, character(1))
+  generated <- which(startsWith(expert_ids, "expert.generated-"))
+  persona_records <- tempest_storm_succeeded_stage_records(records, "personas")
+  record_digests <- vapply(
+    persona_records,
+    \(record) record@output_reference$content_digest,
+    character(1)
+  )
+  candidate_digests <- character()
+  candidate_coverage <- list()
+  covered <- integer()
+  for (index in seq_along(experts)) {
+    singleton <- tempest_stage_state_output_digest(
+      "personas",
+      experts[index]
+    )
+    candidate_digests <- c(candidate_digests, singleton)
+    candidate_coverage <- c(candidate_coverage, list(index))
+    prefix <- tempest_stage_state_output_digest(
+      "personas",
+      experts[seq_len(index)]
+    )
+    candidate_digests <- c(candidate_digests, prefix)
+    candidate_coverage <- c(candidate_coverage, list(seq_len(index)))
+  }
+  matches <- match(record_digests, candidate_digests)
+  if (anyNA(matches)) {
+    tempest_stage_record_abort(
+      paste0(
+        "Every succeeded persona-stage record must bind an exact canonical ",
+        "durable expert-profile set."
+      )
+    )
+  }
+  if (length(matches) > 0L) {
+    covered <- unique(unlist(candidate_coverage[matches], use.names = FALSE))
+  }
+  if (length(setdiff(generated, unique(covered))) > 0L) {
+    tempest_stage_record_abort(
+      paste0(
+        "Every automatically generated expert requires an exact succeeded ",
+        "persona-stage content binding."
+      )
+    )
+  }
+  invisible(records)
+}
+
+#' @keywords internal
+tempest_stage_records_validate_claim_provenance <- function(
+  records,
+  workspace,
+  research_run_id,
+  experts = list(),
+  builtin_expert_ids = "moderator"
+) {
+  records <- tempest_stage_records_validate(records)
+  if (
+    !rlang::is_string(research_run_id) ||
+      is.na(research_run_id) ||
+      !tempest_research_workspace_reference_id_valid(research_run_id)
+  ) {
+    tempest_stage_record_abort(
+      "Authoritative claim provenance requires a credential-free run id."
+    )
+  }
+  experts <- tempest_validate_experts(experts, active_only = FALSE)
+  expert_ids <- c(
+    vapply(experts, \(expert) expert@expert_id, character(1)),
+    builtin_expert_ids
+  )
+  succeeded <- Filter(\(record) identical(record@status, "succeeded"), records)
+  extraction <- Filter(
+    \(record) identical(record@stage, "extract_claims"),
+    succeeded
+  )
+  present <- function(value) {
+    is.character(value) &&
+      length(value) == 1L &&
+      !is.na(value) &&
+      nzchar(value)
+  }
+
+  claims <- workspace$list_proposed_claims()
+  for (claim in claims) {
+    if (
+      present(claim@session_id) &&
+        !identical(claim@session_id, research_run_id)
+    ) {
+      tempest_stage_record_abort(
+        "Claim provenance session id does not match the authoritative run."
+      )
+    }
+    if (
+      present(claim@expert_id) &&
+        !claim@expert_id %in% expert_ids
+    ) {
+      tempest_stage_record_abort(
+        "Claim provenance references an expert outside the durable roster."
+      )
+    }
+    matching <- Filter(
+      function(record) {
+        claim@claim_id %in%
+          unlist(
+            record@output_reference$ids,
+            use.names = FALSE
+          )
+      },
+      extraction
+    )
+    spans <- lapply(claim@evidence_span_ids, workspace$get_evidence_span)
+    program_spans <- Filter(
+      \(span) startsWith(span@extracted_by, "sha256:"),
+      spans
+    )
+    requires_extraction <- present(claim@session_id) ||
+      present(claim@expert_id) ||
+      present(claim@retrieval_step_id) ||
+      length(program_spans) > 0L
+    if (requires_extraction && length(matching) != 1L) {
+      tempest_stage_record_abort(
+        paste0(
+          "Generated claim provenance requires one exact succeeded ",
+          "extraction-stage record."
+        )
+      )
+    }
+    if (length(matching) == 1L) {
+      record <- matching[[1]]
+      if (
+        length(program_spans) > 0L &&
+          any(vapply(
+            program_spans,
+            \(span) {
+              !identical(
+                span@extracted_by,
+                record@program_artifact_id
+              )
+            },
+            logical(1)
+          ))
+      ) {
+        tempest_stage_record_abort(
+          "Evidence-span extraction provenance does not match its stage."
+        )
+      }
+      trace_expert <- record@trace_references$expert_id %||% NULL
+      if (
+        present(claim@expert_id) &&
+          !identical(claim@expert_id, trace_expert)
+      ) {
+        tempest_stage_record_abort(
+          "Claim expert provenance does not match its extraction trace."
+        )
+      }
+      correlation <- record@trace_references$correlation_id %||% NULL
+      if (
+        present(claim@retrieval_step_id) &&
+          !identical(claim@retrieval_step_id, correlation)
+      ) {
+        tempest_stage_record_abort(
+          "Claim retrieval provenance does not match its extraction trace."
+        )
+      }
+    }
+  }
+
+  tempest_stage_records_verification_projection(records, workspace)
+  invisible(records)
+}
+
+#' @keywords internal
+tempest_stage_records_validate_persisted_trust <- function(
+  records,
+  workspace,
+  min_support_score = 0.7
+) {
+  records <- tempest_stage_records_validate(records)
+  min_support_score <- tempest_normalize_min_support_score(min_support_score)
+  succeeded <- Filter(\(record) identical(record@status, "succeeded"), records)
+  fixed_unknown <- c(
+    "perspectives",
+    "personas",
+    "query_decomposition",
+    "extract_claims",
+    "next_question",
+    "draft_outline",
+    "refined_outline"
+  )
+  for (record in succeeded) {
+    if (
+      record@stage %in%
+        fixed_unknown &&
+        (!identical(record@support_status, "unknown") ||
+          isTRUE(record@publication_allowed))
+    ) {
+      tempest_stage_record_abort(
+        paste0(
+          "Persisted exploratory, extraction, and planning stages must ",
+          "remain unknown and non-publishable."
+        )
+      )
+    }
+  }
+
+  verification <- Filter(
+    \(record) identical(record@stage, "verify_claim_support"),
+    succeeded
+  )
+  proof_ids <- character()
+  grounded <- Filter(
+    \(record) record@stage %in% c("section_writing", "lead_section"),
+    succeeded
+  )
+  for (record in grounded) {
+    verified_ids <- unlist(
+      record@trace_references$verified_evidence_claim_ids %||% list(),
+      use.names = FALSE
+    )
+    proof_ids <- c(proof_ids, verified_ids)
+    if (
+      identical(record@support_status, "verified") ||
+        isTRUE(record@publication_allowed)
+    ) {
+      proof_ids <- c(
+        proof_ids,
+        unlist(
+          record@trace_references$evidence_claim_ids %||% list(),
+          use.names = FALSE
+        )
+      )
+    }
+  }
+  proof_ids <- unique(proof_ids)
+  for (claim_id in proof_ids) {
+    supports <- Filter(
+      \(support) identical(support@claim_id, claim_id),
+      workspace$list_claim_supports()
+    )
+    if (length(supports) == 0L) {
+      tempest_stage_record_abort(
+        paste0(
+          "Verified publication evidence requires the complete bound ",
+          "claim-by-span support set."
+        )
+      )
+    }
+    for (support in supports) {
+      matching <- Filter(
+        \(record) {
+          identical(
+            unlist(record@output_reference$ids, use.names = FALSE),
+            support@claim_support_id
+          )
+        },
+        verification
+      )
+      expected_pair <- tempest_stage_verification_support_status(
+        support@verification_status,
+        support@support_score,
+        min_support_score
+      )
+      if (length(matching) != 1L || !identical(expected_pair, "verified")) {
+        tempest_stage_record_abort(
+          paste0(
+            "Verified publication evidence requires one exact succeeded ",
+            "verification record for every threshold-supported span."
+          )
+        )
+      }
+    }
+    claim <- workspace$get_proposed_claim(claim_id)
+    expected <- tempest_stage_verification_support_status(
+      claim@verification_status,
+      claim@support_score,
+      min_support_score
+    )
+    if (!identical(expected, "verified")) {
+      tempest_stage_record_abort(
+        "Publication proof is below the persisted support threshold."
+      )
+    }
+  }
+  invisible(records)
+}

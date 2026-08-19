@@ -34,7 +34,7 @@ test_that("STORM cancellation is terminal and publishes no report", {
   )
   events <- collector$data()
   state <- tempest_progress_state(events)
-  persisted <- tempest:::tempest_read_json_strict(file.path(
+  persisted <- tempest:::tempest_product_read_json(file.path(
     output_root,
     "storm-cancel-baseline",
     "run_config.json"

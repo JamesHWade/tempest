@@ -89,21 +89,21 @@ mod_mindmap_ui <- function(id) {
 mod_mindmap_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     mindmap <- shiny::reactive({
-      ses <- store$get()
+      ses <- store$costorm_session()
       if (is.null(ses)) NULL else ses$mindmap
     })
 
     output$n_nodes <- shiny::renderText(length(mindmap()$nodes %||% list()))
     output$n_sources <- shiny::renderText({
-      ses <- store$get()
+      ses <- store$costorm_session()
       if (is.null(ses)) 0L else length(ses$workspace$list_retrieved_sources())
     })
     output$n_facts <- shiny::renderText({
-      ses <- store$get()
+      ses <- store$costorm_session()
       if (is.null(ses)) 0L else length(ses$workspace$list_proposed_claims())
     })
     output$n_turns <- shiny::renderText({
-      ses <- store$get()
+      ses <- store$costorm_session()
       if (is.null(ses)) 0L else length(ses$transcript %||% list())
     })
 
@@ -148,11 +148,11 @@ mod_mindmap_server <- function(id, store) {
     })
 
     output$graph_accessible <- shiny::renderUI({
-      ses <- store$get()
+      ses <- store$costorm_session()
       if (is.null(ses)) {
         return(shiny::p("Start a session to see the mind map."))
       }
-      mindmap_accessible_tree(ses$mindmap, source_store = ses$workspace)
+      mindmap_accessible_tree(ses$mindmap, workspace = ses$workspace)
     })
 
     if (has_pkg("visNetwork")) {
@@ -176,7 +176,7 @@ mod_mindmap_server <- function(id, store) {
       })
     } else {
       output$graph_text <- shiny::renderText({
-        ses <- store$get()
+        ses <- store$costorm_session()
         if (is.null(ses)) {
           return("Start a session to see the mind map.")
         }
@@ -306,7 +306,7 @@ node_modal <- function(node, node_id) {
   )
 }
 
-mindmap_accessible_tree <- function(mindmap, source_store = NULL) {
+mindmap_accessible_tree <- function(mindmap, workspace = NULL) {
   nodes <- mindmap$nodes %||% list()
   edges <- mindmap$edges %||% list()
   if (length(nodes) == 0L) {
@@ -342,10 +342,10 @@ mindmap_accessible_tree <- function(mindmap, source_store = NULL) {
       shiny::tags$li(paste(edge$relation %||% "related", direction))
     })
     sources <- lapply(node$source_ids %||% character(), function(source_id) {
-      source <- if (is.null(source_store)) {
+      source <- if (is.null(workspace)) {
         NULL
       } else {
-        source_store$get_retrieved_source(source_id)
+        workspace$get_retrieved_source(source_id)
       }
       url <- citation_safe_url(source$url %||% "")
       label <- source$title %||% source_id

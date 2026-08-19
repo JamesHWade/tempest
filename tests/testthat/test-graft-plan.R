@@ -30,6 +30,137 @@ test_that("promotion planning uses a deterministic private seed plan", {
   )
 })
 
+test_that("promotion plan timestamps are idempotent at microsecond precision", {
+  timestamps <- c(
+    "2026-08-19T02:08:02.857780Z",
+    "2026-08-19T02:06:43.114003Z",
+    "2026-08-19T02:08:02Z",
+    "2026-08-19T02:08:02.8Z"
+  )
+  expected <- c(
+    timestamps[1:2],
+    "2026-08-19T02:08:02.000000Z",
+    "2026-08-19T02:08:02.800000Z"
+  )
+  normalized <- vapply(
+    timestamps,
+    tempest:::tempest_graft_plan_value,
+    character(1)
+  )
+
+  expect_identical(unname(normalized), unname(expected))
+  expect_identical(
+    unname(vapply(
+      normalized,
+      tempest:::tempest_graft_plan_value,
+      character(1)
+    )),
+    unname(expected)
+  )
+
+  accepted <- as.POSIXct(
+    "2026-08-19T02:08:02.857781Z",
+    format = "%Y-%m-%dT%H:%M:%OSZ",
+    tz = "UTC"
+  )
+  planned <- tempest:::tempest_graft_plan_value(accepted)
+  expect_identical(
+    planned,
+    "2026-08-19T02:08:02.857781Z"
+  )
+  expect_identical(
+    tempest:::tempest_graft_record_matches(
+      list(retrieved_at = planned),
+      list(retrieved_at = accepted)
+    ),
+    TRUE
+  )
+
+  malformed <- c(
+    "2026-02-30T02:08:02.857780Z",
+    "2026-08-19T02:08:02.1234567Z"
+  )
+  expect_identical(
+    vapply(
+      malformed,
+      \(value) {
+        is.null(tempest:::tempest_graft_plan_timestamp_value(value))
+      },
+      logical(1)
+    ),
+    stats::setNames(rep(TRUE, length(malformed)), malformed)
+  )
+  expect_identical(
+    unname(vapply(
+      malformed,
+      tempest:::tempest_graft_plan_value,
+      character(1)
+    )),
+    malformed
+  )
+})
+
+test_that("promotion plan POSIX timestamps preserve instants and fail closed", {
+  instants <- as.POSIXct(
+    c("2026-11-01T05:30:00Z", "2026-11-01T06:15:00Z"),
+    format = "%Y-%m-%dT%H:%M:%SZ",
+    tz = "UTC"
+  )
+  fallback <- as.POSIXlt(instants, tz = "America/New_York")
+  expected <- c(
+    "2026-11-01T05:30:00.000000Z",
+    "2026-11-01T06:15:00.000000Z"
+  )
+
+  normalized <- tempest:::tempest_graft_plan_posix_value(fallback)
+  expect_identical(normalized, expected)
+  expect_identical(
+    unname(vapply(
+      normalized,
+      tempest:::tempest_graft_plan_value,
+      character(1)
+    )),
+    expected
+  )
+
+  invalid <- structure(
+    c(Inf, -Inf, 1e12, -1e12, 1e300, -1e300),
+    class = c("POSIXct", "POSIXt"),
+    tzone = "UTC"
+  )
+  expect_identical(
+    tempest:::tempest_graft_plan_posix_value(invalid),
+    rep(NA_character_, length(invalid))
+  )
+
+  mixed <- as.POSIXct(
+    c(NA_real_, -0.0000006, 0, 0.9999996),
+    origin = "1970-01-01",
+    tz = "UTC"
+  )
+  mixed_expected <- c(
+    NA_character_,
+    "1969-12-31T23:59:59.999999Z",
+    "1970-01-01T00:00:00.000000Z",
+    "1970-01-01T00:00:01.000000Z"
+  )
+  mixed_normalized <- tempest:::tempest_graft_plan_posix_value(mixed)
+  expect_identical(mixed_normalized, mixed_expected)
+  expect_identical(
+    vapply(
+      stats::na.omit(mixed_normalized),
+      \(value) {
+        identical(
+          tempest:::tempest_graft_plan_timestamp_value(value),
+          value
+        )
+      },
+      logical(1)
+    ),
+    rep(TRUE, 3L)
+  )
+})
+
 test_that("planning is read-only until the host accepts the final plan", {
   fixture <- test_promotion_bundle()
   store <- test_promotion_store()

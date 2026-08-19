@@ -71,17 +71,17 @@ Remotes:
     tidyverse/ellmer@5cb916dbab521f2d0b3871f284a6c67b8045d14c
 Config/testthat/edition: 3
 Config/testthat/parallel: true
-Config/testthat/start-first: run-persistence-storm-artifact-drift,
-    run-persistence-session-identity, product-baseline-storm,
-    run-persistence-session-authority,
-    run-persistence-workspace-records,
-    run-persistence-session-roundtrip,
-    run-persistence-storm-program-set,
-    run-persistence-graft-integrity,
-    run-persistence-storm-envelope, product-baseline-*,
-    run-persistence-session-stage-records,
-    run-persistence-session-recovery,
-    run-persistence-storm-filesystem
+Config/testthat/start-first: storm-persistence-artifact-drift,
+    costorm-persistence-identity, product-baseline-storm,
+    costorm-persistence-authority,
+    research-workspace-persistence-records,
+    costorm-persistence-roundtrip,
+    storm-persistence-program-set,
+    product-persistence-graft-integrity,
+    storm-persistence-envelope, product-baseline-*,
+    product-persistence-stage-records,
+    costorm-persistence-recovery,
+    storm-persistence-filesystem
 VignetteBuilder: knitr
 URL: https://jameshwade.github.io/tempest/,
     https://github.com/JamesHWade/tempest
@@ -97,6 +97,7 @@ Collate:
     'config.R'
     'product-hash.R'
     'product-validation.R'
+    'product-persistence.R'
     'research-expert.R'
     'costorm-turn-types.R'
     'costorm-async.R'
@@ -113,6 +114,7 @@ Collate:
     'program-set.R'
     'stage-record.R'
     'product-report.R'
+    'storm-state.R'
     'product-authority.R'
     'costorm-report.R'
     'progress-events.R'
@@ -120,7 +122,9 @@ Collate:
     'costorm-warmup.R'
     'prompts.R'
     'retriever.R'
-    'run-persistence.R'
+    'research-workspace-persistence.R'
+    'costorm-persistence.R'
+    'storm-persistence.R'
     'promotion-types.R'
     'graft-schema.R'
     'promotion-persistence.R'
@@ -130,7 +134,6 @@ Collate:
     'storm-outline.R'
     'storm-perspectives.R'
     'storm-polish.R'
-    'storm-state.R'
     'storm-research.R'
     'storm-types.R'
     'storm-write.R'

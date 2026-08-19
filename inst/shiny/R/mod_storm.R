@@ -36,7 +36,6 @@ mod_storm_ui <- function(id) {
           min = 1,
           max = 10
         ),
-        shiny::checkboxInput(ns("parallel"), "Parallel research", FALSE),
         bslib::input_task_button(
           ns("run"),
           "Run STORM Pipeline",
@@ -50,7 +49,12 @@ mod_storm_ui <- function(id) {
         full_screen = TRUE,
         bslib::card_header("STORM Pipeline Progress"),
         bslib::card_body(
-          shiny::uiOutput(ns("progress")),
+          shiny::div(
+            role = "status",
+            `aria-live` = "polite",
+            `aria-atomic` = "true",
+            shiny::uiOutput(ns("progress"))
+          ),
           shiny::uiOutput(ns("result"))
         )
       )
@@ -62,6 +66,9 @@ mod_storm_server <- function(id, config, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     progress_events <- shiny::reactiveVal(list())
+    validation_error <- shiny::reactiveVal(NULL)
+    publication_error <- shiny::reactiveVal(NULL)
+    published_result <- shiny::reactiveVal(NULL)
     progress_stream <- new.env(parent = emptyenv())
     progress_stream$path <- NULL
     progress_stream$token <- 0L
@@ -71,6 +78,26 @@ mod_storm_server <- function(id, config, store) {
     worker_state$cancelled <- FALSE
     worker_state$topic <- NULL
     worker_state$run_id <- NULL
+    worker_state$config <- NULL
+
+    finish_storm_worker <- function() {
+      stream_path <- progress_stream$path
+      progress_stream$active <- FALSE
+      progress_stream$path <- NULL
+      worker_state$job <- NULL
+      worker_state$topic <- NULL
+      worker_state$run_id <- NULL
+      worker_state$config <- NULL
+      storm_cleanup_progress_stream(stream_path)
+      invisible(stream_path)
+    }
+
+    fail_storm_publication <- function(message) {
+      publication_error(message)
+      published_result(NULL)
+      finish_storm_worker()
+      invisible(FALSE)
+    }
 
     storm_task <- shiny::ExtendedTask$new(
       function(
@@ -79,7 +106,6 @@ mod_storm_server <- function(id, config, store) {
         n_experts,
         strategy,
         max_rounds,
-        parallel,
         progress_stream_path,
         progress_run_id
       ) {
@@ -91,7 +117,6 @@ mod_storm_server <- function(id, config, store) {
               n_experts = n_experts,
               strategy = strategy,
               max_rounds = max_rounds,
-              parallel = parallel,
               package_root = package_root,
               progress_stream_path = progress_stream_path,
               progress_run_id = progress_run_id,
@@ -104,7 +129,6 @@ mod_storm_server <- function(id, config, store) {
           n_experts = n_experts,
           strategy = strategy,
           max_rounds = max_rounds,
-          parallel = parallel,
           progress_stream_path = progress_stream_path,
           progress_run_id = progress_run_id,
           package_root = storm_package_root(),
@@ -120,7 +144,16 @@ mod_storm_server <- function(id, config, store) {
 
     shiny::observeEvent(input$run, {
       topic <- stringi::stri_trim_both(input$topic %||% "")
-      shiny::req(nzchar(topic))
+      if (!nzchar(topic)) {
+        validation_error(
+          "Enter a research topic before running the STORM pipeline."
+        )
+        bslib::update_task_button("run", state = "ready", session = session)
+        return()
+      }
+      validation_error(NULL)
+      publication_error(NULL)
+      published_result(NULL)
       progress_stream$active <- FALSE
       worker_state$cancelled <- FALSE
       worker_state$job <- NULL
@@ -131,6 +164,7 @@ mod_storm_server <- function(id, config, store) {
       progress_stream$active <- TRUE
       progress_run_id <- storm_progress_run_id()
       worker_state$run_id <- progress_run_id
+      worker_state$config <- shiny::isolate(config())
       progress_events(list(storm_running_event(topic, progress_run_id)))
       storm_poll_progress_stream(
         path = progress_stream$path,
@@ -143,11 +177,10 @@ mod_storm_server <- function(id, config, store) {
       )
       storm_task$invoke(
         topic = topic,
-        cfg = config(),
+        cfg = worker_state$config,
         n_experts = input$n_experts %||% 3,
         strategy = input$strategy %||% "key_questions",
         max_rounds = input$max_rounds %||% 3,
-        parallel = input$parallel %||% FALSE,
         progress_stream_path = progress_stream$path,
         progress_run_id = progress_run_id
       )
@@ -166,41 +199,74 @@ mod_storm_server <- function(id, config, store) {
           worker_state$run_id %||% storm_progress_run_id()
         ))
       ))
-      storm_cleanup_progress_stream(progress_stream$path)
+      finish_storm_worker()
     })
 
     # Share the report once the pipeline succeeds.
     shiny::observeEvent(storm_task$status(), {
       if (identical(storm_task$status(), "success")) {
-        progress_stream$active <- FALSE
-        worker_state$job <- NULL
-        value <- storm_task$result()
-        progress_events(storm_merge_progress_events(
-          shiny::isolate(progress_events()),
-          storm_task_progress(value)
-        ))
-        result <- storm_task_result(value)
-        if (is.null(result)) {
+        if (isTRUE(worker_state$cancelled)) {
+          finish_storm_worker()
           return()
         }
-        store$set_storm_result(result, config = config())
-        storm_cleanup_progress_stream(progress_stream$path)
+        value <- storm_task$result()
+        envelope <- tryCatch(
+          storm_task_envelope(value),
+          error = function(error) NULL
+        )
+        result_run_id <- if (is.null(envelope)) {
+          worker_state$run_id
+        } else {
+          storm_result_run_id(envelope$result)
+        }
+        if (!identical(result_run_id, worker_state$run_id)) {
+          fail_storm_publication(
+            "The STORM result could not be published."
+          )
+          return()
+        }
+        if (is.null(envelope)) {
+          fail_storm_publication(
+            "The STORM result could not be published."
+          )
+          return()
+        }
+        progress_events(storm_merge_progress_events(
+          shiny::isolate(progress_events()),
+          envelope$progress
+        ))
+        published <- tryCatch(
+          {
+            store$publish_storm_report(
+              envelope$result,
+              config = worker_state$config
+            )
+            TRUE
+          },
+          error = function(error) {
+            fail_storm_publication(
+              "The STORM report failed product integrity validation."
+            )
+            FALSE
+          }
+        )
+        if (!isTRUE(published)) {
+          return()
+        }
+        published_result(envelope$result)
+        finish_storm_worker()
       } else if (identical(storm_task$status(), "error")) {
-        progress_stream$active <- FALSE
-        worker_state$job <- NULL
         progress_events(storm_merge_progress_events(
           shiny::isolate(progress_events()),
           storm_read_progress_stream(progress_stream$path)
         ))
-        storm_cleanup_progress_stream(progress_stream$path)
+        finish_storm_worker()
       }
     })
 
     session$onSessionEnded(function() {
-      progress_stream$active <- FALSE
       storm_cancel_worker(worker_state$job)
-      worker_state$job <- NULL
-      storm_cleanup_progress_stream(progress_stream$path)
+      finish_storm_worker()
     })
 
     output$cancel_control <- shiny::renderUI({
@@ -217,6 +283,9 @@ mod_storm_server <- function(id, config, store) {
 
     output$progress <- shiny::renderUI({
       status <- storm_task$status()
+      if (identical(status, "success") && !is.null(publication_error())) {
+        status <- "error"
+      }
       state <- storm_progress_state(progress_events(), status)
       switch(
         status,
@@ -231,18 +300,38 @@ mod_storm_server <- function(id, config, store) {
     })
 
     output$result <- shiny::renderUI({
+      if (!is.null(validation_error())) {
+        return(shiny::div(
+          class = "alert alert-danger mt-3",
+          role = "alert",
+          shiny::icon("triangle-exclamation"),
+          " ",
+          validation_error()
+        ))
+      }
+      if (isTRUE(worker_state$cancelled)) {
+        return(shiny::div(
+          class = "alert alert-warning mt-3",
+          role = "alert",
+          shiny::icon("ban"),
+          " STORM run cancelled."
+        ))
+      }
       status <- storm_task$status()
+      if (identical(status, "success") && !is.null(publication_error())) {
+        return(shiny::div(
+          class = "alert alert-danger mt-3",
+          role = "alert",
+          shiny::icon("triangle-exclamation"),
+          " ",
+          publication_error()
+        ))
+      }
       if (identical(status, "error")) {
-        if (isTRUE(worker_state$cancelled)) {
-          return(shiny::div(
-            class = "alert alert-warning mt-3",
-            shiny::icon("ban"),
-            " STORM run cancelled."
-          ))
-        }
         msg <- "The pipeline failed."
         return(shiny::div(
           class = "alert alert-danger mt-3",
+          role = "alert",
           shiny::icon("triangle-exclamation"),
           " Pipeline error: ",
           msg
@@ -251,13 +340,16 @@ mod_storm_server <- function(id, config, store) {
       if (!identical(status, "success")) {
         return(NULL)
       }
-      result <- storm_task_result(storm_task$result())
+      result <- published_result()
       if (is.null(result)) {
         return(NULL)
       }
       chars <- nchar(result$report_md %||% "")
       shiny::div(
         class = "alert alert-success mt-3",
+        role = "status",
+        `aria-live` = "polite",
+        `aria-atomic` = "true",
         shiny::icon("circle-check"),
         sprintf(" Pipeline complete! Report: %d characters. ", chars),
         shiny::actionLink(
@@ -268,20 +360,25 @@ mod_storm_server <- function(id, config, store) {
       )
     })
 
-    report_ready <- shiny::reactiveVal(0L)
+    report_navigation_event <- shiny::reactiveVal(0L)
     shiny::observeEvent(input$view_report, {
-      report_ready(report_ready() + 1L)
+      if (is.null(published_result())) {
+        return()
+      }
+      report_navigation_event(report_navigation_event() + 1L)
     })
 
-    shiny::reactive(report_ready())
+    list(
+      storm_events = shiny::reactive(progress_events()),
+      report_navigation_event = shiny::reactive(
+        report_navigation_event()
+      )
+    )
   })
 }
 
 storm_progress_run_id <- function() {
-  paste0(
-    "shiny-storm-",
-    format(Sys.time(), "%Y%m%d%H%M%OS3")
-  )
+  tempest:::tempest_uuid("shiny-storm")
 }
 
 storm_running_event <- function(topic, run_id = storm_progress_run_id()) {
@@ -487,28 +584,23 @@ storm_run_with_progress <- function(
   n_experts,
   strategy,
   max_rounds,
-  parallel,
   package_root = NULL,
   progress_stream_path = NULL,
   progress_run_id = NULL,
   progress_collector = storm_worker_progress_collector,
-  tempest_run_factory = storm_worker_tempest_run,
-  tempest_run = NULL
+  tempest_run_factory = storm_worker_tempest_run
 ) {
   collector <- progress_collector(
     include_payload = TRUE,
     stream_path = progress_stream_path
   )
-  if (is.null(tempest_run)) {
-    tempest_run <- tempest_run_factory(package_root)
-  }
+  tempest_run <- tempest_run_factory(package_root)
   result <- tempest_run(
     topic = topic,
     config = cfg,
     n_experts = n_experts,
     research_strategy = strategy,
     max_rounds = max_rounds,
-    parallel_research = parallel,
     run_id = progress_run_id,
     progress = collector$record,
     verbose = FALSE
@@ -607,20 +699,30 @@ storm_progress_state <- function(events, task_status = "initial") {
   ))
 }
 
-storm_task_result <- function(value) {
-  if (is.list(value) && "result" %in% names(value)) {
-    value$result
-  } else {
-    value
+storm_task_envelope <- function(value) {
+  valid <- is.list(value) &&
+    !is.data.frame(value) &&
+    identical(names(value), c("result", "progress")) &&
+    is.list(value$progress) &&
+    !is.data.frame(value$progress)
+  if (!isTRUE(valid)) {
+    stop(
+      "STORM worker output must contain exact result and progress fields.",
+      call. = FALSE
+    )
   }
+  value
 }
 
-storm_task_progress <- function(value) {
-  if (is.list(value) && "progress" %in% names(value)) {
-    value$progress %||% list()
-  } else {
-    list()
+storm_result_run_id <- function(result) {
+  run_id <- tryCatch(
+    result$manifest@research_run_id,
+    error = function(error) NULL
+  )
+  if (!is.character(run_id) || length(run_id) != 1L || is.na(run_id)) {
+    return(NULL)
   }
+  run_id
 }
 
 storm_cancel_worker <- function(job) {

@@ -30,18 +30,8 @@ mod_report_ui <- function(id) {
 
 mod_report_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
-    report_md <- shiny::reactive(store$report() %||% "")
-    report_store <- shiny::reactive({
-      source_store <- store$report_store()
-      if (!is.null(source_store)) {
-        return(source_store)
-      }
-      ses <- store$get()
-      if (is.null(ses)) {
-        return(NULL)
-      }
-      citation_source_store(ses$workspace %||% NULL)
-    })
+    report_md <- shiny::reactive(store$report_md() %||% "")
+    report_workspace <- shiny::reactive(store$report_workspace())
 
     filename <- function(ext) {
       paste0("tempest-", topic_slug(store$report_topic()), ext)
@@ -52,7 +42,11 @@ mod_report_server <- function(id, store) {
       if (!nzchar(md)) {
         return(empty_state("file-lines", "Generate a report to view it here."))
       }
-      markdown_ui(md, store = report_store(), include_references = TRUE)
+      markdown_ui(
+        md,
+        workspace = report_workspace(),
+        include_references = TRUE
+      )
     })
 
     output$download_md <- shiny::downloadHandler(
@@ -72,7 +66,7 @@ mod_report_server <- function(id, store) {
         shiny::req(nzchar(md))
         rendered_md <- citation_markdown(
           md,
-          store = report_store(),
+          workspace = report_workspace(),
           include_references = TRUE
         )
         body_html <- if (has_pkg("commonmark")) {

@@ -26,7 +26,7 @@ mod_sources_ui <- function(id) {
 mod_sources_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     sources <- shiny::reactive({
-      evidence <- store$evidence_store()
+      evidence <- store$costorm_workspace()
       if (is.null(evidence)) {
         return(NULL)
       }

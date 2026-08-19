@@ -445,11 +445,11 @@ test_that("workspace persistence preserves storage-reference-only resources", {
   store$upsert_retrieved_resource(resource)
 
   path <- withr::local_tempfile(fileext = ".json")
-  tempest:::tempest_write_json(
+  tempest:::tempest_product_write_json(
     path,
     tempest:::tempest_research_workspace_snapshot(store)
   )
-  snapshot <- tempest:::tempest_read_json_strict(path)
+  snapshot <- tempest:::tempest_product_read_json(path)
 
   expect_null(snapshot$retrieved_resources[[1]]$content)
 

@@ -89,8 +89,8 @@ test_that("STORM product state records experts without runtime objects", {
   record <- tempest:::tempest_storm_state_record(state)
   restored <- tempest:::tempest_storm_state_from_record(record)
   path <- withr::local_tempfile()
-  tempest:::tempest_write_json(path, record)
-  json_record <- tempest:::tempest_read_json_strict(path)
+  tempest:::tempest_product_write_json(path, record)
+  json_record <- tempest:::tempest_product_read_json(path)
   json_restored <- tempest:::tempest_storm_state_from_record(json_record)
 
   expect_identical(names(record), names(state))
@@ -579,11 +579,11 @@ test_that("returned STORM manifest equals the output-dir manifest", {
     verbose = FALSE
   )
   returned <- tempest_research_manifest_record(result$manifest)
-  persisted <- tempest:::tempest_read_json_strict(file.path(
+  persisted <- tempest:::tempest_product_read_json(file.path(
     result$output_dir,
     "run_config.json"
   ))$research_manifest
-  restored <- tempest:::tempest_load_run_artifacts(
+  restored <- tempest:::tempest_storm_load_artifacts(
     result$output_dir,
     config = fixture$config,
     program_set = program_set,
@@ -643,7 +643,7 @@ test_that("no-output STORM returns succeeded publication authority", {
     result$state$stage_records,
     result$workspace,
     report_md = result$report_md,
-    report_reference = tempest:::tempest_persistence_report_reference(
+    report_reference = tempest:::tempest_product_report_reference(
       result$report_md
     ),
     config = fixture$config,

@@ -283,55 +283,6 @@ tempest_shinychat_sanitize_text <- function(text) {
   out
 }
 
-tempest_shinychat_input_part_text <- function(value) {
-  if (is.character(value)) {
-    return(paste(value, collapse = "\n"))
-  }
-  text <- tryCatch(ellmer::contents_text(value), error = function(error) NULL)
-  usable <- !is.null(text) &&
-    length(text) > 0L &&
-    any(!is.na(text) & nzchar(text))
-  if (isTRUE(usable)) {
-    return(paste(text[!is.na(text) & nzchar(text)], collapse = "\n"))
-  }
-  if (inherits(value, "ellmer::ContentImage")) {
-    return("[Image attachment]")
-  }
-  if (inherits(value, "ellmer::ContentPDF")) {
-    filename <- tryCatch(value@filename, error = function(error) "")
-    if (
-      length(filename) == 1L &&
-        !is.na(filename) &&
-        nzchar(filename)
-    ) {
-      return(paste0("[PDF attachment: ", filename, "]"))
-    }
-    return("[PDF attachment]")
-  }
-  "[Attachment]"
-}
-
-tempest_shinychat_input_text <- function(input) {
-  if (is.null(input)) {
-    return("")
-  }
-  if (!is.list(input)) {
-    return(tempest_shinychat_input_part_text(input))
-  }
-  parts <- vapply(input, tempest_shinychat_input_part_text, character(1))
-  paste(parts[nzchar(parts)], collapse = "\n")
-}
-
-tempest_shinychat_turn_text <- function(turn) {
-  text <- tryCatch(
-    ellmer::contents_markdown(turn),
-    error = function(error) {
-      if (is.character(turn)) paste(turn, collapse = "\n") else ""
-    }
-  )
-  tempest_shinychat_sanitize_text(text)
-}
-
 tempest_shinychat_restore_messages <- function(
   transcript,
   topic = "Untitled topic",
@@ -459,8 +410,8 @@ TempestShinyChatAdapter <- R6::R6Class(
       initial_client,
       session,
       on_turn,
-      source_store = function() NULL,
-      render_message = function(text, role, source_store) text,
+      workspace = function() NULL,
+      render_message = function(text, role, workspace) text,
       on_dispose = NULL,
       backend = tempest_shinychat_backend()
     ) {
@@ -470,7 +421,7 @@ TempestShinyChatAdapter <- R6::R6Class(
       }
       callbacks <- list(
         on_turn = on_turn,
-        source_store = source_store,
+        workspace = workspace,
         render_message = render_message
       )
       invalid <- names(callbacks)[!vapply(callbacks, is.function, logical(1))]
@@ -489,7 +440,7 @@ TempestShinyChatAdapter <- R6::R6Class(
       private$session <- session
       private$initial_client <- initial_client
       private$on_turn <- on_turn
-      private$source_store <- source_store
+      private$workspace <- workspace
       private$render_message <- render_message
       private$on_dispose <- on_dispose
       private$version <- as.character(backend$version %||% "unknown")[[1L]]
@@ -550,7 +501,7 @@ TempestShinyChatAdapter <- R6::R6Class(
       rendered <- private$render_message(
         tempest_shinychat_sanitize_text(text),
         role,
-        private$source_store()
+        private$workspace()
       )
       private$in_domain(function() {
         private$chat$append(rendered, role = role)
@@ -636,7 +587,7 @@ TempestShinyChatAdapter <- R6::R6Class(
     initial_client = NULL,
     session = NULL,
     on_turn = NULL,
-    source_store = NULL,
+    workspace = NULL,
     render_message = NULL,
     on_dispose = NULL,
     version = "unknown",
@@ -715,7 +666,7 @@ TempestShinyChatAdapter <- R6::R6Class(
           rendered <- private$render_message(
             tempest_shinychat_sanitize_text(message$content),
             message$role,
-            private$source_store()
+            private$workspace()
           )
           private$chat$append(rendered, role = message$role)
         }

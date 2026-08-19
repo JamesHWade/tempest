@@ -19,7 +19,18 @@ Let the host supply:
 - the panel selection and surrounding controls.
 
 Use `tempest_shiny_store()` when multiple adapter instances or host controls
-must share and inspect the same research session.
+must share and inspect product state. Its exact 13 members are
+`peek_costorm_session`, `costorm_session`, `costorm_workspace`,
+`set_costorm_session`, `touch_costorm_session`, `save_costorm_session`,
+`resume_costorm_session`, `costorm_persistence_status`, `report_md`,
+`report_workspace`, `report_topic`, `publish_costorm_report`, and
+`publish_storm_report`. Do not rely on former generic aliases.
+
+The exact `tempest_shiny_server()` handle contains `store`, `costorm_session`,
+`costorm_events`, `costorm_evidence`, `storm_events`, `report_md`,
+`report_workspace`, `report_topic`, `report_navigation_event`, and
+`touch_costorm_session`. The navigation value is a monotonic event counter, not
+a Boolean readiness flag.
 
 ## Keep an existing shinychat interface
 
@@ -40,6 +51,11 @@ UI and should present research results in that conversation.
 - Use shinychat's tool-result display only for presentation. Authorization,
   permissions, and external side effects remain host responsibilities;
   Tempest owns research evidence, persistence, and cancellation.
+- Use explicit bounded Co-STORM archive download and upload. Do not claim
+  browser-temporary autosave or invent a durable host filesystem policy.
+- Do not add a parallel perspective-research control. The maintained STORM
+  panel uses its asynchronous worker while each expert turn remains
+  synchronously bound to one terminal Deputy execution.
 
 ## Observe product state
 
@@ -54,8 +70,15 @@ over the research result or session:
 
 Feed events into a host-neutral reducer before rendering them. Keep Shiny
 reactivity and widgets as adapters over package state rather than as the source
-of workflow truth. Use the `evidence` reactive returned by
+of workflow truth. Use the `costorm_evidence` reactive returned by
 `tempest_shiny_server()` when the Shiny adapter owns the view.
+
+The installed `examples/shiny-host/app.R` uses
+`tempest_shiny_ui(..., panels = "storm")` with `tempest_shiny_server()` and
+therefore follows the same maintained asynchronous path as the bundled app.
+Use polite atomic status regions for progress, persistence, and successful
+publication. Use alerts for validation, cancellation, transport, and
+publication failures, and never present a rejected product as successful.
 
 ## Offer the portable workflow instead
 

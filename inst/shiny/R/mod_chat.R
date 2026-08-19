@@ -28,7 +28,8 @@ mod_chat_ui <- function(id, config_ui, allow_user_experts = FALSE) {
             allow_attachments = tempest_chat_attachment_types(),
             footer = chat_footer_ui(ns)
           ),
-          tempest:::tempest_shinychat_citation_sanitizer(ns("chat"))
+          tempest:::tempest_shinychat_citation_sanitizer(ns("chat")),
+          shiny::uiOutput(ns("report_error"))
         )
       )
     )
@@ -123,7 +124,8 @@ chat_session_greeting_ui <- function(ns, allow_user_experts = FALSE) {
           auto_reset = FALSE,
           class = "tempest-chat-start btn-sm"
         )
-      )
+      ),
+      shiny::uiOutput(ns("start_validation"))
     )
   )
 }
@@ -444,11 +446,6 @@ chat_settings_sidebar_ui <- function(ns, config_ui) {
           buttonLabel = "Choose bundle",
           placeholder = "No bundle selected"
         ),
-        bslib::input_switch(
-          ns("autosave_session"),
-          "Autosave after changes",
-          FALSE
-        ),
         shiny::uiOutput(ns("session_persistence"))
       )
     ),
@@ -472,7 +469,10 @@ mod_chat_server <- function(
   allow_user_experts = FALSE
 ) {
   shiny::moduleServer(id, function(input, output, session) {
-    report_ready <- shiny::reactiveVal(0L)
+    report_navigation_event <- shiny::reactiveVal(0L)
+    report_error_message <- shiny::reactiveVal(NULL)
+    start_validation_message <- shiny::reactiveVal(NULL)
+    persistence_error_message <- shiny::reactiveVal(NULL)
     suggestions_enabled <- shiny::reactiveVal(TRUE)
     progress_events <- shiny::reactiveVal(list())
     warmup_run_id <- 0L
@@ -482,6 +482,29 @@ mod_chat_server <- function(
     expert_setup_mode <- shiny::reactiveVal("generated")
     generated_expert_count <- shiny::reactiveVal(3L)
     user_experts <- shiny::reactiveVal(list())
+
+    output$start_validation <- shiny::renderUI({
+      message <- start_validation_message()
+      if (is.null(message)) {
+        return(NULL)
+      }
+      shiny::div(
+        class = "alert alert-danger mt-2 mb-0",
+        role = "alert",
+        message
+      )
+    })
+    output$report_error <- shiny::renderUI({
+      message <- report_error_message()
+      if (is.null(message)) {
+        return(NULL)
+      }
+      shiny::div(
+        class = "alert alert-danger m-2",
+        role = "alert",
+        message
+      )
+    })
 
     resolve_program_set <- function() {
       value <- shiny::isolate(reactive_or_value(program_set)) %||%
@@ -619,12 +642,15 @@ mod_chat_server <- function(
       ),
       echo = "none"
     )
-    current_source_store <- function() {
-      ses <- tryCatch(shiny::isolate(store$get()), error = function(e) NULL)
+    current_workspace <- function() {
+      ses <- tryCatch(
+        shiny::isolate(store$costorm_session()),
+        error = function(e) NULL
+      )
       if (is.null(ses)) {
         return(NULL)
       }
-      citation_source_store(ses$workspace %||% NULL)
+      citation_workspace(ses$workspace %||% NULL)
     }
     chat <- NULL
     append_chat <- function(text) {
@@ -728,7 +754,7 @@ mod_chat_server <- function(
                 append_suggestion_cards_if_active(cards, turn_session_id)
               }
             }
-            store$touch()
+            store$touch_costorm_session()
             result
           })
         },
@@ -764,16 +790,15 @@ mod_chat_server <- function(
       initial_client = initial_chat,
       session = session,
       on_turn = function(...) invisible(NULL),
-      source_store = current_source_store,
-      render_message = function(text, role, source_store) {
-        citation_markdown(text, store = source_store)
+      workspace = current_workspace,
+      render_message = function(text, role, workspace) {
+        citation_markdown(text, workspace = workspace)
       }
     )
     record_progress <- function(event) {
       record_costorm_progress_event(progress_events, event, session)
     }
     session_root <- session_storage_root(session)
-    autosave_path <- file.path(session_root, "autosave")
     session$onSessionEnded(function() {
       unlink(session_root, recursive = TRUE, force = TRUE)
     })
@@ -788,7 +813,7 @@ mod_chat_server <- function(
       active_session_id <<- active_session_id + 1L
       work_queue$cancel()
       binding <- resolve_program_binding()
-      ses <- store$restore(
+      ses <- store$resume_costorm_session(
         path,
         config = config(),
         progress = record_progress,
@@ -810,11 +835,9 @@ mod_chat_server <- function(
         )
       }
       restore_progress_history(ses)
-      report_md <- tempest:::tempest_session_report_value(ses)
-      report_available <- is.character(report_md) &&
-        length(report_md) == 1L &&
-        !is.na(report_md) &&
-        nzchar(report_md)
+      report_available <- nzchar(
+        shiny::isolate(store$report_md()) %||% ""
+      )
       messages <- tempest:::tempest_shinychat_restore_messages(
         ses$transcript,
         topic = ses$topic,
@@ -829,37 +852,31 @@ mod_chat_server <- function(
       ses
     }
 
-    session_autosave_server(
-      store = store,
-      path = shiny::reactive(autosave_path),
-      enabled = shiny::reactive(input$autosave_session),
-      on_error = function(error) {
-        store$set_persistence(
-          "error",
-          path = NULL,
-          message = "Autosave failed."
-        )
-        shiny::showNotification(
-          "Autosave failed.",
-          type = "error",
-          duration = 10
-        )
-      }
-    )
-
     output$session_persistence <- shiny::renderUI({
-      session_persistence_status_ui(store$persistence())
+      shiny::tagList(
+        session_persistence_status_ui(store$costorm_persistence_status()),
+        session_persistence_error_ui(persistence_error_message())
+      )
     })
 
     # --- Session lifecycle ---------------------------------------------------
     output$save_session <- shiny::downloadHandler(
       filename = function() {
-        ses <- store$peek()
+        ses <- store$peek_costorm_session()
         topic <- if (is.null(ses)) "session" else ses$topic %||% "session"
         paste0("tempest-", topic_slug(topic), ".zip")
       },
       content = function(file) {
-        session_archive_write(store, file)
+        persistence_error_message(NULL)
+        tryCatch(
+          session_archive_write(store, file),
+          error = function(error) {
+            persistence_error_message(
+              "Could not download the session bundle."
+            )
+            stop(error)
+          }
+        )
       },
       contentType = "application/zip"
     )
@@ -867,17 +884,13 @@ mod_chat_server <- function(
     shiny::observeEvent(input$load_session, {
       upload <- input$load_session
       shiny::req(upload$datapath)
+      persistence_error_message(NULL)
       extract_root <- file.path(session_root, tempest:::tempest_uuid("upload"))
       on.exit(unlink(extract_root, recursive = TRUE, force = TRUE), add = TRUE)
       tryCatch(
         {
           bundle_path <- session_archive_extract(upload$datapath, extract_root)
           restored <- restore_session_bundle(bundle_path)
-          store$set_persistence(
-            "restored",
-            path = NULL,
-            message = "Loaded uploaded session bundle."
-          )
           shiny::showNotification(
             paste0("Loaded session: ", restored$topic),
             type = "message",
@@ -885,10 +898,8 @@ mod_chat_server <- function(
           )
         },
         error = function(e) {
-          store$set_persistence(
-            "error",
-            path = NULL,
-            message = "Could not load the session bundle."
+          persistence_error_message(
+            "Could not load the session bundle."
           )
           shiny::showNotification(
             "Could not load the session bundle.",
@@ -942,7 +953,7 @@ mod_chat_server <- function(
         return(NULL)
       }
       active_session_id <<- active_session_id + 1L
-      store$set(ses)
+      store$set_costorm_session(ses)
       chat$bind(
         tempest:::tempest_session_chat(ses, "moderator"),
         messages = list(list(
@@ -971,7 +982,7 @@ mod_chat_server <- function(
       active_session_id <<- active_session_id + 1L
       work_queue$cancel()
       progress_events(list())
-      store$set(NULL)
+      store$set_costorm_session(NULL)
       chat$reset()
       if (isTRUE(allow_user_experts)) {
         later::later(
@@ -989,13 +1000,15 @@ mod_chat_server <- function(
     }
 
     run_report_generation <- function() {
-      ses <- store$get()
+      ses <- store$costorm_session()
       report_session_id <- active_session_id
+      report_error_message(NULL)
       generate_report_for_chat_async(
         ses = ses,
         store = store,
         append_chat = append_chat,
-        report_ready = report_ready,
+        report_navigation_event = report_navigation_event,
+        on_error = report_error_message,
         style = input$report_style %||% "technical",
         queue = work_queue,
         is_current = function() {
@@ -1015,7 +1028,11 @@ mod_chat_server <- function(
         run_report_generation()
         return(invisible(NULL))
       }
-      append_chat(chat_command_message(command, store$get(), config = config()))
+      append_chat(chat_command_message(
+        command,
+        store$costorm_session(),
+        config = config()
+      ))
       invisible(NULL)
     }
 
@@ -1063,7 +1080,7 @@ mod_chat_server <- function(
 
     output$runtime_footer <- shiny::renderUI({
       chat_runtime_footer_ui(
-        ses = store$get(),
+        ses = store$costorm_session(),
         progress_state = costorm_progress_state(progress_events()),
         chat_status = chat$status(),
         ns = session$ns
@@ -1109,11 +1126,15 @@ mod_chat_server <- function(
       progress_events(list())
       topic <- stringi::stri_trim_both(input$topic %||% "")
       if (!nzchar(topic)) {
+        start_validation_message(
+          "Enter a research topic before starting a Co-STORM session."
+        )
         if (warmup_is_current()) {
           bslib::update_task_button("start", state = "ready", session = session)
         }
         return()
       }
+      start_validation_message(NULL)
       config_value <- shiny::isolate(config())
       session_experts <- shiny::isolate(reactive_or_value(experts))
       session_experts <- costorm_session_experts(
@@ -1320,7 +1341,7 @@ mod_chat_server <- function(
                           for (message in warmup_result_messages(result)) {
                             append_chat_if_active(message, start_session_id)
                           }
-                          store$touch()
+                          store$touch_costorm_session()
                           costorm_log(
                             "warmup finished: %s (%s)",
                             ses$session_id,
@@ -1397,7 +1418,7 @@ mod_chat_server <- function(
 
     # --- Expert panel --------------------------------------------------------
     output$expert_panel <- shiny::renderUI({
-      ses <- store$get()
+      ses <- store$costorm_session()
       if (is.null(ses) || length(ses$experts) == 0) {
         return(shiny::p(
           class = "text-muted small",
@@ -1407,7 +1428,11 @@ mod_chat_server <- function(
       shiny::tagList(lapply(ses$experts, expert_card))
     })
 
-    shiny::reactive(report_ready())
+    list(
+      report_navigation_event = shiny::reactive(
+        report_navigation_event()
+      )
+    )
   })
 }
 
@@ -1498,11 +1523,7 @@ chat_runtime_counts <- function(ses) {
   )
   report <- tryCatch(
     {
-      report_md <- if (inherits(ses, "TempestSession")) {
-        tempest:::tempest_session_report_value(ses)
-      } else {
-        ses$report_md %||% NULL
-      }
+      report_md <- tempest::tempest_session_report_md(ses)
       is.character(report_md) &&
         length(report_md) == 1L &&
         !is.na(report_md) &&
@@ -1737,10 +1758,10 @@ chat_command_facts <- function(ses, n = 5L) {
       error = function(e) list()
     )
   }
-  execution_review <- if (inherits(ses, "TempestSession")) {
-    tempest:::tempest_costorm_execution_review_lines(ses)
-  } else {
+  execution_review <- if (is.null(ses)) {
     character()
+  } else {
+    tempest:::tempest_costorm_execution_review_lines(ses)
   }
   if (length(claims) == 0L) {
     if (length(execution_review) > 0L) {
@@ -1888,8 +1909,9 @@ generate_report_for_chat_async <- function(
   ses,
   store,
   append_chat,
-  report_ready,
+  report_navigation_event,
   queue,
+  on_error = function(message) invisible(message),
   style = "technical",
   is_current = function() TRUE
 ) {
@@ -1914,7 +1936,7 @@ generate_report_for_chat_async <- function(
       is_current = current
     )
   })
-  promises::then(
+  published <- promises::then(
     task,
     onFulfilled = function(markdown) {
       if (
@@ -1922,68 +1944,31 @@ generate_report_for_chat_async <- function(
       ) {
         return(FALSE)
       }
-      store$set_session_report(ses)
-      store$touch()
+      authority_report <- tempest::tempest_session_report_md(ses)
+      if (!identical(authority_report, markdown)) {
+        stop("Generated report content does not match product authority.")
+      }
+      report_md <- store$publish_costorm_report(ses)
+      if (!identical(report_md, markdown)) {
+        stop("Published report content does not match the generated report.")
+      }
+      store$touch_costorm_session()
       append_chat(sprintf(
         "Report generated (%d chars). See the **Report** tab.",
         nchar(markdown)
       ))
-      report_ready(report_ready() + 1L)
+      report_navigation_event(report_navigation_event() + 1L)
       TRUE
-    },
-    onRejected = function(error) {
-      if (warmup_is_current(is_current)) {
-        append_chat("Report generation failed.")
-      }
-      FALSE
     }
   )
-}
-
-session_autosave_server <- function(
-  store,
-  path,
-  enabled,
-  delay_ms = 1000,
-  on_saved = NULL,
-  on_error = NULL
-) {
-  trigger <- shiny::debounce(
-    shiny::reactive(store$autosave_trigger()),
-    delay_ms
-  )
-  shiny::observeEvent(
-    trigger(),
-    {
-      if (!isTRUE(enabled()) || is.null(store$peek())) {
-        return()
-      }
-      bundle_path <- path() %||% ""
-      if (!rlang::is_string(bundle_path) || !nzchar(trimws(bundle_path))) {
-        return()
-      }
-      tryCatch(
-        {
-          saved <- store$save(
-            bundle_path,
-            overwrite = TRUE,
-            status = "autosaved"
-          )
-          session_bundle_enforce_quota(saved)
-          session_secure_permissions(saved)
-          if (is.function(on_saved)) {
-            on_saved(saved)
-          }
-        },
-        error = function(e) {
-          if (is.function(on_error)) {
-            on_error(e)
-          }
-        }
-      )
-    },
-    ignoreInit = TRUE
-  )
+  promises::catch(published, function(error) {
+    if (warmup_is_current(is_current)) {
+      message <- "Report generation or publication failed."
+      on_error(message)
+      append_chat(message)
+    }
+    FALSE
+  })
 }
 
 session_storage_root <- function(session) {
@@ -2037,12 +2022,12 @@ session_bundle_enforce_quota <- function(
 }
 
 session_archive_write <- function(store, file) {
-  if (is.null(store$peek())) {
+  if (is.null(store$peek_costorm_session())) {
     stop("No Co-STORM session is active.", call. = FALSE)
   }
   bundle_dir <- tempfile("tempest-session-download-")
   on.exit(unlink(bundle_dir, recursive = TRUE, force = TRUE), add = TRUE)
-  store$save(bundle_dir, overwrite = FALSE, status = "saved")
+  store$save_costorm_session(bundle_dir, overwrite = FALSE)
   session_bundle_enforce_quota(bundle_dir)
   session_secure_permissions(bundle_dir)
   files <- list.files(
@@ -2059,11 +2044,6 @@ session_archive_write <- function(store, file) {
     root = bundle_dir,
     mode = "mirror"
   )
-  store$set_persistence(
-    "saved",
-    path = NULL,
-    message = "Downloaded session bundle."
-  )
   invisible(file)
 }
 
@@ -2072,20 +2052,6 @@ session_archive_extract <- function(archive, root) {
   entries <- gsub("\\\\", "/", listing$Name)
   if (!session_archive_listing_is_safe(entries, listing$Length)) {
     stop("Session archive contains unsafe files.", call. = FALSE)
-  }
-  manifest <- session_archive_read_manifest(archive, listing)
-  declared_files <- session_archive_manifest_files(manifest)
-  if (
-    !session_archive_listing_is_safe(
-      entries,
-      listing$Length,
-      declared_files = declared_files
-    )
-  ) {
-    stop(
-      "Session archive contents do not match its manifest.",
-      call. = FALSE
-    )
   }
   complete <- FALSE
   on.exit(
@@ -2096,21 +2062,13 @@ session_archive_extract <- function(archive, root) {
   )
   dir.create(root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
   utils::unzip(archive, exdir = root)
-  tempest:::tempest_session_bundle_validate_manifest(
-    root,
-    manifest,
-    partial_recovery = FALSE
-  )
+  bundle <- tempest:::tempest_costorm_archive_read(root)
   session_secure_permissions(root)
   complete <- TRUE
-  normalizePath(root, winslash = "/", mustWork = TRUE)
+  bundle
 }
 
-session_archive_listing_is_safe <- function(
-  entries,
-  sizes,
-  declared_files = NULL
-) {
+session_archive_listing_is_safe <- function(entries, sizes) {
   entries <- gsub("\\\\", "/", entries)
   valid_sizes <- is.numeric(sizes) &&
     length(sizes) == length(entries) &&
@@ -2131,104 +2089,7 @@ session_archive_listing_is_safe <- function(
     !anyDuplicated(entries) &&
     !any(unsafe) &&
     !too_large
-  if (!safe || is.null(declared_files)) {
-    return(safe)
-  }
-  declared_files <- gsub("\\\\", "/", declared_files)
-  declared_safe <- length(declared_files) > 0L &&
-    !anyDuplicated(declared_files) &&
-    all(vapply(
-      declared_files,
-      tempest:::tempest_product_path_is_safe,
-      logical(1)
-    ))
-  declared_safe &&
-    setequal(entries, c("session.json", declared_files)) &&
-    length(entries) == length(declared_files) + 1L
-}
-
-session_archive_read_manifest <- function(archive, listing) {
-  names <- gsub("\\\\", "/", listing$Name)
-  index <- which(names == "session.json")
-  if (
-    length(index) != 1L ||
-      !is.finite(listing$Length[[index]]) ||
-      listing$Length[[index]] > 50 * 1024^2
-  ) {
-    stop(
-      "Session archive must contain exactly one bounded session.json.",
-      call. = FALSE
-    )
-  }
-  connection <- unz(archive, "session.json", open = "rb")
-  bytes <- tryCatch(
-    readBin(
-      connection,
-      what = "raw",
-      n = as.integer(listing$Length[[index]])
-    ),
-    finally = close(connection)
-  )
-  tryCatch(
-    jsonlite::fromJSON(rawToChar(bytes), simplifyVector = FALSE),
-    error = function(error) {
-      stop("Session archive manifest is not valid JSON.", call. = FALSE)
-    }
-  )
-}
-
-session_archive_manifest_files <- function(manifest) {
-  schema_version <- NA_integer_
-  if (is.list(manifest)) {
-    value <- manifest$schema_version %||% NA_integer_
-    if (
-      is.numeric(value) &&
-        length(value) == 1L &&
-        !is.na(value) &&
-        is.finite(value) &&
-        value >= 0 &&
-        value == floor(value) &&
-        value <= .Machine$integer.max
-    ) {
-      schema_version <- as.integer(value)
-    }
-  }
-  valid_header <- identical(schema_version, 9L) &&
-    identical(manifest$bundle_type %||% "", "costorm") &&
-    identical(manifest$bundle_status %||% "", "complete")
-  if (
-    !is.list(manifest) ||
-      !isTRUE(valid_header) ||
-      is.null(names(manifest)) ||
-      anyDuplicated(names(manifest)) ||
-      !setequal(
-        names(manifest),
-        tempest:::tempest_session_bundle_manifest_fields()
-      )
-  ) {
-    stop(
-      "Session archive manifest uses an unsupported schema or status.",
-      call. = FALSE
-    )
-  }
-  files <- as.character(unlist(manifest$files %||% character()))
-  checksums <- unlist(manifest$checksums %||% list(), use.names = TRUE)
-  if (
-    length(files) == 0L ||
-      anyDuplicated(files) ||
-      !setequal(names(checksums), files) ||
-      length(names(checksums)) != length(files) ||
-      any(
-        !vapply(
-          files,
-          tempest:::tempest_product_path_is_safe,
-          logical(1)
-        )
-      )
-  ) {
-    stop("Session archive manifest is internally inconsistent.", call. = FALSE)
-  }
-  files
+  safe
 }
 
 session_persistence_status_ui <- function(state) {
@@ -2238,21 +2099,36 @@ session_persistence_status_ui <- function(state) {
   status_class <- switch(
     state$status,
     saved = "text-success",
-    autosaved = "text-success",
     restored = "text-info",
     "text-danger"
   )
   status_icon <- switch(
     state$status,
     saved = "circle-check",
-    autosaved = "clock-rotate-left",
     restored = "folder-open",
     "triangle-exclamation"
   )
+  role <- if (identical(state$status, "error")) "alert" else "status"
   shiny::div(
     class = paste("small mt-2", status_class),
+    role = role,
+    `aria-live` = if (identical(role, "status")) "polite" else NULL,
+    `aria-atomic` = "true",
     shiny::span(shiny::icon(status_icon), class = "me-1"),
     shiny::span(state$message %||% ""),
+  )
+}
+
+session_persistence_error_ui <- function(message) {
+  if (is.null(message) || !nzchar(message)) {
+    return(NULL)
+  }
+  shiny::div(
+    class = "small mt-2 text-danger",
+    role = "alert",
+    `aria-atomic` = "true",
+    shiny::span(shiny::icon("triangle-exclamation"), class = "me-1"),
+    shiny::span(message)
   )
 }
 
@@ -2325,8 +2201,7 @@ costorm_starting_event <- function(session_id) {
   )
 }
 
-costorm_session_ready_event <- function(session_id, ses = NULL) {
-  experts <- if (!is.null(ses)) ses$experts else NULL
+costorm_session_ready_event <- function(session_id, ses) {
   tempest::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
@@ -2335,7 +2210,7 @@ costorm_session_ready_event <- function(session_id, ses = NULL) {
     stage = "session",
     step = "created",
     message = "Co-STORM session ready.",
-    payload = list(expert_count = length(experts %||% list()))
+    payload = list(expert_count = length(ses$experts))
   )
 }
 
@@ -2384,10 +2259,6 @@ record_costorm_progress_event <- function(
     shiny::withReactiveDomain(session, update())
   }
   invisible(event)
-}
-
-costorm_stage_labels <- function() {
-  tempest::tempest_progress_labels("costorm", kind = "stage")
 }
 
 progress_error_payload <- function(error) {

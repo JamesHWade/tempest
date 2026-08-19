@@ -39,6 +39,26 @@ test_that("promotion receipt binds the commit snapshot and every revision", {
   )
 })
 
+test_that("promotion receipt retains exact microsecond record times", {
+  testthat::local_mocked_bindings(
+    tempest_now_utc = function() "2026-08-19T02:06:43.114003Z"
+  )
+  fixture <- test_promotion_storm_fixture()
+  bundle <- tempest_promotion_bundle(fixture$research)
+  store <- test_promotion_store()
+  withr::defer(graft::graft_close(store))
+  plan <- tempest_graft_plan(store, bundle)
+  result <- graft::graft_commit(store, plan)
+
+  receipt <- tempest_promotion_receipt(store, bundle, plan, result)
+
+  expect_s7_class(receipt, TempestPromotionReceipt)
+  expect_identical(
+    length(receipt@record_revisions),
+    sum(vapply(plan@records, nrow, integer(1)))
+  )
+})
+
 test_that("promotion receipt rejects an incorrect commit summary", {
   fixture <- test_promotion_bundle()
   store <- test_promotion_store()

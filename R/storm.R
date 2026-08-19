@@ -122,7 +122,8 @@ tempest_stage_context_knowledge_view <- function(
 #'
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
-#' @param retriever Optional `TempestRetriever`. If `NULL`, created from `config`.
+#' @param retriever Optional `TempestRetriever`. If `NULL`, created from
+#'   `config`.
 #' @param knowledge_view Optional immutable Graft view. It is required when
 #'   `program_set` contains any governed procedure and is never persisted.
 #' @param n_experts Number of expert profiles to generate when `experts` is
@@ -130,23 +131,29 @@ tempest_stage_context_knowledge_view <- function(
 #' @param experts Optional list of active profiles created by
 #'   [tempest_expert()]. When supplied, STORM uses this selected team and does
 #'   not generate experts.
-#' @param research_strategy Either "key_questions" (default, faster) or "conversation"
-#'   (more thorough but slower). Key questions uses predefined questions; conversation
-#'   dynamically generates follow-up questions.
-#' @param max_rounds Maximum rounds per perspective for "conversation" strategy (default 3).
-#' @param max_questions_per_perspective Maximum questions per perspective for "key_questions"
+#' @param research_strategy Either "key_questions" (default, faster) or
+#'   "conversation" (more thorough but slower). Key questions uses predefined
+#'   questions; conversation dynamically generates follow-up questions.
+#' @param max_rounds Maximum rounds per perspective for the "conversation"
 #'   strategy (default 3).
-#' @param parallel_research If `TRUE`, run research perspectives in parallel using
-#'   the mirai package. Requires mirai to be installed. Default `FALSE`.
+#' @param max_questions_per_perspective Maximum questions per perspective for
+#'   the "key_questions" strategy (default 3).
+#' @param parallel_research Must be `FALSE`. Parallel perspective research is
+#'   unavailable while every open-ended expert turn requires one synchronously
+#'   bound terminal Deputy execution; `TRUE` fails before provider work.
 #' @param parallel_writing If `TRUE`, write report sections in parallel using
 #'   the mirai package. Failed parallel sections are retried sequentially.
 #' @param program_set A [TempestProgramSet] containing the exact dsprrr programs
 #'   used by STORM. If `NULL`, [tempest_program_set()] creates the default set.
-#' @param steps Character vector controlling which steps to run. Defaults to all.
+#' @param steps Character vector controlling which steps to run. Defaults to
+#'   all.
 #' @param output_dir Optional directory for persisted STORM run artifacts. When
-#'   supplied, artifacts are written under a topic-specific subdirectory.
+#'   supplied, a current schema-7 product bundle with schema-4 STORM state is
+#'   written under a topic-specific subdirectory.
 #' @param resume If `TRUE` and `output_dir` contains a previous run, load saved
-#'   artifacts and skip stages recorded as complete.
+#'   current-format artifacts and skip stages recorded as complete. Older,
+#'   future, missing, extra, or mismatched product shapes are rejected rather
+#'   than migrated.
 #' @param run_id Optional run directory name. Defaults to a slug of `topic`.
 #' @param remove_duplicate Must be `FALSE`. Duplicate removal is unavailable on
 #'   the authoritative deterministic STORM report path.
@@ -347,7 +354,7 @@ tempest_run_internal <- function(
     )
   }
   store <- workspace
-  run_dir <- tempest_prepare_run_dir(output_dir, topic, run_id = run_id)
+  run_dir <- tempest_storm_prepare_run_dir(output_dir, topic, run_id = run_id)
   progress <- tempest_progress_callback(progress)
   supplied_run_id <- if (
     rlang::is_string(run_id) &&
@@ -488,17 +495,14 @@ tempest_run_internal <- function(
     if (is.null(run_dir)) {
       return(invisible(NULL))
     }
-    bound_manifest <- tempest_save_run_artifacts(
+    bound_manifest <- tempest_storm_save_artifacts(
       run_dir,
       workspace,
       state,
       research_manifest,
       program_set = program_set,
       config = config,
-      steps = requested_steps,
-      research_strategy = research_strategy,
-      parallel_writing = parallel_writing,
-      remove_duplicate = remove_duplicate
+      steps = requested_steps
     )
     if (!is.null(bound_manifest)) {
       research_manifest <<- bound_manifest
@@ -593,14 +597,14 @@ tempest_run_internal <- function(
   run_manifest <- if (is.null(run_dir)) {
     NULL
   } else {
-    tempest_run_artifact_paths(run_dir)$run_config
+    tempest_storm_artifact_paths(run_dir)$run_config
   }
   if (
     !is.null(run_manifest) &&
       isTRUE(resume) &&
       file.exists(run_manifest)
   ) {
-    loaded_run <- tempest_load_run_artifacts(
+    loaded_run <- tempest_storm_load_artifacts(
       run_dir,
       workspace = workspace,
       config = config,
@@ -963,7 +967,7 @@ tempest_run_internal <- function(
       if (
         "perspectives" %in%
           steps &&
-          !tempest_stage_complete(completed_stages, "perspectives")
+          !tempest_storm_stage_complete(completed_stages, "perspectives")
       ) {
         emit_stage_started(
           "perspectives",
@@ -1046,7 +1050,7 @@ tempest_run_internal <- function(
             "Every research perspective requires one explicit expert profile."
           )
         }
-        completed_stages <- tempest_mark_stage_complete(
+        completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "perspectives"
         )
@@ -1065,7 +1069,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "perspectives" %in% steps &&
-            tempest_stage_complete(completed_stages, "perspectives")
+            tempest_storm_stage_complete(completed_stages, "perspectives")
         ) {
           tempest_inform("Using persisted perspectives from {.path {run_dir}}")
         }
@@ -1085,7 +1089,7 @@ tempest_run_internal <- function(
       if (
         "research" %in%
           steps &&
-          !tempest_stage_complete(completed_stages, "research")
+          !tempest_storm_stage_complete(completed_stages, "research")
       ) {
         emit_stage_started(
           "research",
@@ -1355,7 +1359,7 @@ tempest_run_internal <- function(
           }
         }
 
-        completed_stages <- tempest_mark_stage_complete(
+        completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "research"
         )
@@ -1374,7 +1378,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "research" %in% steps &&
-            tempest_stage_complete(completed_stages, "research")
+            tempest_storm_stage_complete(completed_stages, "research")
         ) {
           tempest_inform(
             "Using persisted research artifacts from {.path {run_dir}}"
@@ -1383,7 +1387,7 @@ tempest_run_internal <- function(
         if (
           "research" %in%
             steps &&
-            tempest_stage_complete(completed_stages, "research")
+            tempest_storm_stage_complete(completed_stages, "research")
         ) {
           emit_stage_skipped(
             "research",
@@ -1396,7 +1400,7 @@ tempest_run_internal <- function(
       if (
         "outline" %in%
           steps &&
-          !tempest_stage_complete(completed_stages, "outline")
+          !tempest_storm_stage_complete(completed_stages, "outline")
       ) {
         emit_stage_started(
           "outline",
@@ -1443,7 +1447,7 @@ tempest_run_internal <- function(
             next_state
           })
         )
-        completed_stages <- tempest_mark_stage_complete(
+        completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "outline"
         )
@@ -1459,7 +1463,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "outline" %in% steps &&
-            tempest_stage_complete(completed_stages, "outline")
+            tempest_storm_stage_complete(completed_stages, "outline")
         ) {
           tempest_inform("Using persisted outline from {.path {run_dir}}")
         }
@@ -1474,7 +1478,9 @@ tempest_run_internal <- function(
       }
 
       if (
-        "write" %in% steps && !tempest_stage_complete(completed_stages, "write")
+        "write" %in%
+          steps &&
+          !tempest_storm_stage_complete(completed_stages, "write")
       ) {
         emit_stage_started(
           "write",
@@ -1542,7 +1548,7 @@ tempest_run_internal <- function(
           })
         )
         draft_md <- paste0(lead_section, "\n\n", draft_md)
-        completed_stages <- tempest_mark_stage_complete(
+        completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "write"
         )
@@ -1558,7 +1564,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "write" %in% steps &&
-            tempest_stage_complete(completed_stages, "write")
+            tempest_storm_stage_complete(completed_stages, "write")
         ) {
           tempest_inform("Using persisted draft article from {.path {run_dir}}")
         }
@@ -1575,7 +1581,7 @@ tempest_run_internal <- function(
       if (
         "polish" %in%
           steps &&
-          !tempest_stage_complete(completed_stages, "polish")
+          !tempest_storm_stage_complete(completed_stages, "polish")
       ) {
         emit_stage_started(
           "polish",
@@ -1598,7 +1604,7 @@ tempest_run_internal <- function(
           state$stage_records,
           title = title
         )
-        candidate_completed_stages <- tempest_mark_stage_complete(
+        candidate_completed_stages <- tempest_storm_mark_stage_complete(
           completed_stages,
           "polish"
         )
@@ -1642,7 +1648,7 @@ tempest_run_internal <- function(
         if (
           verbose &&
             "polish" %in% steps &&
-            tempest_stage_complete(completed_stages, "polish")
+            tempest_storm_stage_complete(completed_stages, "polish")
         ) {
           tempest_inform(
             "Using persisted polished report from {.path {run_dir}}"
@@ -1763,11 +1769,12 @@ tempest_run_internal <- function(
 
 #' Run STORM asynchronously (Shiny-friendly)
 #'
-#' This runs [tempest_run()] in a Mirai worker and returns a promise immediately.
+#' This runs [tempest_run()] in a Mirai worker and returns a promise
+#' immediately.
 #' Use [tempest_run_cancel()] to stop a run that is no longer needed.
 #'
-#' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for details
-#'   on available parameters including `topic`, `config`, `retriever`,
+#' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for
+#'   details on available parameters including `topic`, `config`, `retriever`,
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
 #' @param knowledge_view A live pinned Graft view cannot cross the asynchronous
 #'   worker boundary. Governed runs must use [tempest_run()] in the process that

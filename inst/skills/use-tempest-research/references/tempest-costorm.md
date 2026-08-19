@@ -12,7 +12,7 @@ Preserve these actors and state:
 - a moderator that delegates by stable expert ID and can surface useful
   follow-up questions;
 - a human participant who can redirect the discussion;
-- a shared evidence ledger of sources, claims, and evidence spans;
+- an authoritative ResearchWorkspace of sources, claims, and evidence spans;
 - a dynamic mind map that records and reorganizes the shared conceptual space;
 - a transcript and final report derived from the session state.
 
@@ -66,16 +66,20 @@ evidence.
 
 ```r
 session$reorganize_mindmap()
-report <- session$report(
+session$report(
   style = "executive",
   include_references = TRUE
 )
-cat(report)
+committed_report <- tempest_session_report_md(session)
+cat(committed_report)
 ```
 
-Inspect the session's research workspace, claims, transcript, mind map, and report
-state. Report generation should preserve uncertainty and evidence
-relationships collected during dialogue.
+`session$report()` validates and commits the canonical product report.
+`tempest_session_report_md()` only reads those exact committed bytes from a
+succeeded, quiescent session; it does not generate or repair a report. Inspect
+the session's ResearchWorkspace, claims, transcript, mind map, and report state.
+Report generation should preserve uncertainty and evidence relationships
+collected during dialogue.
 
 ## Persist and restore
 
@@ -96,6 +100,22 @@ Restore durable roster, transcript, mind map, evidence, and report state.
 Recreate chats, credentials, callbacks, tools, and authenticated clients. Do
 not resume work automatically before the host has inspected the restored
 state.
+
+Only the exact schema-9 snapshot and bundle are current. Explicit
+`partial_recovery = TRUE` is limited to the optional
+`artifacts/suggested_questions.json` presentation file; expert, transcript,
+mind-map, StageRecord, Workspace, report, and Graft snapshot state must pass
+integrity checks. There is no legacy migration reader.
+
+A promotion proposal accepts the succeeded session directly:
+
+```r
+bundle <- tempest_promotion_bundle(session)
+```
+
+The default `tempest_costorm_task()` solver completes the real session product,
+reads its committed report, and returns credential-safe product summaries plus
+terminal Deputy traces, never Agent objects or live chats.
 
 ## Verify
 

@@ -412,7 +412,7 @@ This primes the knowledge base with foundational research before interactive Q&A
 \if{html}{\out{<a id="method-TempestSession-report"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-report}{}}}
 \subsection{\code{TempestSession$report()}}{
-  Generate a report from the session.
+  Generate, validate, and commit the canonical report for the session.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{TempestSession$report(
@@ -430,7 +430,8 @@ This primes the knowledge base with foundational research before interactive Q&A
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    Markdown report string.
+    The committed Markdown report. Use
+\code{\link[=tempest_session_report_md]{tempest_session_report_md()}} to read the exact committed bytes later.
   }
 }
 

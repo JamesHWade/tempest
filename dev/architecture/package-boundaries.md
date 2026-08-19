@@ -86,6 +86,56 @@ Tempest owns:
 - STORM and Co-STORM product persistence;
 - research UI, evaluation, and trajectory review.
 
+## Product-only surface owners
+
+T9 made the retained surface ownership physical and current-only:
+
+| Product concern | Owner |
+|---|---|
+| Closed product-envelope, JSON, checksum, safe-path, and atomic-write primitives shared by current formats | `R/product-persistence.R` |
+| ResearchWorkspace schema-5 snapshot and record codecs | `R/research-workspace-persistence.R` |
+| Co-STORM schema-9 snapshot, bundle, restore/resume, and browser-archive validation | `R/costorm-persistence.R` |
+| STORM schema-7 bundle, schema-4 state, continuation, and artifact paths | `R/storm-persistence.R` |
+| Report references, integrity, Markdown rendering, citations, and execution review | `R/product-report.R` |
+| Co-STORM report finalization and committed-report access | `R/costorm-report.R` |
+| Product publication and promotion eligibility | `R/product-authority.R`, `R/promotion-types.R`, and `R/promotion-persistence.R` |
+| Real STORM and Co-STORM evaluation tasks | `R/evals.R` |
+| Product research UI and asynchronous host adapter | `R/shiny-adapter.R`, `inst/shiny/`, and `inst/examples/shiny-host/` |
+
+`tempest_report_md()` is a deterministic renderer over explicit Markdown and a
+ResearchWorkspace. It does not publish or grant authority.
+`tempest_session_report_md()` reads only the exact report already committed to
+a succeeded, quiescent Co-STORM session. Promotion accepts a completed STORM
+result or succeeded `TempestSession`, never a loose Workspace, Manifest, and
+StageRecord tuple.
+
+The frozen current product contracts are:
+
+| Contract | Version |
+|---|---:|
+| ResearchWorkspace snapshot | 5 |
+| Co-STORM snapshot and bundle | 9 |
+| STORM bundle | 7 |
+| STORM product state | 4 |
+| TempestProgramSet | 2 |
+| TempestResearchManifest | 3 |
+| StageRecord output-digest payload | 3 |
+| Promotion bundle | 1 |
+
+Every reader rejects every other version and any missing, extra, coerced, or
+mismatched shape. Co-STORM partial recovery is explicitly limited to its
+optional suggested-questions presentation file; it never relaxes durable
+expert, transcript, mind-map, StageRecord, Workspace, report, or Graft
+snapshot integrity.
+
+The public namespace remains exactly the 62 exports in
+`tests/testthat/fixtures/public-exports-0.2.0.txt` and two registered S3
+methods. The Shiny store exposes exactly 13 product-named members, and
+`tempest_shiny_server()` returns exactly 10 product-specific members. The UI
+has no autosave claim or parallel-research control; its host example uses the
+same asynchronous STORM adapter as the bundled app, with polite live status
+for progress and success and alerts for failures.
+
 ## Explicit non-goals
 
 Tempest is:
@@ -199,7 +249,7 @@ older or other formats.
 | T6 | Prove claim extraction and verification across all four packages in shadow mode. |
 | T7 | Make the new STORM and Co-STORM paths authoritative. |
 | T8 | Deleted the experimental generic kernel, its 41 exports, and two internal restore/resume functions. |
-| T9 | Retain only product-specific persistence, reports, and UI. |
+| T9 | Implemented and verified: split persistence by product owner and narrowed reports, evaluation, promotion, and UI to current STORM and Co-STORM contracts. |
 | T10 | Add joined trajectory review, improvement loops, and release 0.2.0. |
 
 Dsprrr program identity and trace context, graft snapshot views, and Deputy run
@@ -220,9 +270,10 @@ they require no API keys, network access, or live provider responses.
 | Claim extraction | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-claim-extraction.R` |
 | Claim support verification | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-verify.R` |
 | Source and citation rendering | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-citations-policy.R` |
-| Report generation and section identity | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-writing.R`, `tests/testthat/test-costorm-async.R` |
+| Report generation, authority, and section identity | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-product-report.R`, `tests/testthat/test-run-verification.R`, `tests/testthat/test-writing.R`, `tests/testthat/test-costorm-async.R` |
 | Cancellation | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-async.R` |
-| STORM and Co-STORM save/resume | `tests/testthat/test-product-baseline-*.R`, `tests/testthat/test-run-persistence-*.R` |
+| Product persistence and STORM/Co-STORM save/resume | `tests/testthat/test-product-persistence*.R`, `tests/testthat/test-research-workspace-persistence*.R`, `tests/testthat/test-storm-persistence*.R`, `tests/testthat/test-costorm-persistence*.R` |
+| Product-only Shiny state and asynchronous publication | `tests/testthat/test-shiny-product-boundary.R`, `tests/testthat/test-shiny-app.R`, `tests/testthat/test-shiny-host-example.R` |
 | Research manifest, state, and workspace correlation | `tests/testthat/test-research-manifest.R`, `tests/testthat/test-research-session.R`, `tests/testthat/test-research-workspace.R`, `tests/testthat/test-storm-state.R` |
 | Historical and current public exports | `tests/testthat/test-public-api.R` |
 
