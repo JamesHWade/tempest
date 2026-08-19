@@ -534,6 +534,35 @@ tempest_session_report_md <- function(session) {
       "The canonical Co-STORM report is unavailable before publication."
     )
   }
+  pending_runs <- tryCatch(
+    tempest_session_pending_deputy_runs(session),
+    error = function(error) {
+      tempest_product_report_abort(
+        "The canonical Co-STORM report has invalid Deputy execution state.",
+        parent = error
+      )
+    }
+  )
+  if (length(pending_runs) > 0L) {
+    tempest_product_report_abort(
+      paste0(
+        "The canonical Co-STORM report is unavailable while Deputy ",
+        "execution remains pending."
+      )
+    )
+  }
+  tryCatch(
+    tempest_session_agent_completion_assert_quiescent(session),
+    error = function(error) {
+      tempest_product_report_abort(
+        paste0(
+          "The canonical Co-STORM report requires quiescent agent ",
+          "completion state."
+        ),
+        parent = error
+      )
+    }
+  )
   report_md <- tempest_session_report_value(session)
   if (
     !rlang::is_string(report_md) ||

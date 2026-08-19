@@ -163,3 +163,89 @@ test_that("Co-STORM report accessor reads only the exact committed artifact", {
   )
   private$report_md_value <- report_md
 })
+
+test_that("Co-STORM report access requires quiescent execution state", {
+  skip_if_not_installed("ellmer")
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  session <- tempest_session(
+    "Quiescent report",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.quiescent-report",
+      name = "Quiescent Report Expert"
+    )),
+    session_id = "costorm-quiescent-report"
+  )
+  evidence <- test_persistence_add_costorm_evidence(
+    session,
+    key = "quiescent-report"
+  )
+  report_md <- paste0(
+    "# Quiescent report\n\n",
+    evidence$claim@claim_text,
+    " [",
+    evidence$source@resource_id,
+    "]."
+  )
+  report_md <- test_persistence_commit_costorm_report(session, report_md)
+  private <- session$.__enclos_env__$private
+
+  expect_identical(tempest_session_report_md(session), report_md)
+
+  tempest:::tempest_session_start_deputy_run(
+    session,
+    list(
+      agent_id = "agent-report-access",
+      completion_id = "completion-report-access",
+      correlation_id = "correlation-report-access",
+      deputy_run_id = "deputy-run-report-access",
+      deputy_session_id = "deputy-session-report-access",
+      role = "moderator",
+      stage = "dialogue"
+    )
+  )
+  expect_error(
+    tempest_session_report_md(session),
+    class = "tempest_product_report_error"
+  )
+
+  private$pending_deputy_runs_value <- list(list(invalid = TRUE))
+  expect_error(
+    tempest_session_report_md(session),
+    class = "tempest_product_report_error"
+  )
+  private$pending_deputy_runs_value <- list()
+
+  registry <- private$agent_completion_registry_value
+  completion_id <- tempest:::tempest_agent_completion_new_id(registry)
+  tempest:::tempest_agent_completion_issue(
+    registry,
+    completion_id,
+    "Report access prompt",
+    "Report access response",
+    ellmer::AssistantTurn(
+      list(ellmer::ContentText("Report access response")),
+      tokens = c(1, 1, 0),
+      cost = 0
+    ),
+    test_costorm_deputy_trace(
+      run_id = "deputy-run-report-completion",
+      correlation_id = "correlation-report-completion"
+    )
+  )
+  expect_error(
+    tempest_session_report_md(session),
+    class = "tempest_product_report_error"
+  )
+
+  owner <- private$agent_completion_owner_value
+  private$agent_completion_registry_value <- list()
+  expect_error(
+    tempest_session_report_md(session),
+    class = "tempest_product_report_error"
+  )
+
+  private$agent_completion_registry_value <-
+    tempest:::tempest_agent_completion_registry(owner)
+  expect_identical(tempest_session_report_md(session), report_md)
+})

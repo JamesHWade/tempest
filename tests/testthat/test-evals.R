@@ -31,6 +31,9 @@ test_that("default STORM solver returns an authoritative product report", {
   config@chat_fn <- function(role, model, system_prompt, echo) fake_chat()
   calls <- list()
   local_mocked_bindings(
+    tempest_eval_dataset = function(...) {
+      tibble::tibble(input = "Question one", target = "Answer one")
+    },
     tempest_run = function(...) {
       calls[[length(calls) + 1L]] <<- list(...)
       fixture$result
@@ -82,9 +85,10 @@ test_that("default STORM solver returns an authoritative product report", {
     scorer = function(...) 1
   ))
   suppressWarnings(task$solve())
+  expect_identical(nrow(task$get_samples()), 1L)
   expect_identical(
     task$get_samples()$result,
-    rep(fixture$result$report_md, nrow(task$get_samples()))
+    fixture$result$report_md
   )
 })
 
@@ -95,6 +99,9 @@ test_that("default Co-STORM solver uses the committed session product", {
   chat_calls <- character()
   session_chat <- tempest:::tempest_session_chat
   local_mocked_bindings(
+    tempest_eval_dataset = function(...) {
+      tibble::tibble(input = "Question one", target = "Answer one")
+    },
     tempest_costorm_evaluation_product = function(
       topic,
       config,
@@ -161,9 +168,10 @@ test_that("default Co-STORM solver uses the committed session product", {
     scorer = function(...) 1
   ))
   suppressWarnings(task$solve())
+  expect_identical(nrow(task$get_samples()), 1L)
   expect_identical(
     task$get_samples()$result,
-    rep(fixture$report, nrow(task$get_samples()))
+    fixture$report
   )
 })
 
