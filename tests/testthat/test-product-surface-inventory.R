@@ -146,7 +146,10 @@ test_that("T9 retired source seams remain absent", {
     "tempest_setup_daemons",
     "tempest_collect_parallel",
     "tempest_parallel_records_import",
-    "tempest_semantic_filter_facts"
+    "tempest_semantic_filter_facts",
+    "tempest_shinychat_input_part_text",
+    "tempest_shinychat_input_text",
+    "tempest_shinychat_turn_text"
   )
   allowed_run_definitions <- sort(
     c(
@@ -203,7 +206,11 @@ test_that("T9 retired source seams remain absent", {
   expect_identical(file.exists(retired_prompts), rep(FALSE, 3L))
 
   ui_files <- c(
-    file.path(r_dir, c("app.R", "shiny-adapter.R")),
+    file.path(
+      r_dir,
+      c("app.R", "shiny-adapter.R", "shinychat-adapter.R")
+    ),
+    file.path(root, "inst", "shiny", "app.R"),
     list.files(
       file.path(root, "inst", "shiny", "R"),
       pattern = "[.]R$",

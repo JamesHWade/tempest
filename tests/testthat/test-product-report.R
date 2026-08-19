@@ -216,6 +216,18 @@ test_that("Co-STORM report access requires quiescent execution state", {
   )
   private$pending_deputy_runs_value <- list()
 
+  work_id <- tempest:::tempest_session_async_work_start(
+    session,
+    "dialogue",
+    work_id = "report-access-active-work"
+  )
+  withr::defer(tempest:::tempest_session_async_work_finish(session, work_id))
+  expect_error(
+    tempest_session_report_md(session),
+    class = "tempest_product_report_error"
+  )
+  tempest:::tempest_session_async_work_finish(session, work_id)
+
   registry <- private$agent_completion_registry_value
   completion_id <- tempest:::tempest_agent_completion_new_id(registry)
   tempest:::tempest_agent_completion_issue(

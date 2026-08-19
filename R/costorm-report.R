@@ -568,6 +568,18 @@ tempest_session_report_md <- function(session) {
       )
     }
   )
+  tryCatch(
+    tempest_session_async_work_assert_quiescent(session),
+    error = function(error) {
+      tempest_product_report_abort(
+        paste0(
+          "The canonical Co-STORM report requires quiescent product ",
+          "work state."
+        ),
+        parent = error
+      )
+    }
+  )
   report_md <- tempest_session_report_value(session)
   if (
     !rlang::is_string(report_md) ||
