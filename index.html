@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="STORM and Co-STORM Research and Writing Agents for R">
-<meta name="description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Tempest owns provisional scientific research state, claim-centered evidence, STORM and Co-STORM product flows, and scientific reports. Its 0.2 migration will delegate generic agent runtime, program, and accepted-knowledge concerns to narrower packages.">
-<meta property="og:description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Tempest owns provisional scientific research state, claim-centered evidence, STORM and Co-STORM product flows, and scientific reports. Its 0.2 migration will delegate generic agent runtime, program, and accepted-knowledge concerns to narrower packages.">
+<meta name="description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Tempest owns provisional scientific research state, claim-centered evidence, authoritative STORM and Co-STORM product flows, and scientific reports. It delegates execution to deputy, structured research programs to dsprrr, and accepted-knowledge publication to graft.">
+<meta property="og:description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Tempest owns provisional scientific research state, claim-centered evidence, authoritative STORM and Co-STORM product flows, and scientific reports. It delegates execution to deputy, structured research programs to dsprrr, and accepted-knowledge publication to graft.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -38,8 +38,6 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="articles/agent-skills.html">Use Tempest Agent Skills</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -217,15 +215,15 @@
 <p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 5, Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state schema 4, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload schema 3, and promotion-bundle schema 1. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
 </div>
 <div class="section level2">
-<h2 id="generic-kernel-cutover">Generic-kernel cutover<a class="anchor" aria-label="anchor" href="#generic-kernel-cutover"></a>
+<h2 id="product-boundary">Product boundary<a class="anchor" aria-label="anchor" href="#product-boundary"></a>
 </h2>
-<p>Tempest 0.2 supports only the STORM and Co-STORM product APIs. Use <code><a href="reference/tempest_run.html">tempest_run()</a></code> for scripted research and <code><a href="reference/tempest_session.html">tempest_session()</a></code> for interactive research. The former application-neutral workflow, runtime, capability, connection, skill, deliverable, and artifact APIs are unavailable; retained symbols fail immediately with class <code>tempest_generic_kernel_cutover_error</code>. There is no compatibility or generic-kernel migration layer.</p>
+<p>Tempest 0.2 supports only the STORM and Co-STORM product APIs. Use <code><a href="reference/tempest_run.html">tempest_run()</a></code> for scripted research and <code><a href="reference/tempest_session.html">tempest_session()</a></code> for interactive research. The former application-neutral workflow, runtime, capability, connection, skill, deliverable, and artifact kernel and its symbols have been removed. There is no compatibility or generic-kernel migration layer.</p>
 <p>Product bundles contain the exact research manifest, provisional workspace, product state, report, and optional immutable Graft snapshot. Fixed scientific transformations carry dsprrr program identity, while open-ended agent calls carry Deputy execution identity. Those identities support correlation and audit joins only; they do not claim that an execution caused, authored, or validated report content.</p>
 </div>
 <div class="section level2">
 <h2 id="agent-skills">Agent skills<a class="anchor" aria-label="anchor" href="#agent-skills"></a>
 </h2>
-<p>Tempest ships two supported research skills. Three generic-workflow skill directories remain only as unavailable deletion inventory until T8 removes them physically.</p>
+<p>Tempest ships two supported research skills.</p>
 <ul>
 <li>
 <code>use-tempest-research</code> chooses, configures, runs, resumes, inspects, and embeds Tempest’s scripted STORM and interactive Co-STORM workflows.</li>
@@ -242,7 +240,7 @@
 <span>  skills <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"use-tempest-research"</span>, <span class="st">"conduct-storm-research"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Existing copies are preserved unless <code>overwrite = TRUE</code>. A compatible skill loader can also discover the bundled skills from an attached Tempest package and expose <code>conduct-storm-research</code> inside a tool-capable chat application. The host must still provide retrieval, evidence, state, and output tools.</p>
-<p>These Agent Skills are external operating guidance, not the unavailable 0.1 generic runtime contract that used the similarly named <code><a href="reference/tempest-generic-kernel-retirement.html">tempest_skill()</a></code>.</p>
+<p>These Agent Skills are external operating guidance. They do not grant runtime authority; the host still owns tools, authorization, state, and lifecycle.</p>
 <p>Read <code><a href="articles/agent-skills.html">vignette("agent-skills", package = "tempest")</a></code> to install a supported research skill or expose portable STORM research through an ellmer client and shinychat application.</p>
 </div>
 <div class="section level2">

@@ -27,5 +27,5 @@ An ordered list of normalized event records.
 ## Details
 
 `tempest_execution_events()` gives host adapters one cursor-based query
-for immutable Co-STORM progress records. Generic `TempestRun` histories
-are outside the supported product boundary and reject immediately.
+for immutable Co-STORM progress records from a
+[TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).

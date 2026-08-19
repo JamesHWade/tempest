@@ -40,8 +40,6 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
     <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -417,14 +415,12 @@ joins only; they do not claim that an execution caused, authored, or
 validated report content.</p>
 </div>
 <div class="section level2">
-<h2 id="generic-kernel-cutover">Generic-kernel cutover<a class="anchor" aria-label="anchor" href="#generic-kernel-cutover"></a>
+<h2 id="product-boundary">Product boundary<a class="anchor" aria-label="anchor" href="#product-boundary"></a>
 </h2>
 <p>Tempest 0.2 supports only <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and
 <code><a href="../reference/tempest_session.html">tempest_session()</a></code> as research product entry points. The
-experimental application-neutral kernel is unavailable, and retained
-symbols fail immediately with
-<code>tempest_generic_kernel_cutover_error</code>. No compatibility
-layer is provided.</p>
+experimental application-neutral kernel is removed, including its former
+symbols. No compatibility layer is provided.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-go-next">Where to go next<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>

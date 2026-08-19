@@ -93,10 +93,6 @@ the persistence or public API contract.
 
 - [`TempestSession$mindmap_markdown()`](#method-TempestSession-mindmap_markdown)
 
-- [`TempestSession$extract_facts()`](#method-TempestSession-extract_facts)
-
-- [`TempestSession$harvest_native_sources()`](#method-TempestSession-harvest_native_sources)
-
 - [`TempestSession$suggest_questions()`](#method-TempestSession-suggest_questions)
 
 - [`TempestSession$find_expert()`](#method-TempestSession-find_expert)
@@ -122,8 +118,6 @@ the persistence or public API contract.
 - [`TempestSession$surface_unseen_information()`](#method-TempestSession-surface_unseen_information)
 
 - [`TempestSession$reorganize_mindmap()`](#method-TempestSession-reorganize_mindmap)
-
-- [`TempestSession$execute_turn_decision()`](#method-TempestSession-execute_turn_decision)
 
 - [`TempestSession$clone()`](#method-TempestSession-clone)
 
@@ -411,79 +405,6 @@ Markdown string.
 
 ------------------------------------------------------------------------
 
-### `TempestSession$extract_facts()`
-
-Extract facts from text into the store.
-
-#### Usage
-
-    TempestSession$extract_facts(
-      text,
-      turn = NULL,
-      source_ids = NULL,
-      session_id = self$session_id,
-      expert_id = NA_character_,
-      correlation_id = NA_character_,
-      deputy_execution = NULL
-    )
-
-#### Arguments
-
-- `text`:
-
-  Text containing factual claims.
-
-- `turn`:
-
-  Optional ellmer turn to inspect for provider-native sources.
-
-- `source_ids`:
-
-  Optional source ids already harvested for the turn.
-
-- `session_id`:
-
-  Optional Co-STORM or expert session id.
-
-- `expert_id`:
-
-  Optional expert id.
-
-- `correlation_id`:
-
-  Optional progress correlation id for the turn.
-
-- `deputy_execution`:
-
-  Optional terminal Deputy trace for the answer.
-
-------------------------------------------------------------------------
-
-### `TempestSession$harvest_native_sources()`
-
-Experimental helper for harvesting source metadata from provider-native
-web tool responses.
-
-#### Usage
-
-    TempestSession$harvest_native_sources(chat = NULL, turn = NULL)
-
-#### Arguments
-
-- `chat`:
-
-  Optional chat whose last turn should be inspected.
-
-- `turn`:
-
-  Optional explicit ellmer turn.
-
-#### Returns
-
-Character vector of source ids added or updated.
-
-------------------------------------------------------------------------
-
 ### `TempestSession$suggest_questions()`
 
 Suggest follow-up questions for the user based on the conversation so
@@ -531,17 +452,13 @@ Process one explicit user turn through the Deputy moderator.
 
 #### Usage
 
-    TempestSession$step(user_input = NULL, auto = FALSE)
+    TempestSession$step(user_input = NULL)
 
 #### Arguments
 
 - `user_input`:
 
   User input.
-
-- `auto`:
-
-  Must be `FALSE`; generic automatic discourse is unavailable.
 
 #### Returns
 
@@ -723,27 +640,6 @@ Reorganize the mind map for clarity.
 #### Usage
 
     TempestSession$reorganize_mindmap()
-
-------------------------------------------------------------------------
-
-### `TempestSession$execute_turn_decision()`
-
-Execute a discourse manager turn decision.
-
-#### Usage
-
-    TempestSession$execute_turn_decision(decision)
-
-#### Arguments
-
-- `decision`:
-
-  A turn decision from the discourse manager.
-
-#### Returns
-
-This method always errors; automatic discourse routing is not a
-supported Co-STORM product path.
 
 ------------------------------------------------------------------------
 

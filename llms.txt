@@ -221,16 +221,15 @@ StageRecord output-digest payload schema 3, and promotion-bundle
 schema 1. Readers reject every other version; missing fields, extra
 fields, and values that only become valid after coercion are errors.
 
-## Generic-kernel cutover
+## Product boundary
 
 Tempest 0.2 supports only the STORM and Co-STORM product APIs. Use
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
 for scripted research and
 [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
 for interactive research. The former application-neutral workflow,
-runtime, capability, connection, skill, deliverable, and artifact APIs
-are unavailable; retained symbols fail immediately with class
-`tempest_generic_kernel_cutover_error`. There is no compatibility or
+runtime, capability, connection, skill, deliverable, and artifact kernel
+and its symbols have been removed. There is no compatibility or
 generic-kernel migration layer.
 
 Product bundles contain the exact research manifest, provisional
@@ -242,9 +241,7 @@ execution caused, authored, or validated report content.
 
 ## Agent skills
 
-Tempest ships two supported research skills. Three generic-workflow
-skill directories remain only as unavailable deletion inventory until T8
-removes them physically.
+Tempest ships two supported research skills.
 
 - `use-tempest-research` chooses, configures, runs, resumes, inspects,
   and embeds Tempest’s scripted STORM and interactive Co-STORM
@@ -273,9 +270,9 @@ Tempest package and expose `conduct-storm-research` inside a
 tool-capable chat application. The host must still provide retrieval,
 evidence, state, and output tools.
 
-These Agent Skills are external operating guidance, not the unavailable
-0.1 generic runtime contract that used the similarly named
-[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md).
+These Agent Skills are external operating guidance. They do not grant
+runtime authority; the host still owns tools, authorization, state, and
+lifecycle.
 
 Read
 [`vignette("agent-skills", package = "tempest")`](https://jameshwade.github.io/tempest/articles/agent-skills.md)
@@ -905,54 +902,6 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
   **\[experimental\]** : Embed Tempest panels in a Shiny UI
 - [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
   **\[experimental\]** : Run embedded Tempest Shiny panels
-
-## Generic-kernel cutover
-
-Immediate Tempest 0.2 cutover to the STORM and Co-STORM product APIs.
-
-- [`tempest-generic-kernel-retirement`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_artifact`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_artifact_catalog`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_artifact_catalog_restore`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_artifact_codec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_artifact_codec_definition`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_artifact_codec_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_artifact_representation`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_artifact_store`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_builtin_operation_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_builtin_workflow_operation_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_capability_resolver`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_capability_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_connection_provider`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_connection_ref`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_costorm_workflow_adapter`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_costorm_workflow_run`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_costorm_workflow_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_deliverable_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_generate_deliverable`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_memory_artifact_store`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_objective`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_operation_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_approvals`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_artifact`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_artifacts`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_capability_grants`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_events`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_record_approval`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_request_cancel`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_save`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_snapshot`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_status`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_run_workflow`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_runtime`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_skill`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_skill_registry`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_storm_workflow_adapter`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_storm_workflow_run`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_storm_workflow_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_workflow_spec`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  [`tempest_workflow_step`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  : Tempest 0.2 generic-kernel cutover
 
 ## Session persistence
 

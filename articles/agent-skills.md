@@ -1,12 +1,10 @@
 # Use Tempest Agent Skills
 
 Tempest ships Agent Skills alongside its R APIs. Two research skills are
-supported. Three generic-workflow directories remain only as unavailable
-deletion inventory until T8 removes them physically. Each supported
-skill is a portable directory containing a `SKILL.md` file, supporting
-references, and agent metadata. A compatible agent can load those
-instructions when it needs to operate Tempest or conduct STORM research
-in another framework.
+supported. Each is a portable directory containing a `SKILL.md` file,
+supporting references, and agent metadata. A compatible agent can load
+those instructions when it needs to operate Tempest or conduct STORM
+research in another framework.
 
 This article covers two deployment shapes:
 
@@ -19,16 +17,12 @@ authorization, state, and lifecycle needed to perform the research.
 
 ## Agent Skills and product APIs are different
 
-Tempest has two concepts with similar names:
-
 An Agent Skill is external operating guidance installed with
 [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
 or
 [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md).
-It does not grant runtime authority. The former
-[`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-generic-kernel symbol is unavailable in Tempest 0.2 and is unrelated to
-these instructions.
+It does not grant runtime authority. The host still provides the tools,
+authorization, state, and lifecycle needed to perform the research.
 
 ## Choose a supported research skill
 
@@ -40,8 +34,7 @@ Use the smallest skill that matches the task:
 | `conduct-storm-research` | Supported | Follow a provider- and framework-neutral STORM or Co-STORM protocol outside Tempest |
 
 The two research skills describe complete operating modes and can be
-used independently. The three generic-workflow skill entrypoints contain
-only an unavailable notice and must not be used.
+used independently.
 
 ## Discover and install the skills
 

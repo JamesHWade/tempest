@@ -4,11 +4,14 @@
 
 - Tempest is now explicitly scoped as a scientific-research product. Its
   experimental application-neutral workflow, runtime, capability,
-  connection, skill, deliverable, artifact, and generic host-state APIs
-  are unavailable immediately; the 41 retained export names and two
-  internal run restore/resume symbols fail with
-  `tempest_generic_kernel_cutover_error` until T8 removes them
-  physically (an7p).
+  connection, skill, deliverable, artifact, and generic host-state
+  kernel has been removed physically, including 41 public export names
+  and two internal run restore/resume symbols;
+  [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  and
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
+  are the supported execution paths, with no compatibility or migration
+  layer (an7p).
 - Tempest 0.2 is a hard cut to canonical research-product contracts:
   `ResearchWorkspace` replaces `SourceStore`; STORM and Co-STORM expose
   no `store` aliases, legacy collection names, generic runtime
@@ -29,8 +32,8 @@
 - [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
   and
   [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
-  expose and install only the two supported research skills; the three
-  generic-workflow skill names are unknown and unavailable.
+  expose and install exactly the two supported research skills; the
+  three retired generic-workflow skill directories have been removed.
 - [`tempest_claim_support()`](https://jameshwade.github.io/tempest/reference/tempest_claim_support.md)
   and
   [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md)
@@ -164,22 +167,16 @@
   expose and install the two supported research skills; three
   generic-workflow directories remain only as inactive deletion
   inventory until T8 removes them physically (cheg).
-- [`tempest_artifact()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  [`tempest_artifact_catalog()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  [`tempest_deliverable_spec()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  [`tempest_generate_deliverable()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  [`tempest_objective()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  and
-  [`tempest_operation_registry()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  add an application-neutral output lifecycle with versioned operation
-  references, validation, evidence lineage, typed multi-format
-  artifacts, approval-before-export enforcement, safe invalid-output
-  retries, host storage adapters, and checksummed persistence shared by
-  STORM, Co-STORM, and host-defined outcomes (xbwy).
-- [`tempest_artifact_codec_registry()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  and
-  [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+- `tempest_artifact()`, `tempest_artifact_catalog()`,
+  `tempest_artifact_store()`, `tempest_deliverable_spec()`,
+  `tempest_generate_deliverable()`, `tempest_objective()`, and
+  `tempest_operation_registry()` add an application-neutral output
+  lifecycle with versioned operation references, validation, evidence
+  lineage, typed multi-format artifacts, approval-before-export
+  enforcement, safe invalid-output retries, host storage adapters, and
+  checksummed persistence shared by STORM, Co-STORM, and host-defined
+  outcomes (xbwy).
+- `tempest_artifact_codec_registry()` and `tempest_artifact_store()`
   provide versioned runtime codecs and complete typed storage adapters
   for inline or external custom artifact representations without
   serializing executable codec functions (fr54).
@@ -201,9 +198,7 @@
 - [`tempest_create_ragnar_store()`](https://jameshwade.github.io/tempest/reference/tempest_create_ragnar_store.md)
   preserves and validates compatible persistent stores by default;
   destructive replacement now requires `reset = TRUE` (yb8s).
-- [`tempest_costorm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  and
-  [`tempest_storm_workflow_run()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
+- `tempest_costorm_workflow_run()` and `tempest_storm_workflow_run()`
   expose the built-in research workflows as executable `TempestRun`
   specifications with shared evidence, typed checkpoints, selected
   expert teams, scoped connections, and an approval-gated Co-STORM
@@ -239,19 +234,15 @@
   UI integration boundaries now have deterministic fixture-based
   contract coverage without API keys or network access (kqgx).
 - [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md),
-  [`tempest_skill()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  [`tempest_capability_spec()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  [`tempest_connection_ref()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  and
-  [`tempest_runtime()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  add stable expert profiles, reusable skill contracts, per-context
-  least-privilege capability resolution, opaque host connection
-  bindings, exact expert-session restoration, and durable per-step grant
-  records; global all-chat tool registration and the
-  `tempest_config(tools = )` argument have been removed, so hosts should
-  attach tool implementations through scoped runtime capabilities
-  (wgr8).
-- [`tempest_artifact_store()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
+  `tempest_skill()`, `tempest_capability_spec()`,
+  `tempest_connection_ref()`, and `tempest_runtime()` add stable expert
+  profiles, reusable skill contracts, per-context least-privilege
+  capability resolution, opaque host connection bindings, exact
+  expert-session restoration, and durable per-step grant records; global
+  all-chat tool registration and the `tempest_config(tools = )` argument
+  have been removed, so hosts should attach tool implementations through
+  scoped runtime capabilities (wgr8).
+- `tempest_artifact_store()`,
   [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md),
   [`tempest_progress_event()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event.md),
   [`tempest_session_save()`](https://jameshwade.github.io/tempest/reference/tempest_session_save.md),
@@ -305,22 +296,19 @@
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   now executes STORM structured steps through dsprrr modules, with
   ellmer fallbacks for module creation or runtime failures.
-- [`tempest_run_save()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  `tempest_run_resume()`, and the `tempest_run_*()` accessors give host
-  applications checksummed generic run bundles plus stable status,
-  event, approval, per-attempt capability-grant, artifact, cancellation,
-  strict restore-integrity, permission-narrowing, and explicit
-  partial-recovery controls without reaching into mutable R6 internals
-  (vtvt).
-- [`tempest_run_workflow()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  [`tempest_workflow_spec()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md),
-  and
-  [`tempest_workflow_step()`](https://jameshwade.github.io/tempest/reference/tempest-generic-kernel-retirement.md)
-  add a generic deterministic run shell with expert assignments, bounded
-  retry history, ordered events, typed artifacts, requested-output
-  completion checks, pre-execution policy gates, post-generation output
-  approvals, cooperative cancellation, process-local runtime services,
-  and explicit runtime snapshot restoration (vtvt).
+- `tempest_run_save()`, `tempest_run_resume()`, and the
+  `tempest_run_*()` accessors give host applications checksummed generic
+  run bundles plus stable status, event, approval, per-attempt
+  capability-grant, artifact, cancellation, strict restore-integrity,
+  permission-narrowing, and explicit partial-recovery controls without
+  reaching into mutable R6 internals (vtvt).
+- `tempest_run_workflow()`, `tempest_workflow_spec()`, and
+  `tempest_workflow_step()` add a generic deterministic run shell with
+  expert assignments, bounded retry history, ordered events, typed
+  artifacts, requested-output completion checks, pre-execution policy
+  gates, post-generation output approvals, cooperative cancellation,
+  process-local runtime services, and explicit runtime snapshot
+  restoration (vtvt).
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   and
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)

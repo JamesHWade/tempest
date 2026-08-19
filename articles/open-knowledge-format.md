@@ -199,11 +199,10 @@ This division keeps each package focused:
 
 OKF can describe an Attested Computation, including a runtime, source
 files, inputs, and expected outputs. Tempest validates useful metadata
-when present but never executes the computation. Do not route a new
-executor through the unavailable generic operation and capability APIs.
-A Tempest product references an exact dsprrr program artifact and
-preserves execution identity for correlation and audit joins, not as a
-claim of causal content provenance.
+when present but never executes the computation. A Tempest product
+instead references an exact dsprrr program artifact and preserves
+execution identity for correlation and audit joins, not as a claim of
+causal content provenance.
 
 Continue with [Get started with
 Tempest](https://jameshwade.github.io/tempest/articles/tempest.md) to

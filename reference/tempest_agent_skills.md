@@ -3,8 +3,7 @@
 `tempest_agent_skills()` lists the two supported research Agent Skill
 directories shipped with Tempest. These `SKILL.md` bundles guide agents
 through using the STORM and Co-STORM product APIs or conducting the
-portable STORM protocol. Generic-workflow skill directories are
-unavailable and are not discoverable or installable through this API.
+portable STORM protocol.
 
 ## Usage
 

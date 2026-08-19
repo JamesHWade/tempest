@@ -360,16 +360,15 @@ credentials. Those execution identities support correlation and audit
 joins only; they do not claim that an execution caused, authored, or
 validated report content.
 
-## Generic-kernel cutover
+## Product boundary
 
 Tempest 0.2 supports only
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
 and
 [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
 as research product entry points. The experimental application-neutral
-kernel is unavailable, and retained symbols fail immediately with
-`tempest_generic_kernel_cutover_error`. No compatibility layer is
-provided.
+kernel is removed, including its former symbols. No compatibility layer
+is provided.
 
 ## Where to go next
 
