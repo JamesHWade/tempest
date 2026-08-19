@@ -2,7 +2,7 @@
 
 Tracking issue: unavailable; the kata daemon did not start during planning
 
-Status: in progress
+Status: implemented and verified
 
 ## Goal
 
@@ -236,134 +236,134 @@ NEWS, architecture, and this plan at a time.
 
 ### Public and schema gates
 
-- [ ] Update the public fixture to exactly 63 sorted unique exports, adding only
+- [x] Update the public fixture to exactly 63 sorted unique exports, adding only
   `tempest_trajectory_review`, and retain exactly two S3 registrations.
-- [ ] Reassert the exact eight frozen product schema versions and current field
+- [x] Reassert the exact eight frozen product schema versions and current field
   order without adding a trajectory persistence schema.
-- [ ] Assert that no review lane contains a function, environment, external
+- [x] Assert that no review lane contains a function, environment, external
   pointer, chat, Agent, tool, connection, live Graft view/store, Shiny reactive,
   provider payload, path, prompt, source content, or credential-like scalar.
-- [ ] Add a static owner inventory for the review constructor, evaluation task
+- [x] Add a static owner inventory for the review constructor, evaluation task
   additions, internal Shiny module, and final release metadata.
 
 ### Join and authority gates
 
-- [ ] Freeze the exact review properties, lane fields, join fields, relation
+- [x] Freeze the exact review properties, lane fields, join fields, relation
   names, proof names, finding codes, and deterministic review digest.
-- [ ] Assert that every emitted relation is backed by exact stored identities
+- [x] Assert that every emitted relation is backed by exact stored identities
   and that correlation ids can emit only
   `correlated_with/correlation_only`.
-- [ ] Reject malformed products, running/failed products, unsealed Workspaces,
+- [x] Reject malformed products, running/failed products, unsealed Workspaces,
   invalid reports, running StageRecords, pending Deputy/completion/async work,
   changed Manifest/StageRecord program bindings, changed live Co-STORM
   ProgramSets, configs/snapshots, and failed publication authority.
-- [ ] Assert proposed and accepted promotion joins, reject receipt-only input,
+- [x] Assert proposed and accepted promotion joins, reject receipt-only input,
   and prove review never plans or commits Graft writes.
 
 ## Batch 1: Completed-product trajectory review
 
 ### Share the exact product context
 
-- [ ] Move the strict completed STORM/Co-STORM product readers out of the
+- [x] Move the strict completed STORM/Co-STORM product readers out of the
   promotion-specific namespace into one neutral internal owner.
-- [ ] Reuse the neutral reader from both promotion and trajectory review, with
+- [x] Reuse the neutral reader from both promotion and trajectory review, with
   classed boundary-specific errors and no relaxed validation path.
-- [ ] Preserve promotion schema 1, public formals, claim closure, publication
+- [x] Preserve promotion schema 1, public formals, claim closure, publication
   authority, and nonmutation byte-for-byte.
 
 ### Build the closed projection
 
-- [ ] Add internal `TempestTrajectoryReview` validation and the one public
+- [x] Add internal `TempestTrajectoryReview` validation and the one public
   `tempest_trajectory_review()` constructor.
-- [ ] Project product, stage, terminal agent, Manifest program, knowledge,
+- [x] Project product, stage, terminal agent, Manifest program, knowledge,
   evidence,
   join, and finding lanes from exact current owners; do not reparse serialized
   bundles, consume mutable progress history, or query sibling packages for
   ambient state.
-- [ ] Generate typed identity joins and deterministic attention findings for
+- [x] Generate typed identity joins and deterministic attention findings for
   failure/cancellation, fallback, exploratory execution, unverified support,
   publication blocking, and unmatched optional explicit references.
-- [ ] Sort all unordered collections canonically and prove equivalent product
+- [x] Sort all unordered collections canonically and prove equivalent product
   values yield identical review ids across fresh processes.
-- [ ] Bound every variable-length lane to 250 retained records with exact
+- [x] Bound every variable-length lane to 250 retained records with exact
   total/omitted counts and a digest over the complete canonical lane; prove a
   change confined to omitted records still changes the review id.
-- [ ] Verify that constructing or copying a review cannot mutate the product,
+- [x] Verify that constructing or copying a review cannot mutate the product,
   Workspace, session, ProgramSet, promotion bundle, or receipt.
 
 ### Cross-package contract tests
 
-- [ ] Test exact Deputy terminal run/session/parent/delegation/tool/correlation
+- [x] Test exact Deputy terminal run/session/parent/delegation/tool/correlation
   projection without prompt, response, event payload, or Agent leakage.
-- [ ] Test exact dsprrr ProgramArtifact/contract/evaluator joins without raw
+- [x] Test exact dsprrr ProgramArtifact/contract/evaluator joins without raw
   module or trial-log leakage.
-- [ ] Test exact input Graft snapshot and optional promotion receipt revision
+- [x] Test exact input Graft snapshot and optional promotion receipt revision
   joins without a live store/view/plan or inferred acceptance.
-- [ ] Add ecosystem gates against the exact DESCRIPTION pins for Deputy,
+- [x] Add ecosystem gates against the exact DESCRIPTION pins for Deputy,
   dsprrr, and Graft.
 
 ## Batch 2: Explicit evaluation and improvement loop
 
 ### Evaluate an exact ProgramSet
 
-- [ ] Let the existing `dataset` argument accept either the built-in `"qa"`
+- [x] Let the existing `dataset` argument accept either the built-in `"qa"`
   smoke dataset or one exact data frame containing only `input`, `target`, and
   optional unique `id` columns. Reject missing/extra columns, duplicated ids,
   empty values, non-scalar cells, and non-canonical rows before execution.
-- [ ] Bind a canonical dataset digest and the built-in/caller dataset kind in
+- [x] Bind a canonical dataset digest and the built-in/caller dataset kind in
   credential-safe solver metadata, and derive the Task name from that normalized
   identity. Do not describe the ten-row built-in QA smoke fixture as a
   scientific benchmark or stage-training set.
-- [ ] Add `program_set = NULL` and `knowledge_view = NULL` to
+- [x] Add `program_set = NULL` and `knowledge_view = NULL` to
   `tempest_task()` and `tempest_costorm_task()` and route them through the real
   product constructors exactly as `tempest_run()`/`tempest_session()` do.
-- [ ] Scope versioned safe product metadata to the built-in Tempest solvers. If
+- [x] Scope versioned safe product metadata to the built-in Tempest solvers. If
   an injected solver is supplied, reject non-NULL `program_set` or
   `knowledge_view` because Tempest cannot prove the custom solver used them;
   align Co-STORM and STORM custom-solver wrapping without claiming product
   authority over arbitrary solver output.
-- [ ] Reject invalid or mismatched ProgramSet/governed-view inputs before
+- [x] Reject invalid or mismatched ProgramSet/governed-view inputs before
   the affected stage's provider execution and preserve default behavior when
   both are omitted. Do not promise an all-stage preflight that the current
   governed-procedure contract does not provide.
-- [ ] Tag Tempest solver metadata with one current internal metadata version and
+- [x] Tag Tempest solver metadata with one current internal metadata version and
   include only a bounded plain-list summary: review id/version, run/mode/config
   identity, report reference, knowledge snapshot id, the fixed ten program
   artifact/evaluator identities, and a fixed ten-stage structural summary of
   attempt/fallback/execution/support/publication/finding counts with a complete
   stage digest. Never place the S7 review object, complete lanes, joins,
   evidence ids, or source content in vitals samples/logs.
-- [ ] Keep raw report text in the vitals `result` field only; do not duplicate it
+- [x] Keep raw report text in the vitals `result` field only; do not duplicate it
   in solver metadata or review lanes.
 
 ### Keep improvement explicit
 
-- [ ] Document and test the closed operator loop: evaluate a baseline ProgramSet
+- [x] Document and test the closed operator loop: evaluate a baseline ProgramSet
   against an explicit caller evaluation set with vitals, provide separate
   explicit stage-labelled train/validation data and
   dsprrr Teleprompters, compile a candidate with
   `tempest_compile_programs()`, evaluate the candidate with the same scientific
   Task/scorer, inspect scores plus safe trajectory metadata, and explicitly pass
   the chosen ProgramSet to a later product run.
-- [ ] Prove the Task never synthesizes training data from prompts/responses or
+- [x] Prove the Task never synthesizes training data from prompts/responses or
   StageRecord digests, never invokes a dsprrr optimizer automatically, and
   never changes the caller's baseline ProgramSet.
-- [ ] Isolate every selected baseline Module before passing it to
+- [x] Isolate every selected baseline Module before passing it to
   `dsprrr::compile_module()` by cloning or artifact round-trip followed by exact
   identity verification. Compile only the isolated value and prove the
   original ProgramSet artifact ids remain unchanged after both successful and
   throwing/mutating Teleprompters.
-- [ ] Prove a candidate ProgramSet is not active, governed, published,
+- [x] Prove a candidate ProgramSet is not active, governed, published,
   promoted, or accepted merely because it scores better.
-- [ ] When compilation changes a selected stage's `program_artifact_id`, clear
+- [x] When compilation changes a selected stage's `program_artifact_id`, clear
   that stage's old governed-procedure reference in the candidate ProgramSet;
   preserve references only for unchanged artifact identities and for untouched
   stages. A changed candidate remains ungoverned until a separately accepted
   Graft procedure binds its exact new artifact.
-- [ ] Require separate baseline and candidate Task instances and document that
+- [x] Require separate baseline and candidate Task instances and document that
   vitals Tasks are mutable; never reuse or reset one Task as both sides of an
   improvement comparison.
-- [ ] Leave Task comparison, score aggregation, metrics, logs, uncertainty, and
+- [x] Leave Task comparison, score aggregation, metrics, logs, uncertainty, and
   scorer explanations under public vitals APIs; do not add a polymorphic Task
   input to `tempest_trajectory_review()`.
 
@@ -371,61 +371,61 @@ NEWS, architecture, and this plan at a time.
 
 ### Add the internal panel
 
-- [ ] Add the internal panel key `review` with the user-facing title “Run
+- [x] Add the internal panel key `review` with the user-facing title “Run
   review” to the panel choices and bundled app navigation, using the active
   Co-STORM session and a separate internal last-successful STORM product
   reactive keyed by run id. Starting, cancelling, or rejecting a later run must
   not erase the last valid product merely to satisfy current-run cleanup.
-- [ ] Keep the exact 13-member store and 10-member public server return value;
+- [x] Keep the exact 13-member store and 10-member public server return value;
   the STORM module may expose its latest product only to the internal adapter.
-- [ ] Render a product/status summary, deterministic attention counts, bounded
+- [x] Render a product/status summary, deterministic attention counts, bounded
   filters, authoritative StageRecord rows, separately labeled live progress
   observations, and a detail card for fixed opaque references.
-- [ ] Display untimed Deputy references beneath an exact matched StageRecord or
+- [x] Display untimed Deputy references beneath an exact matched StageRecord or
   in a separate unlinked-reference section; never fabricate their chronological
   position from list order, stage name, or correlation id.
-- [ ] Pair live STORM progress with the product review only in the view; do not
+- [x] Pair live STORM progress with the product review only in the view; do not
   alter the public review id, product result, or persistence state.
 
 ### Security, accessibility, and performance
 
-- [ ] Render only fixed escaped review fields and opaque identifiers. Never
+- [x] Render only fixed escaped review fields and opaque identifiers. Never
   render arbitrary payloads, prompts, responses, source content, paths,
   credentials, scorer explanations, or HTML from a model/provider.
-- [ ] Bound the visible row count and keep projection synchronous over existing
+- [x] Bound the visible row count and keep projection synchronous over existing
   reactives; cap rendered rows at 250 with an omitted-row count, and do not add
   an ExtendedTask, polling loop, cache, or persisted UI state.
-- [ ] Use text plus icons for status, keyboard-operable controls, stable focus,
+- [x] Use text plus icons for status, keyboard-operable controls, stable focus,
   labeled tables/details, one polite atomic summary region, and alerts only for
   newly observed failure/cancellation states.
-- [ ] Test blank, running, completed, tampered, failed, cancelled, and stale
+- [x] Test blank, running, completed, tampered, failed, cancelled, and stale
   product transitions without overwriting an existing valid report/review.
 
 ## Batch 4: Documentation and integration
 
-- [ ] Document the review as a non-authoritative, reconstructable projection;
+- [x] Document the review as a non-authoritative, reconstructable projection;
   explain every lane, join proof, exclusion of mutable progress history, and
   correlation-only rule.
-- [ ] Document the explicit vitals -> dsprrr compilation -> candidate vitals ->
+- [x] Document the explicit vitals -> dsprrr compilation -> candidate vitals ->
   operator adoption loop, including data leakage and overfitting cautions.
-- [ ] Update `tempest_task()`/`tempest_costorm_task()` examples for exact
+- [x] Update `tempest_task()`/`tempest_costorm_task()` examples for exact
   ProgramSet/knowledge-view evaluation without implying automatic improvement.
-- [ ] Update README, the main vignette, current NEWS only, package architecture,
+- [x] Update README, the main vignette, current NEWS only, package architecture,
   supported research skill references, Shiny docs, and pkgdown reference text.
-- [ ] Regenerate roxygen output, keep all public topics indexed, and prove no
+- [x] Regenerate roxygen output, keep all public topics indexed, and prove no
   retired generic-kernel or pre-0.2 vocabulary returns.
-- [ ] Change the GitHub Pages deploy action to clean the deployment so deleted
+- [x] Change the GitHub Pages deploy action to clean the deployment so deleted
   0.1 reference pages cannot survive on `gh-pages`; retain serialized deploy
   concurrency and PR cancellation behavior.
-- [ ] Split pkgdown build from deployment permissions so pull-request builds use
+- [x] Split pkgdown build from deployment permissions so pull-request builds use
   read-only contents access and only the serialized deploy job can write.
-- [ ] Require `vitals (>= 0.3.0)` in Suggests, matching the Task/sample metadata
+- [x] Require `vitals (>= 0.3.0)` in Suggests, matching the Task/sample metadata
   APIs exercised by the explicit evaluation loop.
-- [ ] Exclude ignored rendered vignette HTML from source tarballs with
+- [x] Exclude ignored rendered vignette HTML from source tarballs with
   `.Rbuildignore`, delete the obsolete shipped `inst/UPSTREAM_COMPARISON.md`,
   repair the dead README Co-STORM and mirai URLs, and audit the built tarball for
   stale generic-kernel or local build output.
-- [ ] Resolve release documentation defects found by extrachecks: document the
+- [x] Resolve release documentation defects found by extrachecks: document the
   `tempest_session()` return value, normalize the internal
   `tempest_make_chat` title, and replace or encode problematic Rd punctuation.
 
@@ -433,53 +433,101 @@ NEWS, architecture, and this plan at a time.
 
 ### Static and focused gates
 
-- [ ] Parse and format every changed R/test file; run `air format --check .`
+- [x] Parse and format every changed R/test file; run `air format --check .`
   and `git diff --check`.
-- [ ] Run trajectory, promotion, ProgramSet, evaluation, report authority,
+- [x] Run trajectory, promotion, ProgramSet, evaluation, report authority,
   progress/event, Shiny, persistence, ecosystem, public API, and product-surface
   tests with exact pinned dependencies.
-- [ ] Run deterministic fresh-process review-id checks and adversarial tests for
+- [x] Run deterministic fresh-process review-id checks and adversarial tests for
   malformed joins, credentials, mutation, causation labels, and cross-run
   product/promotion mixing.
-- [ ] Run `devtools::document()` and `pkgdown::check_pkgdown()` and verify the
+- [x] Run `devtools::document()` and `pkgdown::check_pkgdown()` and verify the
   generated namespace is exactly 63 exports/two S3 methods.
 
 ### Installed and full gates
 
-- [ ] Build and install the source tarball with exact Deputy, dsprrr, Graft,
+- [x] Build and install the source tarball with exact Deputy, dsprrr, Graft,
   ellmer, and shinychat revisions in an isolated library.
-- [ ] Verify the installed namespace, review projection, evaluation candidate
+- [x] Verify the installed namespace, review projection, evaluation candidate
   loop, internal Shiny panel, host example, assets, schemas, and retired-surface
   absence outside the checkout.
-- [ ] Run the complete test suite unsandboxed with four workers and report exact
+- [x] Run the complete test suite unsandboxed with four workers and report exact
   pass/fail/error/warn/skip counts and wall time.
-- [ ] Run ordinary and `--as-cran` package checks with the system-clock
+- [x] Run ordinary and `--as-cran` package checks with the system-clock
   environment controlled. Leave the ordinary check at 0 errors, 0 warnings,
-  and 0 notes; record the expected incoming-check failure caused by required
+  and 0 notes; record the expected incoming-check warning caused by required
   non-CRAN Deputy/dsprrr dependencies and `Remotes` without weakening those
   boundaries or describing the package as CRAN-ready.
-- [ ] Run release-oriented URL, spelling, lifecycle, documentation, archive,
+- [x] Run release-oriented URL, spelling, lifecycle, documentation, archive,
   license, dependency, and source-cleanliness checks without submitting to an
   external service.
 
 ### Final 0.2.0 commit
 
-- [ ] Only after all prior gates pass, set `DESCRIPTION` from `0.2.0.9000` to
+- [x] Only after all prior gates pass, set `DESCRIPTION` from `0.2.0.9000` to
   `0.2.0`, change the current NEWS heading to `# tempest 0.2.0`, update the
   tracked MIT license year/holder consistently to `2025-2026 tempest authors`,
   and rerun the release checks against those exact bytes.
-- [ ] Confirm no generated `docs/`, vignette HTML, dsprrr cache, temporary
+- [x] Confirm no generated `docs/`, vignette HTML, dsprrr cache, temporary
   library, check directory, local credential/config file, or sibling-repository
   change is staged.
-- [ ] Mark this plan and the architecture migration table implemented and
+- [x] Mark this plan and the architecture migration table implemented and
   verified only after the final clean installed/full/check evidence exists.
-- [ ] Stop at a clean reviewable branch. Tagging, GitHub release publication,
+- [x] Stop at a clean reviewable branch. Tagging, GitHub release publication,
   CRAN submission, merge, and push each require their own explicit authority.
 
 CRAN publication is a separate distribution project: Deputy and dsprrr are
 required but unavailable from CRAN/Bioconductor, Graft is also pinned outside
 the main repositories, and incoming checks reject `Remotes`. T10 must not make
 these dependencies optional or remove their pins to manufacture a CRAN pass.
+
+## Final verification evidence
+
+Verified on 2026-08-19 against implementation base
+`e0defd3b0b6a84932e95dc0a776e06a077ff374b` plus the exact final release
+identity changes. Deputy `89089c90ddeb668462422b14a4de7a8395eefdc8`,
+dsprrr `db28eae2235ab15c4f5c1c9794118d127eabbdd7`, and Graft
+`81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5` were installed from their exact
+Git objects in isolated libraries.
+
+- Integrated trajectory, evaluation, ProgramSet, public-API, and surface tests
+  passed 425 expectations with only the known dsprrr cache-permission fallback
+  warning. Dedicated Shiny tests passed 706 expectations, and adversarial
+  compile-isolation tests passed 228 expectations without failures or warnings.
+- The definitive unsandboxed four-worker suite ran 792 test cases and 4,932
+  expectations: 4,932 passed, with zero failures, errors, warnings, or skips,
+  in 474.95 seconds wall time. Six test-generated terminal snapshot blanks were
+  proven whitespace-only and removed.
+- The final source archive is `tempest_0.2.0.tar.gz`, 670,374 bytes, SHA-256
+  `a8d9f7dcce5b4f3f4cc0b01288af853f0c9beca872ad59e0615e0cad3d7c5d1b`.
+  A fresh isolated install with tests exposed exactly 63 exports and two S3
+  registrations, kept `TempestTrajectoryReview` internal, retained the exact
+  13-member store and 10-member server handle, preserved all eight frozen
+  schemas, installed the Run review and host assets, and passed installed
+  trajectory and Shiny smoke tests. The 403-entry archive contained no local
+  caches, generated site, vignette HTML, obsolete comparison, or retired
+  generic-kernel surface.
+- `devtools::document()` left NAMESPACE byte-identical;
+  `pkgdown::check_pkgdown()`, `air format --check .`, parsing of all 197 tracked
+  R files and 120 Rd files, and `git diff --check` passed. URL checking passed
+  all 25 URLs. The spelling audit's 179 dictionary misses were reviewed as
+  package names, opaque identifiers, proper nouns, technical vocabulary, or
+  historical issue keys, with no actionable misspelling. Lifecycle linting
+  reported one `$invoke` false positive and four intentional uses of the pinned
+  experimental `ellmer::contents_markdown()` API; the new public review API has
+  its installed experimental lifecycle badge.
+- The exact 0.2.0 ordinary package check completed with zero errors, warnings,
+  or notes in 68.11 seconds wall time. A separate network-enabled incoming
+  `--as-cran` check completed build, install, Rd, examples, possible-problems,
+  and vignette checks with zero errors, one expected warning, and zero notes;
+  that warning identifies the new submission, `Remotes`, required non-CRAN
+  Deputy/dsprrr dependencies, and non-mainstream Graft suggestion. Tempest is
+  therefore release-prepared but is not described as CRAN-ready.
+- Final tracked identity bytes are Version `0.2.0`, NEWS heading
+  `# tempest 0.2.0`, and MIT copyright `2025-2026 tempest authors` in both
+  tracked license files. No generated docs, rendered vignette, cache, temporary
+  library, check directory, local config, credential file, or sibling-repository
+  change is part of the release commit.
 
 ### Post-merge GitHub release handoff
 
@@ -499,32 +547,32 @@ the release-triggered workflow substitute for the pre-tag exact-SHA gate.
 
 ## Acceptance checklist
 
-- [ ] Exactly one new public export exists: `tempest_trajectory_review()`;
+- [x] Exactly one new public export exists: `tempest_trajectory_review()`;
   installed namespace is 63 exports and two S3 registrations.
-- [ ] All eight existing product schema versions and readers are unchanged.
-- [ ] A review accepts only an exact completed STORM result or quiescent
+- [x] All eight existing product schema versions and readers are unchanged.
+- [x] A review accepts only an exact completed STORM result or quiescent
   succeeded `TempestSession` and reuses full publication authority validation.
-- [ ] Review output is deterministic, credential-safe, capability-free,
+- [x] Review output is deterministic, credential-safe, capability-free,
   nonmutating, and never persisted.
-- [ ] Correlation ids are represented only as non-causal grouping evidence.
-- [ ] Deputy, dsprrr, and Graft lanes contain only exact safe identity
+- [x] Correlation ids are represented only as non-causal grouping evidence.
+- [x] Deputy, dsprrr, and Graft lanes contain only exact safe identity
   references owned by their respective packages.
-- [ ] Proposed and accepted promotion states are distinguished and cross-run
+- [x] Proposed and accepted promotion states are distinguished and cross-run
   bundle/receipt mixing fails closed.
-- [ ] Existing vitals tasks can evaluate exact baseline and candidate
+- [x] Existing vitals tasks can evaluate exact baseline and candidate
   ProgramSets/knowledge views without changing them automatically.
-- [ ] Tempest adds no optimizer, scorer engine, synthetic trainset, automatic
+- [x] Tempest adds no optimizer, scorer engine, synthetic trainset, automatic
   compilation, automatic adoption, Graft commit, or new governance authority.
-- [ ] The Run review panel is bounded, escaped, accessible, read-only, and adds
+- [x] The Run review panel is bounded, escaped, accessible, read-only, and adds
   no public handle, background worker, or persisted state.
-- [ ] Documentation and supported skills explain authority, non-causation,
+- [x] Documentation and supported skills explain authority, non-causation,
   explicit improvement, and release boundaries consistently.
-- [ ] Clean deployment prevents deleted reference pages surviving on gh-pages.
-- [ ] Exact-pin focused, installed, full-suite, pkgdown, ordinary-check, and
+- [x] Clean deployment prevents deleted reference pages surviving on gh-pages.
+- [x] Exact-pin focused, installed, full-suite, pkgdown, ordinary-check, and
   release-oriented gates are clean; the separate CRAN distribution blockers
   are reproduced and documented accurately.
-- [ ] Final tracked version/NEWS/license bytes identify tempest 0.2.0.
-- [ ] The post-merge exact-SHA workflow, clean-site, tag, GitHub release, and
+- [x] Final tracked version/NEWS/license bytes identify tempest 0.2.0.
+- [x] The post-merge exact-SHA workflow, clean-site, tag, GitHub release, and
   development-bump handoff is documented without performing those external
   actions implicitly.
-- [ ] Worktree/index are clean and the plan records exact final evidence.
+- [x] Worktree/index are clean and the plan records exact final evidence.

@@ -271,7 +271,7 @@ older or other formats.
 | T7 | Make the new STORM and Co-STORM paths authoritative. |
 | T8 | Deleted the experimental generic kernel, its 41 exports, and two internal restore/resume functions. |
 | T9 | Implemented and verified: split persistence by product owner and narrowed reports, evaluation, promotion, and UI to current STORM and Co-STORM contracts. |
-| T10 | Add joined trajectory review, improvement loops, and release 0.2.0. |
+| T10 | Implemented and verified: added bounded joined trajectory review, explicit operator-controlled evaluation and program-improvement loops, the bounded Run review UI, and prepared the exact tempest 0.2.0 release bytes. |
 
 Dsprrr program identity and trace context, graft snapshot views, and Deputy run
 context and correlated events must merge before T2 through T5 are considered

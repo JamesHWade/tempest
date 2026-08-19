@@ -1,4 +1,4 @@
-# tempest (development version)
+# tempest 0.2.0
 
 * Tempest is now explicitly scoped as a scientific-research product. Its experimental application-neutral workflow, runtime, capability, connection, skill, deliverable, artifact, and generic host-state kernel has been removed physically, including 41 public export names and two internal run restore/resume symbols; `tempest_run()` and `tempest_session()` are the supported execution paths, with no compatibility or migration layer (an7p).
 * Tempest 0.2 is a hard cut to canonical research-product contracts: `ResearchWorkspace` replaces `SourceStore`; STORM and Co-STORM expose no `store` aliases, legacy collection names, generic runtime injection, or generic result projections; old product bundles fail as unsupported; manifests carry exact dsprrr program, Graft snapshot, and Deputy execution identities; and the namespace contains exactly 63 exports with two registered S3 methods. Deputy identities support correlation and audit joins only, not claims of causal content provenance.
