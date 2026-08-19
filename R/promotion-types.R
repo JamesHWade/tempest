@@ -1615,7 +1615,7 @@ tempest_promotion_records_from_proof <- function(
   )
 }
 
-tempest_promotion_storm_result_fields <- function() {
+tempest_completed_product_storm_result_fields <- function() {
   c(
     "title",
     "perspectives",
@@ -1631,14 +1631,18 @@ tempest_promotion_storm_result_fields <- function() {
   )
 }
 
-tempest_promotion_report_reference <- function(manifest, report_md) {
+tempest_completed_product_report_reference <- function(
+  manifest,
+  report_md,
+  abort
+) {
   reference <- manifest@deliverables$report_md %||% NULL
   expected <- c(
     tempest_product_report_reference(report_md),
     list(status = "durable")
   )
   if (!identical(reference, expected)) {
-    tempest_promotion_abort(
+    abort(
       "The research product does not bind its exact durable report."
     )
   }
@@ -1648,7 +1652,7 @@ tempest_promotion_report_reference <- function(manifest, report_md) {
       report_md
     ),
     error = function(error) {
-      tempest_promotion_abort(
+      abort(
         "The research product report does not match its exact content reference.",
         parent = error
       )
@@ -1657,7 +1661,11 @@ tempest_promotion_report_reference <- function(manifest, report_md) {
   reference[c("report_id", "sha256")]
 }
 
-tempest_promotion_assert_sealed_workspace <- function(workspace) {
+tempest_completed_product_assert_sealed_workspace <- function(
+  workspace,
+  abort,
+  purpose
+) {
   if (
     !inherits(workspace, "ResearchWorkspace") ||
       !identical(
@@ -1665,21 +1673,44 @@ tempest_promotion_assert_sealed_workspace <- function(workspace) {
         "sealed"
       )
   ) {
-    tempest_promotion_abort(
-      "Promotion requires the completed product's sealed ResearchWorkspace."
+    abort(
+      paste0(
+        purpose,
+        " requires the completed product's sealed ResearchWorkspace."
+      )
     )
   }
   invisible(workspace)
 }
 
-tempest_promotion_storm_context <- function(research) {
+tempest_completed_product_storm_outline <- function(outline, abort) {
+  tryCatch(
+    tempest_storm_state_structured(outline, "outline"),
+    error = function(error) {
+      abort(
+        "The STORM result does not retain its exact public outline projection.",
+        parent = error
+      )
+    }
+  )
+}
+
+tempest_completed_product_storm_context <- function(
+  research,
+  abort,
+  purpose
+) {
+  purpose_lower <- tolower(purpose)
   if (
     !is.list(research) ||
       is.object(research) ||
       is.data.frame(research) ||
-      !identical(names(research), tempest_promotion_storm_result_fields())
+      !identical(
+        names(research),
+        tempest_completed_product_storm_result_fields()
+      )
   ) {
-    tempest_promotion_abort(
+    abort(
       paste0(
         "{.arg research} must be one exact completed result returned by ",
         "{.fn tempest_run} or a succeeded TempestSession."
@@ -1692,22 +1723,34 @@ tempest_promotion_storm_context <- function(research) {
       !identical(manifest@mode, "storm") ||
       !identical(manifest@status, "succeeded")
   ) {
-    tempest_promotion_abort(
-      "A STORM promotion requires its succeeded STORM research Manifest."
+    abort(
+      paste0(
+        "A STORM ",
+        purpose_lower,
+        " requires its succeeded STORM research Manifest."
+      )
     )
   }
   state <- tryCatch(
     tempest_storm_state_validate(research$state),
     error = function(error) {
-      tempest_promotion_abort(
-        "A STORM promotion requires its exact current product state.",
+      abort(
+        paste0(
+          "A STORM ",
+          purpose_lower,
+          " requires its exact current product state."
+        ),
         parent = error
       )
     }
   )
   if (!tempest_storm_state_is_complete(state)) {
-    tempest_promotion_abort(
-      "A STORM promotion requires every product stage and its final report."
+    abort(
+      paste0(
+        "A STORM ",
+        purpose_lower,
+        " requires every product stage and its final report."
+      )
     )
   }
   projected <- list(
@@ -1718,8 +1761,12 @@ tempest_promotion_storm_context <- function(research) {
     draft_md = state$draft_md,
     report_md = state$report_md
   )
-  if (!identical(research[names(projected)], projected)) {
-    tempest_promotion_abort(
+  public_projection <- research[names(projected)]
+  public_projection["outline"] <- list(
+    tempest_completed_product_storm_outline(research$outline, abort)
+  )
+  if (!identical(public_projection, projected)) {
+    abort(
       "The STORM result projections do not match its exact product state."
     )
   }
@@ -1728,7 +1775,7 @@ tempest_promotion_storm_context <- function(research) {
       !identical(research$retriever$workspace, research$workspace) ||
       !S7::S7_inherits(research$retriever$config, TempestConfig)
   ) {
-    tempest_promotion_abort(
+    abort(
       "The STORM result does not retain its exact product retriever identity."
     )
   }
@@ -1738,14 +1785,19 @@ tempest_promotion_storm_context <- function(research) {
         is.na(research$output_dir) ||
         !nzchar(research$output_dir))
   ) {
-    tempest_promotion_abort(
+    abort(
       "The STORM result has an invalid product output location."
     )
   }
-  tempest_promotion_assert_sealed_workspace(research$workspace)
-  report_reference <- tempest_promotion_report_reference(
+  tempest_completed_product_assert_sealed_workspace(
+    research$workspace,
+    abort,
+    purpose
+  )
+  report_reference <- tempest_completed_product_report_reference(
     manifest,
-    research$report_md
+    research$report_md,
+    abort
   )
   list(
     manifest = manifest,
@@ -1760,9 +1812,15 @@ tempest_promotion_storm_context <- function(research) {
   )
 }
 
-tempest_promotion_costorm_context <- function(research) {
+tempest_completed_product_costorm_context <- function(
+  research,
+  abort,
+  boundary_class,
+  purpose
+) {
+  purpose_lower <- tolower(purpose)
   if (!inherits(research, "TempestSession") || !inherits(research, "R6")) {
-    tempest_promotion_abort(
+    abort(
       "{.arg research} must be a succeeded TempestSession."
     )
   }
@@ -1772,15 +1830,23 @@ tempest_promotion_costorm_context <- function(research) {
       !identical(manifest@mode, "costorm") ||
       !identical(manifest@status, "succeeded")
   ) {
-    tempest_promotion_abort(
-      "A Co-STORM promotion requires its succeeded Co-STORM research Manifest."
+    abort(
+      paste0(
+        "A Co-STORM ",
+        purpose_lower,
+        " requires its succeeded Co-STORM research Manifest."
+      )
     )
   }
   stage_records <- tryCatch(
     {
       if (length(tempest_session_pending_deputy_runs(research)) > 0L) {
-        tempest_promotion_abort(
-          "A Co-STORM promotion cannot retain pending Deputy execution."
+        abort(
+          paste0(
+            "A Co-STORM ",
+            purpose_lower,
+            " cannot retain pending Deputy execution."
+          )
         )
       }
       tempest_session_agent_completion_assert_quiescent(research)
@@ -1791,11 +1857,15 @@ tempest_promotion_costorm_context <- function(research) {
       )
     },
     error = function(error) {
-      if (inherits(error, "tempest_promotion_error")) {
+      if (inherits(error, boundary_class)) {
         stop(error)
       }
-      tempest_promotion_abort(
-        "A Co-STORM promotion requires quiescent terminal execution.",
+      abort(
+        paste0(
+          "A Co-STORM ",
+          purpose_lower,
+          " requires quiescent terminal execution."
+        ),
         parent = error
       )
     }
@@ -1818,23 +1888,39 @@ tempest_promotion_costorm_context <- function(research) {
       )
     },
     error = function(error) {
-      tempest_promotion_abort(
-        "A Co-STORM promotion requires its exact live Deputy trace ledger.",
+      abort(
+        paste0(
+          "A Co-STORM ",
+          purpose_lower,
+          " requires its exact live Deputy trace ledger."
+        ),
         parent = error
       )
     }
   )
-  tempest_promotion_assert_sealed_workspace(research$workspace)
+  tempest_completed_product_assert_sealed_workspace(
+    research$workspace,
+    abort,
+    purpose
+  )
   report_md <- tryCatch(
     tempest_session_report_md(research),
     error = function(error) {
-      tempest_promotion_abort(
-        "A Co-STORM promotion requires its exact committed report.",
+      abort(
+        paste0(
+          "A Co-STORM ",
+          purpose_lower,
+          " requires its exact committed report."
+        ),
         parent = error
       )
     }
   )
-  report_reference <- tempest_promotion_report_reference(manifest, report_md)
+  report_reference <- tempest_completed_product_report_reference(
+    manifest,
+    report_md,
+    abort
+  )
   list(
     manifest = manifest,
     stage_records = stage_records,
@@ -1848,20 +1934,37 @@ tempest_promotion_costorm_context <- function(research) {
   )
 }
 
-tempest_promotion_research_context <- function(research) {
+tempest_completed_product_context <- function(
+  research,
+  abort,
+  boundary_class,
+  purpose
+) {
+  if (
+    !is.function(abort) ||
+      !rlang::is_string(boundary_class) ||
+      !rlang::is_string(purpose)
+  ) {
+    stop("The completed-product reader requires an internal error boundary.")
+  }
   context <- tryCatch(
     {
       if (inherits(research, "TempestSession")) {
-        tempest_promotion_costorm_context(research)
+        tempest_completed_product_costorm_context(
+          research,
+          abort,
+          boundary_class,
+          purpose
+        )
       } else {
-        tempest_promotion_storm_context(research)
+        tempest_completed_product_storm_context(research, abort, purpose)
       }
     },
     error = function(error) {
-      if (inherits(error, "tempest_promotion_error")) {
+      if (inherits(error, boundary_class)) {
         stop(error)
       }
-      tempest_promotion_abort(
+      abort(
         "Could not read the exact completed research product.",
         parent = error
       )
@@ -1881,13 +1984,22 @@ tempest_promotion_research_context <- function(research) {
       require_publishable = TRUE
     ),
     error = function(error) {
-      tempest_promotion_abort(
+      abort(
         "The completed research product lacks exact publication authority.",
         parent = error
       )
     }
   )
   context
+}
+
+tempest_promotion_research_context <- function(research) {
+  tempest_completed_product_context(
+    research = research,
+    abort = tempest_promotion_abort,
+    boundary_class = "tempest_promotion_error",
+    purpose = "Promotion"
+  )
 }
 
 #' Build a deterministic proposal for reviewed Graft promotion

@@ -126,6 +126,7 @@ Collate:
     'costorm-persistence.R'
     'storm-persistence.R'
     'promotion-types.R'
+    'trajectory-review.R'
     'graft-schema.R'
     'promotion-persistence.R'
     'shiny-adapter.R'
