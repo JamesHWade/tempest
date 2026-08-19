@@ -569,18 +569,6 @@ test_that("tempest_run emits ordered STORM progress events", {
   cfg <- tempest_config(
     citation_policy = "claim_verified",
     chat_fn = function(role, model, system_prompt, echo) {
-      if (
-        identical(role, "writer") &&
-          identical(system_prompt, tempest_prompt("polisher_system"))
-      ) {
-        return(fake_chat(
-          text = list(paste0(
-            "Polished report cites progress evidence [",
-            source_id,
-            "]."
-          ))
-        ))
-      }
       if (identical(role, "writer")) {
         return(fake_chat(
           structured = list(

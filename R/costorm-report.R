@@ -1,5 +1,70 @@
 # Deterministic Co-STORM product reporting.
 
+tempest_costorm_execution_review_lines <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    return(character())
+  }
+  tempest_stage_records_execution_review_lines(
+    tempest_session_stage_records(session)
+  )
+}
+
+tempest_costorm_execution_review <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    return("")
+  }
+  tempest_stage_records_execution_review(
+    tempest_session_stage_records(session)
+  )
+}
+
+tempest_costorm_report_context <- function(
+  session,
+  style,
+  include_references
+) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_product_report_abort(
+      "Co-STORM report generation requires a TempestSession."
+    )
+  }
+  if (!rlang::is_string(style) || !style %in% c("technical", "executive")) {
+    tempest_product_report_abort(
+      "Co-STORM report style must be `technical` or `executive`."
+    )
+  }
+  include_references <- tempest_product_flag(
+    include_references,
+    "include_references"
+  )
+  title <- tempest_report_title_validate(session$title %||% session$topic)
+  if (!inherits(session$workspace, "ResearchWorkspace")) {
+    tempest_product_report_abort(
+      "Co-STORM report generation requires a ResearchWorkspace."
+    )
+  }
+  tryCatch(
+    S7::validate(session$config),
+    error = function(error) {
+      tempest_product_report_abort(
+        "Co-STORM report configuration failed live validation."
+      )
+    }
+  )
+  list(
+    title = title,
+    workspace = session$workspace,
+    include_references = include_references,
+    citation_policy = session$config@citation_policy,
+    on_unsupported_claim = session$config@on_unsupported_claim,
+    min_support_score = tempest_normalize_min_support_score(
+      session$config@min_support_score
+    ),
+    execution_review = tempest_costorm_execution_review(session),
+    style = style
+  )
+}
+
 tempest_costorm_report_supported_claims <- function(session) {
   claims <- tempest_supported_claims(
     session$workspace,
@@ -429,5 +494,80 @@ tempest_costorm_report_finalize <- function(
   }
   tempest_session_agent_completion_assert_quiescent(session)
   tempest_session_commit_terminal_report(session, candidate, report_md)
+  report_md
+}
+
+#' Read the committed Markdown report from a Co-STORM session
+#'
+#' @param session A `TempestSession`.
+#' @return The exact committed Markdown report.
+#' @examples
+#' \dontrun{
+#' session <- tempest_session("History of jazz", config = tempest_config())
+#' session$step("Tell me about bebop.")
+#' session$report()
+#' md <- tempest_session_report_md(session)
+#' }
+#' @export
+tempest_session_report_md <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_product_report_abort(
+      "The canonical Co-STORM report requires a TempestSession."
+    )
+  }
+  tryCatch(
+    tempest_costorm_manifest_validate(
+      session$manifest,
+      session$session_id,
+      session$config,
+      session$workspace
+    ),
+    error = function(error) {
+      tempest_product_report_abort(
+        "The Co-STORM report manifest is not bound to this session.",
+        parent = error
+      )
+    }
+  )
+  if (!identical(session$manifest@status, "succeeded")) {
+    tempest_product_report_abort(
+      "The canonical Co-STORM report is unavailable before publication."
+    )
+  }
+  report_md <- tempest_session_report_value(session)
+  if (
+    !rlang::is_string(report_md) ||
+      is.na(report_md) ||
+      !nzchar(report_md)
+  ) {
+    tempest_product_report_abort(
+      "The canonical Co-STORM report artifact has no Markdown content."
+    )
+  }
+  reference <- session$manifest@deliverables$report_md %||% NULL
+  tempest_product_report_reference_validate(
+    reference[c("report_id", "sha256")],
+    report_md
+  )
+  tryCatch(
+    tempest_product_authority_validate(
+      manifest = session$manifest,
+      stage_records = tempest_session_stage_records(session),
+      workspace = session$workspace,
+      report_md = report_md,
+      report_reference = reference[c("report_id", "sha256")],
+      config = session$config,
+      experts = session$experts,
+      expert_sessions = tempest_expert_sessions_snapshot(session),
+      product_state = list(title = session$title),
+      require_publishable = TRUE
+    ),
+    error = function(error) {
+      tempest_product_report_abort(
+        "The canonical Co-STORM report failed product authority validation.",
+        parent = error
+      )
+    }
+  )
   report_md
 }
