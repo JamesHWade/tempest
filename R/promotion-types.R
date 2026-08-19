@@ -1800,6 +1800,30 @@ tempest_promotion_costorm_context <- function(research) {
       )
     }
   )
+  execution_identity <- tryCatch(
+    {
+      deputy_traces <- tempest_session_deputy_traces(research)
+      experts <- research$experts
+      expert_sessions <- tempest_expert_sessions_snapshot(research)
+      tempest_product_authority_validate_stage_records(
+        manifest,
+        stage_records,
+        deputy_traces = deputy_traces,
+        expert_ids = tempest_product_authority_expert_ids(experts),
+        expert_sessions = expert_sessions
+      )
+      list(
+        experts = experts,
+        expert_sessions = expert_sessions
+      )
+    },
+    error = function(error) {
+      tempest_promotion_abort(
+        "A Co-STORM promotion requires its exact live Deputy trace ledger.",
+        parent = error
+      )
+    }
+  )
   tempest_promotion_assert_sealed_workspace(research$workspace)
   report_md <- tryCatch(
     tempest_session_report_md(research),
@@ -1818,8 +1842,8 @@ tempest_promotion_costorm_context <- function(research) {
     report_md = report_md,
     report_reference = report_reference,
     config = research$config,
-    experts = research$experts,
-    expert_sessions = tempest_expert_sessions_snapshot(research),
+    experts = execution_identity$experts,
+    expert_sessions = execution_identity$expert_sessions,
     product_state = list(title = research$title)
   )
 }

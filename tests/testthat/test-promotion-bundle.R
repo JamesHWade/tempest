@@ -85,6 +85,7 @@ test_that("promotion bundle contains only exact promotable research records", {
 test_that("promotion accepts an exact succeeded Co-STORM session", {
   fixture <- test_promotion_bundle("costorm")
   bundle <- fixture$bundle
+  deputy_traces <- tempest:::tempest_session_deputy_traces(fixture$research)
 
   expect_s7_class(bundle, TempestPromotionBundle)
   expect_identical(bundle@research_run_id, fixture$research$session_id)
@@ -96,6 +97,41 @@ test_that("promotion accepts an exact succeeded Co-STORM session", {
   expect_identical(
     tempest:::tempest_research_workspace_mutation_state(fixture$workspace),
     "sealed"
+  )
+  expect_identical(
+    tempest:::tempest_session_deputy_traces(fixture$research),
+    deputy_traces
+  )
+})
+
+test_that("promotion requires the exact live Co-STORM Deputy trace ledger", {
+  session <- test_promotion_fixture("costorm")$research
+  private <- session$.__enclos_env__$private
+  original_traces <- private$deputy_traces_value
+  withr::defer(private$deputy_traces_value <- original_traces)
+  expect_gt(length(original_traces), 0L)
+
+  private$deputy_traces_value <- list(list(malformed = "trace"))
+  expect_error(
+    tempest_promotion_bundle(session),
+    class = "tempest_promotion_error"
+  )
+
+  private$deputy_traces_value <- list()
+  expect_identical(tempest:::tempest_session_deputy_traces(session), list())
+  expect_error(
+    tempest_promotion_bundle(session),
+    class = "tempest_promotion_error"
+  )
+
+  mismatched_traces <- original_traces
+  mismatched_traces[[1L]]$correlation_id <-
+    "correlation.promotion-costorm-mismatch"
+  private$deputy_traces_value <- mismatched_traces
+  expect_no_error(tempest:::tempest_session_deputy_traces(session))
+  expect_error(
+    tempest_promotion_bundle(session),
+    class = "tempest_promotion_error"
   )
 })
 
