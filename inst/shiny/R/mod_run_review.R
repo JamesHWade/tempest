@@ -163,6 +163,14 @@ mod_run_review_server <- function(
       run_review_lane(run_review_prop(state$review, "agent_runs"))
     })
 
+    join_lane <- shiny::reactive({
+      state <- review_state()
+      if (!identical(state$status, "ready")) {
+        return(run_review_empty_lane())
+      }
+      run_review_lane(run_review_prop(state$review, "joins"))
+    })
+
     finding_lane <- shiny::reactive({
       state <- review_state()
       if (!identical(state$status, "ready")) {
@@ -440,39 +448,36 @@ mod_run_review_server <- function(
           "Choose an authoritative StageRecord to inspect its fixed references."
         ))
       }
-      trace_id <- run_review_field(stage, "trace_id")
-      linked_agents <- Filter(
-        \(agent) {
-          nzchar(trace_id) &&
-            identical(
-              run_review_field(agent, "trace_id"),
-              trace_id
-            )
-        },
-        agent_lane()$items
+      agents <- agent_lane()$items
+      linked_indices <- run_review_authoritative_agent_indices(
+        stage,
+        joins = join_lane()$items,
+        agents = agents
       )
-      run_review_stage_detail_ui(stage, linked_agents)
+      run_review_stage_detail_ui(
+        stage,
+        agents[linked_indices],
+        agent_lane()
+      )
     })
 
     output$unlinked_agents <- shiny::renderUI({
       stages <- stage_lane()$items
-      trace_ids <- vapply(
+      agents <- agent_lane()$items
+      linked_indices <- unique(unlist(lapply(
         stages,
-        run_review_field,
-        character(1),
-        field = "trace_id"
-      )
-      trace_ids <- trace_ids[nzchar(trace_ids)]
-      unlinked <- Filter(
-        \(agent) {
-          trace_id <- run_review_field(agent, "trace_id")
-          !nzchar(trace_id) || !trace_id %in% trace_ids
-        },
-        agent_lane()$items
-      )
+        run_review_authoritative_agent_indices,
+        joins = join_lane()$items,
+        agents = agents
+      )))
+      unlinked <- agents[setdiff(seq_along(agents), linked_indices)]
       run_review_agent_table_ui(
         unlinked,
-        "Untimed Deputy references without an exact StageRecord trace match"
+        paste(
+          "Untimed Deputy references without an authority-validated",
+          "StageRecord execution join"
+        ),
+        agent_lane()
       )
     })
 
@@ -624,6 +629,65 @@ run_review_stage_has_attention <- function(stage, attention_ids) {
     ) %in%
       attention_ids
   )
+}
+
+run_review_join_matched_fields <- function(join) {
+  proof <- run_review_prop(join, "proof")
+  fields <- run_review_prop(proof, "matched_fields")
+  if (
+    !is.list(fields) ||
+      is.data.frame(fields) ||
+      length(fields) == 0L ||
+      !all(vapply(
+        fields,
+        \(field) is.character(field) && length(field) == 1L && !is.na(field),
+        logical(1)
+      ))
+  ) {
+    return(character())
+  }
+  unname(unlist(fields, use.names = FALSE))
+}
+
+run_review_authoritative_agent_indices <- function(stage, joins, agents) {
+  attempt_id <- run_review_field(stage, "attempt_id")
+  if (!nzchar(attempt_id) || length(joins) == 0L || length(agents) == 0L) {
+    return(integer())
+  }
+  exact_joins <- Filter(
+    function(join) {
+      proof <- run_review_prop(join, "proof")
+      identical(run_review_field(join, "from_type"), "stage_attempt") &&
+        identical(run_review_field(join, "from_id"), attempt_id) &&
+        identical(run_review_field(join, "relation"), "executed_as") &&
+        identical(run_review_field(join, "to_type"), "deputy_run") &&
+        identical(run_review_field(proof, "kind"), "authority_validated") &&
+        identical(
+          run_review_join_matched_fields(join),
+          c("deputy_run_id", "deputy_session_id")
+        )
+    },
+    joins
+  )
+  run_ids <- unique(vapply(
+    exact_joins,
+    run_review_field,
+    character(1),
+    field = "to_id"
+  ))
+  run_ids <- run_ids[nzchar(run_ids)]
+  linked <- unlist(lapply(run_ids, function(run_id) {
+    matches <- which(vapply(
+      agents,
+      function(agent) {
+        identical(run_review_field(agent, "deputy_run_id"), run_id) &&
+          nzchar(run_review_field(agent, "deputy_session_id"))
+      },
+      logical(1)
+    ))
+    if (length(matches) == 1L) matches else integer()
+  }))
+  unique(as.integer(linked))
 }
 
 run_review_status_icon <- function(status) {
@@ -813,7 +877,7 @@ run_review_definition_list <- function(values) {
   )
 }
 
-run_review_stage_detail_ui <- function(stage, linked_agents) {
+run_review_stage_detail_ui <- function(stage, linked_agents, agent_lane) {
   output <- run_review_prop(stage, "output")
   shiny::tagList(
     run_review_definition_list(c(
@@ -837,62 +901,142 @@ run_review_stage_detail_ui <- function(stage, linked_agents) {
     shiny::p(
       class = "small text-body-secondary",
       paste(
-        "These terminal references share this StageRecord's exact trace id.",
+        "These terminal references have an authority-validated execution join",
+        "from this StageRecord's attempt to one exact Deputy run and session.",
         "They are not placed in chronological order."
       )
     ),
     run_review_agent_table_ui(
       linked_agents,
-      "Untimed Deputy references exactly matched to the selected StageRecord"
+      paste(
+        "Untimed Deputy references authority-validated against the selected",
+        "StageRecord"
+      ),
+      agent_lane
     )
   )
 }
 
-run_review_agent_table_ui <- function(agents, label) {
-  if (length(agents) == 0L) {
-    return(shiny::p(
+run_review_agent_table_ui <- function(agents, label, lane) {
+  table <- if (length(agents) == 0L) {
+    shiny::p(
       class = "text-body-secondary mb-0",
       "No untimed Deputy references are present in this section."
-    ))
+    )
+  } else {
+    rows <- lapply(agents, function(agent) {
+      shiny::tags$tr(
+        shiny::tags$td(run_review_label(run_review_field(agent, "status"))),
+        shiny::tags$td(shiny::tags$code(run_review_field(agent, "trace_id"))),
+        shiny::tags$td(shiny::tags$code(
+          run_review_field(agent, "deputy_run_id")
+        )),
+        shiny::tags$td(shiny::tags$code(
+          run_review_field(agent, "deputy_session_id")
+        )),
+        shiny::tags$td(shiny::tags$code(
+          run_review_field(agent, "parent_run_id")
+        )),
+        shiny::tags$td(shiny::tags$code(
+          run_review_field(agent, "delegation_id")
+        )),
+        shiny::tags$td(shiny::tags$code(
+          run_review_field(agent, "tool_call_id")
+        ))
+      )
+    })
+    shiny::div(
+      class = "table-responsive",
+      shiny::tags$table(
+        class = "table table-sm align-middle mb-0",
+        `aria-label` = label,
+        shiny::tags$caption(class = "visually-hidden", label),
+        shiny::tags$thead(shiny::tags$tr(
+          shiny::tags$th(scope = "col", "Terminal status"),
+          shiny::tags$th(scope = "col", "Trace reference"),
+          shiny::tags$th(scope = "col", "Deputy run"),
+          shiny::tags$th(scope = "col", "Deputy session"),
+          shiny::tags$th(scope = "col", "Parent run"),
+          shiny::tags$th(scope = "col", "Delegation"),
+          shiny::tags$th(scope = "col", "Tool call")
+        )),
+        shiny::tags$tbody(rows)
+      )
+    )
   }
-  rows <- lapply(agents, function(agent) {
-    shiny::tags$tr(
-      shiny::tags$td(run_review_label(run_review_field(agent, "status"))),
-      shiny::tags$td(shiny::tags$code(run_review_field(agent, "trace_id"))),
-      shiny::tags$td(shiny::tags$code(
-        run_review_field(agent, "deputy_run_id")
-      )),
-      shiny::tags$td(shiny::tags$code(
-        run_review_field(agent, "deputy_session_id")
-      )),
-      shiny::tags$td(shiny::tags$code(
-        run_review_field(agent, "parent_run_id")
-      )),
-      shiny::tags$td(shiny::tags$code(
-        run_review_field(agent, "delegation_id")
-      )),
-      shiny::tags$td(shiny::tags$code(
-        run_review_field(agent, "tool_call_id")
-      ))
+  shiny::tagList(
+    table,
+    shiny::p(
+      class = "small text-body-secondary mb-0",
+      sprintf(
+        paste0(
+          "Showing %d rows in this section from %d retained Deputy ",
+          "references; %d complete-projection rows omitted."
+        ),
+        length(agents),
+        lane$retained,
+        lane$omitted
+      )
     )
-  })
-  shiny::div(
-    class = "table-responsive",
-    shiny::tags$table(
-      class = "table table-sm align-middle mb-0",
-      `aria-label` = label,
-      shiny::tags$caption(class = "visually-hidden", label),
-      shiny::tags$thead(shiny::tags$tr(
-        shiny::tags$th(scope = "col", "Terminal status"),
-        shiny::tags$th(scope = "col", "Trace reference"),
-        shiny::tags$th(scope = "col", "Deputy run"),
-        shiny::tags$th(scope = "col", "Deputy session"),
-        shiny::tags$th(scope = "col", "Parent run"),
-        shiny::tags$th(scope = "col", "Delegation"),
-        shiny::tags$th(scope = "col", "Tool call")
-      )),
-      shiny::tags$tbody(rows)
-    )
+  )
+}
+
+run_review_progress_closed_value <- function(value, allowed) {
+  if (!nzchar(value)) {
+    return("")
+  }
+  if (value %in% allowed) value else "redacted"
+}
+
+run_review_progress_stage_value <- function(value, workflow, kind) {
+  if (!nzchar(value)) {
+    return("")
+  }
+  if (!workflow %in% c("storm", "costorm")) {
+    return("redacted")
+  }
+  allowed <- names(tempest::tempest_progress_labels(workflow, kind = kind))
+  run_review_progress_closed_value(value, allowed)
+}
+
+run_review_progress_record <- function(event) {
+  workflow <- run_review_progress_closed_value(
+    run_review_field(event, "workflow"),
+    c("storm", "costorm")
+  )
+  timestamp <- run_review_field(event, "timestamp")
+  if (
+    nzchar(timestamp) &&
+      !isTRUE(tempest:::tempest_ledger_timestamp_valid(timestamp))
+  ) {
+    timestamp <- ""
+  }
+  list(
+    event_id = run_review_field(event, "event_id"),
+    run_id = run_review_field(event, "run_id"),
+    workflow = workflow,
+    event_type = run_review_progress_closed_value(
+      run_review_field(event, "event_type"),
+      tempest:::tempest_progress_event_types()
+    ),
+    stage = run_review_progress_stage_value(
+      run_review_field(event, "stage"),
+      workflow,
+      "stage"
+    ),
+    step = run_review_progress_stage_value(
+      run_review_field(event, "step"),
+      workflow,
+      "step"
+    ),
+    status = run_review_progress_closed_value(
+      run_review_field(event, "status"),
+      tempest:::tempest_progress_statuses()
+    ),
+    timestamp = timestamp,
+    sequence = run_review_field(event, "sequence"),
+    parent_event_id = run_review_field(event, "parent_event_id"),
+    correlation_id = run_review_field(event, "correlation_id")
   )
 }
 
@@ -901,28 +1045,8 @@ run_review_event_records <- function(events) {
     return(list())
   }
   total <- length(events)
-  fields <- c(
-    "event_id",
-    "run_id",
-    "workflow",
-    "event_type",
-    "stage",
-    "step",
-    "status",
-    "timestamp",
-    "sequence",
-    "parent_event_id",
-    "correlation_id"
-  )
-  records <- lapply(events, function(event) {
-    stats::setNames(
-      lapply(fields, \(field) {
-        run_review_field(event, field)
-      }),
-      fields
-    )
-  })
-  records <- utils::tail(records, 250L)
+  retained_events <- utils::tail(events, 250L)
+  records <- lapply(retained_events, run_review_progress_record)
   attr(records, "total") <- total
   attr(records, "omitted") <- max(0L, total - length(records))
   records

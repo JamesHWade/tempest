@@ -332,6 +332,7 @@ test_that("STORM cancellation clears active worker state", {
 
       session$setInputs(cancel = 1)
       session$flushReact()
+      expect_identical(worker_state$job, cancelled_job)
 
       deadline <- Sys.time() + 2
       task_status <- shiny::isolate(storm_task$status())
@@ -361,6 +362,101 @@ test_that("STORM cancellation clears active worker state", {
         shiny::isolate(session$returned$report_navigation_event()),
         0L
       )
+    }
+  )
+})
+
+test_that("STORM rejects a queued launch without orphaning worker state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("later")
+  skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
+  env <- tempest:::tempest_shiny_module_env()
+  stream_paths <- character()
+  published <- character()
+  store <- list(
+    publish_storm_report = function(result, config) {
+      published <<- c(published, result$report_md)
+      invisible(result$report_md)
+    }
+  )
+
+  original_poll <- env$storm_poll_progress_stream
+  original_run_id <- env$storm_result_run_id
+  original_runner <- env$storm_run_with_progress
+  withr::defer({
+    env$storm_poll_progress_stream <- original_poll
+    env$storm_result_run_id <- original_run_id
+    env$storm_run_with_progress <- original_runner
+  })
+  env$storm_poll_progress_stream <- function(path, ...) {
+    stream_paths <<- c(stream_paths, path)
+    invisible(path)
+  }
+  env$storm_result_run_id <- function(result) result$run_id
+  env$storm_run_with_progress <- function(
+    topic,
+    progress_run_id,
+    ...
+  ) {
+    Sys.sleep(0.25)
+    list(
+      result = list(run_id = progress_run_id, report_md = topic),
+      progress = list()
+    )
+  }
+
+  shiny::testServer(
+    env$mod_storm_server,
+    args = list(
+      config = shiny::reactive(tempest_config()),
+      store = store
+    ),
+    {
+      wait_for_terminal <- function() {
+        deadline <- Sys.time() + 10
+        status <- shiny::isolate(storm_task$status())
+        while (identical(status, "running") && Sys.time() < deadline) {
+          later::run_now(0.05)
+          session$flushReact()
+          status <- shiny::isolate(storm_task$status())
+        }
+        later::run_now(0.01)
+        session$flushReact()
+        status
+      }
+
+      session$setInputs(topic = "First", run = 1)
+      session$flushReact()
+      first_job <- worker_state$job
+      first_stream <- progress_stream$path
+      expect_s3_class(first_job, "mirai")
+
+      session$setInputs(topic = "Second", run = 2)
+      session$flushReact()
+      expect_identical(worker_state$job, first_job)
+      expect_identical(worker_state$topic, "First")
+      expect_identical(progress_stream$path, first_stream)
+      expect_length(stream_paths, 1L)
+
+      expect_identical(wait_for_terminal(), "success")
+      expect_identical(mirai::unresolved(first_job), FALSE)
+      expect_identical(published, "First")
+      expect_identical(
+        shiny::isolate(session$returned$last_successful_product())$report_md,
+        "First"
+      )
+      expect_identical(file.exists(first_stream), FALSE)
+
+      session$setInputs(topic = "Second", run = 3)
+      session$flushReact()
+      second_job <- worker_state$job
+      expect_s3_class(second_job, "mirai")
+      expect_identical(wait_for_terminal(), "success")
+      expect_identical(mirai::unresolved(second_job), FALSE)
+      expect_identical(published, c("First", "Second"))
+      expect_identical(file.exists(stream_paths), c(FALSE, FALSE))
     }
   )
 })

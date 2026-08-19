@@ -62,12 +62,31 @@ test_run_review_agent <- function(
   )
 }
 
+test_run_review_agent_join <- function(
+  attempt_id = "attempt-1",
+  deputy_run_id = "deputy-run-1",
+  matched_fields = c("deputy_run_id", "deputy_session_id")
+) {
+  list(
+    from_type = "stage_attempt",
+    from_id = attempt_id,
+    relation = "executed_as",
+    to_type = "deputy_run",
+    to_id = deputy_run_id,
+    proof = list(
+      kind = "authority_validated",
+      matched_fields = unname(as.list(matched_fields))
+    )
+  )
+}
+
 test_run_review_value <- function(
   stages = list(test_run_review_stage()),
   agents = list(
     test_run_review_agent(),
     test_run_review_agent(2L, trace_id = "unlinked-trace")
   ),
+  joins = list(test_run_review_agent_join()),
   findings = list(list(
     code = "fallback_taken",
     severity = "warning",
@@ -93,7 +112,7 @@ test_run_review_value <- function(
     programs = list(),
     knowledge = list(),
     evidence = test_run_review_lane(list()),
-    joins = test_run_review_lane(list()),
+    joins = test_run_review_lane(joins),
     findings = test_run_review_lane(findings)
   )
 }

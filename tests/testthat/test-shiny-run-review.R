@@ -19,17 +19,24 @@ test_that("Run review UI is namespaced and accessible", {
   expect_match(html, "Live progress observations (untrusted)", fixed = TRUE)
 })
 
-test_that("Run review renders only fixed escaped fields and exact trace joins", {
+test_that("Run review renders escaped fields and exact authority joins", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   env <- tempest:::tempest_shiny_module_env()
   secret <- "Authorization: Bearer provider-secret"
   stage <- test_run_review_stage(
-    stage = "outline<img src=x onerror=alert(1)>"
+    stage = "outline<img src=x onerror=alert(1)>",
+    trace_id = "cross-type-collision"
   )
   stage$failure_message <- secret
   stage$program_artifact_id <- secret
-  review <- test_run_review_value(stages = list(stage))
+  review <- test_run_review_value(
+    stages = list(stage),
+    agents = list(
+      test_run_review_agent(trace_id = "different-trace"),
+      test_run_review_agent(2L, trace_id = "cross-type-collision")
+    )
+  )
   product <- shiny::reactiveVal(list(
     state = "completed",
     review = review,
@@ -117,18 +124,33 @@ test_that("Run review renders only fixed escaped fields and exact trace joins", 
       )
 
       session$flushReact()
-      events(list(list(
-        event_id = "event-failed",
-        run_id = "run-safe",
-        workflow = "storm",
-        event_type = "stage",
-        stage = secret,
-        step = "/secret/path",
-        status = "failed",
-        timestamp = "2026-08-19T12:02:00Z",
-        message = secret,
-        payload = list(prompt = secret, path = "/secret/path")
-      )))
+      aws_secret <- "AKIAIOSFODNN7EXAMPLE"
+      github_secret <- "ghp_0123456789abcdefghijklmnopqrstuvwxyz"
+      relative_path <- "private/key.pem"
+      events(list(
+        list(
+          event_id = "event-failed",
+          run_id = "run-safe",
+          workflow = "storm",
+          event_type = "stage",
+          stage = aws_secret,
+          step = relative_path,
+          status = "failed",
+          timestamp = "2026-08-19T12:02:00Z",
+          message = secret,
+          payload = list(prompt = secret, path = relative_path)
+        ),
+        list(
+          event_id = "event-running",
+          run_id = "run-safe",
+          workflow = "storm",
+          event_type = github_secret,
+          stage = "outline",
+          step = "report_md",
+          status = "running",
+          timestamp = "2026-08-19T12:03:00Z"
+        )
+      ))
       session$flushReact()
       progress_html <- paste(
         as.character(output$live_progress$html),
@@ -141,12 +163,58 @@ test_that("Run review renders only fixed escaped fields and exact trace joins", 
 
       expect_match(progress_html, "untrusted observation", fixed = TRUE)
       expect_match(progress_html, "Same run id", fixed = TRUE)
+      expect_match(progress_html, "Redacted", fixed = TRUE)
       expect_no_match(progress_html, secret, fixed = TRUE)
-      expect_no_match(progress_html, "/secret/path", fixed = TRUE)
+      expect_no_match(progress_html, aws_secret, fixed = TRUE)
+      expect_no_match(progress_html, github_secret, fixed = TRUE)
+      expect_no_match(progress_html, relative_path, fixed = TRUE)
       expect_match(alert_html, 'role="alert"', fixed = TRUE)
       expect_match(alert_html, "newly observed", fixed = TRUE)
       expect_no_match(alert_html, secret, fixed = TRUE)
     }
+  )
+})
+
+test_that("Run review fails closed on incomplete or ambiguous Deputy joins", {
+  env <- tempest:::tempest_shiny_module_env()
+  stage <- test_run_review_stage(trace_id = "cross-type-collision")
+  agents <- list(
+    test_run_review_agent(trace_id = "different-trace"),
+    test_run_review_agent(2L, trace_id = "cross-type-collision")
+  )
+
+  expect_identical(
+    env$run_review_authoritative_agent_indices(
+      stage,
+      list(test_run_review_agent_join()),
+      agents
+    ),
+    1L
+  )
+  expect_identical(
+    env$run_review_authoritative_agent_indices(stage, list(), agents),
+    integer()
+  )
+  expect_identical(
+    env$run_review_authoritative_agent_indices(
+      stage,
+      list(test_run_review_agent_join(
+        matched_fields = "deputy_run_id"
+      )),
+      agents
+    ),
+    integer()
+  )
+
+  ambiguous <- agents
+  ambiguous[[2L]]$deputy_run_id <- ambiguous[[1L]]$deputy_run_id
+  expect_identical(
+    env$run_review_authoritative_agent_indices(
+      stage,
+      list(test_run_review_agent_join()),
+      ambiguous
+    ),
+    integer()
   )
 })
 
@@ -253,10 +321,17 @@ test_that("Run review enforces exact visible row caps and omitted counts", {
       trace_id = paste0("trace-", index)
     )
   })
-  review <- test_run_review_value(stages = stages, agents = list())
+  agents <- lapply(seq_len(250L), test_run_review_agent)
+  review <- test_run_review_value(
+    stages = stages,
+    agents = agents,
+    joins = list()
+  )
   review$stages$total <- 300L
   review$stages$retained <- 300L
   review$stages$omitted <- 0L
+  review$agent_runs$total <- 300L
+  review$agent_runs$omitted <- 50L
   product <- shiny::reactiveVal(list(review = review))
   events <- shiny::reactiveVal(lapply(seq_len(275L), function(index) {
     list(
@@ -264,8 +339,8 @@ test_that("Run review enforces exact visible row caps and omitted counts", {
       run_id = "run-safe",
       workflow = "storm",
       event_type = "stage",
-      stage = "outline",
-      step = "draft",
+      stage = if (index <= 25L) "AKIAIOSFODNN7EXAMPLE" else "outline",
+      step = if (index <= 25L) "private/key.pem" else "report_md",
       status = "running",
       timestamp = "2026-08-19T12:02:00Z"
     )
@@ -294,6 +369,10 @@ test_that("Run review enforces exact visible row caps and omitted counts", {
         as.character(output$live_progress$html),
         collapse = ""
       )
+      unlinked_html <- paste(
+        as.character(output$unlinked_agents$html),
+        collapse = ""
+      )
 
       expect_match(
         summary_html,
@@ -308,6 +387,20 @@ test_that("Run review enforces exact visible row caps and omitted counts", {
       expect_match(
         progress_html,
         "Showing 250 of 275 live rows; 25 omitted",
+        fixed = TRUE
+      )
+      expect_no_match(
+        progress_html,
+        "AKIAIOSFODNN7EXAMPLE",
+        fixed = TRUE
+      )
+      expect_no_match(progress_html, "private/key.pem", fixed = TRUE)
+      expect_match(
+        unlinked_html,
+        paste0(
+          "Showing 250 rows in this section from 250 retained Deputy ",
+          "references; 50 complete-projection rows omitted"
+        ),
         fixed = TRUE
       )
       expect_lte(length(shiny::isolate(observed_event_ids())), 250L)

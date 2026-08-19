@@ -149,6 +149,13 @@ mod_storm_server <- function(id, config, store) {
       bslib::bind_task_button("run")
 
     shiny::observeEvent(input$run, {
+      if (
+        identical(shiny::isolate(storm_task$status()), "running") ||
+          isTRUE(progress_stream$active) ||
+          !is.null(worker_state$job)
+      ) {
+        return()
+      }
       topic <- stringi::stri_trim_both(input$topic %||% "")
       if (!nzchar(topic)) {
         validation_error(
@@ -205,7 +212,6 @@ mod_storm_server <- function(id, config, store) {
           worker_state$run_id %||% storm_progress_run_id()
         ))
       ))
-      finish_storm_worker()
     })
 
     # Share the report once the pipeline succeeds.
