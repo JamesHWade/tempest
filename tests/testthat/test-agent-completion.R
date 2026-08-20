@@ -379,6 +379,126 @@ test_that("session completion settlement is atomic with pending run clearance", 
   )
 })
 
+test_that("moderator routes each own one bounded completion span", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  moderator <- fake_chat(
+    text = list(
+      "Synchronous response.",
+      "Request response.",
+      "Raw Shiny response.",
+      "Direct async response.",
+      "Direct stream response."
+    )
+  )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      if (identical(role, "coordinator")) {
+        return(moderator)
+      }
+      fake_chat()
+    }
+  )
+  session <- tempest_session(
+    "Completion telemetry routes",
+    config = config,
+    experts = list(test_expert(
+      expert_id = "expert.completion-telemetry",
+      name = "Dr. Telemetry"
+    ))
+  )
+
+  step <- session$step("Synchronous prompt with private content.")
+  request <- await_tempest_promise(
+    session$request_completion_async("Request prompt with private content.")
+  )
+  raw <- tempest:::tempest_session_chat(session, "moderator")$stream_async(
+    "Raw Shiny prompt with private content."
+  )
+  raw_id <- tempest:::tempest_agent_completion_id(raw)
+  raw_chunks <- character()
+  repeat {
+    value <- await_tempest_promise(raw())
+    expect_null(value$error)
+    if (coro::is_exhausted(value$value)) {
+      break
+    }
+    raw_chunks <- c(
+      raw_chunks,
+      tempest:::tempest_deputy_adapter_content_text(value$value)
+    )
+  }
+  client <- tempest:::tempest_session_chat(session, "moderator")
+  direct_async <- await_tempest_promise(client$chat_async(
+    "Direct async prompt with private content."
+  ))
+  direct_stream <- client$stream(
+    "Direct stream prompt with private content."
+  )
+  direct_stream_id <- tempest:::tempest_agent_completion_id(direct_stream)
+  direct_stream_chunk <- direct_stream()
+  direct_stream_end <- direct_stream()
+
+  completion_spans <- Filter(
+    \(span) identical(span$name, "tempest.costorm.completion"),
+    state$spans
+  )
+  turn_spans <- Filter(
+    \(span) identical(span$name, "tempest.costorm.turn.commit"),
+    state$spans
+  )
+  expect_identical(step$answer, "Synchronous response.")
+  expect_null(request$error)
+  expect_identical(
+    tempest:::tempest_opaque_identifier_valid(request$value),
+    TRUE
+  )
+  expect_identical(paste(raw_chunks, collapse = ""), "Raw Shiny response.")
+  expect_identical(tempest:::tempest_opaque_identifier_valid(raw_id), TRUE)
+  expect_null(direct_async$error)
+  expect_identical(as.character(direct_async$value), "Direct async response.")
+  expect_type(direct_async$value, "character")
+  expect_identical(
+    tempest:::tempest_opaque_identifier_valid(
+      tempest:::tempest_agent_completion_id(direct_async$value)
+    ),
+    TRUE
+  )
+  expect_s3_class(direct_stream, "coro_generator_instance")
+  expect_s3_class(direct_stream_chunk, "ellmer::ContentText")
+  expect_identical(
+    tempest:::tempest_deputy_adapter_content_text(direct_stream_chunk),
+    "Direct stream response."
+  )
+  expect_identical(coro::is_exhausted(direct_stream_end), TRUE)
+  expect_identical(
+    tempest:::tempest_opaque_identifier_valid(direct_stream_id),
+    TRUE
+  )
+  expect_length(completion_spans, 5L)
+  expect_length(turn_spans, 1L)
+  expect_identical(
+    turn_spans[[1L]]$attributes[["tempest.status"]],
+    "succeeded"
+  )
+  expect_identical(turn_spans[[1L]]$statuses, "ok")
+  expect_identical(turn_spans[[1L]]$end_count, 1L)
+  expect_identical(
+    vapply(completion_spans, \(span) span$end_count, integer(1)),
+    rep(1L, 5L)
+  )
+  attributes_json <- jsonlite::toJSON(
+    lapply(completion_spans, \(span) span$attributes),
+    auto_unbox = TRUE
+  )
+  expect_no_match(attributes_json, "private content", fixed = TRUE)
+  expect_no_match(attributes_json, raw_id, fixed = TRUE)
+})
+
 test_that("recorder failure rolls back completion and leaves its run pending", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("ellmer")

@@ -105,6 +105,56 @@ test_that("retrieval tools expose canonical research vocabulary", {
   )
 })
 
+test_that("web tools produce only their delegated retriever spans", {
+  skip_if_not_installed("ellmer")
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  retriever <- tempest_retriever(
+    config = tempest_config(
+      cache_dir = withr::local_tempdir(),
+      cache_enabled = FALSE
+    )
+  )
+  local_mocked_bindings(
+    tempest_now_utc = function() "2026-08-20T12:00:00.000000Z",
+    tempest_wiki_search = function(query, limit = 8L) {
+      tempest:::tempest_search_results(
+        title = "Tool result",
+        url = "https://example.com/tool-result",
+        snippet = "Tool snippet"
+      )
+    },
+    tempest_fetch_url_text = function(url, user_agent = NULL) {
+      list(
+        kind = "html",
+        text = "Tool body",
+        title = "Tool source",
+        error = NULL
+      )
+    }
+  )
+  tools <- tempest:::tempest_tools_web(
+    retriever,
+    search_provider = "wikipedia"
+  )
+  tool_names <- vapply(tools, \(tool) tool@name, character(1))
+  by_name <- function(name) tools[[match(name, tool_names)]]
+
+  search <- by_name("web_search")("private tool query", k = 1L)
+  fetched <- by_name("fetch_url")("https://example.com/private-tool-url")
+
+  expect_identical(nrow(search), 1L)
+  expect_identical(fetched$title, "Tool source")
+  expect_identical(
+    vapply(state$spans, \(span) span$name, character(1)),
+    c("tempest.retrieval.search", "tempest.retrieval.fetch")
+  )
+  expect_identical(
+    vapply(state$spans, \(span) span$end_count, integer(1)),
+    c(1L, 1L)
+  )
+})
+
 test_that("source-management tools expose claim tools without web tools", {
   skip_if_not_installed("ellmer")
   store <- fake_store_with_sources(1)

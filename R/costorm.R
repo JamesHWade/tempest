@@ -991,6 +991,7 @@ TempestSession <- R6::R6Class(
       private$suggestions_value <- character()
       private$stage_records_value <- list()
       private$async_work_value <- new.env(hash = TRUE, parent = emptyenv())
+      private$otel_completion_owner_value <- tempest_otel_owner()
 
       # Generate or use selected expert profiles.
       if (is.null(experts)) {
@@ -1113,6 +1114,10 @@ TempestSession <- R6::R6Class(
             "The moderator Deputy execution session could not be created."
           )
         }
+      )
+      private$chats_value$moderator <- tempest_otel_wrap_completion_client(
+        private$chats_value$moderator,
+        private$otel_completion_owner_value
       )
 
       self$emit_progress(
@@ -1733,6 +1738,7 @@ TempestSession <- R6::R6Class(
     pending_deputy_runs_value = list(),
     agent_completion_owner_value = NULL,
     agent_completion_registry_value = NULL,
+    otel_completion_owner_value = NULL,
     verification_owner_token_value = NULL
   )
 )

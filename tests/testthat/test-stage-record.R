@@ -2076,6 +2076,52 @@ test_that("async cancellation records cancellation and rejects output", {
   expect_identical(provider_calls, 0L)
 })
 
+test_that("async stage telemetry remains open and preserves the stage result", {
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+  local_otel_opt_in()
+  otel <- local_fake_otel()
+  execution <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "query_decomposition"
+  )
+  control <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    tempest_run_dsprrr_module_async = function(...) {
+      promises::promise(function(resolve, reject) {
+        control$resolve <- resolve
+      })
+    }
+  )
+
+  request <- tempest:::tempest_execute_stage_async(
+    execution,
+    chat = NULL,
+    inputs = fake_stage_inputs("query_decomposition"),
+    context = list(
+      max_queries = 1L,
+      attempt_id = "attempt-otel-async",
+      now = function() "2026-08-20T00:00:00.000000Z"
+    )
+  )
+  span <- otel$spans[[1L]]
+
+  expect_identical(span$name, "tempest.stage.execute")
+  expect_identical(span$attributes[["tempest.stage"]], "query_decomposition")
+  expect_identical(span$deactivate_count, 1L)
+  expect_identical(span$end_count, 0L)
+
+  control$resolve(list(queries = "Exact query"))
+  settled <- await_tempest_promise(request)
+
+  expect_null(settled$error)
+  expect_s3_class(settled$value, "tempest_stage_result")
+  expect_identical(settled$value$record@fallback_taken, FALSE)
+  expect_identical(span$attributes[["tempest.status"]], "succeeded")
+  expect_identical(span$statuses, "ok")
+  expect_identical(span$end_count, 1L)
+})
+
 test_that("async fallback rejection rechecks current invocation", {
   skip_if_not_installed("promises")
   skip_if_not_installed("later")

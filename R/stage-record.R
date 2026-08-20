@@ -4355,81 +4355,88 @@ tempest_execute_stage <- function(
     record_stage,
     output_reference
   )
-  fallback <- tempest_stage_fallback_resolve(evaluator$stage)
-  attempt_id <- context$attempt_id %||% tempest_attempt_id()
-  execution <- tempest_stage_execution_attempt(module, attempt_id)
-  governed_procedure <- tempest_dsprrr_execution_governance_preflight(
-    execution,
-    context$knowledge_view %||% execution$knowledge_view %||% NULL
-  )
-  execution$governed_procedure_revision_id <-
-    governed_procedure$revision_id %||% NA_character_
-  now <- context$now %||% tempest_now_utc
-  if (!is.function(now)) {
-    tempest_stage_evaluator_abort("Stage clock context must be a function.")
-  }
-  running <- tempest_stage_record_start(
-    execution$stage,
-    execution$program_artifact_id,
-    governed_procedure_revision_id = execution$governed_procedure_revision_id,
-    trace_references = tempest_stage_execution_trace_references(
+  execute <- function() {
+    fallback <- tempest_stage_fallback_resolve(evaluator$stage)
+    attempt_id <- context$attempt_id %||% tempest_attempt_id()
+    execution <- tempest_stage_execution_attempt(module, attempt_id)
+    governed_procedure <- tempest_dsprrr_execution_governance_preflight(
       execution,
-      context
-    ),
-    attempt_id = attempt_id,
-    started_at = now()
-  )
-  tempest_stage_record_call(record_stage, running)
-  primary <- tryCatch(
-    tempest_run_dsprrr_module_structured(
-      execution,
-      chat,
-      inputs,
-      step = execution$stage
-    ),
-    error = identity
-  )
-  if (inherits(primary, "condition")) {
-    return(tempest_stage_run_fallback(
-      primary,
-      execution,
-      chat,
-      inputs,
-      context,
-      fallback,
-      output_reference,
-      record_stage,
-      running,
-      now
-    ))
-  }
-  evaluated <- tryCatch(
-    tempest_stage_evaluate(execution, primary$output, context),
-    error = identity
-  )
-  if (inherits(evaluated, "condition")) {
-    return(tempest_stage_run_fallback(
+      context$knowledge_view %||% execution$knowledge_view %||% NULL
+    )
+    execution$governed_procedure_revision_id <-
+      governed_procedure$revision_id %||% NA_character_
+    now <- context$now %||% tempest_now_utc
+    if (!is.function(now)) {
+      tempest_stage_evaluator_abort("Stage clock context must be a function.")
+    }
+    running <- tempest_stage_record_start(
+      execution$stage,
+      execution$program_artifact_id,
+      governed_procedure_revision_id = execution$governed_procedure_revision_id,
+      trace_references = tempest_stage_execution_trace_references(
+        execution,
+        context
+      ),
+      attempt_id = attempt_id,
+      started_at = now()
+    )
+    tempest_stage_record_call(record_stage, running)
+    primary <- tryCatch(
+      tempest_run_dsprrr_module_structured(
+        execution,
+        chat,
+        inputs,
+        step = execution$stage
+      ),
+      error = identity
+    )
+    if (inherits(primary, "condition")) {
+      return(tempest_stage_run_fallback(
+        primary,
+        execution,
+        chat,
+        inputs,
+        context,
+        fallback,
+        output_reference,
+        record_stage,
+        running,
+        now
+      ))
+    }
+    evaluated <- tryCatch(
+      tempest_stage_evaluate(execution, primary$output, context),
+      error = identity
+    )
+    if (inherits(evaluated, "condition")) {
+      return(tempest_stage_run_fallback(
+        evaluated,
+        execution,
+        chat,
+        inputs,
+        context,
+        fallback,
+        output_reference,
+        record_stage,
+        running,
+        now
+      ))
+    }
+    tempest_stage_complete_success(
       evaluated,
-      execution,
-      chat,
-      inputs,
+      running,
       context,
-      fallback,
       output_reference,
       record_stage,
-      running,
+      FALSE,
+      NULL,
       now
-    ))
+    )
   }
-  tempest_stage_complete_success(
-    evaluated,
-    running,
-    context,
-    output_reference,
-    record_stage,
-    FALSE,
-    NULL,
-    now
+  tempest_otel_trace(
+    "stage.execute",
+    execute(),
+    stage = evaluator$stage
   )
 }
 
@@ -4514,7 +4521,7 @@ tempest_stage_async_fallback <- function(
     fallback(chat, inputs, context),
     error = promises::promise_reject
   )
-  promises::then(
+  tempest_otel_then(
     promises::promise_resolve(request),
     function(output) {
       if (!isTRUE(is_current())) {
@@ -4581,60 +4588,96 @@ tempest_execute_stage_async <- function(
     output_reference,
     is_current = is_current
   )
-  fallback <- tempest_stage_fallback_resolve(evaluator$stage)
-  attempt_id <- context$attempt_id %||% tempest_attempt_id()
-  execution <- tempest_stage_execution_attempt(module, attempt_id)
-  governed_procedure <- tempest_dsprrr_execution_governance_preflight(
-    execution,
-    context$knowledge_view %||% execution$knowledge_view %||% NULL
-  )
-  execution$governed_procedure_revision_id <-
-    governed_procedure$revision_id %||% NA_character_
-  now <- context$now %||% tempest_now_utc
-  if (!is.function(now)) {
-    tempest_stage_evaluator_abort("Stage clock context must be a function.")
-  }
-  running <- tempest_stage_record_start(
-    execution$stage,
-    execution$program_artifact_id,
-    governed_procedure_revision_id = execution$governed_procedure_revision_id,
-    trace_references = tempest_stage_execution_trace_references(
-      execution,
-      context
-    ),
-    attempt_id = attempt_id,
-    started_at = now()
-  )
-  tempest_stage_record_call(record_stage, running)
-  if (!isTRUE(is_current())) {
-    cancellation <- tryCatch(
-      tempest_stage_cancel_attempt(running, record_stage, now),
-      error = identity
+  otel_context <- tempest_otel_provider_call(
+    tempest_otel_context_start(
+      "stage.execute",
+      stage = evaluator$stage
     )
-    return(promises::promise_reject(cancellation))
-  }
-  request <- tryCatch(
-    tempest_run_dsprrr_module_async(
-      execution,
-      chat,
-      inputs,
-      step = execution$stage
-    ),
-    error = promises::promise_reject
   )
-  promises::then(
-    promises::promise_resolve(request),
-    function(output) {
-      if (!isTRUE(is_current())) {
-        tempest_stage_cancel_attempt(running, record_stage, now)
-      }
-      evaluated <- tryCatch(
-        tempest_stage_evaluate(execution, output, context),
+  otel_callback_context <- otel_context %||%
+    tempest_otel_no_context_sentinel
+  execute <- function() {
+    .tempest_otel_context <- otel_callback_context
+    fallback <- tempest_stage_fallback_resolve(evaluator$stage)
+    attempt_id <- context$attempt_id %||% tempest_attempt_id()
+    execution <- tempest_stage_execution_attempt(module, attempt_id)
+    governed_procedure <- tempest_dsprrr_execution_governance_preflight(
+      execution,
+      context$knowledge_view %||% execution$knowledge_view %||% NULL
+    )
+    execution$governed_procedure_revision_id <-
+      governed_procedure$revision_id %||% NA_character_
+    now <- context$now %||% tempest_now_utc
+    if (!is.function(now)) {
+      tempest_stage_evaluator_abort("Stage clock context must be a function.")
+    }
+    running <- tempest_stage_record_start(
+      execution$stage,
+      execution$program_artifact_id,
+      governed_procedure_revision_id = execution$governed_procedure_revision_id,
+      trace_references = tempest_stage_execution_trace_references(
+        execution,
+        context
+      ),
+      attempt_id = attempt_id,
+      started_at = now()
+    )
+    tempest_stage_record_call(record_stage, running)
+    if (!isTRUE(is_current())) {
+      cancellation <- tryCatch(
+        tempest_stage_cancel_attempt(running, record_stage, now),
         error = identity
       )
-      if (inherits(evaluated, "condition")) {
-        return(tempest_stage_async_fallback(
+      return(promises::promise_reject(cancellation))
+    }
+    request <- tryCatch(
+      tempest_run_dsprrr_module_async(
+        execution,
+        chat,
+        inputs,
+        step = execution$stage
+      ),
+      error = promises::promise_reject
+    )
+    completed <- tempest_otel_then(
+      promises::promise_resolve(request),
+      function(output) {
+        if (!isTRUE(is_current())) {
+          tempest_stage_cancel_attempt(running, record_stage, now)
+        }
+        evaluated <- tryCatch(
+          tempest_stage_evaluate(execution, output, context),
+          error = identity
+        )
+        if (inherits(evaluated, "condition")) {
+          return(tempest_stage_async_fallback(
+            evaluated,
+            execution,
+            chat,
+            inputs,
+            context,
+            fallback,
+            output_reference,
+            record_stage,
+            running,
+            is_current,
+            now
+          ))
+        }
+        tempest_stage_complete_success(
           evaluated,
+          running,
+          context,
+          output_reference,
+          record_stage,
+          FALSE,
+          NULL,
+          now
+        )
+      },
+      function(error) {
+        tempest_stage_async_fallback(
+          error,
           execution,
           chat,
           inputs,
@@ -4645,34 +4688,16 @@ tempest_execute_stage_async <- function(
           running,
           is_current,
           now
-        ))
+        )
       }
-      tempest_stage_complete_success(
-        evaluated,
-        running,
-        context,
-        output_reference,
-        record_stage,
-        FALSE,
-        NULL,
-        now
-      )
-    },
-    function(error) {
-      tempest_stage_async_fallback(
-        error,
-        execution,
-        chat,
-        inputs,
-        context,
-        fallback,
-        output_reference,
-        record_stage,
-        running,
-        is_current,
-        now
-      )
-    }
+    )
+    completed
+  }
+  tempest_otel_trace_promise(
+    "stage.execute",
+    execute(),
+    stage = evaluator$stage,
+    context = otel_context
   )
 }
 

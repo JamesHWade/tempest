@@ -439,6 +439,8 @@ test_that("stale warmup evidence and mind-map settlements stay silent", {
 test_that("warmup permits only one in-flight call per session", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
+  local_otel_opt_in()
+  otel <- local_fake_otel()
   resolve_first <- NULL
   calls <- 0L
   collector <- tempest_progress_collector(include_payload = TRUE)
@@ -468,6 +470,7 @@ test_that("warmup permits only one in-flight call per session", {
 
   expect_s3_class(busy, "tempest_warmup_busy")
   expect_length(collector$events(), before)
+  expect_length(otel$spans, 1L)
 
   source_id <- session$workspace$list_retrieved_sources()[[1]]$id
   resolve_first(paste0("First [", source_id, "]."))
@@ -480,6 +483,42 @@ test_that("warmup permits only one in-flight call per session", {
   ))
   expect_null(settled_later$error)
   expect_identical(settled_later$value@status, "succeeded")
+  warmup_spans <- Filter(
+    \(span) identical(span$name, "tempest.costorm.warmup"),
+    otel$spans
+  )
+  expect_length(warmup_spans, 2L)
+  expect_identical(
+    vapply(warmup_spans, \(span) span$end_count, integer(1)),
+    c(1L, 1L)
+  )
+  expect_identical(
+    vapply(
+      warmup_spans,
+      \(span) span$attributes[["tempest.status"]],
+      character(1)
+    ),
+    c("succeeded", "succeeded")
+  )
+})
+
+test_that("warmup telemetry preserves the exact skipped result", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+  local_otel_opt_in()
+  otel <- local_fake_otel()
+  session <- fake_costorm_warmup_session(experts = list())
+
+  settled <- await_tempest_promise(tempest_session_warmup_async(session))
+  span <- otel$spans[[1L]]
+
+  expect_null(settled$error)
+  expect_s7_class(settled$value, TempestWarmupResult)
+  expect_identical(settled$value@status, "skipped")
+  expect_identical(span$name, "tempest.costorm.warmup")
+  expect_identical(span$attributes[["tempest.status"]], "skipped")
+  expect_identical(span$statuses, "unset")
+  expect_identical(span$end_count, 1L)
 })
 
 test_that("warmup result validators reject contradictory records", {

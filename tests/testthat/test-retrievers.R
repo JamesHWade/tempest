@@ -148,6 +148,27 @@ test_that("retriever enforces search and source budgets", {
   )
 })
 
+test_that("retrieval telemetry starts only after validated preflight", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  retriever <- tempest_retriever(
+    config = tempest_config(
+      cache_dir = withr::local_tempdir(),
+      max_search_results = 2L
+    )
+  )
+
+  expect_error(
+    retriever$search("too many", k = 3L, provider = "wikipedia"),
+    class = "tempest_config_error"
+  )
+  expect_error(
+    retriever$fetch("http://localhost/private"),
+    class = "tempest_retriever_url_error"
+  )
+  expect_identical(state$start_calls, 0L)
+})
+
 test_that("search() caches repeated equivalent searches", {
   cfg <- tempest_config(cache_dir = withr::local_tempdir())
   retriever <- tempest_retriever(config = cfg)
@@ -177,6 +198,156 @@ test_that("search() caches repeated equivalent searches", {
   expect_equal(search_stats$hits, 1L)
   expect_equal(search_stats$bypasses, 1L)
   expect_equal(search_stats$writes, 2L)
+})
+
+test_that("search telemetry is branch-local, bounded, and content-free", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  config <- tempest_config(
+    cache_dir = withr::local_tempdir(),
+    max_search_results = 2L
+  )
+  retriever <- tempest_retriever(config = config)
+  query_secret <- "query-secret-7d291"
+  url_secret <- "url-secret-9f481"
+  title_secret <- "title-secret-3c712"
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8L) {
+      tempest:::tempest_search_results(
+        title = rep(title_secret, 3L),
+        url = paste0(
+          "https://example.com/",
+          1:3,
+          "?token=",
+          url_secret
+        ),
+        snippet = rep("private source content", 3L)
+      )
+    }
+  )
+
+  first <- retriever$search(query_secret, k = 2L, provider = "wikipedia")
+  second <- retriever$search(query_secret, k = 2L, provider = "wikipedia")
+  stats <- retriever$cache_stats()
+  search_stats <- stats[stats$kind == "search", ]
+  attributes <- lapply(state$spans, \(span) span$attributes)
+  projected <- jsonlite::toJSON(attributes, auto_unbox = TRUE)
+
+  expect_identical(second, first)
+  expect_identical(nrow(first), 3L)
+  expect_identical(
+    vapply(
+      state$spans,
+      \(span) span$attributes[["tempest.cache_hit"]],
+      logical(1)
+    ),
+    c(FALSE, TRUE)
+  )
+  expect_identical(
+    vapply(
+      state$spans,
+      \(span) span$attributes[["tempest.result_count"]],
+      integer(1)
+    ),
+    c(2L, 2L)
+  )
+  expect_identical(
+    vapply(state$spans, \(span) span$name, character(1)),
+    rep("tempest.retrieval.search", 2L)
+  )
+  expect_identical(
+    vapply(state$spans, \(span) span$end_count, integer(1)),
+    c(1L, 1L)
+  )
+  expect_null(state$spans[[1L]]$attributes[["tempest.fallback_taken"]])
+  expect_identical(search_stats$hits, 1L)
+  expect_identical(search_stats$misses, 1L)
+  expect_identical(search_stats$writes, 1L)
+  for (secret in c(
+    query_secret,
+    url_secret,
+    title_secret,
+    first$source_id
+  )) {
+    expect_no_match(projected, secret, fixed = TRUE)
+  }
+})
+
+test_that("native search fallback is recorded only when that branch runs", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8L) {
+      if (identical(query, "failed native")) {
+        stop("private native failure")
+      }
+      tempest:::tempest_search_results(
+        title = "Fallback result",
+        url = "https://example.com/native-fallback",
+        snippet = "Fallback snippet"
+      )
+    }
+  )
+
+  first <- retriever$search("native fallback", provider = "native")
+  second <- retriever$search("native fallback", provider = "native")
+  expect_error(
+    retriever$search("failed native", provider = "native"),
+    class = "tempest_retriever_error"
+  )
+
+  expect_identical(second, first)
+  expect_identical(
+    state$spans[[1L]]$attributes[["tempest.fallback_taken"]],
+    TRUE
+  )
+  expect_null(state$spans[[2L]]$attributes[["tempest.fallback_taken"]])
+  expect_identical(
+    state$spans[[2L]]$attributes[["tempest.cache_hit"]],
+    TRUE
+  )
+  expect_null(state$spans[[3L]]$attributes[["tempest.fallback_taken"]])
+  expect_identical(
+    state$spans[[3L]]$attributes[["tempest.status"]],
+    "failed"
+  )
+})
+
+test_that("a cached NULL status is not a retrieval cache hit", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  config <- tempest_config(cache_dir = withr::local_tempdir())
+  retriever <- tempest_retriever(config = config)
+  key <- tempest:::tempest_search_cache_key(
+    "wikipedia",
+    "cached null",
+    config@max_search_results
+  )
+  tempest:::tempest_cache_set(config@cache_dir, key, NULL)
+  local_mocked_bindings(
+    tempest_wiki_search = function(query, limit = 8L) {
+      tempest:::tempest_search_results(
+        title = "Fresh result",
+        url = "https://example.com/fresh-after-null",
+        snippet = "Fresh snippet"
+      )
+    }
+  )
+
+  result <- retriever$search("cached null", provider = "wikipedia")
+  stats <- retriever$cache_stats()
+  search_stats <- stats[stats$kind == "search", ]
+
+  expect_identical(nrow(result), 1L)
+  expect_identical(
+    state$spans[[1L]]$attributes[["tempest.cache_hit"]],
+    FALSE
+  )
+  expect_identical(search_stats$hits, 1L)
+  expect_identical(search_stats$writes, 1L)
 })
 
 test_that("search() does not count writes when the cache write fails", {
@@ -322,6 +493,333 @@ test_that("fetch() retries transient failures without force", {
   expect_equal(calls, 2L)
   expect_equal(fetch_stats$misses, 2L)
   expect_equal(fetch_stats$writes, 1L)
+})
+
+test_that("fetch telemetry preserves products and projects error records", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  error_secret <- "fetch-error-secret-4e819"
+  local_mocked_bindings(
+    tempest_now_utc = function() "2026-08-20T12:00:00.000000Z",
+    tempest_fetch_url_text = function(url, user_agent = NULL) {
+      if (grepl("failed", url, fixed = TRUE)) {
+        return(list(
+          kind = "html",
+          text = NA_character_,
+          title = NA_character_,
+          error = error_secret
+        ))
+      }
+      list(
+        kind = "html",
+        text = "private fetched content",
+        title = "Private fetched title",
+        error = NULL
+      )
+    }
+  )
+
+  first <- retriever$fetch("https://example.com/fetched-url-secret")
+  second <- retriever$fetch("https://example.com/fetched-url-secret")
+  options(tempest.otel.enabled = FALSE)
+  disabled_failed <- retriever$fetch(
+    "https://example.com/failed-other-secret"
+  )
+  options(tempest.otel.enabled = TRUE)
+  failed <- retriever$fetch("https://example.com/failed-other-secret")
+  stats <- retriever$cache_stats()
+  fetch_stats <- stats[stats$kind == "fetch", ]
+  projected <- jsonlite::toJSON(
+    lapply(state$spans, \(span) span$attributes),
+    auto_unbox = TRUE
+  )
+
+  expect_identical(second, first)
+  expect_identical(
+    serialize(failed, NULL),
+    serialize(disabled_failed, NULL)
+  )
+  expect_identical(failed$meta$error, error_secret)
+  expect_identical(
+    vapply(
+      state$spans,
+      \(span) span$attributes[["tempest.cache_hit"]],
+      logical(1)
+    ),
+    c(FALSE, TRUE, FALSE)
+  )
+  expect_identical(
+    vapply(
+      state$spans,
+      \(span) span$attributes[["tempest.result_count"]],
+      integer(1)
+    ),
+    c(1L, 1L, 0L)
+  )
+  expect_identical(
+    vapply(
+      state$spans,
+      \(span) span$attributes[["tempest.status"]],
+      character(1)
+    ),
+    c("succeeded", "succeeded", "failed")
+  )
+  expect_identical(
+    state$spans[[3L]]$attributes[["tempest.error_class"]],
+    "tempest_operation_error"
+  )
+  expect_identical(state$spans[[3L]]$statuses, "error")
+  expect_identical(fetch_stats$hits, 1L)
+  expect_identical(fetch_stats$misses, 3L)
+  expect_identical(fetch_stats$writes, 1L)
+  for (secret in c(
+    "url-secret",
+    "other-secret",
+    error_secret,
+    first$id,
+    failed$id,
+    "private fetched content",
+    "Private fetched title"
+  )) {
+    expect_no_match(projected, secret, fixed = TRUE)
+  }
+})
+
+test_that("retrieval telemetry failures cannot alter product state", {
+  local_otel_opt_in()
+  state <- local_fake_otel(
+    provider_errors = c("set_attribute", "set_status", "end"),
+    provider_conditions = c("set_attribute", "set_status", "end")
+  )
+  retriever <- tempest_retriever(
+    config = tempest_config(
+      cache_dir = withr::local_tempdir(),
+      cache_enabled = FALSE
+    )
+  )
+  local_mocked_bindings(
+    tempest_now_utc = function() "2026-08-20T12:00:00.000000Z",
+    tempest_wiki_search = function(query, limit = 8L) {
+      tempest:::tempest_search_results(
+        title = "Exact result",
+        url = "https://example.com/exact",
+        snippet = "Exact snippet"
+      )
+    },
+    tempest_fetch_url_text = function(url, user_agent = NULL) {
+      list(
+        kind = "html",
+        text = "Exact body",
+        title = "Exact title",
+        error = NULL
+      )
+    }
+  )
+
+  options(tempest.otel.enabled = FALSE)
+  disabled_search <- retriever$search(
+    "exact",
+    provider = "wikipedia",
+    force = TRUE
+  )
+  disabled_fetch <- retriever$fetch(
+    "https://example.com/exact-fetch",
+    force = TRUE
+  )
+  disabled_sources <- retriever$workspace$list_retrieved_sources()
+  options(tempest.otel.enabled = TRUE)
+  expect_silent(
+    enabled_search <- retriever$search(
+      "exact",
+      provider = "wikipedia",
+      force = TRUE
+    )
+  )
+  expect_silent(
+    enabled_fetch <- retriever$fetch(
+      "https://example.com/exact-fetch",
+      force = TRUE
+    )
+  )
+  enabled_sources <- retriever$workspace$list_retrieved_sources()
+  stats <- retriever$cache_stats()
+
+  expect_identical(
+    serialize(enabled_search, NULL),
+    serialize(disabled_search, NULL)
+  )
+  expect_identical(
+    serialize(enabled_fetch, NULL),
+    serialize(disabled_fetch, NULL)
+  )
+  expect_identical(
+    serialize(enabled_sources, NULL),
+    serialize(disabled_sources, NULL)
+  )
+  expect_identical(stats$bypasses, c(2L, 2L))
+  expect_identical(stats$hits, c(0L, 0L))
+  expect_identical(stats$misses, c(0L, 0L))
+  expect_length(state$spans, 2L)
+})
+
+test_that("terminal telemetry interrupts cannot replace retrieval errors", {
+  local_otel_opt_in()
+  state <- local_fake_otel(provider_interrupts = "set_attribute")
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  original <- structure(
+    list(message = "original private cache error", call = NULL),
+    class = c("private_cache_error", "error", "condition")
+  )
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) stop(original)
+  )
+
+  caught <- tryCatch(
+    retriever$search("error identity", provider = "wikipedia"),
+    error = identity
+  )
+
+  expect_identical(caught, original)
+  expect_identical(state$spans[[1L]]$end_count, 1L)
+})
+
+test_that("nested search requests retain their own cache branch", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  cached <- tempest:::tempest_search_results(
+    title = "Nested cached result",
+    url = "https://example.com/nested-search",
+    snippet = "Nested snippet"
+  )
+  cached$source_id <- vapply(
+    cached$url,
+    tempest:::tempest_source_id,
+    character(1)
+  )
+  lookup_calls <- 0L
+  nested_result <- NULL
+  reverse_completion <- NULL
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) {
+      lookup_calls <<- lookup_calls + 1L
+      if (lookup_calls == 1L) {
+        nested_result <<- retriever$search(
+          "nested request",
+          provider = "wikipedia"
+        )
+        return(list(value = NULL, status = "miss"))
+      }
+      list(value = cached, status = "hit")
+    },
+    tempest_cache_set = function(...) invisible(TRUE),
+    tempest_wiki_search = function(query, limit = 8L) {
+      reverse_completion <<- c(
+        outer = state$spans[[1L]]$end_count,
+        nested = state$spans[[2L]]$end_count
+      )
+      tempest:::tempest_search_results(
+        title = "Outer fresh result",
+        url = "https://example.com/outer-search",
+        snippet = "Outer snippet"
+      )
+    }
+  )
+
+  outer_result <- retriever$search(
+    "outer request",
+    provider = "wikipedia"
+  )
+  stats <- retriever$cache_stats()
+  search_stats <- stats[stats$kind == "search", ]
+
+  expect_identical(nested_result, cached)
+  expect_identical(outer_result$title, "Outer fresh result")
+  expect_identical(reverse_completion, c(outer = 0L, nested = 1L))
+  expect_identical(
+    vapply(
+      state$spans,
+      \(span) span$attributes[["tempest.cache_hit"]],
+      logical(1)
+    ),
+    c(FALSE, TRUE)
+  )
+  expect_identical(
+    vapply(state$spans, \(span) span$end_count, integer(1)),
+    c(1L, 1L)
+  )
+  expect_identical(search_stats$hits, 1L)
+  expect_identical(search_stats$misses, 1L)
+  expect_identical(search_stats$writes, 1L)
+})
+
+test_that("nested fetch requests retain their own cache branch", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  cached <- fake_source("https://example.org/nested-fetch")
+  lookup_calls <- 0L
+  nested_result <- NULL
+  reverse_completion <- NULL
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) {
+      lookup_calls <<- lookup_calls + 1L
+      if (lookup_calls == 1L) {
+        nested_result <<- retriever$fetch(
+          "https://example.org/nested-fetch"
+        )
+        return(list(value = NULL, status = "miss"))
+      }
+      list(value = cached, status = "hit")
+    },
+    tempest_cache_set = function(...) invisible(TRUE),
+    tempest_now_utc = function() "2026-08-20T12:00:00.000000Z",
+    tempest_fetch_url_text = function(url, user_agent = NULL) {
+      reverse_completion <<- c(
+        outer = state$spans[[1L]]$end_count,
+        nested = state$spans[[2L]]$end_count
+      )
+      list(
+        kind = "html",
+        text = "Outer body",
+        title = "Outer title",
+        error = NULL
+      )
+    }
+  )
+
+  outer_result <- retriever$fetch("https://example.org/outer-fetch")
+  stats <- retriever$cache_stats()
+  fetch_stats <- stats[stats$kind == "fetch", ]
+
+  expect_identical(nested_result, cached)
+  expect_identical(outer_result$title, "Outer title")
+  expect_identical(reverse_completion, c(outer = 0L, nested = 1L))
+  expect_identical(
+    vapply(
+      state$spans,
+      \(span) span$attributes[["tempest.cache_hit"]],
+      logical(1)
+    ),
+    c(FALSE, TRUE)
+  )
+  expect_identical(
+    vapply(state$spans, \(span) span$end_count, integer(1)),
+    c(1L, 1L)
+  )
+  expect_identical(fetch_stats$hits, 1L)
+  expect_identical(fetch_stats$misses, 1L)
+  expect_identical(fetch_stats$writes, 1L)
+  expect_length(retriever$workspace$list_retrieved_sources(), 2L)
 })
 
 test_that("DuckDuckGo redirect URLs are decoded before normalization", {

@@ -515,6 +515,277 @@ test_that("shinychat completion client preserves one-use stream identities", {
   expect_identical(ready, c("completion-2", "completion-1"))
 })
 
+test_that("shinychat completion streams forward resume values", {
+  source <- coro::async_generator(function() {
+    resumed <- coro::yield("first value")
+    coro::yield(resumed)
+    coro::exhausted()
+  })()
+  source <- tempest:::tempest_agent_completion_tag(
+    source,
+    "completion-shiny-resume"
+  )
+  client <- structure(
+    list(stream_async = function(...) source),
+    class = c("TempestDeputyChatAdapter", "Chat", "list")
+  )
+  completed <- character()
+  proxy <- tempest:::tempest_shinychat_completion_client(
+    client,
+    function(completion_id) completed <<- c(completed, completion_id)
+  )
+  stream <- proxy$stream_async("prompt")
+
+  first <- await_tempest_promise(stream())
+  resumed <- await_tempest_promise(stream("sent value"))
+  exhausted <- await_tempest_promise(stream())
+
+  expect_identical(first$value, "first value")
+  expect_identical(resumed$value, "sent value")
+  expect_identical(coro::is_exhausted(exhausted$value), TRUE)
+  expect_identical(completed, "completion-shiny-resume")
+})
+
+test_that("shinychat completion streams queue concurrent pre-yield resumes", {
+  control <- new.env(parent = emptyenv())
+  gate <- promises::promise(function(resolve, reject) {
+    control$resolve <- resolve
+  })
+  source <- coro::async_generator(function() {
+    first <- coro::await(gate)
+    resumed <- coro::yield(first)
+    coro::yield(resumed)
+    coro::exhausted()
+  })()
+  source <- tempest:::tempest_agent_completion_tag(
+    source,
+    "completion-shiny-concurrent-resume"
+  )
+  client <- structure(
+    list(stream_async = function(...) source),
+    class = c("TempestDeputyChatAdapter", "Chat", "list")
+  )
+  completed <- character()
+  proxy <- tempest:::tempest_shinychat_completion_client(
+    client,
+    function(completion_id) completed <<- c(completed, completion_id)
+  )
+  stream <- proxy$stream_async("prompt")
+
+  first_request <- stream()
+  resumed_request <- stream("concurrent")
+  control$resolve("first")
+  first <- await_tempest_promise(first_request)
+  resumed <- await_tempest_promise(resumed_request)
+  exhausted <- await_tempest_promise(stream())
+
+  expect_identical(first$value, "first")
+  expect_identical(resumed$value, "concurrent")
+  expect_identical(coro::is_exhausted(exhausted$value), TRUE)
+  expect_identical(completed, "completion-shiny-concurrent-resume")
+})
+
+test_that("shinychat lifecycle closes only replaced or disposed telemetry owners", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("promises")
+  local_otel_opt_in()
+  otel <- local_fake_otel()
+  make_client <- function(owner, label) {
+    client <- NULL
+    client <- structure(
+      list(
+        chat = function(
+          prompt,
+          echo = "none",
+          run_context = list(),
+          ...
+        ) {
+          tempest:::tempest_agent_completion_tag(label, paste0(label, "-chat"))
+        },
+        stream = function(
+          prompt = NULL,
+          stream = c("text", "content"),
+          controller = NULL,
+          run_context = list(),
+          ...
+        ) {
+          source <- coro::generator(function() {
+            coro::yield(label)
+            coro::exhausted()
+          })()
+          tempest:::tempest_agent_completion_tag(
+            source,
+            paste0(label, "-stream")
+          )
+        },
+        chat_async = function(
+          prompt,
+          echo = "none",
+          run_context = list(),
+          ...
+        ) {
+          promises::promise_resolve(
+            tempest:::tempest_agent_completion_tag(
+              label,
+              paste0(label, "-chat-async")
+            )
+          )
+        },
+        stream_async = function(
+          prompt = NULL,
+          stream = c("text", "content"),
+          controller = NULL,
+          run_context = list(),
+          ...
+        ) {
+          source <- coro::async_generator(function() {
+            coro::yield(label)
+            coro::exhausted()
+          })()
+          tempest:::tempest_agent_completion_tag(
+            source,
+            paste0(label, "-stream-async")
+          )
+        },
+        clone = function() client
+      ),
+      class = c("TempestDeputyChatAdapter", "Chat", "list")
+    )
+    tempest:::tempest_otel_wrap_completion_client(client, owner)
+  }
+  first_owner <- tempest:::tempest_otel_owner()
+  second_owner <- tempest:::tempest_otel_owner()
+  first <- make_client(first_owner, "first")
+  second <- make_client(second_owner, "second")
+  state <- new.env(parent = emptyenv())
+  state$last_input <- shiny::reactiveVal(NULL)
+  state$last_turn <- shiny::reactiveVal(NULL)
+  state$status <- shiny::reactiveVal("idle")
+  state$client <- NULL
+  state$turn_count <- 0L
+  backend <- list(
+    version = "0.4.0.9000",
+    chat_ui = function(id, greeting, ...) NULL,
+    chat_greeting = function(content, ...) content,
+    chat_server = function(id, client, history, session, ...) {
+      list(
+        append = function(response, role = "assistant") NULL,
+        clear = function(
+          messages = NULL,
+          greeting = FALSE,
+          client_history = "clear"
+        ) {
+          NULL
+        },
+        last_input = shiny::reactive(state$last_input()),
+        last_turn = shiny::reactive(state$last_turn()),
+        set_client = function(client, sync = TRUE) {
+          state$client <- client
+        },
+        slash_command = function(name, description, handler) NULL,
+        status = shiny::reactive(state$status())
+      )
+    }
+  )
+  server <- function(id) {
+    shiny::moduleServer(id, function(input, output, session) {
+      adapter <- tempest_shinychat_adapter(
+        "chat",
+        initial_client = first,
+        session = session,
+        on_turn = function(...) state$turn_count <- state$turn_count + 1L,
+        backend = backend
+      )
+    })
+  }
+
+  shiny::testServer(server, {
+    expect_identical(adapter$bind(first), TRUE)
+    old_client <- state$client
+    closed_stream <- state$client$stream_async("closed")
+    closed_span <- otel$spans[[1L]]
+    closed <- closed_stream(close = TRUE)
+    expect_identical(coro::is_exhausted(closed), TRUE)
+    expect_identical(
+      closed_span$attributes[["tempest.status"]],
+      "cancelled"
+    )
+    expect_identical(closed_span$end_count, 1L)
+    state$last_turn("closed")
+    session$flushReact()
+    expect_identical(state$turn_count, 0L)
+
+    old_stream <- state$client$stream_async("old")
+    old_span <- otel$spans[[2L]]
+    adapter$invalidate()
+    expect_identical(old_span$end_count, 0L)
+
+    expect_identical(adapter$bind(first), TRUE)
+    expect_identical(old_span$end_count, 0L)
+
+    state$status("streaming")
+    session$flushReact()
+    expect_identical(adapter$bind(second), FALSE)
+    expect_identical(old_span$end_count, 0L)
+    state$status("idle")
+    session$flushReact()
+    expect_identical(old_span$attributes[["tempest.status"]], "cancelled")
+    expect_identical(old_span$end_count, 1L)
+    expect_identical(await_tempest_promise(old_stream())$value, "first")
+    expect_identical(
+      coro::is_exhausted(await_tempest_promise(old_stream())$value),
+      TRUE
+    )
+    expect_identical(old_span$end_count, 1L)
+    old_start_calls <- otel$start_calls
+    old_tracer_calls <- otel$tracer_calls
+    late_old <- old_client$stream_async("late old")
+    expect_identical(otel$start_calls, old_start_calls)
+    expect_identical(otel$tracer_calls, old_tracer_calls)
+    expect_identical(await_tempest_promise(late_old())$value, "first")
+    expect_identical(
+      coro::is_exhausted(await_tempest_promise(late_old())$value),
+      TRUE
+    )
+    late_old_chat <- old_client$chat("late old sync")
+    late_old_stream <- old_client$stream("late old sync")
+    expect_identical(as.character(late_old_chat), "first")
+    expect_identical(late_old_stream(), "first")
+    expect_identical(otel$start_calls, old_start_calls)
+    expect_identical(otel$tracer_calls, old_tracer_calls)
+
+    disposed_client <- state$client
+    new_stream <- state$client$stream_async("new")
+    new_span <- otel$spans[[3L]]
+    expect_identical(new_span$end_count, 0L)
+    expect_identical(adapter$dispose(), TRUE)
+    expect_identical(new_span$attributes[["tempest.status"]], "cancelled")
+    expect_identical(new_span$attributes[["tempest.cancelled"]], TRUE)
+    expect_identical(new_span$end_count, 1L)
+    expect_identical(await_tempest_promise(new_stream())$value, "second")
+    expect_identical(new_span$end_count, 1L)
+    disposed_start_calls <- otel$start_calls
+    disposed_tracer_calls <- otel$tracer_calls
+    late_disposed <- disposed_client$stream_async("late disposed")
+    expect_identical(otel$start_calls, disposed_start_calls)
+    expect_identical(otel$tracer_calls, disposed_tracer_calls)
+    expect_identical(
+      await_tempest_promise(late_disposed())$value,
+      "second"
+    )
+    expect_identical(
+      coro::is_exhausted(await_tempest_promise(late_disposed())$value),
+      TRUE
+    )
+    late_disposed_chat <- disposed_client$chat("late disposed sync")
+    late_disposed_stream <- disposed_client$stream("late disposed sync")
+    expect_identical(as.character(late_disposed_chat), "second")
+    expect_identical(late_disposed_stream(), "second")
+    expect_identical(otel$start_calls, disposed_start_calls)
+    expect_identical(otel$tracer_calls, disposed_tracer_calls)
+  })
+})
+
 test_that("shinychat adapter normalizes content and suggestion cards", {
   marker <- paste0(
     intToUtf8(0xE200),
