@@ -466,16 +466,7 @@ test_that("STORM keeps the last valid product across later run outcomes", {
     ),
     {
       wait_for_terminal <- function() {
-        deadline <- Sys.time() + 10
-        status <- shiny::isolate(storm_task$status())
-        while (status %in% c("initial", "running") && Sys.time() < deadline) {
-          later::run_now(0.05)
-          session$flushReact()
-          status <- shiny::isolate(storm_task$status())
-        }
-        later::run_now(0.01)
-        session$flushReact()
-        status
+        await_tempest_extended_task(storm_task, session)
       }
 
       expect_null(shiny::isolate(session$returned$last_successful_product()))
