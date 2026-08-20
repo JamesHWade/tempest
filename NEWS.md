@@ -1,5 +1,7 @@
 # tempest (development version)
 
+* Experimental OpenTelemetry tracing can be enabled for bounded Tempest STORM and stage lifecycle operations through a host-configured provider; the privacy-safe projection is off by default and excludes research content, identifiers, URLs, and arbitrary progress payloads (bavj).
+
 # tempest 0.2.0
 
 * Tempest is now explicitly scoped as a scientific-research product. Its experimental application-neutral workflow, runtime, capability, connection, skill, deliverable, artifact, and generic host-state kernel has been removed physically, including 41 public export names and two internal run restore/resume symbols; `tempest_run()` and `tempest_session()` are the supported execution paths, with no compatibility or migration layer (an7p).

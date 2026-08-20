@@ -50,6 +50,7 @@ Suggests:
     knitr,
     later,
     mirai,
+    otel (>= 0.2.0),
     pdftools,
     promises,
     ragnar,
@@ -113,6 +114,7 @@ Collate:
     'ecosystem-contracts.R'
     'program-set.R'
     'stage-record.R'
+    'otel.R'
     'product-report.R'
     'storm-state.R'
     'product-authority.R'

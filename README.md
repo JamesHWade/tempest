@@ -304,6 +304,30 @@ res <- tempest_run("Life cycle assessment of lithium-ion batteries", config = cf
 cat(res$report_md)
 ```
 
+### Experimental OpenTelemetry traces
+
+Tempest can project bounded STORM and stage lifecycle traces through a provider
+configured by the host. Start R with the exact Tempest-only scope and generative
+AI content capture disabled:
+
+```sh
+OTEL_R_EMIT_SCOPES=io.github.jameshwade.tempest \
+OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false \
+R
+```
+
+Then opt in for that R process before starting a run:
+
+```r
+options(tempest.otel.enabled = TRUE)
+```
+
+The integration is experimental and off by default. Tempest does not configure
+the OpenTelemetry provider, exporter, endpoint, credentials, or shutdown; the
+host owns those settings. The Tempest projection excludes prompts, responses,
+queries, evidence, source content, URLs, paths, identifiers, and progress
+payloads.
+
 Report polishing is deterministic. `remove_duplicate = TRUE` is unsupported
 and fails before report publication.
 

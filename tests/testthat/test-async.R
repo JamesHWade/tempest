@@ -58,3 +58,26 @@ test_that("tempest_run_cancel stops unresolved workers", {
   expect_s3_class(settled$error, "tempest_async_cancelled")
   expect_equal(tempest_run_cancel(run), FALSE)
 })
+
+test_that("tempest_run_async transports only the validated telemetry intent", {
+  skip_if_not_installed("promises")
+  skip_if_not_installed("mirai")
+  skip_if_not_installed("later")
+  local_mirai_coverage_dir()
+  local_otel_opt_in()
+  withr::local_options(tempest.async_runner = function(topic) {
+    list(
+      topic = topic,
+      enabled = getOption("tempest.otel.enabled"),
+      enabled_type = typeof(getOption("tempest.otel.enabled"))
+    )
+  })
+
+  settled <- await_tempest_promise(tempest_run_async("Observed topic"))
+
+  expect_null(settled$error)
+  expect_identical(settled$value$topic, "Observed topic")
+  expect_identical(settled$value$enabled, TRUE)
+  expect_identical(settled$value$enabled_type, "logical")
+  expect_identical(getOption("tempest.otel.enabled"), TRUE)
+})

@@ -192,26 +192,29 @@ tempest_run <- function(
   progress = NULL,
   verbose = TRUE
 ) {
-  tempest_run_internal(
-    topic = topic,
-    config = config,
-    retriever = retriever,
-    knowledge_view = knowledge_view,
-    n_experts = n_experts,
-    experts = experts,
-    research_strategy = research_strategy,
-    max_rounds = max_rounds,
-    max_questions_per_perspective = max_questions_per_perspective,
-    parallel_research = parallel_research,
-    parallel_writing = parallel_writing,
-    program_set = program_set,
-    steps = steps,
-    output_dir = output_dir,
-    resume = resume,
-    run_id = run_id,
-    remove_duplicate = remove_duplicate,
-    progress = progress,
-    verbose = verbose
+  tempest_otel_trace(
+    "storm.run",
+    tempest_run_internal(
+      topic = topic,
+      config = config,
+      retriever = retriever,
+      knowledge_view = knowledge_view,
+      n_experts = n_experts,
+      experts = experts,
+      research_strategy = research_strategy,
+      max_rounds = max_rounds,
+      max_questions_per_perspective = max_questions_per_perspective,
+      parallel_research = parallel_research,
+      parallel_writing = parallel_writing,
+      program_set = program_set,
+      steps = steps,
+      output_dir = output_dir,
+      resume = resume,
+      run_id = run_id,
+      remove_duplicate = remove_duplicate,
+      progress = progress,
+      verbose = verbose
+    )
   )
 }
 
@@ -1813,15 +1816,22 @@ tempest_run_async <- function(..., knowledge_view = NULL) {
       class = c("tempest_async_error", "tempest_error")
     )
   }
+  otel_enabled <- tempest_otel_worker_intent()
+  worker_call <- tempest_otel_worker_call
   job <- mirai::mirai(
     {
       tryCatch(
-        list(ok = TRUE, value = do.call(runner, args)),
+        list(
+          ok = TRUE,
+          value = worker_call(runner, args, otel_enabled)
+        ),
         error = function(error) list(ok = FALSE, condition = error)
       )
     },
     runner = runner,
-    args = args
+    args = args,
+    worker_call = worker_call,
+    otel_enabled = otel_enabled
   )
   promise <- promises::then(
     promises::as.promise(job),

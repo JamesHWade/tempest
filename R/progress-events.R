@@ -193,6 +193,7 @@ tempest_progress_error_payload <- function(error) {
 
 tempest_emit_progress <- function(progress, ...) {
   event <- tempest_progress_event(...)
+  tempest_otel_progress_event(event)
   if (is.null(progress)) {
     return(invisible(event))
   }
