@@ -4,7 +4,11 @@ Compiles the selected stages through
 [`dsprrr::compile_module()`](https://jameshwade.github.io/dsprrr/reference/compile_module.html)
 and only publishes a new complete ProgramSet after every requested
 compilation and artifact verification succeeds. Compilation errors are
-never replaced with the original uncompiled program.
+never replaced with the original uncompiled program. Every selected
+baseline Module is copied with cleared execution state and
+identity-checked before compilation. When compilation changes a program
+artifact, the candidate drops that stage's old governed-procedure
+reference.
 
 ## Usage
 

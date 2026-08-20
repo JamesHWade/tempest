@@ -66,6 +66,10 @@ tempest_session(
   Optional immutable Graft view. It is required for a fresh session when
   `program_set` contains governed procedures.
 
+## Value
+
+A `TempestSession` R6 object for the active Co-STORM research session.
+
 ## Examples
 
 ``` r

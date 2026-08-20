@@ -3,19 +3,24 @@
 The built-in solver runs a real
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
 product for each input and returns its authoritative report.
-`solver_metadata` contains only credential-safe Manifest, Workspace, and
-StageRecord summaries; live chats, clients, tools, and credentials are
-not returned as metadata.
+`solver_metadata` contains only a versioned, credential-safe trajectory
+summary; live chats, clients, tools, evidence identifiers, source
+content, and credentials are excluded. Caller datasets are validated and
+bound to the Task name and metadata by a canonical digest. Custom
+solvers cannot claim `program_set` or `knowledge_view` inputs on
+Tempest's behalf.
 
 ## Usage
 
 ``` r
 tempest_task(
-  dataset = c("qa"),
+  dataset = "qa",
   solver = NULL,
   scorer = NULL,
   scorer_chat = NULL,
   config = tempest_config(),
+  program_set = NULL,
+  knowledge_view = NULL,
   ...
 )
 ```
@@ -24,7 +29,8 @@ tempest_task(
 
 - dataset:
 
-  Which built-in dataset to use. Currently "qa".
+  The built-in `"qa"` smoke dataset or an exact data frame with `input`,
+  `target`, and optional unique `id` columns.
 
 - solver:
 
@@ -45,6 +51,16 @@ tempest_task(
 - config:
 
   A `TempestConfig` passed to the solver.
+
+- program_set:
+
+  Optional
+  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
+  evaluated by the built-in solver.
+
+- knowledge_view:
+
+  Optional immutable Graft view used by governed programs.
 
 - ...:
 

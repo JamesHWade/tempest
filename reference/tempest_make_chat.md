@@ -1,6 +1,6 @@
-# Create a chat object for a given role.
+# Create a chat object for a given role
 
-Create a chat object for a given role.
+Create a chat object for a given role
 
 ## Usage
 

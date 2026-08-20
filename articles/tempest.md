@@ -216,6 +216,42 @@ result or a succeeded, quiescent `TempestSession`. Independently
 supplied Workspace, Manifest, and StageRecord values cannot prove the
 exact completed product or its committed report.
 
+## Review the completed trajectory
+
+Build a bounded, reconstructable review without creating new product or
+Graft authority:
+
+``` r
+
+review <- tempest_trajectory_review(result)
+proposed_review <- tempest_trajectory_review(
+  result,
+  promotion_bundle = bundle
+)
+accepted_review <- tempest_trajectory_review(
+  result,
+  promotion_bundle = bundle,
+  promotion_receipt = receipt
+)
+```
+
+The closed ten-field projection contains the product identity, ordered
+StageRecord summaries, safe terminal Deputy identities, fixed ProgramSet
+references, input and optional promotion knowledge, evidence identities,
+explicit joins, and structural findings. Variable lanes retain at most
+250 records while binding the complete lane count and digest. It
+contains no prompts, responses, source content, local paths,
+credentials, live objects, or capabilities, and Tempest does not persist
+it.
+
+Join proofs distinguish authority-validated bindings and exact identity
+from mere correlation. A `correlation_id` appears only in
+`correlated_with` joins with `correlation_only` proof and never
+establishes causation or authorship. Mutable progress events remain
+outside the review identity. Proposed and accepted promotion states
+require the exact completed product, and receipt-only or cross-run
+combinations fail closed.
+
 ## Resume a staged run
 
 When `output_dir` is supplied, Tempest saves completed stages, source
@@ -382,7 +418,9 @@ joins only; they do not claim that an execution caused, authored, or
 validated report content.
 
 The bundled app includes Chat, STORM, Mind Map, Sources, Facts,
-Transcript, and Report panels. Co-STORM persistence is explicit bounded
+Transcript, Report, and Run review panels. The Run review shows the
+bounded authoritative StageRecord trajectory beside separately labeled,
+untrusted live progress. Co-STORM persistence is explicit bounded
 archive download and upload; there is no browser-temporary autosave. The
 STORM panel has no parallel perspective control and runs through the
 maintained asynchronous worker path. Progress, persistence, and
@@ -423,9 +461,12 @@ sample runs
 and returns its authoritative report. Each
 [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
 sample completes a real `TempestSession` and reads its committed report.
-Metadata contains credential-safe Manifest, Workspace, and StageRecord
-summaries; Co-STORM also includes terminal Deputy traces, never Agent
-objects, chats, clients, tools, or credentials.
+Metadata contains only a versioned review reference, exact product
+identity, fixed program artifact and evaluator identities, and a
+ten-stage structural summary; it never logs the complete review, Agent
+objects, chats, clients, tools, prompts, responses, paths, or
+credentials. `dataset` can be the built-in `"qa"` smoke set or an exact
+data frame with `input`, `target`, and optional unique `id` columns.
 
 ``` r
 
@@ -444,6 +485,63 @@ costorm_task <- tempest_costorm_task(
   scorer_chat = judge
 )
 ```
+
+Evaluation does not imply automatic improvement. Use different mutable
+vitals Task instances for baseline and candidate runs, explicitly
+compile selected dsprrr stages, and adopt a candidate ProgramSet only
+after reviewing its scores and trajectory summaries:
+
+``` r
+
+baseline_task <- tempest_task(
+  dataset = held_out,
+  config = cfg,
+  scorer_chat = judge,
+  program_set = program_set,
+  knowledge_view = knowledge_view
+)
+baseline_task$eval()
+
+candidate_program_set <- tempest_compile_programs(
+  program_set,
+  trainsets = stage_trainsets,
+  valsets = stage_validation_sets,
+  teleprompters = teleprompters,
+  path = "candidate-programs"
+)
+
+candidate_task <- tempest_task(
+  dataset = held_out,
+  config = cfg,
+  scorer_chat = judge,
+  program_set = candidate_program_set,
+  knowledge_view = knowledge_view
+)
+candidate_task$eval()
+
+# Inspect both results and make the adoption decision outside Tempest.
+baseline_samples <- baseline_task$get_samples()
+candidate_samples <- candidate_task$get_samples()
+chosen_program_set <- candidate_program_set
+
+next_result <- tempest_run(
+  "Grid-scale battery recycling",
+  config = cfg,
+  program_set = chosen_program_set,
+  knowledge_view = knowledge_view
+)
+```
+
+Keep compilation training and validation rows separate from held-out
+evaluation rows to avoid leakage, overfitting, and optimistic scores.
+Compare the same sample IDs, inputs, targets, and scorer. Tempest does
+not synthesize training data, choose an optimizer, compile
+automatically, or replace the baseline. Supply an explicit scorer or let
+the task use
+[`vitals::model_graded_qa()`](https://vitals.tidyverse.org/reference/scorer_model.html)
+with the chosen judge chat. Compilation works on isolated Module copies.
+When an artifact changes, its old governed-procedure reference is
+cleared until the candidate is reviewed and accepted separately.
 
 ## Product boundary
 
@@ -480,6 +578,8 @@ is provided.
   and
   [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
   before exercising Graft acceptance authority.
+- Reconstruct a non-authoritative review with
+  [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md).
 - Capture progress with
   [`tempest_progress_collector()`](https://jameshwade.github.io/tempest/reference/tempest_progress_collector.md)
   and inspect events with

@@ -21,9 +21,9 @@ tempest_shiny_ui(
 - panels:
 
   Character vector containing any of `"chat"`, `"sources"`, `"facts"`,
-  `"mindmap"`, `"transcript"`, `"report"`, and `"storm"`. Use `"all"`
-  for every panel. The default embeds the Co-STORM chat and durable
-  research views.
+  `"mindmap"`, `"transcript"`, `"report"`, `"storm"`, and `"review"`.
+  Use `"all"` for every panel. The default embeds the Co-STORM chat and
+  durable research views.
 
 - show_config:
 

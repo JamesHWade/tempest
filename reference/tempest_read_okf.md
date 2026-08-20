@@ -33,8 +33,8 @@ A `tempest_okf_bundle`.
 
 ## Details
 
-Tempest enforces the OKF v0.2 conformance boundary—parseable YAML
-frontmatter and a non-empty `type` for every concept—while tolerating
+Tempest enforces the OKF v0.2 conformance boundary: parseable YAML
+frontmatter and a non-empty `type` for every concept, while tolerating
 unknown types, extension keys, missing indexes, and broken links as the
 specification requires. Optional trust, lifecycle, provenance, and
 attestation problems are retained as diagnostics in `bundle$issues`.

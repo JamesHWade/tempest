@@ -1,6 +1,6 @@
 # Changelog
 
-## tempest (development version)
+## tempest 0.2.0
 
 - Tempest is now explicitly scoped as a scientific-research product. Its
   experimental application-neutral workflow, runtime, capability,
@@ -17,7 +17,7 @@
   no `store` aliases, legacy collection names, generic runtime
   injection, or generic result projections; old product bundles fail as
   unsupported; manifests carry exact dsprrr program, Graft snapshot, and
-  Deputy execution identities; and the namespace remains exactly 62
+  Deputy execution identities; and the namespace contains exactly 63
   exports with two registered S3 methods. Deputy identities support
   correlation and audit joins only, not claims of causal content
   provenance.
@@ -33,10 +33,11 @@
 - The bundled Shiny app now presents Co-STORM setup as a one-time native
   shinychat greeting with consistently sized controls, lets users
   replace generated panels with up to five named expert perspectives,
-  adds asynchronous STORM and Transcript panels, retains explicit
-  bounded session download/upload without autosave or parallel-research
-  controls, and announces progress and success with polite status
-  regions and failures with alerts.
+  adds asynchronous STORM, Transcript, and bounded Run review panels,
+  retains explicit bounded session download/upload without autosave or
+  parallel-research controls, labels mutable progress separately from
+  authoritative StageRecords, and announces progress and success with
+  polite status regions and failures with alerts.
 - [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
   and
   [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
@@ -59,9 +60,11 @@
   and
   [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
   now evaluate real completed Co-STORM and STORM products by default,
-  return their exact committed reports, and expose only credential-safe
-  Manifest, Workspace, StageRecord, and terminal Deputy trace summaries
-  as solver metadata.
+  accept exact caller datasets plus optional ProgramSet and
+  knowledge-view controls for their built-in solvers, return exact
+  committed reports, and expose only bounded credential-safe trajectory
+  summaries as solver metadata; custom solvers cannot claim those
+  unverified controls.
 - [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md)
   resolves an accepted `GovernedProcedure` and exact dsprrr
   `ProgramArtifact` only through a pinned Graft view. ProgramSets
@@ -88,8 +91,10 @@
   and
   [`tempest_load_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_load_program_set.md)
   make all ten STORM and Co-STORM stage programs explicitly addressable,
-  preserve exact dsprrr artifact and evaluator identities, and fail
-  closed on incomplete, corrupt, or mismatched program bundles.
+  preserve exact dsprrr artifact and evaluator identities, isolate
+  compilation from the baseline, clear a selected stage’s stale governed
+  reference when its artifact changes, and fail closed on incomplete,
+  corrupt, or mismatched program bundles.
   [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md),
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md),
   session restore/resume, and
@@ -155,6 +160,13 @@
 - [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md)
   is a deterministic projection and no longer accepts chat or
   configuration controls.
+- [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
+  returns a deterministic, bounded, non-authoritative review of one
+  exact completed STORM or Co-STORM product, with ordered StageRecords,
+  safe program, Deputy, evidence, and knowledge identities, explicit
+  proposed or accepted promotion state, and non-causal join proofs;
+  mutable progress, prompts, responses, source text, credentials, live
+  objects, and capabilities are excluded.
 
 ## tempest 0.1.0
 

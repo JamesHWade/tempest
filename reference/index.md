@@ -32,8 +32,11 @@ Run scripted STORM or persistent Deputy-backed Co-STORM research.
 
 ## Product evaluation
 
-Evaluate complete STORM and Co-STORM research products with vitals.
+Review completed trajectories and evaluate exact research products.
 
+- [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
+  **\[experimental\]** : A bounded review of one completed Tempest
+  product
 - [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
   : Create a vitals Task for tempest
 - [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
