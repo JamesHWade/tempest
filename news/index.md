@@ -1,5 +1,21 @@
 # Changelog
 
+## tempest (development version)
+
+- Experimental OpenTelemetry tracing can be enabled for bounded Tempest
+  STORM, stage-execution, retrieval search/fetch, and Co-STORM
+  moderator-completion, turn-commit, warmup, and report operations
+  through a host-configured provider; the bundled Shiny STORM worker
+  forwards only a validated Boolean intent, and local OTLP/HTTP
+  Collector setup is documented without adding provider or backend
+  ownership; the privacy-safe projection is off by default and excludes
+  research content, identifiers, URLs, and arbitrary progress payloads
+  (bavj).
+- The bundled Shiny workspace settings drawer now moves keyboard focus
+  into its named controls, keeps mobile focus inside the full-width
+  drawer, closes with Escape, restores the exact launcher, synchronizes
+  launcher state, and leaves the desktop chat interactive (dqyv).
+
 ## tempest 0.2.0
 
 - Tempest is now explicitly scoped as a scientific-research product. Its
