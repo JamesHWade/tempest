@@ -71,7 +71,7 @@ Remotes:
     tidyverse/ellmer@5cb916dbab521f2d0b3871f284a6c67b8045d14c
 Config/testthat/edition: 3
 Config/testthat/parallel: true
-Config/testthat/start-first: storm-persistence-artifact-drift,
+Config/testthat/start-first: storm, storm-persistence-artifact-drift,
     costorm-persistence-identity, product-baseline-storm,
     costorm-persistence-authority,
     research-workspace-persistence-records,
