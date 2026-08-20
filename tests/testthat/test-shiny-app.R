@@ -4,7 +4,7 @@
 source_shiny_modules <- function() {
   dir <- system.file("shiny", "R", package = "tempest")
   skip_if(identical(dir, ""), "Shiny app files not found")
-  env <- new.env(parent = globalenv())
+  env <- new.env(parent = asNamespace("tempest"))
   for (f in sort(list.files(dir, pattern = "[.][Rr]$", full.names = TRUE))) {
     sys.source(f, envir = env)
   }
