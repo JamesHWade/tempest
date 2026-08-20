@@ -329,6 +329,72 @@ host owns those settings. The Tempest projection excludes prompts, responses,
 queries, evidence, source content, URLs, paths, identifiers, and progress
 payloads.
 
+Set the privacy environment before starting R and any Mirai workers. The exact
+Tempest-only scope suppresses automatic Shiny, Mirai, ellmer, and httr2 spans,
+which are separate telemetry contracts that Tempest has not audited. In
+particular, httr2 records the complete request URL as `url.full`. Tempest's
+Google Custom Search request places both `GOOGLE_SEARCH_API_KEY` and the
+research query in URL query parameters, so enabling the httr2 scope could
+expose a credential and research content. Do not broaden the supported scope
+without a separate privacy review.
+
+#### Local OTLP/HTTP Collector
+
+Install [`otelsdk`](https://otelsdk.r-lib.org/reference/collecting.html) in the
+host environment, then save this traces-only Collector configuration as
+`otel-collector.yaml`:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug]
+```
+
+Run the Collector with its OTLP/HTTP port bound only to the local interface:
+
+```sh
+docker run --rm --name tempest-otel-collector \
+  -p 127.0.0.1:4318:4318 \
+  -v "$PWD/otel-collector.yaml:/etc/otelcol/config.yaml:ro" \
+  otel/opentelemetry-collector:0.158.0
+```
+
+Start a fresh R process configured to send only Tempest traces to that local
+Collector:
+
+```sh
+OTEL_TRACES_EXPORTER=http \
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 \
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
+OTEL_R_EMIT_SCOPES=io.github.jameshwade.tempest \
+OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false \
+OTEL_SERVICE_NAME=tempest-local \
+R
+```
+
+The local example needs no exporter header or credential. For a short-lived
+smoke test, the host may also set `OTEL_BSP_SCHEDULE_DELAY=100` so the SDK's
+batch processor exports promptly. Tempest does not flush or shut down the
+provider.
+
+[Logfire](https://pydantic.dev/docs/logfire/guides/otel-collector/otel-collector-overview/)
+is one optional operator-selected destination downstream of the Collector. It
+is not a Tempest dependency, API, default, endpoint, SDK, or schema. Keep any
+backend token and exporter configuration in operator-owned Collector secrets,
+never in Tempest configuration, source code, examples, snapshots, or bundles.
+
 Report polishing is deterministic. `remove_duplicate = TRUE` is unsupported
 and fails before report publication.
 

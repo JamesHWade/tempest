@@ -1,6 +1,6 @@
 # tempest (development version)
 
-* Experimental OpenTelemetry tracing can be enabled for bounded Tempest STORM, stage-execution, and Co-STORM moderator-completion, turn-commit, warmup, and report operations through a host-configured provider; the privacy-safe projection is off by default and excludes research content, identifiers, URLs, and arbitrary progress payloads (bavj).
+* Experimental OpenTelemetry tracing can be enabled for bounded Tempest STORM, stage-execution, retrieval search/fetch, and Co-STORM moderator-completion, turn-commit, warmup, and report operations through a host-configured provider; the bundled Shiny STORM worker forwards only a validated Boolean intent, and local OTLP/HTTP Collector setup is documented without adding provider or backend ownership; the privacy-safe projection is off by default and excludes research content, identifiers, URLs, and arbitrary progress payloads (bavj).
 
 # tempest 0.2.0
 

@@ -735,6 +735,152 @@ test_that("worker opt-in is Boolean and worker-local options are restored", {
   )
 })
 
+test_that("retrieval state accepts only bounded branch-local fields", {
+  state <- tempest:::tempest_otel_retrieval_state()
+
+  expect_identical(
+    tempest:::tempest_otel_retrieval_state_valid(state),
+    TRUE
+  )
+  expect_identical(
+    tempest:::tempest_otel_retrieval_search_result_count(
+      data.frame(value = 1:3),
+      2L
+    ),
+    2L
+  )
+  expect_null(
+    tempest:::tempest_otel_retrieval_search_result_count(
+      list(value = "not a data frame"),
+      2L
+    )
+  )
+
+  state$cache_hit <- 1L
+  expect_identical(
+    tempest:::tempest_otel_retrieval_state_valid(state),
+    FALSE
+  )
+})
+
+test_that("retrieval tracing projects successful and returned failure states", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  success <- tempest:::tempest_otel_retrieval_state()
+  success$cache_hit <- TRUE
+  success$result_count <- 2L
+  success$fallback_taken <- TRUE
+  success$outcome <- "succeeded"
+  success_value <- list(value = "exact success")
+
+  traced_success <- tempest:::tempest_otel_trace_retrieval(
+    "retrieval.search",
+    success_value,
+    success
+  )
+
+  failure <- tempest:::tempest_otel_retrieval_state()
+  failure$result_count <- 0L
+  failure$outcome <- "failed"
+  failure_value <- list(value = "exact failure record")
+  traced_failure <- tempest:::tempest_otel_trace_retrieval(
+    "retrieval.fetch",
+    failure_value,
+    failure
+  )
+
+  expect_identical(traced_success, success_value)
+  expect_identical(traced_failure, failure_value)
+  expect_identical(
+    state$spans[[1L]]$attributes,
+    list(
+      "tempest.operation" = "retrieval.search",
+      "tempest.cache_hit" = TRUE,
+      "tempest.result_count" = 2L,
+      "tempest.status" = "succeeded",
+      "tempest.fallback_taken" = TRUE
+    )
+  )
+  expect_identical(state$spans[[1L]]$statuses, "ok")
+  expect_identical(state$spans[[1L]]$end_count, 1L)
+  expect_identical(
+    state$spans[[2L]]$attributes,
+    list(
+      "tempest.operation" = "retrieval.fetch",
+      "tempest.cache_hit" = FALSE,
+      "tempest.result_count" = 0L,
+      "tempest.status" = "failed",
+      "tempest.error_class" = "tempest_operation_error"
+    )
+  )
+  expect_identical(state$spans[[2L]]$statuses, "error")
+  expect_identical(state$spans[[2L]]$end_count, 1L)
+})
+
+test_that("retrieval tracing preserves exact errors and cancellation", {
+  local_otel_opt_in()
+  state <- local_fake_otel()
+  error_state <- tempest:::tempest_otel_retrieval_state()
+  error_state$cache_hit <- TRUE
+  original <- structure(
+    list(message = "private retrieval detail", call = NULL),
+    class = c("private_retrieval_error", "error", "condition")
+  )
+
+  caught <- tryCatch(
+    tempest:::tempest_otel_trace_retrieval(
+      "retrieval.fetch",
+      stop(original),
+      error_state
+    ),
+    error = identity
+  )
+
+  cancel_state <- tempest:::tempest_otel_retrieval_state()
+  cancelled <- structure(
+    list(message = "private cancellation detail", call = NULL),
+    class = c("interrupt", "condition")
+  )
+  caught_cancel <- tryCatch(
+    tempest:::tempest_otel_trace_retrieval(
+      "retrieval.search",
+      signalCondition(cancelled),
+      cancel_state
+    ),
+    interrupt = identity
+  )
+
+  expect_identical(caught, original)
+  expect_identical(caught_cancel, cancelled)
+  expect_identical(
+    state$spans[[1L]]$attributes[["tempest.cache_hit"]],
+    TRUE
+  )
+  expect_identical(
+    state$spans[[1L]]$attributes[["tempest.error_class"]],
+    "tempest_operation_error"
+  )
+  expect_null(state$spans[[1L]]$attributes[["tempest.result_count"]])
+  expect_identical(
+    state$spans[[2L]]$attributes[["tempest.status"]],
+    "cancelled"
+  )
+  expect_identical(
+    state$spans[[2L]]$attributes[["tempest.cancelled"]],
+    TRUE
+  )
+  expect_identical(state$spans[[2L]]$statuses, "unset")
+  expect_null(state$spans[[2L]]$attributes[["tempest.result_count"]])
+  expect_identical(
+    grepl(
+      "private",
+      jsonlite::toJSON(lapply(state$spans, \(span) span$attributes)),
+      fixed = TRUE
+    ),
+    FALSE
+  )
+})
+
 test_that("async promise spans deactivate at dispatch and end at settlement", {
   local_otel_opt_in()
   state <- local_fake_otel()
@@ -1498,6 +1644,14 @@ test_that("adapter source and opt-in docs retain static privacy gates", {
     readLines(file.path(root, "R", "otel.R"), warn = FALSE),
     collapse = "\n"
   )
+  search_code <- paste(
+    deparse(body(tempest:::TempestRetriever$public_methods$search)),
+    collapse = "\n"
+  )
+  fetch_code <- paste(
+    deparse(body(tempest:::TempestRetriever$public_methods$fetch)),
+    collapse = "\n"
+  )
   readme <- paste(
     readLines(file.path(root, "README.md"), warn = FALSE),
     collapse = "\n"
@@ -1513,6 +1667,9 @@ test_that("adapter source and opt-in docs retain static privacy gates", {
     "event@timestamp",
     "event@parent_event_id",
     "event@correlation_id",
+    "tempest_search_cache_key",
+    "tempest_fetch_cache_key",
+    "cache_stats",
     "Logfire"
   )
   present <- forbidden[vapply(
@@ -1524,6 +1681,8 @@ test_that("adapter source and opt-in docs retain static privacy gates", {
   )]
 
   expect_identical(present, character())
+  expect_no_match(search_code, "cache_stats", fixed = TRUE)
+  expect_no_match(fetch_code, "cache_stats", fixed = TRUE)
   expect_match(
     adapter,
     "OTEL_R_EMIT_SCOPES",

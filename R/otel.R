@@ -247,6 +247,61 @@ tempest_otel_no_context_sentinel <- new.env(parent = emptyenv())
 
 tempest_otel_owner_sentinel <- new.env(parent = emptyenv())
 
+tempest_otel_retrieval_state_sentinel <- new.env(parent = emptyenv())
+
+tempest_otel_retrieval_state <- function() {
+  state <- new.env(parent = emptyenv())
+  state$sentinel <- tempest_otel_retrieval_state_sentinel
+  state$cache_hit <- FALSE
+  state$result_count <- NULL
+  state$fallback_taken <- FALSE
+  state$outcome <- NULL
+  state
+}
+
+tempest_otel_retrieval_state_valid <- function(state) {
+  is.environment(state) &&
+    identical(state$sentinel, tempest_otel_retrieval_state_sentinel) &&
+    rlang::is_bool(state$cache_hit) &&
+    (is.null(state$result_count) ||
+      tempest_otel_attribute_valid(
+        "tempest.result_count",
+        state$result_count
+      )) &&
+    rlang::is_bool(state$fallback_taken) &&
+    (is.null(state$outcome) ||
+      (rlang::is_string(state$outcome) &&
+        state$outcome %in% c("succeeded", "failed")))
+}
+
+tempest_otel_retrieval_search_result_count <- function(result, maximum) {
+  tempest_otel_fail_open({
+    if (
+      !is.data.frame(result) ||
+        !is.numeric(maximum) ||
+        length(maximum) != 1L ||
+        is.na(maximum) ||
+        !is.finite(maximum) ||
+        maximum < 0 ||
+        maximum != floor(maximum)
+    ) {
+      return(NULL)
+    }
+    count <- nrow(result)
+    if (
+      !is.numeric(count) ||
+        length(count) != 1L ||
+        is.na(count) ||
+        !is.finite(count) ||
+        count < 0 ||
+        count != floor(count)
+    ) {
+      return(NULL)
+    }
+    min(count, maximum)
+  })
+}
+
 tempest_otel_owner <- function() {
   owner <- new.env(parent = emptyenv())
   owner$sentinel <- tempest_otel_owner_sentinel
@@ -1175,7 +1230,65 @@ tempest_otel_result_fallback <- function(operation, result) {
   tryCatch(isTRUE(result$record@fallback_taken), error = function(...) FALSE)
 }
 
-tempest_otel_trace <- function(operation, code, stage = NULL, owner = NULL) {
+tempest_otel_retrieval_project <- function(context, state) {
+  if (!tempest_otel_retrieval_state_valid(state)) {
+    return(invisible(context))
+  }
+  tempest_otel_context_set_attribute(
+    context,
+    "tempest.cache_hit",
+    state$cache_hit
+  )
+  if (!is.null(state$result_count)) {
+    tempest_otel_context_set_attribute(
+      context,
+      "tempest.result_count",
+      state$result_count
+    )
+  }
+  invisible(context)
+}
+
+tempest_otel_complete_retrieval <- function(context, state) {
+  on.exit(tempest_otel_context_end(context), add = TRUE)
+  tempest_otel_retrieval_project(context, state)
+  if (
+    tempest_otel_retrieval_state_valid(state) &&
+      identical(state$outcome, "succeeded")
+  ) {
+    tempest_otel_mark_status(
+      context,
+      "succeeded",
+      fallback_taken = state$fallback_taken
+    )
+  } else {
+    tempest_otel_mark_status(
+      context,
+      "failed",
+      error = simpleError("Retrieval has no successful terminal result.")
+    )
+  }
+  tempest_otel_context_end(context)
+}
+
+tempest_otel_trace_retrieval <- function(operation, code, state) {
+  if (
+    !rlang::is_string(operation) ||
+      !operation %in% c("retrieval.search", "retrieval.fetch") ||
+      !tempest_otel_retrieval_state_valid(state)
+  ) {
+    return(force(code))
+  }
+  tempest_otel_trace(operation, code, retrieval_state = state)
+}
+
+tempest_otel_trace <- function(
+  operation,
+  code,
+  stage = NULL,
+  owner = NULL,
+  retrieval_state = NULL
+) {
   context <- tempest_otel_provider_call(
     tempest_otel_context_start(operation, stage = stage, owner = owner)
   )
@@ -1195,6 +1308,11 @@ tempest_otel_trace <- function(operation, code, stage = NULL, owner = NULL) {
       ),
       add = TRUE
     )
+    if (!is.null(retrieval_state)) {
+      tempest_otel_fail_open(
+        tempest_otel_retrieval_project(context, retrieval_state)
+      )
+    }
     tryCatch(
       tempest_otel_complete_error(context, error),
       error = function(...) NULL,
@@ -1210,10 +1328,14 @@ tempest_otel_trace <- function(operation, code, stage = NULL, owner = NULL) {
     error = handle_error,
     interrupt = handle_error
   )
-  tempest_otel_complete_success(
-    context,
-    fallback_taken = tempest_otel_result_fallback(operation, result)
-  )
+  if (is.null(retrieval_state)) {
+    tempest_otel_complete_success(
+      context,
+      fallback_taken = tempest_otel_result_fallback(operation, result)
+    )
+  } else {
+    tempest_otel_complete_retrieval(context, retrieval_state)
+  }
   result
 }
 

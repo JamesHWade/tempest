@@ -33,6 +33,157 @@ test_that("STORM publication uses the exact launch configuration", {
   expect_no_match(server_code, "report_ready", fixed = TRUE)
   expect_no_match(runner_code, "parallel_research", fixed = TRUE)
   expect_no_match(runner_code, "tempest_run =", fixed = TRUE)
+  expect_match(
+    server_code,
+    "otel_enabled <- tempest:::tempest_otel_worker_intent()",
+    fixed = TRUE
+  )
+  expect_match(server_code, "otel_enabled = otel_enabled", fixed = TRUE)
+  expect_match(
+    runner_code,
+    "tempest:::tempest_otel_worker_call(",
+    fixed = TRUE
+  )
+  expect_identical(
+    tail(names(formals(env$storm_run_with_progress)), 1L),
+    "otel_enabled"
+  )
+  expect_no_match(server_code, "worker_state$otel", fixed = TRUE)
+  telemetry_code <- paste(server_code, runner_code, sep = "\n")
+  forbidden <- c(
+    "tempest_otel_context",
+    "tempest_otel_get_tracer",
+    "traceparent",
+    "tracestate",
+    "OTEL_EXPORTER",
+    "Sys.getenv",
+    "credentials",
+    "headers"
+  )
+  present <- forbidden[vapply(
+    forbidden,
+    grepl,
+    logical(1),
+    x = telemetry_code,
+    fixed = TRUE
+  )]
+  expect_identical(present, character())
+})
+
+test_that("STORM launch snapshots only validated telemetry intent", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("later")
+  skip_if_not_installed("mirai")
+  local_mirai_coverage_dir()
+  withr::local_options(tempest.otel.enabled = TRUE)
+  withr::local_envvar(c(
+    OTEL_R_EMIT_SCOPES = "io.github.jameshwade.tempest",
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = "false"
+  ))
+  env <- tempest:::tempest_shiny_module_env()
+  published <- list()
+  store <- list(
+    publish_storm_report = function(result, config) {
+      published[[length(published) + 1L]] <<- result
+      result$report_md
+    }
+  )
+
+  original_poll <- env$storm_poll_progress_stream
+  original_run_id <- env$storm_result_run_id
+  original_runner <- env$storm_run_with_progress
+  withr::defer({
+    env$storm_poll_progress_stream <- original_poll
+    env$storm_result_run_id <- original_run_id
+    env$storm_run_with_progress <- original_runner
+  })
+  env$storm_poll_progress_stream <- function(path, ...) invisible(path)
+  env$storm_result_run_id <- function(result) result$run_id
+  env$storm_run_with_progress <- function(
+    topic,
+    progress_run_id,
+    otel_enabled,
+    ...
+  ) {
+    list(
+      result = list(
+        run_id = progress_run_id,
+        report_md = topic,
+        otel_enabled = otel_enabled,
+        otel_type = typeof(otel_enabled)
+      ),
+      progress = list()
+    )
+  }
+
+  shiny::testServer(
+    env$mod_storm_server,
+    args = list(
+      config = shiny::reactive(tempest_config()),
+      store = store
+    ),
+    {
+      session$setInputs(topic = "Enabled launch", run = 1)
+      session$flushReact()
+      expect_identical(
+        await_tempest_extended_task(storm_task, session),
+        "success"
+      )
+      expect_identical(published[[1L]]$otel_enabled, TRUE)
+      expect_identical(published[[1L]]$otel_type, "logical")
+      expect_identical(getOption("tempest.otel.enabled"), TRUE)
+
+      options(tempest.otel.enabled = FALSE)
+      session$setInputs(topic = "Disabled launch", run = 2)
+      session$flushReact()
+      expect_identical(
+        await_tempest_extended_task(storm_task, session),
+        "success"
+      )
+      expect_identical(published[[2L]]$otel_enabled, FALSE)
+      expect_identical(published[[2L]]$otel_type, "logical")
+      expect_identical(getOption("tempest.otel.enabled"), FALSE)
+      expect_length(published, 2L)
+      expect_null(worker_state$job)
+      expect_null(worker_state$config)
+    }
+  )
+})
+
+test_that("host telemetry docs keep the privacy-safe Collector boundary", {
+  context <- test_source_inventory_context()
+  if (!identical(context$mode, "source")) {
+    expect_identical(context$mode, "installed")
+    return(invisible(NULL))
+  }
+  readme <- paste(
+    readLines(file.path(context$root, "README.md"), warn = FALSE),
+    collapse = "\n"
+  )
+  required <- c(
+    "OTEL_TRACES_EXPORTER=http",
+    "OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318",
+    "OTEL_R_EMIT_SCOPES=io.github.jameshwade.tempest",
+    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false",
+    "Shiny, Mirai, ellmer, and httr2",
+    "url.full",
+    "GOOGLE_SEARCH_API_KEY",
+    "optional operator-selected destination downstream of the Collector"
+  )
+  missing <- required[
+    !vapply(
+      required,
+      grepl,
+      logical(1),
+      x = readme,
+      fixed = TRUE
+    )
+  ]
+
+  expect_identical(missing, character())
+  expect_no_match(readme, "logfire-us.pydantic.dev", fixed = TRUE)
+  expect_no_match(readme, "Authorization=", fixed = TRUE)
 })
 
 test_that("Run review is internal and leaves public adapter shapes exact", {

@@ -108,7 +108,8 @@ mod_storm_server <- function(id, config, store) {
         strategy,
         max_rounds,
         progress_stream_path,
-        progress_run_id
+        progress_run_id,
+        otel_enabled
       ) {
         job <- mirai::mirai(
           {
@@ -122,7 +123,8 @@ mod_storm_server <- function(id, config, store) {
               progress_stream_path = progress_stream_path,
               progress_run_id = progress_run_id,
               progress_collector = progress_collector,
-              tempest_run_factory = tempest_run_factory
+              tempest_run_factory = tempest_run_factory,
+              otel_enabled = otel_enabled
             )
           },
           topic = topic,
@@ -132,6 +134,7 @@ mod_storm_server <- function(id, config, store) {
           max_rounds = max_rounds,
           progress_stream_path = progress_stream_path,
           progress_run_id = progress_run_id,
+          otel_enabled = otel_enabled,
           package_root = storm_package_root(),
           progress_collector = storm_worker_progress_collector,
           storm_runner = storm_run_with_progress,
@@ -188,6 +191,7 @@ mod_storm_server <- function(id, config, store) {
             identical(run_token, progress_stream$token)
         }
       )
+      otel_enabled <- tempest:::tempest_otel_worker_intent()
       storm_task$invoke(
         topic = topic,
         cfg = worker_state$config,
@@ -195,7 +199,8 @@ mod_storm_server <- function(id, config, store) {
         strategy = input$strategy %||% "key_questions",
         max_rounds = input$max_rounds %||% 3,
         progress_stream_path = progress_stream$path,
-        progress_run_id = progress_run_id
+        progress_run_id = progress_run_id,
+        otel_enabled = otel_enabled
       )
     })
 
@@ -604,22 +609,27 @@ storm_run_with_progress <- function(
   progress_stream_path = NULL,
   progress_run_id = NULL,
   progress_collector = storm_worker_progress_collector,
-  tempest_run_factory = storm_worker_tempest_run
+  tempest_run_factory = storm_worker_tempest_run,
+  otel_enabled = FALSE
 ) {
   collector <- progress_collector(
     include_payload = TRUE,
     stream_path = progress_stream_path
   )
   tempest_run <- tempest_run_factory(package_root)
-  result <- tempest_run(
-    topic = topic,
-    config = cfg,
-    n_experts = n_experts,
-    research_strategy = strategy,
-    max_rounds = max_rounds,
-    run_id = progress_run_id,
-    progress = collector$record,
-    verbose = FALSE
+  result <- tempest:::tempest_otel_worker_call(
+    tempest_run,
+    list(
+      topic = topic,
+      config = cfg,
+      n_experts = n_experts,
+      research_strategy = strategy,
+      max_rounds = max_rounds,
+      run_id = progress_run_id,
+      progress = collector$record,
+      verbose = FALSE
+    ),
+    otel_enabled
   )
   list(
     result = result,
@@ -632,11 +642,32 @@ storm_worker_tempest_run <- function(package_root = NULL) {
   getExportedValue("tempest", "tempest_run")
 }
 
+storm_is_source_checkout <- function(package_root = NULL) {
+  if (
+    !is.character(package_root) ||
+      length(package_root) != 1L ||
+      is.na(package_root) ||
+      !nzchar(package_root)
+  ) {
+    return(FALSE)
+  }
+  desc <- file.path(package_root, "DESCRIPTION")
+  if (
+    !file.exists(desc) ||
+      !file.exists(file.path(package_root, "R", "storm.R"))
+  ) {
+    return(FALSE)
+  }
+  package <- tryCatch(
+    read.dcf(desc, fields = "Package")[[1]],
+    error = function(e) NA_character_
+  )
+  identical(package, "tempest")
+}
+
 storm_worker_load_checkout <- function(package_root = NULL) {
   if (
-    is.null(package_root) ||
-      !nzchar(package_root) ||
-      !file.exists(file.path(package_root, "DESCRIPTION")) ||
+    !storm_is_source_checkout(package_root) ||
       !requireNamespace("pkgload", quietly = TRUE)
   ) {
     return(FALSE)
@@ -664,17 +695,10 @@ storm_package_root <- function() {
   }
   candidates <- c(package_dir, file.path(package_dir, ".."))
   for (candidate in candidates) {
-    desc <- file.path(candidate, "DESCRIPTION")
-    if (!file.exists(desc)) {
+    if (!storm_is_source_checkout(candidate)) {
       next
     }
-    package <- tryCatch(
-      read.dcf(desc, fields = "Package")[[1]],
-      error = function(e) NA_character_
-    )
-    if (identical(package, "tempest")) {
-      return(normalizePath(candidate, mustWork = FALSE))
-    }
+    return(normalizePath(candidate, mustWork = FALSE))
   }
   NULL
 }

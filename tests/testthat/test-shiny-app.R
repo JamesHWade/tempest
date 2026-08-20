@@ -2176,6 +2176,98 @@ test_that("STORM worker requires current run and progress contracts", {
   expect_equal(value$progress[[1]]$stage, "research")
 })
 
+test_that("STORM worker scopes exact telemetry intent to the run", {
+  app <- source_shiny_modules()
+  prior <- options(tempest.otel.enabled = "worker-prior")
+  withr::defer(options(prior))
+  fixed_run <- function(...) {
+    list(report_md = "fixed run")
+  }
+  observed_run <- function(...) {
+    list(
+      report_md = "observed run",
+      otel_enabled = getOption("tempest.otel.enabled"),
+      otel_type = typeof(getOption("tempest.otel.enabled"))
+    )
+  }
+  run <- function(tempest_run, otel_enabled) {
+    app$storm_run_with_progress(
+      topic = "Topic",
+      cfg = tempest_config(),
+      n_experts = 1,
+      strategy = "key_questions",
+      max_rounds = 1,
+      progress_run_id = "shiny-run",
+      tempest_run_factory = function(package_root) tempest_run,
+      otel_enabled = otel_enabled
+    )
+  }
+
+  observed <- run(observed_run, TRUE)
+
+  expect_identical(observed$result$otel_enabled, TRUE)
+  expect_identical(observed$result$otel_type, "logical")
+  expect_identical(
+    getOption("tempest.otel.enabled"),
+    "worker-prior"
+  )
+
+  options(tempest.otel.enabled = NULL)
+  observed <- run(observed_run, FALSE)
+
+  expect_identical(observed$result$otel_enabled, FALSE)
+  expect_identical(observed$result$otel_type, "logical")
+  expect_null(getOption("tempest.otel.enabled"))
+
+  original_error <- simpleError("worker error")
+  caught_error <- tryCatch(
+    run(function(...) stop(original_error), TRUE),
+    error = identity
+  )
+
+  expect_identical(caught_error, original_error)
+  expect_null(getOption("tempest.otel.enabled"))
+
+  original_interrupt <- structure(
+    list(message = "worker interrupt", call = NULL),
+    class = c("tempest_test_interrupt", "interrupt", "condition")
+  )
+  caught_interrupt <- tryCatch(
+    run(function(...) stop(original_interrupt), TRUE),
+    interrupt = identity
+  )
+
+  expect_identical(caught_interrupt, original_interrupt)
+  expect_null(getOption("tempest.otel.enabled"))
+
+  enabled <- run(fixed_run, TRUE)
+  disabled <- run(fixed_run, FALSE)
+
+  expect_identical(serialize(enabled, NULL), serialize(disabled, NULL))
+  expect_null(getOption("tempest.otel.enabled"))
+})
+
+test_that("STORM worker loader ignores installed lazyload trees", {
+  app <- source_shiny_modules()
+  installed_root <- withr::local_tempdir()
+  dir.create(file.path(installed_root, "R"))
+  writeLines("Package: tempest", file.path(installed_root, "DESCRIPTION"))
+  writeLines(
+    "lazyLoad(dbbase, ns, filter = function(n) n != \".__NAMESPACE__.\")",
+    file.path(installed_root, "R", "tempest")
+  )
+  invisible(file.create(file.path(installed_root, "R", "tempest.rdb")))
+  invisible(file.create(file.path(installed_root, "R", "tempest.rdx")))
+  helper_before <- getFromNamespace("tempest_otel_worker_call", "tempest")
+
+  expect_identical(app$storm_is_source_checkout(installed_root), FALSE)
+  expect_identical(app$storm_worker_load_checkout(installed_root), FALSE)
+
+  helper_after <- getFromNamespace("tempest_otel_worker_call", "tempest")
+  expect_identical(is.function(helper_after), TRUE)
+  expect_identical(helper_after, helper_before)
+})
+
 test_that("STORM worker streams progress before mirai resolves", {
   skip_if_not_installed("mirai")
   local_mirai_coverage_dir()
@@ -2192,8 +2284,11 @@ test_that("STORM worker streams progress before mirai resolves", {
     stage = "research"
   )
 
+  withr::local_options(tempest.otel.enabled = "host-prior")
   value <- mirai::mirai(
     {
+      worker_prior <- options(tempest.otel.enabled = "worker-prior")
+      on.exit(options(worker_prior), add = TRUE)
       fake_run <- function(
         topic,
         config,
@@ -2209,18 +2304,45 @@ test_that("STORM worker streams progress before mirai resolves", {
         while (!file.exists(release_path) && Sys.time() < deadline) {
           Sys.sleep(0.02)
         }
-        list(report_md = paste("worker run", topic))
+        list(
+          report_md = paste("worker run", topic),
+          otel_enabled = getOption("tempest.otel.enabled"),
+          otel_type = typeof(getOption("tempest.otel.enabled"))
+        )
       }
 
-      storm_runner(
+      result <- storm_runner(
         topic = topic,
         cfg = cfg,
         n_experts = n_experts,
         strategy = strategy,
         max_rounds = max_rounds,
+        package_root = package_root,
         progress_stream_path = progress_stream_path,
         progress_collector = progress_collector,
-        tempest_run_factory = function(package_root) fake_run
+        tempest_run_factory = function(package_root) {
+          if (
+            !is.null(package_root) &&
+              !isTRUE(worker_loader(package_root))
+          ) {
+            stop("Failed to load the Tempest checkout in the STORM worker.")
+          }
+          worker_helper <- tryCatch(
+            getFromNamespace("tempest_otel_worker_call", "tempest"),
+            error = function(e) NULL
+          )
+          if (!is.function(worker_helper)) {
+            stop(
+              "Tempest telemetry support is unavailable in the STORM worker."
+            )
+          }
+          fake_run
+        },
+        otel_enabled = otel_enabled
+      )
+      list(
+        value = result,
+        restored_option = getOption("tempest.otel.enabled")
       )
     },
     topic = "Topic",
@@ -2228,9 +2350,12 @@ test_that("STORM worker streams progress before mirai resolves", {
     n_experts = 1,
     strategy = "key_questions",
     max_rounds = 1,
+    package_root = app$storm_package_root(),
     progress_stream_path = stream_path,
     progress_collector = app$storm_worker_progress_collector,
     storm_runner = app$storm_run_with_progress,
+    worker_loader = app$storm_worker_load_checkout,
+    otel_enabled = TRUE,
     event = event,
     release_path = release_path
   )
@@ -2250,8 +2375,15 @@ test_that("STORM worker streams progress before mirai resolves", {
   expect_equal(mirai::unresolved(value), TRUE)
   invisible(file.create(release_path))
   result <- value[]
-  expect_equal(result$result$report_md, "worker run Topic")
-  expect_equal(result$progress[[1]]$stage, "research")
+  expect_equal(result$value$result$report_md, "worker run Topic")
+  expect_identical(result$value$result$otel_enabled, TRUE)
+  expect_identical(result$value$result$otel_type, "logical")
+  expect_identical(result$restored_option, "worker-prior")
+  expect_equal(result$value$progress[[1]]$stage, "research")
+  expect_identical(
+    getOption("tempest.otel.enabled"),
+    "host-prior"
+  )
 })
 
 test_that("workflow_progress_ui hides recorded failures once succeeded", {

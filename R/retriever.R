@@ -771,64 +771,80 @@ TempestRetriever <- R6::R6Class(
       provider <- tempest_normalize_search_provider(provider)
 
       key <- tempest_search_cache_key(provider, query, k)
-      if (self$cache_enabled && !isTRUE(force)) {
-        cached <- tempest_cache_lookup(
-          self$cache_dir,
-          key,
-          max_age = self$cache_ttl
+      otel_state <- tempest_otel_retrieval_state()
+      execute <- function() {
+        if (self$cache_enabled && !isTRUE(force)) {
+          cached <- tempest_cache_lookup(
+            self$cache_dir,
+            key,
+            max_age = self$cache_ttl
+          )
+          private$record_cache("search", cached$status)
+          if (!is.null(cached$value)) {
+            otel_state$cache_hit <- TRUE
+            otel_state$result_count <-
+              tempest_otel_retrieval_search_result_count(cached$value, k)
+            otel_state$outcome <- "succeeded"
+            return(cached$value)
+          }
+        } else {
+          private$record_cache("search", "bypass")
+        }
+
+        # Handle "native" provider - falls back to Wikipedia for direct search() calls
+        # since native provider web search is handled via tool registration
+        effective_provider <- if (identical(provider, "native")) {
+          otel_state$fallback_taken <- TRUE
+          "wikipedia"
+        } else {
+          provider
+        }
+
+        out <- tryCatch(
+          switch(
+            effective_provider,
+            wikipedia = tempest_wiki_search(query, limit = k),
+            you = tempest_search_you(query, k = k),
+            bing = tempest_search_bing(query, k = k),
+            serper = tempest_search_serper(query, k = k),
+            brave = tempest_search_brave(query, k = k),
+            duckduckgo = tempest_search_duckduckgo(query, k = k),
+            tavily = tempest_search_tavily(query, k = k),
+            searxng = tempest_search_searxng(query, k = k),
+            google = tempest_search_google(query, k = k),
+            azure_ai_search = tempest_search_azure_ai_search(query, k = k),
+            tempest_abort(c(
+              "Unknown search provider: {.val {provider}}",
+              i = "Available providers: {.val {tempest_search_provider_choices()}}"
+            ))
+          ),
+          error = function(error) {
+            tempest_rethrow_operation(error, class = "tempest_retriever_error")
+          }
         )
-        private$record_cache("search", cached$status)
-        if (!is.null(cached$value)) {
-          return(cached$value)
-        }
-      } else {
-        private$record_cache("search", "bypass")
-      }
 
-      # Handle "native" provider - falls back to Wikipedia for direct search() calls
-      # since native provider web search is handled via tool registration
-      effective_provider <- if (identical(provider, "native")) {
-        "wikipedia"
-      } else {
-        provider
-      }
+        # Normalize URLs without aborting on missing/unsafe values, then drop
+        # any rows we cannot use. A single bad or blocked URL must not discard
+        # every other (valid) result for the query.
+        out$url <- purrr::map_chr(out$url, function(u) {
+          tryCatch(tempest_normalize_url(u), error = function(e) NA_character_)
+        })
+        out <- out[!is.na(out$url) & nzchar(out$url), , drop = FALSE]
+        out$source_id <- purrr::map_chr(out$url, tempest_source_id)
 
-      out <- tryCatch(
-        switch(
-          effective_provider,
-          wikipedia = tempest_wiki_search(query, limit = k),
-          you = tempest_search_you(query, k = k),
-          bing = tempest_search_bing(query, k = k),
-          serper = tempest_search_serper(query, k = k),
-          brave = tempest_search_brave(query, k = k),
-          duckduckgo = tempest_search_duckduckgo(query, k = k),
-          tavily = tempest_search_tavily(query, k = k),
-          searxng = tempest_search_searxng(query, k = k),
-          google = tempest_search_google(query, k = k),
-          azure_ai_search = tempest_search_azure_ai_search(query, k = k),
-          tempest_abort(c(
-            "Unknown search provider: {.val {provider}}",
-            i = "Available providers: {.val {tempest_search_provider_choices()}}"
-          ))
-        ),
-        error = function(error) {
-          tempest_rethrow_operation(error, class = "tempest_retriever_error")
+        if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, out)) {
+          private$record_cache("search", "write")
         }
+        otel_state$result_count <-
+          tempest_otel_retrieval_search_result_count(out, k)
+        otel_state$outcome <- "succeeded"
+        out
+      }
+      tempest_otel_trace_retrieval(
+        "retrieval.search",
+        execute(),
+        otel_state
       )
-
-      # Normalize URLs without aborting on missing/unsafe values, then drop
-      # any rows we cannot use. A single bad or blocked URL must not discard
-      # every other (valid) result for the query.
-      out$url <- purrr::map_chr(out$url, function(u) {
-        tryCatch(tempest_normalize_url(u), error = function(e) NA_character_)
-      })
-      out <- out[!is.na(out$url) & nzchar(out$url), , drop = FALSE]
-      out$source_id <- purrr::map_chr(out$url, tempest_source_id)
-
-      if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, out)) {
-        private$record_cache("search", "write")
-      }
-      out
     },
 
     #' @description
@@ -854,93 +870,108 @@ TempestRetriever <- R6::R6Class(
       }
 
       key <- tempest_fetch_cache_key(url, self$config@user_agent)
-      if (self$cache_enabled && !isTRUE(force)) {
-        cached <- tempest_cache_lookup(
-          self$cache_dir,
-          key,
-          max_age = self$cache_ttl
+      otel_state <- tempest_otel_retrieval_state()
+      execute <- function() {
+        if (self$cache_enabled && !isTRUE(force)) {
+          cached <- tempest_cache_lookup(
+            self$cache_dir,
+            key,
+            max_age = self$cache_ttl
+          )
+          private$record_cache("fetch", cached$status)
+          if (!is.null(cached$value)) {
+            otel_state$cache_hit <- TRUE
+            self$workspace$upsert_retrieved_resource(cached$value)
+            otel_state$result_count <- 1L
+            otel_state$outcome <- "succeeded"
+            return(cached$value)
+          }
+        } else {
+          private$record_cache("fetch", "bypass")
+        }
+
+        res <- tryCatch(
+          tempest_fetch_url_text(url, user_agent = self$config@user_agent),
+          error = function(error) {
+            tempest_rethrow_operation(error, class = "tempest_retriever_error")
+          }
         )
-        private$record_cache("fetch", cached$status)
-        if (!is.null(cached$value)) {
-          self$workspace$upsert_retrieved_resource(cached$value)
-          return(cached$value)
-        }
-      } else {
-        private$record_cache("fetch", "bypass")
-      }
+        fetched_at <- tempest_now_utc()
 
-      res <- tryCatch(
-        tempest_fetch_url_text(url, user_agent = self$config@user_agent),
-        error = function(error) {
-          tempest_rethrow_operation(error, class = "tempest_retriever_error")
+        if (!is.null(res$error)) {
+          src <- tempest_source(
+            url = url,
+            title = NA_character_,
+            snippet = NA_character_,
+            content_text = NA_character_,
+            fetched_at = fetched_at,
+            content_hash = NA_character_,
+            meta = list(kind = res$kind, error = res$error)
+          )
+          self$workspace$upsert_retrieved_resource(src)
+          otel_state$result_count <- 0L
+          otel_state$outcome <- "failed"
+          return(src)
         }
-      )
-      fetched_at <- tempest_now_utc()
 
-      if (!is.null(res$error)) {
+        txt <- res$text %||% NA_character_
+        txt_hash <- if (!is.na(txt) && nzchar(txt)) {
+          tempest_product_content_hash(txt, "text/html")
+        } else {
+          NA_character_
+        }
+
+        # Use title from result if available (ragnar extracts from headings)
+        # Otherwise fall back to first line
+        title <- res$title %||% NA_character_
+        if (is.na(title) && !is.na(txt) && nzchar(txt)) {
+          first <- unlist(strsplit(txt, "\n", fixed = TRUE))[1]
+          title <- tempest_trim(first)
+          if (nchar(title) > 120) title <- paste0(substr(title, 1, 117), "...")
+        }
+
+        snippet <- if (!is.na(txt) && nzchar(txt)) {
+          substr(txt, 1, 300)
+        } else {
+          NA_character_
+        }
+
         src <- tempest_source(
           url = url,
-          title = NA_character_,
-          snippet = NA_character_,
-          content_text = NA_character_,
+          title = title,
+          snippet = snippet,
+          content_text = txt,
           fetched_at = fetched_at,
-          content_hash = NA_character_,
-          meta = list(kind = res$kind, error = res$error)
+          content_hash = txt_hash,
+          meta = list(kind = res$kind, error = NULL)
         )
         self$workspace$upsert_retrieved_resource(src)
-        return(src)
-      }
+        if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, src)) {
+          private$record_cache("fetch", "write")
+        }
 
-      txt <- res$text %||% NA_character_
-      txt_hash <- if (!is.na(txt) && nzchar(txt)) {
-        tempest_product_content_hash(txt, "text/html")
-      } else {
-        NA_character_
-      }
+        # Ingest into ragnar store if available
+        if (!is.null(self$ragnar_store) && !is.na(txt) && nzchar(txt)) {
+          self$ingest_to_ragnar(
+            source_id = src$id,
+            url = url,
+            title = title,
+            text = txt,
+            fetched_at = fetched_at,
+            content_type = res$kind,
+            perspective = perspective
+          )
+        }
 
-      # Use title from result if available (ragnar extracts from headings)
-      # Otherwise fall back to first line
-      title <- res$title %||% NA_character_
-      if (is.na(title) && !is.na(txt) && nzchar(txt)) {
-        first <- unlist(strsplit(txt, "\n", fixed = TRUE))[1]
-        title <- tempest_trim(first)
-        if (nchar(title) > 120) title <- paste0(substr(title, 1, 117), "...")
+        otel_state$result_count <- 1L
+        otel_state$outcome <- "succeeded"
+        src
       }
-
-      snippet <- if (!is.na(txt) && nzchar(txt)) {
-        substr(txt, 1, 300)
-      } else {
-        NA_character_
-      }
-
-      src <- tempest_source(
-        url = url,
-        title = title,
-        snippet = snippet,
-        content_text = txt,
-        fetched_at = fetched_at,
-        content_hash = txt_hash,
-        meta = list(kind = res$kind, error = NULL)
+      tempest_otel_trace_retrieval(
+        "retrieval.fetch",
+        execute(),
+        otel_state
       )
-      self$workspace$upsert_retrieved_resource(src)
-      if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, src)) {
-        private$record_cache("fetch", "write")
-      }
-
-      # Ingest into ragnar store if available
-      if (!is.null(self$ragnar_store) && !is.na(txt) && nzchar(txt)) {
-        self$ingest_to_ragnar(
-          source_id = src$id,
-          url = url,
-          title = title,
-          text = txt,
-          fetched_at = fetched_at,
-          content_type = res$kind,
-          perspective = perspective
-        )
-      }
-
-      src
     },
 
     #' @description
