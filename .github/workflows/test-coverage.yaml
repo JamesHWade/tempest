@@ -4,8 +4,6 @@ on:
   push:
     branches: [main, master]
   pull_request:
-  release:
-    types: [published]
   workflow_dispatch:
 
 name: test-coverage.yaml
@@ -25,7 +23,7 @@ jobs:
     steps:
       - name: Report pull request coverage policy
         if: github.event_name == 'pull_request'
-        run: echo "Instrumented coverage runs after merge, on releases, or by manual dispatch."
+        run: echo "Instrumented coverage runs after merge or by manual dispatch."
 
       - uses: actions/checkout@v4
         if: github.event_name != 'pull_request'
