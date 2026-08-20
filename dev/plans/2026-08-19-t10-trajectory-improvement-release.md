@@ -542,8 +542,11 @@ Release publication is not part of the implementation branch. After the exact
 4. create annotated tag `v0.2.0` and publish the GitHub release; and
 5. follow with a separate development commit returning to `0.2.0.9000`.
 
-Do not create the tag or release from the implementation branch, and do not let
-the release-triggered workflow substitute for the pre-tag exact-SHA gate.
+Do not create the tag or release from the implementation branch. The v0.2.0
+release-event runs duplicated the already-green pre-tag gate; after this CI
+follow-up, future release publication launches no package, coverage, or pkgdown
+workflows. The pre-tag exact-SHA gate and main-push deployment remain
+authoritative, and `workflow_dispatch` remains available for explicit recovery.
 
 ## Acceptance checklist
 

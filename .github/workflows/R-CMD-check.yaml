@@ -8,8 +8,6 @@ on:
   push:
     branches: [main, master]
   pull_request:
-  release:
-    types: [published]
   schedule:
     - cron: "17 7 * * 1"
   workflow_dispatch:
@@ -62,12 +60,12 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
-          # PRs and pushes run the complete suite once, on Ubuntu. Scheduled,
-          # manually dispatched, and release checks retain full three-OS tests.
-          args: ${{ (runner.os == 'Linux' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'release') && 'c("--no-manual", "--as-cran")' || 'c("--no-manual", "--as-cran", "--no-tests")' }}
+          # PRs and pushes run the complete suite once, on Ubuntu. Scheduled
+          # and manually dispatched checks retain full three-OS tests.
+          args: ${{ (runner.os == 'Linux' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'c("--no-manual", "--as-cran")' || 'c("--no-manual", "--as-cran", "--no-tests")' }}
 
       - name: Run platform contracts
-        if: runner.os != 'Linux' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && github.event_name != 'release'
+        if: runner.os != 'Linux' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
         run: testthat::test_local(".", filter = "^platform-contracts$")
         shell: Rscript {0}
 
