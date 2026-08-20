@@ -306,7 +306,8 @@ cat(res$report_md)
 
 ### Experimental OpenTelemetry traces
 
-Tempest can project bounded STORM and stage lifecycle traces through a provider
+Tempest can project bounded STORM, stage-execution, and Co-STORM
+moderator-completion, turn-commit, warmup, and report traces through a provider
 configured by the host. Start R with the exact Tempest-only scope and generative
 AI content capture disabled:
 

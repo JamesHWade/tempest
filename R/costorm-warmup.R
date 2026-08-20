@@ -380,15 +380,15 @@ tempest_warmup_with_timeout <- function(
   promises::promise(function(resolve, reject) {
     settled <- FALSE
     later::later(
-      function() {
+      tempest_otel_callback(function() {
         if (!settled) {
           settled <<- TRUE
           reject(tempest_warmup_timeout_condition(label, timeout_s))
         }
-      },
+      }),
       delay = timeout_s
     )
-    promises::then(
+    tempest_otel_then(
       promise,
       onFulfilled = function(value) {
         if (!settled) {
@@ -563,7 +563,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
   committed <- vector("list", length(state$records))
   evidence_failure_count <- 0L
   commit_one <- function(previous, index) {
-    promises::then(previous, function(...) {
+    tempest_otel_then(previous, function(...) {
       if (!tempest_async_is_current(is_current)) {
         state$cancelled <- TRUE
         return(NULL)
@@ -577,7 +577,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
           is_current = is_current
         )
       })
-      promises::then(
+      tempest_otel_then(
         request,
         onFulfilled = function(result) {
           if (
@@ -689,7 +689,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
     pending,
     init = promises::promise_resolve(NULL)
   )
-  promises::then(evidence, function(...) {
+  tempest_otel_then(evidence, function(...) {
     if (!tempest_async_is_current(is_current)) {
       state$cancelled <- TRUE
       return(NULL)
@@ -725,7 +725,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
         emit_stale_progress = FALSE
       )
     })
-    promises::then(
+    tempest_otel_then(
       map_request,
       onFulfilled = function(value) {
         list(
@@ -829,162 +829,207 @@ tempest_session_warmup_async <- function(
     },
     add = TRUE
   )
-  if (!tempest_async_is_current(is_current)) {
-    return(promises::promise_resolve(tempest_warmup_result(
-      session,
-      status = "cancelled",
-      expert_count = expert_count
-    )))
-  }
-
-  warmup_event <- session$emit_progress(
-    "stage",
-    "started",
-    stage = "warmup",
-    step = "expert_fanout",
-    payload = list(expert_count = expert_count)
+  otel_context <- tempest_otel_provider_call(
+    tempest_otel_context_start("costorm.warmup")
   )
-  if (expert_count == 0L) {
-    session$emit_progress(
+  otel_callback_context <- otel_context %||%
+    tempest_otel_no_context_sentinel
+  execute <- function() {
+    .tempest_otel_context <- otel_callback_context
+    if (!tempest_async_is_current(is_current)) {
+      return(promises::promise_resolve(tempest_warmup_result(
+        session,
+        status = "cancelled",
+        expert_count = expert_count
+      )))
+    }
+
+    warmup_event <- session$emit_progress(
       "stage",
-      "skipped",
+      "started",
       stage = "warmup",
       step = "expert_fanout",
-      parent_event_id = tempest_warmup_progress_id(warmup_event),
-      correlation_id = warmup_event@correlation_id,
-      payload = list(reason = "no_experts")
+      payload = list(expert_count = expert_count)
     )
-    return(promises::promise_resolve(tempest_warmup_result(
-      session,
-      status = "skipped",
-      expert_count = 0L
-    )))
-  }
-
-  state <- new.env(parent = emptyenv())
-  state$pending <- vector("list", expert_count)
-  state$records <- vector("list", expert_count)
-  state$cancelled <- FALSE
-
-  orient_expert <- function(index) {
-    expert <- experts[[index]]
-    expert_id <- expert@expert_id
-    expert_name <- expert@name
-    correlation_id <- paste("warmup-expert", expert_id, sep = "-")
-    record <- tempest_warmup_orientation(expert, correlation_id)
-    expert_event <- NULL
-    expert_session_id <- NULL
-    orientation_active <- FALSE
-    retirement <- list(retired = FALSE, cancellation_supported = FALSE)
-    retire_session <- function() {
-      if (
-        !tempest_warmup_lease_owned(session, lease) ||
-          isTRUE(retirement$retired) ||
-          is.null(expert_session_id)
-      ) {
-        return(retirement)
-      }
-      retirement <<- tryCatch(
-        manager$retire_session(expert_session_id),
-        error = function(error) {
-          list(retired = FALSE, cancellation_supported = FALSE)
-        }
-      )
-      retirement
-    }
-    promises::then(promises::promise_resolve(NULL), function(...) {
-      if (!tempest_async_is_current(is_current)) {
-        state$cancelled <- TRUE
-        return(NULL)
-      }
-      session_result <- manager$get_or_create(expert_id)
-      expert_session_id <<- session_result$session_id
-      capability_count <- length(session_result$chat$get_tools())
-      record$expert_session_id <<- expert_session_id
-      record$capability_count <<- as.integer(capability_count)
-      record$tools_available <<- capability_count > 0L
-      expert_event <<- session$emit_progress(
-        "expert",
-        "started",
+    if (expert_count == 0L) {
+      session$emit_progress(
+        "stage",
+        "skipped",
         stage = "warmup",
         step = "expert_fanout",
         parent_event_id = tempest_warmup_progress_id(warmup_event),
-        correlation_id = correlation_id,
-        payload = list(
-          expert_id = expert_id,
-          expert_name = expert_name,
-          mode = "bounded_research",
-          session_id = expert_session_id,
-          tools_available = record$tools_available,
-          capability_count = record$capability_count
-        )
+        correlation_id = warmup_event@correlation_id,
+        payload = list(reason = "no_experts")
       )
-      orientation_active <<- TRUE
-      request <- manager$request_completion_async(
-        expert_id,
-        tempest_warmup_prompt(session$topic, expert),
-        stage = "warmup",
-        correlation_id = correlation_id
-      )
-      work <- promises::then(request, function(completion_id) {
-        if (!orientation_active) {
-          try(manager$cancel_completion(completion_id), silent = TRUE)
-          return(NULL)
+      return(promises::promise_resolve(tempest_warmup_result(
+        session,
+        status = "skipped",
+        expert_count = 0L
+      )))
+    }
+
+    state <- new.env(parent = emptyenv())
+    state$pending <- vector("list", expert_count)
+    state$records <- vector("list", expert_count)
+    state$cancelled <- FALSE
+
+    orient_expert <- function(index) {
+      expert <- experts[[index]]
+      expert_id <- expert@expert_id
+      expert_name <- expert@name
+      correlation_id <- paste("warmup-expert", expert_id, sep = "-")
+      record <- tempest_warmup_orientation(expert, correlation_id)
+      expert_event <- NULL
+      expert_session_id <- NULL
+      orientation_active <- FALSE
+      retirement <- list(retired = FALSE, cancellation_supported = FALSE)
+      retire_session <- function() {
+        if (
+          !tempest_warmup_lease_owned(session, lease) ||
+            isTRUE(retirement$retired) ||
+            is.null(expert_session_id)
+        ) {
+          return(retirement)
         }
+        retirement <<- tryCatch(
+          manager$retire_session(expert_session_id),
+          error = function(error) {
+            list(retired = FALSE, cancellation_supported = FALSE)
+          }
+        )
+        retirement
+      }
+      tempest_otel_then(promises::promise_resolve(NULL), function(...) {
         if (!tempest_async_is_current(is_current)) {
           state$cancelled <- TRUE
-          orientation_active <<- FALSE
-          try(manager$cancel_completion(completion_id), silent = TRUE)
-          retire_session()
           return(NULL)
         }
-        state$pending[[index]] <- list(
-          expert_id = expert_id,
-          expert_name = expert_name,
-          expert_session_id = expert_session_id,
+        session_result <- manager$get_or_create(expert_id)
+        expert_session_id <<- session_result$session_id
+        capability_count <- length(session_result$chat$get_tools())
+        record$expert_session_id <<- expert_session_id
+        record$capability_count <<- as.integer(capability_count)
+        record$tools_available <<- capability_count > 0L
+        expert_event <<- session$emit_progress(
+          "expert",
+          "started",
+          stage = "warmup",
+          step = "expert_fanout",
+          parent_event_id = tempest_warmup_progress_id(warmup_event),
           correlation_id = correlation_id,
-          completion_id = completion_id,
-          expert_event = expert_event
+          payload = list(
+            expert_id = expert_id,
+            expert_name = expert_name,
+            mode = "bounded_research",
+            session_id = expert_session_id,
+            tools_available = record$tools_available,
+            capability_count = record$capability_count
+          )
         )
-        state$records[[index]] <- record
-        orientation_active <<- FALSE
-        NULL
-      })
-      tempest_warmup_with_timeout(
-        work,
-        timeout_s,
-        paste(expert_name, "orientation")
-      ) |>
-        promises::catch(function(error) {
-          orientation_active <<- FALSE
-          timed_out <- inherits(error, "tempest_warmup_timeout")
-          if (timed_out || !tempest_async_is_current(is_current)) {
-            retire_session()
+        orientation_active <<- TRUE
+        request <- manager$request_completion_async(
+          expert_id,
+          tempest_warmup_prompt(session$topic, expert),
+          stage = "warmup",
+          correlation_id = correlation_id
+        )
+        work <- tempest_otel_then(request, function(completion_id) {
+          if (!orientation_active) {
+            try(manager$cancel_completion(completion_id), silent = TRUE)
+            return(NULL)
           }
           if (!tempest_async_is_current(is_current)) {
             state$cancelled <- TRUE
+            orientation_active <<- FALSE
+            try(manager$cancel_completion(completion_id), silent = TRUE)
+            retire_session()
             return(NULL)
           }
-          record$session_retired <<- isTRUE(retirement$retired)
-          record$cancellation_supported <<-
-            isTRUE(retirement$cancellation_supported)
-          terminal <- Filter(
-            function(trace) {
-              identical(trace$role, "expert") &&
-                identical(trace$stage, "warmup") &&
-                identical(trace$expert_id, expert_id) &&
-                identical(trace$correlation_id, correlation_id)
-            },
-            tempest_session_deputy_traces(session)
+          state$pending[[index]] <- list(
+            expert_id = expert_id,
+            expert_name = expert_name,
+            expert_session_id = expert_session_id,
+            correlation_id = correlation_id,
+            completion_id = completion_id,
+            expert_event = expert_event
           )
-          if (length(terminal) == 1L) {
-            record$deputy_run_id <<- terminal[[1L]]$deputy_run_id
-            record$deputy_session_id <<- terminal[[1L]]$deputy_session_id
+          state$records[[index]] <- record
+          orientation_active <<- FALSE
+          NULL
+        })
+        tempest_warmup_with_timeout(
+          work,
+          timeout_s,
+          paste(expert_name, "orientation")
+        ) |>
+          tempest_otel_catch(function(error) {
+            orientation_active <<- FALSE
+            timed_out <- inherits(error, "tempest_warmup_timeout")
+            if (timed_out || !tempest_async_is_current(is_current)) {
+              retire_session()
+            }
+            if (!tempest_async_is_current(is_current)) {
+              state$cancelled <- TRUE
+              return(NULL)
+            }
+            record$session_retired <<- isTRUE(retirement$retired)
+            record$cancellation_supported <<-
+              isTRUE(retirement$cancellation_supported)
+            terminal <- Filter(
+              function(trace) {
+                identical(trace$role, "expert") &&
+                  identical(trace$stage, "warmup") &&
+                  identical(trace$expert_id, expert_id) &&
+                  identical(trace$correlation_id, correlation_id)
+              },
+              tempest_session_deputy_traces(session)
+            )
+            if (length(terminal) == 1L) {
+              record$deputy_run_id <<- terminal[[1L]]$deputy_run_id
+              record$deputy_session_id <<- terminal[[1L]]$deputy_session_id
+            }
+            record <<- tempest_warmup_error_record(
+              record,
+              error,
+              if (timed_out) "timeout" else "provider_error"
+            )
+            state$records[[index]] <- record
+            session$emit_progress(
+              "expert",
+              "failed",
+              stage = "warmup",
+              step = "expert_fanout",
+              parent_event_id = tempest_warmup_progress_id(expert_event),
+              correlation_id = correlation_id,
+              payload = c(
+                list(
+                  expert_id = expert_id,
+                  expert_name = expert_name,
+                  mode = "bounded_research",
+                  session_id = expert_session_id,
+                  tools_available = record$tools_available,
+                  capability_count = record$capability_count,
+                  failure_kind = record$failure_kind,
+                  session_retired = record$session_retired,
+                  cancellation_supported = record$cancellation_supported
+                ),
+                tempest_progress_error_payload(error)
+              )
+            )
+            NULL
+          })
+      }) |>
+        tempest_otel_catch(function(error) {
+          orientation_active <<- FALSE
+          if (!tempest_async_is_current(is_current)) {
+            state$cancelled <- TRUE
+            retire_session()
+            return(NULL)
           }
           record <<- tempest_warmup_error_record(
             record,
             error,
-            if (timed_out) "timeout" else "provider_error"
+            "provider_error"
           )
           state$records[[index]] <- record
           session$emit_progress(
@@ -1001,142 +1046,110 @@ tempest_session_warmup_async <- function(
                 mode = "bounded_research",
                 session_id = expert_session_id,
                 tools_available = record$tools_available,
-                capability_count = record$capability_count,
-                failure_kind = record$failure_kind,
-                session_retired = record$session_retired,
-                cancellation_supported = record$cancellation_supported
+                capability_count = record$capability_count
               ),
               tempest_progress_error_payload(error)
             )
           )
           NULL
         })
-    }) |>
-      promises::catch(function(error) {
-        orientation_active <<- FALSE
+    }
+
+    expert_indices <- seq_along(experts)
+    batches <- split(
+      expert_indices,
+      ceiling(seq_along(expert_indices) / max_parallel_experts)
+    )
+    run_batch <- function(previous, batch) {
+      tempest_otel_then(previous, function(...) {
         if (!tempest_async_is_current(is_current)) {
           state$cancelled <- TRUE
-          retire_session()
           return(NULL)
         }
-        record <<- tempest_warmup_error_record(
-          record,
-          error,
-          "provider_error"
-        )
-        state$records[[index]] <- record
-        session$emit_progress(
-          "expert",
-          "failed",
-          stage = "warmup",
-          step = "expert_fanout",
-          parent_event_id = tempest_warmup_progress_id(expert_event),
-          correlation_id = correlation_id,
-          payload = c(
-            list(
-              expert_id = expert_id,
-              expert_name = expert_name,
-              mode = "bounded_research",
-              session_id = expert_session_id,
-              tools_available = record$tools_available,
-              capability_count = record$capability_count
-            ),
-            tempest_progress_error_payload(error)
-          )
-        )
-        NULL
+        promises::promise_all(.list = lapply(batch, orient_expert)) |>
+          tempest_otel_then(function(...) NULL)
       })
-  }
-
-  expert_indices <- seq_along(experts)
-  batches <- split(
-    expert_indices,
-    ceiling(seq_along(expert_indices) / max_parallel_experts)
-  )
-  run_batch <- function(previous, batch) {
-    promises::then(previous, function(...) {
-      if (!tempest_async_is_current(is_current)) {
-        state$cancelled <- TRUE
-        return(NULL)
-      }
-      promises::promise_all(.list = lapply(batch, orient_expert)) |>
-        promises::then(function(...) NULL)
-    })
-  }
-  fanout <- Reduce(
-    run_batch,
-    batches,
-    init = promises::promise_resolve(NULL)
-  )
-  completed <- promises::then(fanout, function(...) {
-    if (state$cancelled || !tempest_async_is_current(is_current)) {
-      return(tempest_warmup_result(
-        session,
-        status = "cancelled",
-        expert_count = expert_count
-      ))
     }
-    committed <- tempest_warmup_commit_async(session, state, is_current)
-    promises::then(committed, function(commit_result) {
-      if (
-        state$cancelled ||
-          !tempest_async_is_current(is_current) ||
-          is.null(commit_result)
-      ) {
+    fanout <- Reduce(
+      run_batch,
+      batches,
+      init = promises::promise_resolve(NULL)
+    )
+    completed <- tempest_otel_then(fanout, function(...) {
+      if (state$cancelled || !tempest_async_is_current(is_current)) {
         return(tempest_warmup_result(
           session,
           status = "cancelled",
           expert_count = expert_count
         ))
       }
-      records <- Filter(Negate(is.null), state$records)
-      result <- tempest_warmup_result(
-        session,
-        status = "succeeded",
-        expert_count = expert_count,
-        records = records,
-        evidence_failure_count = commit_result$evidence_failure_count,
-        mindmap_updated = commit_result$mindmap_updated
-      )
-      session$emit_progress(
-        "stage",
-        "succeeded",
-        stage = "warmup",
-        step = "expert_fanout",
-        parent_event_id = tempest_warmup_progress_id(warmup_event),
-        payload = list(
+      committed <- tempest_warmup_commit_async(session, state, is_current)
+      tempest_otel_then(committed, function(commit_result) {
+        if (
+          state$cancelled ||
+            !tempest_async_is_current(is_current) ||
+            is.null(commit_result)
+        ) {
+          return(tempest_warmup_result(
+            session,
+            status = "cancelled",
+            expert_count = expert_count
+          ))
+        }
+        records <- Filter(Negate(is.null), state$records)
+        result <- tempest_warmup_result(
+          session,
+          status = "succeeded",
           expert_count = expert_count,
-          orientation_count = result@orientation_count,
-          failure_count = result@failure_count,
-          evidence_failure_count = result@evidence_failure_count,
-          source_count = result@source_count,
-          claim_count = result@claim_count,
-          bounded_research = TRUE
+          records = records,
+          evidence_failure_count = commit_result$evidence_failure_count,
+          mindmap_updated = commit_result$mindmap_updated
         )
-      )
-      result
+        session$emit_progress(
+          "stage",
+          "succeeded",
+          stage = "warmup",
+          step = "expert_fanout",
+          parent_event_id = tempest_warmup_progress_id(warmup_event),
+          payload = list(
+            expert_count = expert_count,
+            orientation_count = result@orientation_count,
+            failure_count = result@failure_count,
+            evidence_failure_count = result@evidence_failure_count,
+            source_count = result@source_count,
+            claim_count = result@claim_count,
+            bounded_research = TRUE
+          )
+        )
+        result
+      })
     })
-  })
-  finalized <- promises::catch(completed, function(error) {
-    if (tempest_async_is_current(is_current)) {
-      session$emit_progress(
-        "stage",
-        "failed",
-        stage = "warmup",
-        step = "expert_fanout",
-        parent_event_id = tempest_warmup_progress_id(warmup_event),
-        payload = tempest_progress_error_payload(error)
-      )
-    }
-    tempest_rethrow_operation(error, class = "tempest_session_error")
-  })
-  finalized <- promises::finally(
-    finalized,
-    function() {
-      tempest_warmup_release_lease(session, lease)
-      tempest_session_async_work_finish(session, work_id)
-    }
+    finalized <- tempest_otel_catch(completed, function(error) {
+      if (tempest_async_is_current(is_current)) {
+        session$emit_progress(
+          "stage",
+          "failed",
+          stage = "warmup",
+          step = "expert_fanout",
+          parent_event_id = tempest_warmup_progress_id(warmup_event),
+          payload = tempest_progress_error_payload(error)
+        )
+      }
+      tempest_rethrow_operation(error, class = "tempest_session_error")
+    })
+    finalized <- tempest_otel_finally(
+      finalized,
+      function() {
+        tempest_warmup_release_lease(session, lease)
+        tempest_session_async_work_finish(session, work_id)
+      }
+    )
+    promise_owns_lease <<- TRUE
+    finalized
+  }
+  tempest_otel_trace_promise(
+    "costorm.warmup",
+    execute(),
+    context = otel_context
   )
-  promise_owns_lease <- TRUE
-  finalized
 }

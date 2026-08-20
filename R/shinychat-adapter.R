@@ -378,9 +378,17 @@ tempest_shinychat_completion_client <- function(client, on_completion) {
     source <- stream_async(...)
     completion_id <- tempest_agent_completion_id(source)
     completed <- FALSE
-    stream <- coro::async_generator(function() {
+    state <- new.env(parent = emptyenv())
+    state$resume <- list(supplied = FALSE, value = NULL)
+    generator <- coro::async_generator(function() {
+      source_arg_supplied <- FALSE
+      source_arg <- NULL
       repeat {
-        value <- source()
+        if (source_arg_supplied) {
+          value <- source(source_arg)
+        } else {
+          value <- source()
+        }
         if (promises::is.promising(value)) {
           value <- coro::await(value)
         }
@@ -392,9 +400,55 @@ tempest_shinychat_completion_client <- function(client, on_completion) {
           break
         }
         coro::yield(value)
+        source_arg_supplied <- state$resume$supplied
+        source_arg <- state$resume$value
       }
       coro::exhausted()
     })()
+    dispatch <- tempest_async_generator_fifo(
+      generator,
+      function(resume, started) {
+        if (started) {
+          state$resume <- resume
+        } else {
+          state$resume <- list(supplied = FALSE, value = NULL)
+        }
+      }
+    )
+    stream <- function(arg, close = FALSE) {
+      if (close) {
+        source_condition <- NULL
+        tryCatch(
+          {
+            if (missing(arg)) {
+              source(close = TRUE)
+            } else {
+              source(arg, close = TRUE)
+            }
+          },
+          error = function(error) source_condition <<- error,
+          interrupt = function(error) source_condition <<- error
+        )
+        generator_condition <- NULL
+        value <- tryCatch(
+          generator(close = TRUE),
+          error = function(error) generator_condition <<- error,
+          interrupt = function(error) generator_condition <<- error
+        )
+        if (!is.null(source_condition)) {
+          stop(source_condition)
+        }
+        if (!is.null(generator_condition)) {
+          stop(generator_condition)
+        }
+        return(value)
+      }
+      dispatch(list(
+        supplied = !missing(arg),
+        value = if (missing(arg)) NULL else arg
+      ))
+    }
+    class(stream) <- class(generator)
     tempest_agent_completion_tag(stream, completion_id)
   }
   proxy$clone <- function(...) proxy
@@ -443,6 +497,7 @@ TempestShinyChatAdapter <- R6::R6Class(
       private$workspace <- workspace
       private$render_message <- render_message
       private$on_dispose <- on_dispose
+      private$completion_owner <- tempest_otel_completion_owner(initial_client)
       private$version <- as.character(backend$version %||% "unknown")[[1L]]
       private$chat <- backend$chat_server(
         id = id,
@@ -576,6 +631,10 @@ TempestShinyChatAdapter <- R6::R6Class(
         tryCatch(cancel(), error = function(error) NULL)
       }
       private$command_cancels <- list()
+      tempest_otel_fail_open(
+        tempest_otel_owner_retire(private$completion_owner)
+      )
+      private$completion_owner <- NULL
       if (is.function(private$on_dispose)) {
         private$on_dispose()
       }
@@ -600,6 +659,7 @@ TempestShinyChatAdapter <- R6::R6Class(
     status_observer = NULL,
     command_cancels = list(),
     completed_streams = list(),
+    completion_owner = NULL,
 
     assert_active = function() {
       if (isTRUE(private$disposed)) {
@@ -655,8 +715,16 @@ TempestShinyChatAdapter <- R6::R6Class(
           )
         }
       )
+      previous_owner <- private$completion_owner
+      next_owner <- tempest_otel_completion_owner(client)
       private$in_domain(function() {
         private$chat$set_client(client, sync = FALSE)
+        if (!identical(previous_owner, next_owner)) {
+          tempest_otel_fail_open(
+            tempest_otel_owner_retire(previous_owner)
+          )
+          private$completion_owner <- next_owner
+        }
         private$chat$clear(
           messages = NULL,
           greeting = FALSE,

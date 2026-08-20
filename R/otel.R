@@ -243,12 +243,71 @@ tempest_otel_workflow <- function(operation) {
 
 tempest_otel_context_sentinel <- new.env(parent = emptyenv())
 
-tempest_otel_context_start <- function(operation, stage = NULL) {
+tempest_otel_no_context_sentinel <- new.env(parent = emptyenv())
+
+tempest_otel_owner_sentinel <- new.env(parent = emptyenv())
+
+tempest_otel_owner <- function() {
+  owner <- new.env(parent = emptyenv())
+  owner$sentinel <- tempest_otel_owner_sentinel
+  owner$contexts <- new.env(hash = TRUE, parent = emptyenv())
+  owner$next_id <- 0L
+  owner$retired <- FALSE
+  owner
+}
+
+tempest_otel_owner_valid <- function(owner) {
+  is.environment(owner) &&
+    identical(owner$sentinel, tempest_otel_owner_sentinel) &&
+    is.environment(owner$contexts) &&
+    is.integer(owner$next_id) &&
+    length(owner$next_id) == 1L &&
+    rlang::is_bool(owner$retired)
+}
+
+tempest_otel_owner_register <- function(owner, context) {
+  if (
+    !tempest_otel_owner_valid(owner) ||
+      isTRUE(owner$retired) ||
+      !is.environment(context)
+  ) {
+    return(invisible(context))
+  }
+  owner$next_id <- owner$next_id + 1L
+  key <- as.character(owner$next_id)
+  context$owner <- owner
+  context$owner_key <- key
+  assign(key, context, envir = owner$contexts)
+  invisible(context)
+}
+
+tempest_otel_owner_unregister <- function(context) {
+  if (!is.environment(context)) {
+    return(invisible(context))
+  }
+  owner <- context$owner %||% NULL
+  key <- context$owner_key %||% NULL
+  if (
+    tempest_otel_owner_valid(owner) &&
+      rlang::is_string(key) &&
+      exists(key, envir = owner$contexts, inherits = FALSE)
+  ) {
+    rm(list = key, envir = owner$contexts)
+  }
+  context$owner <- NULL
+  context$owner_key <- NULL
+  invisible(context)
+}
+
+tempest_otel_context_start <- function(operation, stage = NULL, owner = NULL) {
   if (
     !rlang::is_string(operation) ||
       !operation %in% names(tempest_otel_span_names()) ||
       !tempest_otel_worker_intent()
   ) {
+    return(NULL)
+  }
+  if (tempest_otel_owner_valid(owner) && isTRUE(owner$retired)) {
     return(NULL)
   }
   if (
@@ -305,6 +364,9 @@ tempest_otel_context_start <- function(operation, stage = NULL) {
   context$deactivation_attempted <- FALSE
   context$end_attempted <- FALSE
   context$activation_scope <- NULL
+  context$owner <- NULL
+  context$owner_key <- NULL
+  tempest_otel_owner_register(owner, context)
   context
 }
 
@@ -352,23 +414,30 @@ tempest_otel_context_set_status <- function(context, status) {
   invisible(context)
 }
 
+tempest_otel_context_deactivate <- function(context) {
+  if (
+    !is.environment(context) ||
+      !identical(context$sentinel, tempest_otel_context_sentinel) ||
+      is.null(context$activation_scope) ||
+      identical(context$deactivation_attempted, TRUE)
+  ) {
+    return(invisible(context))
+  }
+  context$deactivation_attempted <- TRUE
+  tempest_otel_provider_call(
+    context$span$deactivate(context$activation_scope)
+  )
+  invisible(context)
+}
+
 tempest_otel_context_end <- function(context) {
   if (!tempest_otel_context_live(context)) {
     return(invisible(context))
   }
   deactivate_span <- function() {
-    if (
-      is.null(context$activation_scope) ||
-        identical(context$deactivation_attempted, TRUE)
-    ) {
-      return(NULL)
-    }
-    context$deactivation_attempted <- TRUE
     tryCatch(
       {
-        tempest_otel_provider_call(
-          context$span$deactivate(context$activation_scope)
-        )
+        tempest_otel_context_deactivate(context)
         NULL
       },
       interrupt = identity
@@ -395,6 +464,7 @@ tempest_otel_context_end <- function(context) {
       if (!identical(context$end_attempted, TRUE)) {
         end_span()
       }
+      tempest_otel_owner_unregister(context)
       context$ended <- TRUE
       context$ending <- FALSE
     },
@@ -418,19 +488,83 @@ tempest_otel_current_context <- function() {
   }
   for (index in rev(seq_along(frames))) {
     frame <- frames[[index]]
-    if (!exists(".tempest_otel_context", envir = frame, inherits = FALSE)) {
-      next
-    }
-    context <- get(
-      ".tempest_otel_context",
-      envir = frame,
-      inherits = FALSE
-    )
-    if (tempest_otel_context_live(context)) {
-      return(context)
+    repeat {
+      if (exists(".tempest_otel_context", envir = frame, inherits = FALSE)) {
+        context <- get(
+          ".tempest_otel_context",
+          envir = frame,
+          inherits = FALSE
+        )
+        if (identical(context, tempest_otel_no_context_sentinel)) {
+          return(NULL)
+        }
+        if (is.null(context)) {
+          return(NULL)
+        }
+        if (tempest_otel_context_live(context)) {
+          return(context)
+        }
+        if (
+          is.environment(context) &&
+            identical(context$sentinel, tempest_otel_context_sentinel)
+        ) {
+          return(NULL)
+        }
+      }
+      if (identical(frame, emptyenv())) {
+        break
+      }
+      frame <- parent.env(frame)
     }
   }
   NULL
+}
+
+tempest_otel_callback <- function(callback, context = NULL) {
+  if (is.null(callback)) {
+    return(NULL)
+  }
+  if (!is.function(callback)) {
+    return(callback)
+  }
+  if (missing(context)) {
+    context <- tempest_otel_current_context()
+  }
+  if (is.null(context)) {
+    context <- tempest_otel_no_context_sentinel
+  }
+  force(callback)
+  force(context)
+  function(...) {
+    .tempest_otel_context <- context
+    callback(...)
+  }
+}
+
+tempest_otel_then <- function(
+  promise,
+  onFulfilled = NULL,
+  onRejected = NULL
+) {
+  promises::then(
+    promise,
+    onFulfilled = tempest_otel_callback(onFulfilled),
+    onRejected = tempest_otel_callback(onRejected)
+  )
+}
+
+tempest_otel_catch <- function(promise, onRejected) {
+  promises::catch(
+    promise,
+    onRejected = tempest_otel_callback(onRejected)
+  )
+}
+
+tempest_otel_finally <- function(promise, onFinally) {
+  promises::finally(
+    promise,
+    onFinally = tempest_otel_callback(onFinally)
+  )
 }
 
 tempest_otel_progress_attributes <- function(event) {
@@ -491,47 +625,544 @@ tempest_otel_cancelled <- function(error) {
   ))
 }
 
-tempest_otel_complete_success <- function(context, fallback_taken = FALSE) {
-  tempest_otel_context_set_attribute(context, "tempest.status", "succeeded")
-  if (identical(fallback_taken, TRUE)) {
+tempest_otel_fail_open <- function(expr, default = NULL) {
+  tryCatch(
+    expr,
+    error = function(...) default,
+    interrupt = function(...) default
+  )
+}
+
+tempest_otel_mark_status <- function(
+  context,
+  status,
+  fallback_taken = FALSE,
+  error = NULL
+) {
+  if (
+    !status %in% c("succeeded", "failed", "cancelled", "partial", "skipped")
+  ) {
+    return(invisible(context))
+  }
+  tempest_otel_context_set_attribute(context, "tempest.status", status)
+  if (identical(status, "succeeded") && identical(fallback_taken, TRUE)) {
     tempest_otel_context_set_attribute(
       context,
       "tempest.fallback_taken",
       TRUE
     )
   }
-  tempest_otel_context_set_status(
-    context,
-    tempest_otel_status_code("succeeded")
-  )
-  tempest_otel_context_end(context)
-}
-
-tempest_otel_complete_error <- function(context, error) {
-  if (tempest_otel_cancelled(error)) {
-    tempest_otel_context_set_attribute(
-      context,
-      "tempest.status",
-      "cancelled"
-    )
+  if (identical(status, "cancelled")) {
     tempest_otel_context_set_attribute(context, "tempest.cancelled", TRUE)
-    tempest_otel_context_set_status(
-      context,
-      tempest_otel_status_code("cancelled")
-    )
-  } else {
-    tempest_otel_context_set_attribute(context, "tempest.status", "failed")
+  }
+  if (identical(status, "failed") && !is.null(error)) {
     tempest_otel_context_set_attribute(
       context,
       "tempest.error_class",
       tempest_otel_safe_error_class(error)
     )
-    tempest_otel_context_set_status(
+  }
+  tempest_otel_context_set_status(
+    context,
+    tempest_otel_status_code(status)
+  )
+  invisible(context)
+}
+
+tempest_otel_complete_success <- function(context, fallback_taken = FALSE) {
+  on.exit(tempest_otel_context_end(context), add = TRUE)
+  tempest_otel_mark_status(
+    context,
+    "succeeded",
+    fallback_taken = fallback_taken
+  )
+  tempest_otel_context_end(context)
+}
+
+tempest_otel_complete_status <- function(
+  context,
+  status,
+  fallback_taken = FALSE
+) {
+  on.exit(tempest_otel_context_end(context), add = TRUE)
+  tempest_otel_mark_status(
+    context,
+    status,
+    fallback_taken = fallback_taken
+  )
+  tempest_otel_context_end(context)
+}
+
+tempest_otel_complete_error <- function(context, error) {
+  on.exit(tempest_otel_context_end(context), add = TRUE)
+  status <- if (tempest_otel_cancelled(error)) "cancelled" else "failed"
+  tempest_otel_mark_status(context, status, error = error)
+  tempest_otel_context_end(context)
+}
+
+tempest_otel_owner_cancel <- function(owner) {
+  if (!tempest_otel_owner_valid(owner)) {
+    return(invisible(FALSE))
+  }
+  keys <- ls(owner$contexts, all.names = TRUE)
+  for (key in keys) {
+    context <- get(key, envir = owner$contexts, inherits = FALSE)
+    tempest_otel_fail_open(
+      tempest_otel_mark_status(context, "cancelled")
+    )
+    tempest_otel_fail_open(tempest_otel_context_end(context))
+  }
+  invisible(length(keys) > 0L)
+}
+
+tempest_otel_owner_retire <- function(owner) {
+  if (!tempest_otel_owner_valid(owner)) {
+    return(invisible(FALSE))
+  }
+  was_retired <- owner$retired
+  owner$retired <- TRUE
+  tempest_otel_owner_cancel(owner)
+  invisible(!was_retired)
+}
+
+tempest_otel_result_status <- function(operation, result) {
+  if (identical(operation, "costorm.completion")) {
+    return(list(status = "succeeded", fallback_taken = FALSE))
+  }
+  if (
+    identical(operation, "costorm.turn.commit") &&
+      S7::S7_inherits(result, TempestSessionTurnResult)
+  ) {
+    return(list(status = result@status, fallback_taken = FALSE))
+  }
+  if (
+    identical(operation, "costorm.warmup") &&
+      S7::S7_inherits(result, TempestWarmupResult)
+  ) {
+    return(list(status = result@status, fallback_taken = FALSE))
+  }
+  if (identical(operation, "costorm.report")) {
+    if (is.null(result)) {
+      return(list(status = "cancelled", fallback_taken = FALSE))
+    }
+    if (is.character(result) && length(result) == 1L && !is.na(result)) {
+      return(list(status = "succeeded", fallback_taken = FALSE))
+    }
+    return(NULL)
+  }
+  if (
+    identical(operation, "stage.execute") &&
+      inherits(result, "tempest_stage_result")
+  ) {
+    return(list(
+      status = "succeeded",
+      fallback_taken = tempest_otel_result_fallback(operation, result)
+    ))
+  }
+  NULL
+}
+
+tempest_otel_mark_result <- function(context, operation, result) {
+  terminal <- tempest_otel_fail_open(
+    tempest_otel_result_status(operation, result)
+  )
+  if (!is.list(terminal)) {
+    tempest_otel_mark_status(
       context,
-      tempest_otel_status_code("failed")
+      "failed",
+      error = simpleError("Operation result has no terminal projection.")
+    )
+    return(invisible(context))
+  }
+  tempest_otel_mark_status(
+    context,
+    terminal$status,
+    fallback_taken = terminal$fallback_taken
+  )
+}
+
+tempest_otel_trace_promise <- function(
+  operation,
+  code,
+  stage = NULL,
+  owner = NULL,
+  context = NULL
+) {
+  if (missing(context)) {
+    context <- tempest_otel_provider_call(
+      tempest_otel_context_start(operation, stage = stage, owner = owner)
     )
   }
-  tempest_otel_context_end(context)
+  if (is.null(context)) {
+    .tempest_otel_context <- tempest_otel_no_context_sentinel
+    return(force(code))
+  }
+
+  .tempest_otel_context <- context
+  handle_setup_error <- function(error) {
+    tempest_otel_fail_open(tempest_otel_complete_error(context, error))
+    stop(error)
+  }
+  tryCatch(
+    {
+      tempest_otel_context_activate(context)
+      value <- force(code)
+      tempest_otel_context_deactivate(context)
+      settled <- promises::then(
+        value,
+        onFulfilled = function(value) {
+          tempest_otel_fail_open(
+            tempest_otel_mark_result(context, operation, value)
+          )
+          value
+        },
+        onRejected = function(error) {
+          tempest_otel_fail_open(tempest_otel_mark_status(
+            context,
+            if (tempest_otel_cancelled(error)) "cancelled" else "failed",
+            error = error
+          ))
+          stop(error)
+        }
+      )
+      promises::finally(
+        settled,
+        function() {
+          tempest_otel_fail_open(tempest_otel_context_end(context))
+          invisible(NULL)
+        }
+      )
+    },
+    error = handle_setup_error,
+    interrupt = handle_setup_error
+  )
+}
+
+tempest_async_generator_fifo <- function(generator, before_call) {
+  state <- new.env(parent = emptyenv())
+  state$active <- FALSE
+  state$started <- FALSE
+  state$queue <- list()
+  pump <- NULL
+  pump <- function() {
+    if (state$active) {
+      return(invisible(NULL))
+    }
+    repeat {
+      if (length(state$queue) == 0L) {
+        return(invisible(NULL))
+      }
+      request <- state$queue[[1L]]
+      state$queue[[1L]] <- NULL
+      state$active <- TRUE
+      condition <- NULL
+      value <- tryCatch(
+        {
+          before_call(request$value, state$started)
+          state$started <- TRUE
+          generator()
+        },
+        error = function(error) {
+          condition <<- error
+          NULL
+        },
+        interrupt = function(error) {
+          condition <<- error
+          NULL
+        }
+      )
+      if (!is.null(condition)) {
+        state$active <- FALSE
+        request$reject(condition)
+        next
+      }
+      if (!promises::is.promising(value)) {
+        state$active <- FALSE
+        request$resolve(value)
+        next
+      }
+      promises::then(
+        value,
+        onFulfilled = function(value) {
+          state$active <- FALSE
+          request$resolve(value)
+          pump()
+          invisible(NULL)
+        },
+        onRejected = function(error) {
+          state$active <- FALSE
+          request$reject(error)
+          pump()
+          invisible(NULL)
+        }
+      )
+      return(invisible(NULL))
+    }
+  }
+  function(value) {
+    promises::promise(function(resolve, reject) {
+      state$queue[[length(state$queue) + 1L]] <- list(
+        value = value,
+        resolve = resolve,
+        reject = reject
+      )
+      pump()
+    })
+  }
+}
+
+tempest_otel_trace_generator <- function(operation, code, owner = NULL) {
+  context <- tempest_otel_provider_call(
+    tempest_otel_context_start(operation, owner = owner)
+  )
+  if (is.null(context)) {
+    .tempest_otel_context <- tempest_otel_no_context_sentinel
+    return(force(code))
+  }
+
+  .tempest_otel_context <- context
+  source <- tryCatch(
+    {
+      tempest_otel_context_activate(context)
+      value <- force(code)
+      tempest_otel_context_deactivate(context)
+      value
+    },
+    error = function(error) {
+      tempest_otel_fail_open(tempest_otel_complete_error(context, error))
+      stop(error)
+    },
+    interrupt = function(error) {
+      tempest_otel_fail_open(tempest_otel_complete_error(context, error))
+      stop(error)
+    }
+  )
+  completion_condition <- NULL
+  completion_id <- tryCatch(
+    tempest_agent_completion_id(source),
+    error = function(error) {
+      completion_condition <<- error
+      NULL
+    },
+    interrupt = function(error) {
+      completion_condition <<- error
+      NULL
+    }
+  )
+  if (is.null(completion_id)) {
+    if (is.null(completion_condition)) {
+      completion_condition <- simpleError(
+        "Agent completion identifier is unavailable."
+      )
+    }
+    tempest_otel_fail_open(
+      tempest_otel_complete_error(context, completion_condition)
+    )
+    return(source)
+  }
+
+  state <- new.env(parent = emptyenv())
+  state$terminal <- FALSE
+  state$resume <- list(supplied = FALSE, value = NULL)
+  generator <- coro::async_generator(function() {
+    .tempest_otel_context <- context
+    on.exit(
+      {
+        if (!state$terminal) {
+          tempest_otel_fail_open(
+            tempest_otel_mark_status(context, "cancelled")
+          )
+          state$terminal <- TRUE
+        }
+        tempest_otel_fail_open(tempest_otel_context_end(context))
+      },
+      add = TRUE
+    )
+    tryCatch(
+      {
+        source_arg_supplied <- FALSE
+        source_arg <- NULL
+        repeat {
+          if (source_arg_supplied) {
+            value <- source(source_arg)
+          } else {
+            value <- source()
+          }
+          if (promises::is.promising(value)) {
+            value <- coro::await(value)
+          }
+          if (coro::is_exhausted(value)) {
+            tempest_otel_fail_open(
+              tempest_otel_mark_status(context, "succeeded")
+            )
+            state$terminal <- TRUE
+            break
+          }
+          coro::yield(value)
+          source_arg_supplied <- state$resume$supplied
+          source_arg <- state$resume$value
+        }
+      },
+      error = function(error) {
+        tempest_otel_fail_open(tempest_otel_mark_status(
+          context,
+          if (tempest_otel_cancelled(error)) "cancelled" else "failed",
+          error = error
+        ))
+        state$terminal <- TRUE
+        stop(error)
+      },
+      interrupt = function(error) {
+        tempest_otel_fail_open(
+          tempest_otel_mark_status(context, "cancelled", error = error)
+        )
+        state$terminal <- TRUE
+        stop(error)
+      }
+    )
+    coro::exhausted()
+  })()
+  dispatch <- tempest_async_generator_fifo(
+    generator,
+    function(resume, started) {
+      if (started) {
+        state$resume <- resume
+      } else {
+        state$resume <- list(supplied = FALSE, value = NULL)
+      }
+    }
+  )
+  stream <- function(arg, close = FALSE) {
+    if (close) {
+      if (!state$terminal) {
+        state$terminal <- TRUE
+        tempest_otel_fail_open(
+          tempest_otel_mark_status(context, "cancelled")
+        )
+      }
+      source_condition <- NULL
+      tryCatch(
+        {
+          if (missing(arg)) {
+            source(close = TRUE)
+          } else {
+            source(arg, close = TRUE)
+          }
+        },
+        error = function(error) source_condition <<- error,
+        interrupt = function(error) source_condition <<- error
+      )
+      tempest_otel_fail_open(tempest_otel_context_end(context))
+      generator_condition <- NULL
+      value <- tryCatch(
+        generator(close = TRUE),
+        error = function(error) generator_condition <<- error,
+        interrupt = function(error) generator_condition <<- error
+      )
+      if (!is.null(source_condition)) {
+        stop(source_condition)
+      }
+      if (!is.null(generator_condition)) {
+        stop(generator_condition)
+      }
+      return(value)
+    }
+    dispatch(list(
+      supplied = !missing(arg),
+      value = if (missing(arg)) NULL else arg
+    ))
+  }
+  class(stream) <- class(generator)
+  tempest_agent_completion_tag(stream, completion_id)
+}
+
+tempest_otel_completion_owner <- function(client) {
+  owner <- attr(client, ".tempest_otel_completion_owner", exact = TRUE)
+  if (tempest_otel_owner_valid(owner)) owner else NULL
+}
+
+tempest_otel_wrap_completion_client <- function(client, owner) {
+  if (
+    !inherits(client, "TempestDeputyChatAdapter") ||
+      !tempest_otel_owner_valid(owner)
+  ) {
+    return(client)
+  }
+  existing <- tempest_otel_completion_owner(client)
+  if (tempest_otel_owner_valid(existing)) {
+    return(client)
+  }
+
+  chat_call <- client$chat
+  stream_call <- client$stream
+  chat_async_call <- client$chat_async
+  stream_async_call <- client$stream_async
+  proxy <- client
+  proxy$chat <- function(
+    prompt,
+    echo = "none",
+    run_context = list(),
+    ...
+  ) {
+    tempest_otel_trace(
+      "costorm.completion",
+      chat_call(prompt, echo = echo, run_context = run_context, ...),
+      owner = owner
+    )
+  }
+  proxy$stream <- function(
+    prompt = NULL,
+    stream = c("text", "content"),
+    controller = NULL,
+    run_context = list(),
+    ...
+  ) {
+    tempest_otel_trace(
+      "costorm.completion",
+      stream_call(
+        prompt,
+        stream = stream,
+        controller = controller,
+        run_context = run_context,
+        ...
+      ),
+      owner = owner
+    )
+  }
+  proxy$chat_async <- function(
+    prompt,
+    echo = "none",
+    run_context = list(),
+    ...
+  ) {
+    tempest_otel_trace_promise(
+      "costorm.completion",
+      chat_async_call(prompt, echo = echo, run_context = run_context, ...),
+      owner = owner
+    )
+  }
+  proxy$stream_async <- function(
+    prompt = NULL,
+    stream = c("text", "content"),
+    controller = NULL,
+    run_context = list(),
+    ...
+  ) {
+    tempest_otel_trace_generator(
+      "costorm.completion",
+      stream_async_call(
+        prompt,
+        stream = stream,
+        controller = controller,
+        run_context = run_context,
+        ...
+      ),
+      owner = owner
+    )
+  }
+  proxy$clone <- function() proxy
+  attr(proxy, ".tempest_otel_completion_owner") <- owner
+  proxy
 }
 
 tempest_otel_result_fallback <- function(operation, result) {
@@ -544,11 +1175,12 @@ tempest_otel_result_fallback <- function(operation, result) {
   tryCatch(isTRUE(result$record@fallback_taken), error = function(...) FALSE)
 }
 
-tempest_otel_trace <- function(operation, code, stage = NULL) {
+tempest_otel_trace <- function(operation, code, stage = NULL, owner = NULL) {
   context <- tempest_otel_provider_call(
-    tempest_otel_context_start(operation, stage = stage)
+    tempest_otel_context_start(operation, stage = stage, owner = owner)
   )
   if (is.null(context)) {
+    .tempest_otel_context <- tempest_otel_no_context_sentinel
     return(force(code))
   }
 

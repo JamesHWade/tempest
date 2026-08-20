@@ -18,6 +18,7 @@ local_fake_otel <- function(
   provider_errors = character(),
   provider_conditions = character(),
   provider_interrupts = character(),
+  start_span_errors = character(),
   .local_envir = parent.frame()
 ) {
   state <- new.env(parent = emptyenv())
@@ -119,6 +120,9 @@ local_fake_otel <- function(
       state$start_calls <- state$start_calls + 1L
       if (!identical(value, tracer)) {
         stop("unknown tracer")
+      }
+      if (name %in% start_span_errors) {
+        stop("provider error")
       }
       span <- new_span(name, attributes)
       state$spans[[length(state$spans) + 1L]] <- span

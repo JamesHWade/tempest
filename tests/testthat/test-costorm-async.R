@@ -765,6 +765,8 @@ test_that("post-turn enrichment failures are typed and best effort", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
+  local_otel_opt_in()
+  otel <- local_fake_otel()
   calls <- character()
   cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
     if (identical(role, "coordinator")) {
@@ -823,12 +825,22 @@ test_that("post-turn enrichment failures are typed and best effort", {
     ),
     rep(TRUE, 3L)
   )
+  turn_spans <- Filter(
+    \(span) identical(span$name, "tempest.costorm.turn.commit"),
+    otel$spans
+  )
+  expect_length(turn_spans, 1L)
+  expect_identical(turn_spans[[1L]]$attributes[["tempest.status"]], "partial")
+  expect_identical(turn_spans[[1L]]$statuses, "unset")
+  expect_identical(turn_spans[[1L]]$end_count, 1L)
 })
 
 test_that("stale post-turn work cannot run later enrichment stages", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
+  local_otel_opt_in()
+  otel <- local_fake_otel()
   resolve_evidence <- NULL
   current <- TRUE
   later_stage_calls <- 0L
@@ -889,6 +901,18 @@ test_that("stale post-turn work cannot run later enrichment stages", {
   expect_length(settled$value@suggestions, 0L)
   expect_equal(later_stage_calls, 0L)
   expect_length(session$transcript, 2L)
+  turn_spans <- Filter(
+    \(span) identical(span$name, "tempest.costorm.turn.commit"),
+    otel$spans
+  )
+  expect_length(turn_spans, 1L)
+  expect_identical(
+    turn_spans[[1L]]$attributes[["tempest.status"]],
+    "cancelled"
+  )
+  expect_identical(turn_spans[[1L]]$attributes[["tempest.cancelled"]], TRUE)
+  expect_identical(turn_spans[[1L]]$statuses, "unset")
+  expect_identical(turn_spans[[1L]]$end_count, 1L)
 })
 
 
@@ -1023,6 +1047,8 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
+  local_otel_opt_in()
+  otel <- local_fake_otel()
   claim_text <- paste0(
     "Captured [evidence]\n## References cannot replace the report boundary."
   )
@@ -1304,6 +1330,23 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     session$add_turn("User", "user", "Try to resume."),
     class = "tempest_session_error"
   )
+  report_spans <- Filter(
+    \(span) identical(span$name, "tempest.costorm.report"),
+    otel$spans
+  )
+  expect_length(report_spans, 2L)
+  expect_identical(
+    vapply(
+      report_spans,
+      \(span) span$attributes[["tempest.status"]],
+      character(1)
+    ),
+    c("failed", "succeeded")
+  )
+  expect_identical(
+    vapply(report_spans, \(span) span$end_count, integer(1)),
+    c(1L, 1L)
+  )
 })
 
 test_that("post-turn processing has the exact completion-only signature", {
@@ -1325,6 +1368,76 @@ test_that("post-turn processing has the exact completion-only signature", {
 
   expect_identical(actual, expected)
   expect_identical(intersect(actual, removed), character())
+})
+
+test_that("turn and report spans include claim and publication-lock failures", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("promises")
+  local_otel_opt_in()
+  otel <- local_fake_otel()
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  turn_session <- tempest_session(
+    "Turn boundary",
+    config = config,
+    experts = list()
+  )
+
+  turn_error <- tryCatch(
+    tempest_session_process_turn_async(
+      turn_session,
+      "agent-completion-never-issued"
+    ),
+    error = identity
+  )
+  turn_span <- otel$spans[[1L]]
+
+  expect_s3_class(turn_error, "tempest_agent_completion_error")
+  expect_identical(turn_span$name, "tempest.costorm.turn.commit")
+  expect_identical(turn_span$attributes[["tempest.status"]], "failed")
+  expect_identical(
+    turn_span$attributes[["tempest.error_class"]],
+    "tempest_operation_error"
+  )
+  expect_identical(turn_span$end_count, 1L)
+  expect_length(tempest:::tempest_session_async_work_active(turn_session), 0L)
+
+  report_session <- tempest_session(
+    "Report boundary",
+    config = config,
+    experts = list()
+  )
+  original <- rlang::error_cnd(
+    "tempest_async_error",
+    message = "publication lock failed"
+  )
+  state_before <- tempest:::tempest_research_workspace_mutation_state(
+    report_session$workspace
+  )
+  local_mocked_bindings(
+    tempest_research_workspace_publication_lock = function(...) stop(original)
+  )
+  report_error <- tryCatch(
+    tempest:::tempest_session_report_async(report_session),
+    error = identity
+  )
+  report_span <- otel$spans[[2L]]
+
+  expect_identical(report_error, original)
+  expect_identical(report_span$name, "tempest.costorm.report")
+  expect_identical(report_span$attributes[["tempest.status"]], "failed")
+  expect_identical(
+    report_span$attributes[["tempest.error_class"]],
+    "tempest_async_error"
+  )
+  expect_identical(report_span$end_count, 1L)
+  expect_identical(
+    tempest:::tempest_research_workspace_mutation_state(
+      report_session$workspace
+    ),
+    state_before
+  )
+  expect_length(tempest:::tempest_session_async_work_active(report_session), 0L)
 })
 
 test_that("queued turns are claimed by completion ID instead of latest run", {
