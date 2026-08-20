@@ -9,7 +9,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/JamesHWade/tempest/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/JamesHWade/tempest/blob/v0.2.0/DESCRIPTION)
 
 Wade J (2026). *tempest: STORM and Co-STORM Research and Writing Agents
 for R*. R package version 0.2.0,
