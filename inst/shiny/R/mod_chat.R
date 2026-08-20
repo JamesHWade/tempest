@@ -29,6 +29,15 @@ mod_chat_ui <- function(id, config_ui, allow_user_experts = FALSE) {
             footer = chat_footer_ui(ns)
           ),
           tempest:::tempest_shinychat_citation_sanitizer(ns("chat")),
+          chat_settings_drawer_controller_ui(
+            drawer_id = ns("settings"),
+            title_id = ns("settings_title"),
+            trigger_ids = c(
+              ns("setup_settings_toggle"),
+              ns("footer_settings_toggle")
+            ),
+            footer_id = ns("runtime_footer")
+          ),
           shiny::uiOutput(ns("report_error"))
         )
       )
@@ -113,6 +122,9 @@ chat_session_greeting_ui <- function(ns, allow_user_experts = FALSE) {
             ns("setup_settings_toggle"),
             "Workspace settings",
             icon = shiny::icon("gear"),
+            `aria-controls` = ns("settings"),
+            `aria-expanded` = "false",
+            `data-tempest-settings-trigger` = "true",
             border = TRUE
           )
         ),
@@ -415,7 +427,13 @@ costorm_session_experts <- function(
 chat_settings_sidebar_ui <- function(ns, config_ui) {
   bslib::sidebar(
     id = ns("settings"),
-    title = shiny::tagList(shiny::icon("sliders"), "Workspace settings"),
+    title = shiny::h2(
+      id = ns("settings_title"),
+      class = "sidebar-title h5 d-flex align-items-center gap-2",
+      tabindex = "-1",
+      shiny::span(`aria-hidden` = "true", shiny::icon("sliders")),
+      shiny::span("Workspace settings")
+    ),
     position = "right",
     open = FALSE,
     width = 340,
@@ -1636,6 +1654,9 @@ chat_runtime_footer_ui <- function(
           ns("footer_settings_toggle"),
           "Workspace settings",
           icon = shiny::icon("gear"),
+          `aria-controls` = ns("settings"),
+          `aria-expanded` = "false",
+          `data-tempest-settings-trigger` = "true",
           border = TRUE
         )
       ),

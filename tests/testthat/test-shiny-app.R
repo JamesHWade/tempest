@@ -1302,6 +1302,177 @@ test_that("the chat server toggles settings from greeting and footer", {
   expect_no_match(server_code, "input$footer_report", fixed = TRUE)
 })
 
+test_that("the chat settings drawer exposes named stateful controls", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  app <- source_shiny_modules()
+  ns <- shiny::NS("chat")
+  sidebar <- app$chat_settings_sidebar_ui(ns, app$mod_config_ui("config"))
+  sidebar <- bslib::layout_sidebar(sidebar = sidebar, shiny::div())
+  sidebar <- paste(as.character(sidebar), collapse = "")
+  aside_tag <- regmatches(sidebar, regexpr("<aside[^>]*>", sidebar))
+  content_tag <- regmatches(
+    sidebar,
+    regexpr('<div class="sidebar-content[^>]*>', sidebar)
+  )
+  greeting <- paste(
+    as.character(app$chat_session_greeting_ui(ns)),
+    collapse = ""
+  )
+  ses <- list2env(list(experts = list()), parent = emptyenv())
+  ses$workspace <- new.env(parent = emptyenv())
+  ses$workspace$list_retrieved_sources <- function() list()
+  ses$workspace$list_proposed_claims <- function() list()
+  footer <- paste(
+    as.character(app$chat_runtime_footer_ui(ses, ns = ns)),
+    collapse = ""
+  )
+
+  expect_match(aside_tag, 'id="chat-settings"', fixed = TRUE)
+  expect_no_match(content_tag, "aria-labelledby", fixed = TRUE)
+  expect_match(sidebar, '<h2 id="chat-settings_title"', fixed = TRUE)
+  expect_match(sidebar, 'class="sidebar-title', fixed = TRUE)
+  expect_match(sidebar, 'tabindex="-1"', fixed = TRUE)
+  expect_match(sidebar, '<span aria-hidden="true">', fixed = TRUE)
+  expect_match(sidebar, '<span>Workspace settings</span>', fixed = TRUE)
+  expect_match(greeting, 'aria-controls="chat-settings"', fixed = TRUE)
+  expect_match(greeting, 'aria-expanded="false"', fixed = TRUE)
+  expect_match(greeting, 'data-tempest-settings-trigger="true"', fixed = TRUE)
+  expect_match(footer, 'aria-controls="chat-settings"', fixed = TRUE)
+  expect_match(footer, 'aria-expanded="false"', fixed = TRUE)
+  expect_match(footer, 'data-tempest-settings-trigger="true"', fixed = TRUE)
+})
+
+test_that("the settings drawer controller owns mobile keyboard behavior", {
+  skip_if_not_installed("shiny")
+  app <- source_shiny_modules()
+  script <- paste(
+    as.character(app$chat_settings_drawer_controller_ui(
+      drawer_id = "chat-settings",
+      title_id = "chat-settings_title",
+      trigger_ids = c(
+        "chat-setup_settings_toggle",
+        "chat-footer_settings_toggle"
+      ),
+      footer_id = "chat-runtime_footer"
+    )),
+    collapse = ""
+  )
+  css <- paste(as.character(app$tempest_app_styles()), collapse = "")
+  required <- c(
+    "(max-width: 575.98px)",
+    "main.setAttribute('inert', '')",
+    "main.setAttribute('aria-hidden', 'true')",
+    "drawer.setAttribute('aria-labelledby', config.titleId)",
+    "event.defaultPrevented",
+    "event.key === 'Escape'",
+    "!mobile.matches || nestedWidgetOwnsEscape()",
+    "event.stopImmediatePropagation()",
+    "[role=\"combobox\"][aria-expanded=\"true\"]",
+    "event.key !== 'Tab'",
+    "event.shiftKey",
+    "elements[i].id === id",
+    "document.addEventListener('focusin'",
+    "focusDrawer()",
+    "focusInvoker()",
+    "Close workspace settings",
+    "data-tempest-settings-close"
+  )
+  missing <- required[
+    !vapply(required, grepl, logical(1), x = script, fixed = TRUE)
+  ]
+
+  expect_identical(missing, character())
+  expect_match(
+    script,
+    "document.addEventListener('keydown', handleKeydown);",
+    fixed = TRUE
+  )
+  expect_no_match(
+    script,
+    "document.addEventListener('keydown', handleKeydown, true)",
+    fixed = TRUE
+  )
+  escape_guard <- regexpr(
+    "if (!mobile.matches || nestedWidgetOwnsEscape())",
+    script,
+    fixed = TRUE
+  )
+  stop_propagation <- regexpr(
+    "event.stopImmediatePropagation()",
+    script,
+    fixed = TRUE
+  )
+  expect_lt(as.integer(escape_guard), as.integer(stop_propagation))
+  expect_no_match(script, "innerHTML", fixed = TRUE)
+  expect_no_match(script, "modal", ignore.case = TRUE)
+  expect_match(
+    css,
+    ".bslib-sidebar-layout > .main.tempest-chat-layout ~ .collapse-toggle",
+    fixed = TRUE
+  )
+  expect_match(
+    css,
+    "--_icon-button-size: 2.75rem",
+    fixed = TRUE
+  )
+})
+
+test_that("repeated settings toggles preserve bound workspace values", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("shinychat")
+  app <- source_shiny_modules()
+  store <- app$new_session_store()
+  host_server <- function(input, output, session) {
+    config <- app$mod_config_server("config")
+    app$mod_chat_server("chat", config = config, store = store)
+    session$userData$config <- config
+  }
+
+  shiny::testServer(host_server, {
+    session$setInputs(
+      `config-coordinator` = "custom/coordinator",
+      `config-expert` = "custom/expert",
+      `config-search_provider` = "wikipedia",
+      `chat-topic` = "Persistent workspace topic",
+      `chat-n_experts` = "5",
+      `chat-warmup` = TRUE,
+      `chat-suggest` = FALSE
+    )
+    session$flushReact()
+    before_config <- shiny::isolate(session$userData$config())
+    before_session <- list(
+      topic = input[["chat-topic"]],
+      n_experts = input[["chat-n_experts"]],
+      warmup = input[["chat-warmup"]],
+      suggest = input[["chat-suggest"]]
+    )
+    before_persistence <- shiny::isolate(store$costorm_persistence_status())
+
+    session$setInputs(`chat-setup_settings_toggle` = 1)
+    session$flushReact()
+    session$setInputs(`chat-footer_settings_toggle` = 1)
+    session$flushReact()
+    session$setInputs(`chat-setup_settings_toggle` = 2)
+    session$flushReact()
+
+    after_config <- shiny::isolate(session$userData$config())
+    after_session <- list(
+      topic = input[["chat-topic"]],
+      n_experts = input[["chat-n_experts"]],
+      warmup = input[["chat-warmup"]],
+      suggest = input[["chat-suggest"]]
+    )
+    after_persistence <- shiny::isolate(store$costorm_persistence_status())
+
+    expect_identical(after_config@models, before_config@models)
+    expect_identical(after_config@search_provider, "wikipedia")
+    expect_identical(after_session, before_session)
+    expect_identical(after_persistence, before_persistence)
+  })
+})
+
 test_that("session archives round-trip product state through upload", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("ellmer")
