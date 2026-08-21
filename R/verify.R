@@ -184,7 +184,7 @@ tempest_empty_claim_supports <- function() {
 #' durable product stage ledger. Pass the `TempestSession` for Co-STORM bundles
 #' so pair assessments, claim summaries, and verification records commit
 #' together.
-#' @export
+#' @keywords internal
 tempest_verify_claims <- function(
   workspace,
   verifier,

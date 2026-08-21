@@ -25,13 +25,11 @@ test_that("the current public API contract is exact", {
     "formals.tempest_session_resume",
     "formals.tempest_expert",
     "tempest_expert.properties",
-    "formals.tempest_research_manifest",
-    "formals.tempest_resource",
     "tempest_session.public_methods",
     "tempest_session.active_bindings"
   )
   expect_named(contract, expected_sections)
-  expect_length(contract$exports, 54L)
+  expect_length(contract$exports, 19L)
   expect_identical(
     contract$exports,
     sort(unique(contract$exports), method = "radix")

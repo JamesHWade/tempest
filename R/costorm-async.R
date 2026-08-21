@@ -605,7 +605,7 @@ tempest_session_turn_cancel <- function(state) {
 #'   allowed to commit. It is never retained in the result.
 #' @return A promise resolving to a typed, serializable
 #'   `tempest_session_turn_result` object.
-#' @export
+#' @keywords internal
 tempest_session_process_turn_async <- function(
   session,
   completion_id,

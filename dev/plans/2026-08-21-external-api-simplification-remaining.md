@@ -169,21 +169,21 @@ Implement the parent plan's 19-export product contract after PR C is frozen.
   private, so the committed name is `publish()`, matching the existing
   publication-authority vocabulary.
 
-Publish PR D above PR C and append it to the same native GitHub stack.
+Published as #55 at native stack `#53` position 4, ready and green.
 
 ## PR E — remove SDK and toolkit surfaces
 
-- [ ] Internalize workspace, resource, retriever, ProgramSet, verification,
+- [x] Internalize workspace, resource, retriever, ProgramSet, verification,
   progress, async, and Shiny implementation surfaces still used by Tempest.
-- [ ] Delete standalone compiler, evaluation, host, extension, and convenience
+- [x] Delete standalone compiler, evaluation, host, extension, and convenience
   code without an internal product caller.
-- [ ] Reduce the Shiny return handle to no supported external contract beyond
+- [x] Reduce the Shiny return handle to no supported external contract beyond
   `tempest_app()`.
-- [ ] Normalize public failures to the six planned Tempest condition
+- [x] Normalize public failures to the six planned Tempest condition
   categories while retaining original conditions as parents.
-- [ ] Regenerate the namespace, documentation, pkgdown index, examples, and
+- [x] Regenerate the namespace, documentation, pkgdown index, examples, and
   current API fixture for exactly 19 exports and one S3 method.
-- [ ] Update the architecture boundary document to describe only the current
+- [x] Update the architecture boundary document to describe only the current
   product API.
 
 Publish PR E above PR D and append it to the same native GitHub stack.
@@ -210,12 +210,15 @@ Publish PR E above PR D and append it to the same native GitHub stack.
 - [ ] Native GitHub stack membership is correct for every layer.
 - [ ] Every intermediate pull request is independently documented, tested,
   installed, and check-clean.
-- [ ] The final namespace has exactly 19 exports and one S3 registration.
+- [x] The final namespace has exactly 19 exports and one S3 registration.
+  Verified against a fresh isolated install, not only the dev namespace.
 - [ ] The package has one current expert, resource, run, session, and
   persistence representation with no old reader or compatibility branch.
 - [ ] STORM, Co-STORM, Shiny, Graft authority, Deputy correlation, persistence,
   progress, telemetry, and promotion remain deterministic and fail closed.
-- [ ] The full source and installed suites pass without network access,
-  credentials, or provider calls.
+- [x] The full source and installed suites pass without network access,
+  credentials, or provider calls. PR E: 107 source files with zero failures
+  and zero skips; 107 installed files with zero failures and one expected
+  skip for a compiler path absent from an installed package.
 - [ ] The parent plan and kata issue contain final commit, PR, test, and stack
   merge evidence before closure.

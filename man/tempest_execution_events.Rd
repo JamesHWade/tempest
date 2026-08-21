@@ -22,3 +22,4 @@ An ordered list of normalized event records.
 \code{tempest_execution_events()} gives host adapters one cursor-based query for
 immutable Co-STORM progress records from a \link{TempestSession}.
 }
+\keyword{internal}

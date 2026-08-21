@@ -17,3 +17,4 @@ Invisibly returns \code{TRUE} when cancellation was requested and
 Stops the Mirai worker owned by a promise returned from
 \code{\link[=tempest_run_async]{tempest_run_async()}}. Cancellation is idempotent after a run has settled.
 }
+\keyword{internal}

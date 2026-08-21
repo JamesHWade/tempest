@@ -55,7 +55,7 @@ server <- function(input, output, session) {
   )
   costorm_events <- reactive({
     active <- store$costorm_session()
-    if (is.null(active)) list() else tempest::tempest_execution_events(active)
+    if (is.null(active)) list() else tempest:::tempest_execution_events(active)
   })
   mod_run_review_server(
     "review",

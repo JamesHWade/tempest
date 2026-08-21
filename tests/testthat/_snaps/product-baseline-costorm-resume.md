@@ -108,6 +108,6 @@
         },
         "restored_status": "succeeded",
         "workspace_state": "sealed",
-        "continuation_error_class": ["tempest_session_error", "tempest_error", "rlang_error", "error", "condition"],
+        "continuation_error_class": ["tempest_session_error", "tempest_execution_error", "tempest_error", "rlang_error", "error", "condition"],
         "moderator_call_count": 0
       }

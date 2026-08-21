@@ -144,6 +144,7 @@ test_source_inventory_definitions <- function(context) {
           if (
             is.call(expression) &&
               identical(expression[[1L]], as.name("<-")) &&
+              is.name(expression[[2L]]) &&
               is.call(expression[[3L]]) &&
               identical(expression[[3L]][[1L]], as.name("function"))
           ) {

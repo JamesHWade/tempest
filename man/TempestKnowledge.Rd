@@ -8,7 +8,7 @@ TempestKnowledge(
   view = NULL,
   snapshot = NULL,
   reference = NULL,
-  record_ids = character(0),
+  record_ids = character(),
   records = list(),
   governed_procedures = list()
 )

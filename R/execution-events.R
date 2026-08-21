@@ -89,7 +89,7 @@ tempest_execution_event_sequences <- function(events) {
 #' @param after_sequence Return only events whose sequence is greater than this
 #'   non-negative execution-local cursor.
 #' @return An ordered list of normalized event records.
-#' @export
+#' @keywords internal
 tempest_execution_events <- function(x, after_sequence = 0L) {
   after_sequence <- tempest_execution_events_count(after_sequence)
   events <- tempest_execution_event_history(x)

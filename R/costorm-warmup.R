@@ -762,13 +762,7 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
 #'   committing late results.
 #' @return A promise that resolves to an internal `tempest_warmup_result` S7
 #'   object with aggregate counts and per-expert audit records.
-#' @examples
-#' \dontrun{
-#' session <- tempest_session("History of jazz")
-#' tempest_session_warmup_async(session) |>
-#'   promises::then(\(result) result@status)
-#' }
-#' @export
+#' @keywords internal
 tempest_session_warmup_async <- function(
   session,
   timeout_s = getOption("tempest.costorm.warmup_timeout_s", 120),

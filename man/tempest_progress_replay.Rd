@@ -19,12 +19,4 @@ The input events, invisibly.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
-\examples{
-events <- list(tempest_progress_event(
-  run_id = "run-1",
-  workflow = "storm",
-  event_type = "workflow",
-  status = "started"
-))
-tempest_progress_replay(events, function(event) event$status)
-}
+\keyword{internal}

@@ -4,7 +4,7 @@
 \alias{tempest_abort}
 \title{Abort with a formatted error message}
 \usage{
-tempest_abort(message, ..., .envir = rlang::caller_env())
+tempest_abort(message, ..., class = character(), .envir = rlang::caller_env())
 }
 \arguments{
 \item{message}{Error message with cli formatting.}

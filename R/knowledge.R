@@ -1,10 +1,15 @@
 # Accepted organizational knowledge boundary
 
-tempest_knowledge_abort <- function(message, ..., parent = NULL) {
+tempest_knowledge_abort <- function(
+  message,
+  ...,
+  class = character(),
+  parent = NULL
+) {
   tempest_abort(
     message,
     ...,
-    class = c("tempest_knowledge_error", "tempest_error"),
+    class = c("tempest_knowledge_error", class),
     parent = parent,
     .envir = rlang::caller_env()
   )
@@ -35,6 +40,27 @@ TempestKnowledge <- S7::new_class(
     records = S7::new_property(S7::class_list, default = list()),
     governed_procedures = S7::new_property(S7::class_list, default = list())
   ),
+  constructor = function(
+    view = NULL,
+    snapshot = NULL,
+    reference = NULL,
+    record_ids = character(),
+    records = list(),
+    governed_procedures = list()
+  ) {
+    value <- S7::new_object(
+      S7::S7_object(),
+      view = view,
+      snapshot = snapshot,
+      reference = reference,
+      record_ids = record_ids,
+      records = records,
+      governed_procedures = governed_procedures
+    )
+    # Carry the S3 class so the public print method dispatches.
+    class(value) <- c("tempest_knowledge", class(value))
+    value
+  },
   validator = function(self) {
     if (anyDuplicated(self@record_ids)) {
       return("@record_ids must be unique.")
@@ -194,6 +220,7 @@ tempest_knowledge <- function(
     error = function(error) {
       tempest_knowledge_abort(
         "{.arg graft_view} must be a valid pinned Graft view.",
+        class = "tempest_input_error",
         parent = error
       )
     }
@@ -280,7 +307,8 @@ tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
   }
   if (!tempest_is_knowledge(knowledge)) {
     tempest_knowledge_abort(
-      "{.arg {arg}} must be created by {.fn tempest_knowledge}."
+      "{.arg {arg}} must be created by {.fn tempest_knowledge}.",
+      class = "tempest_input_error"
     )
   }
   list(
@@ -308,4 +336,20 @@ tempest_knowledge_insert_records <- function(workspace, records) {
     workspace$upsert_retrieved_resource(record)
   }
   invisible(workspace)
+}
+
+#' Print accepted organizational knowledge
+#'
+#' @param x A `TempestKnowledge` value from [tempest_knowledge()].
+#' @param ... Ignored.
+#' @return `x`, invisibly.
+#' @export
+print.tempest_knowledge <- function(x, ...) {
+  cli::cli_text("{.cls tempest_knowledge}")
+  cli::cli_bullets(c(
+    "*" = "snapshot: {.val {x@reference$snapshot_id %||% NA_character_}}",
+    "*" = "accepted records: {length(x@record_ids)}",
+    "*" = "governed stages: {.val {names(x@governed_procedures)}}"
+  ))
+  invisible(x)
 }

@@ -656,7 +656,7 @@ tempest_session_assert_persistence_quiescent <- function(
 #'
 #' @param session A [TempestSession] object.
 #' @return A list containing an exact schema-9 session snapshot.
-#' @export
+#' @keywords internal
 tempest_session_snapshot <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_abort(
@@ -1090,7 +1090,7 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #'   future execution when `program_set` contains governed procedures. It is
 #'   never reconstructed from or written to persistence.
 #' @return A restored [TempestSession].
-#' @export
+#' @keywords internal
 tempest_session_restore <- function(
   snapshot,
   config = tempest_config(),

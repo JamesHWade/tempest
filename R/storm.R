@@ -1740,12 +1740,7 @@ tempest_run_internal <- function(
 #' @return A `tempest_async_run` promise that resolves with the
 #'   [tempest_run()] result.
 #' @seealso [tempest_run()] for the synchronous version.
-#' @examples
-#' \dontrun{
-#' tempest_run_async("History of jazz", config = tempest_config()) |>
-#'   promises::then(function(result) cat(result$report_md))
-#' }
-#' @export
+#' @keywords internal
 tempest_run_async <- function(..., knowledge_view = NULL) {
   args <- list(...)
   program_set <- args$program_set %||% NULL
@@ -1839,7 +1834,7 @@ tempest_run_async <- function(..., knowledge_view = NULL) {
 #' @param run A `tempest_async_run` returned by [tempest_run_async()].
 #' @return Invisibly returns `TRUE` when cancellation was requested and
 #'   `FALSE` when the run had already settled.
-#' @export
+#' @keywords internal
 tempest_run_cancel <- function(run) {
   if (!inherits(run, "tempest_async_run")) {
     tempest_abort(

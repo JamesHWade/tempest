@@ -186,7 +186,7 @@ TempestClaimSupport <- S7::new_class(
 #'   an `"unverifiable"` assessment.
 #' @param rationale Required bounded credential-free rationale.
 #' @return A `tempest_claim_support` S7 value.
-#' @export
+#' @keywords internal
 tempest_claim_support <- function(
   claim_id,
   evidence_span_id,

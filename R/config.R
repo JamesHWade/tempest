@@ -577,14 +577,7 @@ tempest_normalize_search_provider <- function(search_provider) {
 #'   \item{perspective}{STORM perspective this content relates to (optional)}
 #' }
 #'
-#' @examples
-#' \dontrun{
-#' store <- tempest_create_ragnar_store(
-#'   embed_fn = ragnar::embed_openai(),
-#'   cache_dir = tempfile()
-#' )
-#' }
-#' @export
+#' @keywords internal
 tempest_create_ragnar_store <- function(
   embed_fn,
   cache_dir = NULL,

@@ -16,15 +16,7 @@
 #'   `program_set`.
 #' @return A list of `tempest_expert` profiles.
 #'
-#' @examples
-#' \dontrun{
-#' experts <- tempest_generate_experts(
-#'   topic = "Climate change adaptation",
-#'   n = 3,
-#'   config = tempest_config()
-#' )
-#' }
-#' @export
+#' @keywords internal
 tempest_generate_experts <- function(
   topic,
   n = 3,

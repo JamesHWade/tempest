@@ -2053,7 +2053,7 @@ workflow_labels <- function(workflow, kind = c("stage", "step")) {
     return(NULL)
   }
   tryCatch(
-    tempest::tempest_progress_labels(workflow, kind = kind),
+    tempest:::tempest_progress_labels(workflow, kind = kind),
     error = function(e) NULL
   )
 }

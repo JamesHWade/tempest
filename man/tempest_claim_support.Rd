@@ -36,3 +36,4 @@ A \code{tempest_claim_support} S7 value.
 claim-by-evidence-span pair. The source binding is explicit, while claim,
 span, and source existence are validated by the owning \link{ResearchWorkspace}.
 }
+\keyword{internal}

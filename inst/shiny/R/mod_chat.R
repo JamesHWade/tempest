@@ -724,7 +724,7 @@ mod_chat_server <- function(
                 !isTRUE(session_ended) &&
                 identical(turn_session_id, active_session_id)
             }
-            tempest::tempest_session_process_turn_async(
+            tempest:::tempest_session_process_turn_async(
               ses,
               completion_id = completion_id,
               suggest = turn_suggestions_enabled,
@@ -820,7 +820,7 @@ mod_chat_server <- function(
     })
 
     restore_progress_history <- function(ses) {
-      progress_events(tempest::tempest_execution_events(ses))
+      progress_events(tempest:::tempest_execution_events(ses))
       invisible(NULL)
     }
 
@@ -1336,7 +1336,7 @@ mod_chat_server <- function(
                     costorm_log("warmup started: %s", ses$session_id)
                     warmup_request <- work_queue$enqueue(
                       function(queue_current) {
-                        tempest::tempest_session_warmup_async(
+                        tempest:::tempest_session_warmup_async(
                           ses,
                           is_current = function() {
                             queue_current() && warmup_is_current()
@@ -2215,7 +2215,7 @@ costorm_log <- function(format, ...) {
 }
 
 costorm_starting_event <- function(session_id) {
-  tempest::tempest_progress_event(
+  tempest:::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
     event_type = "stage",
@@ -2227,7 +2227,7 @@ costorm_starting_event <- function(session_id) {
 }
 
 costorm_session_ready_event <- function(session_id, ses) {
-  tempest::tempest_progress_event(
+  tempest:::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
     event_type = "stage",
@@ -2245,7 +2245,7 @@ costorm_session_failed_event <- function(session_id, error = NULL) {
   if (!is.null(error)) {
     payload <- progress_error_payload(error)
   }
-  tempest::tempest_progress_event(
+  tempest:::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
     event_type = "stage",
@@ -2262,7 +2262,7 @@ costorm_progress_state <- function(events) {
     return(NULL)
   }
   tryCatch(
-    tempest::tempest_progress_state(events),
+    tempest:::tempest_progress_state(events),
     error = function(e) {
       costorm_log("progress reducer failed")
       NULL

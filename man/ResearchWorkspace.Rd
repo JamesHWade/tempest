@@ -9,6 +9,7 @@ evidence spans, disputes, and references to accepted graft knowledge. The
 workspace never grants acceptance to proposed claims; acceptance remains an
 explicit graft review and commit.
 }
+\keyword{internal}
 \section{Active bindings}{
   \if{html}{\out{<div class="r6-active-bindings">}}
   \describe{

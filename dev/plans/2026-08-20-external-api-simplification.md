@@ -2,7 +2,7 @@
 
 Tracking issue: kata `pjsd`
 
-Status: PR C published as #54 (ready, green); PR D implemented, verification in progress
+Status: PR C #54 and PR D #55 ready and green; PR E implemented, verification in progress
 
 Audit basis: Tempest `main` commit
 `21e1794fa9695f383c4b31d413d2c40b58a15ac7` on 2026-08-20
@@ -674,20 +674,20 @@ and promotion use only the new product contract.
 
 ### PR E — Remove the SDK/toolkit namespaces
 
-- [ ] Internalize product-required workspace, resource, retriever,
+- [x] Internalize product-required workspace, resource, retriever,
   ProgramSet, verification, progress, async, and Shiny implementations.
-- [ ] Delete standalone extension, evaluation, compiler, Agent Skill, host,
+- [x] Delete standalone extension, evaluation, compiler, Agent Skill, host,
   and convenience code that has no internal product caller.
-- [ ] Reduce Shiny's external return handle to no public contract beyond
+- [x] Reduce Shiny's external return handle to no public contract beyond
   `tempest_app()`.
-- [ ] Normalize user-facing conditions to the six supported public categories
+- [x] Normalize user-facing conditions to the six supported public categories
   while retaining original errors through parent conditions.
-- [ ] Add source and stripped-installed tests that trigger every public
+- [x] Add source and stripped-installed tests that trigger every public
   condition category, prove exact inheritance, and prove the original parent
   condition is retained without sensitive metadata.
-- [ ] Regenerate `NAMESPACE`, `man/`, `_pkgdown.yml`, README, vignettes, and
+- [x] Regenerate `NAMESPACE`, `man/`, `_pkgdown.yml`, README, vignettes, and
   installed examples for exactly 19 exports.
-- [ ] Update the architecture boundary document with the current product API
+- [x] Update the architecture boundary document with the current product API
   and make no 63-name compatibility claims.
 
 Gate: source and fresh installed namespaces expose exactly the 19 names and no

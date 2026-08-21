@@ -39,3 +39,4 @@ follow-up questions. Enrichment failures are returned as typed notices so
 host applications can choose their own presentation. Stale work is cancelled
 before it can commit later pipeline stages.
 }
+\keyword{internal}

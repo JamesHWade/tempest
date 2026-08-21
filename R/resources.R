@@ -299,15 +299,7 @@ tempest_resource_metadata <- function(value, arg) {
 #' @param metadata Serializable namespaced host metadata. Credential-like field
 #'   names and values are rejected recursively.
 #' @return A `tempest_resource` S7 object.
-#' @examples
-#' resource <- tempest_resource(
-#'   resource_kind = "scientific.document",
-#'   locator = "protocols/assay-42",
-#'   title = "Reviewed assay protocol",
-#'   media_type = "text/plain",
-#'   content = "Measure the response after 24 hours."
-#' )
-#' @export
+#' @keywords internal
 tempest_resource <- function(
   resource_kind,
   locator,

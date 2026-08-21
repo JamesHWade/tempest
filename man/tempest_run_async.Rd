@@ -25,12 +25,7 @@ This runs \code{\link[=tempest_run]{tempest_run()}} in a Mirai worker and return
 immediately.
 Use \code{\link[=tempest_run_cancel]{tempest_run_cancel()}} to stop a run that is no longer needed.
 }
-\examples{
-\dontrun{
-tempest_run_async("History of jazz", config = tempest_config()) |>
-  promises::then(function(result) cat(result$report_md))
-}
-}
 \seealso{
 \code{\link[=tempest_run]{tempest_run()}} for the synchronous version.
 }
+\keyword{internal}

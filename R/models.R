@@ -849,7 +849,7 @@ tempest_research_workspace_seal <- function(workspace, owner = NULL) {
 #'   claim-support assessments, when available.
 #' @field max_sources Maximum number of unique resources admitted.
 #'
-#' @export
+#' @keywords internal
 ResearchWorkspace <- R6::R6Class(
   "ResearchWorkspace",
   public = list(
@@ -2467,7 +2467,7 @@ ResearchWorkspace <- R6::R6Class(
 #'   references to accepted graft records.
 #'
 #' @return A [ResearchWorkspace] object.
-#' @export
+#' @keywords internal
 tempest_research_workspace <- function(
   base_snapshot_id = NULL,
   graft_snapshot = NULL,

@@ -549,7 +549,7 @@ TempestValidationResult <- S7::new_class(
 #' @param details Serializable diagnostic details.
 #' @param created_at Optional creation timestamp.
 #' @return A `tempest_validation_result` S7 object.
-#' @export
+#' @keywords internal
 tempest_validation_result <- function(
   validator_id,
   status = c("passed", "failed", "warning"),

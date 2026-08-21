@@ -1,10 +1,15 @@
 # Cohesive Tempest product result
 
-tempest_product_result_abort <- function(message, ..., parent = NULL) {
+tempest_product_result_abort <- function(
+  message,
+  ...,
+  class = character(),
+  parent = NULL
+) {
   tempest_abort(
     message,
     ...,
-    class = c("tempest_product_result_error", "tempest_error"),
+    class = c("tempest_product_result_error", class),
     parent = parent,
     .envir = rlang::caller_env()
   )
@@ -116,8 +121,11 @@ tempest_product_read_workspace <- function(x, arg = "x") {
   if (inherits(x, "TempestSession")) {
     return(x$workspace)
   }
-  tempest_product_result_abort(paste0(
-    "{.arg {arg}} must be a completed {.fn tempest_run} product or a ",
-    "{.cls TempestSession}."
-  ))
+  tempest_product_result_abort(
+    paste0(
+      "{.arg {arg}} must be a completed {.fn tempest_run} product or a ",
+      "{.cls TempestSession}."
+    ),
+    class = "tempest_input_error"
+  )
 }

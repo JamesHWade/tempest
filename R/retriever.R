@@ -722,7 +722,7 @@ tempest_retriever_config_digest <- function(retriever) {
 #' @field cache_enabled Read-only cache policy derived from `config`.
 #' @field cache_ttl Read-only maximum cache age derived from `config`.
 #'
-#' @export
+#' @keywords internal
 TempestRetriever <- R6::R6Class(
   "TempestRetriever",
   public = list(
@@ -1284,12 +1284,7 @@ TempestRetriever <- R6::R6Class(
 #' @param config A `TempestConfig`.
 #' @param workspace A [ResearchWorkspace].
 #' @return A `TempestRetriever`.
-#' @examples
-#' retriever <- tempest_retriever(config = tempest_config())
-#' \dontrun{
-#' results <- retriever$search("history of jazz", provider = "wikipedia")
-#' }
-#' @export
+#' @keywords internal
 tempest_retriever <- function(
   config = tempest_config(),
   workspace = tempest_research_workspace()

@@ -26,3 +26,4 @@ instances or inspect the current Co-STORM session and report product.
 The returned object should be treated as an adapter handle; prefer its
 public methods over relying on its internal representation.
 }
+\keyword{internal}

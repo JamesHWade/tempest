@@ -1227,14 +1227,7 @@ TempestResearchManifest <- S7::new_class(
 #' @param status Run status: `"running"`, `"succeeded"`, `"failed"`, or
 #'   `"cancelled"`.
 #' @return A `TempestResearchManifest` S7 object.
-#' @examples
-#' manifest <- tempest_research_manifest(
-#'   research_run_id = "research-123",
-#'   mode = "storm",
-#'   config = tempest_config()
-#' )
-#' manifest@status
-#' @export
+#' @keywords internal
 tempest_research_manifest <- function(
   research_run_id,
   mode = c("storm", "costorm"),

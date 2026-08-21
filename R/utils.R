@@ -24,8 +24,19 @@ tempest_has <- function(pkg) {
 #' @param .envir Environment for glue interpolation.
 #' @return Never returns; always throws an error.
 #' @keywords internal
-tempest_abort <- function(message, ..., .envir = rlang::caller_env()) {
-  cli::cli_abort(message, ..., .envir = .envir, call = rlang::caller_env())
+tempest_abort <- function(
+  message,
+  ...,
+  class = character(),
+  .envir = rlang::caller_env()
+) {
+  cli::cli_abort(
+    message,
+    ...,
+    class = tempest_condition_class(class),
+    .envir = .envir,
+    call = rlang::caller_env()
+  )
 }
 
 tempest_rethrow_operation <- function(error, class = character()) {

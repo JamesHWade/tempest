@@ -111,9 +111,10 @@ serializes a Deputy Agent or provider credentials.
 ## Verify and promote research evidence
 
 Claim verification is authoritative at the exact claim-by-evidence-span pair.
-`tempest_verify_claims()` replaces the complete support set atomically, and
-`tempest_claim_supports()` exposes each deterministic pair identity, source
-binding, status, score, and rationale. Claim-level status and citation-audit
+Publication replaces the complete support set atomically, and
+`tempest_claim_supports()` exposes each deterministic pair identity, claim
+text, evidence-span quote and location, source binding, status, score, and
+rationale. Claim-level status and citation-audit
 tables are derived views of those records; they are not separate evidence
 authority.
 
@@ -750,80 +751,12 @@ browser-temporary autosave, and its STORM panel does not expose unsupported
 parallel perspective research. STORM runs in a `shiny::ExtendedTask` backed by
 Mirai so the Shiny session remains responsive.
 
-Host apps can embed the same maintained asynchronous STORM path:
-
-```r
-ui <- bslib::page_fillable(
-  tempest_shiny_ui("research", panels = "storm")
-)
-
-server <- function(input, output, session) {
-  tempest_shiny_server(
-    "research",
-    config = tempest_config(),
-    panels = "storm"
-  )
-}
-
-shiny::shinyApp(ui, server)
-```
-
-The installed minimal example is available at
-`system.file("examples/shiny-host/app.R", package = "tempest")`. The public
-store has 13 product-named members: `peek_costorm_session`, `costorm_session`,
-`costorm_workspace`, `set_costorm_session`, `touch_costorm_session`,
-`save_costorm_session`, `resume_costorm_session`,
-`costorm_persistence_status`, `report_md`, `report_workspace`, `report_topic`,
-`publish_costorm_report`, and `publish_storm_report`. The server returns exactly
-10 members: `store`, `costorm_session`, `costorm_events`, `costorm_evidence`,
-`storm_events`, `report_md`, `report_workspace`, `report_topic`,
-`report_navigation_event`, and `touch_costorm_session`.
+The Shiny modules and their store are Tempest implementation details. The
+bundled application is reachable only through `tempest_app()`, and there is no
+supported contract for embedding the panels in a host app.
 
 The app currently depends on the shinychat development version that provides
 `chat_server()`, pinned in `DESCRIPTION`.
-
-## Evaluation
-
-### STORM evaluation with vitals
-
-```r
-library(tempest)
-library(vitals)
-library(ellmer)
-
-judge <- ellmer::chat("openai/gpt-5.6-luna")
-tsk <- tempest_task(dataset = "qa", scorer_chat = judge)
-tsk$get_samples()
-```
-
-Unless a solver is supplied explicitly, each sample runs a real
-`tempest_run()` product and returns its authoritative report. Solver metadata
-contains only a versioned review reference, exact product identity, fixed
-program artifact and evaluator identities, and a ten-stage structural summary.
-It never logs the full trajectory review, live chats, clients, tools, prompts,
-responses, paths, or credentials. Pass a caller data frame with exact `input`,
-`target`, and optional unique `id` columns to evaluate a content-addressed local
-benchmark.
-
-### Co-STORM evaluation with SimulatedUser
-
-Run automated Co-STORM sessions with a simulated curious researcher:
-
-```r
-# Standalone SimulatedUser
-session <- tempest_session("AI safety")
-sim <- SimulatedUser$new("AI safety", max_turns = 5)
-sim$run_session(session, warmup = TRUE, verbose = TRUE)
-session$publish()
-report <- tempest_report(session)
-
-# As a vitals task
-tsk <- tempest_costorm_task(dataset = "qa", max_turns = 5, scorer_chat = judge)
-```
-
-The default Co-STORM solver likewise completes a real `TempestSession`, reads
-its committed report through `tempest_report()`, and records only
-the same bounded credential-safe product, program, and stage summary.
 
 ## Notes
 

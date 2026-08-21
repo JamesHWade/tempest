@@ -1,10 +1,15 @@
 # Shared product report citations, references, and canonical rendering
 
-tempest_product_report_abort <- function(message, ..., parent = NULL) {
+tempest_product_report_abort <- function(
+  message,
+  ...,
+  class = character(),
+  parent = NULL
+) {
   tempest_abort(
     message,
     ...,
-    class = c("tempest_product_report_error", "tempest_error"),
+    class = c("tempest_product_report_error", class),
     parent = parent,
     .envir = rlang::caller_env()
   )
@@ -1068,7 +1073,8 @@ tempest_report <- function(x) {
       paste0(
         "{.arg x} must be a completed {.fn tempest_run} product or a ",
         "finalized {.cls TempestSession}."
-      )
+      ),
+      class = "tempest_input_error"
     )
   }
   if (!identical(x@status, "succeeded")) {

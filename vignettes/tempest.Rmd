@@ -412,55 +412,9 @@ persistence, and successful publication use polite live status; validation,
 cancellation, and publication failures use alerts.
 
 A host app can embed that same asynchronous STORM adapter without calling
-`tempest_run()` in the Shiny main process:
-
-```{r shiny-host, eval = FALSE}
-ui <- bslib::page_fillable(
-  tempest_shiny_ui("research", panels = "storm")
-)
-
-server <- function(input, output, session) {
-  tempest_shiny_server(
-    "research",
-    config = cfg,
-    panels = "storm"
-  )
-}
-
-shiny::shinyApp(ui, server)
-```
-
-The installed example lives at
-`system.file("examples/shiny-host/app.R", package = "tempest")`.
-
-## Evaluate complete products
-
-The default evaluation solvers exercise the actual product paths. Each
-`tempest_task()` sample runs `tempest_run()` and returns its authoritative
-report. Each `tempest_costorm_task()` sample completes a real `TempestSession`
-and reads its committed report. Metadata contains only a versioned review
-reference, exact product identity, fixed program artifact and evaluator
-identities, and a ten-stage structural summary; it never logs the complete
-review, Agent objects, chats, clients, tools, prompts, responses, paths, or
-credentials. `dataset` can be the built-in `"qa"` smoke set or an exact data
-frame with `input`, `target`, and optional unique `id` columns.
-
-```{r evaluation, eval = FALSE}
-judge <- ellmer::chat("openai/gpt-5.6-luna")
-
-storm_task <- tempest_task(
-  dataset = "qa",
-  config = cfg,
-  scorer_chat = judge
-)
-
-costorm_task <- tempest_costorm_task(
-  dataset = "qa",
-  config = cfg,
-  max_turns = 5,
-  scorer_chat = judge
-)
-```
+The Shiny modules are Tempest implementation details. The bundled application
+is reachable only through `tempest_app()`; there is no supported contract for
+embedding its panels in a host app.
 
 ## Product boundary
 
@@ -487,8 +441,6 @@ stage state are not part of that surface. No compatibility layer is provided.
   `tempest_trajectory_review()`.
 - Capture progress by passing a `progress` callback, which receives one
   canonical plain record per event.
-- Evaluate scripted and interactive workflows with `tempest_task()` and
-  `tempest_costorm_task()`.
 
 Start with a narrow topic, a small expert and question budget, and durable
 output. Expand model roles, retrieval, parallelism, and evaluation only after

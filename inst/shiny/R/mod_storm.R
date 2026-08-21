@@ -403,7 +403,7 @@ storm_progress_run_id <- function() {
 }
 
 storm_running_event <- function(topic, run_id = storm_progress_run_id()) {
-  tempest::tempest_progress_event(
+  tempest:::tempest_progress_event(
     run_id = run_id,
     workflow = "storm",
     event_type = "workflow",
@@ -420,7 +420,7 @@ storm_worker_progress_collector <- function(
   events <- list()
 
   event_data <- function(event) {
-    data <- tempest::tempest_progress_event_data(event)
+    data <- tempest:::tempest_progress_event_data(event)
     if (!include_payload) {
       data$payload <- list()
     }
@@ -583,7 +583,7 @@ storm_merge_progress_events <- function(current, incoming) {
 }
 
 storm_progress_event_id <- function(event) {
-  if (S7::S7_inherits(event, tempest::tempest_progress_event)) {
+  if (S7::S7_inherits(event, tempest:::tempest_progress_event)) {
     return(S7::prop(event, "event_id"))
   }
   if (is.list(event)) {
@@ -706,7 +706,7 @@ storm_package_root <- function() {
 storm_progress_state <- function(events, task_status = "initial") {
   if (length(events) > 0L) {
     state <- tryCatch(
-      tempest::tempest_progress_state(events),
+      tempest:::tempest_progress_state(events),
       error = function(e) NULL
     )
     if (!is.null(state) && !identical(task_status, "error")) {
@@ -719,8 +719,8 @@ storm_progress_state <- function(events, task_status = "initial") {
     success = "succeeded",
     "started"
   )
-  tempest::tempest_progress_state(list(
-    tempest::tempest_progress_event(
+  tempest:::tempest_progress_state(list(
+    tempest:::tempest_progress_event(
       run_id = "shiny-storm",
       workflow = "storm",
       event_type = "workflow",
@@ -781,7 +781,7 @@ storm_task_was_cancelled <- function(job, error) {
 }
 
 storm_cancelled_event <- function(topic, run_id) {
-  tempest::tempest_progress_event(
+  tempest:::tempest_progress_event(
     run_id = run_id,
     workflow = "storm",
     event_type = "cancellation",
@@ -792,5 +792,5 @@ storm_cancelled_event <- function(topic, run_id) {
 }
 
 storm_stage_labels <- function() {
-  tempest::tempest_progress_labels("storm", kind = "stage")
+  tempest:::tempest_progress_labels("storm", kind = "stage")
 }

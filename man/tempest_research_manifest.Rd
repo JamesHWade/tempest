@@ -55,11 +55,4 @@ Reference fields accept only canonical JSON-compatible plain values. They
 cannot contain credentials, chats, functions, environments, connections,
 S7 or R6 objects, external pointers, or missing and non-finite values.
 }
-\examples{
-manifest <- tempest_research_manifest(
-  research_run_id = "research-123",
-  mode = "storm",
-  config = tempest_config()
-)
-manifest@status
-}
+\keyword{internal}

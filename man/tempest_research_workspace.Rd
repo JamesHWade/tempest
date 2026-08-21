@@ -31,3 +31,4 @@ gathered or proposed during scientific research. Accepted knowledge remains
 in graft; this workspace retains opaque record references and, when pinned,
 the path-free immutable Graft snapshot needed to reopen that boundary.
 }
+\keyword{internal}
