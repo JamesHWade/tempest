@@ -16,15 +16,6 @@ tempest_detect_provider <- function(model) {
   # Parse "provider/model-name" format
   if (grepl("/", model)) {
     provider <- sub("/.*$", "", model)
-    # Normalize provider names
-    provider <- tolower(provider)
-    # Map common aliases
-    provider <- switch(
-      provider,
-      "claude" = "anthropic",
-      "gemini" = "google",
-      provider
-    )
     return(provider)
   }
   NULL

@@ -34,8 +34,8 @@ test_that("research manifests validate schema and lifecycle enums", {
       tempest_config(),
       schema_version = 1L
     ),
-    class = "tempest_research_manifest_error",
-    regexp = "schema_version.*version.*3"
+    class = "simpleError",
+    regexp = "unused argument"
   )
 })
 

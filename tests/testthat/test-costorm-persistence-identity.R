@@ -332,8 +332,7 @@ test_that("schema 9 progress history is exact and session-bound", {
   expect_error(
     tempest_session_resume(
       bundle_dir,
-      config = cfg,
-      partial_recovery = TRUE
+      config = cfg
     ),
     class = "tempest_session_restore_error"
   )

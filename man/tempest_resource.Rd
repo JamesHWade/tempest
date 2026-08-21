@@ -18,8 +18,7 @@ tempest_resource(
   retrieved_at = NULL,
   redaction = list(),
   retention = list(),
-  metadata = list(),
-  schema_version = 1L
+  metadata = list()
 )
 }
 \arguments{
@@ -58,8 +57,6 @@ and values are rejected recursively.}
 
 \item{metadata}{Serializable namespaced host metadata. Credential-like field
 names and values are rejected recursively.}
-
-\item{schema_version}{Positive resource schema version.}
 }
 \value{
 A \code{tempest_resource} S7 object.

@@ -119,29 +119,21 @@ test_that("tempest_config validates logical and model controls", {
   )
 })
 
-test_that("tempest_config accepts upstream-style search providers", {
+test_that("tempest_config accepts only canonical search providers", {
   providers <- tempest:::tempest_search_provider_choices()
   for (provider in providers) {
     cfg <- tempest_config(search_provider = provider)
     expect_equal(cfg@search_provider, provider)
   }
 
-  expect_equal(
-    tempest_config(search_provider = "ddg")@search_provider,
-    "duckduckgo"
-  )
-  expect_equal(
-    tempest_config(search_provider = "google_search")@search_provider,
-    "google"
-  )
-  expect_equal(
-    tempest_config(search_provider = "azure")@search_provider,
-    "azure_ai_search"
-  )
-  expect_equal(
-    tempest_config(search_provider = "you.com")@search_provider,
-    "you"
-  )
+  aliases <- c("ddg", "google_search", "azure", "you.com", "DuckDuckGo")
+  for (alias in aliases) {
+    expect_error(
+      tempest_config(search_provider = alias),
+      class = "tempest_search_provider_error",
+      info = alias
+    )
+  }
 
   expect_error(
     tempest_config(search_provider = "not-a-provider"),
@@ -169,6 +161,30 @@ test_that("tempest_config accepts custom models as list", {
     )
   )
   expect_equal(cfg@models$coordinator, "anthropic/claude-sonnet-4-20250514")
+})
+
+test_that("tempest_config rejects noncanonical model provider prefixes", {
+  invalid <- c(
+    "claude/sonnet",
+    "gemini/pro",
+    "Claude/sonnet",
+    "Gemini/pro",
+    " claude/sonnet",
+    "anthropic /sonnet"
+  )
+  for (model in invalid) {
+    expect_error(
+      tempest_config(models = model),
+      class = "tempest_config_error",
+      regexp = "canonical provider prefixes",
+      info = model
+    )
+  }
+
+  anthropic <- tempest_config(models = "anthropic/sonnet")
+  google <- tempest_config(models = "google/pro")
+  expect_identical(anthropic@models$coordinator, "anthropic/sonnet")
+  expect_identical(google@models$coordinator, "google/pro")
 })
 
 test_that("tempest_config accepts single model string for all roles", {

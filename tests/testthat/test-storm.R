@@ -7,7 +7,6 @@ test_that("tempest_run rejects invalid runtime budgets before provider work", {
     list(topic = "Topic", n_experts = 3),
     list(topic = "Topic", max_rounds = NA_real_),
     list(topic = "Topic", max_questions_per_perspective = Inf),
-    list(topic = "Topic", parallel_research = NA),
     list(topic = "Topic", steps = "unknown")
   )
 
@@ -1627,7 +1626,7 @@ test_that("tempest_run binds each expert answer to one Deputy execution", {
   }
 })
 
-test_that("parallel STORM research rejects before provider work", {
+test_that("retired STORM compatibility arguments are unknown", {
   skip_if_not_installed("ellmer")
   provider_calls <- 0L
   config <- tempest_config(
@@ -1649,45 +1648,31 @@ test_that("parallel STORM research rejects before provider work", {
     instructions = "Do not execute provider work."
   )
 
-  condition <- tryCatch(
-    tempest_run(
-      "Parallel boundary",
-      config = config,
-      retriever = retriever,
-      experts = list(expert),
-      max_questions_per_perspective = 1,
-      parallel_research = TRUE,
-      program_set = tempest_program_set(),
-      steps = c("perspectives", "research"),
-      verbose = FALSE
-    ),
-    error = \(error) error
+  base_args <- list(
+    topic = "Compatibility boundary",
+    config = config,
+    retriever = retriever,
+    experts = list(expert),
+    max_questions_per_perspective = 1,
+    program_set = tempest_program_set(),
+    steps = c("perspectives", "research"),
+    verbose = FALSE
   )
-
-  expect_s3_class(condition, "tempest_config_error")
-  expect_match(conditionMessage(condition), "parallel_research", fixed = TRUE)
-  expect_identical(provider_calls, 0L)
-
-  duplicate_condition <- tryCatch(
-    tempest_run(
-      "Duplicate-removal boundary",
-      config = config,
-      retriever = retriever,
-      experts = list(expert),
-      max_questions_per_perspective = 1,
-      remove_duplicate = TRUE,
-      program_set = tempest_program_set(),
-      steps = c("perspectives", "research"),
-      verbose = FALSE
-    ),
-    error = \(error) error
-  )
-
-  expect_s3_class(duplicate_condition, "tempest_config_error")
-  expect_match(
-    conditionMessage(duplicate_condition),
-    "remove_duplicate",
-    fixed = TRUE
-  )
+  for (argument in c("parallel_research", "remove_duplicate")) {
+    condition <- tryCatch(
+      do.call(
+        tempest_run,
+        c(base_args, stats::setNames(list(TRUE), argument))
+      ),
+      error = \(error) error
+    )
+    expect_s3_class(condition, "simpleError")
+    expect_match(
+      conditionMessage(condition),
+      paste0("unused argument (", argument, " = TRUE)"),
+      fixed = TRUE,
+      info = argument
+    )
+  }
   expect_identical(provider_calls, 0L)
 })

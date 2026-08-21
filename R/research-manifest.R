@@ -169,15 +169,6 @@ tempest_research_provenance_record <- function(
   )
 }
 
-tempest_research_manifest_schema_version <- function(value) {
-  if (!tempest_exact_integer_scalar_valid(value, 3L, 3L)) {
-    tempest_research_manifest_abort(
-      "{.arg schema_version} must be the supported version `3`."
-    )
-  }
-  value
-}
-
 tempest_research_manifest_digest <- function(value) {
   value <- tempest_research_manifest_string(value, "config_digest")
   if (!grepl("^sha256:[a-f0-9]{64}$", value)) {
@@ -1235,7 +1226,6 @@ TempestResearchManifest <- S7::new_class(
 #' @param deliverables References to product deliverables.
 #' @param status Run status: `"running"`, `"succeeded"`, `"failed"`, or
 #'   `"cancelled"`.
-#' @param schema_version Manifest record schema. Only version 3 is supported.
 #' @return A `TempestResearchManifest` S7 object.
 #' @examples
 #' manifest <- tempest_research_manifest(
@@ -1258,8 +1248,7 @@ tempest_research_manifest <- function(
   ),
   traces = list(),
   deliverables = list(),
-  status = "running",
-  schema_version = 3L
+  status = "running"
 ) {
   if (missing(mode)) {
     mode <- "storm"
@@ -1278,7 +1267,6 @@ tempest_research_manifest <- function(
     "status",
     c("running", "succeeded", "failed", "cancelled")
   )
-  schema_version <- tempest_research_manifest_schema_version(schema_version)
   if (is.null(config) && is.null(config_digest)) {
     tempest_research_manifest_abort(
       "Supply {.arg config} or an existing {.arg config_digest}."
@@ -1304,7 +1292,7 @@ tempest_research_manifest <- function(
   config_digest <- computed_digest %||% config_digest
 
   TempestResearchManifest(
-    schema_version = schema_version,
+    schema_version = 3L,
     research_run_id = research_run_id,
     mode = mode,
     config_digest = config_digest,
@@ -1367,6 +1355,11 @@ tempest_research_manifest_from_record <- function(record) {
       )
     )
   }
+  if (!tempest_exact_integer_scalar_valid(record$schema_version, 3L, 3L)) {
+    tempest_research_manifest_abort(
+      "Research manifest records must use exact supported version `3`."
+    )
+  }
   record$runtime <- tempest_research_manifest_runtime_record(record$runtime)
   tempest_research_manifest(
     research_run_id = record$research_run_id,
@@ -1377,8 +1370,7 @@ tempest_research_manifest_from_record <- function(record) {
     runtime = record$runtime,
     traces = record$traces,
     deliverables = record$deliverables,
-    status = record$status,
-    schema_version = record$schema_version
+    status = record$status
   )
 }
 
@@ -1415,7 +1407,6 @@ tempest_research_manifest_update <- function(
     runtime = runtime %||% manifest@runtime,
     traces = traces %||% manifest@traces,
     deliverables = deliverables %||% manifest@deliverables,
-    status = status %||% manifest@status,
-    schema_version = manifest@schema_version
+    status = status %||% manifest@status
   )
 }

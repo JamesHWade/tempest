@@ -686,10 +686,7 @@ tempest_search_cache_options <- function(provider) {
       cse_id = Sys.getenv("GOOGLE_CSE_ID", unset = "")
     ),
     azure_ai_search = list(
-      endpoint = Sys.getenv(
-        "AZURE_AI_SEARCH_ENDPOINT",
-        unset = Sys.getenv("AZURE_AI_SEARCH_URL", unset = "")
-      ),
+      endpoint = Sys.getenv("AZURE_AI_SEARCH_ENDPOINT", unset = ""),
       index = Sys.getenv("AZURE_AI_SEARCH_INDEX_NAME", unset = "")
     ),
     list()
@@ -1546,15 +1543,11 @@ tempest_search_azure_ai_search <- function(query, k = 8L) {
     "AZURE_AI_SEARCH_API_KEY",
     "Azure AI Search"
   )
-  endpoint <- Sys.getenv(
-    "AZURE_AI_SEARCH_ENDPOINT",
-    unset = Sys.getenv("AZURE_AI_SEARCH_URL", unset = "")
-  )
+  endpoint <- Sys.getenv("AZURE_AI_SEARCH_ENDPOINT", unset = "")
   if (identical(endpoint, "")) {
     tempest_abort(c(
       "{.envvar AZURE_AI_SEARCH_ENDPOINT} environment variable is not set.",
-      i = "Set it to your Azure AI Search endpoint.",
-      i = "{.envvar AZURE_AI_SEARCH_URL} is also accepted for upstream STORM compatibility."
+      i = "Set it to your Azure AI Search endpoint."
     ))
   }
   index_name <- tempest_required_env(

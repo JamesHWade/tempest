@@ -1,56 +1,22 @@
-test_that("standalone suggestions are a deterministic product projection", {
-  expected <- c(
-    "What evidence best establishes the key claims about Animatronics?",
-    paste0(
-      "Which uncertainty or tradeoff matters most for understanding ",
-      "Animatronics?"
-    ),
-    "What contrasting perspective could change the view of Animatronics?",
-    paste0(
-      "How could the strongest claim about Animatronics be independently ",
-      "verified?"
+test_that("session suggestions require exact current strings", {
+  questions <- c("What evidence is strongest?", "What remains uncertain?")
+  expect_identical(
+    tempest:::tempest_suggested_questions_validate(questions),
+    questions
+  )
+  invalid <- list(
+    list("List input is not current."),
+    c(named = "Named input is not current."),
+    c(" padded input "),
+    c("Duplicate", "Duplicate"),
+    NA_character_
+  )
+  for (value in invalid) {
+    expect_error(
+      tempest:::tempest_suggested_questions_validate(value),
+      class = "tempest_stage_output_error"
     )
-  )
-
-  expect_equal(tempest_suggest_questions(" Animatronics "), expected)
-  expect_equal(tempest_suggest_questions("Animatronics", n = 2), expected[1:2])
-  expect_equal(
-    tempest_suggest_questions(
-      "Animatronics",
-      context = "User: What standards apply?"
-    )[[1]],
-    paste0(
-      "What evidence is still missing from the current discussion of ",
-      "Animatronics?"
-    )
-  )
-})
-
-test_that("standalone suggestion API has no raw chat compatibility surface", {
-  expect_named(
-    formals(tempest_suggest_questions),
-    c("topic", "context", "n")
-  )
-  expect_named(
-    formals(tempest:::tempest_suggest_questions_async),
-    c("topic", "context", "n")
-  )
-  expect_equal(tempest_suggest_questions(""), character())
-  expect_equal(tempest_suggest_questions("   "), character())
-})
-
-test_that("async standalone suggestions resolve the same projection", {
-  result <- NULL
-  error <- NULL
-  promises::then(
-    tempest:::tempest_suggest_questions_async("Animatronics", n = 2),
-    onFulfilled = function(value) result <<- value,
-    onRejected = function(value) error <<- value
-  )
-  later::run_now(timeoutSecs = 1)
-
-  expect_null(error)
-  expect_equal(result, tempest_suggest_questions("Animatronics", n = 2))
+  }
 })
 
 test_that("moderator session prompt names the real delegation tool and roster", {

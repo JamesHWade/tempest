@@ -22,8 +22,7 @@ tempest_expert(
   initial_work_items = character(),
   initial_questions = character(),
   state = "active",
-  metadata = list(),
-  schema_version = 1L
+  metadata = list()
 )
 }
 \arguments{
@@ -61,8 +60,6 @@ selection.}
 
 \item{metadata}{Canonical JSON-compatible host metadata. Metadata cannot
 contain credentials or executable values.}
-
-\item{schema_version}{Serializable record schema version.}
 }
 \value{
 A \code{tempest_expert} S7 object.

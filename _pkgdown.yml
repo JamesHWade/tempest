@@ -7,20 +7,7 @@ articles:
   navbar: ~
   contents:
   - tempest
-- title: Bring organizational knowledge
-  desc: Read portable knowledge as bounded evidence for Tempest workflows.
-  navbar: ~
-  contents:
-  - open-knowledge-format
-- title: Add Tempest to an agent
-  desc: Install Agent Skills or make portable STORM research callable from chat.
-  navbar: ~
-  contents:
-  - agent-skills
 reference:
-- title: Agent integrations
-  contents:
-  - tempest_agent_skills
 - title: Core workflows
   desc: Run scripted STORM or persistent Deputy-backed Co-STORM research.
   contents:
@@ -63,13 +50,6 @@ reference:
   - tempest_validation_result
   - tempest_report_md
   - tempest_session_report_md
-  - tempest_suggest_questions
-- title: Open knowledge
-  contents:
-  - tempest_read_okf
-  - tempest_okf_concepts
-  - tempest_okf_resources
-  - tempest_okf_context
 - title: Scientific experts
   contents:
   - tempest_expert

@@ -24,8 +24,7 @@ test_that("stage-record sidecars are mandatory regular bundle files", {
   expect_error(
     tempest_session_resume(
       bundle_dir,
-      config = cfg,
-      partial_recovery = TRUE
+      config = cfg
     ),
     class = "tempest_session_restore_error"
   )

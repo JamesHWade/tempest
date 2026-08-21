@@ -1,22 +1,6 @@
 # STORM pipeline (scripted)
 
 #' @keywords internal
-tempest_as_character_vector <- function(x) {
-  if (is.null(x)) {
-    return(character())
-  }
-  if (is.data.frame(x)) {
-    x <- unlist(x, recursive = TRUE, use.names = FALSE)
-  }
-  if (is.list(x)) {
-    x <- unlist(x, recursive = TRUE, use.names = FALSE)
-  }
-  x <- as.character(x)
-  x <- tempest_trim(x)
-  unique(x[nzchar(x) & !is.na(x)])
-}
-
-#' @keywords internal
 tempest_storm_report_with_execution_review <- function(
   report_md,
   stage_records,
@@ -138,9 +122,6 @@ tempest_stage_context_knowledge_view <- function(
 #'   strategy (default 3).
 #' @param max_questions_per_perspective Maximum questions per perspective for
 #'   the "key_questions" strategy (default 3).
-#' @param parallel_research Must be `FALSE`. Parallel perspective research is
-#'   unavailable while every open-ended expert turn requires one synchronously
-#'   bound terminal Deputy execution; `TRUE` fails before provider work.
 #' @param parallel_writing If `TRUE`, write report sections in parallel using
 #'   the mirai package. Failed parallel sections are retried sequentially.
 #' @param program_set A [TempestProgramSet] containing the exact dsprrr programs
@@ -155,8 +136,6 @@ tempest_stage_context_knowledge_view <- function(
 #'   future, missing, extra, or mismatched product shapes are rejected rather
 #'   than migrated.
 #' @param run_id Optional run directory name. Defaults to a slug of `topic`.
-#' @param remove_duplicate Must be `FALSE`. Duplicate removal is unavailable on
-#'   the authoritative deterministic STORM report path.
 #' @param progress Optional function called with a `tempest_progress_event`
 #'   object as STORM workflow stages start, finish, fail, persist artifacts, or
 #'   make final artifacts available.
@@ -181,14 +160,12 @@ tempest_run <- function(
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
-  parallel_research = FALSE,
   parallel_writing = FALSE,
   program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
   run_id = NULL,
-  remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE
 ) {
@@ -204,14 +181,12 @@ tempest_run <- function(
       research_strategy = research_strategy,
       max_rounds = max_rounds,
       max_questions_per_perspective = max_questions_per_perspective,
-      parallel_research = parallel_research,
       parallel_writing = parallel_writing,
       program_set = program_set,
       steps = steps,
       output_dir = output_dir,
       resume = resume,
       run_id = run_id,
-      remove_duplicate = remove_duplicate,
       progress = progress,
       verbose = verbose
     )
@@ -228,14 +203,12 @@ tempest_run_internal <- function(
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
-  parallel_research = FALSE,
   parallel_writing = FALSE,
   program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
   run_id = NULL,
-  remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE,
   .requested_steps = NULL
@@ -278,29 +251,8 @@ tempest_run_internal <- function(
     max_questions_per_perspective,
     "max_questions_per_perspective"
   )
-  parallel_research <- tempest_config_flag(
-    parallel_research,
-    "parallel_research"
-  )
-  if (isTRUE(parallel_research)) {
-    tempest_config_abort(
-      paste0(
-        "{.arg parallel_research} is unavailable until Deputy owns ",
-        "parallel STORM execution."
-      )
-    )
-  }
   parallel_writing <- tempest_config_flag(parallel_writing, "parallel_writing")
   resume <- tempest_config_flag(resume, "resume")
-  remove_duplicate <- tempest_config_flag(remove_duplicate, "remove_duplicate")
-  if (isTRUE(remove_duplicate)) {
-    tempest_config_abort(
-      paste0(
-        "{.arg remove_duplicate} is unavailable on the authoritative STORM ",
-        "report path."
-      )
-    )
-  }
   verbose <- tempest_config_flag(verbose, "verbose")
   steps <- tempest_storm_requested_steps(steps)
   requested_steps <- if (is.null(.requested_steps)) {
@@ -1100,7 +1052,7 @@ tempest_run_internal <- function(
           payload = list(
             perspective_count = length(perspectives),
             research_strategy = research_strategy,
-            parallel = isTRUE(parallel_research)
+            parallel = FALSE
           )
         )
         if (verbose) {

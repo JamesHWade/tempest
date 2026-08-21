@@ -188,6 +188,20 @@ test_that("resource restore requires exact schema 1", {
   }
 })
 
+test_that("resource construction owns the current schema version", {
+  expect_error(
+    tempest_resource(
+      resource_kind = "host.document",
+      locator = "documents/no-schema-knob",
+      title = "No schema knob",
+      media_type = "text/plain",
+      schema_version = 1L
+    ),
+    class = "simpleError",
+    regexp = "unused argument"
+  )
+})
+
 test_that("resource restore requires explicit metadata lists", {
   resource <- tempest_resource(
     resource_kind = "host.document",

@@ -38,15 +38,6 @@ tempest_research_expert_optional_id <- function(value, arg) {
   tempest_research_expert_id(value, arg)
 }
 
-tempest_research_expert_schema_version <- function(value) {
-  if (!identical(value, 1L)) {
-    tempest_research_expert_abort(
-      "{.arg schema_version} must be the supported version `1`."
-    )
-  }
-  value
-}
-
 tempest_research_expert_state <- function(value) {
   value <- tempest_product_scalar(value, "state")
   if (!value %in% c("active", "retired")) {
@@ -194,7 +185,6 @@ TempestExpertProfile <- S7::new_class(
 #' @param state Definition state, either `"active"` or `"retired"`.
 #' @param metadata Canonical JSON-compatible host metadata. Metadata cannot
 #'   contain credentials or executable values.
-#' @param schema_version Serializable record schema version.
 #' @return A `tempest_expert` S7 object.
 #' @examples
 #' expert <- tempest_expert(
@@ -223,8 +213,7 @@ tempest_expert <- function(
   initial_work_items = character(),
   initial_questions = character(),
   state = "active",
-  metadata = list(),
-  schema_version = 1L
+  metadata = list()
 ) {
   expert_id <- tempest_research_expert_id(expert_id, "expert_id")
   version <- tempest_product_version(version)
@@ -287,7 +276,6 @@ tempest_expert <- function(
   )
   state <- tempest_research_expert_state(state)
   metadata <- tempest_research_expert_canonical_list(metadata, "metadata")
-  schema_version <- tempest_research_expert_schema_version(schema_version)
 
   TempestExpertProfile(
     expert_id = expert_id,
@@ -308,7 +296,7 @@ tempest_expert <- function(
     initial_questions = initial_questions,
     state = state,
     metadata = metadata,
-    schema_version = schema_version
+    schema_version = 1L
   )
 }
 
@@ -398,7 +386,12 @@ tempest_expert_update <- function(expert, ...) {
     )
   }
   data[names(changes)] <- changes
-  do.call(tempest_expert, data)
+  if (!identical(data$schema_version, 1L)) {
+    tempest_research_expert_abort(
+      "Expert profiles must use exact current schema version `1`."
+    )
+  }
+  do.call(tempest_expert, data[setdiff(names(data), "schema_version")])
 }
 
 tempest_generated_expert_id <- function(value, index = 1L) {
@@ -423,7 +416,15 @@ tempest_expert_profile_values <- function(expert) {
 
 tempest_expert_profile_data <- function(expert) {
   data <- tempest_expert_profile_values(expert)
-  validated <- do.call(tempest_expert, data)
+  if (!identical(data$schema_version, 1L)) {
+    tempest_research_expert_abort(
+      "Expert profiles must use exact current schema version `1`."
+    )
+  }
+  validated <- do.call(
+    tempest_expert,
+    data[setdiff(names(data), "schema_version")]
+  )
   data <- tempest_expert_profile_values(validated)
   sensitive <- c(
     tempest_contract_sensitive_names(data, "expert"),
@@ -680,8 +681,7 @@ tempest_expert_profile_from_data <- function(data) {
       initial_work_items = arrays$initial_work_items,
       initial_questions = arrays$initial_questions,
       state = data$state,
-      metadata = metadata,
-      schema_version = data$schema_version
+      metadata = metadata
     ),
     error = function(error) {
       tempest_research_expert_abort(

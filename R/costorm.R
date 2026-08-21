@@ -1932,9 +1932,7 @@ tempest_session_set_suggestions <- function(session, suggestions) {
       "{.arg session} must be a TempestSession."
     )
   }
-  suggestions <- tempest_as_character_vector(suggestions)
-  suggestions <- tempest_trim(suggestions)
-  suggestions <- unique(suggestions[!is.na(suggestions) & nzchar(suggestions)])
+  suggestions <- tempest_suggested_questions_validate(suggestions)
   session$.__enclos_env__$private$suggestions_value <- suggestions
   invisible(session)
 }

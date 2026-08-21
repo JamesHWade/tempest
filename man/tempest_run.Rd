@@ -14,14 +14,12 @@ tempest_run(
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
-  parallel_research = FALSE,
   parallel_writing = FALSE,
   program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
   run_id = NULL,
-  remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE
 )
@@ -54,10 +52,6 @@ strategy (default 3).}
 \item{max_questions_per_perspective}{Maximum questions per perspective for
 the "key_questions" strategy (default 3).}
 
-\item{parallel_research}{Must be \code{FALSE}. Parallel perspective research is
-unavailable while every open-ended expert turn requires one synchronously
-bound terminal Deputy execution; \code{TRUE} fails before provider work.}
-
 \item{parallel_writing}{If \code{TRUE}, write report sections in parallel using
 the mirai package. Failed parallel sections are retried sequentially.}
 
@@ -77,9 +71,6 @@ future, missing, extra, or mismatched product shapes are rejected rather
 than migrated.}
 
 \item{run_id}{Optional run directory name. Defaults to a slug of \code{topic}.}
-
-\item{remove_duplicate}{Must be \code{FALSE}. Duplicate removal is unavailable on
-the authoritative deterministic STORM report path.}
 
 \item{progress}{Optional function called with a \code{tempest_progress_event}
 object as STORM workflow stages start, finish, fail, persist artifacts, or

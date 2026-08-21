@@ -483,6 +483,8 @@ test_that("Graft snapshots retain their immutable restoration boundary", {
 test_that("Tempest context survives Deputy delegation and hooks", {
   skip_if_not_installed("deputy")
 
+  parent_deputy_session_id <- "tempest-session-parent"
+  child_deputy_session_id <- "tempest-session-child"
   program_reference <- test_program_reference("review")
   program_artifact_id <- program_reference$program_artifact_id
   manifest <- tempest_research_manifest(
@@ -525,11 +527,6 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     agent_id = "agent-tempest-lead",
     agent_name = "moderator"
   )
-  lead$configure_sdk_compat(list(
-    persist_session = FALSE,
-    session_store_dir = root,
-    session_id = "tempest-session-contract"
-  ))
   seen <- new.env(parent = emptyenv())
   lead$add_hook(deputy::HookMatcher$new(
     event = "SessionStart",
@@ -588,8 +585,8 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     runtime = list(
       deputy_run_ids = c(parent_result$run_id, child_result$run_id),
       deputy_session_ids = c(
-        parent_result$session_id,
-        child_result$session_id
+        parent_deputy_session_id,
+        child_deputy_session_id
       )
     ),
     traces = list(
@@ -610,7 +607,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
           "terminal"
         },
         deputy_run_id = parent_result$run_id,
-        deputy_session_id = parent_result$session_id,
+        deputy_session_id = parent_deputy_session_id,
         agent_id = parent_result$agent_id
       ),
       list(
@@ -631,7 +628,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
         },
         expert_id = "expert.evidence-reviewer",
         deputy_run_id = child_result$run_id,
-        deputy_session_id = child_result$session_id,
+        deputy_session_id = child_deputy_session_id,
         agent_id = child_result$agent_id,
         parent_agent_id = child_result$parent_agent_id,
         parent_run_id = child_result$parent_run_id,
@@ -723,14 +720,22 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     seen$subagent_stop$tool_call_id,
     parent_start$tool_call_id
   )
-  expect_identical(parent_result$session_id, "tempest-session-contract")
+  expect_null(parent_result$session_id)
   expect_setequal(
     unlist(restored_manifest@runtime$deputy_run_ids, use.names = FALSE),
     c(parent_result$run_id, child_result$run_id)
   )
   expect_setequal(
     unlist(restored_manifest@runtime$deputy_session_ids, use.names = FALSE),
-    c(parent_result$session_id, child_result$session_id)
+    c(parent_deputy_session_id, child_deputy_session_id)
+  )
+  expect_identical(
+    restored_manifest@traces[[1L]]$deputy_session_id,
+    parent_deputy_session_id
+  )
+  expect_identical(
+    restored_manifest@traces[[2L]]$deputy_session_id,
+    child_deputy_session_id
   )
   expect_identical(
     restored_manifest@traces[[2L]]$expert_id,

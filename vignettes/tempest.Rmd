@@ -388,10 +388,8 @@ fresh supported chats and retrieval dependencies through `config` before
 resuming.
 
 Snapshot, save, restore, and resume accept only the exact schema-9 Co-STORM
-product. `partial_recovery = TRUE` is limited to the optional
-`artifacts/suggested_questions.json` presentation file. Expert, transcript,
-mind-map, StageRecord, Workspace, report, and Graft snapshot state must always
-pass integrity checks.
+product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+suggested-question, and Graft snapshot state must pass integrity checks.
 
 The moderator and experts use persistent Deputy agents as the required
 Co-STORM runtime. Tempest disables ambient file, shell, R, web, and

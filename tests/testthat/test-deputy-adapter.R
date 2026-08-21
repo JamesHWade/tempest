@@ -191,6 +191,10 @@ test_that("sync runs reuse one Deputy session and record exact traces", {
     rep("deputy-session-sync", 2L)
   )
   expect_identical(
+    vapply(starts, `[[`, character(1), "deputy_session_id"),
+    rep("deputy-session-sync", 2L)
+  )
+  expect_identical(
     vapply(traces, `[[`, character(1), "agent_id"),
     rep("tempest-agent-sync", 2L)
   )

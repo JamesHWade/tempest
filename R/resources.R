@@ -222,7 +222,6 @@ tempest_resource_metadata <- function(value, arg) {
 #'   and values are rejected recursively.
 #' @param metadata Serializable namespaced host metadata. Credential-like field
 #'   names and values are rejected recursively.
-#' @param schema_version Positive resource schema version.
 #' @return A `tempest_resource` S7 object.
 #' @examples
 #' resource <- tempest_resource(
@@ -247,8 +246,7 @@ tempest_resource <- function(
   retrieved_at = NULL,
   redaction = list(),
   retention = list(),
-  metadata = list(),
-  schema_version = 1L
+  metadata = list()
 ) {
   resource_kind <- tempest_resource_safe_scalar(
     resource_kind,
@@ -305,18 +303,6 @@ tempest_resource <- function(
     "content_hash",
     identifier = TRUE
   )
-  if (
-    !is.numeric(schema_version) ||
-      length(schema_version) != 1L ||
-      is.na(schema_version) ||
-      schema_version < 1L ||
-      schema_version != as.integer(schema_version)
-  ) {
-    tempest_product_validation_abort(
-      "{.arg schema_version} must be a positive whole number."
-    )
-  }
-
   TempestResource(
     resource_id = resource_id,
     resource_kind = resource_kind,
@@ -332,7 +318,7 @@ tempest_resource <- function(
     redaction = redaction,
     retention = retention,
     metadata = metadata,
-    schema_version = as.integer(schema_version)
+    schema_version = 1L
   )
 }
 
@@ -460,8 +446,7 @@ tempest_resource_from_data <- function(data) {
       retrieved_at = data$retrieved_at,
       redaction = data$redaction,
       retention = data$retention,
-      metadata = data$metadata,
-      schema_version = data$schema_version
+      metadata = data$metadata
     ),
     error = function(error) {
       tempest_product_hash_abort(

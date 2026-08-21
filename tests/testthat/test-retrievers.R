@@ -1194,11 +1194,11 @@ test_that("bounded HTTP fetch validates option values", {
   }
 })
 
-test_that("Azure AI Search supports upstream endpoint env alias", {
+test_that("Azure AI Search requires its canonical endpoint environment variable", {
   withr::local_envvar(c(
     AZURE_AI_SEARCH_API_KEY = "fake-key",
     AZURE_AI_SEARCH_ENDPOINT = "",
-    AZURE_AI_SEARCH_URL = "",
+    AZURE_AI_SEARCH_URL = "https://retired-alias.example.org",
     AZURE_AI_SEARCH_INDEX_NAME = "fake-index"
   ))
 

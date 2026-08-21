@@ -440,39 +440,22 @@ tempest_session_suggested_questions <- function(value, action = "snapshot") {
     }
   } else {
     value <- value %||% character()
-    if (is.list(value) && is.null(names(value))) {
-      valid <- vapply(
-        value,
-        \(question) {
-          is.character(question) &&
-            length(question) == 1L &&
-            !is.na(question)
-        },
-        logical(1)
-      )
-      if (all(valid)) {
-        value <- unlist(value, use.names = FALSE)
+  }
+  value <- tryCatch(
+    tempest_suggested_questions_validate(value),
+    error = function(error) {
+      if (identical(action, "restore")) {
+        tempest_session_restore_abort(conditionMessage(error))
       }
+      stop(error)
     }
-  }
-  if (!is.character(value) || anyNA(value)) {
-    message <- "Suggested questions must be a character vector without missing values."
-    if (identical(action, "restore")) {
-      tempest_session_restore_abort(message)
-    }
-    tempest_abort(
-      message,
-      class = tempest_session_persistence_error_class(
-        "tempest_session_snapshot_error"
-      )
-    )
-  }
+  )
   tempest_session_credential_free_value(
     value,
     "suggested_questions",
     action
   )
-  unname(value)
+  value
 }
 
 #' @keywords internal
@@ -1766,27 +1749,17 @@ tempest_session_save <- function(
 tempest_session_bundle_optional_json <- function(
   path,
   default = NULL,
-  what,
-  partial_recovery = FALSE
+  what
 ) {
   if (!file.exists(path)) {
     return(default)
   }
-  tryCatch(
-    tempest_product_read_json(
-      path,
-      what = what,
-      class = tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      )
-    ),
-    error = function(error) {
-      if (!isTRUE(partial_recovery)) {
-        stop(error)
-      }
-      tempest_warn("Skipping malformed {what} during partial recovery.")
-      default
-    }
+  tempest_product_read_json(
+    path,
+    what = what,
+    class = tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
   )
 }
 
@@ -1961,8 +1934,7 @@ tempest_session_bundle_workspace_fields <- function() {
 #' @keywords internal
 tempest_session_bundle_validate_manifest <- function(
   bundle_dir,
-  manifest,
-  partial_recovery = FALSE
+  manifest
 ) {
   schema_version <- tempest_persistence_schema_version(
     manifest$schema_version %||% NA_integer_,
@@ -2238,21 +2210,11 @@ tempest_session_bundle_validate_manifest <- function(
   if (length(fatal_problems) > 0L) {
     tempest_session_restore_abort(paste(fatal_problems, collapse = " "))
   }
-  if (length(invalid_optional) > 0L && !isTRUE(partial_recovery)) {
+  if (length(invalid_optional) > 0L) {
     tempest_session_restore_abort(paste0(
       "Optional presentation files failed integrity validation: ",
       paste(invalid_optional, collapse = ", "),
       "."
-    ))
-  }
-  if (length(invalid_optional) > 0L) {
-    tempest_warn(c(
-      "Recovering an incomplete Tempest session bundle.",
-      i = paste0(
-        "Skipping optional presentation files: ",
-        paste(invalid_optional, collapse = ", "),
-        "."
-      )
     ))
   }
   invisible(setdiff(files, invalid_optional))
@@ -2468,7 +2430,6 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
 #' @keywords internal
 tempest_costorm_bundle_read <- function(
   path,
-  partial_recovery = FALSE,
   archive = FALSE
 ) {
   if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
@@ -2555,8 +2516,7 @@ tempest_costorm_bundle_read <- function(
   }
   declared_files <- tempest_session_bundle_validate_manifest(
     bundle_dir,
-    manifest,
-    partial_recovery = partial_recovery
+    manifest
   )
   strict_json <- function(rel_path, what) {
     tempest_product_read_json(
@@ -2574,8 +2534,7 @@ tempest_costorm_bundle_read <- function(
     tempest_session_bundle_optional_json(
       file.path(bundle_dir, rel_path),
       default = default,
-      what = what,
-      partial_recovery = partial_recovery
+      what = what
     )
   }
   report_md <- if ("report.md" %in% declared_files) {
@@ -2697,11 +2656,6 @@ tempest_costorm_archive_read <- function(path) {
 #'   tools.
 #' @param progress Optional callback for future `tempest_progress_event`
 #'   objects.
-#' @param partial_recovery Whether to allow explicitly requested recovery of
-#'   the optional `artifacts/suggested_questions.json` presentation file when
-#'   it fails integrity checks. All durable state, including stage records,
-#'   experts, Workspace, report, and Graft snapshot state, remains mandatory
-#'   and must pass integrity checks.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the bundle. If `NULL`, the builtin set is used.
 #' @param knowledge_view Optional transient immutable Graft view required by
@@ -2713,7 +2667,6 @@ tempest_session_resume <- function(
   path,
   config = tempest_config(),
   progress = NULL,
-  partial_recovery = FALSE,
   program_set = NULL,
   knowledge_view = NULL
 ) {
@@ -2721,7 +2674,6 @@ tempest_session_resume <- function(
     path = path,
     config = config,
     progress = progress,
-    partial_recovery = partial_recovery,
     program_set = program_set,
     knowledge_view = knowledge_view
   )
@@ -2732,14 +2684,10 @@ tempest_session_resume_internal <- function(
   path,
   config = tempest_config(),
   progress = NULL,
-  partial_recovery = FALSE,
   program_set = NULL,
   knowledge_view = NULL
 ) {
-  bundle <- tempest_costorm_bundle_read(
-    path,
-    partial_recovery = partial_recovery
-  )
+  bundle <- tempest_costorm_bundle_read(path)
   tempest_session_restore_internal(
     bundle$snapshot,
     config = config,

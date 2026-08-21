@@ -2158,11 +2158,6 @@ tempest_stage_fact_sources <- function(value, workspace) {
   sources
 }
 
-tempest_stage_fact_source_ids <- function(value, workspace) {
-  sources <- tempest_stage_fact_sources(value, workspace)
-  unique(vapply(sources, `[[`, character(1), "source_id"))
-}
-
 tempest_stage_claim_context_trace_validate <- function(
   claim_context,
   trace_references

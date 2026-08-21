@@ -86,39 +86,6 @@ Provider-specific API keys for alternative search:
 - Azure AI Search: set `AZURE_AI_SEARCH_API_KEY`,
   `AZURE_AI_SEARCH_ENDPOINT`, and `AZURE_AI_SEARCH_INDEX_NAME`
 
-## Open knowledge as evidence
-
-Tempest reads [Open Knowledge
-Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf)
-(OKF) directories as portable, bounded evidence:
-
-```r
-knowledge <- tempest_read_okf("knowledge/okf")
-tempest_okf_concepts(knowledge)
-
-resources <- tempest_okf_resources(
-  knowledge,
-  include_stale = FALSE
-)
-
-workspace <- tempest_research_workspace()
-invisible(lapply(resources, workspace$upsert_retrieved_resource))
-
-context <- tempest_okf_context(
-  knowledge,
-  types = c("Assessment", "Business"),
-  include_stale = FALSE,
-  max_concepts = 25,
-  max_chars = 50000
-)
-```
-
-The reader preserves each Markdown document and its metadata, derives advisory
-trust and freshness signals, and never follows links or executes referenced
-code. Reading, converting, and adding resources are separate operations so the
-host retains the write boundary. An OKF document cannot grant capabilities,
-change policy, approve output, or authorize an action.
-
 STORM results expose a `manifest`, validated `state`, and authoritative
 `workspace`; Co-STORM sessions expose the same manifest/workspace identity.
 Session correlation fields and retriever configuration are read-only, while
@@ -133,11 +100,6 @@ authority at that boundary and allowlists only the Tempest tools already
 attached to each chat. Session persistence stores credential-safe opaque run,
 session, agent, stage, role, expert, and correlation references; it never
 serializes a Deputy Agent or provider credentials.
-
-Graft can export current or historical accepted revisions directly into this
-format. Read [Use Open Knowledge Format with
-Tempest](https://jameshwade.github.io/tempest/articles/open-knowledge-format.html)
-for the complete handoff and safety model.
 
 ## Verify and promote research evidence
 
@@ -247,41 +209,6 @@ transformations carry dsprrr program identity, while open-ended agent calls
 carry Deputy execution identity. Those identities support correlation and
 audit joins only; they do not claim that an execution caused, authored, or
 validated report content.
-
-## Agent skills
-
-Tempest ships two supported research skills.
-
-- `use-tempest-research` chooses, configures, runs, resumes, inspects, and
-  embeds Tempest's scripted STORM and interactive Co-STORM workflows.
-- `conduct-storm-research` carries the provider- and framework-neutral STORM
-  and Co-STORM protocols. It can guide another implementation or be loaded by
-  a tool-capable chat host without calling Tempest APIs.
-
-List the supported skill directories or install them into the directory used
-by your agent:
-
-```r
-tempest_agent_skills()
-
-# Install the supported research skills for user-level Codex sessions.
-tempest_install_agent_skills(
-  "~/.codex/skills",
-  skills = c("use-tempest-research", "conduct-storm-research")
-)
-```
-
-Existing copies are preserved unless `overwrite = TRUE`. A compatible skill
-loader can also discover the bundled skills from an attached Tempest package
-and expose `conduct-storm-research` inside a tool-capable chat application.
-The host must still provide retrieval, evidence, state, and output tools.
-
-These Agent Skills are external operating guidance. They do not grant runtime
-authority; the host still owns tools, authorization, state, and lifecycle.
-
-Read `vignette("agent-skills", package = "tempest")` to install a supported
-research skill or expose portable STORM research through an ellmer client and
-shinychat application.
 
 ## Scripted STORM
 
@@ -395,8 +322,7 @@ is not a Tempest dependency, API, default, endpoint, SDK, or schema. Keep any
 backend token and exporter configuration in operator-owned Collector secrets,
 never in Tempest configuration, source code, examples, snapshots, or bundles.
 
-Report polishing is deterministic. `remove_duplicate = TRUE` is unsupported
-and fails before report publication.
+Report polishing is deterministic.
 
 You can also use a single model for all roles:
 
@@ -407,9 +333,9 @@ cfg <- tempest_config(models = "anthropic/claude-sonnet-4-20250514")
 ### Parallel section writing
 
 Perspective research is deliberately sequential so each open-ended expert turn
-can be synchronously bound to one terminal Deputy trace. Setting
-`parallel_research = TRUE` is an error. Already-grounded report sections can be
-written in parallel using [mirai](https://github.com/r-lib/mirai):
+can be synchronously bound to one terminal Deputy trace. Already-grounded
+report sections can be written in parallel using
+[mirai](https://github.com/r-lib/mirai):
 
 ```r
 res <- tempest_run(
@@ -728,11 +654,10 @@ expert run records an opaque terminal trace that is carried through Co-STORM
 snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-9 product. `partial_recovery = TRUE` is an explicit narrow exception for
-the optional `artifacts/suggested_questions.json` presentation file; expert,
-transcript, mind-map, StageRecord, Workspace, report, and Graft snapshot state
-must always pass integrity checks. Live chats, tools, credentials, clients,
-callbacks, and Shiny reactives are recreated rather than serialized.
+schema-9 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+suggested-question, and Graft snapshot state must pass integrity checks. Live
+chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
+rather than serialized.
 
 ### Warmup Phase
 

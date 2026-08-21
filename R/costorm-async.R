@@ -941,11 +941,7 @@ tempest_session_process_turn_async <- function(
             tempest_session_turn_cancel(state)
             return(NULL)
           }
-          questions <- tempest_as_character_vector(questions)
-          questions <- tempest_trim(questions)
-          state$suggestions <- unique(
-            questions[!is.na(questions) & nzchar(questions)]
-          )
+          state$suggestions <- tempest_suggested_questions_validate(questions)
           state$suggestion_status <- if (length(state$suggestions) > 0L) {
             "generated"
           } else {

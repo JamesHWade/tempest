@@ -31,23 +31,6 @@ test_that("tempest_run_dsprrr_module rejects a missing bound module", {
   )
 })
 
-test_that("dsprrr query output requires flat strings and bounds queries", {
-  result <- tempest:::tempest_normalize_query_decomposition(
-    list(
-      queries = list(" alpha ", "beta", "gamma", "delta", "epsilon")
-    ),
-    max_queries = 4
-  )
-
-  expect_equal(result$queries, c("alpha", "beta", "gamma", "delta"))
-  expect_error(
-    tempest:::tempest_normalize_query_decomposition(
-      list(queries = list("valid", 2))
-    ),
-    class = "tempest_stage_output_error"
-  )
-})
-
 test_that("perspective output requires the exact requested batch", {
   result <- tempest:::tempest_normalize_perspectives(
     list(
@@ -104,49 +87,6 @@ test_that("outline output normalizes nested subsections", {
   )
   expect_equal(outline$sections[[1]]$subsections[[1]]$bullets, c("A", "B"))
   expect_equal(outline$sections[[1]]$subsections[[1]]$needed, "C")
-})
-
-test_that("fact output requires exact source records", {
-  facts <- tempest:::tempest_normalize_fact_output(list(
-    facts = list(
-      list(
-        claim = "Claim",
-        sources = list(
-          list(source_id = "Sabc"),
-          list(source_id = "Sdef")
-        ),
-        confidence = "high",
-        support_score = 0.84
-      )
-    )
-  ))
-
-  expect_equal(facts[[1]]$claim, "Claim")
-  expect_equal(facts[[1]]$support_score, 0.84)
-  expect_equal(
-    vapply(facts[[1]]$sources, function(x) x$source_id, character(1)),
-    c("Sabc", "Sdef")
-  )
-})
-
-test_that("fact output rejects invalid scores and leaves missing explicit", {
-  expect_error(
-    tempest:::tempest_normalize_fact_output(list(
-      facts = list(list(
-        claim = "High",
-        sources = list(list(source_id = "Sabc")),
-        score = 2
-      ))
-    )),
-    class = "purrr_error_indexed"
-  )
-  facts <- tempest:::tempest_normalize_fact_output(list(
-    facts = list(list(
-      claim = "Missing",
-      sources = list(list(source_id = "Sdef"))
-    ))
-  ))
-  expect_equal(facts[[1]]$support_score, NA_real_)
 })
 
 test_that("builtin ProgramSets expose the exact portable stage contract", {

@@ -69,7 +69,8 @@ test_that("expert profiles reject generic resolver semantics", {
       instructions = "Preserve uncertainty.",
       schema_version = 1
     ),
-    class = "tempest_research_expert_error"
+    class = "simpleError",
+    regexp = "unused argument"
   )
 })
 

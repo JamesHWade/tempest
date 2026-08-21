@@ -58,14 +58,12 @@ test_that("product entry points have exact source owners", {
         "research_strategy",
         "max_rounds",
         "max_questions_per_perspective",
-        "parallel_research",
         "parallel_writing",
         "program_set",
         "steps",
         "output_dir",
         "resume",
         "run_id",
-        "remove_duplicate",
         "progress",
         "verbose"
       ),
@@ -137,7 +135,6 @@ test_that("product entry points have exact source owners", {
         "path",
         "config",
         "progress",
-        "partial_recovery",
         "program_set",
         "knowledge_view"
       ),
