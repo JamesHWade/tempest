@@ -606,12 +606,10 @@ tempest_costorm_program_execution <- function(
 }
 
 #' @keywords internal
-tempest_session_answer_source_ids <- function(session, text, source_ids) {
-  workspace <- if (is.list(session) || is.environment(session)) {
-    session[["workspace"]] %||% NULL
-  } else {
-    NULL
-  }
+# Resolve which retrieved sources an answer actually cites. Takes the workspace
+# directly so both the session turn path and the Deputy expert path pass the
+# same validated value.
+tempest_answer_source_ids <- function(workspace, text, source_ids) {
   if (
     is.null(workspace) ||
       !inherits(workspace, "ResearchWorkspace")
@@ -667,15 +665,15 @@ tempest_costorm_mindmap_projection <- function(session) {
     )
   }
   claims <- tempest_supported_claims(
-    session$workspace,
-    min_support_score = session$config@min_support_score
+    tempest_session_workspace(session),
+    min_support_score = tempest_session_config(session)@min_support_score
   )
   claims <- claims[order(vapply(
     claims,
     \(claim) claim@claim_id,
     character(1)
   ))]
-  supports <- session$workspace$list_claim_supports()
+  supports <- tempest_session_workspace(session)$list_claim_supports()
   claim_nodes <- Filter(
     Negate(is.null),
     lapply(utils::head(claims, 16L), function(claim) {
@@ -684,7 +682,8 @@ tempest_costorm_mindmap_projection <- function(session) {
           identical(support@claim_id, claim@claim_id) &&
             identical(support@verification_status, "supported") &&
             is.finite(support@support_score) &&
-            support@support_score >= session$config@min_support_score
+            support@support_score >=
+              tempest_session_config(session)@min_support_score
         },
         supports
       )
@@ -771,23 +770,6 @@ tempest_costorm_mindmap_projection <- function(session) {
 #' manifest, workspace, transcript, mind map, experts, progress events, and
 #' canonical report. Process-local execution members are internal and are not
 #' part of the persistence or public API contract.
-#'
-#' @field topic Read-only research topic fixed at construction.
-#' @field title The report title.
-#' @field config Read-only `TempestConfig` fixed at construction.
-#' @field session_id Read-only stable identifier shared by the manifest and
-#'   progress events for the session.
-#' @field progress Optional progress callback.
-#' @field manifest Immutable [TempestResearchManifest] for this research run.
-#' @field workspace Read-only reference to the authoritative
-#'   [ResearchWorkspace] containing provisional research material. Workspace
-#'   mutation is available only while the session is active and no publication
-#'   lock is held; a succeeded session's workspace is sealed.
-#' @field retriever Read-only `TempestRetriever` reference.
-#' @field experts List of validated `tempest_expert` profiles.
-#' @field transcript List of dialog turns.
-#' @field mindmap The mind map data structure.
-#' @field events Ordered normalized progress-event history.
 #'
 #' @keywords internal
 TempestSession <- R6::R6Class(
@@ -1050,10 +1032,10 @@ TempestSession <- R6::R6Class(
       private$expert_manager_value <- TempestDeputyExpertManager$new(
         experts = self$experts,
         config = config,
-        retriever = self$retriever,
+        retriever = private$retriever_value,
         extractor = private$chats_value$extractor,
-        workspace = self$workspace,
-        progress = function(event) self$record_progress_event(event),
+        workspace = private$workspace_value,
+        progress = function(event) private$record_progress_event(event),
         run_id = self$session_id,
         extract_claims_program = private$programs_value$extract_claims,
         stage_recorder = function(record, output = NULL) {
@@ -1075,10 +1057,10 @@ TempestSession <- R6::R6Class(
 
       tempest_research_attach_tools(
         private$chats_value$moderator,
-        retriever = self$retriever,
+        retriever = private$retriever_value,
         role = "coordinator",
-        model = tempest_research_model(self$config, "coordinator"),
-        search_provider = self$config@search_provider
+        model = tempest_research_model(private$config_value, "coordinator"),
+        search_provider = private$config_value@search_provider
       )
       private$chats_value$moderator$register_tool(
         tempest_create_deputy_expert_delegation_tool(
@@ -1120,7 +1102,7 @@ TempestSession <- R6::R6Class(
         private$otel_completion_owner_value
       )
 
-      self$emit_progress(
+      private$emit_progress(
         "workflow",
         "started",
         stage = "session",
@@ -1137,221 +1119,12 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
-    #' Request one Deputy-backed moderator completion.
-    #' @param prompt Exact moderator prompt.
-    #' @param on_chunk Optional process-local display callback.
-    #' @return A promise resolving only to an opaque completion identifier.
-    request_completion_async = function(
-      prompt,
-      on_chunk = function(chunk) invisible(chunk)
-    ) {
-      tempest_require(
-        "promises",
-        "Async completion requests require promises."
-      )
-      if (!is.function(on_chunk)) {
-        tempest_agent_completion_binding_abort()
-      }
-      tempest_session_assert_mutable(self, "request a moderator completion")
-      tempest_session_async_work_assert_startable(self, "dialogue")
-      stream <- private$chats_value$moderator$stream_async(prompt)
-      completion_id <- tempest_agent_completion_id(stream)
-      coro::async(function() {
-        repeat {
-          content <- stream()
-          if (promises::is.promising(content)) {
-            content <- coro::await(content)
-          }
-          if (coro::is_exhausted(content)) {
-            break
-          }
-          tryCatch(
-            on_chunk(content),
-            error = function(error) invisible(NULL)
-          )
-        }
-        completion_id
-      })()
-    },
-
-    #' @description
-    #' Record a progress event emitted by a session-owned collaborator.
-    #' @param event A `tempest_progress_event` object.
-    #' @return The event, invisibly.
-    record_progress_event = function(event) {
-      if (!S7::S7_inherits(event, tempest_progress_event)) {
-        tempest_abort(
-          "{.arg event} must be a tempest_progress_event object."
-        )
-      }
-      event_data <- tempest_progress_event_data(event)
-      event_data$sequence <- length(private$events_value) + 1L
-      private$events_value[[event_data$sequence]] <- event_data
-      if (!is.null(self$progress)) {
-        tryCatch(
-          self$progress(event),
-          error = function(error) {
-            tempest_rethrow_operation(
-              error,
-              class = "tempest_progress_callback_error"
-            )
-          }
-        )
-      }
-      invisible(event)
-    },
-
-    #' @description
-    #' Emit a Co-STORM progress event.
-    #' @param event_type Progress event type.
-    #' @param status Progress event status.
-    #' @param stage Optional workflow stage.
-    #' @param step Optional workflow step.
-    #' @param message Optional progress message.
-    #' @param payload Optional progress metadata.
-    #' @param parent_event_id Optional parent event id.
-    #' @param correlation_id Optional correlation id.
-    emit_progress = function(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    ) {
-      event <- tempest_emit_progress(
-        NULL,
-        run_id = self$session_id,
-        workflow = "costorm",
-        event_type = event_type,
-        status = status,
-        stage = stage,
-        step = step,
-        message = message,
-        payload = payload,
-        parent_event_id = parent_event_id,
-        correlation_id = correlation_id
-      )
-      self$record_progress_event(event)
-    },
-
-    #' @description
-    #' Add a turn to the transcript.
-    #' @param speaker Speaker name.
-    #' @param role Role: "user" or "assistant".
-    #' @param text The text content.
-    add_turn = function(speaker, role = c("user", "assistant"), text) {
-      role <- match.arg(role)
-      if (identical(role, "assistant")) {
-        tempest_costorm_session_abort(
-          "Assistant turns can be committed only from an owned completion."
-        )
-      }
-      tempest_session_assert_mutable(self, "add a transcript turn")
-      tempest_session_append_transcript(self, speaker, role, text)
-    },
-
-    #' @description
-    #' Get the transcript as markdown.
-    #' @param max_turns Maximum turns to include.
-    #' @return Markdown string.
-    transcript_markdown = function(max_turns = 50) {
-      t <- self$transcript
-      if (length(t) == 0) {
-        return("(no dialog yet)")
-      }
-      # Turns are appended oldest-first; callers want the most recent ones.
-      t <- utils::tail(t, max_turns)
-      lines <- purrr::map_chr(t, function(x) {
-        who <- x$speaker %||% x$role
-        paste0("- **", who, "**: ", x$text)
-      })
-      paste(lines, collapse = "\n")
-    },
-
-    #' @description
-    #' Get expert names for agent routing.
-    #' @return Character vector of expert names.
-    get_expert_names = function() {
-      purrr::map_chr(
-        self$experts,
-        \(expert) expert@name
-      )
-    },
-
-    #' @description
-    #' Build expert descriptions for moderator context.
-    #' @return A formatted string describing all experts.
-    get_expert_descriptions = function() {
-      descs <- purrr::map_chr(self$experts, function(expert) {
-        paste0(
-          "- **",
-          expert@name,
-          "** [",
-          expert@expert_id,
-          "] (",
-          expert@title,
-          "): ",
-          expert@description
-        )
-      })
-      paste(descs, collapse = "\n")
-    },
-
-    #' @description
-    #' Update the mind map based on new exchange.
-    #' @param last_exchange The latest exchange text.
-    update_mindmap = function(last_exchange) {
-      tempest_session_assert_mutable(self, "update the mind map")
-      tempest_agent_completion_text(last_exchange)
-      event <- self$emit_progress(
-        "step",
-        "started",
-        stage = "mindmap",
-        step = "update"
-      )
-      tempest_session_commit_mindmap(
-        self,
-        tempest_costorm_mindmap_projection(self)
-      )
-      self$emit_progress(
-        "step",
-        "succeeded",
-        stage = "mindmap",
-        step = "update",
-        parent_event_id = event@event_id,
-        correlation_id = event@correlation_id,
-        payload = list(node_count = length(self$mindmap$nodes %||% list()))
-      )
-      invisible(TRUE)
-    },
-
-    #' @description
-    #' Get the mind map as markdown.
-    #' @return Markdown string.
-    mindmap_markdown = function() {
-      tempest_mindmap_to_markdown(self$mindmap)
-    },
-
-    #' @description
     #' Suggest follow-up questions for the user based on the conversation so far.
     #' @param n Maximum number of questions to return.
     #' @return A character vector of questions (possibly empty).
     suggest_questions = function(n = 4) {
       tempest_session_assert_mutable(self, "generate suggestions")
       tempest_costorm_await(tempest_session_suggest_questions_async(self, n))
-    },
-
-    #' @description
-    #' Find an expert index by stable id.
-    #' @param expert_id The stable expert id to look up.
-    #' @return Index of the expert, or NULL if not found.
-    find_expert = function(expert_id) {
-      expert_ids <- purrr::map_chr(self$experts, \(expert) expert@expert_id)
-      index <- match(expert_id, expert_ids)
-      if (is.na(index)) NULL else index
     },
 
     #' @description
@@ -1378,7 +1151,7 @@ TempestSession <- R6::R6Class(
       list(
         speaker = "Moderator",
         answer = as.character(response),
-        mindmap_md = self$mindmap_markdown(),
+        mindmap_md = private$mindmap_markdown(),
         deputy_run_id = turn@deputy_run_id,
         deputy_session_id = turn@deputy_session_id
       )
@@ -1402,12 +1175,13 @@ TempestSession <- R6::R6Class(
     },
 
     #' @description
-    #' Generate, validate, and commit the canonical report for the session.
+    #' Verify claims, create and commit the canonical report, move the
+    #' manifest to `succeeded`, and seal the workspace.
     #' @param style Report style: "technical" or "executive".
     #' @param include_references Include references section.
-    #' @return The committed Markdown report. Use
-    #'   [tempest_session_report_md()] to read the exact committed bytes later.
-    report = function(
+    #' @return The committed Markdown report. Use [tempest_report()] to read
+    #'   the exact committed bytes later.
+    publish = function(
       style = c("technical", "executive"),
       include_references = TRUE
     ) {
@@ -1425,10 +1199,10 @@ TempestSession <- R6::R6Class(
     #' @return The new expert profile (invisibly).
     add_expert = function(area, name = NULL) {
       tempest_session_assert_mutable(self, "add an expert")
-      active <- self$get_active_experts()
-      if (length(active) >= self$config@max_active_experts) {
+      active <- private$get_active_experts()
+      if (length(active) >= private$config_value@max_active_experts) {
         tempest_warn(
-          "Maximum active experts ({self$config@max_active_experts}) reached."
+          "Maximum active experts ({private$config_value@max_active_experts}) reached."
         )
         return(invisible(NULL))
       }
@@ -1437,7 +1211,7 @@ TempestSession <- R6::R6Class(
         self$topic,
         area,
         self$experts,
-        self$config,
+        private$config_value,
         module = private$programs_value$personas,
         record_stage = function(record, output = NULL) {
           if (!is.null(output)) {
@@ -1481,23 +1255,229 @@ TempestSession <- R6::R6Class(
     #' @return Logical indicating success.
     retire_expert = function(expert_id) {
       tempest_session_assert_mutable(self, "retire an expert")
-      idx <- self$find_expert(expert_id)
+      idx <- private$find_expert(expert_id)
       if (is.null(idx)) {
         return(FALSE)
       }
       private$expert_manager_value$retire_expert(expert_id)
       TRUE
+    }
+  ),
+  active = list(
+    #' @field session_id Stable session identifier.
+    session_id = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field session_id} is fixed when the session is created."
+        )
+      }
+      private$session_id_value
     },
-
-    #' @description
-    #' Get active expert profiles.
-    #' @return List of active `tempest_expert` profiles.
+    #' @field topic Research topic.
+    topic = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field topic} is fixed when the session is created."
+        )
+      }
+      private$topic_value
+    },
+    #' @field status Current product status.
+    status = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field status} is a read-only product projection."
+        )
+      }
+      private$manifest_value@status
+    },
+    #' @field experts Read-only expert roster.
+    experts = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field experts} is read-only; use the expert roster methods."
+        )
+      }
+      rlang::duplicate(private$experts_value, shallow = FALSE)
+    },
+    #' @field transcript Read-only conversation transcript.
+    transcript = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field transcript} is read-only; use session turn methods."
+        )
+      }
+      rlang::duplicate(private$transcript_value, shallow = FALSE)
+    },
+    #' @field mindmap Read-only mind-map projection.
+    mindmap = function(value) {
+      if (!missing(value)) {
+        tempest_costorm_session_abort(
+          "{.field mindmap} is a read-only product projection."
+        )
+      }
+      rlang::duplicate(private$mindmap_value, shallow = FALSE)
+    }
+  ),
+  private = list(
+    request_completion_async = function(
+      prompt,
+      on_chunk = function(chunk) invisible(chunk)
+    ) {
+      tempest_require(
+        "promises",
+        "Async completion requests require promises."
+      )
+      if (!is.function(on_chunk)) {
+        tempest_agent_completion_binding_abort()
+      }
+      tempest_session_assert_mutable(self, "request a moderator completion")
+      tempest_session_async_work_assert_startable(self, "dialogue")
+      stream <- private$chats_value$moderator$stream_async(prompt)
+      completion_id <- tempest_agent_completion_id(stream)
+      coro::async(function() {
+        repeat {
+          content <- stream()
+          if (promises::is.promising(content)) {
+            content <- coro::await(content)
+          }
+          if (coro::is_exhausted(content)) {
+            break
+          }
+          tryCatch(
+            on_chunk(content),
+            error = function(error) invisible(NULL)
+          )
+        }
+        completion_id
+      })()
+    },
+    record_progress_event = function(event) {
+      if (!S7::S7_inherits(event, tempest_progress_event)) {
+        tempest_abort(
+          "{.arg event} must be a tempest_progress_event object."
+        )
+      }
+      event_data <- tempest_progress_event_data(event)
+      event_data$sequence <- length(private$events_value) + 1L
+      private$events_value[[event_data$sequence]] <- event_data
+      if (!is.null(private$progress_value)) {
+        tryCatch(
+          private$progress_value(event),
+          error = function(error) {
+            tempest_rethrow_operation(
+              error,
+              class = "tempest_progress_callback_error"
+            )
+          }
+        )
+      }
+      invisible(event)
+    },
+    emit_progress = function(
+      event_type,
+      status,
+      stage = NA_character_,
+      step = NA_character_,
+      message = NA_character_,
+      payload = list(),
+      parent_event_id = NA_character_,
+      correlation_id = NA_character_
+    ) {
+      event <- tempest_emit_progress(
+        NULL,
+        run_id = self$session_id,
+        workflow = "costorm",
+        event_type = event_type,
+        status = status,
+        stage = stage,
+        step = step,
+        message = message,
+        payload = payload,
+        parent_event_id = parent_event_id,
+        correlation_id = correlation_id
+      )
+      private$record_progress_event(event)
+    },
+    add_turn = function(speaker, role = c("user", "assistant"), text) {
+      role <- match.arg(role)
+      if (identical(role, "assistant")) {
+        tempest_costorm_session_abort(
+          "Assistant turns can be committed only from an owned completion."
+        )
+      }
+      tempest_session_assert_mutable(self, "add a transcript turn")
+      tempest_session_append_transcript(self, speaker, role, text)
+    },
+    transcript_markdown = function(max_turns = 50) {
+      t <- self$transcript
+      if (length(t) == 0) {
+        return("(no dialog yet)")
+      }
+      # Turns are appended oldest-first; callers want the most recent ones.
+      t <- utils::tail(t, max_turns)
+      lines <- purrr::map_chr(t, function(x) {
+        who <- x$speaker %||% x$role
+        paste0("- **", who, "**: ", x$text)
+      })
+      paste(lines, collapse = "\n")
+    },
+    get_expert_names = function() {
+      purrr::map_chr(
+        self$experts,
+        \(expert) expert@name
+      )
+    },
+    get_expert_descriptions = function() {
+      descs <- purrr::map_chr(self$experts, function(expert) {
+        paste0(
+          "- **",
+          expert@name,
+          "** [",
+          expert@expert_id,
+          "] (",
+          expert@title,
+          "): ",
+          expert@description
+        )
+      })
+      paste(descs, collapse = "\n")
+    },
+    update_mindmap = function(last_exchange) {
+      tempest_session_assert_mutable(self, "update the mind map")
+      tempest_agent_completion_text(last_exchange)
+      event <- private$emit_progress(
+        "step",
+        "started",
+        stage = "mindmap",
+        step = "update"
+      )
+      tempest_session_commit_mindmap(
+        self,
+        tempest_costorm_mindmap_projection(self)
+      )
+      private$emit_progress(
+        "step",
+        "succeeded",
+        stage = "mindmap",
+        step = "update",
+        parent_event_id = event@event_id,
+        correlation_id = event@correlation_id,
+        payload = list(node_count = length(self$mindmap$nodes %||% list()))
+      )
+      invisible(TRUE)
+    },
+    mindmap_markdown = function() {
+      tempest_mindmap_to_markdown(self$mindmap)
+    },
+    find_expert = function(expert_id) {
+      expert_ids <- purrr::map_chr(self$experts, \(expert) expert@expert_id)
+      index <- match(expert_id, expert_ids)
+      if (is.na(index)) NULL else index
+    },
     get_active_experts = function() {
       private$expert_manager_value$list_experts(active_only = TRUE)
     },
-
-    #' @description
-    #' Check and expand oversized mind map nodes.
     check_and_expand_nodes = function() {
       tempest_session_assert_mutable(self, "project the mind map")
       tempest_session_commit_mindmap(
@@ -1506,44 +1486,29 @@ TempestSession <- R6::R6Class(
       )
       invisible(0L)
     },
-
-    #' @description
-    #' Get source IDs that have been discussed in the transcript.
-    #' @return Character vector of discussed source IDs.
     get_discussed_source_ids = function() {
       all_text <- paste(purrr::map_chr(self$transcript, "text"), collapse = " ")
       tempest_extract_citation_ids(all_text)
     },
-
-    #' @description
-    #' Find sources that haven't been discussed yet.
-    #' @return Character vector of undiscussed source IDs.
     find_undiscussed_sources = function() {
       all_source_ids <- purrr::map_chr(
-        self$workspace$list_retrieved_sources(),
+        private$workspace_value$list_retrieved_sources(),
         "id"
       )
-      discussed <- self$get_discussed_source_ids()
+      discussed <- private$get_discussed_source_ids()
       setdiff(all_source_ids, discussed)
     },
-
-    #' @description
-    #' Generate questions about undiscussed sources.
-    #' @param max_questions Maximum questions to generate.
-    #' @return An exact record containing `questions`, `correlation_id`,
-    #'   `deputy_run_id`, and `deputy_session_id`, or `NULL` when there is no
-    #'   unseen evidence and no moderator run occurred.
     surface_unseen_information = function(max_questions = 3) {
       tempest_session_assert_mutable(self, "surface unseen information")
       max_questions <- tempest_config_count(max_questions, "max_questions")
-      unseen_ids <- self$find_undiscussed_sources()
+      unseen_ids <- private$find_undiscussed_sources()
       if (length(unseen_ids) == 0) {
         return(NULL)
       }
 
       # Get snippets from unseen sources
       unseen_info <- purrr::map_chr(head(unseen_ids, 5), function(id) {
-        src <- self$workspace$get_retrieved_source(id)
+        src <- private$workspace_value$get_retrieved_source(id)
         if (is.null(src)) {
           return("")
         }
@@ -1617,9 +1582,6 @@ TempestSession <- R6::R6Class(
         deputy_session_id = result@deputy_session_id
       )
     },
-
-    #' @description
-    #' Reorganize the mind map for clarity.
     reorganize_mindmap = function() {
       tempest_session_assert_mutable(self, "reorganize the mind map")
       tempest_session_commit_mindmap(
@@ -1627,107 +1589,7 @@ TempestSession <- R6::R6Class(
         tempest_costorm_mindmap_projection(self)
       )
       invisible(TRUE)
-    }
-  ),
-  active = list(
-    title = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field title} is fixed when the session is created."
-        )
-      }
-      private$title_value
     },
-    progress = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field progress} is fixed when the session is created."
-        )
-      }
-      private$progress_value
-    },
-    experts = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field experts} is read-only; use the expert roster methods."
-        )
-      }
-      rlang::duplicate(private$experts_value, shallow = FALSE)
-    },
-    transcript = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field transcript} is read-only; use session turn methods."
-        )
-      }
-      rlang::duplicate(private$transcript_value, shallow = FALSE)
-    },
-    mindmap = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field mindmap} is a read-only product projection."
-        )
-      }
-      rlang::duplicate(private$mindmap_value, shallow = FALSE)
-    },
-    events = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field events} is an immutable execution history."
-        )
-      }
-      rlang::duplicate(private$events_value, shallow = FALSE)
-    },
-    topic = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field topic} is fixed when the session is created."
-        )
-      }
-      private$topic_value
-    },
-    config = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field config} is fixed when the session is created."
-        )
-      }
-      private$config_value
-    },
-    session_id = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field session_id} is fixed when the session is created."
-        )
-      }
-      private$session_id_value
-    },
-    retriever = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field retriever} is fixed when the session is created."
-        )
-      }
-      private$retriever_value
-    },
-    manifest = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field manifest} is immutable for the lifetime of a session."
-        )
-      }
-      private$manifest_value
-    },
-    workspace = function(value) {
-      if (!missing(value)) {
-        tempest_costorm_session_abort(
-          "{.field workspace} is fixed when the session is created."
-        )
-      }
-      private$workspace_value
-    }
-  ),
-  private = list(
     title_value = NULL,
     progress_value = NULL,
     experts_value = list(),
@@ -1769,7 +1631,10 @@ tempest_session_assert_mutable <- function(
     )
   }
   report_md <- session$.__enclos_env__$private$report_md_value
-  if (!identical(session$manifest@status, "running") || !is.null(report_md)) {
+  if (
+    !identical(tempest_session_manifest(session)@status, "running") ||
+      !is.null(report_md)
+  ) {
     tempest_costorm_session_abort(
       paste0(
         "Cannot ",
@@ -1838,7 +1703,7 @@ tempest_session_commit_mindmap <- function(session, mindmap) {
   tempest_session_assert_mutable(session, "commit the mind map projection")
   mindmap <- tempest_session_mindmap_validate_update(
     mindmap,
-    session$workspace
+    tempest_session_workspace(session)
   )
   session$.__enclos_env__$private$mindmap_value <-
     rlang::duplicate(mindmap, shallow = FALSE)
@@ -1864,7 +1729,10 @@ tempest_session_restore_product_state <- function(
     action = "restore"
   )
   mindmap <- tryCatch(
-    tempest_session_mindmap_validate_update(mindmap, session$workspace),
+    tempest_session_mindmap_validate_update(
+      mindmap,
+      tempest_session_workspace(session)
+    ),
     error = function(error) {
       tempest_session_restore_abort(
         "Cannot restore the validated Co-STORM mind map.",
@@ -1884,9 +1752,9 @@ tempest_session_restore_product_state <- function(
   private$mindmap_value <- rlang::duplicate(mindmap, shallow = FALSE)
   private$events_value <- rlang::duplicate(events, shallow = FALSE)
   private$progress_value <- progress
-  if (identical(session$manifest@status, "succeeded")) {
+  if (identical(tempest_session_manifest(session)@status, "succeeded")) {
     tempest_research_workspace_seal(
-      session$workspace,
+      tempest_session_workspace(session),
       tempest_session_verification_owner_token(session)
     )
   }
@@ -2147,6 +2015,104 @@ tempest_session_verification_owner_token <- function(session) {
 }
 
 #' @keywords internal
+tempest_session_emit_progress <- function(session, ...) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort("{.arg session} must be a TempestSession.")
+  }
+  session$.__enclos_env__$private$emit_progress(...)
+}
+
+tempest_session_request_completion_async <- function(session, ...) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort("{.arg session} must be a TempestSession.")
+  }
+  session$.__enclos_env__$private$request_completion_async(...)
+}
+
+tempest_session_mindmap_markdown <- function(session, ...) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort("{.arg session} must be a TempestSession.")
+  }
+  session$.__enclos_env__$private$mindmap_markdown(...)
+}
+
+tempest_session_transcript_markdown <- function(session, ...) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort("{.arg session} must be a TempestSession.")
+  }
+  session$.__enclos_env__$private$transcript_markdown(...)
+}
+
+tempest_session_active_experts <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort("{.arg session} must be a TempestSession.")
+  }
+  session$.__enclos_env__$private$get_active_experts()
+}
+
+tempest_session_workspace <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$workspace_value
+}
+
+tempest_session_config <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$config_value
+}
+
+tempest_session_manifest <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$manifest_value
+}
+
+tempest_session_retriever <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$retriever_value
+}
+
+tempest_session_title <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$title_value
+}
+
+tempest_session_progress <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$progress_value
+}
+
+tempest_session_events <- function(session) {
+  if (!inherits(session, "TempestSession")) {
+    tempest_costorm_session_abort(
+      "{.arg session} must be a TempestSession."
+    )
+  }
+  session$.__enclos_env__$private$events_value
+}
+
 tempest_session_program_set <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_costorm_session_abort(
@@ -2629,14 +2595,15 @@ tempest_session_set_report_value <- function(session, report_md) {
       "{.arg report_md} must be one string or {.code NULL}."
     )
   }
-  reference <- session$manifest@deliverables$report_md %||% NULL
-  if (identical(session$manifest@status, "running")) {
+  reference <- tempest_session_manifest(session)@deliverables$report_md %||%
+    NULL
+  if (identical(tempest_session_manifest(session)@status, "running")) {
     if (!is.null(report_md) || !is.null(reference)) {
       tempest_costorm_session_abort(
         "A running Co-STORM session must remain report-free."
       )
     }
-  } else if (identical(session$manifest@status, "succeeded")) {
+  } else if (identical(tempest_session_manifest(session)@status, "succeeded")) {
     if (is.null(report_md)) {
       tempest_costorm_session_abort(
         "A succeeded Co-STORM session requires its canonical report."
@@ -2668,11 +2635,10 @@ tempest_session_set_report_value <- function(session, report_md) {
 #'   objects as the session makes progress.
 #' @param session_id Optional stable session identifier. If `NULL`, a new
 #'   identifier is generated.
-#' @param program_set A [TempestProgramSet] containing the exact dsprrr
-#'   programs used by Co-STORM. If `NULL`, [tempest_program_set()] creates the
-#'   builtin set.
-#' @param knowledge_view Optional immutable Graft view. It is required for a
-#'   fresh session when `program_set` contains governed procedures.
+#' @param knowledge Optional accepted organizational knowledge from
+#'   [tempest_knowledge()]. It pins an immutable Graft view, supplies accepted
+#'   evidence records, and carries any accepted governed-procedure stage
+#'   bindings.
 #' @return A `TempestSession` R6 object for the active Co-STORM research
 #'   session.
 #' @examples
@@ -2689,9 +2655,9 @@ tempest_session <- function(
   retriever = NULL,
   progress = NULL,
   session_id = NULL,
-  program_set = NULL,
-  knowledge_view = NULL
+  knowledge = NULL
 ) {
+  knowledge <- tempest_knowledge_argument(knowledge)
   tempest_session_new(
     topic = topic,
     config = config,
@@ -2700,8 +2666,8 @@ tempest_session <- function(
     retriever = retriever,
     progress = progress,
     session_id = session_id,
-    program_set = program_set,
-    knowledge_view = knowledge_view
+    program_set = knowledge$program_set,
+    knowledge_view = knowledge$view
   )
 }
 

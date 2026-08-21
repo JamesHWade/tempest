@@ -74,7 +74,7 @@ test_that("source tibbles derive snippets and context text", {
   )
   store$upsert_retrieved_resource(native)
 
-  sources <- tempest_sources(store)
+  sources <- tempest:::tempest_workspace_sources(store)
   expect_contains(names(sources), c("snippet", "content_text", "context_text"))
   expect_equal(
     sources$snippet[sources$id == source@resource_id],

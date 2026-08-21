@@ -120,7 +120,7 @@ authority.
 A succeeded STORM product can be packaged for explicit Graft review:
 
 ```r
-supports <- tempest_claim_supports(result$workspace)
+supports <- tempest_claim_supports(result)
 
 bundle <- tempest_promotion_bundle(result)
 trusted_bundle_id <- bundle@bundle_id
@@ -433,80 +433,53 @@ fallback, or produced a grounded result that was not verified.
 
 ### Compiling dsprrr programs
 
-Compile selected programs with your own labeled examples, then reuse the
-complete verified set in a run:
+Tempest resolves its builtin dsprrr programs internally. Program identity,
+contract version, and evaluator are recorded in the run manifest and rechecked
+before any program executes; runtime registries, model clients, credentials, and
+executable objects never enter that metadata.
 
-```r
-query_train <- data.frame(
-  question = c("What are battery recycling bottlenecks?"),
-  topic = c("Life cycle assessment of lithium-ion batteries")
-)
-query_train$queries <- I(list(c(
-  "lithium battery recycling bottlenecks",
-  "EV battery recycling capacity constraints"
-)))
-
-program_set <- tempest_program_set()
-compiled_program_set <- tempest_compile_programs(
-  program_set,
-  trainsets = list(query_decomposition = query_train),
-  teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 123L),
-  path = "compiled-storm-programs"
-)
-
-res <- tempest_run(
-  "Life cycle assessment of lithium-ion batteries",
-  config = cfg,
-  program_set = compiled_program_set
-)
-```
-
-`compiled-storm-programs` contains a closed manifest and one dsprrr artifact per
-stage. Loading recomputes every artifact ID before any program can execute.
-Runtime registries, model clients, credentials, and executable objects never
-enter ProgramSet metadata.
-
-When resuming a custom-program run, supply a ProgramSet with the same verified
-identity; moving an intact bundle is allowed. If `program_set` is omitted,
-Tempest resolves its current builtins and resumes only when their artifact IDs
+Resuming a run recomputes every program artifact ID and continues only when they
 match the persisted run.
 
-Co-STORM uses the same boundary: pass `program_set` to `tempest_session()` or
-`tempest_shiny_server()`, and pass the matching `knowledge_view` whenever that
-set contains a governed procedure. Session snapshots record the complete
-ProgramSet identity but never the live view. A governed session can be restored
-or resumed with its matching verified set and no view for read-only inspection.
-Its next governed stage fails before provider execution unless the exact pinned
-view is supplied; if a view is supplied during restore, it must match. An
-ungoverned custom-program session still requires its matching verified set.
 
 ### Run an accepted governed procedure
 
 An accepted `GovernedProcedure` binds one stage to an exact dsprrr
-`ProgramArtifact`, contract, and evaluator. Resolve it through an immutable
-Graft view, then place the typed reference in the ProgramSet by stage:
+`ProgramArtifact`, contract, and evaluator. `tempest_knowledge()` pins the
+immutable Graft view and binds the procedure to its stage:
 
 ```r
 snapshot <- graft::graft_snapshot(store)
-knowledge_view <- graft::graft_at(store, snapshot)
+view <- graft::graft_at(store, snapshot)
 
-verify_procedure <- tempest_governed_procedure_ref(
-  knowledge_view,
-  record_id = "governed-procedure-record-id"
-)
-program_set <- tempest_program_set(
-  governed_procedure_refs = list(
-    verify_claim_support = verify_procedure
+knowledge <- tempest_knowledge(
+  view,
+  governed_procedures = list(
+    verify_claim_support = "governed-procedure-record-id"
   )
 )
 
 result <- tempest_run(
   "Life cycle assessment of lithium-ion batteries",
   config = cfg,
-  program_set = program_set,
-  knowledge_view = knowledge_view
+  knowledge = knowledge
 )
 ```
+
+The same value carries accepted evidence. `record_ids` names an exact allowlist
+of accepted `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records, which
+Tempest reads as data:
+
+```r
+records <- graft::graft_find(view, "battery recycling", limit = 25)
+knowledge <- tempest_knowledge(view, record_ids = records$id)
+```
+
+Accepted record text is evidence, never instruction. It travels in a data
+channel and cannot change prompts, message roles, tools, governed-procedure
+selection, or executable artifacts. Executable authority comes only from an
+explicit `governed_procedures` stage binding, and a record Tempest cannot
+materialize exactly is rejected rather than truncated.
 
 Tempest verifies the accepted procedure, program artifact, revision, schema,
 store, snapshot, and commit boundary again immediately before the provider
@@ -540,7 +513,7 @@ mind map, and judge roles use `openai/gpt-5.6-luna`. Tempest constructs
 these clients with `ellmer::chat_openai(auth = "codex")`, reusing the ChatGPT
 subscription authenticated by Codex CLI. Built-in subscription clients use
 lower reasoning effort for mind-map and judge calls; explicit `params` values
-override these defaults. `run_app()` limits individual provider requests to 120
+override these defaults. `tempest_app()` limits individual provider requests to 120
 seconds by default, configurable with `tempest.shiny.provider_timeout_s`.
 The bundled app's warmup asks each active expert for one brief,
 bounded, evidence-backed orientation. Each expert reuses session evidence or
@@ -656,13 +629,13 @@ result <- session$step("What are the main risks from advanced AI systems?")
 cat(result$answer)
 
 # Generate and commit a report (styles: "technical" or "executive")
-session$report(style = "technical", include_references = TRUE)
-committed_report <- tempest_session_report_md(session)
+session$publish(style = "technical", include_references = TRUE)
+committed_report <- tempest_report(session)
 cat(committed_report)
 ```
 
-`session$report()` validates and commits the canonical Co-STORM report.
-`tempest_session_report_md()` only reads those exact committed bytes from a
+`session$publish()` validates and commits the canonical Co-STORM report.
+`tempest_report()` only reads those exact committed bytes from a
 succeeded, quiescent session; it does not generate or repair a report.
 `tempest_report_md()` is a separate deterministic renderer over caller-supplied
 Markdown and an explicit `ResearchWorkspace`. Rendering alone does not finalize
@@ -723,7 +696,7 @@ session <- tempest_session(
 )
 session$add_expert("quantum networking")
 session$retire_expert(error_correction_expert@expert_id)
-session$get_active_experts()
+session$experts
 ```
 
 Expert profiles remain immutable. Retirement is manager-owned session-roster
@@ -735,14 +708,14 @@ that the expert is no longer available.
 
 ```r
 session$reorganize_mindmap()
-report <- session$report(style = "technical", include_references = TRUE)
+report <- session$publish(style = "technical", include_references = TRUE)
 ```
 
 ### Shiny App
 
 ```r
 library(tempest)
-run_app()
+tempest_app()
 ```
 
 Untouched model fields inherit `options(tempest.chat = )`; otherwise the app
@@ -841,73 +814,16 @@ Run automated Co-STORM sessions with a simulated curious researcher:
 session <- tempest_session("AI safety")
 sim <- SimulatedUser$new("AI safety", max_turns = 5)
 sim$run_session(session, warmup = TRUE, verbose = TRUE)
-session$report()
-report <- tempest_session_report_md(session)
+session$publish()
+report <- tempest_report(session)
 
 # As a vitals task
 tsk <- tempest_costorm_task(dataset = "qa", max_turns = 5, scorer_chat = judge)
 ```
 
 The default Co-STORM solver likewise completes a real `TempestSession`, reads
-its committed report through `tempest_session_report_md()`, and records only
+its committed report through `tempest_report()`, and records only
 the same bounded credential-safe product, program, and stage summary.
-
-### Explicit program improvement loop
-
-Tempest keeps evaluation, compilation, and adoption separate. Use distinct
-vitals tasks for an exact baseline and candidate, compile only explicitly
-selected dsprrr stages, and adopt the candidate only after reviewing its
-scores and trajectory summaries:
-
-```r
-baseline_task <- tempest_task(
-  dataset = held_out,
-  config = cfg,
-  scorer_chat = judge,
-  program_set = program_set,
-  knowledge_view = knowledge_view
-)
-baseline_task$eval()
-
-candidate_program_set <- tempest_compile_programs(
-  program_set,
-  trainsets = stage_trainsets,
-  valsets = stage_validation_sets,
-  teleprompters = teleprompters,
-  path = "candidate-programs"
-)
-
-candidate_task <- tempest_task(
-  dataset = held_out,
-  config = cfg,
-  scorer_chat = judge,
-  program_set = candidate_program_set,
-  knowledge_view = knowledge_view
-)
-candidate_task$eval()
-
-# Inspect baseline and candidate samples/metrics, then make an explicit choice.
-baseline_samples <- baseline_task$get_samples()
-candidate_samples <- candidate_task$get_samples()
-chosen_program_set <- candidate_program_set
-
-next_result <- tempest_run(
-  "Grid-scale battery recycling",
-  config = cfg,
-  program_set = chosen_program_set,
-  knowledge_view = knowledge_view
-)
-```
-
-Keep compilation training and validation examples separate from the held-out
-evaluation set to avoid leakage, overfitting, and optimistic scores. Compare
-the same sample IDs, inputs, targets, and scorer before selecting a candidate.
-Tempest does not invent training data, choose a teleprompter, optimize
-automatically, accept a changed governed artifact, or replace the baseline
-ProgramSet. Supply an explicit scorer or let the task use
-`vitals::model_graded_qa()` with the chosen judge chat. Compilation uses
-isolated Module copies; a changed artifact loses the baseline stage's governed
-reference until the new artifact is reviewed and accepted separately.
 
 ## Notes
 

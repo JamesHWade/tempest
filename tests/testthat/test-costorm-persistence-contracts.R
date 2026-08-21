@@ -8,7 +8,7 @@ test_that("Co-STORM restore and resume require the recorded custom ProgramSet", 
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  session <- tempest_session(
+  session <- tempest:::tempest_session_new(
     "Custom Co-STORM programs",
     config = cfg,
     experts = list(test_expert(expert_id = "expert.program-set")),
@@ -54,7 +54,7 @@ test_that("TempestSession restores progress history without replaying it", {
     experts = list(expert),
     progress = collector$record
   )
-  session$emit_progress(
+  session$.__enclos_env__$private$emit_progress(
     "stage",
     "started",
     stage = "dialogue",
@@ -83,7 +83,7 @@ test_that("TempestSession restores progress history without replaying it", {
     session$session_id
   )
 
-  restored$emit_progress(
+  restored$.__enclos_env__$private$emit_progress(
     "stage",
     "succeeded",
     stage = "dialogue",
@@ -114,7 +114,7 @@ test_that("Co-STORM snapshots require terminal stage attempts", {
     experts = list(test_expert(expert_id = "expert.running-stage")),
     session_id = "running-stage-snapshot"
   )
-  reference <- session$manifest@programs$personas
+  reference <- tempest:::tempest_session_manifest(session)@programs$personas
   running <- tempest:::tempest_stage_record_start(
     "personas",
     reference$program_artifact_id,

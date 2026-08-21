@@ -669,10 +669,10 @@ tempest_session_snapshot <- function(session) {
   tempest_session_assert_persistence_quiescent(session, action = "snapshot")
   research_manifest <- tryCatch(
     tempest_costorm_manifest_validate(
-      session$manifest,
+      tempest_session_manifest(session),
       session$session_id,
-      session$config,
-      session$workspace
+      tempest_session_config(session),
+      tempest_session_workspace(session)
     ),
     error = function(error) {
       tempest_abort(
@@ -740,18 +740,20 @@ tempest_session_snapshot <- function(session) {
       )
       tempest_stage_records_validate_workspace(
         durable_records,
-        session$workspace,
-        min_support_score = session$config@min_support_score
+        tempest_session_workspace(session),
+        min_support_score = tempest_session_config(session)@min_support_score
       )
       tempest_stage_records_validate_persisted_trust(
         durable_records,
-        session$workspace,
-        min_support_score = session$config@min_support_score
+        tempest_session_workspace(session),
+        min_support_score = tempest_session_config(session)@min_support_score
       )
       tempest_stage_records_validate_workspace_coverage(
         durable_records,
-        session$workspace,
-        require_verification = session$config@citation_policy %in%
+        tempest_session_workspace(session),
+        require_verification = tempest_session_config(
+          session
+        )@citation_policy %in%
           c("claim_verified", "strict")
       )
       tempest_stage_records_validate_product_outputs(
@@ -764,7 +766,7 @@ tempest_session_snapshot <- function(session) {
       )
       tempest_stage_records_validate_claim_provenance(
         durable_records,
-        session$workspace,
+        tempest_session_workspace(session),
         research_manifest@research_run_id,
         session$experts
       )
@@ -789,13 +791,13 @@ tempest_session_snapshot <- function(session) {
         value,
         durable_records,
         prior_records = live_records,
-        trusted_title = session$title
+        trusted_title = tempest_session_title(session)
       )
       tempest_product_report_validate_policy(
         value,
-        session$title,
-        session$workspace,
-        session$config,
+        tempest_session_title(session),
+        tempest_session_workspace(session),
+        tempest_session_config(session),
         durable_records
       )
       value
@@ -824,7 +826,7 @@ tempest_session_snapshot <- function(session) {
     }
   )
   workspace <- tryCatch(
-    tempest_research_workspace_snapshot(session$workspace),
+    tempest_research_workspace_snapshot(tempest_session_workspace(session)),
     error = function(error) {
       tempest_abort(
         "Cannot snapshot an invalid Co-STORM research workspace.",
@@ -841,7 +843,7 @@ tempest_session_snapshot <- function(session) {
   )
   tempest_session_mindmap_assert_binding(
     mindmap,
-    session$workspace,
+    tempest_session_workspace(session),
     action = "snapshot"
   )
   mindmap$nodes <- lapply(mindmap$nodes, function(node) {
@@ -851,12 +853,12 @@ tempest_session_snapshot <- function(session) {
   suggested_questions <- tempest_session_suggested_questions(
     tempest_session_suggestions(session)
   )
-  graft_snapshot <- session$workspace$graft_snapshot
+  graft_snapshot <- tempest_session_workspace(session)$graft_snapshot
   tryCatch(
     tempest_graft_snapshot_assert_binding(
       graft_snapshot,
       research_manifest@knowledge_snapshot,
-      session$workspace,
+      tempest_session_workspace(session),
       tempest_session_persistence_error_class(
         "tempest_session_snapshot_error"
       ),
@@ -876,13 +878,13 @@ tempest_session_snapshot <- function(session) {
     tempest_product_authority_validate(
       research_manifest,
       durable_records,
-      session$workspace,
+      tempest_session_workspace(session),
       report_md = report_md,
       report_reference = report_reference,
-      config = session$config,
+      config = tempest_session_config(session),
       experts = session$experts,
       expert_sessions = expert_sessions,
-      product_state = list(title = session$title),
+      product_state = list(title = tempest_session_title(session)),
       require_publishable = !is.null(report_md)
     ),
     error = function(error) {
@@ -904,7 +906,7 @@ tempest_session_snapshot <- function(session) {
     ),
     research_manifest = tempest_research_manifest_record(research_manifest),
     topic = session$topic,
-    title = session$title,
+    title = tempest_session_title(session),
     session_id = session$session_id,
     experts = tempest_expert_records(session$experts),
     retired_expert_ids = as.list(tempest_session_retired_expert_ids(session)),

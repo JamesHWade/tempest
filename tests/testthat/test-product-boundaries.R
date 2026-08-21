@@ -13,20 +13,19 @@ test_that("scripted STORM stays on its product-owned execution path", {
       instructions = "Use the supplied evidence."
     )),
     max_questions_per_perspective = 1,
-    program_set = tempest_program_set(),
     verbose = FALSE
   )
 
   expect_identical(
     intersect(
-      names(result),
+      names(tempest:::TempestResult@properties),
       c("runtime", "artifact_catalog", "workflow_run", "deliverables")
     ),
     character()
   )
-  expect_r6_class(result$workspace, "ResearchWorkspace")
-  expect_s7_class(result$manifest, TempestResearchManifest)
-  expect_identical(result$manifest@status, "succeeded")
+  expect_r6_class(result@workspace, "ResearchWorkspace")
+  expect_s7_class(result@manifest, TempestResearchManifest)
+  expect_identical(result@manifest@status, "succeeded")
 })
 
 test_that("Co-STORM exposes only the explicit product turn seam", {

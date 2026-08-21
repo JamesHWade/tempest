@@ -613,12 +613,14 @@ costorm_product_baseline_fixture <- function() {
           score = 0.95,
           rationale = "The captured excerpt supports the exact claim."
         )),
-        length(session$workspace$list_evidence_spans())
+        length(tempest:::tempest_session_workspace(
+          session
+        )$list_evidence_spans())
       )
     )
   )
-  session$reorganize_mindmap()
-  report <- session$report()
+  session$.__enclos_env__$private$reorganize_mindmap()
+  report <- session$publish()
 
   list(
     config = config,
@@ -634,7 +636,7 @@ costorm_product_baseline_fixture <- function() {
 baseline_storm_semantics <- function(fixture) {
   result <- fixture$result
   events <- fixture$events
-  outline_sections <- result$outline$sections
+  outline_sections <- result@outline$sections
   list(
     completed_stages = baseline_succeeded_stages(events),
     program_stages = fixture$program_stages %||% character(),
@@ -643,7 +645,7 @@ baseline_storm_semantics <- function(fixture) {
       method = "radix"
     ),
     claims = baseline_claim_records(fixture$store),
-    citations = baseline_citation_semantics(result$report_md),
+    citations = baseline_citation_semantics(result@report_md),
     outline_sections = vapply(
       outline_sections,
       `[[`,
@@ -656,7 +658,7 @@ baseline_storm_semantics <- function(fixture) {
         vapply(section$subsections, `[[`, character(1), "title")
       }
     )),
-    report_sections = baseline_report_sections(result$report_md),
+    report_sections = baseline_report_sections(result@report_md),
     terminal_status = tail(
       vapply(
         Filter(\(event) identical(event$event_type, "workflow"), events),
@@ -675,14 +677,16 @@ baseline_costorm_durable_state <- function(session, report) {
     session_id = session$session_id,
     source_ids = sort(
       vapply(
-        session$workspace$list_retrieved_sources(),
+        tempest:::tempest_session_workspace(session)$list_retrieved_sources(),
         `[[`,
         character(1),
         "id"
       ),
       method = "radix"
     ),
-    claims = baseline_claim_records(session$workspace),
+    claims = baseline_claim_records(tempest:::tempest_session_workspace(
+      session
+    )),
     transcript = baseline_transcript_records(session$transcript),
     mindmap = baseline_mindmap_records(session$mindmap),
     report_sections = baseline_report_sections(report),
@@ -698,10 +702,10 @@ baseline_costorm_semantics <- function(fixture) {
       completed_stages = baseline_succeeded_stages(fixture$events),
       suggestion_count = length(fixture$questions),
       report_product_matches = identical(
-        tempest_session_report_md(session),
+        tempest_report(session),
         fixture$report
       ),
-      terminal_status = session$manifest@status,
+      terminal_status = tempest:::tempest_session_manifest(session)@status,
       event_sequence = baseline_event_labels(fixture$events)
     )
   )

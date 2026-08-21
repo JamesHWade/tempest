@@ -216,7 +216,7 @@ tempest_verify_claims <- function(
         )
       )
     }
-    config <- session$config
+    config <- tempest_session_config(session)
     if (!model_supplied) {
       verifier_model <- config@models[["judge"]] %||% NA_character_
     }
@@ -248,7 +248,10 @@ tempest_verify_claims <- function(
       )
     }
     existing_records <- tempest_session_stage_records(session)
-    already_verified <- length(session$workspace$list_claim_supports()) > 0L ||
+    already_verified <- length(tempest_session_workspace(
+      session
+    )$list_claim_supports()) >
+      0L ||
       any(vapply(
         existing_records,
         function(record) {
@@ -267,7 +270,7 @@ tempest_verify_claims <- function(
     }
     program <- tempest_session_programs(session)$verify_claim_support
     return(tempest_verify_claims_internal(
-      workspace = session$workspace,
+      workspace = tempest_session_workspace(session),
       verifier = verifier,
       policy = policy,
       verifier_model = verifier_model,
@@ -429,5 +432,5 @@ tempest_verify_claims_internal <- function(
     }
   )
   committed <- TRUE
-  tempest_claim_supports(workspace)
+  tempest_claim_supports_tibble(workspace$list_claim_supports())
 }

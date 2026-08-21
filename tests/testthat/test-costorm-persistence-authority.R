@@ -61,8 +61,12 @@ test_that("schema 10 persists exact Deputy execution authority", {
     experts = list(expert, other_expert),
     session_id = "schema-9-deputy-authority"
   )
-  session$workspace$upsert_retrieved_resource(moderator_source)
-  session$workspace$upsert_retrieved_resource(expert_source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(
+    moderator_source
+  )
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(
+    expert_source
+  )
   expert_session <- tempest:::tempest_session_expert_manager(
     session
   )$get_or_create(
@@ -84,7 +88,7 @@ test_that("schema 10 persists exact Deputy execution authority", {
     stage = "dialogue"
   ) {
     context <- tempest:::tempest_deputy_run_context(
-      target$manifest,
+      tempest:::tempest_session_manifest(target),
       stage = "dialogue",
       role = role,
       expert_id = expert_id
@@ -111,7 +115,9 @@ test_that("schema 10 persists exact Deputy execution authority", {
     trace
   }
   moderator_completion_id <- tempest:::tempest_costorm_await(
-    session$request_completion_async("Record moderator evidence.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Record moderator evidence."
+    )
   )
   moderator_result <- withCallingHandlers(
     tempest:::tempest_costorm_await(tempest_session_process_turn_async(
@@ -432,7 +438,7 @@ test_that("schema 10 persists exact Deputy execution authority", {
   changed_expert$research_manifest$traces[[expert_index]]$expert_id <-
     other_expert@expert_id
   other_context <- tempest:::tempest_deputy_run_context(
-    session$manifest,
+    tempest:::tempest_session_manifest(session),
     stage = "dialogue",
     role = "expert",
     expert_id = other_expert@expert_id

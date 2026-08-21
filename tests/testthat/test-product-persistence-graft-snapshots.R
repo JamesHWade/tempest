@@ -109,8 +109,8 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
     run_id = "graft-storm-persistence"
   )
   restored_snapshots <- list(
-    restored_memory$workspace$graft_snapshot,
-    restored_session$workspace$graft_snapshot,
+    tempest:::tempest_session_workspace(restored_memory)$graft_snapshot,
+    tempest:::tempest_session_workspace(restored_session)$graft_snapshot,
     restored_storm$workspace$graft_snapshot
   )
 

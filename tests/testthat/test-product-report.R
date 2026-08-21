@@ -1,7 +1,7 @@
 test_that("product reports bind exact content references", {
   workspace <- tempest_research_workspace()
 
-  report <- tempest_report_md(
+  report <- tempest:::tempest_report_md_render(
     "Fixture",
     "Body.",
     workspace,
@@ -56,7 +56,7 @@ test_that("Co-STORM report preflight rejects invalid live state", {
   )
 
   expect_error(
-    session$report(include_references = NA),
+    session$publish(include_references = NA),
     class = "tempest_product_validation_error"
   )
   expect_length(chat$.calls(), 0L)
@@ -87,13 +87,13 @@ test_that("Co-STORM report accessor reads only the exact committed artifact", {
   )
   report_md <- test_persistence_commit_costorm_report(session, report_md)
 
-  expect_identical(tempest_session_report_md(session), report_md)
+  expect_identical(tempest_report(session), report_md)
   expect_error(
-    tempest_session_report_md(list()),
+    tempest_report(list()),
     class = "tempest_product_report_error"
   )
 
-  original_manifest <- session$manifest
+  original_manifest <- tempest:::tempest_session_manifest(session)
   manifest_with <- function(
     research_run_id = original_manifest@research_run_id,
     mode = original_manifest@mode,
@@ -127,7 +127,7 @@ test_that("Co-STORM report accessor reads only the exact committed artifact", {
   for (manifest in invalid_manifests) {
     private$manifest_value <- manifest
     expect_error(
-      tempest_session_report_md(session),
+      tempest_report(session),
       class = "tempest_product_report_error"
     )
   }
@@ -142,23 +142,23 @@ test_that("Co-STORM report accessor reads only the exact committed artifact", {
     ))
   )
   expect_error(
-    tempest_session_report_md(running),
+    tempest_report(running),
     class = "tempest_product_report_error"
   )
 
   private$report_md_value <- NULL
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
   private$report_md_value <- 1L
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
   private$report_md_value <- paste0(report_md, "\n")
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
   private$report_md_value <- report_md
@@ -190,7 +190,7 @@ test_that("Co-STORM report access requires quiescent execution state", {
   report_md <- test_persistence_commit_costorm_report(session, report_md)
   private <- session$.__enclos_env__$private
 
-  expect_identical(tempest_session_report_md(session), report_md)
+  expect_identical(tempest_report(session), report_md)
 
   tempest:::tempest_session_start_deputy_run(
     session,
@@ -205,13 +205,13 @@ test_that("Co-STORM report access requires quiescent execution state", {
     )
   )
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
 
   private$pending_deputy_runs_value <- list(list(invalid = TRUE))
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
   private$pending_deputy_runs_value <- list()
@@ -223,7 +223,7 @@ test_that("Co-STORM report access requires quiescent execution state", {
   )
   withr::defer(tempest:::tempest_session_async_work_finish(session, work_id))
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
   tempest:::tempest_session_async_work_finish(session, work_id)
@@ -246,18 +246,18 @@ test_that("Co-STORM report access requires quiescent execution state", {
     )
   )
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
 
   owner <- private$agent_completion_owner_value
   private$agent_completion_registry_value <- list()
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
 
   private$agent_completion_registry_value <-
     tempest:::tempest_agent_completion_registry(owner)
-  expect_identical(tempest_session_report_md(session), report_md)
+  expect_identical(tempest_report(session), report_md)
 })

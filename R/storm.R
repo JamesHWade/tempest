@@ -108,8 +108,10 @@ tempest_stage_context_knowledge_view <- function(
 #' @param config A `TempestConfig`.
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from
 #'   `config`.
-#' @param knowledge_view Optional immutable Graft view. It is required when
-#'   `program_set` contains any governed procedure and is never persisted.
+#' @param knowledge Optional accepted organizational knowledge from
+#'   [tempest_knowledge()]. It pins an immutable Graft view, supplies accepted
+#'   evidence records, and carries any accepted governed-procedure stage
+#'   bindings. It is never persisted.
 #' @param n_experts Number of expert profiles to generate when `experts` is
 #'   `NULL` (default 3).
 #' @param experts Optional list of active profiles created by
@@ -124,8 +126,6 @@ tempest_stage_context_knowledge_view <- function(
 #'   the "key_questions" strategy (default 3).
 #' @param parallel_writing If `TRUE`, write report sections in parallel using
 #'   the mirai package. Failed parallel sections are retried sequentially.
-#' @param program_set A [TempestProgramSet] containing the exact dsprrr programs
-#'   used by STORM. If `NULL`, [tempest_program_set()] creates the default set.
 #' @param steps Character vector controlling which steps to run. Defaults to
 #'   all.
 #' @param output_dir Optional directory for persisted STORM run artifacts. When
@@ -140,28 +140,27 @@ tempest_stage_context_knowledge_view <- function(
 #'   object as STORM workflow stages start, finish, fail, persist artifacts, or
 #'   make final artifacts available.
 #' @param verbose If `TRUE`, prints progress messages.
-#' @return A list with product fields `title`, `perspectives`, `experts`,
-#'   `outline`, `draft_md`, `report_md`, `manifest`, `state`, `workspace`,
-#'   `retriever`, and `output_dir`.
+#' @return A validated completed Tempest research product. Read it with
+#'   [tempest_report()], [tempest_sources()], [tempest_claims()],
+#'   [tempest_claim_supports()], and [tempest_trajectory_review()].
 #' @examples
 #' \dontrun{
 #' cfg <- tempest_config()
 #' result <- tempest_run("History of jazz", config = cfg)
-#' cat(result$report_md)
+#' cat(tempest_report(result))
 #' }
 #' @export
 tempest_run <- function(
   topic,
   config = tempest_config(),
   retriever = NULL,
-  knowledge_view = NULL,
+  knowledge = NULL,
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
   parallel_writing = FALSE,
-  program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
@@ -169,20 +168,22 @@ tempest_run <- function(
   progress = NULL,
   verbose = TRUE
 ) {
+  knowledge <- tempest_knowledge_argument(knowledge)
   tempest_otel_trace(
     "storm.run",
     tempest_run_internal(
       topic = topic,
       config = config,
       retriever = retriever,
-      knowledge_view = knowledge_view,
+      knowledge_view = knowledge$view,
+      knowledge_records = knowledge$records,
+      program_set = knowledge$program_set,
       n_experts = n_experts,
       experts = experts,
       research_strategy = research_strategy,
       max_rounds = max_rounds,
       max_questions_per_perspective = max_questions_per_perspective,
       parallel_writing = parallel_writing,
-      program_set = program_set,
       steps = steps,
       output_dir = output_dir,
       resume = resume,
@@ -198,6 +199,7 @@ tempest_run_internal <- function(
   config = tempest_config(),
   retriever = NULL,
   knowledge_view = NULL,
+  knowledge_records = list(),
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
@@ -308,6 +310,7 @@ tempest_run_internal <- function(
       )
     )
   }
+  tempest_knowledge_insert_records(workspace, knowledge_records)
   store <- workspace
   run_dir <- tempest_storm_prepare_run_dir(output_dir, topic, run_id = run_id)
   progress <- tempest_progress_callback(progress)
@@ -673,8 +676,9 @@ tempest_run_internal <- function(
       message = "Loaded completed STORM workflow.",
       payload = list(completed_stages = completed_stages)
     )
-    return(list(
+    return(tempest_product_result(
       title = state$title,
+      topic = topic,
       perspectives = state$perspectives,
       experts = state$experts,
       outline = state$outline,
@@ -1658,8 +1662,9 @@ tempest_run_internal <- function(
         payload = list(completed_stages = completed_stages)
       )
 
-      list(
+      tempest_product_result(
         title = title,
+        topic = topic,
         perspectives = perspectives,
         experts = experts,
         outline = outline,
@@ -1728,7 +1733,8 @@ tempest_run_internal <- function(
 #' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for
 #'   details on available parameters including `topic`, `config`, `retriever`,
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
-#' @param knowledge_view A live pinned Graft view cannot cross the asynchronous
+#' @param knowledge_view Accepted knowledge and a live pinned Graft view cannot
+#'   cross the asynchronous
 #'   worker boundary. Governed runs must use [tempest_run()] in the process that
 #'   owns the view.
 #' @return A `tempest_async_run` promise that resolves with the
@@ -1743,8 +1749,10 @@ tempest_run_internal <- function(
 tempest_run_async <- function(..., knowledge_view = NULL) {
   args <- list(...)
   program_set <- args$program_set %||% NULL
+  knowledge <- args$knowledge %||% NULL
   if (
     !is.null(knowledge_view) ||
+      !is.null(knowledge) ||
       (!is.null(program_set) &&
         tempest_program_set_requires_knowledge_view(program_set))
   ) {

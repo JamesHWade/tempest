@@ -87,7 +87,7 @@ test_that("claim insertion validates the complete batch before mutation", {
   workspace <- verified$workspace
   source_id <- verified$fixtures[[1]]$source@resource_id
   existing <- verified$fixtures[[1]]$claim
-  prior_supports <- tempest_claim_supports(workspace)
+  prior_supports <- tempest:::tempest_claim_supports_resolved(workspace)
   valid <- tempest_claim(
     claim_id = "claim-valid",
     claim_text = "Valid claim",
@@ -116,7 +116,10 @@ test_that("claim insertion validates the complete batch before mutation", {
     ),
     existing@claim_id
   )
-  expect_identical(tempest_claim_supports(workspace), prior_supports)
+  expect_identical(
+    tempest:::tempest_claim_supports_resolved(workspace),
+    prior_supports
+  )
 })
 
 test_that("claim insertion rolls back when its commit callback fails", {
@@ -180,7 +183,10 @@ test_that("claim verification validates and commits one complete batch", {
     vapply(verified, \(claim) claim@verification_status, character(1)),
     c("supported", "unsupported")
   )
-  expect_identical(workspace$citation_audit, tempest_claim_supports(workspace))
+  expect_identical(
+    workspace$citation_audit,
+    tempest:::tempest_claim_supports_tibble(workspace$list_claim_supports())
+  )
 })
 
 test_that("claim verification rolls back when its commit callback fails", {

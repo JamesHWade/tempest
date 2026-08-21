@@ -50,7 +50,9 @@ test_that("Tempest session bundles save and resume durable state", {
     retriever = tempest_retriever(config = cfg, workspace = store)
   )
   completion_id <- tempest:::tempest_costorm_await(
-    session$request_completion_async("Record the bundle evidence.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Record the bundle evidence."
+    )
   )
   withCallingHandlers(
     tempest:::tempest_costorm_await(tempest_session_process_turn_async(
@@ -77,9 +79,9 @@ test_that("Tempest session bundles save and resume durable state", {
     verifier_model = "judge.bundle"
   )
   session_id <- session$session_id
-  session$add_turn("User", "user", "Save this session.")
-  report_md <- tempest_report_md(
-    title = session$title,
+  session$.__enclos_env__$private$add_turn("User", "user", "Save this session.")
+  report_md <- tempest:::tempest_report_md_render(
+    title = tempest:::tempest_session_title(session),
     body = paste0("Bundle report [", source@resource_id, "]."),
     workspace = store,
     citation_policy = cfg@citation_policy,
@@ -94,7 +96,7 @@ test_that("Tempest session bundles save and resume durable state", {
     session,
     c("What next?", "And then?")
   )
-  session$emit_progress(
+  session$.__enclos_env__$private$emit_progress(
     "stage",
     "started",
     stage = "dialogue",
@@ -122,7 +124,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_identical(manifest$research_manifest$status, "succeeded")
   expect_identical(
     manifest$workspace$base_snapshot_id,
-    session$workspace$base_snapshot_id
+    tempest:::tempest_session_workspace(session)$base_snapshot_id
   )
   expect_identical(manifest$workspace$schema_version, 5L)
   expect_setequal(names(manifest$checksums), manifest$files)
@@ -242,21 +244,34 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$session_id, session_id)
   expect_equal(tail(restored$transcript, 1L)[[1L]]$text, "Save this session.")
-  expect_identical(tempest_session_report_md(restored), report_md)
+  expect_identical(tempest_report(restored), report_md)
   expect_equal(
     tempest:::tempest_session_suggestions(restored),
     c("What next?", "And then?")
   )
   expect_equal(
-    restored$workspace$get_proposed_claim(claim_id)@claim_text,
+    tempest:::tempest_session_workspace(restored)$get_proposed_claim(
+      claim_id
+    )@claim_text,
     "Bundles preserve claims."
   )
-  expect_identical(restored$retriever$workspace, restored$workspace)
-  expect_equal(nrow(tempest_claim_supports(restored$workspace)), 1)
-  expect_identical(restored$manifest@research_run_id, session_id)
   expect_identical(
-    restored$manifest@config_digest,
-    session$manifest@config_digest
+    tempest:::tempest_session_retriever(restored)$workspace,
+    tempest:::tempest_session_workspace(restored)
+  )
+  expect_equal(
+    nrow(tempest:::tempest_claim_supports_resolved(tempest:::tempest_session_workspace(
+      restored
+    ))),
+    1
+  )
+  expect_identical(
+    tempest:::tempest_session_manifest(restored)@research_run_id,
+    session_id
+  )
+  expect_identical(
+    tempest:::tempest_session_manifest(restored)@config_digest,
+    tempest:::tempest_session_manifest(session)@config_digest
   )
   expect_length(restore_collector$events(), 0)
   expect_equal(

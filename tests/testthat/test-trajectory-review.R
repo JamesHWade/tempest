@@ -50,10 +50,10 @@ test_that("trajectory review returns the exact bounded STORM projection", {
 
 test_that("trajectory review accepts the exact public tempest_run outline", {
   result <- storm_product_baseline_fixture()$result
-  public_bullets <- result$outline$sections[[1L]]$subsections[[1L]]$bullets
-  state_bullets <- result$state$outline$sections[[1L]]$subsections[[1L]]$bullets
+  public_bullets <- result@outline$sections[[1L]]$subsections[[1L]]$bullets
+  state_bullets <- result@state$outline$sections[[1L]]$subsections[[1L]]$bullets
   expected_attempts <- vapply(
-    result$state$stage_records,
+    result@state$stage_records,
     \(record) record@attempt_id,
     character(1)
   )
@@ -186,7 +186,7 @@ test_that("trajectory ordered collections preserve authoritative prefixes", {
 })
 
 test_that("trajectory findings use fixed complete per-stage counts", {
-  records <- test_promotion_fixture("storm")$research$state$stage_records
+  records <- test_promotion_fixture("storm")$research@state$stage_records
   counts <- tempest:::tempest_trajectory_stage_finding_counts(records)
   codes <- names(tempest:::tempest_trajectory_finding_severities())[1:6]
 

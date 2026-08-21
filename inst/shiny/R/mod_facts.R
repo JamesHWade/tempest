@@ -31,7 +31,7 @@ mod_facts_server <- function(id, store) {
       if (is.null(evidence)) {
         return(NULL)
       }
-      tempest::tempest_claims(evidence)
+      tempest:::tempest_workspace_claims(evidence)
     })
 
     output$body <- shiny::renderUI({

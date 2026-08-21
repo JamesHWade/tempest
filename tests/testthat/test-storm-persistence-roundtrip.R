@@ -31,7 +31,7 @@ test_that("schema 8 STORM bundles restore workspace, state, and manifest", {
     supporting_quotes = list("Lithium batteries store energy."),
     confidence = "high"
   ))
-  report_md <- tempest_report_md(
+  report_md <- tempest:::tempest_report_md_render(
     title = "Lithium Batteries",
     body = paste0(
       "Lithium batteries store energy. [",
@@ -196,8 +196,14 @@ test_that("schema 8 STORM bundles restore workspace, state, and manifest", {
   expect_equal(loaded$state$experts[[1]]@expert_id, expert@expert_id)
   expect_s7_class(loaded$state$experts[[1]], TempestExpertProfile)
   expect_false("artifact_catalog" %in% names(loaded))
-  expect_s3_class(tempest_claim_supports(loaded$workspace), "tbl_df")
-  expect_equal(nrow(tempest_claim_supports(loaded$workspace)), 1)
+  expect_s3_class(
+    tempest:::tempest_claim_supports_resolved(loaded$workspace),
+    "tbl_df"
+  )
+  expect_equal(
+    nrow(tempest:::tempest_claim_supports_resolved(loaded$workspace)),
+    1
+  )
   expect_s7_class(loaded$research_manifest, TempestResearchManifest)
   expect_identical(loaded$research_manifest@research_run_id, "lithium-run")
   expect_identical(

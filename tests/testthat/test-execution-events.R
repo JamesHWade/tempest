@@ -9,7 +9,10 @@ test_that("execution events query only product session histories", {
   ) |>
     tempest_progress_event_data()
   event$sequence <- 1L
-  session <- structure(list(events = list(event)), class = "TempestSession")
+  session <- test_session_private(
+    structure(list(), class = "TempestSession"),
+    events = list(event)
+  )
 
   expect_identical(tempest_execution_events(session), list(event))
   expect_identical(tempest_execution_events(session, 1L), list())

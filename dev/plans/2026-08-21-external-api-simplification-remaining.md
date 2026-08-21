@@ -36,11 +36,12 @@ back to a manual retarget-and-merge sequence.
   stack membership, mergeability, and all checks remain green. Head
   `45f4648`, stack `#53` position 2 of 2, `MERGEABLE`/`CLEAN`, every check
   `SUCCESS` including the ready-triggered `claude-review`.
-- [ ] Finish PR C without modifying the primary configured checkout.
-- [ ] Publish PR C as a draft based on
+- [x] Finish PR C without modifying the primary configured checkout.
+- [x] Publish PR C as a draft based on
   `codex/tempest-api-reset-b-evidence`.
-- [ ] Append PR C to native stack `#53` with `gh stack link 53 <pr-number>` and
-  verify its REST `stack` object reports position 3.
+- [x] Append PR C to native stack `#53` with `gh stack link 53 <pr-number>` and
+  verify its REST `stack` object reports position 3. PR #54, head `0a11c04`,
+  position 3 of 3, ready, mergeable, all checks green.
 
 ## PR C — reset expert and product schemas
 
@@ -147,23 +148,26 @@ test run. Preserve all unrelated user-owned changes and configuration.
 
 Implement the parent plan's 19-export product contract after PR C is frozen.
 
-- [ ] Add `tempest_app()` and remove `run_app()`.
-- [ ] Add one `tempest_report()` accessor for completed runs and finalized
+- [x] Add `tempest_app()` and remove `run_app()`.
+- [x] Add one `tempest_report()` accessor for completed runs and finalized
   sessions; remove the specialized report accessors.
-- [ ] Add Graft-only `tempest_knowledge(graft_view, record_ids,
+- [x] Add Graft-only `tempest_knowledge(graft_view, record_ids,
   governed_procedures)` and remove public raw `knowledge_view` assembly.
-- [ ] Restrict accepted knowledge reads to the immutable allowlist and bounded
+- [x] Restrict accepted knowledge reads to the immutable allowlist and bounded
   joined claim/evidence/source packets.
-- [ ] Reject truncated or non-materializable records before provider work.
-- [ ] Keep accepted record text in an evidence/data channel and prove it cannot
+- [x] Reject truncated or non-materializable records before provider work.
+- [x] Keep accepted record text in an evidence/data channel and prove it cannot
   change roles, prompts, tools, procedure selection, or executable artifacts.
-- [ ] Return one validated product result from `tempest_run()`.
-- [ ] Make report, sources, claims, supports, trajectory review, persistence,
+- [x] Return one validated product result from `tempest_run()`.
+- [x] Make report, sources, claims, supports, trajectory review, persistence,
   and promotion operate on the cohesive result/session contracts.
-- [ ] Emit canonical plain progress records and adapt Shiny and telemetry
+- [x] Emit canonical plain progress records and adapt Shiny and telemetry
   internally without changing product results or persisted bytes.
-- [ ] Reduce `TempestSession` to the agreed six operations and six read-only
-  projections.
+- [x] Reduce `TempestSession` to the agreed six operations and six read-only
+  projections. The plan named this operation `finalize()`, but R6 reserves
+  `finalize` as the object destructor and already warns that it must be
+  private, so the committed name is `publish()`, matching the existing
+  publication-authority vocabulary.
 
 Publish PR D above PR C and append it to the same native GitHub stack.
 

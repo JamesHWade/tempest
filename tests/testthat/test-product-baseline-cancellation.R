@@ -5,7 +5,6 @@ test_that("STORM cancellation is terminal and publishes no report", {
   collector <- tempest_progress_collector(include_payload = TRUE)
   progress <- function(event) {
     collector$record(event)
-    event <- tempest_progress_event_data(event)
     if (
       identical(event$event_type, "stage") &&
         identical(event$stage, "research") &&

@@ -147,11 +147,12 @@ test_that("promotion rejects loose and incomplete STORM inputs", {
     class = "tempest_promotion_error"
   )
 
-  incomplete <- fixture$research
-  incomplete$state$completed_stages <- head(
-    incomplete$state$completed_stages,
+  incomplete_state <- fixture$research@state
+  incomplete_state$completed_stages <- head(
+    incomplete_state$completed_stages,
     -1L
   )
+  incomplete <- S7::set_props(fixture$research, state = incomplete_state)
   expect_error(
     tempest_promotion_bundle(incomplete),
     class = "tempest_promotion_error"
@@ -162,22 +163,29 @@ test_that("promotion rejects tampered and cross-product STORM results", {
   fixture <- test_promotion_fixture()
   other <- test_promotion_fixture("costorm")
 
-  tampered <- fixture$research
-  tampered$report_md <- paste0(tampered$report_md, "\n\nTampered.")
+  tampered <- S7::set_props(
+    fixture$research,
+    report_md = paste0(fixture$research@report_md, "\n\nTampered.")
+  )
   expect_error(
     tempest_promotion_bundle(tampered),
     class = "tempest_promotion_error"
   )
 
-  wrong_mode <- fixture$research
-  wrong_mode$manifest <- other$manifest
+  # A cross-product manifest can no longer be attached at all: the product
+  # value binds its own run id and status to its manifest.
   expect_error(
-    tempest_promotion_bundle(wrong_mode),
-    class = "tempest_promotion_error"
+    S7::set_props(
+      fixture$research,
+      manifest = tempest:::tempest_session_manifest(other$research)
+    ),
+    regexp = "run id"
   )
 
-  cross_product <- fixture$research
-  cross_product$workspace <- other$workspace
+  cross_product <- S7::set_props(
+    fixture$research,
+    workspace = other$workspace
+  )
   expect_error(
     tempest_promotion_bundle(cross_product),
     class = "tempest_promotion_error"
@@ -203,7 +211,7 @@ test_that("promotion rejects invalid and nonquiescent Co-STORM sessions", {
   original_report <- private$report_md_value
   withr::defer(private$report_md_value <- original_report)
   private$report_md_value <- paste0(
-    tempest_session_report_md(tampered),
+    tempest_report(tampered),
     "\n\nTampered."
   )
   expect_error(
@@ -226,7 +234,9 @@ test_that("promotion rejects invalid and nonquiescent Co-STORM sessions", {
   tempest:::tempest_session_async_work_finish(active, work_id)
 
   unsealed <- test_promotion_fixture("costorm")$research
-  workspace_private <- unsealed$workspace$.__enclos_env__$private
+  workspace_private <- tempest:::tempest_session_workspace(
+    unsealed
+  )$.__enclos_env__$private
   original_state <- workspace_private$mutation_state_value
   withr::defer(workspace_private$mutation_state_value <- original_state)
   workspace_private$mutation_state_value <- "open"
@@ -243,7 +253,7 @@ test_that("promotion rejects cross-mode Co-STORM state", {
   private <- costorm$.__enclos_env__$private
   original_manifest <- private$manifest_value
   withr::defer(private$manifest_value <- original_manifest)
-  private$manifest_value <- storm$manifest
+  private$manifest_value <- storm@manifest
 
   expect_error(
     tempest_promotion_bundle(costorm),
@@ -267,10 +277,12 @@ test_that("promotion fails closed without exact pair support", {
 
 test_that("promotion requires a durable succeeded report binding", {
   fixture <- test_promotion_fixture()
-  research <- fixture$research
-  research$manifest <- tempest_research_manifest_update(
-    fixture$manifest,
-    deliverables = list()
+  research <- S7::set_props(
+    fixture$research,
+    manifest = tempest_research_manifest_update(
+      fixture$research@manifest,
+      deliverables = list()
+    )
   )
 
   expect_error(

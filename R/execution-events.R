@@ -31,7 +31,7 @@ tempest_execution_event_history <- function(x) {
       "{.arg x} must be a TempestSession."
     )
   }
-  events <- x$events
+  events <- tempest_session_events(x)
   if (!is.list(events) || is.data.frame(events)) {
     tempest_execution_events_abort(
       "The execution contains an invalid event history."

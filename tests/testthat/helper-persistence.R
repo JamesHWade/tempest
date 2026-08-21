@@ -307,13 +307,13 @@ test_persistence_add_costorm_evidence <- function(
     tempest:::tempest_session_program_set(session)
   )
   fixture <- test_add_verifiable_claim(
-    session$workspace,
+    tempest:::tempest_session_workspace(session),
     key = key,
     claim_text = claim_text,
     quote = claim_text,
     extracted_by = programs$extract_claims$program_artifact_id
   )
-  session$workspace$verify_proposed_claims_batch(
+  tempest:::tempest_session_workspace(session)$verify_proposed_claims_batch(
     list(test_claim_support(fixture$claim, fixture$span)),
     verified_at = "2026-08-16T00:00:00Z",
     verifier = programs$verify_claim_support$program_artifact_id,
@@ -330,7 +330,7 @@ test_persistence_commit_costorm_report <- function(session, report_md) {
     session$session_id
   )
   deputy_context <- tempest:::tempest_deputy_run_context(
-    session$manifest,
+    tempest:::tempest_session_manifest(session),
     stage = "dialogue",
     role = "moderator"
   )
@@ -356,9 +356,11 @@ test_persistence_commit_costorm_report <- function(session, report_md) {
   )
   records <- test_persistence_storm_stage_records(
     state,
-    session$workspace,
-    session$manifest,
-    min_support_score = session$config@min_support_score,
+    tempest:::tempest_session_workspace(session),
+    tempest:::tempest_session_manifest(session),
+    min_support_score = tempest:::tempest_session_config(
+      session
+    )@min_support_score,
     deputy_trace = deputy_trace
   )
   tempest:::tempest_session_record_deputy_trace(session, deputy_trace)
@@ -374,18 +376,18 @@ test_persistence_commit_existing_costorm_report <- function(
   report_md <- tempest:::tempest_product_report_for_stage_records(
     report_md,
     records,
-    trusted_title = session$title
+    trusted_title = tempest:::tempest_session_title(session)
   )
   manifest <- tempest:::tempest_product_authority_finalize_manifest(
-    manifest = session$manifest,
+    manifest = tempest:::tempest_session_manifest(session),
     stage_records = records,
-    workspace = session$workspace,
+    workspace = tempest:::tempest_session_workspace(session),
     deputy_traces = tempest:::tempest_session_deputy_traces(session),
     report_md = report_md,
-    config = session$config,
+    config = tempest:::tempest_session_config(session),
     experts = session$experts,
     expert_sessions = tempest:::tempest_expert_sessions_snapshot(session),
-    product_state = list(title = session$title),
+    product_state = list(title = tempest:::tempest_session_title(session)),
     status = "succeeded",
     require_publishable = TRUE
   )
@@ -505,7 +507,7 @@ test_persistence_complete_storm_product <- function(
       subsections = list()
     ))
   )
-  report_md <- tempest_report_md(
+  report_md <- tempest:::tempest_report_md_render(
     title = topic,
     body = paste0(
       "Durable evidence supports the completed research product. [",

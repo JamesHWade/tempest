@@ -31,7 +31,7 @@ test_that("the current public API contract is exact", {
     "tempest_session.active_bindings"
   )
   expect_named(contract, expected_sections)
-  expect_length(contract$exports, 56L)
+  expect_length(contract$exports, 54L)
   expect_identical(
     contract$exports,
     sort(unique(contract$exports), method = "radix")
@@ -88,7 +88,13 @@ test_that("the current public API contract is exact", {
     inherits = FALSE
   )
   expect_identical(
-    sort(names(session_generator$public_methods), method = "radix"),
+    sort(
+      setdiff(
+        names(session_generator$public_methods),
+        c("initialize", "clone")
+      ),
+      method = "radix"
+    ),
     contract[["tempest_session.public_methods"]]
   )
   expect_identical(

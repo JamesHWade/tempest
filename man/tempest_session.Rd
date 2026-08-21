@@ -12,8 +12,7 @@ tempest_session(
   retriever = NULL,
   progress = NULL,
   session_id = NULL,
-  program_set = NULL,
-  knowledge_view = NULL
+  knowledge = NULL
 )
 }
 \arguments{
@@ -35,12 +34,10 @@ objects as the session makes progress.}
 \item{session_id}{Optional stable session identifier. If \code{NULL}, a new
 identifier is generated.}
 
-\item{program_set}{A \link{TempestProgramSet} containing the exact dsprrr
-programs used by Co-STORM. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates the
-builtin set.}
-
-\item{knowledge_view}{Optional immutable Graft view. It is required for a
-fresh session when \code{program_set} contains governed procedures.}
+\item{knowledge}{Optional accepted organizational knowledge from
+\code{\link[=tempest_knowledge]{tempest_knowledge()}}. It pins an immutable Graft view, supplies accepted
+evidence records, and carries any accepted governed-procedure stage
+bindings.}
 }
 \value{
 A \code{TempestSession} R6 object for the active Co-STORM research

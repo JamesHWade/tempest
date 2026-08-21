@@ -617,7 +617,8 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
           } else {
             "committed"
           }
-          session$emit_progress(
+          tempest_session_emit_progress(
+            session,
             "expert",
             "succeeded",
             stage = "warmup",
@@ -656,7 +657,8 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
             "provider_error"
           )
           state$records[[index]] <- record
-          session$emit_progress(
+          tempest_session_emit_progress(
+            session,
             "expert",
             "failed",
             stage = "warmup",
@@ -841,7 +843,8 @@ tempest_session_warmup_async <- function(
       )))
     }
 
-    warmup_event <- session$emit_progress(
+    warmup_event <- tempest_session_emit_progress(
+      session,
       "stage",
       "started",
       stage = "warmup",
@@ -849,7 +852,8 @@ tempest_session_warmup_async <- function(
       payload = list(expert_count = expert_count)
     )
     if (expert_count == 0L) {
-      session$emit_progress(
+      tempest_session_emit_progress(
+        session,
         "stage",
         "skipped",
         stage = "warmup",
@@ -907,7 +911,8 @@ tempest_session_warmup_async <- function(
         record$expert_session_id <<- expert_session_id
         record$capability_count <<- as.integer(capability_count)
         record$tools_available <<- capability_count > 0L
-        expert_event <<- session$emit_progress(
+        expert_event <<- tempest_session_emit_progress(
+          session,
           "expert",
           "started",
           stage = "warmup",
@@ -991,7 +996,8 @@ tempest_session_warmup_async <- function(
               if (timed_out) "timeout" else "provider_error"
             )
             state$records[[index]] <- record
-            session$emit_progress(
+            tempest_session_emit_progress(
+              session,
               "expert",
               "failed",
               stage = "warmup",
@@ -1029,7 +1035,8 @@ tempest_session_warmup_async <- function(
             "provider_error"
           )
           state$records[[index]] <- record
-          session$emit_progress(
+          tempest_session_emit_progress(
+            session,
             "expert",
             "failed",
             stage = "warmup",
@@ -1102,7 +1109,8 @@ tempest_session_warmup_async <- function(
           evidence_failure_count = commit_result$evidence_failure_count,
           mindmap_updated = commit_result$mindmap_updated
         )
-        session$emit_progress(
+        tempest_session_emit_progress(
+          session,
           "stage",
           "succeeded",
           stage = "warmup",
@@ -1123,7 +1131,8 @@ tempest_session_warmup_async <- function(
     })
     finalized <- tempest_otel_catch(completed, function(error) {
       if (tempest_async_is_current(is_current)) {
-        session$emit_progress(
+        tempest_session_emit_progress(
+          session,
           "stage",
           "failed",
           stage = "warmup",

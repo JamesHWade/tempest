@@ -90,14 +90,14 @@ test_that("TempestSession stores selected expert profiles", {
 
   expect_length(session$experts, 2)
   expect_equal(
-    session$get_expert_names(),
+    session$.__enclos_env__$private$get_expert_names(),
     c(
       "Dr. Alice Smith",
       "Prof. Bob Jones"
     )
   )
-  expect_equal(session$find_expert(alice@expert_id), 1)
-  expect_null(session$find_expert("Dr. Alice Smith"))
+  expect_equal(session$.__enclos_env__$private$find_expert(alice@expert_id), 1)
+  expect_null(session$.__enclos_env__$private$find_expert("Dr. Alice Smith"))
   expect_r6_class(
     tempest:::tempest_session_expert_manager(session),
     "TempestDeputyExpertManager"

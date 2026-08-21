@@ -21,33 +21,17 @@ part of the persistence or public API contract.
 \section{Active bindings}{
   \if{html}{\out{<div class="r6-active-bindings">}}
   \describe{
-    \item{\code{topic}}{Read-only research topic fixed at construction.}
+    \item{\code{session_id}}{Stable session identifier.}
 
-    \item{\code{title}}{The report title.}
+    \item{\code{topic}}{Research topic.}
 
-    \item{\code{config}}{Read-only \code{TempestConfig} fixed at construction.}
+    \item{\code{status}}{Current product status.}
 
-    \item{\code{session_id}}{Read-only stable identifier shared by the manifest and
-progress events for the session.}
+    \item{\code{experts}}{Read-only expert roster.}
 
-    \item{\code{progress}}{Optional progress callback.}
+    \item{\code{transcript}}{Read-only conversation transcript.}
 
-    \item{\code{manifest}}{Immutable \link{TempestResearchManifest} for this research run.}
-
-    \item{\code{workspace}}{Read-only reference to the authoritative
-\link{ResearchWorkspace} containing provisional research material. Workspace
-mutation is available only while the session is active and no publication
-lock is held; a succeeded session's workspace is sealed.}
-
-    \item{\code{retriever}}{Read-only \code{TempestRetriever} reference.}
-
-    \item{\code{experts}}{List of validated \code{tempest_expert} profiles.}
-
-    \item{\code{transcript}}{List of dialog turns.}
-
-    \item{\code{mindmap}}{The mind map data structure.}
-
-    \item{\code{events}}{Ordered normalized progress-event history.}
+    \item{\code{mindmap}}{Read-only mind-map projection.}
   }
   \if{html}{\out{</div>}}
 }
@@ -55,28 +39,12 @@ lock is held; a succeeded session's workspace is sealed.}
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-TempestSession-initialize}{\code{TempestSession$new()}}
-    \item \href{#method-TempestSession-request_completion_async}{\code{TempestSession$request_completion_async()}}
-    \item \href{#method-TempestSession-record_progress_event}{\code{TempestSession$record_progress_event()}}
-    \item \href{#method-TempestSession-emit_progress}{\code{TempestSession$emit_progress()}}
-    \item \href{#method-TempestSession-add_turn}{\code{TempestSession$add_turn()}}
-    \item \href{#method-TempestSession-transcript_markdown}{\code{TempestSession$transcript_markdown()}}
-    \item \href{#method-TempestSession-get_expert_names}{\code{TempestSession$get_expert_names()}}
-    \item \href{#method-TempestSession-get_expert_descriptions}{\code{TempestSession$get_expert_descriptions()}}
-    \item \href{#method-TempestSession-update_mindmap}{\code{TempestSession$update_mindmap()}}
-    \item \href{#method-TempestSession-mindmap_markdown}{\code{TempestSession$mindmap_markdown()}}
     \item \href{#method-TempestSession-suggest_questions}{\code{TempestSession$suggest_questions()}}
-    \item \href{#method-TempestSession-find_expert}{\code{TempestSession$find_expert()}}
     \item \href{#method-TempestSession-step}{\code{TempestSession$step()}}
     \item \href{#method-TempestSession-warmup}{\code{TempestSession$warmup()}}
-    \item \href{#method-TempestSession-report}{\code{TempestSession$report()}}
+    \item \href{#method-TempestSession-publish}{\code{TempestSession$publish()}}
     \item \href{#method-TempestSession-add_expert}{\code{TempestSession$add_expert()}}
     \item \href{#method-TempestSession-retire_expert}{\code{TempestSession$retire_expert()}}
-    \item \href{#method-TempestSession-get_active_experts}{\code{TempestSession$get_active_experts()}}
-    \item \href{#method-TempestSession-check_and_expand_nodes}{\code{TempestSession$check_and_expand_nodes()}}
-    \item \href{#method-TempestSession-get_discussed_source_ids}{\code{TempestSession$get_discussed_source_ids()}}
-    \item \href{#method-TempestSession-find_undiscussed_sources}{\code{TempestSession$find_undiscussed_sources()}}
-    \item \href{#method-TempestSession-surface_unseen_information}{\code{TempestSession$surface_unseen_information()}}
-    \item \href{#method-TempestSession-reorganize_mindmap}{\code{TempestSession$reorganize_mindmap()}}
     \item \href{#method-TempestSession-clone}{\code{TempestSession$clone()}}
   }
 }
@@ -130,196 +98,6 @@ restoration.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-request_completion_async"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-request_completion_async}{}}}
-\subsection{\code{TempestSession$request_completion_async()}}{
-  Request one Deputy-backed moderator completion.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$request_completion_async(
-  prompt,
-  on_chunk = function(chunk) invisible(chunk)
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{prompt}}{Exact moderator prompt.}
-      \item{\code{on_chunk}}{Optional process-local display callback.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    A promise resolving only to an opaque completion identifier.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-record_progress_event"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-record_progress_event}{}}}
-\subsection{\code{TempestSession$record_progress_event()}}{
-  Record a progress event emitted by a session-owned collaborator.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$record_progress_event(event)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{event}}{A \code{tempest_progress_event} object.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    The event, invisibly.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-emit_progress"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-emit_progress}{}}}
-\subsection{\code{TempestSession$emit_progress()}}{
-  Emit a Co-STORM progress event.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$emit_progress(
-  event_type,
-  status,
-  stage = NA_character_,
-  step = NA_character_,
-  message = NA_character_,
-  payload = list(),
-  parent_event_id = NA_character_,
-  correlation_id = NA_character_
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{event_type}}{Progress event type.}
-      \item{\code{status}}{Progress event status.}
-      \item{\code{stage}}{Optional workflow stage.}
-      \item{\code{step}}{Optional workflow step.}
-      \item{\code{message}}{Optional progress message.}
-      \item{\code{payload}}{Optional progress metadata.}
-      \item{\code{parent_event_id}}{Optional parent event id.}
-      \item{\code{correlation_id}}{Optional correlation id.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-add_turn"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-add_turn}{}}}
-\subsection{\code{TempestSession$add_turn()}}{
-  Add a turn to the transcript.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$add_turn(speaker, role = c("user", "assistant"), text)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{speaker}}{Speaker name.}
-      \item{\code{role}}{Role: "user" or "assistant".}
-      \item{\code{text}}{The text content.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-transcript_markdown"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-transcript_markdown}{}}}
-\subsection{\code{TempestSession$transcript_markdown()}}{
-  Get the transcript as markdown.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$transcript_markdown(max_turns = 50)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{max_turns}}{Maximum turns to include.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Markdown string.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-get_expert_names"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-get_expert_names}{}}}
-\subsection{\code{TempestSession$get_expert_names()}}{
-  Get expert names for agent routing.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$get_expert_names()}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Character vector of expert names.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-get_expert_descriptions"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-get_expert_descriptions}{}}}
-\subsection{\code{TempestSession$get_expert_descriptions()}}{
-  Build expert descriptions for moderator context.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$get_expert_descriptions()}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    A formatted string describing all experts.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-update_mindmap"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-update_mindmap}{}}}
-\subsection{\code{TempestSession$update_mindmap()}}{
-  Update the mind map based on new exchange.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$update_mindmap(last_exchange)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{last_exchange}}{The latest exchange text.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-mindmap_markdown"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-mindmap_markdown}{}}}
-\subsection{\code{TempestSession$mindmap_markdown()}}{
-  Get the mind map as markdown.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$mindmap_markdown()}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Markdown string.
-  }
-}
-
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TempestSession-suggest_questions"></a>}}
 \if{latex}{\out{\hypertarget{method-TempestSession-suggest_questions}{}}}
 \subsection{\code{TempestSession$suggest_questions()}}{
@@ -338,28 +116,6 @@ restoration.}
   }
   \subsection{Returns}{
     A character vector of questions (possibly empty).
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-find_expert"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-find_expert}{}}}
-\subsection{\code{TempestSession$find_expert()}}{
-  Find an expert index by stable id.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$find_expert(expert_id)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{expert_id}}{The stable expert id to look up.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Index of the expert, or NULL if not found.
   }
 }
 
@@ -409,13 +165,14 @@ This primes the knowledge base with foundational research before interactive Q&A
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-report"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-report}{}}}
-\subsection{\code{TempestSession$report()}}{
-  Generate, validate, and commit the canonical report for the session.
+\if{html}{\out{<a id="method-TempestSession-publish"></a>}}
+\if{latex}{\out{\hypertarget{method-TempestSession-publish}{}}}
+\subsection{\code{TempestSession$publish()}}{
+  Verify claims, create and commit the canonical report, move the
+manifest to \code{succeeded}, and seal the workspace.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$report(
+    \preformatted{TempestSession$publish(
   style = c("technical", "executive"),
   include_references = TRUE
 )}
@@ -430,8 +187,8 @@ This primes the knowledge base with foundational research before interactive Q&A
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    The committed Markdown report. Use
-\code{\link[=tempest_session_report_md]{tempest_session_report_md()}} to read the exact committed bytes later.
+    The committed Markdown report. Use \code{\link[=tempest_report]{tempest_report()}} to read
+the exact committed bytes later.
   }
 }
 
@@ -477,99 +234,6 @@ This primes the knowledge base with foundational research before interactive Q&A
   }
   \subsection{Returns}{
     Logical indicating success.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-get_active_experts"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-get_active_experts}{}}}
-\subsection{\code{TempestSession$get_active_experts()}}{
-  Get active expert profiles.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$get_active_experts()}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    List of active \code{tempest_expert} profiles.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-check_and_expand_nodes"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-check_and_expand_nodes}{}}}
-\subsection{\code{TempestSession$check_and_expand_nodes()}}{
-  Check and expand oversized mind map nodes.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$check_and_expand_nodes()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-get_discussed_source_ids"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-get_discussed_source_ids}{}}}
-\subsection{\code{TempestSession$get_discussed_source_ids()}}{
-  Get source IDs that have been discussed in the transcript.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$get_discussed_source_ids()}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Character vector of discussed source IDs.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-find_undiscussed_sources"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-find_undiscussed_sources}{}}}
-\subsection{\code{TempestSession$find_undiscussed_sources()}}{
-  Find sources that haven't been discussed yet.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$find_undiscussed_sources()}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Character vector of undiscussed source IDs.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-surface_unseen_information"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-surface_unseen_information}{}}}
-\subsection{\code{TempestSession$surface_unseen_information()}}{
-  Generate questions about undiscussed sources.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$surface_unseen_information(max_questions = 3)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{max_questions}}{Maximum questions to generate.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    An exact record containing \code{questions}, \code{correlation_id},
-\code{deputy_run_id}, and \code{deputy_session_id}, or \code{NULL} when there is no
-unseen evidence and no moderator run occurred.
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TempestSession-reorganize_mindmap"></a>}}
-\if{latex}{\out{\hypertarget{method-TempestSession-reorganize_mindmap}{}}}
-\subsection{\code{TempestSession$reorganize_mindmap()}}{
-  Reorganize the mind map for clarity.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{TempestSession$reorganize_mindmap()}
-    \if{html}{\out{</div>}}
   }
 }
 

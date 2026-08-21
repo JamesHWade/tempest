@@ -10,7 +10,7 @@ test_that("report renders verification badges under claim_verified", {
   store$add_proposed_claim(claim)
   fake_verify_claim_supports(store, list(claim))
   body <- paste0("A verified sentence [", s1, "].")
-  md <- tempest_report_md(
+  md <- tempest:::tempest_report_md_render(
     "Title",
     body,
     store,
@@ -29,10 +29,16 @@ test_that("citation helpers consume a ResearchWorkspace directly", {
   )
   workspace$add_proposed_claim(claim)
 
-  expect_equal(tempest_sources(workspace)$id, source@resource_id)
-  expect_equal(tempest_claims(workspace)$claim_id, claim@claim_id)
+  expect_equal(
+    tempest:::tempest_workspace_sources(workspace)$id,
+    source@resource_id
+  )
+  expect_equal(
+    tempest:::tempest_workspace_claims(workspace)$claim_id,
+    claim@claim_id
+  )
   expect_match(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Workspace report",
       paste0("Workspace evidence [", source@resource_id, "]."),
       workspace
@@ -54,7 +60,7 @@ test_that("strict policy flags unsupported citations", {
   store$add_proposed_claim(claim)
   claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   body <- paste0("c [", s1, "].")
-  md <- tempest_report_md(
+  md <- tempest:::tempest_report_md_render(
     "Title",
     body,
     store,
@@ -69,7 +75,12 @@ test_that("none policy leaves citations unfootnoted and omits references", {
   s1 <- store$list_retrieved_sources()[[1]]$id
   body <- paste0("Plain sentence [", s1, "].")
 
-  md <- tempest_report_md("Title", body, store, citation_policy = "none")
+  md <- tempest:::tempest_report_md_render(
+    "Title",
+    body,
+    store,
+    citation_policy = "none"
+  )
 
   expect_match(md, paste0("\\[", s1, "\\]"))
   expect_no_match(md, "\\[\\^")
@@ -80,11 +91,16 @@ test_that("report rendering rejects policy values outside the closed contract", 
   store <- fake_store_with_sources(0)
 
   expect_error(
-    tempest_report_md("Title", "Body.", store, citation_policy = "unknown"),
+    tempest:::tempest_report_md_render(
+      "Title",
+      "Body.",
+      store,
+      citation_policy = "unknown"
+    ),
     class = "tempest_product_report_error"
   )
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Title",
       "Body.",
       store,
@@ -105,7 +121,7 @@ test_that("report assembly rejects reserved source footnotes under every policy"
 
   for (policy in c("none", "source_attributed", "claim_verified", "strict")) {
     expect_error(
-      tempest_report_md(
+      tempest:::tempest_report_md_render(
         "Reserved footnote report",
         forged,
         store,
@@ -120,7 +136,7 @@ test_that("report titles are single-line and rendered as escaped plain text", {
   store <- fake_store_with_sources(1)
 
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Legitimate\n\n## Forged heading",
       "Body.",
       store,
@@ -128,7 +144,7 @@ test_that("report titles are single-line and rendered as escaped plain text", {
     ),
     class = "tempest_product_report_error"
   )
-  rendered <- tempest_report_md(
+  rendered <- tempest:::tempest_report_md_render(
     "<Report> *draft* [link]",
     "Body.",
     store,
@@ -151,7 +167,7 @@ test_that("reference metadata is escaped before Markdown interpolation", {
   )
   store$upsert_retrieved_resource(source)
 
-  rendered <- tempest_report_md(
+  rendered <- tempest:::tempest_report_md_render(
     "Safe references",
     paste0("Captured evidence [", source@resource_id, "]."),
     store
@@ -173,7 +189,7 @@ test_that("reference metadata is escaped before Markdown interpolation", {
   )
   unsafe_store$upsert_retrieved_resource(unsafe_source)
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Unsafe locator",
       paste0("Captured evidence [", unsafe_source@resource_id, "]."),
       unsafe_store
@@ -195,7 +211,7 @@ test_that("strict drop suppresses footnotes for dropped citations", {
   claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   body <- paste0("Unsupported claim [", s1, "].")
 
-  md <- tempest_report_md(
+  md <- tempest:::tempest_report_md_render(
     "Title",
     body,
     store,
@@ -230,7 +246,7 @@ test_that("strict policy applies status to the matching cited claim", {
   claims <- fake_verify_claim_supports(store, claims)
   body <- paste0("Supported claim [", s1, "]. Unsupported claim [", s1, "].")
 
-  md <- tempest_report_md(
+  md <- tempest:::tempest_report_md_render(
     "Title",
     body,
     store,
@@ -314,7 +330,7 @@ test_that("strict policy derives multi-span support independent of pair order", 
       "supported"
     )
     expect_identical(store$citation_audit$support_score[[1]], 0.9)
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Title",
       body,
       store,
@@ -335,7 +351,7 @@ test_that("strict policy derives multi-span support independent of pair order", 
     min_support_score = 0.7,
     verifier = "test::strict-verifier"
   )
-  thresholded <- tempest_report_md(
+  thresholded <- tempest:::tempest_report_md_render(
     "Title",
     body,
     store,
@@ -359,7 +375,7 @@ test_that("strict revise replaces unsupported assertions distinctly", {
   claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   body <- paste0("Unsupported assertion [", source_id, "].")
 
-  revised <- tempest_report_md(
+  revised <- tempest:::tempest_report_md_render(
     "Title",
     body,
     store,
@@ -381,7 +397,7 @@ test_that("strict policy refuses publication without completed verification", {
   ))
 
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Title",
       paste0("Unverified assertion [", source_id, "]."),
       store,
@@ -408,7 +424,7 @@ test_that("strict policy requires each citation to bind to exact support", {
   store$add_proposed_claim(claim)
 
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Title",
       paste0("Unbound assertion [", source_ids[[2]], "]."),
       store,
@@ -429,7 +445,7 @@ test_that("strict policy rejects citation-free reports when claims exist", {
   ))
 
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Title",
       "A citation-free report body.",
       store,
@@ -441,7 +457,7 @@ test_that("strict policy rejects citation-free reports when claims exist", {
 
 test_that("strict policy rejects citation-free reports with an empty workspace", {
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Title",
       "A citation-free report body.",
       tempest_research_workspace(),
@@ -464,7 +480,7 @@ test_that("strict policy binds every assertion and factual heading exactly", {
   claim <- fake_verify_claim_supports(store, list(claim))[[1]]
   cited <- paste0("Aspirin reduces fever [", source_id, "].")
 
-  expect_no_error(tempest_report_md(
+  expect_no_error(tempest:::tempest_report_md_render(
     "Title",
     paste("## Evidence", cited, sep = "\n\n"),
     store,
@@ -477,7 +493,12 @@ test_that("strict policy binds every assertion and factual heading exactly", {
     paste0("Aspirin reduces fever and cures cancer [", source_id, "].")
   )) {
     expect_error(
-      tempest_report_md("Title", body, store, citation_policy = "strict"),
+      tempest:::tempest_report_md_render(
+        "Title",
+        body,
+        store,
+        citation_policy = "strict"
+      ),
       class = "tempest_product_report_error"
     )
   }
@@ -501,7 +522,7 @@ test_that("strict publication requires exact captured source evidence", {
   store$add_proposed_claim(claim)
 
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Uncaptured report",
       paste0("Uncaptured assertion [", source@resource_id, "]."),
       store,
@@ -529,7 +550,7 @@ test_that("strict policy rejects malformed and partial multi-source citations", 
   claim <- fake_verify_claim_supports(store, list(claim))[[1]]
 
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Title",
       paste0("Joint evidence [", source_ids[[1]], "]."),
       store,
@@ -538,7 +559,7 @@ test_that("strict policy rejects malformed and partial multi-source citations", 
     class = "tempest_product_report_error"
   )
   expect_error(
-    tempest_report_md(
+    tempest:::tempest_report_md_render(
       "Title",
       paste0(
         "Joint evidence [",
@@ -563,7 +584,7 @@ test_that("final report validation rebinds canonical rendered citations", {
   )
   store$add_proposed_claim(claim)
   claim <- fake_verify_claim_supports(store, list(claim))[[1]]
-  report <- tempest_report_md(
+  report <- tempest:::tempest_report_md_render(
     "Title",
     paste0("Canonical assertion [", source_id, "]."),
     store,
@@ -594,7 +615,7 @@ test_that("final report validation rebinds canonical rendered citations", {
 test_that("final report validation accepts exact no-reference rendering", {
   store <- fake_store_with_sources(0)
   for (body in c("Durable body.", "Durable body.\n")) {
-    report <- tempest_report_md(
+    report <- tempest:::tempest_report_md_render(
       "Title",
       body,
       store,
@@ -627,7 +648,7 @@ test_that("final report validation preserves fenced reserved-heading literals", 
     paste0("A cited body [", source_id, "]."),
     sep = "\n"
   )
-  report <- tempest_report_md(
+  report <- tempest:::tempest_report_md_render(
     "Title",
     literal,
     store,
@@ -758,7 +779,7 @@ test_that("verified no-reference reports reject non-supported citations", {
 test_that("final report validation preserves canonical rendering before review", {
   store <- fake_store_with_sources(1)
   source_id <- store$list_retrieved_sources()[[1]]$id
-  report <- tempest_report_md(
+  report <- tempest:::tempest_report_md_render(
     "Title",
     paste0("Durable cited body [", source_id, "]."),
     store,
@@ -799,7 +820,7 @@ test_that("default policy is unchanged source-attributed output", {
   store <- fake_store_with_sources(1)
   s1 <- store$list_retrieved_sources()[[1]]$id
   body <- paste0("Plain sentence [", s1, "].")
-  md <- tempest_report_md("Title", body, store)
+  md <- tempest:::tempest_report_md_render("Title", body, store)
   expect_match(md, "## References")
   expect_no_match(md, "✓")
 })
@@ -821,23 +842,26 @@ test_that("session report Markdown comes from narrow product state", {
     session,
     key = "canonical-report"
   )
-  report_md <- tempest_report_md(
-    title = session$title,
+  report_md <- tempest:::tempest_report_md_render(
+    title = tempest:::tempest_session_title(session),
     body = paste0(
       fixture$claim@claim_text,
       " [",
       fixture$span@source_id,
       "]."
     ),
-    workspace = session$workspace,
+    workspace = tempest:::tempest_session_workspace(session),
     citation_policy = cfg@citation_policy,
     on_unsupported_claim = cfg@on_unsupported_claim,
     min_support_score = cfg@min_support_score
   )
   report_md <- test_persistence_commit_costorm_report(session, report_md)
 
-  expect_identical(session$manifest@status, "succeeded")
-  expect_identical(tempest_session_report_md(session), report_md)
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "succeeded"
+  )
+  expect_identical(tempest_report(session), report_md)
 })
 
 test_that("session report Markdown requires a canonical report artifact", {
@@ -855,7 +879,7 @@ test_that("session report Markdown requires a canonical report artifact", {
   )
 
   expect_error(
-    tempest_session_report_md(session),
+    tempest_report(session),
     class = "tempest_product_report_error"
   )
 })

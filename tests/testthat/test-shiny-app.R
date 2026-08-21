@@ -460,9 +460,11 @@ test_that("chat footer reserves controls for active sessions", {
     list(experts = list(list(name = "Dr. Footer"))),
     parent = emptyenv()
   )
-  ses$workspace <- new.env(parent = emptyenv())
-  ses$workspace$list_retrieved_sources <- function() list()
-  ses$workspace$list_proposed_claims <- function() list()
+  class(ses) <- "TempestSession"
+  ses_workspace <- new.env(parent = emptyenv())
+  ses_workspace$list_retrieved_sources <- function() list()
+  ses_workspace$list_proposed_claims <- function() list()
+  test_session_private(ses, workspace = ses_workspace)
   html <- paste(
     as.character(app$chat_runtime_footer_ui(ses, ns = ns)),
     collapse = ""
@@ -852,7 +854,7 @@ test_that("the transcript module shows recent turns from the store", {
 
   shiny::testServer(app$mod_transcript_server, args = list(store = store), {
     expect_match(as.character(output$body$html), "Start a conversation")
-    ses$add_turn("user", "user", "hello world")
+    ses$.__enclos_env__$private$add_turn("user", "user", "hello world")
     tempest:::tempest_session_append_transcript(
       ses,
       "Moderator",
@@ -921,7 +923,7 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
       description = "X"
     ))
   )
-  ses$add_turn("user", "user", "q1")
+  ses$.__enclos_env__$private$add_turn("user", "user", "q1")
 
   shiny::testServer(app$mod_mindmap_server, args = list(store = store), {
     store$set_costorm_session(ses)
@@ -1041,7 +1043,7 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
       edges = list(list(from = "root", to = "evidence", relation = "supports"))
     )
   )
-  ses$add_turn("user", "user", "What evidence exists?")
+  ses$.__enclos_env__$private$add_turn("user", "user", "What evidence exists?")
   tempest:::tempest_session_append_transcript(
     ses,
     "Moderator",
@@ -1104,7 +1106,7 @@ test_that("chat command messages summarize active session state", {
     ses,
     paste0(
       "# ",
-      ses$title,
+      tempest:::tempest_session_title(ses),
       "\n\n",
       "Command summaries include facts [source.verify.shiny-command]."
     )
@@ -1166,7 +1168,7 @@ test_that("facts review exposes safe durable execution downgrades", {
     session_id = "review-downgrade"
   )
   source <- fake_source("https://example.org/review-downgrade")
-  session$workspace$upsert_retrieved_resource(source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
   program <- tempest:::tempest_session_programs(session)$personas
   running <- tempest:::tempest_stage_record_start(
     "personas",
@@ -1313,9 +1315,11 @@ test_that("the chat settings drawer exposes named stateful controls", {
     collapse = ""
   )
   ses <- list2env(list(experts = list()), parent = emptyenv())
-  ses$workspace <- new.env(parent = emptyenv())
-  ses$workspace$list_retrieved_sources <- function() list()
-  ses$workspace$list_proposed_claims <- function() list()
+  class(ses) <- "TempestSession"
+  ses_workspace <- new.env(parent = emptyenv())
+  ses_workspace$list_retrieved_sources <- function() list()
+  ses_workspace$list_proposed_claims <- function() list()
+  test_session_private(ses, workspace = ses_workspace)
   footer <- paste(
     as.character(app$chat_runtime_footer_ui(ses, ns = ns)),
     collapse = ""
@@ -1687,14 +1691,14 @@ test_that("session store saves and restores bundles for shared app tabs", {
       edges = list(list(from = "root", to = "evidence", relation = "supports"))
     )
   )
-  ses$add_turn("User", "user", "What survives restore?")
+  ses$.__enclos_env__$private$add_turn("User", "user", "What survives restore?")
   tempest:::tempest_session_append_transcript(
     ses,
     "Moderator",
     "assistant",
     paste0("Cited evidence survives [", source_id, "].")
   )
-  ses$emit_progress(
+  ses$.__enclos_env__$private$emit_progress(
     "stage",
     "succeeded",
     stage = "dialogue",
@@ -1790,7 +1794,7 @@ test_that("tempest_shiny_server renders host-managed shared state", {
       edges = list()
     )
   )
-  ses$add_turn("User", "user", "Show embedded state.")
+  ses$.__enclos_env__$private$add_turn("User", "user", "Show embedded state.")
 
   shiny::testServer(
     tempest_shiny_server,

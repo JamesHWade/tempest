@@ -4,10 +4,10 @@
 \alias{tempest_claims}
 \title{Return claims as a tibble}
 \usage{
-tempest_claims(workspace)
+tempest_claims(x)
 }
 \arguments{
-\item{workspace}{A \link{ResearchWorkspace} or \link{TempestRetriever}.}
+\item{x}{A completed \code{\link[=tempest_run]{tempest_run()}} product or a \code{TempestSession}.}
 }
 \value{
 A tibble of claims with columns: claim_id, claim_text, claim_type,
@@ -19,6 +19,6 @@ Return claims as a tibble
 \examples{
 \dontrun{
 result <- tempest_run("History of jazz", config = tempest_config())
-tempest_claims(result$workspace)
+tempest_claims(result)
 }
 }

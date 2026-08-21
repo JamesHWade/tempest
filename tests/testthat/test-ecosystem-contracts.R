@@ -870,7 +870,7 @@ test_that("the 0.2 surface has no T1 compatibility vocabulary", {
   workspace_apis <- list(
     tempest_retriever,
     tempest_session,
-    tempest_report_md,
+    tempest_report,
     tempest_verify_claims
   )
   expect_equal(

@@ -463,7 +463,7 @@ tempest_storm_evaluation_product <- function(
   program_set = NULL,
   knowledge_view = NULL
 ) {
-  tempest_run(
+  tempest_run_internal(
     topic = topic,
     config = config,
     knowledge_view = knowledge_view,
@@ -496,16 +496,16 @@ tempest_solver_storm <- function(
       program_set = program_set,
       knowledge_view = knowledge_view
     )
-    report_md <- product$report_md %||% NULL
+    report_md <- product@report_md %||% NULL
     if (!rlang::is_string(report_md) || is.na(report_md)) {
       tempest_abort("STORM evaluation did not produce one canonical report.")
     }
-    stage_records <- product$state$stage_records %||% NULL
+    stage_records <- product@state$stage_records %||% NULL
     results[[i]] <- report_md
     chats[[i]] <- tempest_make_chat(config, "writer", echo = "none")
     metadata[[i]] <- tempest_evaluation_product_metadata(
       research = product,
-      manifest = product$manifest,
+      manifest = product@manifest,
       report_md = report_md,
       stage_records = stage_records,
       mode = "storm",
@@ -527,7 +527,7 @@ tempest_costorm_evaluation_product <- function(
   program_set = NULL,
   knowledge_view = NULL
 ) {
-  session <- tempest_session(
+  session <- tempest_session_new(
     topic,
     config = config,
     n_experts = 1L,
@@ -540,7 +540,7 @@ tempest_costorm_evaluation_product <- function(
     max_turns = max_turns
   )
   simulated_user$run_session(session, warmup = FALSE, verbose = FALSE)
-  session$report(style = "technical", include_references = FALSE)
+  session$publish(style = "technical", include_references = FALSE)
   list(session = session, turns = simulated_user$turn_count)
 }
 
@@ -572,13 +572,13 @@ tempest_solver_costorm <- function(
     if (!inherits(session, "TempestSession")) {
       tempest_abort("Co-STORM evaluation requires a real TempestSession.")
     }
-    report_md <- tempest_session_report_md(session)
+    report_md <- tempest_session_report_read(session)
     results[[i]] <- report_md
     chats[[i]] <- tempest_session_chat(session, "moderator")
     stage_records <- tempest_session_stage_records(session)
     metadata[[i]] <- tempest_evaluation_product_metadata(
       research = session,
-      manifest = session$manifest,
+      manifest = tempest_session_manifest(session),
       report_md = report_md,
       stage_records = stage_records,
       mode = "costorm",

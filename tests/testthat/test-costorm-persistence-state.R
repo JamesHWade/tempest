@@ -37,7 +37,7 @@ test_that("TempestSession snapshots restore durable session state", {
       session
     )
   )
-  session$add_turn("User", "user", "What is durable?")
+  session$.__enclos_env__$private$add_turn("User", "user", "What is durable?")
   mindmap <- list(
     nodes = list(list(
       id = "root",
@@ -52,11 +52,11 @@ test_that("TempestSession snapshots restore durable session state", {
     title = "Session persistence report",
     transcript = session$transcript,
     mindmap = mindmap,
-    events = session$events,
+    events = tempest:::tempest_session_events(session),
     progress = NULL
   )
-  report_md <- tempest_report_md(
-    title = session$title,
+  report_md <- tempest:::tempest_report_md_render(
+    title = tempest:::tempest_session_title(session),
     body = "Restored report",
     workspace = store,
     citation_policy = cfg@citation_policy,
@@ -97,11 +97,15 @@ test_that("TempestSession snapshots restore durable session state", {
 
   expect_r6_class(restored, "TempestSession")
   expect_identical(
-    tempest:::tempest_research_workspace_mutation_state(restored$workspace),
+    tempest:::tempest_research_workspace_mutation_state(tempest:::tempest_session_workspace(
+      restored
+    )),
     "sealed"
   )
   expect_error(
-    restored$workspace$upsert_retrieved_resource(fake_source(
+    tempest:::tempest_session_workspace(
+      restored
+    )$upsert_retrieved_resource(fake_source(
       url = "https://example.com/injected-after-session-restore"
     )),
     class = "tempest_research_workspace_error"
@@ -130,18 +134,23 @@ test_that("TempestSession snapshots restore durable session state", {
     ),
     snapshot$stage_records
   )
-  expect_equal(restored$title, "Session persistence report")
+  expect_equal(
+    tempest:::tempest_session_title(restored),
+    "Session persistence report"
+  )
   expect_equal(restored$transcript[[1]]$text, "What is durable?")
   expect_equal(restored$mindmap$nodes[[1]]$notes, "Durable state")
   expect_identical(snapshot$mindmap$nodes[[1]]$source_ids, list())
   expect_identical(snapshot$suggested_questions, list("Q1", "Q2"))
-  expect_identical(tempest_session_report_md(restored), report_md)
+  expect_identical(tempest_report(restored), report_md)
   expect_equal(
     tempest:::tempest_session_suggestions(restored),
     c("Q1", "Q2")
   )
   expect_equal(
-    restored$workspace$get_proposed_claim(claim_id)@claim_text,
+    tempest:::tempest_session_workspace(restored)$get_proposed_claim(
+      claim_id
+    )@claim_text,
     "Session snapshots preserve claims."
   )
   expect_equal(
@@ -155,7 +164,7 @@ test_that("TempestSession snapshots restore durable session state", {
   expect_equal(expert$is_new, FALSE)
 
   expect_length(collector$events(), 0)
-  restored$emit_progress(
+  restored$.__enclos_env__$private$emit_progress(
     "workflow",
     "succeeded",
     stage = "session",
@@ -229,7 +238,11 @@ test_that("retired experts persist separately from immutable profiles", {
   restored_manager <- tempest:::tempest_session_expert_manager(restored)
   expect_identical(restored_manager$list_retired_expert_ids(), retired_ids)
   expect_identical(
-    sort(vapply(restored$get_active_experts(), \(x) x@expert_id, character(1))),
+    sort(vapply(
+      tempest:::tempest_session_active_experts(restored),
+      \(x) x@expert_id,
+      character(1)
+    )),
     setdiff(
       sort(vapply(experts, \(x) x@expert_id, character(1))),
       retired_ids

@@ -29,7 +29,7 @@ and \code{evaluator_version}. These identify how stage output is judged and are
 distinct from an optimization teleprompter or metric.}
 
 \item{governed_procedure_refs}{Optional named list of typed
-\code{\link[=tempest_governed_procedure_ref]{tempest_governed_procedure_ref()}} values by stage.}
+\code{tempest_governed_procedure_ref()} values by stage.}
 
 \item{registry}{Named runtime-binding registry passed to dsprrr artifact
 operations. It is never stored in ProgramSet metadata.}
@@ -55,3 +55,4 @@ a ProgramSet carrying the same identities. Omitting \code{program_set} at a run
 boundary resolves the package's current builtins and can resume only when
 those builtin artifact IDs match the persisted run.
 }
+\keyword{internal}

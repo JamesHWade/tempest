@@ -76,13 +76,13 @@ test_that("default dsprrr STORM semantic outcomes are frozen", {
   )
   result_record <- function(result) {
     list(
-      title = result$title,
-      perspectives = result$perspectives,
-      experts = tempest:::tempest_expert_records(result$experts),
-      outline = result$outline,
-      draft_md = result$draft_md,
-      report_md = result$report_md,
-      manifest = tempest:::tempest_research_manifest_record(result$manifest)
+      title = result@title,
+      perspectives = result@perspectives,
+      experts = tempest:::tempest_expert_records(result@experts),
+      outline = result@outline,
+      draft_md = result@draft_md,
+      report_md = result@report_md,
+      manifest = tempest:::tempest_research_manifest_record(result@manifest)
     )
   }
   bundle_bytes <- function(path) {
@@ -116,19 +116,19 @@ test_that("default dsprrr STORM semantic outcomes are frozen", {
 
   expect_identical(semantics$citations$uses, semantics$source_ids)
   expect_identical(definition_ids, semantics$source_ids)
-  expect_equal(
+  expect_setequal(
     intersect(
-      names(disabled$result),
+      names(tempest:::TempestResult@properties),
       c("store", "artifact_catalog", "workflow_run")
     ),
     character()
   )
-  expect_identical(disabled$result$workspace, disabled$store)
+  expect_identical(disabled$result@workspace, disabled$store)
   expect_identical(
-    disabled$result$manifest@research_run_id,
+    disabled$result@manifest@research_run_id,
     "storm-product-baseline"
   )
-  expect_identical(disabled$result$manifest@status, "succeeded")
+  expect_identical(disabled$result@manifest@status, "succeeded")
   expect_snapshot(baseline_snapshot_json(semantics))
 
   options(tempest.otel.enabled = TRUE)
@@ -140,23 +140,23 @@ test_that("default dsprrr STORM semantic outcomes are frozen", {
     serialize(result_record(disabled$result), NULL)
   )
   expect_identical(
-    serialize(tempest:::tempest_storm_state_record(enabled$result$state), NULL),
-    serialize(tempest:::tempest_storm_state_record(disabled$result$state), NULL)
+    serialize(tempest:::tempest_storm_state_record(enabled$result@state), NULL),
+    serialize(tempest:::tempest_storm_state_record(disabled$result@state), NULL)
   )
   expect_identical(
     serialize(
-      tempest:::tempest_research_workspace_snapshot(enabled$result$workspace),
+      tempest:::tempest_research_workspace_snapshot(enabled$result@workspace),
       NULL
     ),
     serialize(
-      tempest:::tempest_research_workspace_snapshot(disabled$result$workspace),
+      tempest:::tempest_research_workspace_snapshot(disabled$result@workspace),
       NULL
     )
   )
-  expect_identical(enabled$result$report_md, disabled$result$report_md)
+  expect_identical(enabled$result@report_md, disabled$result@report_md)
   expect_identical(
-    bundle_bytes(enabled$result$output_dir),
-    bundle_bytes(disabled$result$output_dir)
+    bundle_bytes(enabled$result@output_dir),
+    bundle_bytes(disabled$result@output_dir)
   )
   expect_gt(length(state$spans), 0L)
 })

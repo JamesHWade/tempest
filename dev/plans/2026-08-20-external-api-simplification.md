@@ -2,7 +2,7 @@
 
 Tracking issue: kata `pjsd`
 
-Status: PR B verified; PR C implemented and locally verified, publication pending
+Status: PR C published as #54 (ready, green); PR D implemented, verification in progress
 
 Audit basis: Tempest `main` commit
 `21e1794fa9695f383c4b31d413d2c40b58a15ac7` on 2026-08-20
@@ -640,33 +640,33 @@ Co-STORM, and promotion remain deterministic under the new current format.
 
 ### PR D — Introduce the cohesive product boundary
 
-- [ ] Add `tempest_app()` and delete `run_app()`.
-- [ ] Add `tempest_report()` and delete both specialized report exports.
-- [ ] Add the Graft-only `tempest_knowledge()` boundary and remove direct
+- [x] Add `tempest_app()` and delete `run_app()`.
+- [x] Add `tempest_report()` and delete both specialized report exports.
+- [x] Add the Graft-only `tempest_knowledge()` boundary and remove direct
   `knowledge_view` arguments from public entry points.
-- [ ] Expose only bounded public reads against the pinned view; project every
+- [x] Expose only bounded public reads against the pinned view; project every
   consumed accepted record or joined claim/evidence packet into an exact
   `graft.record` resource and reject non-materializable records.
-- [ ] Enforce the immutable record allowlist on every read, reject truncated
+- [x] Enforce the immutable record allowlist on every read, reject truncated
   packets, and cover exact-limit and over-limit joins.
-- [ ] Keep accepted text in a delimited evidence/data channel and prove hostile
+- [x] Keep accepted text in a delimited evidence/data channel and prove hostile
   instruction-shaped records cannot alter prompts, message roles, tools,
   governed-procedure selection, or executable artifacts.
-- [ ] Make `tempest_run()` return one validated internal product class.
-- [ ] Make retained evidence, review, persistence, and promotion functions work
+- [x] Make `tempest_run()` return one validated internal product class.
+- [x] Make retained evidence, review, persistence, and promotion functions work
   for that result and for a session where appropriate.
-- [ ] Make `tempest_sources()` inspect consumed accepted knowledge and product
+- [x] Make `tempest_sources()` inspect consumed accepted knowledge and product
   evidence, and make `tempest_claim_supports()` return the complete joined
   proof rows.
-- [ ] Let `tempest_run()`, `tempest_session()`, and
+- [x] Let `tempest_run()`, `tempest_session()`, and
   `tempest_session_resume()` accept only the validated knowledge value;
   preserve the distinction between accepted evidence reads and explicit
   governed-procedure bindings.
-- [ ] Emit the exact canonical plain progress record to callbacks and adapt the
+- [x] Emit the exact canonical plain progress record to callbacks and adapt the
   bundled app and telemetry without changing event order or privacy.
-- [ ] Reduce the two public entry-point signatures to the agreed formals.
-- [ ] Shrink `TempestSession` to the agreed operations and projections.
-- [ ] Remove raw retriever, workspace, manifest, state, event, and config
+- [x] Reduce the two public entry-point signatures to the agreed formals.
+- [x] Shrink `TempestSession` to the agreed operations and projections.
+- [x] Remove raw retriever, workspace, manifest, state, event, and config
   bindings from supported result/session surfaces.
 
 Gate: the complete primary journey, current persistence, trajectory review,

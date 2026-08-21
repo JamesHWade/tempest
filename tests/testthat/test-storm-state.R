@@ -652,19 +652,18 @@ test_that("returned STORM manifest equals the output-dir manifest", {
     retriever = fixture$retriever,
     n_experts = 1,
     max_questions_per_perspective = 1,
-    program_set = program_set,
     steps = c("perspectives", "research"),
     output_dir = output_root,
     run_id = "t7-manifest-persistence",
     verbose = FALSE
   )
-  returned <- tempest_research_manifest_record(result$manifest)
+  returned <- tempest_research_manifest_record(result@manifest)
   persisted <- tempest:::tempest_product_read_json(file.path(
-    result$output_dir,
+    result@output_dir,
     "run_config.json"
   ))$research_manifest
   restored <- tempest:::tempest_storm_load_artifacts(
-    result$output_dir,
+    result@output_dir,
     config = fixture$config,
     program_set = program_set,
     run_id = "t7-manifest-persistence"
@@ -677,7 +676,7 @@ test_that("returned STORM manifest equals the output-dir manifest", {
   expect_identical(returned, persisted)
   expect_identical(returned$status, "running")
   expect_null(returned$deliverables$report_md)
-  expect_null(result$state$report_md)
+  expect_null(result@state$report_md)
   expect_identical(
     tempest_research_manifest_record(restored$research_manifest),
     returned
@@ -715,38 +714,37 @@ test_that("no-output STORM returns succeeded publication authority", {
     retriever = fixture$retriever,
     n_experts = 1,
     max_questions_per_perspective = 1,
-    program_set = tempest_program_set(),
     verbose = FALSE
   )
   authority <- tempest:::tempest_product_authority_validate(
-    result$manifest,
-    result$state$stage_records,
-    result$workspace,
-    report_md = result$report_md,
+    result@manifest,
+    result@state$stage_records,
+    result@workspace,
+    report_md = result@report_md,
     report_reference = tempest:::tempest_product_report_reference(
-      result$report_md
+      result@report_md
     ),
     config = fixture$config,
-    experts = result$experts,
-    product_state = result$state,
+    experts = result@experts,
+    product_state = result@state,
     require_publishable = TRUE
   )
 
-  expect_null(result$output_dir)
-  expect_identical(result$manifest@status, "succeeded")
+  expect_null(result@output_dir)
+  expect_identical(result@manifest@status, "succeeded")
   expect_identical(
-    result$manifest@deliverables$report_md$status,
+    result@manifest@deliverables$report_md$status,
     "durable"
   )
   expect_identical(authority$publishable, TRUE)
   expect_identical(authority$status, "succeeded")
   expect_identical(seal_calls, 1L)
   expect_identical(
-    tempest:::tempest_research_workspace_mutation_state(result$workspace),
+    tempest:::tempest_research_workspace_mutation_state(result@workspace),
     "sealed"
   )
   expect_error(
-    result$workspace$upsert_retrieved_resource(fake_source(
+    result@workspace$upsert_retrieved_resource(fake_source(
       url = "https://example.org/sealed-storm",
       title = "Sealed STORM workspace",
       content_text = "Succeeded research workspaces are immutable."

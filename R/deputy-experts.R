@@ -397,8 +397,8 @@ TempestDeputyExpertManager <- R6::R6Class(
             prepared$provider_turn,
             private$workspace
           )
-          source_ids <- tempest_session_answer_source_ids(
-            list(workspace = private$workspace),
+          source_ids <- tempest_answer_source_ids(
+            private$workspace,
             prepared$response,
             source_ids
           )

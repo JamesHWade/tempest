@@ -18,7 +18,7 @@ test_that("session snapshots reject credentials outside evidence payloads", {
     title = token,
     transcript = session$transcript,
     mindmap = session$mindmap,
-    events = session$events,
+    events = tempest:::tempest_session_events(session),
     progress = NULL
   )
   expect_error(
@@ -65,14 +65,14 @@ test_that("session snapshots reject credentials outside evidence payloads", {
       session,
       paste0("encoded-credential-", nchar(encoded_token))
     )
-    safe_report <- tempest_report_md(
-      title = session$title,
+    safe_report <- tempest:::tempest_report_md_render(
+      title = tempest:::tempest_session_title(session),
       body = paste0(
         "A portable report body [",
         fixture$source@resource_id,
         "]."
       ),
-      workspace = session$workspace,
+      workspace = tempest:::tempest_session_workspace(session),
       citation_policy = cfg@citation_policy,
       on_unsupported_claim = cfg@on_unsupported_claim,
       min_support_score = cfg@min_support_score
@@ -94,13 +94,15 @@ test_that("session snapshots reject credentials outside evidence payloads", {
 
   session <- make_session()
   fixture <- test_add_verifiable_claim(
-    session$workspace,
+    tempest:::tempest_session_workspace(session),
     key = "credential-boundary"
   )
   support <- test_claim_support(fixture$claim, fixture$span)
   unsafe_support <- tempest:::tempest_claim_support_to_list(support)
   unsafe_support$rationale <- paste("Authorization: Bearer", token)
-  workspace_private <- session$workspace$.__enclos_env__$private
+  workspace_private <- tempest:::tempest_session_workspace(
+    session
+  )$.__enclos_env__$private
   workspace_private$claim_supports_value[[support@claim_support_id]] <-
     unsafe_support
   expect_error(
@@ -116,7 +118,7 @@ test_that("session snapshots reject credentials outside evidence payloads", {
     "scientific-title",
     claim_text = scientific_title
   )
-  report_md <- tempest_report_md(
+  report_md <- tempest:::tempest_report_md_render(
     title = scientific_title,
     body = paste0(
       scientific_title,
@@ -124,7 +126,7 @@ test_that("session snapshots reject credentials outside evidence payloads", {
       fixture$source@resource_id,
       "]."
     ),
-    workspace = session$workspace,
+    workspace = tempest:::tempest_session_workspace(session),
     citation_policy = cfg@citation_policy,
     on_unsupported_claim = cfg@on_unsupported_claim,
     min_support_score = cfg@min_support_score
@@ -176,9 +178,11 @@ test_that("no-reference Co reports remain canonical persistence products", {
     experts = list(test_expert(expert_id = "expert.no-reference-report")),
     session_id = "no-reference-session-report"
   )
-  session$workspace$upsert_retrieved_resource(source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
   completion_id <- tempest:::tempest_costorm_await(
-    session$request_completion_async("Record durable evidence.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Record durable evidence."
+    )
   )
   withCallingHandlers(
     tempest:::tempest_costorm_await(tempest_session_process_turn_async(
@@ -208,7 +212,7 @@ test_that("no-reference Co reports remain canonical persistence products", {
     "]."
   )
 
-  report_md <- session$report(
+  report_md <- session$publish(
     include_references = FALSE
   )
   expect_match(report_md, "^# No reference session report", perl = TRUE)
@@ -225,8 +229,8 @@ test_that("no-reference Co reports remain canonical persistence products", {
   expect_no_match(report_md, "## References", fixed = TRUE)
   expect_no_error(tempest:::tempest_final_report_validate(
     report_md = report_md,
-    workspace = session$workspace,
-    title = session$title,
+    workspace = tempest:::tempest_session_workspace(session),
+    title = tempest:::tempest_session_title(session),
     citation_policy = cfg@citation_policy,
     on_unsupported_claim = cfg@on_unsupported_claim,
     min_support_score = cfg@min_support_score,
@@ -242,10 +246,13 @@ test_that("no-reference Co reports remain canonical persistence products", {
   bundle <- file.path(withr::local_tempdir(), "no-reference-session-report")
   tempest_session_save(session, bundle)
   restored <- tempest_session_resume(bundle, config = cfg)
-  expect_identical(tempest_session_report_md(restored), report_md)
-  expect_identical(restored$manifest@status, "succeeded")
+  expect_identical(tempest_report(restored), report_md)
   expect_identical(
-    restored$manifest@deliverables$report_md$sha256,
+    tempest:::tempest_session_manifest(restored)@status,
+    "succeeded"
+  )
+  expect_identical(
+    tempest:::tempest_session_manifest(restored)@deliverables$report_md$sha256,
     tempest:::tempest_product_report_reference(report_md)$sha256
   )
 })
@@ -287,10 +294,10 @@ test_that("fenced package headings survive session report persistence", {
     ),
     collapse = "\n"
   )
-  report_md <- tempest_report_md(
-    title = session$title,
+  report_md <- tempest:::tempest_report_md_render(
+    title = tempest:::tempest_session_title(session),
     body = body,
-    workspace = session$workspace,
+    workspace = tempest:::tempest_session_workspace(session),
     citation_policy = cfg@citation_policy,
     on_unsupported_claim = cfg@on_unsupported_claim,
     min_support_score = cfg@min_support_score
@@ -302,7 +309,7 @@ test_that("fenced package headings survive session report persistence", {
   bundle <- file.path(withr::local_tempdir(), "literal-headings")
   tempest_session_save(session, bundle)
   restored <- tempest_session_resume(bundle, config = cfg)
-  expect_identical(tempest_session_report_md(restored), report_md)
+  expect_identical(tempest_report(restored), report_md)
 })
 
 test_that("public session extraction persists its exact terminal record", {
@@ -339,9 +346,11 @@ test_that("public session extraction persists its exact terminal record", {
     experts = list(test_expert(expert_id = "expert.session-extraction")),
     session_id = "persisted-session-extraction"
   )
-  session$workspace$upsert_retrieved_resource(source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
   completion_id <- tempest:::tempest_costorm_await(
-    session$request_completion_async("Record the durable extraction.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Record the durable extraction."
+    )
   )
   expect_no_error(withCallingHandlers(
     tempest:::tempest_costorm_await(tempest_session_process_turn_async(
@@ -355,7 +364,9 @@ test_that("public session extraction persists its exact terminal record", {
       invokeRestart("muffleWarning")
     }
   ))
-  claim <- session$workspace$list_proposed_claims()[[1]]
+  claim <- tempest:::tempest_session_workspace(session)$list_proposed_claims()[[
+    1
+  ]]
   expect_identical(claim@session_id, session$session_id)
   expect_identical(claim@expert_id, "moderator")
   expect_identical(is.na(claim@retrieval_step_id), FALSE)

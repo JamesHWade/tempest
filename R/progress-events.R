@@ -169,6 +169,55 @@ tempest_progress_event_data <- function(event) {
   stats::setNames(lapply(props, function(prop) S7::prop(event, prop)), props)
 }
 
+# The exact canonical field order delivered to a host progress callback.
+tempest_progress_record_fields <- function() {
+  c(
+    "event_id",
+    "run_id",
+    "workflow",
+    "event_type",
+    "stage",
+    "step",
+    "status",
+    "timestamp",
+    "message",
+    "payload",
+    "parent_event_id",
+    "correlation_id"
+  )
+}
+
+# Project one progress event into the canonical plain named record. Hosts store
+# and reduce this with ordinary R code; they never need event constructors,
+# decoders, collectors, replay helpers, or label tables.
+tempest_progress_record <- function(event) {
+  data <- tempest_progress_event_record(event)
+  fields <- tempest_progress_record_fields()
+  stats::setNames(lapply(fields, function(field) data[[field]]), fields)
+}
+
+# Rebuild a progress event from its canonical plain record.
+tempest_progress_event_from_record <- function(record) {
+  if (!tempest_progress_is_event_data(record)) {
+    tempest_abort("{.arg event} must be a tempest_progress_event object.")
+  }
+  data <- tempest_progress_event_record(record)
+  tempest_progress_event(
+    run_id = data$run_id,
+    workflow = data$workflow,
+    event_type = data$event_type,
+    status = data$status,
+    stage = data$stage,
+    step = data$step,
+    message = data$message,
+    payload = data$payload,
+    parent_event_id = data$parent_event_id,
+    correlation_id = data$correlation_id,
+    event_id = data$event_id,
+    timestamp = data$timestamp
+  )
+}
+
 tempest_progress_callback <- function(progress) {
   if (is.null(progress)) {
     return(NULL)
@@ -176,7 +225,9 @@ tempest_progress_callback <- function(progress) {
   if (!is.function(progress)) {
     tempest_abort("{.arg progress} must be NULL or a function.")
   }
-  progress
+  function(event) {
+    progress(tempest_progress_record(event))
+  }
 }
 
 tempest_progress_error_payload <- function(error) {
@@ -244,8 +295,9 @@ tempest_progress_collector <- function(include_payload = FALSE) {
   events <- list()
 
   record <- function(event) {
+    # Hosts receive canonical plain records; accept either shape and normalize.
     if (!S7::S7_inherits(event, tempest_progress_event)) {
-      tempest_abort("{.arg event} must be a tempest_progress_event object.")
+      event <- tempest_progress_event_from_record(event)
     }
     if (!include_payload) {
       event <- tempest_progress_without_payload(event)
@@ -398,7 +450,8 @@ tempest_progress_filter <- function(
 #'
 #' @param events A list of `tempest_progress_event` objects, or a
 #'   `tempest_progress_collector`.
-#' @param progress Function called once for each event.
+#' @param progress Function called once for each event with the canonical
+#'   plain progress record.
 #' @return The input events, invisibly.
 #' @examples
 #' events <- list(tempest_progress_event(
@@ -407,7 +460,7 @@ tempest_progress_filter <- function(
 #'   event_type = "workflow",
 #'   status = "started"
 #' ))
-#' tempest_progress_replay(events, function(event) event@status)
+#' tempest_progress_replay(events, function(event) event$status)
 #' @export
 tempest_progress_replay <- function(events, progress) {
   if (inherits(events, "tempest_progress_collector")) {

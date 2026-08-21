@@ -224,17 +224,21 @@ fake_costorm_warmup_session <- function(
     if (!isTRUE(is_current())) {
       return(list(cancelled = TRUE))
     }
-    before_sources <- length(session$workspace$list_retrieved_sources())
-    before_claims <- length(session$workspace$list_proposed_claims())
-    source_ids <- tempest:::tempest_session_answer_source_ids(
-      list(workspace = session$workspace),
+    before_sources <- length(tempest:::tempest_session_workspace(
+      session
+    )$list_retrieved_sources())
+    before_claims <- length(tempest:::tempest_session_workspace(
+      session
+    )$list_proposed_claims())
+    source_ids <- tempest:::tempest_answer_source_ids(
+      tempest:::tempest_session_workspace(session),
       completion$response,
       character()
     )
     request <- tempest:::tempest_extract_facts_from_answer_async(
       session$fake_chats$extractor,
       completion$response,
-      session$workspace,
+      tempest:::tempest_session_workspace(session),
       module = session$programs$extract_claims,
       source_ids = source_ids,
       session_id = session$session_id,
@@ -246,8 +250,12 @@ fake_costorm_warmup_session <- function(
       record_stage = tempest:::tempest_stage_record_discard
     )
     request <- promises::then(request, function(...) {
-      after_sources <- length(session$workspace$list_retrieved_sources())
-      after_claims <- length(session$workspace$list_proposed_claims())
+      after_sources <- length(tempest:::tempest_session_workspace(
+        session
+      )$list_retrieved_sources())
+      after_claims <- length(tempest:::tempest_session_workspace(
+        session
+      )$list_proposed_claims())
       list(
         source_ids = source_ids,
         sources_added = max(0L, after_sources - before_sources),
@@ -267,7 +275,9 @@ fake_costorm_warmup_session <- function(
           claim_ids = if (evidence$claims_added > 0L) {
             tail(
               vapply(
-                session$workspace$list_proposed_claims(),
+                tempest:::tempest_session_workspace(
+                  session
+                )$list_proposed_claims(),
                 \(claim) claim@claim_id,
                 character(1)
               ),
@@ -317,8 +327,9 @@ fake_costorm_warmup_session <- function(
   session$programs <- test_program_executions(run_id = session$session_id)
   session$topic <- "Test topic"
   session$fake_manager <- manager
-  session$workspace <- store
   session$state <- state
+  # Mirror the R6 private layout the internal session accessors read.
+  test_session_private(session, workspace = store)
   session$fake_chats <- list(
     extractor = list(chat_structured_async = extractor_async),
     mindmap = list()
@@ -350,6 +361,10 @@ fake_costorm_warmup_session <- function(
     }
     event
   }
+  test_session_private(
+    session,
+    .methods = list(emit_progress = session$emit_progress)
+  )
   session
 }
 
@@ -383,4 +398,22 @@ test_record_costorm_deputy_trace <- function(session, ...) {
   trace <- test_costorm_deputy_trace(...)
   tempest:::tempest_session_record_deputy_trace(session, trace)
   tempest:::tempest_costorm_deputy_trace(trace)
+}
+
+# Give a fake TempestSession the R6 private layout the internal session
+# accessors read, so stubs exercise the same code path as a real session.
+test_session_private <- function(session, ..., .methods = list()) {
+  values <- list(...)
+  private <- session$.__enclos_env__$private %||% new.env(parent = emptyenv())
+  for (name in names(values)) {
+    assign(paste0(name, "_value"), values[[name]], envir = private)
+  }
+  for (name in names(.methods)) {
+    assign(name, .methods[[name]], envir = private)
+  }
+  session$.__enclos_env__ <- list2env(
+    list(private = private),
+    parent = emptyenv()
+  )
+  invisible(session)
 }

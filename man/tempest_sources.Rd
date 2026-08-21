@@ -4,21 +4,22 @@
 \alias{tempest_sources}
 \title{Return evidence resources as a tibble}
 \usage{
-tempest_sources(workspace)
+tempest_sources(x)
 }
 \arguments{
-\item{workspace}{A \link{ResearchWorkspace} or \link{TempestRetriever}.}
+\item{x}{A completed \code{\link[=tempest_run]{tempest_run()}} product or a \code{TempestSession}.}
 }
 \value{
 A tibble with resource identity, kind, opaque locator, optional web
 URL, title, media type, content context, retrieval time, and metadata.
 }
 \description{
-Return evidence resources as a tibble
+Reports every evidence resource consumed by a product, including accepted
+organizational knowledge records supplied through \code{\link[=tempest_knowledge]{tempest_knowledge()}}.
 }
 \examples{
 \dontrun{
 result <- tempest_run("History of jazz", config = tempest_config())
-tempest_sources(result$workspace)
+tempest_sources(result)
 }
 }

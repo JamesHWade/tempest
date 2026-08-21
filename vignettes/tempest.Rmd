@@ -33,7 +33,7 @@ Start with the interface that matches the outcome you need:
 | Goal | Interface | Result |
 |---|---|---|
 | Create an evidence-backed report | `tempest_run()` | A report, sources, claims, outline, and run state |
-| Explore a topic interactively | `run_app()` or `tempest_session()` | A continuing Co-STORM conversation, mind map, evidence, and report |
+| Explore a topic interactively | `tempest_app()` or `tempest_session()` | A continuing Co-STORM conversation, mind map, evidence, and report |
 
 Most package users should begin with scripted STORM. Co-STORM is useful when
 the research question should evolve through dialogue. Tempest 0.2 has no
@@ -116,16 +116,16 @@ persists each stage after it completes.
 The returned list contains the main report and the state used to create it:
 
 ```{r inspect-result, eval = FALSE}
-cat(result$report_md)
+cat(tempest_report(result))
 
 result$title
 result$perspectives
 result$experts
 result$outline
 
-sources <- tempest_sources(result$workspace)
-claims <- tempest_claims(result$workspace)
-supports <- tempest_claim_supports(result$workspace)
+sources <- tempest_sources(result)
+claims <- tempest_claims(result)
+supports <- tempest_claim_supports(result)
 
 utils::head(sources[c("id", "title", "url")])
 utils::head(claims[
@@ -144,16 +144,13 @@ The research workspace holds run-scoped provisional evidence. Retrieved
 resources, proposed claims, exact claim-by-evidence-span support records, and
 citations remain inspectable instead of being flattened into report text. The
 pair records are authoritative; claim summaries and citation-audit tables are
-derived projections. The product report is available directly in
-`result$report_md`; new callers should not depend on the frozen 0.1 artifact
-catalog.
+derived projections. The authoritative product report is read with
+`tempest_report(result)`.
 
-`tempest_report_md()` is useful when a caller needs deterministic citation
-rendering over its own Markdown and an explicit `ResearchWorkspace`. That
-rendered value is not a published product: it does not finalize a Manifest or
-grant promotion authority. Use `result$report_md` for the authoritative STORM
-report. For Co-STORM, generate and commit with `session$report()` and read the
-exact committed bytes with `tempest_session_report_md()`.
+`tempest_report()` is the one read accessor for both product shapes. It returns
+the exact committed bytes and never generates, repairs, or republishes a
+report. For Co-STORM, generate and commit with `session$publish()`, then read
+those exact bytes with `tempest_report(session)`.
 
 Every STORM and Co-STORM publication runs the exact verifier ProgramSet stage
 and atomically binds claim-by-evidence-span support. `citation_policy` controls
@@ -348,7 +345,7 @@ pak::pak(
   )
 )
 
-run_app()
+tempest_app()
 ```
 
 For console control, create a session directly:
@@ -366,11 +363,11 @@ answer <- session$step(
 )
 cat(answer$answer)
 
-session$report(
+session$publish(
   style = "executive",
   include_references = TRUE
 )
-committed_report <- tempest_session_report_md(session)
+committed_report <- tempest_report(session)
 cat(committed_report)
 
 tempest_session_save(
@@ -465,83 +462,31 @@ costorm_task <- tempest_costorm_task(
 )
 ```
 
-Evaluation does not imply automatic improvement. Use different mutable vitals
-Task instances for baseline and candidate runs, explicitly compile selected
-dsprrr stages, and adopt a candidate ProgramSet only after reviewing its scores
-and trajectory summaries:
-
-```{r improvement-loop, eval = FALSE}
-baseline_task <- tempest_task(
-  dataset = held_out,
-  config = cfg,
-  scorer_chat = judge,
-  program_set = program_set,
-  knowledge_view = knowledge_view
-)
-baseline_task$eval()
-
-candidate_program_set <- tempest_compile_programs(
-  program_set,
-  trainsets = stage_trainsets,
-  valsets = stage_validation_sets,
-  teleprompters = teleprompters,
-  path = "candidate-programs"
-)
-
-candidate_task <- tempest_task(
-  dataset = held_out,
-  config = cfg,
-  scorer_chat = judge,
-  program_set = candidate_program_set,
-  knowledge_view = knowledge_view
-)
-candidate_task$eval()
-
-# Inspect both results and make the adoption decision outside Tempest.
-baseline_samples <- baseline_task$get_samples()
-candidate_samples <- candidate_task$get_samples()
-chosen_program_set <- candidate_program_set
-
-next_result <- tempest_run(
-  "Grid-scale battery recycling",
-  config = cfg,
-  program_set = chosen_program_set,
-  knowledge_view = knowledge_view
-)
-```
-
-Keep compilation training and validation rows separate from held-out evaluation
-rows to avoid leakage, overfitting, and optimistic scores. Compare the same
-sample IDs, inputs, targets, and scorer. Tempest does not synthesize training
-data, choose an optimizer, compile automatically, or replace the baseline.
-Supply an explicit scorer or let the task use `vitals::model_graded_qa()` with
-the chosen judge chat. Compilation works on isolated Module copies. When an
-artifact changes, its old governed-procedure reference is cleared until the
-candidate is reviewed and accepted separately.
-
 ## Product boundary
 
-Tempest 0.2 supports only `tempest_run()` and `tempest_session()` as research
-product entry points. The experimental application-neutral kernel is
-removed, including its former symbols. No compatibility layer is provided.
+Tempest supports only `tempest_run()` and `tempest_session()` as research
+product entry points, with `tempest_app()` for the bundled application. A
+completed run is read through `tempest_report()`, `tempest_sources()`,
+`tempest_claims()`, `tempest_claim_supports()`, and
+`tempest_trajectory_review()`; the retriever, mutable workspace, manifest, and
+stage state are not part of that surface. No compatibility layer is provided.
 
 ## Where to go next
 
 - Use `tempest_run()` for a scripted STORM report.
-- Use `tempest_session()` or `run_app()` for interactive Co-STORM research.
+- Use `tempest_session()` or `tempest_app()` for interactive Co-STORM research.
 - Add semantic retrieval with `ragnar` through `embed_fn` or a pre-built
   `ragnar_store`.
-- Compile selected structured programs with `tempest_compile_programs()`, then
-  pass the complete verified `TempestProgramSet` to STORM or Co-STORM.
-- Resolve an accepted procedure with `tempest_governed_procedure_ref()`, bind
-  it by stage in a ProgramSet, and pass its matching pinned `knowledge_view` to
-  every governed run or session.
+- Bring accepted organizational knowledge into a run with
+  `tempest_knowledge()`, which pins the immutable Graft view, names the exact
+  accepted evidence records, and binds any accepted governed procedure to its
+  stage.
 - Review provisional evidence with `tempest_promotion_bundle()` and
   `tempest_graft_plan()` before exercising Graft acceptance authority.
 - Reconstruct a non-authoritative review with
   `tempest_trajectory_review()`.
-- Capture progress with `tempest_progress_collector()` and inspect events with
-  `tempest_progress_event_data()`.
+- Capture progress by passing a `progress` callback, which receives one
+  canonical plain record per event.
 - Evaluate scripted and interactive workflows with `tempest_task()` and
   `tempest_costorm_task()`.
 

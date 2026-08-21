@@ -182,8 +182,7 @@ test_that("async personas and Shiny startup use one bound ProgramSet", {
     "Async research systems",
     config = session_config,
     experts = settled$value$experts,
-    session_id = "shiny-async-personas",
-    program_set = program_set
+    session_id = "shiny-async-personas"
   )
   tempest:::tempest_session_set_stage_records(
     session,
@@ -232,9 +231,11 @@ test_that("stale async extraction persists one cancelled attempt", {
     )),
     session_id = "costorm-cancelled-extraction"
   )
-  session$workspace$upsert_retrieved_resource(source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
   completion <- await_tempest_promise(
-    session$request_completion_async("Inspect the cancelled claim.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Inspect the cancelled claim."
+    )
   )
   expect_null(completion$error)
   work_id <- tempest:::tempest_session_async_work_start(
@@ -279,7 +280,10 @@ test_that("stale async extraction persists one cancelled attempt", {
     terminal[[1]]@failure_message,
     "Stage execution was cancelled."
   )
-  expect_length(session$workspace$list_proposed_claims(), 0L)
+  expect_length(
+    tempest:::tempest_session_workspace(session)$list_proposed_claims(),
+    0L
+  )
 })
 
 test_that("failed async extraction remains durable without raw errors", {
@@ -317,9 +321,11 @@ test_that("failed async extraction remains durable without raw errors", {
     )),
     session_id = "costorm-failed-extraction"
   )
-  session$workspace$upsert_retrieved_resource(source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
   completion <- await_tempest_promise(
-    session$request_completion_async("Inspect the failed claim.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Inspect the failed claim."
+    )
   )
   expect_null(completion$error)
   work_id <- tempest:::tempest_session_async_work_start(
@@ -365,14 +371,17 @@ test_that("failed async extraction remains durable without raw errors", {
     tempest:::tempest_product_canonical_json(lapply(
       Filter(
         \(event) S7::S7_inherits(event, tempest_progress_event),
-        session$events
+        tempest:::tempest_session_events(session)
       ),
       tempest_progress_event_data
     )),
     "sk-live-secret",
     fixed = TRUE
   )
-  expect_length(session$workspace$list_proposed_claims(), 0L)
+  expect_length(
+    tempest:::tempest_session_workspace(session)$list_proposed_claims(),
+    0L
+  )
 })
 
 test_that("agent-derived evidence rejects missing and forged claims", {
@@ -391,7 +400,7 @@ test_that("agent-derived evidence rejects missing and forged claims", {
     experts = list(test_expert(expert_id = "expert.bound-evidence"))
   )
   workspace_before <- tempest:::tempest_research_workspace_snapshot(
-    session$workspace
+    tempest:::tempest_session_workspace(session)
   )
 
   expect_error(
@@ -399,7 +408,9 @@ test_that("agent-derived evidence rejects missing and forged claims", {
     class = "tempest_agent_completion_binding_error"
   )
   completion <- await_tempest_promise(
-    session$request_completion_async("Bind this prompt.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Bind this prompt."
+    )
   )
   expect_null(completion$error)
   claim <- tempest:::tempest_session_agent_completion_claim(
@@ -419,7 +430,9 @@ test_that("agent-derived evidence rejects missing and forged claims", {
     class = "tempest_session_async_work_error"
   )
   expect_identical(
-    tempest:::tempest_research_workspace_snapshot(session$workspace),
+    tempest:::tempest_research_workspace_snapshot(tempest:::tempest_session_workspace(
+      session
+    )),
     workspace_before
   )
   expect_length(tempest:::tempest_session_stage_records(session), 0L)
@@ -478,16 +491,20 @@ test_that("stale provider turns cannot splice evidence into a completion", {
     experts = list(test_expert(expert_id = "expert.provider-freshness"))
   )
   workspace_before <- tempest:::tempest_research_workspace_snapshot(
-    session$workspace
+    tempest:::tempest_session_workspace(session)
   )
 
   result <- await_tempest_promise(
-    session$request_completion_async("Give a fresh answer.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Give a fresh answer."
+    )
   )
 
   expect_s3_class(result$error, "tempest_agent_completion_binding_error")
   expect_identical(
-    tempest:::tempest_research_workspace_snapshot(session$workspace),
+    tempest:::tempest_research_workspace_snapshot(tempest:::tempest_session_workspace(
+      session
+    )),
     workspace_before
   )
   expect_length(tempest:::tempest_session_stage_records(session), 0L)
@@ -539,7 +556,7 @@ test_that("post-turn processing owns sequencing and returns typed results", {
       events[[length(events) + 1L]] <<- event
     }
   )
-  session$workspace$upsert_retrieved_resource(source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(
       session,
@@ -553,7 +570,9 @@ test_that("post-turn processing owns sequencing and returns typed results", {
         state = "consumed"
       )
       evidence_correlation <<- checked$deputy_execution$correlation_id
-      session$workspace$add_proposed_claim(tempest_claim(
+      tempest:::tempest_session_workspace(
+        session
+      )$add_proposed_claim(tempest_claim(
         claim_text = "A cited answer",
         source_ids = source_id
       ))
@@ -593,7 +612,7 @@ test_that("post-turn processing owns sequencing and returns typed results", {
   )
 
   completion <- await_tempest_promise(
-    session$request_completion_async("What is known?")
+    session$.__enclos_env__$private$request_completion_async("What is known?")
   )
   expect_null(completion$error)
   request <- tempest_session_process_turn_async(
@@ -635,10 +654,10 @@ test_that("post-turn processing owns sequencing and returns typed results", {
   expect_equal(
     vapply(
       Filter(
-        \(event) identical(event@correlation_id, settled$value@turn_id),
+        \(event) identical(event$correlation_id, settled$value@turn_id),
         events
       ),
-      \(event) event@status,
+      \(event) event$status,
       character(1)
     ),
     c("started", "succeeded", "succeeded", "succeeded")
@@ -676,10 +695,13 @@ test_that("post-turn rejects a completion owned by another session", {
     ))
   )
   completion <- await_tempest_promise(
-    source_session$request_completion_async("What is known?")
+    tempest:::tempest_session_request_completion_async(
+      source_session,
+      "What is known?"
+    )
   )
   evidence_calls <- 0L
-  event_count <- length(session$events)
+  event_count <- length(tempest:::tempest_session_events(session))
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
       evidence_calls <<- evidence_calls + 1L
@@ -696,7 +718,7 @@ test_that("post-turn rejects a completion owned by another session", {
     class = "tempest_agent_completion_binding_error"
   )
   expect_length(session$transcript, 0L)
-  expect_length(session$events, event_count)
+  expect_length(tempest:::tempest_session_events(session), event_count)
   expect_identical(evidence_calls, 0L)
 })
 
@@ -741,7 +763,7 @@ test_that("post-turn processing exposes evidence gaps without UI callbacks", {
   )
 
   completion <- await_tempest_promise(
-    session$request_completion_async("What is known?")
+    session$.__enclos_env__$private$request_completion_async("What is known?")
   )
   expect_null(completion$error)
   request <- tempest_session_process_turn_async(
@@ -798,7 +820,7 @@ test_that("post-turn enrichment failures are typed and best effort", {
   )
 
   completion <- await_tempest_promise(
-    session$request_completion_async("Continue?")
+    session$.__enclos_env__$private$request_completion_async("Continue?")
   )
   expect_null(completion$error)
   request <- tempest_session_process_turn_async(
@@ -875,7 +897,9 @@ test_that("stale post-turn work cannot run later enrichment stages", {
   )
 
   completion <- await_tempest_promise(
-    session$request_completion_async("Will this be stale?")
+    session$.__enclos_env__$private$request_completion_async(
+      "Will this be stale?"
+    )
   )
   expect_null(completion$error)
   request <- tempest_session_process_turn_async(
@@ -970,7 +994,7 @@ test_that("synchronous post-turn setup failures return typed notices", {
       ))
     )
     completion <- await_tempest_promise(
-      session$request_completion_async("Continue?")
+      session$.__enclos_env__$private$request_completion_async("Continue?")
     )
     expect_null(completion$error)
     settled <- await_tempest_promise(tempest_session_process_turn_async(
@@ -1085,7 +1109,9 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     config = config,
     experts = list(test_expert(expert_id = "expert.default-report"))
   )
-  session$workspace$upsert_retrieved_resource(tempest_resource(
+  tempest:::tempest_session_workspace(
+    session
+  )$upsert_retrieved_resource(tempest_resource(
     resource_kind = "web.page",
     locator = "https://example.org/default-report",
     title = "Default report evidence",
@@ -1095,7 +1121,9 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     retrieved_at = "2026-08-18T12:00:00Z"
   ))
   completion <- await_tempest_promise(
-    session$request_completion_async("What does the captured evidence show?")
+    session$.__enclos_env__$private$request_completion_async(
+      "What does the captured evidence show?"
+    )
   )
   expect_null(completion$error)
   evidence <- await_tempest_promise(
@@ -1107,7 +1135,10 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
   )
   expect_null(evidence$error)
   expect_identical(evidence$value@claims_added, 1L)
-  expect_length(session$workspace$list_claim_supports(), 0L)
+  expect_length(
+    tempest:::tempest_session_workspace(session)$list_claim_supports(),
+    0L
+  )
 
   resolve_verification <- NULL
   verification_attempt <- 0L
@@ -1145,13 +1176,18 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     failed_publication$error,
     "tempest_session_error"
   )
-  expect_identical(session$manifest@status, "running")
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "running"
+  )
   expect_null(tempest:::tempest_session_report_value(session))
   expect_identical(
-    tempest:::tempest_research_workspace_mutation_state(session$workspace),
+    tempest:::tempest_research_workspace_mutation_state(tempest:::tempest_session_workspace(
+      session
+    )),
     "open"
   )
-  title_before <- session$title
+  title_before <- tempest:::tempest_session_title(session)
   transcript_before <- session$transcript
   mindmap_before <- session$mindmap
   experts_before <- session$experts
@@ -1165,14 +1201,12 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     retrieved_at = "2026-08-18T12:01:00Z"
   )
   mutation_errors <- list()
-  progress_callback <- function(event) {
-    event_data <- tempest_progress_event_data(event)
+  progress_callback <- function(event_data) {
     if (
       identical(event_data$stage, "report") &&
         identical(event_data$status, "started")
     ) {
       probes <- list(
-        title = function() session$title <- "Injected title",
         transcript = function() {
           session$transcript[[2L]]$text <- "Injected assistant text"
         },
@@ -1180,10 +1214,10 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
           session$mindmap$nodes[[1L]]$label <- "Injected map"
         },
         experts = function() session$experts <- list(),
-        events = function() session$events <- list(),
-        progress = function() session$progress <- NULL,
         workspace = function() {
-          session$workspace$upsert_retrieved_resource(injected)
+          tempest:::tempest_session_workspace(
+            session
+          )$upsert_retrieved_resource(injected)
         }
       )
       mutation_errors <<- lapply(probes, function(probe) {
@@ -1208,7 +1242,9 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
   }
   expect_identical(is.function(resolve_verification), TRUE)
   expect_error(
-    session$request_completion_async("Overlapping moderator request."),
+    session$.__enclos_env__$private$request_completion_async(
+      "Overlapping moderator request."
+    ),
     class = "tempest_session_async_work_error"
   )
   expect_error(
@@ -1249,23 +1285,19 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     "\n## References cannot replace the report boundary.",
     fixed = TRUE
   )
-  expect_identical(session$manifest@status, "succeeded")
-  expect_identical(tempest_session_report_md(session), publication$value)
-  expect_identical(session$title, title_before)
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "succeeded"
+  )
+  expect_identical(tempest_report(session), publication$value)
+  expect_identical(tempest:::tempest_session_title(session), title_before)
   expect_identical(session$transcript, transcript_before)
   expect_identical(session$mindmap, mindmap_before)
   expect_identical(session$experts, experts_before)
-  expect_identical(session$progress, progress_callback)
-  expect_length(mutation_errors, 7L)
+  expect_true(is.function(tempest:::tempest_session_progress(session)))
+  expect_length(mutation_errors, 4L)
   expect_all_true(vapply(
-    mutation_errors[c(
-      "title",
-      "transcript",
-      "mindmap",
-      "experts",
-      "events",
-      "progress"
-    )],
+    mutation_errors[c("transcript", "mindmap", "experts")],
     inherits,
     logical(1),
     what = "tempest_session_error"
@@ -1275,10 +1307,14 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     "tempest_research_workspace_error"
   )
   expect_null(
-    session$workspace$get_retrieved_resource("source.workspace-injected")
+    tempest:::tempest_session_workspace(session)$get_retrieved_resource(
+      "source.workspace-injected"
+    )
   )
   expect_identical(
-    tempest:::tempest_research_workspace_mutation_state(session$workspace),
+    tempest:::tempest_research_workspace_mutation_state(tempest:::tempest_session_workspace(
+      session
+    )),
     "sealed"
   )
   expect_error(
@@ -1286,15 +1322,22 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     class = "tempest_session_error"
   )
   expect_error(
-    session$workspace$upsert_retrieved_resource(injected),
+    tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(
+      injected
+    ),
     class = "tempest_research_workspace_error"
   )
   snapshot <- tempest_session_snapshot(session)
   restored <- tempest_session_restore(snapshot, config = config)
-  expect_identical(restored$manifest@status, "succeeded")
+  expect_identical(
+    tempest:::tempest_session_manifest(restored)@status,
+    "succeeded"
+  )
   expect_identical(restored$transcript, transcript_before)
   expect_identical(
-    tempest:::tempest_research_workspace_mutation_state(restored$workspace),
+    tempest:::tempest_research_workspace_mutation_state(tempest:::tempest_session_workspace(
+      restored
+    )),
     "sealed"
   )
   expect_error(
@@ -1302,10 +1345,15 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     class = "tempest_session_error"
   )
   expect_error(
-    restored$workspace$upsert_retrieved_resource(injected),
+    tempest:::tempest_session_workspace(restored)$upsert_retrieved_resource(
+      injected
+    ),
     class = "tempest_research_workspace_error"
   )
-  expect_length(session$workspace$list_claim_supports(), 1L)
+  expect_length(
+    tempest:::tempest_session_workspace(session)$list_claim_supports(),
+    1L
+  )
   verification <- Filter(
     \(record) identical(record@stage, "verify_claim_support"),
     tempest:::tempest_session_stage_records(session)
@@ -1327,7 +1375,7 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
     session
   ))
   expect_error(
-    session$add_turn("User", "user", "Try to resume."),
+    session$.__enclos_env__$private$add_turn("User", "user", "Try to resume."),
     class = "tempest_session_error"
   )
   report_spans <- Filter(
@@ -1412,7 +1460,7 @@ test_that("turn and report spans include claim and publication-lock failures", {
     message = "publication lock failed"
   )
   state_before <- tempest:::tempest_research_workspace_mutation_state(
-    report_session$workspace
+    tempest:::tempest_session_workspace(report_session)
   )
   local_mocked_bindings(
     tempest_research_workspace_publication_lock = function(...) stop(original)
@@ -1433,7 +1481,7 @@ test_that("turn and report spans include claim and publication-lock failures", {
   expect_identical(report_span$end_count, 1L)
   expect_identical(
     tempest:::tempest_research_workspace_mutation_state(
-      report_session$workspace
+      tempest:::tempest_session_workspace(report_session)
     ),
     state_before
   )
@@ -1472,12 +1520,12 @@ test_that("queued turns are claimed by completion ID instead of latest run", {
     ))
   )
   first <- await_tempest_promise(
-    session$request_completion_async(
+    session$.__enclos_env__$private$request_completion_async(
       enc2utf8("First queued prompt — naïve.")
     )
   )
   second <- await_tempest_promise(
-    session$request_completion_async(
+    session$.__enclos_env__$private$request_completion_async(
       enc2utf8("Second queued prompt — résumé.")
     )
   )
@@ -1651,7 +1699,9 @@ test_that("turn processing preserves the original consume failure", {
     ))
   )
   completion <- await_tempest_promise(
-    session$request_completion_async("Keep the original failure.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Keep the original failure."
+    )
   )
   expect_null(completion$error)
   local_mocked_bindings(
@@ -1763,13 +1813,17 @@ test_that("stale work cancels before mutation and later failure stays consumed",
     ))
   )
   discarded <- await_tempest_promise(
-    session$request_completion_async("Discard this prompt.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Discard this prompt."
+    )
   )
   committed <- await_tempest_promise(
-    session$request_completion_async("Commit this prompt.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Commit this prompt."
+    )
   )
   transcript_count <- length(session$transcript)
-  event_count <- length(session$events)
+  event_count <- length(tempest:::tempest_session_events(session))
 
   stale <- await_tempest_promise(tempest_session_process_turn_async(
     session,
@@ -1790,7 +1844,7 @@ test_that("stale work cancels before mutation and later failure stays consumed",
     "cancelled"
   )
   expect_length(session$transcript, transcript_count)
-  expect_length(session$events, event_count)
+  expect_length(tempest:::tempest_session_events(session), event_count)
 
   local_mocked_bindings(
     tempest_session_commit_evidence_async = function(...) {
@@ -1862,7 +1916,7 @@ test_that("progress callback failure keeps the consumed dialogue coherent", {
     ))
   )
   completion <- await_tempest_promise(
-    session$request_completion_async("Atomic prompt.")
+    session$.__enclos_env__$private$request_completion_async("Atomic prompt.")
   )
   expect_null(completion$error)
   tempest:::tempest_session_set_progress(session, function(event) {

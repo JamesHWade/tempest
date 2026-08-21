@@ -297,8 +297,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     config = cfg,
     experts = list(expert),
     retriever = tempest_retriever(config = cfg, workspace = workspace),
-    session_id = "stage-record-binding",
-    program_set = program_set
+    session_id = "stage-record-binding"
   )
   expert_session <- tempest:::tempest_session_expert_manager(
     session
@@ -306,7 +305,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     expert@expert_id
   )
   run_context <- tempest:::tempest_deputy_run_context(
-    session$manifest,
+    tempest:::tempest_session_manifest(session),
     stage = "dialogue",
     role = "expert",
     expert_id = expert@expert_id
@@ -348,7 +347,9 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     }
   )
   verification_records <- tempest:::tempest_session_stage_records(session)
-  reference <- session$manifest@programs$extract_claims
+  reference <- tempest:::tempest_session_manifest(
+    session
+  )@programs$extract_claims
   started <- tempest:::tempest_stage_record_start(
     "extract_claims",
     reference$program_artifact_id,
@@ -385,7 +386,9 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     support_status = "unknown",
     completed_at = "2026-08-16T00:01:00Z"
   )
-  support_reference <- session$manifest@programs$verify_claim_support
+  support_reference <- tempest:::tempest_session_manifest(
+    session
+  )@programs$verify_claim_support
   empty_support_attempt <- tempest:::tempest_stage_record_start(
     "verify_claim_support",
     support_reference$program_artifact_id,

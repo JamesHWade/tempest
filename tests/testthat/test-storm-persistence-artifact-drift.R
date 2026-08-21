@@ -54,7 +54,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       )),
       verified_at = "2026-08-16T00:00:00Z"
     )
-    report_md <- tempest_report_md(
+    report_md <- tempest:::tempest_report_md_render(
       title = "Durable state",
       body = paste0(
         "Durable evidence supports the durable claim. [",

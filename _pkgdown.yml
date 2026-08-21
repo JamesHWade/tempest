@@ -19,7 +19,7 @@ reference:
   - tempest_session_process_turn_async
   - tempest_session_warmup_async
   - SimulatedUser
-  - run_app
+  - tempest_app
 - title: Product evaluation
   desc: Review completed trajectories and evaluate exact research products.
   contents:
@@ -48,8 +48,7 @@ reference:
   - tempest_resource
   - tempest_verify_claims
   - tempest_validation_result
-  - tempest_report_md
-  - tempest_session_report_md
+  - tempest_report
 - title: Scientific experts
   contents:
   - tempest_expert
@@ -76,13 +75,12 @@ reference:
   - tempest_progress_replay
   - tempest_progress_state
   - tempest_progress_labels
-- title: Governed programs
+- title: Accepted knowledge and governed programs
   contents:
-  - tempest_program_set
+  - tempest_knowledge
   - tempest_compile_programs
   - tempest_save_program_set
   - tempest_load_program_set
-  - tempest_governed_procedure_ref
 - title: Graft review and promotion
   contents:
   - tempest_graft_schema

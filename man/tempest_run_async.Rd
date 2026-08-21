@@ -11,7 +11,8 @@ tempest_run_async(..., knowledge_view = NULL)
 details on available parameters including \code{topic}, \code{config}, \code{retriever},
 \code{n_experts}, \code{research_strategy}, \code{max_rounds}, \code{steps}, and \code{verbose}.}
 
-\item{knowledge_view}{A live pinned Graft view cannot cross the asynchronous
+\item{knowledge_view}{Accepted knowledge and a live pinned Graft view cannot
+cross the asynchronous
 worker boundary. Governed runs must use \code{\link[=tempest_run]{tempest_run()}} in the process that
 owns the view.}
 }

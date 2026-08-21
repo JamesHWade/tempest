@@ -76,8 +76,9 @@ test_promotion_storm_fixture <- function() {
     )
   )
   tempest:::tempest_research_workspace_seal(completed$workspace)
-  research <- list(
+  research <- tempest:::tempest_product_result(
     title = completed$state$title,
+    topic = completed$state$title,
     perspectives = completed$state$perspectives,
     experts = completed$state$experts,
     outline = completed$state$outline,
@@ -111,7 +112,7 @@ test_promotion_storm_fixture <- function() {
 
 test_promotion_costorm_fixture <- function() {
   config <- tempest_config(chat_fn = function(...) fake_chat())
-  session <- tempest_session(
+  session <- tempest:::tempest_session_new(
     "CoSTORM promotion evidence",
     config = config,
     experts = list(tempest_expert(
@@ -136,14 +137,18 @@ test_promotion_costorm_fixture <- function() {
     "]."
   )
   report_md <- test_persistence_commit_costorm_report(session, report_md)
-  support <- session$workspace$list_claim_supports()[[1L]]
+  support <- tempest:::tempest_session_workspace(
+    session
+  )$list_claim_supports()[[1L]]
   list(
     research = session,
-    workspace = session$workspace,
-    manifest = session$manifest,
+    workspace = tempest:::tempest_session_workspace(session),
+    manifest = tempest:::tempest_session_manifest(session),
     stage_records = tempest:::tempest_session_stage_records(session),
-    experts = session$get_active_experts(),
-    claim = session$workspace$get_proposed_claim(evidence$claim@claim_id),
+    experts = tempest:::tempest_session_active_experts(session),
+    claim = tempest:::tempest_session_workspace(session)$get_proposed_claim(
+      evidence$claim@claim_id
+    ),
     span = evidence$span,
     resource = evidence$source,
     support = support,

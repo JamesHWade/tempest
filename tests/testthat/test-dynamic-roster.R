@@ -39,9 +39,9 @@ test_that("TempestSession get_active_experts filters retired profiles", {
   )
   session <- tempest_session("Test topic", config = cfg, experts = experts)
 
-  expect_length(session$get_active_experts(), 3)
+  expect_length(tempest:::tempest_session_active_experts(session), 3)
   session$retire_expert(bob@expert_id)
-  active <- session$get_active_experts()
+  active <- tempest:::tempest_session_active_experts(session)
 
   expect_length(active, 2)
   expect_setequal(
@@ -109,10 +109,14 @@ test_that("transcript_markdown returns the most recent turns", {
     ))
   )
   for (i in seq_len(5)) {
-    ses$add_turn(paste0("User ", i), "user", paste("turn", i))
+    ses$.__enclos_env__$private$add_turn(
+      paste0("User ", i),
+      "user",
+      paste("turn", i)
+    )
   }
 
-  md <- ses$transcript_markdown(max_turns = 2)
+  md <- ses$.__enclos_env__$private$transcript_markdown(max_turns = 2)
 
   expect_match(md, "turn 4")
   expect_match(md, "turn 5")
@@ -181,7 +185,9 @@ test_that("dynamic personas append one exact stage attempt", {
   expect_identical(records[[1]]@status, "succeeded")
   expect_identical(
     records[[1]]@program_artifact_id,
-    session$manifest@programs$personas$program_artifact_id
+    tempest:::tempest_session_manifest(
+      session
+    )@programs$personas$program_artifact_id
   )
   expect_identical(
     records[[1]]@output_reference$content_digest,

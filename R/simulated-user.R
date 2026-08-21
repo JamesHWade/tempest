@@ -107,8 +107,11 @@ SimulatedUser <- R6::R6Class(
       }
 
       while (self$turn_count < self$max_turns) {
-        transcript_md <- session$transcript_markdown(max_turns = 30)
-        mindmap_md <- session$mindmap_markdown()
+        transcript_md <- tempest_session_transcript_markdown(
+          session,
+          max_turns = 30
+        )
+        mindmap_md <- tempest_session_mindmap_markdown(session)
 
         question <- self$generate_question(transcript_md, mindmap_md)
         if (is.null(question)) {
@@ -127,8 +130,12 @@ SimulatedUser <- R6::R6Class(
       }
 
       if (verbose) {
-        total_facts <- length(session$workspace$list_proposed_claims())
-        total_sources <- length(session$workspace$list_retrieved_sources())
+        total_facts <- length(tempest_session_workspace(
+          session
+        )$list_proposed_claims())
+        total_sources <- length(tempest_session_workspace(
+          session
+        )$list_retrieved_sources())
         tempest_inform(
           "SimulatedUser: {self$turn_count} turns, {total_facts} facts, {total_sources} sources"
         )

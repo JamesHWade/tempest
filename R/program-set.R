@@ -664,11 +664,11 @@ tempest_program_set_write_bundle <- function(
 #'   and `evaluator_version`. These identify how stage output is judged and are
 #'   distinct from an optimization teleprompter or metric.
 #' @param governed_procedure_refs Optional named list of typed
-#'   [tempest_governed_procedure_ref()] values by stage.
+#'   `tempest_governed_procedure_ref()` values by stage.
 #' @param registry Named runtime-binding registry passed to dsprrr artifact
 #'   operations. It is never stored in ProgramSet metadata.
 #' @return A validated `TempestProgramSet` S7 object.
-#' @export
+#' @keywords internal
 tempest_program_set <- function(
   programs = NULL,
   path = NULL,

@@ -2,7 +2,7 @@ test_that("fresh governed workflows require a live pinned view", {
   program_set <- test_governed_program_set()
 
   expect_error(
-    tempest_run(
+    tempest:::tempest_run_internal(
       "Governed STORM",
       program_set = program_set,
       steps = "perspectives",
@@ -12,7 +12,7 @@ test_that("fresh governed workflows require a live pinned view", {
     regexp = "requires its exact pinned"
   )
   expect_error(
-    tempest_session(
+    tempest:::tempest_session_new(
       "Governed Co-STORM",
       experts = list(test_expert()),
       program_set = program_set
@@ -43,7 +43,7 @@ test_that("a supplied view defines new workspace snapshot authority", {
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  session <- tempest_session(
+  session <- tempest:::tempest_session_new(
     "Pinned Co-STORM",
     config = config,
     experts = list(test_expert()),
@@ -55,12 +55,16 @@ test_that("a supplied view defines new workspace snapshot authority", {
     fixture$view
   )
   expect_identical(
-    tempest:::tempest_snapshot_reference(session$workspace$graft_snapshot),
+    tempest:::tempest_snapshot_reference(
+      tempest:::tempest_session_workspace(session)$graft_snapshot
+    ),
     tempest:::tempest_snapshot_reference(fixture$snapshot)
   )
   expect_identical(
     test_contains_runtime_value(
-      tempest_research_manifest_record(session$manifest)
+      tempest_research_manifest_record(tempest:::tempest_session_manifest(
+        session
+      ))
     ),
     FALSE
   )
@@ -89,7 +93,7 @@ test_that("supplied retriever workspaces must match the exact view", {
   )
 
   expect_error(
-    tempest_session(
+    tempest:::tempest_session_new(
       "Mismatched Co-STORM",
       config = config,
       retriever = retriever,
@@ -163,7 +167,7 @@ test_that("restored governed sessions stay inspectable without a live view", {
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  session <- tempest_session(
+  session <- tempest:::tempest_session_new(
     "Restored governed Co-STORM",
     config = config,
     experts = list(test_expert()),
@@ -173,7 +177,7 @@ test_that("restored governed sessions stay inspectable without a live view", {
   snapshot <- tempest_session_snapshot(session)
   restored <- tempest_session_restore(
     snapshot,
-    config = session$config,
+    config = tempest:::tempest_session_config(session),
     program_set = program_set,
     knowledge_view = NULL
   )

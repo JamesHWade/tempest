@@ -1,12 +1,12 @@
 test_that("product entry points have exact source owners", {
   context <- test_source_inventory_context()
   entry_points <- c(
-    run_app = "app.R",
+    tempest_app = "app.R",
     tempest_expert = "research-expert.R",
     tempest_run = "storm.R",
     tempest_session = "costorm.R",
-    tempest_report_md = "product-report.R",
-    tempest_session_report_md = "costorm-report.R",
+    tempest_report = "product-report.R",
+    tempest_knowledge = "knowledge.R",
     tempest_product_report_reference = "product-report.R",
     tempest_product_report_reference_validate = "product-report.R",
     tempest_task = "evals.R",
@@ -48,7 +48,7 @@ test_that("product entry points have exact source owners", {
       logical(1)
     )
     expected_formals <- list(
-      run_app = "...",
+      tempest_app = "...",
       tempest_expert = c(
         "name",
         "title",
@@ -61,14 +61,13 @@ test_that("product entry points have exact source owners", {
         "topic",
         "config",
         "retriever",
-        "knowledge_view",
+        "knowledge",
         "n_experts",
         "experts",
         "research_strategy",
         "max_rounds",
         "max_questions_per_perspective",
         "parallel_writing",
-        "program_set",
         "steps",
         "output_dir",
         "resume",
@@ -84,18 +83,14 @@ test_that("product entry points have exact source owners", {
         "retriever",
         "progress",
         "session_id",
-        "program_set",
-        "knowledge_view"
+        "knowledge"
       ),
-      tempest_report_md = c(
-        "title",
-        "body",
-        "workspace",
-        "citation_policy",
-        "on_unsupported_claim",
-        "min_support_score"
+      tempest_report = "x",
+      tempest_knowledge = c(
+        "graft_view",
+        "record_ids",
+        "governed_procedures"
       ),
-      tempest_session_report_md = "session",
       tempest_product_report_reference = "value",
       tempest_product_report_reference_validate = c("reference", "value"),
       tempest_task = c(

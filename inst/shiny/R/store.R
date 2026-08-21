@@ -43,14 +43,14 @@ new_session_store <- function() {
   costorm_report_candidate <- function(session) {
     if (
       !inherits(session, "TempestSession") ||
-        !identical(session$manifest@status, "succeeded")
+        !identical(tempest_session_manifest(session)@status, "succeeded")
     ) {
       stop("session must be a succeeded TempestSession.", call. = FALSE)
     }
     list(
-      report_md = tempest::tempest_session_report_md(session),
+      report_md = tempest::tempest_report(session),
       report_topic = session$topic,
-      report_workspace = session$workspace
+      report_workspace = tempest_session_workspace(session)
     )
   }
 
@@ -66,7 +66,8 @@ new_session_store <- function() {
       stop("session must be NULL or a TempestSession.", call. = FALSE)
     }
     candidate <- if (
-      !is.null(session) && identical(session$manifest@status, "succeeded")
+      !is.null(session) &&
+        identical(tempest_session_manifest(session)@status, "succeeded")
     ) {
       costorm_report_candidate(session)
     } else {
@@ -157,44 +158,38 @@ new_session_store <- function() {
   }
 
   publish_storm_report <- function(result, config) {
-    valid <- is.list(result) &&
-      inherits(result$workspace %||% NULL, "ResearchWorkspace") &&
-      S7::S7_inherits(
-        result$manifest %||% NULL,
-        tempest:::TempestResearchManifest
-      ) &&
-      identical(result$manifest@mode, "storm") &&
-      identical(result$manifest@status, "succeeded") &&
-      is.list(result$state) &&
-      is.list(result$state$stage_records) &&
-      is.character(result$report_md) &&
-      length(result$report_md) == 1L &&
-      !is.na(result$report_md)
+    valid <- tempest:::tempest_is_product_result(result) &&
+      identical(result@manifest@mode, "storm") &&
+      identical(result@manifest@status, "succeeded") &&
+      is.list(result@state$stage_records) &&
+      is.character(result@report_md) &&
+      length(result@report_md) == 1L &&
+      !is.na(result@report_md)
     if (!isTRUE(valid)) {
       stop("result must be a succeeded STORM product.", call. = FALSE)
     }
-    reference <- result$manifest@deliverables$report_md[
+    reference <- result@manifest@deliverables$report_md[
       c("report_id", "sha256")
     ]
     tempest:::tempest_product_report_reference_validate(
       reference,
-      result$report_md
+      result@report_md
     )
     tempest:::tempest_product_authority_validate(
-      manifest = result$manifest,
-      stage_records = result$state$stage_records,
-      workspace = result$workspace,
-      report_md = result$report_md,
+      manifest = result@manifest,
+      stage_records = result@state$stage_records,
+      workspace = result@workspace,
+      report_md = result@report_md,
       report_reference = reference,
       config = config,
-      experts = result$experts %||% list(),
-      product_state = result$state,
+      experts = result@experts,
+      product_state = result@state,
       require_publishable = TRUE
     )
     commit_report(list(
-      report_md = result$report_md,
-      report_topic = result$title,
-      report_workspace = result$workspace
+      report_md = result@report_md,
+      report_topic = result@title,
+      report_workspace = result@workspace
     ))
   }
 
@@ -209,7 +204,7 @@ new_session_store <- function() {
     costorm_workspace = shiny::reactive({
       rv$costorm_version
       session <- rv$costorm_session
-      if (is.null(session)) NULL else session$workspace
+      if (is.null(session)) NULL else tempest_session_workspace(session)
     }),
     set_costorm_session = set_costorm_session,
     touch_costorm_session = function() {

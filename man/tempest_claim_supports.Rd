@@ -4,14 +4,18 @@
 \alias{tempest_claim_supports}
 \title{List explicit claim-support assessments}
 \usage{
-tempest_claim_supports(workspace)
+tempest_claim_supports(x)
 }
 \arguments{
-\item{workspace}{A \link{ResearchWorkspace} or \code{TempestSession}.}
+\item{x}{A completed \code{\link[=tempest_run]{tempest_run()}} product or a \code{TempestSession}.}
 }
 \value{
 A tibble with one row per exact claim-by-evidence-span judgment.
 }
 \description{
-List explicit claim-support assessments
+Returns the complete joined proof table rather than foreign keys alone. Each
+row carries the support identity and judgment, the claim identity and text,
+the exact evidence-span identity with its quote, offsets, page, and section,
+and the source identity. Pair it with \code{\link[=tempest_sources]{tempest_sources()}} for the
+corresponding source metadata and locator.
 }

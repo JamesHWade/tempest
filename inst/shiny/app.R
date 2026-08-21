@@ -1,7 +1,7 @@
 # tempest — STORM / Co-STORM research assistant.
 #
 # This entry point wires together the modules defined in R/ (auto-sourced by
-# Shiny). The tempest namespace is loaded by run_app() (or devtools::load_all()
+# Shiny). The tempest namespace is loaded by tempest_app() (or devtools::load_all()
 # in development), so tempest functions are reached with the tempest:: prefix.
 
 library(shiny)

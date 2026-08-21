@@ -114,6 +114,8 @@ Collate:
     'stage-record.R'
     'otel.R'
     'product-report.R'
+    'product-result.R'
+    'knowledge.R'
     'storm-state.R'
     'product-authority.R'
     'costorm-report.R'

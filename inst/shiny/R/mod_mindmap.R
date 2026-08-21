@@ -96,11 +96,21 @@ mod_mindmap_server <- function(id, store) {
     output$n_nodes <- shiny::renderText(length(mindmap()$nodes %||% list()))
     output$n_sources <- shiny::renderText({
       ses <- store$costorm_session()
-      if (is.null(ses)) 0L else length(ses$workspace$list_retrieved_sources())
+      if (is.null(ses)) {
+        0L
+      } else {
+        length(tempest:::tempest_session_workspace(
+          ses
+        )$list_retrieved_sources())
+      }
     })
     output$n_facts <- shiny::renderText({
       ses <- store$costorm_session()
-      if (is.null(ses)) 0L else length(ses$workspace$list_proposed_claims())
+      if (is.null(ses)) {
+        0L
+      } else {
+        length(tempest:::tempest_session_workspace(ses)$list_proposed_claims())
+      }
     })
     output$n_turns <- shiny::renderText({
       ses <- store$costorm_session()
@@ -152,7 +162,10 @@ mod_mindmap_server <- function(id, store) {
       if (is.null(ses)) {
         return(shiny::p("Start a session to see the mind map."))
       }
-      mindmap_accessible_tree(ses$mindmap, workspace = ses$workspace)
+      mindmap_accessible_tree(
+        ses$mindmap,
+        workspace = tempest:::tempest_session_workspace(ses)
+      )
     })
 
     if (has_pkg("visNetwork")) {
@@ -180,7 +193,7 @@ mod_mindmap_server <- function(id, store) {
         if (is.null(ses)) {
           return("Start a session to see the mind map.")
         }
-        ses$mindmap_markdown()
+        tempest:::tempest_session_mindmap_markdown(ses)
       })
     }
   })

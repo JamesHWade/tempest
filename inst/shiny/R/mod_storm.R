@@ -362,7 +362,7 @@ mod_storm_server <- function(id, config, store) {
       if (is.null(result)) {
         return(NULL)
       }
-      chars <- nchar(result$report_md %||% "")
+      chars <- nchar(result@report_md %||% "")
       shiny::div(
         class = "alert alert-success mt-3",
         role = "status",
@@ -756,7 +756,7 @@ storm_task_envelope <- function(value) {
 
 storm_result_run_id <- function(result) {
   run_id <- tryCatch(
-    result$manifest@research_run_id,
+    result@manifest@research_run_id,
     error = function(error) NULL
   )
   if (!is.character(run_id) || length(run_id) != 1L || is.na(run_id)) {

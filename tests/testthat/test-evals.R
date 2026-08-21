@@ -95,14 +95,14 @@ test_that("retired report and lightweight evaluation prompts are absent", {
 test_that("default STORM solver returns an authoritative product report", {
   skip_if_not_installed("ellmer")
   fixture <- storm_product_baseline_fixture()
-  config <- rlang::duplicate(fixture$result$retriever$config, shallow = FALSE)
+  config <- rlang::duplicate(fixture$result@retriever$config, shallow = FALSE)
   config@chat_fn <- function(role, model, system_prompt, echo) fake_chat()
   calls <- list()
   local_mocked_bindings(
     tempest_eval_dataset = function(...) {
       tibble::tibble(input = "Question one", target = "Answer one")
     },
-    tempest_run = function(...) {
+    tempest_run_internal = function(...) {
       calls[[length(calls) + 1L]] <<- list(...)
       fixture$result
     }
@@ -124,7 +124,7 @@ test_that("default STORM solver returns an authoritative product report", {
   expect_identical(calls[[1L]]$n_experts, 1L)
   expect_identical(calls[[1L]]$program_set, program_set)
   expect_identical(calls[[1L]]$knowledge_view, knowledge_view)
-  expect_identical(solved$result, fixture$result$report_md)
+  expect_identical(solved$result, fixture$result@report_md)
   expect_s3_class(solved$solver_chat[[1L]], "Chat")
   expect_named(
     solved$solver_metadata[[1]],
@@ -139,7 +139,7 @@ test_that("default STORM solver returns an authoritative product report", {
   )
   expect_identical(
     solved$solver_metadata[[1L]]$product$report_reference,
-    fixture$result$manifest@deliverables$report_md[
+    fixture$result@manifest@deliverables$report_md[
       c("report_id", "sha256")
     ]
   )
@@ -225,9 +225,9 @@ test_that("default STORM solver returns an authoritative product report", {
   expect_error(
     tempest:::tempest_evaluation_product_metadata(
       research = fixture$result,
-      manifest = fixture$result$manifest,
-      report_md = fixture$result$report_md,
-      stage_records = fixture$result$state$stage_records[-1L],
+      manifest = fixture$result@manifest,
+      report_md = fixture$result@report_md,
+      stage_records = fixture$result@state$stage_records[-1L],
       mode = "storm",
       dataset = dataset$metadata
     ),
@@ -243,7 +243,7 @@ test_that("default STORM solver returns an authoritative product report", {
   expect_identical(nrow(task$get_samples()), 1L)
   expect_identical(
     task$get_samples()$result,
-    fixture$result$report_md
+    fixture$result@report_md
   )
   expect_contains(names(task$get_samples()), "solver_metadata")
   expect_identical(
