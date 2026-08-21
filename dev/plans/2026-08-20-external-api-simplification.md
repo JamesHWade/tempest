@@ -2,7 +2,7 @@
 
 Tracking issue: kata `pjsd`
 
-Status: PR A verified; PR B pending
+Status: PR B verified; PR C pending
 
 Audit basis: Tempest `main` commit
 `21e1794fa9695f383c4b31d413d2c40b58a15ac7` on 2026-08-20
@@ -607,14 +607,14 @@ invalid; Deputy correlation remains exact; no stored product shape changes.
 
 ### PR B — Use one typed evidence representation
 
-- [ ] Make every search, fetch, tool, and restore producer construct a
+- [x] Make every search, fetch, tool, and restore producer construct a
   `TempestResource` directly.
-- [ ] Make workspace insertion and identity strict.
-- [ ] Delete the legacy source constructor, validator, conversion adapter, and
+- [x] Make workspace insertion and identity strict.
+- [x] Delete the legacy source constructor, validator, conversion adapter, and
   dual-input branches.
-- [ ] Keep only intentional source-shaped read projections used by retained
+- [x] Keep only intentional source-shaped read projections used by retained
   product accessors and presentation.
-- [ ] Update focused retrieval, workspace, citation, report, Shiny, and
+- [x] Update focused retrieval, workspace, citation, report, Shiny, and
   persistence tests.
 
 Gate: the current workspace format still stores typed resources; every product

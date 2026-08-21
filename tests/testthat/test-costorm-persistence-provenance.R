@@ -12,11 +12,11 @@ test_that("sync and async warmups persist authoritative claim provenance", {
       "https://example.org/persisted-warmup-",
       mode
     ))
-    answer <- paste0("Warmup evidence is durable [", source$id, "].")
+    answer <- paste0("Warmup evidence is durable [", source@resource_id, "].")
     extraction <- list(
       facts = list(list(
         claim = "Warmup evidence is durable.",
-        sources = list(list(source_id = source$id)),
+        sources = list(list(source_id = source@resource_id)),
         confidence = "high"
       ))
     )
@@ -34,7 +34,7 @@ test_that("sync and async warmups persist authoritative claim provenance", {
           label = "Warmup evidence",
           parent = "root",
           notes = "Durable evidence",
-          source_ids = source$id
+          source_ids = source@resource_id
         )
       ),
       edges = list()
@@ -142,8 +142,8 @@ test_that("public session verification persists pair support and source proof", 
     facts = list(list(
       claim = "Session verification commits durable proof",
       sources = list(list(
-        source_id = source$id,
-        quote = source$content_text
+        source_id = source@resource_id,
+        quote = source@content
       )),
       confidence = "high"
     ))
@@ -158,7 +158,7 @@ test_that("public session verification persists pair support and source proof", 
         return(fake_chat(
           text = list(paste0(
             "Session verification commits durable proof [",
-            source$id,
+            source@resource_id,
             "]."
           ))
         ))
@@ -207,7 +207,7 @@ test_that("public session verification persists pair support and source proof", 
     title = session$title,
     body = paste0(
       "Session verification commits durable proof [",
-      source$id,
+      source@resource_id,
       "]."
     ),
     workspace = session$workspace,
@@ -281,16 +281,16 @@ test_that("public session verification persists pair support and source proof", 
   standalone <- tempest_research_workspace()
   standalone$upsert_retrieved_resource(source)
   standalone_span_id <- standalone$add_evidence_span(tempest_evidence_span(
-    source_id = source$id,
-    quote = source$content_text,
+    source_id = source@resource_id,
+    quote = source@content,
     evidence_span_id = "span.standalone-verification"
   ))
   standalone$add_proposed_claim(tempest_claim(
     claim_id = "claim.standalone-verification",
     claim_text = "Discarded records cannot become session proof.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = standalone_span_id,
-    supporting_quotes = list(source$content_text)
+    supporting_quotes = list(source@content)
   ))
   standalone_judge <- fake_chat(
     structured = list(list(

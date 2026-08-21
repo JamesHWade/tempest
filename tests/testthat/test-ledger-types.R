@@ -45,40 +45,47 @@ test_that("tempest_evidence_span and tempest_dispute construct", {
   )
 })
 
-test_that("tempest_source creates the canonical source record", {
-  source <- tempest_source(url = "https://example.org", title = "Ex")
-  expect_match(source$id, "^S")
+test_that("tempest_resource creates canonical web evidence", {
+  resource <- fake_source(url = "https://example.org", title = "Ex")
+  source <- tempest:::tempest_resource_as_source(resource)
+
+  expect_s7_class(resource, tempest:::TempestResource)
+  expect_match(resource@resource_id, "^S")
+  expect_identical(source$id, resource@resource_id)
   expect_type(source$meta, "list")
-  expect_no_error(tempest:::tempest_validate_source(source))
 })
 
 test_that("source tibbles derive snippets and context text", {
   store <- test_research_workspace()
-  source <- tempest_source(
+  source <- fake_source(
     url = "https://example.org/context",
     title = "Context",
     content_text = "Full source body gives the table context."
   )
   store$upsert_retrieved_resource(source)
-  native <- tempest_source(
-    url = "https://example.org/native",
+  native <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/native",
     title = "Native",
-    meta = list(context_text = "Native citation context supports the answer.")
+    media_type = "text/html",
+    metadata = list(
+      context_text = "Native citation context supports the answer."
+    )
   )
   store$upsert_retrieved_resource(native)
 
   sources <- tempest_sources(store)
   expect_contains(names(sources), c("snippet", "content_text", "context_text"))
   expect_equal(
-    sources$snippet[sources$id == source$id],
+    sources$snippet[sources$id == source@resource_id],
     "Full source body gives the table context."
   )
   expect_equal(
-    sources$context_text[sources$id == native$id],
+    sources$context_text[sources$id == native@resource_id],
     "Native citation context supports the answer."
   )
   expect_equal(
-    sources$snippet[sources$id == native$id],
+    sources$snippet[sources$id == native@resource_id],
     "Native citation context supports the answer."
   )
 })

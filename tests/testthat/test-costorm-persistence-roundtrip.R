@@ -10,7 +10,7 @@ test_that("Tempest session bundles save and resume durable state", {
             facts = list(list(
               claim = "Bundles preserve claims.",
               sources = list(list(
-                source_id = source$id,
+                source_id = source@resource_id,
                 quote = "Bundles preserve claims."
               )),
               confidence = "high"
@@ -22,7 +22,7 @@ test_that("Tempest session bundles save and resume durable state", {
         return(fake_chat(
           text = list(paste0(
             "Bundles preserve claims [",
-            source$id,
+            source@resource_id,
             "]."
           ))
         ))
@@ -31,8 +31,8 @@ test_that("Tempest session bundles save and resume durable state", {
     }
   )
   store <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    "https://example.com/session-bundle",
+  source <- fake_source(
+    url = "https://example.com/session-bundle",
     title = "Session Bundle Source",
     content_text = "Bundles preserve claims."
   )
@@ -81,7 +81,7 @@ test_that("Tempest session bundles save and resume durable state", {
   session$add_turn("User", "user", "Save this session.")
   report_md <- tempest_report_md(
     title = session$title,
-    body = paste0("Bundle report [", source$id, "]."),
+    body = paste0("Bundle report [", source@resource_id, "]."),
     workspace = store,
     citation_policy = cfg@citation_policy,
     on_unsupported_claim = cfg@on_unsupported_claim,

@@ -99,7 +99,9 @@ test_promotion_storm_fixture <- function() {
     stage_records = stage_records,
     claim = claim,
     span = span,
-    resource = completed$workspace$get_retrieved_resource(completed$source$id),
+    resource = completed$workspace$get_retrieved_resource(
+      completed$source@resource_id
+    ),
     support = support,
     programs = tempest:::tempest_program_set_manifest_programs(program_set),
     config = config

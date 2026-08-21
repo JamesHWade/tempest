@@ -849,7 +849,7 @@ TempestRetriever <- R6::R6Class(
     #' @param url The URL to fetch.
     #' @param force If TRUE, bypass cache.
     #' @param perspective Optional perspective name for ragnar metadata.
-    #' @return A source object.
+    #' @return A typed evidence resource.
     fetch = function(url, force = FALSE, perspective = NA_character_) {
       url <- tempest_normalize_url(url)
       if (is.na(url)) {
@@ -877,11 +877,84 @@ TempestRetriever <- R6::R6Class(
           )
           private$record_cache("fetch", cached$status)
           if (!is.null(cached$value)) {
+            cached_resource <- if (
+              is.list(cached$value) &&
+                !is.data.frame(cached$value) &&
+                identical(
+                  names(cached$value),
+                  tempest_resource_record_fields()
+                )
+            ) {
+              tryCatch(
+                tempest_resource_from_data(cached$value),
+                error = function(error) {
+                  tempest_abort(
+                    "Cached fetch resource data failed validation.",
+                    class = c(
+                      "tempest_retriever_cache_error",
+                      "tempest_retriever_error",
+                      "tempest_error"
+                    ),
+                    parent = error
+                  )
+                }
+              )
+            } else {
+              cached$value
+            }
+            if (
+              !tempest_is_exact_resource(cached_resource) ||
+                !identical(cached_resource@resource_kind, "web") ||
+                !identical(cached_resource@locator, url) ||
+                !identical(
+                  cached_resource@resource_id,
+                  tempest_source_id(url)
+                )
+            ) {
+              tempest_abort(
+                paste0(
+                  "Cached fetch values must be exact typed evidence ",
+                  "resources for the requested URL."
+                ),
+                class = c(
+                  "tempest_retriever_cache_error",
+                  "tempest_retriever_error",
+                  "tempest_error"
+                )
+              )
+            }
+            tryCatch(
+              tempest_resource_data(cached_resource),
+              error = function(error) {
+                tempest_abort(
+                  "Cached fetch resource failed live validation.",
+                  class = c(
+                    "tempest_retriever_cache_error",
+                    "tempest_retriever_error",
+                    "tempest_error"
+                  ),
+                  parent = error
+                )
+              }
+            )
             otel_state$cache_hit <- TRUE
-            self$workspace$upsert_retrieved_resource(cached$value)
+            tryCatch(
+              self$workspace$upsert_retrieved_resource(cached_resource),
+              error = function(error) {
+                tempest_abort(
+                  "Cached fetch resource could not be admitted.",
+                  class = c(
+                    "tempest_retriever_cache_error",
+                    "tempest_retriever_error",
+                    "tempest_error"
+                  ),
+                  parent = error
+                )
+              }
+            )
             otel_state$result_count <- 1L
             otel_state$outcome <- "succeeded"
-            return(cached$value)
+            return(cached_resource)
           }
         } else {
           private$record_cache("fetch", "bypass")
@@ -896,27 +969,26 @@ TempestRetriever <- R6::R6Class(
         fetched_at <- tempest_now_utc()
 
         if (!is.null(res$error)) {
-          src <- tempest_source(
-            url = url,
-            title = NA_character_,
-            snippet = NA_character_,
-            content_text = NA_character_,
-            fetched_at = fetched_at,
-            content_hash = NA_character_,
-            meta = list(kind = res$kind, error = res$error)
+          resource <- tempest_resource(
+            resource_kind = "web",
+            locator = url,
+            title = url,
+            media_type = "text/html",
+            resource_id = tempest_source_id(url),
+            retrieved_at = fetched_at,
+            metadata = list(
+              kind = res$kind %||% "html",
+              error = res$error
+            )
           )
-          self$workspace$upsert_retrieved_resource(src)
+          self$workspace$upsert_retrieved_resource(resource)
           otel_state$result_count <- 0L
           otel_state$outcome <- "failed"
-          return(src)
+          return(resource)
         }
 
         txt <- res$text %||% NA_character_
-        txt_hash <- if (!is.na(txt) && nzchar(txt)) {
-          tempest_product_content_hash(txt, "text/html")
-        } else {
-          NA_character_
-        }
+        content <- if (!is.na(txt) && nzchar(txt)) txt else NULL
 
         # Use title from result if available (ragnar extracts from headings)
         # Otherwise fall back to first line
@@ -926,6 +998,9 @@ TempestRetriever <- R6::R6Class(
           title <- tempest_trim(first)
           if (nchar(title) > 120) title <- paste0(substr(title, 1, 117), "...")
         }
+        if (is.na(title) || !nzchar(title)) {
+          title <- url
+        }
 
         snippet <- if (!is.na(txt) && nzchar(txt)) {
           substr(txt, 1, 300)
@@ -933,24 +1008,36 @@ TempestRetriever <- R6::R6Class(
           NA_character_
         }
 
-        src <- tempest_source(
-          url = url,
+        metadata <- list(kind = res$kind %||% "html")
+        if (!is.na(snippet) && nzchar(snippet)) {
+          metadata$snippet <- snippet
+        }
+        resource <- tempest_resource(
+          resource_kind = "web",
+          locator = url,
           title = title,
-          snippet = snippet,
-          content_text = txt,
-          fetched_at = fetched_at,
-          content_hash = txt_hash,
-          meta = list(kind = res$kind, error = NULL)
+          media_type = "text/html",
+          resource_id = tempest_source_id(url),
+          content = content,
+          retrieved_at = fetched_at,
+          metadata = metadata
         )
-        self$workspace$upsert_retrieved_resource(src)
-        if (self$cache_enabled && tempest_cache_set(self$cache_dir, key, src)) {
+        self$workspace$upsert_retrieved_resource(resource)
+        if (
+          self$cache_enabled &&
+            tempest_cache_set(
+              self$cache_dir,
+              key,
+              tempest_resource_record(resource)
+            )
+        ) {
           private$record_cache("fetch", "write")
         }
 
         # Ingest into ragnar store if available
         if (!is.null(self$ragnar_store) && !is.na(txt) && nzchar(txt)) {
           self$ingest_to_ragnar(
-            source_id = src$id,
+            source_id = resource@resource_id,
             url = url,
             title = title,
             text = txt,
@@ -962,7 +1049,7 @@ TempestRetriever <- R6::R6Class(
 
         otel_state$result_count <- 1L
         otel_state$outcome <- "succeeded"
-        src
+        resource
       }
       tempest_otel_trace_retrieval(
         "retrieval.fetch",

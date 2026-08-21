@@ -91,29 +91,3 @@ test_that("TempestSession stores selected expert profiles", {
     "TempestDeputyExpertManager"
   )
 })
-
-
-test_that("merging source records tolerates empty and missing fields", {
-  old <- list(
-    title = "Old title",
-    snippet = "Old snippet",
-    content_text = "Old body",
-    fetched_at = "2026-01-01T00:00:00Z",
-    meta = list(kind = "old")
-  )
-  new <- list(
-    title = character(),
-    snippet = NA_character_,
-    content_text = "",
-    fetched_at = "2027-01-01T00:00:00Z",
-    meta = list(provider_tool = "native")
-  )
-
-  merged <- tempest:::tempest_merge_source_record(old, new)
-
-  expect_equal(merged$title, "Old title")
-  expect_equal(merged$snippet, "Old snippet")
-  expect_equal(merged$content_text, "Old body")
-  expect_equal(merged$fetched_at, "2027-01-01T00:00:00Z")
-  expect_equal(merged$meta, list(kind = "old", provider_tool = "native"))
-})

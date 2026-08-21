@@ -102,8 +102,8 @@ test_that("TempestSession snapshots restore durable session state", {
     "sealed"
   )
   expect_error(
-    restored$workspace$upsert_retrieved_resource(tempest:::tempest_source(
-      "https://example.com/injected-after-session-restore"
+    restored$workspace$upsert_retrieved_resource(fake_source(
+      url = "https://example.com/injected-after-session-restore"
     )),
     class = "tempest_research_workspace_error"
   )

@@ -304,11 +304,15 @@ test_that("unseen-source questions expose their moderator Deputy execution", {
   expect_length(tempest:::tempest_session_deputy_traces(session), 0L)
   expect_length(moderator_chat$.calls(), 0L)
 
-  session$workspace$upsert_retrieved_resource(tempest:::tempest_source(
-    url = "https://example.org/unseen-deputy",
+  session$workspace$upsert_retrieved_resource(tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/unseen-deputy",
     title = "Unseen Deputy source",
-    snippet = "An unseen finding changes the evidence map.",
-    content_text = "An unseen finding changes the evidence map."
+    media_type = "text/html",
+    content = "An unseen finding changes the evidence map.",
+    metadata = list(
+      snippet = "An unseen finding changes the evidence map."
+    )
   ))
   surfaced <- session$surface_unseen_information(max_questions = 1L)
   expect_named(
@@ -397,11 +401,13 @@ test_that("synchronous warmup binds one correlation across Deputy and stage", {
       initial_questions = "What does the source establish?"
     ))
   )
-  source <- tempest:::tempest_source(
-    url = "https://example.org/sync-warmup",
+  source <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/sync-warmup",
     title = "Synchronous warmup source",
-    snippet = "A source-backed warmup answer.",
-    content_text = "A source-backed warmup answer."
+    media_type = "text/html",
+    content = "A source-backed warmup answer.",
+    metadata = list(snippet = "A source-backed warmup answer.")
   )
   session$workspace$upsert_retrieved_resource(source)
   source_id <- session$workspace$list_retrieved_sources()[[1L]]$id

@@ -24,6 +24,57 @@ tempest_resource_record_fields <- function() {
   c(tempest_resource_data_fields(), "fingerprint")
 }
 
+tempest_resource_web_identity_valid <- function(
+  resource_kind,
+  locator,
+  resource_id
+) {
+  !identical(resource_kind, "web") ||
+    identical(resource_id, tempest_source_id(locator))
+}
+
+tempest_resource_assert_web_identity <- function(
+  resource_kind,
+  locator,
+  resource_id
+) {
+  if (
+    !tempest_resource_web_identity_valid(
+      resource_kind,
+      locator,
+      resource_id
+    )
+  ) {
+    tempest_product_validation_abort(
+      paste0(
+        "Web evidence resources must use the deterministic resource id ",
+        "derived from their locator."
+      )
+    )
+  }
+  invisible(NULL)
+}
+
+tempest_resource_assert_inline_content_hash <- function(
+  content,
+  media_type,
+  content_hash
+) {
+  if (is.null(content)) {
+    return(invisible(NULL))
+  }
+  expected <- tempest_product_content_hash(content, media_type)
+  if (is.na(content_hash) || !identical(content_hash, expected)) {
+    tempest_product_validation_abort(
+      paste0(
+        "Inline resource content_hash must exactly match the captured ",
+        "content and media type."
+      )
+    )
+  }
+  invisible(NULL)
+}
+
 TempestResource <- S7::new_class(
   "tempest_resource",
   properties = list(
@@ -77,11 +128,27 @@ TempestResource <- S7::new_class(
     ) {
       return("Resource locator and title must be non-empty single-line text")
     }
+    if (
+      !tempest_resource_web_identity_valid(
+        self@resource_kind,
+        self@locator,
+        self@resource_id
+      )
+    ) {
+      return("Web resource identity must be derived from its locator")
+    }
+    if (!identical(self@schema_version, 1L)) {
+      return("Resource schema_version must be exact integer 1")
+    }
     if (!tempest_ledger_timestamp_valid(self@retrieved_at)) {
       return("retrieved_at must be an exact canonical UTC timestamp")
     }
   }
 )
+
+tempest_is_exact_resource <- function(x) {
+  identical(S7::S7_class(x), TempestResource)
+}
 
 tempest_resource_safe_scalar <- function(value, arg, identifier = FALSE) {
   value <- tempest_product_scalar(value, arg)
@@ -126,6 +193,15 @@ tempest_resource_optional_scalar <- function(value, arg, identifier = FALSE) {
     return(NA_character_)
   }
   tempest_resource_safe_scalar(value, arg, identifier = identifier)
+}
+
+tempest_resource_canonical_live_scalar <- function(value, canonical, field) {
+  if (!identical(value, canonical)) {
+    tempest_product_validation_abort(
+      "Live resource field {.field {field}} must already be canonical."
+    )
+  }
+  canonical
 }
 
 tempest_resource_content <- function(content) {
@@ -256,22 +332,31 @@ tempest_resource <- function(
   locator <- tempest_resource_single_line_scalar(locator, "locator")
   title <- tempest_resource_single_line_scalar(title, "title")
   media_type <- tempest_resource_safe_scalar(media_type, "media_type")
+  derived_resource_id <- if (identical(resource_kind, "web")) {
+    tempest_source_id(locator)
+  } else {
+    paste0(
+      "R",
+      substr(
+        digest::digest(
+          paste(resource_kind, locator, sep = "\n"),
+          algo = "xxhash64",
+          serialize = FALSE
+        ),
+        1L,
+        16L
+      )
+    )
+  }
   resource_id <- tempest_resource_safe_scalar(
-    resource_id %||%
-      paste0(
-        "R",
-        substr(
-          digest::digest(
-            paste(resource_kind, locator, sep = "\n"),
-            algo = "xxhash64",
-            serialize = FALSE
-          ),
-          1L,
-          16L
-        )
-      ),
+    resource_id %||% derived_resource_id,
     "resource_id",
     identifier = TRUE
+  )
+  tempest_resource_assert_web_identity(
+    resource_kind,
+    locator,
+    resource_id
   )
   content <- tempest_resource_content(content)
   storage_ref <- tempest_resource_optional_scalar(
@@ -303,6 +388,11 @@ tempest_resource <- function(
     "content_hash",
     identifier = TRUE
   )
+  tempest_resource_assert_inline_content_hash(
+    content,
+    media_type,
+    content_hash
+  )
   TempestResource(
     resource_id = resource_id,
     resource_kind = resource_kind,
@@ -323,12 +413,20 @@ tempest_resource <- function(
 }
 
 tempest_resource_data <- function(resource, include_content = TRUE) {
-  if (!S7::S7_inherits(resource, TempestResource)) {
+  if (!tempest_is_exact_resource(resource)) {
     tempest_product_validation_abort(
-      "{.arg resource} must be created by {.fn tempest_resource}."
+      paste0(
+        "{.arg resource} must be an exact TempestResource record ",
+        "created by {.fn tempest_resource}."
+      )
     )
   }
   S7::validate(resource)
+  tempest_resource_assert_inline_content_hash(
+    resource@content,
+    resource@media_type,
+    resource@content_hash
+  )
   include_content <- tempest_product_flag(include_content, "include_content")
   fields <- tempest_resource_data_fields()
   if (!include_content) {
@@ -338,38 +436,57 @@ tempest_resource_data <- function(resource, include_content = TRUE) {
     lapply(fields, function(field) S7::prop(resource, field)),
     fields
   )
-  data$resource_kind <- tempest_resource_safe_scalar(
+  canonical <- list(
+    resource_kind = tempest_resource_safe_scalar(
+      data$resource_kind,
+      "resource_kind",
+      identifier = TRUE
+    ),
+    locator = tempest_resource_single_line_scalar(data$locator, "locator"),
+    title = tempest_resource_single_line_scalar(data$title, "title"),
+    media_type = tempest_resource_safe_scalar(data$media_type, "media_type"),
+    resource_id = tempest_resource_safe_scalar(
+      data$resource_id,
+      "resource_id",
+      identifier = TRUE
+    ),
+    retrieved_at = tempest_resource_safe_scalar(
+      data$retrieved_at,
+      "retrieved_at"
+    ),
+    storage_ref = tempest_resource_optional_scalar(
+      data$storage_ref,
+      "storage_ref",
+      identifier = TRUE
+    ),
+    origin_connection_id = tempest_resource_optional_scalar(
+      data$origin_connection_id,
+      "origin_connection_id",
+      identifier = TRUE
+    ),
+    content_hash = tempest_resource_optional_scalar(
+      data$content_hash,
+      "content_hash",
+      identifier = TRUE
+    )
+  )
+  for (field in names(canonical)) {
+    data[[field]] <- tempest_resource_canonical_live_scalar(
+      data[[field]],
+      canonical[[field]],
+      field
+    )
+  }
+  tempest_resource_assert_web_identity(
     data$resource_kind,
-    "resource_kind",
-    identifier = TRUE
+    data$locator,
+    data$resource_id
   )
-  data$locator <- tempest_resource_single_line_scalar(data$locator, "locator")
-  data$title <- tempest_resource_single_line_scalar(data$title, "title")
-  data$media_type <- tempest_resource_safe_scalar(data$media_type, "media_type")
-  data$resource_id <- tempest_resource_safe_scalar(
-    data$resource_id,
-    "resource_id",
-    identifier = TRUE
-  )
-  data$retrieved_at <- tempest_resource_safe_scalar(
-    data$retrieved_at,
-    "retrieved_at"
-  )
-  data$storage_ref <- tempest_resource_optional_scalar(
-    data$storage_ref,
-    "storage_ref",
-    identifier = TRUE
-  )
-  data$origin_connection_id <- tempest_resource_optional_scalar(
-    data$origin_connection_id,
-    "origin_connection_id",
-    identifier = TRUE
-  )
-  data$content_hash <- tempest_resource_optional_scalar(
-    data$content_hash,
-    "content_hash",
-    identifier = TRUE
-  )
+  if (!identical(data$schema_version, 1L)) {
+    tempest_product_validation_abort(
+      "Resource schema_version must be exact integer 1."
+    )
+  }
   for (field in c("scope_metadata", "redaction", "retention", "metadata")) {
     data[[field]] <- tempest_resource_metadata(data[[field]], field)
   }
@@ -382,7 +499,7 @@ tempest_resource_data <- function(resource, include_content = TRUE) {
 }
 
 tempest_resource_fingerprint <- function(resource_or_data) {
-  data <- if (S7::S7_inherits(resource_or_data, TempestResource)) {
+  data <- if (tempest_is_exact_resource(resource_or_data)) {
     tempest_resource_data(resource_or_data)
   } else {
     resource_or_data
@@ -464,81 +581,14 @@ tempest_resource_from_data <- function(data) {
 }
 
 tempest_resource_identity <- function(resource) {
-  if (S7::S7_inherits(resource, TempestResource)) {
-    return(resource@resource_id)
-  }
-  resource$id
+  data <- tempest_resource_data(resource, include_content = FALSE)
+  data$resource_id
 }
 
 tempest_resource_as_source <- function(resource) {
-  if (!S7::S7_inherits(resource, TempestResource)) {
-    return(resource)
-  }
-  is_web <- identical(resource@resource_kind, "web")
-  content_text <- if (
-    is.character(resource@content) &&
-      length(resource@content) == 1L
-  ) {
-    resource@content
-  } else {
-    NA_character_
-  }
-  list(
-    id = resource@resource_id,
-    url = if (is_web) resource@locator else NA_character_,
-    title = resource@title,
-    snippet = resource@metadata$snippet %||% NA_character_,
-    content_text = content_text,
-    context_text = resource@metadata$context_text %||% content_text,
-    fetched_at = resource@retrieved_at,
-    content_hash = resource@content_hash,
-    meta = c(
-      resource@metadata,
-      list(
-        resource_kind = resource@resource_kind,
-        locator = resource@locator,
-        media_type = resource@media_type,
-        storage_ref = resource@storage_ref,
-        origin_connection_id = resource@origin_connection_id,
-        scope_metadata = resource@scope_metadata,
-        redaction = resource@redaction,
-        retention = resource@retention
-      )
-    )
-  )
-}
-
-tempest_source_as_resource <- function(source) {
-  source <- tempest_validate_source(source)
-  content <- tempest_source_context_text(source)
-  if (is.na(content)) {
-    content <- NULL
-  }
-  clean_metadata <- function(value) {
-    if (is.null(value)) {
-      return(NULL)
-    }
-    if (is.list(value) && !is.data.frame(value)) {
-      value <- lapply(value, clean_metadata)
-      return(Filter(Negate(is.null), value))
-    }
-    if (
-      is.atomic(value) &&
-        (anyNA(value) || (is.numeric(value) && any(!is.finite(value))))
-    ) {
-      keep <- !is.na(value)
-      if (is.numeric(value)) {
-        keep <- keep & is.finite(value)
-      }
-      value <- value[keep]
-      if (length(value) == 0L) {
-        return(NULL)
-      }
-    }
-    value
-  }
-  metadata <- clean_metadata(source$meta)
-  projection_fields <- c(
+  data <- tempest_resource_data(resource, include_content = TRUE)
+  is_web <- identical(data$resource_kind, "web")
+  authoritative_meta_fields <- c(
     "resource_kind",
     "locator",
     "media_type",
@@ -548,31 +598,47 @@ tempest_source_as_resource <- function(source) {
     "redaction",
     "retention"
   )
+  metadata <- data$metadata
   if (!is.null(names(metadata))) {
-    metadata <- metadata[!names(metadata) %in% projection_fields]
+    metadata <- metadata[!names(metadata) %in% authoritative_meta_fields]
   }
-  if (!is.na(source$snippet)) {
-    metadata$snippet <- source$snippet
+  content_text <- if (
+    is.character(data$content) &&
+      length(data$content) == 1L
+  ) {
+    data$content
+  } else {
+    NA_character_
   }
-  if (!is.na(source$content_text)) {
-    metadata$content_text <- source$content_text
+  snippet <- data$metadata$snippet %||% NA_character_
+  if (!is.character(snippet) || length(snippet) != 1L) {
+    snippet <- NA_character_
   }
-  tempest_resource(
-    resource_kind = "web",
-    locator = source$url,
-    title = tempest_source_scalar(source$title, source$url),
-    media_type = "text/html",
-    resource_id = source$id,
-    content = content,
-    content_hash = if (is.na(source$content_hash)) {
-      NULL
-    } else {
-      source$content_hash
-    },
-    retrieved_at = tempest_source_scalar(
-      source$fetched_at,
-      tempest_now_utc()
-    ),
-    metadata = metadata
+  context_text <- data$metadata$context_text %||% content_text
+  if (!is.character(context_text) || length(context_text) != 1L) {
+    context_text <- content_text
+  }
+  list(
+    id = data$resource_id,
+    url = if (is_web) data$locator else NA_character_,
+    title = data$title,
+    snippet = snippet,
+    content_text = content_text,
+    context_text = context_text,
+    fetched_at = data$retrieved_at,
+    content_hash = data$content_hash %||% NA_character_,
+    meta = c(
+      metadata,
+      list(
+        resource_kind = data$resource_kind,
+        locator = data$locator,
+        media_type = data$media_type,
+        storage_ref = data$storage_ref %||% NA_character_,
+        origin_connection_id = data$origin_connection_id %||% NA_character_,
+        scope_metadata = data$scope_metadata,
+        redaction = data$redaction,
+        retention = data$retention
+      )
+    )
   )
 }

@@ -46,7 +46,7 @@ test_that("scripted STORM resumes its immutable full-run request", {
     class = "tempest_research_workspace_integrity_error"
   )
   expect_null(fixture$restored$workspace$get_retrieved_source(
-    resumed_source$id
+    resumed_source@resource_id
   ))
   expect_identical(
     fixture$first$manifest@research_run_id,

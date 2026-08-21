@@ -13,7 +13,7 @@ explicit graft review and commit.
   \if{html}{\out{<div class="r6-active-bindings">}}
   \describe{
     \item{\code{retrieved_resources}}{Read-only named-list snapshot of typed resources
-and built-in web-source records keyed by resource id.}
+keyed by resource id.}
 
     \item{\code{proposed_claims}}{Read-only named-list snapshot of provisional claim
 records keyed by claim id.}
@@ -138,8 +138,7 @@ JSON-compatible references to accepted graft records.}
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{resource}}{A resource created by \code{\link[=tempest_resource]{tempest_resource()}} or an
-internal built-in web-source record.}
+      \item{\code{resource}}{A resource created by \code{\link[=tempest_resource]{tempest_resource()}}.}
     }
     \if{html}{\out{</div>}}
   }

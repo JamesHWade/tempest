@@ -5,8 +5,8 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     facts = list(list(
       claim = "The session owns ProgramSet-bound extraction.",
       sources = list(list(
-        source_id = source$id,
-        quote = source$content_text
+        source_id = source@resource_id,
+        quote = source@content
       )),
       confidence = "high"
     ))
@@ -14,7 +14,7 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   moderator <- fake_chat(
     text = list(paste0(
       "ProgramSet-bound extraction [",
-      source$id,
+      source@resource_id,
       "]."
     ))
   )
@@ -140,8 +140,8 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
 
   expect_no_error(session$workspace$upsert_retrieved_resource(source))
   expect_identical(
-    session$workspace$get_retrieved_source(source$id)$id,
-    source$id
+    session$workspace$get_retrieved_source(source@resource_id)$id,
+    source@resource_id
   )
   completion <- await_tempest_promise(
     session$request_completion_async("What does the bound source establish?")

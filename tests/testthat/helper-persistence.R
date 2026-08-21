@@ -447,8 +447,8 @@ test_persistence_complete_storm_product <- function(
 ) {
   programs <- tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    paste0("https://example.com/", run_id),
+  source <- fake_source(
+    url = paste0("https://example.com/", run_id),
     title = paste(topic, "source"),
     content_text = "Durable evidence supports the completed research product."
   )
@@ -458,14 +458,14 @@ test_persistence_complete_storm_product <- function(
   }
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = paste0("span.", run_id),
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Durable evidence supports the completed research product.",
     extracted_by = programs$extract_claims$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = paste0("claim.", run_id),
     claim_text = "Durable evidence supports the completed research product.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list(
       "Durable evidence supports the completed research product."
@@ -476,7 +476,7 @@ test_persistence_complete_storm_product <- function(
     list(tempest_claim_support(
       claim_id = claim_id,
       evidence_span_id = span_id,
-      source_id = source$id,
+      source_id = source@resource_id,
       verification_status = "supported",
       support_score = support_score,
       rationale = "The exact durable excerpt supports the claim."
@@ -497,7 +497,7 @@ test_persistence_complete_storm_product <- function(
     title = topic,
     body = paste0(
       "Durable evidence supports the completed research product. [",
-      source$id,
+      source@resource_id,
       "]"
     ),
     workspace = workspace,

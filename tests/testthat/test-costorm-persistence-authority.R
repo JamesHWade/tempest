@@ -15,14 +15,14 @@ test_that("schema 9 persists exact Deputy execution authority", {
     list(
       facts = list(list(
         claim = "Moderator evidence is durable.",
-        sources = list(list(source_id = moderator_source$id)),
+        sources = list(list(source_id = moderator_source@resource_id)),
         confidence = "high"
       ))
     ),
     list(
       facts = list(list(
         claim = "Expert evidence is durable.",
-        sources = list(list(source_id = expert_source$id)),
+        sources = list(list(source_id = expert_source@resource_id)),
         confidence = "high"
       ))
     )
@@ -36,7 +36,7 @@ test_that("schema 9 persists exact Deputy execution authority", {
         return(fake_chat(
           text = list(paste0(
             "Moderator evidence is durable [",
-            moderator_source$id,
+            moderator_source@resource_id,
             "]."
           ))
         ))
@@ -45,7 +45,7 @@ test_that("schema 9 persists exact Deputy execution authority", {
         return(fake_chat(
           text = list(paste0(
             "Expert evidence is durable [",
-            expert_source$id,
+            expert_source@resource_id,
             "]."
           ))
         ))

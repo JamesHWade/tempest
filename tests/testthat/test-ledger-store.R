@@ -118,19 +118,15 @@ test_that("ResearchWorkspace enforces its resource budget", {
   )
 })
 
-test_that("ResearchWorkspace validates complete source records", {
+test_that("ResearchWorkspace rejects source projections as storage input", {
   store <- test_research_workspace()
-  malformed <- fake_source("https://example.org/malformed")
-  malformed$meta <- "not a list"
+  resource <- fake_source("https://example.org/projected")
+  projection <- tempest:::tempest_resource_as_source(resource)
 
   expect_error(
-    store$upsert_retrieved_resource(malformed),
-    class = "tempest_research_workspace_integrity_error"
+    store$upsert_retrieved_resource(projection),
+    class = "tempest_research_workspace_integrity_error",
+    regexp = "TempestResource"
   )
-  malformed <- fake_source("https://example.org/missing-field")
-  malformed$title <- NULL
-  expect_error(
-    store$upsert_retrieved_resource(malformed),
-    class = "tempest_research_workspace_integrity_error"
-  )
+  expect_length(store$list_retrieved_resources(), 0L)
 })

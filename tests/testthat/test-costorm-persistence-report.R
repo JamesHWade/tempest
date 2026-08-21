@@ -144,7 +144,7 @@ test_that("no-reference Co reports remain canonical persistence products", {
     facts = list(list(
       claim = "Captured session evidence is durable.",
       sources = list(list(
-        source_id = source$id,
+        source_id = source@resource_id,
         quote = "Captured session evidence is durable."
       )),
       confidence = "high"
@@ -162,7 +162,7 @@ test_that("no-reference Co reports remain canonical persistence products", {
         return(fake_chat(
           text = list(paste0(
             "Captured session evidence is durable [",
-            source$id,
+            source@resource_id,
             "]."
           ))
         ))
@@ -204,7 +204,7 @@ test_that("no-reference Co reports remain canonical persistence products", {
   )
   body <- paste0(
     "Captured session evidence is durable. [",
-    source$id,
+    source@resource_id,
     "]."
   )
 
@@ -214,12 +214,12 @@ test_that("no-reference Co reports remain canonical persistence products", {
   expect_match(report_md, "^# No reference session report", perl = TRUE)
   expect_match(
     report_md,
-    paste0("[", source$id, "]"),
+    paste0("[", source@resource_id, "]"),
     fixed = TRUE
   )
   expect_no_match(
     report_md,
-    paste0("[^", source$id, "]"),
+    paste0("[^", source@resource_id, "]"),
     fixed = TRUE
   )
   expect_no_match(report_md, "## References", fixed = TRUE)
@@ -312,7 +312,7 @@ test_that("public session extraction persists its exact terminal record", {
   extracted <- list(
     facts = list(list(
       claim = "Session extraction is durably recorded.",
-      sources = list(list(source_id = source$id)),
+      sources = list(list(source_id = source@resource_id)),
       confidence = "high"
     ))
   )
@@ -325,7 +325,7 @@ test_that("public session extraction persists its exact terminal record", {
         return(fake_chat(
           text = list(paste0(
             "Session extraction is durably recorded [",
-            source$id,
+            source@resource_id,
             "]."
           ))
         ))

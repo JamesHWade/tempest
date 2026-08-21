@@ -110,7 +110,7 @@ mutation methods remain available.}
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    A source object.
+    A typed evidence resource.
   }
 }
 

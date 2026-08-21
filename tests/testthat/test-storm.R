@@ -534,7 +534,7 @@ test_that("tempest_run emits ordered STORM progress events", {
     title = "Progress source",
     content_text = "Progress uses staged events and persisted artifacts."
   )
-  source_id <- source$id
+  source_id <- source@resource_id
   store <- tempest_research_workspace()
   store$upsert_retrieved_resource(source)
   collector <- tempest_progress_collector(include_payload = TRUE)

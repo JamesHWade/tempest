@@ -1,20 +1,20 @@
 test_that("ResearchWorkspace record schemas and identities are exact", {
   workspace <- tempest_research_workspace(max_sources = 8L)
-  source <- tempest:::tempest_source(
+  source <- test_typed_web_resource(
     "https://example.com/exact-records",
     title = "Exact record source",
-    content_text = "Exact evidence"
+    content = "Exact evidence"
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-exact",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Exact evidence"
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-exact",
     claim_text = "Workspace records have exact schemas.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list("Exact evidence")
   ))
@@ -27,7 +27,7 @@ test_that("ResearchWorkspace record schemas and identities are exact", {
     list(tempest_claim_support(
       claim_id = claim_id,
       evidence_span_id = span_id,
-      source_id = source$id,
+      source_id = source@resource_id,
       verification_status = "unverifiable",
       support_score = NA_real_,
       rationale = "Not yet reviewed"
@@ -66,6 +66,17 @@ test_that("ResearchWorkspace record schemas and identities are exact", {
     )
   }
 
+  mismatched_web_id <- snapshot
+  mismatched_web_id$retrieved_resources[[1]]$resource_id <- "S000000000000"
+  mismatched_web_id$retrieved_resources[[1]]$fingerprint <-
+    tempest:::tempest_resource_fingerprint(
+      mismatched_web_id$retrieved_resources[[1]]
+    )
+  expect_error(
+    tempest:::tempest_research_workspace_restore(mismatched_web_id),
+    class = "tempest_research_workspace_restore_error"
+  )
+
   resource_schema_values <- list(
     null = NULL,
     string = "1",
@@ -101,13 +112,13 @@ test_that("ResearchWorkspace record schemas and identities are exact", {
   )
 
   malformed <- snapshot
-  malformed$proposed_claims[[1]]$source_ids <- source$id
+  malformed$proposed_claims[[1]]$source_ids <- source@resource_id
   expect_error(
     tempest:::tempest_research_workspace_restore(malformed),
     class = "tempest_research_workspace_restore_error"
   )
   malformed <- snapshot
-  malformed$proposed_claims[[1]]$source_ids <- list(list(source$id))
+  malformed$proposed_claims[[1]]$source_ids <- list(list(source@resource_id))
   expect_error(
     tempest:::tempest_research_workspace_restore(malformed),
     class = "tempest_research_workspace_restore_error"
@@ -158,7 +169,7 @@ test_that("ResearchWorkspace record schemas and identities are exact", {
 
 test_that("ResearchWorkspace caller restore is transactional", {
   persisted <- tempest_research_workspace(max_sources = 8L)
-  source <- tempest:::tempest_source(
+  source <- test_typed_web_resource(
     "https://example.com/transaction-persisted",
     title = "Persisted source"
   )
@@ -166,7 +177,7 @@ test_that("ResearchWorkspace caller restore is transactional", {
   claim_id <- persisted$add_proposed_claim(tempest_claim(
     claim_id = "claim-transaction",
     claim_text = "Late failures do not mutate caller state.",
-    source_ids = source$id
+    source_ids = source@resource_id
   ))
   persisted$add_dispute(tempest_dispute(
     dispute_id = "dispute-transaction",
@@ -178,7 +189,7 @@ test_that("ResearchWorkspace caller restore is transactional", {
   malformed$disputes[[1L]]$claim_ids <- list("claim.unknown")
 
   caller <- tempest_research_workspace(max_sources = 2L)
-  caller$upsert_retrieved_resource(tempest:::tempest_source(
+  caller$upsert_retrieved_resource(test_typed_web_resource(
     "https://example.com/transaction-caller",
     title = "Caller source"
   ))

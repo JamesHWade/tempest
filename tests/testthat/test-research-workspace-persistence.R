@@ -29,11 +29,11 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
       list(record_id = "record-a", revision_id = "revision-1")
     )
   )
-  source <- tempest:::tempest_source(
+  source <- test_typed_web_resource(
     "https://example.com/workspace",
     title = "Workspace source",
     snippet = "Workspace snippet",
-    content_text = "workspace evidence"
+    content = "workspace evidence"
   )
   resource <- tempest_resource(
     resource_kind = "scientific.document",
@@ -48,13 +48,13 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
   workspace$upsert_retrieved_resource(resource)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-a",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "workspace evidence"
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-a",
     claim_text = "Workspaces preserve provisional evidence.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list("workspace evidence"),
     confidence = "high",
@@ -71,7 +71,7 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
     list(tempest_claim_support(
       claim_id = claim_id,
       evidence_span_id = span_id,
-      source_id = source$id,
+      source_id = source@resource_id,
       verification_status = "supported",
       support_score = 0.95,
       rationale = "Direct support"
@@ -124,7 +124,7 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
     character(1),
     "resource_id"
   )
-  expect_contains(resource_ids, c(resource@resource_id, source$id))
+  expect_contains(resource_ids, c(resource@resource_id, source@resource_id))
   expect_equal(
     vapply(
       snapshot$accepted_graft_references,
@@ -150,8 +150,12 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
     restored$list_accepted_graft_references(),
     workspace$list_accepted_graft_references()
   )
+  expect_s7_class(
+    restored$get_retrieved_resource(source@resource_id),
+    tempest:::TempestResource
+  )
   expect_equal(
-    restored$get_retrieved_source(source$id)$title,
+    restored$get_retrieved_source(source@resource_id)$title,
     "Workspace source"
   )
   expect_equal(
@@ -169,10 +173,10 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
   workspace$record_accepted_graft_reference(list(record_id = "record-new"))
   sealed_before <- tempest:::tempest_research_workspace_snapshot(workspace)
   expect_error(
-    workspace$upsert_retrieved_resource(tempest:::tempest_source(
+    workspace$upsert_retrieved_resource(test_typed_web_resource(
       "https://example.com/workspace",
       title = "Changed after snapshot",
-      content_text = "workspace evidence"
+      content = "workspace evidence"
     )),
     class = "tempest_research_workspace_integrity_error"
   )
@@ -197,7 +201,7 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
     "record-a"
   )
   expect_equal(
-    restored$get_retrieved_source(source$id)$title,
+    restored$get_retrieved_source(source@resource_id)$title,
     "Workspace source"
   )
 })
@@ -305,21 +309,21 @@ test_that("ResearchWorkspace restore validates schema and pinned state", {
 
 test_that("ResearchWorkspace restore rejects orphan evidence records", {
   workspace <- tempest_research_workspace(max_sources = 8L)
-  source <- tempest:::tempest_source(
+  source <- test_typed_web_resource(
     "https://example.com/orphan-integrity",
     title = "Integrity source",
-    content_text = "Evidence remains linked."
+    content = "Evidence remains linked."
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-integrity",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Evidence remains linked."
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-integrity",
     claim_text = "Evidence records remain linked.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list("Evidence remains linked.")
   ))

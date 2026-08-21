@@ -11,11 +11,13 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
       list(record_id = "accepted-a", revision_id = "revision-a")
     )
   )
-  source <- tempest:::tempest_source(
-    "https://example.com/authoritative",
+  source <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.com/authoritative",
     title = "Authoritative source",
-    snippet = "Persisted source",
-    content_text = "Persisted source. This span was not persisted."
+    media_type = "text/html",
+    content = "Persisted source. This span was not persisted.",
+    metadata = list(snippet = "Persisted source")
   )
   resource <- tempest_resource(
     resource_kind = "scientific.document",
@@ -32,7 +34,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   claim <- tempest_claim(
     claim_id = "claim-authoritative",
     claim_text = "Persisted state is authoritative.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = "span-authoritative",
     supporting_quotes = list("Persisted source."),
     confidence = "high"
@@ -40,7 +42,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   workspace$add_extracted_claim_batch(
     list(claim),
     list(tempest_evidence_span(
-      source_id = source$id,
+      source_id = source@resource_id,
       quote = "Persisted source.",
       evidence_span_id = "span-authoritative",
       extracted_by = tempest:::tempest_program_set_manifest_programs(
@@ -52,7 +54,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     list(tempest_claim_support(
       claim_id = claim@claim_id,
       evidence_span_id = "span-authoritative",
-      source_id = source$id,
+      source_id = source@resource_id,
       verification_status = "supported",
       support_score = 0.9,
       rationale = "The persisted source directly supports the claim."
@@ -131,19 +133,17 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     character(1),
     "resource_id"
   )
-  source_index <- match(source$id, resource_ids)
+  source_index <- match(source@resource_id, resource_ids)
   resource_index <- match(resource@resource_id, resource_ids)
 
-  extra_source <- tempest:::tempest_source(
-    "https://example.com/extra",
+  extra_source <- fake_source(
+    url = "https://example.com/extra",
     title = "Extra source"
   )
   extra_source_record <- snapshot
   extra_source_record$retrieved_resources <- c(
     extra_source_record$retrieved_resources,
-    list(tempest:::tempest_resource_record(
-      tempest:::tempest_source_as_resource(extra_source)
-    ))
+    list(tempest:::tempest_resource_record(extra_source))
   )
   extra_source_record$retrieved_resources <-
     extra_source_record$retrieved_resources[
@@ -215,7 +215,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     list(tempest:::tempest_research_workspace_claim_record(tempest_claim(
       claim_id = "claim-extra",
       claim_text = "This claim was not persisted.",
-      source_ids = source$id
+      source_ids = source@resource_id
     )))
   )
 
@@ -224,7 +224,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     extra_span_record$evidence_spans,
     list(tempest:::tempest_evidence_span_to_list(tempest_evidence_span(
       evidence_span_id = "span-extra",
-      source_id = source$id,
+      source_id = source@resource_id,
       quote = "This span was not persisted."
     )))
   )

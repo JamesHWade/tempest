@@ -210,7 +210,7 @@ test_that("stale async extraction persists one cancelled attempt", {
   )
   source <- fake_source("https://example.org/cancelled")
   moderator <- fake_chat(
-    text = list(paste0("Cancelled claim [", source$id, "]."))
+    text = list(paste0("Cancelled claim [", source@resource_id, "]."))
   )
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
@@ -262,7 +262,7 @@ test_that("stale async extraction persists one cancelled attempt", {
   resolve_request(list(
     facts = list(list(
       claim = "Cancelled claim",
-      sources = list(list(source_id = source$id)),
+      sources = list(list(source_id = source@resource_id)),
       confidence = "high",
       support_score = 0.9
     ))
@@ -295,7 +295,7 @@ test_that("failed async extraction remains durable without raw errors", {
   )
   source <- fake_source("https://example.org/failed")
   moderator <- fake_chat(
-    text = list(paste0("Failed claim [", source$id, "]."))
+    text = list(paste0("Failed claim [", source@resource_id, "]."))
   )
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
@@ -516,7 +516,7 @@ test_that("post-turn processing owns sequencing and returns typed results", {
   evidence_correlation <- NULL
   events <- list()
   source <- fake_source()
-  source_id <- source$id
+  source_id <- source@resource_id
   moderator <- fake_chat(
     text = list(paste0("A cited answer [", source_id, "]."))
   )

@@ -307,7 +307,7 @@ test_that("evidence offsets are zero-based half-open character offsets", {
   )
   workspace$upsert_retrieved_resource(source)
   span <- tempest_evidence_span(
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "βγ",
     start_offset = 1L,
     end_offset = 3L
@@ -317,7 +317,7 @@ test_that("evidence offsets are zero-based half-open character offsets", {
   for (offsets in list(c(-1L, 1L), c(2L, 1L))) {
     expect_error(
       tempest_evidence_span(
-        source_id = source$id,
+        source_id = source@resource_id,
         quote = "βγ",
         start_offset = offsets[[1]],
         end_offset = offsets[[2]]
@@ -327,7 +327,7 @@ test_that("evidence offsets are zero-based half-open character offsets", {
   }
   expect_error(
     workspace$add_evidence_span(tempest_evidence_span(
-      source_id = source$id,
+      source_id = source@resource_id,
       quote = "βγ",
       start_offset = 0L,
       end_offset = 2L
@@ -336,7 +336,7 @@ test_that("evidence offsets are zero-based half-open character offsets", {
   )
   expect_error(
     workspace$add_evidence_span(tempest_evidence_span(
-      source_id = source$id,
+      source_id = source@resource_id,
       quote = "evidence",
       start_offset = 4L,
       end_offset = 99L
@@ -345,7 +345,7 @@ test_that("evidence offsets are zero-based half-open character offsets", {
   )
   expect_error(
     tempest_evidence_span(
-      source_id = source$id,
+      source_id = source@resource_id,
       start_offset = 0L,
       end_offset = 1L
     ),
@@ -362,13 +362,13 @@ test_that("source replacement rolls back when it invalidates quote lineage", {
   workspace$upsert_retrieved_resource(source)
   span <- tempest_evidence_span(
     evidence_span_id = "span-replacement",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "captured quote"
   )
   claim <- tempest_claim(
     claim_id = "claim-replacement",
     claim_text = "Replacement claim",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span@evidence_span_id,
     supporting_quotes = list(span@quote)
   )
@@ -383,8 +383,8 @@ test_that("source replacement rolls back when it invalidates quote lineage", {
     class = "tempest_research_workspace_integrity_error"
   )
   expect_identical(
-    workspace$get_retrieved_source(source$id)$content_text,
-    source$content_text
+    workspace$get_retrieved_source(source@resource_id)$content_text,
+    source@content
   )
   expect_no_error(workspace$validate_integrity())
 })

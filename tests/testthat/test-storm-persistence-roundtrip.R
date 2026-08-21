@@ -9,22 +9,24 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    "https://example.com/source",
+  source <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.com/source",
     title = "Example Source",
-    snippet = "Snippet",
-    content_text = "Lithium batteries store energy."
+    media_type = "text/html",
+    content = "Lithium batteries store energy.",
+    metadata = list(snippet = "Snippet")
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Lithium batteries store energy.",
     evidence_span_id = "span.lithium-run",
     extracted_by = program_references$extract_claims$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Lithium batteries store energy.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list("Lithium batteries store energy."),
     confidence = "high"
@@ -33,7 +35,7 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
     title = "Lithium Batteries",
     body = paste0(
       "Lithium batteries store energy. [",
-      source$id,
+      source@resource_id,
       "]"
     ),
     workspace = workspace,
@@ -92,7 +94,7 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
     list(tempest_claim_support(
       claim_id = claim_id,
       evidence_span_id = span_id,
-      source_id = source$id,
+      source_id = source@resource_id,
       verification_status = "supported",
       support_score = 0.9,
       rationale = "matches source"
@@ -163,8 +165,8 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
     "sealed"
   )
   expect_error(
-    loaded$workspace$upsert_retrieved_resource(tempest:::tempest_source(
-      "https://example.com/injected-after-storm-restore"
+    loaded$workspace$upsert_retrieved_resource(fake_source(
+      url = "https://example.com/injected-after-storm-restore"
     )),
     class = "tempest_research_workspace_error"
   )

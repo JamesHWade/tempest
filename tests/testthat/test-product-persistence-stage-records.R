@@ -258,27 +258,27 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
   extraction_program <-
     tempest:::tempest_program_set_manifest_programs(program_set)$extract_claims
   workspace <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    "https://example.org/stage-record-binding",
+  source <- fake_source(
+    url = "https://example.org/stage-record-binding",
     title = "Stage record binding",
     content_text = "Stage records bind durable claim outputs."
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-stage-record-binding",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Stage records bind durable claim outputs.",
     extracted_by = extraction_program$program_artifact_id
   ))
   manual_span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-manual-stage-record-binding",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Stage records bind durable claim outputs.",
     extracted_by = extraction_program$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_text = "Stage records bind durable claim outputs.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list("Stage records bind durable claim outputs."),
     retrieval_step_id = "retrieval.stage-record-binding",
@@ -287,7 +287,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
   ))
   manual_claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_text = "Manual claims do not satisfy extraction proof.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = manual_span_id,
     supporting_quotes = list("Stage records bind durable claim outputs.")
   ))
@@ -607,8 +607,8 @@ test_that("verification stage records cover every claim-span support pair", {
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
-    source_id = source$id,
-    quote = source$content_text,
+    source_id = source@resource_id,
+    quote = source@content,
     evidence_span_id = "span.two-claim-support"
   ))
   claim_texts <- c(
@@ -620,9 +620,9 @@ test_that("verification stage records cover every claim-span support pair", {
     function(claim_text) {
       workspace$add_proposed_claim(tempest_claim(
         claim_text = claim_text,
-        source_ids = source$id,
+        source_ids = source@resource_id,
         evidence_span_ids = span_id,
-        supporting_quotes = list(source$content_text)
+        supporting_quotes = list(source@content)
       ))
     },
     character(1)

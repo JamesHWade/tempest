@@ -94,6 +94,13 @@ workspace contains only provisional run material and opaque references to
 accepted knowledge; acceptance still requires an explicit graft review and
 commit.
 
+Every evidence value written to a workspace is an exact `TempestResource`
+created by `tempest_resource()`. Retriever fetches and provider-native tools
+produce that same record directly, and cached or restored evidence must have
+the identical current shape. Source-shaped values returned by source-inspection
+methods are read-only presentation views; they are not accepted as mutable
+workspace inputs, and Tempest provides no legacy list conversion path.
+
 Co-STORM moderator and expert chats run through required persistent Deputy
 agents. Tempest disables ambient file, shell, R, web, and package-install
 authority at that boundary and allowlists only the Tempest tools already

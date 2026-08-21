@@ -25,16 +25,16 @@ test_that("citation helpers consume a ResearchWorkspace directly", {
   workspace$upsert_retrieved_resource(source)
   claim <- tempest_claim(
     claim_text = "Workspace evidence is provisional.",
-    source_ids = source$id
+    source_ids = source@resource_id
   )
   workspace$add_proposed_claim(claim)
 
-  expect_equal(tempest_sources(workspace)$id, source$id)
+  expect_equal(tempest_sources(workspace)$id, source@resource_id)
   expect_equal(tempest_claims(workspace)$claim_id, claim@claim_id)
   expect_match(
     tempest_report_md(
       "Workspace report",
-      paste0("Workspace evidence [", source$id, "]."),
+      paste0("Workspace evidence [", source@resource_id, "]."),
       workspace
     ),
     "## References",
@@ -153,7 +153,7 @@ test_that("reference metadata is escaped before Markdown interpolation", {
 
   rendered <- tempest_report_md(
     "Safe references",
-    paste0("Captured evidence [", source$id, "]."),
+    paste0("Captured evidence [", source@resource_id, "]."),
     store
   )
 
@@ -163,7 +163,7 @@ test_that("reference metadata is escaped before Markdown interpolation", {
     "&lt;script&gt;\\*unsafe\\*&lt;/script&gt;",
     fixed = TRUE
   )
-  expect_match(rendered, paste0("<", source$url, ">"), fixed = TRUE)
+  expect_match(rendered, paste0("<", source@locator, ">"), fixed = TRUE)
 
   unsafe_store <- tempest_research_workspace()
   unsafe_source <- fake_source(
@@ -175,7 +175,7 @@ test_that("reference metadata is escaped before Markdown interpolation", {
   expect_error(
     tempest_report_md(
       "Unsafe locator",
-      paste0("Captured evidence [", unsafe_source$id, "]."),
+      paste0("Captured evidence [", unsafe_source@resource_id, "]."),
       unsafe_store
     ),
     class = "tempest_product_report_error"
@@ -485,14 +485,16 @@ test_that("strict policy binds every assertion and factual heading exactly", {
 
 test_that("strict publication requires exact captured source evidence", {
   store <- tempest_research_workspace()
-  source <- fake_source(
-    "https://example.org/strict-empty-source",
-    content_text = NA_character_
+  source <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/strict-empty-source",
+    title = "Empty source",
+    media_type = "text/html"
   )
   store$upsert_retrieved_resource(source)
   claim <- tempest_claim(
     "Uncaptured assertion",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     verification_status = "supported",
     support_score = 0.9
   )
@@ -501,7 +503,7 @@ test_that("strict publication requires exact captured source evidence", {
   expect_error(
     tempest_report_md(
       "Uncaptured report",
-      paste0("Uncaptured assertion [", source$id, "]."),
+      paste0("Uncaptured assertion [", source@resource_id, "]."),
       store,
       citation_policy = "strict"
     ),

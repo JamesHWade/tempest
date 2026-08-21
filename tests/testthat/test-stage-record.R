@@ -2023,9 +2023,11 @@ test_that("output references must name the evaluated claim IDs", {
 
 test_that("claim support rejects spans without captured source text", {
   workspace <- tempest_research_workspace()
-  workspace$upsert_retrieved_resource(fake_source(
-    "https://example.org/empty-grounding-source",
-    content_text = NA_character_
+  workspace$upsert_retrieved_resource(tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/empty-grounding-source",
+    title = "Empty grounding source",
+    media_type = "text/html"
   ))
   source_id <- workspace$list_retrieved_sources()[[1]]$id
   claim <- tempest:::tempest_claim(

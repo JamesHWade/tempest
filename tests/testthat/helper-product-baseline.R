@@ -548,7 +548,7 @@ costorm_product_baseline_fixture <- function() {
     title = "Co-STORM baseline source",
     content_text = "Co-STORM preserves research evidence across dialogue."
   )
-  source_id <- source$id
+  source_id <- source@resource_id
   store <- test_research_workspace()
   store$upsert_retrieved_resource(source)
   collector <- tempest_progress_collector(include_payload = TRUE)

@@ -94,11 +94,13 @@ test_that("retriever correlation identities cannot be rebound", {
   expect_identical(retriever$cache_enabled, isTRUE(config@cache_enabled))
   expect_identical(retriever$cache_ttl, config@cache_ttl)
 
-  source <- fake_source("https://example.org/mutable-workspace")
-  expect_no_error(retriever$workspace$upsert_retrieved_resource(source))
+  resource <- test_typed_web_resource(
+    "https://example.org/mutable-workspace"
+  )
+  expect_no_error(retriever$workspace$upsert_retrieved_resource(resource))
   expect_identical(
-    retriever$workspace$get_retrieved_source(source$id)$id,
-    source$id
+    retriever$workspace$get_retrieved_resource(resource@resource_id),
+    resource
   )
 })
 
@@ -137,11 +139,11 @@ test_that("retriever enforces search and source budgets", {
     retriever$search("too many", k = 3L, provider = "wikipedia"),
     class = "tempest_config_error"
   )
-  retriever$workspace$upsert_retrieved_resource(fake_source(
+  retriever$workspace$upsert_retrieved_resource(test_typed_web_resource(
     "https://example.org/one"
   ))
   expect_error(
-    retriever$workspace$upsert_retrieved_resource(fake_source(
+    retriever$workspace$upsert_retrieved_resource(test_typed_web_resource(
       "https://example.org/two"
     )),
     class = "tempest_research_workspace_integrity_error"
@@ -451,16 +453,147 @@ test_that("fetch() caches content and force refreshes", {
   fetch_stats <- stats[stats$kind == "fetch", ]
 
   expect_equal(calls, 2L)
-  expect_equal(second$title, first$title)
-  expect_equal(forced$title, "Title 2")
+  expect_identical(S7::S7_inherits(first, tempest:::TempestResource), TRUE)
+  expect_identical(S7::S7_inherits(second, tempest:::TempestResource), TRUE)
+  expect_identical(first@resource_kind, "web")
+  expect_identical(first@locator, "https://example.com/page")
+  expect_identical(first@media_type, "text/html")
   expect_identical(
-    first$content_hash,
+    first@resource_id,
+    tempest:::tempest_source_id("https://example.com/page")
+  )
+  expect_identical(first@content, "Body 1")
+  expect_identical(first@metadata$kind, "html")
+  expect_identical(first@metadata$snippet, "Body 1")
+  expect_equal(second@title, first@title)
+  expect_equal(forced@title, "Title 2")
+  expect_identical(
+    first@content_hash,
     "f52748fc8a9dfb6adc2dbe7e5a4171a89dbadfda31bd4b786a2dec9c81700ba8"
+  )
+  expect_identical(
+    retriever$workspace$get_retrieved_resource(first@resource_id),
+    forced
   )
   expect_equal(fetch_stats$misses, 1L)
   expect_equal(fetch_stats$hits, 1L)
   expect_equal(fetch_stats$bypasses, 1L)
   expect_equal(fetch_stats$writes, 2L)
+})
+
+test_that("fetch() rejects legacy list values from the cache", {
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  legacy <- list(
+    id = tempest:::tempest_source_id("https://example.com/legacy-cache"),
+    url = "https://example.com/legacy-cache",
+    title = "Legacy cache value"
+  )
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) list(value = legacy, status = "hit")
+  )
+
+  expect_error(
+    retriever$fetch("https://example.com/legacy-cache"),
+    class = "tempest_retriever_cache_error"
+  )
+  expect_length(retriever$workspace$list_retrieved_resources(), 0L)
+})
+
+test_that("fetch() rejects TempestResource subclasses from the cache", {
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  resource <- test_subclassed_resource(
+    test_typed_web_resource("https://example.com/subclass-cache")
+  )
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) list(value = resource, status = "hit")
+  )
+
+  expect_error(
+    retriever$fetch("https://example.com/subclass-cache"),
+    class = "tempest_retriever_cache_error"
+  )
+  expect_length(retriever$workspace$list_retrieved_resources(), 0L)
+})
+
+test_that("fetch() rejects exact resources cached under the wrong URL key", {
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  wrong <- test_typed_web_resource("https://example.com/wrong-cache-value")
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) list(value = wrong, status = "hit")
+  )
+
+  expect_error(
+    retriever$fetch("https://example.com/requested-cache-value"),
+    class = "tempest_retriever_cache_error"
+  )
+  expect_length(retriever$workspace$list_retrieved_resources(), 0L)
+})
+
+test_that("fetch() rejects cached resources with a noncurrent live schema", {
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  resource <- test_typed_web_resource(
+    "https://example.com/noncurrent-cache-schema"
+  )
+  attr(resource, "schema_version") <- 999L
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) list(value = resource, status = "hit")
+  )
+
+  expect_error(
+    retriever$fetch("https://example.com/noncurrent-cache-schema"),
+    class = "tempest_retriever_cache_error"
+  )
+  expect_length(retriever$workspace$list_retrieved_resources(), 0L)
+})
+
+test_that("fetch() rejects cached resources with mismatched inline hashes", {
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  resource <- test_typed_web_resource(
+    "https://example.com/mismatched-cache-content-hash"
+  )
+  attr(resource, "content_hash") <- strrep("0", 64L)
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) list(value = resource, status = "hit")
+  )
+
+  expect_error(
+    retriever$fetch("https://example.com/mismatched-cache-content-hash"),
+    class = "tempest_retriever_cache_error"
+  )
+  expect_length(retriever$workspace$list_retrieved_resources(), 0L)
+})
+
+test_that("fetch() wraps cached-resource workspace admission failures", {
+  workspace <- tempest_research_workspace(max_sources = 1L)
+  existing <- test_typed_web_resource("https://example.com/existing-resource")
+  workspace$upsert_retrieved_resource(existing)
+  retriever <- tempest_retriever(
+    config = tempest_config(
+      cache_dir = withr::local_tempdir(),
+      max_sources = 1L
+    ),
+    workspace = workspace
+  )
+  cached <- test_typed_web_resource("https://example.com/cached-resource")
+  local_mocked_bindings(
+    tempest_cache_lookup = function(...) list(value = cached, status = "hit")
+  )
+
+  expect_error(
+    retriever$fetch("https://example.com/cached-resource"),
+    class = "tempest_retriever_cache_error"
+  )
+  expect_identical(workspace$list_retrieved_resources(), list(existing))
 })
 
 test_that("fetch() retries transient failures without force", {
@@ -488,8 +621,14 @@ test_that("fetch() retries transient failures without force", {
   stats <- retriever$cache_stats()
   fetch_stats <- stats[stats$kind == "fetch", ]
 
-  expect_equal(failed$meta$error, "temporary timeout")
-  expect_equal(recovered$content_text, "Recovered")
+  expect_identical(S7::S7_inherits(failed, tempest:::TempestResource), TRUE)
+  expect_identical(failed@resource_kind, "web")
+  expect_identical(failed@locator, "https://example.com/retry")
+  expect_identical(failed@title, "https://example.com/retry")
+  expect_identical(failed@media_type, "text/html")
+  expect_identical(failed@metadata$error, "temporary timeout")
+  expect_null(failed@content)
+  expect_identical(recovered@content, "Recovered")
   expect_equal(calls, 2L)
   expect_equal(fetch_stats$misses, 2L)
   expect_equal(fetch_stats$writes, 1L)
@@ -542,7 +681,7 @@ test_that("fetch telemetry preserves products and projects error records", {
     serialize(failed, NULL),
     serialize(disabled_failed, NULL)
   )
-  expect_identical(failed$meta$error, error_secret)
+  expect_identical(failed@metadata$error, error_secret)
   expect_identical(
     vapply(
       state$spans,
@@ -579,8 +718,8 @@ test_that("fetch telemetry preserves products and projects error records", {
     "url-secret",
     "other-secret",
     error_secret,
-    first$id,
-    failed$id,
+    first@resource_id,
+    failed@resource_id,
     "private fetched content",
     "Private fetched title"
   )) {
@@ -766,7 +905,7 @@ test_that("nested fetch requests retain their own cache branch", {
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir())
   )
-  cached <- fake_source("https://example.org/nested-fetch")
+  cached <- test_typed_web_resource("https://example.org/nested-fetch")
   lookup_calls <- 0L
   nested_result <- NULL
   reverse_completion <- NULL
@@ -802,7 +941,7 @@ test_that("nested fetch requests retain their own cache branch", {
   fetch_stats <- stats[stats$kind == "fetch", ]
 
   expect_identical(nested_result, cached)
-  expect_identical(outer_result$title, "Outer title")
+  expect_identical(outer_result@title, "Outer title")
   expect_identical(reverse_completion, c(outer = 0L, nested = 1L))
   expect_identical(
     vapply(

@@ -187,6 +187,86 @@ test_that("product entry points have exact source owners", {
   }
 })
 
+test_that("typed evidence storage has no legacy input path", {
+  context <- test_source_inventory_context()
+  retired <- c(
+    "tempest_source",
+    "tempest_validate_source",
+    "tempest_source_as_resource"
+  )
+  namespace <- asNamespace("tempest")
+  retired_present <- vapply(
+    retired,
+    exists,
+    logical(1),
+    envir = namespace,
+    inherits = FALSE
+  )
+
+  workspace <- get(
+    "ResearchWorkspace",
+    envir = namespace,
+    inherits = FALSE
+  )
+  upsert <- workspace$public_methods$upsert_retrieved_resource
+  upsert_body <- paste(deparse(body(upsert)), collapse = "\n")
+  resource_identity <- get(
+    "tempest_resource_identity",
+    envir = namespace,
+    inherits = FALSE
+  )
+  identity_body <- paste(deparse(body(resource_identity)), collapse = "\n")
+  exact_resource <- get(
+    "tempest_is_exact_resource",
+    envir = namespace,
+    inherits = FALSE
+  )
+  exact_resource_body <- paste(
+    deparse(body(exact_resource)),
+    collapse = "\n"
+  )
+
+  expect_identical(unname(retired_present), rep(FALSE, length(retired)))
+  expect_identical(names(formals(upsert)), "resource")
+  expect_match(
+    upsert_body,
+    "tempest_is_exact_resource(resource)",
+    fixed = TRUE
+  )
+  expect_match(
+    exact_resource_body,
+    "identical(S7::S7_class(x), TempestResource)",
+    fixed = TRUE
+  )
+  expect_no_match(upsert_body, "tempest_source")
+  expect_identical(names(formals(resource_identity)), "resource")
+  expect_no_match(identity_body, "resource\\$id")
+
+  if (identical(context$mode, "source")) {
+    definitions <- test_source_inventory_definitions(context)
+    expect_disjoint(definitions$name, retired)
+
+    r_files <- list.files(
+      file.path(context$root, "R"),
+      pattern = "[.]R$",
+      full.names = TRUE
+    )
+    source <- paste(
+      unlist(lapply(r_files, readLines, warn = FALSE)),
+      collapse = "\n"
+    )
+    forbidden <- paste0("\\b", retired, "\\b")
+    present <- retired[vapply(
+      forbidden,
+      grepl,
+      logical(1),
+      x = source,
+      perl = TRUE
+    )]
+    expect_identical(present, character())
+  }
+})
+
 test_that("T9 retired source seams remain absent", {
   context <- test_source_inventory_context()
   persistence_owners <- list(

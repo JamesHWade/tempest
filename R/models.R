@@ -12,29 +12,6 @@ tempest_source_id <- function(url) {
   paste0("S", substr(digest::digest(url, algo = "xxhash64"), 1, 12))
 }
 
-#' Create a Source object
-#' @keywords internal
-tempest_source <- function(
-  url,
-  title = NULL,
-  snippet = NULL,
-  content_text = NULL,
-  fetched_at = NULL,
-  content_hash = NULL,
-  meta = list()
-) {
-  list(
-    id = tempest_source_id(url),
-    url = url,
-    title = title %||% NA_character_,
-    snippet = snippet %||% NA_character_,
-    content_text = content_text %||% NA_character_,
-    fetched_at = fetched_at %||% NA_character_,
-    content_hash = content_hash %||% NA_character_,
-    meta = meta %||% list()
-  )
-}
-
 #' @keywords internal
 tempest_source_scalar <- function(...) {
   values <- list(...)
@@ -661,92 +638,6 @@ tempest_research_workspace_references <- function(
 }
 
 #' @keywords internal
-tempest_validate_source <- function(source) {
-  if (!is.list(source) || is.data.frame(source)) {
-    tempest_research_workspace_abort(
-      "{.arg source} must be a source record list."
-    )
-  }
-  required <- c(
-    "id",
-    "url",
-    "title",
-    "snippet",
-    "content_text",
-    "fetched_at",
-    "content_hash",
-    "meta"
-  )
-  missing <- required[!required %in% names(source)]
-  if (length(missing) > 0L) {
-    tempest_research_workspace_abort(
-      "{.arg source} is missing required field{?s}: {.field {missing}}."
-    )
-  }
-  for (field in c("id", "url")) {
-    value <- source[[field]]
-    if (
-      !is.character(value) ||
-        length(value) != 1L ||
-        is.na(value) ||
-        !nzchar(value)
-    ) {
-      tempest_research_workspace_abort(
-        "Source field {.field {field}} must be a non-empty string."
-      )
-    }
-  }
-  text_fields <- c(
-    "title",
-    "snippet",
-    "content_text",
-    "fetched_at",
-    "content_hash"
-  )
-  if ("context_text" %in% names(source)) {
-    text_fields <- c(text_fields, "context_text")
-  }
-  for (field in text_fields) {
-    value <- source[[field]]
-    if (is.null(value)) {
-      source[[field]] <- NA_character_
-      value <- source[[field]]
-    }
-    if (!is.character(value) || length(value) != 1L) {
-      tempest_research_workspace_abort(
-        "Source field {.field {field}} must be a single string or `NA`."
-      )
-    }
-  }
-  if (is.null(source$meta)) {
-    source$meta <- list()
-  }
-  if (!is.list(source$meta) || is.data.frame(source$meta)) {
-    tempest_research_workspace_abort(
-      "Source field {.field meta} must be a list."
-    )
-  }
-  expected_id <- tryCatch(
-    tempest_source_id(source$url),
-    error = function(error) {
-      tempest_research_workspace_abort(
-        "Source field {.field url} is invalid.",
-        parent = error
-      )
-    }
-  )
-  if (!identical(source$id, expected_id)) {
-    tempest_research_workspace_abort(
-      c(
-        "Source id does not match its URL.",
-        x = "Expected {.val {expected_id}}, not {.val {source$id}}."
-      )
-    )
-  }
-  source
-}
-
-#' @keywords internal
 tempest_research_workspace_copy <- function(value) {
   rlang::duplicate(value, shallow = FALSE)
 }
@@ -939,7 +830,7 @@ tempest_research_workspace_seal <- function(workspace, owner = NULL) {
 #' explicit graft review and commit.
 #'
 #' @field retrieved_resources Read-only named-list snapshot of typed resources
-#'   and built-in web-source records keyed by resource id.
+#'   keyed by resource id.
 #' @field proposed_claims Read-only named-list snapshot of provisional claim
 #'   records keyed by claim id.
 #' @field evidence_spans Read-only named-list snapshot of provisional
@@ -1050,12 +941,13 @@ ResearchWorkspace <- R6::R6Class(
     },
 
     #' @description Insert or update a retrieved typed evidence resource.
-    #' @param resource A resource created by [tempest_resource()] or an
-    #'   internal built-in web-source record.
+    #' @param resource A resource created by [tempest_resource()].
     upsert_retrieved_resource = function(resource) {
       private$assert_mutation_open()
-      if (!S7::S7_inherits(resource, TempestResource)) {
-        resource <- tempest_source_as_resource(resource)
+      if (!tempest_is_exact_resource(resource)) {
+        tempest_research_workspace_abort(
+          "{.arg resource} must be an exact TempestResource record."
+        )
       }
       resource <- private$validate_resource(resource)
       resource_id <- resource@resource_id
@@ -1134,10 +1026,7 @@ ResearchWorkspace <- R6::R6Class(
       if (is.null(resource)) {
         return(NULL)
       }
-      if (S7::S7_inherits(resource, TempestResource)) {
-        return(tempest_research_workspace_copy(resource))
-      }
-      tempest_research_workspace_copy(tempest_source_as_resource(resource))
+      tempest_research_workspace_copy(resource)
     },
 
     #' @description Get one retrieved resource as a built-in source view.
@@ -2037,7 +1926,7 @@ ResearchWorkspace <- R6::R6Class(
       invisible(NULL)
     },
     validate_resource = function(resource) {
-      if (!S7::S7_inherits(resource, TempestResource)) {
+      if (!tempest_is_exact_resource(resource)) {
         tempest_research_workspace_abort(
           "Retrieved resources must be exact TempestResource records."
         )
