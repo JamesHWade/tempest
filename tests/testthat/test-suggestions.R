@@ -21,7 +21,6 @@ test_that("session suggestions require exact current strings", {
 
 test_that("moderator session prompt names the real delegation tool and roster", {
   expert <- test_expert(
-    expert_id = "expert.safety",
     name = "Dr. Safety",
     title = "Safety engineer"
   )
@@ -32,7 +31,7 @@ test_that("moderator session prompt names the real delegation tool and roster", 
   )
 
   expect_match(prompt, "delegate_to_expert", fixed = TRUE)
-  expect_match(prompt, "expert.safety", fixed = TRUE)
+  expect_match(prompt, expert@expert_id, fixed = TRUE)
   expect_match(prompt, "Adaptive animatronics", fixed = TRUE)
   expect_match(prompt, "at least once before answering", fixed = TRUE)
   expect_match(prompt, "at most once per moderator", fixed = TRUE)

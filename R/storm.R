@@ -1075,10 +1075,7 @@ tempest_run_internal <- function(
           expert_profile <- experts[[i]]
           expert_record <- tempest_expert_runtime_record(expert_profile)
           expert_id <- expert_record$expert_id
-          model_role <- expert_record$model_role
-          if (is.na(model_role)) {
-            model_role <- "expert"
-          }
+          model_role <- "expert"
           model <- tempest_research_model(config, model_role)
           sp <- tempest_render_expert_prompt(
             persona = expert_profile,

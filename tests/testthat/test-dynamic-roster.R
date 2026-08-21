@@ -1,51 +1,52 @@
 test_that("TempestSession retires experts by exact stable id", {
   skip_if_not_installed("ellmer")
-  experts <- list(
-    test_expert(
-      expert_id = "expert.alice",
-      name = "Dr. Alice Smith",
-      title = "Scientist",
-      description = "Technical analysis"
-    ),
-    test_expert(
-      expert_id = "expert.bob",
-      name = "Prof. Bob Jones",
-      title = "Ethicist",
-      description = "Ethical analysis"
-    )
+  alice <- test_expert(
+    expert_id = "expert.alice",
+    name = "Dr. Alice Smith",
+    title = "Scientist",
+    description = "Technical analysis"
   )
+  bob <- test_expert(
+    expert_id = "expert.bob",
+    name = "Prof. Bob Jones",
+    title = "Ethicist",
+    description = "Ethical analysis"
+  )
+  experts <- list(alice, bob)
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   session <- tempest_session("Test topic", config = cfg, experts = experts)
 
-  expect_identical(session$retire_expert("expert.alice"), TRUE)
-  expect_equal(session$experts[[1]]@state, "retired")
-  expect_equal(session$experts[[2]]@state, "active")
+  expect_identical(session$retire_expert(alice@expert_id), TRUE)
+  expect_identical(session$experts, experts)
+  expect_identical(
+    tempest:::tempest_session_retired_expert_ids(session),
+    alice@expert_id
+  )
   expect_identical(session$retire_expert("Dr. Alice Smith"), FALSE)
   expect_identical(session$retire_expert("expert.unknown"), FALSE)
 })
 
 test_that("TempestSession get_active_experts filters retired profiles", {
   skip_if_not_installed("ellmer")
-  experts <- list(
-    test_expert(expert_id = "expert.alice", name = "Dr. Alice Smith"),
-    test_expert(expert_id = "expert.bob", name = "Prof. Bob Jones"),
-    test_expert(expert_id = "expert.carol", name = "Dr. Carol Lee")
-  )
+  alice <- test_expert(expert_id = "expert.alice", name = "Dr. Alice Smith")
+  bob <- test_expert(expert_id = "expert.bob", name = "Prof. Bob Jones")
+  carol <- test_expert(expert_id = "expert.carol", name = "Dr. Carol Lee")
+  experts <- list(alice, bob, carol)
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   session <- tempest_session("Test topic", config = cfg, experts = experts)
 
   expect_length(session$get_active_experts(), 3)
-  session$retire_expert("expert.bob")
+  session$retire_expert(bob@expert_id)
   active <- session$get_active_experts()
 
   expect_length(active, 2)
   expect_setequal(
     vapply(active, \(expert) expert@expert_id, character(1)),
-    c("expert.alice", "expert.carol")
+    c(alice@expert_id, carol@expert_id)
   )
 })
 
@@ -90,8 +91,8 @@ test_that("tempest_generate_single_expert returns an expert profile", {
 
   expect_s7_class(expert, tempest:::TempestExpertProfile)
   expect_equal(expert@name, "Dr. Policy")
-  expect_equal(expert@model_role, "expert")
-  expect_identical(expert@required_capability_ids, character())
+  expect_match(expert@expert_id, "^expert::")
+  expect_match(expert@version, "^sha256-")
 })
 
 test_that("transcript_markdown returns the most recent turns", {
@@ -166,10 +167,14 @@ test_that("dynamic personas append one exact stage attempt", {
     session_id = "dynamic-stage-records"
   )
 
-  expert <- session$add_expert("Policy analysis")
+  expert <- session$add_expert(
+    "Policy analysis",
+    name = "Dr. Renamed Dynamic"
+  )
   records <- tempest:::tempest_session_stage_records(session)
 
   expect_s7_class(expert, tempest:::TempestExpertProfile)
+  expect_identical(expert@name, "Dr. Renamed Dynamic")
   expect_length(session$experts, 2L)
   expect_length(records, 1L)
   expect_identical(records[[1]]@stage, "personas")
@@ -178,4 +183,9 @@ test_that("dynamic personas append one exact stage attempt", {
     records[[1]]@program_artifact_id,
     session$manifest@programs$personas$program_artifact_id
   )
+  expect_identical(
+    records[[1]]@output_reference$content_digest,
+    tempest:::tempest_stage_state_output_digest("personas", list(expert))
+  )
+  expect_no_error(tempest_session_snapshot(session))
 })

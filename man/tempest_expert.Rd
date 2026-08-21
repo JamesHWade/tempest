@@ -5,29 +5,15 @@
 \title{Create a Tempest expert profile}
 \usage{
 tempest_expert(
-  expert_id,
   name,
   title,
   description,
   instructions,
-  version = "1",
   focus_areas = character(),
-  skill_ids = character(),
-  skill_versions = character(),
-  required_capability_ids = character(),
-  optional_capability_ids = character(),
-  model_role = "expert",
-  model_policy_ref = NA_character_,
-  selection_metadata = list(),
-  initial_work_items = character(),
-  initial_questions = character(),
-  state = "active",
-  metadata = list()
+  initial_questions = character()
 )
 }
 \arguments{
-\item{expert_id}{Stable expert identifier.}
-
 \item{name}{Expert display name.}
 
 \item{title}{Short title or area of expertise.}
@@ -36,30 +22,9 @@ tempest_expert(
 
 \item{instructions}{Instructions the expert should follow.}
 
-\item{version}{Stable expert-profile version.}
-
 \item{focus_areas}{Character vector of focus areas.}
 
-\item{skill_ids, skill_versions}{Reserved current-schema fields. They must be
-empty because scientific experts use fixed product roles and tools.}
-
-\item{required_capability_ids, optional_capability_ids}{Reserved
-current-schema fields that must be empty.}
-
-\item{model_role}{One fixed scientific model role: \code{"coordinator"},
-\code{"expert"}, \code{"writer"}, \code{"mindmap"}, or \code{"judge"}.}
-
-\item{model_policy_ref}{Reserved current-schema field that must be \code{NA}.}
-
-\item{selection_metadata}{Serializable metadata for host-side expert
-selection.}
-
-\item{initial_work_items, initial_questions}{Optional startup work.}
-
-\item{state}{Definition state, either \code{"active"} or \code{"retired"}.}
-
-\item{metadata}{Canonical JSON-compatible host metadata. Metadata cannot
-contain credentials or executable values.}
+\item{initial_questions}{Optional startup research questions.}
 }
 \value{
 A \code{tempest_expert} S7 object.
@@ -68,13 +33,13 @@ A \code{tempest_expert} S7 object.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \details{
-Expert profiles are serializable definitions of scientific identity and
-procedure. Runtime chats, fixed role tools, clients, and credentials are
-resolved separately for each execution context.
+Expert profiles contain only human-authored scientific identity and
+perspective. Tempest derives the exact profile identity and version from
+those canonical fields. Runtime chats, the fixed expert model role, tools,
+clients, roster state, and credentials are resolved separately.
 }
 \examples{
 expert <- tempest_expert(
-  expert_id = "expert.battery-policy",
   name = "Dr. Rivera",
   title = "Battery policy analyst",
   description = "Policy and market incentives",

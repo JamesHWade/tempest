@@ -24,6 +24,7 @@ test_that("the current public API contract is exact", {
     "formals.tempest_run",
     "formals.tempest_session_resume",
     "formals.tempest_expert",
+    "tempest_expert.properties",
     "formals.tempest_research_manifest",
     "formals.tempest_resource",
     "tempest_session.public_methods",
@@ -57,6 +58,29 @@ test_that("the current public API contract is exact", {
       info = function_name
     )
   }
+
+  expected_expert_properties <- c(
+    "expert_id",
+    "version",
+    "name",
+    "title",
+    "description",
+    "instructions",
+    "focus_areas",
+    "initial_questions",
+    "schema_version"
+  )
+  expect_identical(
+    contract[["tempest_expert.properties"]],
+    expected_expert_properties
+  )
+  expert <- tempest_expert(
+    name = "Contract Expert",
+    title = "Contract specialist",
+    description = "Exercises the installed expert profile contract.",
+    instructions = "Preserve the exact authored profile."
+  )
+  expect_identical(S7::prop_names(expert), expected_expert_properties)
 
   session_generator <- get(
     "TempestSession",

@@ -1432,6 +1432,7 @@ TempestSession <- R6::R6Class(
         )
         return(invisible(NULL))
       }
+      committed_expert <- NULL
       new_expert <- tempest_generate_single_expert(
         self$topic,
         area,
@@ -1439,11 +1440,32 @@ TempestSession <- R6::R6Class(
         self$config,
         module = private$programs_value$personas,
         record_stage = function(record, output = NULL) {
+          if (!is.null(output)) {
+            output <- tempest_validate_experts(output)
+            if (!is.null(name)) {
+              output[[1L]] <- tempest_expert_update(
+                output[[1L]],
+                name = name
+              )
+              record <- S7::set_props(
+                record,
+                output_reference = tempest_stage_output_reference(
+                  "state_field",
+                  "experts",
+                  content_digest = tempest_stage_state_output_digest(
+                    "personas",
+                    output
+                  )
+                )
+              )
+            }
+            committed_expert <<- output[[1L]]
+          }
           tempest_session_record_stage(self, record, output)
         }
       )
-      if (!is.null(name)) {
-        new_expert <- tempest_expert_update(new_expert, name = name)
+      if (!is.null(committed_expert)) {
+        new_expert <- committed_expert
       }
       private$experts_value <- tempest_validate_experts(c(
         private$experts_value,
@@ -1463,10 +1485,6 @@ TempestSession <- R6::R6Class(
       if (is.null(idx)) {
         return(FALSE)
       }
-      private$experts_value[[idx]] <- tempest_expert_update(
-        private$experts_value[[idx]],
-        state = "retired"
-      )
       private$expert_manager_value$retire_expert(expert_id)
       TRUE
     },
@@ -1475,10 +1493,7 @@ TempestSession <- R6::R6Class(
     #' Get active expert profiles.
     #' @return List of active `tempest_expert` profiles.
     get_active_experts = function() {
-      purrr::keep(
-        self$experts,
-        \(expert) identical(expert@state, "active")
-      )
+      private$expert_manager_value$list_experts(active_only = TRUE)
     },
 
     #' @description
@@ -1912,6 +1927,10 @@ tempest_session_expert_manager <- function(session) {
     )
   }
   manager
+}
+
+tempest_session_retired_expert_ids <- function(session) {
+  tempest_session_expert_manager(session)$list_retired_expert_ids()
 }
 
 tempest_session_suggestions <- function(session) {

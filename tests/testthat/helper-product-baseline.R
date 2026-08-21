@@ -592,7 +592,6 @@ costorm_product_baseline_fixture <- function() {
     config = config,
     retriever = tempest_retriever(config = config, workspace = store),
     experts = list(tempest_expert(
-      expert_id = "expert.baseline",
       name = "Dr. Baseline",
       title = "Research analyst",
       description = "Scientific product behavior",

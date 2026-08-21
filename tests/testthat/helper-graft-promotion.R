@@ -97,6 +97,7 @@ test_promotion_storm_fixture <- function() {
     workspace = completed$workspace,
     manifest = authority_manifest,
     stage_records = stage_records,
+    experts = completed$state$experts,
     claim = claim,
     span = span,
     resource = completed$workspace$get_retrieved_resource(
@@ -114,7 +115,6 @@ test_promotion_costorm_fixture <- function() {
     "CoSTORM promotion evidence",
     config = config,
     experts = list(tempest_expert(
-      expert_id = "expert.promotion-costorm",
       name = "Promotion Analyst",
       title = "Scientific evidence reviewer",
       description = "Reviews exact evidence for promotion.",
@@ -142,6 +142,7 @@ test_promotion_costorm_fixture <- function() {
     workspace = session$workspace,
     manifest = session$manifest,
     stage_records = tempest:::tempest_session_stage_records(session),
+    experts = session$get_active_experts(),
     claim = session$workspace$get_proposed_claim(evidence$claim@claim_id),
     span = evidence$span,
     resource = evidence$source,

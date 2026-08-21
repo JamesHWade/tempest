@@ -2,7 +2,7 @@
 
 Tracking issue: kata `pjsd`
 
-Status: PR B verified; PR C pending
+Status: PR B verified; PR C implemented and locally verified, publication pending
 
 Audit basis: Tempest `main` commit
 `21e1794fa9695f383c4b31d413d2c40b58a15ac7` on 2026-08-20
@@ -622,18 +622,18 @@ baseline is deterministic; no executable legacy source path remains.
 
 ### PR C — Reset the expert and product schemas
 
-- [ ] Reduce `tempest_expert()` to human-authored profile fields.
-- [ ] Remove generic capability, skill, policy, and duplicate work-item fields
+- [x] Reduce `tempest_expert()` to human-authored profile fields.
+- [x] Remove generic capability, skill, policy, and duplicate work-item fields
   from the S7 value, runtime projection, persistence, prompts, and tests.
-- [ ] Derive expert identity from canonical content.
-- [ ] Assign new current versions only to affected stored formats and rebuild
+- [x] Derive expert identity from canonical content.
+- [x] Assign new current versions only to affected stored formats and rebuild
   their exact fixtures.
-- [ ] Bump the expert record from 1 to 2, STORM state from 4 to 5, STORM bundle
+- [x] Bump the expert record from 1 to 2, STORM state from 4 to 5, STORM bundle
   from 7 to 8, and Co-STORM snapshot/bundle from 9 to 10.
-- [ ] Audit StageRecord output-digest schema 3 against the reduced persona
+- [x] Audit StageRecord output-digest schema 3 against the reduced persona
   output; bump it only if the digest payload shape, rather than merely its
   value, changes.
-- [ ] Delete all prior-shape readers and field defaulting.
+- [x] Delete all prior-shape readers and field defaulting.
 
 Gate: selected/generated rosters, Deputy identities, save/resume, STORM,
 Co-STORM, and promotion remain deterministic under the new current format.

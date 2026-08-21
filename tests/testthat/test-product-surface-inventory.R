@@ -2,6 +2,7 @@ test_that("product entry points have exact source owners", {
   context <- test_source_inventory_context()
   entry_points <- c(
     run_app = "app.R",
+    tempest_expert = "research-expert.R",
     tempest_run = "storm.R",
     tempest_session = "costorm.R",
     tempest_report_md = "product-report.R",
@@ -48,6 +49,14 @@ test_that("product entry points have exact source owners", {
     )
     expected_formals <- list(
       run_app = "...",
+      tempest_expert = c(
+        "name",
+        "title",
+        "description",
+        "instructions",
+        "focus_areas",
+        "initial_questions"
+      ),
       tempest_run = c(
         "topic",
         "config",

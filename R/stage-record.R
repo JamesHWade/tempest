@@ -5140,49 +5140,110 @@ tempest_stage_records_validate_workspace_coverage <- function(
 #' @keywords internal
 tempest_stage_records_validate_generated_experts <- function(records, experts) {
   records <- tempest_stage_records_validate(records)
-  experts <- tempest_validate_experts(experts, active_only = FALSE)
-  expert_ids <- vapply(experts, \(expert) expert@expert_id, character(1))
-  generated <- which(startsWith(expert_ids, "expert.generated-"))
+  experts <- tempest_validate_experts(experts)
   persona_records <- tempest_storm_succeeded_stage_records(records, "personas")
+  if (length(persona_records) == 0L) {
+    return(invisible(records))
+  }
+  if (length(experts) == 0L) {
+    tempest_stage_record_abort(
+      "Succeeded persona-stage records require a durable expert roster."
+    )
+  }
   record_digests <- vapply(
     persona_records,
     \(record) record@output_reference$content_digest,
     character(1)
   )
-  candidate_digests <- character()
-  candidate_coverage <- list()
-  covered <- integer()
-  for (index in seq_along(experts)) {
-    singleton <- tempest_stage_state_output_digest(
-      "personas",
-      experts[index]
-    )
-    candidate_digests <- c(candidate_digests, singleton)
-    candidate_coverage <- c(candidate_coverage, list(index))
-    prefix <- tempest_stage_state_output_digest(
-      "personas",
-      experts[seq_len(index)]
-    )
-    candidate_digests <- c(candidate_digests, prefix)
-    candidate_coverage <- c(candidate_coverage, list(seq_len(index)))
-  }
-  matches <- match(record_digests, candidate_digests)
-  if (anyNA(matches)) {
+  if (anyDuplicated(record_digests)) {
     tempest_stage_record_abort(
-      paste0(
-        "Every succeeded persona-stage record must bind an exact canonical ",
-        "durable expert-profile set."
+      "Succeeded persona-stage records must not duplicate roster bindings."
+    )
+  }
+  singleton_digests <- vapply(
+    seq_along(experts),
+    \(index) tempest_stage_state_output_digest("personas", experts[index]),
+    character(1)
+  )
+  prefix_digests <- vapply(
+    seq_along(experts),
+    function(index) {
+      tempest_stage_state_output_digest(
+        "personas",
+        experts[seq_len(index)]
       )
+    },
+    character(1)
+  )
+  bindings <- vector("list", length(record_digests))
+  prefix_seen <- FALSE
+  for (index in seq_along(record_digests)) {
+    digest <- record_digests[[index]]
+    singleton <- which(singleton_digests == digest)
+    prefix <- which(prefix_digests == digest)
+    if (
+      length(singleton) > 1L ||
+        length(prefix) > 1L ||
+        (length(singleton) == 1L &&
+          length(prefix) == 1L &&
+          !identical(singleton, prefix))
+    ) {
+      tempest_stage_record_abort(
+        "A persona-stage record ambiguously binds the durable expert roster."
+      )
+    }
+    if (length(singleton) == 0L && length(prefix) == 0L) {
+      tempest_stage_record_abort(
+        paste0(
+          "Every succeeded persona-stage record must bind an exact canonical ",
+          "durable expert-profile prefix or singleton."
+        )
+      )
+    }
+    if (length(prefix) == 1L && !isTRUE(prefix_seen)) {
+      bindings[[index]] <- list(kind = "prefix", index = prefix[[1]])
+      prefix_seen <- TRUE
+    } else if (length(singleton) == 1L) {
+      bindings[[index]] <- list(kind = "singleton", index = singleton[[1]])
+    } else {
+      tempest_stage_record_abort(
+        "A persona-stage roster prefix can only be recorded once and first."
+      )
+    }
+  }
+  prefix_bindings <- which(vapply(
+    bindings,
+    \(binding) identical(binding$kind, "prefix"),
+    logical(1)
+  ))
+  if (length(prefix_bindings) > 1L || any(prefix_bindings != 1L)) {
+    tempest_stage_record_abort(
+      "A persona-stage roster prefix can only be recorded once and first."
     )
   }
-  if (length(matches) > 0L) {
-    covered <- unique(unlist(candidate_coverage[matches], use.names = FALSE))
+  singleton_indices <- vapply(
+    bindings[vapply(
+      bindings,
+      \(binding) identical(binding$kind, "singleton"),
+      logical(1)
+    )],
+    `[[`,
+    integer(1),
+    "index"
+  )
+  prefix_end <- if (length(prefix_bindings) == 0L) {
+    0L
+  } else {
+    bindings[[prefix_bindings[[1]]]]$index
   }
-  if (length(setdiff(generated, unique(covered))) > 0L) {
+  if (
+    any(singleton_indices <= prefix_end) ||
+      is.unsorted(singleton_indices, strictly = TRUE)
+  ) {
     tempest_stage_record_abort(
       paste0(
-        "Every automatically generated expert requires an exact succeeded ",
-        "persona-stage content binding."
+        "Succeeded persona-stage records must bind one initial roster prefix ",
+        "followed only by distinct appended expert singletons."
       )
     )
   }
@@ -5207,7 +5268,7 @@ tempest_stage_records_validate_claim_provenance <- function(
       "Authoritative claim provenance requires a credential-free run id."
     )
   }
-  experts <- tempest_validate_experts(experts, active_only = FALSE)
+  experts <- tempest_validate_experts(experts)
   expert_ids <- c(
     vapply(experts, \(expert) expert@expert_id, character(1)),
     builtin_expert_ids

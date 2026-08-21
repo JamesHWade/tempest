@@ -16,7 +16,7 @@ tempest_product_authority_expert_ids <- function(experts) {
     return(NULL)
   }
   experts <- tryCatch(
-    tempest_validate_experts(experts, active_only = FALSE),
+    tempest_validate_experts(experts),
     error = function(error) {
       tempest_product_authority_abort(
         "Product authority requires an exact durable expert roster.",

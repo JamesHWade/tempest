@@ -1,4 +1,4 @@
-test_that("schema 7 STORM bundles round-trip the complete workspace", {
+test_that("schema 8 STORM bundles round-trip the complete workspace", {
   skip_if_not_installed("graft")
   dir <- withr::local_tempdir()
   cfg <- tempest_config()

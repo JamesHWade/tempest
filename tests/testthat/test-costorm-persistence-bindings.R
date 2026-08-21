@@ -8,7 +8,6 @@ test_that("session bundles exclude process-local and generic registries", {
     "Customer objective",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.customer-context",
       name = "Customer Context Expert",
       title = "Customer context analyst",
       description = "Interprets customer objectives and constraints.",
@@ -63,27 +62,53 @@ test_that("expert-session writer rejects incomplete live bindings", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
+  expert <- test_expert(expert_id = "expert.exact-writer")
   session <- tempest_session(
     "Exact expert-session writer",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.exact-writer"))
+    experts = list(expert)
   )
   manager <- tempest:::tempest_session_expert_manager(session)
-  created <- manager$get_or_create("expert.exact-writer")
+  created <- manager$get_or_create(expert@expert_id)
   binding <- manager$session_profile(created$session_id)
 
+  expect_identical(
+    names(binding),
+    c(
+      "session_id",
+      "expert_id",
+      "expert_version",
+      "expert_fingerprint",
+      "created_at"
+    )
+  )
   expect_no_error(
     tempest:::tempest_expert_session_snapshot_record(binding)
   )
-  missing <- binding[names(binding) != "grants"]
+  for (field in names(binding)) {
+    missing <- binding
+    missing[[field]] <- NULL
+    expect_error(
+      tempest:::tempest_expert_session_snapshot_record(missing),
+      class = "tempest_session_snapshot_error",
+      info = field
+    )
+    null <- binding
+    null[field] <- list(NULL)
+    expect_error(
+      tempest:::tempest_expert_session_snapshot_record(null),
+      class = "tempest_session_snapshot_error",
+      info = field
+    )
+  }
+  extra <- binding
+  extra$runtime <- "process-local"
   expect_error(
-    tempest:::tempest_expert_session_snapshot_record(missing),
+    tempest:::tempest_expert_session_snapshot_record(extra),
     class = "tempest_session_snapshot_error"
   )
-  null <- binding
-  null["grants"] <- list(NULL)
   expect_error(
-    tempest:::tempest_expert_session_snapshot_record(null),
+    tempest:::tempest_expert_session_snapshot_record(rev(binding)),
     class = "tempest_session_snapshot_error"
   )
 })
@@ -95,19 +120,27 @@ test_that("session restore rejects contract and expert-binding tampering", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   expert <- tempest_expert(
-    expert_id = "expert.tamper-check",
     name = "Integrity Expert",
     title = "Integrity analyst",
     description = "Checks persisted profile bindings.",
     instructions = "Reject changed profile definitions."
   )
+  other_expert <- tempest_expert(
+    name = "Second Integrity Expert",
+    title = "Independent integrity analyst",
+    description = "Checks duplicate persisted profile bindings.",
+    instructions = "Reject ambiguous expert-session identities."
+  )
   session <- tempest_session(
     "Integrity check",
     config = cfg,
-    experts = list(expert)
+    experts = list(expert, other_expert)
   )
   tempest:::tempest_session_expert_manager(session)$get_or_create(
     expert@expert_id
+  )
+  tempest:::tempest_session_expert_manager(session)$get_or_create(
+    other_expert@expert_id
   )
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
   tempest_session_save(session, bundle_dir)
@@ -134,6 +167,16 @@ test_that("session restore rejects contract and expert-binding tampering", {
   )
 
   runtime_object <- tempest_session_snapshot(session)
+  expect_true(all(vapply(
+    runtime_object$expert_sessions,
+    \(binding) {
+      identical(
+        names(binding),
+        tempest:::tempest_expert_session_record_fields()
+      )
+    },
+    logical(1)
+  )))
   runtime_object$expert_sessions[[1]]$runtime <- new.env(parent = emptyenv())
   expect_error(
     tempest:::tempest_session_restore_internal(
@@ -166,64 +209,52 @@ test_that("session restore rejects contract and expert-binding tampering", {
     )
   }
 
-  tamper_expert_sessions(function(binding) {
-    binding$model_role <- NULL
-    binding
-  })
+  for (field in tempest:::tempest_expert_session_record_fields()) {
+    tamper_expert_sessions(function(binding) {
+      binding[[field]] <- NULL
+      binding
+    })
+  }
   tamper_expert_sessions(function(binding) {
     binding$unexpected <- "runtime"
     binding
   })
   tamper_expert_sessions(function(binding) {
-    binding$model_role <- "writer"
+    binding$expert_id <- "expert.unknown"
     binding
   })
   tamper_expert_sessions(function(binding) {
-    binding$allowed_connection_ref_ids <- "connection.foreign"
-    binding
-  })
-  tamper_expert_sessions(function(binding) {
-    binding$allowed_connection_ref_ids <- list(list("connection.nested"))
+    binding$expert_version <- "sha256:changed"
     binding
   })
   tamper_expert_sessions(function(binding) {
     binding$created_at <- "not-a-timestamp"
     binding
   })
-  tamper_expert_sessions(function(binding) {
-    binding$grants <- list(
-      "capability.invalid" = list(status = "granted")
-    )
-    binding
-  })
-  tamper_expert_sessions(function(binding) {
-    binding["grants"] <- list(NULL)
-    binding
-  })
-  tamper_expert_sessions(function(binding) {
-    binding$grants <- list(
-      "capability.nested" = list(
-        capability_id = "capability.nested",
-        capability_version = "1",
-        operation_id = NULL,
-        operation_version = NULL,
-        required = TRUE,
-        status = "denied",
-        connection_ref_ids = list(list("connection.nested")),
-        reason_code = NULL,
-        reason = NULL,
-        metadata = list()
-      )
-    )
-    binding
-  })
 
   tempest_session_save(session, bundle_dir, overwrite = TRUE)
   sessions_path <- file.path(bundle_dir, "expert_sessions.json")
   sessions <- tempest:::tempest_product_read_json(sessions_path)
-  duplicate <- sessions[[1]]
-  duplicate$session_id <- "session.duplicate"
-  sessions[[2]] <- duplicate
+  sessions[[2]]$session_id <- sessions[[1]]$session_id
+  tempest:::tempest_product_write_json(sessions_path, sessions)
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
+  manifest$checksums[["expert_sessions.json"]] <-
+    tempest:::tempest_product_bundle_checksum(
+      bundle_dir,
+      "expert_sessions.json"
+    )
+  tempest:::tempest_product_write_json(manifest_path, manifest)
+  expect_error(
+    tempest:::tempest_session_resume_internal(
+      bundle_dir,
+      config = cfg
+    ),
+    class = "tempest_session_restore_error"
+  )
+
+  tempest_session_save(session, bundle_dir, overwrite = TRUE)
+  sessions <- tempest:::tempest_product_read_json(sessions_path)
+  sessions[[2]]$expert_id <- sessions[[1]]$expert_id
   tempest:::tempest_product_write_json(sessions_path, sessions)
   manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["expert_sessions.json"]] <-

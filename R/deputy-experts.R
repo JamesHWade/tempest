@@ -30,11 +30,7 @@ tempest_deputy_expert_session_id <- function(run_id, expert_id) {
 }
 
 tempest_deputy_expert_prompt <- function(expert) {
-  paste(
-    tempest_render_expert_prompt(expert, expert_id = expert@expert_id),
-    paste0("Expert instructions:\n", expert@instructions),
-    sep = "\n\n"
-  )
+  tempest_render_expert_prompt(expert, expert_id = expert@expert_id)
 }
 
 tempest_deputy_expert_exact_scalar <- function(value, field) {
@@ -75,7 +71,7 @@ TempestDeputyExpertManager <- R6::R6Class(
       on_terminal
     ) {
       experts <- tryCatch(
-        tempest_validate_experts(experts, active_only = FALSE),
+        tempest_validate_experts(experts),
         error = function(error) {
           tempest_deputy_expert_abort(
             "{.arg experts} must contain validated scientific expert profiles.",
@@ -140,6 +136,7 @@ TempestDeputyExpertManager <- R6::R6Class(
       private$on_completion <- on_completion
       private$on_terminal <- on_terminal
       private$experts <- new.env(hash = TRUE, parent = emptyenv())
+      private$retired_experts <- new.env(hash = TRUE, parent = emptyenv())
       private$sessions <- new.env(hash = TRUE, parent = emptyenv())
       private$bindings <- new.env(hash = TRUE, parent = emptyenv())
       for (expert in experts) {
@@ -182,7 +179,10 @@ TempestDeputyExpertManager <- R6::R6Class(
         )
       }
       expert <- get(expert_id, private$experts, inherits = FALSE)
-      if (active_only && !identical(expert@state, "active")) {
+      if (
+        active_only &&
+          exists(expert_id, private$retired_experts, inherits = FALSE)
+      ) {
         tempest_deputy_expert_abort(
           "Expert {.val {expert_id}} is retired and cannot execute."
         )
@@ -195,25 +195,37 @@ TempestDeputyExpertManager <- R6::R6Class(
       ids <- sort(ls(private$experts, all.names = TRUE), method = "radix")
       experts <- lapply(ids, get, envir = private$experts, inherits = FALSE)
       if (active_only) {
-        experts <- Filter(\(expert) identical(expert@state, "active"), experts)
+        experts <- Filter(
+          \(expert) {
+            !exists(
+              expert@expert_id,
+              private$retired_experts,
+              inherits = FALSE
+            )
+          },
+          experts
+        )
       }
       unname(experts)
     },
 
     add_expert = function(expert, replace = FALSE) {
-      expert <- tempest_validate_experts(list(expert), active_only = TRUE)[[1L]]
+      expert <- tempest_validate_experts(list(expert))[[1L]]
       replace <- tempest_product_flag(replace, "replace")
       expert_id <- expert@expert_id
-      exists <- exists(expert_id, private$experts, inherits = FALSE)
-      if (exists && !replace) {
+      already_exists <- exists(expert_id, private$experts, inherits = FALSE)
+      if (already_exists && !replace) {
         tempest_deputy_expert_abort(
           "Expert {.val {expert_id}} is already in the live roster."
         )
       }
-      if (exists) {
+      if (already_exists) {
         private$retire_expert_sessions(expert_id)
       }
       assign(expert_id, expert, private$experts)
+      if (exists(expert_id, private$retired_experts, inherits = FALSE)) {
+        rm(list = expert_id, envir = private$retired_experts)
+      }
       invisible(expert_id)
     },
 
@@ -222,13 +234,13 @@ TempestDeputyExpertManager <- R6::R6Class(
       if (!exists(expert_id, private$experts, inherits = FALSE)) {
         return(FALSE)
       }
-      expert <- get(expert_id, private$experts, inherits = FALSE)
-      if (!identical(expert@state, "retired")) {
-        expert <- tempest_expert_update(expert, state = "retired")
-        assign(expert_id, expert, private$experts)
-      }
+      assign(expert_id, TRUE, private$retired_experts)
       private$retire_expert_sessions(expert_id)
       TRUE
+    },
+
+    list_retired_expert_ids = function() {
+      sort(ls(private$retired_experts, all.names = TRUE), method = "radix")
     },
 
     get_or_create = function(expert_id, session_id = NULL) {
@@ -465,9 +477,6 @@ TempestDeputyExpertManager <- R6::R6Class(
         "expert_id",
         "expert_version",
         "expert_fingerprint",
-        "model_role",
-        "allowed_connection_ref_ids",
-        "grants",
         "created_at"
       )
       if (
@@ -480,20 +489,11 @@ TempestDeputyExpertManager <- R6::R6Class(
           "Expert session binding does not match the current schema."
         )
       }
-      if (
-        !identical(binding$allowed_connection_ref_ids, character()) ||
-          !identical(binding$grants, list())
-      ) {
-        tempest_deputy_expert_abort(
-          "Scientific expert sessions cannot restore generic grants or connections."
-        )
-      }
       scalar_fields <- c(
         "session_id",
         "expert_id",
         "expert_version",
         "expert_fingerprint",
-        "model_role",
         "created_at"
       )
       for (field in scalar_fields) {
@@ -508,8 +508,7 @@ TempestDeputyExpertManager <- R6::R6Class(
           !identical(
             binding$expert_fingerprint,
             tempest_expert_profile_fingerprint(expert)
-          ) ||
-          !identical(binding$model_role, expert@model_role)
+          )
       ) {
         tempest_deputy_expert_abort(
           "Expert session binding does not match its live scientific profile."
@@ -572,6 +571,7 @@ TempestDeputyExpertManager <- R6::R6Class(
     on_completion = NULL,
     on_terminal = NULL,
     experts = NULL,
+    retired_experts = NULL,
     sessions = NULL,
     bindings = NULL,
 
@@ -621,10 +621,10 @@ TempestDeputyExpertManager <- R6::R6Class(
           "Expert session {.val {session_id}} is already active."
         )
       }
-      model <- tempest_research_model(private$config, expert@model_role)
+      model <- tempest_research_model(private$config, "expert")
       chat <- tempest_make_chat(
         private$config,
-        expert@model_role,
+        "expert",
         system_prompt = tempest_deputy_expert_prompt(expert),
         echo = "none"
       )
@@ -657,9 +657,6 @@ TempestDeputyExpertManager <- R6::R6Class(
         expert_id = expert@expert_id,
         expert_version = expert@version,
         expert_fingerprint = tempest_expert_profile_fingerprint(expert),
-        model_role = expert@model_role,
-        allowed_connection_ref_ids = character(),
-        grants = list(),
         created_at = tempest_now_utc()
       )
       assign(session_id, chat, private$sessions)
@@ -767,7 +764,7 @@ tempest_create_deputy_expert_delegation_tool <- function(
   topic <- tempest_product_scalar(topic, "topic")
   roster <- manager$list_experts()
   if (!is.null(experts)) {
-    requested <- tempest_validate_experts(experts, active_only = FALSE)
+    requested <- tempest_validate_experts(experts)
     if (
       !setequal(
         vapply(requested, \(expert) expert@expert_id, character(1)),

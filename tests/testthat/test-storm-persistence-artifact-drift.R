@@ -74,7 +74,6 @@ test_that("completed STORM product state fails closed when artifacts drift", {
         key_questions = "What is authoritative?"
       )),
       experts = list(tempest_expert(
-        expert_id = "expert.durable-state",
         name = "Durable State Expert",
         title = "Persistence analyst",
         description = "Checks completed product state.",

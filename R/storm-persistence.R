@@ -504,7 +504,7 @@ tempest_storm_require_current_schema <- function(metadata) {
     "STORM run schema version",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
-  if (!identical(schema_version, 7L)) {
+  if (!identical(schema_version, 8L)) {
     tempest_product_unsupported_format_abort(
       "STORM bundle format",
       schema_version,
@@ -582,7 +582,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   }
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 7 STORM file inventory",
+    "Schema 8 STORM file inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   tempest_persistence_require_regular_bundle_files(
@@ -633,7 +633,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 7 STORM checksum inventory",
+    "Schema 8 STORM checksum inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   missing_checksums <- setdiff(files, names(checksums))
@@ -935,7 +935,7 @@ tempest_storm_restore_workspace <- function(
   identity <- metadata$workspace
   if (!is.list(identity) || is.data.frame(identity)) {
     tempest_storm_run_restore_abort(
-      "Schema 7 STORM bundles must contain a workspace identity record."
+      "Schema 8 STORM bundles must contain a workspace identity record."
     )
   }
   required <- c(
@@ -1247,6 +1247,21 @@ tempest_storm_read_state <- function(
       )
     )
   }
+  read_required_json_artifact <- function(name) {
+    path <- paths[[name]]
+    if (!path_is_declared(path) || !file.exists(path)) {
+      tempest_storm_run_restore_abort(
+        "Current STORM bundles require the {.file {basename(path)}} sidecar."
+      )
+    }
+    tempest_product_read_json(
+      path,
+      what = paste("STORM", gsub("_", " ", name)),
+      class = tempest_persistence_error_class(
+        "tempest_run_restore_error"
+      )
+    )
+  }
   read_text_artifact <- function(name) {
     path <- paths[[name]]
     if (!path_is_declared(path) || !file.exists(path)) {
@@ -1254,14 +1269,7 @@ tempest_storm_read_state <- function(
     }
     tempest_read_text(path)
   }
-  expert_records <- list()
-  if (path_is_declared(paths$experts) && file.exists(paths$experts)) {
-    expert_records <- tempest_product_read_json(
-      paths$experts,
-      what = "STORM expert profiles",
-      class = tempest_persistence_error_class("tempest_run_restore_error")
-    )
-  }
+  expert_records <- read_required_json_artifact("experts")
   tempest_storm_require_current_schema(metadata)
   completed_stages <- tempest_storm_state_completed_stages(
     metadata$completed_stages,
@@ -1280,8 +1288,8 @@ tempest_storm_read_state <- function(
     lead_section = read_text_artifact("lead_section"),
     draft_md = read_text_artifact("draft_md"),
     report_md = read_text_artifact("report_md"),
-    references = read_json_artifact("references", list()),
-    stage_records = read_json_artifact("stage_records", list()),
+    references = read_required_json_artifact("references"),
+    stage_records = read_required_json_artifact("stage_records"),
     completed_stages = metadata$completed_stages
   )
   tempest_persistence_credential_audit(
@@ -1464,7 +1472,7 @@ tempest_storm_load_artifacts <- function(
   )
   tempest_research_workspace_require_current_schema(
     workspace_snapshot,
-    "Schema 7 STORM research workspace",
+    "Schema 8 STORM research workspace",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   workspace <- tryCatch(
@@ -2048,7 +2056,7 @@ tempest_storm_save_artifacts <- function(
     title = state$title,
     requested_steps = requested_steps,
     completed_stages = state$completed_stages,
-    schema_version = 7L,
+    schema_version = 8L,
     bundle_type = "storm",
     bundle_status = "complete",
     research_manifest = tempest_research_manifest_record(research_manifest),

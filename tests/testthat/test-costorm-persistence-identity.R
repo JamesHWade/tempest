@@ -1,4 +1,4 @@
-test_that("schema 9 session restore protects research identity", {
+test_that("schema 10 session restore protects research identity", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -8,7 +8,6 @@ test_that("schema 9 session restore protects research identity", {
     "Protected session",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.protected-session",
       name = "Protected Session Expert",
       title = "Persistence analyst",
       description = "Checks durable research identity.",
@@ -21,7 +20,7 @@ test_that("schema 9 session restore protects research identity", {
   expect_no_error(tempest_session_restore(snapshot, config = cfg))
 
   double_schema <- snapshot
-  double_schema$schema_version <- 8.0
+  double_schema$schema_version <- 10.0
   expect_error(
     tempest_session_restore(double_schema, config = cfg),
     class = "tempest_session_restore_error"
@@ -41,13 +40,7 @@ test_that("schema 9 session restore protects research identity", {
     class = "tempest_session_restore_error"
   )
 
-  for (field in c(
-    "version",
-    "state",
-    "schema_version",
-    "focus_areas",
-    "metadata"
-  )) {
+  for (field in tempest:::tempest_expert_record_fields()) {
     null_expert_field <- snapshot
     null_expert_field$experts[[1]][field] <- list(NULL)
     expect_error(
@@ -58,9 +51,16 @@ test_that("schema 9 session restore protects research identity", {
   }
 
   double_expert_schema <- snapshot
-  double_expert_schema$experts[[1]]$schema_version <- 1.0
+  double_expert_schema$experts[[1]]$schema_version <- 2.0
   expect_error(
     tempest_session_restore(double_expert_schema, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  extra_expert_field <- snapshot
+  extra_expert_field$experts[[1]]$state <- "active"
+  expect_error(
+    tempest_session_restore(extra_expert_field, config = cfg),
     class = "tempest_session_restore_error"
   )
 
@@ -243,7 +243,7 @@ test_that("schema 9 session restore protects research identity", {
   )
 })
 
-test_that("schema 9 progress history is exact and session-bound", {
+test_that("schema 10 progress history is exact and session-bound", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -252,7 +252,6 @@ test_that("schema 9 progress history is exact and session-bound", {
     "Bound progress",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.bound-progress",
       name = "Bound Progress Expert",
       title = "Persistence analyst",
       description = "Checks progress correlation.",

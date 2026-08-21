@@ -257,6 +257,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
   program_set <- tempest_program_set()
   extraction_program <-
     tempest:::tempest_program_set_manifest_programs(program_set)$extract_claims
+  expert <- test_expert(name = "Stage Record Binding Expert")
   workspace <- tempest_research_workspace()
   source <- fake_source(
     url = "https://example.org/stage-record-binding",
@@ -282,7 +283,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     evidence_span_ids = span_id,
     supporting_quotes = list("Stage records bind durable claim outputs."),
     retrieval_step_id = "retrieval.stage-record-binding",
-    expert_id = "expert.stage-record-binding",
+    expert_id = expert@expert_id,
     session_id = "stage-record-binding"
   ))
   manual_claim_id <- workspace$add_proposed_claim(tempest_claim(
@@ -294,7 +295,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
   session <- tempest_session(
     "Stage-record binding",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.stage-record-binding")),
+    experts = list(expert),
     retriever = tempest_retriever(config = cfg, workspace = workspace),
     session_id = "stage-record-binding",
     program_set = program_set
@@ -302,13 +303,13 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
   expert_session <- tempest:::tempest_session_expert_manager(
     session
   )$get_or_create(
-    "expert.stage-record-binding"
+    expert@expert_id
   )
   run_context <- tempest:::tempest_deputy_run_context(
     session$manifest,
     stage = "dialogue",
     role = "expert",
-    expert_id = "expert.stage-record-binding"
+    expert_id = expert@expert_id
   )
   tempest:::tempest_session_record_deputy_trace(
     session,
@@ -317,7 +318,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
       correlation_id = "retrieval.stage-record-binding",
       deputy_run_id = "trace.stage-record-binding",
       deputy_session_id = expert_session$session_id,
-      expert_id = "expert.stage-record-binding",
+      expert_id = expert@expert_id,
       role = "expert",
       stage = "dialogue",
       status = "complete",
@@ -356,7 +357,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
       research_run_id = session$session_id,
       deputy_run_id = "trace.stage-record-binding",
       deputy_session_id = expert_session$session_id,
-      expert_id = "expert.stage-record-binding",
+      expert_id = expert@expert_id,
       correlation_id = "retrieval.stage-record-binding",
       mode = "costorm",
       role = "program"
@@ -713,7 +714,6 @@ test_that("session bundles expose only product persistence inventory", {
     "Narrow product persistence",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.narrow-persistence",
       name = "Narrow Persistence Expert",
       title = "Artifact specialist",
       description = "Checks product persistence boundaries.",

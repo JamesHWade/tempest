@@ -1,4 +1,4 @@
-test_that("schema 9 persists exact Deputy execution authority", {
+test_that("schema 10 persists exact Deputy execution authority", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("ellmer")
   skip_if_not_installed("jsonlite")
@@ -157,7 +157,7 @@ test_that("schema 9 persists exact Deputy execution authority", {
     character(1),
     "trace_type"
   )
-  expect_identical(snapshot$schema_version, 9L)
+  expect_identical(snapshot$schema_version, 10L)
   expect_identical(
     trace_types,
     c("stage_attempt", "stage_attempt", "deputy_run", "deputy_run")

@@ -1443,8 +1443,14 @@ test_that("persona state digests bind exact profile records and fingerprints", {
     "personas",
     evaluated
   )
-  renamed <- evaluated
-  renamed[[1]] <- S7::set_props(renamed[[1]], name = "Dr. Eve Stone")
+  renamed <- list(tempest_expert(
+    name = "Dr. Eve Stone",
+    title = evaluated[[1]]@title,
+    description = evaluated[[1]]@description,
+    instructions = evaluated[[1]]@instructions,
+    focus_areas = evaluated[[1]]@focus_areas,
+    initial_questions = evaluated[[1]]@initial_questions
+  ))
   renamed_records <- tempest:::tempest_expert_records(renamed)
 
   expect_identical(

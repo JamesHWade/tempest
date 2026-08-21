@@ -196,11 +196,11 @@ receipt is shown as accepted; a receipt alone or a cross-run product fails
 closed.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state schema
-4, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload
-schema 3, and promotion-bundle schema 1. Readers reject every other version;
-missing fields, extra fields, and values that only become valid after coercion
-are errors.
+Co-STORM snapshot and bundle schema 10, STORM bundle schema 8 with state schema
+5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest
+payload schema 3, and promotion-bundle schema 1. Readers reject every other
+version; missing fields, extra fields, and values that only become valid after
+coercion are errors.
 
 ## Product boundary
 
@@ -237,6 +237,30 @@ res <- tempest_run("Life cycle assessment of lithium-ion batteries", config = cf
 
 cat(res$report_md)
 ```
+
+Hosts can supply the same immutable scientific profiles used by generated
+expert panels:
+
+```r
+recycling_expert <- tempest_expert(
+  name = "Dr. Rivera",
+  title = "Battery recovery specialist",
+  description = "Studies process yield, safety, and industrial scale-up.",
+  instructions = "Separate demonstrated performance from projections.",
+  focus_areas = c("hydrometallurgy", "process safety"),
+  initial_questions = "Which recovery steps constrain full-scale yield?"
+)
+
+res <- tempest_run(
+  "Life cycle assessment of lithium-ion batteries",
+  config = cfg,
+  experts = list(recycling_expert)
+)
+```
+
+Generated and supplied experts use the same canonical constructor. Tempest
+derives `expert_id` and `version` from its six authored fields. Profiles do not
+contain runtime clients, tools, capabilities, or roster state.
 
 ### Experimental OpenTelemetry traces
 
@@ -374,8 +398,8 @@ res <- tempest_run(
 )
 ```
 
-Each run directory is an exact current schema-7 STORM product bundle with
-schema-4 state. It includes checksummed JSON state for perspectives, experts,
+Each run directory is an exact current schema-8 STORM product bundle with
+schema-5 state. It includes checksummed JSON state for perspectives, experts,
 sources, claims, outlines, and references; Markdown drafts; and the final
 Markdown report. Resume rejects older, future, missing, extra, coerced, or
 mismatched shapes rather than migrating them.
@@ -648,7 +672,8 @@ a Manifest, publish a product, or grant promotion authority.
 
 The moderator receives one scoped
 `delegate_to_expert(expert_id, question)` tool. It resolves the active roster by
-stable expert id, so display-name changes cannot redirect work. Each expert:
+content-derived expert id, so duplicate display names cannot redirect work.
+Each expert:
 
 - Has one persistent Deputy-backed chat session with conversation continuity
 - Receives only the role-specific tools needed for that run
@@ -661,7 +686,7 @@ expert run records an opaque terminal trace that is carried through Co-STORM
 snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-9 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+schema-10 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
 suggested-question, and Graft snapshot state must pass integrity checks. Live
 chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
 rather than serialized.
@@ -686,12 +711,25 @@ session$step("What is quantum supremacy?")  # Benefits from prior research
 Experts can be added or retired during a session:
 
 ```r
-session$add_expert("quantum error correction")
-session$retire_expert("expert.sarah-chen")
+error_correction_expert <- tempest_expert(
+  name = "Dr. Sarah Chen",
+  title = "Quantum error-correction researcher",
+  description = "Studies fault-tolerant quantum architectures.",
+  instructions = "Distinguish demonstrated thresholds from projections."
+)
+session <- tempest_session(
+  "Quantum computing",
+  experts = list(error_correction_expert)
+)
+session$add_expert("quantum networking")
+session$retire_expert(error_correction_expert@expert_id)
 session$get_active_experts()
 ```
 
-The roster respects `max_active_experts` (default 5). Retired experts' tools return a notice that the expert is no longer available.
+Expert profiles remain immutable. Retirement is manager-owned session-roster
+state, persisted separately from the profile. The roster respects
+`max_active_experts` (default 5), and retired experts' tools return a notice
+that the expert is no longer available.
 
 ### Report Generation
 

@@ -38,7 +38,6 @@ test_that("Tempest session bundles save and resume durable state", {
   )
   store$upsert_retrieved_resource(source)
   expert <- tempest_expert(
-    expert_id = "expert.bundle",
     name = "Dr. Bundle",
     title = "Persistence expert",
     description = "Bundle state",
@@ -114,7 +113,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_null(manifest$status)
   expect_equal(manifest$bundle_type, "costorm")
   expect_equal(manifest$bundle_status, "complete")
-  expect_equal(manifest$schema_version, 9L)
+  expect_equal(manifest$schema_version, 10L)
   expect_identical(
     manifest$research_manifest$research_run_id,
     session_id
@@ -131,6 +130,8 @@ test_that("Tempest session bundles save and resume durable state", {
     manifest$files,
     c(
       "experts.json",
+      "retired_expert_ids.json",
+      "expert_sessions.json",
       "progress_events.json",
       "stage_records.json",
       "workspace/retrieved_resources.json",
@@ -149,11 +150,11 @@ test_that("Tempest session bundles save and resume durable state", {
   )))
   expect_false("config.json" %in% manifest$files)
 
-  schema_eight_manifest <- manifest
-  schema_eight_manifest$schema_version <- 8L
+  legacy_manifest <- manifest
+  legacy_manifest$schema_version <- 9L
   tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
-    schema_eight_manifest
+    legacy_manifest
   )
   expect_error(
     tempest_session_resume(bundle_dir, config = cfg),
@@ -278,11 +279,11 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_no_error(tempest_session_save(session, bundle_dir, overwrite = TRUE))
 })
 
-test_that("schema 8 session bundles are rejected", {
+test_that("schema 9 session bundles are rejected", {
   bundle_dir <- withr::local_tempdir()
   tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
-    list(schema_version = 8L)
+    list(schema_version = 9L)
   )
   expect_error(
     tempest_session_resume(bundle_dir),

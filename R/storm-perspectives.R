@@ -235,7 +235,11 @@ tempest_format_persona_details <- function(persona) {
     parts <- c(parts, paste0("Focus areas: ", focus))
   }
 
-  if (!is.null(persona$perspective) && nzchar(persona$perspective)) {
+  if (
+    !is.null(persona$perspective) &&
+      nzchar(persona$perspective) &&
+      !identical(persona$perspective, persona$background)
+  ) {
     parts <- c(parts, paste0("Your perspective: ", persona$perspective))
   }
 
@@ -257,11 +261,16 @@ tempest_render_expert_prompt <- function(persona, expert_id = NULL) {
   }
   persona <- tempest_expert_runtime_record(persona)
   expert_id <- expert_id %||% persona$expert_id
+  persona_details <- paste(
+    tempest_format_persona_details(persona),
+    paste0("Expert instructions:\n", persona$instructions),
+    sep = "\n\n"
+  )
   tempest_prompt_render(
     "expert_system",
     persona_name = persona$name,
     persona_title = persona$title,
-    persona_details = tempest_format_persona_details(persona)
+    persona_details = persona_details
   )
 }
 
@@ -371,7 +380,7 @@ tempest_generated_expert_scalar <- function(value, field, allow_empty = FALSE) {
 }
 
 #' @keywords internal
-tempest_generated_expert_profile <- function(value, index) {
+tempest_generated_expert_profile <- function(value) {
   if (!is.list(value) || is.data.frame(value)) {
     tempest_abort(
       "Generated persona entries must be records.",
@@ -391,52 +400,33 @@ tempest_generated_expert_profile <- function(value, index) {
     allow_empty = TRUE
   )
   focus_areas <- tempest_stage_string_array(value$focus_areas, "focus_areas")
-  description <- tempest_generated_expert_scalar(
+  perspective <- tempest_generated_expert_scalar(
     value$perspective,
     "perspective"
   )
+  description <- paste(
+    c(
+      if (nzchar(affiliation)) paste0("Affiliation: ", affiliation),
+      if (nzchar(background)) paste0("Background: ", background),
+      paste0("Perspective: ", perspective)
+    ),
+    collapse = "\n"
+  )
   instructions <- paste0(
     "Research the topic from this perspective: ",
-    description
+    perspective
   )
   initial_questions <- tempest_stage_string_array(
     value$initial_questions,
     "initial_questions"
   )
-  normalized <- list(
-    name = name,
-    title = title,
-    affiliation = affiliation,
-    background = background,
-    focus_areas = focus_areas,
-    description = description,
-    instructions = instructions,
-    initial_questions = initial_questions,
-    initial_work_items = character()
-  )
-  metadata <- list()
-  if (nzchar(affiliation)) {
-    metadata$affiliation <- affiliation
-  }
-  if (nzchar(background)) {
-    metadata$background <- background
-  }
-
   tempest_expert(
-    expert_id = tempest_generated_expert_id(normalized, index = index),
-    version = "1",
     name = name,
     title = title,
     description = description,
     instructions = instructions,
     focus_areas = focus_areas,
-    selection_metadata = list(
-      origin = "tempest.generated",
-      position = as.integer(index)
-    ),
-    initial_work_items = character(),
-    initial_questions = initial_questions,
-    metadata = metadata
+    initial_questions = initial_questions
   )
 }
 
@@ -466,11 +456,7 @@ tempest_normalize_experts <- function(x, n = NULL) {
       class = "tempest_stage_output_error"
     )
   }
-  purrr::map2(
-    values,
-    seq_along(values),
-    tempest_generated_expert_profile
-  )
+  purrr::map(values, tempest_generated_expert_profile)
 }
 
 #' @keywords internal

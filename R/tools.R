@@ -999,8 +999,7 @@ tempest_generate_single_expert <- function(
   area <- tempest_product_scalar(area, "area")
   existing_experts <- tempest_validate_experts(
     existing_experts,
-    "existing_experts",
-    active_only = FALSE
+    "existing_experts"
   )
 
   existing_desc <- if (length(existing_experts) > 0) {
@@ -1033,7 +1032,7 @@ tempest_generate_single_expert <- function(
       "knowledge gap."
     )
   )
-  expert <- tempest_generate_experts_with_program(
+  tempest_generate_experts_with_program(
     topic = topic,
     n = 1L,
     config = config,
@@ -1042,16 +1041,4 @@ tempest_generate_single_expert <- function(
     requirements = requirements,
     record_stage = record_stage
   )[[1]]
-  tempest_expert_update(
-    expert,
-    expert_id = tempest_generated_expert_id(list(
-      kind = "dynamic",
-      topic = topic,
-      area = area
-    )),
-    metadata = utils::modifyList(
-      expert@metadata,
-      list(generated_for = list(topic = topic, area = area))
-    )
-  )
 }

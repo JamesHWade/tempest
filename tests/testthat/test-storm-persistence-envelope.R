@@ -1,4 +1,4 @@
-test_that("schema 7 STORM manifests have an exact product envelope", {
+test_that("schema 8 STORM manifests have an exact product envelope", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
@@ -14,7 +14,6 @@ test_that("schema 7 STORM manifests have an exact product envelope", {
         key_questions = "What is the durable state?"
       )),
       experts = list(tempest_expert(
-        expert_id = "expert.exact-storm",
         name = "Exact STORM Expert",
         title = "Persistence analyst",
         description = "Checks the exact STORM envelope.",

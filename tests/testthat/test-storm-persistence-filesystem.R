@@ -368,11 +368,11 @@ test_that("references.json holds only the cited sources and reloads", {
   )
 })
 
-test_that("schema 6 STORM bundles fail closed", {
+test_that("schema 7 STORM bundles fail closed", {
   dir <- withr::local_tempdir()
   tempest:::tempest_product_write_json(
     file.path(dir, "run_config.json"),
-    list(schema_version = 6L)
+    list(schema_version = 7L)
   )
   expect_error(
     tempest:::tempest_storm_load_artifacts(dir),
@@ -381,7 +381,7 @@ test_that("schema 6 STORM bundles fail closed", {
   expect_error(
     tempest:::tempest_storm_restore_workspace(
       list(
-        schema_version = 6L,
+        schema_version = 7L,
         workspace = list(
           base_snapshot_id = NULL,
           max_sources = "unbounded",
@@ -393,7 +393,7 @@ test_that("schema 6 STORM bundles fail closed", {
   )
 })
 
-test_that("schema 7 resume protects STORM run and config identity", {
+test_that("schema 8 resume protects STORM run and config identity", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()

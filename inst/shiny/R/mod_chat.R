@@ -387,7 +387,6 @@ custom_expert_profiles <- function(specs) {
     }
 
     tempest::tempest_expert(
-      expert_id = sprintf("expert.user.%02d", index),
       name = values[["name"]],
       title = values[["title"]],
       description = values[["perspective"]],
@@ -398,8 +397,7 @@ custom_expert_profiles <- function(specs) {
           "Gather and cite relevant evidence, distinguish evidence from",
           "interpretation, and state material uncertainty."
         )
-      ),
-      selection_metadata = list(source = "user")
+      )
     )
   })
 }

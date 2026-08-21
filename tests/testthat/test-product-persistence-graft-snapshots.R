@@ -35,7 +35,6 @@ test_that("Tempest restores real Graft snapshots for historical reads", {
     "Graft session persistence",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.graft-persistence",
       name = "Graft Persistence Expert",
       title = "Knowledge historian",
       description = "Checks immutable accepted-knowledge reads.",

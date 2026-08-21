@@ -36,23 +36,14 @@ test_expert <- function(
   title = "Research specialist",
   description = "A test expert profile.",
   instructions = "Answer the assigned question with explicit evidence.",
-  initial_questions = character(),
-  required_capability_ids = character(),
-  optional_capability_ids = character(),
-  state = "active",
-  metadata = list()
+  initial_questions = character()
 ) {
   tempest_expert(
-    expert_id = expert_id,
     name = name,
     title = title,
-    description = description,
+    description = paste0(description, "\nFixture label: ", expert_id),
     instructions = instructions,
-    initial_questions = initial_questions,
-    required_capability_ids = required_capability_ids,
-    optional_capability_ids = optional_capability_ids,
-    state = state,
-    metadata = metadata
+    initial_questions = initial_questions
   )
 }
 
@@ -91,7 +82,6 @@ native_evidence_session <- function(claim_text = "native-backed app claim") {
     "Native evidence topic",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.native",
       name = "Dr. Native",
       title = "Researcher",
       description = "Native source evidence",

@@ -269,13 +269,13 @@ Completed stages are loaded rather than rerun. Keep model, retrieval, and
 workflow settings stable when continuing an existing run.
 
 Current readers accept only `ResearchWorkspace` snapshot schema 5, Co-STORM
-snapshot and bundle schema 9, STORM bundle schema 7 with state schema 4,
-ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload
-schema 3, and promotion-bundle schema 1. Every other version is rejected, as is
-any missing or extra field or value that becomes valid only after coercion.
-Shared envelope primitives, ResearchWorkspace snapshots, Co-STORM bundles, and
-STORM bundles have separate product owners; no generic run-persistence reader
-or compatibility layer remains.
+snapshot and bundle schema 10, STORM bundle schema 8 with state schema 5,
+ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest
+payload schema 3, and promotion-bundle schema 1. Every other version is
+rejected, as is any missing or extra field or value that becomes valid only
+after coercion. Shared envelope primitives, ResearchWorkspace snapshots,
+Co-STORM bundles, and STORM bundles have separate product owners; no generic
+run-persistence reader or compatibility layer remains.
 
 Every typed attempt is saved with its exact stage, program, evaluator, trace,
 support decision, and fallback path. Structured output is validated as a whole
@@ -292,18 +292,20 @@ expert pool:
 ```{r selected-experts, eval = FALSE}
 experts <- list(
   tempest_expert(
-    expert_id = "expert.recycling-engineering",
     name = "Recycling Engineer",
     title = "Battery recovery specialist",
     description = "Focuses on process yield, safety, and scale-up.",
-    instructions = "Separate demonstrated performance from projections."
+    instructions = "Separate demonstrated performance from projections.",
+    focus_areas = c("hydrometallurgy", "process safety"),
+    initial_questions = "Which recovery steps constrain full-scale yield?"
   ),
   tempest_expert(
-    expert_id = "expert.recycling-policy",
     name = "Policy Analyst",
     title = "Circular-economy policy specialist",
     description = "Focuses on incentives, standards, and accountability.",
-    instructions = "Compare jurisdictions and preserve policy uncertainty."
+    instructions = "Compare jurisdictions and preserve policy uncertainty.",
+    focus_areas = c("producer responsibility", "recycling standards"),
+    initial_questions = "Which policies have changed recovery outcomes?"
   )
 )
 
@@ -317,9 +319,13 @@ result <- tempest_run(
 )
 ```
 
-Profiles describe a scientific perspective and stable expert identity. Keep
-live tools, clients, and credentials outside the serialized profile. Product
-code attaches only the tools required for its STORM or Co-STORM role.
+Generated and supplied experts use the same canonical constructor. Profiles are
+immutable descriptions of scientific perspectives, and Tempest derives each
+profile's `expert_id` and `version` from its six authored fields. Keep live
+tools, clients, credentials, and roster state outside the serialized profile.
+Product code attaches only the tools required for its STORM or Co-STORM role,
+and Co-STORM retirement remains manager-owned session-roster state rather than
+profile data.
 
 ## Explore interactively with Co-STORM
 
@@ -387,7 +393,7 @@ credentials, live chat handles, tools, or authenticated clients. Configure
 fresh supported chats and retrieval dependencies through `config` before
 resuming.
 
-Snapshot, save, restore, and resume accept only the exact schema-9 Co-STORM
+Snapshot, save, restore, and resume accept only the exact schema-10 Co-STORM
 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
 suggested-question, and Graft snapshot state must pass integrity checks.
 

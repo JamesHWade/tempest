@@ -58,6 +58,7 @@ test_that("session resume rejects every damaged bundle file", {
   )
   critical_files <- c(
     "experts.json",
+    "retired_expert_ids.json",
     "expert_sessions.json",
     "transcript.json",
     "mindmap.json",
@@ -86,6 +87,46 @@ test_that("session resume rejects every damaged bundle file", {
       info = critical_files[[index]]
     )
   }
+})
+
+test_that("session bundles require the exact retirement sidecar", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Exact retirement sidecar",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.retirement-sidecar"))
+  )
+  root <- withr::local_tempdir()
+
+  missing <- file.path(root, "missing")
+  tempest_session_save(session, missing)
+  manifest_path <- file.path(missing, "session.json")
+  manifest <- tempest:::tempest_product_read_json(manifest_path)
+  manifest$files <- as.list(setdiff(
+    unlist(manifest$files, use.names = FALSE),
+    "retired_expert_ids.json"
+  ))
+  manifest$checksums[["retired_expert_ids.json"]] <- NULL
+  unlink(file.path(missing, "retired_expert_ids.json"))
+  tempest:::tempest_product_write_json(manifest_path, manifest)
+  expect_error(
+    tempest_session_resume(missing, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  extra <- file.path(root, "extra")
+  tempest_session_save(session, extra)
+  tempest:::tempest_product_write_json(
+    file.path(extra, "retired_expert_ids-copy.json"),
+    list()
+  )
+  expect_error(
+    tempest_session_resume(extra, config = cfg),
+    class = "tempest_session_restore_error"
+  )
 })
 
 test_that("session resume rejects files that its manifest does not declare", {

@@ -407,10 +407,7 @@ tempest_warmup_with_timeout <- function(
 }
 
 tempest_warmup_prompt <- function(topic, expert) {
-  seed_questions <- unique(c(
-    expert@initial_questions,
-    expert@initial_work_items
-  ))
+  seed_questions <- expert@initial_questions
   seed_questions <- stringi::stri_trim_both(seed_questions)
   seed_questions <- seed_questions[
     !is.na(seed_questions) & nzchar(seed_questions)

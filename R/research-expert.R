@@ -23,111 +23,26 @@ tempest_research_expert_id <- function(value, arg) {
   value
 }
 
-tempest_research_expert_ids <- function(value, arg) {
-  value <- tempest_product_character(value, arg)
-  if (length(value) == 0L) {
-    return(value)
-  }
-  unname(vapply(value, tempest_research_expert_id, character(1), arg = arg))
-}
-
-tempest_research_expert_optional_id <- function(value, arg) {
-  if (is.null(value) || (length(value) == 1L && is.na(value))) {
-    return(NA_character_)
-  }
-  tempest_research_expert_id(value, arg)
-}
-
-tempest_research_expert_state <- function(value) {
-  value <- tempest_product_scalar(value, "state")
-  if (!value %in% c("active", "retired")) {
-    tempest_research_expert_abort(
-      "{.arg state} must be one of {.val {c('active', 'retired')}}."
-    )
-  }
-  value
-}
-
-tempest_research_expert_canonical_list <- function(value, arg) {
-  value <- tempest_product_canonical_list(value, arg)
-  sensitive <- c(
-    tempest_contract_sensitive_names(value, arg),
-    tempest_contract_sensitive_values(value, arg)
-  )
-  if (length(sensitive) > 0L) {
-    tempest_research_expert_abort(c(
-      "{.arg {arg}} cannot contain credential or secret fields or values.",
-      i = "Store authenticated material in a host connection provider.",
-      x = "Sensitive field: {.field {sensitive[[1]]}}."
-    ))
-  }
-  value
-}
-
-tempest_research_expert_versions <- function(versions, ids) {
-  if (!is.character(versions) || anyNA(versions)) {
-    tempest_research_expert_abort(
-      paste0(
-        "{.arg skill_versions} must be a named character vector ",
-        "without missing values."
-      )
-    )
-  }
-  if (length(versions) == 0L) {
-    return(character())
-  }
-  version_ids <- names(versions)
-  if (
-    is.null(version_ids) ||
-      anyNA(version_ids) ||
-      any(!nzchar(tempest_trim(version_ids))) ||
-      anyDuplicated(version_ids) ||
-      any(!version_ids %in% ids)
-  ) {
-    tempest_research_expert_abort(c(
-      "{.arg skill_versions} must be named by skill id.",
-      i = "Every name must identify an assigned skill."
-    ))
-  }
-  stats::setNames(
-    vapply(
-      versions,
-      tempest_product_version,
-      character(1),
-      arg = "skill_versions"
-    ),
-    version_ids
-  )
-}
-
 tempest_research_expert_prop_chr_vec <- function() {
   S7::new_property(S7::class_character, default = character())
 }
 
-tempest_research_expert_model_roles <- function() {
-  c("coordinator", "expert", "writer", "mindmap", "judge")
+tempest_research_expert_authored_fields <- function() {
+  c(
+    "name",
+    "title",
+    "description",
+    "instructions",
+    "focus_areas",
+    "initial_questions"
+  )
 }
 
 tempest_research_expert_fields <- function() {
   c(
     "expert_id",
     "version",
-    "name",
-    "title",
-    "description",
-    "instructions",
-    "focus_areas",
-    "skill_ids",
-    "skill_versions",
-    "required_capability_ids",
-    "optional_capability_ids",
-    "model_role",
-    "model_policy_ref",
-    "selection_metadata",
-    "initial_work_items",
-    "initial_questions",
-    "state",
-    "metadata",
+    tempest_research_expert_authored_fields(),
     "schema_version"
   )
 }
@@ -136,24 +51,14 @@ TempestExpertProfile <- S7::new_class(
   "tempest_expert",
   properties = list(
     expert_id = tempest_product_prop_chr(),
-    version = tempest_product_prop_chr("1"),
+    version = tempest_product_prop_chr(),
     name = tempest_product_prop_chr(),
     title = tempest_product_prop_chr(),
     description = tempest_product_prop_chr(),
     instructions = tempest_product_prop_chr(),
     focus_areas = tempest_research_expert_prop_chr_vec(),
-    skill_ids = tempest_research_expert_prop_chr_vec(),
-    skill_versions = tempest_research_expert_prop_chr_vec(),
-    required_capability_ids = tempest_research_expert_prop_chr_vec(),
-    optional_capability_ids = tempest_research_expert_prop_chr_vec(),
-    model_role = tempest_product_prop_chr(),
-    model_policy_ref = tempest_product_prop_chr(),
-    selection_metadata = tempest_product_prop_list(),
-    initial_work_items = tempest_research_expert_prop_chr_vec(),
     initial_questions = tempest_research_expert_prop_chr_vec(),
-    state = prop_enum(c("active", "retired"), "active"),
-    metadata = tempest_product_prop_list(),
-    schema_version = S7::new_property(S7::class_integer, default = 1L)
+    schema_version = S7::new_property(S7::class_integer, default = 2L)
   )
 )
 
@@ -161,34 +66,20 @@ TempestExpertProfile <- S7::new_class(
 #'
 #' `r lifecycle::badge("experimental")`
 #'
-#' Expert profiles are serializable definitions of scientific identity and
-#' procedure. Runtime chats, fixed role tools, clients, and credentials are
-#' resolved separately for each execution context.
+#' Expert profiles contain only human-authored scientific identity and
+#' perspective. Tempest derives the exact profile identity and version from
+#' those canonical fields. Runtime chats, the fixed expert model role, tools,
+#' clients, roster state, and credentials are resolved separately.
 #'
-#' @param expert_id Stable expert identifier.
 #' @param name Expert display name.
 #' @param title Short title or area of expertise.
 #' @param description Description of the expert's perspective and scope.
 #' @param instructions Instructions the expert should follow.
-#' @param version Stable expert-profile version.
 #' @param focus_areas Character vector of focus areas.
-#' @param skill_ids,skill_versions Reserved current-schema fields. They must be
-#'   empty because scientific experts use fixed product roles and tools.
-#' @param required_capability_ids,optional_capability_ids Reserved
-#'   current-schema fields that must be empty.
-#' @param model_role One fixed scientific model role: `"coordinator"`,
-#'   `"expert"`, `"writer"`, `"mindmap"`, or `"judge"`.
-#' @param model_policy_ref Reserved current-schema field that must be `NA`.
-#' @param selection_metadata Serializable metadata for host-side expert
-#'   selection.
-#' @param initial_work_items,initial_questions Optional startup work.
-#' @param state Definition state, either `"active"` or `"retired"`.
-#' @param metadata Canonical JSON-compatible host metadata. Metadata cannot
-#'   contain credentials or executable values.
+#' @param initial_questions Optional startup research questions.
 #' @return A `tempest_expert` S7 object.
 #' @examples
 #' expert <- tempest_expert(
-#'   expert_id = "expert.battery-policy",
 #'   name = "Dr. Rivera",
 #'   title = "Battery policy analyst",
 #'   description = "Policy and market incentives",
@@ -196,115 +87,60 @@ TempestExpertProfile <- S7::new_class(
 #' )
 #' @export
 tempest_expert <- function(
-  expert_id,
   name,
   title,
   description,
   instructions,
-  version = "1",
   focus_areas = character(),
-  skill_ids = character(),
-  skill_versions = character(),
-  required_capability_ids = character(),
-  optional_capability_ids = character(),
-  model_role = "expert",
-  model_policy_ref = NA_character_,
-  selection_metadata = list(),
-  initial_work_items = character(),
-  initial_questions = character(),
-  state = "active",
-  metadata = list()
+  initial_questions = character()
 ) {
-  expert_id <- tempest_research_expert_id(expert_id, "expert_id")
-  version <- tempest_product_version(version)
   name <- tempest_product_scalar(name, "name")
   title <- tempest_product_scalar(title, "title")
   description <- tempest_product_scalar(description, "description")
   instructions <- tempest_product_scalar(instructions, "instructions")
   focus_areas <- tempest_product_character(focus_areas, "focus_areas")
-  skill_ids <- tempest_research_expert_ids(skill_ids, "skill_ids")
-  skill_versions <- tempest_research_expert_versions(
-    skill_versions,
-    skill_ids
-  )
-  required_capability_ids <- tempest_research_expert_ids(
-    required_capability_ids,
-    "required_capability_ids"
-  )
-  optional_capability_ids <- tempest_research_expert_ids(
-    optional_capability_ids,
-    "optional_capability_ids"
-  )
-  generic_fields <- c(
-    skill_ids = length(skill_ids),
-    skill_versions = length(skill_versions),
-    required_capability_ids = length(required_capability_ids),
-    optional_capability_ids = length(optional_capability_ids)
-  )
-  if (any(generic_fields > 0L)) {
-    field <- names(generic_fields)[generic_fields > 0L][[1L]]
-    tempest_research_expert_abort(
-      "{.arg {field}} is unavailable for fixed scientific expert profiles."
-    )
-  }
-  model_role <- tempest_research_expert_id(model_role, "model_role")
-  if (!model_role %in% tempest_research_expert_model_roles()) {
-    tempest_research_expert_abort(
-      "{.arg model_role} must be one of {.val {tempest_research_expert_model_roles()}}."
-    )
-  }
-  model_policy_ref <- tempest_research_expert_optional_id(
-    model_policy_ref,
-    "model_policy_ref"
-  )
-  if (!is.na(model_policy_ref)) {
-    tempest_research_expert_abort(
-      "{.arg model_policy_ref} is unavailable for fixed scientific expert profiles."
-    )
-  }
-  selection_metadata <- tempest_research_expert_canonical_list(
-    selection_metadata,
-    "selection_metadata"
-  )
-  initial_work_items <- tempest_product_character(
-    initial_work_items,
-    "initial_work_items"
-  )
   initial_questions <- tempest_product_character(
     initial_questions,
     "initial_questions"
   )
-  state <- tempest_research_expert_state(state)
-  metadata <- tempest_research_expert_canonical_list(metadata, "metadata")
-
-  TempestExpertProfile(
-    expert_id = expert_id,
-    version = version,
+  authored <- list(
     name = name,
     title = title,
     description = description,
     instructions = instructions,
     focus_areas = focus_areas,
-    skill_ids = skill_ids,
-    skill_versions = skill_versions,
-    required_capability_ids = required_capability_ids,
-    optional_capability_ids = optional_capability_ids,
-    model_role = model_role,
-    model_policy_ref = model_policy_ref,
-    selection_metadata = selection_metadata,
-    initial_work_items = initial_work_items,
+    initial_questions = initial_questions
+  )
+  sensitive <- c(
+    tempest_contract_sensitive_names(authored, "expert"),
+    tempest_contract_sensitive_values(authored, "expert")
+  )
+  if (length(sensitive) > 0L) {
+    tempest_research_expert_abort(c(
+      "Expert profile fields cannot contain credential or secret values.",
+      x = "Sensitive value: {.field {sensitive[[1]]}}."
+    ))
+  }
+  profile_hash <- tempest_product_record_hash(authored)
+
+  TempestExpertProfile(
+    expert_id = paste0("expert::", profile_hash),
+    version = paste0("sha256-", profile_hash),
+    name = name,
+    title = title,
+    description = description,
+    instructions = instructions,
+    focus_areas = focus_areas,
     initial_questions = initial_questions,
-    state = state,
-    metadata = metadata,
-    schema_version = 1L
+    schema_version = 2L
   )
 }
 
-tempest_validate_experts <- function(
-  experts,
-  arg = "experts",
-  active_only = TRUE
-) {
+tempest_is_exact_expert <- function(expert) {
+  identical(S7::S7_class(expert), TempestExpertProfile)
+}
+
+tempest_validate_experts <- function(experts, arg = "experts") {
   if (!is.list(experts)) {
     tempest_research_expert_abort(
       "{.arg {arg}} must be a list of {.cls tempest_expert} profiles."
@@ -313,12 +149,7 @@ tempest_validate_experts <- function(
   if (length(experts) == 0L) {
     return(experts)
   }
-  valid <- vapply(
-    experts,
-    S7::S7_inherits,
-    logical(1),
-    class = TempestExpertProfile
-  )
+  valid <- vapply(experts, tempest_is_exact_expert, logical(1))
   if (!all(valid)) {
     tempest_research_expert_abort(
       "Every entry in {.arg {arg}} must be created by {.fn tempest_expert}."
@@ -332,78 +163,64 @@ tempest_validate_experts <- function(
       x = "Duplicated expert id: {.val {duplicate_id}}."
     ))
   }
-  if (isTRUE(active_only)) {
-    retired <- vapply(
-      experts,
-      \(expert) identical(expert@state, "retired"),
-      logical(1)
-    )
-    if (any(retired)) {
-      tempest_research_expert_abort(c(
-        "Selected experts must be active.",
-        x = "Retired expert: {.val {expert_ids[retired][[1]]}}."
-      ))
-    }
-  }
+  invisible(lapply(experts, tempest_expert_profile_data))
   unname(experts)
 }
 
 tempest_expert_runtime_record <- function(expert) {
-  tempest_validate_experts(list(expert), "expert", active_only = FALSE)
+  tempest_validate_experts(list(expert), "expert")
   list(
     id = expert@expert_id,
     expert_id = expert@expert_id,
     version = expert@version,
     name = expert@name,
     title = expert@title,
-    affiliation = expert@metadata$affiliation %||% NA_character_,
-    background = expert@metadata$background %||% expert@description,
+    background = expert@description,
     focus_areas = expert@focus_areas,
     perspective = expert@description,
     instructions = expert@instructions,
-    skill_ids = expert@skill_ids,
-    required_capability_ids = expert@required_capability_ids,
-    optional_capability_ids = expert@optional_capability_ids,
-    model_role = expert@model_role,
-    model_policy_ref = expert@model_policy_ref,
-    initial_work_items = expert@initial_work_items,
-    initial_questions = unique(c(
-      expert@initial_questions,
-      expert@initial_work_items
-    )),
-    state = expert@state,
-    retired = identical(expert@state, "retired")
+    initial_questions = expert@initial_questions
   )
 }
 
 tempest_expert_update <- function(expert, ...) {
   changes <- list(...)
-  data <- tempest_expert_profile_data(expert)
-  unknown <- setdiff(names(changes), names(data))
+  authored <- tempest_research_expert_authored_fields()
+  fields <- names(changes)
+  if (length(changes) == 0L) {
+    tempest_research_expert_abort(
+      "Expert updates require at least one authored profile field."
+    )
+  }
+  if (
+    is.null(fields) ||
+      anyNA(fields) ||
+      any(!nzchar(fields)) ||
+      anyDuplicated(fields)
+  ) {
+    tempest_research_expert_abort(
+      "Expert update fields must be uniquely and explicitly named."
+    )
+  }
+  derived <- intersect(fields, c("expert_id", "version", "schema_version"))
+  if (length(derived) > 0L) {
+    tempest_research_expert_abort(
+      "Derived expert field {.field {derived[[1]]}} cannot be updated."
+    )
+  }
+  unknown <- setdiff(fields, authored)
   if (length(unknown) > 0L) {
     tempest_research_expert_abort(
       "Unknown expert field {.field {unknown[[1]]}}."
     )
   }
-  data[names(changes)] <- changes
-  if (!identical(data$schema_version, 1L)) {
-    tempest_research_expert_abort(
-      "Expert profiles must use exact current schema version `1`."
-    )
-  }
-  do.call(tempest_expert, data[setdiff(names(data), "schema_version")])
-}
-
-tempest_generated_expert_id <- function(value, index = 1L) {
-  fingerprint <- tempest_product_record_hash(list(
-    index = as.integer(index),
-    expert = value
-  ))
-  paste0("expert.generated-", substr(fingerprint, 1L, 16L))
+  data <- tempest_expert_profile_data(expert)
+  data[fields] <- changes
+  do.call(tempest_expert, data[authored])
 }
 
 tempest_expert_profile_values <- function(expert) {
-  if (!S7::S7_inherits(expert, TempestExpertProfile)) {
+  if (!tempest_is_exact_expert(expert)) {
     tempest_research_expert_abort(
       "{.arg expert} is not a valid Tempest expert profile."
     )
@@ -416,16 +233,23 @@ tempest_expert_profile_values <- function(expert) {
 
 tempest_expert_profile_data <- function(expert) {
   data <- tempest_expert_profile_values(expert)
-  if (!identical(data$schema_version, 1L)) {
+  if (!identical(data$schema_version, 2L)) {
     tempest_research_expert_abort(
-      "Expert profiles must use exact current schema version `1`."
+      "Expert profiles must use exact current schema version `2`."
     )
   }
+  authored <- tempest_research_expert_authored_fields()
   validated <- do.call(
     tempest_expert,
-    data[setdiff(names(data), "schema_version")]
+    data[authored]
   )
-  data <- tempest_expert_profile_values(validated)
+  validated_data <- tempest_expert_profile_values(validated)
+  if (!identical(data, validated_data)) {
+    tempest_research_expert_abort(
+      "Expert profiles must retain exact canonical authored and derived fields."
+    )
+  }
+  data <- validated_data
   sensitive <- c(
     tempest_contract_sensitive_names(data, "expert"),
     tempest_contract_sensitive_values(data, "expert")
@@ -441,51 +265,16 @@ tempest_expert_profile_data <- function(expert) {
 }
 
 tempest_expert_profile_record_data <- function(data, fingerprint) {
-  array_fields <- c(
-    "focus_areas",
-    "skill_ids",
-    "skill_versions",
-    "required_capability_ids",
-    "optional_capability_ids",
-    "initial_work_items",
-    "initial_questions"
-  )
+  array_fields <- c("focus_areas", "initial_questions")
   data[array_fields] <- lapply(data[array_fields], function(value) {
     unname(as.list(value))
   })
-  for (field in c("selection_metadata", "metadata")) {
-    value <- data[[field]]
-    if (length(value) == 0L && is.null(names(value))) {
-      names(value) <- character()
-    }
-    value_names <- names(value)
-    if (
-      is.null(value_names) ||
-        anyNA(value_names) ||
-        any(!nzchar(value_names)) ||
-        anyDuplicated(value_names)
-    ) {
-      tempest_research_expert_abort(
-        "Expert profile record-map fields must be fully and uniquely named."
-      )
-    }
-    data[[field]] <- tryCatch(
-      tempest_product_canonical_value(value),
-      error = function(error) {
-        tempest_research_expert_abort(
-          "Expert profile record-map fields must be canonical.",
-          parent = error
-        )
-      }
-    )
-  }
-  data["model_policy_ref"] <- list(NULL)
   data$fingerprint <- fingerprint
   data
 }
 
 tempest_expert_profile_fingerprint <- function(expert_or_data) {
-  data <- if (S7::S7_inherits(expert_or_data, TempestExpertProfile)) {
+  data <- if (tempest_is_exact_expert(expert_or_data)) {
     tempest_expert_profile_data(expert_or_data)
   } else {
     expert_or_data
@@ -541,37 +330,6 @@ tempest_research_record_character <- function(value, arg) {
   strings
 }
 
-tempest_research_record_list <- function(value, arg) {
-  value_names <- names(value)
-  if (
-    !is.list(value) ||
-      is.data.frame(value) ||
-      is.null(value_names) ||
-      anyNA(value_names) ||
-      any(!nzchar(value_names)) ||
-      anyDuplicated(value_names)
-  ) {
-    tempest_research_expert_abort(
-      "Expert profile field {.field {arg}} must be one exact named map."
-    )
-  }
-  canonical <- tryCatch(
-    tempest_product_canonical_value(value),
-    error = function(error) {
-      tempest_research_expert_abort(
-        "Expert profile field {.field {arg}} must be canonical.",
-        parent = error
-      )
-    }
-  )
-  if (!identical(value, canonical)) {
-    tempest_research_expert_abort(
-      "Expert profile field {.field {arg}} must be canonical."
-    )
-  }
-  value
-}
-
 tempest_expert_profile_from_data <- function(data) {
   if (!is.list(data) || is.data.frame(data)) {
     tempest_research_expert_abort(
@@ -621,33 +379,18 @@ tempest_expert_profile_from_data <- function(data) {
     "name",
     "title",
     "description",
-    "instructions",
-    "model_role",
-    "state"
+    "instructions"
   )
   invisible(lapply(
     scalar_fields,
     function(field) tempest_research_record_string(data[[field]], field)
   ))
-  if (!identical(data$schema_version, 1L)) {
+  if (!identical(data$schema_version, 2L)) {
     tempest_research_expert_abort(
-      "Expert profile field {.field schema_version} must be exact integer `1`."
+      "Expert profile field {.field schema_version} must be exact integer `2`."
     )
   }
-  if (!is.null(data$model_policy_ref)) {
-    tempest_research_expert_abort(
-      "Expert profile field {.field model_policy_ref} must be exact `NULL`."
-    )
-  }
-  array_fields <- c(
-    "focus_areas",
-    "skill_ids",
-    "skill_versions",
-    "required_capability_ids",
-    "optional_capability_ids",
-    "initial_work_items",
-    "initial_questions"
-  )
+  array_fields <- c("focus_areas", "initial_questions")
   arrays <- stats::setNames(
     lapply(
       array_fields,
@@ -657,31 +400,14 @@ tempest_expert_profile_from_data <- function(data) {
     ),
     array_fields
   )
-  selection_metadata <- tempest_research_record_list(
-    data$selection_metadata,
-    "selection_metadata"
-  )
-  metadata <- tempest_research_record_list(data$metadata, "metadata")
   value <- tryCatch(
     tempest_expert(
-      expert_id = data$expert_id,
       name = data$name,
       title = data$title,
       description = data$description,
       instructions = data$instructions,
-      version = data$version,
       focus_areas = arrays$focus_areas,
-      skill_ids = arrays$skill_ids,
-      skill_versions = arrays$skill_versions,
-      required_capability_ids = arrays$required_capability_ids,
-      optional_capability_ids = arrays$optional_capability_ids,
-      model_role = data$model_role,
-      model_policy_ref = NA_character_,
-      selection_metadata = selection_metadata,
-      initial_work_items = arrays$initial_work_items,
-      initial_questions = arrays$initial_questions,
-      state = data$state,
-      metadata = metadata
+      initial_questions = arrays$initial_questions
     ),
     error = function(error) {
       tempest_research_expert_abort(
@@ -690,13 +416,21 @@ tempest_expert_profile_from_data <- function(data) {
       )
     }
   )
+  if (
+    !identical(value@expert_id, data$expert_id) ||
+      !identical(value@version, data$version)
+  ) {
+    tempest_research_expert_abort(
+      "Expert profile record identity does not match its authored fields."
+    )
+  }
   value
 }
 
 
 #' @keywords internal
 tempest_expert_records <- function(experts) {
-  experts <- tempest_validate_experts(experts, active_only = FALSE)
+  experts <- tempest_validate_experts(experts)
   unname(lapply(experts, tempest_expert_profile_record))
 }
 
@@ -710,17 +444,7 @@ tempest_expert_record_fields <- function() {
     "description",
     "instructions",
     "focus_areas",
-    "skill_ids",
-    "skill_versions",
-    "required_capability_ids",
-    "optional_capability_ids",
-    "model_role",
-    "model_policy_ref",
-    "selection_metadata",
-    "initial_work_items",
     "initial_questions",
-    "state",
-    "metadata",
     "schema_version",
     "fingerprint"
   )
@@ -744,14 +468,18 @@ tempest_experts_from_records <- function(
     what,
     class
   )
+  writer_fields <- tempest_expert_record_fields()
   valid_writer_fields <- vapply(
     records,
     function(record) {
-      rlang::is_string(record$version) &&
+      all(vapply(
+        writer_fields,
+        \(field) !is.null(record[[field]]),
+        logical(1)
+      )) &&
+        rlang::is_string(record$version) &&
         !is.na(record$version) &&
-        rlang::is_string(record$state) &&
-        !is.na(record$state) &&
-        identical(record$schema_version, 1L) &&
+        identical(record$schema_version, 2L) &&
         is.list(record$focus_areas) &&
         !is.data.frame(record$focus_areas) &&
         is.null(names(record$focus_areas)) &&
@@ -760,12 +488,9 @@ tempest_experts_from_records <- function(
           \(value) rlang::is_string(value) && !is.na(value),
           logical(1)
         )) &&
-        is.list(record$selection_metadata) &&
-        !is.data.frame(record$selection_metadata) &&
-        !is.null(names(record$selection_metadata)) &&
-        is.list(record$metadata) &&
-        !is.data.frame(record$metadata) &&
-        !is.null(names(record$metadata))
+        is.list(record$initial_questions) &&
+        !is.data.frame(record$initial_questions) &&
+        is.null(names(record$initial_questions))
     },
     logical(1)
   )
@@ -781,7 +506,7 @@ tempest_experts_from_records <- function(
   tryCatch(
     {
       experts <- lapply(records, tempest_expert_profile_from_data)
-      tempest_validate_experts(experts, active_only = FALSE)
+      tempest_validate_experts(experts)
     },
     error = function(error) {
       tempest_abort(
@@ -800,9 +525,6 @@ tempest_expert_session_record_fields <- function() {
     "expert_id",
     "expert_version",
     "expert_fingerprint",
-    "model_role",
-    "allowed_connection_ref_ids",
-    "grants",
     "created_at"
   )
 }
@@ -820,22 +542,6 @@ tempest_expert_session_snapshot_record <- function(binding) {
         "A live expert-session binding must retain every exact current ",
         "writer field."
       ),
-      class = tempest_session_persistence_error_class(
-        "tempest_session_snapshot_error"
-      )
-    )
-  }
-  if (
-    !is.character(binding$allowed_connection_ref_ids) ||
-      !is.null(names(binding$allowed_connection_ref_ids)) ||
-      length(binding$allowed_connection_ref_ids) > 0L ||
-      !is.list(binding$grants) ||
-      is.data.frame(binding$grants) ||
-      !is.null(names(binding$grants)) ||
-      length(binding$grants) > 0L
-  ) {
-    tempest_abort(
-      "A live product expert session cannot contain generic capabilities.",
       class = tempest_session_persistence_error_class(
         "tempest_session_snapshot_error"
       )

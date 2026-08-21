@@ -7,7 +7,6 @@ test_that("scripted STORM stays on its product-owned execution path", {
     config = fixture$config,
     retriever = fixture$retriever,
     experts = list(tempest_expert(
-      expert_id = "expert.product-boundary",
       name = "Product Boundary Expert",
       title = "Researcher",
       description = "Exercises the authoritative STORM product path.",

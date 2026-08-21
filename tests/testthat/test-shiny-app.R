@@ -396,14 +396,14 @@ test_that("custom expert forms create validated user profiles", {
 
   expect_length(profiles, 2L)
   expect_s7_class(profiles[[1]], tempest:::TempestExpertProfile)
-  expect_equal(profiles[[1]]@expert_id, "expert.user.01")
+  expect_match(profiles[[1]]@expert_id, "^expert::[a-f0-9]{64}$")
+  expect_match(profiles[[1]]@version, "^sha256-[a-f0-9]{64}$")
   expect_equal(profiles[[1]]@name, "Maya Chen")
   expect_equal(profiles[[1]]@title, "Battery policy analyst")
   expect_equal(
     profiles[[1]]@description,
     "Compare incentives, regulation, and adoption barriers."
   )
-  expect_equal(profiles[[1]]@selection_metadata$source, "user")
   expect_match(profiles[[1]]@instructions, "cite relevant evidence")
 
   invalid <- tryCatch(
@@ -420,8 +420,8 @@ test_that("custom expert forms create validated user profiles", {
 
 test_that("user expert panels override host defaults only when enabled", {
   app <- source_shiny_modules()
-  host <- list(test_expert(expert_id = "expert.host", name = "Host Expert"))
-  user <- list(test_expert(expert_id = "expert.user", name = "User Expert"))
+  host <- list(test_expert(name = "Host Expert"))
+  user <- list(test_expert(name = "User Expert"))
 
   expect_identical(
     app$costorm_session_experts(host, user, FALSE, "custom"),
@@ -594,7 +594,6 @@ test_that("expert cards render deterministic expert icons", {
   app <- source_shiny_modules()
   html <- paste(
     as.character(app$expert_card(test_expert(
-      expert_id = "expert.history",
       name = "Dr. Ada Flow",
       title = "Historian",
       description = "Archives and provenance."
@@ -825,7 +824,7 @@ test_that("session store mutations work outside reactive consumers", {
   ses <- tempest_session(
     "Test topic",
     config = config,
-    experts = list(test_expert(expert_id = "expert.store"))
+    experts = list(test_expert())
   )
 
   expect_silent(store$touch_costorm_session())
@@ -845,7 +844,6 @@ test_that("the transcript module shows recent turns from the store", {
     "Test topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.a",
       name = "Dr. A",
       title = "Sci",
       description = "X"
@@ -885,7 +883,6 @@ test_that("the transcript module renders citations in completed answers", {
     "Citation topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.citations",
       name = "Dr. Citations"
     )),
     retriever = tempest_retriever(config = cfg, workspace = workspace)
@@ -919,7 +916,6 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
     "Test topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.a",
       name = "Dr. A",
       title = "Sci",
       description = "X"
@@ -1016,7 +1012,6 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
     "Integration topic",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.integration",
       name = "Integration Expert",
       title = "Researcher",
       description = "End-to-end app behavior",
@@ -1094,7 +1089,6 @@ test_that("chat command messages summarize active session state", {
     "Command topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.command",
       name = "Dr. Command",
       title = "Interaction specialist",
       description = "Runtime controls"
@@ -1167,7 +1161,6 @@ test_that("facts review exposes safe durable execution downgrades", {
     "Review downgrade",
     config = config,
     experts = list(test_expert(
-      expert_id = "expert.review-downgrade",
       name = "Review Downgrade Expert"
     )),
     session_id = "review-downgrade"
@@ -1485,7 +1478,6 @@ test_that("session archives round-trip product state through upload", {
     "Downloadable session",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.archive",
       name = "Dr. Archive"
     ))
   )
@@ -1562,7 +1554,6 @@ test_that("session archive extraction rejects undeclared and tampered files", {
     "Archive integrity",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.integrity",
       name = "Dr. Integrity"
     ))
   )
@@ -1667,7 +1658,6 @@ test_that("session store saves and restores bundles for shared app tabs", {
     "Shiny persistence",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.persist",
       name = "Dr. Persist",
       title = "Researcher",
       description = "Session durability",
@@ -1782,7 +1772,6 @@ test_that("tempest_shiny_server renders host-managed shared state", {
     "Embedded host topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.host",
       name = "Host Expert"
     )),
     retriever = tempest_retriever(config = cfg, workspace = workspace),
@@ -1934,7 +1923,7 @@ test_that("Co-STORM startup progress closes when the session is ready", {
   ses <- tempest_session(
     "Startup topic",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.startup"))
+    experts = list(test_expert())
   )
   state <- app$costorm_progress_state(list(
     app$costorm_starting_event("session-startup"),
@@ -2598,7 +2587,7 @@ test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
   ses <- tempest_session(
     "Idle topic",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.idle"))
+    experts = list(test_expert())
   )
   state <- app$costorm_progress_state(list(
     app$costorm_starting_event(run_id),
@@ -2650,8 +2639,9 @@ test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
 test_that("warmup result messages summarize typed lifecycle results", {
   app <- source_shiny_modules()
   orientation <- function(name, status, error_message = NA_character_) {
+    expert <- test_expert(name = name)
     list(
-      expert_id = paste0("expert.", tolower(name)),
+      expert_id = expert@expert_id,
       expert_name = name,
       expert_session_id = NA_character_,
       deputy_run_id = if (identical(status, "succeeded")) {

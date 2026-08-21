@@ -351,9 +351,10 @@ test_that("claim write tools record dynamic provenance", {
     config = tempest_config(cache_dir = withr::local_tempdir()),
     workspace = store
   )
+  expert <- test_expert(name = "Climate Expert")
   current <- list(
     session_id = "expert-session-1",
-    expert_id = "expert.climate",
+    expert_id = expert@expert_id,
     retrieval_step_id = "tool-turn-1"
   )
   tools <- tempest:::tempest_tools_source_management(
@@ -369,11 +370,11 @@ test_that("claim write tools record dynamic provenance", {
   )
 
   expect_equal(added$session_id, "expert-session-1")
-  expect_equal(added$expert_id, "expert.climate")
+  expect_equal(added$expert_id, expert@expert_id)
   expect_equal(added$retrieval_step_id, "tool-turn-1")
   claim <- store$list_proposed_claims()[[1]]
   expect_equal(claim@session_id, "expert-session-1")
-  expect_equal(claim@expert_id, "expert.climate")
+  expect_equal(claim@expert_id, expert@expert_id)
   expect_equal(claim@retrieval_step_id, "tool-turn-1")
 })
 
@@ -490,9 +491,26 @@ test_that("single expert generation returns deterministic scoped profiles", {
     S7::S7_inherits(first, tempest:::TempestExpertProfile),
     TRUE
   )
-  expect_equal(first@expert_id, second@expert_id)
-  expect_match(first@expert_id, "^expert.generated-")
-  expect_identical(first@required_capability_ids, character())
-  expect_identical(first@optional_capability_ids, character())
-  expect_equal(first@model_role, "expert")
+  expect_identical(first, second)
+  expect_match(first@expert_id, "^expert::[a-f0-9]{64}$")
+  expect_match(first@version, "^sha256-[a-f0-9]{64}$")
+  expect_identical(first@name, "Dr. Rivera")
+  expect_identical(first@title, "Battery policy analyst")
+  expect_match(first@description, "Affiliation: Independent", fixed = TRUE)
+  expect_match(
+    first@description,
+    "Background: Studies battery policy.",
+    fixed = TRUE
+  )
+  expect_match(
+    first@description,
+    "Perspective: Policy and market incentives",
+    fixed = TRUE
+  )
+  expect_match(first@instructions, "Policy and market incentives", fixed = TRUE)
+  expect_identical(first@focus_areas, c("recycling", "incentives"))
+  expect_identical(
+    first@initial_questions,
+    "Which incentives affect recycling?"
+  )
 })

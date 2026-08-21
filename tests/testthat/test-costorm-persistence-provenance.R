@@ -7,7 +7,10 @@ test_that("sync and async warmups persist authoritative claim provenance", {
   make_session <- function(mode) {
     topic <- paste("Persisted warmup", mode)
     session_id <- paste0("persisted-warmup-", mode)
-    expert_id <- paste0("expert.persisted-warmup-", mode)
+    expert <- test_expert(
+      name = paste("Persisted Warmup", mode, "Expert"),
+      initial_questions = "What evidence should orient the panel?"
+    )
     source <- fake_source(paste0(
       "https://example.org/persisted-warmup-",
       mode
@@ -60,10 +63,7 @@ test_that("sync and async warmups persist authoritative claim provenance", {
     session <- tempest_session(
       topic,
       config = cfg,
-      experts = list(test_expert(
-        expert_id = expert_id,
-        initial_questions = "What evidence should orient the panel?"
-      )),
+      experts = list(expert),
       session_id = session_id
     )
     session$workspace$upsert_retrieved_resource(source)
@@ -71,7 +71,7 @@ test_that("sync and async warmups persist authoritative claim provenance", {
       session = session,
       config = cfg,
       session_id = session_id,
-      expert_id = expert_id
+      expert_id = expert@expert_id
     )
   }
 
@@ -169,7 +169,7 @@ test_that("public session verification persists pair support and source proof", 
   session <- tempest_session(
     "Persisted session verification",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.session-verification")),
+    experts = list(test_expert(name = "Session Verification Expert")),
     session_id = "persisted-session-verification"
   )
   session$workspace$upsert_retrieved_resource(source)
@@ -313,7 +313,7 @@ test_that("public session verification persists pair support and source proof", 
     tempest_session(
       "Unbound standalone verification",
       config = cfg,
-      experts = list(test_expert(expert_id = "expert.unbound-verification")),
+      experts = list(test_expert(name = "Unbound Verification Expert")),
       retriever = tempest_retriever(config = cfg, workspace = standalone),
       session_id = "unbound-standalone-verification"
     ),

@@ -40,7 +40,6 @@ test_that("tempest_run rejects a mismatched TempestRetriever before execution", 
       config = run_config,
       retriever = retriever,
       experts = list(test_expert(
-        expert_id = "expert.retriever-config",
         name = "Retriever Config Expert"
       )),
       program_set = tempest_program_set(),
@@ -73,9 +72,24 @@ test_that("generated experts normalize to stable S7 profiles", {
 
   expect_length(first, 1L)
   expect_s7_class(first[[1]], TempestExpertProfile)
-  expect_equal(first[[1]]@version, "1")
+  expect_match(first[[1]]@expert_id, "^expert::[a-f0-9]{64}$")
+  expect_match(first[[1]]@version, "^sha256-[a-f0-9]{64}$")
   expect_equal(first[[1]]@name, "Dr. Flow")
-  expect_equal(first[[1]]@description, "Reliable workflow execution")
+  expect_match(
+    first[[1]]@description,
+    "Affiliation: Systems Lab",
+    fixed = TRUE
+  )
+  expect_match(
+    first[[1]]@description,
+    "Background: Studies orchestration systems.",
+    fixed = TRUE
+  )
+  expect_match(
+    first[[1]]@description,
+    "Perspective: Reliable workflow execution",
+    fixed = TRUE
+  )
   expect_match(first[[1]]@instructions, "Reliable workflow execution")
   expect_equal(first[[1]]@focus_areas, c("Progress", "Recovery"))
   expect_equal(
@@ -83,7 +97,7 @@ test_that("generated experts normalize to stable S7 profiles", {
     "How is progress recorded?"
   )
   expect_identical(first[[1]]@expert_id, second[[1]]@expert_id)
-  expect_match(first[[1]]@expert_id, "^expert\\.generated-")
+  expect_identical(first[[1]]@version, second[[1]]@version)
 })
 
 test_that("tempest_generate_experts returns validated profiles", {
@@ -119,7 +133,6 @@ test_that("tempest_generate_experts returns validated profiles", {
 test_that("tempest_run uses the selected expert team", {
   skip_if_not_installed("ellmer")
   expert <- tempest_expert(
-    expert_id = "expert.selected",
     name = "Selected Expert",
     title = "Domain specialist",
     description = "Host-selected expertise",
@@ -198,6 +211,13 @@ test_that("tempest_run uses the selected expert team", {
   expect_identical(result$manifest@mode, "storm")
   expect_equal("artifacts" %in% names(result$workspace), FALSE)
   expect_null(result$personas)
+  expect_length(
+    Filter(
+      \(record) identical(record@stage, "personas"),
+      result$state$stage_records
+    ),
+    0L
+  )
 })
 
 test_that("tempest_run rejects state-only continuation", {
@@ -238,6 +258,18 @@ test_that("public partial STORM resumes cannot expand their request", {
     verbose = FALSE
   )
   expect_identical(first$state$requested_steps, "perspectives")
+  first_personas <- Filter(
+    \(record) {
+      identical(record@stage, "personas") &&
+        identical(record@status, "succeeded")
+    },
+    first$state$stage_records
+  )
+  expect_length(first_personas, 1L)
+  expect_identical(
+    first_personas[[1]]@output_reference$content_digest,
+    tempest:::tempest_stage_state_output_digest("personas", first$experts)
+  )
 
   resumed <- tempest_run(
     "Public partial request",
@@ -251,6 +283,10 @@ test_that("public partial STORM resumes cannot expand their request", {
   )
   expect_identical(resumed$state$requested_steps, "perspectives")
   expect_identical(resumed$state$completed_stages, "perspectives")
+  expect_identical(
+    tempest:::tempest_stage_records_data(resumed$state$stage_records),
+    tempest:::tempest_stage_records_data(first$state$stage_records)
+  )
 
   expect_error(
     tempest_run(
@@ -797,7 +833,6 @@ test_that("STORM research harvests OpenAI native annotations", {
   workspace <- tempest_research_workspace()
   retriever <- tempest_retriever(config = config, workspace = workspace)
   expert <- tempest_expert(
-    expert_id = "expert.native",
     name = "Dr. Native",
     title = "Researcher",
     description = "Native evidence",
@@ -890,7 +925,6 @@ test_that("STORM research does not downgrade dsprrr contract failures", {
     }
   )
   expert <- tempest_expert(
-    expert_id = "expert.contract",
     name = "Contract Expert",
     title = "Researcher",
     description = "Contract testing",
@@ -1371,7 +1405,6 @@ test_that("STORM preserves a terminal Deputy attempt when extraction fails", {
       config = fixture$config,
       retriever = fixture$retriever,
       experts = list(tempest_expert(
-        expert_id = "expert.extraction-failure",
         name = "Dr. Recovery",
         title = "Recovery researcher",
         description = "Exercises post-completion recovery.",
@@ -1516,7 +1549,6 @@ test_that("tempest_run binds each expert answer to one Deputy execution", {
     config = fixture$config,
     retriever = fixture$retriever,
     experts = list(tempest_expert(
-      expert_id = "expert.t7-route",
       name = "T7 Route Expert",
       title = "Researcher",
       description = "Exercises the T7 Deputy route.",
@@ -1641,7 +1673,6 @@ test_that("retired STORM compatibility arguments are unknown", {
     workspace = tempest_research_workspace()
   )
   expert <- tempest_expert(
-    expert_id = "expert.parallel-boundary",
     name = "Parallel Boundary Expert",
     title = "Researcher",
     description = "Tests the unsupported parallel boundary.",
