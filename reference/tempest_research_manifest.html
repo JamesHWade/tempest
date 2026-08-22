@@ -13,7 +13,7 @@ an existing record."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,11 +23,6 @@ an existing record."></head><body>
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
-    <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
-  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -64,8 +59,7 @@ an existing record.</p>
 <span>  runtime <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>deputy_session_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>, deputy_run_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  traces <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  deliverables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  status <span class="op">=</span> <span class="st">"running"</span>,</span>
-<span>  schema_version <span class="op">=</span> <span class="fl">3L</span></span>
+<span>  status <span class="op">=</span> <span class="st">"running"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -115,10 +109,6 @@ only when <code>config</code> is unavailable during restoration.</p></dd>
 <dd><p>Run status: <code>"running"</code>, <code>"succeeded"</code>, <code>"failed"</code>, or
 <code>"cancelled"</code>.</p></dd>
 
-
-<dt id="arg-schema-version">schema_version<a class="anchor" aria-label="anchor" href="#arg-schema-version"></a></dt>
-<dd><p>Manifest record schema. Only version 3 is supported.</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -131,17 +121,6 @@ cannot contain credentials, chats, functions, environments, connections,
 S7 or R6 objects, external pointers, or missing and non-finite values.</p>
     </div>
 
-    <div class="section level2">
-    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">manifest</span> <span class="op">&lt;-</span> <span class="fu">tempest_research_manifest</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  research_run_id <span class="op">=</span> <span class="st">"research-123"</span>,</span></span>
-<span class="r-in"><span>  mode <span class="op">=</span> <span class="st">"storm"</span>,</span></span>
-<span class="r-in"><span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">manifest</span><span class="op">@</span><span class="va">status</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "running"</span>
-</code></pre></div>
-    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

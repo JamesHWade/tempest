@@ -19,7 +19,6 @@ tempest_session_resume(
   path,
   config = tempest_config(),
   progress = NULL,
-  partial_recovery = FALSE,
   program_set = NULL,
   knowledge_view = NULL
 )
@@ -40,14 +39,6 @@ tempest_session_resume(
 - progress:
 
   Optional callback for future `tempest_progress_event` objects.
-
-- partial_recovery:
-
-  Whether to allow explicitly requested recovery of the optional
-  `artifacts/suggested_questions.json` presentation file when it fails
-  integrity checks. All durable state, including stage records, experts,
-  Workspace, report, and Graft snapshot state, remains mandatory and
-  must pass integrity checks.
 
 - program_set:
 

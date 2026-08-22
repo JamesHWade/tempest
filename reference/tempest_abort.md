@@ -7,7 +7,7 @@ consistent error formatting.
 ## Usage
 
 ``` r
-tempest_abort(message, ..., .envir = rlang::caller_env())
+tempest_abort(message, ..., class = character(), .envir = rlang::caller_env())
 ```
 
 ## Arguments

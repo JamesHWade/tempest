@@ -9,8 +9,7 @@ acceptance remains an explicit graft review and commit.
 
 - `retrieved_resources`:
 
-  Read-only named-list snapshot of typed resources and built-in
-  web-source records keyed by resource id.
+  Read-only named-list snapshot of typed resources keyed by resource id.
 
 - `proposed_claims`:
 
@@ -180,8 +179,7 @@ Insert or update a retrieved typed evidence resource.
 - `resource`:
 
   A resource created by
-  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
-  or an internal built-in web-source record.
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md).
 
 ------------------------------------------------------------------------
 

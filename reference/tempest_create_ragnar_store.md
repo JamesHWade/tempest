@@ -72,14 +72,3 @@ The store includes these metadata columns:
 - perspective:
 
   STORM perspective this content relates to (optional)
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-store <- tempest_create_ragnar_store(
-  embed_fn = ragnar::embed_openai(),
-  cache_dir = tempfile()
-)
-} # }
-```

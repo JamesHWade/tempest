@@ -25,12 +25,3 @@ tempest_retriever(
 ## Value
 
 A `TempestRetriever`.
-
-## Examples
-
-``` r
-retriever <- tempest_retriever(config = tempest_config())
-if (FALSE) { # \dontrun{
-results <- retriever$search("history of jazz", provider = "wikipedia")
-} # }
-```

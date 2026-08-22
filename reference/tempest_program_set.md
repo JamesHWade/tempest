@@ -45,9 +45,8 @@ tempest_program_set(
 
 - governed_procedure_refs:
 
-  Optional named list of typed
-  [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md)
-  values by stage.
+  Optional named list of typed `tempest_governed_procedure_ref()` values
+  by stage.
 
 - registry:
 

@@ -18,20 +18,17 @@ tempest_run(
   topic,
   config = tempest_config(),
   retriever = NULL,
-  knowledge_view = NULL,
+  knowledge = NULL,
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
-  parallel_research = FALSE,
   parallel_writing = FALSE,
-  program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
   run_id = NULL,
-  remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE
 )
@@ -51,10 +48,13 @@ tempest_run(
 
   Optional `TempestRetriever`. If `NULL`, created from `config`.
 
-- knowledge_view:
+- knowledge:
 
-  Optional immutable Graft view. It is required when `program_set`
-  contains any governed procedure and is never persisted.
+  Optional accepted organizational knowledge from
+  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md).
+  It pins an immutable Graft view, supplies accepted evidence records,
+  and carries any accepted governed-procedure stage bindings. It is
+  never persisted.
 
 - n_experts:
 
@@ -84,24 +84,10 @@ tempest_run(
   Maximum questions per perspective for the "key_questions" strategy
   (default 3).
 
-- parallel_research:
-
-  Must be `FALSE`. Parallel perspective research is unavailable while
-  every open-ended expert turn requires one synchronously bound terminal
-  Deputy execution; `TRUE` fails before provider work.
-
 - parallel_writing:
 
   If `TRUE`, write report sections in parallel using the mirai package.
   Failed parallel sections are retried sequentially.
-
-- program_set:
-
-  A
-  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
-  containing the exact dsprrr programs used by STORM. If `NULL`,
-  [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md)
-  creates the default set.
 
 - steps:
 
@@ -124,11 +110,6 @@ tempest_run(
 
   Optional run directory name. Defaults to a slug of `topic`.
 
-- remove_duplicate:
-
-  Must be `FALSE`. Duplicate removal is unavailable on the authoritative
-  deterministic STORM report path.
-
 - progress:
 
   Optional function called with a `tempest_progress_event` object as
@@ -141,9 +122,13 @@ tempest_run(
 
 ## Value
 
-A list with product fields `title`, `perspectives`, `experts`,
-`outline`, `draft_md`, `report_md`, `manifest`, `state`, `workspace`,
-`retriever`, and `output_dir`.
+A validated completed Tempest research product. Read it with
+[`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md),
+[`tempest_sources()`](https://jameshwade.github.io/tempest/reference/tempest_sources.md),
+[`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md),
+[`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md),
+and
+[`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md).
 
 ## Examples
 
@@ -151,6 +136,6 @@ A list with product fields `title`, `perspectives`, `experts`,
 if (FALSE) { # \dontrun{
 cfg <- tempest_config()
 result <- tempest_run("History of jazz", config = cfg)
-cat(result$report_md)
+cat(tempest_report(result))
 } # }
 ```

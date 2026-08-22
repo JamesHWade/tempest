@@ -17,7 +17,7 @@ Start with the interface that matches the outcome you need:
 | Goal | Interface | Result |
 |----|----|----|
 | Create an evidence-backed report | [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md) | A report, sources, claims, outline, and run state |
-| Explore a topic interactively | [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md) or [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md) | A continuing Co-STORM conversation, mind map, evidence, and report |
+| Explore a topic interactively | [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md) or [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md) | A continuing Co-STORM conversation, mind map, evidence, and report |
 
 Most package users should begin with scripted STORM. Co-STORM is useful
 when the research question should evolve through dialogue. Tempest 0.2
@@ -111,16 +111,16 @@ it:
 
 ``` r
 
-cat(result$report_md)
+cat(tempest_report(result))
 
 result$title
 result$perspectives
 result$experts
 result$outline
 
-sources <- tempest_sources(result$workspace)
-claims <- tempest_claims(result$workspace)
-supports <- tempest_claim_supports(result$workspace)
+sources <- tempest_sources(result)
+claims <- tempest_claims(result)
+supports <- tempest_claim_supports(result)
 
 utils::head(sources[c("id", "title", "url")])
 utils::head(claims[
@@ -139,18 +139,14 @@ The research workspace holds run-scoped provisional evidence. Retrieved
 resources, proposed claims, exact claim-by-evidence-span support
 records, and citations remain inspectable instead of being flattened
 into report text. The pair records are authoritative; claim summaries
-and citation-audit tables are derived projections. The product report is
-available directly in `result$report_md`; new callers should not depend
-on the frozen 0.1 artifact catalog.
+and citation-audit tables are derived projections. The authoritative
+product report is read with `tempest_report(result)`.
 
-[`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
-is useful when a caller needs deterministic citation rendering over its
-own Markdown and an explicit `ResearchWorkspace`. That rendered value is
-not a published product: it does not finalize a Manifest or grant
-promotion authority. Use `result$report_md` for the authoritative STORM
-report. For Co-STORM, generate and commit with `session$report()` and
-read the exact committed bytes with
-[`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md).
+[`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md)
+is the one read accessor for both product shapes. It returns the exact
+committed bytes and never generates, repairs, or republishes a report.
+For Co-STORM, generate and commit with `session$publish()`, then read
+those exact bytes with `tempest_report(session)`.
 
 Every STORM and Co-STORM publication runs the exact verifier ProgramSet
 stage and atomically binds claim-by-evidence-span support.
@@ -277,8 +273,8 @@ Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.
 
 Current readers accept only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state
-schema 4, ProgramSet schema 2, research-manifest schema 3, StageRecord
+Co-STORM snapshot and bundle schema 10, STORM bundle schema 8 with state
+schema 5, ProgramSet schema 2, research-manifest schema 3, StageRecord
 output-digest payload schema 3, and promotion-bundle schema 1. Every
 other version is rejected, as is any missing or extra field or value
 that becomes valid only after coercion. Shared envelope primitives,
@@ -303,18 +299,20 @@ profiles from its own expert pool:
 
 experts <- list(
   tempest_expert(
-    expert_id = "expert.recycling-engineering",
     name = "Recycling Engineer",
     title = "Battery recovery specialist",
     description = "Focuses on process yield, safety, and scale-up.",
-    instructions = "Separate demonstrated performance from projections."
+    instructions = "Separate demonstrated performance from projections.",
+    focus_areas = c("hydrometallurgy", "process safety"),
+    initial_questions = "Which recovery steps constrain full-scale yield?"
   ),
   tempest_expert(
-    expert_id = "expert.recycling-policy",
     name = "Policy Analyst",
     title = "Circular-economy policy specialist",
     description = "Focuses on incentives, standards, and accountability.",
-    instructions = "Compare jurisdictions and preserve policy uncertainty."
+    instructions = "Compare jurisdictions and preserve policy uncertainty.",
+    focus_areas = c("producer responsibility", "recycling standards"),
+    initial_questions = "Which policies have changed recovery outcomes?"
   )
 )
 
@@ -328,10 +326,13 @@ result <- tempest_run(
 )
 ```
 
-Profiles describe a scientific perspective and stable expert identity.
-Keep live tools, clients, and credentials outside the serialized
-profile. Product code attaches only the tools required for its STORM or
-Co-STORM role.
+Generated and supplied experts use the same canonical constructor.
+Profiles are immutable descriptions of scientific perspectives, and
+Tempest derives each profile’s `expert_id` and `version` from its six
+authored fields. Keep live tools, clients, credentials, and roster state
+outside the serialized profile. Product code attaches only the tools
+required for its STORM or Co-STORM role, and Co-STORM retirement remains
+manager-owned session-roster state rather than profile data.
 
 ## Explore interactively with Co-STORM
 
@@ -356,7 +357,7 @@ pak::pak(
   )
 )
 
-run_app()
+tempest_app()
 ```
 
 For console control, create a session directly:
@@ -375,11 +376,11 @@ answer <- session$step(
 )
 cat(answer$answer)
 
-session$report(
+session$publish(
   style = "executive",
   include_references = TRUE
 )
-committed_report <- tempest_session_report_md(session)
+committed_report <- tempest_report(session)
 cat(committed_report)
 
 tempest_session_save(
@@ -402,11 +403,10 @@ state, but not credentials, live chat handles, tools, or authenticated
 clients. Configure fresh supported chats and retrieval dependencies
 through `config` before resuming.
 
-Snapshot, save, restore, and resume accept only the exact schema-9
-Co-STORM product. `partial_recovery = TRUE` is limited to the optional
-`artifacts/suggested_questions.json` presentation file. Expert,
-transcript, mind-map, StageRecord, Workspace, report, and Graft snapshot
-state must always pass integrity checks.
+Snapshot, save, restore, and resume accept only the exact schema-10
+Co-STORM product. Expert, transcript, mind-map, StageRecord, Workspace,
+report, suggested-question, and Graft snapshot state must pass integrity
+checks.
 
 The moderator and experts use persistent Deputy agents as the required
 Co-STORM runtime. Tempest disables ambient file, shell, R, web, and
@@ -428,130 +428,28 @@ successful publication use polite live status; validation, cancellation,
 and publication failures use alerts.
 
 A host app can embed that same asynchronous STORM adapter without
-calling
-[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
-in the Shiny main process:
-
-``` r
-
-ui <- bslib::page_fillable(
-  tempest_shiny_ui("research", panels = "storm")
-)
-
-server <- function(input, output, session) {
-  tempest_shiny_server(
-    "research",
-    config = cfg,
-    panels = "storm"
-  )
-}
-
-shiny::shinyApp(ui, server)
-```
-
-The installed example lives at
-`system.file("examples/shiny-host/app.R", package = "tempest")`.
-
-## Evaluate complete products
-
-The default evaluation solvers exercise the actual product paths. Each
-[`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
-sample runs
-[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
-and returns its authoritative report. Each
-[`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
-sample completes a real `TempestSession` and reads its committed report.
-Metadata contains only a versioned review reference, exact product
-identity, fixed program artifact and evaluator identities, and a
-ten-stage structural summary; it never logs the complete review, Agent
-objects, chats, clients, tools, prompts, responses, paths, or
-credentials. `dataset` can be the built-in `"qa"` smoke set or an exact
-data frame with `input`, `target`, and optional unique `id` columns.
-
-``` r
-
-judge <- ellmer::chat("openai/gpt-5.6-luna")
-
-storm_task <- tempest_task(
-  dataset = "qa",
-  config = cfg,
-  scorer_chat = judge
-)
-
-costorm_task <- tempest_costorm_task(
-  dataset = "qa",
-  config = cfg,
-  max_turns = 5,
-  scorer_chat = judge
-)
-```
-
-Evaluation does not imply automatic improvement. Use different mutable
-vitals Task instances for baseline and candidate runs, explicitly
-compile selected dsprrr stages, and adopt a candidate ProgramSet only
-after reviewing its scores and trajectory summaries:
-
-``` r
-
-baseline_task <- tempest_task(
-  dataset = held_out,
-  config = cfg,
-  scorer_chat = judge,
-  program_set = program_set,
-  knowledge_view = knowledge_view
-)
-baseline_task$eval()
-
-candidate_program_set <- tempest_compile_programs(
-  program_set,
-  trainsets = stage_trainsets,
-  valsets = stage_validation_sets,
-  teleprompters = teleprompters,
-  path = "candidate-programs"
-)
-
-candidate_task <- tempest_task(
-  dataset = held_out,
-  config = cfg,
-  scorer_chat = judge,
-  program_set = candidate_program_set,
-  knowledge_view = knowledge_view
-)
-candidate_task$eval()
-
-# Inspect both results and make the adoption decision outside Tempest.
-baseline_samples <- baseline_task$get_samples()
-candidate_samples <- candidate_task$get_samples()
-chosen_program_set <- candidate_program_set
-
-next_result <- tempest_run(
-  "Grid-scale battery recycling",
-  config = cfg,
-  program_set = chosen_program_set,
-  knowledge_view = knowledge_view
-)
-```
-
-Keep compilation training and validation rows separate from held-out
-evaluation rows to avoid leakage, overfitting, and optimistic scores.
-Compare the same sample IDs, inputs, targets, and scorer. Tempest does
-not synthesize training data, choose an optimizer, compile
-automatically, or replace the baseline. Supply an explicit scorer or let
-the task use
-[`vitals::model_graded_qa()`](https://vitals.tidyverse.org/reference/scorer_model.html)
-with the chosen judge chat. Compilation works on isolated Module copies.
-When an artifact changes, its old governed-procedure reference is
-cleared until the candidate is reviewed and accepted separately.
+calling The Shiny modules are Tempest implementation details. The
+bundled application is reachable only through
+[`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md);
+there is no supported contract for embedding its panels in a host app.
 
 ## Product boundary
 
-Tempest 0.2 supports only
+Tempest supports only
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
 and
 [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
-as research product entry points. The experimental application-neutral
-kernel is removed, including its former symbols. No compatibility layer
-is provided.
+as research product entry points, with
+[`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
+for the bundled application. A completed run is read through
+[`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md),
+[`tempest_sources()`](https://jameshwade.github.io/tempest/reference/tempest_sources.md),
+[`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md),
+[`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md),
+and
+[`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md);
+the retriever, mutable workspace, manifest, and stage state are not part
+of that surface. No compatibility layer is provided.
 
 ## Where to go next
 
@@ -561,18 +459,14 @@ is provided.
 - Use
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   or
-  [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
+  [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
   for interactive Co-STORM research.
 - Add semantic retrieval with `ragnar` through `embed_fn` or a pre-built
   `ragnar_store`.
-- Compile selected structured programs with
-  [`tempest_compile_programs()`](https://jameshwade.github.io/tempest/reference/tempest_compile_programs.md),
-  then pass the complete verified `TempestProgramSet` to STORM or
-  Co-STORM.
-- Resolve an accepted procedure with
-  [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md),
-  bind it by stage in a ProgramSet, and pass its matching pinned
-  `knowledge_view` to every governed run or session.
+- Bring accepted organizational knowledge into a run with
+  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md),
+  which pins the immutable Graft view, names the exact accepted evidence
+  records, and binds any accepted governed procedure to its stage.
 - Review provisional evidence with
   [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md)
   and
@@ -580,14 +474,8 @@ is provided.
   before exercising Graft acceptance authority.
 - Reconstruct a non-authoritative review with
   [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md).
-- Capture progress with
-  [`tempest_progress_collector()`](https://jameshwade.github.io/tempest/reference/tempest_progress_collector.md)
-  and inspect events with
-  [`tempest_progress_event_data()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event_data.md).
-- Evaluate scripted and interactive workflows with
-  [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
-  and
-  [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md).
+- Capture progress by passing a `progress` callback, which receives one
+  canonical plain record per event.
 
 Start with a narrow topic, a small expert and question budget, and
 durable output. Expand model roles, retrieval, parallelism, and

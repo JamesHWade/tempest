@@ -49,13 +49,3 @@ without blocking the caller. Expert requests run in bounded parallel
 batches, while transcript and evidence commits occur deterministically
 in expert order. A single mind-map update follows the completed evidence
 commits.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-session <- tempest_session("History of jazz")
-tempest_session_warmup_async(session) |>
-  promises::then(\(result) result@status)
-} # }
-```

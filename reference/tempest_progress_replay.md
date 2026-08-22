@@ -17,20 +17,9 @@ tempest_progress_replay(events, progress)
 
 - progress:
 
-  Function called once for each event.
+  Function called once for each event with the canonical plain progress
+  record.
 
 ## Value
 
 The input events, invisibly.
-
-## Examples
-
-``` r
-events <- list(tempest_progress_event(
-  run_id = "run-1",
-  workflow = "storm",
-  event_type = "workflow",
-  status = "started"
-))
-tempest_progress_replay(events, function(event) event@status)
-```

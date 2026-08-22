@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -17,11 +17,6 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
-    <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
-  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -38,25 +33,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="agent-integrations">Agent integrations<a class="anchor" aria-label="anchor" href="#agent-integrations"></a></h2>
+      <h2 id="research-products">Research products<a class="anchor" aria-label="anchor" href="#research-products"></a></h2>
 
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="tempest_agent_skills.html">tempest_agent_skills()</a></code> <code><a href="tempest_agent_skills.html">tempest_install_agent_skills()</a></code>
-
-        </dt>
-        <dd>Discover and install bundled Agent Skills</dd>
-      </dl></div><div class="section level2">
-      <h2 id="core-workflows">Core workflows<a class="anchor" aria-label="anchor" href="#core-workflows"></a></h2>
-
-      <div class="section-desc"><p>Run scripted STORM or persistent Deputy-backed Co-STORM research.</p></div>
+      <div class="section-desc"><p>Run scripted STORM, hold a Co-STORM session, or open the bundled app.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -72,27 +51,6 @@
 
         <dt>
 
-          <code><a href="tempest_run_async.html">tempest_run_async()</a></code>
-
-        </dt>
-        <dd>Run STORM asynchronously (Shiny-friendly)</dd>
-
-        <dt>
-
-          <code><a href="tempest_run_cancel.html">tempest_run_cancel()</a></code>
-
-        </dt>
-        <dd>Cancel an asynchronous STORM run</dd>
-
-        <dt>
-
-          <code><a href="tempest_execution_events.html">tempest_execution_events()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Query events from a Tempest product execution</dd>
-
-        <dt>
-
           <code><a href="tempest_session.html">tempest_session()</a></code>
 
         </dt>
@@ -100,251 +58,17 @@
 
         <dt>
 
-          <code><a href="tempest_session_process_turn_async.html">tempest_session_process_turn_async()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Process a completed Co-STORM turn asynchronously</dd>
-
-        <dt>
-
-          <code><a href="tempest_session_warmup_async.html">tempest_session_warmup_async()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Warm up a Co-STORM session asynchronously</dd>
-
-        <dt>
-
-          <code><a href="SimulatedUser.html">SimulatedUser</a></code>
-
-        </dt>
-        <dd>SimulatedUser</dd>
-
-        <dt>
-
-          <code><a href="run_app.html">run_app()</a></code>
+          <code><a href="tempest_app.html">tempest_app()</a></code>
 
         </dt>
         <dd>Run the Tempest research application</dd>
-      </dl></div><div class="section level2">
-      <h2 id="product-evaluation">Product evaluation<a class="anchor" aria-label="anchor" href="#product-evaluation"></a></h2>
-
-      <div class="section-desc"><p>Review completed trajectories and evaluate exact research products.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="tempest_trajectory_review.html">tempest_trajectory_review()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>A bounded review of one completed Tempest product</dd>
 
         <dt>
-
-          <code><a href="tempest_task.html">tempest_task()</a></code>
-
-        </dt>
-        <dd>Create a vitals Task for tempest</dd>
-
-        <dt>
-
-          <code><a href="tempest_costorm_task.html">tempest_costorm_task()</a></code>
-
-        </dt>
-        <dd>Create a Co-STORM evaluation task using SimulatedUser</dd>
-      </dl></div><div class="section level2">
-      <h2 id="configuration-and-retrieval">Configuration and retrieval<a class="anchor" aria-label="anchor" href="#configuration-and-retrieval"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
 
           <code><a href="tempest_config.html">tempest_config()</a></code>
 
         </dt>
         <dd>Create a STORM configuration</dd>
-
-        <dt>
-
-          <code><a href="tempest_retriever.html">tempest_retriever()</a></code>
-
-        </dt>
-        <dd>Create a TempestRetriever</dd>
-
-        <dt>
-
-          <code><a href="TempestRetriever.html">TempestRetriever</a></code>
-
-        </dt>
-        <dd>TempestRetriever</dd>
-
-        <dt>
-
-          <code><a href="tempest_create_ragnar_store.html">tempest_create_ragnar_store()</a></code>
-
-        </dt>
-        <dd>Create a ragnar store with tempest metadata schema</dd>
-
-        <dt>
-
-          <code><a href="tempest_cache_clear.html">tempest_cache_clear()</a></code>
-
-        </dt>
-        <dd>Clear the Tempest cache</dd>
-      </dl></div><div class="section level2">
-      <h2 id="research-identity-and-workspace">Research identity and workspace<a class="anchor" aria-label="anchor" href="#research-identity-and-workspace"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="tempest_research_manifest.html">tempest_research_manifest()</a></code>
-
-        </dt>
-        <dd>Create a Tempest research manifest</dd>
-
-        <dt>
-
-          <code><a href="tempest_research_workspace.html">tempest_research_workspace()</a></code>
-
-        </dt>
-        <dd>Create a provisional research workspace</dd>
-
-        <dt>
-
-          <code><a href="ResearchWorkspace.html">ResearchWorkspace</a></code>
-
-        </dt>
-        <dd>ResearchWorkspace (provisional scientific evidence ledger)</dd>
-      </dl></div><div class="section level2">
-      <h2 id="evidence-and-reports">Evidence and reports<a class="anchor" aria-label="anchor" href="#evidence-and-reports"></a></h2>
-
-      <div class="section-desc"><p>Inspect evidence, render Markdown, or read a committed product report.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="tempest_claims.html">tempest_claims()</a></code>
-
-        </dt>
-        <dd>Return claims as a tibble</dd>
-
-        <dt>
-
-          <code><a href="tempest_claim_support.html">tempest_claim_support()</a></code>
-
-        </dt>
-        <dd>Create an explicit claim-support assessment</dd>
-
-        <dt>
-
-          <code><a href="tempest_claim_supports.html">tempest_claim_supports()</a></code>
-
-        </dt>
-        <dd>List explicit claim-support assessments</dd>
-
-        <dt>
-
-          <code><a href="tempest_sources.html">tempest_sources()</a></code>
-
-        </dt>
-        <dd>Return evidence resources as a tibble</dd>
-
-        <dt>
-
-          <code><a href="tempest_resource.html">tempest_resource()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Create a typed evidence resource</dd>
-
-        <dt>
-
-          <code><a href="tempest_verify_claims.html">tempest_verify_claims()</a></code>
-
-        </dt>
-        <dd>Verify claim citations against their sources</dd>
-
-        <dt>
-
-          <code><a href="tempest_validation_result.html">tempest_validation_result()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Create a Tempest validation result</dd>
-
-        <dt>
-
-          <code><a href="tempest_report_md.html">tempest_report_md()</a></code>
-
-        </dt>
-        <dd>Render non-authoritative Markdown with footnotes</dd>
-
-        <dt>
-
-          <code><a href="tempest_session_report_md.html">tempest_session_report_md()</a></code>
-
-        </dt>
-        <dd>Read the committed Markdown report from a Co-STORM session</dd>
-
-        <dt>
-
-          <code><a href="tempest_suggest_questions.html">tempest_suggest_questions()</a></code>
-
-        </dt>
-        <dd>Suggest follow-up research questions for a topic</dd>
-      </dl></div><div class="section level2">
-      <h2 id="open-knowledge">Open knowledge<a class="anchor" aria-label="anchor" href="#open-knowledge"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="tempest_read_okf.html">tempest_read_okf()</a></code>
-
-        </dt>
-        <dd>Read an Open Knowledge Format bundle</dd>
-
-        <dt>
-
-          <code><a href="tempest_okf_concepts.html">tempest_okf_concepts()</a></code>
-
-        </dt>
-        <dd>Inspect concepts in an Open Knowledge Format bundle</dd>
-
-        <dt>
-
-          <code><a href="tempest_okf_resources.html">tempest_okf_resources()</a></code>
-
-        </dt>
-        <dd>Convert Open Knowledge Format concepts to typed Tempest resources</dd>
-
-        <dt>
-
-          <code><a href="tempest_okf_context.html">tempest_okf_context()</a></code>
-
-        </dt>
-        <dd>Assemble bounded agent context from an Open Knowledge Format bundle</dd>
       </dl></div><div class="section level2">
       <h2 id="scientific-experts">Scientific experts<a class="anchor" aria-label="anchor" href="#scientific-experts"></a></h2>
 
@@ -361,17 +85,10 @@
           <span class="badge lifecycle lifecycle-experimental">experimental</span>
         </dt>
         <dd>Create a Tempest expert profile</dd>
-
-        <dt>
-
-          <code><a href="tempest_generate_experts.html">tempest_generate_experts()</a></code>
-
-        </dt>
-        <dd>Generate expert profiles for a topic</dd>
       </dl></div><div class="section level2">
-      <h2 id="research-ui">Research UI<a class="anchor" aria-label="anchor" href="#research-ui"></a></h2>
+      <h2 id="accepted-organizational-knowledge">Accepted organizational knowledge<a class="anchor" aria-label="anchor" href="#accepted-organizational-knowledge"></a></h2>
 
-      <div class="section-desc"><p>Embed product-specific, asynchronous Tempest research panels in Shiny.</p></div>
+      <div class="section-desc"><p>Bring reviewed Graft evidence and accepted procedures into a run.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -380,28 +97,21 @@
 
       <dl><dt>
 
-          <code><a href="tempest_shiny_store.html">tempest_shiny_store()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+          <code><a href="tempest_knowledge.html">tempest_knowledge()</a></code>
+
         </dt>
-        <dd>Create a shared Tempest Shiny store</dd>
+        <dd>Bring accepted organizational knowledge into a Tempest run</dd>
 
         <dt>
 
-          <code><a href="tempest_shiny_ui.html">tempest_shiny_ui()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Embed Tempest panels in a Shiny UI</dd>
+          <code><a href="print.tempest_knowledge.html">print(<i>&lt;tempest_knowledge&gt;</i>)</a></code>
 
-        <dt>
-
-          <code><a href="tempest_shiny_server.html">tempest_shiny_server()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
         </dt>
-        <dd>Run embedded Tempest Shiny panels</dd>
+        <dd>Print accepted organizational knowledge</dd>
       </dl></div><div class="section level2">
-      <h2 id="co-storm-persistence">Co-STORM persistence<a class="anchor" aria-label="anchor" href="#co-storm-persistence"></a></h2>
+      <h2 id="reading-a-completed-product">Reading a completed product<a class="anchor" aria-label="anchor" href="#reading-a-completed-product"></a></h2>
 
-      <div class="section-desc"><p>Snapshot, save, restore, or resume the exact current session product.</p></div>
+      <div class="section-desc"><p>Read the committed report and inspect the evidence behind it.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -410,19 +120,49 @@
 
       <dl><dt>
 
-          <code><a href="tempest_session_snapshot.html">tempest_session_snapshot()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+          <code><a href="tempest_report.html">tempest_report()</a></code>
+
         </dt>
-        <dd>Snapshot a Co-STORM session</dd>
+        <dd>Read the committed Markdown report from a Tempest product</dd>
 
         <dt>
 
-          <code><a href="tempest_session_restore.html">tempest_session_restore()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+          <code><a href="tempest_sources.html">tempest_sources()</a></code>
+
         </dt>
-        <dd>Restore a Co-STORM session from a snapshot</dd>
+        <dd>Return evidence resources as a tibble</dd>
 
         <dt>
+
+          <code><a href="tempest_claims.html">tempest_claims()</a></code>
+
+        </dt>
+        <dd>Return claims as a tibble</dd>
+
+        <dt>
+
+          <code><a href="tempest_claim_supports.html">tempest_claim_supports()</a></code>
+
+        </dt>
+        <dd>List explicit claim-support assessments</dd>
+
+        <dt>
+
+          <code><a href="tempest_trajectory_review.html">tempest_trajectory_review()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>A bounded review of one completed Tempest product</dd>
+      </dl></div><div class="section level2">
+      <h2 id="session-persistence">Session persistence<a class="anchor" aria-label="anchor" href="#session-persistence"></a></h2>
+
+      <div class="section-desc"><p>Save and resume the exact current session product.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
 
           <code><a href="tempest_session_save.html">tempest_session_save()</a></code>
           <span class="badge lifecycle lifecycle-experimental">experimental</span>
@@ -436,111 +176,9 @@
         </dt>
         <dd>Resume a saved Co-STORM session bundle</dd>
       </dl></div><div class="section level2">
-      <h2 id="progress-events">Progress events<a class="anchor" aria-label="anchor" href="#progress-events"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="tempest_progress_event.html">tempest_progress_event()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Create a Tempest progress event</dd>
-
-        <dt>
-
-          <code><a href="tempest_progress_event_data.html">tempest_progress_event_data()</a></code>
-
-        </dt>
-        <dd>Convert a Tempest progress event to a list</dd>
-
-        <dt>
-
-          <code><a href="tempest_progress_collector.html">tempest_progress_collector()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Create an in-memory Tempest progress event collector</dd>
-
-        <dt>
-
-          <code><a href="tempest_progress_filter.html">tempest_progress_filter()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Filter Tempest progress events</dd>
-
-        <dt>
-
-          <code><a href="tempest_progress_replay.html">tempest_progress_replay()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Replay Tempest progress events to a callback</dd>
-
-        <dt>
-
-          <code><a href="tempest_progress_state.html">tempest_progress_state()</a></code>
-          <span class="badge lifecycle lifecycle-experimental">experimental</span>
-        </dt>
-        <dd>Reduce Tempest progress events to workflow state</dd>
-
-        <dt>
-
-          <code><a href="tempest_progress_labels.html">tempest_progress_labels()</a></code>
-
-        </dt>
-        <dd>Progress labels for Tempest workflows</dd>
-      </dl></div><div class="section level2">
-      <h2 id="governed-programs">Governed programs<a class="anchor" aria-label="anchor" href="#governed-programs"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="tempest_program_set.html">tempest_program_set()</a></code>
-
-        </dt>
-        <dd>Create a validated Tempest program set</dd>
-
-        <dt>
-
-          <code><a href="tempest_compile_programs.html">tempest_compile_programs()</a></code>
-
-        </dt>
-        <dd>Compile programs in a Tempest program set</dd>
-
-        <dt>
-
-          <code><a href="tempest_save_program_set.html">tempest_save_program_set()</a></code>
-
-        </dt>
-        <dd>Save a Tempest program set</dd>
-
-        <dt>
-
-          <code><a href="tempest_load_program_set.html">tempest_load_program_set()</a></code>
-
-        </dt>
-        <dd>Load and verify a Tempest program set</dd>
-
-        <dt>
-
-          <code><a href="tempest_governed_procedure_ref.html">tempest_governed_procedure_ref()</a></code>
-
-        </dt>
-        <dd>Reference an accepted governed procedure</dd>
-      </dl></div><div class="section level2">
       <h2 id="graft-review-and-promotion">Graft review and promotion<a class="anchor" aria-label="anchor" href="#graft-review-and-promotion"></a></h2>
 
-
+      <div class="section-desc"><p>Propose, review, commit, and verify accepted research evidence.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -553,6 +191,13 @@
 
         </dt>
         <dd>Load Tempest's compiled scientific Graft schema</dd>
+
+        <dt>
+
+          <code><a href="tempest_graft_plan.html">tempest_graft_plan()</a></code>
+
+        </dt>
+        <dd>Plan a Tempest research promotion without accepting it</dd>
 
         <dt>
 
@@ -574,13 +219,6 @@
 
         </dt>
         <dd>Read and validate a current Tempest promotion bundle</dd>
-
-        <dt>
-
-          <code><a href="tempest_graft_plan.html">tempest_graft_plan()</a></code>
-
-        </dt>
-        <dd>Plan a Tempest research promotion without accepting it</dd>
 
         <dt>
 

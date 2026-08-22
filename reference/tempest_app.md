@@ -15,7 +15,7 @@ Launches an interactive app that provides:
 ## Usage
 
 ``` r
-run_app(...)
+tempest_app(...)
 ```
 
 ## Arguments
@@ -40,6 +40,6 @@ failures are announced as alerts.
 
 ``` r
 if (FALSE) { # \dontrun{
-run_app()
+tempest_app()
 } # }
 ```

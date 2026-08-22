@@ -27,20 +27,3 @@ tempest_progress_labels(
 ## Value
 
 A named character vector.
-
-## Examples
-
-``` r
-tempest_progress_labels("costorm")
-#>     session      warmup    dialogue    evidence     mindmap suggestions 
-#>     "Setup"    "Warmup"    "Answer"  "Evidence"       "Map"      "Next" 
-#>      report 
-#>    "Report" 
-tempest_progress_labels("costorm", kind = "step")
-#>             created       expert_fanout     expert_question                turn 
-#>             "Ready"           "Experts"          "Question"              "Turn" 
-#>           user_turn  moderator_response     fact_extraction              update 
-#>              "User"         "Moderator"     "Capture facts"        "Update map" 
-#> question_generation            generate           report_md 
-#>         "Questions"          "Generate"            "Report" 
-```

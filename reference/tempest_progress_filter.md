@@ -30,31 +30,3 @@ tempest_progress_filter(
 ## Value
 
 A list of matching `tempest_progress_event` objects.
-
-## Examples
-
-``` r
-events <- list(tempest_progress_event(
-  run_id = "run-1",
-  workflow = "storm",
-  event_type = "stage",
-  status = "started",
-  stage = "research"
-))
-tempest_progress_filter(events, stage = "research")
-#> [[1]]
-#> <tempest::tempest_progress_event>
-#>  @ event_id       : chr "P_d2a7c0e78ad6e6ca"
-#>  @ run_id         : chr "run-1"
-#>  @ workflow       : chr "storm"
-#>  @ event_type     : chr "stage"
-#>  @ stage          : chr "research"
-#>  @ step           : chr NA
-#>  @ status         : chr "started"
-#>  @ timestamp      : chr "2026-08-20T11:18:54.487955Z"
-#>  @ message        : chr NA
-#>  @ payload        : list()
-#>  @ parent_event_id: chr NA
-#>  @ correlation_id : chr NA
-#> 
-```

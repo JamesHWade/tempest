@@ -2,10 +2,8 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
-  agent-skills: agent-skills.html
-  open-knowledge-format: open-knowledge-format.html
   tempest: tempest.html
-last_built: 2026-08-20T11:18Z
+last_built: 2026-08-22T02:16Z
 urls:
   reference: https://jameshwade.github.io/tempest/reference
   article: https://jameshwade.github.io/tempest/articles

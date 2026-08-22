@@ -25,7 +25,7 @@ tempest_session_process_turn_async(
 - completion_id:
 
   Opaque, process-local completion identifier returned by
-  `session$request_completion_async()`.
+  `tempest_session_request_completion_async()`.
 
 - suggest:
 

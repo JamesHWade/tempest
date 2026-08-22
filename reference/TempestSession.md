@@ -14,60 +14,29 @@ the persistence or public API contract.
 
 ## Active bindings
 
-- `topic`:
-
-  Read-only research topic fixed at construction.
-
-- `title`:
-
-  The report title.
-
-- `config`:
-
-  Read-only `TempestConfig` fixed at construction.
-
 - `session_id`:
 
-  Read-only stable identifier shared by the manifest and progress events
-  for the session.
+  Stable session identifier.
 
-- `progress`:
+- `topic`:
 
-  Optional progress callback.
+  Research topic.
 
-- `manifest`:
+- `status`:
 
-  Immutable
-  [TempestResearchManifest](https://jameshwade.github.io/tempest/reference/TempestResearchManifest.md)
-  for this research run.
-
-- `workspace`:
-
-  Read-only reference to the authoritative
-  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  containing provisional research material. Workspace mutation is
-  available only while the session is active and no publication lock is
-  held; a succeeded session's workspace is sealed.
-
-- `retriever`:
-
-  Read-only `TempestRetriever` reference.
+  Current product status.
 
 - `experts`:
 
-  List of validated `tempest_expert` profiles.
+  Read-only expert roster.
 
 - `transcript`:
 
-  List of dialog turns.
+  Read-only conversation transcript.
 
 - `mindmap`:
 
-  The mind map data structure.
-
-- `events`:
-
-  Ordered normalized progress-event history.
+  Read-only mind-map projection.
 
 ## Methods
 
@@ -75,49 +44,17 @@ the persistence or public API contract.
 
 - [`TempestSession$new()`](#method-TempestSession-initialize)
 
-- [`TempestSession$request_completion_async()`](#method-TempestSession-request_completion_async)
-
-- [`TempestSession$record_progress_event()`](#method-TempestSession-record_progress_event)
-
-- [`TempestSession$emit_progress()`](#method-TempestSession-emit_progress)
-
-- [`TempestSession$add_turn()`](#method-TempestSession-add_turn)
-
-- [`TempestSession$transcript_markdown()`](#method-TempestSession-transcript_markdown)
-
-- [`TempestSession$get_expert_names()`](#method-TempestSession-get_expert_names)
-
-- [`TempestSession$get_expert_descriptions()`](#method-TempestSession-get_expert_descriptions)
-
-- [`TempestSession$update_mindmap()`](#method-TempestSession-update_mindmap)
-
-- [`TempestSession$mindmap_markdown()`](#method-TempestSession-mindmap_markdown)
-
 - [`TempestSession$suggest_questions()`](#method-TempestSession-suggest_questions)
-
-- [`TempestSession$find_expert()`](#method-TempestSession-find_expert)
 
 - [`TempestSession$step()`](#method-TempestSession-step)
 
 - [`TempestSession$warmup()`](#method-TempestSession-warmup)
 
-- [`TempestSession$report()`](#method-TempestSession-report)
+- [`TempestSession$publish()`](#method-TempestSession-publish)
 
 - [`TempestSession$add_expert()`](#method-TempestSession-add_expert)
 
 - [`TempestSession$retire_expert()`](#method-TempestSession-retire_expert)
-
-- [`TempestSession$get_active_experts()`](#method-TempestSession-get_active_experts)
-
-- [`TempestSession$check_and_expand_nodes()`](#method-TempestSession-check_and_expand_nodes)
-
-- [`TempestSession$get_discussed_source_ids()`](#method-TempestSession-get_discussed_source_ids)
-
-- [`TempestSession$find_undiscussed_sources()`](#method-TempestSession-find_undiscussed_sources)
-
-- [`TempestSession$surface_unseen_information()`](#method-TempestSession-surface_unseen_information)
-
-- [`TempestSession$reorganize_mindmap()`](#method-TempestSession-reorganize_mindmap)
 
 - [`TempestSession$clone()`](#method-TempestSession-clone)
 
@@ -203,208 +140,6 @@ for the supported API.
 
 ------------------------------------------------------------------------
 
-### `TempestSession$request_completion_async()`
-
-Request one Deputy-backed moderator completion.
-
-#### Usage
-
-    TempestSession$request_completion_async(
-      prompt,
-      on_chunk = function(chunk) invisible(chunk)
-    )
-
-#### Arguments
-
-- `prompt`:
-
-  Exact moderator prompt.
-
-- `on_chunk`:
-
-  Optional process-local display callback.
-
-#### Returns
-
-A promise resolving only to an opaque completion identifier.
-
-------------------------------------------------------------------------
-
-### `TempestSession$record_progress_event()`
-
-Record a progress event emitted by a session-owned collaborator.
-
-#### Usage
-
-    TempestSession$record_progress_event(event)
-
-#### Arguments
-
-- `event`:
-
-  A `tempest_progress_event` object.
-
-#### Returns
-
-The event, invisibly.
-
-------------------------------------------------------------------------
-
-### `TempestSession$emit_progress()`
-
-Emit a Co-STORM progress event.
-
-#### Usage
-
-    TempestSession$emit_progress(
-      event_type,
-      status,
-      stage = NA_character_,
-      step = NA_character_,
-      message = NA_character_,
-      payload = list(),
-      parent_event_id = NA_character_,
-      correlation_id = NA_character_
-    )
-
-#### Arguments
-
-- `event_type`:
-
-  Progress event type.
-
-- `status`:
-
-  Progress event status.
-
-- `stage`:
-
-  Optional workflow stage.
-
-- `step`:
-
-  Optional workflow step.
-
-- `message`:
-
-  Optional progress message.
-
-- `payload`:
-
-  Optional progress metadata.
-
-- `parent_event_id`:
-
-  Optional parent event id.
-
-- `correlation_id`:
-
-  Optional correlation id.
-
-------------------------------------------------------------------------
-
-### `TempestSession$add_turn()`
-
-Add a turn to the transcript.
-
-#### Usage
-
-    TempestSession$add_turn(speaker, role = c("user", "assistant"), text)
-
-#### Arguments
-
-- `speaker`:
-
-  Speaker name.
-
-- `role`:
-
-  Role: "user" or "assistant".
-
-- `text`:
-
-  The text content.
-
-------------------------------------------------------------------------
-
-### `TempestSession$transcript_markdown()`
-
-Get the transcript as markdown.
-
-#### Usage
-
-    TempestSession$transcript_markdown(max_turns = 50)
-
-#### Arguments
-
-- `max_turns`:
-
-  Maximum turns to include.
-
-#### Returns
-
-Markdown string.
-
-------------------------------------------------------------------------
-
-### `TempestSession$get_expert_names()`
-
-Get expert names for agent routing.
-
-#### Usage
-
-    TempestSession$get_expert_names()
-
-#### Returns
-
-Character vector of expert names.
-
-------------------------------------------------------------------------
-
-### `TempestSession$get_expert_descriptions()`
-
-Build expert descriptions for moderator context.
-
-#### Usage
-
-    TempestSession$get_expert_descriptions()
-
-#### Returns
-
-A formatted string describing all experts.
-
-------------------------------------------------------------------------
-
-### `TempestSession$update_mindmap()`
-
-Update the mind map based on new exchange.
-
-#### Usage
-
-    TempestSession$update_mindmap(last_exchange)
-
-#### Arguments
-
-- `last_exchange`:
-
-  The latest exchange text.
-
-------------------------------------------------------------------------
-
-### `TempestSession$mindmap_markdown()`
-
-Get the mind map as markdown.
-
-#### Usage
-
-    TempestSession$mindmap_markdown()
-
-#### Returns
-
-Markdown string.
-
-------------------------------------------------------------------------
-
 ### `TempestSession$suggest_questions()`
 
 Suggest follow-up questions for the user based on the conversation so
@@ -423,26 +158,6 @@ far.
 #### Returns
 
 A character vector of questions (possibly empty).
-
-------------------------------------------------------------------------
-
-### `TempestSession$find_expert()`
-
-Find an expert index by stable id.
-
-#### Usage
-
-    TempestSession$find_expert(expert_id)
-
-#### Arguments
-
-- `expert_id`:
-
-  The stable expert id to look up.
-
-#### Returns
-
-Index of the expert, or NULL if not found.
 
 ------------------------------------------------------------------------
 
@@ -488,13 +203,14 @@ A list with results from each expert's warmup.
 
 ------------------------------------------------------------------------
 
-### `TempestSession$report()`
+### `TempestSession$publish()`
 
-Generate, validate, and commit the canonical report for the session.
+Verify claims, create and commit the canonical report, move the manifest
+to `succeeded`, and seal the workspace.
 
 #### Usage
 
-    TempestSession$report(
+    TempestSession$publish(
       style = c("technical", "executive"),
       include_references = TRUE
     )
@@ -512,7 +228,7 @@ Generate, validate, and commit the canonical report for the session.
 #### Returns
 
 The committed Markdown report. Use
-[`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md)
+[`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md)
 to read the exact committed bytes later.
 
 ------------------------------------------------------------------------
@@ -558,90 +274,6 @@ Retire an expert from the panel.
 #### Returns
 
 Logical indicating success.
-
-------------------------------------------------------------------------
-
-### `TempestSession$get_active_experts()`
-
-Get active expert profiles.
-
-#### Usage
-
-    TempestSession$get_active_experts()
-
-#### Returns
-
-List of active `tempest_expert` profiles.
-
-------------------------------------------------------------------------
-
-### `TempestSession$check_and_expand_nodes()`
-
-Check and expand oversized mind map nodes.
-
-#### Usage
-
-    TempestSession$check_and_expand_nodes()
-
-------------------------------------------------------------------------
-
-### `TempestSession$get_discussed_source_ids()`
-
-Get source IDs that have been discussed in the transcript.
-
-#### Usage
-
-    TempestSession$get_discussed_source_ids()
-
-#### Returns
-
-Character vector of discussed source IDs.
-
-------------------------------------------------------------------------
-
-### `TempestSession$find_undiscussed_sources()`
-
-Find sources that haven't been discussed yet.
-
-#### Usage
-
-    TempestSession$find_undiscussed_sources()
-
-#### Returns
-
-Character vector of undiscussed source IDs.
-
-------------------------------------------------------------------------
-
-### `TempestSession$surface_unseen_information()`
-
-Generate questions about undiscussed sources.
-
-#### Usage
-
-    TempestSession$surface_unseen_information(max_questions = 3)
-
-#### Arguments
-
-- `max_questions`:
-
-  Maximum questions to generate.
-
-#### Returns
-
-An exact record containing `questions`, `correlation_id`,
-`deputy_run_id`, and `deputy_session_id`, or `NULL` when there is no
-unseen evidence and no moderator run occurred.
-
-------------------------------------------------------------------------
-
-### `TempestSession$reorganize_mindmap()`
-
-Reorganize the mind map for clarity.
-
-#### Usage
-
-    TempestSession$reorganize_mindmap()
 
 ------------------------------------------------------------------------
 

@@ -26,8 +26,8 @@ tempest_run_async(..., knowledge_view = NULL)
 
 - knowledge_view:
 
-  A live pinned Graft view cannot cross the asynchronous worker
-  boundary. Governed runs must use
+  Accepted knowledge and a live pinned Graft view cannot cross the
+  asynchronous worker boundary. Governed runs must use
   [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   in the process that owns the view.
 
@@ -41,12 +41,3 @@ result.
 
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
 for the synchronous version.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-tempest_run_async("History of jazz", config = tempest_config()) |>
-  promises::then(function(result) cat(result$report_md))
-} # }
-```

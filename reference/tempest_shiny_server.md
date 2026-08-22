@@ -86,13 +86,3 @@ Progress, persistence, and successful publication use polite atomic
 status regions in the bundled UI. Validation, cancellation, and
 publication failures use alerts and never convert a rejected product
 into report-ready state.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-server <- function(input, output, session) {
-  tempest_shiny_server("research", config = tempest_config())
-}
-} # }
-```

@@ -45,11 +45,3 @@ page shell, configuration, storage policy, and surrounding controls.
 The STORM panel runs through the maintained asynchronous worker path. It
 has no parallel-research control. The Co-STORM Chat panel offers bounded
 session archive download and upload, not browser-temporary autosave.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-ui <- bslib::page_fillable(tempest_shiny_ui("research"))
-} # }
-```

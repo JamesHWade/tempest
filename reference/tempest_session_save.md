@@ -33,7 +33,7 @@ Invisibly returns the normalized bundle directory.
 `tempest_session_save()` writes a schema-versioned directory bundle for
 a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
-The exact current format is schema 9, with no legacy or compatibility
+The exact current format is schema 10, with no legacy or compatibility
 writer. The bundle stores the research manifest, authoritative
 workspace, explicit stage-record history, optional immutable Graft
 snapshot, and narrow report product. Every declared file is checksummed,

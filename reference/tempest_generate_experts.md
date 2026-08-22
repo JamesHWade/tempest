@@ -52,15 +52,3 @@ tempest_generate_experts(
 ## Value
 
 A list of `tempest_expert` profiles.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-experts <- tempest_generate_experts(
-  topic = "Climate change adaptation",
-  n = 3,
-  config = tempest_config()
-)
-} # }
-```

@@ -89,17 +89,3 @@ without importing Shiny.
 Core fields are validated at construction. Payloads should stay small
 and privacy-aware: use them for progress metadata and references, not
 full raw expert answers or source bodies by default.
-
-## Examples
-
-``` r
-event <- tempest_progress_event(
-  run_id = "run-1",
-  workflow = "storm",
-  event_type = "stage",
-  status = "started",
-  stage = "research"
-)
-event@status
-#> [1] "started"
-```

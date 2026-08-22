@@ -2,6 +2,80 @@
 
 ## tempest (development version)
 
+- The public namespace is now exactly 19 exports and one S3 method,
+  [`print.tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md).
+  Workspaces, retrievers, resources, manifests, ProgramSets,
+  verification, progress, async execution, and the Shiny implementation
+  are internal; they remain available to validation, persistence,
+  telemetry, and promotion but are no longer a construction,
+  subclassing, or host-integration seam, and the bundled application is
+  reachable only through
+  [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
+  (pjsd).
+- User-facing failures now inherit `tempest_error` and exactly one
+  public category: `tempest_input_error`, `tempest_execution_error`,
+  `tempest_persistence_error`, `tempest_authority_error`, or
+  `tempest_cancelled`; internal subclasses remain for diagnostics, and
+  the original provider or package condition stays reachable through the
+  ordinary parent chain (pjsd).
+- `SimulatedUser`, `tempest_task()`, `tempest_costorm_task()`,
+  `tempest_compile_programs()`, `tempest_save_program_set()`, and
+  `tempest_load_program_set()` are removed without replacement;
+  standalone evaluation and file-backed ProgramSet compilation are no
+  longer Tempest capabilities, and resume continues to verify a supplied
+  ProgramSet against persisted program identity (pjsd).
+- Progress callbacks now receive one canonical plain named record with
+  exactly `event_id`, `run_id`, `workflow`, `event_type`, `stage`,
+  `step`, `status`, `timestamp`, `message`, `payload`,
+  `parent_event_id`, and `correlation_id`, so hosts can store and reduce
+  progress with ordinary R code instead of event constructors, decoders,
+  or label tables (pjsd).
+- `TempestSession` is reduced to six operations (`warmup()`,
+  [`step()`](https://rdrr.io/r/stats/step.html), `suggest_questions()`,
+  `add_expert()`, `retire_expert()`, and `publish()`) and six read-only
+  projections (`session_id`, `topic`, `status`, `experts`, `transcript`,
+  and `mindmap`); `publish()` replaces the mutating `report()` method,
+  and completion claiming, event emission, Deputy routing, mind-map
+  maintenance, and workspace and manifest mutation are now private
+  (pjsd).
+- [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
+  replaces `run_app()` so every Tempest entry point is visibly
+  namespaced (pjsd).
+- [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md)
+  now returns the complete joined proof table, adding claim text and the
+  exact evidence-span quote, offsets, page, and section heading to the
+  existing support, claim, and source identities (pjsd).
+- [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
+  is the one strict constructor for accepted organizational knowledge,
+  replacing the `knowledge_view` arguments and public governed-procedure
+  and ProgramSet assembly; it pins an immutable Graft view, reads only
+  accepted `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records
+  as evidence, rejects records it cannot materialize exactly rather than
+  truncating them, and keeps executable authority reachable only through
+  an explicit governed-procedure stage binding (pjsd).
+- [`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md)
+  is now the one read accessor for the committed Markdown report of a
+  completed
+  [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  product or a published session, replacing `tempest_report_md()` and
+  `tempest_session_report_md()` (pjsd).
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  now returns one validated product value read through
+  [`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md),
+  [`tempest_sources()`](https://jameshwade.github.io/tempest/reference/tempest_sources.md),
+  [`tempest_claims()`](https://jameshwade.github.io/tempest/reference/tempest_claims.md),
+  [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md),
+  and
+  [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md);
+  the raw retriever, mutable workspace, manifest, and stage state are no
+  longer part of the supported result surface (pjsd).
+- Tempest 0.3 begins a hard, pre-production API reset: Agent Skill and
+  Open Knowledge Format APIs and assets, standalone
+  `tempest_suggest_questions()`, permissive provider, model, and
+  environment aliases, always-rejected STORM arguments, optional partial
+  session recovery, and the Deputy SDK-compatibility hook have been
+  removed without deprecation or migration shims; Graft is the sole
+  accepted-knowledge compatibility boundary (pjsd).
 - Experimental OpenTelemetry tracing can be enabled for bounded Tempest
   STORM, stage-execution, retrieval search/fetch, and Co-STORM
   moderator-completion, turn-commit, warmup, and report operations
@@ -15,6 +89,19 @@
   into its named controls, keeps mobile focus inside the full-width
   drawer, closes with Escape, restores the exact launcher, synchronizes
   launcher state, and leaves the desktop chat interactive (dqyv).
+- [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
+  now accepts only six authored scientific-profile fields, derives
+  immutable identity and version from canonical content, and separates
+  Co-STORM retirement into session-roster state; expert profile schema
+  2, STORM state schema 5 and bundle schema 8, and Co-STORM snapshot and
+  bundle schema 10 have no compatibility readers (pjsd).
+- [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
+  is now the only writable evidence representation: retriever fetches,
+  provider-native evidence, caches, workspace persistence, and direct
+  workspace insertion all require exact `TempestResource` records, while
+  source-shaped values remain read-only presentation projections; legacy
+  source lists and conversion paths have been deleted without
+  compatibility handling (pjsd).
 
 ## tempest 0.2.0
 
@@ -44,8 +131,7 @@
   ProgramSet schema 2, research-manifest schema 3, StageRecord
   output-digest payload schema 3, and promotion-bundle schema 1. Readers
   reject every other version, missing or extra fields, and values that
-  only become valid after coercion; explicit Co-STORM partial recovery
-  can skip only the optional suggested-questions presentation file.
+  only become valid after coercion.
 - The bundled Shiny app now presents Co-STORM setup as a one-time native
   shinychat greeting with consistently sized controls, lets users
   replace generated panels with up to five named expert perspectives,
@@ -54,11 +140,9 @@
   parallel-research controls, labels mutable progress separately from
   authoritative StageRecords, and announces progress and success with
   polite status regions and failures with alerts.
-- [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
-  and
-  [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
-  expose and install exactly the two supported research skills; the
-  three retired generic-workflow skill directories have been removed.
+- `tempest_agent_skills()` and `tempest_install_agent_skills()` expose
+  and install exactly the two supported research skills; the three
+  retired generic-workflow skill directories have been removed.
 - [`tempest_claim_support()`](https://jameshwade.github.io/tempest/reference/tempest_claim_support.md)
   and
   [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md)
@@ -72,21 +156,17 @@
   removes the obsolete `artifact_store`, `enable_discourse_manager`,
   `node_expansion_trigger_count`, and `enable_unseen_surfacing`
   controls; passing any of them is an error.
-- [`tempest_costorm_task()`](https://jameshwade.github.io/tempest/reference/tempest_costorm_task.md)
-  and
-  [`tempest_task()`](https://jameshwade.github.io/tempest/reference/tempest_task.md)
-  now evaluate real completed Co-STORM and STORM products by default,
-  accept exact caller datasets plus optional ProgramSet and
-  knowledge-view controls for their built-in solvers, return exact
-  committed reports, and expose only bounded credential-safe trajectory
-  summaries as solver metadata; custom solvers cannot claim those
-  unverified controls.
-- [`tempest_governed_procedure_ref()`](https://jameshwade.github.io/tempest/reference/tempest_governed_procedure_ref.md)
-  resolves an accepted `GovernedProcedure` and exact dsprrr
-  `ProgramArtifact` only through a pinned Graft view. ProgramSets
-  carrying these typed references require the matching live view before
-  provider execution; serialized references never grant authority by
-  themselves.
+- `tempest_costorm_task()` and `tempest_task()` now evaluate real
+  completed Co-STORM and STORM products by default, accept exact caller
+  datasets plus optional ProgramSet and knowledge-view controls for
+  their built-in solvers, return exact committed reports, and expose
+  only bounded credential-safe trajectory summaries as solver metadata;
+  custom solvers cannot claim those unverified controls.
+- `tempest_governed_procedure_ref()` resolves an accepted
+  `GovernedProcedure` and exact dsprrr `ProgramArtifact` only through a
+  pinned Graft view. ProgramSets carrying these typed references require
+  the matching live view before provider execution; serialized
+  references never grant authority by themselves.
 - [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
   loads the immutable compiled scientific schema, while
   `tempest_promotion_bundle(research, claim_ids = NULL)`,
@@ -102,29 +182,24 @@
   never commits a promotion implicitly; and prior promotion formats are
   rejected.
 - [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md),
-  [`tempest_compile_programs()`](https://jameshwade.github.io/tempest/reference/tempest_compile_programs.md),
-  [`tempest_save_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_save_program_set.md),
-  and
-  [`tempest_load_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_load_program_set.md)
-  make all ten STORM and Co-STORM stage programs explicitly addressable,
-  preserve exact dsprrr artifact and evaluator identities, isolate
-  compilation from the baseline, clear a selected stage’s stale governed
-  reference when its artifact changes, and fail closed on incomplete,
-  corrupt, or mismatched program bundles.
+  `tempest_compile_programs()`, `tempest_save_program_set()`, and
+  `tempest_load_program_set()` make all ten STORM and Co-STORM stage
+  programs explicitly addressable, preserve exact dsprrr artifact and
+  evaluator identities, isolate compilation from the baseline, clear a
+  selected stage’s stale governed reference when its artifact changes,
+  and fail closed on incomplete, corrupt, or mismatched program bundles.
   [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md),
   [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md),
   session restore/resume, and
   [`tempest_shiny_server()`](https://jameshwade.github.io/tempest/reference/tempest_shiny_server.md)
   accept and verify the ProgramSet before any stage executes.
-- [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
-  is now explicitly a deterministic, non-authoritative renderer that
-  cannot finalize a Manifest, publish a product, or grant promotion
-  authority, while
-  [`tempest_session_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_session_report_md.md)
-  reads only the exact report already committed to a succeeded,
-  quiescent Co-STORM session; both preserve canonical titles and
-  citation-policy validation when callers omit the rendered References
-  section.
+- `tempest_report_md()` is now explicitly a deterministic,
+  non-authoritative renderer that cannot finalize a Manifest, publish a
+  product, or grant promotion authority, while
+  `tempest_session_report_md()` reads only the exact report already
+  committed to a succeeded, quiescent Co-STORM session; both preserve
+  canonical titles and citation-policy validation when callers omit the
+  rendered References section.
 - [`tempest_research_manifest()`](https://jameshwade.github.io/tempest/reference/tempest_research_manifest.md)
   records the stable run, configuration, program, knowledge-snapshot,
   runtime, trace, and deliverable identities for STORM and Co-STORM
@@ -173,9 +248,8 @@
   the same asynchronous STORM adapter as the bundled app, with no
   generic run, capability, connection, workflow, deliverable, or
   artifact accessors.
-- [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md)
-  is a deterministic projection and no longer accepts chat or
-  configuration controls.
+- `tempest_suggest_questions()` is a deterministic projection and no
+  longer accepts chat or configuration controls.
 - [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
   returns a deterministic, bounded, non-authoritative review of one
   exact completed STORM or Co-STORM product, with ordered StageRecords,
@@ -199,12 +273,11 @@
   provider-correct requests and ordered stale-safe commits, quarantines
   timed-out expert chats, and exposes an accessible keyboard-operable
   mind-map outline (da4c, 16dv, pyxm, qx4q, t593, gcg1).
-- [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
-  now inherits the package-level `tempest.chat` default while its model
-  fields remain untouched; editing any model field switches the app to
-  explicit per-role models. Tempest once again declares the shinychat
-  development dependency required by the app and reports how to update
-  an incompatible loaded version before launching.
+- `run_app()` now inherits the package-level `tempest.chat` default
+  while its model fields remain untouched; editing any model field
+  switches the app to explicit per-role models. Tempest once again
+  declares the shinychat development dependency required by the app and
+  reports how to update an incompatible loaded version before launching.
 - `SourceStore` now validates source, claim, evidence-span, and dispute
   mutations, rejects orphan references and source-budget overflow, and
   keeps reverse indexes correct when claims are replaced; the unused
@@ -215,12 +288,10 @@
   host-defined evidence resources with opaque locators, connection
   provenance, redaction and retention metadata, and durable claim
   lineage without requiring public URLs (fr54).
-- [`tempest_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
-  and
-  [`tempest_install_agent_skills()`](https://jameshwade.github.io/tempest/reference/tempest_agent_skills.md)
-  expose and install the two supported research skills; three
-  generic-workflow directories remain only as inactive deletion
-  inventory until T8 removes them physically (cheg).
+- `tempest_agent_skills()` and `tempest_install_agent_skills()` expose
+  and install the two supported research skills; three generic-workflow
+  directories remain only as inactive deletion inventory until T8
+  removes them physically (cheg).
 - `tempest_artifact()`, `tempest_artifact_catalog()`,
   `tempest_artifact_store()`, `tempest_deliverable_spec()`,
   `tempest_generate_deliverable()`, `tempest_objective()`, and
@@ -262,11 +333,10 @@
   `TempestSession`; Co-STORM sessions now own normalized event history
   directly, and persistence migrates legacy progress history out of the
   auxiliary artifact environment.
-- [`tempest_report_md()`](https://jameshwade.github.io/tempest/reference/tempest_report_md.md)
-  now applies strict citation actions to complete matched assertions,
-  removes unsupported assertions under `drop`, gives `revise` distinct
-  behavior, and no longer lets unrelated claims sharing a source
-  determine sentence status (e9kn).
+- `tempest_report_md()` now applies strict citation actions to complete
+  matched assertions, removes unsupported assertions under `drop`, gives
+  `revise` distinct behavior, and no longer lets unrelated claims
+  sharing a source determine sentence status (e9kn).
 - [`tempest_run_async()`](https://jameshwade.github.io/tempest/reference/tempest_run_async.md)
   now executes in a real Mirai worker, preserves result and error
   semantics, returns without blocking, and can be stopped with
@@ -315,9 +385,8 @@
   now defaults to `openai/gpt-5.6-sol` for coordinator and writer roles,
   and `openai/gpt-5.6-luna` for expert, mind map, and judge roles.
   Built-in subscription clients use lower reasoning effort for auxiliary
-  mind-map and judge calls, and
-  [`run_app()`](https://jameshwade.github.io/tempest/reference/run_app.md)
-  bounds provider requests to 120 seconds by default.
+  mind-map and judge calls, and `run_app()` bounds provider requests to
+  120 seconds by default.
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md),
   [`tempest_retriever()`](https://jameshwade.github.io/tempest/reference/tempest_retriever.md),
   and session persistence now use catchable cli/rlang condition classes
@@ -331,7 +400,7 @@
   expert panel assembles and refreshes after each answer; clicking a
   card sends that question to the Moderator. Toggle it off with “Suggest
   follow-up questions” in the sidebar. New exported helper
-  [`tempest_suggest_questions()`](https://jameshwade.github.io/tempest/reference/tempest_suggest_questions.md).
+  `tempest_suggest_questions()`.
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
   gains `max_search_queries_per_turn` and `retrieve_top_k` controls to
   mirror the upstream STORM runner’s query and section-retrieval limits.
@@ -381,14 +450,11 @@
   now expose claim-oriented `add_claim` and `list_claims` agent tools
   while keeping `add_fact` and `list_facts` as transitional aliases
   (msg3).
-- [`tempest_okf_concepts()`](https://jameshwade.github.io/tempest/reference/tempest_okf_concepts.md),
-  [`tempest_okf_context()`](https://jameshwade.github.io/tempest/reference/tempest_okf_context.md),
-  [`tempest_okf_resources()`](https://jameshwade.github.io/tempest/reference/tempest_okf_resources.md),
-  and
-  [`tempest_read_okf()`](https://jameshwade.github.io/tempest/reference/tempest_read_okf.md)
-  read bounded Open Knowledge Format bundles as typed evidence resources
-  and explicitly untrusted agent context without executing referenced
-  code or granting capabilities.
+- `tempest_okf_concepts()`, `tempest_okf_context()`,
+  `tempest_okf_resources()`, and `tempest_read_okf()` read bounded Open
+  Knowledge Format bundles as typed evidence resources and explicitly
+  untrusted agent context without executing referenced code or granting
+  capabilities.
 - [`tempest_progress_event()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event.md)
   and
   [`tempest_progress_event_data()`](https://jameshwade.github.io/tempest/reference/tempest_progress_event_data.md)
@@ -485,10 +551,8 @@
 - Persisted runs now write artifacts atomically and write the run
   manifest last, so an interrupted save cannot corrupt artifacts or
   leave `resume` pointing at a stage whose output is missing.
-- The bundled Shiny app now targets shinychat’s
-  [`chat_server()`](https://posit-dev.github.io/shinychat/r/reference/chat_app.html)
-  API for streaming, cancellation, greetings, and client state
-  management.
+- The bundled Shiny app now targets shinychat’s `chat_server()` API for
+  streaming, cancellation, greetings, and client state management.
 - The bundled Shiny app now saves, loads, and autosaves Co-STORM session
   bundles from the Chat sidebar so restored sessions repopulate the
   chat, sources, mind map, transcript, and report views (n64q).

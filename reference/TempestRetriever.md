@@ -139,7 +139,7 @@ Fetch and cache content from a URL.
 
 #### Returns
 
-A source object.
+A typed evidence resource.
 
 ------------------------------------------------------------------------
 

@@ -1,21 +1,22 @@
 # Return evidence resources as a tibble
 
-Return evidence resources as a tibble
+Reports every evidence resource consumed by a product, including
+accepted organizational knowledge records supplied through
+[`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md).
 
 ## Usage
 
 ``` r
-tempest_sources(workspace)
+tempest_sources(x)
 ```
 
 ## Arguments
 
-- workspace:
+- x:
 
-  A
-  [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  or
-  [TempestRetriever](https://jameshwade.github.io/tempest/reference/TempestRetriever.md).
+  A completed
+  [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  product or a `TempestSession`.
 
 ## Value
 
@@ -27,6 +28,6 @@ title, media type, content context, retrieval time, and metadata.
 ``` r
 if (FALSE) { # \dontrun{
 result <- tempest_run("History of jazz", config = tempest_config())
-tempest_sources(result$workspace)
+tempest_sources(result)
 } # }
 ```

@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,13 +35,6 @@
       <ul class="navbar-nav me-auto">
 <li class="active nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
-    <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
-  </ul>
-</li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -103,7 +96,7 @@ provider credentials.</p>
 <tr class="even">
 <td>Explore a topic interactively</td>
 <td>
-<code><a href="../reference/run_app.html">run_app()</a></code> or <code><a href="../reference/tempest_session.html">tempest_session()</a></code>
+<code><a href="../reference/tempest_app.html">tempest_app()</a></code> or <code><a href="../reference/tempest_session.html">tempest_session()</a></code>
 </td>
 <td>A continuing Co-STORM conversation, mind map, evidence, and
 report</td>
@@ -184,16 +177,16 @@ creates a run directory and persists each stage after it completes.</p>
 <p>The returned list contains the main report and the state used to
 create it:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">report_md</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">title</span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">perspectives</span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">experts</span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">outline</span></span>
 <span></span>
-<span><span class="va">sources</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_sources.html">tempest_sources</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">workspace</span><span class="op">)</span></span>
-<span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claims.html">tempest_claims</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">workspace</span><span class="op">)</span></span>
-<span><span class="va">supports</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claim_supports.html">tempest_claim_supports</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">workspace</span><span class="op">)</span></span>
+<span><span class="va">sources</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_sources.html">tempest_sources</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claims.html">tempest_claims</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<span><span class="va">supports</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claim_supports.html">tempest_claim_supports</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sources</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"url"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">claims</span><span class="op">[</span></span>
@@ -210,17 +203,14 @@ create it:</p>
 Retrieved resources, proposed claims, exact claim-by-evidence-span
 support records, and citations remain inspectable instead of being
 flattened into report text. The pair records are authoritative; claim
-summaries and citation-audit tables are derived projections. The product
-report is available directly in <code>result$report_md</code>; new
-callers should not depend on the frozen 0.1 artifact catalog.</p>
-<p><code><a href="../reference/tempest_report_md.html">tempest_report_md()</a></code> is useful when a caller needs
-deterministic citation rendering over its own Markdown and an explicit
-<code>ResearchWorkspace</code>. That rendered value is not a published
-product: it does not finalize a Manifest or grant promotion authority.
-Use <code>result$report_md</code> for the authoritative STORM report.
-For Co-STORM, generate and commit with <code>session$report()</code> and
-read the exact committed bytes with
-<code><a href="../reference/tempest_session_report_md.html">tempest_session_report_md()</a></code>.</p>
+summaries and citation-audit tables are derived projections. The
+authoritative product report is read with
+<code>tempest_report(result)</code>.</p>
+<p><code><a href="../reference/tempest_report.html">tempest_report()</a></code> is the one read accessor for both
+product shapes. It returns the exact committed bytes and never
+generates, repairs, or republishes a report. For Co-STORM, generate and
+commit with <code>session$publish()</code>, then read those exact bytes
+with <code>tempest_report(session)</code>.</p>
 <p>Every STORM and Co-STORM publication runs the exact verifier
 ProgramSet stage and atomically binds claim-by-evidence-span support.
 <code>citation_policy</code> controls only report rendering and
@@ -336,8 +326,8 @@ configuration, output directory, and run ID:</p>
 <p>Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.</p>
 <p>Current readers accept only <code>ResearchWorkspace</code> snapshot
-schema 5, Co-STORM snapshot and bundle schema 9, STORM bundle schema 7
-with state schema 4, ProgramSet schema 2, research-manifest schema 3,
+schema 5, Co-STORM snapshot and bundle schema 10, STORM bundle schema 8
+with state schema 5, ProgramSet schema 2, research-manifest schema 3,
 StageRecord output-digest payload schema 3, and promotion-bundle schema
 1. Every other version is rejected, as is any missing or extra field or
 value that becomes valid only after coercion. Shared envelope
@@ -360,18 +350,20 @@ profiles from its own expert pool:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">experts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
-<span>    expert_id <span class="op">=</span> <span class="st">"expert.recycling-engineering"</span>,</span>
 <span>    name <span class="op">=</span> <span class="st">"Recycling Engineer"</span>,</span>
 <span>    title <span class="op">=</span> <span class="st">"Battery recovery specialist"</span>,</span>
 <span>    description <span class="op">=</span> <span class="st">"Focuses on process yield, safety, and scale-up."</span>,</span>
-<span>    instructions <span class="op">=</span> <span class="st">"Separate demonstrated performance from projections."</span></span>
+<span>    instructions <span class="op">=</span> <span class="st">"Separate demonstrated performance from projections."</span>,</span>
+<span>    focus_areas <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"hydrometallurgy"</span>, <span class="st">"process safety"</span><span class="op">)</span>,</span>
+<span>    initial_questions <span class="op">=</span> <span class="st">"Which recovery steps constrain full-scale yield?"</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
-<span>    expert_id <span class="op">=</span> <span class="st">"expert.recycling-policy"</span>,</span>
 <span>    name <span class="op">=</span> <span class="st">"Policy Analyst"</span>,</span>
 <span>    title <span class="op">=</span> <span class="st">"Circular-economy policy specialist"</span>,</span>
 <span>    description <span class="op">=</span> <span class="st">"Focuses on incentives, standards, and accountability."</span>,</span>
-<span>    instructions <span class="op">=</span> <span class="st">"Compare jurisdictions and preserve policy uncertainty."</span></span>
+<span>    instructions <span class="op">=</span> <span class="st">"Compare jurisdictions and preserve policy uncertainty."</span>,</span>
+<span>    focus_areas <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"producer responsibility"</span>, <span class="st">"recycling standards"</span><span class="op">)</span>,</span>
+<span>    initial_questions <span class="op">=</span> <span class="st">"Which policies have changed recovery outcomes?"</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -383,10 +375,14 @@ profiles from its own expert pool:</p>
 <span>  run_id <span class="op">=</span> <span class="st">"selected-expert-recycling"</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Profiles describe a scientific perspective and stable expert
-identity. Keep live tools, clients, and credentials outside the
-serialized profile. Product code attaches only the tools required for
-its STORM or Co-STORM role.</p>
+<p>Generated and supplied experts use the same canonical constructor.
+Profiles are immutable descriptions of scientific perspectives, and
+Tempest derives each profile’s <code>expert_id</code> and
+<code>version</code> from its six authored fields. Keep live tools,
+clients, credentials, and roster state outside the serialized profile.
+Product code attaches only the tools required for its STORM or Co-STORM
+role, and Co-STORM retirement remains manager-owned session-roster state
+rather than profile data.</p>
 </div>
 <div class="section level2">
 <h2 id="explore-interactively-with-co-storm">Explore interactively with Co-STORM<a class="anchor" aria-label="anchor" href="#explore-interactively-with-co-storm"></a>
@@ -410,7 +406,7 @@ not already available:</p>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/run_app.html">run_app</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/tempest_app.html">tempest_app</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>For console control, create a session directly:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_session.html">tempest_session</a></span><span class="op">(</span></span>
@@ -425,11 +421,11 @@ not already available:</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">answer</span><span class="op">$</span><span class="va">answer</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">report</span><span class="op">(</span></span>
+<span><span class="va">session</span><span class="op">$</span><span class="fu">publish</span><span class="op">(</span></span>
 <span>  style <span class="op">=</span> <span class="st">"executive"</span>,</span>
 <span>  include_references <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">committed_report</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_session_report_md.html">tempest_session_report_md</a></span><span class="op">(</span><span class="va">session</span><span class="op">)</span></span>
+<span><span class="va">committed_report</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">session</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">committed_report</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/tempest_session_save.html">tempest_session_save</a></span><span class="op">(</span></span>
@@ -449,11 +445,10 @@ available to the final report. Session bundles preserve durable research
 state, but not credentials, live chat handles, tools, or authenticated
 clients. Configure fresh supported chats and retrieval dependencies
 through <code>config</code> before resuming.</p>
-<p>Snapshot, save, restore, and resume accept only the exact schema-9
-Co-STORM product. <code>partial_recovery = TRUE</code> is limited to the
-optional <code>artifacts/suggested_questions.json</code> presentation
-file. Expert, transcript, mind-map, StageRecord, Workspace, report, and
-Graft snapshot state must always pass integrity checks.</p>
+<p>Snapshot, save, restore, and resume accept only the exact schema-10
+Co-STORM product. Expert, transcript, mind-map, StageRecord, Workspace,
+report, suggested-question, and Graft snapshot state must pass integrity
+checks.</p>
 <p>The moderator and experts use persistent Deputy agents as the
 required Co-STORM runtime. Tempest disables ambient file, shell, R, web,
 and package-install capabilities, then allowlists only the tools already
@@ -472,141 +467,45 @@ maintained asynchronous worker path. Progress, persistence, and
 successful publication use polite live status; validation, cancellation,
 and publication failures use alerts.</p>
 <p>A host app can embed that same asynchronous STORM adapter without
-calling <code><a href="../reference/tempest_run.html">tempest_run()</a></code> in the Shiny main process:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">bslib</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/bslib/reference/page_fillable.html" class="external-link">page_fillable</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/tempest_shiny_ui.html">tempest_shiny_ui</a></span><span class="op">(</span><span class="st">"research"</span>, panels <span class="op">=</span> <span class="st">"storm"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="../reference/tempest_shiny_server.html">tempest_shiny_server</a></span><span class="op">(</span></span>
-<span>    <span class="st">"research"</span>,</span>
-<span>    config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>    panels <span class="op">=</span> <span class="st">"storm"</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
-<p>The installed example lives at
-<code>system.file("examples/shiny-host/app.R", package = "tempest")</code>.</p>
-</div>
-<div class="section level2">
-<h2 id="evaluate-complete-products">Evaluate complete products<a class="anchor" aria-label="anchor" href="#evaluate-complete-products"></a>
-</h2>
-<p>The default evaluation solvers exercise the actual product paths.
-Each <code><a href="../reference/tempest_task.html">tempest_task()</a></code> sample runs <code><a href="../reference/tempest_run.html">tempest_run()</a></code>
-and returns its authoritative report. Each
-<code><a href="../reference/tempest_costorm_task.html">tempest_costorm_task()</a></code> sample completes a real
-<code>TempestSession</code> and reads its committed report. Metadata
-contains only a versioned review reference, exact product identity,
-fixed program artifact and evaluator identities, and a ten-stage
-structural summary; it never logs the complete review, Agent objects,
-chats, clients, tools, prompts, responses, paths, or credentials.
-<code>dataset</code> can be the built-in <code>"qa"</code> smoke set or
-an exact data frame with <code>input</code>, <code>target</code>, and
-optional unique <code>id</code> columns.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">judge</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">chat</a></span><span class="op">(</span><span class="st">"openai/gpt-5.6-luna"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">storm_task</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_task.html">tempest_task</a></span><span class="op">(</span></span>
-<span>  dataset <span class="op">=</span> <span class="st">"qa"</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  scorer_chat <span class="op">=</span> <span class="va">judge</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">costorm_task</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_costorm_task.html">tempest_costorm_task</a></span><span class="op">(</span></span>
-<span>  dataset <span class="op">=</span> <span class="st">"qa"</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  max_turns <span class="op">=</span> <span class="fl">5</span>,</span>
-<span>  scorer_chat <span class="op">=</span> <span class="va">judge</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Evaluation does not imply automatic improvement. Use different
-mutable vitals Task instances for baseline and candidate runs,
-explicitly compile selected dsprrr stages, and adopt a candidate
-ProgramSet only after reviewing its scores and trajectory summaries:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">baseline_task</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_task.html">tempest_task</a></span><span class="op">(</span></span>
-<span>  dataset <span class="op">=</span> <span class="va">held_out</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  scorer_chat <span class="op">=</span> <span class="va">judge</span>,</span>
-<span>  program_set <span class="op">=</span> <span class="va">program_set</span>,</span>
-<span>  knowledge_view <span class="op">=</span> <span class="va">knowledge_view</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">baseline_task</span><span class="op">$</span><span class="fu">eval</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">candidate_program_set</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_compile_programs.html">tempest_compile_programs</a></span><span class="op">(</span></span>
-<span>  <span class="va">program_set</span>,</span>
-<span>  trainsets <span class="op">=</span> <span class="va">stage_trainsets</span>,</span>
-<span>  valsets <span class="op">=</span> <span class="va">stage_validation_sets</span>,</span>
-<span>  teleprompters <span class="op">=</span> <span class="va">teleprompters</span>,</span>
-<span>  path <span class="op">=</span> <span class="st">"candidate-programs"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">candidate_task</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_task.html">tempest_task</a></span><span class="op">(</span></span>
-<span>  dataset <span class="op">=</span> <span class="va">held_out</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  scorer_chat <span class="op">=</span> <span class="va">judge</span>,</span>
-<span>  program_set <span class="op">=</span> <span class="va">candidate_program_set</span>,</span>
-<span>  knowledge_view <span class="op">=</span> <span class="va">knowledge_view</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">candidate_task</span><span class="op">$</span><span class="fu">eval</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Inspect both results and make the adoption decision outside Tempest.</span></span>
-<span><span class="va">baseline_samples</span> <span class="op">&lt;-</span> <span class="va">baseline_task</span><span class="op">$</span><span class="fu">get_samples</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">candidate_samples</span> <span class="op">&lt;-</span> <span class="va">candidate_task</span><span class="op">$</span><span class="fu">get_samples</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">chosen_program_set</span> <span class="op">&lt;-</span> <span class="va">candidate_program_set</span></span>
-<span></span>
-<span><span class="va">next_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Grid-scale battery recycling"</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  program_set <span class="op">=</span> <span class="va">chosen_program_set</span>,</span>
-<span>  knowledge_view <span class="op">=</span> <span class="va">knowledge_view</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Keep compilation training and validation rows separate from held-out
-evaluation rows to avoid leakage, overfitting, and optimistic scores.
-Compare the same sample IDs, inputs, targets, and scorer. Tempest does
-not synthesize training data, choose an optimizer, compile
-automatically, or replace the baseline. Supply an explicit scorer or let
-the task use <code><a href="https://vitals.tidyverse.org/reference/scorer_model.html" class="external-link">vitals::model_graded_qa()</a></code> with the chosen
-judge chat. Compilation works on isolated Module copies. When an
-artifact changes, its old governed-procedure reference is cleared until
-the candidate is reviewed and accepted separately.</p>
+calling The Shiny modules are Tempest implementation details. The
+bundled application is reachable only through
+<code><a href="../reference/tempest_app.html">tempest_app()</a></code>; there is no supported contract for embedding
+its panels in a host app.</p>
 </div>
 <div class="section level2">
 <h2 id="product-boundary">Product boundary<a class="anchor" aria-label="anchor" href="#product-boundary"></a>
 </h2>
-<p>Tempest 0.2 supports only <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and
-<code><a href="../reference/tempest_session.html">tempest_session()</a></code> as research product entry points. The
-experimental application-neutral kernel is removed, including its former
-symbols. No compatibility layer is provided.</p>
+<p>Tempest supports only <code><a href="../reference/tempest_run.html">tempest_run()</a></code> and
+<code><a href="../reference/tempest_session.html">tempest_session()</a></code> as research product entry points, with
+<code><a href="../reference/tempest_app.html">tempest_app()</a></code> for the bundled application. A completed run
+is read through <code><a href="../reference/tempest_report.html">tempest_report()</a></code>,
+<code><a href="../reference/tempest_sources.html">tempest_sources()</a></code>, <code><a href="../reference/tempest_claims.html">tempest_claims()</a></code>,
+<code><a href="../reference/tempest_claim_supports.html">tempest_claim_supports()</a></code>, and
+<code><a href="../reference/tempest_trajectory_review.html">tempest_trajectory_review()</a></code>; the retriever, mutable
+workspace, manifest, and stage state are not part of that surface. No
+compatibility layer is provided.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-go-next">Where to go next<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>
 </h2>
 <ul>
 <li>Use <code><a href="../reference/tempest_run.html">tempest_run()</a></code> for a scripted STORM report.</li>
-<li>Use <code><a href="../reference/tempest_session.html">tempest_session()</a></code> or <code><a href="../reference/run_app.html">run_app()</a></code> for
+<li>Use <code><a href="../reference/tempest_session.html">tempest_session()</a></code> or <code><a href="../reference/tempest_app.html">tempest_app()</a></code> for
 interactive Co-STORM research.</li>
 <li>Add semantic retrieval with <code>ragnar</code> through
 <code>embed_fn</code> or a pre-built <code>ragnar_store</code>.</li>
-<li>Compile selected structured programs with
-<code><a href="../reference/tempest_compile_programs.html">tempest_compile_programs()</a></code>, then pass the complete verified
-<code>TempestProgramSet</code> to STORM or Co-STORM.</li>
-<li>Resolve an accepted procedure with
-<code><a href="../reference/tempest_governed_procedure_ref.html">tempest_governed_procedure_ref()</a></code>, bind it by stage in a
-ProgramSet, and pass its matching pinned <code>knowledge_view</code> to
-every governed run or session.</li>
+<li>Bring accepted organizational knowledge into a run with
+<code><a href="../reference/tempest_knowledge.html">tempest_knowledge()</a></code>, which pins the immutable Graft view,
+names the exact accepted evidence records, and binds any accepted
+governed procedure to its stage.</li>
 <li>Review provisional evidence with
 <code><a href="../reference/tempest_promotion_bundle.html">tempest_promotion_bundle()</a></code> and
 <code><a href="../reference/tempest_graft_plan.html">tempest_graft_plan()</a></code> before exercising Graft acceptance
 authority.</li>
 <li>Reconstruct a non-authoritative review with
 <code><a href="../reference/tempest_trajectory_review.html">tempest_trajectory_review()</a></code>.</li>
-<li>Capture progress with <code><a href="../reference/tempest_progress_collector.html">tempest_progress_collector()</a></code> and
-inspect events with <code><a href="../reference/tempest_progress_event_data.html">tempest_progress_event_data()</a></code>.</li>
-<li>Evaluate scripted and interactive workflows with
-<code><a href="../reference/tempest_task.html">tempest_task()</a></code> and
-<code><a href="../reference/tempest_costorm_task.html">tempest_costorm_task()</a></code>.</li>
+<li>Capture progress by passing a <code>progress</code> callback, which
+receives one canonical plain record per event.</li>
 </ul>
 <p>Start with a narrow topic, a small expert and question budget, and
 durable output. Expand model roles, retrieval, parallelism, and

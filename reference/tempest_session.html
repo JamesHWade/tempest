@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -17,11 +17,6 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/open-knowledge-format.html">Use Open Knowledge Format with Tempest</a></li>
-    <li><a class="dropdown-item" href="../articles/agent-skills.html">Use Tempest Agent Skills</a></li>
-  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -53,8 +48,7 @@
 <span>  retriever <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  knowledge <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -94,15 +88,11 @@ objects as the session makes progress.</p></dd>
 identifier is generated.</p></dd>
 
 
-<dt id="arg-program-set">program_set<a class="anchor" aria-label="anchor" href="#arg-program-set"></a></dt>
-<dd><p>A <a href="TempestProgramSet.html">TempestProgramSet</a> containing the exact dsprrr
-programs used by Co-STORM. If <code>NULL</code>, <code><a href="tempest_program_set.html">tempest_program_set()</a></code> creates the
-builtin set.</p></dd>
-
-
-<dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
-<dd><p>Optional immutable Graft view. It is required for a
-fresh session when <code>program_set</code> contains governed procedures.</p></dd>
+<dt id="arg-knowledge">knowledge<a class="anchor" aria-label="anchor" href="#arg-knowledge"></a></dt>
+<dd><p>Optional accepted organizational knowledge from
+<code><a href="tempest_knowledge.html">tempest_knowledge()</a></code>. It pins an immutable Graft view, supplies accepted
+evidence records, and carries any accepted governed-procedure stage
+bindings.</p></dd>
 
 </dl></div>
     <div class="section level2">

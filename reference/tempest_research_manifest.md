@@ -19,8 +19,7 @@ tempest_research_manifest(
   runtime = list(deputy_session_ids = character(), deputy_run_ids = character()),
   traces = list(),
   deliverables = list(),
-  status = "running",
-  schema_version = 3L
+  status = "running"
 )
 ```
 
@@ -68,10 +67,6 @@ tempest_research_manifest(
 
   Run status: `"running"`, `"succeeded"`, `"failed"`, or `"cancelled"`.
 
-- schema_version:
-
-  Manifest record schema. Only version 3 is supported.
-
 ## Value
 
 A `TempestResearchManifest` S7 object.
@@ -82,15 +77,3 @@ Reference fields accept only canonical JSON-compatible plain values.
 They cannot contain credentials, chats, functions, environments,
 connections, S7 or R6 objects, external pointers, or missing and
 non-finite values.
-
-## Examples
-
-``` r
-manifest <- tempest_research_manifest(
-  research_run_id = "research-123",
-  mode = "storm",
-  config = tempest_config()
-)
-manifest@status
-#> [1] "running"
-```
