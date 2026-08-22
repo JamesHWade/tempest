@@ -1,7 +1,9 @@
 test_that("retrieval tools expose canonical research vocabulary", {
   skip_if_not_installed("ellmer")
   store <- tempest_research_workspace()
-  store$upsert_retrieved_resource(fake_source("https://example.org/1"))
+  store$upsert_retrieved_resource(test_typed_web_resource(
+    "https://example.org/1"
+  ))
   source_id <- store$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
@@ -155,9 +157,157 @@ test_that("web tools produce only their delegated retriever spans", {
   )
 })
 
+test_that("native harvesting inserts and merges typed evidence resources", {
+  workspace <- tempest_research_workspace()
+  url <- "https://example.org/native-typed-evidence"
+  source_id <- tempest:::tempest_source_id(url)
+  local_mocked_bindings(
+    tempest_now_utc = function() "2026-08-20T12:00:00.000000Z"
+  )
+
+  first_ids <- tempest:::tempest_harvest_native_sources_from_json(
+    list(
+      text = "Provider answer context",
+      annotations = list(list(
+        url = url,
+        title = "Native evidence",
+        snippet = "Native evidence snippet",
+        content = "Native evidence body"
+      ))
+    ),
+    workspace
+  )
+  first <- workspace$get_retrieved_resource(source_id)
+
+  expect_identical(first_ids, source_id)
+  expect_identical(S7::S7_inherits(first, tempest:::TempestResource), TRUE)
+  expect_identical(first@resource_kind, "web")
+  expect_identical(first@locator, url)
+  expect_identical(first@title, "Native evidence")
+  expect_identical(first@media_type, "text/html")
+  expect_identical(first@resource_id, source_id)
+  expect_identical(first@content, "Provider answer context")
+  expect_identical(first@metadata$kind, "native_search")
+  expect_identical(first@metadata$provider_tool, "native")
+  expect_identical(first@metadata$snippet, "Native evidence snippet")
+  expect_identical(first@metadata$content_text, "Native evidence body")
+  expect_identical(first@metadata$context_text, "Provider answer context")
+
+  second_ids <- tempest:::tempest_harvest_native_sources_from_json(
+    list(url = url),
+    workspace
+  )
+  merged <- workspace$get_retrieved_resource(source_id)
+  presented <- workspace$get_retrieved_source(source_id)
+
+  expect_identical(second_ids, source_id)
+  expect_identical(merged@title, first@title)
+  expect_identical(merged@content, first@content)
+  expect_identical(merged@metadata, first@metadata)
+  expect_identical(presented$id, source_id)
+  expect_identical(presented$content_text, "Provider answer context")
+  expect_identical(presented$snippet, "Native evidence snippet")
+})
+
+test_that("native evidence merging rejects TempestResource subclasses", {
+  resource <- test_typed_web_resource("https://example.org/merge")
+  subclass <- test_subclassed_resource(resource)
+
+  expect_error(
+    tempest:::tempest_merge_resource_record(resource, subclass),
+    class = "tempest_research_workspace_integrity_error"
+  )
+  expect_error(
+    tempest:::tempest_merge_resource_record(subclass, resource),
+    class = "tempest_research_workspace_integrity_error"
+  )
+})
+
+test_that("native merging preserves the strongest explicit evidence text", {
+  url <- "https://example.org/merge-evidence-precedence"
+  old_body <- tempest_resource(
+    resource_kind = "web",
+    locator = url,
+    title = "Old full body",
+    media_type = "text/html",
+    content = "Old full evidence body",
+    metadata = list(content_text = "Old full evidence body")
+  )
+  new_snippet <- tempest_resource(
+    resource_kind = "web",
+    locator = url,
+    title = "New snippet",
+    media_type = "text/html",
+    content = "New short snippet",
+    metadata = list(snippet = "New short snippet")
+  )
+
+  merged <- tempest:::tempest_merge_resource_record(old_body, new_snippet)
+  expect_identical(merged@content, "Old full evidence body")
+  expect_identical(
+    merged@content_hash,
+    tempest:::tempest_product_content_hash(
+      "Old full evidence body",
+      "text/html"
+    )
+  )
+
+  old_context <- tempest_resource(
+    resource_kind = "web",
+    locator = url,
+    title = "Old context",
+    media_type = "text/html",
+    content = "Old provider context",
+    metadata = list(context_text = "Old provider context")
+  )
+  new_body <- tempest_resource(
+    resource_kind = "web",
+    locator = url,
+    title = "New body",
+    media_type = "text/html",
+    content = "New full evidence body",
+    metadata = list(content_text = "New full evidence body")
+  )
+
+  merged <- tempest:::tempest_merge_resource_record(old_context, new_body)
+  expect_identical(merged@content, "Old provider context")
+  expect_identical(
+    merged@content_hash,
+    tempest:::tempest_product_content_hash(
+      "Old provider context",
+      "text/html"
+    )
+  )
+})
+
+test_that("review tools keep nonscalar metadata out of source payloads", {
+  workspace <- tempest_research_workspace()
+  resource <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/nonscalar-tool-metadata",
+    title = "Nonscalar tool metadata",
+    media_type = "text/html",
+    content = "Captured tool evidence",
+    metadata = list(
+      snippet = list("list snippet"),
+      context_text = c("first context", "second context")
+    )
+  )
+  workspace$upsert_retrieved_resource(resource)
+  restored <- tempest:::tempest_research_workspace_restore(
+    tempest:::tempest_research_workspace_snapshot(workspace)
+  )
+  tools <- tempest:::tempest_tool_review_functions(restored)
+
+  summaries <- tools$list_retrieved_sources()
+  detail <- tools$get_retrieved_source(resource@resource_id)
+  expect_identical(summaries[[1]]$snippet, NA_character_)
+  expect_identical(detail$excerpt, "Captured tool evidence")
+})
+
 test_that("source-management tools expose claim tools without web tools", {
   skip_if_not_installed("ellmer")
-  store <- fake_store_with_sources(1)
+  store <- producer_test_workspace(1)
   source_id <- store$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
@@ -195,15 +345,16 @@ test_that("source-management tools expose claim tools without web tools", {
 
 test_that("claim write tools record dynamic provenance", {
   skip_if_not_installed("ellmer")
-  store <- fake_store_with_sources(1)
+  store <- producer_test_workspace(1)
   source_id <- store$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
     workspace = store
   )
+  expert <- test_expert(name = "Climate Expert")
   current <- list(
     session_id = "expert-session-1",
-    expert_id = "expert.climate",
+    expert_id = expert@expert_id,
     retrieval_step_id = "tool-turn-1"
   )
   tools <- tempest:::tempest_tools_source_management(
@@ -219,11 +370,11 @@ test_that("claim write tools record dynamic provenance", {
   )
 
   expect_equal(added$session_id, "expert-session-1")
-  expect_equal(added$expert_id, "expert.climate")
+  expect_equal(added$expert_id, expert@expert_id)
   expect_equal(added$retrieval_step_id, "tool-turn-1")
   claim <- store$list_proposed_claims()[[1]]
   expect_equal(claim@session_id, "expert-session-1")
-  expect_equal(claim@expert_id, "expert.climate")
+  expect_equal(claim@expert_id, expert@expert_id)
   expect_equal(claim@retrieval_step_id, "tool-turn-1")
 })
 
@@ -231,7 +382,7 @@ test_that("source-management tools can be registered read-only", {
   skip_if_not_installed("ellmer")
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
-    workspace = fake_store_with_sources(1)
+    workspace = producer_test_workspace(1)
   )
   tools <- tempest:::tempest_tools_source_management(
     retriever,
@@ -258,7 +409,7 @@ test_that("source-management tools can be registered read-only", {
 
 test_that("default tool registration respects read-only evidence roles", {
   skip_if_not_installed("ellmer")
-  store <- fake_store_with_sources(1)
+  store <- producer_test_workspace(1)
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
     workspace = store
@@ -340,9 +491,26 @@ test_that("single expert generation returns deterministic scoped profiles", {
     S7::S7_inherits(first, tempest:::TempestExpertProfile),
     TRUE
   )
-  expect_equal(first@expert_id, second@expert_id)
-  expect_match(first@expert_id, "^expert.generated-")
-  expect_identical(first@required_capability_ids, character())
-  expect_identical(first@optional_capability_ids, character())
-  expect_equal(first@model_role, "expert")
+  expect_identical(first, second)
+  expect_match(first@expert_id, "^expert::[a-f0-9]{64}$")
+  expect_match(first@version, "^sha256-[a-f0-9]{64}$")
+  expect_identical(first@name, "Dr. Rivera")
+  expect_identical(first@title, "Battery policy analyst")
+  expect_match(first@description, "Affiliation: Independent", fixed = TRUE)
+  expect_match(
+    first@description,
+    "Background: Studies battery policy.",
+    fixed = TRUE
+  )
+  expect_match(
+    first@description,
+    "Perspective: Policy and market incentives",
+    fixed = TRUE
+  )
+  expect_match(first@instructions, "Policy and market incentives", fixed = TRUE)
+  expect_identical(first@focus_areas, c("recycling", "incentives"))
+  expect_identical(
+    first@initial_questions,
+    "Which incentives affect recycling?"
+  )
 })

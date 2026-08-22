@@ -139,7 +139,7 @@ test_that("unverifiable pair support carries no numeric score", {
 
 test_that("non-verifying policies do not mutate authoritative support state", {
   verified <- test_verified_workspace()
-  before <- tempest_claim_supports(verified$workspace)
+  before <- tempest:::tempest_claim_supports_resolved(verified$workspace)
 
   audit <- tempest_verify_claims(
     verified$workspace,
@@ -148,7 +148,10 @@ test_that("non-verifying policies do not mutate authoritative support state", {
   )
 
   expect_identical(nrow(audit), 0L)
-  expect_identical(tempest_claim_supports(verified$workspace), before)
+  expect_identical(
+    tempest:::tempest_claim_supports_resolved(verified$workspace),
+    before
+  )
 })
 
 test_that("malformed pair output cannot partially commit verification", {
@@ -323,15 +326,22 @@ test_that("session verification commits pair records and support state atomicall
     session_id = "session-verification"
   )
   fixtures <- list(
-    test_add_verifiable_claim(session$workspace, "1"),
-    test_add_verifiable_claim(session$workspace, "2")
+    test_add_verifiable_claim(
+      tempest:::tempest_session_workspace(session),
+      "1"
+    ),
+    test_add_verifiable_claim(tempest:::tempest_session_workspace(session), "2")
   )
   bypass_supports <- lapply(fixtures, function(fixture) {
     test_claim_support(fixture$claim, fixture$span)
   })
-  claims_before_bypass <- session$workspace$list_proposed_claims()
+  claims_before_bypass <- tempest:::tempest_session_workspace(
+    session
+  )$list_proposed_claims()
   workspace_before_public_bypass <-
-    tempest:::tempest_research_workspace_snapshot(session$workspace)
+    tempest:::tempest_research_workspace_snapshot(tempest:::tempest_session_workspace(
+      session
+    ))
   public_bypass_judge <- fake_chat(
     structured = list(
       list(status = "supported", score = 0.95, rationale = "Exact support."),
@@ -340,7 +350,7 @@ test_that("session verification commits pair records and support state atomicall
   )
   expect_error(
     tempest_verify_claims(
-      session$workspace,
+      tempest:::tempest_session_workspace(session),
       verifier = public_bypass_judge,
       min_support_score = 0.9
     ),
@@ -348,21 +358,26 @@ test_that("session verification commits pair records and support state atomicall
   )
   expect_length(public_bypass_judge$.calls(), 0L)
   expect_identical(
-    tempest:::tempest_research_workspace_snapshot(session$workspace),
+    tempest:::tempest_research_workspace_snapshot(tempest:::tempest_session_workspace(
+      session
+    )),
     workspace_before_public_bypass
   )
   expect_error(
-    session$workspace$verify_proposed_claims_batch(
+    tempest:::tempest_session_workspace(session)$verify_proposed_claims_batch(
       bypass_supports,
       verified_at = "2026-08-16T12:03:00Z"
     ),
     class = "tempest_research_workspace_integrity_error"
   )
   expect_identical(
-    session$workspace$list_proposed_claims(),
+    tempest:::tempest_session_workspace(session)$list_proposed_claims(),
     claims_before_bypass
   )
-  expect_length(session$workspace$list_claim_supports(), 0L)
+  expect_length(
+    tempest:::tempest_session_workspace(session)$list_claim_supports(),
+    0L
+  )
   expect_length(tempest:::tempest_session_stage_records(session), 0L)
   judge <- fake_chat(
     structured = list(
@@ -413,12 +428,16 @@ test_that("session verification commits pair records and support state atomicall
   expect_identical(length(judge$.calls()), calls_before)
   expect_length(tempest:::tempest_session_stage_records(session), 2L)
   workspace_before_mutation <-
-    tempest:::tempest_research_workspace_snapshot(session$workspace)
+    tempest:::tempest_research_workspace_snapshot(tempest:::tempest_session_workspace(
+      session
+    ))
   records_before_mutation <- tempest:::tempest_stage_records_data(
     tempest:::tempest_session_stage_records(session)
   )
   expect_error(
-    session$workspace$upsert_retrieved_resource(tempest_resource(
+    tempest:::tempest_session_workspace(
+      session
+    )$upsert_retrieved_resource(tempest_resource(
       resource_kind = "web.page",
       locator = "https://example.org/after-verification",
       title = "Late evidence",
@@ -429,7 +448,9 @@ test_that("session verification commits pair records and support state atomicall
     class = "tempest_research_workspace_integrity_error"
   )
   expect_identical(
-    tempest:::tempest_research_workspace_snapshot(session$workspace),
+    tempest:::tempest_research_workspace_snapshot(tempest:::tempest_session_workspace(
+      session
+    )),
     workspace_before_mutation
   )
   expect_identical(
@@ -450,21 +471,29 @@ test_that("session verification commits pair records and support state atomicall
   expect_false("verification_owner_token" %in% names(snapshot$workspace))
   expect_length(tempest:::tempest_session_stage_records(restored), 2L)
   expect_identical(
-    tempest_claim_supports(restored$workspace),
-    tempest_claim_supports(session$workspace)
+    tempest:::tempest_claim_supports_resolved(tempest:::tempest_session_workspace(
+      restored
+    )),
+    tempest:::tempest_claim_supports_resolved(tempest:::tempest_session_workspace(
+      session
+    ))
   )
   restored_before_bypass <-
-    tempest:::tempest_research_workspace_snapshot(restored$workspace)
+    tempest:::tempest_research_workspace_snapshot(tempest:::tempest_session_workspace(
+      restored
+    ))
   expect_error(
-    restored$workspace$verify_proposed_claims_batch(
-      restored$workspace$list_claim_supports(),
+    tempest:::tempest_session_workspace(restored)$verify_proposed_claims_batch(
+      tempest:::tempest_session_workspace(restored)$list_claim_supports(),
       verified_at = records[[1]]@trace_references$verified_at,
       verifier = records[[1]]@trace_references$verifier_model
     ),
     class = "tempest_research_workspace_integrity_error"
   )
   expect_identical(
-    tempest:::tempest_research_workspace_snapshot(restored$workspace),
+    tempest:::tempest_research_workspace_snapshot(tempest:::tempest_session_workspace(
+      restored
+    )),
     restored_before_bypass
   )
 })
@@ -480,7 +509,10 @@ test_that("default session verification is product-required", {
     config = config,
     experts = list(test_expert(expert_id = "expert.default-verifier"))
   )
-  test_add_verifiable_claim(session$workspace, "default-policy")
+  test_add_verifiable_claim(
+    tempest:::tempest_session_workspace(session),
+    "default-policy"
+  )
   judge <- fake_chat(
     structured = list(list(
       status = "supported",
@@ -492,7 +524,10 @@ test_that("default session verification is product-required", {
   audit <- tempest_verify_claims(session, verifier = judge)
 
   expect_identical(nrow(audit), 1L)
-  expect_length(session$workspace$list_claim_supports(), 1L)
+  expect_length(
+    tempest:::tempest_session_workspace(session)$list_claim_supports(),
+    1L
+  )
   expect_identical(
     tempest:::tempest_session_stage_records(session)[[1L]]@stage,
     "verify_claim_support"
@@ -503,7 +538,10 @@ test_that("default session verification is product-required", {
     config = config,
     experts = list(test_expert(expert_id = "expert.override-verifier"))
   )
-  test_add_verifiable_claim(other$workspace, "override-policy")
+  test_add_verifiable_claim(
+    tempest:::tempest_session_workspace(other),
+    "override-policy"
+  )
   expect_error(
     tempest_verify_claims(
       other,
@@ -644,19 +682,28 @@ test_that("failed session verification permits evidence mutation and retry", {
     config = config,
     experts = list(test_expert(expert_id = "expert.retry-verification"))
   )
-  test_add_verifiable_claim(session$workspace, "retry-1")
+  test_add_verifiable_claim(
+    tempest:::tempest_session_workspace(session),
+    "retry-1"
+  )
   failed_judge <- fake_chat()
   expect_error(
     tempest_verify_claims(session, verifier = failed_judge),
     class = "tempest_stage_execution_error"
   )
-  expect_length(session$workspace$list_claim_supports(), 0L)
+  expect_length(
+    tempest:::tempest_session_workspace(session)$list_claim_supports(),
+    0L
+  )
   expect_identical(
     tempest:::tempest_session_stage_records(session)[[1]]@status,
     "failed"
   )
 
-  expect_no_error(test_add_verifiable_claim(session$workspace, "retry-2"))
+  expect_no_error(test_add_verifiable_claim(
+    tempest:::tempest_session_workspace(session),
+    "retry-2"
+  ))
   judge <- fake_chat(
     structured = list(
       list(status = "supported", score = 0.9, rationale = "Exact support."),
@@ -664,7 +711,10 @@ test_that("failed session verification permits evidence mutation and retry", {
     )
   )
   expect_no_error(tempest_verify_claims(session, verifier = judge))
-  expect_length(session$workspace$list_claim_supports(), 2L)
+  expect_length(
+    tempest:::tempest_session_workspace(session)$list_claim_supports(),
+    2L
+  )
   snapshot <- tempest_session_snapshot(session)
   expect_r6_class(
     tempest_session_restore(snapshot, config = config),

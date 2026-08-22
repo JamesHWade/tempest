@@ -18,8 +18,7 @@ tempest_resource(
   retrieved_at = NULL,
   redaction = list(),
   retention = list(),
-  metadata = list(),
-  schema_version = 1L
+  metadata = list()
 )
 }
 \arguments{
@@ -58,8 +57,6 @@ and values are rejected recursively.}
 
 \item{metadata}{Serializable namespaced host metadata. Credential-like field
 names and values are rejected recursively.}
-
-\item{schema_version}{Positive resource schema version.}
 }
 \value{
 A \code{tempest_resource} S7 object.
@@ -75,12 +72,4 @@ remain host-owned and are never stored here. This record is not a generic
 connection-management contract; its 0.2 role narrows to scientific source
 and context evidence in a research workspace.
 }
-\examples{
-resource <- tempest_resource(
-  resource_kind = "scientific.document",
-  locator = "protocols/assay-42",
-  title = "Reviewed assay protocol",
-  media_type = "text/plain",
-  content = "Measure the response after 24 hours."
-)
-}
+\keyword{internal}

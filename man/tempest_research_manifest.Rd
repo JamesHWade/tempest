@@ -14,8 +14,7 @@ tempest_research_manifest(
   runtime = list(deputy_session_ids = character(), deputy_run_ids = character()),
   traces = list(),
   deliverables = list(),
-  status = "running",
-  schema_version = 3L
+  status = "running"
 )
 }
 \arguments{
@@ -41,8 +40,6 @@ only when \code{config} is unavailable during restoration.}
 
 \item{status}{Run status: \code{"running"}, \code{"succeeded"}, \code{"failed"}, or
 \code{"cancelled"}.}
-
-\item{schema_version}{Manifest record schema. Only version 3 is supported.}
 }
 \value{
 A \code{TempestResearchManifest} S7 object.
@@ -58,11 +55,4 @@ Reference fields accept only canonical JSON-compatible plain values. They
 cannot contain credentials, chats, functions, environments, connections,
 S7 or R6 objects, external pointers, or missing and non-finite values.
 }
-\examples{
-manifest <- tempest_research_manifest(
-  research_run_id = "research-123",
-  mode = "storm",
-  config = tempest_config()
-)
-manifest@status
-}
+\keyword{internal}

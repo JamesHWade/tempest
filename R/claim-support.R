@@ -186,7 +186,7 @@ TempestClaimSupport <- S7::new_class(
 #'   an `"unverifiable"` assessment.
 #' @param rationale Required bounded credential-free rationale.
 #' @return A `tempest_claim_support` S7 value.
-#' @export
+#' @keywords internal
 tempest_claim_support <- function(
   claim_id,
   evidence_span_id,
@@ -355,18 +355,64 @@ tempest_claim_supports_tibble <- function(supports) {
 
 #' List explicit claim-support assessments
 #'
-#' @param workspace A [ResearchWorkspace] or `TempestSession`.
+#' Returns the complete joined proof table rather than foreign keys alone. Each
+#' row carries the support identity and judgment, the claim identity and text,
+#' the exact evidence-span identity with its quote, offsets, page, and section,
+#' and the source identity. Pair it with [tempest_sources()] for the
+#' corresponding source metadata and locator.
+#'
+#' @param x A completed [tempest_run()] product or a `TempestSession`.
 #' @return A tibble with one row per exact claim-by-evidence-span judgment.
 #' @export
-tempest_claim_supports <- function(workspace) {
-  if (inherits(workspace, "TempestSession")) {
-    workspace <- workspace$workspace
-  }
-  if (!inherits(workspace, "ResearchWorkspace")) {
-    tempest_abort(
-      "{.arg workspace} must be a ResearchWorkspace or TempestSession.",
-      class = c("tempest_claim_support_error", "tempest_error")
+tempest_claim_supports <- function(x) {
+  workspace <- tempest_product_read_workspace(x)
+  tempest_claim_supports_resolved(workspace)
+}
+
+# Join every support row to its durable claim and evidence span.
+tempest_claim_supports_resolved <- function(workspace) {
+  supports <- tempest_claim_supports_tibble(workspace$list_claim_supports())
+  resolve <- function(ids, getter, field, default) {
+    vapply(
+      ids,
+      function(id) {
+        value <- tryCatch(getter(id), error = function(error) NULL)
+        if (is.null(value)) {
+          return(default)
+        }
+        found <- S7::prop(value, field)
+        if (length(found) != 1L || is.na(found)) default else found
+      },
+      default,
+      USE.NAMES = FALSE
     )
   }
-  tempest_claim_supports_tibble(workspace$list_claim_supports())
+  span <- function(field, default) {
+    resolve(
+      supports$evidence_span_id,
+      workspace$get_evidence_span,
+      field,
+      default
+    )
+  }
+  tibble::tibble(
+    claim_support_id = supports$claim_support_id,
+    claim_id = supports$claim_id,
+    claim_text = resolve(
+      supports$claim_id,
+      workspace$get_proposed_claim,
+      "claim_text",
+      NA_character_
+    ),
+    evidence_span_id = supports$evidence_span_id,
+    quote = span("quote", NA_character_),
+    start_offset = span("start_offset", NA_integer_),
+    end_offset = span("end_offset", NA_integer_),
+    page = span("page", NA_integer_),
+    section_heading = span("section_heading", NA_character_),
+    source_id = supports$source_id,
+    verification_status = supports$verification_status,
+    support_score = supports$support_score,
+    rationale = supports$rationale
+  )
 }

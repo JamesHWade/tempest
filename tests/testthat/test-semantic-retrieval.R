@@ -80,12 +80,12 @@ test_that("STORM semantic facts use configured ragnar retrieval", {
   # Add claims with source IDs
   store$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Neural networks learn patterns",
-    source_ids = source$id
+    source_ids = source@resource_id
   ))
 
   # Ingest content to ragnar
   retriever$ingest_to_ragnar(
-    source_id = source$id,
+    source_id = source@resource_id,
     url = "https://example.com",
     title = "Neural Networks",
     text = "Neural networks learn patterns from data.",

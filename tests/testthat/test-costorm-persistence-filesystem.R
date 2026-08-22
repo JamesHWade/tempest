@@ -8,7 +8,6 @@ test_that("session save refuses to overwrite a non-bundle directory", {
     "Guarded save",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.guard",
       name = "Guard Expert",
       title = "Persistence guard",
       description = "Protect bundle replacement.",
@@ -96,7 +95,6 @@ test_that("Tempest session bundle resume reports classed file errors", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   expert <- tempest_expert(
-    expert_id = "expert.broken",
     name = "Dr. Broken",
     title = "Persistence expert",
     description = "Failure handling",

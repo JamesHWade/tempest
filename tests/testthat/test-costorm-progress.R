@@ -5,7 +5,7 @@ test_that("TempestSession emits Co-STORM progress events", {
     title = "Co-STORM source",
     content_text = "Co-STORM progress uses compact event metadata."
   )
-  source_id <- source$id
+  source_id <- source@resource_id
   store <- test_research_workspace()
   store$upsert_retrieved_resource(source)
   collector <- tempest_progress_collector(include_payload = TRUE)
@@ -119,8 +119,8 @@ test_that("TempestSession emits Co-STORM progress events", {
   )
   session$step("What should we inspect?")
   questions <- session$suggest_questions(n = 1)
-  report <- session$report(include_references = FALSE)
-  claims <- session$workspace$list_proposed_claims()
+  report <- session$publish(include_references = FALSE)
+  claims <- tempest:::tempest_session_workspace(session)$list_proposed_claims()
   expect_gt(length(claims), 0L)
   expect_identical(
     unname(vapply(claims, \(claim) claim@session_id, character(1))),
@@ -163,10 +163,13 @@ test_that("TempestSession emits Co-STORM progress events", {
   )
   expect_equal(questions, "What next?")
   expect_match(report, "Warmup progress is observable")
-  expect_identical(tempest_session_report_md(session), report)
-  expect_identical(session$manifest@status, "succeeded")
+  expect_identical(tempest_report(session), report)
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "succeeded"
+  )
   expect_equal(
-    session$mindmap_markdown(),
+    session$.__enclos_env__$private$mindmap_markdown(),
     tempest:::tempest_mindmap_to_markdown(session$mindmap)
   )
   expect_equal(

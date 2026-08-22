@@ -7,107 +7,41 @@ articles:
   navbar: ~
   contents:
   - tempest
-- title: Bring organizational knowledge
-  desc: Read portable knowledge as bounded evidence for Tempest workflows.
-  navbar: ~
-  contents:
-  - open-knowledge-format
-- title: Add Tempest to an agent
-  desc: Install Agent Skills or make portable STORM research callable from chat.
-  navbar: ~
-  contents:
-  - agent-skills
 reference:
-- title: Agent integrations
-  contents:
-  - tempest_agent_skills
-- title: Core workflows
-  desc: Run scripted STORM or persistent Deputy-backed Co-STORM research.
+- title: Research products
+  desc: Run scripted STORM, hold a Co-STORM session, or open the bundled app.
   contents:
   - tempest_run
-  - tempest_run_async
-  - tempest_run_cancel
-  - tempest_execution_events
   - tempest_session
-  - tempest_session_process_turn_async
-  - tempest_session_warmup_async
-  - SimulatedUser
-  - run_app
-- title: Product evaluation
-  desc: Review completed trajectories and evaluate exact research products.
-  contents:
-  - tempest_trajectory_review
-  - tempest_task
-  - tempest_costorm_task
-- title: Configuration and retrieval
-  contents:
+  - tempest_app
   - tempest_config
-  - tempest_retriever
-  - TempestRetriever
-  - tempest_create_ragnar_store
-  - tempest_cache_clear
-- title: Research identity and workspace
-  contents:
-  - tempest_research_manifest
-  - tempest_research_workspace
-  - ResearchWorkspace
-- title: Evidence and reports
-  desc: Inspect evidence, render Markdown, or read a committed product report.
-  contents:
-  - tempest_claims
-  - tempest_claim_support
-  - tempest_claim_supports
-  - tempest_sources
-  - tempest_resource
-  - tempest_verify_claims
-  - tempest_validation_result
-  - tempest_report_md
-  - tempest_session_report_md
-  - tempest_suggest_questions
-- title: Open knowledge
-  contents:
-  - tempest_read_okf
-  - tempest_okf_concepts
-  - tempest_okf_resources
-  - tempest_okf_context
 - title: Scientific experts
   contents:
   - tempest_expert
-  - tempest_generate_experts
-- title: Research UI
-  desc: Embed product-specific, asynchronous Tempest research panels in Shiny.
+- title: Accepted organizational knowledge
+  desc: Bring reviewed Graft evidence and accepted procedures into a run.
   contents:
-  - tempest_shiny_store
-  - tempest_shiny_ui
-  - tempest_shiny_server
-- title: Co-STORM persistence
-  desc: Snapshot, save, restore, or resume the exact current session product.
+  - tempest_knowledge
+  - print.tempest_knowledge
+- title: Reading a completed product
+  desc: Read the committed report and inspect the evidence behind it.
   contents:
-  - tempest_session_snapshot
-  - tempest_session_restore
+  - tempest_report
+  - tempest_sources
+  - tempest_claims
+  - tempest_claim_supports
+  - tempest_trajectory_review
+- title: Session persistence
+  desc: Save and resume the exact current session product.
+  contents:
   - tempest_session_save
   - tempest_session_resume
-- title: Progress events
-  contents:
-  - tempest_progress_event
-  - tempest_progress_event_data
-  - tempest_progress_collector
-  - tempest_progress_filter
-  - tempest_progress_replay
-  - tempest_progress_state
-  - tempest_progress_labels
-- title: Governed programs
-  contents:
-  - tempest_program_set
-  - tempest_compile_programs
-  - tempest_save_program_set
-  - tempest_load_program_set
-  - tempest_governed_procedure_ref
 - title: Graft review and promotion
+  desc: Propose, review, commit, and verify accepted research evidence.
   contents:
   - tempest_graft_schema
+  - tempest_graft_plan
   - tempest_promotion_bundle
   - tempest_save_promotion_bundle
   - tempest_read_promotion_bundle
-  - tempest_graft_plan
   - tempest_promotion_receipt

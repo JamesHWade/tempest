@@ -24,22 +24,32 @@ test_that("tempest_format_persona_details formats provider records", {
 })
 
 test_that("tempest_render_expert_prompt accepts an expert profile", {
-  expert <- test_expert(
-    expert_id = "expert.climate",
+  expert <- tempest_expert(
     name = "Dr. Sarah Chen",
     title = "Climate Scientist",
     description = "Physical science perspective on climate change",
-    metadata = list(
-      affiliation = "Arctic Research Institute",
-      background = "20 years studying polar ice dynamics."
-    )
+    instructions = "Compare observations with modeled uncertainty."
   )
 
   prompt <- tempest:::tempest_render_expert_prompt(expert)
 
   expect_match(prompt, "Dr. Sarah Chen", fixed = TRUE)
   expect_match(prompt, "Climate Scientist", fixed = TRUE)
-  expect_match(prompt, "Arctic Research Institute", fixed = TRUE)
+  expect_identical(
+    stringi::stri_count_fixed(
+      prompt,
+      "Physical science perspective on climate change"
+    ),
+    1L
+  )
+  expect_identical(
+    stringi::stri_count_fixed(
+      prompt,
+      "Compare observations with modeled uncertainty."
+    ),
+    1L
+  )
+  expect_identical(tempest:::tempest_deputy_expert_prompt(expert), prompt)
 })
 
 test_that("tempest_render_expert_prompt rejects a missing profile", {
@@ -57,17 +67,19 @@ test_that("TempestSession stores selected expert profiles", {
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
+  alice <- test_expert(
+    expert_id = "expert.alice",
+    name = "Dr. Alice Smith",
+    title = "Computer Scientist"
+  )
+  bob <- test_expert(
+    expert_id = "expert.bob",
+    name = "Prof. Bob Jones",
+    title = "Ethicist"
+  )
   experts <- list(
-    test_expert(
-      expert_id = "expert.alice",
-      name = "Dr. Alice Smith",
-      title = "Computer Scientist"
-    ),
-    test_expert(
-      expert_id = "expert.bob",
-      name = "Prof. Bob Jones",
-      title = "Ethicist"
-    )
+    alice,
+    bob
   )
 
   session <- tempest_session(
@@ -78,42 +90,16 @@ test_that("TempestSession stores selected expert profiles", {
 
   expect_length(session$experts, 2)
   expect_equal(
-    session$get_expert_names(),
+    session$.__enclos_env__$private$get_expert_names(),
     c(
       "Dr. Alice Smith",
       "Prof. Bob Jones"
     )
   )
-  expect_equal(session$find_expert("expert.alice"), 1)
-  expect_null(session$find_expert("Dr. Alice Smith"))
+  expect_equal(session$.__enclos_env__$private$find_expert(alice@expert_id), 1)
+  expect_null(session$.__enclos_env__$private$find_expert("Dr. Alice Smith"))
   expect_r6_class(
     tempest:::tempest_session_expert_manager(session),
     "TempestDeputyExpertManager"
   )
-})
-
-
-test_that("merging source records tolerates empty and missing fields", {
-  old <- list(
-    title = "Old title",
-    snippet = "Old snippet",
-    content_text = "Old body",
-    fetched_at = "2026-01-01T00:00:00Z",
-    meta = list(kind = "old")
-  )
-  new <- list(
-    title = character(),
-    snippet = NA_character_,
-    content_text = "",
-    fetched_at = "2027-01-01T00:00:00Z",
-    meta = list(provider_tool = "native")
-  )
-
-  merged <- tempest:::tempest_merge_source_record(old, new)
-
-  expect_equal(merged$title, "Old title")
-  expect_equal(merged$snippet, "Old snippet")
-  expect_equal(merged$content_text, "Old body")
-  expect_equal(merged$fetched_at, "2027-01-01T00:00:00Z")
-  expect_equal(merged$meta, list(kind = "old", provider_tool = "native"))
 })

@@ -33,7 +33,7 @@ storm_progress_fixture <- function(.local_envir = parent.frame()) {
     title = "Progress source",
     content_text = "Progress uses staged events and persisted artifacts."
   )
-  source_id <- source$id
+  source_id <- source@resource_id
   store <- test_research_workspace()
   store$upsert_retrieved_resource(source)
   outline <- list(

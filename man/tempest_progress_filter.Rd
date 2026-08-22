@@ -27,13 +27,4 @@ A list of matching \code{tempest_progress_event} objects.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
-\examples{
-events <- list(tempest_progress_event(
-  run_id = "run-1",
-  workflow = "storm",
-  event_type = "stage",
-  status = "started",
-  stage = "research"
-))
-tempest_progress_filter(events, stage = "research")
-}
+\keyword{internal}

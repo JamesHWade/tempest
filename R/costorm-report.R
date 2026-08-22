@@ -37,14 +37,16 @@ tempest_costorm_report_context <- function(
     include_references,
     "include_references"
   )
-  title <- tempest_report_title_validate(session$title %||% session$topic)
-  if (!inherits(session$workspace, "ResearchWorkspace")) {
+  title <- tempest_report_title_validate(
+    tempest_session_title(session) %||% session$topic
+  )
+  if (!inherits(tempest_session_workspace(session), "ResearchWorkspace")) {
     tempest_product_report_abort(
       "Co-STORM report generation requires a ResearchWorkspace."
     )
   }
   tryCatch(
-    S7::validate(session$config),
+    S7::validate(tempest_session_config(session)),
     error = function(error) {
       tempest_product_report_abort(
         "Co-STORM report configuration failed live validation."
@@ -53,12 +55,12 @@ tempest_costorm_report_context <- function(
   )
   list(
     title = title,
-    workspace = session$workspace,
+    workspace = tempest_session_workspace(session),
     include_references = include_references,
-    citation_policy = session$config@citation_policy,
-    on_unsupported_claim = session$config@on_unsupported_claim,
+    citation_policy = tempest_session_config(session)@citation_policy,
+    on_unsupported_claim = tempest_session_config(session)@on_unsupported_claim,
     min_support_score = tempest_normalize_min_support_score(
-      session$config@min_support_score
+      tempest_session_config(session)@min_support_score
     ),
     execution_review = tempest_costorm_execution_review(session),
     style = style
@@ -67,10 +69,10 @@ tempest_costorm_report_context <- function(
 
 tempest_costorm_report_supported_claims <- function(session) {
   claims <- tempest_supported_claims(
-    session$workspace,
-    min_support_score = session$config@min_support_score
+    tempest_session_workspace(session),
+    min_support_score = tempest_session_config(session)@min_support_score
   )
-  supports <- session$workspace$list_claim_supports()
+  supports <- tempest_session_workspace(session)$list_claim_supports()
   context <- paste(
     c(
       vapply(
@@ -96,7 +98,8 @@ tempest_costorm_report_supported_claims <- function(session) {
           identical(support@claim_id, claim@claim_id) &&
             identical(support@verification_status, "supported") &&
             is.finite(support@support_score) &&
-            support@support_score >= session$config@min_support_score
+            support@support_score >=
+              tempest_session_config(session)@min_support_score
         },
         supports
       )
@@ -184,7 +187,7 @@ tempest_costorm_report_assert_quiescent <- function(session) {
 }
 
 tempest_costorm_report_verify_async <- function(session, is_current) {
-  workspace <- session$workspace
+  workspace <- tempest_session_workspace(session)
   items <- tempest_verification_work_items(workspace)
   existing <- workspace$list_claim_supports()
   item_keys <- vapply(
@@ -229,7 +232,10 @@ tempest_costorm_report_verify_async <- function(session, is_current) {
   program <- tempest_session_programs(session)$verify_claim_support
   chat <- tempest_session_chat(session, "extractor")
   verified_at <- tempest_now_utc()
-  verifier_model <- tempest_research_model(session$config, "judge")
+  verifier_model <- tempest_research_model(
+    tempest_session_config(session),
+    "judge"
+  )
   pending <- list()
   running <- new.env(parent = emptyenv())
   results <- list()
@@ -312,7 +318,9 @@ tempest_costorm_report_verify_async <- function(session, is_current) {
             workspace = workspace,
             claim = item$claim,
             evidence_span = item$span,
-            min_support_score = session$config@min_support_score,
+            min_support_score = tempest_session_config(
+              session
+            )@min_support_score,
             verified_at = verified_at,
             verifier_model = verifier_model
           ),
@@ -347,7 +355,7 @@ tempest_costorm_report_verify_async <- function(session, is_current) {
     workspace$verify_proposed_claims_batch(
       unname(results),
       verified_at = verified_at,
-      min_support_score = session$config@min_support_score,
+      min_support_score = tempest_session_config(session)@min_support_score,
       verifier = verifier_model,
       .verification_owner_token = tempest_session_verification_owner_token(
         session
@@ -422,7 +430,7 @@ tempest_session_commit_terminal_report <- function(
     report_md
   )
   tempest_research_workspace_seal(
-    session$workspace,
+    tempest_session_workspace(session),
     tempest_session_verification_owner_token(session)
   )
   private <- session$.__enclos_env__$private
@@ -453,11 +461,11 @@ tempest_costorm_report_finalize <- function(
   )
   tempest_final_report_validate(
     report_md,
-    session$workspace,
-    title = session$title,
-    citation_policy = session$config@citation_policy,
-    on_unsupported_claim = session$config@on_unsupported_claim,
-    min_support_score = session$config@min_support_score,
+    tempest_session_workspace(session),
+    title = tempest_session_title(session),
+    citation_policy = tempest_session_config(session)@citation_policy,
+    on_unsupported_claim = tempest_session_config(session)@on_unsupported_claim,
+    min_support_score = tempest_session_config(session)@min_support_score,
     stage_records = tempest_session_stage_records(session)
   )
   if (!tempest_async_is_current(is_current)) {
@@ -471,14 +479,14 @@ tempest_costorm_report_finalize <- function(
   }
   tempest_session_agent_completion_assert_quiescent(session)
   candidate <- tempest_product_authority_finalize_manifest(
-    session$manifest,
+    tempest_session_manifest(session),
     tempest_session_stage_records(session),
-    session$workspace,
+    tempest_session_workspace(session),
     report_md = report_md,
-    config = session$config,
+    config = tempest_session_config(session),
     experts = session$experts,
     expert_sessions = tempest_expert_sessions_snapshot(session),
-    product_state = list(title = session$title),
+    product_state = list(title = tempest_session_title(session)),
     status = "succeeded",
     require_publishable = TRUE,
     deputy_traces = tempest_session_deputy_traces(session)
@@ -497,24 +505,11 @@ tempest_costorm_report_finalize <- function(
   report_md
 }
 
-#' Read the committed Markdown report from a Co-STORM session
-#'
-#' This accessor returns the exact bytes already committed during Co-STORM
-#' publication. It never generates, repairs, or republishes a report, and it
-#' fails unless the session is succeeded, quiescent, and bound to the same
-#' report reference as its research Manifest.
-#'
-#' @param session A `TempestSession`.
-#' @return The exact committed Markdown report.
-#' @examples
-#' \dontrun{
-#' session <- tempest_session("History of jazz", config = tempest_config())
-#' session$step("Tell me about bebop.")
-#' session$report()
-#' md <- tempest_session_report_md(session)
-#' }
-#' @export
-tempest_session_report_md <- function(session) {
+# Read the exact bytes committed during Co-STORM publication. This never
+# generates, repairs, or republishes a report, and it fails unless the session
+# is succeeded, quiescent, and bound to the same report reference as its
+# research Manifest.
+tempest_session_report_read <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_product_report_abort(
       "The canonical Co-STORM report requires a TempestSession."
@@ -522,10 +517,10 @@ tempest_session_report_md <- function(session) {
   }
   tryCatch(
     tempest_costorm_manifest_validate(
-      session$manifest,
+      tempest_session_manifest(session),
       session$session_id,
-      session$config,
-      session$workspace
+      tempest_session_config(session),
+      tempest_session_workspace(session)
     ),
     error = function(error) {
       tempest_product_report_abort(
@@ -534,7 +529,7 @@ tempest_session_report_md <- function(session) {
       )
     }
   )
-  if (!identical(session$manifest@status, "succeeded")) {
+  if (!identical(tempest_session_manifest(session)@status, "succeeded")) {
     tempest_product_report_abort(
       "The canonical Co-STORM report is unavailable before publication."
     )
@@ -590,22 +585,23 @@ tempest_session_report_md <- function(session) {
       "The canonical Co-STORM report artifact has no Markdown content."
     )
   }
-  reference <- session$manifest@deliverables$report_md %||% NULL
+  reference <- tempest_session_manifest(session)@deliverables$report_md %||%
+    NULL
   tempest_product_report_reference_validate(
     reference[c("report_id", "sha256")],
     report_md
   )
   tryCatch(
     tempest_product_authority_validate(
-      manifest = session$manifest,
+      manifest = tempest_session_manifest(session),
       stage_records = tempest_session_stage_records(session),
-      workspace = session$workspace,
+      workspace = tempest_session_workspace(session),
       report_md = report_md,
       report_reference = reference[c("report_id", "sha256")],
-      config = session$config,
+      config = tempest_session_config(session),
       experts = session$experts,
       expert_sessions = tempest_expert_sessions_snapshot(session),
-      product_state = list(title = session$title),
+      product_state = list(title = tempest_session_title(session)),
       require_publishable = TRUE
     ),
     error = function(error) {

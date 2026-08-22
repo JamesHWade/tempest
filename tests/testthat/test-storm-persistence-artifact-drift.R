@@ -22,22 +22,22 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       ))
     )
     workspace <- tempest_research_workspace()
-    source <- tempest:::tempest_source(
-      "https://example.com/durable-state",
+    source <- fake_source(
+      url = "https://example.com/durable-state",
       title = "Durable source",
       content_text = "Durable evidence supports the durable claim."
     )
     workspace$upsert_retrieved_resource(source)
     span_id <- workspace$add_evidence_span(tempest_evidence_span(
       evidence_span_id = "span-durable-state",
-      source_id = source$id,
+      source_id = source@resource_id,
       quote = "Durable evidence supports the durable claim.",
       extracted_by = program_references$extract_claims$program_artifact_id
     ))
     claim_id <- workspace$add_proposed_claim(tempest_claim(
       claim_id = "claim-durable-state",
       claim_text = "Durable evidence supports the durable claim.",
-      source_ids = source$id,
+      source_ids = source@resource_id,
       evidence_span_ids = span_id,
       supporting_quotes = list("Durable evidence supports the durable claim."),
       verification_status = "supported",
@@ -47,18 +47,18 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       list(tempest_claim_support(
         claim_id = claim_id,
         evidence_span_id = span_id,
-        source_id = source$id,
+        source_id = source@resource_id,
         verification_status = "supported",
         support_score = 0.9,
         rationale = "The durable source directly supports the claim."
       )),
       verified_at = "2026-08-16T00:00:00Z"
     )
-    report_md <- tempest_report_md(
+    report_md <- tempest:::tempest_report_md_render(
       title = "Durable state",
       body = paste0(
         "Durable evidence supports the durable claim. [",
-        source$id,
+        source@resource_id,
         "]"
       ),
       workspace = workspace,
@@ -74,7 +74,6 @@ test_that("completed STORM product state fails closed when artifacts drift", {
         key_questions = "What is authoritative?"
       )),
       experts = list(tempest_expert(
-        expert_id = "expert.durable-state",
         name = "Durable State Expert",
         title = "Persistence analyst",
         description = "Checks completed product state.",

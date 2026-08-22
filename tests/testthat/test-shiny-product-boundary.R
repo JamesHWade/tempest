@@ -718,30 +718,41 @@ test_that("Shiny publishes only authority-validated STORM reports", {
     status = "succeeded",
     require_publishable = TRUE
   )
-  result <- list(
+  result <- tempest:::tempest_product_result(
     title = fixture$state$title,
+    topic = fixture$state$title,
+    perspectives = fixture$state$perspectives,
     experts = fixture$state$experts,
+    outline = fixture$state$outline,
+    draft_md = fixture$state$draft_md,
     report_md = fixture$state$report_md,
     manifest = manifest,
     state = fixture$state,
-    workspace = fixture$workspace
+    workspace = fixture$workspace,
+    retriever = tempest_retriever(
+      config = config,
+      workspace = fixture$workspace
+    ),
+    output_dir = NULL
   )
   store <- tempest_shiny_store()
   env <- tempest:::tempest_shiny_module_env()
 
   expect_identical(
     env$storm_result_run_id(result),
-    result$manifest@research_run_id
+    result@manifest@research_run_id
   )
   expect_null(env$storm_result_run_id(list()))
 
   expect_identical(
     store$publish_storm_report(result, config),
-    result$report_md
+    result@report_md
   )
   before <- shiny::isolate(store$report_md())
-  tampered <- result
-  tampered$report_md <- paste0(result$report_md, "\n\nTampered.")
+  tampered <- S7::set_props(
+    result,
+    report_md = paste0(result@report_md, "\n\nTampered.")
+  )
   expect_error(
     store$publish_storm_report(tampered, config),
     class = "tempest_product_report_error"

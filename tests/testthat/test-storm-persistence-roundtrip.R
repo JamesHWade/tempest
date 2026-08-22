@@ -1,4 +1,4 @@
-test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
+test_that("schema 8 STORM bundles restore workspace, state, and manifest", {
   skip_if_not_installed("jsonlite")
   test_env <- environment()
   root <- withr::local_tempdir(pattern = "tempest-runs-")
@@ -9,31 +9,33 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    "https://example.com/source",
+  source <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.com/source",
     title = "Example Source",
-    snippet = "Snippet",
-    content_text = "Lithium batteries store energy."
+    media_type = "text/html",
+    content = "Lithium batteries store energy.",
+    metadata = list(snippet = "Snippet")
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Lithium batteries store energy.",
     evidence_span_id = "span.lithium-run",
     extracted_by = program_references$extract_claims$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest:::tempest_claim(
     claim_text = "Lithium batteries store energy.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list("Lithium batteries store energy."),
     confidence = "high"
   ))
-  report_md <- tempest_report_md(
+  report_md <- tempest:::tempest_report_md_render(
     title = "Lithium Batteries",
     body = paste0(
       "Lithium batteries store energy. [",
-      source$id,
+      source@resource_id,
       "]"
     ),
     workspace = workspace,
@@ -42,7 +44,6 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
     min_support_score = cfg@min_support_score
   )
   expert <- tempest_expert(
-    expert_id = "expert.technical",
     name = "Dr. Tech",
     title = "Engineer",
     description = "Battery technology and manufacturing.",
@@ -92,7 +93,7 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
     list(tempest_claim_support(
       claim_id = claim_id,
       evidence_span_id = span_id,
-      source_id = source$id,
+      source_id = source@resource_id,
       verification_status = "supported",
       support_score = 0.9,
       rationale = "matches source"
@@ -163,8 +164,8 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
     "sealed"
   )
   expect_error(
-    loaded$workspace$upsert_retrieved_resource(tempest:::tempest_source(
-      "https://example.com/injected-after-storm-restore"
+    loaded$workspace$upsert_retrieved_resource(fake_source(
+      url = "https://example.com/injected-after-storm-restore"
     )),
     class = "tempest_research_workspace_error"
   )
@@ -179,7 +180,7 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
   expect_equal(loaded$state$outline$title, "Lithium Batteries")
   expect_equal(loaded$state$draft_md, state$draft_md)
   expect_equal(loaded$state$report_md, state$report_md)
-  expect_length(loaded$state$stage_records, 9L)
+  expect_length(loaded$state$stage_records, 8L)
   expect_identical(loaded$state$stage_records[[1]]@status, "succeeded")
   expect_identical(
     loaded$state$stage_records[[1]]@output_reference,
@@ -192,11 +193,17 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
       )
     )
   )
-  expect_equal(loaded$state$experts[[1]]@expert_id, "expert.technical")
+  expect_equal(loaded$state$experts[[1]]@expert_id, expert@expert_id)
   expect_s7_class(loaded$state$experts[[1]], TempestExpertProfile)
   expect_false("artifact_catalog" %in% names(loaded))
-  expect_s3_class(tempest_claim_supports(loaded$workspace), "tbl_df")
-  expect_equal(nrow(tempest_claim_supports(loaded$workspace)), 1)
+  expect_s3_class(
+    tempest:::tempest_claim_supports_resolved(loaded$workspace),
+    "tbl_df"
+  )
+  expect_equal(
+    nrow(tempest:::tempest_claim_supports_resolved(loaded$workspace)),
+    1
+  )
   expect_s7_class(loaded$research_manifest, TempestResearchManifest)
   expect_identical(loaded$research_manifest@research_run_id, "lithium-run")
   expect_identical(
@@ -211,7 +218,7 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
     unlist(loaded$metadata$files, use.names = FALSE),
     "artifacts/typed/"
   )))
-  expect_equal(loaded$metadata$schema_version, 7L)
+  expect_equal(loaded$metadata$schema_version, 8L)
   expect_identical(loaded$metadata$bundle_type, "storm")
   expect_identical(loaded$metadata$bundle_status, "complete")
   expect_type(loaded$metadata$research_manifest, "list")
@@ -231,8 +238,8 @@ test_that("schema 7 STORM bundles restore workspace, state, and manifest", {
   manifest_path <- file.path(run_dir, "run_config.json")
   double_schema <- readLines(manifest_path, warn = FALSE)
   double_schema <- sub(
-    '"schema_version": 7,',
-    '"schema_version": 7.0,',
+    '"schema_version": 8,',
+    '"schema_version": 8.0,',
     double_schema,
     fixed = TRUE
   )
@@ -321,7 +328,6 @@ test_that("STORM restore rejects tampered expert-profile records", {
       key_questions = "Are expert bindings intact?"
     )),
     experts = list(tempest_expert(
-      expert_id = "expert.run-integrity",
       name = "Run Integrity Expert",
       title = "Persistence integrity analyst",
       description = "Checks STORM expert records.",
@@ -348,13 +354,7 @@ test_that("STORM restore rejects tampered expert-profile records", {
   )
   experts_path <- file.path(run_dir, "experts.json")
   records <- tempest:::tempest_product_read_json(experts_path)
-  for (field in c(
-    "version",
-    "state",
-    "schema_version",
-    "focus_areas",
-    "metadata"
-  )) {
+  for (field in tempest:::tempest_expert_record_fields()) {
     null_field <- records
     null_field[[1]][field] <- list(NULL)
     expect_error(
@@ -369,7 +369,7 @@ test_that("STORM restore rejects tampered expert-profile records", {
     )
   }
   double_schema <- records
-  double_schema[[1]]$schema_version <- 1.0
+  double_schema[[1]]$schema_version <- 2.0
   expect_error(
     tempest:::tempest_experts_from_records(
       double_schema,
@@ -378,6 +378,16 @@ test_that("STORM restore rejects tampered expert-profile records", {
     ),
     class = "tempest_run_restore_error",
     regexp = "non-null writer fields"
+  )
+  extra_field <- records
+  extra_field[[1]]$state <- "active"
+  expect_error(
+    tempest:::tempest_experts_from_records(
+      extra_field,
+      what = "STORM test expert profiles",
+      class = c("tempest_run_restore_error", "tempest_error")
+    ),
+    class = "tempest_run_restore_error"
   )
   records[[1]]$fingerprint <- strrep("0", 64)
   tempest:::tempest_product_write_json(experts_path, records)
@@ -417,7 +427,6 @@ test_that("completed stage metadata controls resume state", {
       key_questions = "What is already known?"
     )),
     experts = list(tempest_expert(
-      expert_id = "expert.partial",
       name = "Partial Expert",
       title = "Partial run expert",
       description = "A persisted expert for a partial run.",

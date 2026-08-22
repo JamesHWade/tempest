@@ -8,7 +8,7 @@
         program_stages(), event_sequence = baseline_event_labels(events)))
     Output
       {
-        "condition_class": ["tempest_run_cancelled", "tempest_run_error", "tempest_error", "interrupt", "rlang_error", "error", "condition"],
+        "condition_class": ["tempest_run_cancelled", "tempest_run_error", "interrupt", "tempest_cancelled", "tempest_error", "rlang_error", "error", "condition"],
         "completed_stages": "perspectives",
         "terminal_status": "cancelled",
         "terminal": true,

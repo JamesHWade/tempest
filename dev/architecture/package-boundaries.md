@@ -129,15 +129,36 @@ optional suggested-questions presentation file; it never relaxes durable
 expert, transcript, mind-map, StageRecord, Workspace, report, or Graft
 snapshot integrity.
 
-The public namespace contains exactly the 63 exports in
-`tests/testthat/fixtures/public-exports-0.2.0.txt` and two registered S3
-methods. The Shiny store exposes exactly 13 product-named members, and
-`tempest_shiny_server()` returns exactly 10 product-specific members. The UI
-has no autosave claim or parallel-research control; its host example uses the
-same asynchronous STORM adapter as the bundled app. The internal Run review
-panel renders bounded authoritative StageRecords beside separately labeled
-untrusted progress, with polite live status for progress and success and alerts
-for failures.
+The public namespace contains exactly the 19 exports in
+`tests/testthat/fixtures/public-api-current.txt` and one registered S3 method,
+`print.tempest_knowledge()`. The product surface is `tempest_run()`,
+`tempest_session()`, `tempest_app()`, `tempest_config()`, `tempest_expert()`,
+`tempest_knowledge()`, the completed-product reads `tempest_report()`,
+`tempest_sources()`, `tempest_claims()`, `tempest_claim_supports()`, and
+`tempest_trajectory_review()`, session persistence through
+`tempest_session_save()` and `tempest_session_resume()`, and the six-step Graft
+acceptance chain.
+
+Workspaces, retrievers, resources, manifests, ProgramSets, verification,
+progress, async execution, and the Shiny implementation are internal. They stay
+available to validation, persistence, telemetry, and promotion but are not a
+construction, subclassing, or host-integration seam. The bundled application is
+reachable only through `tempest_app()`. The internal Run review panel renders
+bounded authoritative StageRecords beside separately labeled untrusted
+progress, with polite live status for progress and success and alerts for
+failures.
+
+Every user-facing failure inherits `tempest_error` and exactly one public
+category: `tempest_input_error`, `tempest_execution_error`,
+`tempest_persistence_error`, `tempest_authority_error`, or `tempest_cancelled`.
+Internal subclasses remain for package tests and diagnostics and are not part
+of the public contract. The original provider or package condition stays
+reachable through the ordinary parent chain, and raw prompts, responses,
+credentials, and source bodies never enter messages or condition metadata.
+
+Progress callbacks receive one canonical plain named record with exactly
+`event_id`, `run_id`, `workflow`, `event_type`, `stage`, `step`, `status`,
+`timestamp`, `message`, `payload`, `parent_event_id`, and `correlation_id`.
 
 `tempest_trajectory_review()` reuses complete publication-authority validation
 for one completed STORM or Co-STORM product. Its reconstructable ten-field S7
@@ -318,12 +339,13 @@ work from PR #28, the full package suite completed with 2,535 passing
 expectations and no failures, warnings, or skips.
 
 The T0 pre-0.2 namespace baseline contains 96 explicit exports and two
-registered S3 print methods. T8 preserves
-`tests/testthat/fixtures/public-exports-0.1.0.txt` unchanged and adds
-`tests/testthat/fixtures/public-exports-0.2.0.txt` with 62 product exports. T10
-adds only `tempest_trajectory_review()` to the current fixture, yielding 63.
-The explicit difference records the breaking removal without rewriting
-history.
+registered S3 print methods. The 0.2 line reached 63 exports and two S3
+methods. The breaking 0.3 reset narrows that to 19 exports and one S3 method;
+`tests/testthat/fixtures/public-api-transition-0.3.csv` maps each of the 63
+former exports exactly once to retain, replace, internalize, or delete, and
+`tests/testthat/fixtures/public-api-current.txt` records the exact current
+namespace. Historical fixtures stay unchanged so the difference records the
+breaking removal without rewriting history.
 
 ## Superseded decisions
 

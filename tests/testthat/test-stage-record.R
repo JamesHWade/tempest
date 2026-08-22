@@ -1443,8 +1443,14 @@ test_that("persona state digests bind exact profile records and fingerprints", {
     "personas",
     evaluated
   )
-  renamed <- evaluated
-  renamed[[1]] <- S7::set_props(renamed[[1]], name = "Dr. Eve Stone")
+  renamed <- list(tempest_expert(
+    name = "Dr. Eve Stone",
+    title = evaluated[[1]]@title,
+    description = evaluated[[1]]@description,
+    instructions = evaluated[[1]]@instructions,
+    focus_areas = evaluated[[1]]@focus_areas,
+    initial_questions = evaluated[[1]]@initial_questions
+  ))
   renamed_records <- tempest:::tempest_expert_records(renamed)
 
   expect_identical(
@@ -2023,9 +2029,11 @@ test_that("output references must name the evaluated claim IDs", {
 
 test_that("claim support rejects spans without captured source text", {
   workspace <- tempest_research_workspace()
-  workspace$upsert_retrieved_resource(fake_source(
-    "https://example.org/empty-grounding-source",
-    content_text = NA_character_
+  workspace$upsert_retrieved_resource(tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/empty-grounding-source",
+    title = "Empty grounding source",
+    media_type = "text/html"
   ))
   source_id <- workspace$list_retrieved_sources()[[1]]$id
   claim <- tempest:::tempest_claim(

@@ -255,7 +255,7 @@ test_that("tempest_progress_replay sends filtered events to a callback", {
 
   collector$replay(
     function(event) {
-      replayed <<- c(replayed, event@status)
+      replayed <<- c(replayed, event$status)
     },
     status = "succeeded"
   )

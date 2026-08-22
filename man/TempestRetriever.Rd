@@ -8,6 +8,7 @@ Provides web and Wikipedia retrieval with caching, plus helper methods to
 register retrieval tools with ellmer chats. Optionally integrates with
 ragnar for semantic search capabilities.
 }
+\keyword{internal}
 \section{Active bindings}{
   \if{html}{\out{<div class="r6-active-bindings">}}
   \describe{
@@ -110,7 +111,7 @@ mutation methods remain available.}
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    A source object.
+    A typed evidence resource.
   }
 }
 

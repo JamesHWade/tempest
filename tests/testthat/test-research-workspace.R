@@ -208,29 +208,29 @@ test_that("ResearchWorkspace listings are deterministic", {
       list(record_id = "record-z")
     )
   )
-  source_z <- fake_source("https://example.org/z")
-  source_a <- fake_source("https://example.org/a")
+  source_z <- test_typed_web_resource("https://example.org/z")
+  source_a <- test_typed_web_resource("https://example.org/a")
   workspace$upsert_retrieved_resource(source_z)
   workspace$upsert_retrieved_resource(source_a)
 
   workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-z",
     claim_text = "Z claim",
-    source_ids = source_z$id
+    source_ids = source_z@resource_id
   ))
   workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-a",
     claim_text = "A claim",
-    source_ids = source_z$id
+    source_ids = source_z@resource_id
   ))
   workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-z",
-    source_id = source_z$id,
+    source_id = source_z@resource_id,
     quote = "Photosynthesis converts light"
   ))
   workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-a",
-    source_id = source_a$id,
+    source_id = source_a@resource_id,
     quote = "chemical energy"
   ))
   workspace$add_dispute(tempest_dispute(
@@ -246,7 +246,7 @@ test_that("ResearchWorkspace listings are deterministic", {
 
   expect_equal(
     vapply(workspace$list_retrieved_sources(), `[[`, character(1), "id"),
-    sort(c(source_z$id, source_a$id))
+    sort(c(source_z@resource_id, source_a@resource_id))
   )
   expect_equal(
     vapply(
@@ -258,7 +258,7 @@ test_that("ResearchWorkspace listings are deterministic", {
   )
   expect_equal(
     vapply(
-      workspace$proposed_claims_for_resource(source_z$id),
+      workspace$proposed_claims_for_resource(source_z@resource_id),
       \(claim) S7::prop(claim, "claim_id"),
       character(1)
     ),
@@ -317,18 +317,18 @@ test_that("proposed claims cannot become accepted through workspace mutation", {
 
 test_that("ResearchWorkspace exposes copies instead of mutable backing stores", {
   workspace <- tempest_research_workspace(max_sources = 2L)
-  source <- fake_source("https://example.org/private")
+  source <- test_typed_web_resource("https://example.org/private")
   workspace$upsert_retrieved_resource(source)
   claim <- tempest_claim(
     claim_id = "claim-private",
     claim_text = "The workspace stays private.",
-    source_ids = source$id
+    source_ids = source@resource_id
   )
   workspace$add_proposed_claim(claim)
 
   resources <- workspace$retrieved_resources
-  resources[[source$id]] <- S7::set_props(
-    resources[[source$id]],
+  resources[[source@resource_id]] <- S7::set_props(
+    resources[[source@resource_id]],
     title = "Changed outside"
   )
   claims <- workspace$proposed_claims
@@ -338,8 +338,8 @@ test_that("ResearchWorkspace exposes copies instead of mutable backing stores", 
   )
 
   expect_identical(
-    workspace$get_retrieved_source(source$id)$title,
-    source$title
+    workspace$get_retrieved_source(source@resource_id)$title,
+    source@title
   )
   expect_identical(
     workspace$get_proposed_claim("claim-private")@claim_text,
@@ -391,13 +391,13 @@ test_that("ResearchWorkspace revalidates product-owned content hashes", {
 
 test_that("claims and evidence spans retain source coherence", {
   workspace <- tempest_research_workspace()
-  source_a <- fake_source("https://example.org/source-a")
-  source_b <- fake_source("https://example.org/source-b")
+  source_a <- test_typed_web_resource("https://example.org/source-a")
+  source_b <- test_typed_web_resource("https://example.org/source-b")
   workspace$upsert_retrieved_resource(source_a)
   workspace$upsert_retrieved_resource(source_b)
   span <- tempest_evidence_span(
     evidence_span_id = "span-shared",
-    source_id = source_a$id,
+    source_id = source_a@resource_id,
     quote = "Photosynthesis converts light"
   )
   workspace$add_evidence_span(span)
@@ -406,7 +406,7 @@ test_that("claims and evidence spans retain source coherence", {
     workspace$add_proposed_claim(tempest_claim(
       claim_id = "claim-mismatch",
       claim_text = "Mismatched evidence",
-      source_ids = source_b$id,
+      source_ids = source_b@resource_id,
       evidence_span_ids = span@evidence_span_id
     )),
     class = "tempest_research_workspace_integrity_error",
@@ -416,7 +416,7 @@ test_that("claims and evidence spans retain source coherence", {
   claim <- tempest_claim(
     claim_id = "claim-linked",
     claim_text = "Linked evidence",
-    source_ids = source_a$id,
+    source_ids = source_a@resource_id,
     evidence_span_ids = span@evidence_span_id,
     supporting_quotes = list(span@quote)
   )
@@ -424,7 +424,7 @@ test_that("claims and evidence spans retain source coherence", {
   expect_error(
     workspace$add_evidence_span(tempest_evidence_span(
       evidence_span_id = span@evidence_span_id,
-      source_id = source_b$id,
+      source_id = source_b@resource_id,
       quote = "Photosynthesis converts light"
     )),
     class = "tempest_research_workspace_integrity_error",
@@ -432,32 +432,32 @@ test_that("claims and evidence spans retain source coherence", {
   )
   expect_identical(
     workspace$get_evidence_span(span@evidence_span_id)@source_id,
-    source_a$id
+    source_a@resource_id
   )
 })
 
 test_that("linking evidence atomically maintains ordered quote lineage", {
   workspace <- tempest_research_workspace()
-  source <- fake_source()
+  source <- test_typed_web_resource()
   workspace$upsert_retrieved_resource(source)
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-link-lineage",
     claim_text = "Photosynthesis stores chemical energy.",
-    source_ids = source$id
+    source_ids = source@resource_id
   ))
   spans <- list(
     tempest_evidence_span(
       evidence_span_id = "span-link-first",
-      source_id = source$id,
+      source_id = source@resource_id,
       quote = "Photosynthesis"
     ),
     tempest_evidence_span(
       evidence_span_id = "span-link-unquoted",
-      source_id = source$id
+      source_id = source@resource_id
     ),
     tempest_evidence_span(
       evidence_span_id = "span-link-last",
-      source_id = source$id,
+      source_id = source@resource_id,
       quote = "chemical energy"
     )
   )

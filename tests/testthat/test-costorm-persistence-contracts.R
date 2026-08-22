@@ -8,7 +8,7 @@ test_that("Co-STORM restore and resume require the recorded custom ProgramSet", 
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
-  session <- tempest_session(
+  session <- tempest:::tempest_session_new(
     "Custom Co-STORM programs",
     config = cfg,
     experts = list(test_expert(expert_id = "expert.program-set")),
@@ -43,7 +43,6 @@ test_that("TempestSession restores progress history without replaying it", {
   )
   collector <- tempest_progress_collector(include_payload = TRUE)
   expert <- tempest_expert(
-    expert_id = "expert.history",
     name = "Dr. History",
     title = "Progress expert",
     description = "Event replay",
@@ -55,7 +54,7 @@ test_that("TempestSession restores progress history without replaying it", {
     experts = list(expert),
     progress = collector$record
   )
-  session$emit_progress(
+  session$.__enclos_env__$private$emit_progress(
     "stage",
     "started",
     stage = "dialogue",
@@ -84,7 +83,7 @@ test_that("TempestSession restores progress history without replaying it", {
     session$session_id
   )
 
-  restored$emit_progress(
+  restored$.__enclos_env__$private$emit_progress(
     "stage",
     "succeeded",
     stage = "dialogue",
@@ -97,7 +96,7 @@ test_that("TempestSession restores progress history without replaying it", {
   )
 
   legacy_snapshot <- snapshot
-  legacy_snapshot$schema_version <- 8L
+  legacy_snapshot$schema_version <- 9L
   expect_error(
     tempest:::tempest_session_restore(legacy_snapshot, config = cfg),
     class = "tempest_unsupported_format_error"
@@ -115,7 +114,7 @@ test_that("Co-STORM snapshots require terminal stage attempts", {
     experts = list(test_expert(expert_id = "expert.running-stage")),
     session_id = "running-stage-snapshot"
   )
-  reference <- session$manifest@programs$personas
+  reference <- tempest:::tempest_session_manifest(session)@programs$personas
   running <- tempest:::tempest_stage_record_start(
     "personas",
     reference$program_artifact_id,
@@ -231,5 +230,29 @@ test_that("Co-STORM snapshots require terminal stage attempts", {
   expect_error(
     tempest_session_resume(bundle, config = cfg),
     class = "tempest_session_restore_error"
+  )
+})
+
+test_that("current Co-STORM snapshots require the expert field", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Required expert snapshot",
+    config = cfg,
+    experts = list(tempest_expert(
+      name = "Snapshot Expert",
+      title = "Persistence analyst",
+      description = "Checks required current fields.",
+      instructions = "Reject missing expert records."
+    ))
+  )
+  snapshot <- tempest_session_snapshot(session)
+  snapshot$experts <- NULL
+
+  expect_error(
+    tempest_session_restore(snapshot, config = cfg),
+    class = "tempest_unsupported_format_error"
   )
 })

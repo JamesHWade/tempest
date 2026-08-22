@@ -7,16 +7,19 @@ test_that("sync and async warmups persist authoritative claim provenance", {
   make_session <- function(mode) {
     topic <- paste("Persisted warmup", mode)
     session_id <- paste0("persisted-warmup-", mode)
-    expert_id <- paste0("expert.persisted-warmup-", mode)
+    expert <- test_expert(
+      name = paste("Persisted Warmup", mode, "Expert"),
+      initial_questions = "What evidence should orient the panel?"
+    )
     source <- fake_source(paste0(
       "https://example.org/persisted-warmup-",
       mode
     ))
-    answer <- paste0("Warmup evidence is durable [", source$id, "].")
+    answer <- paste0("Warmup evidence is durable [", source@resource_id, "].")
     extraction <- list(
       facts = list(list(
         claim = "Warmup evidence is durable.",
-        sources = list(list(source_id = source$id)),
+        sources = list(list(source_id = source@resource_id)),
         confidence = "high"
       ))
     )
@@ -34,7 +37,7 @@ test_that("sync and async warmups persist authoritative claim provenance", {
           label = "Warmup evidence",
           parent = "root",
           notes = "Durable evidence",
-          source_ids = source$id
+          source_ids = source@resource_id
         )
       ),
       edges = list()
@@ -60,18 +63,17 @@ test_that("sync and async warmups persist authoritative claim provenance", {
     session <- tempest_session(
       topic,
       config = cfg,
-      experts = list(test_expert(
-        expert_id = expert_id,
-        initial_questions = "What evidence should orient the panel?"
-      )),
+      experts = list(expert),
       session_id = session_id
     )
-    session$workspace$upsert_retrieved_resource(source)
+    tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(
+      source
+    )
     list(
       session = session,
       config = cfg,
       session_id = session_id,
-      expert_id = expert_id
+      expert_id = expert@expert_id
     )
   }
 
@@ -93,7 +95,9 @@ test_that("sync and async warmups persist authoritative claim provenance", {
       expect_identical(settled$value@status, "succeeded")
     }
 
-    claims <- fixture$session$workspace$list_proposed_claims()
+    claims <- tempest:::tempest_session_workspace(
+      fixture$session
+    )$list_proposed_claims()
     records <- tempest:::tempest_session_stage_records(fixture$session)
     expect_length(claims, 1L)
     expect_length(records, 1L)
@@ -123,7 +127,9 @@ test_that("sync and async warmups persist authoritative claim provenance", {
     bundle <- file.path(withr::local_tempdir(), mode)
     tempest_session_save(fixture$session, bundle)
     restored <- tempest_session_resume(bundle, config = fixture$config)
-    restored_claim <- restored$workspace$list_proposed_claims()[[1]]
+    restored_claim <- tempest:::tempest_session_workspace(
+      restored
+    )$list_proposed_claims()[[1]]
     expect_identical(restored_claim@session_id, fixture$session_id)
     expect_identical(
       tempest:::tempest_stage_records_data(
@@ -142,8 +148,8 @@ test_that("public session verification persists pair support and source proof", 
     facts = list(list(
       claim = "Session verification commits durable proof",
       sources = list(list(
-        source_id = source$id,
-        quote = source$content_text
+        source_id = source@resource_id,
+        quote = source@content
       )),
       confidence = "high"
     ))
@@ -158,7 +164,7 @@ test_that("public session verification persists pair support and source proof", 
         return(fake_chat(
           text = list(paste0(
             "Session verification commits durable proof [",
-            source$id,
+            source@resource_id,
             "]."
           ))
         ))
@@ -169,12 +175,14 @@ test_that("public session verification persists pair support and source proof", 
   session <- tempest_session(
     "Persisted session verification",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.session-verification")),
+    experts = list(test_expert(name = "Session Verification Expert")),
     session_id = "persisted-session-verification"
   )
-  session$workspace$upsert_retrieved_resource(source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
   completion_id <- tempest:::tempest_costorm_await(
-    session$request_completion_async("Record verification evidence.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Record verification evidence."
+    )
   )
   withCallingHandlers(
     tempest:::tempest_costorm_await(tempest_session_process_turn_async(
@@ -203,14 +211,14 @@ test_that("public session verification persists pair support and source proof", 
   )
   expect_identical(audit$verification_status, "supported")
   expect_length(tempest:::tempest_session_stage_records(session), 2L)
-  report_md <- tempest_report_md(
-    title = session$title,
+  report_md <- tempest:::tempest_report_md_render(
+    title = tempest:::tempest_session_title(session),
     body = paste0(
       "Session verification commits durable proof [",
-      source$id,
+      source@resource_id,
       "]."
     ),
-    workspace = session$workspace,
+    workspace = tempest:::tempest_session_workspace(session),
     citation_policy = cfg@citation_policy,
     on_unsupported_claim = cfg@on_unsupported_claim,
     min_support_score = cfg@min_support_score
@@ -222,10 +230,10 @@ test_that("public session verification persists pair support and source proof", 
   expect_no_error(tempest_session_snapshot(session))
 
   forged_report <- sub(
-    paste0("# ", session$title, "\n\n"),
+    paste0("# ", tempest:::tempest_session_title(session), "\n\n"),
     paste0(
       "# ",
-      session$title,
+      tempest:::tempest_session_title(session),
       "\n\n## A false factual conclusion\n\n"
     ),
     report_md,
@@ -240,7 +248,9 @@ test_that("public session verification persists pair support and source proof", 
   tempest_session_save(session, bundle)
   restored <- tempest_session_resume(bundle, config = cfg)
   expect_identical(
-    tempest_claim_supports(restored$workspace)$verification_status,
+    tempest:::tempest_claim_supports_resolved(tempest:::tempest_session_workspace(
+      restored
+    ))$verification_status,
     "supported"
   )
   expect_length(tempest:::tempest_session_stage_records(restored), 2L)
@@ -248,10 +258,10 @@ test_that("public session verification persists pair support and source proof", 
   report_path <- file.path(bundle, "report.md")
   persisted_report <- tempest:::tempest_read_text(report_path)
   forged_persisted <- sub(
-    paste0("# ", session$title, "\n\n"),
+    paste0("# ", tempest:::tempest_session_title(session), "\n\n"),
     paste0(
       "# ",
-      session$title,
+      tempest:::tempest_session_title(session),
       "\n\n## A false factual conclusion\n\n"
     ),
     persisted_report,
@@ -281,16 +291,16 @@ test_that("public session verification persists pair support and source proof", 
   standalone <- tempest_research_workspace()
   standalone$upsert_retrieved_resource(source)
   standalone_span_id <- standalone$add_evidence_span(tempest_evidence_span(
-    source_id = source$id,
-    quote = source$content_text,
+    source_id = source@resource_id,
+    quote = source@content,
     evidence_span_id = "span.standalone-verification"
   ))
   standalone$add_proposed_claim(tempest_claim(
     claim_id = "claim.standalone-verification",
     claim_text = "Discarded records cannot become session proof.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = standalone_span_id,
-    supporting_quotes = list(source$content_text)
+    supporting_quotes = list(source@content)
   ))
   standalone_judge <- fake_chat(
     structured = list(list(
@@ -313,7 +323,7 @@ test_that("public session verification persists pair support and source proof", 
     tempest_session(
       "Unbound standalone verification",
       config = cfg,
-      experts = list(test_expert(expert_id = "expert.unbound-verification")),
+      experts = list(test_expert(name = "Unbound Verification Expert")),
       retriever = tempest_retriever(config = cfg, workspace = standalone),
       session_id = "unbound-standalone-verification"
     ),

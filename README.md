@@ -86,39 +86,6 @@ Provider-specific API keys for alternative search:
 - Azure AI Search: set `AZURE_AI_SEARCH_API_KEY`,
   `AZURE_AI_SEARCH_ENDPOINT`, and `AZURE_AI_SEARCH_INDEX_NAME`
 
-## Open knowledge as evidence
-
-Tempest reads [Open Knowledge
-Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf)
-(OKF) directories as portable, bounded evidence:
-
-```r
-knowledge <- tempest_read_okf("knowledge/okf")
-tempest_okf_concepts(knowledge)
-
-resources <- tempest_okf_resources(
-  knowledge,
-  include_stale = FALSE
-)
-
-workspace <- tempest_research_workspace()
-invisible(lapply(resources, workspace$upsert_retrieved_resource))
-
-context <- tempest_okf_context(
-  knowledge,
-  types = c("Assessment", "Business"),
-  include_stale = FALSE,
-  max_concepts = 25,
-  max_chars = 50000
-)
-```
-
-The reader preserves each Markdown document and its metadata, derives advisory
-trust and freshness signals, and never follows links or executes referenced
-code. Reading, converting, and adding resources are separate operations so the
-host retains the write boundary. An OKF document cannot grant capabilities,
-change policy, approve output, or authorize an action.
-
 STORM results expose a `manifest`, validated `state`, and authoritative
 `workspace`; Co-STORM sessions expose the same manifest/workspace identity.
 Session correlation fields and retriever configuration are read-only, while
@@ -127,6 +94,13 @@ workspace contains only provisional run material and opaque references to
 accepted knowledge; acceptance still requires an explicit graft review and
 commit.
 
+Every evidence value written to a workspace is an exact `TempestResource`
+created by `tempest_resource()`. Retriever fetches and provider-native tools
+produce that same record directly, and cached or restored evidence must have
+the identical current shape. Source-shaped values returned by source-inspection
+methods are read-only presentation views; they are not accepted as mutable
+workspace inputs, and Tempest provides no legacy list conversion path.
+
 Co-STORM moderator and expert chats run through required persistent Deputy
 agents. Tempest disables ambient file, shell, R, web, and package-install
 authority at that boundary and allowlists only the Tempest tools already
@@ -134,24 +108,20 @@ attached to each chat. Session persistence stores credential-safe opaque run,
 session, agent, stage, role, expert, and correlation references; it never
 serializes a Deputy Agent or provider credentials.
 
-Graft can export current or historical accepted revisions directly into this
-format. Read [Use Open Knowledge Format with
-Tempest](https://jameshwade.github.io/tempest/articles/open-knowledge-format.html)
-for the complete handoff and safety model.
-
 ## Verify and promote research evidence
 
 Claim verification is authoritative at the exact claim-by-evidence-span pair.
-`tempest_verify_claims()` replaces the complete support set atomically, and
-`tempest_claim_supports()` exposes each deterministic pair identity, source
-binding, status, score, and rationale. Claim-level status and citation-audit
+Publication replaces the complete support set atomically, and
+`tempest_claim_supports()` exposes each deterministic pair identity, claim
+text, evidence-span quote and location, source binding, status, score, and
+rationale. Claim-level status and citation-audit
 tables are derived views of those records; they are not separate evidence
 authority.
 
 A succeeded STORM product can be packaged for explicit Graft review:
 
 ```r
-supports <- tempest_claim_supports(result$workspace)
+supports <- tempest_claim_supports(result)
 
 bundle <- tempest_promotion_bundle(result)
 trusted_bundle_id <- bundle@bundle_id
@@ -227,11 +197,11 @@ receipt is shown as accepted; a receipt alone or a cross-run product fails
 closed.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 9, STORM bundle schema 7 with state schema
-4, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload
-schema 3, and promotion-bundle schema 1. Readers reject every other version;
-missing fields, extra fields, and values that only become valid after coercion
-are errors.
+Co-STORM snapshot and bundle schema 10, STORM bundle schema 8 with state schema
+5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest
+payload schema 3, and promotion-bundle schema 1. Readers reject every other
+version; missing fields, extra fields, and values that only become valid after
+coercion are errors.
 
 ## Product boundary
 
@@ -247,41 +217,6 @@ transformations carry dsprrr program identity, while open-ended agent calls
 carry Deputy execution identity. Those identities support correlation and
 audit joins only; they do not claim that an execution caused, authored, or
 validated report content.
-
-## Agent skills
-
-Tempest ships two supported research skills.
-
-- `use-tempest-research` chooses, configures, runs, resumes, inspects, and
-  embeds Tempest's scripted STORM and interactive Co-STORM workflows.
-- `conduct-storm-research` carries the provider- and framework-neutral STORM
-  and Co-STORM protocols. It can guide another implementation or be loaded by
-  a tool-capable chat host without calling Tempest APIs.
-
-List the supported skill directories or install them into the directory used
-by your agent:
-
-```r
-tempest_agent_skills()
-
-# Install the supported research skills for user-level Codex sessions.
-tempest_install_agent_skills(
-  "~/.codex/skills",
-  skills = c("use-tempest-research", "conduct-storm-research")
-)
-```
-
-Existing copies are preserved unless `overwrite = TRUE`. A compatible skill
-loader can also discover the bundled skills from an attached Tempest package
-and expose `conduct-storm-research` inside a tool-capable chat application.
-The host must still provide retrieval, evidence, state, and output tools.
-
-These Agent Skills are external operating guidance. They do not grant runtime
-authority; the host still owns tools, authorization, state, and lifecycle.
-
-Read `vignette("agent-skills", package = "tempest")` to install a supported
-research skill or expose portable STORM research through an ellmer client and
-shinychat application.
 
 ## Scripted STORM
 
@@ -303,6 +238,30 @@ res <- tempest_run("Life cycle assessment of lithium-ion batteries", config = cf
 
 cat(res$report_md)
 ```
+
+Hosts can supply the same immutable scientific profiles used by generated
+expert panels:
+
+```r
+recycling_expert <- tempest_expert(
+  name = "Dr. Rivera",
+  title = "Battery recovery specialist",
+  description = "Studies process yield, safety, and industrial scale-up.",
+  instructions = "Separate demonstrated performance from projections.",
+  focus_areas = c("hydrometallurgy", "process safety"),
+  initial_questions = "Which recovery steps constrain full-scale yield?"
+)
+
+res <- tempest_run(
+  "Life cycle assessment of lithium-ion batteries",
+  config = cfg,
+  experts = list(recycling_expert)
+)
+```
+
+Generated and supplied experts use the same canonical constructor. Tempest
+derives `expert_id` and `version` from its six authored fields. Profiles do not
+contain runtime clients, tools, capabilities, or roster state.
 
 ### Experimental OpenTelemetry traces
 
@@ -395,8 +354,7 @@ is not a Tempest dependency, API, default, endpoint, SDK, or schema. Keep any
 backend token and exporter configuration in operator-owned Collector secrets,
 never in Tempest configuration, source code, examples, snapshots, or bundles.
 
-Report polishing is deterministic. `remove_duplicate = TRUE` is unsupported
-and fails before report publication.
+Report polishing is deterministic.
 
 You can also use a single model for all roles:
 
@@ -407,9 +365,9 @@ cfg <- tempest_config(models = "anthropic/claude-sonnet-4-20250514")
 ### Parallel section writing
 
 Perspective research is deliberately sequential so each open-ended expert turn
-can be synchronously bound to one terminal Deputy trace. Setting
-`parallel_research = TRUE` is an error. Already-grounded report sections can be
-written in parallel using [mirai](https://github.com/r-lib/mirai):
+can be synchronously bound to one terminal Deputy trace. Already-grounded
+report sections can be written in parallel using
+[mirai](https://github.com/r-lib/mirai):
 
 ```r
 res <- tempest_run(
@@ -441,8 +399,8 @@ res <- tempest_run(
 )
 ```
 
-Each run directory is an exact current schema-7 STORM product bundle with
-schema-4 state. It includes checksummed JSON state for perspectives, experts,
+Each run directory is an exact current schema-8 STORM product bundle with
+schema-5 state. It includes checksummed JSON state for perspectives, experts,
 sources, claims, outlines, and references; Markdown drafts; and the final
 Markdown report. Resume rejects older, future, missing, extra, coerced, or
 mismatched shapes rather than migrating them.
@@ -476,80 +434,53 @@ fallback, or produced a grounded result that was not verified.
 
 ### Compiling dsprrr programs
 
-Compile selected programs with your own labeled examples, then reuse the
-complete verified set in a run:
+Tempest resolves its builtin dsprrr programs internally. Program identity,
+contract version, and evaluator are recorded in the run manifest and rechecked
+before any program executes; runtime registries, model clients, credentials, and
+executable objects never enter that metadata.
 
-```r
-query_train <- data.frame(
-  question = c("What are battery recycling bottlenecks?"),
-  topic = c("Life cycle assessment of lithium-ion batteries")
-)
-query_train$queries <- I(list(c(
-  "lithium battery recycling bottlenecks",
-  "EV battery recycling capacity constraints"
-)))
-
-program_set <- tempest_program_set()
-compiled_program_set <- tempest_compile_programs(
-  program_set,
-  trainsets = list(query_decomposition = query_train),
-  teleprompters = dsprrr::LabeledFewShot(k = 1L, seed = 123L),
-  path = "compiled-storm-programs"
-)
-
-res <- tempest_run(
-  "Life cycle assessment of lithium-ion batteries",
-  config = cfg,
-  program_set = compiled_program_set
-)
-```
-
-`compiled-storm-programs` contains a closed manifest and one dsprrr artifact per
-stage. Loading recomputes every artifact ID before any program can execute.
-Runtime registries, model clients, credentials, and executable objects never
-enter ProgramSet metadata.
-
-When resuming a custom-program run, supply a ProgramSet with the same verified
-identity; moving an intact bundle is allowed. If `program_set` is omitted,
-Tempest resolves its current builtins and resumes only when their artifact IDs
+Resuming a run recomputes every program artifact ID and continues only when they
 match the persisted run.
 
-Co-STORM uses the same boundary: pass `program_set` to `tempest_session()` or
-`tempest_shiny_server()`, and pass the matching `knowledge_view` whenever that
-set contains a governed procedure. Session snapshots record the complete
-ProgramSet identity but never the live view. A governed session can be restored
-or resumed with its matching verified set and no view for read-only inspection.
-Its next governed stage fails before provider execution unless the exact pinned
-view is supplied; if a view is supplied during restore, it must match. An
-ungoverned custom-program session still requires its matching verified set.
 
 ### Run an accepted governed procedure
 
 An accepted `GovernedProcedure` binds one stage to an exact dsprrr
-`ProgramArtifact`, contract, and evaluator. Resolve it through an immutable
-Graft view, then place the typed reference in the ProgramSet by stage:
+`ProgramArtifact`, contract, and evaluator. `tempest_knowledge()` pins the
+immutable Graft view and binds the procedure to its stage:
 
 ```r
 snapshot <- graft::graft_snapshot(store)
-knowledge_view <- graft::graft_at(store, snapshot)
+view <- graft::graft_at(store, snapshot)
 
-verify_procedure <- tempest_governed_procedure_ref(
-  knowledge_view,
-  record_id = "governed-procedure-record-id"
-)
-program_set <- tempest_program_set(
-  governed_procedure_refs = list(
-    verify_claim_support = verify_procedure
+knowledge <- tempest_knowledge(
+  view,
+  governed_procedures = list(
+    verify_claim_support = "governed-procedure-record-id"
   )
 )
 
 result <- tempest_run(
   "Life cycle assessment of lithium-ion batteries",
   config = cfg,
-  program_set = program_set,
-  knowledge_view = knowledge_view
+  knowledge = knowledge
 )
 ```
+
+The same value carries accepted evidence. `record_ids` names an exact allowlist
+of accepted `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records, which
+Tempest reads as data:
+
+```r
+records <- graft::graft_find(view, "battery recycling", limit = 25)
+knowledge <- tempest_knowledge(view, record_ids = records$id)
+```
+
+Accepted record text is evidence, never instruction. It travels in a data
+channel and cannot change prompts, message roles, tools, governed-procedure
+selection, or executable artifacts. Executable authority comes only from an
+explicit `governed_procedures` stage binding, and a record Tempest cannot
+materialize exactly is rejected rather than truncated.
 
 Tempest verifies the accepted procedure, program artifact, revision, schema,
 store, snapshot, and commit boundary again immediately before the provider
@@ -583,7 +514,7 @@ mind map, and judge roles use `openai/gpt-5.6-luna`. Tempest constructs
 these clients with `ellmer::chat_openai(auth = "codex")`, reusing the ChatGPT
 subscription authenticated by Codex CLI. Built-in subscription clients use
 lower reasoning effort for mind-map and judge calls; explicit `params` values
-override these defaults. `run_app()` limits individual provider requests to 120
+override these defaults. `tempest_app()` limits individual provider requests to 120
 seconds by default, configurable with `tempest.shiny.provider_timeout_s`.
 The bundled app's warmup asks each active expert for one brief,
 bounded, evidence-backed orientation. Each expert reuses session evidence or
@@ -699,13 +630,13 @@ result <- session$step("What are the main risks from advanced AI systems?")
 cat(result$answer)
 
 # Generate and commit a report (styles: "technical" or "executive")
-session$report(style = "technical", include_references = TRUE)
-committed_report <- tempest_session_report_md(session)
+session$publish(style = "technical", include_references = TRUE)
+committed_report <- tempest_report(session)
 cat(committed_report)
 ```
 
-`session$report()` validates and commits the canonical Co-STORM report.
-`tempest_session_report_md()` only reads those exact committed bytes from a
+`session$publish()` validates and commits the canonical Co-STORM report.
+`tempest_report()` only reads those exact committed bytes from a
 succeeded, quiescent session; it does not generate or repair a report.
 `tempest_report_md()` is a separate deterministic renderer over caller-supplied
 Markdown and an explicit `ResearchWorkspace`. Rendering alone does not finalize
@@ -715,7 +646,8 @@ a Manifest, publish a product, or grant promotion authority.
 
 The moderator receives one scoped
 `delegate_to_expert(expert_id, question)` tool. It resolves the active roster by
-stable expert id, so display-name changes cannot redirect work. Each expert:
+content-derived expert id, so duplicate display names cannot redirect work.
+Each expert:
 
 - Has one persistent Deputy-backed chat session with conversation continuity
 - Receives only the role-specific tools needed for that run
@@ -728,11 +660,10 @@ expert run records an opaque terminal trace that is carried through Co-STORM
 snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-9 product. `partial_recovery = TRUE` is an explicit narrow exception for
-the optional `artifacts/suggested_questions.json` presentation file; expert,
-transcript, mind-map, StageRecord, Workspace, report, and Graft snapshot state
-must always pass integrity checks. Live chats, tools, credentials, clients,
-callbacks, and Shiny reactives are recreated rather than serialized.
+schema-10 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+suggested-question, and Graft snapshot state must pass integrity checks. Live
+chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
+rather than serialized.
 
 ### Warmup Phase
 
@@ -754,25 +685,38 @@ session$step("What is quantum supremacy?")  # Benefits from prior research
 Experts can be added or retired during a session:
 
 ```r
-session$add_expert("quantum error correction")
-session$retire_expert("expert.sarah-chen")
-session$get_active_experts()
+error_correction_expert <- tempest_expert(
+  name = "Dr. Sarah Chen",
+  title = "Quantum error-correction researcher",
+  description = "Studies fault-tolerant quantum architectures.",
+  instructions = "Distinguish demonstrated thresholds from projections."
+)
+session <- tempest_session(
+  "Quantum computing",
+  experts = list(error_correction_expert)
+)
+session$add_expert("quantum networking")
+session$retire_expert(error_correction_expert@expert_id)
+session$experts
 ```
 
-The roster respects `max_active_experts` (default 5). Retired experts' tools return a notice that the expert is no longer available.
+Expert profiles remain immutable. Retirement is manager-owned session-roster
+state, persisted separately from the profile. The roster respects
+`max_active_experts` (default 5), and retired experts' tools return a notice
+that the expert is no longer available.
 
 ### Report Generation
 
 ```r
 session$reorganize_mindmap()
-report <- session$report(style = "technical", include_references = TRUE)
+report <- session$publish(style = "technical", include_references = TRUE)
 ```
 
 ### Shiny App
 
 ```r
 library(tempest)
-run_app()
+tempest_app()
 ```
 
 Untouched model fields inherit `options(tempest.chat = )`; otherwise the app
@@ -807,137 +751,12 @@ browser-temporary autosave, and its STORM panel does not expose unsupported
 parallel perspective research. STORM runs in a `shiny::ExtendedTask` backed by
 Mirai so the Shiny session remains responsive.
 
-Host apps can embed the same maintained asynchronous STORM path:
-
-```r
-ui <- bslib::page_fillable(
-  tempest_shiny_ui("research", panels = "storm")
-)
-
-server <- function(input, output, session) {
-  tempest_shiny_server(
-    "research",
-    config = tempest_config(),
-    panels = "storm"
-  )
-}
-
-shiny::shinyApp(ui, server)
-```
-
-The installed minimal example is available at
-`system.file("examples/shiny-host/app.R", package = "tempest")`. The public
-store has 13 product-named members: `peek_costorm_session`, `costorm_session`,
-`costorm_workspace`, `set_costorm_session`, `touch_costorm_session`,
-`save_costorm_session`, `resume_costorm_session`,
-`costorm_persistence_status`, `report_md`, `report_workspace`, `report_topic`,
-`publish_costorm_report`, and `publish_storm_report`. The server returns exactly
-10 members: `store`, `costorm_session`, `costorm_events`, `costorm_evidence`,
-`storm_events`, `report_md`, `report_workspace`, `report_topic`,
-`report_navigation_event`, and `touch_costorm_session`.
+The Shiny modules and their store are Tempest implementation details. The
+bundled application is reachable only through `tempest_app()`, and there is no
+supported contract for embedding the panels in a host app.
 
 The app currently depends on the shinychat development version that provides
 `chat_server()`, pinned in `DESCRIPTION`.
-
-## Evaluation
-
-### STORM evaluation with vitals
-
-```r
-library(tempest)
-library(vitals)
-library(ellmer)
-
-judge <- ellmer::chat("openai/gpt-5.6-luna")
-tsk <- tempest_task(dataset = "qa", scorer_chat = judge)
-tsk$get_samples()
-```
-
-Unless a solver is supplied explicitly, each sample runs a real
-`tempest_run()` product and returns its authoritative report. Solver metadata
-contains only a versioned review reference, exact product identity, fixed
-program artifact and evaluator identities, and a ten-stage structural summary.
-It never logs the full trajectory review, live chats, clients, tools, prompts,
-responses, paths, or credentials. Pass a caller data frame with exact `input`,
-`target`, and optional unique `id` columns to evaluate a content-addressed local
-benchmark.
-
-### Co-STORM evaluation with SimulatedUser
-
-Run automated Co-STORM sessions with a simulated curious researcher:
-
-```r
-# Standalone SimulatedUser
-session <- tempest_session("AI safety")
-sim <- SimulatedUser$new("AI safety", max_turns = 5)
-sim$run_session(session, warmup = TRUE, verbose = TRUE)
-session$report()
-report <- tempest_session_report_md(session)
-
-# As a vitals task
-tsk <- tempest_costorm_task(dataset = "qa", max_turns = 5, scorer_chat = judge)
-```
-
-The default Co-STORM solver likewise completes a real `TempestSession`, reads
-its committed report through `tempest_session_report_md()`, and records only
-the same bounded credential-safe product, program, and stage summary.
-
-### Explicit program improvement loop
-
-Tempest keeps evaluation, compilation, and adoption separate. Use distinct
-vitals tasks for an exact baseline and candidate, compile only explicitly
-selected dsprrr stages, and adopt the candidate only after reviewing its
-scores and trajectory summaries:
-
-```r
-baseline_task <- tempest_task(
-  dataset = held_out,
-  config = cfg,
-  scorer_chat = judge,
-  program_set = program_set,
-  knowledge_view = knowledge_view
-)
-baseline_task$eval()
-
-candidate_program_set <- tempest_compile_programs(
-  program_set,
-  trainsets = stage_trainsets,
-  valsets = stage_validation_sets,
-  teleprompters = teleprompters,
-  path = "candidate-programs"
-)
-
-candidate_task <- tempest_task(
-  dataset = held_out,
-  config = cfg,
-  scorer_chat = judge,
-  program_set = candidate_program_set,
-  knowledge_view = knowledge_view
-)
-candidate_task$eval()
-
-# Inspect baseline and candidate samples/metrics, then make an explicit choice.
-baseline_samples <- baseline_task$get_samples()
-candidate_samples <- candidate_task$get_samples()
-chosen_program_set <- candidate_program_set
-
-next_result <- tempest_run(
-  "Grid-scale battery recycling",
-  config = cfg,
-  program_set = chosen_program_set,
-  knowledge_view = knowledge_view
-)
-```
-
-Keep compilation training and validation examples separate from the held-out
-evaluation set to avoid leakage, overfitting, and optimistic scores. Compare
-the same sample IDs, inputs, targets, and scorer before selecting a candidate.
-Tempest does not invent training data, choose a teleprompter, optimize
-automatically, accept a changed governed artifact, or replace the baseline
-ProgramSet. Supply an explicit scorer or let the task use
-`vitals::model_graded_qa()` with the chosen judge chat. Compilation uses
-isolated Module copies; a changed artifact loses the baseline stage's governed
-reference until the new artifact is reviewed and accepted separately.
 
 ## Notes
 

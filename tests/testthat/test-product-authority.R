@@ -4,7 +4,8 @@ test_that("product authority separates execution identity from publication", {
   authority <- tempest:::tempest_product_authority_validate(
     fixture$manifest,
     fixture$stage_records,
-    fixture$workspace
+    fixture$workspace,
+    experts = fixture$experts
   )
 
   expect_identical(authority$binding_scope, "execution_identity")
@@ -17,6 +18,7 @@ test_that("product authority separates execution identity from publication", {
       fixture$manifest,
       fixture$stage_records,
       fixture$workspace,
+      experts = fixture$experts,
       require_publishable = TRUE
     ),
     class = "tempest_product_authority_error"
@@ -40,6 +42,7 @@ test_that("product authority separates execution identity from publication", {
     publication_manifest,
     fixture$stage_records,
     fixture$workspace,
+    experts = fixture$experts,
     report_md = report_md,
     report_reference = tempest:::tempest_product_report_reference(
       report_md
@@ -57,7 +60,8 @@ test_that("product authority separates execution identity from publication", {
   partial <- tempest:::tempest_product_authority_validate(
     running,
     fixture$stage_records,
-    fixture$workspace
+    fixture$workspace,
+    experts = fixture$experts
   )
   expect_identical(partial$publishable, FALSE)
 
@@ -73,7 +77,8 @@ test_that("product authority separates execution identity from publication", {
     tempest:::tempest_product_authority_validate(
       running_with_bound_report,
       fixture$stage_records,
-      fixture$workspace
+      fixture$workspace,
+      experts = fixture$experts
     ),
     class = "tempest_product_authority_error"
   )
@@ -82,6 +87,7 @@ test_that("product authority separates execution identity from publication", {
       running,
       fixture$stage_records,
       fixture$workspace,
+      experts = fixture$experts,
       report_md = "# Forged partial report",
       report_reference = tempest:::tempest_product_report_reference(
         "# Forged partial report"
@@ -97,7 +103,8 @@ test_that("product authority separates execution identity from publication", {
       tempest:::tempest_product_authority_validate(
         terminal,
         fixture$stage_records,
-        fixture$workspace
+        fixture$workspace,
+        experts = fixture$experts
       ),
       class = "tempest_product_authority_error",
       info = status

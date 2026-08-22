@@ -138,7 +138,7 @@ tempest_deputy_adapter_trace <- function(
     role = run_context$role,
     status = tempest_deputy_adapter_status(reason),
     deputy_run_id = context$run_id,
-    deputy_session_id = context$session_id %||% deputy_session_id,
+    deputy_session_id = deputy_session_id,
     agent_id = context$agent_id %||% agent_id
   )
   if (!is.null(run_context$expert_id)) {
@@ -176,7 +176,7 @@ tempest_deputy_adapter_pending_run <- function(
       "pending_deputy_run$deputy_run_id"
     ),
     deputy_session_id = tempest_research_manifest_id(
-      context$session_id %||% deputy_session_id,
+      deputy_session_id,
       "pending_deputy_run$deputy_session_id"
     ),
     role = tempest_research_manifest_string(
@@ -655,11 +655,6 @@ tempest_deputy_chat_adapter <- function(
       agent_id = agent_id,
       agent_name = agent_name
     )
-    agent$configure_sdk_compat(list(
-      persist_session = FALSE,
-      session_id = deputy_session_id
-    ))
-
     state <- new.env(parent = emptyenv())
     state$agent <- agent
     state$base_run_context <- base_run_context

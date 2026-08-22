@@ -182,7 +182,7 @@ test_that("workspace replacement requires the exact complete pair set", {
     scores = c(0.9, 0.2)
   )
   workspace <- verified$workspace
-  before <- tempest_claim_supports(workspace)
+  before <- tempest:::tempest_claim_supports_resolved(workspace)
 
   expect_error(
     workspace$verify_proposed_claims_batch(
@@ -191,7 +191,7 @@ test_that("workspace replacement requires the exact complete pair set", {
     ),
     class = "tempest_research_workspace_integrity_error"
   )
-  expect_identical(tempest_claim_supports(workspace), before)
+  expect_identical(tempest:::tempest_claim_supports_resolved(workspace), before)
   expect_error(
     workspace$verify_proposed_claims_batch(
       c(
@@ -202,7 +202,7 @@ test_that("workspace replacement requires the exact complete pair set", {
     ),
     class = "tempest_research_workspace_integrity_error"
   )
-  expect_identical(tempest_claim_supports(workspace), before)
+  expect_identical(tempest:::tempest_claim_supports_resolved(workspace), before)
 })
 
 test_that("claim summaries are deterministic projections of pair support", {
@@ -257,7 +257,10 @@ test_that("claim summaries are deterministic projections of pair support", {
   expect_identical(derived@verification_status, "contradicted")
   expect_identical(derived@support_score, 0.8)
   expect_identical(derived@verifier_model, "judge.1")
-  expect_identical(workspace$citation_audit, tempest_claim_supports(workspace))
+  expect_identical(
+    workspace$citation_audit,
+    tempest:::tempest_claim_supports_tibble(workspace$list_claim_supports())
+  )
 })
 
 test_that("verified workspaces seal every verification-relevant mutation", {

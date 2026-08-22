@@ -297,20 +297,13 @@ tempest_governed_procedure_history_head <- function(
   history
 }
 
-#' Reference an accepted governed procedure
-#'
-#' Resolves one accepted `GovernedProcedure` and its exact dsprrr
-#' `ProgramArtifact` through an immutable Graft view. The returned value binds
-#' the current accepted revision and every snapshot authority dimension.
-#'
-#' A reference can only be created from records proven at the supplied pinned
-#' boundary. Tempest repeats the same verification immediately before provider
-#' execution so a serialized reference never becomes authority by itself.
-#'
-#' @param knowledge_view A pinned `GraftView` returned by [graft::graft_at()].
-#' @param record_id Graft record identifier for the governed procedure.
-#' @return A `TempestGovernedProcedureRef` S7 object.
-#' @export
+# Resolve one accepted `GovernedProcedure` and its exact dsprrr
+# `ProgramArtifact` through an immutable Graft view. The returned value binds
+# the current accepted revision and every snapshot authority dimension.
+#
+# A reference can only be created from records proven at the supplied pinned
+# boundary. Tempest repeats the same verification immediately before provider
+# execution so a serialized reference never becomes authority by itself.
 tempest_governed_procedure_ref <- function(knowledge_view, record_id) {
   record_id <- tempest_governed_procedure_string(record_id, "record_id")
   snapshot <- tryCatch(

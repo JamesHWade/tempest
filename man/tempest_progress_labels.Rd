@@ -23,7 +23,4 @@ event stages and steps. Host apps can use these labels with
 \code{\link[=tempest_progress_state]{tempest_progress_state()}} instead of maintaining their own workflow-specific
 remapping tables.
 }
-\examples{
-tempest_progress_labels("costorm")
-tempest_progress_labels("costorm", kind = "step")
-}
+\keyword{internal}

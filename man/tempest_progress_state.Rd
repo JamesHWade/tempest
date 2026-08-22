@@ -25,21 +25,4 @@ returns a compact, serializable state object that host apps can poll or
 render. The reducer is host-neutral: it does not import Shiny and it works
 with raw event lists, collector objects, or stored event data lists.
 }
-\examples{
-events <- list(
-  tempest_progress_event(
-    run_id = "run-1",
-    workflow = "storm",
-    event_type = "workflow",
-    status = "started"
-  ),
-  tempest_progress_event(
-    run_id = "run-1",
-    workflow = "storm",
-    event_type = "stage",
-    status = "started",
-    stage = "research"
-  )
-)
-tempest_progress_state(events)
-}
+\keyword{internal}

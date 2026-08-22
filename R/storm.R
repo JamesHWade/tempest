@@ -1,22 +1,6 @@
 # STORM pipeline (scripted)
 
 #' @keywords internal
-tempest_as_character_vector <- function(x) {
-  if (is.null(x)) {
-    return(character())
-  }
-  if (is.data.frame(x)) {
-    x <- unlist(x, recursive = TRUE, use.names = FALSE)
-  }
-  if (is.list(x)) {
-    x <- unlist(x, recursive = TRUE, use.names = FALSE)
-  }
-  x <- as.character(x)
-  x <- tempest_trim(x)
-  unique(x[nzchar(x) & !is.na(x)])
-}
-
-#' @keywords internal
 tempest_storm_report_with_execution_review <- function(
   report_md,
   stage_records,
@@ -124,8 +108,10 @@ tempest_stage_context_knowledge_view <- function(
 #' @param config A `TempestConfig`.
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from
 #'   `config`.
-#' @param knowledge_view Optional immutable Graft view. It is required when
-#'   `program_set` contains any governed procedure and is never persisted.
+#' @param knowledge Optional accepted organizational knowledge from
+#'   [tempest_knowledge()]. It pins an immutable Graft view, supplies accepted
+#'   evidence records, and carries any accepted governed-procedure stage
+#'   bindings. It is never persisted.
 #' @param n_experts Number of expert profiles to generate when `experts` is
 #'   `NULL` (default 3).
 #' @param experts Optional list of active profiles created by
@@ -138,13 +124,8 @@ tempest_stage_context_knowledge_view <- function(
 #'   strategy (default 3).
 #' @param max_questions_per_perspective Maximum questions per perspective for
 #'   the "key_questions" strategy (default 3).
-#' @param parallel_research Must be `FALSE`. Parallel perspective research is
-#'   unavailable while every open-ended expert turn requires one synchronously
-#'   bound terminal Deputy execution; `TRUE` fails before provider work.
 #' @param parallel_writing If `TRUE`, write report sections in parallel using
 #'   the mirai package. Failed parallel sections are retried sequentially.
-#' @param program_set A [TempestProgramSet] containing the exact dsprrr programs
-#'   used by STORM. If `NULL`, [tempest_program_set()] creates the default set.
 #' @param steps Character vector controlling which steps to run. Defaults to
 #'   all.
 #' @param output_dir Optional directory for persisted STORM run artifacts. When
@@ -155,63 +136,58 @@ tempest_stage_context_knowledge_view <- function(
 #'   future, missing, extra, or mismatched product shapes are rejected rather
 #'   than migrated.
 #' @param run_id Optional run directory name. Defaults to a slug of `topic`.
-#' @param remove_duplicate Must be `FALSE`. Duplicate removal is unavailable on
-#'   the authoritative deterministic STORM report path.
 #' @param progress Optional function called with a `tempest_progress_event`
 #'   object as STORM workflow stages start, finish, fail, persist artifacts, or
 #'   make final artifacts available.
 #' @param verbose If `TRUE`, prints progress messages.
-#' @return A list with product fields `title`, `perspectives`, `experts`,
-#'   `outline`, `draft_md`, `report_md`, `manifest`, `state`, `workspace`,
-#'   `retriever`, and `output_dir`.
+#' @return A validated completed Tempest research product. Read it with
+#'   [tempest_report()], [tempest_sources()], [tempest_claims()],
+#'   [tempest_claim_supports()], and [tempest_trajectory_review()].
 #' @examples
 #' \dontrun{
 #' cfg <- tempest_config()
 #' result <- tempest_run("History of jazz", config = cfg)
-#' cat(result$report_md)
+#' cat(tempest_report(result))
 #' }
 #' @export
 tempest_run <- function(
   topic,
   config = tempest_config(),
   retriever = NULL,
-  knowledge_view = NULL,
+  knowledge = NULL,
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
-  parallel_research = FALSE,
   parallel_writing = FALSE,
-  program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
   run_id = NULL,
-  remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE
 ) {
+  knowledge <- tempest_knowledge_argument(knowledge)
   tempest_otel_trace(
     "storm.run",
     tempest_run_internal(
       topic = topic,
       config = config,
       retriever = retriever,
-      knowledge_view = knowledge_view,
+      knowledge_view = knowledge$view,
+      knowledge_records = knowledge$records,
+      program_set = knowledge$program_set,
       n_experts = n_experts,
       experts = experts,
       research_strategy = research_strategy,
       max_rounds = max_rounds,
       max_questions_per_perspective = max_questions_per_perspective,
-      parallel_research = parallel_research,
       parallel_writing = parallel_writing,
-      program_set = program_set,
       steps = steps,
       output_dir = output_dir,
       resume = resume,
       run_id = run_id,
-      remove_duplicate = remove_duplicate,
       progress = progress,
       verbose = verbose
     )
@@ -223,19 +199,18 @@ tempest_run_internal <- function(
   config = tempest_config(),
   retriever = NULL,
   knowledge_view = NULL,
+  knowledge_records = list(),
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
-  parallel_research = FALSE,
   parallel_writing = FALSE,
   program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
   run_id = NULL,
-  remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE,
   .requested_steps = NULL
@@ -278,29 +253,8 @@ tempest_run_internal <- function(
     max_questions_per_perspective,
     "max_questions_per_perspective"
   )
-  parallel_research <- tempest_config_flag(
-    parallel_research,
-    "parallel_research"
-  )
-  if (isTRUE(parallel_research)) {
-    tempest_config_abort(
-      paste0(
-        "{.arg parallel_research} is unavailable until Deputy owns ",
-        "parallel STORM execution."
-      )
-    )
-  }
   parallel_writing <- tempest_config_flag(parallel_writing, "parallel_writing")
   resume <- tempest_config_flag(resume, "resume")
-  remove_duplicate <- tempest_config_flag(remove_duplicate, "remove_duplicate")
-  if (isTRUE(remove_duplicate)) {
-    tempest_config_abort(
-      paste0(
-        "{.arg remove_duplicate} is unavailable on the authoritative STORM ",
-        "report path."
-      )
-    )
-  }
   verbose <- tempest_config_flag(verbose, "verbose")
   steps <- tempest_storm_requested_steps(steps)
   requested_steps <- if (is.null(.requested_steps)) {
@@ -356,6 +310,7 @@ tempest_run_internal <- function(
       )
     )
   }
+  tempest_knowledge_insert_records(workspace, knowledge_records)
   store <- workspace
   run_dir <- tempest_storm_prepare_run_dir(output_dir, topic, run_id = run_id)
   progress <- tempest_progress_callback(progress)
@@ -721,8 +676,9 @@ tempest_run_internal <- function(
       message = "Loaded completed STORM workflow.",
       payload = list(completed_stages = completed_stages)
     )
-    return(list(
+    return(tempest_product_result(
       title = state$title,
+      topic = topic,
       perspectives = state$perspectives,
       experts = state$experts,
       outline = state$outline,
@@ -1100,7 +1056,7 @@ tempest_run_internal <- function(
           payload = list(
             perspective_count = length(perspectives),
             research_strategy = research_strategy,
-            parallel = isTRUE(parallel_research)
+            parallel = FALSE
           )
         )
         if (verbose) {
@@ -1123,10 +1079,7 @@ tempest_run_internal <- function(
           expert_profile <- experts[[i]]
           expert_record <- tempest_expert_runtime_record(expert_profile)
           expert_id <- expert_record$expert_id
-          model_role <- expert_record$model_role
-          if (is.na(model_role)) {
-            model_role <- "expert"
-          }
+          model_role <- "expert"
           model <- tempest_research_model(config, model_role)
           sp <- tempest_render_expert_prompt(
             persona = expert_profile,
@@ -1709,8 +1662,9 @@ tempest_run_internal <- function(
         payload = list(completed_stages = completed_stages)
       )
 
-      list(
+      tempest_product_result(
         title = title,
+        topic = topic,
         perspectives = perspectives,
         experts = experts,
         outline = outline,
@@ -1779,23 +1733,21 @@ tempest_run_internal <- function(
 #' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for
 #'   details on available parameters including `topic`, `config`, `retriever`,
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
-#' @param knowledge_view A live pinned Graft view cannot cross the asynchronous
+#' @param knowledge_view Accepted knowledge and a live pinned Graft view cannot
+#'   cross the asynchronous
 #'   worker boundary. Governed runs must use [tempest_run()] in the process that
 #'   owns the view.
 #' @return A `tempest_async_run` promise that resolves with the
 #'   [tempest_run()] result.
 #' @seealso [tempest_run()] for the synchronous version.
-#' @examples
-#' \dontrun{
-#' tempest_run_async("History of jazz", config = tempest_config()) |>
-#'   promises::then(function(result) cat(result$report_md))
-#' }
-#' @export
+#' @keywords internal
 tempest_run_async <- function(..., knowledge_view = NULL) {
   args <- list(...)
   program_set <- args$program_set %||% NULL
+  knowledge <- args$knowledge %||% NULL
   if (
     !is.null(knowledge_view) ||
+      !is.null(knowledge) ||
       (!is.null(program_set) &&
         tempest_program_set_requires_knowledge_view(program_set))
   ) {
@@ -1882,7 +1834,7 @@ tempest_run_async <- function(..., knowledge_view = NULL) {
 #' @param run A `tempest_async_run` returned by [tempest_run_async()].
 #' @return Invisibly returns `TRUE` when cancellation was requested and
 #'   `FALSE` when the run had already settled.
-#' @export
+#' @keywords internal
 tempest_run_cancel <- function(run) {
   if (!inherits(run, "tempest_async_run")) {
     tempest_abort(

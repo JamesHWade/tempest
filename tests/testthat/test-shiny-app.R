@@ -396,14 +396,14 @@ test_that("custom expert forms create validated user profiles", {
 
   expect_length(profiles, 2L)
   expect_s7_class(profiles[[1]], tempest:::TempestExpertProfile)
-  expect_equal(profiles[[1]]@expert_id, "expert.user.01")
+  expect_match(profiles[[1]]@expert_id, "^expert::[a-f0-9]{64}$")
+  expect_match(profiles[[1]]@version, "^sha256-[a-f0-9]{64}$")
   expect_equal(profiles[[1]]@name, "Maya Chen")
   expect_equal(profiles[[1]]@title, "Battery policy analyst")
   expect_equal(
     profiles[[1]]@description,
     "Compare incentives, regulation, and adoption barriers."
   )
-  expect_equal(profiles[[1]]@selection_metadata$source, "user")
   expect_match(profiles[[1]]@instructions, "cite relevant evidence")
 
   invalid <- tryCatch(
@@ -420,8 +420,8 @@ test_that("custom expert forms create validated user profiles", {
 
 test_that("user expert panels override host defaults only when enabled", {
   app <- source_shiny_modules()
-  host <- list(test_expert(expert_id = "expert.host", name = "Host Expert"))
-  user <- list(test_expert(expert_id = "expert.user", name = "User Expert"))
+  host <- list(test_expert(name = "Host Expert"))
+  user <- list(test_expert(name = "User Expert"))
 
   expect_identical(
     app$costorm_session_experts(host, user, FALSE, "custom"),
@@ -460,9 +460,11 @@ test_that("chat footer reserves controls for active sessions", {
     list(experts = list(list(name = "Dr. Footer"))),
     parent = emptyenv()
   )
-  ses$workspace <- new.env(parent = emptyenv())
-  ses$workspace$list_retrieved_sources <- function() list()
-  ses$workspace$list_proposed_claims <- function() list()
+  class(ses) <- "TempestSession"
+  ses_workspace <- new.env(parent = emptyenv())
+  ses_workspace$list_retrieved_sources <- function() list()
+  ses_workspace$list_proposed_claims <- function() list()
+  test_session_private(ses, workspace = ses_workspace)
   html <- paste(
     as.character(app$chat_runtime_footer_ui(ses, ns = ns)),
     collapse = ""
@@ -594,7 +596,6 @@ test_that("expert cards render deterministic expert icons", {
   app <- source_shiny_modules()
   html <- paste(
     as.character(app$expert_card(test_expert(
-      expert_id = "expert.history",
       name = "Dr. Ada Flow",
       title = "Historian",
       description = "Archives and provenance."
@@ -825,7 +826,7 @@ test_that("session store mutations work outside reactive consumers", {
   ses <- tempest_session(
     "Test topic",
     config = config,
-    experts = list(test_expert(expert_id = "expert.store"))
+    experts = list(test_expert())
   )
 
   expect_silent(store$touch_costorm_session())
@@ -845,7 +846,6 @@ test_that("the transcript module shows recent turns from the store", {
     "Test topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.a",
       name = "Dr. A",
       title = "Sci",
       description = "X"
@@ -854,7 +854,7 @@ test_that("the transcript module shows recent turns from the store", {
 
   shiny::testServer(app$mod_transcript_server, args = list(store = store), {
     expect_match(as.character(output$body$html), "Start a conversation")
-    ses$add_turn("user", "user", "hello world")
+    ses$.__enclos_env__$private$add_turn("user", "user", "hello world")
     tempest:::tempest_session_append_transcript(
       ses,
       "Moderator",
@@ -885,7 +885,6 @@ test_that("the transcript module renders citations in completed answers", {
     "Citation topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.citations",
       name = "Dr. Citations"
     )),
     retriever = tempest_retriever(config = cfg, workspace = workspace)
@@ -919,13 +918,12 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
     "Test topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.a",
       name = "Dr. A",
       title = "Sci",
       description = "X"
     ))
   )
-  ses$add_turn("user", "user", "q1")
+  ses$.__enclos_env__$private$add_turn("user", "user", "q1")
 
   shiny::testServer(app$mod_mindmap_server, args = list(store = store), {
     store$set_costorm_session(ses)
@@ -1016,7 +1014,6 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
     "Integration topic",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.integration",
       name = "Integration Expert",
       title = "Researcher",
       description = "End-to-end app behavior",
@@ -1046,7 +1043,7 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
       edges = list(list(from = "root", to = "evidence", relation = "supports"))
     )
   )
-  ses$add_turn("user", "user", "What evidence exists?")
+  ses$.__enclos_env__$private$add_turn("user", "user", "What evidence exists?")
   tempest:::tempest_session_append_transcript(
     ses,
     "Moderator",
@@ -1094,7 +1091,6 @@ test_that("chat command messages summarize active session state", {
     "Command topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.command",
       name = "Dr. Command",
       title = "Interaction specialist",
       description = "Runtime controls"
@@ -1110,7 +1106,7 @@ test_that("chat command messages summarize active session state", {
     ses,
     paste0(
       "# ",
-      ses$title,
+      tempest:::tempest_session_title(ses),
       "\n\n",
       "Command summaries include facts [source.verify.shiny-command]."
     )
@@ -1167,13 +1163,12 @@ test_that("facts review exposes safe durable execution downgrades", {
     "Review downgrade",
     config = config,
     experts = list(test_expert(
-      expert_id = "expert.review-downgrade",
       name = "Review Downgrade Expert"
     )),
     session_id = "review-downgrade"
   )
   source <- fake_source("https://example.org/review-downgrade")
-  session$workspace$upsert_retrieved_resource(source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
   program <- tempest:::tempest_session_programs(session)$personas
   running <- tempest:::tempest_stage_record_start(
     "personas",
@@ -1320,9 +1315,11 @@ test_that("the chat settings drawer exposes named stateful controls", {
     collapse = ""
   )
   ses <- list2env(list(experts = list()), parent = emptyenv())
-  ses$workspace <- new.env(parent = emptyenv())
-  ses$workspace$list_retrieved_sources <- function() list()
-  ses$workspace$list_proposed_claims <- function() list()
+  class(ses) <- "TempestSession"
+  ses_workspace <- new.env(parent = emptyenv())
+  ses_workspace$list_retrieved_sources <- function() list()
+  ses_workspace$list_proposed_claims <- function() list()
+  test_session_private(ses, workspace = ses_workspace)
   footer <- paste(
     as.character(app$chat_runtime_footer_ui(ses, ns = ns)),
     collapse = ""
@@ -1485,7 +1482,6 @@ test_that("session archives round-trip product state through upload", {
     "Downloadable session",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.archive",
       name = "Dr. Archive"
     ))
   )
@@ -1562,7 +1558,6 @@ test_that("session archive extraction rejects undeclared and tampered files", {
     "Archive integrity",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.integrity",
       name = "Dr. Integrity"
     ))
   )
@@ -1667,7 +1662,6 @@ test_that("session store saves and restores bundles for shared app tabs", {
     "Shiny persistence",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.persist",
       name = "Dr. Persist",
       title = "Researcher",
       description = "Session durability",
@@ -1697,14 +1691,14 @@ test_that("session store saves and restores bundles for shared app tabs", {
       edges = list(list(from = "root", to = "evidence", relation = "supports"))
     )
   )
-  ses$add_turn("User", "user", "What survives restore?")
+  ses$.__enclos_env__$private$add_turn("User", "user", "What survives restore?")
   tempest:::tempest_session_append_transcript(
     ses,
     "Moderator",
     "assistant",
     paste0("Cited evidence survives [", source_id, "].")
   )
-  ses$emit_progress(
+  ses$.__enclos_env__$private$emit_progress(
     "stage",
     "succeeded",
     stage = "dialogue",
@@ -1782,7 +1776,6 @@ test_that("tempest_shiny_server renders host-managed shared state", {
     "Embedded host topic",
     config = cfg,
     experts = list(test_expert(
-      expert_id = "expert.host",
       name = "Host Expert"
     )),
     retriever = tempest_retriever(config = cfg, workspace = workspace),
@@ -1801,7 +1794,7 @@ test_that("tempest_shiny_server renders host-managed shared state", {
       edges = list()
     )
   )
-  ses$add_turn("User", "user", "Show embedded state.")
+  ses$.__enclos_env__$private$add_turn("User", "user", "Show embedded state.")
 
   shiny::testServer(
     tempest_shiny_server,
@@ -1934,7 +1927,7 @@ test_that("Co-STORM startup progress closes when the session is ready", {
   ses <- tempest_session(
     "Startup topic",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.startup"))
+    experts = list(test_expert())
   )
   state <- app$costorm_progress_state(list(
     app$costorm_starting_event("session-startup"),
@@ -2598,7 +2591,7 @@ test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
   ses <- tempest_session(
     "Idle topic",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.idle"))
+    experts = list(test_expert())
   )
   state <- app$costorm_progress_state(list(
     app$costorm_starting_event(run_id),
@@ -2650,8 +2643,9 @@ test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
 test_that("warmup result messages summarize typed lifecycle results", {
   app <- source_shiny_modules()
   orientation <- function(name, status, error_message = NA_character_) {
+    expert <- test_expert(name = name)
     list(
-      expert_id = paste0("expert.", tolower(name)),
+      expert_id = expert@expert_id,
       expert_name = name,
       expert_session_id = NA_character_,
       deputy_run_id = if (identical(status, "succeeded")) {

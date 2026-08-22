@@ -61,10 +61,4 @@ regions in the bundled UI. Validation, cancellation, and publication
 failures use alerts and never convert a rejected product into report-ready
 state.
 }
-\examples{
-\dontrun{
-server <- function(input, output, session) {
-  tempest_shiny_server("research", config = tempest_config())
-}
-}
-}
+\keyword{internal}

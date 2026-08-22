@@ -10,7 +10,7 @@ test_that("Tempest session bundles save and resume durable state", {
             facts = list(list(
               claim = "Bundles preserve claims.",
               sources = list(list(
-                source_id = source$id,
+                source_id = source@resource_id,
                 quote = "Bundles preserve claims."
               )),
               confidence = "high"
@@ -22,7 +22,7 @@ test_that("Tempest session bundles save and resume durable state", {
         return(fake_chat(
           text = list(paste0(
             "Bundles preserve claims [",
-            source$id,
+            source@resource_id,
             "]."
           ))
         ))
@@ -31,14 +31,13 @@ test_that("Tempest session bundles save and resume durable state", {
     }
   )
   store <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    "https://example.com/session-bundle",
+  source <- fake_source(
+    url = "https://example.com/session-bundle",
     title = "Session Bundle Source",
     content_text = "Bundles preserve claims."
   )
   store$upsert_retrieved_resource(source)
   expert <- tempest_expert(
-    expert_id = "expert.bundle",
     name = "Dr. Bundle",
     title = "Persistence expert",
     description = "Bundle state",
@@ -51,7 +50,9 @@ test_that("Tempest session bundles save and resume durable state", {
     retriever = tempest_retriever(config = cfg, workspace = store)
   )
   completion_id <- tempest:::tempest_costorm_await(
-    session$request_completion_async("Record the bundle evidence.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Record the bundle evidence."
+    )
   )
   withCallingHandlers(
     tempest:::tempest_costorm_await(tempest_session_process_turn_async(
@@ -78,10 +79,10 @@ test_that("Tempest session bundles save and resume durable state", {
     verifier_model = "judge.bundle"
   )
   session_id <- session$session_id
-  session$add_turn("User", "user", "Save this session.")
-  report_md <- tempest_report_md(
-    title = session$title,
-    body = paste0("Bundle report [", source$id, "]."),
+  session$.__enclos_env__$private$add_turn("User", "user", "Save this session.")
+  report_md <- tempest:::tempest_report_md_render(
+    title = tempest:::tempest_session_title(session),
+    body = paste0("Bundle report [", source@resource_id, "]."),
     workspace = store,
     citation_policy = cfg@citation_policy,
     on_unsupported_claim = cfg@on_unsupported_claim,
@@ -95,7 +96,7 @@ test_that("Tempest session bundles save and resume durable state", {
     session,
     c("What next?", "And then?")
   )
-  session$emit_progress(
+  session$.__enclos_env__$private$emit_progress(
     "stage",
     "started",
     stage = "dialogue",
@@ -114,7 +115,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_null(manifest$status)
   expect_equal(manifest$bundle_type, "costorm")
   expect_equal(manifest$bundle_status, "complete")
-  expect_equal(manifest$schema_version, 9L)
+  expect_equal(manifest$schema_version, 10L)
   expect_identical(
     manifest$research_manifest$research_run_id,
     session_id
@@ -123,7 +124,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_identical(manifest$research_manifest$status, "succeeded")
   expect_identical(
     manifest$workspace$base_snapshot_id,
-    session$workspace$base_snapshot_id
+    tempest:::tempest_session_workspace(session)$base_snapshot_id
   )
   expect_identical(manifest$workspace$schema_version, 5L)
   expect_setequal(names(manifest$checksums), manifest$files)
@@ -131,6 +132,8 @@ test_that("Tempest session bundles save and resume durable state", {
     manifest$files,
     c(
       "experts.json",
+      "retired_expert_ids.json",
+      "expert_sessions.json",
       "progress_events.json",
       "stage_records.json",
       "workspace/retrieved_resources.json",
@@ -149,11 +152,11 @@ test_that("Tempest session bundles save and resume durable state", {
   )))
   expect_false("config.json" %in% manifest$files)
 
-  schema_eight_manifest <- manifest
-  schema_eight_manifest$schema_version <- 8L
+  legacy_manifest <- manifest
+  legacy_manifest$schema_version <- 9L
   tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
-    schema_eight_manifest
+    legacy_manifest
   )
   expect_error(
     tempest_session_resume(bundle_dir, config = cfg),
@@ -241,21 +244,34 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_r6_class(restored, "TempestSession")
   expect_equal(restored$session_id, session_id)
   expect_equal(tail(restored$transcript, 1L)[[1L]]$text, "Save this session.")
-  expect_identical(tempest_session_report_md(restored), report_md)
+  expect_identical(tempest_report(restored), report_md)
   expect_equal(
     tempest:::tempest_session_suggestions(restored),
     c("What next?", "And then?")
   )
   expect_equal(
-    restored$workspace$get_proposed_claim(claim_id)@claim_text,
+    tempest:::tempest_session_workspace(restored)$get_proposed_claim(
+      claim_id
+    )@claim_text,
     "Bundles preserve claims."
   )
-  expect_identical(restored$retriever$workspace, restored$workspace)
-  expect_equal(nrow(tempest_claim_supports(restored$workspace)), 1)
-  expect_identical(restored$manifest@research_run_id, session_id)
   expect_identical(
-    restored$manifest@config_digest,
-    session$manifest@config_digest
+    tempest:::tempest_session_retriever(restored)$workspace,
+    tempest:::tempest_session_workspace(restored)
+  )
+  expect_equal(
+    nrow(tempest:::tempest_claim_supports_resolved(tempest:::tempest_session_workspace(
+      restored
+    ))),
+    1
+  )
+  expect_identical(
+    tempest:::tempest_session_manifest(restored)@research_run_id,
+    session_id
+  )
+  expect_identical(
+    tempest:::tempest_session_manifest(restored)@config_digest,
+    tempest:::tempest_session_manifest(session)@config_digest
   )
   expect_length(restore_collector$events(), 0)
   expect_equal(
@@ -278,11 +294,11 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_no_error(tempest_session_save(session, bundle_dir, overwrite = TRUE))
 })
 
-test_that("schema 8 session bundles are rejected", {
+test_that("schema 9 session bundles are rejected", {
   bundle_dir <- withr::local_tempdir()
   tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
-    list(schema_version = 8L)
+    list(schema_version = 9L)
   )
   expect_error(
     tempest_session_resume(bundle_dir),

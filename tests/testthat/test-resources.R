@@ -25,6 +25,29 @@ test_that("typed resources support non-web evidence and durable records", {
   )
 })
 
+test_that("web resource construction requires locator-derived identity", {
+  expect_error(
+    tempest_resource(
+      resource_kind = "web",
+      locator = "https://example.org/canonical-web-id",
+      title = "Canonical web identity",
+      media_type = "text/html",
+      resource_id = "S000000000000"
+    ),
+    class = "tempest_product_validation_error",
+    regexp = "derived from their locator"
+  )
+
+  non_web <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/custom-id",
+    title = "Custom non-web identity",
+    media_type = "text/plain",
+    resource_id = "resource.custom"
+  )
+  expect_identical(non_web@resource_id, "resource.custom")
+})
+
 test_that("product content hashes preserve canonical evidence bytes", {
   expect_identical(
     tempest:::tempest_product_content_hash(
@@ -62,6 +85,65 @@ test_that("product content hashes preserve canonical evidence bytes", {
   expect_identical(
     tempest:::tempest_resource_fingerprint(resource),
     "caf5bb230fbbd7b5d796537adee271fa22d144dd500b2976e8ff983d864d3f99"
+  )
+})
+
+test_that("inline resource content hashes must exactly match content", {
+  wrong_hash <- strrep("0", 64L)
+  expect_error(
+    tempest_resource(
+      resource_kind = "host.document",
+      locator = "documents/mismatched-inline-hash",
+      title = "Mismatched inline hash",
+      media_type = "text/plain",
+      content = "Captured evidence",
+      content_hash = wrong_hash
+    ),
+    class = "tempest_product_validation_error",
+    regexp = "must exactly match"
+  )
+
+  detached <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/detached-content",
+    title = "Detached content",
+    media_type = "text/plain",
+    storage_ref = "blob.detached-content",
+    content_hash = wrong_hash
+  )
+  expect_null(detached@content)
+  expect_identical(detached@content_hash, wrong_hash)
+})
+
+test_that("resource records and restore reject mismatched inline hashes", {
+  resource <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/tampered-inline-hash",
+    title = "Tampered inline hash",
+    media_type = "text/plain",
+    content = "Captured evidence"
+  )
+  attr(resource, "content_hash") <- strrep("0", 64L)
+
+  expect_error(
+    tempest:::tempest_resource_record(resource),
+    class = "tempest_product_validation_error",
+    regexp = "must exactly match"
+  )
+
+  valid <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/persisted-inline-hash",
+    title = "Persisted inline hash",
+    media_type = "text/plain",
+    content = "Persisted evidence"
+  )
+  record <- tempest:::tempest_resource_record(valid)
+  record$content_hash <- strrep("0", 64L)
+  record$fingerprint <- tempest:::tempest_resource_fingerprint(record)
+  expect_error(
+    tempest:::tempest_resource_from_data(record),
+    class = "tempest_product_hash_error"
   )
 })
 
@@ -186,6 +268,20 @@ test_that("resource restore requires exact schema 1", {
       info = name
     )
   }
+})
+
+test_that("resource construction owns the current schema version", {
+  expect_error(
+    tempest_resource(
+      resource_kind = "host.document",
+      locator = "documents/no-schema-knob",
+      title = "No schema knob",
+      media_type = "text/plain",
+      schema_version = 1L
+    ),
+    class = "simpleError",
+    regexp = "unused argument"
+  )
 })
 
 test_that("resource restore requires explicit metadata lists", {
@@ -328,10 +424,12 @@ test_that("resource records reject credential values outside evidence content", 
     class = "tempest_product_validation_error"
   )
   expect_error(
-    tempest_research_workspace()$upsert_retrieved_resource(tempest_source(
-      "https://example.org/legacy-title",
-      title = "Legit source\n\n## Forged section"
-    )),
+    tempest_resource(
+      resource_kind = "web",
+      locator = "https://example.org/invalid-title",
+      title = "Legit source\n\n## Forged section",
+      media_type = "text/html"
+    ),
     class = "tempest_product_validation_error"
   )
 
@@ -358,12 +456,12 @@ test_that("resource records reject credential values outside evidence content", 
   )
 
   workspace <- test_research_workspace()
-  legacy <- tempest:::tempest_source(
+  resource <- test_typed_web_resource(
     "https://example.org/token-evidence",
-    content_text = "Captured evidence quotes sk-live-secret verbatim."
+    content = "Captured evidence quotes sk-live-secret verbatim."
   )
-  workspace$upsert_retrieved_resource(legacy)
-  stored <- workspace$get_retrieved_resource(legacy$id)
+  workspace$upsert_retrieved_resource(resource)
+  stored <- workspace$get_retrieved_resource(resource@resource_id)
   expect_match(stored@content, "sk-live-secret", fixed = TRUE)
 })
 
@@ -385,6 +483,85 @@ test_that("resource metadata preserves benign nested fields", {
   )
 
   expect_identical(resource@metadata, metadata)
+})
+
+test_that("source projection prevents metadata from shadowing typed fields", {
+  resource <- tempest_resource(
+    resource_kind = "host.document",
+    locator = "documents/authoritative-projection",
+    title = "Authoritative projection",
+    media_type = "text/plain",
+    storage_ref = "blob.authoritative",
+    origin_connection_id = "connection.authoritative",
+    scope_metadata = list(tenant = "authoritative"),
+    redaction = list(status = "reviewed"),
+    retention = list(policy = "project"),
+    metadata = list(
+      resource_kind = "forged.kind",
+      locator = "forged/locator",
+      media_type = "forged/type",
+      storage_ref = "forged.storage",
+      origin_connection_id = "forged.connection",
+      scope_metadata = list(tenant = "forged"),
+      redaction = list(status = "forged"),
+      retention = list(policy = "forged"),
+      benign = "preserved"
+    )
+  )
+  assert_projection <- function(source) {
+    expect_identical(anyDuplicated(names(source$meta)), 0L)
+    expect_identical(source$meta$resource_kind, resource@resource_kind)
+    expect_identical(source$meta$locator, resource@locator)
+    expect_identical(source$meta$media_type, resource@media_type)
+    expect_identical(source$meta$storage_ref, resource@storage_ref)
+    expect_identical(
+      source$meta$origin_connection_id,
+      resource@origin_connection_id
+    )
+    expect_identical(source$meta$scope_metadata, resource@scope_metadata)
+    expect_identical(source$meta$redaction, resource@redaction)
+    expect_identical(source$meta$retention, resource@retention)
+    expect_identical(source$meta$benign, "preserved")
+  }
+
+  assert_projection(tempest:::tempest_resource_as_source(resource))
+  workspace <- tempest_research_workspace()
+  workspace$upsert_retrieved_resource(resource)
+  assert_projection(workspace$get_retrieved_source(resource@resource_id))
+
+  snapshot <- tempest:::tempest_research_workspace_snapshot(workspace)
+  restored <- tempest:::tempest_research_workspace_restore(snapshot)
+  assert_projection(restored$get_retrieved_source(resource@resource_id))
+  table <- restored$to_tibbles()$retrieved_resources
+  expect_identical(table$resource_kind, resource@resource_kind)
+  expect_identical(table$locator, resource@locator)
+  expect_identical(table$media_type, resource@media_type)
+})
+
+test_that("source projection never exposes nonscalar evidence metadata", {
+  resource <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/nonscalar-source-metadata",
+    title = "Nonscalar source metadata",
+    media_type = "text/html",
+    content = "Captured scalar content",
+    metadata = list(
+      snippet = list("list snippet"),
+      context_text = c("first context", "second context")
+    )
+  )
+
+  live <- tempest:::tempest_resource_as_source(resource)
+  expect_identical(live$snippet, NA_character_)
+  expect_identical(live$context_text, "Captured scalar content")
+
+  workspace <- tempest_research_workspace()
+  workspace$upsert_retrieved_resource(resource)
+  snapshot <- tempest:::tempest_research_workspace_snapshot(workspace)
+  restored <- tempest:::tempest_research_workspace_restore(snapshot)
+  source <- restored$get_retrieved_source(resource@resource_id)
+  expect_identical(source$snippet, NA_character_)
+  expect_identical(source$context_text, "Captured scalar content")
 })
 
 test_that("ResearchWorkspace indexes typed resources without web URLs", {
@@ -476,18 +653,214 @@ test_that("workspace persistence preserves storage-reference-only resources", {
   )
 })
 
-test_that("legacy web sources have typed resource views", {
+test_that("typed web resources retain deterministic source views", {
   store <- test_research_workspace()
-  source <- tempest:::tempest_source(
+  resource <- test_typed_web_resource(
     "https://example.org/evidence",
     title = "Evidence",
-    content_text = "Evidence body"
+    content = "Evidence body"
   )
-  store$upsert_retrieved_resource(source)
+  store$upsert_retrieved_resource(resource)
 
-  resource <- store$get_retrieved_resource(source$id)
-  expect_s7_class(resource, tempest:::TempestResource)
-  expect_equal(resource@resource_kind, "web")
-  expect_equal(resource@locator, source$url)
-  expect_equal(store$get_retrieved_source(source$id)$url, source$url)
+  expect_equal(
+    resource@resource_id,
+    tempest:::tempest_source_id(resource@locator)
+  )
+  expect_identical(
+    store$get_retrieved_resource(resource@resource_id),
+    resource
+  )
+  expect_equal(
+    store$get_retrieved_source(resource@resource_id)$url,
+    resource@locator
+  )
+})
+
+test_that("workspace storage rejects legacy source lists before mutation", {
+  legacy <- list(
+    id = tempest:::tempest_source_id("https://example.org/legacy"),
+    url = "https://example.org/legacy",
+    title = "Legacy source",
+    snippet = "Legacy evidence",
+    content_text = "Legacy evidence",
+    fetched_at = "2026-01-01T00:00:00Z",
+    content_hash = NA_character_,
+    meta = list()
+  )
+  store <- test_research_workspace()
+
+  expect_error(
+    store$upsert_retrieved_resource(legacy),
+    class = "tempest_research_workspace_integrity_error",
+    regexp = "TempestResource"
+  )
+  expect_length(store$list_retrieved_resources(), 0L)
+  expect_error(
+    tempest:::tempest_resource_identity(legacy),
+    class = "tempest_product_validation_error",
+    regexp = "TempestResource"
+  )
+  expect_error(
+    tempest:::tempest_resource_as_source(legacy),
+    class = "tempest_product_validation_error",
+    regexp = "TempestResource"
+  )
+})
+
+test_that("resource boundaries reject TempestResource subclasses", {
+  resource <- test_subclassed_resource()
+  store <- test_research_workspace()
+
+  expect_error(
+    store$upsert_retrieved_resource(resource),
+    class = "tempest_research_workspace_integrity_error",
+    regexp = "exact TempestResource"
+  )
+  expect_length(store$list_retrieved_resources(), 0L)
+  expect_error(
+    tempest:::tempest_resource_identity(resource),
+    class = "tempest_product_validation_error",
+    regexp = "exact TempestResource"
+  )
+  expect_error(
+    tempest:::tempest_resource_as_source(resource),
+    class = "tempest_product_validation_error",
+    regexp = "exact TempestResource"
+  )
+  expect_error(
+    tempest:::tempest_resource_record(resource),
+    class = "tempest_product_validation_error"
+  )
+})
+
+test_that("resource identity and source projection revalidate live data", {
+  tampered <- list(
+    locator = function(resource) {
+      attr(resource, "locator") <- "https://example.org/different-locator"
+      resource
+    },
+    timestamp = function(resource) {
+      attr(resource, "retrieved_at") <- "not-a-timestamp"
+      resource
+    },
+    schema = function(resource) {
+      attr(resource, "schema_version") <- 999L
+      resource
+    },
+    hash = function(resource) {
+      attr(resource, "content_hash") <- strrep("0", 64L)
+      resource
+    },
+    metadata = function(resource) {
+      attr(resource, "metadata") <- list(runtime = new.env())
+      resource
+    }
+  )
+
+  for (name in names(tampered)) {
+    resource <- tampered[[name]](test_typed_web_resource())
+    for (read in list(
+      tempest:::tempest_resource_identity,
+      tempest:::tempest_resource_as_source
+    )) {
+      error <- tryCatch(
+        {
+          read(resource)
+          NULL
+        },
+        error = identity
+      )
+      expect_s3_class(error, "error")
+    }
+  }
+})
+
+test_that("workspace persistence rejects noncanonical live resource slots", {
+  resource <- tempest_resource(
+    resource_kind = " host.document ",
+    locator = " documents/detached-canonical ",
+    title = " Detached canonical resource ",
+    media_type = " text/plain ",
+    content = NULL,
+    storage_ref = " blob.detached-canonical ",
+    retrieved_at = " 2026-08-20T12:00:00Z "
+  )
+  expect_identical(resource@resource_kind, "host.document")
+  expect_identical(resource@locator, "documents/detached-canonical")
+  expect_identical(resource@title, "Detached canonical resource")
+  expect_identical(resource@media_type, "text/plain")
+  expect_identical(resource@storage_ref, "blob.detached-canonical")
+  expect_identical(resource@retrieved_at, "2026-08-20T12:00:00Z")
+
+  workspace <- tempest_research_workspace()
+  workspace$upsert_retrieved_resource(resource)
+  before <- tempest:::tempest_research_workspace_snapshot(workspace)
+  restored <- tempest:::tempest_research_workspace_restore(before)
+  expect_identical(
+    tempest:::tempest_resource_record(
+      restored$get_retrieved_resource(resource@resource_id)
+    ),
+    tempest:::tempest_resource_record(resource)
+  )
+
+  mutated <- list(
+    locator = S7::set_props(
+      resource,
+      locator = paste0(" ", resource@locator)
+    ),
+    title = S7::set_props(
+      resource,
+      title = paste0(resource@title, " ")
+    ),
+    detached_media_type = S7::set_props(
+      resource,
+      media_type = paste0(" ", resource@media_type)
+    )
+  )
+  for (name in names(mutated)) {
+    expect_error(
+      tempest:::tempest_resource_record(mutated[[name]]),
+      class = "tempest_product_validation_error",
+      regexp = "must already be canonical",
+      info = name
+    )
+    expect_error(
+      workspace$upsert_retrieved_resource(mutated[[name]]),
+      class = "tempest_research_workspace_integrity_error",
+      info = name
+    )
+    expect_identical(
+      tempest:::tempest_research_workspace_snapshot(workspace),
+      before,
+      info = name
+    )
+  }
+})
+
+test_that("workspace admission rejects tampered live web identity", {
+  resource <- test_typed_web_resource(
+    "https://example.org/tampered-live-web-id"
+  )
+  attr(resource, "resource_id") <- "S000000000000"
+  store <- test_research_workspace()
+
+  expect_error(
+    store$upsert_retrieved_resource(resource),
+    class = "tempest_research_workspace_integrity_error"
+  )
+  expect_length(store$list_retrieved_resources(), 0L)
+})
+
+test_that("workspace admission rejects tampered live resource schema", {
+  resource <- test_typed_web_resource(
+    "https://example.org/tampered-live-resource-schema"
+  )
+  attr(resource, "schema_version") <- 999L
+  store <- test_research_workspace()
+
+  expect_error(
+    store$upsert_retrieved_resource(resource),
+    class = "tempest_research_workspace_integrity_error"
+  )
+  expect_length(store$list_retrieved_resources(), 0L)
 })

@@ -498,12 +498,12 @@ tempest_storm_state_validate <- function(state) {
       !identical(names(state), fields)
   ) {
     tempest_storm_state_abort(
-      "STORM product state must contain exactly the schema version 4 fields in schema order."
+      "STORM product state must contain exactly the schema version 5 fields in schema order."
     )
   }
-  if (!tempest_exact_integer_scalar_valid(state$schema_version, 4L, 4L)) {
+  if (!tempest_exact_integer_scalar_valid(state$schema_version, 5L, 5L)) {
     tempest_storm_state_abort(
-      "{.field schema_version} must be the supported version `4`."
+      "{.field schema_version} must be the supported version `5`."
     )
   }
   state$topic <- tempest_storm_state_string(state$topic, "topic", TRUE)
@@ -516,7 +516,7 @@ tempest_storm_state_validate <- function(state) {
     "perspectives"
   )
   state$experts <- tryCatch(
-    tempest_validate_experts(state$experts, active_only = FALSE),
+    tempest_validate_experts(state$experts),
     error = function(error) {
       tempest_storm_state_abort(
         "{.field experts} must contain only Tempest expert profiles.",
@@ -639,7 +639,7 @@ tempest_storm_state <- function(
   references = list(),
   stage_records = list(),
   completed_stages = character(),
-  schema_version = 4L
+  schema_version = 5L
 ) {
   tempest_storm_state_validate(list(
     schema_version = schema_version,
@@ -715,7 +715,7 @@ tempest_storm_state_from_record <- function(record) {
       class = "tempest_storm_state_restore_error"
     )
   }
-  if (!identical(schema_version, 4L)) {
+  if (!identical(schema_version, 5L)) {
     tempest_product_unsupported_format_abort(
       "STORM product-state format",
       schema_version,
@@ -728,7 +728,7 @@ tempest_storm_state_from_record <- function(record) {
   }
   if (!identical(names(record), fields)) {
     tempest_storm_state_abort(
-      "STORM product-state records must contain exactly the schema version 4 fields in schema order.",
+      "STORM product-state records must contain exactly the schema version 5 fields in schema order.",
       class = "tempest_storm_state_restore_error"
     )
   }

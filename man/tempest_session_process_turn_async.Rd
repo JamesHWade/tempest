@@ -16,7 +16,7 @@ tempest_session_process_turn_async(
 \item{session}{A \link{TempestSession} object.}
 
 \item{completion_id}{Opaque, process-local completion identifier returned by
-\code{session$request_completion_async()}.}
+\code{tempest_session_request_completion_async()}.}
 
 \item{suggest}{Whether to generate follow-up questions.}
 
@@ -39,3 +39,4 @@ follow-up questions. Enrichment failures are returned as typed notices so
 host applications can choose their own presentation. Stale work is cancelled
 before it can commit later pipeline stages.
 }
+\keyword{internal}

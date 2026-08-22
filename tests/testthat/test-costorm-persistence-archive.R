@@ -24,11 +24,11 @@ test_that("extracted Co-STORM archives require the exact current product", {
 
   invalid_headers <- list(
     old_schema = function(manifest) {
-      manifest$schema_version <- 8L
+      manifest$schema_version <- 9L
       manifest
     },
     future_schema = function(manifest) {
-      manifest$schema_version <- 10L
+      manifest$schema_version <- 11L
       manifest
     },
     wrong_bundle_type = function(manifest) {
@@ -97,8 +97,8 @@ test_that("extracted Co-STORM archives require the exact current product", {
   experts_path <- file.path(credential_sidecar, "experts.json")
   manifest <- tempest:::tempest_product_read_json(manifest_path)
   experts <- tempest:::tempest_product_read_json(experts_path)
-  experts[[1L]]$metadata$api_key <-
-    "sk-proj-sidecar-secret-abcdefghijklmnopqrstuvwxyz"
+  experts[[1L]]$instructions <-
+    "Use sk-proj-sidecar-secret-abcdefghijklmnopqrstuvwxyz"
   tempest:::tempest_product_write_json(experts_path, experts)
   manifest$checksums[["experts.json"]] <-
     tempest:::tempest_product_bundle_checksum(

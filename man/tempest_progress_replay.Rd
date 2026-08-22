@@ -10,7 +10,8 @@ tempest_progress_replay(events, progress)
 \item{events}{A list of \code{tempest_progress_event} objects, or a
 \code{tempest_progress_collector}.}
 
-\item{progress}{Function called once for each event.}
+\item{progress}{Function called once for each event with the canonical
+plain progress record.}
 }
 \value{
 The input events, invisibly.
@@ -18,12 +19,4 @@ The input events, invisibly.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
-\examples{
-events <- list(tempest_progress_event(
-  run_id = "run-1",
-  workflow = "storm",
-  event_type = "workflow",
-  status = "started"
-))
-tempest_progress_replay(events, function(event) event@status)
-}
+\keyword{internal}

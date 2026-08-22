@@ -23,37 +23,37 @@ test_that("scripted STORM resumes its immutable full-run request", {
   )
 
   expect_equal(resumed[outcome_fields], uninterrupted[outcome_fields])
-  expect_identical(fixture$restored$workspace, fixture$restored_store)
+  expect_identical(fixture$restored@workspace, fixture$restored_store)
   expect_equal(
     intersect(
-      names(fixture$restored),
+      names(tempest:::TempestResult@properties),
       c("store", "artifact_catalog", "workflow_run")
     ),
     character()
   )
   expect_identical(
-    fixture$restored$retriever$workspace,
-    fixture$restored$workspace
+    fixture$restored@retriever$workspace,
+    fixture$restored@workspace
   )
   resumed_source <- fake_source(
     url = "https://example.org/resumed-workspace-alias",
     title = "Resumed workspace alias"
   )
   expect_error(
-    fixture$restored$retriever$workspace$upsert_retrieved_resource(
+    fixture$restored@retriever$workspace$upsert_retrieved_resource(
       resumed_source
     ),
     class = "tempest_research_workspace_integrity_error"
   )
-  expect_null(fixture$restored$workspace$get_retrieved_source(
-    resumed_source$id
+  expect_null(fixture$restored@workspace$get_retrieved_source(
+    resumed_source@resource_id
   ))
   expect_identical(
-    fixture$first$manifest@research_run_id,
-    fixture$restored$manifest@research_run_id
+    fixture$first@manifest@research_run_id,
+    fixture$restored@manifest@research_run_id
   )
-  expect_identical(fixture$first$manifest@status, "running")
-  expect_identical(fixture$restored$manifest@status, "succeeded")
+  expect_identical(fixture$first@manifest@status, "running")
+  expect_identical(fixture$restored@manifest@status, "succeeded")
 
   expect_snapshot(baseline_snapshot_json(
     list(

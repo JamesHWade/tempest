@@ -12,7 +12,7 @@ tempest_session_restore_abort <- function(message, parent = NULL) {
 
 #' @keywords internal
 tempest_expert_session_records_from_json <- function(records) {
-  records <- tempest_persistence_exact_records(
+  tempest_persistence_exact_records(
     records,
     tempest_expert_session_record_fields(),
     "session expert-session records",
@@ -20,15 +20,6 @@ tempest_expert_session_records_from_json <- function(records) {
       "tempest_session_restore_error"
     )
   )
-  lapply(records, function(record) {
-    if (!identical(record$allowed_connection_ref_ids, list())) {
-      tempest_session_restore_abort(
-        "Stored product expert-session connection IDs must be an empty array."
-      )
-    }
-    record$allowed_connection_ref_ids <- character()
-    record
-  })
 }
 
 #' @keywords internal
@@ -440,39 +431,22 @@ tempest_session_suggested_questions <- function(value, action = "snapshot") {
     }
   } else {
     value <- value %||% character()
-    if (is.list(value) && is.null(names(value))) {
-      valid <- vapply(
-        value,
-        \(question) {
-          is.character(question) &&
-            length(question) == 1L &&
-            !is.na(question)
-        },
-        logical(1)
-      )
-      if (all(valid)) {
-        value <- unlist(value, use.names = FALSE)
+  }
+  value <- tryCatch(
+    tempest_suggested_questions_validate(value),
+    error = function(error) {
+      if (identical(action, "restore")) {
+        tempest_session_restore_abort(conditionMessage(error))
       }
+      stop(error)
     }
-  }
-  if (!is.character(value) || anyNA(value)) {
-    message <- "Suggested questions must be a character vector without missing values."
-    if (identical(action, "restore")) {
-      tempest_session_restore_abort(message)
-    }
-    tempest_abort(
-      message,
-      class = tempest_session_persistence_error_class(
-        "tempest_session_snapshot_error"
-      )
-    )
-  }
+  )
   tempest_session_credential_free_value(
     value,
     "suggested_questions",
     action
   )
-  unname(value)
+  value
 }
 
 #' @keywords internal
@@ -485,6 +459,7 @@ tempest_session_snapshot_fields <- function() {
     "title",
     "session_id",
     "experts",
+    "retired_expert_ids",
     "transcript",
     "mindmap",
     "report_md",
@@ -496,6 +471,43 @@ tempest_session_snapshot_fields <- function() {
     "expert_sessions",
     "graft_snapshot"
   )
+}
+
+#' @keywords internal
+tempest_session_retired_expert_ids_from_record <- function(value, expert_ids) {
+  valid <- is.list(value) &&
+    !is.data.frame(value) &&
+    is.null(names(value)) &&
+    all(vapply(
+      value,
+      \(id) {
+        rlang::is_string(id) &&
+          !is.na(id) &&
+          is.null(attributes(id)) &&
+          tempest_opaque_identifier_valid(id)
+      },
+      logical(1)
+    ))
+  if (!valid) {
+    tempest_session_restore_abort(
+      "Snapshot retired expert ids must be one exact unnamed string array."
+    )
+  }
+  ids <- if (length(value) == 0L) {
+    character()
+  } else {
+    unname(unlist(value, use.names = FALSE))
+  }
+  if (
+    anyDuplicated(ids) ||
+      !identical(ids, sort(ids, method = "radix")) ||
+      any(!ids %in% expert_ids)
+  ) {
+    tempest_session_restore_abort(
+      "Snapshot retired expert ids must be unique, sorted roster members."
+    )
+  }
+  ids
 }
 
 #' @keywords internal
@@ -644,7 +656,7 @@ tempest_session_assert_persistence_quiescent <- function(
 #'
 #' @param session A [TempestSession] object.
 #' @return A list containing an exact schema-9 session snapshot.
-#' @export
+#' @keywords internal
 tempest_session_snapshot <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_abort(
@@ -657,10 +669,10 @@ tempest_session_snapshot <- function(session) {
   tempest_session_assert_persistence_quiescent(session, action = "snapshot")
   research_manifest <- tryCatch(
     tempest_costorm_manifest_validate(
-      session$manifest,
+      tempest_session_manifest(session),
       session$session_id,
-      session$config,
-      session$workspace
+      tempest_session_config(session),
+      tempest_session_workspace(session)
     ),
     error = function(error) {
       tempest_abort(
@@ -728,18 +740,20 @@ tempest_session_snapshot <- function(session) {
       )
       tempest_stage_records_validate_workspace(
         durable_records,
-        session$workspace,
-        min_support_score = session$config@min_support_score
+        tempest_session_workspace(session),
+        min_support_score = tempest_session_config(session)@min_support_score
       )
       tempest_stage_records_validate_persisted_trust(
         durable_records,
-        session$workspace,
-        min_support_score = session$config@min_support_score
+        tempest_session_workspace(session),
+        min_support_score = tempest_session_config(session)@min_support_score
       )
       tempest_stage_records_validate_workspace_coverage(
         durable_records,
-        session$workspace,
-        require_verification = session$config@citation_policy %in%
+        tempest_session_workspace(session),
+        require_verification = tempest_session_config(
+          session
+        )@citation_policy %in%
           c("claim_verified", "strict")
       )
       tempest_stage_records_validate_product_outputs(
@@ -752,7 +766,7 @@ tempest_session_snapshot <- function(session) {
       )
       tempest_stage_records_validate_claim_provenance(
         durable_records,
-        session$workspace,
+        tempest_session_workspace(session),
         research_manifest@research_run_id,
         session$experts
       )
@@ -777,13 +791,13 @@ tempest_session_snapshot <- function(session) {
         value,
         durable_records,
         prior_records = live_records,
-        trusted_title = session$title
+        trusted_title = tempest_session_title(session)
       )
       tempest_product_report_validate_policy(
         value,
-        session$title,
-        session$workspace,
-        session$config,
+        tempest_session_title(session),
+        tempest_session_workspace(session),
+        tempest_session_config(session),
         durable_records
       )
       value
@@ -812,7 +826,7 @@ tempest_session_snapshot <- function(session) {
     }
   )
   workspace <- tryCatch(
-    tempest_research_workspace_snapshot(session$workspace),
+    tempest_research_workspace_snapshot(tempest_session_workspace(session)),
     error = function(error) {
       tempest_abort(
         "Cannot snapshot an invalid Co-STORM research workspace.",
@@ -829,7 +843,7 @@ tempest_session_snapshot <- function(session) {
   )
   tempest_session_mindmap_assert_binding(
     mindmap,
-    session$workspace,
+    tempest_session_workspace(session),
     action = "snapshot"
   )
   mindmap$nodes <- lapply(mindmap$nodes, function(node) {
@@ -839,12 +853,12 @@ tempest_session_snapshot <- function(session) {
   suggested_questions <- tempest_session_suggested_questions(
     tempest_session_suggestions(session)
   )
-  graft_snapshot <- session$workspace$graft_snapshot
+  graft_snapshot <- tempest_session_workspace(session)$graft_snapshot
   tryCatch(
     tempest_graft_snapshot_assert_binding(
       graft_snapshot,
       research_manifest@knowledge_snapshot,
-      session$workspace,
+      tempest_session_workspace(session),
       tempest_session_persistence_error_class(
         "tempest_session_snapshot_error"
       ),
@@ -864,13 +878,13 @@ tempest_session_snapshot <- function(session) {
     tempest_product_authority_validate(
       research_manifest,
       durable_records,
-      session$workspace,
+      tempest_session_workspace(session),
       report_md = report_md,
       report_reference = report_reference,
-      config = session$config,
+      config = tempest_session_config(session),
       experts = session$experts,
       expert_sessions = expert_sessions,
-      product_state = list(title = session$title),
+      product_state = list(title = tempest_session_title(session)),
       require_publishable = !is.null(report_md)
     ),
     error = function(error) {
@@ -885,16 +899,17 @@ tempest_session_snapshot <- function(session) {
   )
 
   snapshot <- list(
-    schema_version = 9L,
+    schema_version = 10L,
     package_version = tryCatch(
       as.character(utils::packageVersion("tempest")),
       error = function(e) NA_character_
     ),
     research_manifest = tempest_research_manifest_record(research_manifest),
     topic = session$topic,
-    title = session$title,
+    title = tempest_session_title(session),
     session_id = session$session_id,
     experts = tempest_expert_records(session$experts),
+    retired_expert_ids = as.list(tempest_session_retired_expert_ids(session)),
     transcript = tempest_session_transcript_record(
       session$transcript,
       action = "snapshot"
@@ -973,16 +988,9 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
     }
   }
   for (expert_session in expert_sessions) {
-    if (
-      !identical(expert_session$allowed_connection_ref_ids, character()) ||
-        !identical(expert_session$grants, list()) ||
-        !tempest_ledger_timestamp_valid(expert_session$created_at)
-    ) {
+    if (!tempest_ledger_timestamp_valid(expert_session$created_at)) {
       tempest_session_restore_abort(
-        paste0(
-          "Expert sessions require exact empty product capability fields ",
-          "and one canonical creation timestamp."
-        )
+        "Expert sessions require one canonical creation timestamp."
       )
     }
     expert_ids <- vapply(
@@ -1036,9 +1044,6 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
       "expert_id",
       "expert_version",
       "expert_fingerprint",
-      "model_role",
-      "allowed_connection_ref_ids",
-      "grants",
       "created_at"
     )) {
       restored_value <- restored[[field]]
@@ -1085,7 +1090,7 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #'   future execution when `program_set` contains governed procedures. It is
 #'   never reconstructed from or written to persistence.
 #' @return A restored [TempestSession].
-#' @export
+#' @keywords internal
 tempest_session_restore <- function(
   snapshot,
   config = tempest_config(),
@@ -1120,7 +1125,7 @@ tempest_session_restore_internal <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 9L)) {
+  if (!identical(schema_version, 10L)) {
     tempest_product_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -1157,7 +1162,7 @@ tempest_session_restore_internal <- function(
   )
   tempest_research_workspace_require_current_schema(
     snapshot$workspace,
-    "Schema 9 session workspace",
+    "Schema 10 session workspace",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -1181,13 +1186,17 @@ tempest_session_restore_internal <- function(
     )
   }
   experts <- tempest_experts_from_records(
-    snapshot$experts %||% list(),
+    snapshot$experts,
     what = "session expert profiles",
     class = tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
   expert_ids <- vapply(experts, \(expert) expert@expert_id, character(1))
+  retired_expert_ids <- tempest_session_retired_expert_ids_from_record(
+    snapshot$retired_expert_ids,
+    expert_ids
+  )
   research_manifest <- tryCatch(
     tempest_research_manifest_from_record(snapshot$research_manifest),
     error = function(error) {
@@ -1404,6 +1413,10 @@ tempest_session_restore_internal <- function(
     manifest = research_manifest
   )
 
+  for (expert_id in retired_expert_ids) {
+    tempest_session_expert_manager(session)$retire_expert(expert_id)
+  }
+
   tempest_session_restore_product_state(
     session,
     title = snapshot$title,
@@ -1581,7 +1594,7 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_save()` writes a schema-versioned directory bundle for a
-#' [TempestSession]. The exact current format is schema 9, with no legacy or
+#' [TempestSession]. The exact current format is schema 10, with no legacy or
 #' compatibility writer. The bundle stores the research manifest, authoritative
 #' workspace, explicit stage-record history, optional immutable Graft snapshot,
 #' and narrow report product. Every declared file is checksummed, and the
@@ -1631,6 +1644,11 @@ tempest_session_save <- function(
       staging_dir,
       "experts.json",
       snapshot$experts
+    ),
+    tempest_session_bundle_write_json(
+      staging_dir,
+      "retired_expert_ids.json",
+      snapshot$retired_expert_ids
     ),
     tempest_session_bundle_write_json(
       staging_dir,
@@ -1766,27 +1784,17 @@ tempest_session_save <- function(
 tempest_session_bundle_optional_json <- function(
   path,
   default = NULL,
-  what,
-  partial_recovery = FALSE
+  what
 ) {
   if (!file.exists(path)) {
     return(default)
   }
-  tryCatch(
-    tempest_product_read_json(
-      path,
-      what = what,
-      class = tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      )
-    ),
-    error = function(error) {
-      if (!isTRUE(partial_recovery)) {
-        stop(error)
-      }
-      tempest_warn("Skipping malformed {what} during partial recovery.")
-      default
-    }
+  tempest_product_read_json(
+    path,
+    what = what,
+    class = tempest_session_persistence_error_class(
+      "tempest_session_restore_error"
+    )
   )
 }
 
@@ -1961,8 +1969,7 @@ tempest_session_bundle_workspace_fields <- function() {
 #' @keywords internal
 tempest_session_bundle_validate_manifest <- function(
   bundle_dir,
-  manifest,
-  partial_recovery = FALSE
+  manifest
 ) {
   schema_version <- tempest_persistence_schema_version(
     manifest$schema_version %||% NA_integer_,
@@ -1971,7 +1978,7 @@ tempest_session_bundle_validate_manifest <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 9L)) {
+  if (!identical(schema_version, 10L)) {
     tempest_product_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -1995,7 +2002,7 @@ tempest_session_bundle_validate_manifest <- function(
       !identical(manifest$bundle_status %||% "", "complete")
   ) {
     tempest_session_restore_abort(
-      "Schema 9 Co-STORM bundle envelope is not complete."
+      "Schema 10 Co-STORM bundle envelope is not complete."
     )
   }
   if (
@@ -2003,25 +2010,25 @@ tempest_session_bundle_validate_manifest <- function(
       !is.list(manifest$workspace)
   ) {
     tempest_session_restore_abort(
-      "Schema 9 Co-STORM bundle is missing research identity metadata."
+      "Schema 10 Co-STORM bundle is missing research identity metadata."
     )
   }
   workspace_fields <- tempest_session_bundle_workspace_fields()
   if (!identical(names(manifest$workspace), workspace_fields)) {
     tempest_session_restore_abort(
-      "Schema 9 Co-STORM bundle has invalid workspace identity metadata."
+      "Schema 10 Co-STORM bundle has invalid workspace identity metadata."
     )
   }
   tempest_research_workspace_require_current_schema(
     manifest$workspace,
-    "Schema 9 Co-STORM workspace identity",
+    "Schema 10 Co-STORM workspace identity",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 9 Co-STORM file inventory",
+    "Schema 10 Co-STORM file inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -2043,6 +2050,7 @@ tempest_session_bundle_validate_manifest <- function(
   )
   core_required <- c(
     "experts.json",
+    "retired_expert_ids.json",
     "expert_sessions.json",
     "transcript.json",
     "mindmap.json",
@@ -2090,7 +2098,7 @@ tempest_session_bundle_validate_manifest <- function(
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 9 Co-STORM checksum inventory",
+    "Schema 10 Co-STORM checksum inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -2238,21 +2246,11 @@ tempest_session_bundle_validate_manifest <- function(
   if (length(fatal_problems) > 0L) {
     tempest_session_restore_abort(paste(fatal_problems, collapse = " "))
   }
-  if (length(invalid_optional) > 0L && !isTRUE(partial_recovery)) {
+  if (length(invalid_optional) > 0L) {
     tempest_session_restore_abort(paste0(
       "Optional presentation files failed integrity validation: ",
       paste(invalid_optional, collapse = ", "),
       "."
-    ))
-  }
-  if (length(invalid_optional) > 0L) {
-    tempest_warn(c(
-      "Recovering an incomplete Tempest session bundle.",
-      i = paste0(
-        "Skipping optional presentation files: ",
-        paste(invalid_optional, collapse = ", "),
-        "."
-      )
     ))
   }
   invisible(setdiff(files, invalid_optional))
@@ -2267,7 +2265,7 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 9L)) {
+  if (!identical(schema_version, 10L)) {
     tempest_product_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -2318,6 +2316,10 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
     )
   )
   expert_ids <- vapply(experts, \(expert) expert@expert_id, character(1))
+  tempest_session_retired_expert_ids_from_record(
+    snapshot$retired_expert_ids,
+    expert_ids
+  )
   research_manifest <- tryCatch(
     tempest_research_manifest_from_record(snapshot$research_manifest),
     error = function(error) {
@@ -2468,7 +2470,6 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
 #' @keywords internal
 tempest_costorm_bundle_read <- function(
   path,
-  partial_recovery = FALSE,
   archive = FALSE
 ) {
   if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
@@ -2544,7 +2545,7 @@ tempest_costorm_bundle_read <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 9L)) {
+  if (!identical(schema_version, 10L)) {
     tempest_product_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -2555,8 +2556,7 @@ tempest_costorm_bundle_read <- function(
   }
   declared_files <- tempest_session_bundle_validate_manifest(
     bundle_dir,
-    manifest,
-    partial_recovery = partial_recovery
+    manifest
   )
   strict_json <- function(rel_path, what) {
     tempest_product_read_json(
@@ -2574,8 +2574,7 @@ tempest_costorm_bundle_read <- function(
     tempest_session_bundle_optional_json(
       file.path(bundle_dir, rel_path),
       default = default,
-      what = what,
-      partial_recovery = partial_recovery
+      what = what
     )
   }
   report_md <- if ("report.md" %in% declared_files) {
@@ -2612,6 +2611,10 @@ tempest_costorm_bundle_read <- function(
     experts = strict_json(
       "experts.json",
       what = "session expert profiles"
+    ),
+    retired_expert_ids = strict_json(
+      "retired_expert_ids.json",
+      what = "retired expert roster"
     ),
     transcript = strict_json(
       "transcript.json",
@@ -2697,11 +2700,6 @@ tempest_costorm_archive_read <- function(path) {
 #'   tools.
 #' @param progress Optional callback for future `tempest_progress_event`
 #'   objects.
-#' @param partial_recovery Whether to allow explicitly requested recovery of
-#'   the optional `artifacts/suggested_questions.json` presentation file when
-#'   it fails integrity checks. All durable state, including stage records,
-#'   experts, Workspace, report, and Graft snapshot state, remains mandatory
-#'   and must pass integrity checks.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the bundle. If `NULL`, the builtin set is used.
 #' @param knowledge_view Optional transient immutable Graft view required by
@@ -2713,7 +2711,6 @@ tempest_session_resume <- function(
   path,
   config = tempest_config(),
   progress = NULL,
-  partial_recovery = FALSE,
   program_set = NULL,
   knowledge_view = NULL
 ) {
@@ -2721,7 +2718,6 @@ tempest_session_resume <- function(
     path = path,
     config = config,
     progress = progress,
-    partial_recovery = partial_recovery,
     program_set = program_set,
     knowledge_view = knowledge_view
   )
@@ -2732,14 +2728,10 @@ tempest_session_resume_internal <- function(
   path,
   config = tempest_config(),
   progress = NULL,
-  partial_recovery = FALSE,
   program_set = NULL,
   knowledge_view = NULL
 ) {
-  bundle <- tempest_costorm_bundle_read(
-    path,
-    partial_recovery = partial_recovery
-  )
+  bundle <- tempest_costorm_bundle_read(path)
   tempest_session_restore_internal(
     bundle$snapshot,
     config = config,

@@ -1,4 +1,4 @@
-test_that("schema 7 STORM declared JSON fails closed", {
+test_that("schema 8 STORM declared JSON fails closed", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
@@ -14,7 +14,6 @@ test_that("schema 7 STORM declared JSON fails closed", {
         key_questions = "Is every artifact valid JSON?"
       )),
       experts = list(tempest_expert(
-        expert_id = "expert.strict-storm",
         name = "Strict STORM Expert",
         title = "Persistence analyst",
         description = "Checks strict STORM product JSON.",
@@ -68,7 +67,7 @@ test_that("schema 7 STORM declared JSON fails closed", {
   }
 })
 
-test_that("schema 7 manifests require files implied by completed stages", {
+test_that("schema 8 manifests require files implied by completed stages", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
@@ -84,7 +83,6 @@ test_that("schema 7 manifests require files implied by completed stages", {
         key_questions = "Which files prove completion?"
       )),
       experts = list(tempest_expert(
-        expert_id = "expert.stage-files",
         name = "Stage File Expert",
         title = "Persistence reviewer",
         description = "Checks stage-specific persisted product files.",
@@ -151,4 +149,37 @@ test_that("schema 7 manifests require files implied by completed stages", {
     ),
     class = "tempest_run_restore_error"
   )
+})
+
+test_that("current STORM state readers require core sidecars", {
+  metadata <- list(
+    schema_version = 8L,
+    topic = "Required sidecars",
+    title = "Required sidecars",
+    requested_steps = as.list(tempest:::tempest_storm_stage_order()),
+    completed_stages = list()
+  )
+  config <- tempest_config()
+  workspace <- tempest_research_workspace()
+
+  for (missing in c("experts", "references", "stage_records")) {
+    run_dir <- withr::local_tempdir()
+    paths <- tempest:::tempest_storm_artifact_paths(run_dir)
+    tempest:::tempest_product_write_json(paths$experts, list())
+    tempest:::tempest_product_write_json(paths$references, list())
+    tempest:::tempest_product_write_json(paths$stage_records, list())
+    unlink(paths[[missing]])
+
+    expect_error(
+      tempest:::tempest_storm_read_state(
+        paths,
+        metadata,
+        path_is_declared = function(path) TRUE,
+        workspace,
+        config
+      ),
+      class = "tempest_run_restore_error",
+      info = missing
+    )
+  }
 })

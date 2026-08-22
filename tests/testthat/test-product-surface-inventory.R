@@ -1,192 +1,80 @@
-test_that("product entry points have exact source owners", {
+test_that("typed evidence storage has no legacy input path", {
   context <- test_source_inventory_context()
-  entry_points <- c(
-    run_app = "app.R",
-    tempest_run = "storm.R",
-    tempest_session = "costorm.R",
-    tempest_report_md = "product-report.R",
-    tempest_session_report_md = "costorm-report.R",
-    tempest_product_report_reference = "product-report.R",
-    tempest_product_report_reference_validate = "product-report.R",
-    tempest_task = "evals.R",
-    tempest_trajectory_review = "trajectory-review.R",
-    tempest_costorm_task = "evals.R",
-    tempest_promotion_bundle = "promotion-types.R",
-    tempest_research_workspace_snapshot = "research-workspace-persistence.R",
-    tempest_research_workspace_restore = "research-workspace-persistence.R",
-    tempest_session_snapshot = "costorm-persistence.R",
-    tempest_session_restore = "costorm-persistence.R",
-    tempest_session_save = "costorm-persistence.R",
-    tempest_session_resume = "costorm-persistence.R",
-    tempest_costorm_archive_read = "costorm-persistence.R",
-    tempest_storm_load_artifacts = "storm-persistence.R",
-    tempest_storm_save_artifacts = "storm-persistence.R",
-    tempest_shiny_store = "shiny-adapter.R",
-    tempest_shiny_ui = "shiny-adapter.R",
-    tempest_shiny_server = "shiny-adapter.R"
+  retired <- c(
+    "tempest_source",
+    "tempest_validate_source",
+    "tempest_source_as_resource"
   )
+  namespace <- asNamespace("tempest")
+  retired_present <- vapply(
+    retired,
+    exists,
+    logical(1),
+    envir = namespace,
+    inherits = FALSE
+  )
+
+  workspace <- get(
+    "ResearchWorkspace",
+    envir = namespace,
+    inherits = FALSE
+  )
+  upsert <- workspace$public_methods$upsert_retrieved_resource
+  upsert_body <- paste(deparse(body(upsert)), collapse = "\n")
+  resource_identity <- get(
+    "tempest_resource_identity",
+    envir = namespace,
+    inherits = FALSE
+  )
+  identity_body <- paste(deparse(body(resource_identity)), collapse = "\n")
+  exact_resource <- get(
+    "tempest_is_exact_resource",
+    envir = namespace,
+    inherits = FALSE
+  )
+  exact_resource_body <- paste(
+    deparse(body(exact_resource)),
+    collapse = "\n"
+  )
+
+  expect_identical(unname(retired_present), rep(FALSE, length(retired)))
+  expect_identical(names(formals(upsert)), "resource")
+  expect_match(
+    upsert_body,
+    "tempest_is_exact_resource(resource)",
+    fixed = TRUE
+  )
+  expect_match(
+    exact_resource_body,
+    "identical(S7::S7_class(x), TempestResource)",
+    fixed = TRUE
+  )
+  expect_no_match(upsert_body, "tempest_source")
+  expect_identical(names(formals(resource_identity)), "resource")
+  expect_no_match(identity_body, "resource\\$id")
+
   if (identical(context$mode, "source")) {
     definitions <- test_source_inventory_definitions(context)
-    counts <- vapply(
-      names(entry_points),
-      function(name) sum(definitions$name == name),
-      integer(1)
-    )
+    expect_disjoint(definitions$name, retired)
 
-    expect_identical(unname(counts), rep(1L, length(entry_points)))
-    rows <- match(names(entry_points), definitions$name)
-    expect_identical(definitions$owner[rows], unname(entry_points))
-  } else {
-    namespace <- asNamespace("tempest")
-    bindings <- vapply(
-      names(entry_points),
-      function(name) {
-        exists(name, envir = namespace, inherits = FALSE) &&
-          is.function(get(name, envir = namespace, inherits = FALSE))
-      },
-      logical(1)
+    r_files <- list.files(
+      file.path(context$root, "R"),
+      pattern = "[.]R$",
+      full.names = TRUE
     )
-    expected_formals <- list(
-      run_app = "...",
-      tempest_run = c(
-        "topic",
-        "config",
-        "retriever",
-        "knowledge_view",
-        "n_experts",
-        "experts",
-        "research_strategy",
-        "max_rounds",
-        "max_questions_per_perspective",
-        "parallel_research",
-        "parallel_writing",
-        "program_set",
-        "steps",
-        "output_dir",
-        "resume",
-        "run_id",
-        "remove_duplicate",
-        "progress",
-        "verbose"
-      ),
-      tempest_session = c(
-        "topic",
-        "config",
-        "n_experts",
-        "experts",
-        "retriever",
-        "progress",
-        "session_id",
-        "program_set",
-        "knowledge_view"
-      ),
-      tempest_report_md = c(
-        "title",
-        "body",
-        "workspace",
-        "citation_policy",
-        "on_unsupported_claim",
-        "min_support_score"
-      ),
-      tempest_session_report_md = "session",
-      tempest_product_report_reference = "value",
-      tempest_product_report_reference_validate = c("reference", "value"),
-      tempest_task = c(
-        "dataset",
-        "solver",
-        "scorer",
-        "scorer_chat",
-        "config",
-        "program_set",
-        "knowledge_view",
-        "..."
-      ),
-      tempest_trajectory_review = c(
-        "research",
-        "promotion_bundle",
-        "promotion_receipt"
-      ),
-      tempest_costorm_task = c(
-        "dataset",
-        "config",
-        "max_turns",
-        "solver",
-        "scorer",
-        "scorer_chat",
-        "program_set",
-        "knowledge_view",
-        "..."
-      ),
-      tempest_promotion_bundle = c("research", "claim_ids"),
-      tempest_research_workspace_snapshot = "workspace",
-      tempest_research_workspace_restore = c(
-        "snapshot",
-        "workspace",
-        "graft_snapshot"
-      ),
-      tempest_session_snapshot = "session",
-      tempest_session_restore = c(
-        "snapshot",
-        "config",
-        "progress",
-        "program_set",
-        "knowledge_view"
-      ),
-      tempest_session_save = c("session", "path", "overwrite"),
-      tempest_session_resume = c(
-        "path",
-        "config",
-        "progress",
-        "partial_recovery",
-        "program_set",
-        "knowledge_view"
-      ),
-      tempest_costorm_archive_read = "path",
-      tempest_storm_load_artifacts = c(
-        "run_dir",
-        "workspace",
-        "config",
-        "program_set",
-        "run_id"
-      ),
-      tempest_storm_save_artifacts = c(
-        "run_dir",
-        "workspace",
-        "state",
-        "research_manifest",
-        "program_set",
-        "config",
-        "steps"
-      ),
-      tempest_shiny_store = character(),
-      tempest_shiny_ui = c("id", "panels", "show_config"),
-      tempest_shiny_server = c(
-        "id",
-        "config",
-        "store",
-        "panels",
-        "experts",
-        "session_id",
-        "program_set",
-        "knowledge_view"
-      )
+    source <- paste(
+      unlist(lapply(r_files, readLines, warn = FALSE)),
+      collapse = "\n"
     )
-    actual_formals <- lapply(
-      names(expected_formals),
-      function(name) {
-        formal_names <- names(formals(get(
-          name,
-          envir = namespace,
-          inherits = FALSE
-        )))
-        if (is.null(formal_names)) character() else formal_names
-      }
-    )
-    names(actual_formals) <- names(expected_formals)
-
-    expect_identical(unname(bindings), rep(TRUE, length(entry_points)))
-    expect_identical(names(expected_formals), names(entry_points))
-    expect_identical(actual_formals, expected_formals)
+    forbidden <- paste0("\\b", retired, "\\b")
+    present <- retired[vapply(
+      forbidden,
+      grepl,
+      logical(1),
+      x = source,
+      perl = TRUE
+    )]
+    expect_identical(present, character())
   }
 })
 

@@ -5,8 +5,8 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     facts = list(list(
       claim = "The session owns ProgramSet-bound extraction.",
       sources = list(list(
-        source_id = source$id,
-        quote = source$content_text
+        source_id = source@resource_id,
+        quote = source@content
       )),
       confidence = "high"
     ))
@@ -14,7 +14,7 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   moderator <- fake_chat(
     text = list(paste0(
       "ProgramSet-bound extraction [",
-      source$id,
+      source@resource_id,
       "]."
     ))
   )
@@ -40,22 +40,36 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     "Research session",
     config = config,
     experts = list(expert),
-    session_id = "research-session-1",
-    program_set = program_set
+    session_id = "research-session-1"
   )
 
-  expect_r6_class(session$workspace, "ResearchWorkspace")
-  expect_identical(session$retriever$workspace, session$workspace)
-  expect_identical(session$session_id, session$manifest@research_run_id)
-  expect_identical(session$manifest@research_run_id, "research-session-1")
-  expect_identical(session$manifest@mode, "costorm")
-  expect_identical(session$manifest@status, "running")
+  expect_r6_class(
+    tempest:::tempest_session_workspace(session),
+    "ResearchWorkspace"
+  )
   expect_identical(
-    session$manifest@config_digest,
+    tempest:::tempest_session_retriever(session)$workspace,
+    tempest:::tempest_session_workspace(session)
+  )
+  expect_identical(
+    session$session_id,
+    tempest:::tempest_session_manifest(session)@research_run_id
+  )
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@research_run_id,
+    "research-session-1"
+  )
+  expect_identical(tempest:::tempest_session_manifest(session)@mode, "costorm")
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "running"
+  )
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@config_digest,
     tempest_research_config_digest(config)
   )
   expect_identical(
-    session$manifest@programs,
+    tempest:::tempest_session_manifest(session)@programs,
     tempest:::tempest_program_set_manifest_programs(program_set)
   )
   stages <- tempest:::tempest_program_set_stages()
@@ -87,20 +101,21 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     names(programs$extract_claims$trace_context),
     "program_artifact_id"
   )
-  expect_identical(session$manifest@knowledge_snapshot, list())
-  expect_identical(session$manifest@runtime, list())
-  expect_identical(session$manifest@traces, list())
-  expect_identical(session$manifest@deliverables, list())
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@knowledge_snapshot,
+    list()
+  )
+  expect_identical(tempest:::tempest_session_manifest(session)@runtime, list())
+  expect_identical(tempest:::tempest_session_manifest(session)@traces, list())
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@deliverables,
+    list()
+  )
 
-  original_retriever <- session$retriever
+  original_retriever <- tempest:::tempest_session_retriever(session)
   replacement <- tempest_research_workspace()
   expect_error(
     session$topic <- "Replacement topic",
-    class = "tempest_session_error",
-    regexp = "fixed when the session is created"
-  )
-  expect_error(
-    session$config <- tempest_config(),
     class = "tempest_session_error",
     regexp = "fixed when the session is created"
   )
@@ -109,42 +124,56 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     class = "tempest_session_error",
     regexp = "fixed when the session is created"
   )
-  expect_error(
-    session$retriever <- tempest_retriever(config = config),
-    class = "tempest_session_error",
-    regexp = "fixed when the session is created"
+  expect_setequal(
+    intersect(
+      names(session),
+      c("config", "retriever", "workspace", "manifest", "events", "title")
+    ),
+    character()
   )
+  expect_error(session$workspace <- replacement)
+  mutated_config <- tempest:::tempest_session_config(session)
+  mutated_config@max_sources <- config@max_sources + 1L
+  expect_identical(tempest:::tempest_session_config(session), config)
   expect_error(
-    session$workspace <- replacement,
-    class = "tempest_session_error",
-    regexp = "fixed when the session is created"
-  )
-  expect_error(
-    session$config@max_sources <- config@max_sources + 1L,
-    class = "tempest_session_error"
-  )
-  expect_error(
-    session$retriever$workspace <- replacement,
+    tempest:::tempest_session_retriever(session)$workspace <- replacement,
     class = "tempest_retriever_identity_error"
   )
-  expect_error(
-    session$manifest@status <- "succeeded",
-    class = "tempest_session_error"
+  mutated_manifest <- tempest:::tempest_session_manifest(session)
+  mutated_manifest@status <- "succeeded"
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "running"
   )
   expect_identical(session$topic, "Research session")
-  expect_identical(session$config, config)
+  expect_identical(tempest:::tempest_session_config(session), config)
   expect_identical(session$session_id, "research-session-1")
-  expect_identical(session$retriever, original_retriever)
-  expect_identical(session$retriever$workspace, session$workspace)
-  expect_identical(session$manifest@status, "running")
-
-  expect_no_error(session$workspace$upsert_retrieved_resource(source))
   expect_identical(
-    session$workspace$get_retrieved_source(source$id)$id,
-    source$id
+    tempest:::tempest_session_retriever(session),
+    original_retriever
+  )
+  expect_identical(
+    tempest:::tempest_session_retriever(session)$workspace,
+    tempest:::tempest_session_workspace(session)
+  )
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "running"
+  )
+
+  expect_no_error(tempest:::tempest_session_workspace(
+    session
+  )$upsert_retrieved_resource(source))
+  expect_identical(
+    tempest:::tempest_session_workspace(session)$get_retrieved_source(
+      source@resource_id
+    )$id,
+    source@resource_id
   )
   completion <- await_tempest_promise(
-    session$request_completion_async("What does the bound source establish?")
+    session$.__enclos_env__$private$request_completion_async(
+      "What does the bound source establish?"
+    )
   )
   expect_null(completion$error)
   processed <- withCallingHandlers(
@@ -159,7 +188,9 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   )
   expect_null(processed$error)
   expect_equal(
-    session$workspace$list_proposed_claims()[[1]]@claim_text,
+    tempest:::tempest_session_workspace(session)$list_proposed_claims()[[
+      1
+    ]]@claim_text,
     "The session owns ProgramSet-bound extraction."
   )
   extraction_records <- tempest:::tempest_session_stage_records(session)
@@ -168,16 +199,25 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
   expect_identical(extraction_records[[1]]@status, "succeeded")
   expect_identical(
     unlist(extraction_records[[1]]@output_reference$ids),
-    session$workspace$list_proposed_claims()[[1]]@claim_id
+    tempest:::tempest_session_workspace(session)$list_proposed_claims()[[
+      1
+    ]]@claim_id
   )
 
-  session$add_turn("User", "user", "What evidence is available?")
+  session$.__enclos_env__$private$add_turn(
+    "User",
+    "user",
+    "What evidence is available?"
+  )
   expect_match(
-    session$transcript_markdown(),
+    session$.__enclos_env__$private$transcript_markdown(),
     "What evidence is available?",
     fixed = TRUE
   )
-  expect_identical(session$manifest@status, "running")
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "running"
+  )
 })
 
 test_that("Co-STORM keeps its stage ledger private and mutation isolated", {
@@ -295,7 +335,9 @@ test_that("Co-STORM mind maps ignore raw chat output", {
   original <- session$mindmap
 
   expect_no_error(
-    session$update_mindmap("An unsupported finding appeared.")
+    session$.__enclos_env__$private$update_mindmap(
+      "An unsupported finding appeared."
+    )
   )
   expect_identical(session$mindmap, original)
   expect_length(mindmap_chat$.calls(), 0L)
@@ -333,7 +375,9 @@ test_that("automatic Co-STORM personas record the exact product attempt", {
   expect_identical(records[[1]]@status, "succeeded")
   expect_identical(
     records[[1]]@program_artifact_id,
-    session$manifest@programs$personas$program_artifact_id
+    tempest:::tempest_session_manifest(
+      session
+    )@programs$personas$program_artifact_id
   )
   expect_identical(
     unlist(records[[1]]@output_reference$ids),
@@ -354,7 +398,9 @@ test_that("Co-STORM snapshots reject mutated live ProgramSets", {
       name = "Program Mutation Expert"
     ))
   )
-  expected_id <- session$manifest@programs$extract_claims$program_artifact_id
+  expected_id <- tempest:::tempest_session_manifest(
+    session
+  )@programs$extract_claims$program_artifact_id
   program_set <- tempest:::tempest_session_program_set(session)
   module <- program_set@programs$extract_claims
 
@@ -495,19 +541,21 @@ test_that("Co-STORM restoration preserves manifest identity", {
     program_set = program_set,
     manifest = manifest
   )
-  expect_identical(session$manifest, manifest)
+  expect_identical(tempest:::tempest_session_manifest(session), manifest)
   expect_identical(session$session_id, manifest@research_run_id)
   expect_null(tempest:::tempest_session_report_value(session))
-  expect_identical(session$manifest@status, "running")
+  expect_identical(
+    tempest:::tempest_session_manifest(session)@status,
+    "running"
+  )
+  expect_false("manifest" %in% names(session))
   expect_error(
     session$manifest <- tempest_research_manifest_update(
       manifest,
       status = "succeeded"
-    ),
-    class = "tempest_session_error",
-    regexp = "immutable"
+    )
   )
-  expect_identical(session$manifest, manifest)
+  expect_identical(tempest:::tempest_session_manifest(session), manifest)
 })
 
 test_that("Co-STORM restoration rejects mismatched manifests", {

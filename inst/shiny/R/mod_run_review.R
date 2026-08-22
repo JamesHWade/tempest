@@ -995,7 +995,7 @@ run_review_progress_stage_value <- function(value, workflow, kind) {
   if (!workflow %in% c("storm", "costorm")) {
     return("redacted")
   }
-  allowed <- names(tempest::tempest_progress_labels(workflow, kind = kind))
+  allowed <- names(tempest:::tempest_progress_labels(workflow, kind = kind))
   run_review_progress_closed_value(value, allowed)
 }
 

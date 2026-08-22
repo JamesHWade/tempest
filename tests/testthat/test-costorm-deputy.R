@@ -1,6 +1,7 @@
 test_that("moderator delegates through persistent Deputy expert execution", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("ellmer")
+  expert <- test_expert(name = "Deputy Expert")
 
   moderator_chat <- local({
     state <- new.env(parent = emptyenv())
@@ -54,7 +55,7 @@ test_that("moderator delegates through persistent Deputy expert execution", {
             id = paste0("moderator-delegation-", delegation_number),
             name = "delegate_to_expert",
             arguments = list(
-              expert_id = "expert.deputy-integration",
+              expert_id = expert@expert_id,
               question = paste("Evidence question", delegation_number)
             ),
             tool = tool
@@ -156,10 +157,6 @@ test_that("moderator delegates through persistent Deputy expert execution", {
       }
       fake_chat()
     }
-  )
-  expert <- test_expert(
-    expert_id = "expert.deputy-integration",
-    name = "Deputy Expert"
   )
   session <- tempest_session(
     "Deputy integration",
@@ -295,22 +292,29 @@ test_that("unseen-source questions expose their moderator Deputy execution", {
     "Unseen evidence",
     config = config,
     experts = list(test_expert(
-      expert_id = "expert.unseen",
       name = "Unseen Evidence Expert"
     ))
   )
 
-  expect_null(session$surface_unseen_information())
+  expect_null(session$.__enclos_env__$private$surface_unseen_information())
   expect_length(tempest:::tempest_session_deputy_traces(session), 0L)
   expect_length(moderator_chat$.calls(), 0L)
 
-  session$workspace$upsert_retrieved_resource(tempest:::tempest_source(
-    url = "https://example.org/unseen-deputy",
+  tempest:::tempest_session_workspace(
+    session
+  )$upsert_retrieved_resource(tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/unseen-deputy",
     title = "Unseen Deputy source",
-    snippet = "An unseen finding changes the evidence map.",
-    content_text = "An unseen finding changes the evidence map."
+    media_type = "text/html",
+    content = "An unseen finding changes the evidence map.",
+    metadata = list(
+      snippet = "An unseen finding changes the evidence map."
+    )
   ))
-  surfaced <- session$surface_unseen_information(max_questions = 1L)
+  surfaced <- session$.__enclos_env__$private$surface_unseen_information(
+    max_questions = 1L
+  )
   expect_named(
     surfaced,
     c(
@@ -388,23 +392,27 @@ test_that("synchronous warmup binds one correlation across Deputy and stage", {
     }
     fake_chat()
   })
+  expert <- test_expert(
+    name = "Dr. Sync Warmup",
+    initial_questions = "What does the source establish?"
+  )
   session <- tempest_session(
     "Synchronous Deputy warmup",
     config = cfg,
-    experts = list(test_expert(
-      expert_id = "expert.sync-warmup",
-      name = "Dr. Sync Warmup",
-      initial_questions = "What does the source establish?"
-    ))
+    experts = list(expert)
   )
-  source <- tempest:::tempest_source(
-    url = "https://example.org/sync-warmup",
+  source <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/sync-warmup",
     title = "Synchronous warmup source",
-    snippet = "A source-backed warmup answer.",
-    content_text = "A source-backed warmup answer."
+    media_type = "text/html",
+    content = "A source-backed warmup answer.",
+    metadata = list(snippet = "A source-backed warmup answer.")
   )
-  session$workspace$upsert_retrieved_resource(source)
-  source_id <- session$workspace$list_retrieved_sources()[[1L]]$id
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(source)
+  source_id <- tempest:::tempest_session_workspace(
+    session
+  )$list_retrieved_sources()[[1L]]$id
 
   result <- session$warmup(verbose = FALSE)
   traces <- tempest:::tempest_session_deputy_traces(session)
@@ -420,6 +428,7 @@ test_that("synchronous warmup binds one correlation across Deputy and stage", {
   )
   expect_identical(trace$stage, "warmup")
   expect_identical(trace$role, "expert")
+  expect_identical(trace$expert_id, expert@expert_id)
   expect_identical(
     tempest:::tempest_opaque_identifier_valid(trace$correlation_id),
     TRUE
@@ -436,6 +445,7 @@ test_that("synchronous warmup binds one correlation across Deputy and stage", {
     record@trace_references$deputy_session_id,
     trace$deputy_session_id
   )
+  expect_identical(record@trace_references$expert_id, expert@expert_id)
   orientation <- result@orientations[[1L]]
   expect_identical(orientation$deputy_run_id, trace$deputy_run_id)
   expect_identical(orientation$deputy_session_id, trace$deputy_session_id)
@@ -446,7 +456,6 @@ test_that("Deputy expert restores require the exact current binding wire shape",
   skip_if_not_installed("ellmer")
 
   expert <- test_expert(
-    expert_id = "expert.exact-restore",
     name = "Exact Restore Expert"
   )
   config <- tempest_config(
@@ -471,16 +480,8 @@ test_that("Deputy expert restores require the exact current binding wire shape",
     reordered = binding[rev(names(binding))],
     padded_scalar = within(binding, session_id <- paste0(" ", session_id)),
     scalar_list = within(binding, session_id <- list(session_id)),
-    connection_list = within(
-      binding,
-      allowed_connection_ref_ids <- list()
-    ),
-    connection_null = within(
-      binding,
-      allowed_connection_ref_ids <- NULL
-    ),
-    grants_atomic = within(binding, grants <- character()),
-    grants_null = within(binding, grants <- NULL)
+    version_list = within(binding, expert_version <- list(expert_version)),
+    fingerprint_null = within(binding, expert_fingerprint <- NULL)
   )
 
   for (candidate in malformed) {

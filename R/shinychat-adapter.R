@@ -289,20 +289,18 @@ tempest_shinychat_restore_messages <- function(
   report_available = FALSE
 ) {
   topic <- as.character(topic %||% "Untitled topic")[[1L]]
+  transcript <- tempest_session_transcript_record(
+    transcript,
+    action = "restore"
+  )
   messages <- list(list(
     role = "assistant",
     content = paste0("Resumed Co-STORM session for: **", topic, "**")
   ))
-  for (turn in transcript %||% list()) {
-    text <- as.character(turn$text %||% "")[[1L]]
-    if (is.na(text) || !nzchar(text)) {
-      next
-    }
-    role <- tolower(as.character(turn$role %||% "")[[1L]])
-    speaker <- as.character(
-      turn$speaker %||%
-        if (identical(role, "user")) "User" else "Moderator"
-    )[[1L]]
+  for (turn in transcript) {
+    text <- turn$text
+    role <- turn$role
+    speaker <- turn$speaker
     messages[[length(messages) + 1L]] <- list(
       role = if (identical(role, "user")) "user" else "assistant",
       content = paste0("**", speaker, ":**\n\n", text)

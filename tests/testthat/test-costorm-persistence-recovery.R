@@ -1,19 +1,13 @@
-test_that("partial session recovery is explicit and skips corrupt optional data", {
+test_that("session resume fails closed for corrupt optional data", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   session <- tempest_session(
-    "Partial recovery",
+    "Strict recovery",
     config = cfg,
-    experts = list(tempest_expert(
-      expert_id = "expert.recovery",
-      name = "Dr. Recovery",
-      title = "Recovery expert",
-      description = "Partial bundle recovery.",
-      instructions = "Recover only explicitly optional state."
-    ))
+    experts = list(test_expert(expert_id = "expert.strict-recovery"))
   )
   tempest:::tempest_session_set_suggestions(session, "What remains?")
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
@@ -28,241 +22,43 @@ test_that("partial session recovery is explicit and skips corrupt optional data"
     tempest_session_resume(bundle_dir, config = cfg),
     class = "tempest_session_restore_error"
   )
-  warnings <- character()
-  restored <- withCallingHandlers(
+  expect_error(
     tempest_session_resume(
       bundle_dir,
       config = cfg,
       partial_recovery = TRUE
     ),
-    warning = function(warning) {
-      warnings <<- c(warnings, conditionMessage(warning))
-      invokeRestart("muffleWarning")
-    }
+    class = "simpleError",
+    regexp = "unused argument"
   )
-
-  expect_r6_class(restored, "TempestSession")
-  expect_identical(
-    tempest:::tempest_session_suggestions(restored),
-    character()
-  )
-  expect_match(paste(warnings, collapse = "\n"), "incomplete", fixed = TRUE)
-  expect_identical(restored$manifest@status, "running")
-  expect_null(tempest:::tempest_session_report_value(restored))
-  authority <- tempest:::tempest_product_authority_validate(
-    restored$manifest,
-    tempest:::tempest_session_stage_records(restored),
-    restored$workspace,
-    config = cfg,
-    experts = restored$experts,
-    expert_sessions = tempest:::tempest_expert_sessions_snapshot(restored)
-  )
-  expect_identical(authority$publishable, FALSE)
-  manifest <- tempest:::tempest_product_read_json(
-    file.path(bundle_dir, "session.json")
-  )
-  declared <- suppressWarnings(
-    tempest:::tempest_session_bundle_validate_manifest(
-      bundle_dir,
-      manifest,
-      partial_recovery = TRUE
-    )
-  )
-  expect_false("artifacts/suggested_questions.json" %in% declared)
 })
 
-test_that("explicit partial recovery is isolated across overlapping readers", {
-  outer_path <- withr::local_tempfile(fileext = ".json")
-  inner_path <- withr::local_tempfile(fileext = ".json")
-  writeLines("{", outer_path)
-  writeLines("{", inner_path)
-  inner_error <- NULL
-  withr::local_options(tempest.session_partial_recovery = "sentinel")
-  local_mocked_bindings(
-    tempest_product_read_json = function(path, ...) {
-      if (identical(path, outer_path)) {
-        inner_error <<- tryCatch(
-          tempest:::tempest_session_bundle_optional_json(
-            inner_path,
-            what = "inner optional product",
-            partial_recovery = FALSE
-          ),
-          error = identity
-        )
-      }
-      stop("injected malformed optional product")
-    }
-  )
+test_that("optional presentation readers propagate malformed data", {
+  path <- withr::local_tempfile(fileext = ".json")
+  writeLines("{", path)
 
-  warnings <- character()
-  recovered <- withCallingHandlers(
+  expect_error(
     tempest:::tempest_session_bundle_optional_json(
-      outer_path,
-      default = "outer default",
-      what = "outer optional product",
-      partial_recovery = TRUE
-    ),
-    warning = function(warning) {
-      warnings <<- c(warnings, conditionMessage(warning))
-      invokeRestart("muffleWarning")
-    }
-  )
-
-  expect_identical(recovered, "outer default")
-  expect_s3_class(inner_error, "error")
-  expect_match(
-    conditionMessage(inner_error),
-    "injected malformed optional product",
-    fixed = TRUE
-  )
-  expect_match(
-    paste(warnings, collapse = "\n"),
-    "Skipping malformed outer optional product",
-    fixed = TRUE
-  )
-  expect_identical(
-    getOption("tempest.session_partial_recovery"),
-    "sentinel"
-  )
-})
-
-test_that("partial recovery rejects a re-signed running report splice", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  session <- tempest_session(
-    "Partial report splice",
-    config = cfg,
-    experts = list(test_expert(expert_id = "expert.partial-report"))
-  )
-  bundle_dir <- file.path(withr::local_tempdir(), "bundle")
-  tempest_session_save(session, bundle_dir)
-
-  report_md <- "# Forged partial report"
-  tempest:::tempest_session_bundle_write_text(
-    bundle_dir,
-    "report.md",
-    report_md
-  )
-  manifest_path <- file.path(bundle_dir, "session.json")
-  manifest <- tempest:::tempest_product_read_json(manifest_path)
-  research_manifest <- tempest:::tempest_research_manifest_from_record(
-    manifest$research_manifest
-  )
-  research_manifest <- tempest:::tempest_product_authority_bind_report(
-    research_manifest,
-    report_md
-  )
-  manifest$research_manifest <- tempest_research_manifest_record(
-    research_manifest
-  )
-  manifest$report_reference <- tempest:::tempest_product_report_reference(
-    report_md
-  )
-  manifest$files <- as.list(sort(c(
-    unlist(manifest$files, use.names = FALSE),
-    "report.md"
-  )))
-  manifest$checksums[["report.md"]] <-
-    tempest:::tempest_product_bundle_checksum(bundle_dir, "report.md")
-  tempest:::tempest_product_write_json(manifest_path, manifest)
-
-  expect_error(
-    tempest_session_resume(
-      bundle_dir,
-      config = cfg,
-      partial_recovery = TRUE
+      path,
+      what = "optional product"
     ),
     class = "tempest_session_restore_error"
   )
 })
 
-test_that("partial recovery rejects missing and unsafe suggestion files", {
+test_that("session resume rejects every damaged bundle file", {
   skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  session <- tempest_session(
-    "Suggestion recovery",
-    config = cfg,
-    experts = list(tempest_expert(
-      expert_id = "expert.suggestion-recovery",
-      name = "Suggestion Recovery Expert",
-      title = "Recovery analyst",
-      description = "Tests optional suggestion recovery.",
-      instructions = "Keep durable state strict."
-    ))
-  )
-  tempest:::tempest_session_set_suggestions(session, "What remains?")
-  root <- withr::local_tempdir()
-  bundle_dir <- file.path(root, "missing-suggestions")
-
-  tempest_session_save(session, bundle_dir)
-  questions_path <- file.path(
-    bundle_dir,
-    "artifacts/suggested_questions.json"
-  )
-  unlink(questions_path)
-  manifest <- tempest:::tempest_product_read_json(
-    file.path(bundle_dir, "session.json")
-  )
-  expect_error(
-    tempest:::tempest_session_bundle_validate_manifest(
-      bundle_dir,
-      manifest,
-      partial_recovery = TRUE
-    ),
-    class = "tempest_session_restore_error"
-  )
-
-  bundle_dir <- file.path(root, "symlinked-suggestions")
-  tempest_session_save(session, bundle_dir)
-  questions_path <- file.path(
-    bundle_dir,
-    "artifacts/suggested_questions.json"
-  )
-  external_path <- tempfile("tempest-external-suggestions-")
-  writeLines('["Outside bundle"]', external_path)
-  unlink(questions_path)
-  linked <- file.symlink(external_path, questions_path)
-  if (isTRUE(linked)) {
-    manifest <- tempest:::tempest_product_read_json(
-      file.path(bundle_dir, "session.json")
-    )
-    expect_error(
-      tempest:::tempest_session_bundle_validate_manifest(
-        bundle_dir,
-        manifest,
-        partial_recovery = TRUE
-      ),
-      class = "tempest_session_restore_error"
-    )
-  }
-})
-
-test_that("partial recovery rejects every non-presentation integrity failure", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   session <- tempest_session(
     "Strict durable recovery",
     config = cfg,
-    experts = list(tempest_expert(
-      expert_id = "expert.strict-recovery",
-      name = "Strict Recovery Expert",
-      title = "Integrity analyst",
-      description = "Rejects damage to durable session state.",
-      instructions = "Never recover corrupted durable state."
-    ))
+    experts = list(test_expert(expert_id = "expert.durable-recovery"))
   )
-  root <- withr::local_tempdir()
   critical_files <- c(
     "experts.json",
+    "retired_expert_ids.json",
     "expert_sessions.json",
     "transcript.json",
     "mindmap.json",
@@ -270,68 +66,65 @@ test_that("partial recovery rejects every non-presentation integrity failure", {
     "workspace/retrieved_resources.json",
     "workspace/proposed_claims.json",
     "workspace/evidence_spans.json",
-    "workspace/disputes.json"
+    "workspace/disputes.json",
+    "workspace/claim_supports.json"
   )
+  root <- withr::local_tempdir()
 
   for (index in seq_along(critical_files)) {
-    critical_file <- critical_files[[index]]
     bundle_dir <- file.path(root, paste0("critical-", index))
     tempest_session_save(session, bundle_dir)
-    writeLines("tampered durable state", file.path(bundle_dir, critical_file))
-    expect_error(
-      tempest_session_resume(
+    writeLines(
+      "tampered durable state",
+      file.path(
         bundle_dir,
-        config = cfg,
-        partial_recovery = TRUE
-      ),
-      class = "tempest_session_restore_error"
+        critical_files[[index]]
+      )
+    )
+    expect_error(
+      tempest_session_resume(bundle_dir, config = cfg),
+      class = "tempest_session_restore_error",
+      info = critical_files[[index]]
     )
   }
+})
 
-  bundle_dir <- file.path(root, "malformed-claims")
-  tempest_session_save(session, bundle_dir)
-  manifest_path <- file.path(bundle_dir, "session.json")
-  claims_path <- file.path(bundle_dir, "workspace/proposed_claims.json")
-  writeLines("{", claims_path)
+test_that("session bundles require the exact retirement sidecar", {
+  skip_if_not_installed("ellmer")
+  cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  session <- tempest_session(
+    "Exact retirement sidecar",
+    config = cfg,
+    experts = list(test_expert(expert_id = "expert.retirement-sidecar"))
+  )
+  root <- withr::local_tempdir()
+
+  missing <- file.path(root, "missing")
+  tempest_session_save(session, missing)
+  manifest_path <- file.path(missing, "session.json")
   manifest <- tempest:::tempest_product_read_json(manifest_path)
-  manifest$checksums[["workspace/proposed_claims.json"]] <-
-    tempest:::tempest_product_bundle_checksum(
-      bundle_dir,
-      "workspace/proposed_claims.json"
-    )
+  manifest$files <- as.list(setdiff(
+    unlist(manifest$files, use.names = FALSE),
+    "retired_expert_ids.json"
+  ))
+  manifest$checksums[["retired_expert_ids.json"]] <- NULL
+  unlink(file.path(missing, "retired_expert_ids.json"))
   tempest:::tempest_product_write_json(manifest_path, manifest)
   expect_error(
-    tempest_session_resume(
-      bundle_dir,
-      config = cfg,
-      partial_recovery = TRUE
-    ),
+    tempest_session_resume(missing, config = cfg),
     class = "tempest_session_restore_error"
   )
 
-  bundle_dir <- file.path(root, "workflow-sidecar")
-  tempest_session_save(session, bundle_dir)
-  manifest_path <- file.path(bundle_dir, "session.json")
-  workflow_path <- file.path(bundle_dir, "workflow_run.json")
-  tempest:::tempest_product_write_json(workflow_path, list(schema_version = 2L))
-  manifest <- tempest:::tempest_product_read_json(manifest_path)
-  manifest$files <- sort(c(
-    unlist(manifest$files, use.names = FALSE),
-    "workflow_run.json"
-  ))
-  manifest$checksums[["workflow_run.json"]] <-
-    tempest:::tempest_product_bundle_checksum(
-      bundle_dir,
-      "workflow_run.json"
-    )
-  tempest:::tempest_product_write_json(manifest_path, manifest)
-  writeLines("tampered workflow state", workflow_path)
+  extra <- file.path(root, "extra")
+  tempest_session_save(session, extra)
+  tempest:::tempest_product_write_json(
+    file.path(extra, "retired_expert_ids-copy.json"),
+    list()
+  )
   expect_error(
-    tempest_session_resume(
-      bundle_dir,
-      config = cfg,
-      partial_recovery = TRUE
-    ),
+    tempest_session_resume(extra, config = cfg),
     class = "tempest_session_restore_error"
   )
 })
@@ -344,13 +137,7 @@ test_that("session resume rejects files that its manifest does not declare", {
   session <- tempest_session(
     "Declared inventory",
     config = cfg,
-    experts = list(tempest_expert(
-      expert_id = "expert.inventory",
-      name = "Dr. Inventory",
-      title = "Inventory expert",
-      description = "Manifest-scoped bundle loading.",
-      instructions = "Load only files declared by the manifest."
-    ))
+    experts = list(test_expert(expert_id = "expert.inventory"))
   )
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
   tempest_session_save(session, bundle_dir)

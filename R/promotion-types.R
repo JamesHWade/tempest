@@ -1701,15 +1701,7 @@ tempest_completed_product_storm_context <- function(
   purpose
 ) {
   purpose_lower <- tolower(purpose)
-  if (
-    !is.list(research) ||
-      is.object(research) ||
-      is.data.frame(research) ||
-      !identical(
-        names(research),
-        tempest_completed_product_storm_result_fields()
-      )
-  ) {
+  if (!tempest_is_product_result(research)) {
     abort(
       paste0(
         "{.arg research} must be one exact completed result returned by ",
@@ -1717,7 +1709,7 @@ tempest_completed_product_storm_context <- function(
       )
     )
   }
-  manifest <- research$manifest
+  manifest <- research@manifest
   if (
     !S7::S7_inherits(manifest, TempestResearchManifest) ||
       !identical(manifest@mode, "storm") ||
@@ -1732,7 +1724,7 @@ tempest_completed_product_storm_context <- function(
     )
   }
   state <- tryCatch(
-    tempest_storm_state_validate(research$state),
+    tempest_storm_state_validate(research@state),
     error = function(error) {
       abort(
         paste0(
@@ -1761,9 +1753,13 @@ tempest_completed_product_storm_context <- function(
     draft_md = state$draft_md,
     report_md = state$report_md
   )
-  public_projection <- research[names(projected)]
-  public_projection["outline"] <- list(
-    tempest_completed_product_storm_outline(research$outline, abort)
+  public_projection <- list(
+    title = research@title,
+    perspectives = research@perspectives,
+    experts = research@experts,
+    outline = tempest_completed_product_storm_outline(research@outline, abort),
+    draft_md = research@draft_md,
+    report_md = research@report_md
   )
   if (!identical(public_projection, projected)) {
     abort(
@@ -1771,41 +1767,41 @@ tempest_completed_product_storm_context <- function(
     )
   }
   if (
-    !inherits(research$retriever, "TempestRetriever") ||
-      !identical(research$retriever$workspace, research$workspace) ||
-      !S7::S7_inherits(research$retriever$config, TempestConfig)
+    !inherits(research@retriever, "TempestRetriever") ||
+      !identical(research@retriever$workspace, research@workspace) ||
+      !S7::S7_inherits(research@retriever$config, TempestConfig)
   ) {
     abort(
       "The STORM result does not retain its exact product retriever identity."
     )
   }
   if (
-    !is.null(research$output_dir) &&
-      (!rlang::is_string(research$output_dir) ||
-        is.na(research$output_dir) ||
-        !nzchar(research$output_dir))
+    !is.null(research@output_dir) &&
+      (!rlang::is_string(research@output_dir) ||
+        is.na(research@output_dir) ||
+        !nzchar(research@output_dir))
   ) {
     abort(
       "The STORM result has an invalid product output location."
     )
   }
   tempest_completed_product_assert_sealed_workspace(
-    research$workspace,
+    research@workspace,
     abort,
     purpose
   )
   report_reference <- tempest_completed_product_report_reference(
     manifest,
-    research$report_md,
+    research@report_md,
     abort
   )
   list(
     manifest = manifest,
     stage_records = state$stage_records,
-    workspace = research$workspace,
-    report_md = research$report_md,
+    workspace = research@workspace,
+    report_md = research@report_md,
     report_reference = report_reference,
-    config = research$retriever$config,
+    config = research@retriever$config,
     experts = state$experts,
     expert_sessions = list(),
     product_state = state
@@ -1824,7 +1820,7 @@ tempest_completed_product_costorm_context <- function(
       "{.arg research} must be a succeeded TempestSession."
     )
   }
-  manifest <- research$manifest
+  manifest <- tempest_session_manifest(research)
   if (
     !S7::S7_inherits(manifest, TempestResearchManifest) ||
       !identical(manifest@mode, "costorm") ||
@@ -1899,12 +1895,12 @@ tempest_completed_product_costorm_context <- function(
     }
   )
   tempest_completed_product_assert_sealed_workspace(
-    research$workspace,
+    tempest_session_workspace(research),
     abort,
     purpose
   )
   report_md <- tryCatch(
-    tempest_session_report_md(research),
+    tempest_session_report_read(research),
     error = function(error) {
       abort(
         paste0(
@@ -1924,13 +1920,13 @@ tempest_completed_product_costorm_context <- function(
   list(
     manifest = manifest,
     stage_records = stage_records,
-    workspace = research$workspace,
+    workspace = tempest_session_workspace(research),
     report_md = report_md,
     report_reference = report_reference,
-    config = research$config,
+    config = tempest_session_config(research),
     experts = execution_identity$experts,
     expert_sessions = execution_identity$expert_sessions,
-    product_state = list(title = research$title)
+    product_state = list(title = tempest_session_title(research))
   )
 }
 

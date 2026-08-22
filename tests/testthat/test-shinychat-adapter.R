@@ -158,8 +158,18 @@ test_that("shinychat adapter owns client and restoration lifecycle", {
 
     messages <- tempest_shinychat_restore_messages(
       list(
-        list(role = "user", speaker = "User", text = "Question"),
-        list(role = "assistant", speaker = "Moderator", text = "Answer")
+        list(
+          speaker = "User",
+          role = "user",
+          text = "Question",
+          at = "2026-08-20T12:00:00Z"
+        ),
+        list(
+          speaker = "Moderator",
+          role = "assistant",
+          text = "Answer",
+          at = "2026-08-20T12:00:01Z"
+        )
       ),
       topic = "Restored topic",
       report_available = TRUE

@@ -24,8 +24,7 @@ test_that("stage-record sidecars are mandatory regular bundle files", {
   expect_error(
     tempest_session_resume(
       bundle_dir,
-      config = cfg,
-      partial_recovery = TRUE
+      config = cfg
     ),
     class = "tempest_session_restore_error"
   )
@@ -258,58 +257,58 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
   program_set <- tempest_program_set()
   extraction_program <-
     tempest:::tempest_program_set_manifest_programs(program_set)$extract_claims
+  expert <- test_expert(name = "Stage Record Binding Expert")
   workspace <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    "https://example.org/stage-record-binding",
+  source <- fake_source(
+    url = "https://example.org/stage-record-binding",
     title = "Stage record binding",
     content_text = "Stage records bind durable claim outputs."
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-stage-record-binding",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Stage records bind durable claim outputs.",
     extracted_by = extraction_program$program_artifact_id
   ))
   manual_span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-manual-stage-record-binding",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Stage records bind durable claim outputs.",
     extracted_by = extraction_program$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_text = "Stage records bind durable claim outputs.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list("Stage records bind durable claim outputs."),
     retrieval_step_id = "retrieval.stage-record-binding",
-    expert_id = "expert.stage-record-binding",
+    expert_id = expert@expert_id,
     session_id = "stage-record-binding"
   ))
   manual_claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_text = "Manual claims do not satisfy extraction proof.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = manual_span_id,
     supporting_quotes = list("Stage records bind durable claim outputs.")
   ))
   session <- tempest_session(
     "Stage-record binding",
     config = cfg,
-    experts = list(test_expert(expert_id = "expert.stage-record-binding")),
+    experts = list(expert),
     retriever = tempest_retriever(config = cfg, workspace = workspace),
-    session_id = "stage-record-binding",
-    program_set = program_set
+    session_id = "stage-record-binding"
   )
   expert_session <- tempest:::tempest_session_expert_manager(
     session
   )$get_or_create(
-    "expert.stage-record-binding"
+    expert@expert_id
   )
   run_context <- tempest:::tempest_deputy_run_context(
-    session$manifest,
+    tempest:::tempest_session_manifest(session),
     stage = "dialogue",
     role = "expert",
-    expert_id = "expert.stage-record-binding"
+    expert_id = expert@expert_id
   )
   tempest:::tempest_session_record_deputy_trace(
     session,
@@ -318,7 +317,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
       correlation_id = "retrieval.stage-record-binding",
       deputy_run_id = "trace.stage-record-binding",
       deputy_session_id = expert_session$session_id,
-      expert_id = "expert.stage-record-binding",
+      expert_id = expert@expert_id,
       role = "expert",
       stage = "dialogue",
       status = "complete",
@@ -348,7 +347,9 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     }
   )
   verification_records <- tempest:::tempest_session_stage_records(session)
-  reference <- session$manifest@programs$extract_claims
+  reference <- tempest:::tempest_session_manifest(
+    session
+  )@programs$extract_claims
   started <- tempest:::tempest_stage_record_start(
     "extract_claims",
     reference$program_artifact_id,
@@ -357,7 +358,7 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
       research_run_id = session$session_id,
       deputy_run_id = "trace.stage-record-binding",
       deputy_session_id = expert_session$session_id,
-      expert_id = "expert.stage-record-binding",
+      expert_id = expert@expert_id,
       correlation_id = "retrieval.stage-record-binding",
       mode = "costorm",
       role = "program"
@@ -385,7 +386,9 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
     support_status = "unknown",
     completed_at = "2026-08-16T00:01:00Z"
   )
-  support_reference <- session$manifest@programs$verify_claim_support
+  support_reference <- tempest:::tempest_session_manifest(
+    session
+  )@programs$verify_claim_support
   empty_support_attempt <- tempest:::tempest_stage_record_start(
     "verify_claim_support",
     support_reference$program_artifact_id,
@@ -608,8 +611,8 @@ test_that("verification stage records cover every claim-span support pair", {
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
-    source_id = source$id,
-    quote = source$content_text,
+    source_id = source@resource_id,
+    quote = source@content,
     evidence_span_id = "span.two-claim-support"
   ))
   claim_texts <- c(
@@ -621,9 +624,9 @@ test_that("verification stage records cover every claim-span support pair", {
     function(claim_text) {
       workspace$add_proposed_claim(tempest_claim(
         claim_text = claim_text,
-        source_ids = source$id,
+        source_ids = source@resource_id,
         evidence_span_ids = span_id,
-        supporting_quotes = list(source$content_text)
+        supporting_quotes = list(source@content)
       ))
     },
     character(1)
@@ -714,7 +717,6 @@ test_that("session bundles expose only product persistence inventory", {
     "Narrow product persistence",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.narrow-persistence",
       name = "Narrow Persistence Expert",
       title = "Artifact specialist",
       description = "Checks product persistence boundaries.",

@@ -33,3 +33,4 @@ or \code{\link[=tempest_session_save]{tempest_session_save()}} to write the same
 bundle. A stage attempt that is still running is projected to a cancelled
 durable record without changing the live session.
 }
+\keyword{internal}

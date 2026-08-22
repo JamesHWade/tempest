@@ -1,4 +1,4 @@
-test_that("schema 9 persists exact Deputy execution authority", {
+test_that("schema 10 persists exact Deputy execution authority", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("ellmer")
   skip_if_not_installed("jsonlite")
@@ -15,14 +15,14 @@ test_that("schema 9 persists exact Deputy execution authority", {
     list(
       facts = list(list(
         claim = "Moderator evidence is durable.",
-        sources = list(list(source_id = moderator_source$id)),
+        sources = list(list(source_id = moderator_source@resource_id)),
         confidence = "high"
       ))
     ),
     list(
       facts = list(list(
         claim = "Expert evidence is durable.",
-        sources = list(list(source_id = expert_source$id)),
+        sources = list(list(source_id = expert_source@resource_id)),
         confidence = "high"
       ))
     )
@@ -36,7 +36,7 @@ test_that("schema 9 persists exact Deputy execution authority", {
         return(fake_chat(
           text = list(paste0(
             "Moderator evidence is durable [",
-            moderator_source$id,
+            moderator_source@resource_id,
             "]."
           ))
         ))
@@ -45,7 +45,7 @@ test_that("schema 9 persists exact Deputy execution authority", {
         return(fake_chat(
           text = list(paste0(
             "Expert evidence is durable [",
-            expert_source$id,
+            expert_source@resource_id,
             "]."
           ))
         ))
@@ -61,8 +61,12 @@ test_that("schema 9 persists exact Deputy execution authority", {
     experts = list(expert, other_expert),
     session_id = "schema-9-deputy-authority"
   )
-  session$workspace$upsert_retrieved_resource(moderator_source)
-  session$workspace$upsert_retrieved_resource(expert_source)
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(
+    moderator_source
+  )
+  tempest:::tempest_session_workspace(session)$upsert_retrieved_resource(
+    expert_source
+  )
   expert_session <- tempest:::tempest_session_expert_manager(
     session
   )$get_or_create(
@@ -84,7 +88,7 @@ test_that("schema 9 persists exact Deputy execution authority", {
     stage = "dialogue"
   ) {
     context <- tempest:::tempest_deputy_run_context(
-      target$manifest,
+      tempest:::tempest_session_manifest(target),
       stage = "dialogue",
       role = role,
       expert_id = expert_id
@@ -111,7 +115,9 @@ test_that("schema 9 persists exact Deputy execution authority", {
     trace
   }
   moderator_completion_id <- tempest:::tempest_costorm_await(
-    session$request_completion_async("Record moderator evidence.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Record moderator evidence."
+    )
   )
   moderator_result <- withCallingHandlers(
     tempest:::tempest_costorm_await(tempest_session_process_turn_async(
@@ -157,7 +163,7 @@ test_that("schema 9 persists exact Deputy execution authority", {
     character(1),
     "trace_type"
   )
-  expect_identical(snapshot$schema_version, 9L)
+  expect_identical(snapshot$schema_version, 10L)
   expect_identical(
     trace_types,
     c("stage_attempt", "stage_attempt", "deputy_run", "deputy_run")
@@ -432,7 +438,7 @@ test_that("schema 9 persists exact Deputy execution authority", {
   changed_expert$research_manifest$traces[[expert_index]]$expert_id <-
     other_expert@expert_id
   other_context <- tempest:::tempest_deputy_run_context(
-    session$manifest,
+    tempest:::tempest_session_manifest(session),
     stage = "dialogue",
     role = "expert",
     expert_id = other_expert@expert_id

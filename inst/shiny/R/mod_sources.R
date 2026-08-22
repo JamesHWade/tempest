@@ -30,7 +30,7 @@ mod_sources_server <- function(id, store) {
       if (is.null(evidence)) {
         return(NULL)
       }
-      tempest::tempest_sources(evidence)
+      tempest:::tempest_workspace_sources(evidence)
     })
 
     output$body <- shiny::renderUI({

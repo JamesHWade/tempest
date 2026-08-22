@@ -26,14 +26,4 @@ By default, the collector strips event payloads before storing them. Set
 \code{include_payload = TRUE} when tests or trusted host adapters need to assert
 or replay structured payload metadata.
 }
-\examples{
-collector <- tempest_progress_collector()
-collector$record(tempest_progress_event(
-  run_id = "run-1",
-  workflow = "storm",
-  event_type = "stage",
-  status = "started",
-  stage = "research"
-))
-collector$data(stage = "research")
-}
+\keyword{internal}

@@ -387,7 +387,6 @@ custom_expert_profiles <- function(specs) {
     }
 
     tempest::tempest_expert(
-      expert_id = sprintf("expert.user.%02d", index),
       name = values[["name"]],
       title = values[["title"]],
       description = values[["perspective"]],
@@ -398,8 +397,7 @@ custom_expert_profiles <- function(specs) {
           "Gather and cite relevant evidence, distinguish evidence from",
           "interpretation, and state material uncertainty."
         )
-      ),
-      selection_metadata = list(source = "user")
+      )
     )
   })
 }
@@ -526,7 +524,7 @@ mod_chat_server <- function(
 
     resolve_program_set <- function() {
       value <- shiny::isolate(reactive_or_value(program_set)) %||%
-        tempest::tempest_program_set()
+        tempest:::tempest_program_set()
       tempest:::tempest_program_set_manifest_programs(value)
       value
     }
@@ -668,7 +666,7 @@ mod_chat_server <- function(
       if (is.null(ses)) {
         return(NULL)
       }
-      citation_workspace(ses$workspace %||% NULL)
+      citation_workspace(tempest:::tempest_session_workspace(ses) %||% NULL)
     }
     chat <- NULL
     append_chat <- function(text) {
@@ -726,7 +724,7 @@ mod_chat_server <- function(
                 !isTRUE(session_ended) &&
                 identical(turn_session_id, active_session_id)
             }
-            tempest::tempest_session_process_turn_async(
+            tempest:::tempest_session_process_turn_async(
               ses,
               completion_id = completion_id,
               suggest = turn_suggestions_enabled,
@@ -822,7 +820,7 @@ mod_chat_server <- function(
     })
 
     restore_progress_history <- function(ses) {
-      progress_events(tempest::tempest_execution_events(ses))
+      progress_events(tempest:::tempest_execution_events(ses))
       invisible(NULL)
     }
 
@@ -1338,7 +1336,7 @@ mod_chat_server <- function(
                     costorm_log("warmup started: %s", ses$session_id)
                     warmup_request <- work_queue$enqueue(
                       function(queue_current) {
-                        tempest::tempest_session_warmup_async(
+                        tempest:::tempest_session_warmup_async(
                           ses,
                           is_current = function() {
                             queue_current() && warmup_is_current()
@@ -1532,16 +1530,16 @@ chat_runtime_counts <- function(ses) {
     return(list(experts = 0L, sources = 0L, facts = 0L, report = FALSE))
   }
   sources <- tryCatch(
-    ses$workspace$list_retrieved_sources(),
+    tempest:::tempest_session_workspace(ses)$list_retrieved_sources(),
     error = function(e) list()
   )
   claims <- tryCatch(
-    ses$workspace$list_proposed_claims(),
+    tempest:::tempest_session_workspace(ses)$list_proposed_claims(),
     error = function(e) list()
   )
   report <- tryCatch(
     {
-      report_md <- tempest::tempest_session_report_md(ses)
+      report_md <- tempest::tempest_report(ses)
       is.character(report_md) &&
         length(report_md) == 1L &&
         !is.na(report_md) &&
@@ -1741,7 +1739,7 @@ chat_command_sources <- function(ses, n = 5L) {
     list()
   } else {
     tryCatch(
-      ses$workspace$list_retrieved_sources(),
+      tempest:::tempest_session_workspace(ses)$list_retrieved_sources(),
       error = function(e) list()
     )
   }
@@ -1775,7 +1773,7 @@ chat_command_facts <- function(ses, n = 5L) {
     list()
   } else {
     tryCatch(
-      ses$workspace$list_proposed_claims(),
+      tempest:::tempest_session_workspace(ses)$list_proposed_claims(),
       error = function(e) list()
     )
   }
@@ -1804,7 +1802,7 @@ chat_command_facts <- function(ses, n = 5L) {
     return("No facts collected yet. Ask a research question first.")
   }
   min_support_score <- tryCatch(
-    ses$config@min_support_score,
+    tempest:::tempest_session_config(ses)@min_support_score,
     error = function(e) 0.7
   )
   verified <- vapply(
@@ -1873,7 +1871,11 @@ chat_command_system_prompt <- function() {
 }
 
 chat_command_tools <- function(ses, config = NULL) {
-  config <- if (is.null(ses)) config else ses$config %||% config
+  config <- if (is.null(ses)) {
+    config
+  } else {
+    tempest:::tempest_session_config(ses) %||% config
+  }
   provider <- tryCatch(config@search_provider, error = function(e) "unknown")
   paste(
     "**Tools and commands**",
@@ -1940,8 +1942,10 @@ generate_report_for_chat_async <- function(
     append_chat("No session active. Start a session first.")
     return(promises::promise_resolve(FALSE))
   }
-  n_evidence <- length(ses$workspace$list_proposed_claims()) +
-    length(ses$workspace$list_retrieved_sources())
+  n_evidence <- length(tempest:::tempest_session_workspace(
+    ses
+  )$list_proposed_claims()) +
+    length(tempest:::tempest_session_workspace(ses)$list_retrieved_sources())
   if (n_evidence == 0L) {
     append_chat(
       "No facts or sources collected yet. Ask some questions first to gather research."
@@ -1965,7 +1969,7 @@ generate_report_for_chat_async <- function(
       ) {
         return(FALSE)
       }
-      authority_report <- tempest::tempest_session_report_md(ses)
+      authority_report <- tempest::tempest_report(ses)
       if (!identical(authority_report, markdown)) {
         stop("Generated report content does not match product authority.")
       }
@@ -2211,7 +2215,7 @@ costorm_log <- function(format, ...) {
 }
 
 costorm_starting_event <- function(session_id) {
-  tempest::tempest_progress_event(
+  tempest:::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
     event_type = "stage",
@@ -2223,7 +2227,7 @@ costorm_starting_event <- function(session_id) {
 }
 
 costorm_session_ready_event <- function(session_id, ses) {
-  tempest::tempest_progress_event(
+  tempest:::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
     event_type = "stage",
@@ -2241,7 +2245,7 @@ costorm_session_failed_event <- function(session_id, error = NULL) {
   if (!is.null(error)) {
     payload <- progress_error_payload(error)
   }
-  tempest::tempest_progress_event(
+  tempest:::tempest_progress_event(
     run_id = session_id,
     workflow = "costorm",
     event_type = "stage",
@@ -2258,7 +2262,7 @@ costorm_progress_state <- function(events) {
     return(NULL)
   }
   tryCatch(
-    tempest::tempest_progress_state(events),
+    tempest:::tempest_progress_state(events),
     error = function(e) {
       costorm_log("progress reducer failed")
       NULL

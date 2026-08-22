@@ -22,7 +22,7 @@ tempest_session_completion_evidence_binding <- function(session, claim) {
     session,
     claim$deputy_execution
   )
-  workspace <- session$workspace %||% NULL
+  workspace <- tempest_session_workspace(session) %||% NULL
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_abort(
       "The Co-STORM session must expose a ResearchWorkspace."
@@ -34,8 +34,8 @@ tempest_session_completion_evidence_binding <- function(session, claim) {
     provider_turn,
     workspace
   )
-  source_ids <- tempest_session_answer_source_ids(
-    session,
+  source_ids <- tempest_answer_source_ids(
+    workspace,
     response,
     source_ids
   )
@@ -56,8 +56,9 @@ tempest_session_extract_facts_async <- function(
   emit_stale_progress = TRUE
 ) {
   binding <- tempest_session_completion_evidence_binding(session, claim)
-  workspace <- session$workspace
-  event <- session$emit_progress(
+  workspace <- tempest_session_workspace(session)
+  event <- tempest_session_emit_progress(
+    session,
     "step",
     "started",
     stage = "evidence",
@@ -91,7 +92,8 @@ tempest_session_extract_facts_async <- function(
     onFulfilled = function(value) {
       if (!tempest_async_is_current(is_current)) {
         if (isTRUE(emit_stale_progress)) {
-          session$emit_progress(
+          tempest_session_emit_progress(
+            session,
             "step",
             "cancelled",
             stage = "evidence",
@@ -103,7 +105,8 @@ tempest_session_extract_facts_async <- function(
         }
         return(NULL)
       }
-      session$emit_progress(
+      tempest_session_emit_progress(
+        session,
         "step",
         "succeeded",
         stage = "evidence",
@@ -117,7 +120,8 @@ tempest_session_extract_facts_async <- function(
     onRejected = function(error) {
       if (!tempest_async_is_current(is_current)) {
         if (isTRUE(emit_stale_progress)) {
-          session$emit_progress(
+          tempest_session_emit_progress(
+            session,
             "step",
             "cancelled",
             stage = "evidence",
@@ -129,7 +133,8 @@ tempest_session_extract_facts_async <- function(
         }
         return(NULL)
       }
-      session$emit_progress(
+      tempest_session_emit_progress(
+        session,
         "step",
         "failed",
         stage = "evidence",
@@ -144,7 +149,7 @@ tempest_session_extract_facts_async <- function(
 }
 
 tempest_session_evidence_counts <- function(session) {
-  workspace <- session$workspace %||% NULL
+  workspace <- tempest_session_workspace(session) %||% NULL
   if (!inherits(workspace, "ResearchWorkspace")) {
     return(list(source_count = 0L, claim_count = 0L))
   }
@@ -193,7 +198,8 @@ tempest_session_commit_evidence_async <- function(
   }
 
   if (length(source_ids) == 0L) {
-    session$emit_progress(
+    tempest_session_emit_progress(
+      session,
       "step",
       "skipped",
       stage = "evidence",
@@ -226,7 +232,8 @@ tempest_session_update_mindmap_async <- function(
   is_current = function() TRUE,
   emit_stale_progress = TRUE
 ) {
-  event <- session$emit_progress(
+  event <- tempest_session_emit_progress(
+    session,
     "step",
     "started",
     stage = "mindmap",
@@ -241,7 +248,8 @@ tempest_session_update_mindmap_async <- function(
     onFulfilled = function(mindmap) {
       if (!tempest_async_is_current(is_current)) {
         if (isTRUE(emit_stale_progress)) {
-          session$emit_progress(
+          tempest_session_emit_progress(
+            session,
             "step",
             "cancelled",
             stage = "mindmap",
@@ -257,10 +265,11 @@ tempest_session_update_mindmap_async <- function(
         mindmap <- tryCatch(
           tempest_session_mindmap_validate_update(
             mindmap,
-            session$workspace
+            tempest_session_workspace(session)
           ),
           error = function(error) {
-            session$emit_progress(
+            tempest_session_emit_progress(
+              session,
               "step",
               "failed",
               stage = "mindmap",
@@ -274,7 +283,8 @@ tempest_session_update_mindmap_async <- function(
         )
         tempest_session_commit_mindmap(session, mindmap)
       }
-      session$emit_progress(
+      tempest_session_emit_progress(
+        session,
         "step",
         "succeeded",
         stage = "mindmap",
@@ -288,7 +298,8 @@ tempest_session_update_mindmap_async <- function(
     onRejected = function(error) {
       if (!tempest_async_is_current(is_current)) {
         if (isTRUE(emit_stale_progress)) {
-          session$emit_progress(
+          tempest_session_emit_progress(
+            session,
             "step",
             "cancelled",
             stage = "mindmap",
@@ -300,7 +311,8 @@ tempest_session_update_mindmap_async <- function(
         }
         return(NULL)
       }
-      session$emit_progress(
+      tempest_session_emit_progress(
+        session,
         "step",
         "failed",
         stage = "mindmap",
@@ -320,22 +332,23 @@ tempest_session_suggest_questions_async <- function(
   is_current = function() TRUE
 ) {
   n <- tempest_config_count(n, "n")
-  event <- session$emit_progress(
+  event <- tempest_session_emit_progress(
+    session,
     "step",
     "started",
     stage = "suggestions",
     step = "question_generation"
   )
   answered <- if (length(session$transcript) > 0L) {
-    session$transcript_markdown(max_turns = 12)
+    tempest_session_transcript_markdown(session, max_turns = 12)
   } else {
     "(none yet)"
   }
   facts <- tempest_summarize_facts_for_prompt(
-    session$workspace,
+    tempest_session_workspace(session),
     max_items = 60L,
     verified_only = TRUE,
-    min_support_score = session$config@min_support_score
+    min_support_score = tempest_session_config(session)@min_support_score
   )
   module <- tempest_session_programs(session)$next_question
   chat <- tempest_session_chat(session, "next_question")
@@ -387,7 +400,8 @@ tempest_session_suggest_questions_async <- function(
     request,
     onFulfilled = function(...) {
       if (!tempest_async_is_current(is_current)) {
-        session$emit_progress(
+        tempest_session_emit_progress(
+          session,
           "step",
           "cancelled",
           stage = "suggestions",
@@ -400,7 +414,8 @@ tempest_session_suggest_questions_async <- function(
       }
       questions <- utils::head(questions, n)
       tempest_session_set_suggestions(session, questions)
-      session$emit_progress(
+      tempest_session_emit_progress(
+        session,
         "step",
         "succeeded",
         stage = "suggestions",
@@ -413,7 +428,8 @@ tempest_session_suggest_questions_async <- function(
     },
     onRejected = function(error) {
       if (!tempest_async_is_current(is_current)) {
-        session$emit_progress(
+        tempest_session_emit_progress(
+          session,
           "step",
           "cancelled",
           stage = "suggestions",
@@ -424,7 +440,8 @@ tempest_session_suggest_questions_async <- function(
         )
         return(character())
       }
-      session$emit_progress(
+      tempest_session_emit_progress(
+        session,
         "step",
         "failed",
         stage = "suggestions",
@@ -520,21 +537,21 @@ tempest_session_turn_append_progress_notice <- function(state, error) {
 }
 
 tempest_session_turn_progress_event <- function(session, state, ...) {
-  before <- length(session$events)
+  before <- length(tempest_session_events(session))
   tryCatch(
-    session$emit_progress(...),
+    tempest_session_emit_progress(session, ...),
     error = function(error) {
       if (!inherits(error, "tempest_progress_callback_error")) {
         stop(error)
       }
       tempest_session_turn_append_progress_notice(state, error)
-      if (!identical(length(session$events), before + 1L)) {
+      if (!identical(length(tempest_session_events(session)), before + 1L)) {
         tempest_abort(
           "A Co-STORM progress event was not recorded atomically.",
           class = c("tempest_session_turn_error", "tempest_error")
         )
       }
-      event <- session$events[[before + 1L]]
+      event <- tempest_session_events(session)[[before + 1L]]
       event$sequence <- NULL
       do.call(tempest_progress_event, event)
     }
@@ -581,14 +598,14 @@ tempest_session_turn_cancel <- function(state) {
 #'
 #' @param session A [TempestSession] object.
 #' @param completion_id Opaque, process-local completion identifier returned by
-#'   `session$request_completion_async()`.
+#'   `tempest_session_request_completion_async()`.
 #' @param suggest Whether to generate follow-up questions.
 #' @param n_suggestions Maximum number of follow-up questions.
 #' @param is_current Process-local predicate returning `TRUE` while this work is
 #'   allowed to commit. It is never retained in the result.
 #' @return A promise resolving to a typed, serializable
 #'   `tempest_session_turn_result` object.
-#' @export
+#' @keywords internal
 tempest_session_process_turn_async <- function(
   session,
   completion_id,
@@ -941,11 +958,7 @@ tempest_session_process_turn_async <- function(
             tempest_session_turn_cancel(state)
             return(NULL)
           }
-          questions <- tempest_as_character_vector(questions)
-          questions <- tempest_trim(questions)
-          state$suggestions <- unique(
-            questions[!is.na(questions) & nzchar(questions)]
-          )
+          state$suggestions <- tempest_suggested_questions_validate(questions)
           state$suggestion_status <- if (length(state$suggestions) > 0L) {
             "generated"
           } else {
@@ -989,19 +1002,19 @@ tempest_session_process_turn_async <- function(
 }
 
 tempest_session_report_progress_event <- function(session, ...) {
-  before <- length(session$events)
+  before <- length(tempest_session_events(session))
   tryCatch(
-    session$emit_progress(...),
+    tempest_session_emit_progress(session, ...),
     error = function(error) {
       if (!inherits(error, "tempest_progress_callback_error")) {
         stop(error)
       }
-      if (!identical(length(session$events), before + 1L)) {
+      if (!identical(length(tempest_session_events(session)), before + 1L)) {
         tempest_costorm_session_abort(
           "A Co-STORM report progress event was not recorded atomically."
         )
       }
-      event <- session$events[[before + 1L]]
+      event <- tempest_session_events(session)[[before + 1L]]
       event$sequence <- NULL
       do.call(tempest_progress_event, event)
     }
@@ -1030,7 +1043,7 @@ tempest_session_report_async <- function(
   )
   tempest_session_assert_mutable(session, "generate a report")
   tempest_costorm_report_assert_quiescent(session)
-  workspace <- session$workspace
+  workspace <- tempest_session_workspace(session)
   publication_owner <- tempest_session_verification_owner_token(session)
   otel_context <- tempest_otel_provider_call(
     tempest_otel_context_start("costorm.report")

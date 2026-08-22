@@ -3,7 +3,8 @@ test_persistence_storm_stage_records <- function(
   workspace,
   manifest,
   min_support_score = 0.7,
-  deputy_trace = NULL
+  deputy_trace = NULL,
+  personas_generated = FALSE
 ) {
   records <- list()
   sequence <- 0L
@@ -77,8 +78,10 @@ test_persistence_storm_stage_records <- function(
         c("title", "perspectives")
       )
     )
-    running <- start("personas")
-    succeed(running, state_reference(running, state$experts, "experts"))
+    if (isTRUE(personas_generated)) {
+      running <- start("personas")
+      succeed(running, state_reference(running, state$experts, "experts"))
+    }
   }
   if ("research" %in% state$completed_stages) {
     running <- start("query_decomposition")
@@ -238,25 +241,22 @@ test_persistence_storm_deputy_trace <- function(state, workspace, manifest) {
     \(expert) expert@expert_id,
     character(1)
   )
+  if (length(expert_ids) == 0L) {
+    expert <- tempest_expert(
+      name = "Persistence Fixture Expert",
+      title = "Research persistence analyst",
+      description = "Binds durable fixture evidence to one execution.",
+      instructions = "Preserve exact execution identity."
+    )
+    state$experts <- list(expert)
+    expert_ids <- expert@expert_id
+  }
   expert_id <- if (length(claim_expert_ids) == 1L) {
     claim_expert_ids[[1L]]
-  } else if (length(expert_ids) > 0L) {
-    expert_ids[[1L]]
   } else {
-    paste0("expert.persistence-", manifest@research_run_id)
+    expert_ids[[1L]]
   }
-  if (!expert_id %in% expert_ids) {
-    state$experts <- c(
-      state$experts,
-      list(tempest_expert(
-        expert_id = expert_id,
-        name = "Persistence Fixture Expert",
-        title = "Research persistence analyst",
-        description = "Binds durable fixture evidence to one execution.",
-        instructions = "Preserve exact execution identity."
-      ))
-    )
-  }
+  stopifnot(expert_id %in% expert_ids)
   correlations <- unique(vapply(
     claims,
     function(claim) {
@@ -307,13 +307,13 @@ test_persistence_add_costorm_evidence <- function(
     tempest:::tempest_session_program_set(session)
   )
   fixture <- test_add_verifiable_claim(
-    session$workspace,
+    tempest:::tempest_session_workspace(session),
     key = key,
     claim_text = claim_text,
     quote = claim_text,
     extracted_by = programs$extract_claims$program_artifact_id
   )
-  session$workspace$verify_proposed_claims_batch(
+  tempest:::tempest_session_workspace(session)$verify_proposed_claims_batch(
     list(test_claim_support(fixture$claim, fixture$span)),
     verified_at = "2026-08-16T00:00:00Z",
     verifier = programs$verify_claim_support$program_artifact_id,
@@ -330,7 +330,7 @@ test_persistence_commit_costorm_report <- function(session, report_md) {
     session$session_id
   )
   deputy_context <- tempest:::tempest_deputy_run_context(
-    session$manifest,
+    tempest:::tempest_session_manifest(session),
     stage = "dialogue",
     role = "moderator"
   )
@@ -356,9 +356,11 @@ test_persistence_commit_costorm_report <- function(session, report_md) {
   )
   records <- test_persistence_storm_stage_records(
     state,
-    session$workspace,
-    session$manifest,
-    min_support_score = session$config@min_support_score,
+    tempest:::tempest_session_workspace(session),
+    tempest:::tempest_session_manifest(session),
+    min_support_score = tempest:::tempest_session_config(
+      session
+    )@min_support_score,
     deputy_trace = deputy_trace
   )
   tempest:::tempest_session_record_deputy_trace(session, deputy_trace)
@@ -374,18 +376,18 @@ test_persistence_commit_existing_costorm_report <- function(
   report_md <- tempest:::tempest_product_report_for_stage_records(
     report_md,
     records,
-    trusted_title = session$title
+    trusted_title = tempest:::tempest_session_title(session)
   )
   manifest <- tempest:::tempest_product_authority_finalize_manifest(
-    manifest = session$manifest,
+    manifest = tempest:::tempest_session_manifest(session),
     stage_records = records,
-    workspace = session$workspace,
+    workspace = tempest:::tempest_session_workspace(session),
     deputy_traces = tempest:::tempest_session_deputy_traces(session),
     report_md = report_md,
-    config = session$config,
+    config = tempest:::tempest_session_config(session),
     experts = session$experts,
     expert_sessions = tempest:::tempest_expert_sessions_snapshot(session),
-    product_state = list(title = session$title),
+    product_state = list(title = tempest:::tempest_session_title(session)),
     status = "succeeded",
     require_publishable = TRUE
   )
@@ -401,7 +403,8 @@ test_persistence_bind_storm_records <- function(
   state,
   workspace,
   manifest,
-  min_support_score = 0.7
+  min_support_score = 0.7,
+  personas_generated = FALSE
 ) {
   deputy <- test_persistence_storm_deputy_trace(
     state,
@@ -414,7 +417,8 @@ test_persistence_bind_storm_records <- function(
     workspace,
     manifest,
     min_support_score = min_support_score,
-    deputy_trace = deputy$trace
+    deputy_trace = deputy$trace,
+    personas_generated = personas_generated
   )
   if (!is.null(state$report_md)) {
     state$report_md <- tempest:::tempest_product_report_for_stage_records(
@@ -447,8 +451,15 @@ test_persistence_complete_storm_product <- function(
 ) {
   programs <- tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    paste0("https://example.com/", run_id),
+  expert <- tempest_expert(
+    name = "Durable Product Expert",
+    title = "Research integrity analyst",
+    description = "Checks complete durable research products.",
+    instructions = "Require exact evidence and execution history."
+  )
+  correlation_id <- paste0("correlation.persistence-", run_id)
+  source <- fake_source(
+    url = paste0("https://example.com/", run_id),
     title = paste(topic, "source"),
     content_text = "Durable evidence supports the completed research product."
   )
@@ -458,25 +469,28 @@ test_persistence_complete_storm_product <- function(
   }
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = paste0("span.", run_id),
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Durable evidence supports the completed research product.",
     extracted_by = programs$extract_claims$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = paste0("claim.", run_id),
     claim_text = "Durable evidence supports the completed research product.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list(
       "Durable evidence supports the completed research product."
-    )
+    ),
+    retrieval_step_id = correlation_id,
+    expert_id = expert@expert_id,
+    session_id = run_id
   ))
   support_score <- max(config@min_support_score, 0.9)
   workspace$verify_proposed_claims_batch(
     list(tempest_claim_support(
       claim_id = claim_id,
       evidence_span_id = span_id,
-      source_id = source$id,
+      source_id = source@resource_id,
       verification_status = "supported",
       support_score = support_score,
       rationale = "The exact durable excerpt supports the claim."
@@ -493,11 +507,11 @@ test_persistence_complete_storm_product <- function(
       subsections = list()
     ))
   )
-  report_md <- tempest_report_md(
+  report_md <- tempest:::tempest_report_md_render(
     title = topic,
     body = paste0(
       "Durable evidence supports the completed research product. [",
-      source$id,
+      source@resource_id,
       "]"
     ),
     workspace = workspace,
@@ -512,13 +526,7 @@ test_persistence_complete_storm_product <- function(
       description = "Durable evidence",
       key_questions = "What supports the completed product?"
     )),
-    experts = list(tempest_expert(
-      expert_id = paste0("expert.", run_id),
-      name = "Durable Product Expert",
-      title = "Research integrity analyst",
-      description = "Checks complete durable research products.",
-      instructions = "Require exact evidence and execution history."
-    )),
+    experts = list(expert),
     draft_outline = outline,
     outline = outline,
     lead_section = "Durable evidence supports the completed research product.",

@@ -3,8 +3,8 @@ test_that("async warmup returns a typed result and commits in expert order", {
   skip_if_not_installed("promises")
   collector <- tempest_progress_collector(include_payload = TRUE)
   experts <- list(
-    test_expert(expert_id = "expert.a", name = "Dr. A", title = "Expert"),
-    test_expert(expert_id = "expert.b", name = "Dr. B", title = "Expert")
+    test_expert(name = "Dr. A", title = "Expert"),
+    test_expert(name = "Dr. B", title = "Expert")
   )
   session <- fake_costorm_warmup_session(
     experts = experts,
@@ -53,19 +53,21 @@ test_that("async warmup starts independent experts in parallel", {
   first_resolve <- NULL
   second_started <- FALSE
   experts <- list(
-    test_expert(expert_id = "expert.a", name = "Dr. A", title = "Expert"),
-    test_expert(expert_id = "expert.b", name = "Dr. B", title = "Expert")
+    test_expert(name = "Dr. A", title = "Expert"),
+    test_expert(name = "Dr. B", title = "Expert")
   )
   session <- fake_costorm_warmup_session(
     experts = experts,
     chat_async = function(prompt, expert) {
-      if (identical(expert@expert_id, "expert.a")) {
+      if (identical(expert@expert_id, experts[[1L]]@expert_id)) {
         return(promises::promise(function(resolve, reject) {
           first_resolve <<- resolve
         }))
       }
       second_started <<- TRUE
-      source_id <- session$workspace$list_retrieved_sources()[[1]]$id
+      source_id <- tempest:::tempest_session_workspace(
+        session
+      )$list_retrieved_sources()[[1]]$id
       promises::promise_resolve(paste0("Second [", source_id, "]."))
     }
   )
@@ -82,7 +84,9 @@ test_that("async warmup starts independent experts in parallel", {
 
   expect_equal(is.null(first_resolve), FALSE)
   expect_equal(second_started, TRUE)
-  source_id <- session$workspace$list_retrieved_sources()[[1]]$id
+  source_id <- tempest:::tempest_session_workspace(
+    session
+  )$list_retrieved_sources()[[1]]$id
   first_resolve(paste0("First [", source_id, "]."))
   settled <- await_tempest_promise(request)
   expect_null(settled$error)
@@ -197,7 +201,6 @@ test_that("async warmup records evidence failures without failing the panel", {
 
 test_that("warmup result records never retain provider error details", {
   expert <- test_expert(
-    expert_id = "expert.safe-warmup-error",
     name = "Safe Warmup Expert"
   )
   secret <- structure(
@@ -227,7 +230,6 @@ test_that("async warmup defaults remain bounded and host-neutral", {
     tempest.costorm.warmup_max_parallel_experts = NULL
   )
   expert <- test_expert(
-    expert_id = "expert.prompt",
     name = "Dr. Prompt",
     title = "Expert",
     initial_questions = "What should the panel investigate?"
@@ -311,14 +313,14 @@ test_that("timed out Deputy warmup stays pending until terminal trace", {
     }
     fake_chat()
   })
+  expert <- test_expert(
+    name = "Dr. Pending Timeout",
+    initial_questions = "What should be investigated?"
+  )
   session <- tempest_session(
     "Timed out Deputy warmup",
     config = cfg,
-    experts = list(test_expert(
-      expert_id = "expert.pending-timeout",
-      name = "Dr. Pending Timeout",
-      initial_questions = "What should be investigated?"
-    ))
+    experts = list(expert)
   )
 
   settled <- await_tempest_promise(tempest_session_warmup_async(
@@ -347,7 +349,7 @@ test_that("timed out Deputy warmup stays pending until terminal trace", {
   expect_identical(pending[[1L]]$role, "expert")
   expect_identical(
     pending[[1L]]$expert_id,
-    "expert.pending-timeout"
+    expert@expert_id
   )
   expect_identical(
     any(vapply(pending, inherits, logical(1), "Agent")),
@@ -452,7 +454,9 @@ test_that("warmup permits only one in-flight call per session", {
           resolve_first <<- resolve
         }))
       }
-      source_id <- session$workspace$list_retrieved_sources()[[1]]$id
+      source_id <- tempest:::tempest_session_workspace(
+        session
+      )$list_retrieved_sources()[[1]]$id
       promises::promise_resolve(paste0("Later [", source_id, "]."))
     },
     progress = collector$record
@@ -472,7 +476,9 @@ test_that("warmup permits only one in-flight call per session", {
   expect_length(collector$events(), before)
   expect_length(otel$spans, 1L)
 
-  source_id <- session$workspace$list_retrieved_sources()[[1]]$id
+  source_id <- tempest:::tempest_session_workspace(
+    session
+  )$list_retrieved_sources()[[1]]$id
   resolve_first(paste0("First [", source_id, "]."))
   settled_first <- await_tempest_promise(first)
   expect_null(settled_first$error)
@@ -523,7 +529,6 @@ test_that("warmup telemetry preserves the exact skipped result", {
 
 test_that("warmup result validators reject contradictory records", {
   expert <- test_expert(
-    expert_id = "expert.validation",
     name = "Dr. Validation"
   )
   record <- tempest:::tempest_warmup_orientation(expert, "warmup-validation")

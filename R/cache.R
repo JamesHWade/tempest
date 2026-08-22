@@ -179,7 +179,7 @@ tempest_cache_set <- function(cache_dir, key, value, writer = saveRDS) {
 #' @param max_age Optional maximum cache age in seconds. When supplied, only
 #'   files older than `max_age` are removed.
 #' @return Invisibly returns TRUE.
-#' @export
+#' @keywords internal
 tempest_cache_clear <- function(cache_dir = NULL, max_age = NULL) {
   cache_dir <- tempest_cache_dir(cache_dir)
   if (dir.exists(cache_dir)) {

@@ -29,8 +29,8 @@ test_that("workspace schema 5 round-trips authoritative claim supports", {
     snapshot
   )
   expect_identical(
-    tempest_claim_supports(restored),
-    tempest_claim_supports(fixture$workspace)
+    tempest:::tempest_claim_supports_resolved(restored),
+    tempest:::tempest_claim_supports_resolved(fixture$workspace)
   )
   expect_identical(restored$citation_audit, fixture$workspace$citation_audit)
 })

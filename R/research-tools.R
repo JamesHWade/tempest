@@ -28,7 +28,7 @@ tempest_research_model <- function(config, role) {
 }
 
 tempest_research_tool_roles <- function() {
-  tempest_research_expert_model_roles()
+  c("coordinator", "expert", "writer", "mindmap", "judge")
 }
 
 tempest_research_tool_role <- function(role) {

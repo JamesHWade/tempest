@@ -21,3 +21,4 @@ Removes cached search and fetch results from the specified cache directory.
 This is useful when a host app wants to force fresh web retrieval without
 changing the configured cache path.
 }
+\keyword{internal}

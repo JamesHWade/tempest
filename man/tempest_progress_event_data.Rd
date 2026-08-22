@@ -15,13 +15,4 @@ A named list with the event contract fields.
 \description{
 Convert a Tempest progress event to a list
 }
-\examples{
-event <- tempest_progress_event(
-  run_id = "session-1",
-  workflow = "costorm",
-  event_type = "expert",
-  status = "started",
-  stage = "warmup"
-)
-tempest_progress_event_data(event)
-}
+\keyword{internal}

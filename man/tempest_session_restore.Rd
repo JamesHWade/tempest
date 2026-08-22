@@ -48,3 +48,4 @@ reduced with \code{\link[=tempest_progress_state]{tempest_progress_state()}}. Th
 Stage-record history is restored for audit, but running attempts are rejected
 rather than resumed.
 }
+\keyword{internal}

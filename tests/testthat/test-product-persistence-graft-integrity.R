@@ -36,7 +36,6 @@ test_that("Graft snapshot sidecars fail closed on integrity mismatch", {
     "Graft sidecar integrity",
     config = cfg,
     experts = list(tempest_expert(
-      expert_id = "expert.graft-integrity",
       name = "Graft Integrity Expert",
       title = "Persistence reviewer",
       description = "Checks sidecar integrity.",

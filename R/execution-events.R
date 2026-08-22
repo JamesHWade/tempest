@@ -31,7 +31,7 @@ tempest_execution_event_history <- function(x) {
       "{.arg x} must be a TempestSession."
     )
   }
-  events <- x$events
+  events <- tempest_session_events(x)
   if (!is.list(events) || is.data.frame(events)) {
     tempest_execution_events_abort(
       "The execution contains an invalid event history."
@@ -89,7 +89,7 @@ tempest_execution_event_sequences <- function(events) {
 #' @param after_sequence Return only events whose sequence is greater than this
 #'   non-negative execution-local cursor.
 #' @return An ordered list of normalized event records.
-#' @export
+#' @keywords internal
 tempest_execution_events <- function(x, after_sequence = 0L) {
   after_sequence <- tempest_execution_events_count(after_sequence)
   events <- tempest_execution_event_history(x)

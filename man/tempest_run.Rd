@@ -8,20 +8,17 @@ tempest_run(
   topic,
   config = tempest_config(),
   retriever = NULL,
-  knowledge_view = NULL,
+  knowledge = NULL,
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
   max_rounds = 3,
   max_questions_per_perspective = 3,
-  parallel_research = FALSE,
   parallel_writing = FALSE,
-  program_set = NULL,
   steps = c("perspectives", "research", "outline", "write", "polish"),
   output_dir = NULL,
   resume = FALSE,
   run_id = NULL,
-  remove_duplicate = FALSE,
   progress = NULL,
   verbose = TRUE
 )
@@ -34,8 +31,10 @@ tempest_run(
 \item{retriever}{Optional \code{TempestRetriever}. If \code{NULL}, created from
 \code{config}.}
 
-\item{knowledge_view}{Optional immutable Graft view. It is required when
-\code{program_set} contains any governed procedure and is never persisted.}
+\item{knowledge}{Optional accepted organizational knowledge from
+\code{\link[=tempest_knowledge]{tempest_knowledge()}}. It pins an immutable Graft view, supplies accepted
+evidence records, and carries any accepted governed-procedure stage
+bindings. It is never persisted.}
 
 \item{n_experts}{Number of expert profiles to generate when \code{experts} is
 \code{NULL} (default 3).}
@@ -54,15 +53,8 @@ strategy (default 3).}
 \item{max_questions_per_perspective}{Maximum questions per perspective for
 the "key_questions" strategy (default 3).}
 
-\item{parallel_research}{Must be \code{FALSE}. Parallel perspective research is
-unavailable while every open-ended expert turn requires one synchronously
-bound terminal Deputy execution; \code{TRUE} fails before provider work.}
-
 \item{parallel_writing}{If \code{TRUE}, write report sections in parallel using
 the mirai package. Failed parallel sections are retried sequentially.}
-
-\item{program_set}{A \link{TempestProgramSet} containing the exact dsprrr programs
-used by STORM. If \code{NULL}, \code{\link[=tempest_program_set]{tempest_program_set()}} creates the default set.}
 
 \item{steps}{Character vector controlling which steps to run. Defaults to
 all.}
@@ -78,9 +70,6 @@ than migrated.}
 
 \item{run_id}{Optional run directory name. Defaults to a slug of \code{topic}.}
 
-\item{remove_duplicate}{Must be \code{FALSE}. Duplicate removal is unavailable on
-the authoritative deterministic STORM report path.}
-
 \item{progress}{Optional function called with a \code{tempest_progress_event}
 object as STORM workflow stages start, finish, fail, persist artifacts, or
 make final artifacts available.}
@@ -88,9 +77,9 @@ make final artifacts available.}
 \item{verbose}{If \code{TRUE}, prints progress messages.}
 }
 \value{
-A list with product fields \code{title}, \code{perspectives}, \code{experts},
-\code{outline}, \code{draft_md}, \code{report_md}, \code{manifest}, \code{state}, \code{workspace},
-\code{retriever}, and \code{output_dir}.
+A validated completed Tempest research product. Read it with
+\code{\link[=tempest_report]{tempest_report()}}, \code{\link[=tempest_sources]{tempest_sources()}}, \code{\link[=tempest_claims]{tempest_claims()}},
+\code{\link[=tempest_claim_supports]{tempest_claim_supports()}}, and \code{\link[=tempest_trajectory_review]{tempest_trajectory_review()}}.
 }
 \description{
 This is a scripted workflow that:
@@ -105,6 +94,6 @@ This is a scripted workflow that:
 \dontrun{
 cfg <- tempest_config()
 result <- tempest_run("History of jazz", config = cfg)
-cat(result$report_md)
+cat(tempest_report(result))
 }
 }

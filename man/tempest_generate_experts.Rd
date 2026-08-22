@@ -36,12 +36,4 @@ Uses an LLM to propose diverse experts who would naturally approach the
 topic from different angles, then normalizes the provider response into
 validated, versioned \code{\link[=tempest_expert]{tempest_expert()}} profiles.
 }
-\examples{
-\dontrun{
-experts <- tempest_generate_experts(
-  topic = "Climate change adaptation",
-  n = 3,
-  config = tempest_config()
-)
-}
-}
+\keyword{internal}

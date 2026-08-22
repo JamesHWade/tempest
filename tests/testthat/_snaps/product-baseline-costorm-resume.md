@@ -1,10 +1,11 @@
 # a resumed published Co-STORM session is read-only
 
     Code
-      baseline_snapshot_json(list(restored = before, restored_status = restored$
-        manifest@status, workspace_state = tempest:::tempest_research_workspace_mutation_state(
-        restored$workspace), continuation_error_class = class(continuation_error),
-      moderator_call_count = length(fixture$resume_runtime$moderator_calls())))
+      baseline_snapshot_json(list(restored = before, restored_status = tempest:::tempest_session_manifest(
+        restored)@status, workspace_state = tempest:::tempest_research_workspace_mutation_state(
+        tempest:::tempest_session_workspace(restored)), continuation_error_class = class(
+        continuation_error), moderator_call_count = length(fixture$resume_runtime$
+        moderator_calls())))
     Output
       {
         "restored": {
@@ -107,6 +108,6 @@
         },
         "restored_status": "succeeded",
         "workspace_state": "sealed",
-        "continuation_error_class": ["tempest_session_error", "tempest_error", "rlang_error", "error", "condition"],
+        "continuation_error_class": ["tempest_session_error", "tempest_execution_error", "tempest_error", "rlang_error", "error", "condition"],
         "moderator_call_count": 0
       }

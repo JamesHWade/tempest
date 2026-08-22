@@ -16,10 +16,10 @@
 #' @return A Shiny app object (invisibly, from `shiny::runApp()`).
 #' @examples
 #' \dontrun{
-#' run_app()
+#' tempest_app()
 #' }
 #' @export
-run_app <- function(...) {
+tempest_app <- function(...) {
   tempest_shiny_require_ui(tempest_shiny_panel_choices())
   tempest_shiny_require_server(tempest_shiny_panel_choices())
   app_dir <- system.file("shiny", package = "tempest")

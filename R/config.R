@@ -71,6 +71,35 @@ tempest_config_models <- function(models) {
       "{.arg models} must be a named list of non-empty model strings."
     )
   }
+  canonical <- vapply(
+    models,
+    function(model) {
+      if (
+        !identical(model, trimws(model)) ||
+          grepl("\\s", model, perl = TRUE)
+      ) {
+        return(FALSE)
+      }
+      if (!grepl("/", model, fixed = TRUE)) {
+        return(TRUE)
+      }
+      provider <- sub("/.*$", "", model)
+      model_name <- sub("^[^/]*/", "", model)
+      grepl("^[a-z][a-z0-9_.-]*$", provider) &&
+        nzchar(model_name) &&
+        !provider %in% c("claude", "gemini")
+    },
+    logical(1)
+  )
+  if (!all(canonical)) {
+    tempest_config_abort(
+      paste0(
+        "{.arg models} must use canonical provider prefixes and exact model ",
+        "identifiers; use ",
+        "{.val anthropic/...} or {.val google/...}."
+      )
+    )
+  }
   models
 }
 
@@ -501,30 +530,7 @@ tempest_normalize_search_provider <- function(search_provider) {
     )
   }
 
-  provider <- tolower(tempest_trim(search_provider))
-  provider <- gsub("[.-]+", "_", provider)
-  provider <- switch(
-    provider,
-    "you_com" = "you",
-    "you_search" = "you",
-    "bing_search" = "bing",
-    "bingsearch" = "bing",
-    "ddg" = "duckduckgo",
-    "duck_duck_go" = "duckduckgo",
-    "duckduckgosearch" = "duckduckgo",
-    "searx" = "searxng",
-    "sear_xng" = "searxng",
-    "searx_ng" = "searxng",
-    "google_search" = "google",
-    "google_custom_search" = "google",
-    "googlesearch" = "google",
-    "azure" = "azure_ai_search",
-    "azure_ai" = "azure_ai_search",
-    "azure_search" = "azure_ai_search",
-    "azureaisearch" = "azure_ai_search",
-    provider
-  )
-
+  provider <- search_provider
   choices <- tempest_search_provider_choices()
   if (!provider %in% choices) {
     tempest_abort(
@@ -571,14 +577,7 @@ tempest_normalize_search_provider <- function(search_provider) {
 #'   \item{perspective}{STORM perspective this content relates to (optional)}
 #' }
 #'
-#' @examples
-#' \dontrun{
-#' store <- tempest_create_ragnar_store(
-#'   embed_fn = ragnar::embed_openai(),
-#'   cache_dir = tempfile()
-#' )
-#' }
-#' @export
+#' @keywords internal
 tempest_create_ragnar_store <- function(
   embed_fn,
   cache_dir = NULL,

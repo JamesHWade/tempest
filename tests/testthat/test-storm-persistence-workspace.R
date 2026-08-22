@@ -1,4 +1,4 @@
-test_that("schema 7 STORM bundles round-trip the complete workspace", {
+test_that("schema 8 STORM bundles round-trip the complete workspace", {
   skip_if_not_installed("graft")
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
@@ -13,11 +13,13 @@ test_that("schema 7 STORM bundles round-trip the complete workspace", {
       list(record_id = "claim.accepted", revision_id = "revision-7")
     )
   )
-  source <- tempest:::tempest_source(
-    "https://example.com/current-study",
+  source <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.com/current-study",
     title = "Current study",
-    snippet = "The study reports a reproducible result.",
-    content_text = "The study reports a reproducible result."
+    media_type = "text/html",
+    content = "The study reports a reproducible result.",
+    metadata = list(snippet = "The study reports a reproducible result.")
   )
   resource <- tempest_resource(
     resource_kind = "scientific.document",
@@ -39,14 +41,14 @@ test_that("schema 7 STORM bundles round-trip the complete workspace", {
   ))
   source_span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-current-study",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "The study reports a reproducible result.",
     extracted_by = program_references$extract_claims$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-complete-workspace",
     claim_text = "The result used a reviewed assay.",
-    source_ids = c(resource@resource_id, source$id),
+    source_ids = c(resource@resource_id, source@resource_id),
     evidence_span_ids = c(span_id, source_span_id),
     supporting_quotes = list(
       "The assay was reviewed before use.",

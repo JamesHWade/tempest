@@ -16,15 +16,6 @@ tempest_detect_provider <- function(model) {
   # Parse "provider/model-name" format
   if (grepl("/", model)) {
     provider <- sub("/.*$", "", model)
-    # Normalize provider names
-    provider <- tolower(provider)
-    # Map common aliases
-    provider <- switch(
-      provider,
-      "claude" = "anthropic",
-      "gemini" = "google",
-      provider
-    )
     return(provider)
   }
   NULL
@@ -176,7 +167,7 @@ tempest_native_source_candidates <- function(x) {
 }
 
 #' @keywords internal
-tempest_native_source_from_url <- function(
+tempest_native_resource_from_url <- function(
   url,
   title = NA_character_,
   snippet = NA_character_,
@@ -188,47 +179,113 @@ tempest_native_source_from_url <- function(
   if (is.na(url) || !nzchar(url)) {
     return(NULL)
   }
-  meta <- list(kind = kind, provider_tool = "native")
-  context_text <- tempest_source_scalar(context_text)
-  if (!is.na(context_text) && nzchar(context_text)) {
-    meta$context_text <- context_text
+  title <- tempest_native_scalar(title, url)
+  snippet <- tempest_native_scalar(snippet)
+  content_text <- tempest_native_scalar(content_text)
+  context_text <- tempest_native_scalar(context_text)
+  content <- tempest_native_scalar(context_text, content_text, snippet)
+  if (is.na(content)) {
+    content <- NULL
   }
-  tempest_source(
-    url = url,
+  metadata <- list(kind = kind, provider_tool = "native")
+  for (field in c("snippet", "content_text", "context_text")) {
+    value <- get(field, inherits = FALSE)
+    if (!is.na(value) && nzchar(value)) {
+      metadata[[field]] <- value
+    }
+  }
+  tempest_resource(
+    resource_kind = "web",
+    locator = url,
     title = title,
-    snippet = snippet,
-    content_text = content_text,
-    fetched_at = tempest_now_utc(),
-    meta = meta
+    media_type = "text/html",
+    resource_id = tempest_source_id(url),
+    content = content,
+    retrieved_at = tempest_now_utc(),
+    metadata = metadata
   )
 }
 
 #' @keywords internal
-tempest_merge_source_record <- function(old, new) {
+tempest_merge_resource_record <- function(old, new) {
+  if (!tempest_is_exact_resource(new)) {
+    tempest_research_workspace_abort(
+      "Native evidence merging requires typed evidence resources."
+    )
+  }
+  new_data <- tempest_resource_data(new)
   if (is.null(old)) {
     return(new)
   }
-  for (field in c("title", "snippet", "content_text", "fetched_at")) {
-    value <- new[[field]]
-    if (length(value) != 1L || is.na(value) || !nzchar(value)) {
-      new[[field]] <- old[[field]] %||% new[[field]]
+  if (!tempest_is_exact_resource(old)) {
+    tempest_research_workspace_abort(
+      "Native evidence merging requires typed evidence resources."
+    )
+  }
+  old_data <- tempest_resource_data(old)
+  if (
+    !identical(old_data$resource_id, new_data$resource_id) ||
+      !identical(old_data$resource_kind, new_data$resource_kind) ||
+      !identical(old_data$locator, new_data$locator)
+  ) {
+    tempest_research_workspace_abort(
+      "Native evidence merging requires identical resource identity."
+    )
+  }
+  metadata <- utils::modifyList(old_data$metadata, new_data$metadata)
+  content <- NULL
+  for (field in c("context_text", "content_text", "snippet")) {
+    value <- metadata[[field]] %||% NA_character_
+    if (rlang::is_string(value) && !is.na(value) && nzchar(value)) {
+      content <- value
+      break
     }
   }
-  new$meta <- utils::modifyList(old$meta %||% list(), new$meta %||% list())
-  new
+  if (is.null(content)) {
+    content <- new_data$content %||% old_data$content
+  }
+  content_hash <- if (is.null(content)) {
+    NULL
+  } else {
+    tempest_product_content_hash(content, new_data$media_type)
+  }
+  title <- if (
+    identical(new_data$title, new_data$locator) &&
+      !identical(old_data$title, old_data$locator)
+  ) {
+    old_data$title
+  } else {
+    new_data$title
+  }
+  tempest_resource(
+    resource_kind = new_data$resource_kind,
+    locator = new_data$locator,
+    title = title,
+    media_type = new_data$media_type,
+    resource_id = new_data$resource_id,
+    content = content,
+    storage_ref = new_data$storage_ref,
+    origin_connection_id = new_data$origin_connection_id,
+    scope_metadata = new_data$scope_metadata,
+    content_hash = content_hash,
+    retrieved_at = new_data$retrieved_at,
+    redaction = new_data$redaction,
+    retention = new_data$retention,
+    metadata = metadata
+  )
 }
 
 #' @keywords internal
-tempest_upsert_native_source <- function(store, source) {
-  if (is.null(source)) {
+tempest_upsert_native_resource <- function(store, resource) {
+  if (is.null(resource)) {
     return(NA_character_)
   }
-  source <- tempest_merge_source_record(
-    store$get_retrieved_source(source$id),
-    source
+  resource <- tempest_merge_resource_record(
+    store$get_retrieved_resource(resource@resource_id),
+    resource
   )
-  store$upsert_retrieved_resource(source)
-  source$id
+  store$upsert_retrieved_resource(resource)
+  resource@resource_id
 }
 
 #' @keywords internal
@@ -241,9 +298,9 @@ tempest_harvest_native_source_candidates <- function(
   for (candidate in tempest_native_source_candidates(x)) {
     ids <- c(
       ids,
-      tempest_upsert_native_source(
+      tempest_upsert_native_resource(
         store,
-        tempest_native_source_from_url(
+        tempest_native_resource_from_url(
           candidate$url,
           title = candidate$title,
           snippet = candidate$snippet,
@@ -273,9 +330,9 @@ tempest_harvest_native_sources_from_content <- function(content, store) {
     for (url in content@urls %||% character()) {
       ids <- c(
         ids,
-        tempest_upsert_native_source(
+        tempest_upsert_native_resource(
           store,
-          tempest_native_source_from_url(url, kind = "native_search")
+          tempest_native_resource_from_url(url, kind = "native_search")
         )
       )
     }
@@ -283,9 +340,9 @@ tempest_harvest_native_sources_from_content <- function(content, store) {
     json <- content@json %||% list()
     ids <- c(
       ids,
-      tempest_upsert_native_source(
+      tempest_upsert_native_resource(
         store,
-        tempest_native_source_from_url(
+        tempest_native_resource_from_url(
           content@url,
           title = tempest_native_scalar(json$title, json$name),
           snippet = tempest_native_scalar(
@@ -725,20 +782,8 @@ tempest_tools_web <- function(
   }
 
   fetch_url <- function(url) {
-    source <- retriever$fetch(url)
-    list(
-      source_id = source$id,
-      url = source$url,
-      title = source$title,
-      fetched_at = source$fetched_at,
-      kind = source$meta$kind %||% NA_character_,
-      error = source$meta$error %||% NA_character_,
-      excerpt = if (!is.na(source$content_text)) {
-        substr(source$content_text, 1L, 1200L)
-      } else {
-        NA_character_
-      }
-    )
+    resource <- retriever$fetch(url)
+    tempest_tool_source_payload(tempest_resource_as_source(resource))
   }
 
   list(
@@ -954,8 +999,7 @@ tempest_generate_single_expert <- function(
   area <- tempest_product_scalar(area, "area")
   existing_experts <- tempest_validate_experts(
     existing_experts,
-    "existing_experts",
-    active_only = FALSE
+    "existing_experts"
   )
 
   existing_desc <- if (length(existing_experts) > 0) {
@@ -988,7 +1032,7 @@ tempest_generate_single_expert <- function(
       "knowledge gap."
     )
   )
-  expert <- tempest_generate_experts_with_program(
+  tempest_generate_experts_with_program(
     topic = topic,
     n = 1L,
     config = config,
@@ -997,16 +1041,4 @@ tempest_generate_single_expert <- function(
     requirements = requirements,
     record_stage = record_stage
   )[[1]]
-  tempest_expert_update(
-    expert,
-    expert_id = tempest_generated_expert_id(list(
-      kind = "dynamic",
-      topic = topic,
-      area = area
-    )),
-    metadata = utils::modifyList(
-      expert@metadata,
-      list(generated_for = list(topic = topic, area = area))
-    )
-  )
 }

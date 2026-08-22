@@ -358,7 +358,9 @@ test_that("session completion settlement is atomic with pending run clearance", 
     ))
   )
   request <- await_tempest_promise(
-    session$request_completion_async("Settle this exact prompt.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Settle this exact prompt."
+    )
   )
 
   expect_null(request$error)
@@ -414,7 +416,9 @@ test_that("moderator routes each own one bounded completion span", {
 
   step <- session$step("Synchronous prompt with private content.")
   request <- await_tempest_promise(
-    session$request_completion_async("Request prompt with private content.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Request prompt with private content."
+    )
   )
   raw <- tempest:::tempest_session_chat(session, "moderator")$stream_async(
     "Raw Shiny prompt with private content."
@@ -528,7 +532,9 @@ test_that("recorder failure rolls back completion and leaves its run pending", {
   )
 
   request <- await_tempest_promise(
-    session$request_completion_async("Fail exact settlement.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Fail exact settlement."
+    )
   )
 
   expect_s3_class(request$error, "tempest_agent_completion_record_error")
@@ -598,7 +604,9 @@ test_that("non-complete moderator terminals settle without completions", {
     error = identity
   )
   async_result <- await_tempest_promise(
-    session$request_completion_async("Fail asynchronously.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Fail asynchronously."
+    )
   )
 
   expect_s3_class(sync_error, "tempest_deputy_adapter_error")
@@ -658,7 +666,9 @@ test_that("terminal recorder failure remains pending and issues no ID", {
   )
 
   request <- await_tempest_promise(
-    session$request_completion_async("Fail terminal recording.")
+    session$.__enclos_env__$private$request_completion_async(
+      "Fail terminal recording."
+    )
   )
 
   expect_s3_class(request$error, "tempest_agent_completion_record_error")

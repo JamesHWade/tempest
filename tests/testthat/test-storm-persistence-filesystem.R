@@ -203,22 +203,22 @@ test_that("the STORM manifest follows the artifacts it certifies", {
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace()
-  source <- tempest:::tempest_source(
-    "https://example.com/write-order",
+  source <- fake_source(
+    url = "https://example.com/write-order",
     title = "Write order source",
     content_text = "Durable evidence is written before its manifest."
   )
   workspace$upsert_retrieved_resource(source)
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = "span-write-order",
-    source_id = source$id,
+    source_id = source@resource_id,
     quote = "Durable evidence is written before its manifest.",
     extracted_by = program_references$extract_claims$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = "claim-write-order",
     claim_text = "Durable evidence is written before its manifest.",
-    source_ids = source$id,
+    source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list(
       "Durable evidence is written before its manifest."
@@ -230,7 +230,7 @@ test_that("the STORM manifest follows the artifacts it certifies", {
     list(tempest_claim_support(
       claim_id = claim_id,
       evidence_span_id = span_id,
-      source_id = source$id,
+      source_id = source@resource_id,
       verification_status = "supported",
       support_score = 0.9,
       rationale = "The exact source supports the durable claim."
@@ -282,7 +282,7 @@ test_that("references.json holds only the cited sources and reloads", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()
-  s2 <- tempest:::tempest_source(url = "https://example.com/b", title = "B")
+  s2 <- fake_source(url = "https://example.com/b", title = "B")
   fixture <- test_persistence_complete_storm_product(
     "References",
     "references-run",
@@ -308,7 +308,10 @@ test_that("references.json holds only the cited sources and reloads", {
   refs <- tempest:::tempest_product_read_json(
     file.path(dir, "references.json")
   )
-  expect_setequal(vapply(refs, function(r) r$id, character(1)), s1$id)
+  expect_setequal(
+    vapply(refs, function(r) r$id, character(1)),
+    s1@resource_id
+  )
 
   loaded <- tempest:::tempest_storm_load_artifacts(
     dir,
@@ -346,7 +349,7 @@ test_that("references.json holds only the cited sources and reloads", {
     steps = state$completed_stages
   )
   report_path <- file.path(dir, "storm_gen_article_polished.md")
-  writeLines(paste0("Unknown citation [", s2$id, "]."), report_path)
+  writeLines(paste0("Unknown citation [", s2@resource_id, "]."), report_path)
   manifest <- tempest:::tempest_product_read_json(manifest_path)
   manifest$checksums[["storm_gen_article_polished.md"]] <-
     tempest:::tempest_product_bundle_checksum(
@@ -365,11 +368,11 @@ test_that("references.json holds only the cited sources and reloads", {
   )
 })
 
-test_that("schema 6 STORM bundles fail closed", {
+test_that("schema 7 STORM bundles fail closed", {
   dir <- withr::local_tempdir()
   tempest:::tempest_product_write_json(
     file.path(dir, "run_config.json"),
-    list(schema_version = 6L)
+    list(schema_version = 7L)
   )
   expect_error(
     tempest:::tempest_storm_load_artifacts(dir),
@@ -378,7 +381,7 @@ test_that("schema 6 STORM bundles fail closed", {
   expect_error(
     tempest:::tempest_storm_restore_workspace(
       list(
-        schema_version = 6L,
+        schema_version = 7L,
         workspace = list(
           base_snapshot_id = NULL,
           max_sources = "unbounded",
@@ -390,7 +393,7 @@ test_that("schema 6 STORM bundles fail closed", {
   )
 })
 
-test_that("schema 7 resume protects STORM run and config identity", {
+test_that("schema 8 resume protects STORM run and config identity", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()

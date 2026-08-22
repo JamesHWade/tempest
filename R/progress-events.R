@@ -74,16 +74,7 @@ tempest_progress_chr <- function(required = FALSE, default = NA_character_) {
 #' @param event_id Optional stable event identifier. Defaults to a generated id.
 #' @param timestamp Optional event timestamp. Defaults to the current UTC time.
 #' @return A `tempest_progress_event` S7 object.
-#' @examples
-#' event <- tempest_progress_event(
-#'   run_id = "run-1",
-#'   workflow = "storm",
-#'   event_type = "stage",
-#'   status = "started",
-#'   stage = "research"
-#' )
-#' event@status
-#' @export
+#' @keywords internal
 tempest_progress_event <- S7::new_class(
   "tempest_progress_event",
   properties = list(
@@ -150,16 +141,7 @@ tempest_progress_event <- S7::new_class(
 #'
 #' @param event A `tempest_progress_event` object.
 #' @return A named list with the event contract fields.
-#' @examples
-#' event <- tempest_progress_event(
-#'   run_id = "session-1",
-#'   workflow = "costorm",
-#'   event_type = "expert",
-#'   status = "started",
-#'   stage = "warmup"
-#' )
-#' tempest_progress_event_data(event)
-#' @export
+#' @keywords internal
 tempest_progress_event_data <- function(event) {
   if (!S7::S7_inherits(event, tempest_progress_event)) {
     tempest_abort("{.arg event} must be a tempest_progress_event object.")
@@ -169,6 +151,55 @@ tempest_progress_event_data <- function(event) {
   stats::setNames(lapply(props, function(prop) S7::prop(event, prop)), props)
 }
 
+# The exact canonical field order delivered to a host progress callback.
+tempest_progress_record_fields <- function() {
+  c(
+    "event_id",
+    "run_id",
+    "workflow",
+    "event_type",
+    "stage",
+    "step",
+    "status",
+    "timestamp",
+    "message",
+    "payload",
+    "parent_event_id",
+    "correlation_id"
+  )
+}
+
+# Project one progress event into the canonical plain named record. Hosts store
+# and reduce this with ordinary R code; they never need event constructors,
+# decoders, collectors, replay helpers, or label tables.
+tempest_progress_record <- function(event) {
+  data <- tempest_progress_event_record(event)
+  fields <- tempest_progress_record_fields()
+  stats::setNames(lapply(fields, function(field) data[[field]]), fields)
+}
+
+# Rebuild a progress event from its canonical plain record.
+tempest_progress_event_from_record <- function(record) {
+  if (!tempest_progress_is_event_data(record)) {
+    tempest_abort("{.arg event} must be a tempest_progress_event object.")
+  }
+  data <- tempest_progress_event_record(record)
+  tempest_progress_event(
+    run_id = data$run_id,
+    workflow = data$workflow,
+    event_type = data$event_type,
+    status = data$status,
+    stage = data$stage,
+    step = data$step,
+    message = data$message,
+    payload = data$payload,
+    parent_event_id = data$parent_event_id,
+    correlation_id = data$correlation_id,
+    event_id = data$event_id,
+    timestamp = data$timestamp
+  )
+}
+
 tempest_progress_callback <- function(progress) {
   if (is.null(progress)) {
     return(NULL)
@@ -176,7 +207,9 @@ tempest_progress_callback <- function(progress) {
   if (!is.function(progress)) {
     tempest_abort("{.arg progress} must be NULL or a function.")
   }
-  progress
+  function(event) {
+    progress(tempest_progress_record(event))
+  }
 }
 
 tempest_progress_error_payload <- function(error) {
@@ -228,24 +261,15 @@ tempest_progress_without_payload <- function(event) {
 #'   stores event metadata only.
 #' @return A `tempest_progress_collector` list with `record()`, `events()`,
 #'   `data()`, `replay()`, and `clear()` methods.
-#' @examples
-#' collector <- tempest_progress_collector()
-#' collector$record(tempest_progress_event(
-#'   run_id = "run-1",
-#'   workflow = "storm",
-#'   event_type = "stage",
-#'   status = "started",
-#'   stage = "research"
-#' ))
-#' collector$data(stage = "research")
-#' @export
+#' @keywords internal
 tempest_progress_collector <- function(include_payload = FALSE) {
   include_payload <- isTRUE(include_payload)
   events <- list()
 
   record <- function(event) {
+    # Hosts receive canonical plain records; accept either shape and normalize.
     if (!S7::S7_inherits(event, tempest_progress_event)) {
-      tempest_abort("{.arg event} must be a tempest_progress_event object.")
+      event <- tempest_progress_event_from_record(event)
     }
     if (!include_payload) {
       event <- tempest_progress_without_payload(event)
@@ -330,16 +354,7 @@ tempest_progress_collector <- function(include_payload = FALSE) {
 #' @param run_id,workflow,event_type,stage,status,correlation_id Optional
 #'   scalar filters. `NULL` leaves that field unfiltered.
 #' @return A list of matching `tempest_progress_event` objects.
-#' @examples
-#' events <- list(tempest_progress_event(
-#'   run_id = "run-1",
-#'   workflow = "storm",
-#'   event_type = "stage",
-#'   status = "started",
-#'   stage = "research"
-#' ))
-#' tempest_progress_filter(events, stage = "research")
-#' @export
+#' @keywords internal
 tempest_progress_filter <- function(
   events,
   run_id = NULL,
@@ -398,17 +413,10 @@ tempest_progress_filter <- function(
 #'
 #' @param events A list of `tempest_progress_event` objects, or a
 #'   `tempest_progress_collector`.
-#' @param progress Function called once for each event.
+#' @param progress Function called once for each event with the canonical
+#'   plain progress record.
 #' @return The input events, invisibly.
-#' @examples
-#' events <- list(tempest_progress_event(
-#'   run_id = "run-1",
-#'   workflow = "storm",
-#'   event_type = "workflow",
-#'   status = "started"
-#' ))
-#' tempest_progress_replay(events, function(event) event@status)
-#' @export
+#' @keywords internal
 tempest_progress_replay <- function(events, progress) {
   if (inherits(events, "tempest_progress_collector")) {
     events <- events$events()
@@ -441,24 +449,7 @@ tempest_progress_replay <- function(events, progress) {
 #' @return A named list with run/workflow ids, current active work, completed
 #'   stages, failures, cancellation details, artifact references, and terminal
 #'   status.
-#' @examples
-#' events <- list(
-#'   tempest_progress_event(
-#'     run_id = "run-1",
-#'     workflow = "storm",
-#'     event_type = "workflow",
-#'     status = "started"
-#'   ),
-#'   tempest_progress_event(
-#'     run_id = "run-1",
-#'     workflow = "storm",
-#'     event_type = "stage",
-#'     status = "started",
-#'     stage = "research"
-#'   )
-#' )
-#' tempest_progress_state(events)
-#' @export
+#' @keywords internal
 tempest_progress_state <- function(events) {
   events <- tempest_progress_normalize_events(events)
   state <- tempest_progress_empty_state()
@@ -589,10 +580,7 @@ tempest_progress_event_record <- function(event) {
 #' @param workflow Workflow kind, one of `"storm"` or `"costorm"`.
 #' @param kind Label kind, either `"stage"` or `"step"`.
 #' @return A named character vector.
-#' @examples
-#' tempest_progress_labels("costorm")
-#' tempest_progress_labels("costorm", kind = "step")
-#' @export
+#' @keywords internal
 tempest_progress_labels <- function(
   workflow = c("storm", "costorm"),
   kind = c("stage", "step")

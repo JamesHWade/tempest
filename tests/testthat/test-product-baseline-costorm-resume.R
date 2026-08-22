@@ -14,7 +14,7 @@ test_that("a resumed published Co-STORM session is read-only", {
   )
   before <- baseline_costorm_durable_state(
     restored,
-    tempest_session_report_md(restored)
+    tempest_report(restored)
   )
 
   expect_equal(before, original)
@@ -25,15 +25,17 @@ test_that("a resumed published Co-STORM session is read-only", {
   )
   expect_length(fixture$resume_runtime$moderator_calls(), 0L)
   expect_identical(
-    tempest:::tempest_research_workspace_mutation_state(restored$workspace),
+    tempest:::tempest_research_workspace_mutation_state(tempest:::tempest_session_workspace(
+      restored
+    )),
     "sealed"
   )
   expect_snapshot(baseline_snapshot_json(
     list(
       restored = before,
-      restored_status = restored$manifest@status,
+      restored_status = tempest:::tempest_session_manifest(restored)@status,
       workspace_state = tempest:::tempest_research_workspace_mutation_state(
-        restored$workspace
+        tempest:::tempest_session_workspace(restored)
       ),
       continuation_error_class = class(continuation_error),
       moderator_call_count = length(

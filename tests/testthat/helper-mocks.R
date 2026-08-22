@@ -245,11 +245,13 @@ fake_source <- function(
   title = "Example A",
   content_text = "Photosynthesis converts light to chemical energy."
 ) {
-  tempest_source(
-    url = url,
+  tempest_resource(
+    resource_kind = "web",
+    locator = url,
     title = title,
-    content_text = content_text,
-    fetched_at = "2026-01-01T00:00:00Z"
+    media_type = "text/html",
+    content = content_text,
+    retrieved_at = "2026-01-01T00:00:00Z"
   )
 }
 

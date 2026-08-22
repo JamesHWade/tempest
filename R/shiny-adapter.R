@@ -115,7 +115,7 @@ tempest_shiny_as_reactive <- function(value) {
 #'   `resume_costorm_session`, `costorm_persistence_status`, `report_md`,
 #'   `report_workspace`, `report_topic`, `publish_costorm_report`, and
 #'   `publish_storm_report`.
-#' @export
+#' @keywords internal
 tempest_shiny_store <- function() {
   tempest_require("shiny", "tempest_shiny_store() creates Shiny reactives.")
   tempest_shiny_module_env()$new_session_store()
@@ -143,11 +143,7 @@ tempest_shiny_store <- function() {
 #'   the Chat settings drawer. Hosts that provide their own config should leave
 #'   this as `FALSE`.
 #' @return A Shiny tag object.
-#' @examples
-#' \dontrun{
-#' ui <- bslib::page_fillable(tempest_shiny_ui("research"))
-#' }
-#' @export
+#' @keywords internal
 tempest_shiny_ui <- function(
   id,
   panels = c("chat", "sources", "facts", "mindmap", "transcript", "report"),
@@ -219,13 +215,7 @@ tempest_shiny_ui <- function(
 #'   `costorm_events`, `costorm_evidence`, `storm_events`, `report_md`,
 #'   `report_workspace`, and `report_topic` accessors; a monotonic
 #'   `report_navigation_event` counter; and a `touch_costorm_session()` control.
-#' @examples
-#' \dontrun{
-#' server <- function(input, output, session) {
-#'   tempest_shiny_server("research", config = tempest_config())
-#' }
-#' }
-#' @export
+#' @keywords internal
 tempest_shiny_server <- function(
   id,
   config = tempest_config(),
