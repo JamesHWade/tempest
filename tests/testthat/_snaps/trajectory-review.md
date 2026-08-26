@@ -7,3 +7,21 @@
       ! `x` must be returned by `tempest_trajectory_review()`.
       x It is a <tempest::TempestTrajectoryReviewLookalike> object.
 
+# trajectory review validation rechecks canonical collection invariants
+
+    Code
+      do.call(TempestTrajectoryReview, duplicate)
+    Condition
+      Error:
+      ! <tempest::TempestTrajectoryReview> object is invalid:
+      - Trajectory findings retained items must be unique.
+
+---
+
+    Code
+      do.call(TempestTrajectoryReview, object_count)
+    Condition
+      Error:
+      ! <tempest::TempestTrajectoryReview> object is invalid:
+      - Trajectory findings total must be one nonnegative integer.
+

@@ -380,6 +380,28 @@ tempest_trajectory_validate_collection <- function(
   invisible(value)
 }
 
+tempest_trajectory_validate_canonical_set <- function(value, noun) {
+  if (length(value$items) < 2L) {
+    return(invisible(value))
+  }
+  keys <- vapply(
+    value$items,
+    tempest_product_canonical_json,
+    character(1)
+  )
+  if (anyDuplicated(keys)) {
+    tempest_trajectory_review_abort(
+      "{noun} retained items must be unique."
+    )
+  }
+  if (!identical(order(keys, method = "radix"), seq_along(keys))) {
+    tempest_trajectory_review_abort(
+      "{noun} retained items must use canonical order."
+    )
+  }
+  invisible(value)
+}
+
 tempest_trajectory_unique_records <- function(records) {
   if (length(records) < 2L) {
     return(records)
@@ -1389,6 +1411,10 @@ tempest_trajectory_review_validation_message <- function(self) {
         tempest_trajectory_agent_fields(),
         "Trajectory agent runs"
       )
+      tempest_trajectory_validate_canonical_set(
+        self@agent_runs,
+        "Trajectory agent runs"
+      )
       invisible(lapply(
         self@agent_runs$items,
         tempest_trajectory_validate_agent
@@ -1400,6 +1426,10 @@ tempest_trajectory_review_validation_message <- function(self) {
         tempest_trajectory_evidence_fields(),
         "Trajectory evidence"
       )
+      tempest_trajectory_validate_canonical_set(
+        self@evidence,
+        "Trajectory evidence"
+      )
       invisible(lapply(
         self@evidence$items,
         tempest_trajectory_validate_evidence
@@ -1409,10 +1439,18 @@ tempest_trajectory_review_validation_message <- function(self) {
         tempest_trajectory_join_fields(),
         "Trajectory joins"
       )
+      tempest_trajectory_validate_canonical_set(
+        self@joins,
+        "Trajectory joins"
+      )
       invisible(lapply(self@joins$items, tempest_trajectory_validate_join))
       tempest_trajectory_validate_collection(
         self@findings,
         tempest_trajectory_finding_fields(),
+        "Trajectory findings"
+      )
+      tempest_trajectory_validate_canonical_set(
+        self@findings,
         "Trajectory findings"
       )
       invisible(lapply(

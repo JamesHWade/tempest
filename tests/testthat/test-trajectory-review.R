@@ -80,6 +80,40 @@ test_that("trajectory review data exposes the validated closed projection", {
   expect_snapshot(error = TRUE, tempest_trajectory_review_data(lookalike))
 })
 
+test_that("trajectory review validation rechecks canonical collection invariants", {
+  fixture <- test_promotion_fixture("storm")
+  review <- tempest_trajectory_review(fixture$research)
+  properties <- S7::props(review)
+  finding <- list(
+    code = "support_unverified",
+    severity = "warning",
+    ref_type = "stage_attempt",
+    ref_id = "attempt-duplicate"
+  )
+
+  duplicate <- properties
+  duplicate$findings <- tempest_trajectory_collection(
+    list(finding, finding),
+    preserve_order = FALSE
+  )
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    duplicate[setdiff(names(duplicate), "review_id")]
+  )
+  duplicate$review_id <- tempest_trajectory_digest(payload)
+  expect_snapshot(
+    error = TRUE,
+    do.call(TempestTrajectoryReview, duplicate)
+  )
+
+  object_count <- properties
+  object_count$findings$total <- factor(0L)
+  expect_snapshot(
+    error = TRUE,
+    do.call(TempestTrajectoryReview, object_count)
+  )
+})
+
 test_that("trajectory review accepts the exact public tempest_run outline", {
   result <- storm_product_baseline_fixture()$result
   public_bullets <- result@outline$sections[[1L]]$subsections[[1L]]$bullets
