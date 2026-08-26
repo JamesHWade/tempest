@@ -31,6 +31,7 @@ reference:
   - tempest_claims
   - tempest_claim_supports
   - tempest_trajectory_review
+  - tempest_trajectory_review_data
 - title: Session persistence
   desc: Save and resume the exact current session product.
   contents:

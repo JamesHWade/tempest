@@ -48,6 +48,38 @@ test_that("trajectory review returns the exact bounded STORM projection", {
   )
 })
 
+test_that("trajectory review data exposes the validated closed projection", {
+  fixture <- test_promotion_fixture("storm")
+  review <- tempest_trajectory_review(fixture$research)
+  expected <- S7::props(review)
+
+  expect_identical(tempest_trajectory_review_data(review), expected)
+  expect_identical(
+    tempest_trajectory_review_data(unserialize(serialize(review, NULL))),
+    expected
+  )
+  ReviewLookalike <- S7::new_class(
+    "TempestTrajectoryReviewLookalike",
+    properties = list(
+      schema_version = S7::class_integer,
+      review_id = S7::class_character,
+      product = S7::class_list,
+      stages = S7::class_list,
+      agent_runs = S7::class_list,
+      programs = S7::class_list,
+      knowledge = S7::class_list,
+      evidence = S7::class_list,
+      joins = S7::class_list,
+      findings = S7::class_list
+    )
+  )
+  lookalike <- do.call(ReviewLookalike, expected)
+  condition <- rlang::catch_cnd(tempest_trajectory_review_data(lookalike))
+  expect_s3_class(condition, "tempest_trajectory_review_error")
+  expect_s3_class(condition, "tempest_input_error")
+  expect_snapshot(error = TRUE, tempest_trajectory_review_data(lookalike))
+})
+
 test_that("trajectory review accepts the exact public tempest_run outline", {
   result <- storm_product_baseline_fixture()$result
   public_bullets <- result@outline$sections[[1L]]$subsections[[1L]]$bullets

@@ -18,6 +18,7 @@ tempest_session_resume
 tempest_session_save
 tempest_sources
 tempest_trajectory_review
+tempest_trajectory_review_data
 [s3_methods]
 print.tempest_knowledge
 [formals.tempest_run]

@@ -1598,6 +1598,47 @@ tempest_trajectory_review <- function(
   )
 }
 
+#' Extract a validated trajectory review projection
+#'
+#' `tempest_trajectory_review_data()` exposes the closed, plain-data projection
+#' from a value returned by [tempest_trajectory_review()]. It validates the
+#' exact Tempest review class and its content-bound review identity before
+#' returning data. It never reaches back into a product, session, workspace,
+#' provider, or other live object.
+#'
+#' @param x A value returned by [tempest_trajectory_review()].
+#'
+#' @returns A named list containing the validated, schema-versioned trajectory
+#'   review projection.
+#' @export
+tempest_trajectory_review_data <- function(x) {
+  x_class <- S7::S7_class(x)
+  if (
+    !S7::S7_inherits(x, TempestTrajectoryReview) ||
+      !identical(S7::prop(x_class, "name"), "TempestTrajectoryReview") ||
+      !identical(S7::prop(x_class, "package"), "tempest")
+  ) {
+    tempest_trajectory_review_abort(
+      c(
+        "{.arg x} must be returned by {.fn tempest_trajectory_review}.",
+        "x" = "It is {.obj_type_friendly {x}}."
+      ),
+      class = "tempest_trajectory_review_input_error"
+    )
+  }
+  problem <- tempest_trajectory_review_validation_message(x)
+  if (!is.null(problem)) {
+    tempest_trajectory_review_abort(
+      c(
+        "{.arg x} must be a valid Tempest trajectory review.",
+        "x" = problem
+      ),
+      class = "tempest_trajectory_review_input_error"
+    )
+  }
+  S7::props(x)
+}
+
 # Internal validated value boundary; intentionally not exported or documented.
 TempestTrajectoryReview <- S7::new_class(
   "TempestTrajectoryReview",
