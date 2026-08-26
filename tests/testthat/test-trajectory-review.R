@@ -913,6 +913,48 @@ test_that("trajectory review retains exact noncausal Deputy identities", {
   )
 })
 
+test_that("trajectory review preserves Co-STORM expert-session ownership", {
+  review <- tempest_trajectory_review(
+    costorm_product_baseline_fixture()$session
+  )
+  properties <- S7::props(review)
+  expert_index <- which(vapply(
+    properties$agent_runs$items,
+    \(agent) identical(agent$role, "expert"),
+    logical(1)
+  ))[[1L]]
+  agent <- properties$agent_runs$items[[expert_index]]
+  agent$expert_id <- paste0(agent$expert_id, ".reassigned")
+  run_context <- list(
+    product = "tempest",
+    research_run_id = properties$product$research_run_id,
+    mode = properties$product$mode,
+    stage = "dialogue",
+    role = agent$role,
+    expert_id = agent$expert_id
+  )
+  snapshot_id <- properties$knowledge$input_snapshot$snapshot_id %||% NULL
+  if (!is.null(snapshot_id)) {
+    run_context$knowledge_snapshot_id <- snapshot_id
+  }
+  agent$agent_id <- tempest_deputy_adapter_agent_id(run_context)
+  properties$agent_runs$items[[expert_index]] <- agent
+  properties$agent_runs <- tempest_trajectory_collection(
+    properties$agent_runs$items,
+    preserve_order = FALSE
+  )
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    properties[setdiff(names(properties), "review_id")]
+  )
+  properties$review_id <- tempest_trajectory_digest(payload)
+
+  expect_error(
+    do.call(TempestTrajectoryReview, properties),
+    "session ID does not match its product context"
+  )
+})
+
 test_that("trajectory review binds complete Deputy lineage joins", {
   review <- tempest_trajectory_review(
     test_promotion_fixture("costorm")$research

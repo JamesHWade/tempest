@@ -14,12 +14,15 @@ tempest_deputy_expert_abort <- function(message, ..., parent = NULL) {
   )
 }
 
-tempest_deputy_expert_session_id <- function(run_id, expert_id) {
+tempest_deputy_expert_session_owner_prefix <- function(run_id, expert_id) {
   paste0(
     "expert-session_",
     substr(
       digest::digest(
-        paste(run_id, expert_id, tempest_uuid("expert"), sep = "|"),
+        tempest_product_canonical_json(list(
+          research_run_id = run_id,
+          expert_id = expert_id
+        )),
         algo = "sha256",
         serialize = FALSE
       ),
@@ -27,6 +30,43 @@ tempest_deputy_expert_session_id <- function(run_id, expert_id) {
       16L
     )
   )
+}
+
+tempest_deputy_expert_session_id <- function(run_id, expert_id) {
+  paste0(
+    tempest_deputy_expert_session_owner_prefix(run_id, expert_id),
+    "_",
+    substr(
+      digest::digest(
+        tempest_uuid("expert"),
+        algo = "sha256",
+        serialize = FALSE
+      ),
+      1L,
+      16L
+    )
+  )
+}
+
+tempest_deputy_expert_session_owned_by <- function(
+  session_id,
+  run_id,
+  expert_id
+) {
+  is.character(session_id) &&
+    !is.object(session_id) &&
+    is.null(attributes(session_id)) &&
+    length(session_id) == 1L &&
+    !is.na(session_id) &&
+    grepl(
+      paste0(
+        "^",
+        tempest_deputy_expert_session_owner_prefix(run_id, expert_id),
+        "_[a-f0-9]{16}$"
+      ),
+      session_id,
+      perl = TRUE
+    )
 }
 
 tempest_deputy_expert_prompt <- function(expert) {
@@ -613,6 +653,20 @@ TempestDeputyExpertManager <- R6::R6Class(
     create = function(expert, session_id = NULL) {
       session_id <- session_id %||%
         tempest_deputy_expert_session_id(private$run_id, expert@expert_id)
+      if (
+        !tempest_deputy_expert_session_owned_by(
+          session_id,
+          private$run_id,
+          expert@expert_id
+        )
+      ) {
+        tempest_deputy_expert_abort(
+          paste0(
+            "Expert session {.val {session_id}} is not owned by this ",
+            "research run and expert."
+          )
+        )
+      }
       if (
         exists(session_id, private$sessions, inherits = FALSE) ||
           exists(session_id, private$bindings, inherits = FALSE)

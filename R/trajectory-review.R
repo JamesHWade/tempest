@@ -1736,10 +1736,10 @@ tempest_trajectory_validate_agent <- function(
       )
     )
   } else {
-    grepl(
-      "^expert-session_[a-f0-9]{16}$",
+    tempest_deputy_expert_session_owned_by(
       agent$deputy_session_id,
-      perl = TRUE
+      product$research_run_id,
+      agent$expert_id
     )
   }
   if (!valid_session) {
