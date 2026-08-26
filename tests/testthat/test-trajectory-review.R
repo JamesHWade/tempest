@@ -285,6 +285,37 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
   )
   expect_error(rebuild(wrong_session))
 
+  bound_stage <- which(vapply(
+    properties$stages$items,
+    \(stage) !is.null(stage$deputy_binding),
+    logical(1)
+  ))[[1L]]
+  wrong_stage_session <- unserialize(serialize(properties, NULL))
+  wrong_stage_session$stages$items[[bound_stage]]$deputy_binding$session_id <-
+    "other-stage-session"
+  wrong_stage_session$stages <- tempest_trajectory_collection(
+    wrong_stage_session$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(wrong_stage_session), "exact run")
+
+  wrong_deputy_join <- unserialize(serialize(properties, NULL))
+  deputy_join <- which(vapply(
+    wrong_deputy_join$joins$items,
+    function(join) {
+      identical(join$relation, "executed_as") &&
+        identical(join$to_type, "deputy_run")
+    },
+    logical(1)
+  ))[[1L]]
+  wrong_deputy_join$joins$items[[deputy_join]]$proof$matched_fields <-
+    list("deputy_run_id")
+  wrong_deputy_join$joins <- tempest_trajectory_collection(
+    wrong_deputy_join$joins$items,
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(wrong_deputy_join), "stage Deputy join")
+
   wrong_join <- unserialize(serialize(properties, NULL))
   wrong_join$joins$items[[1L]] <- list(
     from_type = "product",
@@ -445,10 +476,55 @@ test_that("trajectory review binds complete Deputy lineage joins", {
     properties$agent_runs$items,
     preserve_order = FALSE
   )
+  stage <- properties$stages$items[[1L]]
+  stage$deputy_binding <- list(
+    run_id = parent$deputy_run_id,
+    session_id = parent$deputy_session_id,
+    expert_id = if (identical(parent$role, "moderator")) {
+      "moderator"
+    } else {
+      parent$expert_id
+    },
+    correlation_id = parent$correlation_id,
+    parent_run_id = NULL,
+    delegation_id = NULL,
+    tool_call_id = NULL
+  )
+  properties$stages$items[[1L]] <- stage
+  properties$stages <- tempest_trajectory_collection(
+    properties$stages$items,
+    preserve_order = TRUE
+  )
+  retained_joins <- Filter(
+    function(join) {
+      !(identical(join$from_type, "stage_attempt") &&
+        identical(join$from_id, stage$attempt_id) &&
+        identical(join$to_type, "deputy_run"))
+    },
+    properties$joins$items
+  )
   properties$joins <- tempest_trajectory_collection(
     c(
-      properties$joins$items,
+      retained_joins,
       list(
+        tempest_trajectory_join(
+          "stage_attempt",
+          stage$attempt_id,
+          "executed_as",
+          "deputy_run",
+          parent$deputy_run_id,
+          "authority_validated",
+          c("deputy_run_id", "deputy_session_id")
+        ),
+        tempest_trajectory_join(
+          "stage_attempt",
+          stage$attempt_id,
+          "correlated_with",
+          "deputy_run",
+          parent$deputy_run_id,
+          "correlation_only",
+          "correlation_id"
+        ),
         tempest_trajectory_join(
           "deputy_run",
           parent$deputy_run_id,
@@ -495,6 +571,23 @@ test_that("trajectory review binds complete Deputy lineage joins", {
     rebuild(malformed),
     "mandatory projected relation|Deputy lineage|not authoritative"
   )
+
+  stage_join <- which(vapply(
+    properties$joins$items,
+    function(join) {
+      identical(join$from_id, stage$attempt_id) &&
+        identical(join$relation, "executed_as") &&
+        identical(join$to_type, "deputy_run")
+    },
+    logical(1)
+  ))[[1L]]
+  rewired <- unserialize(serialize(properties, NULL))
+  rewired$joins$items[[stage_join]]$to_id <- child$deputy_run_id
+  rewired$joins <- tempest_trajectory_collection(
+    rewired$joins$items,
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(rewired), "stage Deputy join|not authoritative")
 })
 
 test_that("trajectory review rejects changed live Co-STORM ProgramSets", {

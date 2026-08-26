@@ -57,6 +57,7 @@ tempest_trajectory_stage_fields <- function() {
     "stage",
     "attempt_id",
     "trace_id",
+    "deputy_binding",
     "status",
     "started_at",
     "completed_at",
@@ -75,6 +76,18 @@ tempest_trajectory_stage_fields <- function() {
 
 tempest_trajectory_stage_output_fields <- function() {
   c("kind", "count", "digest")
+}
+
+tempest_trajectory_stage_deputy_fields <- function() {
+  c(
+    "run_id",
+    "session_id",
+    "expert_id",
+    "correlation_id",
+    "parent_run_id",
+    "delegation_id",
+    "tool_call_id"
+  )
 }
 
 tempest_trajectory_agent_fields <- function() {
@@ -475,12 +488,29 @@ tempest_trajectory_stage_output <- function(record) {
   )
 }
 
+tempest_trajectory_stage_deputy_binding <- function(record) {
+  references <- record@trace_references
+  if (is.null(references$deputy_run_id)) {
+    return(NULL)
+  }
+  list(
+    run_id = references$deputy_run_id,
+    session_id = references$deputy_session_id,
+    expert_id = tempest_trajectory_nullable(references$expert_id),
+    correlation_id = tempest_trajectory_nullable(references$correlation_id),
+    parent_run_id = tempest_trajectory_nullable(references$parent_run_id),
+    delegation_id = tempest_trajectory_nullable(references$delegation_id),
+    tool_call_id = tempest_trajectory_nullable(references$tool_call_id)
+  )
+}
+
 tempest_trajectory_stage_item <- function(record) {
   references <- record@trace_references
   list(
     stage = record@stage,
     attempt_id = record@attempt_id,
     trace_id = references$trace_id,
+    deputy_binding = tempest_trajectory_stage_deputy_binding(record),
     status = record@status,
     started_at = record@started_at,
     completed_at = tempest_trajectory_nullable(record@completed_at),
@@ -1154,6 +1184,28 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
       paste("Trajectory stage", field),
       nullable = TRUE
     )
+  }
+  binding <- stage$deputy_binding
+  if (!is.null(binding)) {
+    tempest_trajectory_exact_record(
+      binding,
+      tempest_trajectory_stage_deputy_fields(),
+      "Trajectory stage Deputy binding"
+    )
+    for (field in tempest_trajectory_stage_deputy_fields()) {
+      tempest_trajectory_scalar_string(
+        binding[[field]],
+        paste("Trajectory stage Deputy binding", field),
+        nullable = !field %in% c("run_id", "session_id", "expert_id")
+      )
+    }
+    lineage <- c("parent_run_id", "delegation_id", "tool_call_id")
+    lineage_present <- !vapply(binding[lineage], is.null, logical(1))
+    if (any(lineage_present) && !all(lineage_present)) {
+      tempest_trajectory_review_abort(
+        "A trajectory stage Deputy binding has partial delegation lineage."
+      )
+    }
   }
   started_at <- tempest_stage_time_parse(stage$started_at)
   completed_at <- tempest_stage_time_parse(stage$completed_at)
@@ -2228,6 +2280,29 @@ tempest_trajectory_mandatory_joins <- function(review) {
         "evaluator_version"
       )
     ))
+    binding <- stage$deputy_binding
+    if (!is.null(binding)) {
+      add(tempest_trajectory_join(
+        "stage_attempt",
+        stage$attempt_id,
+        "executed_as",
+        "deputy_run",
+        binding$run_id,
+        "authority_validated",
+        c("deputy_run_id", "deputy_session_id")
+      ))
+      if (!is.null(binding$correlation_id)) {
+        add(tempest_trajectory_join(
+          "stage_attempt",
+          stage$attempt_id,
+          "correlated_with",
+          "deputy_run",
+          binding$run_id,
+          "correlation_only",
+          "correlation_id"
+        ))
+      }
+    }
     output_contract <- tempest_stage_output_reference_contract(stage$stage)
     if (!is.null(stage$output$kind) && !is.null(output_contract$ids)) {
       output_type <- tempest_trajectory_stage_output_type(output_contract$kind)
@@ -2455,6 +2530,16 @@ tempest_trajectory_validate_closed_joins <- function(review, expected) {
       Filter(is_program_join, expected),
       "program"
     )
+    is_stage_deputy_join <- function(join) {
+      identical(join$from_type, "stage_attempt") &&
+        identical(join$to_type, "deputy_run") &&
+        join$relation %in% c("executed_as", "correlated_with")
+    }
+    compare_subset(
+      Filter(is_stage_deputy_join, review@joins$items),
+      Filter(is_stage_deputy_join, expected),
+      "stage Deputy binding"
+    )
   }
   if (agents_complete) {
     is_lineage_join <- function(join) {
@@ -2566,6 +2651,65 @@ tempest_trajectory_validate_join_graph <- function(review) {
     }
     id %in% known || !isTRUE(complete[[type]])
   }
+  for (stage in review@stages$items) {
+    binding <- stage$deputy_binding
+    if (is.null(binding)) {
+      next
+    }
+    agents <- Filter(
+      \(agent) identical(agent$deputy_run_id, binding$run_id),
+      review@agent_runs$items
+    )
+    if (length(agents) == 0L && !isTRUE(complete$deputy_run)) {
+      next
+    }
+    if (length(agents) == 1L) {
+      agent <- agents[[1L]]
+    }
+    expected_expert <- if (
+      length(agents) == 1L && identical(agent$role, "moderator")
+    ) {
+      "moderator"
+    } else if (length(agents) == 1L) {
+      agent$expert_id
+    } else {
+      NULL
+    }
+    lineage <- c("parent_run_id", "delegation_id", "tool_call_id")
+    valid_binding <- length(agents) == 1L &&
+      identical(agent$status, "complete") &&
+      identical(agent$completion_disposition, "issued") &&
+      identical(agent$deputy_session_id, binding$session_id) &&
+      identical(expected_expert, binding$expert_id) &&
+      (is.null(binding$correlation_id) ||
+        identical(agent$correlation_id, binding$correlation_id)) &&
+      identical(unname(agent[lineage]), unname(binding[lineage])) &&
+      (!identical(review@product$mode, "storm") ||
+        (identical(stage$stage, "extract_claims") &&
+          !is.null(binding$correlation_id) &&
+          identical(agent$stage, "research") &&
+          identical(agent$role, "expert")))
+    if (!valid_binding) {
+      tempest_trajectory_review_abort(
+        "A trajectory stage Deputy binding does not resolve its exact run."
+      )
+    }
+  }
+  if (
+    identical(review@product$mode, "storm") &&
+      identical(review@stages$omitted, 0L)
+  ) {
+    bound_runs <- vapply(
+      review@stages$items,
+      \(stage) stage$deputy_binding$run_id %||% NA_character_,
+      character(1)
+    )
+    if (anyDuplicated(bound_runs[!is.na(bound_runs)])) {
+      tempest_trajectory_review_abort(
+        "Trajectory STORM stage Deputy bindings must be unique."
+      )
+    }
+  }
   for (join in review@joins$items) {
     if (
       !tempest_trajectory_join_type_allowed(
@@ -2617,9 +2761,75 @@ tempest_trajectory_validate_join_graph <- function(review) {
         )
       }
     }
+    if (
+      identical(join$from_type, "stage_attempt") &&
+        identical(join$to_type, "deputy_run") &&
+        join$relation %in% c("executed_as", "correlated_with")
+    ) {
+      stage_matches <- Filter(
+        \(stage) identical(stage$attempt_id, join$from_id),
+        review@stages$items
+      )
+      if (length(stage_matches) == 1L) {
+        stage <- stage_matches[[1L]]
+        binding <- stage$deputy_binding
+        expected_proof <- if (identical(join$relation, "executed_as")) {
+          list(
+            kind = "authority_validated",
+            matched_fields = as.list(c("deputy_run_id", "deputy_session_id"))
+          )
+        } else {
+          list(
+            kind = "correlation_only",
+            matched_fields = list("correlation_id")
+          )
+        }
+        if (
+          is.null(binding) ||
+            !identical(join$to_id, binding$run_id) ||
+            !identical(join$proof, expected_proof) ||
+            (identical(join$relation, "correlated_with") &&
+              is.null(binding$correlation_id))
+        ) {
+          tempest_trajectory_review_abort(
+            "A trajectory stage Deputy join does not match its retained binding."
+          )
+        }
+      }
+    }
   }
   tempest_trajectory_validate_output_joins(review)
   expected <- tempest_trajectory_mandatory_joins(review)
+  retained_stage_bindings <- Filter(
+    function(join) {
+      identical(join$from_type, "stage_attempt") &&
+        identical(join$to_type, "deputy_run") &&
+        join$relation %in% c("executed_as", "correlated_with") &&
+        join$from_id %in%
+          vapply(
+            review@stages$items,
+            `[[`,
+            character(1),
+            "attempt_id"
+          )
+    },
+    review@joins$items
+  )
+  expected_keys <- vapply(
+    expected,
+    tempest_product_canonical_json,
+    character(1)
+  )
+  retained_stage_keys <- vapply(
+    retained_stage_bindings,
+    tempest_product_canonical_json,
+    character(1)
+  )
+  if (!all(retained_stage_keys %in% expected_keys)) {
+    tempest_trajectory_review_abort(
+      "A retained trajectory stage Deputy join is not authoritative."
+    )
+  }
   if (identical(review@agent_runs$omitted, 0L)) {
     retained_lineage <- Filter(
       function(join) {
@@ -2627,11 +2837,6 @@ tempest_trajectory_validate_join_graph <- function(review) {
           join$relation %in% c("parent_of", "correlated_with")
       },
       review@joins$items
-    )
-    expected_keys <- vapply(
-      expected,
-      tempest_product_canonical_json,
-      character(1)
     )
     retained_keys <- vapply(
       retained_lineage,
