@@ -149,6 +149,18 @@ test_that("trajectory review validation owns nested source invariants", {
       value$programs[[1L]]["evaluator_id"] <- list(NULL)
       value
     },
+    program_evaluator_contract = function(value) {
+      value$programs[[1L]]$evaluator_id <- "tempest::evaluator/forged"
+      value
+    },
+    program_evaluator_version = function(value) {
+      value$programs[[1L]]$evaluator_version <- "2"
+      value
+    },
+    program_contract_version = function(value) {
+      value$programs[[1L]]$contract_version <- 2L
+      value
+    },
     evidence_type = function(value) {
       value$evidence$items[[1L]]["record_type"] <- list(NULL)
       value
@@ -693,6 +705,40 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
     fixture$bundle@bundle_id
   )
   expect_null(proposed@knowledge$acceptance)
+
+  wrong_proposal_schema <- S7::props(proposed)
+  wrong_proposal_schema$knowledge$proposal$schema_build_digest <- paste0(
+    "sha256:",
+    strrep("f", 64L)
+  )
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    wrong_proposal_schema[setdiff(names(wrong_proposal_schema), "review_id")]
+  )
+  wrong_proposal_schema$review_id <- tempest_trajectory_digest(payload)
+  expect_error(
+    do.call(TempestTrajectoryReview, wrong_proposal_schema),
+    "schema digest"
+  )
+
+  too_many_claims <- S7::props(proposed)
+  claim_count <- sum(vapply(
+    too_many_claims$evidence$items,
+    \(item) identical(item$record_type, "claim"),
+    logical(1)
+  ))
+  expect_identical(too_many_claims$evidence$omitted, 0L)
+  too_many_claims$knowledge$proposal$claim_selection$count <-
+    as.integer(claim_count + 1L)
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    too_many_claims[setdiff(names(too_many_claims), "review_id")]
+  )
+  too_many_claims$review_id <- tempest_trajectory_digest(payload)
+  expect_error(
+    do.call(TempestTrajectoryReview, too_many_claims),
+    "complete evidence"
+  )
 
   store <- test_promotion_store()
   withr::defer(graft::graft_close(store))

@@ -1611,6 +1611,7 @@ tempest_trajectory_validate_agent <- function(
 
 tempest_trajectory_validate_programs <- function(programs) {
   stages <- tempest_program_set_stages()
+  expected_evaluators <- tempest_program_set_default_evaluators()
   if (
     !is.list(programs) ||
       is.data.frame(programs) ||
@@ -1632,7 +1633,8 @@ tempest_trajectory_validate_programs <- function(programs) {
         "A trajectory program does not match its named stage."
       )
     }
-    for (field in c("evaluator_id", "evaluator_version")) {
+    evaluator_fields <- c("evaluator_id", "evaluator_version")
+    for (field in evaluator_fields) {
       tempest_trajectory_scalar_string(
         program[[field]],
         paste("Trajectory program", field)
@@ -1642,9 +1644,15 @@ tempest_trajectory_validate_programs <- function(programs) {
       program$contract_version,
       "Trajectory program contract_version"
     )
-    if (program$contract_version < 1L) {
+    if (
+      !identical(program$contract_version, 1L) ||
+        !identical(
+          program[evaluator_fields],
+          expected_evaluators[[stage]]
+        )
+    ) {
       tempest_trajectory_review_abort(
-        "Trajectory program contract_version must be positive."
+        "A trajectory program does not match its fixed evaluator contract."
       )
     }
     tempest_trajectory_validate_sha256(
@@ -1994,9 +2002,15 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     proposal$schema_build_digest,
     "Trajectory proposal schema_build_digest"
   )
-  if (!identical(proposal$research_run_id, research_run_id)) {
+  if (
+    !identical(proposal$research_run_id, research_run_id) ||
+      !identical(
+        proposal$schema_build_digest,
+        tempest_promotion_schema_build_digest
+      )
+  ) {
     tempest_trajectory_review_abort(
-      "Trajectory proposal belongs to another research run."
+      "Trajectory proposal does not match its research run and schema digest."
     )
   }
   selection <- tempest_trajectory_exact_record(
@@ -2123,6 +2137,26 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
           parent = error
         )
       }
+    )
+  }
+  invisible(knowledge)
+}
+
+tempest_trajectory_validate_claim_selection <- function(knowledge, evidence) {
+  if (
+    identical(knowledge$promotion_state, "none") ||
+      !identical(evidence$omitted, 0L)
+  ) {
+    return(invisible(knowledge))
+  }
+  claim_count <- sum(vapply(
+    evidence$items,
+    \(item) identical(item$record_type, "claim"),
+    logical(1)
+  ))
+  if (knowledge$proposal$claim_selection$count > claim_count) {
+    tempest_trajectory_review_abort(
+      "Trajectory proposal claim count exceeds the complete evidence lane."
     )
   }
   invisible(knowledge)
@@ -3152,6 +3186,10 @@ tempest_trajectory_review_validation_message <- function(self) {
         self@evidence$items,
         tempest_trajectory_validate_evidence
       ))
+      tempest_trajectory_validate_claim_selection(
+        self@knowledge,
+        self@evidence
+      )
       tempest_trajectory_validate_collection(
         self@joins,
         tempest_trajectory_join_fields(),
