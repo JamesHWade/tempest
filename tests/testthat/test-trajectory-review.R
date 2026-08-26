@@ -246,6 +246,37 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
   )
   expect_error(rebuild(wrong_output_kind))
 
+  wrong_empty_digest <- unserialize(serialize(properties, NULL))
+  empty_output <- wrong_empty_digest$stages$items[[succeeded]]
+  empty_output$output <- list(
+    kind = NULL,
+    count = 0L,
+    digest = tempest_trajectory_digest("forged-empty-output")
+  )
+  wrong_empty_digest$stages$items[[succeeded]] <- empty_output
+  wrong_empty_digest$stages <- tempest_trajectory_collection(
+    wrong_empty_digest$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(wrong_empty_digest), "canonical digest")
+
+  wrong_dynamic_count <- unserialize(serialize(properties, NULL))
+  dynamic <- which(vapply(
+    wrong_dynamic_count$stages$items,
+    function(stage) {
+      identical(stage$status, "succeeded") &&
+        is.null(tempest_stage_output_reference_contract(stage$stage)$ids)
+    },
+    logical(1)
+  ))[[1L]]
+  wrong_dynamic_count$stages$items[[dynamic]]$output$count <-
+    wrong_dynamic_count$stages$items[[dynamic]]$output$count + 1L
+  wrong_dynamic_count$stages <- tempest_trajectory_collection(
+    wrong_dynamic_count$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(wrong_dynamic_count), "output joins")
+
   wrong_session <- unserialize(serialize(properties, NULL))
   wrong_session$agent_runs$items[[1L]]$deputy_session_id <- "other-session"
   wrong_session$agent_runs <- tempest_trajectory_collection(
@@ -305,6 +336,13 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     preserve_order = FALSE
   )
   expect_error(rebuild(wrong_program_join))
+
+  missing_program_join <- unserialize(serialize(properties, NULL))
+  missing_program_join$joins <- tempest_trajectory_collection(
+    missing_program_join$joins$items[-program_join],
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(missing_program_join), "mandatory projected relation")
 })
 
 test_that("trajectory review accepts the exact public tempest_run outline", {
@@ -366,6 +404,96 @@ test_that("trajectory review retains exact noncausal Deputy identities", {
       logical(1)
     )),
     FALSE
+  )
+})
+
+test_that("trajectory review binds complete Deputy lineage joins", {
+  review <- tempest_trajectory_review(
+    test_promotion_fixture("costorm")$research
+  )
+  properties <- S7::props(review)
+  rebuild <- function(value) {
+    payload <- do.call(
+      tempest_trajectory_review_payload,
+      value[setdiff(names(value), "review_id")]
+    )
+    value$review_id <- tempest_trajectory_digest(payload)
+    do.call(TempestTrajectoryReview, value)
+  }
+  parent <- properties$agent_runs$items[[1L]]
+  child <- unserialize(serialize(parent, NULL))
+  parent$status <- "complete"
+  parent$completion_disposition <- "issued"
+  parent$trace_type <- "deputy_run"
+  parent[c(
+    "parent_agent_id",
+    "parent_run_id",
+    "delegation_id",
+    "tool_call_id"
+  )] <- list(NULL, NULL, NULL, NULL)
+  child$deputy_run_id <- paste0(parent$deputy_run_id, "-delegated")
+  child$trace_id <- child$deputy_run_id
+  child$trace_type <- "deputy_delegation"
+  child$correlation_id <- parent$correlation_id
+  child$parent_agent_id <- parent$agent_id
+  child$parent_run_id <- parent$deputy_run_id
+  child$delegation_id <- "delegation-review-test"
+  child$tool_call_id <- "tool-call-review-test"
+  properties$agent_runs$items[[1L]] <- parent
+  properties$agent_runs$items[[2L]] <- child
+  properties$agent_runs <- tempest_trajectory_collection(
+    properties$agent_runs$items,
+    preserve_order = FALSE
+  )
+  properties$joins <- tempest_trajectory_collection(
+    c(
+      properties$joins$items,
+      list(
+        tempest_trajectory_join(
+          "deputy_run",
+          parent$deputy_run_id,
+          "parent_of",
+          "deputy_run",
+          child$deputy_run_id,
+          "exact_identity",
+          c(
+            "parent_agent_id",
+            "parent_run_id",
+            "delegation_id",
+            "tool_call_id"
+          )
+        ),
+        tempest_trajectory_join(
+          "deputy_run",
+          parent$deputy_run_id,
+          "correlated_with",
+          "deputy_run",
+          child$deputy_run_id,
+          "correlation_only",
+          "correlation_id"
+        )
+      )
+    ),
+    preserve_order = FALSE
+  )
+  expect_no_error(rebuild(properties))
+
+  parent_join <- which(vapply(
+    properties$joins$items,
+    \(join) identical(join$relation, "parent_of"),
+    logical(1)
+  ))[[1L]]
+  malformed <- unserialize(serialize(properties, NULL))
+  original <- malformed$joins$items[[parent_join]]
+  malformed$joins$items[[parent_join]]$from_id <- original$to_id
+  malformed$joins <- tempest_trajectory_collection(
+    malformed$joins$items,
+    preserve_order = FALSE
+  )
+
+  expect_error(
+    rebuild(malformed),
+    "mandatory projected relation|Deputy lineage|not authoritative"
   )
 })
 
