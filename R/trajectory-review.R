@@ -1165,7 +1165,12 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
   invisible(stage)
 }
 
-tempest_trajectory_validate_agent <- function(agent, programs) {
+tempest_trajectory_validate_agent <- function(
+  agent,
+  programs,
+  product,
+  knowledge
+) {
   tempest_trajectory_exact_record(
     agent,
     tempest_trajectory_agent_fields(),
@@ -1234,6 +1239,91 @@ tempest_trajectory_validate_agent <- function(agent, programs) {
   if (xor(terminal, !identical(agent$status, "complete"))) {
     tempest_trajectory_review_abort(
       "Trajectory agent status and completion_disposition are inconsistent."
+    )
+  }
+  if (!identical(agent$trace_id, agent$deputy_run_id)) {
+    tempest_trajectory_review_abort(
+      "A trajectory Deputy trace must use its run ID as trace ID."
+    )
+  }
+  valid_context <- if (identical(product$mode, "storm")) {
+    identical(c(agent$stage, agent$role), c("research", "expert"))
+  } else if (identical(product$mode, "costorm")) {
+    identical(c(agent$stage, agent$role), c("dialogue", "moderator")) ||
+      identical(c(agent$stage, agent$role), c("dialogue", "expert")) ||
+      identical(c(agent$stage, agent$role), c("warmup", "expert"))
+  } else {
+    FALSE
+  }
+  if (!valid_context) {
+    tempest_trajectory_review_abort(
+      "A trajectory Deputy trace has an invalid product context."
+    )
+  }
+  if (identical(agent$role, "expert")) {
+    if (is.null(agent$expert_id)) {
+      tempest_trajectory_review_abort(
+        "An expert trajectory Deputy trace must bind an expert ID."
+      )
+    }
+  } else if (!is.null(agent$expert_id)) {
+    tempest_trajectory_review_abort(
+      "A moderator trajectory Deputy trace cannot bind an expert ID."
+    )
+  }
+  relation_fields <- c(
+    "parent_agent_id",
+    "parent_run_id",
+    "delegation_id",
+    "tool_call_id"
+  )
+  relation_present <- !vapply(
+    agent[relation_fields],
+    is.null,
+    logical(1)
+  )
+  if (
+    (any(relation_present) && !all(relation_present)) ||
+      xor(
+        identical(agent$trace_type, "deputy_delegation"),
+        all(relation_present)
+      ) ||
+      (all(relation_present) &&
+        identical(agent$parent_run_id, agent$deputy_run_id))
+  ) {
+    tempest_trajectory_review_abort(
+      "A trajectory Deputy delegation must retain its complete lineage tuple."
+    )
+  }
+  agent_stage <- if (
+    identical(product$mode, "costorm") &&
+      identical(agent$role, "expert")
+  ) {
+    "dialogue"
+  } else {
+    agent$stage
+  }
+  run_context <- list(
+    product = "tempest",
+    research_run_id = product$research_run_id,
+    mode = product$mode,
+    stage = agent_stage,
+    role = agent$role
+  )
+  snapshot_id <- knowledge$input_snapshot$snapshot_id %||% NULL
+  if (!is.null(snapshot_id)) {
+    run_context$knowledge_snapshot_id <- snapshot_id
+  }
+  if (!is.null(agent$program_artifact_id)) {
+    run_context$program_artifact_id <- agent$program_artifact_id
+  }
+  if (!is.null(agent$expert_id)) {
+    run_context$expert_id <- agent$expert_id
+  }
+  expected_agent_id <- tempest_deputy_adapter_agent_id(run_context)
+  if (!identical(agent$agent_id, expected_agent_id)) {
+    tempest_trajectory_review_abort(
+      "A trajectory Deputy agent ID does not match its product context."
     )
   }
   invisible(agent)
@@ -1380,16 +1470,12 @@ tempest_trajectory_validate_acceptance_counts <- function(counts) {
     actions,
     "Trajectory acceptance counts"
   )
-  classes <- names(counts$observed)
+  classes <- tempest_promotion_receipt_classes()
   if (
     !is.list(counts$observed) ||
       is.data.frame(counts$observed) ||
       is.object(counts$observed) ||
-      is.null(classes) ||
-      length(classes) == 0L ||
-      anyNA(classes) ||
-      !all(nzchar(trimws(classes))) ||
-      anyDuplicated(classes)
+      !identical(names(counts$observed), classes)
   ) {
     tempest_trajectory_review_abort(
       "Trajectory acceptance counts have invalid classes."
@@ -1876,7 +1962,9 @@ tempest_trajectory_review_validation_message <- function(self) {
       invisible(lapply(
         self@agent_runs$items,
         tempest_trajectory_validate_agent,
-        programs = self@programs
+        programs = self@programs,
+        product = self@product,
+        knowledge = self@knowledge
       ))
       deputy_run_ids <- vapply(
         self@agent_runs$items,

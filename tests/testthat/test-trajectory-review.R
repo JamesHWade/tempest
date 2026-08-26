@@ -133,6 +133,18 @@ test_that("trajectory review validation owns nested source invariants", {
       value$agent_runs$items[[1L]]$status <- "unknown"
       value
     },
+    agent_trace_id = function(value) {
+      value$agent_runs$items[[1L]]$trace_id <- "another-run"
+      value
+    },
+    agent_lineage = function(value) {
+      value$agent_runs$items[[1L]]$parent_run_id <- "partial-parent"
+      value
+    },
+    agent_context = function(value) {
+      value$agent_runs$items[[1L]]$role <- "moderator"
+      value
+    },
     program_evaluator = function(value) {
       value$programs[[1L]]["evaluator_id"] <- list(NULL)
       value
@@ -378,6 +390,23 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
     error = TRUE,
     do.call(TempestTrajectoryReview, malformed)
   )
+
+  missing_class <- S7::props(accepted)
+  classes <- tempest_promotion_receipt_classes()
+  for (action in c("inserted", "updated", "matched", "observed")) {
+    missing_class$knowledge$acceptance$counts[[action]] <-
+      missing_class$knowledge$acceptance$counts[[action]][-1L]
+  }
+  expect_false(
+    classes[[1L]] %in%
+      names(missing_class$knowledge$acceptance$counts$observed)
+  )
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    missing_class[setdiff(names(missing_class), "review_id")]
+  )
+  missing_class$review_id <- tempest_trajectory_digest(payload)
+  expect_error(do.call(TempestTrajectoryReview, missing_class))
 })
 
 test_that("trajectory review rejects loose products and receipt-only input", {
