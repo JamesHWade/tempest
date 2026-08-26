@@ -277,7 +277,7 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     wrong_dynamic_count$stages$items,
     function(stage) {
       identical(stage$status, "succeeded") &&
-        is.null(tempest_stage_output_reference_contract(stage$stage)$ids)
+        stage$stage %in% c("extract_claims", "verify_claim_support")
     },
     logical(1)
   ))[[1L]]
@@ -288,6 +288,37 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     preserve_order = TRUE
   )
   expect_error(rebuild(wrong_dynamic_count), "output joins")
+
+  wrong_content_output <- unserialize(serialize(properties, NULL))
+  content_stage <- Filter(
+    function(stage) {
+      identical(stage$status, "succeeded") &&
+        identical(stage$output$kind, "content_digest")
+    },
+    wrong_content_output$stages$items
+  )[[1L]]
+  content_join <- which(vapply(
+    wrong_content_output$joins$items,
+    function(join) {
+      identical(join$from_type, "stage_attempt") &&
+        identical(join$from_id, content_stage$attempt_id) &&
+        identical(join$relation, "contains") &&
+        identical(join$to_type, "output_digest")
+    },
+    logical(1)
+  ))[[1L]]
+  wrong_content_output$joins$items[[content_join]]$to_id <- paste0(
+    "sha256:",
+    strrep("f", 64L)
+  )
+  wrong_content_output$joins <- tempest_trajectory_collection(
+    wrong_content_output$joins$items,
+    preserve_order = FALSE
+  )
+  expect_error(
+    rebuild(wrong_content_output),
+    "output joins do not match its fixed identities"
+  )
 
   wrong_session <- unserialize(serialize(properties, NULL))
   wrong_session$agent_runs$items[[1L]]$deputy_session_id <- "other-session"
@@ -1010,6 +1041,25 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
   expect_error(
     do.call(TempestTrajectoryReview, too_many_claims),
     "complete evidence"
+  )
+
+  forged_all_claims <- S7::props(proposed)
+  expect_identical(
+    forged_all_claims$knowledge$proposal$claim_selection$count,
+    as.integer(claim_count)
+  )
+  forged_all_claims$knowledge$proposal$claim_selection$digest <- paste0(
+    "sha256:",
+    strrep("f", 64L)
+  )
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    forged_all_claims[setdiff(names(forged_all_claims), "review_id")]
+  )
+  forged_all_claims$review_id <- tempest_trajectory_digest(payload)
+  expect_error(
+    do.call(TempestTrajectoryReview, forged_all_claims),
+    "claim selection digest"
   )
 
   store <- test_promotion_store()

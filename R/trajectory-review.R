@@ -669,6 +669,13 @@ tempest_trajectory_receipt_data <- function(
   receipt
 }
 
+tempest_trajectory_claim_selection_digest <- function(claim_ids) {
+  claim_ids <- unname(unlist(claim_ids, use.names = FALSE))
+  tempest_trajectory_digest(
+    unname(as.list(sort(claim_ids, method = "radix")))
+  )
+}
+
 tempest_trajectory_knowledge <- function(
   manifest,
   promotion_bundle,
@@ -684,7 +691,9 @@ tempest_trajectory_knowledge <- function(
       claim_selection = list(
         kind = "claim_ids",
         count = as.integer(length(promotion_bundle$claim_ids)),
-        digest = tempest_trajectory_digest(promotion_bundle$claim_ids)
+        digest = tempest_trajectory_claim_selection_digest(
+          promotion_bundle$claim_ids
+        )
       )
     )
   }
@@ -878,6 +887,17 @@ tempest_trajectory_stage_output_type <- function(kind) {
       "A stage output has an unsupported trajectory identity."
     )
   )
+}
+
+tempest_trajectory_stage_projected_output_ids <- function(stage) {
+  contract <- tempest_stage_output_reference_contract(stage$stage)
+  if (!is.null(contract$ids)) {
+    return(unname(contract$ids))
+  }
+  if (identical(contract$kind, "content_digest")) {
+    return(stage$output$digest)
+  }
+  NULL
 }
 
 tempest_trajectory_trace_key <- function(run_id, session_id) {
@@ -1372,10 +1392,11 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
   }
   if (identical(stage$status, "succeeded")) {
     output_contract <- tempest_stage_output_reference_contract(stage$stage)
-    fixed_count <- if (is.null(output_contract$ids)) {
+    projected_ids <- tempest_trajectory_stage_projected_output_ids(stage)
+    fixed_count <- if (is.null(projected_ids)) {
       NULL
     } else {
-      as.integer(length(output_contract$ids))
+      as.integer(length(projected_ids))
     }
     if (
       !identical(stage$output$kind, output_contract$kind) ||
@@ -2292,14 +2313,30 @@ tempest_trajectory_validate_claim_selection <- function(knowledge, evidence) {
   ) {
     return(invisible(knowledge))
   }
-  claim_count <- sum(vapply(
-    evidence$items,
-    \(item) identical(item$record_type, "claim"),
-    logical(1)
-  ))
+  claim_ids <- vapply(
+    Filter(
+      \(item) identical(item$record_type, "claim"),
+      evidence$items
+    ),
+    `[[`,
+    character(1),
+    "record_id"
+  )
+  claim_count <- length(claim_ids)
   if (knowledge$proposal$claim_selection$count > claim_count) {
     tempest_trajectory_review_abort(
       "Trajectory proposal claim count exceeds the complete evidence lane."
+    )
+  }
+  if (
+    knowledge$proposal$claim_selection$count == claim_count &&
+      !identical(
+        knowledge$proposal$claim_selection$digest,
+        tempest_trajectory_claim_selection_digest(claim_ids)
+      )
+  ) {
+    tempest_trajectory_review_abort(
+      "Trajectory proposal claim selection digest does not match all claims."
     )
   }
   invisible(knowledge)
@@ -2430,9 +2467,10 @@ tempest_trajectory_mandatory_joins <- function(review) {
       }
     }
     output_contract <- tempest_stage_output_reference_contract(stage$stage)
-    if (!is.null(stage$output$kind) && !is.null(output_contract$ids)) {
+    output_ids <- tempest_trajectory_stage_projected_output_ids(stage)
+    if (!is.null(stage$output$kind) && !is.null(output_ids)) {
       output_type <- tempest_trajectory_stage_output_type(output_contract$kind)
-      for (output_id in output_contract$ids) {
+      for (output_id in output_ids) {
         add(tempest_trajectory_join(
           "stage_attempt",
           stage$attempt_id,
@@ -2598,13 +2636,13 @@ tempest_trajectory_validate_output_joins <- function(review) {
         "Trajectory stage output joins do not match its output contract."
       )
     }
-    output_contract <- tempest_stage_output_reference_contract(stage$stage)
-    if (!is.null(output_contract$ids)) {
+    expected_ids <- tempest_trajectory_stage_projected_output_ids(stage)
+    if (!is.null(expected_ids)) {
       output_ids <- vapply(output_joins, `[[`, character(1), "to_id")
       identities_invalid <- if (joins_complete) {
-        !setequal(output_ids, output_contract$ids)
+        !setequal(output_ids, expected_ids)
       } else {
-        !all(output_ids %in% output_contract$ids)
+        !all(output_ids %in% expected_ids)
       }
       if (identities_invalid) {
         tempest_trajectory_review_abort(
