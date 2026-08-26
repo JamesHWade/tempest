@@ -3342,9 +3342,8 @@ tempest_stage_state_output_digest <- function(stage, output) {
   )
 }
 
-tempest_stage_output_reference_validate_stage <- function(stage, reference) {
-  reference <- tempest_stage_output_reference_validate(reference)
-  expected <- switch(
+tempest_stage_output_reference_contract <- function(stage) {
+  switch(
     stage,
     perspectives = list(kind = "state_field", ids = c("title", "perspectives")),
     personas = list(kind = "state_field", ids = "experts"),
@@ -3357,6 +3356,11 @@ tempest_stage_output_reference_validate_stage <- function(stage, reference) {
     section_writing = list(kind = "content_digest", ids = NULL),
     lead_section = list(kind = "content_digest", ids = NULL)
   )
+}
+
+tempest_stage_output_reference_validate_stage <- function(stage, reference) {
+  reference <- tempest_stage_output_reference_validate(reference)
+  expected <- tempest_stage_output_reference_contract(stage)
   ids <- unlist(reference$ids, use.names = FALSE)
   if (!identical(reference$kind, expected$kind)) {
     tempest_stage_evaluator_abort(

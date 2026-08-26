@@ -1132,6 +1132,17 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
       "A trajectory stage is not bound to its declared program artifact."
     )
   }
+  governed_reference <- program$governed_procedure_ref
+  governed_revision <- if (is.null(governed_reference)) {
+    NULL
+  } else {
+    governed_reference$revision_id
+  }
+  if (!identical(stage$governed_procedure_revision_id, governed_revision)) {
+    tempest_trajectory_review_abort(
+      "A trajectory stage governed revision does not match its program."
+    )
+  }
   for (field in c(
     "completed_at",
     "governed_procedure_revision_id",
@@ -1174,6 +1185,23 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
     stage$output$count,
     "Trajectory stage output count"
   )
+  if (identical(stage$status, "succeeded")) {
+    output_contract <- tempest_stage_output_reference_contract(stage$stage)
+    fixed_count <- if (is.null(output_contract$ids)) {
+      NULL
+    } else {
+      as.integer(length(output_contract$ids))
+    }
+    if (
+      !identical(stage$output$kind, output_contract$kind) ||
+        (!is.null(fixed_count) &&
+          !identical(stage$output$count, fixed_count))
+    ) {
+      tempest_trajectory_review_abort(
+        "A trajectory stage output does not match its stage contract."
+      )
+    }
+  }
   tempest_trajectory_validate_sha256(
     stage$output$digest,
     "Trajectory stage output digest"
@@ -2260,6 +2288,37 @@ tempest_trajectory_validate_join_graph <- function(review) {
       tempest_trajectory_review_abort(
         "A trajectory join endpoint does not resolve a projected identity."
       )
+    }
+    if (
+      identical(join$relation, "executed_as") &&
+        identical(join$to_type, "program_artifact")
+    ) {
+      stage_matches <- Filter(
+        \(stage) identical(stage$attempt_id, join$from_id),
+        review@stages$items
+      )
+      if (
+        length(stage_matches) == 1L &&
+          (!identical(
+            join$to_id,
+            stage_matches[[1L]]$program_artifact_id
+          ) ||
+            !identical(join$proof$kind, "authority_validated") ||
+            !identical(
+              join$proof$matched_fields,
+              as.list(c(
+                "stage",
+                "program_artifact_id",
+                "contract_version",
+                "evaluator_id",
+                "evaluator_version"
+              ))
+            ))
+      ) {
+        tempest_trajectory_review_abort(
+          "A trajectory program join does not match its stage binding."
+        )
+      }
     }
   }
   invisible(review)

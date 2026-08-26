@@ -217,6 +217,35 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
   )
   expect_error(rebuild(wrong_trust))
 
+  wrong_governed_revision <- unserialize(serialize(properties, NULL))
+  wrong_governed_revision$stages$items[[
+    1L
+  ]]$governed_procedure_revision_id <- "revision:forged"
+  wrong_governed_revision$stages <- tempest_trajectory_collection(
+    wrong_governed_revision$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(wrong_governed_revision))
+
+  wrong_output_kind <- unserialize(serialize(properties, NULL))
+  succeeded <- which(vapply(
+    wrong_output_kind$stages$items,
+    \(stage) identical(stage$status, "succeeded"),
+    logical(1)
+  ))[[1L]]
+  stage <- wrong_output_kind$stages$items[[succeeded]]
+  stage$output$kind <- if (identical(stage$output$kind, "state_field")) {
+    "content_digest"
+  } else {
+    "state_field"
+  }
+  wrong_output_kind$stages$items[[succeeded]] <- stage
+  wrong_output_kind$stages <- tempest_trajectory_collection(
+    wrong_output_kind$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(wrong_output_kind))
+
   wrong_session <- unserialize(serialize(properties, NULL))
   wrong_session$agent_runs$items[[1L]]$deputy_session_id <- "other-session"
   wrong_session$agent_runs <- tempest_trajectory_collection(
@@ -250,6 +279,32 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     preserve_order = FALSE
   )
   expect_error(rebuild(wrong_join_type))
+
+  wrong_program_join <- unserialize(serialize(properties, NULL))
+  program_join <- which(vapply(
+    wrong_program_join$joins$items,
+    function(join) {
+      identical(join$relation, "executed_as") &&
+        identical(join$to_type, "program_artifact")
+    },
+    logical(1)
+  ))[[1L]]
+  current_artifact <- wrong_program_join$joins$items[[program_join]]$to_id
+  other_artifact <- setdiff(
+    vapply(
+      wrong_program_join$programs,
+      `[[`,
+      character(1),
+      "program_artifact_id"
+    ),
+    current_artifact
+  )[[1L]]
+  wrong_program_join$joins$items[[program_join]]$to_id <- other_artifact
+  wrong_program_join$joins <- tempest_trajectory_collection(
+    wrong_program_join$joins$items,
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(wrong_program_join))
 })
 
 test_that("trajectory review accepts the exact public tempest_run outline", {
