@@ -305,6 +305,22 @@ tempest_trajectory_scalar_string <- function(value, noun, nullable = FALSE) {
   invisible(value)
 }
 
+tempest_trajectory_validate_opaque_identifier <- function(
+  value,
+  noun,
+  nullable = FALSE
+) {
+  if (is.null(value) && isTRUE(nullable)) {
+    return(invisible(value))
+  }
+  if (!tempest_opaque_identifier_valid(value)) {
+    tempest_trajectory_review_abort(
+      "{noun} must be a bounded opaque identifier, not prose or credentials."
+    )
+  }
+  invisible(value)
+}
+
 tempest_trajectory_validate_sha256 <- function(value, noun) {
   tempest_trajectory_scalar_string(value, noun)
   if (!grepl("^sha256:[a-f0-9]{64}$", value)) {
@@ -1222,6 +1238,10 @@ tempest_trajectory_validate_product <- function(product) {
     product$research_run_id,
     "Trajectory product research_run_id"
   )
+  tempest_trajectory_validate_opaque_identifier(
+    product$research_run_id,
+    "Trajectory product research_run_id"
+  )
   tempest_trajectory_scalar_string(product$mode, "Trajectory product mode")
   tempest_trajectory_scalar_string(product$status, "Trajectory product status")
   if (!product$mode %in% c("storm", "costorm")) {
@@ -1288,6 +1308,12 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
       paste("Trajectory stage", field)
     )
   }
+  for (field in c("attempt_id", "trace_id")) {
+    tempest_trajectory_validate_opaque_identifier(
+      stage[[field]],
+      paste("Trajectory stage", field)
+    )
+  }
   tempest_trajectory_validate_sha256(
     stage$program_artifact_id,
     "Trajectory stage program_artifact_id"
@@ -1324,6 +1350,19 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
       nullable = TRUE
     )
   }
+  tempest_trajectory_validate_opaque_identifier(
+    stage$governed_procedure_revision_id,
+    "Trajectory stage governed_procedure_revision_id",
+    nullable = TRUE
+  )
+  if (
+    !is.null(stage$failure_class) &&
+      !stage$failure_class %in% tempest_stage_failure_classes()
+  ) {
+    tempest_trajectory_review_abort(
+      "A trajectory stage failure class is not a controlled source value."
+    )
+  }
   binding <- stage$deputy_binding
   if (!is.null(binding)) {
     tempest_trajectory_exact_record(
@@ -1333,6 +1372,11 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
     )
     for (field in tempest_trajectory_stage_deputy_fields()) {
       tempest_trajectory_scalar_string(
+        binding[[field]],
+        paste("Trajectory stage Deputy binding", field),
+        nullable = !field %in% c("run_id", "session_id", "expert_id")
+      )
+      tempest_trajectory_validate_opaque_identifier(
         binding[[field]],
         paste("Trajectory stage Deputy binding", field),
         nullable = !field %in% c("run_id", "session_id", "expert_id")
@@ -1586,6 +1630,25 @@ tempest_trajectory_validate_agent <- function(
   )
   for (field in tempest_trajectory_agent_fields()) {
     tempest_trajectory_scalar_string(
+      agent[[field]],
+      paste("Trajectory agent", field),
+      nullable = !field %in% required
+    )
+  }
+  identifier_fields <- c(
+    "trace_id",
+    "agent_id",
+    "expert_id",
+    "deputy_run_id",
+    "deputy_session_id",
+    "parent_agent_id",
+    "parent_run_id",
+    "delegation_id",
+    "tool_call_id",
+    "correlation_id"
+  )
+  for (field in identifier_fields) {
+    tempest_trajectory_validate_opaque_identifier(
       agent[[field]],
       paste("Trajectory agent", field),
       nullable = !field %in% required
@@ -2449,11 +2512,10 @@ tempest_trajectory_validate_evidence <- function(evidence) {
   if (!evidence$record_type %in% tempest_trajectory_evidence_types()) {
     tempest_trajectory_review_abort("Trajectory evidence type is invalid.")
   }
-  if (!tempest_opaque_identifier_valid(evidence$record_id)) {
-    tempest_trajectory_review_abort(
-      "Trajectory evidence record_id must be a bounded opaque identifier."
-    )
-  }
+  tempest_trajectory_validate_opaque_identifier(
+    evidence$record_id,
+    "Trajectory evidence record_id"
+  )
   invisible(evidence)
 }
 
@@ -2465,6 +2527,12 @@ tempest_trajectory_validate_join <- function(join) {
   )
   for (field in c("from_type", "from_id", "relation", "to_type", "to_id")) {
     tempest_trajectory_scalar_string(
+      join[[field]],
+      paste("Trajectory join", field)
+    )
+  }
+  for (field in c("from_id", "to_id")) {
+    tempest_trajectory_validate_opaque_identifier(
       join[[field]],
       paste("Trajectory join", field)
     )
@@ -3200,6 +3268,10 @@ tempest_trajectory_validate_finding <- function(finding) {
     "Trajectory finding ref_type"
   )
   tempest_trajectory_scalar_string(
+    finding$ref_id,
+    "Trajectory finding ref_id"
+  )
+  tempest_trajectory_validate_opaque_identifier(
     finding$ref_id,
     "Trajectory finding ref_id"
   )

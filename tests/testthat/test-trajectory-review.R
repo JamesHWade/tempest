@@ -228,6 +228,88 @@ test_that("trajectory review rejects source-impossible evidence identities", {
   )
 })
 
+test_that("trajectory review rejects source-impossible projected identifiers", {
+  review <- tempest_trajectory_review(test_promotion_fixture("storm")$research)
+  properties <- S7::props(review)
+  rebuild <- function(value) {
+    payload <- do.call(
+      tempest_trajectory_review_payload,
+      value[setdiff(names(value), "review_id")]
+    )
+    value$review_id <- tempest_trajectory_digest(payload)
+    do.call(TempestTrajectoryReview, value)
+  }
+  impossible <- "an impossible projected identifier with prose"
+  mutations <- list(
+    product = function(value) {
+      value$product$research_run_id <- impossible
+      value
+    },
+    stage = function(value) {
+      value$stages$items[[1L]]$attempt_id <- impossible
+      value$stages <- tempest_trajectory_collection(
+        value$stages$items,
+        preserve_order = TRUE
+      )
+      value
+    },
+    stage_binding = function(value) {
+      bound <- which(vapply(
+        value$stages$items,
+        \(stage) !is.null(stage$deputy_binding),
+        logical(1)
+      ))[[1L]]
+      value$stages$items[[bound]]$deputy_binding$correlation_id <- impossible
+      value$stages <- tempest_trajectory_collection(
+        value$stages$items,
+        preserve_order = TRUE
+      )
+      value
+    },
+    agent = function(value) {
+      value$agent_runs$items[[1L]]$correlation_id <- impossible
+      value$agent_runs <- tempest_trajectory_collection(
+        value$agent_runs$items,
+        preserve_order = FALSE
+      )
+      value
+    },
+    join = function(value) {
+      value$joins$items[[1L]]$from_id <- impossible
+      value$joins <- tempest_trajectory_collection(
+        value$joins$items,
+        preserve_order = FALSE
+      )
+      value
+    },
+    finding = function(value) {
+      value$findings$items[[1L]]$ref_id <- impossible
+      value$findings <- tempest_trajectory_collection(
+        value$findings$items,
+        preserve_order = FALSE
+      )
+      value
+    }
+  )
+  for (mutate in mutations) {
+    expect_error(
+      rebuild(mutate(unserialize(serialize(properties, NULL)))),
+      "bounded opaque identifier"
+    )
+  }
+
+  uncontrolled <- unserialize(serialize(properties, NULL))
+  uncontrolled$stages$items[[1L]]$failure_class <- "uncontrolled_failure"
+  uncontrolled$stages <- tempest_trajectory_collection(
+    uncontrolled$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(
+    rebuild(uncontrolled),
+    "controlled source value"
+  )
+})
+
 test_that("trajectory review revalidates ordered stage and Deputy identities", {
   review <- tempest_trajectory_review(test_promotion_fixture("storm")$research)
   properties <- S7::props(review)
