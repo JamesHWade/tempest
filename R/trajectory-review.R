@@ -1391,11 +1391,14 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
     stage$output$digest,
     "Trajectory stage output digest"
   )
-  tempest_trajectory_validate_stage_trust(stage)
+  tempest_trajectory_validate_stage_trust(stage, governed_reference)
   invisible(stage)
 }
 
-tempest_trajectory_validate_stage_trust <- function(stage) {
+tempest_trajectory_validate_stage_trust <- function(
+  stage,
+  governed_reference = NULL
+) {
   policy <- tempest_stage_policy(stage$stage)
   if (!identical(stage$fallback_policy, policy$fallback_policy)) {
     tempest_trajectory_review_abort(
@@ -1508,19 +1511,20 @@ tempest_trajectory_validate_stage_trust <- function(stage) {
       "A trajectory fallback implementation requires a taken fallback."
     )
   }
-  if (identical(stage$execution_path, "governed")) {
-    if (
-      !identical(stage$status, "succeeded") ||
-        isTRUE(stage$fallback_taken) ||
-        is.null(stage$governed_procedure_revision_id)
-    ) {
-      tempest_trajectory_review_abort(
-        "A governed trajectory path requires terminal governed authority."
-      )
-    }
-  } else if (!identical(stage$execution_path, policy$execution_path)) {
+  expected_execution_path <- tempest_stage_execution_path_derive(
+    stage$status,
+    policy,
+    stage$governed_procedure_revision_id %||% NA_character_,
+    if (is.null(governed_reference)) {
+      list()
+    } else {
+      list(governed_procedure = governed_reference)
+    },
+    stage$fallback_taken
+  )
+  if (!identical(stage$execution_path, expected_execution_path)) {
     tempest_trajectory_review_abort(
-      "A trajectory execution path does not match its stage policy."
+      "A trajectory execution path is not derived from terminal authority."
     )
   }
   expected_publication <- tempest_stage_publication_allowed(
@@ -1728,7 +1732,7 @@ tempest_trajectory_validate_agent <- function(
   invisible(agent)
 }
 
-tempest_trajectory_validate_programs <- function(programs) {
+tempest_trajectory_validate_programs <- function(programs, input_snapshot) {
   stages <- tempest_program_set_stages()
   expected_evaluators <- tempest_program_set_default_evaluators()
   if (
@@ -1800,6 +1804,26 @@ tempest_trajectory_validate_programs <- function(programs) {
       ) {
         tempest_trajectory_review_abort(
           "A trajectory governed-procedure reference is not bound to its program."
+        )
+      }
+      snapshot_fields <- c(
+        "snapshot_id",
+        "store_id",
+        "schema_build_digest",
+        "commit_order"
+      )
+      if (
+        is.null(input_snapshot) ||
+          !identical(
+            reference[snapshot_fields],
+            input_snapshot[snapshot_fields]
+          )
+      ) {
+        tempest_trajectory_review_abort(
+          paste0(
+            "A trajectory governed-procedure reference is not bound to ",
+            "the input snapshot."
+          )
         )
       }
     }
@@ -2589,6 +2613,60 @@ tempest_trajectory_validate_output_joins <- function(review) {
       }
     }
   }
+  complete_source_lanes <- all(vapply(
+    c("stages", "evidence", "joins"),
+    \(lane) identical(S7::prop(review, lane)$omitted, 0L),
+    logical(1)
+  ))
+  if (complete_source_lanes) {
+    coverage_contracts <- list(
+      extract_claims = "claim",
+      verify_claim_support = "claim_support"
+    )
+    for (stage_name in names(coverage_contracts)) {
+      record_type <- coverage_contracts[[stage_name]]
+      stage_ids <- vapply(
+        Filter(
+          \(stage) identical(stage$stage, stage_name),
+          review@stages$items
+        ),
+        `[[`,
+        character(1),
+        "attempt_id"
+      )
+      output_ids <- vapply(
+        Filter(
+          function(join) {
+            identical(join$from_type, "stage_attempt") &&
+              join$from_id %in% stage_ids &&
+              identical(join$relation, "contains") &&
+              identical(join$to_type, record_type)
+          },
+          review@joins$items
+        ),
+        `[[`,
+        character(1),
+        "to_id"
+      )
+      evidence_ids <- vapply(
+        Filter(
+          \(item) identical(item$record_type, record_type),
+          review@evidence$items
+        ),
+        `[[`,
+        character(1),
+        "record_id"
+      )
+      if (!setequal(output_ids, evidence_ids)) {
+        tempest_trajectory_review_abort(
+          paste0(
+            "Trajectory stage outputs do not exactly cover their complete ",
+            "workspace evidence."
+          )
+        )
+      }
+    }
+  }
   invisible(review)
 }
 
@@ -3166,7 +3244,14 @@ tempest_trajectory_review_validation_message <- function(self) {
         "Trajectory review review_id"
       )
       tempest_trajectory_validate_product(self@product)
-      tempest_trajectory_validate_programs(self@programs)
+      tempest_trajectory_validate_knowledge(
+        self@knowledge,
+        self@product$research_run_id
+      )
+      tempest_trajectory_validate_programs(
+        self@programs,
+        self@knowledge$input_snapshot
+      )
       tempest_trajectory_validate_collection(
         self@stages,
         tempest_trajectory_stage_fields(),
@@ -3273,10 +3358,6 @@ tempest_trajectory_review_validation_message <- function(self) {
           }
         }
       }
-      tempest_trajectory_validate_knowledge(
-        self@knowledge,
-        self@product$research_run_id
-      )
       tempest_trajectory_validate_collection(
         self@evidence,
         tempest_trajectory_evidence_fields(),

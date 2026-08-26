@@ -387,6 +387,171 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
   )
   expect_error(rebuild(missing_program_join), "mandatory projected relation")
 
+  governed <- unserialize(serialize(properties, NULL))
+  governed_stage <- which(vapply(
+    governed$stages$items,
+    \(stage) identical(stage$stage, "extract_claims"),
+    logical(1)
+  ))[[1L]]
+  governed_program <- governed$programs$extract_claims
+  governed_reference <- tempest_governed_procedure_record(
+    test_governed_procedure_ref(
+      "extract_claims",
+      governed_program$program_artifact_id
+    )
+  )
+  governed$programs$extract_claims$governed_procedure_ref <-
+    governed_reference
+  governed$knowledge$input_snapshot <- tempest_trajectory_snapshot(list(
+    snapshot_id = governed_reference$snapshot_id,
+    store_id = governed_reference$store_id,
+    schema_build_digest = governed_reference$schema_build_digest,
+    commit_order = governed_reference$commit_order
+  ))
+  governed$stages$items[[
+    governed_stage
+  ]]$governed_procedure_revision_id <- governed_reference$revision_id
+  governed$stages$items[[governed_stage]]$execution_path <- "governed"
+  governed$stages <- tempest_trajectory_collection(
+    governed$stages$items,
+    preserve_order = TRUE
+  )
+  governed_agent <- governed$agent_runs$items[[1L]]
+  governed_context <- list(
+    product = "tempest",
+    research_run_id = governed$product$research_run_id,
+    mode = governed$product$mode,
+    stage = governed_agent$stage,
+    role = governed_agent$role,
+    knowledge_snapshot_id = governed_reference$snapshot_id,
+    expert_id = governed_agent$expert_id
+  )
+  governed$agent_runs$items[[1L]]$agent_id <-
+    tempest_deputy_adapter_agent_id(governed_context)
+  governed$agent_runs <- tempest_trajectory_collection(
+    governed$agent_runs$items,
+    preserve_order = FALSE
+  )
+  governed$joins <- tempest_trajectory_collection(
+    c(
+      governed$joins$items,
+      list(tempest_trajectory_join(
+        "product",
+        governed$product$research_run_id,
+        "read_from",
+        "graft_snapshot",
+        governed_reference$snapshot_id,
+        "authority_validated",
+        c("snapshot_id", "store_id", "schema_build_digest", "commit_order")
+      ))
+    ),
+    preserve_order = FALSE
+  )
+  expect_s7_class(rebuild(governed), TempestTrajectoryReview)
+
+  wrong_governed_snapshot <- unserialize(serialize(governed, NULL))
+  wrong_governed_snapshot$programs$extract_claims$governed_procedure_ref$snapshot_id <- "snapshot:forged"
+  expect_error(rebuild(wrong_governed_snapshot), "input snapshot")
+
+  wrong_governed_path <- unserialize(serialize(governed, NULL))
+  wrong_governed_path$stages$items[[governed_stage]]$execution_path <-
+    tempest_stage_policy("extract_claims")$execution_path
+  wrong_governed_path$stages <- tempest_trajectory_collection(
+    wrong_governed_path$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(wrong_governed_path), "terminal authority")
+
+  complete_coverage <- unserialize(serialize(properties, NULL))
+  coverage_cases <- list(
+    extract_claims = list(record_type = "claim", record_id = "claim:extra"),
+    verify_claim_support = list(
+      record_type = "claim_support",
+      record_id = "claim-support:extra"
+    )
+  )
+  added_output_joins <- list()
+  for (stage_name in names(coverage_cases)) {
+    item <- coverage_cases[[stage_name]]
+    stage_index <- which(vapply(
+      complete_coverage$stages$items,
+      \(stage) identical(stage$stage, stage_name),
+      logical(1)
+    ))[[1L]]
+    stage <- complete_coverage$stages$items[[stage_index]]
+    stage$output$count <- stage$output$count + 1L
+    complete_coverage$stages$items[[stage_index]] <- stage
+    complete_coverage$evidence$items <- c(
+      complete_coverage$evidence$items,
+      list(item)
+    )
+    added_output_joins[[stage_name]] <- tempest_trajectory_join(
+      "stage_attempt",
+      stage$attempt_id,
+      "contains",
+      item$record_type,
+      item$record_id,
+      "exact_identity",
+      c("output_reference.kind", "output_reference.ids")
+    )
+    complete_coverage$joins$items <- c(
+      complete_coverage$joins$items,
+      list(
+        tempest_trajectory_join(
+          "product",
+          complete_coverage$product$research_run_id,
+          "contains",
+          item$record_type,
+          item$record_id,
+          "authority_validated",
+          c("research_run_id", "record_id")
+        ),
+        added_output_joins[[stage_name]]
+      )
+    )
+  }
+  complete_coverage$stages <- tempest_trajectory_collection(
+    complete_coverage$stages$items,
+    preserve_order = TRUE
+  )
+  complete_coverage$evidence <- tempest_trajectory_collection(
+    complete_coverage$evidence$items,
+    preserve_order = FALSE
+  )
+  complete_coverage$joins <- tempest_trajectory_collection(
+    complete_coverage$joins$items,
+    preserve_order = FALSE
+  )
+  expect_s7_class(rebuild(complete_coverage), TempestTrajectoryReview)
+
+  for (stage_name in names(coverage_cases)) {
+    missing_coverage <- unserialize(serialize(complete_coverage, NULL))
+    item <- coverage_cases[[stage_name]]
+    stage_index <- which(vapply(
+      missing_coverage$stages$items,
+      \(stage) identical(stage$stage, stage_name),
+      logical(1)
+    ))[[1L]]
+    missing_coverage$stages$items[[stage_index]]$output$count <-
+      missing_coverage$stages$items[[stage_index]]$output$count - 1L
+    missing_coverage$stages <- tempest_trajectory_collection(
+      missing_coverage$stages$items,
+      preserve_order = TRUE
+    )
+    missing_coverage$joins <- tempest_trajectory_collection(
+      Filter(
+        function(join) {
+          !(identical(join$from_type, "stage_attempt") &&
+            identical(join$to_type, item$record_type) &&
+            identical(join$to_id, item$record_id))
+        },
+        missing_coverage$joins$items
+      ),
+      preserve_order = FALSE
+    )
+    expect_error(rebuild(missing_coverage), "workspace evidence")
+  }
+
   truncated <- unserialize(serialize(properties, NULL))
   evidence_items <- lapply(seq_len(251L), function(index) {
     list(
