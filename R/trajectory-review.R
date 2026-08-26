@@ -2657,7 +2657,7 @@ tempest_trajectory_validate_output_joins <- function(review) {
         character(1),
         "record_id"
       )
-      if (!setequal(output_ids, evidence_ids)) {
+      if (length(evidence_ids) == 0L || !setequal(output_ids, evidence_ids)) {
         tempest_trajectory_review_abort(
           paste0(
             "Trajectory stage outputs do not exactly cover their complete ",

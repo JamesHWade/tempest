@@ -552,6 +552,45 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     expect_error(rebuild(missing_coverage), "workspace evidence")
   }
 
+  missing_verification <- unserialize(serialize(properties, NULL))
+  verification_stage <- Filter(
+    \(stage) identical(stage$stage, "verify_claim_support"),
+    missing_verification$stages$items
+  )[[1L]]
+  missing_verification$stages <- tempest_trajectory_collection(
+    Filter(
+      \(stage) !identical(stage$stage, "verify_claim_support"),
+      missing_verification$stages$items
+    ),
+    preserve_order = TRUE
+  )
+  missing_verification$evidence <- tempest_trajectory_collection(
+    Filter(
+      \(item) !identical(item$record_type, "claim_support"),
+      missing_verification$evidence$items
+    ),
+    preserve_order = FALSE
+  )
+  missing_verification$joins <- tempest_trajectory_collection(
+    Filter(
+      function(join) {
+        !identical(join$from_id, verification_stage$attempt_id) &&
+          !identical(join$to_id, verification_stage$attempt_id) &&
+          !identical(join$to_type, "claim_support")
+      },
+      missing_verification$joins$items
+    ),
+    preserve_order = FALSE
+  )
+  missing_verification$findings <- tempest_trajectory_collection(
+    Filter(
+      \(finding) !identical(finding$ref_id, verification_stage$attempt_id),
+      missing_verification$findings$items
+    ),
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(missing_verification), "workspace evidence")
+
   truncated <- unserialize(serialize(properties, NULL))
   evidence_items <- lapply(seq_len(251L), function(index) {
     list(
