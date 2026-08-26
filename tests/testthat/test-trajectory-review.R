@@ -173,6 +173,50 @@ test_that("trajectory review validation owns nested source invariants", {
   }
 })
 
+test_that("trajectory review revalidates ordered stage and Deputy identities", {
+  review <- tempest_trajectory_review(test_promotion_fixture("storm")$research)
+  properties <- S7::props(review)
+  rebuild <- function(value) {
+    payload <- do.call(
+      tempest_trajectory_review_payload,
+      value[setdiff(names(value), "review_id")]
+    )
+    value$review_id <- tempest_trajectory_digest(payload)
+    do.call(TempestTrajectoryReview, value)
+  }
+
+  reversed <- unserialize(serialize(properties, NULL))
+  reversed$stages <- tempest_trajectory_collection(
+    rev(reversed$stages$items),
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(reversed))
+
+  incomplete <- unserialize(serialize(properties, NULL))
+  incomplete$stages$items[[1L]]["completed_at"] <- list(NULL)
+  incomplete$stages <- tempest_trajectory_collection(
+    incomplete$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(incomplete))
+
+  wrong_stage_trace <- unserialize(serialize(properties, NULL))
+  wrong_stage_trace$stages$items[[1L]]$trace_id <- "another-stage-trace"
+  wrong_stage_trace$stages <- tempest_trajectory_collection(
+    wrong_stage_trace$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(wrong_stage_trace))
+
+  wrong_session <- unserialize(serialize(properties, NULL))
+  wrong_session$agent_runs$items[[1L]]$deputy_session_id <- "other-session"
+  wrong_session$agent_runs <- tempest_trajectory_collection(
+    wrong_session$agent_runs$items,
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(wrong_session))
+})
+
 test_that("trajectory review accepts the exact public tempest_run outline", {
   result <- storm_product_baseline_fixture()$result
   public_bullets <- result@outline$sections[[1L]]$subsections[[1L]]$bullets
@@ -407,6 +451,27 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
   )
   missing_class$review_id <- tempest_trajectory_digest(payload)
   expect_error(do.call(TempestTrajectoryReview, missing_class))
+
+  empty_selection <- S7::props(accepted)
+  empty_selection$knowledge$proposal$claim_selection$count <- 0L
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    empty_selection[setdiff(names(empty_selection), "review_id")]
+  )
+  empty_selection$review_id <- tempest_trajectory_digest(payload)
+  expect_error(do.call(TempestTrajectoryReview, empty_selection))
+
+  wrong_receipt <- S7::props(accepted)
+  wrong_receipt$knowledge$acceptance$receipt_id <- paste0(
+    "sha256:",
+    strrep("f", 64L)
+  )
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    wrong_receipt[setdiff(names(wrong_receipt), "review_id")]
+  )
+  wrong_receipt$review_id <- tempest_trajectory_digest(payload)
+  expect_error(do.call(TempestTrajectoryReview, wrong_receipt))
 })
 
 test_that("trajectory review rejects loose products and receipt-only input", {

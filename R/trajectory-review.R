@@ -1140,6 +1140,18 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
       nullable = TRUE
     )
   }
+  started_at <- tempest_stage_time_parse(stage$started_at)
+  completed_at <- tempest_stage_time_parse(stage$completed_at)
+  if (is.na(started_at) || is.na(completed_at) || completed_at < started_at) {
+    tempest_trajectory_review_abort(
+      "A terminal trajectory stage must retain its valid completion interval."
+    )
+  }
+  if (!identical(stage$trace_id, stage$attempt_id)) {
+    tempest_trajectory_review_abort(
+      "A trajectory stage trace ID must match its attempt ID."
+    )
+  }
   if (
     !rlang::is_bool(stage$fallback_taken) ||
       !rlang::is_bool(stage$publication_allowed)
@@ -1269,6 +1281,34 @@ tempest_trajectory_validate_agent <- function(
   } else if (!is.null(agent$expert_id)) {
     tempest_trajectory_review_abort(
       "A moderator trajectory Deputy trace cannot bind an expert ID."
+    )
+  }
+  valid_session <- if (identical(product$mode, "storm")) {
+    identical(
+      agent$deputy_session_id,
+      tempest_storm_deputy_session_id(
+        product$research_run_id,
+        agent$expert_id
+      )
+    )
+  } else if (identical(agent$role, "moderator")) {
+    identical(
+      agent$deputy_session_id,
+      tempest_costorm_deputy_session_id(
+        product$research_run_id,
+        "moderator"
+      )
+    )
+  } else {
+    grepl(
+      "^expert-session_[a-f0-9]{16}$",
+      agent$deputy_session_id,
+      perl = TRUE
+    )
+  }
+  if (!valid_session) {
+    tempest_trajectory_review_abort(
+      "A trajectory Deputy session ID does not match its product context."
     )
   }
   relation_fields <- c(
@@ -1703,6 +1743,11 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     selection$count,
     "Trajectory proposal claim count"
   )
+  if (selection$count < 1L) {
+    tempest_trajectory_review_abort(
+      "A trajectory promotion proposal must retain at least one claim."
+    )
+  }
   tempest_trajectory_validate_sha256(
     selection$digest,
     "Trajectory proposal selection digest"
@@ -1782,6 +1827,29 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     acceptance,
     counts
   )
+  if (identical(acceptance$record_revisions$omitted, 0L)) {
+    receipt_payload <- tempest_promotion_receipt_payload(
+      acceptance$bundle_id,
+      acceptance$plan_id,
+      acceptance$plan_digest,
+      acceptance$batch_id,
+      acceptance$store_id,
+      acceptance$schema_build_digest,
+      acceptance$snapshot,
+      acceptance$counts,
+      acceptance$record_revisions$items
+    )
+    if (
+      !identical(
+        acceptance$receipt_id,
+        tempest_promotion_digest(receipt_payload)
+      )
+    ) {
+      tempest_trajectory_review_abort(
+        "Trajectory acceptance receipt_id does not match its complete payload."
+      )
+    }
+  }
   invisible(knowledge)
 }
 
@@ -1948,6 +2016,23 @@ tempest_trajectory_review_validation_message <- function(self) {
       if (anyDuplicated(stage_attempt_ids)) {
         tempest_trajectory_review_abort(
           "Trajectory stage attempt identities must be unique."
+        )
+      }
+      stage_order <- tempest_stage_records_order_fields(
+        vapply(
+          self@stages$items,
+          `[[`,
+          character(1),
+          "started_at"
+        ),
+        stage_attempt_ids
+      )
+      if (!identical(stage_order, seq_along(self@stages$items))) {
+        tempest_trajectory_review_abort(
+          paste0(
+            "Trajectory stages must retain canonical started_at and ",
+            "attempt_id order."
+          )
         )
       }
       tempest_trajectory_validate_collection(
