@@ -1607,7 +1607,6 @@ tempest_trajectory_validate_stage_trust <- function(
 
 tempest_trajectory_validate_agent <- function(
   agent,
-  programs,
   product,
   knowledge
 ) {
@@ -1658,19 +1657,9 @@ tempest_trajectory_validate_agent <- function(
     tempest_trajectory_review_abort("Trajectory agent trace_type is invalid.")
   }
   if (!is.null(agent$program_artifact_id)) {
-    tempest_trajectory_validate_sha256(
-      agent$program_artifact_id,
-      "Trajectory agent program_artifact_id"
+    tempest_trajectory_review_abort(
+      "A trajectory Deputy agent cannot retain a program artifact."
     )
-    program <- programs[[agent$stage]]
-    if (
-      is.null(program) ||
-        !identical(agent$program_artifact_id, program$program_artifact_id)
-    ) {
-      tempest_trajectory_review_abort(
-        "A trajectory agent is not bound to its declared program artifact."
-      )
-    }
   }
   statuses <- c(
     "abandoned",
@@ -1800,9 +1789,6 @@ tempest_trajectory_validate_agent <- function(
   snapshot_id <- knowledge$input_snapshot$snapshot_id %||% NULL
   if (!is.null(snapshot_id)) {
     run_context$knowledge_snapshot_id <- snapshot_id
-  }
-  if (!is.null(agent$program_artifact_id)) {
-    run_context$program_artifact_id <- agent$program_artifact_id
   }
   if (!is.null(agent$expert_id)) {
     run_context$expert_id <- agent$expert_id
@@ -3512,7 +3498,6 @@ tempest_trajectory_review_validation_message <- function(self) {
       invisible(lapply(
         self@agent_runs$items,
         tempest_trajectory_validate_agent,
-        programs = self@programs,
         product = self@product,
         knowledge = self@knowledge
       ))

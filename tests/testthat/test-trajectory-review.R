@@ -308,6 +308,18 @@ test_that("trajectory review rejects source-impossible projected identifiers", {
     rebuild(uncontrolled),
     "controlled source value"
   )
+
+  impossible_program <- unserialize(serialize(properties, NULL))
+  impossible_program$agent_runs$items[[1L]]$program_artifact_id <-
+    impossible_program$programs[[1L]]$program_artifact_id
+  impossible_program$agent_runs <- tempest_trajectory_collection(
+    impossible_program$agent_runs$items,
+    preserve_order = FALSE
+  )
+  expect_error(
+    rebuild(impossible_program),
+    "cannot retain a program artifact"
+  )
 })
 
 test_that("trajectory review revalidates ordered stage and Deputy identities", {
