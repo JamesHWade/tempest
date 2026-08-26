@@ -1275,7 +1275,37 @@ tempest_trajectory_validate_product <- function(product) {
   invisible(product)
 }
 
-tempest_trajectory_validate_stage <- function(stage, programs) {
+tempest_trajectory_deputy_session_owned_by <- function(
+  session_id,
+  expert_id,
+  product
+) {
+  if (identical(product$mode, "storm")) {
+    return(identical(
+      session_id,
+      tempest_storm_deputy_session_id(
+        product$research_run_id,
+        expert_id
+      )
+    ))
+  }
+  if (identical(expert_id, "moderator")) {
+    return(identical(
+      session_id,
+      tempest_costorm_deputy_session_id(
+        product$research_run_id,
+        "moderator"
+      )
+    ))
+  }
+  tempest_deputy_expert_session_owned_by(
+    session_id,
+    product$research_run_id,
+    expert_id
+  )
+}
+
+tempest_trajectory_validate_stage <- function(stage, programs, product) {
   tempest_trajectory_exact_record(
     stage,
     tempest_trajectory_stage_fields(),
@@ -1387,6 +1417,20 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
     if (any(lineage_present) && !all(lineage_present)) {
       tempest_trajectory_review_abort(
         "A trajectory stage Deputy binding has partial delegation lineage."
+      )
+    }
+    if (
+      !tempest_trajectory_deputy_session_owned_by(
+        binding$session_id,
+        binding$expert_id,
+        product
+      )
+    ) {
+      tempest_trajectory_review_abort(
+        paste0(
+          "A trajectory stage Deputy session ID does not match its product ",
+          "and expert context."
+        )
       )
     }
   }
@@ -1719,29 +1763,16 @@ tempest_trajectory_validate_agent <- function(
       "A moderator trajectory Deputy trace cannot bind an expert ID."
     )
   }
-  valid_session <- if (identical(product$mode, "storm")) {
-    identical(
-      agent$deputy_session_id,
-      tempest_storm_deputy_session_id(
-        product$research_run_id,
-        agent$expert_id
-      )
-    )
-  } else if (identical(agent$role, "moderator")) {
-    identical(
-      agent$deputy_session_id,
-      tempest_costorm_deputy_session_id(
-        product$research_run_id,
-        "moderator"
-      )
-    )
+  session_expert_id <- if (identical(agent$role, "moderator")) {
+    "moderator"
   } else {
-    tempest_deputy_expert_session_owned_by(
-      agent$deputy_session_id,
-      product$research_run_id,
-      agent$expert_id
-    )
+    agent$expert_id
   }
+  valid_session <- tempest_trajectory_deputy_session_owned_by(
+    agent$deputy_session_id,
+    session_expert_id,
+    product
+  )
   if (!valid_session) {
     tempest_trajectory_review_abort(
       "A trajectory Deputy session ID does not match its product context."
@@ -3456,7 +3487,8 @@ tempest_trajectory_review_validation_message <- function(self) {
       invisible(lapply(
         self@stages$items,
         tempest_trajectory_validate_stage,
-        programs = self@programs
+        programs = self@programs,
+        product = self@product
       ))
       stage_attempt_ids <- vapply(
         self@stages$items,

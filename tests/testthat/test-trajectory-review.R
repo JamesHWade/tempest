@@ -477,7 +477,7 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     wrong_stage_session$stages$items,
     preserve_order = TRUE
   )
-  expect_error(rebuild(wrong_stage_session), "exact run")
+  expect_error(rebuild(wrong_stage_session), "stage Deputy session ID")
 
   wrong_deputy_join <- unserialize(serialize(properties, NULL))
   deputy_join <- which(vapply(
@@ -913,7 +913,7 @@ test_that("trajectory review retains exact noncausal Deputy identities", {
   )
 })
 
-test_that("trajectory review preserves Co-STORM expert-session ownership", {
+test_that("trajectory review preserves Co-STORM session ownership", {
   review <- tempest_trajectory_review(
     costorm_product_baseline_fixture()$session
   )
@@ -952,6 +952,26 @@ test_that("trajectory review preserves Co-STORM expert-session ownership", {
   expect_error(
     do.call(TempestTrajectoryReview, properties),
     "session ID does not match its product context"
+  )
+
+  stage <- Filter(
+    \(item) !is.null(item$deputy_binding),
+    review@stages$items
+  )[[1L]]
+  stage$deputy_binding$expert_id <- if (
+    identical(stage$deputy_binding$expert_id, "moderator")
+  ) {
+    "expert.reassigned"
+  } else {
+    "moderator"
+  }
+  expect_error(
+    tempest_trajectory_validate_stage(
+      stage,
+      programs = review@programs,
+      product = review@product
+    ),
+    "stage Deputy session ID"
   )
 })
 

@@ -1,4 +1,4 @@
-test_that("pending Deputy runs block schema 10 persistence", {
+test_that("pending Deputy runs block schema 11 persistence", {
   skip_if_not_installed("coro")
   skip_if_not_installed("deputy")
   skip_if_not_installed("ellmer")
@@ -108,7 +108,7 @@ test_that("pending Deputy runs block schema 10 persistence", {
   )
 })
 
-test_that("issued and processing completions block schema 10 persistence", {
+test_that("issued and processing completions block schema 11 persistence", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("ellmer")
   skip_if_not_installed("jsonlite")

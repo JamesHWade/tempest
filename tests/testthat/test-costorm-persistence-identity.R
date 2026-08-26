@@ -1,4 +1,4 @@
-test_that("schema 10 session restore protects research identity", {
+test_that("schema 11 session restore protects research identity", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -20,9 +20,16 @@ test_that("schema 10 session restore protects research identity", {
   expect_no_error(tempest_session_restore(snapshot, config = cfg))
 
   double_schema <- snapshot
-  double_schema$schema_version <- 10.0
+  double_schema$schema_version <- 11.0
   expect_error(
     tempest_session_restore(double_schema, config = cfg),
+    class = "tempest_session_restore_error"
+  )
+
+  legacy_schema <- snapshot
+  legacy_schema$schema_version <- 10L
+  expect_error(
+    tempest_session_restore(legacy_schema, config = cfg),
     class = "tempest_session_restore_error"
   )
 
@@ -243,7 +250,7 @@ test_that("schema 10 session restore protects research identity", {
   )
 })
 
-test_that("schema 10 progress history is exact and session-bound", {
+test_that("schema 11 progress history is exact and session-bound", {
   skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()

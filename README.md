@@ -197,7 +197,7 @@ receipt is shown as accepted; a receipt alone or a cross-run product fails
 closed.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 10, STORM bundle schema 8 with state schema
+Co-STORM snapshot and bundle schema 11, STORM bundle schema 8 with state schema
 5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest
 payload schema 3, and promotion-bundle schema 1. Readers reject every other
 version; missing fields, extra fields, and values that only become valid after
@@ -660,7 +660,7 @@ expert run records an opaque terminal trace that is carried through Co-STORM
 snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-10 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+schema-11 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
 suggested-question, and Graft snapshot state must pass integrity checks. Live
 chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
 rather than serialized.
