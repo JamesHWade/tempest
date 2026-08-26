@@ -199,6 +199,10 @@ tempest_trajectory_finding_severities <- function() {
   )
 }
 
+tempest_trajectory_evidence_types <- function() {
+  c("resource", "claim", "evidence_span", "claim_support", "dispute")
+}
+
 tempest_trajectory_digest <- function(value) {
   paste0("sha256:", tempest_product_record_hash(value))
 }
@@ -1174,6 +1178,148 @@ tempest_trajectory_validate_stage <- function(stage, programs) {
     stage$output$digest,
     "Trajectory stage output digest"
   )
+  tempest_trajectory_validate_stage_trust(stage)
+  invisible(stage)
+}
+
+tempest_trajectory_validate_stage_trust <- function(stage) {
+  policy <- tempest_stage_policy(stage$stage)
+  if (!identical(stage$fallback_policy, policy$fallback_policy)) {
+    tempest_trajectory_review_abort(
+      "A trajectory stage fallback policy does not match its stage."
+    )
+  }
+  if (
+    !stage$execution_path %in% tempest_execution_paths() ||
+      !stage$support_status %in% tempest_support_statuses()
+  ) {
+    tempest_trajectory_review_abort(
+      "A trajectory stage has invalid execution trust state."
+    )
+  }
+  if (!is.null(stage$failure_class)) {
+    if (!stage$failure_class %in% tempest_stage_failure_classes()) {
+      tempest_trajectory_review_abort(
+        "A trajectory stage has an invalid failure class."
+      )
+    }
+  }
+  if (identical(stage$status, "succeeded")) {
+    if (
+      is.null(stage$output$kind) ||
+        !stage$output$kind %in% tempest_stage_output_kinds() ||
+        stage$output$count < 1L
+    ) {
+      tempest_trajectory_review_abort(
+        "A succeeded trajectory stage must retain its output summary."
+      )
+    }
+    unknown_support_stages <- c(
+      "perspectives",
+      "personas",
+      "query_decomposition",
+      "extract_claims",
+      "next_question",
+      "draft_outline",
+      "refined_outline"
+    )
+    if (
+      stage$stage %in%
+        unknown_support_stages &&
+        !identical(stage$support_status, "unknown")
+    ) {
+      tempest_trajectory_review_abort(
+        "A trajectory planning stage must retain unknown support state."
+      )
+    }
+    if (
+      stage$stage %in%
+        c("section_writing", "lead_section") &&
+        !identical(stage$support_status, "verified")
+    ) {
+      tempest_trajectory_review_abort(
+        "A trajectory writing stage must retain verified support state."
+      )
+    }
+    if (isTRUE(stage$fallback_taken)) {
+      if (is.null(stage$failure_class)) {
+        tempest_trajectory_review_abort(
+          "A successful trajectory fallback must retain its primary failure."
+        )
+      }
+    } else if (!is.null(stage$failure_class)) {
+      tempest_trajectory_review_abort(
+        "A direct successful trajectory stage cannot retain a failure."
+      )
+    }
+  } else {
+    if (
+      !is.null(stage$output$kind) ||
+        !identical(stage$output$count, 0L) ||
+        is.null(stage$failure_class) ||
+        !identical(stage$support_status, "unknown")
+    ) {
+      tempest_trajectory_review_abort(
+        "A failed trajectory stage has inconsistent result state."
+      )
+    }
+  }
+  if (
+    identical(stage$status, "cancelled") &&
+      !identical(stage$failure_class, "tempest_stage_cancelled")
+  ) {
+    tempest_trajectory_review_abort(
+      "A cancelled trajectory stage must retain its controlled failure."
+    )
+  }
+  if (
+    identical(stage$fallback_policy, "fail_closed") &&
+      isTRUE(stage$fallback_taken)
+  ) {
+    tempest_trajectory_review_abort(
+      "A fail-closed trajectory stage cannot take a fallback."
+    )
+  }
+  expected_implementation <- policy$fallback_implementation
+  if (isTRUE(stage$fallback_taken)) {
+    if (
+      is.na(expected_implementation) ||
+        !identical(stage$fallback_implementation, expected_implementation)
+    ) {
+      tempest_trajectory_review_abort(
+        "A trajectory fallback implementation does not match its stage."
+      )
+    }
+  } else if (!is.null(stage$fallback_implementation)) {
+    tempest_trajectory_review_abort(
+      "A trajectory fallback implementation requires a taken fallback."
+    )
+  }
+  if (identical(stage$execution_path, "governed")) {
+    if (
+      !identical(stage$status, "succeeded") ||
+        isTRUE(stage$fallback_taken) ||
+        is.null(stage$governed_procedure_revision_id)
+    ) {
+      tempest_trajectory_review_abort(
+        "A governed trajectory path requires terminal governed authority."
+      )
+    }
+  } else if (!identical(stage$execution_path, policy$execution_path)) {
+    tempest_trajectory_review_abort(
+      "A trajectory execution path does not match its stage policy."
+    )
+  }
+  expected_publication <- tempest_stage_publication_allowed(
+    stage$status,
+    stage$execution_path,
+    stage$support_status
+  )
+  if (!identical(stage$publication_allowed, expected_publication)) {
+    tempest_trajectory_review_abort(
+      "A trajectory publication decision does not match its trust state."
+    )
+  }
   invisible(stage)
 }
 
@@ -1454,6 +1600,29 @@ tempest_trajectory_validate_snapshot <- function(
     tempest_trajectory_snapshot_fields(),
     "Trajectory snapshot"
   )
+  source_snapshot <- tryCatch(
+    tempest_research_manifest_knowledge_snapshot(
+      snapshot[!vapply(snapshot, is.null, logical(1))]
+    ),
+    error = function(error) {
+      tempest_trajectory_review_abort(
+        "A trajectory snapshot is not a valid manifest snapshot reference.",
+        parent = error
+      )
+    }
+  )
+  canonical_snapshot <- stats::setNames(
+    lapply(
+      tempest_trajectory_snapshot_fields(),
+      \(field) tempest_trajectory_nullable(source_snapshot[[field]])
+    ),
+    tempest_trajectory_snapshot_fields()
+  )
+  if (!identical(snapshot, canonical_snapshot)) {
+    tempest_trajectory_review_abort(
+      "A trajectory snapshot does not retain its canonical source shape."
+    )
+  }
   if (digest_identity) {
     tempest_trajectory_validate_sha256(
       snapshot$snapshot_id,
@@ -1498,6 +1667,17 @@ tempest_trajectory_validate_snapshot <- function(
   ) {
     tempest_trajectory_review_abort(
       "Trajectory snapshot history_complete must be one logical."
+    )
+  }
+  if (
+    complete &&
+      (!identical(snapshot$schema_version, 1L) ||
+        !identical(snapshot$store_format_version, "3.0.0") ||
+        snapshot$commit_order < 1L ||
+        !tempest_ledger_timestamp_valid(snapshot$committed_at))
+  ) {
+    tempest_trajectory_review_abort(
+      "A complete trajectory snapshot has invalid receipt metadata."
     )
   }
   invisible(snapshot)
@@ -1783,7 +1963,13 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     )
   }
   if (
-    !identical(acceptance$bundle_id, proposal$bundle_id) ||
+    !grepl("^graft:[A-Z0-9]+$", acceptance$plan_id) ||
+      !tempest_promotion_receipt_store_id_valid(acceptance$store_id) ||
+      !identical(
+        acceptance$schema_build_digest,
+        tempest_promotion_schema_build_digest
+      ) ||
+      !identical(acceptance$bundle_id, proposal$bundle_id) ||
       !identical(
         acceptance$schema_build_digest,
         proposal$schema_build_digest
@@ -1828,27 +2014,22 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     counts
   )
   if (identical(acceptance$record_revisions$omitted, 0L)) {
-    receipt_payload <- tempest_promotion_receipt_payload(
-      acceptance$bundle_id,
-      acceptance$plan_id,
-      acceptance$plan_digest,
-      acceptance$batch_id,
-      acceptance$store_id,
-      acceptance$schema_build_digest,
-      acceptance$snapshot,
-      acceptance$counts,
-      acceptance$record_revisions$items
+    tryCatch(
+      do.call(
+        TempestPromotionReceipt,
+        c(
+          list(schema_version = tempest_promotion_schema_version),
+          acceptance[setdiff(names(acceptance), "record_revisions")],
+          list(record_revisions = acceptance$record_revisions$items)
+        )
+      ),
+      error = function(error) {
+        tempest_trajectory_review_abort(
+          "Trajectory acceptance is not an exact promotion receipt.",
+          parent = error
+        )
+      }
     )
-    if (
-      !identical(
-        acceptance$receipt_id,
-        tempest_promotion_digest(receipt_payload)
-      )
-    ) {
-      tempest_trajectory_review_abort(
-        "Trajectory acceptance receipt_id does not match its complete payload."
-      )
-    }
   }
   invisible(knowledge)
 }
@@ -1858,16 +2039,7 @@ tempest_trajectory_validate_evidence <- function(evidence) {
     evidence$record_type,
     "Trajectory evidence record_type"
   )
-  if (
-    !evidence$record_type %in%
-      c(
-        "resource",
-        "claim",
-        "evidence_span",
-        "claim_support",
-        "dispute"
-      )
-  ) {
+  if (!evidence$record_type %in% tempest_trajectory_evidence_types()) {
     tempest_trajectory_review_abort("Trajectory evidence type is invalid.")
   }
   tempest_trajectory_scalar_string(
@@ -1932,6 +2104,167 @@ tempest_trajectory_validate_join <- function(join) {
   invisible(join)
 }
 
+tempest_trajectory_join_type_allowed <- function(from_type, relation, to_type) {
+  evidence_types <- tempest_trajectory_evidence_types()
+  output_types <- c("product_field", "claim", "claim_support", "output_digest")
+  if (identical(relation, "contains")) {
+    return(
+      (identical(from_type, "product") &&
+        to_type %in% c("stage_attempt", evidence_types)) ||
+        (identical(from_type, "stage_attempt") && to_type %in% output_types)
+    )
+  }
+  if (identical(relation, "executed_as")) {
+    return(
+      identical(from_type, "stage_attempt") &&
+        to_type %in% c("program_artifact", "deputy_run")
+    )
+  }
+  if (identical(relation, "correlated_with")) {
+    return(
+      from_type %in%
+        c("stage_attempt", "deputy_run") &&
+        identical(to_type, "deputy_run")
+    )
+  }
+  if (identical(relation, "read_from")) {
+    return(
+      identical(from_type, "product") && identical(to_type, "graft_snapshot")
+    )
+  }
+  if (identical(relation, "proposed_as")) {
+    return(
+      identical(from_type, "product") &&
+        identical(to_type, "promotion_bundle")
+    )
+  }
+  if (identical(relation, "accepted_as")) {
+    return(
+      (identical(from_type, "promotion_bundle") &&
+        identical(to_type, "promotion_receipt")) ||
+        (identical(from_type, "promotion_receipt") &&
+          identical(to_type, "graft_revision"))
+    )
+  }
+  if (identical(relation, "parent_of")) {
+    return(
+      identical(from_type, "deputy_run") &&
+        identical(to_type, "deputy_run")
+    )
+  }
+  FALSE
+}
+
+tempest_trajectory_validate_join_graph <- function(review) {
+  evidence_types <- tempest_trajectory_evidence_types()
+  evidence_ids <- stats::setNames(
+    lapply(evidence_types, \(type) character()),
+    evidence_types
+  )
+  for (item in review@evidence$items) {
+    evidence_ids[[item$record_type]] <- c(
+      evidence_ids[[item$record_type]],
+      item$record_id
+    )
+  }
+  input_snapshot <- review@knowledge$input_snapshot
+  proposal <- review@knowledge$proposal
+  acceptance <- review@knowledge$acceptance
+  revisions <- if (is.null(acceptance)) {
+    NULL
+  } else {
+    acceptance$record_revisions
+  }
+  identities <- c(
+    list(
+      product = review@product$research_run_id,
+      stage_attempt = vapply(
+        review@stages$items,
+        `[[`,
+        character(1),
+        "attempt_id"
+      ),
+      deputy_run = vapply(
+        review@agent_runs$items,
+        `[[`,
+        character(1),
+        "deputy_run_id"
+      ),
+      program_artifact = vapply(
+        review@programs,
+        `[[`,
+        character(1),
+        "program_artifact_id"
+      ),
+      graft_snapshot = if (is.null(input_snapshot)) {
+        character()
+      } else {
+        input_snapshot$snapshot_id
+      },
+      promotion_bundle = if (is.null(proposal)) {
+        character()
+      } else {
+        proposal$bundle_id
+      },
+      promotion_receipt = if (is.null(acceptance)) {
+        character()
+      } else {
+        acceptance$receipt_id
+      },
+      graft_revision = if (is.null(revisions)) {
+        character()
+      } else {
+        vapply(revisions$items, `[[`, character(1), "revision_id")
+      }
+    ),
+    evidence_ids
+  )
+  complete <- stats::setNames(
+    as.list(rep(TRUE, length(identities))),
+    names(identities)
+  )
+  complete$stage_attempt <- identical(review@stages$omitted, 0L)
+  complete$deputy_run <- identical(review@agent_runs$omitted, 0L)
+  for (type in evidence_types) {
+    complete[[type]] <- identical(review@evidence$omitted, 0L)
+  }
+  complete$graft_revision <- is.null(revisions) ||
+    identical(revisions$omitted, 0L)
+  unprojected_output_types <- c("product_field", "output_digest")
+  endpoint_resolves <- function(type, id) {
+    if (type %in% unprojected_output_types) {
+      return(TRUE)
+    }
+    known <- identities[[type]]
+    if (is.null(known)) {
+      return(FALSE)
+    }
+    id %in% known || !isTRUE(complete[[type]])
+  }
+  for (join in review@joins$items) {
+    if (
+      !tempest_trajectory_join_type_allowed(
+        join$from_type,
+        join$relation,
+        join$to_type
+      )
+    ) {
+      tempest_trajectory_review_abort(
+        "A trajectory join uses an invalid typed relation."
+      )
+    }
+    if (
+      !endpoint_resolves(join$from_type, join$from_id) ||
+        !endpoint_resolves(join$to_type, join$to_id)
+    ) {
+      tempest_trajectory_review_abort(
+        "A trajectory join endpoint does not resolve a projected identity."
+      )
+    }
+  }
+  invisible(review)
+}
+
 tempest_trajectory_validate_finding <- function(finding) {
   severities <- tempest_trajectory_finding_severities()
   tempest_trajectory_scalar_string(
@@ -1959,6 +2292,115 @@ tempest_trajectory_validate_finding <- function(finding) {
     "Trajectory finding ref_id"
   )
   invisible(finding)
+}
+
+tempest_trajectory_validate_finding_graph <- function(review) {
+  stage_ids <- vapply(
+    review@stages$items,
+    `[[`,
+    character(1),
+    "attempt_id"
+  )
+  agent_ids <- vapply(
+    review@agent_runs$items,
+    `[[`,
+    character(1),
+    "deputy_run_id"
+  )
+  for (finding in review@findings$items) {
+    expected_type <- if (identical(finding$code, "unmatched_reference")) {
+      "deputy_run"
+    } else {
+      "stage_attempt"
+    }
+    if (!identical(finding$ref_type, expected_type)) {
+      tempest_trajectory_review_abort(
+        "A trajectory finding has an invalid reference type."
+      )
+    }
+    known_ids <- if (identical(expected_type, "stage_attempt")) {
+      stage_ids
+    } else {
+      agent_ids
+    }
+    complete <- if (identical(expected_type, "stage_attempt")) {
+      identical(review@stages$omitted, 0L)
+    } else {
+      identical(review@agent_runs$omitted, 0L)
+    }
+    if (!finding$ref_id %in% known_ids && complete) {
+      tempest_trajectory_review_abort(
+        "A trajectory finding does not resolve a projected identity."
+      )
+    }
+  }
+  all_complete <- all(vapply(
+    c("stages", "agent_runs", "joins", "findings"),
+    \(lane) identical(S7::prop(review, lane)$omitted, 0L),
+    logical(1)
+  ))
+  if (!all_complete) {
+    return(invisible(review))
+  }
+  severities <- tempest_trajectory_finding_severities()
+  expected <- unname(unlist(
+    lapply(review@stages$items, function(stage) {
+      conditions <- c(
+        stage_failed = identical(stage$status, "failed"),
+        stage_cancelled = identical(stage$status, "cancelled"),
+        fallback_taken = isTRUE(stage$fallback_taken),
+        exploratory_execution = identical(
+          stage$execution_path,
+          "exploratory"
+        ),
+        support_unverified = !identical(stage$support_status, "verified"),
+        publication_blocked = !isTRUE(stage$publication_allowed)
+      )
+      lapply(names(conditions)[conditions], function(code) {
+        list(
+          code = code,
+          severity = unname(severities[[code]]),
+          ref_type = "stage_attempt",
+          ref_id = stage$attempt_id
+        )
+      })
+    }),
+    recursive = FALSE
+  ))
+  linked_agent_ids <- character()
+  for (join in review@joins$items) {
+    if (
+      identical(join$relation, "executed_as") &&
+        identical(join$to_type, "deputy_run")
+    ) {
+      linked_agent_ids <- c(linked_agent_ids, join$to_id)
+    }
+    if (identical(join$relation, "parent_of")) {
+      linked_agent_ids <- c(linked_agent_ids, join$from_id, join$to_id)
+    }
+  }
+  unmatched <- setdiff(agent_ids, unique(linked_agent_ids))
+  expected <- c(
+    expected,
+    lapply(unmatched, function(run_id) {
+      list(
+        code = "unmatched_reference",
+        severity = "info",
+        ref_type = "deputy_run",
+        ref_id = run_id
+      )
+    })
+  )
+  expected <- tempest_trajectory_collection(
+    tempest_trajectory_unique_records(expected),
+    preserve_order = FALSE
+  )$items
+  if (!identical(review@findings$items, expected)) {
+    tempest_trajectory_review_abort(
+      "Trajectory findings do not match the complete projected trust state."
+    )
+  }
+  invisible(review)
 }
 
 tempest_trajectory_review_payload <- function(
@@ -2062,6 +2504,47 @@ tempest_trajectory_review_validation_message <- function(self) {
           "Trajectory Deputy run identities must be unique."
         )
       }
+      deputy_trace_ids <- vapply(
+        self@agent_runs$items,
+        `[[`,
+        character(1),
+        "trace_id"
+      )
+      stage_trace_ids <- vapply(
+        self@stages$items,
+        `[[`,
+        character(1),
+        "trace_id"
+      )
+      if (anyDuplicated(c(stage_trace_ids, deputy_trace_ids))) {
+        tempest_trajectory_review_abort(
+          "Trajectory trace identities must be unique across source lanes."
+        )
+      }
+      if (identical(self@agent_runs$omitted, 0L)) {
+        delegated <- Filter(
+          \(agent) identical(agent$trace_type, "deputy_delegation"),
+          self@agent_runs$items
+        )
+        for (agent in delegated) {
+          parents <- Filter(
+            function(parent) {
+              identical(parent$trace_type, "deputy_run") &&
+                identical(parent$deputy_run_id, agent$parent_run_id) &&
+                identical(parent$agent_id, agent$parent_agent_id) &&
+                identical(parent$status, "complete") &&
+                identical(parent$completion_disposition, "issued") &&
+                identical(parent$correlation_id, agent$correlation_id)
+            },
+            self@agent_runs$items
+          )
+          if (length(parents) != 1L) {
+            tempest_trajectory_review_abort(
+              "A trajectory delegation does not resolve one exact parent."
+            )
+          }
+        }
+      }
       tempest_trajectory_validate_knowledge(
         self@knowledge,
         self@product$research_run_id
@@ -2089,6 +2572,7 @@ tempest_trajectory_review_validation_message <- function(self) {
         "Trajectory joins"
       )
       invisible(lapply(self@joins$items, tempest_trajectory_validate_join))
+      tempest_trajectory_validate_join_graph(self)
       tempest_trajectory_validate_collection(
         self@findings,
         tempest_trajectory_finding_fields(),
@@ -2102,6 +2586,7 @@ tempest_trajectory_review_validation_message <- function(self) {
         self@findings$items,
         tempest_trajectory_validate_finding
       ))
+      tempest_trajectory_validate_finding_graph(self)
       payload <- tempest_trajectory_review_payload(
         self@schema_version,
         self@product,

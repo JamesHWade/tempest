@@ -208,6 +208,15 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
   )
   expect_error(rebuild(wrong_stage_trace))
 
+  wrong_trust <- unserialize(serialize(properties, NULL))
+  wrong_trust$stages$items[[1L]]$publication_allowed <-
+    !wrong_trust$stages$items[[1L]]$publication_allowed
+  wrong_trust$stages <- tempest_trajectory_collection(
+    wrong_trust$stages$items,
+    preserve_order = TRUE
+  )
+  expect_error(rebuild(wrong_trust))
+
   wrong_session <- unserialize(serialize(properties, NULL))
   wrong_session$agent_runs$items[[1L]]$deputy_session_id <- "other-session"
   wrong_session$agent_runs <- tempest_trajectory_collection(
@@ -215,6 +224,32 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     preserve_order = FALSE
   )
   expect_error(rebuild(wrong_session))
+
+  wrong_join <- unserialize(serialize(properties, NULL))
+  wrong_join$joins$items[[1L]] <- list(
+    from_type = "product",
+    from_id = wrong_join$product$research_run_id,
+    relation = "contains",
+    to_type = "stage_attempt",
+    to_id = "missing-stage",
+    proof = list(
+      kind = "authority_validated",
+      matched_fields = list("research_run_id", "attempt_id")
+    )
+  )
+  wrong_join$joins <- tempest_trajectory_collection(
+    wrong_join$joins$items,
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(wrong_join))
+
+  wrong_join_type <- unserialize(serialize(properties, NULL))
+  wrong_join_type$joins$items[[1L]]$to_type <- "source"
+  wrong_join_type$joins <- tempest_trajectory_collection(
+    wrong_join_type$joins$items,
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(wrong_join_type))
 })
 
 test_that("trajectory review accepts the exact public tempest_run outline", {
@@ -472,6 +507,59 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
   )
   wrong_receipt$review_id <- tempest_trajectory_digest(payload)
   expect_error(do.call(TempestTrajectoryReview, wrong_receipt))
+
+  receipt_mutations <- list(
+    plan = function(value) {
+      value$knowledge$acceptance$plan_id <- "not-a-plan"
+      value$knowledge$acceptance$batch_id <- "not-a-plan"
+      value$knowledge$acceptance$snapshot$batch_id <- "not-a-plan"
+      value
+    },
+    store = function(value) {
+      value$knowledge$acceptance$store_id <- "not-a-store"
+      value$knowledge$acceptance$snapshot$store_id <- "not-a-store"
+      value
+    },
+    snapshot_schema = function(value) {
+      value$knowledge$acceptance$snapshot$schema_version <- 2L
+      value
+    },
+    store_format = function(value) {
+      value$knowledge$acceptance$snapshot$store_format_version <- "2.0.0"
+      value
+    },
+    commit_order = function(value) {
+      value$knowledge$acceptance$snapshot$commit_order <- 0L
+      value
+    },
+    committed_at = function(value) {
+      value$knowledge$acceptance$snapshot$committed_at <- "not-a-time"
+      value
+    }
+  )
+  for (mutate in receipt_mutations) {
+    malformed <- mutate(S7::props(accepted))
+    acceptance <- malformed$knowledge$acceptance
+    receipt_payload <- tempest_promotion_receipt_payload(
+      acceptance$bundle_id,
+      acceptance$plan_id,
+      acceptance$plan_digest,
+      acceptance$batch_id,
+      acceptance$store_id,
+      acceptance$schema_build_digest,
+      acceptance$snapshot,
+      acceptance$counts,
+      acceptance$record_revisions$items
+    )
+    malformed$knowledge$acceptance$receipt_id <-
+      tempest_promotion_digest(receipt_payload)
+    payload <- do.call(
+      tempest_trajectory_review_payload,
+      malformed[setdiff(names(malformed), "review_id")]
+    )
+    malformed$review_id <- tempest_trajectory_digest(payload)
+    expect_error(do.call(TempestTrajectoryReview, malformed))
+  }
 })
 
 test_that("trajectory review rejects loose products and receipt-only input", {
