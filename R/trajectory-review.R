@@ -1852,6 +1852,95 @@ tempest_trajectory_validate_programs <- function(programs, input_snapshot) {
   invisible(programs)
 }
 
+tempest_trajectory_graft_snapshot_timestamp_valid <- function(value) {
+  if (
+    !rlang::is_string(value) ||
+      is.na(value) ||
+      !grepl(
+        paste0(
+          "^[0-9]{4}-[0-9]{2}-[0-9]{2}T",
+          "[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$"
+        ),
+        value
+      )
+  ) {
+    return(FALSE)
+  }
+  whole_seconds <- substr(value, 1L, 19L)
+  parsed <- suppressWarnings(as.POSIXct(
+    whole_seconds,
+    format = "%Y-%m-%dT%H:%M:%S",
+    tz = "UTC"
+  ))
+  !is.na(parsed) &&
+    identical(
+      format(parsed, "%Y-%m-%dT%H:%M:%S", tz = "UTC"),
+      whole_seconds
+    )
+}
+
+tempest_trajectory_graft_snapshot_digest <- function(snapshot) {
+  identity <- snapshot[
+    setdiff(tempest_trajectory_snapshot_fields(), "snapshot_id")
+  ]
+  if (identical(identity$commit_order, -0)) {
+    identity$commit_order <- 0
+  }
+  canonical <- as.character(jsonlite::toJSON(
+    identity,
+    auto_unbox = TRUE,
+    null = "null",
+    na = "null",
+    digits = 17,
+    POSIXt = "ISO8601",
+    UTC = TRUE,
+    pretty = FALSE
+  ))
+  paste0(
+    "sha256:",
+    digest::digest(canonical, algo = "sha256", serialize = FALSE)
+  )
+}
+
+tempest_trajectory_validate_graft_snapshot <- function(snapshot) {
+  empty <- identical(snapshot$commit_order, 0)
+  committed <- is.double(snapshot$commit_order) &&
+    !is.object(snapshot$commit_order) &&
+    is.null(names(snapshot$commit_order)) &&
+    length(snapshot$commit_order) == 1L &&
+    !is.na(snapshot$commit_order) &&
+    is.finite(snapshot$commit_order) &&
+    snapshot$commit_order >= 0 &&
+    snapshot$commit_order == floor(snapshot$commit_order) &&
+    snapshot$commit_order < 2^53
+  empty_boundary <- is.null(snapshot$batch_id) &&
+    is.null(snapshot$committed_at)
+  committed_boundary <-
+    tempest_promotion_receipt_graft_id_valid(snapshot$batch_id) &&
+    tempest_trajectory_graft_snapshot_timestamp_valid(snapshot$committed_at)
+  if (
+    !identical(snapshot$schema_version, 1L) ||
+      !tempest_promotion_receipt_store_id_valid(snapshot$store_id) ||
+      !identical(snapshot$store_format_version, "3.0.0") ||
+      !rlang::is_string(snapshot$schema_build_digest) ||
+      is.na(snapshot$schema_build_digest) ||
+      !grepl("^sha256:[a-f0-9]{64}$", snapshot$schema_build_digest) ||
+      !committed ||
+      !rlang::is_bool(snapshot$history_complete) ||
+      (empty && !empty_boundary) ||
+      (!empty && !committed_boundary) ||
+      !identical(
+        snapshot$snapshot_id,
+        tempest_trajectory_graft_snapshot_digest(snapshot)
+      )
+  ) {
+    tempest_trajectory_review_abort(
+      "A trajectory snapshot is not an exact immutable Graft snapshot."
+    )
+  }
+  invisible(snapshot)
+}
+
 tempest_trajectory_validate_snapshot <- function(
   snapshot,
   nullable = FALSE,
@@ -1889,6 +1978,7 @@ tempest_trajectory_validate_snapshot <- function(
       "A trajectory snapshot does not retain its canonical source shape."
     )
   }
+  tempest_trajectory_validate_graft_snapshot(snapshot)
   if (digest_identity) {
     tempest_trajectory_validate_sha256(
       snapshot$snapshot_id,
@@ -2036,6 +2126,15 @@ tempest_trajectory_validate_accepted_revisions <- function(
     if (!revision$class %in% classes) {
       tempest_trajectory_review_abort(
         "Trajectory accepted revision class is absent from its counts."
+      )
+    }
+    if (
+      !tempest_ledger_identifier_valid(revision$record_id) ||
+        !tempest_promotion_receipt_graft_id_valid(revision$revision_id) ||
+        !tempest_promotion_receipt_graft_id_valid(revision$batch_id)
+    ) {
+      tempest_trajectory_review_abort(
+        "A trajectory accepted revision has malformed source identities."
       )
     }
     tempest_trajectory_exact_whole_number(
@@ -2235,7 +2334,7 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     )
   }
   if (
-    !grepl("^graft:[A-Z0-9]+$", acceptance$plan_id) ||
+    !tempest_promotion_receipt_graft_id_valid(acceptance$plan_id) ||
       !tempest_promotion_receipt_store_id_valid(acceptance$store_id) ||
       !identical(
         acceptance$schema_build_digest,
@@ -2350,10 +2449,11 @@ tempest_trajectory_validate_evidence <- function(evidence) {
   if (!evidence$record_type %in% tempest_trajectory_evidence_types()) {
     tempest_trajectory_review_abort("Trajectory evidence type is invalid.")
   }
-  tempest_trajectory_scalar_string(
-    evidence$record_id,
-    "Trajectory evidence record_id"
-  )
+  if (!tempest_opaque_identifier_valid(evidence$record_id)) {
+    tempest_trajectory_review_abort(
+      "Trajectory evidence record_id must be a bounded opaque identifier."
+    )
+  }
   invisible(evidence)
 }
 

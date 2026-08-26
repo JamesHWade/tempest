@@ -185,6 +185,49 @@ test_that("trajectory review validation owns nested source invariants", {
   }
 })
 
+test_that("trajectory review rejects source-impossible evidence identities", {
+  review <- tempest_trajectory_review(test_promotion_fixture("storm")$research)
+  malformed <- S7::props(review)
+  evidence_index <- which(vapply(
+    malformed$evidence$items,
+    \(item) identical(item$record_type, "resource"),
+    logical(1)
+  ))[[1L]]
+  record_type <- malformed$evidence$items[[evidence_index]]$record_type
+  old_id <- malformed$evidence$items[[evidence_index]]$record_id
+  new_id <- "an impossible evidence identifier with prose"
+  malformed$evidence$items[[evidence_index]]$record_id <- new_id
+  malformed$evidence <- tempest_trajectory_collection(
+    malformed$evidence$items,
+    preserve_order = FALSE
+  )
+  malformed$joins$items <- lapply(malformed$joins$items, function(join) {
+    if (
+      identical(join$from_type, record_type) && identical(join$from_id, old_id)
+    ) {
+      join$from_id <- new_id
+    }
+    if (identical(join$to_type, record_type) && identical(join$to_id, old_id)) {
+      join$to_id <- new_id
+    }
+    join
+  })
+  malformed$joins <- tempest_trajectory_collection(
+    malformed$joins$items,
+    preserve_order = FALSE
+  )
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    malformed[setdiff(names(malformed), "review_id")]
+  )
+  malformed$review_id <- tempest_trajectory_digest(payload)
+
+  expect_error(
+    do.call(TempestTrajectoryReview, malformed),
+    "bounded opaque identifier"
+  )
+})
+
 test_that("trajectory review revalidates ordered stage and Deputy identities", {
   review <- tempest_trajectory_review(test_promotion_fixture("storm")$research)
   properties <- S7::props(review)
@@ -425,20 +468,19 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     logical(1)
   ))[[1L]]
   governed_program <- governed$programs$extract_claims
+  knowledge <- test_knowledge_view()
+  snapshot_reference <- tempest_snapshot_reference(knowledge$snapshot)
   governed_reference <- tempest_governed_procedure_record(
     test_governed_procedure_ref(
       "extract_claims",
-      governed_program$program_artifact_id
+      governed_program$program_artifact_id,
+      snapshot_reference = snapshot_reference
     )
   )
   governed$programs$extract_claims$governed_procedure_ref <-
     governed_reference
-  governed$knowledge$input_snapshot <- tempest_trajectory_snapshot(list(
-    snapshot_id = governed_reference$snapshot_id,
-    store_id = governed_reference$store_id,
-    schema_build_digest = governed_reference$schema_build_digest,
-    commit_order = governed_reference$commit_order
-  ))
+  governed$knowledge$input_snapshot <-
+    tempest_trajectory_snapshot(snapshot_reference)
   governed$stages$items[[
     governed_stage
   ]]$governed_procedure_revision_id <- governed_reference$revision_id
@@ -479,6 +521,30 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     preserve_order = FALSE
   )
   expect_s7_class(rebuild(governed), TempestTrajectoryReview)
+
+  snapshot_mutations <- list(
+    schema_version = function(value) {
+      value$knowledge$input_snapshot$schema_version <- 2L
+      value
+    },
+    store_format_version = function(value) {
+      value$knowledge$input_snapshot$store_format_version <- "2.0.0"
+      value
+    },
+    committed_at = function(value) {
+      value$knowledge$input_snapshot$committed_at <-
+        "2000-01-01T00:00:00.000000Z"
+      value
+    },
+    history_complete = function(value) {
+      value$knowledge$input_snapshot$history_complete <-
+        !value$knowledge$input_snapshot$history_complete
+      value
+    }
+  )
+  for (mutate in snapshot_mutations) {
+    expect_error(rebuild(mutate(unserialize(serialize(governed, NULL)))))
+  }
 
   wrong_governed_snapshot <- unserialize(serialize(governed, NULL))
   wrong_governed_snapshot$programs$extract_claims$governed_procedure_ref$snapshot_id <- "snapshot:forged"
@@ -1203,6 +1269,107 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
     )
     malformed$review_id <- tempest_trajectory_digest(payload)
     expect_error(do.call(TempestTrajectoryReview, malformed))
+  }
+
+  truncated <- S7::props(accepted)
+  source_revision <-
+    truncated$knowledge$acceptance$record_revisions$items[[1L]]
+  all_revisions <- lapply(seq_len(251L), function(index) {
+    revision <- source_revision
+    revision$record_id <- sprintf("retained-record:%03d", index)
+    revision$revision_id <- paste0("graft:", sprintf("%026d", index))
+    revision$action <- "match"
+    revision$batch_id <- truncated$knowledge$acceptance$batch_id
+    revision$revision_number <- 1L
+    revision
+  })
+  revision_class <- source_revision$class
+  for (action in c("inserted", "updated", "matched", "observed")) {
+    truncated$knowledge$acceptance$counts[[action]] <- lapply(
+      truncated$knowledge$acceptance$counts[[action]],
+      \(count) 0L
+    )
+  }
+  truncated$knowledge$acceptance$counts$matched[[revision_class]] <- 251L
+  truncated$knowledge$acceptance$counts$observed[[revision_class]] <- 251L
+  truncated$knowledge$acceptance$record_revisions <-
+    tempest_trajectory_collection(all_revisions, preserve_order = FALSE)
+  keep_join <- function(join) {
+    !(identical(join$from_type, "promotion_receipt") &&
+      identical(join$relation, "accepted_as") &&
+      identical(join$to_type, "graft_revision"))
+  }
+  base_joins <- Filter(keep_join, truncated$joins$items)
+  revision_joins <- lapply(
+    truncated$knowledge$acceptance$record_revisions$items,
+    function(revision) {
+      tempest_trajectory_join(
+        "promotion_receipt",
+        truncated$knowledge$acceptance$receipt_id,
+        "accepted_as",
+        "graft_revision",
+        revision$revision_id,
+        "exact_identity",
+        c(
+          "record_id",
+          "revision_id",
+          "batch_id",
+          "content_digest",
+          "schema_build_digest"
+        )
+      )
+    }
+  )
+  truncated$joins <- tempest_trajectory_collection(
+    c(base_joins, revision_joins),
+    preserve_order = FALSE
+  )
+  rebuild <- function(value) {
+    payload <- do.call(
+      tempest_trajectory_review_payload,
+      value[setdiff(names(value), "review_id")]
+    )
+    value$review_id <- tempest_trajectory_digest(payload)
+    do.call(TempestTrajectoryReview, value)
+  }
+  expect_s7_class(rebuild(truncated), TempestTrajectoryReview)
+
+  revision_mutations <- list(
+    record_id = function(revision) {
+      revision$record_id <- "an impossible retained record identifier"
+      revision
+    },
+    revision_id = function(revision) {
+      revision$revision_id <- "an impossible retained revision identifier"
+      revision
+    },
+    batch_id = function(revision) {
+      revision$batch_id <- "an impossible retained batch identifier"
+      revision
+    }
+  )
+  for (mutate in revision_mutations) {
+    malformed <- unserialize(serialize(truncated, NULL))
+    changed_revisions <- all_revisions
+    changed_revisions[[1L]] <- mutate(changed_revisions[[1L]])
+    old_revision_id <- all_revisions[[1L]]$revision_id
+    new_revision_id <- changed_revisions[[1L]]$revision_id
+    malformed$knowledge$acceptance$record_revisions <-
+      tempest_trajectory_collection(changed_revisions, preserve_order = FALSE)
+    malformed$joins$items <- lapply(malformed$joins$items, function(join) {
+      if (
+        identical(join$to_type, "graft_revision") &&
+          identical(join$to_id, old_revision_id)
+      ) {
+        join$to_id <- new_revision_id
+      }
+      join
+    })
+    malformed$joins <- tempest_trajectory_collection(
+      malformed$joins$items,
+      preserve_order = FALSE
+    )
+    expect_error(rebuild(malformed), "malformed source identities")
   }
 })
 

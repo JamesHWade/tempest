@@ -2501,6 +2501,12 @@ tempest_promotion_receipt_store_id_valid <- function(value) {
     )
 }
 
+tempest_promotion_receipt_graft_id_valid <- function(value) {
+  rlang::is_string(value) &&
+    !is.na(value) &&
+    grepl("^graft:[A-Z0-9]+$", value)
+}
+
 tempest_promotion_receipt_validate_snapshot <- function(self) {
   snapshot <- self@snapshot
   tempest_promotion_assert_exact_row(
@@ -2613,8 +2619,8 @@ tempest_promotion_receipt_validate_revisions <- function(self) {
         !revision$class %in% classes ||
         !revision$action %in% c("insert", "update", "match") ||
         !tempest_ledger_identifier_valid(revision$record_id) ||
-        !grepl("^graft:[A-Z0-9]+$", revision$revision_id) ||
-        !grepl("^graft:[A-Z0-9]+$", revision$batch_id) ||
+        !tempest_promotion_receipt_graft_id_valid(revision$revision_id) ||
+        !tempest_promotion_receipt_graft_id_valid(revision$batch_id) ||
         !grepl("^sha256:[a-f0-9]{64}$", revision$content_digest) ||
         !identical(revision$schema_build_digest, self@schema_build_digest) ||
         !tempest_promotion_receipt_whole_number(
@@ -2697,7 +2703,7 @@ tempest_promotion_receipt_validation_message <- function(self) {
         }
       }
       if (
-        !grepl("^graft:[A-Z0-9]+$", self@plan_id) ||
+        !tempest_promotion_receipt_graft_id_valid(self@plan_id) ||
           !identical(self@batch_id, self@plan_id) ||
           !tempest_promotion_receipt_store_id_valid(self@store_id)
       ) {
