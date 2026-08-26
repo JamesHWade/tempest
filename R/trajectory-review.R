@@ -726,6 +726,114 @@ tempest_trajectory_knowledge <- function(
   )
 }
 
+tempest_trajectory_join_contract <- function(from_type, relation, to_type) {
+  evidence_types <- tempest_trajectory_evidence_types()
+  output_types <- c("product_field", "claim", "claim_support", "output_digest")
+  contract <- if (
+    identical(from_type, "product") &&
+      identical(relation, "contains") &&
+      identical(to_type, "stage_attempt")
+  ) {
+    c("authority_validated", "research_run_id", "attempt_id")
+  } else if (
+    identical(from_type, "product") &&
+      identical(relation, "contains") &&
+      to_type %in% evidence_types
+  ) {
+    c("authority_validated", "research_run_id", "record_id")
+  } else if (
+    identical(from_type, "stage_attempt") &&
+      identical(relation, "contains") &&
+      to_type %in% output_types
+  ) {
+    c("exact_identity", "output_reference.kind", "output_reference.ids")
+  } else if (
+    identical(from_type, "stage_attempt") &&
+      identical(relation, "executed_as") &&
+      identical(to_type, "program_artifact")
+  ) {
+    c(
+      "authority_validated",
+      "stage",
+      "program_artifact_id",
+      "contract_version",
+      "evaluator_id",
+      "evaluator_version"
+    )
+  } else if (
+    identical(from_type, "stage_attempt") &&
+      identical(relation, "executed_as") &&
+      identical(to_type, "deputy_run")
+  ) {
+    c("authority_validated", "deputy_run_id", "deputy_session_id")
+  } else if (
+    from_type %in%
+      c("stage_attempt", "deputy_run") &&
+      identical(relation, "correlated_with") &&
+      identical(to_type, "deputy_run")
+  ) {
+    c("correlation_only", "correlation_id")
+  } else if (
+    identical(from_type, "product") &&
+      identical(relation, "read_from") &&
+      identical(to_type, "graft_snapshot")
+  ) {
+    c(
+      "authority_validated",
+      "snapshot_id",
+      "store_id",
+      "schema_build_digest",
+      "commit_order"
+    )
+  } else if (
+    identical(from_type, "product") &&
+      identical(relation, "proposed_as") &&
+      identical(to_type, "promotion_bundle")
+  ) {
+    c("authority_validated", "research_run_id", "bundle_id", "claim_ids")
+  } else if (
+    identical(from_type, "promotion_bundle") &&
+      identical(relation, "accepted_as") &&
+      identical(to_type, "promotion_receipt")
+  ) {
+    c("exact_identity", "bundle_id")
+  } else if (
+    identical(from_type, "promotion_receipt") &&
+      identical(relation, "accepted_as") &&
+      identical(to_type, "graft_revision")
+  ) {
+    c(
+      "exact_identity",
+      "record_id",
+      "revision_id",
+      "batch_id",
+      "content_digest",
+      "schema_build_digest"
+    )
+  } else if (
+    identical(from_type, "deputy_run") &&
+      identical(relation, "parent_of") &&
+      identical(to_type, "deputy_run")
+  ) {
+    c(
+      "exact_identity",
+      "parent_agent_id",
+      "parent_run_id",
+      "delegation_id",
+      "tool_call_id"
+    )
+  } else {
+    NULL
+  }
+  if (is.null(contract)) {
+    return(NULL)
+  }
+  list(
+    kind = contract[[1L]],
+    matched_fields = unname(as.list(contract[-1L]))
+  )
+}
+
 tempest_trajectory_join <- function(
   from_type,
   from_id,
@@ -735,16 +843,27 @@ tempest_trajectory_join <- function(
   proof_kind,
   matched_fields
 ) {
+  proof <- list(
+    kind = proof_kind,
+    matched_fields = unname(as.list(matched_fields))
+  )
+  expected_proof <- tempest_trajectory_join_contract(
+    from_type,
+    relation,
+    to_type
+  )
+  if (is.null(expected_proof) || !identical(proof, expected_proof)) {
+    tempest_trajectory_review_abort(
+      "An internal trajectory join does not match its fixed proof contract."
+    )
+  }
   list(
     from_type = from_type,
     from_id = from_id,
     relation = relation,
     to_type = to_type,
     to_id = to_id,
-    proof = list(
-      kind = proof_kind,
-      matched_fields = unname(as.list(matched_fields))
-    )
+    proof = proof
   )
 }
 
@@ -2232,57 +2351,6 @@ tempest_trajectory_validate_join <- function(join) {
   invisible(join)
 }
 
-tempest_trajectory_join_type_allowed <- function(from_type, relation, to_type) {
-  evidence_types <- tempest_trajectory_evidence_types()
-  output_types <- c("product_field", "claim", "claim_support", "output_digest")
-  if (identical(relation, "contains")) {
-    return(
-      (identical(from_type, "product") &&
-        to_type %in% c("stage_attempt", evidence_types)) ||
-        (identical(from_type, "stage_attempt") && to_type %in% output_types)
-    )
-  }
-  if (identical(relation, "executed_as")) {
-    return(
-      identical(from_type, "stage_attempt") &&
-        to_type %in% c("program_artifact", "deputy_run")
-    )
-  }
-  if (identical(relation, "correlated_with")) {
-    return(
-      from_type %in%
-        c("stage_attempt", "deputy_run") &&
-        identical(to_type, "deputy_run")
-    )
-  }
-  if (identical(relation, "read_from")) {
-    return(
-      identical(from_type, "product") && identical(to_type, "graft_snapshot")
-    )
-  }
-  if (identical(relation, "proposed_as")) {
-    return(
-      identical(from_type, "product") &&
-        identical(to_type, "promotion_bundle")
-    )
-  }
-  if (identical(relation, "accepted_as")) {
-    return(
-      (identical(from_type, "promotion_bundle") &&
-        identical(to_type, "promotion_receipt")) ||
-        (identical(from_type, "promotion_receipt") &&
-          identical(to_type, "graft_revision"))
-    )
-  }
-  if (identical(relation, "parent_of")) {
-    return(
-      identical(from_type, "deputy_run") &&
-        identical(to_type, "deputy_run")
-    )
-  }
-  FALSE
-}
-
 tempest_trajectory_mandatory_joins <- function(review) {
   run_id <- review@product$research_run_id
   expected <- list()
@@ -2745,15 +2813,19 @@ tempest_trajectory_validate_join_graph <- function(review) {
     }
   }
   for (join in review@joins$items) {
-    if (
-      !tempest_trajectory_join_type_allowed(
-        join$from_type,
-        join$relation,
-        join$to_type
-      )
-    ) {
+    expected_proof <- tempest_trajectory_join_contract(
+      join$from_type,
+      join$relation,
+      join$to_type
+    )
+    if (is.null(expected_proof)) {
       tempest_trajectory_review_abort(
         "A trajectory join uses an invalid typed relation."
+      )
+    }
+    if (!identical(join$proof, expected_proof)) {
+      tempest_trajectory_review_abort(
+        "A retained trajectory join does not match its fixed proof contract."
       )
     }
     if (
@@ -2958,16 +3030,17 @@ tempest_trajectory_validate_finding_graph <- function(review) {
       )
     }
   }
-  all_complete <- all(vapply(
-    c("stages", "agent_runs", "joins", "findings"),
-    \(lane) identical(S7::prop(review, lane)$omitted, 0L),
-    logical(1)
-  ))
-  if (!all_complete) {
-    return(invisible(review))
-  }
   severities <- tempest_trajectory_finding_severities()
-  expected <- unname(unlist(
+  canonical_findings <- function(items) {
+    tempest_trajectory_collection(
+      tempest_trajectory_unique_records(items),
+      preserve_order = FALSE
+    )$items
+  }
+  finding_keys <- function(items) {
+    vapply(items, tempest_product_canonical_json, character(1))
+  }
+  expected_stage <- unname(unlist(
     lapply(review@stages$items, function(stage) {
       conditions <- c(
         stage_failed = identical(stage$status, "failed"),
@@ -2991,22 +3064,46 @@ tempest_trajectory_validate_finding_graph <- function(review) {
     }),
     recursive = FALSE
   ))
-  linked_agent_ids <- character()
-  for (join in review@joins$items) {
-    if (
-      identical(join$relation, "executed_as") &&
-        identical(join$to_type, "deputy_run")
-    ) {
-      linked_agent_ids <- c(linked_agent_ids, join$to_id)
-    }
-    if (identical(join$relation, "parent_of")) {
-      linked_agent_ids <- c(linked_agent_ids, join$from_id, join$to_id)
-    }
+  expected_stage <- canonical_findings(expected_stage)
+  stage_findings <- Filter(
+    \(finding) !identical(finding$code, "unmatched_reference"),
+    review@findings$items
+  )
+  retained_stage_findings <- Filter(
+    \(finding) finding$ref_id %in% stage_ids,
+    stage_findings
+  )
+  if (
+    !all(
+      finding_keys(retained_stage_findings) %in%
+        finding_keys(expected_stage)
+    ) ||
+      (identical(review@stages$omitted, 0L) &&
+        identical(review@findings$omitted, 0L) &&
+        !identical(stage_findings, expected_stage))
+  ) {
+    tempest_trajectory_review_abort(
+      "Trajectory stage findings do not match the projected trust state."
+    )
   }
-  unmatched <- setdiff(agent_ids, unique(linked_agent_ids))
-  expected <- c(
-    expected,
-    lapply(unmatched, function(run_id) {
+
+  agents_complete <- identical(review@agent_runs$omitted, 0L)
+  joins_complete <- identical(review@joins$omitted, 0L)
+  if (agents_complete && joins_complete) {
+    linked_agent_ids <- character()
+    for (join in review@joins$items) {
+      if (
+        identical(join$relation, "executed_as") &&
+          identical(join$to_type, "deputy_run")
+      ) {
+        linked_agent_ids <- c(linked_agent_ids, join$to_id)
+      }
+      if (identical(join$relation, "parent_of")) {
+        linked_agent_ids <- c(linked_agent_ids, join$from_id, join$to_id)
+      }
+    }
+    unmatched <- setdiff(agent_ids, unique(linked_agent_ids))
+    expected_unmatched <- lapply(unmatched, function(run_id) {
       list(
         code = "unmatched_reference",
         severity = "info",
@@ -3014,15 +3111,22 @@ tempest_trajectory_validate_finding_graph <- function(review) {
         ref_id = run_id
       )
     })
-  )
-  expected <- tempest_trajectory_collection(
-    tempest_trajectory_unique_records(expected),
-    preserve_order = FALSE
-  )$items
-  if (!identical(review@findings$items, expected)) {
-    tempest_trajectory_review_abort(
-      "Trajectory findings do not match the complete projected trust state."
+    expected_unmatched <- canonical_findings(expected_unmatched)
+    actual_unmatched <- Filter(
+      \(finding) identical(finding$code, "unmatched_reference"),
+      review@findings$items
     )
+    if (
+      !all(
+        finding_keys(actual_unmatched) %in% finding_keys(expected_unmatched)
+      ) ||
+        (identical(review@findings$omitted, 0L) &&
+          !identical(actual_unmatched, expected_unmatched))
+    ) {
+      tempest_trajectory_review_abort(
+        "Trajectory unmatched findings do not match the projected join state."
+      )
+    }
   }
   invisible(review)
 }

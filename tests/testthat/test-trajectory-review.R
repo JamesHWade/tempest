@@ -326,7 +326,7 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     wrong_deputy_join$joins$items,
     preserve_order = FALSE
   )
-  expect_error(rebuild(wrong_deputy_join), "stage Deputy join")
+  expect_error(rebuild(wrong_deputy_join), "proof contract")
 
   wrong_join <- unserialize(serialize(properties, NULL))
   wrong_join$joins$items[[1L]] <- list(
@@ -386,6 +386,74 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     preserve_order = FALSE
   )
   expect_error(rebuild(missing_program_join), "mandatory projected relation")
+
+  truncated <- unserialize(serialize(properties, NULL))
+  evidence_items <- lapply(seq_len(251L), function(index) {
+    list(
+      record_type = "claim",
+      record_id = sprintf("bounded-claim-%04d", index)
+    )
+  })
+  truncated$evidence <- tempest_trajectory_collection(
+    evidence_items,
+    preserve_order = FALSE
+  )
+  evidence_joins <- lapply(evidence_items, function(item) {
+    tempest_trajectory_join(
+      "product",
+      truncated$product$research_run_id,
+      "contains",
+      item$record_type,
+      item$record_id,
+      "authority_validated",
+      c("research_run_id", "record_id")
+    )
+  })
+  truncated$joins <- tempest_trajectory_collection(
+    c(truncated$joins$items, evidence_joins),
+    preserve_order = FALSE
+  )
+  expect_gt(truncated$joins$omitted, 0L)
+
+  wrong_truncated_proof <- unserialize(serialize(truncated, NULL))
+  evidence_join <- which(vapply(
+    wrong_truncated_proof$joins$items,
+    function(join) {
+      identical(join$from_type, "product") &&
+        identical(join$relation, "contains") &&
+        join$to_type %in% tempest_trajectory_evidence_types()
+    },
+    logical(1)
+  ))[[1L]]
+  wrong_truncated_proof$joins$items[[evidence_join]]$proof <- list(
+    kind = "exact_identity",
+    matched_fields = list("research_run_id", "record_id")
+  )
+  wrong_truncated_proof$joins <- tempest_trajectory_collection(
+    wrong_truncated_proof$joins$items,
+    preserve_order = FALSE
+  )
+  wrong_truncated_proof$joins$total <- truncated$joins$total
+  wrong_truncated_proof$joins$omitted <-
+    truncated$joins$total - wrong_truncated_proof$joins$retained
+  wrong_truncated_proof$joins$digest <- tempest_trajectory_digest(
+    "truncated-join-graph"
+  )
+  expect_error(rebuild(wrong_truncated_proof), "proof contract")
+
+  wrong_truncated_finding <- unserialize(serialize(truncated, NULL))
+  stage_finding <- which(vapply(
+    wrong_truncated_finding$findings$items,
+    \(finding) identical(finding$ref_type, "stage_attempt"),
+    logical(1)
+  ))[[1L]]
+  wrong_truncated_finding$findings$items[[stage_finding]]$code <- "stage_failed"
+  wrong_truncated_finding$findings$items[[stage_finding]]$severity <- "error"
+  wrong_truncated_finding$findings <- tempest_trajectory_collection(
+    wrong_truncated_finding$findings$items,
+    preserve_order = FALSE
+  )
+  expect_error(rebuild(wrong_truncated_finding), "trust state")
 })
 
 test_that("trajectory review accepts the exact public tempest_run outline", {
