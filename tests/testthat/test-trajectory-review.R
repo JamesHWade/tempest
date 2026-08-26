@@ -114,6 +114,53 @@ test_that("trajectory review validation rechecks canonical collection invariants
   )
 })
 
+test_that("trajectory review validation owns nested source invariants", {
+  review <- tempest_trajectory_review(test_promotion_fixture("storm")$research)
+  properties <- S7::props(review)
+  for (lane in c("stages", "agent_runs", "evidence", "joins", "findings")) {
+    expect_gt(length(properties[[lane]]$items), 0L)
+  }
+  mutations <- list(
+    product_mode = function(value) {
+      value$product["mode"] <- list(NULL)
+      value
+    },
+    stage_artifact = function(value) {
+      value$stages$items[[1L]]$program_artifact_id <- "not-a-digest"
+      value
+    },
+    agent_status = function(value) {
+      value$agent_runs$items[[1L]]$status <- "unknown"
+      value
+    },
+    program_evaluator = function(value) {
+      value$programs[[1L]]["evaluator_id"] <- list(NULL)
+      value
+    },
+    evidence_type = function(value) {
+      value$evidence$items[[1L]]["record_type"] <- list(NULL)
+      value
+    },
+    join_proof = function(value) {
+      value$joins$items[[1L]]$proof["kind"] <- list(NULL)
+      value
+    },
+    finding_code = function(value) {
+      value$findings$items[[1L]]["code"] <- list(NULL)
+      value
+    }
+  )
+  for (mutate in mutations) {
+    malformed <- mutate(unserialize(serialize(properties, NULL)))
+    payload <- do.call(
+      tempest_trajectory_review_payload,
+      malformed[setdiff(names(malformed), "review_id")]
+    )
+    malformed$review_id <- tempest_trajectory_digest(payload)
+    expect_error(do.call(TempestTrajectoryReview, malformed))
+  }
+})
+
 test_that("trajectory review accepts the exact public tempest_run outline", {
   result <- storm_product_baseline_fixture()$result
   public_bullets <- result@outline$sections[[1L]]$subsections[[1L]]$bullets
@@ -313,6 +360,23 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
   expect_identical(
     tempest:::tempest_promotion_receipt_data(receipt),
     receipt_before
+  )
+
+  malformed <- S7::props(accepted)
+  revision <- malformed$knowledge$acceptance$record_revisions$items[[1L]]
+  malformed$knowledge$acceptance$record_revisions <-
+    tempest_trajectory_collection(
+      list(revision, revision),
+      preserve_order = FALSE
+    )
+  payload <- do.call(
+    tempest_trajectory_review_payload,
+    malformed[setdiff(names(malformed), "review_id")]
+  )
+  malformed$review_id <- tempest_trajectory_digest(payload)
+  expect_snapshot(
+    error = TRUE,
+    do.call(TempestTrajectoryReview, malformed)
   )
 })
 
