@@ -1,3 +1,26 @@
+test_that("Deputy expert session IDs bind owner and preserve instances", {
+  run_id <- "tempest-run-session-owner"
+  first <- tempest:::tempest_deputy_expert_session_id(run_id, "expert.first")
+  second <- tempest:::tempest_deputy_expert_session_id(run_id, "expert.first")
+
+  expect_false(identical(first, second))
+  expect_true(tempest:::tempest_deputy_expert_session_owned_by(
+    first,
+    run_id,
+    "expert.first"
+  ))
+  expect_true(tempest:::tempest_deputy_expert_session_owned_by(
+    second,
+    run_id,
+    "expert.first"
+  ))
+  expect_false(tempest:::tempest_deputy_expert_session_owned_by(
+    first,
+    run_id,
+    "expert.other"
+  ))
+})
+
 test_that("moderator delegates through persistent Deputy expert execution", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("ellmer")
@@ -489,8 +512,13 @@ test_that("Deputy expert restores require the exact current binding wire shape",
     expect_s3_class(error, "tempest_deputy_expert_error")
   }
   expect_length(manager$list_sessions(), 0L)
+  expect_error(
+    manager$restore_session(binding),
+    "not owned by this research run and expert"
+  )
 
-  restored <- manager$restore_session(binding)
+  expect_true(source_manager$retire_session(binding$session_id)$retired)
+  restored <- source_manager$restore_session(binding)
   expect_identical(restored$profile, binding)
   expect_identical(identical(restored$chat, source$chat), FALSE)
 })

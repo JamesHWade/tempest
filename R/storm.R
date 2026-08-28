@@ -129,16 +129,17 @@ tempest_stage_context_knowledge_view <- function(
 #' @param steps Character vector controlling which steps to run. Defaults to
 #'   all.
 #' @param output_dir Optional directory for persisted STORM run artifacts. When
-#'   supplied, a current schema-7 product bundle with schema-4 STORM state is
+#'   supplied, a current schema-8 product bundle with schema-5 STORM state is
 #'   written under a topic-specific subdirectory.
 #' @param resume If `TRUE` and `output_dir` contains a previous run, load saved
 #'   current-format artifacts and skip stages recorded as complete. Older,
 #'   future, missing, extra, or mismatched product shapes are rejected rather
 #'   than migrated.
 #' @param run_id Optional run directory name. Defaults to a slug of `topic`.
-#' @param progress Optional function called with a `tempest_progress_event`
-#'   object as STORM workflow stages start, finish, fail, persist artifacts, or
-#'   make final artifacts available.
+#' @param progress Optional function called with one plain named progress
+#'   record as STORM workflow stages start, finish, fail, persist artifacts, or
+#'   make final artifacts available. See the package vignette for the eleven
+#'   stable fields.
 #' @param verbose If `TRUE`, prints progress messages.
 #' @return A validated completed Tempest research product. Read it with
 #'   [tempest_report()], [tempest_sources()], [tempest_claims()],

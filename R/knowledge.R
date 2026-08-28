@@ -163,19 +163,48 @@ tempest_knowledge_record_text <- function(payload, record_id) {
       if (is.null(value)) {
         return(paste0(field, ": "))
       }
+      normalized <- tryCatch(
+        tempest_graft_plan_value(value),
+        error = function(error) {
+          tempest_knowledge_abort(
+            paste0(
+              "Accepted record {.val {record_id}} field {.field ",
+              field,
+              "} is not exactly materializable."
+            ),
+            parent = error
+          )
+        }
+      )
       if (
-        !is.atomic(value) ||
-          length(value) != 1L ||
-          is.na(value) ||
-          !is.null(attributes(value))
+        is.atomic(normalized) &&
+          length(normalized) == 1L &&
+          !is.na(normalized) &&
+          is.null(attributes(normalized))
       ) {
+        return(paste0(field, ": ", as.character(normalized)))
+      }
+      encoded <- tryCatch(
+        tempest_product_canonical_json(normalized),
+        error = function(error) {
+          tempest_knowledge_abort(
+            paste0(
+              "Accepted record {.val {record_id}} field {.field ",
+              field,
+              "} is not exactly materializable."
+            ),
+            parent = error
+          )
+        }
+      )
+      if (!rlang::is_string(encoded) || !nzchar(encoded)) {
         tempest_knowledge_abort(paste0(
           "Accepted record {.val {record_id}} field {.field ",
           field,
           "} is not exactly materializable."
         ))
       }
-      paste0(field, ": ", as.character(value))
+      paste0(field, ": ", encoded)
     },
     character(1)
   )

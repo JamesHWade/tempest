@@ -992,7 +992,8 @@ tempest_product_authority_deputy_manifest_traces <- function(
 #' @keywords internal
 tempest_product_authority_expert_session_trace_bindings <- function(
   records,
-  expert_ids
+  expert_ids,
+  research_run_id
 ) {
   records <- tryCatch(
     tempest_persistence_exact_records(
@@ -1015,16 +1016,16 @@ tempest_product_authority_expert_session_trace_bindings <- function(
   }
   session_ids <- vapply(records, `[[`, character(1), "session_id")
   bound_expert_ids <- vapply(records, `[[`, character(1), "expert_id")
+  owned <- Map(
+    tempest_deputy_expert_session_owned_by,
+    session_ids,
+    MoreArgs = list(run_id = research_run_id),
+    expert_id = bound_expert_ids
+  )
   if (
     anyNA(session_ids) ||
       anyNA(bound_expert_ids) ||
-      any(
-        !grepl(
-          "^expert-session_[a-f0-9]{16}$",
-          session_ids,
-          perl = TRUE
-        )
-      ) ||
+      !all(unlist(owned, use.names = FALSE)) ||
       any(!bound_expert_ids %in% expert_ids) ||
       anyDuplicated(session_ids) ||
       anyDuplicated(bound_expert_ids)
@@ -1138,14 +1139,17 @@ tempest_product_authority_manifest_validate_trace_ids <- function(
         )
       }
     } else if (
-      !grepl(
-        "^expert-session_[a-f0-9]{16}$",
+      !tempest_deputy_expert_session_owned_by(
         trace$deputy_session_id,
-        perl = TRUE
+        manifest@research_run_id,
+        trace$expert_id
       )
     ) {
       tempest_stage_record_abort(
-        "An expert Deputy trace must bind a manager-owned session identity."
+        paste0(
+          "An expert Deputy trace must bind a manager-owned session identity ",
+          "for its research run and expert."
+        )
       )
     } else {
       active_expert_id <- if (
@@ -1463,7 +1467,8 @@ tempest_product_authority_bind_stage_records <- function(
   expert_session_bindings <-
     tempest_product_authority_expert_session_trace_bindings(
       expert_sessions,
-      expert_ids %||% character()
+      expert_ids %||% character(),
+      manifest@research_run_id
     )
   tempest_product_authority_manifest_existing_traces(
     manifest,
@@ -1553,7 +1558,8 @@ tempest_product_authority_validate_stage_records <- function(
     manifest,
     expert_session_bindings = tempest_product_authority_expert_session_trace_bindings(
       expert_sessions,
-      expert_ids %||% character()
+      expert_ids %||% character(),
+      manifest@research_run_id
     ),
     authoritative_extraction_attempt_ids = tempest_product_authority_extraction_attempt_ids(
       records

@@ -110,7 +110,7 @@ test_that("TempestSession snapshots restore durable session state", {
     )),
     class = "tempest_research_workspace_error"
   )
-  expect_equal(snapshot$schema_version, 10L)
+  expect_equal(snapshot$schema_version, 11L)
   expect_identical(
     snapshot$research_manifest$research_run_id,
     snapshot$session_id

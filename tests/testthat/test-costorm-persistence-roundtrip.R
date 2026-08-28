@@ -115,7 +115,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_null(manifest$status)
   expect_equal(manifest$bundle_type, "costorm")
   expect_equal(manifest$bundle_status, "complete")
-  expect_equal(manifest$schema_version, 10L)
+  expect_equal(manifest$schema_version, 11L)
   expect_identical(
     manifest$research_manifest$research_run_id,
     session_id

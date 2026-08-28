@@ -7,6 +7,7 @@ articles:
   navbar: ~
   contents:
   - tempest
+  - daily-briefing
 reference:
 - title: Research products
   desc: Run scripted STORM, hold a Co-STORM session, or open the bundled app.
@@ -31,6 +32,7 @@ reference:
   - tempest_claims
   - tempest_claim_supports
   - tempest_trajectory_review
+  - tempest_trajectory_review_data
 - title: Session persistence
   desc: Save and resume the exact current session product.
   contents:

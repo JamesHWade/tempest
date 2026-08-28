@@ -60,7 +60,7 @@ the mirai package. Failed parallel sections are retried sequentially.}
 all.}
 
 \item{output_dir}{Optional directory for persisted STORM run artifacts. When
-supplied, a current schema-7 product bundle with schema-4 STORM state is
+supplied, a current schema-8 product bundle with schema-5 STORM state is
 written under a topic-specific subdirectory.}
 
 \item{resume}{If \code{TRUE} and \code{output_dir} contains a previous run, load saved
@@ -70,9 +70,10 @@ than migrated.}
 
 \item{run_id}{Optional run directory name. Defaults to a slug of \code{topic}.}
 
-\item{progress}{Optional function called with a \code{tempest_progress_event}
-object as STORM workflow stages start, finish, fail, persist artifacts, or
-make final artifacts available.}
+\item{progress}{Optional function called with one plain named progress
+record as STORM workflow stages start, finish, fail, persist artifacts, or
+make final artifacts available. See the package vignette for the eleven
+stable fields.}
 
 \item{verbose}{If \code{TRUE}, prints progress messages.}
 }

@@ -51,8 +51,16 @@ test_governed_procedure_ref <- function(
   revision_id = paste0("revision:", stage),
   snapshot_id = "snapshot:test",
   evaluator_id = paste0("tempest::evaluator/", stage),
-  evaluator_version = "1"
+  evaluator_version = "1",
+  snapshot_reference = NULL
 ) {
+  snapshot_reference <- snapshot_reference %||%
+    list(
+      store_id = "store:test",
+      snapshot_id = snapshot_id,
+      schema_build_digest = "schema:test",
+      commit_order = 1
+    )
   tempest:::tempest_governed_procedure_ref_new(
     stage = stage,
     tempest_governed_procedure_id = paste0("tempest-procedure:", stage),
@@ -61,10 +69,10 @@ test_governed_procedure_ref <- function(
     program_artifact_id = program_artifact_id,
     evaluator_id = evaluator_id,
     evaluator_version = evaluator_version,
-    store_id = "store:test",
-    snapshot_id = snapshot_id,
-    schema_build_digest = "schema:test",
-    commit_order = 1
+    store_id = snapshot_reference$store_id,
+    snapshot_id = snapshot_reference$snapshot_id,
+    schema_build_digest = snapshot_reference$schema_build_digest,
+    commit_order = snapshot_reference$commit_order
   )
 }
 

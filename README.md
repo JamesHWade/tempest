@@ -86,20 +86,19 @@ Provider-specific API keys for alternative search:
 - Azure AI Search: set `AZURE_AI_SEARCH_API_KEY`,
   `AZURE_AI_SEARCH_ENDPOINT`, and `AZURE_AI_SEARCH_INDEX_NAME`
 
-STORM results expose a `manifest`, validated `state`, and authoritative
-`workspace`; Co-STORM sessions expose the same manifest/workspace identity.
-Session correlation fields and retriever configuration are read-only, while
-the pinned workspace remains mutable through its explicit methods. The
-workspace contains only provisional run material and opaque references to
-accepted knowledge; acceptance still requires an explicit graft review and
-commit.
+Completed STORM products are read through `tempest_report()`,
+`tempest_sources()`, `tempest_claims()`, `tempest_claim_supports()`, and
+`tempest_trajectory_review()`. Internal manifests, mutable workspaces,
+retrievers, and state remain implementation details used to validate those
+reads. A Co-STORM session exposes only its supported operations and read-only
+projections. Accepted knowledge enters through `tempest_knowledge()`, and new
+evidence still requires explicit Graft review and commit.
 
-Every evidence value written to a workspace is an exact `TempestResource`
-created by `tempest_resource()`. Retriever fetches and provider-native tools
-produce that same record directly, and cached or restored evidence must have
-the identical current shape. Source-shaped values returned by source-inspection
-methods are read-only presentation views; they are not accepted as mutable
-workspace inputs, and Tempest provides no legacy list conversion path.
+Internally, every evidence value is one exact `TempestResource`. Retriever
+fetches, provider-native tools, caches, and restored products must agree on
+that shape. `tempest_sources()` returns a read-only presentation table rather
+than a writable evidence object, and Tempest provides no legacy list
+conversion path.
 
 Co-STORM moderator and expert chats run through required persistent Deputy
 agents. Tempest disables ambient file, shell, R, web, and package-install
@@ -197,7 +196,7 @@ receipt is shown as accepted; a receipt alone or a cross-run product fails
 closed.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 10, STORM bundle schema 8 with state schema
+Co-STORM snapshot and bundle schema 11, STORM bundle schema 8 with state schema
 5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest
 payload schema 3, and promotion-bundle schema 1. Readers reject every other
 version; missing fields, extra fields, and values that only become valid after
@@ -236,7 +235,7 @@ cfg <- tempest_config(
 
 res <- tempest_run("Life cycle assessment of lithium-ion batteries", config = cfg, verbose = TRUE)
 
-cat(res$report_md)
+cat(tempest_report(res))
 ```
 
 Hosts can supply the same immutable scientific profiles used by generated
@@ -638,9 +637,8 @@ cat(committed_report)
 `session$publish()` validates and commits the canonical Co-STORM report.
 `tempest_report()` only reads those exact committed bytes from a
 succeeded, quiescent session; it does not generate or repair a report.
-`tempest_report_md()` is a separate deterministic renderer over caller-supplied
-Markdown and an explicit `ResearchWorkspace`. Rendering alone does not finalize
-a Manifest, publish a product, or grant promotion authority.
+There is no separate public renderer that can finalize a product or grant
+promotion authority.
 
 ### Expert delegation
 
@@ -660,7 +658,7 @@ expert run records an opaque terminal trace that is carried through Co-STORM
 snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-10 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+schema-11 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
 suggested-question, and Graft snapshot state must pass integrity checks. Live
 chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
 rather than serialized.

@@ -1497,17 +1497,26 @@ tempest_stage_record_from_data <- function(data) {
   )
 }
 
+tempest_stage_records_order_fields <- function(started_at, attempt_ids) {
+  if (length(started_at) == 0L) {
+    return(integer())
+  }
+  started <- vapply(
+    started_at,
+    \(value) as.numeric(tempest_stage_time_parse(value)),
+    numeric(1)
+  )
+  order(started, attempt_ids, method = "radix")
+}
+
 tempest_stage_records_order <- function(records) {
   if (length(records) == 0L) {
     return(integer())
   }
-  started <- vapply(
-    records,
-    \(record) as.numeric(tempest_stage_time_parse(record@started_at)),
-    numeric(1)
+  tempest_stage_records_order_fields(
+    vapply(records, \(record) record@started_at, character(1)),
+    vapply(records, \(record) record@attempt_id, character(1))
   )
-  attempt_ids <- vapply(records, \(record) record@attempt_id, character(1))
-  order(started, attempt_ids, method = "radix")
 }
 
 tempest_stage_records_validate <- function(records, allow_running = TRUE) {
@@ -3333,9 +3342,8 @@ tempest_stage_state_output_digest <- function(stage, output) {
   )
 }
 
-tempest_stage_output_reference_validate_stage <- function(stage, reference) {
-  reference <- tempest_stage_output_reference_validate(reference)
-  expected <- switch(
+tempest_stage_output_reference_contract <- function(stage) {
+  switch(
     stage,
     perspectives = list(kind = "state_field", ids = c("title", "perspectives")),
     personas = list(kind = "state_field", ids = "experts"),
@@ -3348,6 +3356,11 @@ tempest_stage_output_reference_validate_stage <- function(stage, reference) {
     section_writing = list(kind = "content_digest", ids = NULL),
     lead_section = list(kind = "content_digest", ids = NULL)
   )
+}
+
+tempest_stage_output_reference_validate_stage <- function(stage, reference) {
+  reference <- tempest_stage_output_reference_validate(reference)
+  expected <- tempest_stage_output_reference_contract(stage)
   ids <- unlist(reference$ids, use.names = FALSE)
   if (!identical(reference$kind, expected$kind)) {
     tempest_stage_evaluator_abort(
