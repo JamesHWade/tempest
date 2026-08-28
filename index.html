@@ -33,6 +33,12 @@
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="articles/tempest.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><a class="dropdown-item" href="articles/daily-briefing.html">Build a governed daily briefing</a></li>
+  </ul>
+</li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -146,8 +152,8 @@
 <li>Azure AI Search: set <code>AZURE_AI_SEARCH_API_KEY</code>, <code>AZURE_AI_SEARCH_ENDPOINT</code>, and <code>AZURE_AI_SEARCH_INDEX_NAME</code>
 </li>
 </ul>
-<p>STORM results expose a <code>manifest</code>, validated <code>state</code>, and authoritative <code>workspace</code>; Co-STORM sessions expose the same manifest/workspace identity. Session correlation fields and retriever configuration are read-only, while the pinned workspace remains mutable through its explicit methods. The workspace contains only provisional run material and opaque references to accepted knowledge; acceptance still requires an explicit graft review and commit.</p>
-<p>Every evidence value written to a workspace is an exact <code>TempestResource</code> created by <code><a href="reference/tempest_resource.html">tempest_resource()</a></code>. Retriever fetches and provider-native tools produce that same record directly, and cached or restored evidence must have the identical current shape. Source-shaped values returned by source-inspection methods are read-only presentation views; they are not accepted as mutable workspace inputs, and Tempest provides no legacy list conversion path.</p>
+<p>Completed STORM products are read through <code><a href="reference/tempest_report.html">tempest_report()</a></code>, <code><a href="reference/tempest_sources.html">tempest_sources()</a></code>, <code><a href="reference/tempest_claims.html">tempest_claims()</a></code>, <code><a href="reference/tempest_claim_supports.html">tempest_claim_supports()</a></code>, and <code><a href="reference/tempest_trajectory_review.html">tempest_trajectory_review()</a></code>. Internal manifests, mutable workspaces, retrievers, and state remain implementation details used to validate those reads. A Co-STORM session exposes only its supported operations and read-only projections. Accepted knowledge enters through <code><a href="reference/tempest_knowledge.html">tempest_knowledge()</a></code>, and new evidence still requires explicit Graft review and commit.</p>
+<p>Internally, every evidence value is one exact <code>TempestResource</code>. Retriever fetches, provider-native tools, caches, and restored products must agree on that shape. <code><a href="reference/tempest_sources.html">tempest_sources()</a></code> returns a read-only presentation table rather than a writable evidence object, and Tempest provides no legacy list conversion path.</p>
 <p>Co-STORM moderator and expert chats run through required persistent Deputy agents. Tempest disables ambient file, shell, R, web, and package-install authority at that boundary and allowlists only the Tempest tools already attached to each chat. Session persistence stores credential-safe opaque run, session, agent, stage, role, expert, and correlation references; it never serializes a Deputy Agent or provider credentials.</p>
 </div>
 </div>
@@ -194,7 +200,7 @@
 <span><span class="op">)</span></span></code></pre></div>
 <p>The ten-field value identifies the product and contains ordered StageRecord summaries, safe terminal Deputy identities, the fixed ProgramSet references, input and optional promotion knowledge, evidence identities, explicit joins, and structural findings. Variable lanes retain at most 250 records and report the complete count and digest when rows are omitted. The review contains no prompts, responses, source text, paths, credentials, live objects, or capabilities, and it is reconstructable rather than persisted.</p>
 <p>Every join names its relation and proof. Exact run, stage, program, snapshot, bundle, and receipt identities can establish a validated binding; <code>correlation_id</code> can establish only <code>correlated_with</code> with <code>correlation_only</code> proof. It never establishes authorship or causation. Mutable progress events are intentionally outside the review identity. A promotion bundle is shown as proposed, and an exact matching bundle plus receipt is shown as accepted; a receipt alone or a cross-run product fails closed.</p>
-<p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 5, Co-STORM snapshot and bundle schema 10, STORM bundle schema 8 with state schema 5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload schema 3, and promotion-bundle schema 1. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
+<p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 5, Co-STORM snapshot and bundle schema 11, STORM bundle schema 8 with state schema 5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload schema 3, and promotion-bundle schema 1. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
 </div>
 <div class="section level2">
 <h2 id="product-boundary">Product boundary<a class="anchor" aria-label="anchor" href="#product-boundary"></a>
@@ -221,7 +227,7 @@
 <span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span><span class="st">"Life cycle assessment of lithium-ion batteries"</span>, config <span class="op">=</span> <span class="va">cfg</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">report_md</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Hosts can supply the same immutable scientific profiles used by generated expert panels:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">recycling_expert</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
@@ -560,7 +566,7 @@
 <span><span class="va">session</span><span class="op">$</span><span class="fu">publish</span><span class="op">(</span>style <span class="op">=</span> <span class="st">"technical"</span>, include_references <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">committed_report</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">session</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">committed_report</span><span class="op">)</span></span></code></pre></div>
-<p><code>session$publish()</code> validates and commits the canonical Co-STORM report. <code><a href="reference/tempest_report.html">tempest_report()</a></code> only reads those exact committed bytes from a succeeded, quiescent session; it does not generate or repair a report. <code>tempest_report_md()</code> is a separate deterministic renderer over caller-supplied Markdown and an explicit <code>ResearchWorkspace</code>. Rendering alone does not finalize a Manifest, publish a product, or grant promotion authority.</p>
+<p><code>session$publish()</code> validates and commits the canonical Co-STORM report. <code><a href="reference/tempest_report.html">tempest_report()</a></code> only reads those exact committed bytes from a succeeded, quiescent session; it does not generate or repair a report. There is no separate public renderer that can finalize a product or grant promotion authority.</p>
 </div>
 <div class="section level3">
 <h3 id="expert-delegation">Expert delegation<a class="anchor" aria-label="anchor" href="#expert-delegation"></a>
@@ -574,7 +580,7 @@
 <li>Keeps an opaque, host-inaccessible chat session binding for continuity</li>
 </ul>
 <p>The moderator uses the same bounded Deputy runtime. Each completed moderator or expert run records an opaque terminal trace that is carried through Co-STORM snapshot and bundle persistence.</p>
-<p>Co-STORM save, snapshot, restore, and resume accept only the exact current schema-10 product. Expert, transcript, mind-map, StageRecord, Workspace, report, suggested-question, and Graft snapshot state must pass integrity checks. Live chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated rather than serialized.</p>
+<p>Co-STORM save, snapshot, restore, and resume accept only the exact current schema-11 product. Expert, transcript, mind-map, StageRecord, Workspace, report, suggested-question, and Graft snapshot state must pass integrity checks. Live chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated rather than serialized.</p>
 </div>
 <div class="section level3">
 <h3 id="warmup-phase">Warmup Phase<a class="anchor" aria-label="anchor" href="#warmup-phase"></a>

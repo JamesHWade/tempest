@@ -96,7 +96,7 @@ tempest_run(
 - output_dir:
 
   Optional directory for persisted STORM run artifacts. When supplied, a
-  current schema-7 product bundle with schema-4 STORM state is written
+  current schema-8 product bundle with schema-5 STORM state is written
   under a topic-specific subdirectory.
 
 - resume:
@@ -112,9 +112,10 @@ tempest_run(
 
 - progress:
 
-  Optional function called with a `tempest_progress_event` object as
-  STORM workflow stages start, finish, fail, persist artifacts, or make
-  final artifacts available.
+  Optional function called with one plain named progress record as STORM
+  workflow stages start, finish, fail, persist artifacts, or make final
+  artifacts available. See the package vignette for the eleven stable
+  fields.
 
 - verbose:
 

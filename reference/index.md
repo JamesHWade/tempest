@@ -42,6 +42,8 @@ Read the committed report and inspect the evidence behind it.
 - [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
   **\[experimental\]** : A bounded review of one completed Tempest
   product
+- [`tempest_trajectory_review_data()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review_data.md)
+  : Extract a validated trajectory review projection
 
 ## Session persistence
 

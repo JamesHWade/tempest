@@ -2,7 +2,7 @@
 
 ## tempest (development version)
 
-- The public namespace is now exactly 19 exports and one S3 method,
+- The public namespace is now exactly 20 exports and one S3 method,
   [`print.tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md).
   Workspaces, retrievers, resources, manifests, ProgramSets,
   verification, progress, async execution, and the Shiny implementation
@@ -48,11 +48,12 @@
 - [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
   is the one strict constructor for accepted organizational knowledge,
   replacing the `knowledge_view` arguments and public governed-procedure
-  and ProgramSet assembly; it pins an immutable Graft view, reads only
-  accepted `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records
-  as evidence, rejects records it cannot materialize exactly rather than
-  truncating them, and keeps executable authority reachable only through
-  an explicit governed-procedure stage binding (pjsd).
+  and ProgramSet assembly; it pins an immutable Graft view, reads
+  complete scalar and relation-valued accepted `Claim`, `ClaimSupport`,
+  `EvidenceSpan`, and `Source` records as inert evidence, rejects
+  records it cannot materialize exactly rather than truncating them, and
+  keeps executable authority reachable only through an explicit
+  governed-procedure stage binding (pjsd).
 - [`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md)
   is now the one read accessor for the committed Markdown report of a
   completed
@@ -69,6 +70,13 @@
   [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md);
   the raw retriever, mutable workspace, manifest, and stage state are no
   longer part of the supported result surface (pjsd).
+- [`tempest_trajectory_review_data()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review_data.md)
+  exposes the validated, schema-versioned plain projection from an exact
+  [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
+  value; Tempest rechecks the closed fields, nested identities and
+  bindings, canonical-set ordering and uniqueness, bounded acceptance
+  reconciliation, and content-bound review identity so downstream
+  adapters do not duplicate source invariants (scans#21).
 - Tempest 0.3 begins a hard, pre-production API reset: Agent Skill and
   Open Knowledge Format APIs and assets, standalone
   `tempest_suggest_questions()`, permissive provider, model, and
@@ -89,19 +97,22 @@
   into its named controls, keeps mobile focus inside the full-width
   drawer, closes with Escape, restores the exact launcher, synchronizes
   launcher state, and leaves the desktop chat interactive (dqyv).
+- Co-STORM expert-session identities now bind their research run and
+  expert owner while retaining a fresh session instance suffix; snapshot
+  and bundle schema 11 rejects schema 10 rather than silently
+  reinterpreting its legacy session identifiers (scans#21).
 - [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
   now accepts only six authored scientific-profile fields, derives
   immutable identity and version from canonical content, and separates
   Co-STORM retirement into session-roster state; expert profile schema
   2, STORM state schema 5 and bundle schema 8, and Co-STORM snapshot and
-  bundle schema 10 have no compatibility readers (pjsd).
-- [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
-  is now the only writable evidence representation: retriever fetches,
-  provider-native evidence, caches, workspace persistence, and direct
-  workspace insertion all require exact `TempestResource` records, while
-  source-shaped values remain read-only presentation projections; legacy
-  source lists and conversion paths have been deleted without
-  compatibility handling (pjsd).
+  bundle schema 11 have no compatibility readers (pjsd).
+- Internally, `TempestResource` is the only writable evidence
+  representation: retriever fetches, provider-native evidence, caches,
+  workspace persistence, and direct workspace insertion all require
+  exact records, while source-shaped values remain read-only
+  presentation projections; legacy source lists and conversion paths
+  have been deleted without compatibility handling (pjsd).
 
 ## tempest 0.2.0
 
