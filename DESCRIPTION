@@ -55,6 +55,7 @@ Suggests:
     ragnar,
     rmarkdown,
     rvest,
+    scans (>= 0.0.0.9000),
     shiny (>= 1.8.1),
     shinychat (>= 0.4.0.9000),
     testthat (>= 3.2.0),
@@ -67,6 +68,7 @@ Remotes:
     JamesHWade/deputy@89089c90ddeb668462422b14a4de7a8395eefdc8,
     JamesHWade/dsprrr@db28eae2235ab15c4f5c1c9794118d127eabbdd7,
     JamesHWade/graft@81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5,
+    JamesHWade/scans@f44bbe44a13da59d6cb589be9f4fedb6f788bcce,
     posit-dev/shinychat/pkg-r,
     tidyverse/ellmer@5cb916dbab521f2d0b3871f284a6c67b8045d14c
 Config/testthat/edition: 3

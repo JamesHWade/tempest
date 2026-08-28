@@ -26,7 +26,7 @@ tempest_report(result)
 
 session <- tempest_session("History of jazz", config = tempest_config())
 session$step("Tell me about bebop.")
-session$finalize()
+session$publish()
 tempest_report(session)
 }
 }

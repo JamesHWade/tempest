@@ -78,10 +78,10 @@ test_that("tempest_knowledge separates evidence reads from executable authority"
   )
 })
 
-test_that("tempest_knowledge rejects non-materializable accepted records", {
+test_that("tempest_knowledge materializes complete canonical records", {
   expect_error(
     tempest:::tempest_knowledge_record_text(
-      list(claim_text = list("nested", "value")),
+      list(claim_text = list(function() "not data")),
       "record:a"
     ),
     class = "tempest_knowledge_error"
@@ -92,6 +92,28 @@ test_that("tempest_knowledge rejects non-materializable accepted records", {
       "record:a"
     ),
     "claim_id: C1\nclaim_text: Evidence text\npage: 4"
+  )
+  expect_identical(
+    tempest:::tempest_knowledge_record_text(
+      list(
+        claim_id = "C1",
+        about = list("entity:z", "entity:a"),
+        scores = c(0.8, 0.9),
+        asserted_at = as.POSIXct(
+          "2026-08-27T12:34:56Z",
+          format = "%Y-%m-%dT%H:%M:%SZ",
+          tz = "UTC"
+        )
+      ),
+      "record:a"
+    ),
+    paste(
+      "claim_id: C1",
+      'about: ["entity:z","entity:a"]',
+      "scores: [0.8,0.9]",
+      "asserted_at: 2026-08-27T12:34:56.000000Z",
+      sep = "\n"
+    )
   )
 })
 
