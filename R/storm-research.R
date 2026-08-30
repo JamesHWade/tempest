@@ -120,7 +120,7 @@ tempest_storm_completion_answer <- function(completion) {
     )
   }
   answer_text <- tryCatch(
-    ellmer::contents_markdown(turn),
+    tempest_agent_completion_response_from_turn(turn),
     error = function(error) {
       tempest_stage_governance_abort(
         "A claimed STORM completion contains an invalid provider turn."

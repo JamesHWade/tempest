@@ -161,6 +161,41 @@ tempest_agent_completion_provider_turn <- function(provider_turn) {
   provider_turn
 }
 
+tempest_agent_completion_response_from_turn <- function(provider_turn) {
+  provider_turn <- tempest_agent_completion_provider_turn(provider_turn)
+  contents <- tryCatch(
+    provider_turn@contents,
+    error = function(error) NULL
+  )
+  if (!is.list(contents)) {
+    tempest_agent_completion_binding_abort()
+  }
+  response <- paste(
+    vapply(
+      contents,
+      function(content) {
+        if (inherits(content, "ellmer::ContentText")) {
+          return(content@text)
+        }
+        ""
+      },
+      character(1)
+    ),
+    collapse = ""
+  )
+  tempest_agent_completion_text(response)
+}
+
+tempest_agent_completion_response_matches_turn <- function(
+  response,
+  provider_turn
+) {
+  response <- tempest_agent_completion_text(response)
+  turn_response <- tempest_agent_completion_response_from_turn(provider_turn)
+  identical(response, turn_response) ||
+    identical(response, paste0(turn_response, "\n"))
+}
+
 tempest_agent_completion_trace <- function(deputy_execution) {
   if (!is.list(deputy_execution) || is.data.frame(deputy_execution)) {
     tempest_agent_completion_binding_abort()

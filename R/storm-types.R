@@ -80,7 +80,11 @@ tempest_type_fact_extract <- function() {
     source_id = ellmer::type_string("Source id like Sxxxxxxxxxxxx"),
     url = ellmer::type_string("URL if available", required = FALSE),
     quote = ellmer::type_string(
-      "Short supporting quote (<=20 words) if available",
+      paste(
+        "Verbatim contiguous substring copied from the answer or captured",
+        "source context, including exact capitalization and Markdown;",
+        "20 words or fewer, with no ellipses or added formatting"
+      ),
       required = FALSE
     )
   )
@@ -124,4 +128,36 @@ tempest_type_query_decomposition <- function() {
       ellmer::type_string("A targeted search query")
     )
   )
+}
+
+#' @keywords internal
+tempest_type_briefing_items <- function() {
+  tempest_require("ellmer")
+  item <- ellmer::type_object(
+    kind = ellmer::type_enum(
+      tempest_briefing_item_kinds(),
+      paste(
+        "observation copies one verified claim; assessment explains an",
+        "implication; review_action proposes human review; no_change exactly",
+        "copies one verified claim that establishes a material condition",
+        "remains unchanged"
+      )
+    ),
+    text = ellmer::type_string(
+      paste(
+        "One concise sentence. Observation text must exactly copy the",
+        "selected verified claim; no_change text must also copy its single",
+        "verified claim exactly; other kinds must not contain citations."
+      )
+    ),
+    claim_ids = ellmer::type_array(ellmer::type_string(
+      "Exact claim id from the supplied verified fact notes"
+    )),
+    confidence = ellmer::type_enum(
+      tempest_briefing_item_confidences(),
+      "Required only for assessment and no_change items",
+      required = FALSE
+    )
+  )
+  ellmer::type_object(items = ellmer::type_array(item))
 }

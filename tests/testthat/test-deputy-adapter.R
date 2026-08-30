@@ -33,6 +33,7 @@ test_that("Deputy adapter freezes the current Chat tool permissions", {
   )
 
   expect_s3_class(adapter, "TempestDeputyChatAdapter")
+  expect_s3_class(adapter, "Agent")
   expect_s3_class(adapter, "Chat")
   expect_identical(
     tempest:::tempest_deputy_chat_permissions(adapter),
@@ -51,11 +52,81 @@ test_that("Deputy adapter freezes the current Chat tool permissions", {
     names(adapter$get_tools()),
     c("inspect_evidence", "search_workspace")
   )
-  registration_error <- tryCatch(
-    adapter$register_tools(list()),
-    error = identity
+  expect_identical(adapter$register_tools(list()), adapter)
+})
+
+test_that("Deputy adapter is a real Agent for R6 ellmer clients", {
+  skip_if_not_installed("deputy")
+
+  chat <- suppressWarnings(ellmer::chat_openai(
+    model = "gpt-4o-mini",
+    api_key = "test-only-not-a-credential"
+  ))
+  chat$register_tool(ellmer::openai_tool_web_search())
+  manifest <- tempest_research_manifest(
+    "deputy-adapter-r6-chat",
+    mode = "costorm",
+    config = tempest_config()
   )
-  expect_s3_class(registration_error, "tempest_deputy_adapter_error")
+
+  adapter <- tempest:::tempest_deputy_chat_adapter(
+    chat,
+    manifest,
+    deputy_session_id = "deputy-session-r6-chat",
+    stage = "dialogue",
+    role = "moderator"
+  )
+  proxy <- tempest:::tempest_deputy_chat_proxy(adapter)
+
+  expect_s3_class(adapter, "TempestDeputyChatAdapter")
+  expect_s3_class(adapter, "Agent")
+  expect_s3_class(adapter, "Chat")
+  expect_identical(is.environment(adapter), TRUE)
+  expect_identical(adapter$get_model(), "gpt-4o-mini")
+  expect_identical(names(adapter$get_tools()), "web_search")
+  expect_identical(is.list(proxy), TRUE)
+  expect_identical(proxy$get_model(), "gpt-4o-mini")
+  expect_null(proxy$.__enclos_env__)
+  expect_identical(
+    tempest:::tempest_deputy_adapter_prompt(list(list(
+      ellmer::ContentText("Review the attached evidence."),
+      ellmer::ContentText("Include uncertainties.")
+    ))),
+    "Review the attached evidence.\n\nInclude uncertainties."
+  )
+})
+
+test_that("provider reasoning stays outside the canonical response", {
+  turn <- ellmer::AssistantTurn(list(
+    ellmer::ContentThinking("private reasoning"),
+    ellmer::ContentText("Visible answer.")
+  ))
+
+  expect_identical(
+    tempest:::tempest_agent_completion_response_from_turn(turn),
+    "Visible answer."
+  )
+  expect_identical(
+    tempest:::tempest_agent_completion_response_matches_turn(
+      "Visible answer.\n",
+      turn
+    ),
+    TRUE
+  )
+  expect_identical(
+    tempest:::tempest_agent_completion_response_matches_turn(
+      "Different answer.",
+      turn
+    ),
+    FALSE
+  )
+  expect_identical(
+    tempest:::tempest_storm_completion_answer(list(
+      provider_turn = turn,
+      response = "Visible answer."
+    )),
+    list(answer_text = "Visible answer.", provider_turn = turn)
+  )
 })
 
 test_that("Deputy terminal reasons retain current safety semantics", {
@@ -228,7 +299,7 @@ test_that("sync runs reuse one Deputy session and record exact traces", {
   )
 })
 
-test_that("async chat and streams execute through Deputy stream_async", {
+test_that("async chat and streams execute through Deputy Chat", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("coro")
   skip_if_not_installed("promises")
@@ -566,14 +637,13 @@ test_that("adapter identity and execution references never expose Agent", {
   )
 
   identity <- tempest:::tempest_deputy_chat_identity(first)
-  adapter_state <- get("state", envir = environment(first$chat))
   expect_identical(
     identity$agent_id,
     tempest:::tempest_deputy_chat_identity(second)$agent_id
   )
   expect_identical(identity$deputy_session_id, "deputy-session-identity")
   expect_identical(
-    adapter_state$agent$session_id(),
+    first$session_id(),
     identity$deputy_session_id
   )
   expect_identical("agent" %in% names(identity), FALSE)

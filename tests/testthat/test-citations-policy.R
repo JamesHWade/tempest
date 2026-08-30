@@ -504,6 +504,48 @@ test_that("strict policy binds every assertion and factual heading exactly", {
   }
 })
 
+test_that("strict briefing publication treats each governed item as one assertion", {
+  store <- fake_store_with_sources(1)
+  source_id <- store$list_retrieved_sources()[[1]]$id
+  claim <- tempest_claim(
+    "A U.S. rule becomes effective today.",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  store$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(store, list(claim))[[1]]
+  item <- tempest:::TempestBriefingItem(
+    kind = "observation",
+    text = claim@claim_text,
+    claim_ids = claim@claim_id
+  )
+  body <- paste(
+    "## Evidence focus: U.S. rules",
+    tempest:::tempest_briefing_items_markdown(
+      list(item),
+      store
+    ),
+    sep = "\n\n"
+  )
+
+  expect_no_error(tempest:::tempest_report_md_render(
+    "Title",
+    body,
+    store,
+    citation_policy = "strict"
+  ))
+  expect_error(
+    tempest:::tempest_report_md_render(
+      "Title",
+      paste(body, "An unbound assertion.", sep = "\n\n"),
+      store,
+      citation_policy = "strict"
+    ),
+    class = "tempest_product_report_error"
+  )
+})
+
 test_that("strict publication requires exact captured source evidence", {
   store <- tempest_research_workspace()
   source <- tempest_resource(

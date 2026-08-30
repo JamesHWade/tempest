@@ -16,6 +16,13 @@ test_that("extract_claims module accepts source context inputs", {
     input_names,
     c("answer_text", "source_context", "source_ids", "citation_mode")
   )
+  instructions <- S7::prop(modules$extract_claims$signature, "instructions")
+  expect_match(instructions, "verbatim contiguous substring", fixed = TRUE)
+  expect_match(
+    tempest:::tempest_prompt("fact_extractor_system"),
+    "provider-native citation",
+    fixed = TRUE
+  )
 })
 
 test_that("outline module inputs do not collide with output fields", {
@@ -30,6 +37,44 @@ test_that("outline module inputs do not collide with output fields", {
   expect_equal(
     vapply(refined_inputs, `[[`, character(1), "name"),
     c("topic", "report_title", "draft_outline", "facts")
+  )
+})
+
+test_that("grounded writing programs separate observation and synthesis", {
+  modules <- tempest_make_dsprrr_modules(tempest_config())
+  section_instructions <- S7::prop(
+    modules$section_writing$signature,
+    "instructions"
+  )
+  lead_instructions <- S7::prop(
+    modules$lead_section$signature,
+    "instructions"
+  )
+
+  expect_match(
+    section_instructions,
+    "observations by copying claim text exactly",
+    fixed = TRUE
+  )
+  expect_match(
+    lead_instructions,
+    "observations by copying claim text exactly",
+    fixed = TRUE
+  )
+  expect_match(
+    section_instructions,
+    "Every non-observation item must bind the claim_ids",
+    fixed = TRUE
+  )
+  expect_match(
+    section_instructions,
+    "Omit no_change when the evidence is missing, unresolved",
+    fixed = TRUE
+  )
+  expect_match(
+    lead_instructions,
+    "no_change item must copy exactly one verified claim",
+    fixed = TRUE
   )
 })
 
@@ -77,6 +122,7 @@ test_that("draft outline execution uses the disjoint report title input", {
 
 test_that("refined outline execution uses the disjoint report title input", {
   observed_inputs <- NULL
+  verified <- test_verified_workspace()
   local_mocked_bindings(
     tempest_run_dsprrr_module_structured = function(
       module,
@@ -121,7 +167,8 @@ test_that("refined outline execution uses the disjoint report title input", {
     ),
     facts_txt = "Facts",
     module = test_program_executions()$refined_outline,
-    workspace = test_research_workspace()
+    workspace = verified$workspace,
+    verified_evidence = verified$workspace$list_proposed_claims()
   )
 
   expect_identical(

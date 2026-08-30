@@ -36,6 +36,7 @@ test_that("moderator delegates through persistent Deputy expert execution", {
     state$request_number <- 0L
     state$raw_chat_calls <- 0L
     state$delegations <- list()
+    state$provider <- fake_chat_provider("moderator")
 
     add_turn <- function(contents) {
       state$turns <- c(
@@ -108,19 +109,21 @@ test_that("moderator delegates through persistent Deputy expert execution", {
           }
         },
         stream_async = function(...) {
-          arguments <- list(...)
           coro::async_generator(function() {
-            repeat {
-              source <- do.call(chat$stream, arguments)
+            complete <- FALSE
+            while (!complete) {
+              source <- chat$stream(...)
               repeat {
                 content <- source()
                 if (coro::is_exhausted(content)) {
                   break
                 }
+                complete <- complete ||
+                  inherits(
+                    content,
+                    "ellmer::ContentText"
+                  )
                 coro::yield(content)
-              }
-              if (state$request_number %% 2L == 0L) {
-                break
               }
             }
             coro::exhausted()
@@ -137,6 +140,13 @@ test_that("moderator delegates through persistent Deputy expert execution", {
           invisible(NULL)
         },
         get_tools = function() state$tools,
+        set_tools = function(tools) {
+          state$tools <- list()
+          for (tool in tools) {
+            state$tools[[tool@name]] <- tool
+          }
+          invisible(NULL)
+        },
         register_tool = function(tool) {
           state$tools[[tool@name]] <- tool
           invisible(NULL)
@@ -147,16 +157,10 @@ test_that("moderator delegates through persistent Deputy expert execution", {
           }
           invisible(NULL)
         },
-        set_tools = function(tools) {
-          state$tools <- list()
-          chat$register_tools(tools)
-        },
         get_tokens = function() {
           data.frame(input = 10, output = 5, cached_input = 0, cost = 0)
         },
-        get_provider = function() {
-          tempest_mock_provider(name = "mock", model = "moderator")
-        },
+        get_provider = function() state$provider,
         get_model = function() "moderator",
         last_turn = function(role = "assistant") {
           if (length(state$turns) == 0L) {

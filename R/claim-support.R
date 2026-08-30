@@ -303,6 +303,8 @@ tempest_claim_support_from_list <- function(value) {
       ),
       class = c("tempest_claim_support_error", "tempest_error")
     )
+  } else {
+    value$support_score <- as.double(score)
   }
   do.call(
     tempest_claim_support,

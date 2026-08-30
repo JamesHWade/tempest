@@ -371,7 +371,7 @@ tempest_shinychat_completion_client <- function(client, on_completion) {
   }
 
   stream_async <- client$stream_async
-  proxy <- client
+  proxy <- tempest_deputy_chat_proxy(client)
   proxy$stream_async <- function(...) {
     source <- stream_async(...)
     completion_id <- tempest_agent_completion_id(source)

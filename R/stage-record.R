@@ -125,13 +125,13 @@ tempest_stage_policy_table <- function() {
     ),
     section_writing = list(
       fallback_policy = "grounded_only",
-      fallback_implementation = "tempest::fallback/section-writing/ellmer-text@1",
+      fallback_implementation = "tempest::fallback/section-writing/briefing-items@1",
       execution_path = "grounded",
       requires_verified_evidence = TRUE
     ),
     lead_section = list(
       fallback_policy = "grounded_only",
-      fallback_implementation = "tempest::fallback/lead-section/ellmer-text@1",
+      fallback_implementation = "tempest::fallback/lead-section/briefing-items@1",
       execution_path = "grounded",
       requires_verified_evidence = TRUE
     )
@@ -238,6 +238,8 @@ tempest_stage_fallback_refined_outline <- function(chat, inputs, context) {
     "\n\nRequirements:\n",
     "- Adjust sections based on available evidence.\n",
     "- Add, merge, or remove sections as needed.\n",
+    "- Exclude introductions, summaries, overviews, conclusions, executive summaries, and at-a-glance sections.\n",
+    "- Remove angles without verified facts; one detail section is valid when evidence is sparse.\n",
     "- Ensure each section has supporting facts.\n",
     "- Return structured data.\n"
   )
@@ -251,7 +253,7 @@ tempest_stage_fallback_refined_outline <- function(chat, inputs, context) {
 
 tempest_stage_fallback_section_writing <- function(chat, inputs, context) {
   prompt <- paste0(
-    "Write a report section in Markdown.\n\n",
+    "Prepare typed briefing items for one report section.\n\n",
     "Section title: ",
     inputs$section_title,
     "\nSection intent: ",
@@ -261,17 +263,26 @@ tempest_stage_fallback_section_writing <- function(chat, inputs, context) {
     "\n\nVerified fact notes you MUST use (do not invent facts or fetch additional sources):\n",
     context$verified_facts,
     "\n\nRules:\n",
-    "- Every factual claim must end with one or more citations like [Sxxxxxxxxxxxx].\n",
-    "- Use ONLY the facts provided above. Do NOT call tools or fetch new sources.\n",
-    "- Keep the writing concise, technical, and well-structured.\n\n",
-    "Write the section now:"
+    "- Return one to three observation items by copying exact claim text.\n",
+    "- Add at most two assessments and two review actions.\n",
+    "- Add at most one no-change item only by copying one claim that explicitly establishes a material condition remains unchanged.\n",
+    "- Omit no-change when evidence is missing, unresolved, or merely fails to establish a change.\n",
+    "- Bind every item to only the supplied exact claim_ids.\n",
+    "- Confidence is required only for assessments and no-change items.\n",
+    "- Use ONLY the facts above. Do NOT call tools or fetch sources.\n",
+    "- Return structured data, not Markdown.\n"
   )
-  list(section_text = chat$chat(prompt, echo = "none"))
+  chat$chat_structured(
+    prompt,
+    type = tempest_type_briefing_items(),
+    echo = "none",
+    convert = FALSE
+  )
 }
 
 tempest_stage_fallback_lead_section <- function(chat, inputs, context) {
   prompt <- paste0(
-    "Write a Wikipedia-style lead section (2-3 paragraphs) for this report.\n\n",
+    "Create the at-a-glance decision brief for this report.\n\n",
     "Topic: ",
     inputs$topic,
     "\nTitle: ",
@@ -281,12 +292,20 @@ tempest_stage_fallback_lead_section <- function(chat, inputs, context) {
     "\n\nKey facts:\n",
     context$verified_facts,
     "\n\nRules:\n",
-    "- Summarize the most important points from the article.\n",
-    "- Include citations like [Sxxxxxxxxxxxx] for key claims.\n",
-    "- The lead should be self-contained.\n",
-    "- Write 2-3 paragraphs.\n"
+    "- Return one to three observations by copying exact claim text.\n",
+    "- Add at most one assessment and review action.\n",
+    "- Add at most one no-change item only by copying one claim that explicitly establishes a material condition remains unchanged.\n",
+    "- Otherwise omit no-change; missing or unresolved evidence is not a no-change signal.\n",
+    "- Bind every item to only the supplied exact claim_ids.\n",
+    "- Confidence is required only for assessments and no-change items.\n",
+    "- Return structured data, not Markdown.\n"
   )
-  list(lead_section = chat$chat(prompt, echo = "none"))
+  chat$chat_structured(
+    prompt,
+    type = tempest_type_briefing_items(),
+    echo = "none",
+    convert = FALSE
+  )
 }
 
 tempest_stage_fallback_registry <- function() {
@@ -1912,6 +1931,37 @@ tempest_stage_character_vector <- function(value, field, allow_empty = FALSE) {
   value
 }
 
+tempest_stage_outline_character_vector <- function(
+  value,
+  field,
+  allow_empty = FALSE
+) {
+  if (is.data.frame(value)) {
+    tempest_stage_output_abort(
+      "Stage output field {.field {field}} must not be tabular."
+    )
+  }
+  if (is.list(value)) {
+    if (!all(vapply(value, rlang::is_string, logical(1)))) {
+      tempest_stage_output_abort(
+        paste0(
+          "Stage output field {.field {field}} contains a non-string list ",
+          "element."
+        )
+      )
+    }
+    value <- unlist(value, use.names = FALSE)
+  } else if (is.character(value) && !is.object(value)) {
+    value <- unname(value)
+  } else {
+    shape <- if (is.object(value)) "typed atomic" else typeof(value)
+    tempest_stage_output_abort(
+      "Stage output field {.field {field}} has unsupported {shape} shape."
+    )
+  }
+  tempest_stage_character_vector(value, field, allow_empty = allow_empty)
+}
+
 tempest_stage_normalize_output <- function(callback) {
   tryCatch(
     callback(),
@@ -2533,7 +2583,8 @@ tempest_stage_evaluate_outline <- function(output, context) {
       "Outline output must contain a non-empty unnamed sections array."
     )
   }
-  for (section in sections) {
+  for (section_index in seq_along(sections)) {
+    section <- sections[[section_index]]
     section <- tempest_stage_exact_record(
       section,
       "sections",
@@ -2552,7 +2603,8 @@ tempest_stage_evaluate_outline <- function(output, context) {
         "Outline sections require a non-empty unnamed subsections array."
       )
     }
-    for (subsection in subsections) {
+    for (subsection_index in seq_along(subsections)) {
+      subsection <- subsections[[subsection_index]]
       subsection <- tempest_stage_exact_record(
         subsection,
         "subsections",
@@ -2560,16 +2612,27 @@ tempest_stage_evaluate_outline <- function(output, context) {
         "needed"
       )
       tempest_stage_scalar_character(subsection$title, "subsections$title")
-      tempest_stage_character_vector(subsection$bullets, "subsections$bullets")
+      subsection$bullets <- tempest_stage_outline_character_vector(
+        subsection$bullets,
+        "subsections$bullets"
+      )
       if ("needed" %in% names(subsection)) {
-        tempest_stage_character_vector(
-          subsection$needed,
-          "subsections$needed",
-          allow_empty = TRUE
-        )
+        subsection$needed <- if (is.null(subsection$needed)) {
+          character()
+        } else {
+          tempest_stage_outline_character_vector(
+            subsection$needed,
+            "subsections$needed",
+            allow_empty = TRUE
+          )
+        }
       }
+      subsections[[subsection_index]] <- subsection
     }
+    section$subsections <- subsections
+    sections[[section_index]] <- section
   }
+  output$sections <- sections
   normalized <- tempest_stage_normalize_output(\() {
     tempest_normalize_outline(output)
   })
@@ -2884,9 +2947,68 @@ tempest_stage_evidence_support <- function(evidence, context) {
   "unknown"
 }
 
+tempest_stage_outline_terms <- function(value) {
+  terms <- unlist(
+    strsplit(tolower(paste(value, collapse = " ")), "[^[:alnum:]]+"),
+    use.names = FALSE
+  )
+  unique(terms[nchar(terms) >= 4L])
+}
+
+tempest_stage_outline_evidence_score <- function(section, evidence) {
+  subsection_text <- unlist(
+    lapply(section$subsections, function(subsection) {
+      c(subsection$title, subsection$bullets, subsection$needed)
+    }),
+    use.names = FALSE
+  )
+  section_terms <- tempest_stage_outline_terms(c(
+    section$title,
+    section$summary,
+    subsection_text
+  ))
+  evidence_terms <- tempest_stage_outline_terms(vapply(
+    evidence,
+    \(claim) claim@claim_text,
+    character(1)
+  ))
+  sum(section_terms %in% evidence_terms)
+}
+
+tempest_stage_compact_refined_outline <- function(outline, evidence) {
+  sections <- tempest_sections_to_write(outline)
+  if (length(sections) == 0L) {
+    tempest_stage_governance_abort(
+      "A refined outline requires at least one substantive detail section."
+    )
+  }
+  claim_ids <- unique(vapply(
+    evidence,
+    \(claim) claim@claim_id,
+    character(1)
+  ))
+  limit <- min(length(sections), length(claim_ids))
+  if (length(sections) > limit) {
+    scores <- vapply(
+      sections,
+      tempest_stage_outline_evidence_score,
+      integer(1),
+      evidence = evidence
+    )
+    keep <- order(-scores, seq_along(sections))[seq_len(limit)]
+    sections <- sections[sort(keep)]
+  }
+  outline$sections <- unname(sections)
+  outline
+}
+
 tempest_stage_evaluate_evidence_outline <- function(output, context) {
-  evidence <- tempest_stage_evidence(context)
   evaluated <- tempest_stage_evaluate_outline(output, context)
+  evidence <- tempest_stage_verified_evidence(context)
+  evaluated$output <- tempest_stage_compact_refined_outline(
+    evaluated$output,
+    evidence
+  )
   # An outline is planning metadata rather than a publishable factual product.
   # Its evidence trace remains durable, but it cannot itself assert verification.
   evaluated$support_status <- "unknown"
@@ -2910,7 +3032,16 @@ tempest_stage_text_assertions <- function(text) {
     return(character())
   }
   assertions <- unlist(
-    lapply(lines, \(line) strsplit(line, "(?<=[.!?])\\s+", perl = TRUE)[[1]]),
+    lapply(
+      lines,
+      \(line) {
+        strsplit(
+          line,
+          "(?<=[.!?])\\s+(?!\\[S[0-9a-f]{12}\\])",
+          perl = TRUE
+        )[[1]]
+      }
+    ),
     use.names = FALSE
   )
   assertions[nzchar(tempest_stage_assertion_normalize(assertions))]
@@ -2999,10 +3130,14 @@ tempest_stage_evaluator_registry <- function() {
     draft_outline = tempest_stage_evaluate_outline,
     refined_outline = tempest_stage_evaluate_evidence_outline,
     section_writing = \(output, context) {
-      tempest_stage_evaluate_evidence_text(output, context, "section_text")
+      tempest_stage_evaluate_briefing_items(
+        output,
+        context,
+        "section_writing"
+      )
     },
     lead_section = \(output, context) {
-      tempest_stage_evaluate_evidence_text(output, context, "lead_section")
+      tempest_stage_evaluate_briefing_items(output, context, "lead_section")
     }
   )
 }
@@ -4154,12 +4289,24 @@ tempest_stage_record_call <- function(record_stage, record, output = NULL) {
   invisible(record)
 }
 
+tempest_stage_safe_error_parent <- function(error) {
+  if (tempest_condition_chain_sensitive(error)) {
+    tempest_condition_safe_summary(error)
+  } else {
+    error
+  }
+}
+
 tempest_stage_signal <- function(error, record, kind) {
   failure_class <- tempest_stage_failure_class(error, kind)
   rlang::abort(
     tempest_stage_failure_message(error, kind),
-    class = c(failure_class, "tempest_stage_execution_error"),
-    stage_record = record
+    class = tempest_condition_class(c(
+      failure_class,
+      "tempest_stage_execution_error"
+    )),
+    stage_record = record,
+    parent = tempest_stage_safe_error_parent(error)
   )
 }
 
@@ -4257,6 +4404,42 @@ tempest_stage_complete_failure <- function(
   tempest_stage_signal(error, terminal, kind)
 }
 
+tempest_stage_chat_checkpoint <- function(chat) {
+  if (
+    is.null(chat) ||
+      !is.function(chat$get_turns) ||
+      !is.function(chat$set_turns)
+  ) {
+    return(NULL)
+  }
+  turns <- tryCatch(
+    chat$get_turns(),
+    error = function(error) {
+      tempest_stage_evaluator_abort(
+        "Stage execution could not capture provider conversation state.",
+        parent = error
+      )
+    }
+  )
+  list(turns = turns)
+}
+
+tempest_stage_chat_restore <- function(chat, checkpoint) {
+  if (is.null(checkpoint)) {
+    return(invisible(NULL))
+  }
+  tryCatch(
+    chat$set_turns(checkpoint$turns),
+    error = function(error) {
+      tempest_stage_evaluator_abort(
+        "Stage fallback could not restore provider conversation state.",
+        parent = error
+      )
+    }
+  )
+  invisible(NULL)
+}
+
 tempest_stage_run_fallback <- function(
   primary_error,
   execution,
@@ -4267,6 +4450,7 @@ tempest_stage_run_fallback <- function(
   output_reference,
   record_stage,
   running,
+  chat_checkpoint,
   now
 ) {
   policy <- tempest_stage_policy(execution$stage)
@@ -4287,6 +4471,23 @@ tempest_stage_run_fallback <- function(
       running,
       record_stage,
       kind,
+      FALSE,
+      now
+    )
+  }
+  restore_error <- tryCatch(
+    {
+      tempest_stage_chat_restore(chat, chat_checkpoint)
+      NULL
+    },
+    error = identity
+  )
+  if (inherits(restore_error, "condition")) {
+    tempest_stage_complete_failure(
+      restore_error,
+      running,
+      record_stage,
+      "execution",
       FALSE,
       now
     )
@@ -4321,6 +4522,7 @@ tempest_stage_run_fallback <- function(
       )
     }
   )
+  fallback_output <- tempest_dsprrr_structured_output(fallback_output)
   evaluated <- tryCatch(
     tempest_stage_evaluate(execution, fallback_output, context),
     error = function(error) {
@@ -4389,6 +4591,11 @@ tempest_execute_stage <- function(
       started_at = now()
     )
     tempest_stage_record_call(record_stage, running)
+    chat_checkpoint <- tempest_stage_chat_checkpoint(chat)
+    on.exit(
+      tempest_stage_chat_restore(chat, chat_checkpoint),
+      add = TRUE
+    )
     primary <- tryCatch(
       tempest_run_dsprrr_module_structured(
         execution,
@@ -4409,6 +4616,7 @@ tempest_execute_stage <- function(
         output_reference,
         record_stage,
         running,
+        chat_checkpoint,
         now
       ))
     }
@@ -4427,6 +4635,7 @@ tempest_execute_stage <- function(
         output_reference,
         record_stage,
         running,
+        chat_checkpoint,
         now
       ))
     }
@@ -4481,6 +4690,7 @@ tempest_stage_async_fallback <- function(
   record_stage,
   running,
   is_current,
+  chat_checkpoint,
   now
 ) {
   if (!isTRUE(is_current())) {
@@ -4504,6 +4714,23 @@ tempest_stage_async_fallback <- function(
       running,
       record_stage,
       kind,
+      FALSE,
+      now
+    )
+  }
+  restore_error <- tryCatch(
+    {
+      tempest_stage_chat_restore(chat, chat_checkpoint)
+      NULL
+    },
+    error = identity
+  )
+  if (inherits(restore_error, "condition")) {
+    tempest_stage_complete_failure(
+      restore_error,
+      running,
+      record_stage,
+      "execution",
       FALSE,
       now
     )
@@ -4535,6 +4762,7 @@ tempest_stage_async_fallback <- function(
       if (!isTRUE(is_current())) {
         tempest_stage_cancel_attempt(running, record_stage, now)
       }
+      output <- tempest_dsprrr_structured_output(output)
       evaluated <- tryCatch(
         tempest_stage_evaluate(execution, output, context),
         error = identity
@@ -4638,6 +4866,7 @@ tempest_execute_stage_async <- function(
       )
       return(promises::promise_reject(cancellation))
     }
+    chat_checkpoint <- tempest_stage_chat_checkpoint(chat)
     request <- tryCatch(
       tempest_run_dsprrr_module_async(
         execution,
@@ -4669,6 +4898,7 @@ tempest_execute_stage_async <- function(
             record_stage,
             running,
             is_current,
+            chat_checkpoint,
             now
           ))
         }
@@ -4695,11 +4925,15 @@ tempest_execute_stage_async <- function(
           record_stage,
           running,
           is_current,
+          chat_checkpoint,
           now
         )
       }
     )
-    completed
+    promises::finally(
+      completed,
+      function() tempest_stage_chat_restore(chat, chat_checkpoint)
+    )
   }
   tempest_otel_trace_promise(
     "stage.execute",

@@ -523,6 +523,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     sub_agents = list(definition),
     permissions = deputy::permissions_standard(root),
     working_dir = root,
+    session_id = parent_deputy_session_id,
     run_context = context,
     agent_id = "agent-tempest-lead",
     agent_name = "moderator"

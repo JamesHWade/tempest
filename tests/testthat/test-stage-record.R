@@ -918,6 +918,11 @@ test_that("fail-closed execution records controlled failure and throws", {
     "deputy-session-failed"
   )
   expect_identical(terminal@failure_message, "Primary stage execution failed.")
+  expect_s3_class(error$parent, "tempest_redacted_cause")
+  expect_identical(
+    conditionMessage(error$parent),
+    "Underlying failure details were redacted."
+  )
   expect_no_match(conditionMessage(error), "sk-live-secret", fixed = TRUE)
   printed <- paste(capture.output(print(error)), collapse = "\n")
   expect_no_match(printed, "sk-live-secret", fixed = TRUE)
@@ -981,6 +986,74 @@ test_that("exploratory fallback is evaluated and visible", {
     result$record
   )
   expect_identical(records[[1]], result$record)
+})
+
+test_that("fallback restores the provider conversation checkpoint", {
+  execution <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "query_decomposition"
+  )
+  chat <- fake_chat()
+  fallback_turn_count <- NA_integer_
+  local_mocked_bindings(
+    tempest_run_dsprrr_module_structured = function(
+      module,
+      chat,
+      inputs,
+      step
+    ) {
+      chat$set_turns(list("malformed primary turn"))
+      list(output = list(queries = list(list("invalid"))))
+    },
+    tempest_stage_fallback_query_decomposition = function(
+      chat,
+      inputs,
+      context
+    ) {
+      fallback_turn_count <<- length(chat$get_turns())
+      list(queries = inputs$question)
+    }
+  )
+
+  result <- tempest:::tempest_execute_stage(
+    execution,
+    chat = chat,
+    inputs = fake_stage_inputs("query_decomposition"),
+    context = list(max_queries = 3L)
+  )
+
+  expect_identical(fallback_turn_count, 0L)
+  expect_identical(result$output$queries, "Question")
+  expect_identical(result$record@fallback_taken, TRUE)
+})
+
+test_that("successful stages restore the provider conversation checkpoint", {
+  execution <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "query_decomposition"
+  )
+  chat <- fake_chat()
+  local_mocked_bindings(
+    tempest_run_dsprrr_module_structured = function(
+      module,
+      chat,
+      inputs,
+      step
+    ) {
+      chat$set_turns(list("successful primary turn"))
+      list(output = list(queries = inputs$question))
+    }
+  )
+
+  result <- tempest:::tempest_execute_stage(
+    execution,
+    chat = chat,
+    inputs = fake_stage_inputs("query_decomposition"),
+    context = list(max_queries = 3L)
+  )
+
+  expect_identical(result$output$queries, "Question")
+  expect_length(chat$get_turns(), 0L)
 })
 
 test_that("Deputy execution binds StageRecords without changing module traces", {
@@ -1367,10 +1440,8 @@ test_that("all ProgramSet evaluators reject non-schema fields and omissions", {
       )
     ),
     section_writing = list(
-      output = list(
-        section_text = paste0("A supported claim [", source_id, "].")
-      ),
-      required = "section_text",
+      output = fake_briefing_output(list(evidence)),
+      required = "items",
       context = list(
         workspace = workspace,
         evidence = list(evidence),
@@ -1378,10 +1449,8 @@ test_that("all ProgramSet evaluators reject non-schema fields and omissions", {
       )
     ),
     lead_section = list(
-      output = list(
-        lead_section = paste0("A supported claim [", source_id, "].")
-      ),
-      required = "lead_section",
+      output = fake_briefing_output(list(evidence)),
+      required = "items",
       context = list(
         workspace = workspace,
         evidence = list(evidence),
@@ -1571,11 +1640,7 @@ test_that("direct grounded output binds exact authoritative support", {
   )
   local_mocked_bindings(
     tempest_run_dsprrr_module_structured = function(...) {
-      list(
-        output = list(
-          section_text = paste0("A verified observation [", source_id, "].")
-        )
-      )
+      list(output = fake_briefing_output(list(claim)))
     }
   )
 
@@ -1595,6 +1660,36 @@ test_that("direct grounded output binds exact authoritative support", {
   expect_identical(result$record@execution_path, "grounded")
   expect_identical(result$record@support_status, "verified")
   expect_identical(result$record@publication_allowed, TRUE)
+})
+
+test_that("grounded output renders exact authoritative citations", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  claim <- tempest:::tempest_claim(
+    "A verified observation.",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  workspace$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+  execution <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "section_writing"
+  )
+
+  result <- tempest:::tempest_stage_evaluate(
+    execution,
+    fake_briefing_output(list(claim)),
+    list(
+      workspace = workspace,
+      evidence = list(claim),
+      min_support_score = 0.7
+    )
+  )
+
+  expect_identical(result$support_status, "verified")
+  expect_match(result$output, paste0("[", source_id, "]"), fixed = TRUE)
 })
 
 test_that("a claim without exact supports fails grounded preflight", {
@@ -1652,7 +1747,7 @@ test_that("a claim without exact supports fails grounded preflight", {
   expect_identical(provider_calls, 0L)
 })
 
-test_that("grounded writing treats only closed structural headings as metadata", {
+test_that("grounded writing rejects provider-authored Markdown", {
   workspace <- fake_store_with_sources(1)
   source_id <- workspace$list_retrieved_sources()[[1]]$id
   claim <- tempest:::tempest_claim(
@@ -1675,24 +1770,18 @@ test_that("grounded writing treats only closed structural headings as metadata",
 
   expect_no_error(tempest:::tempest_stage_evaluate(
     execution,
-    list(
-      section_text = paste0(
-        "## Evidence\n\nA verified observation [",
-        source_id,
-        "]."
-      )
-    ),
+    fake_briefing_output(list(claim)),
     context
   ))
   expect_error(
     tempest:::tempest_stage_evaluate(
       execution,
       list(
-        section_text = paste0(
-          "## Cancer is cured\n\nA verified observation [",
-          source_id,
-          "]."
-        )
+        items = list(list(
+          kind = "observation",
+          text = "## Evidence\nA verified observation",
+          claim_ids = list(claim@claim_id)
+        ))
       ),
       context
     ),
@@ -1751,7 +1840,137 @@ test_that("refined outline remains non-publishable planning metadata", {
   expect_identical(result$record@publication_allowed, FALSE)
 })
 
-test_that("grounded writing rejects malformed and incomplete source bindings", {
+test_that("refined outlines are compacted to distinct verified evidence", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  claims <- list(
+    tempest_claim(
+      "Battery award selections remain under negotiation",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    ),
+    tempest_claim(
+      "Black mass sales have a domestic allocation requirement",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    )
+  )
+  lapply(claims, workspace$add_proposed_claim)
+  claims <- fake_verify_claim_supports(workspace, claims)
+  execution <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "refined_outline"
+  )
+  section <- function(title, summary) {
+    list(
+      title = title,
+      summary = summary,
+      subsections = list(list(
+        title = "Evidence",
+        bullets = "Review evidence"
+      ))
+    )
+  }
+  output <- list(
+    title = "Outline",
+    sections = list(
+      section("At-a-glance brief", "Reserved lead"),
+      section("Award selections", "Battery awards under negotiation"),
+      section("Weather outlook", "No relevant planning evidence"),
+      section("Black mass", "Domestic sales allocation requirement")
+    )
+  )
+
+  result <- tempest:::tempest_stage_evaluate(
+    execution,
+    output,
+    context = list(
+      workspace = workspace,
+      evidence = claims,
+      verified_evidence = claims,
+      verified_facts = "Verified facts",
+      min_support_score = 0.7,
+      title = "Outline"
+    )
+  )
+
+  expect_identical(
+    vapply(result$output$sections, "[[", character(1), "title"),
+    c("Award selections", "Black mass")
+  )
+})
+
+test_that("refined outline fallback canonicalizes tabular provider arrays", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  claim <- tempest:::tempest_claim(
+    "Verified planning evidence",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  workspace$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+  subsections <- data.frame(
+    title = c("Findings", "Gaps"),
+    stringsAsFactors = FALSE
+  )
+  subsections$bullets <- I(list(
+    "Verified planning evidence",
+    "Record missing evidence."
+  ))
+  subsections$needed <- I(list(
+    list(question = "Open question"),
+    NULL
+  ))
+  sections <- data.frame(
+    title = "Evidence",
+    summary = "Plan the evidence section.",
+    stringsAsFactors = FALSE
+  )
+  sections$subsections <- I(list(subsections))
+  provider_output <- list(title = "Outline", sections = sections)
+  execution <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "refined_outline"
+  )
+  local_mocked_bindings(
+    tempest_run_dsprrr_module_structured = function(...) {
+      stop("primary failed")
+    },
+    tempest_stage_fallback_refined_outline = function(chat, inputs, context) {
+      provider_output
+    }
+  )
+
+  result <- tempest:::tempest_execute_stage(
+    execution,
+    chat = NULL,
+    inputs = fake_stage_inputs("refined_outline"),
+    context = list(
+      workspace = workspace,
+      title = "Outline",
+      evidence = list(claim),
+      verified_evidence = list(claim),
+      verified_facts = "Verified planning evidence",
+      min_support_score = 0.7
+    )
+  )
+
+  expect_identical(result$record@fallback_taken, TRUE)
+  expect_identical(
+    result$output$sections[[1]]$subsections[[1]]$needed,
+    "Open question"
+  )
+  expect_identical(
+    result$output$sections[[1]]$subsections[[2]]$needed,
+    character()
+  )
+})
+
+test_that("grounded writing rejects forged claim and source bindings", {
   workspace <- fake_store_with_sources(2)
   source_ids <- vapply(
     workspace$list_retrieved_sources(),
@@ -1781,25 +2000,26 @@ test_that("grounded writing rejects malformed and incomplete source bindings", {
     tempest:::tempest_stage_evaluate(
       execution,
       list(
-        section_text = paste0(
-          "A verified observation [",
-          source_ids[[1]],
-          "]."
-        )
+        items = list(list(
+          kind = "observation",
+          text = claim@claim_text,
+          claim_ids = list("claim.unknown")
+        ))
       ),
       context
     ),
-    class = "tempest_stage_output_validation_error"
+    class = "tempest_stage_governance_error"
   )
   expect_error(
     tempest:::tempest_stage_evaluate(
       execution,
       list(
-        section_text = paste0(
-          "A verified observation [",
-          source_ids[[1]],
-          "] [Sforged-source]."
-        )
+        items = list(list(
+          kind = "assessment",
+          text = paste0("A conclusion [", source_ids[[1]], "]."),
+          claim_ids = list(claim@claim_id),
+          confidence = "medium"
+        ))
       ),
       context
     ),
@@ -1807,7 +2027,7 @@ test_that("grounded writing rejects malformed and incomplete source bindings", {
   )
 })
 
-test_that("grounded writing rejects citation-free primary and fallback output", {
+test_that("grounded writing rejects unbound primary and fallback synthesis", {
   workspace <- fake_store_with_sources(1)
   source_id <- workspace$list_retrieved_sources()[[1]]$id
   claim <- tempest:::tempest_claim(
@@ -1825,10 +2045,26 @@ test_that("grounded writing rejects citation-free primary and fallback output", 
   records <- list()
   local_mocked_bindings(
     tempest_run_dsprrr_module_structured = function(...) {
-      list(output = list(section_text = "Citation-free primary output."))
+      list(
+        output = list(
+          items = list(list(
+            kind = "assessment",
+            text = "Unbound primary synthesis.",
+            claim_ids = list(claim@claim_id),
+            confidence = "medium"
+          ))
+        )
+      )
     },
     tempest_stage_fallback_section_writing = function(chat, inputs, context) {
-      list(section_text = "Citation-free fallback output.")
+      list(
+        items = list(list(
+          kind = "assessment",
+          text = "Unbound fallback synthesis.",
+          claim_ids = list(claim@claim_id),
+          confidence = "medium"
+        ))
+      )
     }
   )
 
@@ -1852,10 +2088,13 @@ test_that("grounded writing rejects citation-free primary and fallback output", 
   )
 
   terminal <- tempest:::tempest_stage_error_record(error)
+  expect_s3_class(error, "tempest_execution_error")
+  expect_s3_class(error, "tempest_error")
   expect_identical(terminal@status, "failed")
   expect_identical(terminal@fallback_taken, TRUE)
   expect_identical(terminal@failure_class, "tempest_stage_fallback_error")
   expect_identical(records[[1]], terminal)
+  expect_s3_class(error$parent, "tempest_stage_output_validation_error")
 })
 
 test_that("grounded fallback rejects absent verified evidence", {
@@ -1881,7 +2120,7 @@ test_that("grounded fallback rejects absent verified evidence", {
     },
     tempest_stage_fallback_section_writing = function(chat, inputs, context) {
       fallback_calls <<- fallback_calls + 1L
-      list(section_text = "Never run")
+      list(items = list())
     }
   )
 

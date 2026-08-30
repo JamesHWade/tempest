@@ -133,3 +133,46 @@ test_that("public conditions retain the original parent without secrets", {
     FALSE
   )
 })
+
+test_that("operation rethrows preserve only safe Tempest condition chains", {
+  safe_parent <- rlang::error_cnd(
+    "provider_failure",
+    message = "upstream provider refused the request"
+  )
+  safe <- tryCatch(
+    tempest:::tempest_stage_abort("Stage failed.", parent = safe_parent),
+    error = identity
+  )
+  safe_rethrow <- tryCatch(
+    tempest:::tempest_rethrow_operation(safe, class = "tempest_run_error"),
+    error = identity
+  )
+
+  expect_s3_class(safe_rethrow, "tempest_run_error")
+  expect_identical(conditionMessage(safe_rethrow), conditionMessage(safe))
+  expect_identical(safe_rethrow$parent, safe_parent)
+
+  secret_parent <- rlang::error_cnd(
+    "provider_failure",
+    message = "Authorization: Bearer sk-live-secret"
+  )
+  sensitive <- tryCatch(
+    tempest:::tempest_stage_abort("Stage failed.", parent = secret_parent),
+    error = identity
+  )
+  sensitive_rethrow <- tryCatch(
+    tempest:::tempest_rethrow_operation(
+      sensitive,
+      class = "tempest_run_error"
+    ),
+    error = identity
+  )
+
+  expect_identical(conditionMessage(sensitive_rethrow), "The operation failed.")
+  expect_null(sensitive_rethrow$parent)
+  expect_no_match(
+    paste(capture.output(print(sensitive_rethrow)), collapse = "\n"),
+    "sk-live-secret",
+    fixed = TRUE
+  )
+})

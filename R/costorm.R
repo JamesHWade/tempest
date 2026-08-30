@@ -628,10 +628,14 @@ tempest_answer_source_ids <- function(workspace, text, source_ids) {
     },
     logical(1)
   )
-  unique(c(
+  resolved <- unique(c(
     source_ids,
     vapply(sources[referenced], \(source) source$id, character(1))
   ))
+  for (source_id in resolved) {
+    tempest_refresh_native_source_context(workspace, source_id, text)
+  }
+  resolved
 }
 
 #' @keywords internal

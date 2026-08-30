@@ -392,6 +392,12 @@ tempest_package_structural_headings <- function() {
     "Discussion",
     "Limitations",
     "Recommendations",
+    "At a glance",
+    "Verified observations",
+    "What changed",
+    "Why it matters",
+    "Review today",
+    "No material change",
     "Conclusion",
     "Conclusions",
     "Summary"
@@ -406,9 +412,11 @@ tempest_markdown_structural_heading <- function(lines) {
     "",
     lines
   )
+  normalized <- tolower(tempest_trim(heading_text))
   headings &
-    tolower(tempest_trim(heading_text)) %in%
-      tolower(tempest_package_structural_headings())
+    (normalized %in%
+      tolower(tempest_package_structural_headings()) |
+      startsWith(normalized, "evidence focus: "))
 }
 
 #' @keywords internal
@@ -636,7 +644,20 @@ tempest_strict_publication_claims <- function(
       "Strict publication contains a malformed source-citation token."
     )
   }
-  assertions <- tempest_strict_publication_assertions(text)
+  has_briefing_items <- grepl(
+    "<!-- tempest-briefing-item:",
+    text,
+    fixed = TRUE
+  )
+  text <- tempest_briefing_markdown_factual_text(
+    text,
+    store,
+    min_support_score = min_support_score
+  )
+  assertions <- tempest_strict_publication_assertions(
+    text,
+    linewise = has_briefing_items
+  )
   if (length(assertions) == 0L) {
     if (nzchar(tempest_trim(text))) {
       tempest_product_report_abort(
@@ -776,7 +797,7 @@ tempest_strict_publication_claims <- function(
 }
 
 #' @keywords internal
-tempest_strict_publication_assertions <- function(text) {
+tempest_strict_publication_assertions <- function(text, linewise = FALSE) {
   lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
   lines <- lines[nzchar(tempest_trim(lines))]
   structural <- tempest_markdown_structural_heading(lines)
@@ -788,10 +809,17 @@ tempest_strict_publication_assertions <- function(text) {
   if (length(lines) == 0L) {
     return(character())
   }
-  assertions <- unlist(
-    lapply(lines, \(line) strsplit(line, "(?<=[.!?])\\s+", perl = TRUE)[[1]]),
-    use.names = FALSE
-  )
+  assertions <- if (isTRUE(linewise)) {
+    lines
+  } else {
+    unlist(
+      lapply(
+        lines,
+        \(line) strsplit(line, "(?<=[.!?])\\s+", perl = TRUE)[[1]]
+      ),
+      use.names = FALSE
+    )
+  }
   assertions <- assertions[
     nzchar(tempest_normalize_claim_match_text(assertions))
   ]
@@ -979,6 +1007,11 @@ tempest_report_md_render <- function(
   title <- tempest_report_title_validate(title)
   rendered_title <- tempest_markdown_escape_plain_text(title, "report title")
   tempest_report_body_validate_reserved_sections(body)
+  tempest_briefing_items_from_markdown(
+    body,
+    workspace,
+    min_support_score = min_support_score
+  )
   if (
     !isTRUE(include_references) &&
       citation_policy %in% c("claim_verified", "strict")

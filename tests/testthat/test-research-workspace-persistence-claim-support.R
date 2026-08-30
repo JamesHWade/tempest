@@ -35,6 +35,25 @@ test_that("workspace schema 5 round-trips authoritative claim supports", {
   expect_identical(restored$citation_audit, fixture$workspace$citation_audit)
 })
 
+test_that("workspace JSON round-trips exact boundary support scores", {
+  fixture <- test_verified_workspace(scores = 1)
+  snapshot <- tempest:::tempest_research_workspace_snapshot(
+    fixture$workspace
+  )
+  path <- withr::local_tempfile(fileext = ".json")
+  tempest:::tempest_product_write_json(path, snapshot)
+  encoded <- tempest:::tempest_product_read_json(path)
+
+  restored <- tempest:::tempest_research_workspace_restore(encoded)
+
+  claim <- restored$list_proposed_claims()[[1]]
+  expect_identical(claim@support_score, 1)
+  expect_identical(
+    tempest:::tempest_research_workspace_snapshot(restored),
+    snapshot
+  )
+})
+
 test_that("workspace restore rejects every aggregate and old schema shape", {
   snapshot <- tempest:::tempest_research_workspace_snapshot(
     test_verified_workspace()$workspace

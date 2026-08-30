@@ -27,8 +27,7 @@ test_that("Co-STORM warmup and one moderator turn are frozen", {
     },
     tempest_deputy_chat_adapter = function(...) {
       adapter <- deputy_adapter_factory(...)
-      state <- get("state", envir = environment(adapter$chat))
-      private <- state$agent$.__enclos_env__$private
+      private <- adapter$.__enclos_env__$private
       unlockBinding("new_run_id", private)
       private$new_run_id <- function() {
         deputy_run_ids$counter <- deputy_run_ids$counter + 1L

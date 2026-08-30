@@ -289,30 +289,24 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
           } else if (
             startsWith(
               prompt,
-              "Write one concise Markdown report section."
+              "Prepare one concise, decision-useful section as typed briefing items."
             )
           ) {
             stage <- "section_writing"
-            value <- list(
-              section_text = paste0(
-                "STORM progress emits stage events [",
-                source_id,
-                "]."
-              )
+            value <- fake_briefing_output_from_prompt(
+              prompt,
+              "STORM progress emits stage events."
             )
           } else if (
             startsWith(
               prompt,
-              "Write a Wikipedia-style lead section for the article."
+              "Prepare a compact at-a-glance decision brief as typed items."
             )
           ) {
             stage <- "lead_section"
-            value <- list(
-              lead_section = paste0(
-                "STORM progress emits stage events [",
-                source_id,
-                "]."
-              )
+            value <- fake_briefing_output_from_prompt(
+              prompt,
+              "STORM progress emits stage events."
             )
           } else {
             stop("Unexpected writer product-baseline prompt.")

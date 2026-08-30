@@ -1152,7 +1152,7 @@ tempest_otel_wrap_completion_client <- function(client, owner) {
   stream_call <- client$stream
   chat_async_call <- client$chat_async
   stream_async_call <- client$stream_async
-  proxy <- client
+  proxy <- tempest_deputy_chat_proxy(client)
   proxy$chat <- function(
     prompt,
     echo = "none",

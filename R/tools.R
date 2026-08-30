@@ -289,6 +289,26 @@ tempest_upsert_native_resource <- function(store, resource) {
 }
 
 #' @keywords internal
+tempest_refresh_native_source_context <- function(store, source_id, text) {
+  resource <- store$get_retrieved_resource(source_id)
+  if (
+    is.null(resource) ||
+      !identical(resource@resource_kind, "web") ||
+      !identical(resource@metadata$provider_tool %||% NULL, "native")
+  ) {
+    return(invisible(NULL))
+  }
+  updated <- tempest_native_resource_from_url(
+    resource@locator,
+    title = resource@title,
+    context_text = text,
+    kind = resource@metadata$kind %||% "native_search"
+  )
+  tempest_upsert_native_resource(store, updated)
+  invisible(NULL)
+}
+
+#' @keywords internal
 tempest_harvest_native_source_candidates <- function(
   x,
   store,

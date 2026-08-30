@@ -209,6 +209,29 @@ test_that("native harvesting inserts and merges typed evidence resources", {
   expect_identical(presented$snippet, "Native evidence snippet")
 })
 
+test_that("a retried answer refreshes existing native citation context", {
+  workspace <- tempest_research_workspace()
+  url <- "https://example.org/native-retry-source"
+  resource <- tempest:::tempest_native_resource_from_url(
+    url,
+    title = "Native retry source",
+    context_text = "Old failed answer context."
+  )
+  workspace$upsert_retrieved_resource(resource)
+  current_answer <- paste("Current supported answer.", url)
+
+  source_ids <- tempest:::tempest_answer_source_ids(
+    workspace,
+    current_answer,
+    character()
+  )
+  refreshed <- workspace$get_retrieved_resource(resource@resource_id)
+
+  expect_identical(source_ids, resource@resource_id)
+  expect_identical(refreshed@content, current_answer)
+  expect_identical(refreshed@metadata$context_text, current_answer)
+})
+
 test_that("native evidence merging rejects TempestResource subclasses", {
   resource <- test_typed_web_resource("https://example.org/merge")
   subclass <- test_subclassed_resource(resource)

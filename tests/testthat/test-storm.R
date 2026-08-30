@@ -604,20 +604,18 @@ test_that("tempest_run emits ordered STORM progress events", {
             list(queries = c("progress events")),
             outline,
             outline,
-            list(
-              section_text = paste0(
-                "STORM progress emits stage events [",
-                source_id,
-                "]."
+            function(prompt) {
+              fake_briefing_output_from_prompt(
+                prompt,
+                "STORM progress emits stage events."
               )
-            ),
-            list(
-              lead_section = paste0(
-                "STORM progress emits stage events [",
-                source_id,
-                "]."
+            },
+            function(prompt) {
+              fake_briefing_output_from_prompt(
+                prompt,
+                "STORM progress emits stage events."
               )
-            )
+            }
           ),
           text = list(
             paste0(
