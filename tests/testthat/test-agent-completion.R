@@ -617,7 +617,7 @@ test_that("non-complete moderator terminals settle without completions", {
   expect_length(traces, 2L)
   expect_setequal(
     vapply(traces, `[[`, character(1), "status"),
-    c("provider_error", "error")
+    c("error", "error")
   )
   expect_length(
     tempest:::tempest_session_agent_completion_active(session),

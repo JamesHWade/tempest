@@ -1550,7 +1550,7 @@ test_that("tempest_run binds each expert answer to one Deputy execution", {
   expect_identical(direct_chat_calls, 0L)
   expect_identical(
     vapply(expert_chat$.calls(), `[[`, character(1), "transport"),
-    "stream"
+    "stream_async"
   )
 
   deputy_traces <- Filter(

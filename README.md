@@ -101,11 +101,15 @@ than a writable evidence object, and Tempest provides no legacy list
 conversion path.
 
 Co-STORM moderator and expert chats run through required persistent Deputy
-agents. Tempest disables ambient file, shell, R, web, and package-install
-authority at that boundary and allowlists only the Tempest tools already
-attached to each chat. Session persistence stores credential-safe opaque run,
-session, agent, stage, role, expert, and correlation references; it never
-serializes a Deputy Agent or provider credentials.
+agents. Tempest disables ambient file, shell, R, and package-install authority
+at that boundary and allowlists only the Tempest tools already attached to each
+chat. Web authority is limited to that frozen tool surface, including an
+explicit provider-native search tool when configured. Each product-owned
+Deputy session identifier is passed to the Agent constructor and checked
+against the live runtime before use.
+Session persistence stores credential-safe opaque run, session, agent, stage,
+role, expert, and correlation references; it never serializes a Deputy Agent
+or provider credentials.
 
 ## Verify and promote research evidence
 
@@ -595,9 +599,10 @@ cfg <- tempest_config(
 ## Deputy execution identity
 
 Co-STORM moderator and expert calls run through Deputy with product-owned tools.
-Tempest persists only credential-safe terminal execution identities for
-correlation and audit joins. These references do not grant authority and do not
-assert causal content provenance.
+The product-owned session identifier is the live Deputy Agent's constructor
+identity, not parallel adapter metadata. Tempest persists only credential-safe
+terminal execution identities for correlation and audit joins. These
+references do not grant authority and do not assert causal content provenance.
 
 ## Interactive Co-STORM
 

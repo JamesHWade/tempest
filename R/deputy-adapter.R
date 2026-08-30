@@ -67,16 +67,15 @@ tempest_deputy_adapter_agent_id <- function(run_context) {
   )
 }
 
-tempest_deputy_adapter_permissions <- function(tool_allowlist, max_requests) {
+tempest_deputy_adapter_permissions <- function(tool_allowlist) {
   deputy::Permissions$new(
-    mode = "default",
+    mode = "standard",
     file_read = FALSE,
     file_write = FALSE,
     bash = FALSE,
     r_code = FALSE,
-    web = FALSE,
+    web = TRUE,
     install_packages = FALSE,
-    max_turns = max_requests,
     tool_allowlist = tool_allowlist,
     can_use_tool = function(tool_name, tool_input, context) {
       deputy::PermissionResultAllow()
@@ -102,6 +101,7 @@ tempest_deputy_adapter_status <- function(reason) {
     "abandoned",
     "complete",
     "cost_limit",
+    "cost_unavailable",
     "error",
     "hook_requested_stop",
     "input_token_limit",
@@ -109,6 +109,7 @@ tempest_deputy_adapter_status <- function(reason) {
     "output_token_limit",
     "provider_error",
     "request_limit",
+    "tool_loop",
     "tool_call_limit",
     "total_token_limit"
   )
@@ -210,7 +211,7 @@ tempest_deputy_adapter_run_context <- function(run_context) {
       (length(run_context) > 0L &&
         (is.null(names(run_context)) ||
           anyNA(names(run_context)) ||
-          any(!nzchar(names(run_context))) ||
+          !all(nzchar(names(run_context))) ||
           anyDuplicated(names(run_context)) ||
           length(setdiff(
             names(run_context),
@@ -514,9 +515,9 @@ tempest_deputy_adapter_async_stream <- function(
     state$completion_registry
   )
   run_context$completion_id <- completion_id
-  source <- tempest_deputy_adapter_guard(state$agent$run_shiny(
-    prompt = prompt,
-    max_tool_calls = state$max_tool_calls,
+  source <- tempest_deputy_adapter_guard(state$agent$stream_async(
+    prompt,
+    stream = "content",
     run_context = run_context
   ))
   if (!inherits(source, "coro_generator_instance")) {
@@ -619,12 +620,14 @@ tempest_deputy_chat_adapter <- function(
       "last_turn",
       "on_tool_request",
       "on_tool_result",
+      "register_tools",
       "set_system_prompt",
+      "set_tools",
       "set_turns",
       "stream",
       "stream_async"
     )
-    if (any(!vapply(chat[required_methods], is.function, logical(1)))) {
+    if (!all(vapply(chat[required_methods], is.function, logical(1)))) {
       tempest_deputy_adapter_error()
     }
 
@@ -637,10 +640,7 @@ tempest_deputy_chat_adapter <- function(
     tool_allowlist <- tempest_deputy_adapter_tool_names(chat)
     agent_id <- agent_id %||%
       tempest_deputy_adapter_agent_id(base_run_context)
-    permissions <- tempest_deputy_adapter_permissions(
-      tool_allowlist,
-      max_requests
-    )
+    permissions <- tempest_deputy_adapter_permissions(tool_allowlist)
     usage_limits <- deputy::UsageLimits(
       max_requests = max_requests,
       max_tool_calls = max_tool_calls,
@@ -651,17 +651,21 @@ tempest_deputy_chat_adapter <- function(
       tools = list(),
       permissions = permissions,
       usage_limits = usage_limits,
+      session_id = deputy_session_id,
       run_context = base_run_context,
       agent_id = agent_id,
       agent_name = agent_name
     )
+    runtime_session_id <- agent$session_id()
+    if (!identical(runtime_session_id, deputy_session_id)) {
+      tempest_deputy_adapter_error()
+    }
     state <- new.env(parent = emptyenv())
     state$agent <- agent
     state$base_run_context <- base_run_context
-    state$deputy_session_id <- deputy_session_id
+    state$deputy_session_id <- runtime_session_id
     state$agent_id <- agent$agent_id
     state$agent_name <- agent$agent_name
-    state$max_tool_calls <- max_tool_calls
     state$completion_registry <- completion_registry
     state$on_run <- on_run
     state$on_completion <- on_completion
@@ -676,7 +680,7 @@ tempest_deputy_chat_adapter <- function(
     state$identity <- tempest_research_manifest_canonical_value(list(
       agent_id = agent$agent_id,
       agent_name = agent$agent_name,
-      deputy_session_id = deputy_session_id,
+      deputy_session_id = runtime_session_id,
       run_context = base_run_context,
       tool_allowlist = tool_allowlist
     ))
@@ -705,7 +709,7 @@ tempest_deputy_chat_adapter <- function(
           error = function(error) FALSE
         )
         state$start_hook_failed <- !started
-        deputy::HookResultSessionStart()
+        NULL
       }
     )
     terminal_hook <- deputy::HookMatcher$new(
@@ -729,7 +733,7 @@ tempest_deputy_chat_adapter <- function(
           error = function(error) FALSE
         )
         state$hook_failed <- !completed
-        deputy::HookResultSessionEnd()
+        NULL
       }
     )
     agent$add_hook(start_hook)
@@ -857,22 +861,22 @@ tempest_deputy_chat_adapter <- function(
           tempest_deputy_adapter_error()
         },
         get_turns = function() state$agent$turns(),
-        set_turns = function(turns) state$agent$chat$set_turns(turns),
+        set_turns = function(turns) state$agent$set_turns(turns),
         last_turn = function(role = "assistant") {
           state$agent$last_turn(role = role)
         },
-        get_provider = function() state$agent$provider(),
-        get_model = function() state$agent$provider()$model,
-        get_tools = function() state$agent$chat$get_tools(),
+        get_provider = function() state$agent$get_provider(),
+        get_model = function() state$agent$get_model(),
+        get_tools = function() state$agent$get_tools(),
         register_tool = function(...) tempest_deputy_adapter_error(),
         register_tools = function(...) tempest_deputy_adapter_error(),
         get_system_prompt = function() {
-          state$agent$chat$get_system_prompt()
+          state$agent$get_system_prompt()
         },
         set_system_prompt = function(prompt) {
-          state$agent$chat$set_system_prompt(prompt)
+          state$agent$set_system_prompt(prompt)
         },
-        get_tokens = function() state$agent$chat$get_tokens(),
+        get_tokens = function() state$agent$get_tokens(),
         on_tool_request = function(...) tempest_deputy_adapter_error(),
         on_tool_result = function(...) tempest_deputy_adapter_error(),
         clone = function() adapter,

@@ -533,7 +533,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     timeout = 0,
     callback = function(context) {
       seen$start <- context
-      deputy::HookResultSessionStart()
+      NULL
     }
   ))
   lead$add_hook(deputy::HookMatcher$new(
@@ -541,7 +541,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     timeout = 0,
     callback = function(reason, context) {
       seen$end <- context
-      deputy::HookResultSessionEnd()
+      NULL
     }
   ))
   lead$add_hook(deputy::HookMatcher$new(
@@ -557,7 +557,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     timeout = 0,
     callback = function(agent_name, task, result, context) {
       seen$subagent_stop <- context
-      deputy::HookResultSubagentStop()
+      NULL
     }
   ))
 
@@ -720,7 +720,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     seen$subagent_stop$tool_call_id,
     parent_start$tool_call_id
   )
-  expect_null(parent_result$session_id)
+  expect_identical(parent_result$session_id, lead$session_id())
   expect_setequal(
     unlist(restored_manifest@runtime$deputy_run_ids, use.names = FALSE),
     c(parent_result$run_id, child_result$run_id)

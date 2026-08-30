@@ -107,7 +107,25 @@ test_that("moderator delegates through persistent Deputy expert execution", {
             coro::exhausted()
           }
         },
-        stream_async = function(...) stop("unexpected moderator async path"),
+        stream_async = function(...) {
+          arguments <- list(...)
+          coro::async_generator(function() {
+            repeat {
+              source <- do.call(chat$stream, arguments)
+              repeat {
+                content <- source()
+                if (coro::is_exhausted(content)) {
+                  break
+                }
+                coro::yield(content)
+              }
+              if (state$request_number %% 2L == 0L) {
+                break
+              }
+            }
+            coro::exhausted()
+          })()
+        },
         get_turns = function() state$turns,
         set_turns = function(turns) {
           state$turns <- turns
@@ -129,10 +147,16 @@ test_that("moderator delegates through persistent Deputy expert execution", {
           }
           invisible(NULL)
         },
+        set_tools = function(tools) {
+          state$tools <- list()
+          chat$register_tools(tools)
+        },
         get_tokens = function() {
           data.frame(input = 10, output = 5, cached_input = 0, cost = 0)
         },
-        get_provider = function() list(name = "mock", model = "moderator"),
+        get_provider = function() {
+          tempest_mock_provider(name = "mock", model = "moderator")
+        },
         get_model = function() "moderator",
         last_turn = function(role = "assistant") {
           if (length(state$turns) == 0L) {
@@ -250,7 +274,7 @@ test_that("moderator delegates through persistent Deputy expert execution", {
   expect_identical(moderator_state$raw_chat_calls, 0L)
   expect_identical(
     vapply(expert_chat$.calls(), `[[`, character(1), "transport"),
-    rep("stream", 2L)
+    rep("stream_async", 2L)
   )
 
   snapshot <- tempest_session_snapshot(session)
@@ -361,7 +385,7 @@ test_that("unseen-source questions expose their moderator Deputy execution", {
 
   expect_identical(
     vapply(moderator_chat$.calls(), `[[`, character(1), "transport"),
-    "stream"
+    "stream_async"
   )
   expect_length(tempest:::tempest_session_deputy_traces(session), 1L)
 })
