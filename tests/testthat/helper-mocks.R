@@ -1,6 +1,22 @@
 # tests/testthat/helper-mocks.R
 # Reusable fakes so ledger/verification logic is testable without network or API keys.
 
+tempest_mock_provider <- function(name = "mock", model = "fake") {
+  arguments <- list(
+    name = name,
+    model = model,
+    base_url = "https://example.invalid",
+    params = list(),
+    extra_args = list(),
+    extra_headers = character(),
+    credentials = NULL
+  )
+  do.call(
+    ellmer::Provider,
+    arguments[names(arguments) %in% names(formals(ellmer::Provider))]
+  )
+}
+
 # A deterministic Chat-compatible fake. Direct structured and text calls retain
 # their original queue behavior, while the stream and state methods satisfy the
 # ellmer Chat boundary used by Deputy.
@@ -17,6 +33,7 @@ fake_chat <- function(
   state$turns <- list()
   state$tools <- list()
   state$system_prompt <- NULL
+  state$provider <- tempest_mock_provider()
   state$on_tool_request <- function(request) invisible(request)
   state$on_tool_result <- function(result) invisible(result)
   state$tokens <- data.frame(
@@ -171,12 +188,16 @@ fake_chat <- function(
         invisible(NULL)
       },
       get_tools = function() state$tools,
+      set_tools = function(tools) {
+        state$tools <- list()
+        register_tools(tools)
+      },
       register_tool = function(tool) {
         register_tools(list(tool))
       },
       register_tools = register_tools,
       get_tokens = function() state$tokens,
-      get_provider = function() list(name = "mock", model = "fake"),
+      get_provider = function() state$provider,
       get_model = function() "fake",
       last_turn = function(role = "assistant") {
         role_class <- switch(

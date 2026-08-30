@@ -41,10 +41,10 @@ test_that("Deputy adapter freezes the current Chat tool permissions", {
       file_read = FALSE,
       file_write = FALSE,
       install_packages = FALSE,
-      mode = "default",
+      mode = "standard",
       r_code = FALSE,
       tool_allowlist = c("inspect_evidence", "search_workspace"),
-      web = FALSE
+      web = TRUE
     )
   )
   expect_identical(
@@ -58,7 +58,18 @@ test_that("Deputy adapter freezes the current Chat tool permissions", {
   expect_s3_class(registration_error, "tempest_deputy_adapter_error")
 })
 
-test_that("allowlisted annotated tools pass after ambient access is disabled", {
+test_that("Deputy terminal reasons retain current safety semantics", {
+  expect_identical(
+    tempest:::tempest_deputy_adapter_status("cost_unavailable"),
+    "cost_unavailable"
+  )
+  expect_identical(
+    tempest:::tempest_deputy_adapter_status("tool_loop"),
+    "tool_loop"
+  )
+})
+
+test_that("allowlisted tools pass with ambient execution disabled", {
   skip_if_not_installed("deputy")
 
   tool <- ellmer::tool(
@@ -69,8 +80,7 @@ test_that("allowlisted annotated tools pass after ambient access is disabled", {
     annotations = list(open_world_hint = TRUE)
   )
   permissions <- tempest:::tempest_deputy_adapter_permissions(
-    "search_workspace",
-    25L
+    "search_workspace"
   )
 
   allowed <- permissions$check(
@@ -92,7 +102,7 @@ test_that("allowlisted annotated tools pass after ambient access is disabled", {
   expect_identical(permissions$file_write, FALSE)
   expect_identical(permissions$bash, FALSE)
   expect_identical(permissions$r_code, FALSE)
-  expect_identical(permissions$web, FALSE)
+  expect_identical(permissions$web, TRUE)
   expect_identical(permissions$install_packages, FALSE)
 })
 
@@ -210,7 +220,7 @@ test_that("sync runs reuse one Deputy session and record exact traces", {
   )
   expect_identical(
     vapply(chat$.calls(), `[[`, character(1), "transport"),
-    rep("stream", 2L)
+    rep("stream_async", 2L)
   )
   expect_identical(
     ellmer::contents_markdown(adapter$last_turn()),
@@ -218,7 +228,7 @@ test_that("sync runs reuse one Deputy session and record exact traces", {
   )
 })
 
-test_that("async chat and streams execute through Deputy run_shiny", {
+test_that("async chat and streams execute through Deputy stream_async", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("coro")
   skip_if_not_installed("promises")
@@ -377,7 +387,7 @@ test_that("provider and recording errors fail with a fixed safe condition", {
   expect_null(recording_adapter$last_execution)
 })
 
-test_that("terminal provider errors settle without issuing completions", {
+test_that("terminal stream errors settle without issuing completions", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("coro")
   skip_if_not_installed("ellmer")
@@ -461,7 +471,7 @@ test_that("terminal provider errors settle without issuing completions", {
       \(terminal) terminal$deputy_execution$status,
       character(1)
     ),
-    c("provider_error", "error")
+    rep("error", 2L)
   )
   expect_identical(
     vapply(
@@ -556,11 +566,16 @@ test_that("adapter identity and execution references never expose Agent", {
   )
 
   identity <- tempest:::tempest_deputy_chat_identity(first)
+  adapter_state <- get("state", envir = environment(first$chat))
   expect_identical(
     identity$agent_id,
     tempest:::tempest_deputy_chat_identity(second)$agent_id
   )
   expect_identical(identity$deputy_session_id, "deputy-session-identity")
+  expect_identical(
+    adapter_state$agent$session_id(),
+    identity$deputy_session_id
+  )
   expect_identical("agent" %in% names(identity), FALSE)
   expect_identical(
     unserialize(serialize(identity, NULL)),

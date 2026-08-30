@@ -51,11 +51,49 @@ tempest_contract_child_chat <- function() {
           coro::exhausted()
         }
       },
+      stream_async = function(
+        prompt = NULL,
+        tool_mode = c("concurrent", "sequential"),
+        stream = c("text", "content"),
+        controller = NULL
+      ) {
+        source <- chat$stream(
+          prompt = prompt,
+          stream = stream,
+          controller = controller
+        )
+        coro::async_generator(function() {
+          repeat {
+            value <- source()
+            if (coro::is_exhausted(value)) {
+              break
+            }
+            if (
+              inherits(value, "ellmer::ContentToolResult") &&
+                promises::is.promising(value@value)
+            ) {
+              resolved <- coro::await(value@value)
+              request <- value@request
+              value <- ellmer::ContentToolResult(
+                value = resolved,
+                request = request
+              )
+            }
+            coro::yield(value)
+          }
+        })()
+      },
       get_turns = function() state$turns,
       set_turns = function(turns) state$turns <- turns,
       get_system_prompt = function() state$system_prompt,
       set_system_prompt = function(prompt) state$system_prompt <- prompt,
       get_tools = function() state$tools,
+      set_tools = function(tools) {
+        state$tools <- list()
+        for (tool in tools) {
+          state$tools[[tool@name]] <- tool
+        }
+      },
       register_tool = function(tool) state$tools[[tool@name]] <- tool,
       register_tools = function(tools) {
         for (tool in tools) {
@@ -65,7 +103,8 @@ tempest_contract_child_chat <- function() {
       get_tokens = function() {
         data.frame(input = 4, output = 2, cached_input = 0, cost = 0)
       },
-      get_provider = function() list(name = "mock", model = "child"),
+      get_provider = function() tempest_mock_provider(),
+      get_model = function() "child",
       last_turn = function(role = "assistant") {
         if (length(state$turns) == 0L) {
           return(NULL)
@@ -149,11 +188,49 @@ tempest_contract_parent_chat <- function(child_chat) {
           coro::exhausted()
         }
       },
+      stream_async = function(
+        prompt = NULL,
+        tool_mode = c("concurrent", "sequential"),
+        stream = c("text", "content"),
+        controller = NULL
+      ) {
+        source <- chat$stream(
+          prompt = prompt,
+          stream = stream,
+          controller = controller
+        )
+        coro::async_generator(function() {
+          repeat {
+            value <- source()
+            if (coro::is_exhausted(value)) {
+              break
+            }
+            if (
+              inherits(value, "ellmer::ContentToolResult") &&
+                promises::is.promising(value@value)
+            ) {
+              resolved <- coro::await(value@value)
+              request <- value@request
+              value <- ellmer::ContentToolResult(
+                value = resolved,
+                request = request
+              )
+            }
+            coro::yield(value)
+          }
+        })()
+      },
       get_turns = function() state$turns,
       set_turns = function(turns) state$turns <- turns,
       get_system_prompt = function() state$system_prompt,
       set_system_prompt = function(prompt) state$system_prompt <- prompt,
       get_tools = function() state$tools,
+      set_tools = function(tools) {
+        state$tools <- list()
+        for (tool in tools) {
+          state$tools[[tool@name]] <- tool
+        }
+      },
       register_tool = function(tool) state$tools[[tool@name]] <- tool,
       register_tools = function(tools) {
         for (tool in tools) {
@@ -163,7 +240,8 @@ tempest_contract_parent_chat <- function(child_chat) {
       get_tokens = function() {
         data.frame(input = 10, output = 5, cached_input = 0, cost = 0)
       },
-      get_provider = function() list(name = "mock", model = "parent"),
+      get_provider = function() tempest_mock_provider(),
+      get_model = function() "parent",
       last_turn = function(role = "assistant") {
         if (length(state$turns) == 0L) {
           return(NULL)
