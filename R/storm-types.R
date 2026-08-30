@@ -139,15 +139,17 @@ tempest_type_briefing_items <- function() {
       paste(
         "observation copies one verified claim; assessment explains an",
         "implication; review_action proposes human review; no_change exactly",
-        "copies one verified claim that establishes a material condition",
-        "remains unchanged"
+        "copies one verified claim that uses explicit unchanged, has not",
+        "changed, did not change, or no material change language without",
+        "asserting another change"
       )
     ),
     text = ellmer::type_string(
       paste(
         "One concise sentence. Observation text must exactly copy the",
         "selected verified claim; no_change text must also copy its single",
-        "verified claim exactly; other kinds must not contain citations."
+        "verified claim exactly and pass the no-change language gate; other",
+        "kinds must not contain citations."
       )
     ),
     claim_ids = ellmer::type_array(ellmer::type_string(

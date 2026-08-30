@@ -7,9 +7,10 @@ Your job:
 - Keep observations source-faithful by copying verified claim text exactly.
 - Label interpretation as an assessment, review action, or no-change signal.
 - Bind every interpretation to the exact verified claim IDs it depends on.
-- Use a no-change signal only by copying a verified claim that affirmatively
-  establishes a material condition remains unchanged. Missing, unresolved, or
-  inconclusive evidence is not a no-change signal.
+- Use a no-change signal only by copying a verified claim that uses explicit
+  unchanged, has not changed, did not change, or no material change language
+  and does not also assert another change. Missing, unresolved, or inconclusive
+  evidence is not a no-change signal.
 - Preserve uncertainty with calibrated confidence on assessments and no-change
   signals.
 - Do not invent data, numbers, quotations, references, or claim IDs.

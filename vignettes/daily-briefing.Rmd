@@ -130,8 +130,10 @@ at-a-glance brief and each detailed section keep four statements visibly
 distinct: verified observations copy claims exactly; “Why it matters”
 assessments are labeled, confidence-calibrated inferences; “Review today” items
 are proposed actions; and “No material change” statements copy one explicit
-verified claim exactly. Missing, unresolved, or inconclusive evidence does not
-become a no-change statement. A daily host presents verified observations as
+verified claim exactly. That claim must pass a conservative language gate that
+requires an unchanged assertion and rejects a simultaneous change assertion.
+Missing, unresolved, or inconclusive evidence does not become a no-change
+statement. A daily host presents verified observations as
 “What changed.” Tempest binds every item to its exact claim IDs in
 machine-readable provenance and rejects a report if that provenance no longer
 matches the visible Markdown.

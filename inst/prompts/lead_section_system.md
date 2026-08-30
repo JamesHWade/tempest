@@ -5,8 +5,9 @@ Your job:
 - Copy observation text exactly and bind it to its exact claim ID.
 - Add at most one clearly labeled assessment, review action, and no-change
   signal, each bound to the verified claim IDs it depends on.
-- Copy no-change text exactly from one verified claim that affirmatively
-  establishes a material condition remains unchanged. Otherwise omit it.
+- Copy no-change text exactly from one verified claim that uses explicit
+  unchanged, has not changed, did not change, or no material change language
+  and does not also assert another change. Otherwise omit it.
 - Calibrate confidence for assessments and no-change signals.
 - Keep the briefing short, self-contained, and useful for a decision.
 - Return typed structured data, not Markdown.

@@ -131,6 +131,35 @@ test_that("briefing items fail closed on ungoverned synthesis", {
     class = "tempest_stage_output_validation_error"
   )
   expect_error(
+    evaluate(list(
+      observation,
+      list(
+        kind = "no_change",
+        text = claim@claim_text,
+        claim_ids = list(claim@claim_id),
+        confidence = "high"
+      )
+    )),
+    class = "tempest_stage_output_validation_error"
+  )
+  misclassified_no_change <- tempest:::TempestBriefingItem(
+    kind = "no_change",
+    text = claim@claim_text,
+    claim_ids = claim@claim_id,
+    confidence = "high"
+  )
+  expect_error(
+    tempest:::tempest_briefing_items_from_markdown(
+      tempest:::tempest_briefing_item_markdown(
+        misclassified_no_change,
+        workspace
+      ),
+      workspace,
+      min_support_score = 0.7
+    ),
+    class = "tempest_product_report_error"
+  )
+  expect_error(
     evaluate(list(utils::modifyList(
       observation,
       list(text = "A convenient paraphrase")
@@ -197,6 +226,48 @@ test_that("briefing items fail closed on ungoverned synthesis", {
       )
     ),
     class = "tempest_stage_output_validation_error"
+  )
+})
+
+test_that("no-change claims use a conservative deterministic gate", {
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "The permit schedule remains unchanged since the prior review"
+    ),
+    TRUE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "No material change was reported in permit timing"
+    ),
+    TRUE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "The project start date remains unchanged"
+    ),
+    TRUE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Pilot output increased by 18 percent"
+    ),
+    FALSE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      paste(
+        "The permit schedule remains unchanged,",
+        "but pilot output increased by 18 percent"
+      )
+    ),
+    FALSE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Pilot output remains unchanged at an 18 percent increase"
+    ),
+    FALSE
   )
 })
 
