@@ -32,5 +32,5 @@
     Condition
       Error:
       ! <tempest::TempestTrajectoryReview> object is invalid:
-      - Trajectory accepted revisions retained items must be unique.
+      - Trajectory accepted revisions must use sorted unique record identities.
 

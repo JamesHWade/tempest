@@ -246,7 +246,8 @@ test_that("the STORM manifest follows the artifacts it certifies", {
     lead_section = "Durable evidence is written before its manifest.",
     draft_md = paste0(
       "Durable evidence is written before its manifest.\n\n",
-      "## Findings\n\n",
+      tempest:::tempest_section_markdown_heading(),
+      "\n\n",
       "Durable evidence is written before its manifest."
     ),
     completed_stages = c("research", "write")

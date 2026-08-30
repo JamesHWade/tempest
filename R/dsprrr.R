@@ -209,6 +209,30 @@ tempest_dsprrr_execution_metadata_validate <- function(execution, metadata) {
   invisible(metadata)
 }
 
+tempest_dsprrr_structured_missing <- function(value) {
+  is.atomic(value) && length(value) == 1L && is.na(value)
+}
+
+tempest_dsprrr_structured_output <- function(value) {
+  if (is.factor(value)) {
+    return(unname(as.character(value)))
+  }
+  if (is.data.frame(value)) {
+    rows <- lapply(seq_len(nrow(value)), function(index) {
+      row <- lapply(value, function(column) {
+        cell <- if (is.list(column)) column[[index]] else column[index]
+        tempest_dsprrr_structured_output(cell)
+      })
+      row[!vapply(row, tempest_dsprrr_structured_missing, logical(1))]
+    })
+    return(unname(rows))
+  }
+  if (is.list(value) && is.null(attr(value, "class", exact = TRUE))) {
+    return(lapply(value, tempest_dsprrr_structured_output))
+  }
+  value
+}
+
 #' @keywords internal
 tempest_run_dsprrr_module_structured <- function(module, chat, inputs, step) {
   execution <- tempest_dsprrr_execution_verify(module, step)
@@ -234,6 +258,7 @@ tempest_run_dsprrr_module_structured <- function(module, chat, inputs, step) {
     )
   }
   tempest_dsprrr_execution_metadata_validate(execution, result$metadata)
+  result$output <- tempest_dsprrr_structured_output(result$output)
   result
 }
 
@@ -252,7 +277,12 @@ tempest_run_dsprrr_module_async <- function(module, chat, inputs, step) {
   )
   metadata <- attr(request, "dsprrr_trace_context", exact = TRUE)
   tempest_dsprrr_execution_metadata_validate(execution, metadata)
-  request
+  normalized <- promises::then(
+    request,
+    tempest_dsprrr_structured_output
+  )
+  attr(normalized, "dsprrr_trace_context") <- metadata
+  normalized
 }
 
 tempest_dsprrr_contract_condition <- function(condition) {
@@ -365,6 +395,9 @@ tempest_make_dsprrr_modules <- function(config) {
           "When source_context is present, return only source_id values listed there.",
           "Use source_ids as the set of provider-native sources attached to this turn.",
           "Do not use a known source unless the answer text or provider-native turn context supports the claim.",
+          "Every quote must be a verbatim contiguous substring of captured source context, including exact capitalization and Markdown.",
+          "Never quote answer-only prose; omit the quote when no captured source excerpt contains it.",
+          "Never add formatting or ellipses to a quote; omit it when no exact quote is available.",
           "Include support_score in [0,1] when source support is clear; omit it when unscored.",
           "Do not infer or invent facts.",
           sep = "\n"
@@ -414,6 +447,7 @@ tempest_make_dsprrr_modules <- function(config) {
         instructions = paste(
           "Create a preliminary STORM outline from parametric knowledge.",
           "Organize into 4-6 sections with subsections and bullet points.",
+          "Do not include an introduction, summary, overview, conclusion, executive summary, or at-a-glance section; Tempest generates the decision lead separately.",
           "The outline will later be refined using verified facts.",
           sep = "\n"
         )
@@ -432,6 +466,8 @@ tempest_make_dsprrr_modules <- function(config) {
         instructions = paste(
           "Refine the draft outline using verified fact notes.",
           "Adjust, merge, add, or remove sections based on available evidence.",
+          "Exclude introduction, summary, overview, conclusion, executive summary, and at-a-glance sections; Tempest generates the decision lead separately.",
+          "Remove requested angles that lack verified facts; a one-section outline is valid and preferred when evidence is sparse.",
           "Ensure sections are supportable by cited facts.",
           sep = "\n"
         )
@@ -446,15 +482,19 @@ tempest_make_dsprrr_modules <- function(config) {
           dsprrr::input("subsections", "string"),
           dsprrr::input("facts", "string")
         ),
-        output_type = ellmer::type_object(
-          section_text = ellmer::type_string(
-            "Markdown section text with citations"
-          )
-        ),
+        output_type = tempest_type_briefing_items(),
         instructions = paste(
-          "Write one concise Markdown report section.",
-          "Use only the provided verified facts.",
-          "Every factual claim must include source citations like [Sxxxxxxxxxxxx].",
+          "Prepare one concise, decision-useful section as typed briefing items.",
+          "Use only the supplied verified facts and their exact claim_ids.",
+          "Return one to three observations by copying claim text exactly.",
+          "Add up to two assessment prompts using only: Assess the decision implications of: CLAIM_TEXT.",
+          "Add up to two review_action prompts using only: Review before deciding: CLAIM_TEXT.",
+          "For multiple bound claims, sort by claim_id and join their exact claim text with ' | ' in either prompt.",
+          "Add at most one no_change item by copying exactly one verified claim that explicitly uses unchanged, has not changed, did not change, or no material change language and does not also assert another change.",
+          "Omit no_change when the evidence is missing, unresolved, or merely fails to establish a change.",
+          "Every non-observation item must bind exactly the claim_ids copied into its text.",
+          "Assessments and no_change items require calibrated confidence; observations and review actions omit it.",
+          "Do not put source citations, Markdown, or provenance prose in item text.",
           sep = "\n"
         )
       ),
@@ -468,14 +508,18 @@ tempest_make_dsprrr_modules <- function(config) {
           dsprrr::input("article_body", "string"),
           dsprrr::input("facts", "string")
         ),
-        output_type = ellmer::type_object(
-          lead_section = ellmer::type_string(
-            "A 2-3 paragraph lead section with citations"
-          )
-        ),
+        output_type = tempest_type_briefing_items(),
         instructions = paste(
-          "Write a Wikipedia-style lead section for the article.",
-          "It must be self-contained, summarize the most important points, and preserve citations.",
+          "Prepare a compact at-a-glance decision brief as typed items.",
+          "Use only the supplied verified facts and their exact claim_ids.",
+          "Select one to three observations by copying claim text exactly.",
+          "Add no more than one assessment prompt using only: Assess the decision implications of: CLAIM_TEXT.",
+          "Add no more than one review_action prompt using only: Review before deciding: CLAIM_TEXT.",
+          "For multiple bound claims, sort by claim_id and join their exact claim text with ' | ' in either prompt.",
+          "A no_change item must copy exactly one verified claim that explicitly uses unchanged, has not changed, did not change, or no material change language and does not also assert another change; otherwise omit it.",
+          "Every non-observation item must bind exactly the verified claim_ids copied into its text.",
+          "Assessments and no_change items require calibrated confidence; observations and review actions omit it.",
+          "Do not put source citations, Markdown, or provenance prose in item text.",
           sep = "\n"
         )
       ),

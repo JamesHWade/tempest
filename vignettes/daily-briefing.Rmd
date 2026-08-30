@@ -60,7 +60,9 @@ topic <- paste(
   "Daily decision briefing on grid-scale battery recycling as of",
   Sys.Date(),
   "Cover what changed, why it matters, what needs review today,",
-  "and material no-change signals. Preserve uncertainty and cite evidence."
+  "and any material no-change signal explicitly established by evidence.",
+  "Omit no-change when evidence is missing or inconclusive. Preserve",
+  "uncertainty and cite evidence."
 )
 
 matches <- graft_find(view, "grid-scale battery recycling", limit = 25)
@@ -86,7 +88,8 @@ technical <- tempest_expert(
   description = "Reviews demonstrated process performance and scale-up risk.",
   instructions = paste(
     "Separate measured performance from projections.",
-    "Call out consequential unknowns and material no-change signals."
+    "Call out consequential unknowns. Report no change only when a verified",
+    "claim explicitly establishes an unchanged material condition."
   ),
   focus_areas = c("process yield", "scale-up", "safety")
 )
@@ -105,6 +108,7 @@ market <- tempest_expert(
 result <- tempest_run(
   topic,
   config = tempest_config(
+    models = "openai/gpt-5.6-luna",
     citation_policy = "claim_verified",
     on_unsupported_claim = "flag"
   ),
@@ -121,10 +125,22 @@ claims <- tempest_claims(result)
 supports <- tempest_claim_supports(result)
 ```
 
-Treat the report as the briefing and the tables as its evidence rail. A host UI
-can lead with “What changed,” “Why it matters,” and “Review today,” while still
-making unsupported or disputed claims visible. Whether somebody was shown the
-briefing or read it is operational state; it is not accepted knowledge.
+Treat the report as the briefing and the tables as its evidence rail. The
+at-a-glance brief and each detailed section keep four statements visibly
+distinct: verified observations copy claims exactly; “Why it matters”
+assessments are labeled, confidence-calibrated inferences; “Review today” items
+are proposed actions; and “No material change” statements copy one explicit
+verified claim exactly. That claim must pass a conservative language gate that
+requires an unchanged assertion and rejects a simultaneous change assertion.
+Missing, unresolved, or inconclusive evidence does not become a no-change
+statement. A daily host presents verified observations as
+“What changed.” Tempest binds every item to its exact claim IDs in
+machine-readable provenance and rejects a report if that provenance no longer
+matches the visible Markdown.
+
+Whether somebody was shown the briefing or read it is operational state; it is
+not accepted knowledge. An assessment or review action is also not accepted
+knowledge merely because it appears in the briefing.
 
 ## Review the evidence and the run separately
 

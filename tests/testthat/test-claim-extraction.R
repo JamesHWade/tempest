@@ -185,6 +185,54 @@ test_that("extraction forwards provider-native source context", {
   expect_match(captured_inputs$source_context, source$id, fixed = TRUE)
 })
 
+test_that("extraction cannot use a model answer as native source evidence", {
+  store <- tempest_research_workspace()
+  url <- "https://example.org/native-without-provider-evidence"
+  source <- tempest:::tempest_native_resource_from_url(
+    url,
+    title = "Native source without captured evidence"
+  )
+  store$upsert_retrieved_resource(source)
+  model_answer <- "Unsupported model-authored assertion."
+  module <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "extract_claims",
+    trace_context = list(stage = "extract_claims")
+  )
+  local_mocked_bindings(
+    tempest_run_dsprrr_module_structured = function(...) {
+      structure(
+        list(
+          output = list(
+            facts = list(list(
+              claim = model_answer,
+              sources = list(list(
+                source_id = source@resource_id,
+                quote = model_answer
+              )),
+              confidence = "high"
+            ))
+          )
+        ),
+        class = "dsprrr_result"
+      )
+    }
+  )
+
+  expect_error(
+    tempest:::tempest_extract_facts_from_answer(
+      chat = NULL,
+      answer_text = model_answer,
+      store = store,
+      module = module,
+      source_ids = source@resource_id
+    ),
+    class = "tempest_stage_output_validation_error"
+  )
+  expect_length(store$list_proposed_claims(), 0L)
+  expect_length(store$list_evidence_spans(), 0L)
+})
+
 test_that("extraction is fail-closed on provider and binding errors", {
   store <- fake_store_with_sources(1)
   module <- tempest:::tempest_program_set_execution(

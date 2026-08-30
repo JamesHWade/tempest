@@ -15,6 +15,54 @@ tempest_public_condition_categories <- function() {
   )
 }
 
+tempest_condition_chain_sensitive <- function(error) {
+  current <- error
+  for (depth in seq_len(100L)) {
+    call <- conditionCall(current)
+    exposed <- c(
+      conditionMessage(current),
+      class(current),
+      if (is.null(call)) character() else deparse(call, width.cutoff = 500L)
+    )
+    if (tempest_contract_sensitive_scalar(exposed)) {
+      return(TRUE)
+    }
+    current <- current$parent %||% NULL
+    if (is.null(current)) {
+      return(FALSE)
+    }
+    if (!inherits(current, "condition")) {
+      return(TRUE)
+    }
+  }
+  TRUE
+}
+
+tempest_condition_safe_summary <- function(error) {
+  classes <- class(error)
+  exposed <- c(conditionMessage(error), classes)
+  if (tempest_contract_sensitive_scalar(exposed)) {
+    safe_classes <- classes[
+      grepl("^[A-Za-z][A-Za-z0-9_.-]*$", classes) &
+        !vapply(classes, tempest_contract_sensitive_scalar, logical(1))
+    ]
+    return(rlang::error_cnd(
+      "tempest_redacted_cause",
+      message = "Underlying failure details were redacted.",
+      cause_classes = unname(safe_classes)
+    ))
+  }
+  custom_classes <- setdiff(classes, c("error", "condition"))
+  if (length(custom_classes) == 0L) {
+    custom_classes <- "tempest_external_cause"
+  }
+  rlang::error_cnd(
+    custom_classes,
+    message = conditionMessage(error),
+    cause_classes = unname(classes)
+  )
+}
+
 # Ordered rules. The first pattern matching any class in the condition's class
 # vector selects the public category, so the more specific families are listed
 # before the broader ones.

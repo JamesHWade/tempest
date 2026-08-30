@@ -80,7 +80,11 @@ tempest_type_fact_extract <- function() {
     source_id = ellmer::type_string("Source id like Sxxxxxxxxxxxx"),
     url = ellmer::type_string("URL if available", required = FALSE),
     quote = ellmer::type_string(
-      "Short supporting quote (<=20 words) if available",
+      paste(
+        "Verbatim contiguous substring copied from captured source context,",
+        "including exact capitalization and Markdown;",
+        "20 words or fewer, with no ellipses or added formatting"
+      ),
       required = FALSE
     )
   )
@@ -124,4 +128,40 @@ tempest_type_query_decomposition <- function() {
       ellmer::type_string("A targeted search query")
     )
   )
+}
+
+#' @keywords internal
+tempest_type_briefing_items <- function() {
+  tempest_require("ellmer")
+  item <- ellmer::type_object(
+    kind = ellmer::type_enum(
+      tempest_briefing_item_kinds(),
+      paste(
+        "observation copies one verified claim; assessment uses the closed",
+        "Assess the decision implications of prompt; review_action uses the",
+        "closed Review before deciding prompt; no_change exactly",
+        "copies one verified claim that uses explicit unchanged, has not",
+        "changed, did not change, or no material change language without",
+        "asserting another change"
+      )
+    ),
+    text = ellmer::type_string(
+      paste(
+        "One concise sentence. Observation text must exactly copy the",
+        "selected verified claim; no_change text must also copy its single",
+        "verified claim exactly and pass the no-change language gate;",
+        "assessment and review_action text must use their closed prompt and",
+        "copy exact bound claim text, joined in claim_id order with ' | '."
+      )
+    ),
+    claim_ids = ellmer::type_array(ellmer::type_string(
+      "Exact claim id from the supplied verified fact notes"
+    )),
+    confidence = ellmer::type_enum(
+      tempest_briefing_item_confidences(),
+      "Required only for assessment and no_change items",
+      required = FALSE
+    )
+  )
+  ellmer::type_object(items = ellmer::type_array(item))
 }

@@ -28,5 +28,5 @@ test_that("lead_section_system prompt exists", {
   prompt <- tempest:::tempest_prompt("lead_section_system")
   expect_type(prompt, "character")
   expect_gt(nchar(prompt), 0)
-  expect_match(prompt, "lead", ignore.case = TRUE)
+  expect_match(prompt, "at-a-glance decision briefing", ignore.case = TRUE)
 })

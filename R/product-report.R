@@ -389,9 +389,16 @@ tempest_package_structural_headings <- function() {
     "Methodology",
     "Results",
     "Evidence",
+    "Evidence focus",
     "Discussion",
     "Limitations",
     "Recommendations",
+    "At a glance",
+    "Verified observations",
+    "What changed",
+    "Why it matters",
+    "Review today",
+    "No material change",
     "Conclusion",
     "Conclusions",
     "Summary"
@@ -406,9 +413,8 @@ tempest_markdown_structural_heading <- function(lines) {
     "",
     lines
   )
-  headings &
-    tolower(tempest_trim(heading_text)) %in%
-      tolower(tempest_package_structural_headings())
+  normalized <- tolower(tempest_trim(heading_text))
+  headings & normalized %in% tolower(tempest_package_structural_headings())
 }
 
 #' @keywords internal
@@ -636,7 +642,16 @@ tempest_strict_publication_claims <- function(
       "Strict publication contains a malformed source-citation token."
     )
   }
-  assertions <- tempest_strict_publication_assertions(text)
+  factual <- tempest_briefing_markdown_assertion_input(
+    text,
+    store,
+    min_support_score = min_support_score
+  )
+  text <- factual$text
+  assertions <- tempest_strict_publication_assertions(
+    text,
+    atomic_lines = factual$atomic_lines
+  )
   if (length(assertions) == 0L) {
     if (nzchar(tempest_trim(text))) {
       tempest_product_report_abort(
@@ -776,20 +791,37 @@ tempest_strict_publication_claims <- function(
 }
 
 #' @keywords internal
-tempest_strict_publication_assertions <- function(text) {
+tempest_strict_publication_assertions <- function(
+  text,
+  atomic_lines = integer()
+) {
   lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
-  lines <- lines[nzchar(tempest_trim(lines))]
+  line_numbers <- seq_along(lines)
+  nonempty <- nzchar(tempest_trim(lines))
+  lines <- lines[nonempty]
+  line_numbers <- line_numbers[nonempty]
   structural <- tempest_markdown_structural_heading(lines)
   references <- grepl(
     "^[[:space:]]*\\[\\^S[0-9a-f]{12}\\]:",
     lines
   )
-  lines <- lines[!references & !structural]
+  keep <- !references & !structural
+  lines <- lines[keep]
+  atomic <- line_numbers[keep] %in% atomic_lines
   if (length(lines) == 0L) {
     return(character())
   }
   assertions <- unlist(
-    lapply(lines, \(line) strsplit(line, "(?<=[.!?])\\s+", perl = TRUE)[[1]]),
+    Map(
+      function(line, is_atomic) {
+        if (is_atomic) {
+          return(line)
+        }
+        strsplit(line, "(?<=[.!?])\\s+", perl = TRUE)[[1]]
+      },
+      lines,
+      atomic
+    ),
     use.names = FALSE
   )
   assertions <- assertions[
@@ -979,6 +1011,11 @@ tempest_report_md_render <- function(
   title <- tempest_report_title_validate(title)
   rendered_title <- tempest_markdown_escape_plain_text(title, "report title")
   tempest_report_body_validate_reserved_sections(body)
+  tempest_briefing_items_from_markdown(
+    body,
+    workspace,
+    min_support_score = min_support_score
+  )
   if (
     !isTRUE(include_references) &&
       citation_policy %in% c("claim_verified", "strict")

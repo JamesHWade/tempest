@@ -18,6 +18,84 @@ test_that("tempest_make_dsprrr_modules creates modules", {
       "lead_section"
     )
   )
+  extraction_instructions <- result$extract_claims$signature@instructions
+  expect_match(
+    extraction_instructions,
+    "verbatim contiguous substring of captured source context",
+    fixed = TRUE
+  )
+  expect_match(
+    extraction_instructions,
+    "Never quote answer-only prose",
+    fixed = TRUE
+  )
+  expect_no_match(
+    extraction_instructions,
+    "substring of the answer text",
+    fixed = TRUE
+  )
+  extraction_type <- tempest:::tempest_type_fact_extract()
+  quote_description <- extraction_type@properties$facts@items@properties$sources@items@properties$quote@description
+  expect_match(
+    quote_description,
+    "captured source context",
+    fixed = TRUE
+  )
+  expect_no_match(quote_description, "answer", fixed = TRUE)
+})
+
+test_that("dsprrr structured results cross as canonical JSON records", {
+  execution <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "extract_claims"
+  )
+  provider_output <- list(
+    facts = tibble::tibble(
+      claim = "A captured claim.",
+      sources = list(tibble::tibble(
+        source_id = "S123456789abc",
+        url = "https://example.org/source",
+        quote = "captured claim"
+      )),
+      confidence = factor("high", levels = c("low", "medium", "high")),
+      support_score = 1,
+      note = NA_character_
+    )
+  )
+  local_mocked_bindings(
+    tempest_dsprrr_run = function(...) {
+      structure(
+        list(
+          output = provider_output,
+          metadata = list(
+            program_artifact_id = execution$program_artifact_id,
+            trace_context = execution$trace_context
+          )
+        ),
+        class = "dsprrr_result"
+      )
+    }
+  )
+
+  result <- tempest:::tempest_run_dsprrr_module_structured(
+    execution,
+    chat = NULL,
+    inputs = list(),
+    step = "extract_claims"
+  )
+
+  expect_type(result$output$facts, "list")
+  expect_null(attr(result$output$facts, "class", exact = TRUE))
+  expect_named(result$output$facts, NULL)
+  expect_named(
+    result$output$facts[[1L]],
+    c("claim", "sources", "confidence", "support_score")
+  )
+  expect_identical(result$output$facts[[1L]]$confidence, "high")
+  expect_type(result$output$facts[[1L]]$sources, "list")
+  expect_null(
+    attr(result$output$facts[[1L]]$sources[[1L]], "class", exact = TRUE)
+  )
 })
 test_that("tempest_run_dsprrr_module rejects a missing bound module", {
   expect_error(

@@ -70,6 +70,57 @@ test_that("STORM product state permits legitimate partial stage results", {
   expect_null(validated$outline)
 })
 
+test_that("STORM reuses only a digest-bound durable draft outline", {
+  outline <- list(
+    title = "Lithium batteries",
+    sections = list(list(
+      title = "Overview",
+      summary = "Summary",
+      subsections = list(list(
+        title = "Evidence",
+        bullets = "Review the evidence.",
+        needed = character()
+      ))
+    ))
+  )
+  record <- tempest:::tempest_stage_record_succeed(
+    tempest:::tempest_stage_record_start(
+      "draft_outline",
+      paste0("sha256:", strrep("a", 64L))
+    ),
+    tempest:::tempest_stage_output_reference(
+      "state_field",
+      "draft_outline",
+      content_digest = tempest:::tempest_stage_state_output_digest(
+        "draft_outline",
+        outline
+      )
+    ),
+    support_status = "unknown"
+  )
+  state <- tempest:::tempest_storm_state(
+    "Lithium batteries",
+    draft_outline = outline,
+    stage_records = list(record)
+  )
+
+  expect_identical(
+    tempest:::tempest_storm_has_durable_draft_outline(state),
+    TRUE
+  )
+  state$stage_records <- list()
+  expect_identical(
+    tempest:::tempest_storm_has_durable_draft_outline(state),
+    FALSE
+  )
+  state$stage_records <- list(record)
+  state$draft_outline$title <- "Changed outline"
+  expect_identical(
+    tempest:::tempest_storm_has_durable_draft_outline(state),
+    FALSE
+  )
+})
+
 test_that("STORM product state records experts without runtime objects", {
   expert <- tempest_expert(
     name = "Dr. Policy",

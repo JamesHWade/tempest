@@ -2,7 +2,7 @@
 # Reusable fakes so ledger/verification logic is testable without network or API keys.
 
 tempest_mock_provider <- function(name = "mock", model = "fake") {
-  arguments <- list(
+  provider_args <- list(
     name = name,
     model = model,
     base_url = "https://example.invalid",
@@ -11,10 +11,18 @@ tempest_mock_provider <- function(name = "mock", model = "fake") {
     extra_headers = character(),
     credentials = NULL
   )
-  do.call(
+  accepted_provider_args <- names(formals(ellmer::Provider))
+  provider <- do.call(
     ellmer::Provider,
-    arguments[names(arguments) %in% names(formals(ellmer::Provider))]
+    provider_args[names(provider_args) %in% accepted_provider_args]
   )
+  attr(provider, "tempest_mock_model") <- model
+  provider
+}
+
+# A deterministic current ellmer provider for fake Chat objects.
+fake_chat_provider <- function(model = "fake") {
+  tempest_mock_provider(model = model)
 }
 
 # A deterministic Chat-compatible fake. Direct structured and text calls retain
@@ -33,7 +41,6 @@ fake_chat <- function(
   state$turns <- list()
   state$tools <- list()
   state$system_prompt <- NULL
-  state$provider <- tempest_mock_provider()
   state$on_tool_request <- function(request) invisible(request)
   state$on_tool_result <- function(result) invisible(result)
   state$tokens <- data.frame(
@@ -42,6 +49,7 @@ fake_chat <- function(
     cached_input = numeric(),
     cost = numeric()
   )
+  state$provider <- fake_chat_provider()
 
   resolve <- function(value, prompt) {
     if (is.function(value)) {
@@ -191,6 +199,7 @@ fake_chat <- function(
       set_tools = function(tools) {
         state$tools <- list()
         register_tools(tools)
+        invisible(NULL)
       },
       register_tool = function(tool) {
         register_tools(list(tool))
@@ -198,7 +207,9 @@ fake_chat <- function(
       register_tools = register_tools,
       get_tokens = function() state$tokens,
       get_provider = function() state$provider,
-      get_model = function() "fake",
+      get_model = function() {
+        attr(state$provider, "tempest_mock_model") %||% "fake"
+      },
       last_turn = function(role = "assistant") {
         role_class <- switch(
           role,
@@ -337,6 +348,33 @@ fake_stage_inputs <- function(stage) {
       article_body = "",
       facts = "Verified facts"
     )
+  )
+}
+
+fake_briefing_output <- function(claims) {
+  list(
+    items = lapply(claims, function(claim) {
+      list(
+        kind = "observation",
+        text = claim@claim_text,
+        claim_ids = list(claim@claim_id)
+      )
+    })
+  )
+}
+
+fake_briefing_output_from_prompt <- function(prompt, claim_text) {
+  match <- regexec("claim_id: ([^)]+)", prompt)
+  parts <- regmatches(prompt, match)[[1]]
+  if (length(parts) != 2L) {
+    stop("fake briefing prompt has no claim_id")
+  }
+  list(
+    items = list(list(
+      kind = "observation",
+      text = claim_text,
+      claim_ids = list(parts[[2]])
+    ))
   )
 }
 

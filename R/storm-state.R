@@ -199,6 +199,28 @@ tempest_storm_succeeded_stage_records <- function(records, stage) {
   )
 }
 
+tempest_storm_has_durable_draft_outline <- function(state) {
+  if (is.null(state$draft_outline)) {
+    return(FALSE)
+  }
+  records <- tempest_storm_succeeded_stage_records(
+    state$stage_records,
+    "draft_outline"
+  )
+  if (length(records) == 0L) {
+    return(FALSE)
+  }
+  expected <- tempest_stage_state_output_digest(
+    "draft_outline",
+    state$draft_outline
+  )
+  any(vapply(
+    records,
+    \(record) identical(record@output_reference$content_digest, expected),
+    logical(1)
+  ))
+}
+
 tempest_storm_require_succeeded_stage <- function(records, stage, product) {
   matched <- tempest_storm_succeeded_stage_records(records, stage)
   if (length(matched) == 0L) {
@@ -239,7 +261,12 @@ tempest_storm_draft_section_texts <- function(state) {
   }
   headers <- vapply(
     sections,
-    \(section) paste0("## ", section$title %||% "Section", "\n\n"),
+    \(section) {
+      paste0(
+        tempest_section_markdown_heading(),
+        "\n\n"
+      )
+    },
     character(1)
   )
   texts <- character(length(headers))

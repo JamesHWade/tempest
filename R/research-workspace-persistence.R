@@ -471,7 +471,7 @@ tempest_research_workspace_record_number <- function(
       if (integer) "one exact integer." else "one finite number."
     ))
   }
-  value
+  if (isTRUE(integer)) value else as.double(value)
 }
 
 #' @keywords internal

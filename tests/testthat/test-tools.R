@@ -157,17 +157,18 @@ test_that("web tools produce only their delegated retriever spans", {
   )
 })
 
-test_that("native harvesting inserts and merges typed evidence resources", {
+test_that("native harvesting keeps model prose out of source evidence", {
   workspace <- tempest_research_workspace()
   url <- "https://example.org/native-typed-evidence"
   source_id <- tempest:::tempest_source_id(url)
+  model_answer <- "Model-authored answer must not become source evidence."
   local_mocked_bindings(
     tempest_now_utc = function() "2026-08-20T12:00:00.000000Z"
   )
 
   first_ids <- tempest:::tempest_harvest_native_sources_from_json(
     list(
-      text = "Provider answer context",
+      text = model_answer,
       annotations = list(list(
         url = url,
         title = "Native evidence",
@@ -186,12 +187,20 @@ test_that("native harvesting inserts and merges typed evidence resources", {
   expect_identical(first@title, "Native evidence")
   expect_identical(first@media_type, "text/html")
   expect_identical(first@resource_id, source_id)
-  expect_identical(first@content, "Provider answer context")
+  expect_identical(first@content, "Native evidence body")
   expect_identical(first@metadata$kind, "native_search")
   expect_identical(first@metadata$provider_tool, "native")
   expect_identical(first@metadata$snippet, "Native evidence snippet")
   expect_identical(first@metadata$content_text, "Native evidence body")
-  expect_identical(first@metadata$context_text, "Provider answer context")
+  expect_null(first@metadata$context_text)
+  expect_no_match(
+    jsonlite::toJSON(
+      tempest:::tempest_resource_data(first, include_content = TRUE),
+      auto_unbox = TRUE
+    ),
+    model_answer,
+    fixed = TRUE
+  )
 
   second_ids <- tempest:::tempest_harvest_native_sources_from_json(
     list(url = url),
@@ -205,8 +214,66 @@ test_that("native harvesting inserts and merges typed evidence resources", {
   expect_identical(merged@content, first@content)
   expect_identical(merged@metadata, first@metadata)
   expect_identical(presented$id, source_id)
-  expect_identical(presented$content_text, "Provider answer context")
+  expect_identical(presented$content_text, "Native evidence body")
   expect_identical(presented$snippet, "Native evidence snippet")
+})
+
+test_that("answer source resolution preserves captured provider evidence", {
+  workspace <- tempest_research_workspace()
+  url <- "https://example.org/native-retry-source"
+  resource <- tempest:::tempest_native_resource_from_url(
+    url,
+    title = "Native retry source",
+    context_text = "Captured provider excerpt."
+  )
+  workspace$upsert_retrieved_resource(resource)
+  model_answer <- paste("Current model answer.", url)
+
+  source_ids <- tempest:::tempest_answer_source_ids(
+    workspace,
+    model_answer,
+    character()
+  )
+  preserved <- workspace$get_retrieved_resource(resource@resource_id)
+
+  expect_identical(source_ids, resource@resource_id)
+  expect_identical(preserved, resource)
+  expect_identical(preserved@content, "Captured provider excerpt.")
+  expect_identical(
+    preserved@metadata$context_text,
+    "Captured provider excerpt."
+  )
+})
+
+test_that("URL-only native citations do not capture the model answer", {
+  workspace <- tempest_research_workspace()
+  url <- "https://example.org/native-url-only"
+  model_answer <- "Unsupported model-authored assertion."
+
+  source_ids <- tempest:::tempest_harvest_native_sources_from_json(
+    list(
+      text = model_answer,
+      annotations = list(list(
+        url = url,
+        title = "URL-only native citation"
+      ))
+    ),
+    workspace
+  )
+  resource <- workspace$get_retrieved_resource(source_ids[[1]])
+  data <- tempest:::tempest_resource_data(resource, include_content = TRUE)
+
+  expect_identical(source_ids, tempest:::tempest_source_id(url))
+  expect_null(data$content)
+  expect_identical(
+    names(data$metadata),
+    c("kind", "provider_tool")
+  )
+  expect_no_match(
+    jsonlite::toJSON(data, auto_unbox = TRUE, null = "null"),
+    model_answer,
+    fixed = TRUE
+  )
 })
 
 test_that("native evidence merging rejects TempestResource subclasses", {

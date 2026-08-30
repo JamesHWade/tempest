@@ -41,12 +41,9 @@ tempest_abort <- function(
 
 tempest_rethrow_operation <- function(error, class = character()) {
   package_error <- inherits(error, "tempest_error")
-  parent <- tryCatch(error$parent %||% NULL, error = function(...) NULL)
-  sensitive <- tempest_contract_sensitive_scalar(c(
-    conditionMessage(error),
-    class(error)
-  ))
-  if (package_error && is.null(parent) && !sensitive) {
+  sensitive <- tempest_condition_chain_sensitive(error)
+  if (package_error && !sensitive) {
+    class(error) <- tempest_condition_class(c(class, class(error)))
     stop(error)
   }
   tempest_abort(

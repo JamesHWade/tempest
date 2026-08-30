@@ -797,6 +797,11 @@ tempest_run_internal <- function(
         store
       )
     )
+    harvest$source_ids <- tempest_answer_source_ids(
+      store,
+      harvest$answer_text,
+      harvest$source_ids
+    )
     tempest_extract_facts_from_answer(
       extractor,
       harvest$answer_text,
@@ -908,14 +913,6 @@ tempest_run_internal <- function(
         system_prompt = tempest_prompt("fact_extractor_system"),
         echo = "none"
       )
-      tempest_research_attach_tools(
-        writer,
-        retriever,
-        role = "writer",
-        model = tempest_research_model(config, "writer"),
-        search_provider = config@search_provider
-      )
-
       title <- state$title
       perspectives <- state$perspectives
       experts <- state$experts
@@ -1368,16 +1365,25 @@ tempest_run_internal <- function(
         }
 
         # Step 1: Draft outline from LLM knowledge alone
-        draft_outline <- tempest_draft_outline(
-          writer,
-          topic,
-          title,
-          module = programs$draft_outline,
-          record_stage = stage_recorder(function(next_state, output) {
-            next_state$draft_outline <- output
-            next_state
-          })
-        )
+        if (tempest_storm_has_durable_draft_outline(state)) {
+          draft_outline <- state$draft_outline
+          if (verbose) {
+            tempest_inform(
+              "Using persisted draft outline from {.path {run_dir}}"
+            )
+          }
+        } else {
+          draft_outline <- tempest_draft_outline(
+            writer,
+            topic,
+            title,
+            module = programs$draft_outline,
+            record_stage = stage_recorder(function(next_state, output) {
+              next_state$draft_outline <- output
+              next_state
+            })
+          )
+        }
 
         # Step 2: Refined outline incorporating facts
         verified_evidence <- ensure_grounded_evidence()
@@ -1474,9 +1480,9 @@ tempest_run_internal <- function(
 
         draft_md <- paste(parts, collapse = "\n\n")
 
-        # Generate Wikipedia-style lead section
+        # Generate the at-a-glance decision brief
         if (verbose) {
-          tempest_inform("Generating lead section")
+          tempest_inform("Generating at-a-glance brief")
         }
         lead_facts <- tempest_summarize_facts_for_prompt(
           store,

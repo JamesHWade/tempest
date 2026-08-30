@@ -5,6 +5,7 @@ tempest_contract_child_chat <- function() {
   state$system_prompt <- NULL
   state$on_tool_request <- function(request) invisible(NULL)
   state$on_tool_result <- function(result) invisible(NULL)
+  state$provider <- fake_chat_provider("child")
 
   add_turn <- function(contents) {
     state$turns <- c(
@@ -51,36 +52,17 @@ tempest_contract_child_chat <- function() {
           coro::exhausted()
         }
       },
-      stream_async = function(
-        prompt = NULL,
-        tool_mode = c("concurrent", "sequential"),
-        stream = c("text", "content"),
-        controller = NULL
-      ) {
-        source <- chat$stream(
-          prompt = prompt,
-          stream = stream,
-          controller = controller
-        )
+      stream_async = function(...) {
+        source <- chat$stream(...)
         coro::async_generator(function() {
           repeat {
-            value <- source()
-            if (coro::is_exhausted(value)) {
+            content <- source()
+            if (coro::is_exhausted(content)) {
               break
             }
-            if (
-              inherits(value, "ellmer::ContentToolResult") &&
-                promises::is.promising(value@value)
-            ) {
-              resolved <- coro::await(value@value)
-              request <- value@request
-              value <- ellmer::ContentToolResult(
-                value = resolved,
-                request = request
-              )
-            }
-            coro::yield(value)
+            coro::yield(content)
           }
+          coro::exhausted()
         })()
       },
       get_turns = function() state$turns,
@@ -103,7 +85,7 @@ tempest_contract_child_chat <- function() {
       get_tokens = function() {
         data.frame(input = 4, output = 2, cached_input = 0, cost = 0)
       },
-      get_provider = function() tempest_mock_provider(),
+      get_provider = function() state$provider,
       get_model = function() "child",
       last_turn = function(role = "assistant") {
         if (length(state$turns) == 0L) {
@@ -128,6 +110,7 @@ tempest_contract_parent_chat <- function(child_chat) {
   state$on_tool_request <- function(request) invisible(NULL)
   state$on_tool_result <- function(result) invisible(NULL)
   state$request_number <- 0L
+  state$provider <- fake_chat_provider("parent")
 
   add_turn <- function(contents) {
     state$turns <- c(
@@ -175,49 +158,48 @@ tempest_contract_parent_chat <- function(child_chat) {
           }
           if (step == 2L) {
             state$on_tool_request(request)
-            result <- ellmer::ContentToolResult(
-              value = tool(
-                agent_name = request@arguments$agent_name,
-                task = request@arguments$task
-              ),
-              request = request
+            value <- tool(
+              agent_name = request@arguments$agent_name,
+              task = request@arguments$task
             )
-            state$on_tool_result(result)
-            return(result)
+            as_result <- function(value) {
+              result <- ellmer::ContentToolResult(
+                value = value,
+                request = request
+              )
+              state$on_tool_result(result)
+              result
+            }
+            if (promises::is.promising(value)) {
+              return(promises::then(value, as_result))
+            }
+            return(as_result(value))
           }
           coro::exhausted()
         }
       },
-      stream_async = function(
-        prompt = NULL,
-        tool_mode = c("concurrent", "sequential"),
-        stream = c("text", "content"),
-        controller = NULL
-      ) {
-        source <- chat$stream(
-          prompt = prompt,
-          stream = stream,
-          controller = controller
-        )
+      stream_async = function(...) {
         coro::async_generator(function() {
-          repeat {
-            value <- source()
-            if (coro::is_exhausted(value)) {
-              break
+          complete <- FALSE
+          while (!complete) {
+            source <- chat$stream(...)
+            repeat {
+              content <- source()
+              if (promises::is.promising(content)) {
+                content <- coro::await(content)
+              }
+              if (coro::is_exhausted(content)) {
+                break
+              }
+              complete <- complete ||
+                inherits(
+                  content,
+                  "ellmer::ContentText"
+                )
+              coro::yield(content)
             }
-            if (
-              inherits(value, "ellmer::ContentToolResult") &&
-                promises::is.promising(value@value)
-            ) {
-              resolved <- coro::await(value@value)
-              request <- value@request
-              value <- ellmer::ContentToolResult(
-                value = resolved,
-                request = request
-              )
-            }
-            coro::yield(value)
           }
+          coro::exhausted()
         })()
       },
       get_turns = function() state$turns,
@@ -240,7 +222,7 @@ tempest_contract_parent_chat <- function(child_chat) {
       get_tokens = function() {
         data.frame(input = 10, output = 5, cached_input = 0, cost = 0)
       },
-      get_provider = function() tempest_mock_provider(),
+      get_provider = function() state$provider,
       get_model = function() "parent",
       last_turn = function(role = "assistant") {
         if (length(state$turns) == 0L) {

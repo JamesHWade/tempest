@@ -504,6 +504,172 @@ test_that("strict policy binds every assertion and factual heading exactly", {
   }
 })
 
+test_that("strict briefing publication treats each governed item as one assertion", {
+  store <- fake_store_with_sources(1)
+  source_id <- store$list_retrieved_sources()[[1]]$id
+  claim <- tempest_claim(
+    "A U.S. rule becomes effective today.",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  store$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(store, list(claim))[[1]]
+  item <- tempest:::TempestBriefingItem(
+    kind = "observation",
+    text = claim@claim_text,
+    claim_ids = claim@claim_id
+  )
+  body <- paste(
+    "## Evidence focus",
+    tempest:::tempest_briefing_items_markdown(
+      list(item),
+      store
+    ),
+    sep = "\n\n"
+  )
+
+  expect_no_error(tempest:::tempest_report_md_render(
+    "Title",
+    body,
+    store,
+    citation_policy = "strict"
+  ))
+  expect_error(
+    tempest:::tempest_report_md_render(
+      "Title",
+      sub(
+        "## Evidence focus",
+        "## Evidence focus: Revenue increased 18%",
+        body,
+        fixed = TRUE
+      ),
+      store,
+      citation_policy = "strict"
+    ),
+    class = "tempest_product_report_error"
+  )
+  expect_error(
+    tempest:::tempest_report_md_render(
+      "Title",
+      paste(body, "An unbound assertion.", sep = "\n\n"),
+      store,
+      citation_policy = "strict"
+    ),
+    class = "tempest_product_report_error"
+  )
+})
+
+test_that("briefing items render each source as a citation token", {
+  store <- fake_store_with_sources(2)
+  source_ids <- vapply(
+    store$list_retrieved_sources(),
+    `[[`,
+    character(1),
+    "id"
+  )
+  claims <- list(
+    tempest_claim(
+      "Joint evidence",
+      source_ids = source_ids,
+      verification_status = "supported",
+      support_score = 0.9
+    ),
+    tempest_claim(
+      "The permit schedule remains unchanged since the prior review",
+      source_ids = source_ids,
+      verification_status = "supported",
+      support_score = 0.9
+    )
+  )
+  for (claim in claims) {
+    store$add_proposed_claim(claim)
+  }
+  claims <- fake_verify_claim_supports(store, claims)
+  items <- list(
+    tempest:::TempestBriefingItem(
+      kind = "observation",
+      text = claims[[1L]]@claim_text,
+      claim_ids = claims[[1L]]@claim_id
+    ),
+    tempest:::TempestBriefingItem(
+      kind = "no_change",
+      text = claims[[2L]]@claim_text,
+      claim_ids = claims[[2L]]@claim_id,
+      confidence = "high"
+    )
+  )
+  body <- tempest:::tempest_briefing_items_markdown(items, store)
+  citations <- paste0("[", source_ids, "]", collapse = " ")
+
+  citation_matches <- gregexpr(citations, body, fixed = TRUE)[[1L]]
+  expect_length(citation_matches[citation_matches != -1L], 2L)
+  report <- tempest:::tempest_report_md_render(
+    "Title",
+    body,
+    store,
+    citation_policy = "strict"
+  )
+  footnotes <- paste0("[^", source_ids, "]", collapse = " ")
+  footnote_matches <- gregexpr(footnotes, report, fixed = TRUE)[[1L]]
+  expect_length(footnote_matches[footnote_matches != -1L], 2L)
+  for (source_id in source_ids) {
+    expect_match(report, paste0("[^", source_id, "]:"), fixed = TRUE)
+  }
+})
+
+test_that("briefing items preserve ordinary sentence-level validation", {
+  store <- fake_store_with_sources(1)
+  source_id <- store$list_retrieved_sources()[[1]]$id
+  claims <- lapply(
+    c(
+      "A U.S. rule becomes effective today.",
+      "The first ordinary sentence is verified",
+      "The second ordinary sentence is verified"
+    ),
+    \(text) {
+      tempest_claim(
+        text,
+        source_ids = source_id,
+        verification_status = "supported",
+        support_score = 0.9
+      )
+    }
+  )
+  for (claim in claims) {
+    store$add_proposed_claim(claim)
+  }
+  claims <- fake_verify_claim_supports(store, claims)
+  item <- tempest:::TempestBriefingItem(
+    kind = "observation",
+    text = claims[[1L]]@claim_text,
+    claim_ids = claims[[1L]]@claim_id
+  )
+  ordinary <- paste0(
+    claims[[2L]]@claim_text,
+    " [",
+    source_id,
+    "]. ",
+    claims[[3L]]@claim_text,
+    " [",
+    source_id,
+    "]."
+  )
+  body <- paste(
+    "## Evidence focus",
+    tempest:::tempest_briefing_items_markdown(list(item), store),
+    ordinary,
+    sep = "\n\n"
+  )
+
+  expect_no_error(tempest:::tempest_report_md_render(
+    "Title",
+    body,
+    store,
+    citation_policy = "strict"
+  ))
+})
+
 test_that("strict publication requires exact captured source evidence", {
   store <- tempest_research_workspace()
   source <- tempest_resource(

@@ -48,7 +48,10 @@ tempest_write_section <- function(
 #' @keywords internal
 tempest_should_skip_section <- function(section_title) {
   grepl(
-    "^(introduction|conclusion|summary|overview)$",
+    paste0(
+      "^(introduction|conclusion|summary|overview)$|^",
+      "(executive summary|at[- ]a[- ]glance)([[:space:]:-].*)?$"
+    ),
     tolower(tempest_trim(section_title %||% ""))
   )
 }
@@ -83,21 +86,123 @@ tempest_section_facts_text <- function(
     return(result)
   }
 
-  result <- paste(
-    purrr::map_chr(relevant, function(f) {
+  result <- tempest_section_evidence_text(relevant)
+  attr(result, "verified_evidence") <- relevant
+  attr(result, "verified_evidence_count") <- as.integer(length(relevant))
+  result
+}
+
+tempest_section_evidence_text <- function(evidence) {
+  paste(
+    purrr::map_chr(evidence, function(f) {
       paste0(
         "- ",
         f@claim_text,
         " [",
         paste(f@source_ids, collapse = ", "),
-        "]"
+        "] (claim_id: ",
+        f@claim_id,
+        ")"
       )
     }),
     collapse = "\n"
   )
-  attr(result, "verified_evidence") <- relevant
-  attr(result, "verified_evidence_count") <- as.integer(length(relevant))
-  result
+}
+
+#' @keywords internal
+tempest_section_retrieval_query <- function(section) {
+  section_title <- section$title %||% "Section"
+  section_summary <- section$summary %||% ""
+  subsections <- section$subsections %||% list()
+  subsections_text <- if (length(subsections) == 0L) {
+    ""
+  } else {
+    tempest_subsections_markdown(subsections)
+  }
+  paste(
+    c(section_title, section_summary, subsections_text),
+    collapse = "\n"
+  )
+}
+
+tempest_section_markdown_heading <- function() {
+  "## Evidence focus"
+}
+
+tempest_section_claim_owners <- function(evidence) {
+  claim_ids <- lapply(
+    evidence,
+    \(claims) vapply(claims, \(claim) claim@claim_id, character(1))
+  )
+  all_ids <- unique(unlist(claim_ids, use.names = FALSE))
+  owners <- stats::setNames(rep(NA_integer_, length(all_ids)), all_ids)
+
+  assign_claim <- function(section, seen) {
+    for (claim_id in claim_ids[[section]]) {
+      if (exists(claim_id, envir = seen, inherits = FALSE)) {
+        next
+      }
+      assign(claim_id, TRUE, envir = seen)
+      previous <- owners[[claim_id]]
+      if (is.na(previous) || assign_claim(previous, seen)) {
+        owners[[claim_id]] <<- section
+        return(TRUE)
+      }
+    }
+    FALSE
+  }
+
+  section_order <- order(lengths(claim_ids), seq_along(claim_ids))
+  assigned <- vapply(
+    section_order,
+    function(section) {
+      assign_claim(section, new.env(parent = emptyenv()))
+    },
+    logical(1)
+  )
+  if (!all(assigned)) {
+    tempest_stage_governance_abort(
+      paste0(
+        "Every detailed section requires ownership of a distinct ",
+        "threshold-verified claim before writing."
+      )
+    )
+  }
+
+  remaining <- names(owners)[is.na(owners)]
+  for (claim_id in remaining) {
+    candidates <- which(vapply(
+      claim_ids,
+      \(ids) claim_id %in% ids,
+      logical(1)
+    ))
+    ranks <- vapply(
+      candidates,
+      \(section) match(claim_id, claim_ids[[section]]),
+      integer(1)
+    )
+    counts <- tabulate(owners[!is.na(owners)], nbins = length(evidence))
+    chosen <- candidates[order(ranks, counts[candidates], candidates)][[1L]]
+    owners[[claim_id]] <- chosen
+  }
+  owners
+}
+
+tempest_section_partition_evidence <- function(jobs) {
+  evidence <- lapply(jobs, "[[", "verified_evidence")
+  owners <- tempest_section_claim_owners(evidence)
+  purrr::imap(jobs, function(job, section) {
+    keep <- vapply(
+      job$verified_evidence,
+      \(claim) owners[[claim@claim_id]] == section,
+      logical(1)
+    )
+    claims <- job$verified_evidence[keep]
+    job$facts_text <- tempest_section_evidence_text(claims)
+    job$evidence <- claims
+    job$verified_evidence <- claims
+    job
+  })
 }
 
 #' @keywords internal
@@ -109,12 +214,12 @@ tempest_section_jobs <- function(
   min_support_score = 0.7
 ) {
   sections <- tempest_sections_to_write(outline)
-  purrr::imap(sections, function(section, i) {
+  jobs <- purrr::imap(sections, function(section, i) {
     section_title <- section$title %||% "Section"
     facts_text <- tempest_section_facts_text(
       retriever,
       store,
-      section_title,
+      tempest_section_retrieval_query(section),
       max_items = retrieve_top_k,
       min_support_score = min_support_score
     )
@@ -130,6 +235,20 @@ tempest_section_jobs <- function(
       min_support_score = min_support_score
     )
   })
+  unmatched <- vapply(
+    jobs,
+    \(job) length(job$verified_evidence) == 0L,
+    logical(1)
+  )
+  if (any(unmatched)) {
+    tempest_stage_governance_abort(
+      paste0(
+        "Every refined outline section must match at least one ",
+        "threshold-verified claim before writing."
+      )
+    )
+  }
+  tempest_section_partition_evidence(jobs)
 }
 
 # Run one STORM section-writing job.
@@ -159,7 +278,11 @@ tempest_storm_section_job <- function(
     index = job$index,
     title = job$title,
     section_text = section_text,
-    markdown = paste0("## ", job$title, "\n\n", section_text)
+    markdown = paste0(
+      tempest_section_markdown_heading(),
+      "\n\n",
+      section_text
+    )
   )
 }
 
@@ -477,7 +600,7 @@ tempest_summarize_facts_for_prompt <- function(
   facts <- facts[seq_len(min(length(facts), max_items))]
   lines <- purrr::map_chr(facts, function(f) {
     cites <- paste0("[", paste(f@source_ids, collapse = ", "), "]")
-    glue::glue("- {f@claim_text} {cites}")
+    glue::glue("- {f@claim_text} {cites} (claim_id: {f@claim_id})")
   })
   paste(lines, collapse = "\n")
 }
