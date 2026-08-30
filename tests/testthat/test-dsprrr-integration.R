@@ -18,6 +18,22 @@ test_that("tempest_make_dsprrr_modules creates modules", {
       "lead_section"
     )
   )
+  extraction_instructions <- result$extract_claims$signature@instructions
+  expect_match(
+    extraction_instructions,
+    "verbatim contiguous substring of captured source context",
+    fixed = TRUE
+  )
+  expect_match(
+    extraction_instructions,
+    "Never quote answer-only prose",
+    fixed = TRUE
+  )
+  expect_no_match(
+    extraction_instructions,
+    "substring of the answer text",
+    fixed = TRUE
+  )
 })
 
 test_that("dsprrr structured results cross as canonical JSON records", {

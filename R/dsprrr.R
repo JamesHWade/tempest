@@ -277,7 +277,12 @@ tempest_run_dsprrr_module_async <- function(module, chat, inputs, step) {
   )
   metadata <- attr(request, "dsprrr_trace_context", exact = TRUE)
   tempest_dsprrr_execution_metadata_validate(execution, metadata)
-  request
+  normalized <- promises::then(
+    request,
+    tempest_dsprrr_structured_output
+  )
+  attr(normalized, "dsprrr_trace_context") <- metadata
+  normalized
 }
 
 tempest_dsprrr_contract_condition <- function(condition) {
@@ -390,7 +395,8 @@ tempest_make_dsprrr_modules <- function(config) {
           "When source_context is present, return only source_id values listed there.",
           "Use source_ids as the set of provider-native sources attached to this turn.",
           "Do not use a known source unless the answer text or provider-native turn context supports the claim.",
-          "Every quote must be a verbatim contiguous substring of the answer text or captured source context, including exact capitalization and Markdown.",
+          "Every quote must be a verbatim contiguous substring of captured source context, including exact capitalization and Markdown.",
+          "Never quote answer-only prose; omit the quote when no captured source excerpt contains it.",
           "Never add formatting or ellipses to a quote; omit it when no exact quote is available.",
           "Include support_score in [0,1] when source support is clear; omit it when unscored.",
           "Do not infer or invent facts.",
@@ -481,11 +487,12 @@ tempest_make_dsprrr_modules <- function(config) {
           "Prepare one concise, decision-useful section as typed briefing items.",
           "Use only the supplied verified facts and their exact claim_ids.",
           "Return one to three observations by copying claim text exactly.",
-          "Add up to two assessments only when the verified observations justify a useful implication.",
-          "Add up to two concrete review_action items for decisions that need human attention.",
+          "Add up to two assessment prompts using only: Assess the decision implications of: CLAIM_TEXT.",
+          "Add up to two review_action prompts using only: Review before deciding: CLAIM_TEXT.",
+          "For multiple bound claims, sort by claim_id and join their exact claim text with ' | ' in either prompt.",
           "Add at most one no_change item by copying exactly one verified claim that explicitly uses unchanged, has not changed, did not change, or no material change language and does not also assert another change.",
           "Omit no_change when the evidence is missing, unresolved, or merely fails to establish a change.",
-          "Every non-observation item must bind the claim_ids used to derive it.",
+          "Every non-observation item must bind exactly the claim_ids copied into its text.",
           "Assessments and no_change items require calibrated confidence; observations and review actions omit it.",
           "Do not put source citations, Markdown, or provenance prose in item text.",
           sep = "\n"
@@ -506,9 +513,11 @@ tempest_make_dsprrr_modules <- function(config) {
           "Prepare a compact at-a-glance decision brief as typed items.",
           "Use only the supplied verified facts and their exact claim_ids.",
           "Select one to three observations by copying claim text exactly.",
-          "Add no more than one assessment, one review_action, and one no_change signal.",
+          "Add no more than one assessment prompt using only: Assess the decision implications of: CLAIM_TEXT.",
+          "Add no more than one review_action prompt using only: Review before deciding: CLAIM_TEXT.",
+          "For multiple bound claims, sort by claim_id and join their exact claim text with ' | ' in either prompt.",
           "A no_change item must copy exactly one verified claim that explicitly uses unchanged, has not changed, did not change, or no material change language and does not also assert another change; otherwise omit it.",
-          "Every non-observation item must bind the verified claim_ids used to derive it.",
+          "Every non-observation item must bind exactly the verified claim_ids copied into its text.",
           "Assessments and no_change items require calibrated confidence; observations and review actions omit it.",
           "Do not put source citations, Markdown, or provenance prose in item text.",
           sep = "\n"

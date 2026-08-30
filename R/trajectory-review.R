@@ -732,7 +732,7 @@ tempest_trajectory_knowledge <- function(
       counts = promotion_receipt$counts,
       record_revisions = tempest_trajectory_collection(
         unname(revisions),
-        preserve_order = FALSE
+        preserve_order = TRUE
       )
     )
   }
@@ -2247,9 +2247,16 @@ tempest_trajectory_validate_accepted_revisions <- function(
     \(revision) paste(revision$class, revision$record_id, sep = "\u001f"),
     character(1)
   )
-  if (anyDuplicated(revision_ids) || anyDuplicated(record_keys)) {
+  if (
+    anyDuplicated(revision_ids) ||
+      anyDuplicated(record_keys) ||
+      !identical(record_keys, sort(record_keys, method = "radix"))
+  ) {
     tempest_trajectory_review_abort(
-      "Trajectory accepted revision identities must be unique."
+      paste0(
+        "Trajectory accepted revisions must use sorted unique record ",
+        "identities."
+      )
     )
   }
   if (
@@ -2453,10 +2460,6 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
   tempest_trajectory_validate_collection(
     acceptance$record_revisions,
     tempest_promotion_receipt_revision_fields(),
-    "Trajectory accepted revisions"
-  )
-  tempest_trajectory_validate_canonical_set(
-    acceptance$record_revisions,
     "Trajectory accepted revisions"
   )
   tempest_trajectory_validate_accepted_revisions(

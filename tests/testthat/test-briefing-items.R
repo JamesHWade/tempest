@@ -22,6 +22,14 @@ test_that("grounded writing renders typed briefing items", {
   )
   lapply(claims, workspace$add_proposed_claim)
   claims <- fake_verify_claim_supports(workspace, claims)
+  assessment_text <- tempest:::tempest_briefing_item_synthesis_text(
+    "assessment",
+    claims
+  )
+  review_text <- tempest:::tempest_briefing_item_synthesis_text(
+    "review_action",
+    claims[2]
+  )
   output <- list(
     items = list(
       list(
@@ -32,13 +40,13 @@ test_that("grounded writing renders typed briefing items", {
       ),
       list(
         kind = "assessment",
-        text = "The scale-up case is stronger, but permitting still gates timing.",
+        text = assessment_text,
         claim_ids = as.list(vapply(claims, \(x) x@claim_id, character(1))),
         confidence = "medium"
       ),
       list(
         kind = "review_action",
-        text = "Review whether the pending permit changes the launch date.",
+        text = review_text,
         claim_ids = list(claims[[2]]@claim_id),
         confidence = "low"
       ),
@@ -134,6 +142,46 @@ test_that("briefing items fail closed on ungoverned synthesis", {
     evaluate(list(
       observation,
       list(
+        kind = "assessment",
+        text = "Revenue doubled in the latest quarter.",
+        claim_ids = list(claim@claim_id),
+        confidence = "medium"
+      )
+    )),
+    class = "tempest_stage_output_validation_error"
+  )
+  expect_error(
+    evaluate(list(
+      observation,
+      list(
+        kind = "review_action",
+        text = "Review an unrelated revenue claim.",
+        claim_ids = list(claim@claim_id)
+      )
+    )),
+    class = "tempest_stage_output_validation_error"
+  )
+  forged_assessment <- tempest:::TempestBriefingItem(
+    kind = "assessment",
+    text = "Revenue doubled in the latest quarter.",
+    claim_ids = claim@claim_id,
+    confidence = "medium"
+  )
+  expect_error(
+    tempest:::tempest_briefing_items_from_markdown(
+      tempest:::tempest_briefing_item_markdown(
+        forged_assessment,
+        workspace
+      ),
+      workspace,
+      min_support_score = 0.7
+    ),
+    class = "tempest_product_report_error"
+  )
+  expect_error(
+    evaluate(list(
+      observation,
+      list(
         kind = "no_change",
         text = claim@claim_text,
         claim_ids = list(claim@claim_id),
@@ -208,7 +256,10 @@ test_that("briefing items fail closed on ungoverned synthesis", {
     rep(
       list(list(
         kind = "assessment",
-        text = "This result changes the decision context.",
+        text = tempest:::tempest_briefing_item_synthesis_text(
+          "assessment",
+          list(claim)
+        ),
         claim_ids = list(claim@claim_id),
         confidence = "medium"
       )),
@@ -377,6 +428,10 @@ test_that("canonical reports preserve assessment provenance", {
   )
   workspace$add_proposed_claim(claim)
   claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+  assessment_text <- tempest:::tempest_briefing_item_synthesis_text(
+    "assessment",
+    list(claim)
+  )
   evaluated <- tempest:::tempest_stage_evaluate(
     test_program_executions()$section_writing,
     list(
@@ -388,7 +443,7 @@ test_that("canonical reports preserve assessment provenance", {
         ),
         list(
           kind = "assessment",
-          text = "The result warrants a closer operating review.",
+          text = assessment_text,
           claim_ids = list(claim@claim_id),
           confidence = "medium"
         )
@@ -411,7 +466,7 @@ test_that("canonical reports preserve assessment provenance", {
 
   expect_match(
     report,
-    "The result warrants a closer operating review.",
+    assessment_text,
     fixed = TRUE
   )
   expect_match(report, paste0("[^", source_id, "]"), fixed = TRUE)

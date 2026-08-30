@@ -170,18 +170,13 @@ tempest_agent_completion_response_from_turn <- function(provider_turn) {
   if (!is.list(contents)) {
     tempest_agent_completion_binding_abort()
   }
+  text_contents <- Filter(
+    \(content) inherits(content, "ellmer::ContentText"),
+    contents
+  )
   response <- paste(
-    vapply(
-      contents,
-      function(content) {
-        if (inherits(content, "ellmer::ContentText")) {
-          return(content@text)
-        }
-        ""
-      },
-      character(1)
-    ),
-    collapse = ""
+    vapply(text_contents, \(content) content@text, character(1)),
+    collapse = "\n\n"
   )
   tempest_agent_completion_text(response)
 }

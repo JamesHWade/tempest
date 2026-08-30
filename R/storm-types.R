@@ -137,8 +137,9 @@ tempest_type_briefing_items <- function() {
     kind = ellmer::type_enum(
       tempest_briefing_item_kinds(),
       paste(
-        "observation copies one verified claim; assessment explains an",
-        "implication; review_action proposes human review; no_change exactly",
+        "observation copies one verified claim; assessment uses the closed",
+        "Assess the decision implications of prompt; review_action uses the",
+        "closed Review before deciding prompt; no_change exactly",
         "copies one verified claim that uses explicit unchanged, has not",
         "changed, did not change, or no material change language without",
         "asserting another change"
@@ -148,8 +149,9 @@ tempest_type_briefing_items <- function() {
       paste(
         "One concise sentence. Observation text must exactly copy the",
         "selected verified claim; no_change text must also copy its single",
-        "verified claim exactly and pass the no-change language gate; other",
-        "kinds must not contain citations."
+        "verified claim exactly and pass the no-change language gate;",
+        "assessment and review_action text must use their closed prompt and",
+        "copy exact bound claim text, joined in claim_id order with ' | '."
       )
     ),
     claim_ids = ellmer::type_array(ellmer::type_string(

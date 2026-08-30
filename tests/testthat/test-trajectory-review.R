@@ -1305,6 +1305,10 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
     accepted@knowledge$acceptance$record_revisions$total,
     as.integer(length(receipt@record_revisions))
   )
+  expect_identical(
+    accepted@knowledge$acceptance$record_revisions$items,
+    receipt@record_revisions
+  )
   accepted_joins <- Filter(
     \(join) identical(join$relation, "accepted_as"),
     accepted@joins$items

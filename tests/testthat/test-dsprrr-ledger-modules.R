@@ -63,7 +63,12 @@ test_that("grounded writing programs separate observation and synthesis", {
   )
   expect_match(
     section_instructions,
-    "Every non-observation item must bind the claim_ids",
+    "Every non-observation item must bind exactly the claim_ids copied into its text",
+    fixed = TRUE
+  )
+  expect_match(
+    lead_instructions,
+    "Every non-observation item must bind exactly the verified claim_ids copied into its text",
     fixed = TRUE
   )
   expect_match(

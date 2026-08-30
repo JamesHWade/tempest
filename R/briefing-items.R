@@ -352,6 +352,40 @@ tempest_briefing_item_authoritative_claims <- function(
   claims
 }
 
+tempest_briefing_item_synthesis_text <- function(kind, claims) {
+  claim_ids <- vapply(claims, \(claim) claim@claim_id, character(1))
+  claims <- claims[order(claim_ids)]
+  claim_text <- paste(
+    vapply(claims, \(claim) claim@claim_text, character(1)),
+    collapse = " | "
+  )
+  switch(
+    kind,
+    assessment = paste0(
+      "Assess the decision implications of: ",
+      claim_text
+    ),
+    review_action = paste0("Review before deciding: ", claim_text),
+    NULL
+  )
+}
+
+tempest_briefing_item_validate_synthesis <- function(kind, text, claims) {
+  if (!kind %in% c("assessment", "review_action")) {
+    return(invisible(NULL))
+  }
+  expected <- tempest_briefing_item_synthesis_text(kind, claims)
+  if (!identical(text, expected)) {
+    tempest_stage_output_abort(
+      paste0(
+        "An assessment or review-action item must use its exact closed ",
+        "prompt and copy only its bound threshold-verified claims."
+      )
+    )
+  }
+  invisible(NULL)
+}
+
 tempest_briefing_items_validate_counts <- function(
   items,
   limits = c(
@@ -447,6 +481,11 @@ tempest_briefing_items_from_output <- function(output, context) {
         )
       )
     }
+    tempest_briefing_item_validate_synthesis(
+      value$kind,
+      value$text,
+      claims
+    )
     if (
       identical(value$kind, "no_change") &&
         !tempest_briefing_claim_affirms_no_change(claims[[1]]@claim_text)
@@ -728,6 +767,26 @@ tempest_briefing_items_from_markdown <- function(
           "A briefing observation or no-change item no longer matches its ",
           "exact claim."
         )
+      )
+    }
+    synthesis_error <- tryCatch(
+      {
+        tempest_briefing_item_validate_synthesis(
+          item@kind,
+          item@text,
+          claims
+        )
+        NULL
+      },
+      error = identity
+    )
+    if (inherits(synthesis_error, "condition")) {
+      tempest_product_report_abort(
+        paste0(
+          "A briefing assessment or review action no longer matches its ",
+          "bound verified claims."
+        ),
+        parent = synthesis_error
       )
     }
     if (

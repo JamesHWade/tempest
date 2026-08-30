@@ -133,6 +133,21 @@ test_that("agent completions preserve exact process-local bindings", {
   tempest:::tempest_agent_completion_cancel(registry, second_id, owner)
 })
 
+test_that("agent completions preserve boundaries between visible text", {
+  skip_if_not_installed("ellmer")
+
+  provider_turn <- ellmer::AssistantTurn(list(
+    ellmer::ContentText("First paragraph."),
+    ellmer::ContentThinking("private reasoning"),
+    ellmer::ContentText("Second paragraph.")
+  ))
+
+  expect_identical(
+    tempest:::tempest_agent_completion_response_from_turn(provider_turn),
+    "First paragraph.\n\nSecond paragraph."
+  )
+})
+
 test_that("agent completion lifecycle is one-use and owner-bound", {
   skip_if_not_installed("ellmer")
 

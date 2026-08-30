@@ -89,6 +89,60 @@ test_that("async dsprrr execution propagates synchronous provider errors", {
   )
 })
 
+test_that("async dsprrr execution normalizes structured output", {
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+
+  execution <- tempest:::tempest_program_set_execution(
+    tempest_program_set(),
+    "extract_claims",
+    trace_context = list(
+      product = "tempest",
+      research_run_id = "async-structured-output",
+      stage = "extract_claims"
+    )
+  )
+  metadata <- list(
+    program_artifact_id = execution$program_artifact_id,
+    trace_context = execution$trace_context
+  )
+  local_mocked_bindings(
+    tempest_dsprrr_run_async = function(...) {
+      request <- promises::promise_resolve(list(
+        facts = data.frame(
+          claim = factor("A normalized claim"),
+          source_ids = I(list(list("S000000000001")))
+        )
+      ))
+      attr(request, "dsprrr_trace_context") <- metadata
+      request
+    }
+  )
+
+  request <- tempest:::tempest_run_dsprrr_module_async(
+    execution,
+    chat = NULL,
+    inputs = list(),
+    step = "extract_claims"
+  )
+  settled <- await_tempest_promise(request)
+
+  expect_null(settled$error)
+  expect_identical(
+    attr(request, "dsprrr_trace_context", exact = TRUE),
+    metadata
+  )
+  expect_identical(
+    settled$value,
+    list(
+      facts = list(list(
+        claim = "A normalized claim",
+        source_ids = list("S000000000001")
+      ))
+    )
+  )
+})
+
 test_that("tempest_run_dsprrr_module rethrows correlation contract errors", {
   forward <- function(text, ...) list(answer = text)
   program <- dsprrr::module_fn("text -> answer", forward)
