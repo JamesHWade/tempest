@@ -521,7 +521,7 @@ test_that("strict briefing publication treats each governed item as one assertio
     claim_ids = claim@claim_id
   )
   body <- paste(
-    "## Evidence focus: U.S. rules",
+    "## Evidence focus",
     tempest:::tempest_briefing_items_markdown(
       list(item),
       store
@@ -538,12 +538,78 @@ test_that("strict briefing publication treats each governed item as one assertio
   expect_error(
     tempest:::tempest_report_md_render(
       "Title",
+      sub(
+        "## Evidence focus",
+        "## Evidence focus: Revenue increased 18%",
+        body,
+        fixed = TRUE
+      ),
+      store,
+      citation_policy = "strict"
+    ),
+    class = "tempest_product_report_error"
+  )
+  expect_error(
+    tempest:::tempest_report_md_render(
+      "Title",
       paste(body, "An unbound assertion.", sep = "\n\n"),
       store,
       citation_policy = "strict"
     ),
     class = "tempest_product_report_error"
   )
+})
+
+test_that("briefing items preserve ordinary sentence-level validation", {
+  store <- fake_store_with_sources(1)
+  source_id <- store$list_retrieved_sources()[[1]]$id
+  claims <- lapply(
+    c(
+      "A U.S. rule becomes effective today.",
+      "The first ordinary sentence is verified",
+      "The second ordinary sentence is verified"
+    ),
+    \(text) {
+      tempest_claim(
+        text,
+        source_ids = source_id,
+        verification_status = "supported",
+        support_score = 0.9
+      )
+    }
+  )
+  for (claim in claims) {
+    store$add_proposed_claim(claim)
+  }
+  claims <- fake_verify_claim_supports(store, claims)
+  item <- tempest:::TempestBriefingItem(
+    kind = "observation",
+    text = claims[[1L]]@claim_text,
+    claim_ids = claims[[1L]]@claim_id
+  )
+  ordinary <- paste0(
+    claims[[2L]]@claim_text,
+    " [",
+    source_id,
+    "]. ",
+    claims[[3L]]@claim_text,
+    " [",
+    source_id,
+    "]."
+  )
+  body <- paste(
+    "## Evidence focus",
+    tempest:::tempest_briefing_items_markdown(list(item), store),
+    ordinary,
+    sep = "\n\n"
+  )
+
+  expect_no_error(tempest:::tempest_report_md_render(
+    "Title",
+    body,
+    store,
+    citation_policy = "strict"
+  ))
 })
 
 test_that("strict publication requires exact captured source evidence", {

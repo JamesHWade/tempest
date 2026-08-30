@@ -532,7 +532,7 @@ test_persistence_complete_storm_product <- function(
     lead_section = "Durable evidence supports the completed research product.",
     draft_md = paste0(
       "Durable evidence supports the completed research product.\n\n",
-      tempest:::tempest_section_markdown_heading("Findings"),
+      tempest:::tempest_section_markdown_heading(),
       "\n\n",
       "Durable evidence supports the completed research product."
     ),

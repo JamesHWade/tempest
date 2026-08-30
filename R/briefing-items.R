@@ -847,7 +847,7 @@ tempest_briefing_items_from_markdown <- function(
   items
 }
 
-tempest_briefing_markdown_factual_text <- function(
+tempest_briefing_markdown_assertion_input <- function(
   text,
   workspace,
   min_support_score = 0.7
@@ -858,22 +858,27 @@ tempest_briefing_markdown_factual_text <- function(
     min_support_score = min_support_score
   )
   if (length(items) == 0L) {
-    return(text)
+    return(list(text = text, atomic_lines = integer()))
   }
   lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
   parsed <- lapply(lines, tempest_briefing_markdown_parse_line)
+  atomic_lines <- integer()
   for (index in seq_along(lines)) {
     record <- parsed[[index]]
     if (is.null(record)) {
       next
     }
-    lines[[index]] <- if (identical(record$item@kind, "observation")) {
-      record$visible
+    if (identical(record$item@kind, "observation")) {
+      lines[[index]] <- record$visible
+      atomic_lines <- c(atomic_lines, index)
     } else {
-      ""
+      lines[[index]] <- ""
     }
   }
-  paste(lines, collapse = "\n")
+  list(
+    text = paste(lines, collapse = "\n"),
+    atomic_lines = atomic_lines
+  )
 }
 
 tempest_stage_evaluate_briefing_items <- function(output, context, stage) {

@@ -125,12 +125,8 @@ tempest_section_retrieval_query <- function(section) {
   )
 }
 
-tempest_section_markdown_heading <- function(section_title) {
-  title <- tempest_markdown_escape_plain_text(
-    section_title %||% "Section",
-    "outline section title"
-  )
-  paste0("## Evidence focus: ", title)
+tempest_section_markdown_heading <- function() {
+  "## Evidence focus"
 }
 
 tempest_section_claim_owners <- function(evidence) {
@@ -283,7 +279,7 @@ tempest_storm_section_job <- function(
     title = job$title,
     section_text = section_text,
     markdown = paste0(
-      tempest_section_markdown_heading(job$title),
+      tempest_section_markdown_heading(),
       "\n\n",
       section_text
     )

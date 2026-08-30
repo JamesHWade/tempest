@@ -263,7 +263,7 @@ tempest_storm_draft_section_texts <- function(state) {
     sections,
     \(section) {
       paste0(
-        tempest_section_markdown_heading(section$title),
+        tempest_section_markdown_heading(),
         "\n\n"
       )
     },

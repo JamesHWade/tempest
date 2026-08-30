@@ -77,7 +77,7 @@ test_that("schema 8 STORM bundles restore workspace, state, and manifest", {
     lead_section = "Lithium batteries store energy.",
     draft_md = paste0(
       "Lithium batteries store energy.\n\n",
-      tempest:::tempest_section_markdown_heading("Technology"),
+      tempest:::tempest_section_markdown_heading(),
       "\n\n",
       "Lithium batteries store energy."
     ),

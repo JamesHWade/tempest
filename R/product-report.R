@@ -389,6 +389,7 @@ tempest_package_structural_headings <- function() {
     "Methodology",
     "Results",
     "Evidence",
+    "Evidence focus",
     "Discussion",
     "Limitations",
     "Recommendations",
@@ -413,10 +414,7 @@ tempest_markdown_structural_heading <- function(lines) {
     lines
   )
   normalized <- tolower(tempest_trim(heading_text))
-  headings &
-    (normalized %in%
-      tolower(tempest_package_structural_headings()) |
-      startsWith(normalized, "evidence focus: "))
+  headings & normalized %in% tolower(tempest_package_structural_headings())
 }
 
 #' @keywords internal
@@ -644,19 +642,15 @@ tempest_strict_publication_claims <- function(
       "Strict publication contains a malformed source-citation token."
     )
   }
-  has_briefing_items <- grepl(
-    "<!-- tempest-briefing-item:",
-    text,
-    fixed = TRUE
-  )
-  text <- tempest_briefing_markdown_factual_text(
+  factual <- tempest_briefing_markdown_assertion_input(
     text,
     store,
     min_support_score = min_support_score
   )
+  text <- factual$text
   assertions <- tempest_strict_publication_assertions(
     text,
-    linewise = has_briefing_items
+    atomic_lines = factual$atomic_lines
   )
   if (length(assertions) == 0L) {
     if (nzchar(tempest_trim(text))) {
@@ -797,29 +791,39 @@ tempest_strict_publication_claims <- function(
 }
 
 #' @keywords internal
-tempest_strict_publication_assertions <- function(text, linewise = FALSE) {
+tempest_strict_publication_assertions <- function(
+  text,
+  atomic_lines = integer()
+) {
   lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
-  lines <- lines[nzchar(tempest_trim(lines))]
+  line_numbers <- seq_along(lines)
+  nonempty <- nzchar(tempest_trim(lines))
+  lines <- lines[nonempty]
+  line_numbers <- line_numbers[nonempty]
   structural <- tempest_markdown_structural_heading(lines)
   references <- grepl(
     "^[[:space:]]*\\[\\^S[0-9a-f]{12}\\]:",
     lines
   )
-  lines <- lines[!references & !structural]
+  keep <- !references & !structural
+  lines <- lines[keep]
+  atomic <- line_numbers[keep] %in% atomic_lines
   if (length(lines) == 0L) {
     return(character())
   }
-  assertions <- if (isTRUE(linewise)) {
-    lines
-  } else {
-    unlist(
-      lapply(
-        lines,
-        \(line) strsplit(line, "(?<=[.!?])\\s+", perl = TRUE)[[1]]
-      ),
-      use.names = FALSE
-    )
-  }
+  assertions <- unlist(
+    Map(
+      function(line, is_atomic) {
+        if (is_atomic) {
+          return(line)
+        }
+        strsplit(line, "(?<=[.!?])\\s+", perl = TRUE)[[1]]
+      },
+      lines,
+      atomic
+    ),
+    use.names = FALSE
+  )
   assertions <- assertions[
     nzchar(tempest_normalize_claim_match_text(assertions))
   ]

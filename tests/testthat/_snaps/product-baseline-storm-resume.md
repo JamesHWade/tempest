@@ -35,7 +35,7 @@
           ]
         },
         "resumed_outline_sections": "Workflow evidence",
-        "resumed_report_sections": ["Progress report", "At a glance", "Verified observations", "Evidence focus: Workflow evidence", "Verified observations", "References", "Execution review"],
+        "resumed_report_sections": ["Progress report", "At a glance", "Verified observations", "Evidence focus", "Verified observations", "References", "Execution review"],
         "terminal_status": "succeeded",
         "resumed_event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:skipped", "stage:research:NA:skipped", "stage:outline:NA:started", "stage:verification:NA:started", "stage:verification:NA:succeeded", "step:persistence:outline_artifacts:started", "step:persistence:outline_artifacts:succeeded", "stage:outline:NA:succeeded", "stage:write:NA:started", "step:persistence:write_artifacts:started", "step:persistence:write_artifacts:succeeded", "stage:write:NA:succeeded", "stage:polish:NA:started", "step:persistence:polish_artifacts:started", "step:persistence:polish_artifacts:succeeded", "stage:polish:NA:succeeded", "artifact:polish:report_md:available", "workflow:NA:NA:succeeded"]
       }

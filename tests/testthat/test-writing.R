@@ -91,8 +91,8 @@ test_that("section jobs retrieve evidence from the full outline context", {
   expect_identical(
     vapply(sections, `[[`, character(1), "markdown"),
     c(
-      "## Evidence focus: Supported\n\nVerified text",
-      "## Evidence focus: Unmatched\n\nVerified text"
+      "## Evidence focus\n\nVerified text",
+      "## Evidence focus\n\nVerified text"
     )
   )
 })
@@ -294,7 +294,7 @@ test_that("tempest_storm_section_job wraps section text as markdown", {
   )
   expect_match(
     result$markdown,
-    "## Evidence focus: Mechanisms\n\n### Verified observations",
+    "## Evidence focus\n\n### Verified observations",
     fixed = TRUE
   )
 })
@@ -573,7 +573,7 @@ test_that("parallel writing preserves failed and retry stage records", {
         title = job$title,
         section_text = "Retry body",
         markdown = paste0(
-          tempest_section_markdown_heading(job$title),
+          tempest_section_markdown_heading(),
           "\n\nRetry body"
         )
       )

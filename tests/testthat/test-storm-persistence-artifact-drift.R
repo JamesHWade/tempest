@@ -84,7 +84,7 @@ test_that("completed STORM product state fails closed when artifacts drift", {
       lead_section = "Durable evidence supports the durable claim.",
       draft_md = paste0(
         "Durable evidence supports the durable claim.\n\n",
-        tempest:::tempest_section_markdown_heading("Findings"),
+        tempest:::tempest_section_markdown_heading(),
         "\n\n",
         "Durable evidence supports the durable claim."
       ),
