@@ -560,6 +560,64 @@ test_that("strict briefing publication treats each governed item as one assertio
   )
 })
 
+test_that("briefing items render each source as a citation token", {
+  store <- fake_store_with_sources(2)
+  source_ids <- vapply(
+    store$list_retrieved_sources(),
+    `[[`,
+    character(1),
+    "id"
+  )
+  claims <- list(
+    tempest_claim(
+      "Joint evidence",
+      source_ids = source_ids,
+      verification_status = "supported",
+      support_score = 0.9
+    ),
+    tempest_claim(
+      "The permit schedule remains unchanged since the prior review",
+      source_ids = source_ids,
+      verification_status = "supported",
+      support_score = 0.9
+    )
+  )
+  for (claim in claims) {
+    store$add_proposed_claim(claim)
+  }
+  claims <- fake_verify_claim_supports(store, claims)
+  items <- list(
+    tempest:::TempestBriefingItem(
+      kind = "observation",
+      text = claims[[1L]]@claim_text,
+      claim_ids = claims[[1L]]@claim_id
+    ),
+    tempest:::TempestBriefingItem(
+      kind = "no_change",
+      text = claims[[2L]]@claim_text,
+      claim_ids = claims[[2L]]@claim_id,
+      confidence = "high"
+    )
+  )
+  body <- tempest:::tempest_briefing_items_markdown(items, store)
+  citations <- paste0("[", source_ids, "]", collapse = " ")
+
+  citation_matches <- gregexpr(citations, body, fixed = TRUE)[[1L]]
+  expect_length(citation_matches[citation_matches != -1L], 2L)
+  report <- tempest:::tempest_report_md_render(
+    "Title",
+    body,
+    store,
+    citation_policy = "strict"
+  )
+  footnotes <- paste0("[^", source_ids, "]", collapse = " ")
+  footnote_matches <- gregexpr(footnotes, report, fixed = TRUE)[[1L]]
+  expect_length(footnote_matches[footnote_matches != -1L], 2L)
+  for (source_id in source_ids) {
+    expect_match(report, paste0("[^", source_id, "]:"), fixed = TRUE)
+  }
+})
+
 test_that("briefing items preserve ordinary sentence-level validation", {
   store <- fake_store_with_sources(1)
   source_id <- store$list_retrieved_sources()[[1]]$id

@@ -564,6 +564,10 @@ tempest_briefing_item_evidence_text <- function(item) {
   paste0("_(Evidence: ", ids, confidence, ".)_")
 }
 
+tempest_briefing_source_citations <- function(source_ids) {
+  paste0("[", source_ids, "]", collapse = " ")
+}
+
 tempest_briefing_item_markdown <- function(item, workspace) {
   claims <- lapply(item@claim_ids, workspace$get_proposed_claim)
   if (any(vapply(claims, is.null, logical(1)))) {
@@ -576,9 +580,8 @@ tempest_briefing_item_markdown <- function(item, workspace) {
     observation = paste0(
       "- ",
       item@text,
-      " [",
-      paste(claims[[1]]@source_ids, collapse = ", "),
-      "]"
+      " ",
+      tempest_briefing_source_citations(claims[[1]]@source_ids)
     ),
     assessment = paste0(
       "- **Assessment:** ",
@@ -595,9 +598,9 @@ tempest_briefing_item_markdown <- function(item, workspace) {
     no_change = paste0(
       "- **No material change:** ",
       item@text,
-      " [",
-      paste(claims[[1]]@source_ids, collapse = ", "),
-      "] ",
+      " ",
+      tempest_briefing_source_citations(claims[[1]]@source_ids),
+      " ",
       tempest_briefing_item_evidence_text(item)
     )
   )
