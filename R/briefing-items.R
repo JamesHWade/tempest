@@ -8,73 +8,84 @@ tempest_briefing_item_confidences <- function() {
   c("low", "medium", "high")
 }
 
-tempest_briefing_no_change_pattern <- function() {
-  paste0(
-    "\\b(?:",
-    paste(
-      c(
-        "(?:has|have|had) remained (?:materially )?unchanged",
-        "remain(?:s|ed)? (?:materially )?unchanged",
-        "(?:is|are|was|were) (?:materially )?unchanged",
-        "(?:has|have|had) not (?:materially )?changed",
-        "did not (?:materially )?change",
-        "no (?:material )?changes?"
-      ),
-      collapse = "|"
-    ),
-    ")\\b"
+tempest_briefing_no_change_patterns <- function() {
+  term <- paste0(
+    "(?!(?:after|although|and|as|because|before|but|despite|for|however|",
+    "if|instead|meanwhile|moreover|nevertheless|nor|once|or|otherwise|",
+    "plus|provided|since|so|than|that|then|therefore|though|unless|until|",
+    "when|whenever|where|whereas|wherever|whether|which|while|who|whom|",
+    "whose|yet)\\b)",
+    "[[:alnum:]][[:alnum:]'’/-]*"
   )
-}
-
-tempest_briefing_no_change_disqualifier_pattern <- function() {
-  paste0(
-    "\\b(?:",
-    paste(
-      c(
-        "chang(?:e|ed|es|ing)",
-        "increas(?:e|ed|es|ing)",
-        "decreas(?:e|ed|es|ing)",
-        "ris(?:e|es|ing|en)",
-        "rose",
-        "fall(?:s|ing|en)",
-        "fell",
-        "grow(?:s|ing|n)",
-        "grew",
-        "growth",
-        "declin(?:e|ed|es|ing)",
-        "shift(?:ed|s|ing)?",
-        "expand(?:ed|s|ing)?",
-        "expansion",
-        "contract(?:ed|s|ing)?",
-        "contraction",
-        "start(?:ed|s|ing)",
-        "beg(?:an|ins|inning)",
-        "end(?:ed|s|ing)",
-        "stop(?:ped|s|ping)",
-        "add(?:ed|s|ing)",
-        "remov(?:ed|es|ing)",
-        "(?:will|would|may|might|can|could|shall|should|to) (?:start|begin|end|stop|add|remove)",
-        "(?:is|are|was|were) new",
-        "higher",
-        "lower",
-        "more",
-        "less",
-        "greater",
-        "smaller",
-        "above",
-        "below",
-        "but",
-        "although",
-        "though",
-        "however",
-        "while",
-        "whereas",
-        "yet",
-        "despite"
-      ),
-      collapse = "|"
+  phrase <- paste0(
+    term,
+    "(?: ",
+    term,
+    "){0,15}"
+  )
+  reference <- paste0(
+    "(?:the )?(?:prior|previous|last|earlier|baseline|initial|",
+    "most recent) (?:review|report|assessment|briefing|update|period|",
+    "measurement|observation|snapshot|version|release)"
+  )
+  unchanged <- paste(
+    c(
+      "(?:has|have|had) remained (?:materially )?unchanged",
+      "remain(?:s|ed)? (?:materially )?unchanged",
+      "(?:is|are|was|were) (?:materially )?unchanged",
+      "(?:has|have|had) not (?:materially )?changed",
+      "did not (?:materially )?change"
     ),
-    ")\\b"
+    collapse = "|"
+  )
+  reported <- paste(
+    c(
+      "reported",
+      "observed",
+      "identified",
+      "detected",
+      "documented",
+      "found",
+      "noted"
+    ),
+    collapse = "|"
+  )
+  no_change <- "no (?:material )?changes?"
+
+  c(
+    paste0(
+      "^",
+      phrase,
+      " (?:",
+      unchanged,
+      ")(?: since ",
+      reference,
+      ")?[.]?$"
+    ),
+    paste0("^", no_change, "[.]?$"),
+    paste0(
+      "^",
+      no_change,
+      " (?:in|to|for) ",
+      phrase,
+      "[.]?$"
+    ),
+    paste0(
+      "^",
+      no_change,
+      " (?:is|are|was|were|has been|have been|had been) (?:",
+      reported,
+      ")(?: (?:in|to|for) ",
+      phrase,
+      ")?[.]?$"
+    ),
+    paste0(
+      "^there (?:is|are|was|were|has been|have been|had been) ",
+      no_change,
+      "(?: (?:in|to|for) ",
+      phrase,
+      ")?[.]?$"
+    )
   )
 }
 
@@ -82,17 +93,18 @@ tempest_briefing_claim_affirms_no_change <- function(text) {
   if (!rlang::is_string(text) || is.na(text) || !nzchar(tempest_trim(text))) {
     return(FALSE)
   }
-  normalized <- tolower(tempest_trim(text))
-  no_change_pattern <- tempest_briefing_no_change_pattern()
-  if (!grepl(no_change_pattern, normalized, perl = TRUE)) {
-    return(FALSE)
-  }
-  remainder <- gsub(no_change_pattern, "", normalized, perl = TRUE)
-  !grepl(
-    tempest_briefing_no_change_disqualifier_pattern(),
-    remainder,
-    perl = TRUE
+  normalized <- gsub(
+    pattern = "[[:space:]]+",
+    replacement = " ",
+    x = tolower(tempest_trim(text))
   )
+  any(vapply(
+    tempest_briefing_no_change_patterns(),
+    grepl,
+    logical(1),
+    x = normalized,
+    perl = TRUE
+  ))
 }
 
 tempest_briefing_item_confidence_prop <- function() {

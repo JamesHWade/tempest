@@ -269,6 +269,95 @@ test_that("no-change claims use a conservative deterministic gate", {
     ),
     FALSE
   )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Headcount remained unchanged; revenue doubled."
+    ),
+    FALSE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Headcount remained unchanged and revenue doubled."
+    ),
+    FALSE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Headcount remained unchanged because revenue doubled."
+    ),
+    FALSE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Revenue doubled as headcount remained unchanged."
+    ),
+    FALSE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Revenue doubled before headcount remained unchanged."
+    ),
+    FALSE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Revenue doubled when headcount remained unchanged."
+    ),
+    FALSE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
+      "Revenue doubled. Headcount remained unchanged."
+    ),
+    FALSE
+  )
+})
+
+test_that("compound no-change claims cannot enter or reload a briefing", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  claim <- tempest_claim(
+    "Headcount remained unchanged; revenue doubled.",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  workspace$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+  value <- list(
+    kind = "no_change",
+    text = claim@claim_text,
+    claim_ids = list(claim@claim_id),
+    confidence = "high"
+  )
+
+  expect_error(
+    tempest:::tempest_stage_evaluate(
+      test_program_executions()$section_writing,
+      list(items = list(value)),
+      context = list(
+        workspace = workspace,
+        evidence = list(claim),
+        min_support_score = 0.7
+      )
+    ),
+    class = "tempest_stage_output_validation_error"
+  )
+
+  item <- tempest:::TempestBriefingItem(
+    kind = value$kind,
+    text = value$text,
+    claim_ids = claim@claim_id,
+    confidence = value$confidence
+  )
+  expect_error(
+    tempest:::tempest_briefing_items_from_markdown(
+      tempest:::tempest_briefing_item_markdown(item, workspace),
+      workspace,
+      min_support_score = 0.7
+    ),
+    class = "tempest_product_report_error"
+  )
 })
 
 test_that("canonical reports preserve assessment provenance", {
