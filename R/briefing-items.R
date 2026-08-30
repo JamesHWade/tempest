@@ -15,7 +15,7 @@ tempest_briefing_no_change_patterns <- function() {
     "plus|provided|since|so|than|that|then|therefore|though|unless|until|",
     "when|whenever|where|whereas|wherever|whether|which|while|who|whom|",
     "whose|yet)\\b)",
-    "[[:alnum:]][[:alnum:]'’/-]*"
+    "[[:alnum:]][[:alnum:]'/-]*"
   )
   phrase <- paste0(
     term,
@@ -96,7 +96,7 @@ tempest_briefing_claim_affirms_no_change <- function(text) {
   normalized <- gsub(
     pattern = "[[:space:]]+",
     replacement = " ",
-    x = tolower(tempest_trim(text))
+    x = chartr("\u2019", "'", tolower(tempest_trim(text)))
   )
   any(vapply(
     tempest_briefing_no_change_patterns(),

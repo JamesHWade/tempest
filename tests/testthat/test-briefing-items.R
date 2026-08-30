@@ -250,6 +250,12 @@ test_that("no-change claims use a conservative deterministic gate", {
   )
   expect_equal(
     tempest:::tempest_briefing_claim_affirms_no_change(
+      "The operator\u2019s permit remains unchanged"
+    ),
+    TRUE
+  )
+  expect_equal(
+    tempest:::tempest_briefing_claim_affirms_no_change(
       "Pilot output increased by 18 percent"
     ),
     FALSE
