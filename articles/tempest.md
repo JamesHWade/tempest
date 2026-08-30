@@ -409,13 +409,16 @@ report, suggested-question, and Graft snapshot state must pass integrity
 checks.
 
 The moderator and experts use persistent Deputy agents as the required
-Co-STORM runtime. Tempest disables ambient file, shell, R, web, and
+Co-STORM runtime. Tempest disables ambient file, shell, R, and
 package-install capabilities, then allowlists only the tools already
-attached for that role. Snapshots persist canonical opaque terminal
-traces for each run and never serialize the Deputy Agent or provider
-credentials. Those execution identities support correlation and audit
-joins only; they do not claim that an execution caused, authored, or
-validated report content.
+attached for that role. Web authority is limited to that frozen surface,
+including an explicit provider-native search tool when configured. Each
+product-owned session ID is passed to the Deputy Agent constructor and
+checked against the live runtime before any run. Snapshots persist
+canonical opaque terminal traces for each run and never serialize the
+Deputy Agent or provider credentials. Those execution identities support
+correlation and audit joins only; they do not claim that an execution
+caused, authored, or validated report content.
 
 The bundled app includes Chat, STORM, Mind Map, Sources, Facts,
 Transcript, Report, and Run review panels. The Run review shows the

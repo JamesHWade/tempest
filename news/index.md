@@ -97,6 +97,14 @@
   into its named controls, keeps mobile focus inside the full-width
   drawer, closes with Escape, restores the exact launcher, synchronizes
   launcher state, and leaves the desktop chat interactive (dqyv).
+- Tempest now uses Deputy’s current constructor, drop-in Chat, hook, and
+  policy APIs: every product-owned session identifier passes through
+  `Agent$new(session_id = )` and is verified against the live runtime,
+  async hosting calls `stream_async()` directly, run limits live only in
+  `UsageLimits`, retired compatibility modes and hook results are gone,
+  and current `"cost_unavailable"` and `"tool_loop"` terminal reasons
+  remain distinct instead of collapsing to a generic error
+  (JamesHWade/deputy#56).
 - Co-STORM expert-session identities now bind their research run and
   expert owner while retaining a fresh session instance suffix; snapshot
   and bundle schema 11 rejects schema 10 rather than silently
