@@ -386,6 +386,47 @@ test_that("async chat and streams execute through Deputy Chat", {
   )
 })
 
+test_that("async chat returns the canonical multi-block provider response", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("coro")
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+
+  provider_turn <- ellmer::AssistantTurn(
+    list(
+      ellmer::ContentText("First block."),
+      ellmer::ContentThinking("Private reasoning."),
+      ellmer::ContentText("Second block.")
+    ),
+    tokens = c(0, 0, 0),
+    cost = 0
+  )
+  chat <- fake_chat(
+    text = list(c("First block.", "Second block.")),
+    provider_turns = list(provider_turn)
+  )
+  manifest <- tempest_research_manifest(
+    "deputy-adapter-async-multi-block",
+    mode = "costorm",
+    config = tempest_config()
+  )
+  adapter <- tempest:::tempest_deputy_chat_adapter(
+    chat,
+    manifest,
+    deputy_session_id = "deputy-session-async-multi-block",
+    stage = "dialogue",
+    role = "moderator"
+  )
+
+  result <- await_tempest_promise(adapter$chat_async("Compare the evidence"))
+
+  expect_null(result$error)
+  expect_identical(
+    as.character(result$value),
+    "First block.\n\nSecond block."
+  )
+})
+
 test_that("provider and recording errors fail with a fixed safe condition", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("coro")

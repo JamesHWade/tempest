@@ -34,6 +34,14 @@ test_that("tempest_make_dsprrr_modules creates modules", {
     "substring of the answer text",
     fixed = TRUE
   )
+  extraction_type <- tempest:::tempest_type_fact_extract()
+  quote_description <- extraction_type@properties$facts@items@properties$sources@items@properties$quote@description
+  expect_match(
+    quote_description,
+    "captured source context",
+    fixed = TRUE
+  )
+  expect_no_match(quote_description, "answer", fixed = TRUE)
 })
 
 test_that("dsprrr structured results cross as canonical JSON records", {

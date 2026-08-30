@@ -187,8 +187,18 @@ tempest_agent_completion_response_matches_turn <- function(
 ) {
   response <- tempest_agent_completion_text(response)
   turn_response <- tempest_agent_completion_response_from_turn(provider_turn)
+  text_contents <- Filter(
+    \(content) inherits(content, "ellmer::ContentText"),
+    provider_turn@contents
+  )
+  streamed_response <- paste(
+    vapply(text_contents, \(content) content@text, character(1)),
+    collapse = ""
+  )
   identical(response, turn_response) ||
-    identical(response, paste0(turn_response, "\n"))
+    identical(response, paste0(turn_response, "\n")) ||
+    identical(response, streamed_response) ||
+    identical(response, paste0(streamed_response, "\n"))
 }
 
 tempest_agent_completion_trace <- function(deputy_execution) {

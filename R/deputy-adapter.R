@@ -692,6 +692,8 @@ tempest_deputy_adapter_sync_stream <- function(state, record, source) {
 
 tempest_deputy_adapter_async_stream <- function(state, record, source) {
   completed <- FALSE
+  completion <- new.env(parent = emptyenv())
+  completion$value <- NULL
   stream <- function(arg, close = FALSE) {
     value <- tryCatch(
       tempest_deputy_adapter_activate(
@@ -720,7 +722,7 @@ tempest_deputy_adapter_async_stream <- function(state, record, source) {
         onFulfilled = function(content) {
           if (coro::is_exhausted(content) && !completed) {
             completed <<- TRUE
-            tempest_deputy_adapter_guard(
+            completion$value <- tempest_deputy_adapter_guard(
               tempest_deputy_adapter_finish(state, record)
             )
           }
@@ -732,7 +734,20 @@ tempest_deputy_adapter_async_stream <- function(state, record, source) {
       )
   }
   class(stream) <- class(source)
+  attr(stream, "tempest_deputy_completion") <- completion
   tempest_agent_completion_tag(stream, record$completion_id)
+}
+
+tempest_deputy_adapter_async_completion <- function(stream) {
+  completion <- attr(stream, "tempest_deputy_completion", exact = TRUE)
+  if (
+    !is.environment(completion) ||
+      !exists("value", completion, inherits = FALSE) ||
+      is.null(completion$value)
+  ) {
+    tempest_deputy_adapter_error()
+  }
+  completion$value
 }
 
 TempestDeputyChatAdapter <- R6::R6Class(
@@ -804,7 +819,6 @@ TempestDeputyChatAdapter <- R6::R6Class(
       )
       completion_id <- tempest_agent_completion_id(stream)
       coro::async(function() {
-        text <- character()
         repeat {
           content <- stream()
           if (promises::is.promising(content)) {
@@ -813,9 +827,12 @@ TempestDeputyChatAdapter <- R6::R6Class(
           if (coro::is_exhausted(content)) {
             break
           }
-          text <- c(text, tempest_deputy_adapter_content_text(content))
         }
-        tempest_agent_completion_tag(paste(text, collapse = ""), completion_id)
+        response <- tempest_deputy_adapter_async_completion(stream)
+        if (!identical(tempest_agent_completion_id(response), completion_id)) {
+          tempest_deputy_adapter_error()
+        }
+        response
       })()
     },
 

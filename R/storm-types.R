@@ -81,8 +81,8 @@ tempest_type_fact_extract <- function() {
     url = ellmer::type_string("URL if available", required = FALSE),
     quote = ellmer::type_string(
       paste(
-        "Verbatim contiguous substring copied from the answer or captured",
-        "source context, including exact capitalization and Markdown;",
+        "Verbatim contiguous substring copied from captured source context,",
+        "including exact capitalization and Markdown;",
         "20 words or fewer, with no ellipses or added formatting"
       ),
       required = FALSE
