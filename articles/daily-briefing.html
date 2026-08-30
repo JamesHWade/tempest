@@ -136,7 +136,9 @@ day.</p>
 <span>  <span class="st">"Daily decision briefing on grid-scale battery recycling as of"</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="st">"Cover what changed, why it matters, what needs review today,"</span>,</span>
-<span>  <span class="st">"and material no-change signals. Preserve uncertainty and cite evidence."</span></span>
+<span>  <span class="st">"and any material no-change signal explicitly established by evidence."</span>,</span>
+<span>  <span class="st">"Omit no-change when evidence is missing or inconclusive. Preserve"</span>,</span>
+<span>  <span class="st">"uncertainty and cite evidence."</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">matches</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_find.html" class="external-link">graft_find</a></span><span class="op">(</span><span class="va">view</span>, <span class="st">"grid-scale battery recycling"</span>, limit <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
@@ -161,7 +163,8 @@ claim-support pairs behind its ordinary product interface.</p>
 <span>  description <span class="op">=</span> <span class="st">"Reviews demonstrated process performance and scale-up risk."</span>,</span>
 <span>  instructions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
 <span>    <span class="st">"Separate measured performance from projections."</span>,</span>
-<span>    <span class="st">"Call out consequential unknowns and material no-change signals."</span></span>
+<span>    <span class="st">"Call out consequential unknowns. Report no change only when a verified"</span>,</span>
+<span>    <span class="st">"claim explicitly establishes an unchanged material condition."</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  focus_areas <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"process yield"</span>, <span class="st">"scale-up"</span>, <span class="st">"safety"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -180,6 +183,7 @@ claim-support pairs behind its ordinary product interface.</p>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
 <span>  <span class="va">topic</span>,</span>
 <span>  config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
+<span>    models <span class="op">=</span> <span class="st">"openai/gpt-5.6-luna"</span>,</span>
 <span>    citation_policy <span class="op">=</span> <span class="st">"claim_verified"</span>,</span>
 <span>    on_unsupported_claim <span class="op">=</span> <span class="st">"flag"</span></span>
 <span>  <span class="op">)</span>,</span>
@@ -195,10 +199,22 @@ claim-support pairs behind its ordinary product interface.</p>
 <span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claims.html">tempest_claims</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="va">supports</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claim_supports.html">tempest_claim_supports</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></code></pre></div>
 <p>Treat the report as the briefing and the tables as its evidence rail.
-A host UI can lead with “What changed,” “Why it matters,” and “Review
-today,” while still making unsupported or disputed claims visible.
-Whether somebody was shown the briefing or read it is operational state;
-it is not accepted knowledge.</p>
+The at-a-glance brief and each detailed section keep four statements
+visibly distinct: verified observations copy claims exactly; “Why it
+matters” assessments are labeled, confidence-calibrated inferences;
+“Review today” items are proposed actions; and “No material change”
+statements copy one explicit verified claim exactly. That claim must
+pass a conservative language gate that requires an unchanged assertion
+and rejects a simultaneous change assertion. Missing, unresolved, or
+inconclusive evidence does not become a no-change statement. A daily
+host presents verified observations as “What changed.” Tempest binds
+every item to its exact claim IDs in machine-readable provenance and
+rejects a report if that provenance no longer matches the visible
+Markdown.</p>
+<p>Whether somebody was shown the briefing or read it is operational
+state; it is not accepted knowledge. An assessment or review action is
+also not accepted knowledge merely because it appears in the
+briefing.</p>
 </div>
 <div class="section level2">
 <h2 id="review-the-evidence-and-the-run-separately">Review the evidence and the run separately<a class="anchor" aria-label="anchor" href="#review-the-evidence-and-the-run-separately"></a>

@@ -18,7 +18,7 @@ This package reproduces the core workflow primitives:
 - **Review-only Graft promotion** with immutable acceptance receipts
 - **Resumable research state** for scripted STORM and interactive
   Co-STORM
-- **Two-step outline refinement** and **lead section generation**
+- **Two-step outline refinement** and **at-a-glance decision synthesis**
 - **Query decomposition** and **semantic fact retrieval**
 - **Parallel section writing** from already-grounded evidence (optional)
 - **Interactive multi-agent moderation** with mind map (Co-STORM)
@@ -478,8 +478,10 @@ executes five steps: `perspectives`, `research`, `outline`, `write`,
   (falls back to keyword matching otherwise).
 - **Two-step outline** – a draft outline is generated from the LLM’s
   parametric knowledge, then refined with research findings.
-- **Lead section** – a Wikipedia-style lead (2-3 paragraphs) is
-  generated and prepended to the article.
+- **At-a-glance decision brief** – verified observations are kept
+  distinct from evidence-bound assessments and review actions; no-change
+  signals copy an explicit verified claim and are omitted when evidence
+  is inconclusive.
 - **Parallel section writing** – pass `parallel_writing = TRUE` to write
   report sections concurrently with mirai, then assemble the
   already-grounded sections and evidence in deterministic outline order.

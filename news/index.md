@@ -2,6 +2,11 @@
 
 ## tempest (development version)
 
+- Internal ellmer Chat clients are now governed directly by Deputy Agent
+  objects while preserving Tempest’s exact completion and terminal-trace
+  bindings; this removes Tempest’s parallel hand-built Chat facade and
+  accepts real R6 ellmer clients, including shinychat attachment content
+  (pjsd).
 - The public namespace is now exactly 20 exports and one S3 method,
   [`print.tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md).
   Workspaces, retrievers, resources, manifests, ProgramSets,
@@ -70,6 +75,16 @@
   [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md);
   the raw retriever, mutable workspace, manifest, and stage state are no
   longer part of the supported result surface (pjsd).
+- [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  now canonicalizes dsprrr’s typed tabular structured results before
+  strict validation and renders governed briefing items: observations
+  copy threshold-verified claims exactly, while affirmative no-change
+  findings must also pass a conservative deterministic language gate
+  that rejects claims asserting another change; assessments and review
+  actions stay visibly labeled and bound to their exact claim IDs,
+  missing or inconclusive evidence is never presented as no change, and
+  reports reject altered or repetitive items whose hidden provenance no
+  longer matches the visible Markdown (pjsd).
 - [`tempest_trajectory_review_data()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review_data.md)
   exposes the validated, schema-versioned plain projection from an exact
   [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
