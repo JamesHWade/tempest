@@ -31,12 +31,20 @@ jobs:
 
       - name: Install exact ecosystem revisions
         run: |
+          remotes <- trimws(strsplit(
+            read.dcf("DESCRIPTION", fields = "Remotes")[[1]],
+            ",",
+            fixed = TRUE
+          )[[1]])
+          ecosystem <- remotes[grepl(
+            "^JamesHWade/(deputy|dsprrr|graft)@",
+            remotes
+          )]
+          if (length(ecosystem) != 3L) {
+            stop("DESCRIPTION must pin Deputy, dsprrr, and Graft revisions")
+          }
           remotes::install_github(
-            c(
-              "JamesHWade/dsprrr@db28eae2235ab15c4f5c1c9794118d127eabbdd7",
-              "JamesHWade/graft@81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5",
-              "JamesHWade/deputy@89089c90ddeb668462422b14a4de7a8395eefdc8"
-            ),
+            ecosystem,
             dependencies = FALSE,
             upgrade = "never"
           )

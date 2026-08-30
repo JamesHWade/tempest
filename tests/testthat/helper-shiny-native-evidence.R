@@ -21,7 +21,8 @@ native_openai_json_turn <- function(
             annotations = list(list(
               type = "url_citation",
               title = title,
-              url = url
+              url = url,
+              snippet = claim_text
             ))
           ))
         )

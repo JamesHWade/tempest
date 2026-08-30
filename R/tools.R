@@ -111,16 +111,14 @@ tempest_native_source_candidates <- function(x) {
 
     context_text <- tempest_native_scalar(
       value$context_text,
-      value$citation_context,
-      value$context
+      value$citation_context
     )
     annotations <- value$annotations %||% value$citations
     if (is.data.frame(annotations)) {
       annotations <- split(annotations, seq_len(nrow(annotations)))
     }
     if (is.list(annotations) && length(annotations) > 0L) {
-      parent_text <- tempest_native_scalar(value$text)
-      annotation_context <- tempest_native_scalar(context_text, parent_text)
+      # The parent text is the model answer, never captured source evidence.
       for (annotation in annotations) {
         if (!is.list(annotation)) {
           next
@@ -131,14 +129,20 @@ tempest_native_source_candidates <- function(x) {
           title = tempest_native_scalar(annotation$title, annotation$name),
           snippet = tempest_native_scalar(
             annotation$snippet,
+            annotation$excerpt,
+            annotation$cited_text,
+            annotation$quote,
             annotation$description,
             annotation$summary
           ),
           content_text = tempest_native_scalar(
             annotation$content,
-            annotation$text
+            annotation$source_text
           ),
-          context_text = annotation_context
+          context_text = tempest_native_scalar(
+            annotation$context_text,
+            annotation$citation_context
+          )
         )
       }
     }
@@ -149,10 +153,13 @@ tempest_native_source_candidates <- function(x) {
       title = tempest_native_scalar(value$title, value$name),
       snippet = tempest_native_scalar(
         value$snippet,
+        value$excerpt,
+        value$cited_text,
+        value$quote,
         value$description,
         value$summary
       ),
-      content_text = tempest_native_scalar(value$content, value$text),
+      content_text = tempest_native_scalar(value$content, value$source_text),
       context_text = context_text
     )
 
@@ -286,26 +293,6 @@ tempest_upsert_native_resource <- function(store, resource) {
   )
   store$upsert_retrieved_resource(resource)
   resource@resource_id
-}
-
-#' @keywords internal
-tempest_refresh_native_source_context <- function(store, source_id, text) {
-  resource <- store$get_retrieved_resource(source_id)
-  if (
-    is.null(resource) ||
-      !identical(resource@resource_kind, "web") ||
-      !identical(resource@metadata$provider_tool %||% NULL, "native")
-  ) {
-    return(invisible(NULL))
-  }
-  updated <- tempest_native_resource_from_url(
-    resource@locator,
-    title = resource@title,
-    context_text = text,
-    kind = resource@metadata$kind %||% "native_search"
-  )
-  tempest_upsert_native_resource(store, updated)
-  invisible(NULL)
 }
 
 #' @keywords internal
