@@ -102,7 +102,7 @@ changes_as_basis <- function(changed) {
     commit_order = changed$commit_order,
     status = vapply(
       changed$record,
-      \(record) record$status %||% "active",
+      \(record) if (is.null(record$status)) "active" else record$status,
       character(1)
     )
   )
@@ -125,9 +125,9 @@ if (file.exists(basis_path)) {
   )
   basis <- data.frame(
     record_id = claims$id,
-    class = "Claim",
-    commit_order = snapshot@commit_order,
-    status = "active"
+    class = rep("Claim", length(claims$id)),
+    commit_order = rep(snapshot@commit_order, length(claims$id)),
+    status = rep("active", length(claims$id))
   )
 }
 

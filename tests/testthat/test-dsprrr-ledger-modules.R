@@ -77,6 +77,16 @@ test_that("grounded writing programs separate observation and synthesis", {
     fixed = TRUE
   )
   expect_match(
+    section_instructions,
+    "When no fact is new, return exactly one no_change item",
+    fixed = TRUE
+  )
+  expect_match(
+    lead_instructions,
+    "When no fact is new, return exactly one no_change item",
+    fixed = TRUE
+  )
+  expect_match(
     lead_instructions,
     "no_change item must copy the exact text of one fact whose status is already accepted",
     fixed = TRUE
