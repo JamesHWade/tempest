@@ -242,7 +242,7 @@ run_findings
 ```
 
 Tempest keys accepted `Claim` identity on the claim's normalized statement
-text and accepted `Source` identity on its locator. A claim the organization
+text and accepted `Source` identity on its locator plus content hash. A claim the organization
 already accepted therefore plans as an `update` whose `changed_fields` name
 only run metadata such as the Tempest claim id and verification time, and
 Graft's `disposition` column reads `revision`; a genuinely new statement reads

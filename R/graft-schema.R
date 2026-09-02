@@ -340,37 +340,29 @@ tempest_claim_coalesce_invariant_fields <- function() {
   "claim_type"
 }
 
-# Accepted Source identity is keyed on the locator, so two bundle Sources
-# with the same locator become one planned Source; spans and supports are
-# re-pointed at it.
+# Accepted Source identity is keyed on locator plus content hash, so two
+# bundle Sources with the same pair become one planned Source; spans and
+# supports are re-pointed at it. Same locator with different content stays
+# two Sources because their evidence was extracted from different content.
 tempest_graft_coalesce_sources <- function(records) {
   sources <- records$Source %||% list()
   if (length(sources) < 2L) {
     return(records)
   }
   ids <- vapply(sources, `[[`, character(1), "tempest_source_id")
-  locators <- tempest_trim(vapply(sources, `[[`, character(1), "locator"))
-  alias <- stats::setNames(ids[match(locators, locators)], ids)
+  keys <- tempest_source_origin_keys(
+    vapply(sources, `[[`, character(1), "locator"),
+    vapply(
+      sources,
+      \(source) as.character(source$content_hash %||% NA_character_),
+      character(1)
+    )
+  )
+  alias <- stats::setNames(ids[match(keys, keys)], ids)
   if (all(alias == names(alias))) {
     return(records)
   }
-  # Evidence spans carry the hash of the content they were extracted from, so
-  # two Sources with one locator can only merge when they hold the same content.
-  for (locator in unique(locators[duplicated(locators)])) {
-    hashes <- unique(vapply(
-      sources[locators == locator],
-      \(source) as.character(source$content_hash %||% NA_character_),
-      character(1)
-    ))
-    if (length(hashes) > 1L) {
-      tempest_graft_plan_abort(paste0(
-        "Promotion contains Sources with the same locator {.val {locator}} ",
-        "but different content hashes ({.val {hashes}}); the evidence was ",
-        "extracted from different content and cannot share one accepted Source."
-      ))
-    }
-  }
-  records$Source <- sources[!duplicated(locators)]
+  records$Source <- sources[!duplicated(keys)]
   repoint <- function(rows) {
     lapply(rows, function(row) {
       if (rlang::is_string(row$source_id) && row$source_id %in% names(alias)) {
@@ -457,6 +449,90 @@ tempest_graft_assert_claim_lifecycle <- function(store, seed) {
     }
   }
   invisible(seed)
+}
+
+tempest_graft_evidence_call <- function(store, record_id) {
+  graft::graft_get(
+    store,
+    record_id,
+    include = "evidence",
+    limits = list(identifiers = 100L, claims = 50L, evidence = 1000L)
+  )
+}
+
+# A statement re-verified under a new Tempest claim id resolves to its
+# accepted Claim, whose previously accepted ClaimSupports stay attached. The
+# planned Claim summary must describe that complete set: accepted supports
+# are kept unless today's proposal re-judges the same evidence span, and the
+# summary is recomputed over the merged set before the final plan.
+tempest_graft_merge_accepted_supports <- function(
+  store,
+  seed,
+  records,
+  coalesced
+) {
+  changes <- seed@changes
+  targets <- unique(changes$record_id[
+    changes$class == "Claim" & changes$action == "update"
+  ])
+  if (length(targets) == 0L) {
+    return(list(records = records, coalesced = coalesced))
+  }
+  seed_claims <- seed@records$Claim
+  claim_rows <- coalesced$records$Claim
+  row_ids <- vapply(claim_rows, `[[`, character(1), "tempest_claim_id")
+  frame_ids <- as.character(records$Claim$tempest_claim_id)
+  for (record_id in targets) {
+    tempest_id <- as.character(
+      seed_claims$tempest_claim_id[as.character(seed_claims$id) == record_id]
+    )
+    position <- match(tempest_id, row_ids)
+    frame_index <- match(tempest_id, frame_ids)
+    if (length(tempest_id) != 1L || is.na(position) || is.na(frame_index)) {
+      tempest_graft_plan_abort(
+        "Graft returned an accepted Claim identity Tempest did not propose."
+      )
+    }
+    accepted <- tryCatch(
+      tempest_graft_evidence_call(store, record_id),
+      error = function(error) {
+        tempest_graft_plan_abort(
+          "Could not read the accepted supports of Claim {.val {record_id}}."
+        )
+      }
+    )
+    if (isTRUE(accepted$truncated$evidence)) {
+      tempest_graft_plan_abort(
+        "Accepted Claim {.val {record_id}} has more supports than planning can merge."
+      )
+    }
+    evidence <- accepted$related$evidence
+    retained <- list()
+    if (is.data.frame(evidence) && nrow(evidence) > 0L) {
+      retained <- evidence$record[evidence$evidence_class == "ClaimSupport"]
+    }
+    proposed <- Filter(
+      \(row) identical(coalesced$alias[[row$tempest_claim_id]], tempest_id),
+      coalesced$records$ClaimSupport
+    )
+    proposed_spans <- vapply(
+      proposed,
+      `[[`,
+      character(1),
+      "evidence_span_id"
+    )
+    retained <- Filter(
+      \(row) !isTRUE(row$evidence_span_id %in% proposed_spans),
+      retained
+    )
+    summary <- tempest_graft_coalesced_claim_summary(c(retained, proposed))
+    claim_rows[[position]]$verification_status <- summary$status
+    claim_rows[[position]]$support_score <- summary$score
+    records$Claim$verification_status[[frame_index]] <- summary$status
+    records$Claim$support_score[[frame_index]] <- summary$score
+  }
+  coalesced$records$Claim <- claim_rows
+  list(records = records, coalesced = coalesced)
 }
 
 tempest_graft_seed_map <- function(plan, record_class, key_field) {
@@ -719,7 +795,7 @@ tempest_graft_bundle_plan_match <- function(
   TRUE
 }
 
-tempest_graft_plan_assert_bundle <- function(plan, bundle) {
+tempest_graft_plan_assert_bundle <- function(plan, bundle, coalesced = NULL) {
   if (!S7::S7_inherits(bundle, TempestPromotionBundle)) {
     tempest_graft_plan_abort(
       "{.arg bundle} must be a TempestPromotionBundle."
@@ -750,7 +826,19 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
     )
   }
 
-  coalesced <- tempest_graft_coalesce_bundle_rows(bundle@records)
+  # Planning passes the coalesced rows whose Claim summaries were recomputed
+  # over previously accepted supports. A later check (for example the
+  # receipt) recomputes the rows from the bundle alone, so the two derived
+  # summary fields are compared only when the planning rows are available.
+  summary_fields <- c("verification_status", "support_score")
+  derived_claim_fields <- if (is.null(coalesced)) {
+    summary_fields
+  } else {
+    character()
+  }
+  if (is.null(coalesced)) {
+    coalesced <- tempest_graft_coalesce_bundle_rows(bundle@records)
+  }
   bundle_records <- coalesced$records
   claim_alias <- coalesced$alias
   source_map <- stats::setNames(
@@ -764,6 +852,9 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
   simple_classes <- c("Source", "Claim", "ProgramArtifact")
   for (record_class in simple_classes) {
     fields <- tempest_promotion_record_fields()[[record_class]]
+    if (identical(record_class, "Claim")) {
+      fields <- setdiff(fields, derived_claim_fields)
+    }
     if (
       !tempest_graft_bundle_plan_match(
         bundle_records[[record_class]],
@@ -905,7 +996,8 @@ tempest_graft_plan <- function(store, bundle) {
     records$Claim$statement_text
   )
   records$Source$.graft_origin_key <- tempest_source_origin_keys(
-    records$Source$locator
+    records$Source$locator,
+    records$Source$content_hash
   )
   seed <- tryCatch(
     tempest_graft_plan_call(
@@ -921,6 +1013,14 @@ tempest_graft_plan <- function(store, bundle) {
   )
   seed <- tempest_graft_plan_require_valid(seed, "identity seed")
   tempest_graft_assert_claim_lifecycle(store, seed)
+  merged <- tempest_graft_merge_accepted_supports(
+    store,
+    seed,
+    records,
+    coalesced
+  )
+  records <- merged$records
+  coalesced <- merged$coalesced
   source_map <- tempest_graft_seed_map(seed, "Source", "tempest_source_id")
   claim_map <- tempest_graft_seed_map(seed, "Claim", "tempest_claim_id")
 
@@ -972,7 +1072,7 @@ tempest_graft_plan <- function(store, bundle) {
       "The Graft store advanced while the promotion plan was prepared."
     )
   }
-  tempest_graft_plan_assert_bundle(plan, bundle)
+  tempest_graft_plan_assert_bundle(plan, bundle, coalesced = coalesced)
   plan
 }
 
@@ -991,19 +1091,23 @@ tempest_claim_text_key <- function(text) {
   enc2utf8(normalized)
 }
 
-# Accepted Sources are keyed on their exact locator so the same document cited
-# by later research resolves to its accepted record. Repeated locators inside
-# one bundle are coalesced before planning.
-tempest_source_origin_keys <- function(locators) {
+# Accepted Sources are keyed on the exact locator together with the content
+# hash, so the same document cited again resolves to its accepted record while
+# a locator whose content changed becomes a new Source; evidence extracted
+# from the earlier content keeps pointing at the earlier Source. Repeated
+# pairs inside one bundle are coalesced before planning.
+tempest_source_origin_keys <- function(locators, content_hashes) {
   if (length(locators) == 0L) {
     return(character())
   }
+  content_hashes <- as.character(content_hashes)
+  content_hashes[is.na(content_hashes)] <- ""
   vapply(
-    tempest_trim(as.character(locators)),
-    function(locator) {
+    paste(tempest_trim(as.character(locators)), content_hashes, sep = "\u001f"),
+    function(key) {
       paste0(
         "tempest-source-locator-v1:",
-        digest::digest(enc2utf8(locator), algo = "sha256", serialize = FALSE)
+        digest::digest(enc2utf8(key), algo = "sha256", serialize = FALSE)
       )
     },
     character(1),

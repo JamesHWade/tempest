@@ -321,18 +321,21 @@ test_that("re-verified claim text resolves to the accepted Claim record", {
   expect_identical(unique(sources$disposition), "new")
 })
 
-test_that("source origin keys follow the exact locator", {
-  keys <- tempest:::tempest_source_origin_keys(c(
-    "https://example.com/a",
-    " https://example.com/a ",
-    "https://example.com/b"
-  ))
+test_that("source origin keys follow the locator and content hash", {
+  keys <- tempest:::tempest_source_origin_keys(
+    c(
+      "https://example.com/a",
+      " https://example.com/a ",
+      "https://example.com/a"
+    ),
+    c("sha256:1", "sha256:1", "sha256:2")
+  )
 
   expect_identical(keys[[2L]], keys[[1L]])
   expect_match(keys[[1L]], "^tempest-source-locator-v1:[a-f0-9]{64}$")
   expect_false(identical(keys[[3L]], keys[[1L]]))
   expect_identical(
-    tempest:::tempest_source_origin_keys(character()),
+    tempest:::tempest_source_origin_keys(character(), character()),
     character()
   )
 })
@@ -340,9 +343,21 @@ test_that("source origin keys follow the exact locator", {
 test_that("repeated source locators in one bundle coalesce and re-point evidence", {
   records <- list(
     Source = list(
-      list(tempest_source_id = "S1", locator = "https://example.com/a"),
-      list(tempest_source_id = "S2", locator = "https://example.com/a"),
-      list(tempest_source_id = "S3", locator = "https://example.com/b")
+      list(
+        tempest_source_id = "S1",
+        locator = "https://example.com/a",
+        content_hash = "h1"
+      ),
+      list(
+        tempest_source_id = "S2",
+        locator = "https://example.com/a",
+        content_hash = "h1"
+      ),
+      list(
+        tempest_source_id = "S3",
+        locator = "https://example.com/b",
+        content_hash = "h2"
+      )
     ),
     EvidenceSpan = list(
       list(id = "E1", source_id = "S2"),
@@ -371,13 +386,61 @@ test_that("repeated source locators in one bundle coalesce and re-point evidence
   )
   expect_identical(coalesced$ClaimSupport[[1L]]$source_id, "S1")
 
-  conflicting <- records
-  conflicting$Source[[1L]]$content_hash <- "sha256:aaa"
-  conflicting$Source[[2L]]$content_hash <- "sha256:bbb"
-  expect_error(
-    tempest:::tempest_graft_coalesce_bundle_rows(conflicting),
-    class = "tempest_graft_plan_error"
+  changed <- records
+  changed$Source[[2L]]$content_hash <- "h9"
+  kept <- tempest:::tempest_graft_coalesce_bundle_rows(changed)$records
+  expect_identical(
+    vapply(kept$Source, `[[`, character(1), "tempest_source_id"),
+    c("S1", "S2", "S3")
   )
+  expect_identical(kept$EvidenceSpan[[1L]]$source_id, "S2")
+})
+
+test_that("re-verified claims merge previously accepted supports into their summary", {
+  skip_if_not_installed("graft")
+  first <- tempest_promotion_bundle(test_promotion_storm_fixture()$research)
+  second <- tempest_promotion_bundle(
+    test_promotion_storm_fixture(run_id = "research-promotion-2")$research
+  )
+  store <- test_promotion_store()
+  withr::defer(graft::graft_close(store))
+  accepted <- tempest_graft_plan(store, first)
+  graft::graft_commit(store, accepted)
+  accepted_support <- accepted@records$ClaimSupport[1L, ]
+  contradicting <- as.list(accepted_support)
+  contradicting$pair_verification_status <- "contradicted"
+  contradicting$support_score <- 0.2
+  testthat::local_mocked_bindings(
+    tempest_graft_evidence_call = function(store, record_id) {
+      list(
+        related = list(
+          evidence = data.frame(
+            evidence_class = "ClaimSupport",
+            record = I(list(contradicting))
+          )
+        ),
+        truncated = list(evidence = FALSE)
+      )
+    }
+  )
+
+  replay <- tempest_graft_plan(store, second)
+  planned_claim <- replay@records$Claim[1L, ]
+  proposed <- tempest:::tempest_graft_coalesce_bundle_rows(second@records)
+  expected <- tempest:::tempest_graft_coalesced_claim_summary(c(
+    list(contradicting),
+    proposed$records$ClaimSupport
+  ))
+
+  expect_identical(planned_claim$verification_status, expected$status)
+  expect_identical(planned_claim$support_score, expected$score)
+  expect_false(identical(
+    planned_claim$verification_status,
+    second@records$Claim[[1L]]$verification_status
+  ))
+  commit_result <- graft::graft_commit(store, replay)
+  receipt <- tempest_promotion_receipt(store, second, replay, commit_result)
+  expect_s7_class(receipt, tempest:::TempestPromotionReceipt)
 })
 test_that("claim origin keys normalize text", {
   keys <- tempest:::tempest_claim_origin_keys(c(

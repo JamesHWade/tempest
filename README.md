@@ -147,7 +147,7 @@ The packaged schema is compiled for Graft consumer contract `0.2.0`, which
 runtime loading checks through `graft::graft_contract_version()`; loading
 also checks the schema's exact immutable build digest and never recompiles
 LinkML. Planning keys accepted `Claim` identity on normalized statement text
-and accepted `Source` identity on the exact locator, so research that
+and accepted `Source` identity on the exact locator plus content hash, so research that
 re-verifies an accepted claim revises that record instead of inserting a
 duplicate, and the plan's `disposition` column separates `new`, `revision`,
 and `duplicate` proposals.
