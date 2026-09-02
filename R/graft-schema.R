@@ -424,13 +424,21 @@ tempest_graft_get_call <- function(store, record_id) {
 
 # A re-verified statement resolves to its accepted Claim through the text
 # origin key. When that record was retracted or superseded, planning an
-# update would silently reactivate it, so the conflict is surfaced instead.
-tempest_graft_assert_claim_lifecycle <- function(store, seed) {
+# update would silently reactivate it, and when the proposal classifies the
+# statement differently from the accepted record, committing would silently
+# reclassify it; both are surfaced as conflicts instead.
+tempest_graft_assert_claim_lifecycle <- function(store, seed, records) {
   changes <- seed@changes
   targets <- changes$record_id[
     changes$class == "Claim" & changes$action == "update"
   ]
+  seed_claims <- seed@records$Claim
+  proposed_ids <- as.character(records$Claim$tempest_claim_id)
   for (record_id in unique(targets)) {
+    tempest_id <- as.character(
+      seed_claims$tempest_claim_id[as.character(seed_claims$id) == record_id]
+    )
+    proposed_index <- match(tempest_id, proposed_ids)
     current <- tryCatch(
       tempest_graft_get_call(store, record_id),
       error = function(error) {
@@ -446,6 +454,28 @@ tempest_graft_assert_claim_lifecycle <- function(store, seed) {
         "{.val {record_id}} is {.val {status}}; retract the proposal or ",
         "supersede that record explicitly instead of reactivating it."
       ))
+    }
+    for (field in tempest_claim_coalesce_invariant_fields()) {
+      accepted_value <- current$record[[field]]
+      proposed_value <- if (is.na(proposed_index)) {
+        NULL
+      } else {
+        records$Claim[[field]][[proposed_index]]
+      }
+      if (
+        rlang::is_string(accepted_value) &&
+          rlang::is_string(proposed_value) &&
+          !identical(accepted_value, proposed_value)
+      ) {
+        tempest_graft_plan_abort(paste0(
+          "Promotion re-proposes a statement whose accepted Claim ",
+          "{.val {record_id}} has {.field ",
+          field,
+          "} {.val {accepted_value}}, but the proposal classifies it as ",
+          "{.val {proposed_value}}; supersede that record explicitly instead ",
+          "of reclassifying it."
+        ))
+      }
     }
   }
   invisible(seed)
@@ -1012,7 +1042,7 @@ tempest_graft_plan <- function(store, bundle) {
     }
   )
   seed <- tempest_graft_plan_require_valid(seed, "identity seed")
-  tempest_graft_assert_claim_lifecycle(store, seed)
+  tempest_graft_assert_claim_lifecycle(store, seed, records)
   merged <- tempest_graft_merge_accepted_supports(
     store,
     seed,

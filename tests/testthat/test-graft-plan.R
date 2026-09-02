@@ -565,3 +565,26 @@ test_that("planning refuses to reactivate a retracted accepted claim", {
     regexp = "retracted"
   )
 })
+
+test_that("planning refuses to reclassify an accepted claim across runs", {
+  skip_if_not_installed("graft")
+  first <- tempest_promotion_bundle(test_promotion_storm_fixture()$research)
+  second <- tempest_promotion_bundle(
+    test_promotion_storm_fixture(run_id = "research-promotion-2")$research
+  )
+  store <- test_promotion_store()
+  withr::defer(graft::graft_close(store))
+  accepted <- tempest_graft_plan(store, first)
+  graft::graft_commit(store, accepted)
+  testthat::local_mocked_bindings(
+    tempest_graft_get_call = function(store, record_id) {
+      list(record = list(status = "active", claim_type = "speculation"))
+    }
+  )
+
+  expect_error(
+    tempest_graft_plan(store, second),
+    class = "tempest_graft_plan_error",
+    regexp = "reclassifying"
+  )
+})
