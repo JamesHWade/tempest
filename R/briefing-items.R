@@ -378,6 +378,9 @@ tempest_briefing_item_validate_synthesis <- function(kind, text, claims) {
   invisible(NULL)
 }
 
+# `require_observation` is TRUE when the supplied evidence contains a claim
+# that is not yet accepted: a briefing must then report at least one change
+# rather than hide it behind a no-change finding.
 tempest_briefing_items_validate_counts <- function(
   items,
   limits = c(
@@ -385,10 +388,19 @@ tempest_briefing_items_validate_counts <- function(
     assessment = 2L,
     review_action = 2L,
     no_change = 1L
-  )
+  ),
+  require_observation = FALSE
 ) {
   kinds <- vapply(items, \(item) item@kind, character(1))
   counts <- table(factor(kinds, levels = names(limits)))
+  if (isTRUE(require_observation) && counts[["observation"]] == 0L) {
+    tempest_stage_output_abort(
+      paste0(
+        "Grounded writing must report at least one observation when the ",
+        "supplied evidence contains a claim that is not yet accepted."
+      )
+    )
+  }
   if (counts[["observation"]] == 0L && counts[["no_change"]] == 0L) {
     tempest_stage_output_abort(
       paste0(
@@ -436,6 +448,7 @@ tempest_briefing_items_from_output <- function(output, context) {
     context$min_support_score %||% 0.7
   )
   accepted <- tempest_workspace_accepted_claim_keys(workspace)
+  has_new <- tempest_briefing_evidence_has_new(evidence, accepted)
   items <- lapply(values, function(value) {
     value <- tempest_briefing_item_output_record(value)
     if (
@@ -513,7 +526,20 @@ tempest_briefing_items_from_output <- function(output, context) {
     )
     item
   })
-  tempest_briefing_items_validate_counts(items)
+  tempest_briefing_items_validate_counts(items, require_observation = has_new)
+}
+
+tempest_briefing_evidence_has_new <- function(evidence, accepted) {
+  any(vapply(
+    evidence,
+    \(claim) {
+      identical(
+        tempest_briefing_claim_disposition(claim@claim_text, accepted),
+        "new"
+      )
+    },
+    logical(1)
+  ))
 }
 
 tempest_briefing_hex_encode <- function(value) {
@@ -890,6 +916,7 @@ tempest_briefing_markdown_assertion_input <- function(
 tempest_stage_evaluate_briefing_items <- function(output, context, stage) {
   items <- tempest_briefing_items_from_output(output, context)
   if (identical(stage, "lead_section")) {
+    workspace <- tempest_stage_workspace(context)
     items <- tempest_briefing_items_validate_counts(
       items,
       limits = c(
@@ -897,6 +924,10 @@ tempest_stage_evaluate_briefing_items <- function(output, context, stage) {
         assessment = 1L,
         review_action = 1L,
         no_change = 1L
+      ),
+      require_observation = tempest_briefing_evidence_has_new(
+        tempest_stage_evidence(context),
+        tempest_workspace_accepted_claim_keys(workspace)
       )
     )
   }

@@ -78,10 +78,12 @@ only through explicit acceptance; a keyword search that happens to match a
 different set of records on day 40 cannot change it.
 
 `tempest_knowledge()` reads at most 1,000 records, so the basis is a bounded
-table rather than an ever-growing id list. Active `Claim` records always come
-first because they are the change signal; evidence records fill the remaining
-room newest-first, and a record whose latest revision is retracted or
-superseded drops out.
+table rather than an ever-growing id list. Every active `Claim` is always
+kept because the claims are the change signal; evidence records fill the
+remaining room newest-first, and a record whose latest revision is retracted
+or superseded drops out. If a monitored topic ever accumulates more than
+1,000 active claims, the run stops rather than forgetting some of them: narrow
+the topic or give it its own store.
 
 ```{r basis}
 basis_path <- "briefing/basis.rds"
@@ -91,8 +93,16 @@ basis_limit <- 1000
 bound_basis <- function(records) {
   records <- records[!duplicated(records$record_id, fromLast = TRUE), ]
   records <- records[records$status == "active", ]
-  records <- records[order(records$class != "Claim", -records$commit_order), ]
-  head(records, basis_limit)
+  claims <- records[records$class == "Claim", ]
+  if (nrow(claims) > basis_limit) {
+    stop(
+      "The monitored topic has ", nrow(claims), " active accepted claims, ",
+      "more than tempest_knowledge() can pin; narrow the topic or split the store."
+    )
+  }
+  evidence <- records[records$class != "Claim", ]
+  evidence <- evidence[order(-evidence$commit_order), ]
+  rbind(claims, head(evidence, basis_limit - nrow(claims)))
 }
 
 changes_as_basis <- function(changed) {

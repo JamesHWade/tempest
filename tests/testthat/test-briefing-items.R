@@ -719,3 +719,59 @@ test_that("lead facts keep a new claim ahead of accepted ones when truncated", {
   expect_match(text, "A new line reached yield.", fixed = TRUE)
   expect_no_match(text, "already accepted", fixed = TRUE)
 })
+
+test_that("a briefing cannot hide a new claim behind a no-change finding", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  fake_accepted_claim(workspace, "The permit schedule remains unchanged.")
+  claims <- list(
+    tempest_claim(
+      "A new line reached yield.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    ),
+    tempest_claim(
+      "The permit schedule remains unchanged.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    )
+  )
+  for (claim in claims) {
+    workspace$add_proposed_claim(claim)
+  }
+  claims <- fake_verify_claim_supports(workspace, claims)
+  context <- list(
+    workspace = workspace,
+    evidence = claims,
+    min_support_score = 0.7
+  )
+  only_no_change <- list(
+    items = list(
+      list(
+        kind = "no_change",
+        text = claims[[2L]]@claim_text,
+        claim_ids = list(claims[[2L]]@claim_id),
+        confidence = "high"
+      )
+    )
+  )
+
+  expect_error(
+    tempest:::tempest_stage_evaluate(
+      test_program_executions()$section_writing,
+      only_no_change,
+      context = context
+    ),
+    class = "tempest_stage_output_validation_error"
+  )
+  expect_error(
+    tempest:::tempest_stage_evaluate(
+      test_program_executions()$lead_section,
+      only_no_change,
+      context = context
+    ),
+    class = "tempest_stage_output_validation_error"
+  )
+})
