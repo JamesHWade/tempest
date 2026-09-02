@@ -354,33 +354,41 @@ test_that("claim origin keys normalize text", {
 })
 
 test_that("repeated claim text in one bundle coalesces before planning", {
+  testthat::local_mocked_bindings(
+    tempest_graft_coalesced_claim_summary = function(supports) {
+      list(
+        status = "supported",
+        score = max(vapply(supports, `[[`, numeric(1), "support_score"))
+      )
+    }
+  )
+  claim <- function(id, text, score) {
+    list(
+      tempest_claim_id = id,
+      statement_text = text,
+      verification_status = "supported",
+      support_score = score
+    )
+  }
+  support <- function(id, claim_id, span, score) {
+    list(
+      tempest_claim_support_id = id,
+      tempest_claim_id = claim_id,
+      evidence_span_id = span,
+      support_score = score
+    )
+  }
   records <- list(
     Claim = list(
-      list(tempest_claim_id = "C1", statement_text = "Output held steady."),
-      list(tempest_claim_id = "C2", statement_text = "output held steady"),
-      list(tempest_claim_id = "C3", statement_text = "Output rose.")
+      claim("C1", "Output held steady.", 0.8),
+      claim("C2", "output held steady", 0.95),
+      claim("C3", "Output rose.", 0.9)
     ),
     ClaimSupport = list(
-      list(
-        tempest_claim_support_id = "S1",
-        tempest_claim_id = "C1",
-        evidence_span_id = "E1"
-      ),
-      list(
-        tempest_claim_support_id = "S2",
-        tempest_claim_id = "C2",
-        evidence_span_id = "E1"
-      ),
-      list(
-        tempest_claim_support_id = "S3",
-        tempest_claim_id = "C2",
-        evidence_span_id = "E2"
-      ),
-      list(
-        tempest_claim_support_id = "S4",
-        tempest_claim_id = "C3",
-        evidence_span_id = "E1"
-      )
+      support("S1", "C1", "E1", 0.8),
+      support("S2", "C2", "E1", 0.99),
+      support("S3", "C2", "E2", 0.95),
+      support("S4", "C3", "E1", 0.9)
     )
   )
 
@@ -400,6 +408,8 @@ test_that("repeated claim text in one bundle coalesces before planning", {
     ),
     c("S1", "S3", "S4")
   )
+  expect_identical(coalesced$records$Claim[[1L]]$support_score, 0.95)
+  expect_identical(coalesced$records$Claim[[2L]]$support_score, 0.9)
   expect_identical(
     tempest:::tempest_graft_coalesce_bundle_rows(list(Claim = list()))$alias,
     character()

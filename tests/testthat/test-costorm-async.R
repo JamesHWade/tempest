@@ -13,11 +13,11 @@ test_that("async ProgramSet execution preserves authoritative metadata", {
     program_set,
     manifest
   )$extract_claims
-  chat <- list(
+  chat <- fake_chat_r6(list(
     chat_structured_async = function(...) {
       promises::promise_resolve(list(facts = list()))
     }
-  )
+  ))
 
   request <- tempest:::tempest_run_dsprrr_module_async(
     program,
@@ -118,12 +118,12 @@ test_that("async personas and Shiny startup use one bound ProgramSet", {
     ))
   )
   calls <- 0L
-  chat <- list(
+  chat <- fake_chat_r6(list(
     chat_structured_async = function(...) {
       calls <<- calls + 1L
       promises::promise_resolve(generated)
     }
-  )
+  ))
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) chat
   )
@@ -200,13 +200,13 @@ test_that("stale async extraction persists one cancelled attempt", {
   skip_if_not_installed("promises")
   resolve_request <- NULL
   current <- TRUE
-  extractor <- list(
+  extractor <- fake_chat_r6(list(
     chat_structured_async = function(...) {
       promises::promise(function(resolve, reject) {
         resolve_request <<- resolve
       })
     }
-  )
+  ))
   source <- fake_source("https://example.org/cancelled")
   moderator <- fake_chat(
     text = list(paste0("Cancelled claim [", source@resource_id, "]."))
@@ -290,13 +290,13 @@ test_that("failed async extraction remains durable without raw errors", {
   skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
-  extractor <- list(
+  extractor <- fake_chat_r6(list(
     chat_structured_async = function(...) {
       promises::promise_reject(simpleError(
         "Authorization: Bearer sk-live-secret"
       ))
     }
-  )
+  ))
   source <- fake_source("https://example.org/failed")
   moderator <- fake_chat(
     text = list(paste0("Failed claim [", source@resource_id, "]."))

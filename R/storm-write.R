@@ -610,11 +610,10 @@ tempest_summarize_facts_for_prompt <- function(
     )
   }
   facts <- facts[seq_len(min(length(facts), max_items))]
-  lines <- purrr::map_chr(facts, function(f) {
-    cites <- paste0("[", paste(f@source_ids, collapse = ", "), "]")
-    glue::glue("- {f@claim_text} {cites} (claim_id: {f@claim_id})")
-  })
-  paste(lines, collapse = "\n")
+  tempest_section_evidence_text(
+    facts,
+    accepted = tempest_workspace_accepted_claim_keys(store)
+  )
 }
 
 #' @keywords internal

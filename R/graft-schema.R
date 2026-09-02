@@ -261,20 +261,57 @@ tempest_graft_coalesce_bundle_rows <- function(records) {
   records$Claim <- claims[!duplicated(keys)]
   supports <- records$ClaimSupport %||% list()
   if (length(supports) > 0L) {
-    support_keys <- vapply(
+    support_claims <- vapply(
       supports,
-      function(row) {
-        paste(
-          alias[[row$tempest_claim_id]],
-          row$evidence_span_id,
-          sep = "\u001f"
-        )
-      },
+      \(row) alias[[row$tempest_claim_id]],
       character(1)
     )
-    records$ClaimSupport <- supports[!duplicated(support_keys)]
+    support_keys <- paste(
+      support_claims,
+      vapply(supports, `[[`, character(1), "evidence_span_id"),
+      sep = "\u001f"
+    )
+    # When two coalesced claims cite the same evidence span, keep the support
+    # judged for the kept claim, then the stronger judgment, then input order.
+    own <- vapply(
+      supports,
+      \(row) identical(row$tempest_claim_id, alias[[row$tempest_claim_id]]),
+      logical(1)
+    )
+    scores <- vapply(
+      supports,
+      \(row) as.numeric(row$support_score %||% NA_real_),
+      numeric(1)
+    )
+    ordering <- order(!own, -scores, seq_along(supports), na.last = TRUE)
+    kept <- supports[ordering][!duplicated(support_keys[ordering])]
+    records$ClaimSupport <- kept[order(match(kept, supports))]
+  }
+  merged <- names(alias)[alias != names(alias)]
+  if (length(merged) > 0L) {
+    records$Claim <- lapply(records$Claim, function(claim) {
+      if (!claim$tempest_claim_id %in% alias[merged]) {
+        return(claim)
+      }
+      summary <- tempest_graft_coalesced_claim_summary(Filter(
+        \(row) identical(alias[[row$tempest_claim_id]], claim$tempest_claim_id),
+        records$ClaimSupport
+      ))
+      claim$verification_status <- summary$status
+      claim$support_score <- summary$score
+      claim
+    })
   }
   list(records = records, alias = alias)
+}
+
+# The kept Claim's summary must describe its merged support set, computed the
+# same way the promotion bundle computed it for the original claim.
+tempest_graft_coalesced_claim_summary <- function(supports) {
+  tempest_promotion_support_summary(lapply(
+    supports,
+    tempest_promotion_claim_support_from_row
+  ))
 }
 
 tempest_graft_plan_abort <- function(
