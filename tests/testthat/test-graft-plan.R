@@ -428,10 +428,10 @@ test_that("repeated claim text in one bundle coalesces before planning", {
 
   coalesced <- tempest:::tempest_graft_coalesce_bundle_rows(records)
 
-  expect_identical(coalesced$alias, c(C1 = "C1", C2 = "C1", C3 = "C3"))
+  expect_identical(coalesced$alias, c(C1 = "C2", C2 = "C2", C3 = "C3"))
   expect_identical(
     vapply(coalesced$records$Claim, `[[`, character(1), "tempest_claim_id"),
-    c("C1", "C3")
+    c("C2", "C3")
   )
   expect_identical(
     vapply(
@@ -440,12 +440,57 @@ test_that("repeated claim text in one bundle coalesces before planning", {
       character(1),
       "tempest_claim_support_id"
     ),
-    c("S1", "S3", "S4")
+    c("S2", "S3", "S4")
   )
-  expect_identical(coalesced$records$Claim[[1L]]$support_score, 0.95)
+  expect_identical(coalesced$records$Claim[[1L]]$support_score, 0.99)
   expect_identical(coalesced$records$Claim[[2L]]$support_score, 0.9)
+  reversed <- tempest:::tempest_graft_coalesce_bundle_rows(list(
+    Claim = rev(records$Claim),
+    ClaimSupport = rev(records$ClaimSupport)
+  ))
+  expect_identical(
+    sort(vapply(
+      reversed$records$Claim,
+      `[[`,
+      character(1),
+      "tempest_claim_id"
+    )),
+    c("C2", "C3")
+  )
+  conflicting <- records
+  conflicting$Claim[[2L]]$claim_type <- "observation"
+  conflicting$Claim[[1L]]$claim_type <- "finding"
+  expect_error(
+    tempest:::tempest_graft_coalesce_bundle_rows(conflicting),
+    class = "tempest_graft_plan_error"
+  )
   expect_identical(
     tempest:::tempest_graft_coalesce_bundle_rows(list(Claim = list()))$alias,
     character()
+  )
+})
+
+test_that("planning refuses to reactivate a retracted accepted claim", {
+  skip_if_not_installed("graft")
+  first <- tempest_promotion_bundle(test_promotion_storm_fixture()$research)
+  second <- tempest_promotion_bundle(
+    test_promotion_storm_fixture(run_id = "research-promotion-2")$research
+  )
+  store <- test_promotion_store()
+  withr::defer(graft::graft_close(store))
+  accepted <- tempest_graft_plan(store, first)
+  graft::graft_commit(store, accepted)
+  retracted <- accepted@records$Claim
+  retracted$status <- "retracted"
+  graft::graft_ingest(
+    store,
+    list(Claim = retracted),
+    graft::graft_provenance("reviewer", idempotency_key = "retract-1")
+  )
+
+  expect_error(
+    tempest_graft_plan(store, second),
+    class = "tempest_graft_plan_error",
+    regexp = "retracted"
   )
 })

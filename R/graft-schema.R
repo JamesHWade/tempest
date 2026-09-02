@@ -258,8 +258,38 @@ tempest_graft_coalesce_bundle_rows <- function(records) {
   keys <- tempest_claim_text_key(
     vapply(claims, `[[`, character(1), "statement_text")
   )
-  alias <- stats::setNames(ids[match(keys, keys)], ids)
-  records$Claim <- claims[!duplicated(keys)]
+  # The kept row for repeated text is the best-supported claim (ties broken by
+  # claim id), never the first in input order. Duplicates must agree on the
+  # classification; differing judgments are a conflict, not a merge.
+  scores <- vapply(
+    claims,
+    \(claim) as.numeric(claim$support_score %||% NA_real_),
+    numeric(1)
+  )
+  preferred <- order(keys, -scores, ids, na.last = TRUE)
+  kept_for_key <- stats::setNames(ids[preferred], keys[preferred])
+  kept_for_key <- kept_for_key[!duplicated(names(kept_for_key))]
+  alias <- stats::setNames(unname(kept_for_key[keys]), ids)
+  for (key in unique(keys[duplicated(keys)])) {
+    group <- claims[keys == key]
+    for (field in tempest_claim_coalesce_invariant_fields()) {
+      values <- unique(vapply(
+        group,
+        \(claim) as.character(claim[[field]] %||% NA_character_),
+        character(1)
+      ))
+      if (length(values) > 1L) {
+        tempest_graft_plan_abort(paste0(
+          "Promotion contains claims with the same statement text but ",
+          "conflicting {.field ",
+          field,
+          "} values ({.val {values}}); resolve the disagreement before ",
+          "promoting."
+        ))
+      }
+    }
+  }
+  records$Claim <- claims[ids %in% kept_for_key]
   supports <- records$ClaimSupport %||% list()
   if (length(supports) > 0L) {
     support_claims <- vapply(
@@ -304,6 +334,10 @@ tempest_graft_coalesce_bundle_rows <- function(records) {
     })
   }
   list(records = records, alias = alias)
+}
+
+tempest_claim_coalesce_invariant_fields <- function() {
+  "claim_type"
 }
 
 # Accepted Source identity is keyed on the locator, so two bundle Sources
@@ -374,6 +408,39 @@ tempest_graft_plan_require_valid <- function(plan, phase) {
     )
   }
   plan
+}
+
+tempest_graft_get_call <- function(store, record_id) {
+  graft::graft_get(store, record_id, include = character())
+}
+
+# A re-verified statement resolves to its accepted Claim through the text
+# origin key. When that record was retracted or superseded, planning an
+# update would silently reactivate it, so the conflict is surfaced instead.
+tempest_graft_assert_claim_lifecycle <- function(store, seed) {
+  changes <- seed@changes
+  targets <- changes$record_id[
+    changes$class == "Claim" & changes$action == "update"
+  ]
+  for (record_id in unique(targets)) {
+    current <- tryCatch(
+      tempest_graft_get_call(store, record_id),
+      error = function(error) {
+        tempest_graft_plan_abort(
+          "Could not read the accepted Claim {.val {record_id}} during planning."
+        )
+      }
+    )
+    status <- current$record$status
+    if (rlang::is_string(status) && !identical(status, "active")) {
+      tempest_graft_plan_abort(paste0(
+        "Promotion re-proposes a statement whose accepted Claim ",
+        "{.val {record_id}} is {.val {status}}; retract the proposal or ",
+        "supersede that record explicitly instead of reactivating it."
+      ))
+    }
+  }
+  invisible(seed)
 }
 
 tempest_graft_seed_map <- function(plan, record_class, key_field) {
@@ -837,6 +904,7 @@ tempest_graft_plan <- function(store, bundle) {
     }
   )
   seed <- tempest_graft_plan_require_valid(seed, "identity seed")
+  tempest_graft_assert_claim_lifecycle(store, seed)
   source_map <- tempest_graft_seed_map(seed, "Source", "tempest_source_id")
   claim_map <- tempest_graft_seed_map(seed, "Claim", "tempest_claim_id")
 
