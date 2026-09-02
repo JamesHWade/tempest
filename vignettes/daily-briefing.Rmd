@@ -72,14 +72,41 @@ another process halfway through the briefing cannot silently alter its input.
 ### Select the accepted basis durably
 
 The first day has nothing to carry forward, so it searches. Every later day
-starts from the record ids the previous run accepted and adds whatever Graft
+starts from the records the previous run carried and adds whatever Graft
 reports as accepted since the previous snapshot. The basis therefore grows
 only through explicit acceptance; a keyword search that happens to match a
 different set of records on day 40 cannot change it.
 
+`tempest_knowledge()` reads at most 1,000 records, so the basis is a bounded
+table rather than an ever-growing id list. Active `Claim` records always come
+first because they are the change signal; evidence records fill the remaining
+room newest-first, and a record whose latest revision is retracted or
+superseded drops out.
+
 ```{r basis}
 basis_path <- "briefing/basis.rds"
 accepted_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
+basis_limit <- 1000
+
+bound_basis <- function(records) {
+  records <- records[!duplicated(records$record_id, fromLast = TRUE), ]
+  records <- records[records$status == "active", ]
+  records <- records[order(records$class != "Claim", -records$commit_order), ]
+  head(records, basis_limit)
+}
+
+changes_as_basis <- function(changed) {
+  data.frame(
+    record_id = changed$record_id,
+    class = changed$class,
+    commit_order = changed$commit_order,
+    status = vapply(
+      changed$record,
+      \(record) record$status %||% "active",
+      character(1)
+    )
+  )
+}
 
 if (file.exists(basis_path)) {
   previous <- readRDS(basis_path)
@@ -88,7 +115,7 @@ if (file.exists(basis_path)) {
     since = previous$snapshot,
     class = accepted_classes
   )
-  record_ids <- union(previous$record_ids, changed$record_id)
+  basis <- bound_basis(rbind(previous$records, changes_as_basis(changed)))
 } else {
   claims <- graft_find(
     view,
@@ -96,17 +123,22 @@ if (file.exists(basis_path)) {
     class = "Claim",
     limit = 25
   )
-  record_ids <- claims$id
+  basis <- data.frame(
+    record_id = claims$id,
+    class = "Claim",
+    commit_order = snapshot@commit_order,
+    status = "active"
+  )
 }
 
-knowledge <- tempest_knowledge(view, record_ids = record_ids)
+knowledge <- tempest_knowledge(view, record_ids = basis$record_id)
 ```
 
 `graft_changes()` compares two committed boundaries store-wide and returns one
 row per changed record with its action, the union of changed public fields,
-and the latest accepted record. A `GraftView` bounds it at the pinned
-snapshot, so the selection cannot include a commit that landed after the run
-started.
+and the latest accepted record, whose `status` tells the basis whether the
+record is still active. A `GraftView` bounds it at the pinned snapshot, so the
+selection cannot include a commit that landed after the run started.
 
 ## Research today's change
 
@@ -237,6 +269,7 @@ change still pins its selection instead of searching again tomorrow:
 
 ```{r accept}
 basis_snapshot <- snapshot
+next_basis <- basis
 claim_rows <- plan@changes[plan@changes$class == "Claim", ]
 has_change <- any(
   claim_rows$disposition %in% c("new", "supersedes", "superseded", "contradicted")
@@ -258,24 +291,19 @@ if (has_change) {
   )
 
   basis_snapshot <- graft_snapshot(store)
-  record_ids <- union(
-    record_ids,
-    graft_changes(
-      store,
-      since = snapshot,
-      until = basis_snapshot,
-      class = accepted_classes
-    )$record_id
+  accepted_now <- graft_changes(
+    store,
+    since = snapshot,
+    until = basis_snapshot,
+    class = accepted_classes
   )
+  next_basis <- bound_basis(rbind(basis, changes_as_basis(accepted_now)))
 }
 
-saveRDS(
-  list(snapshot = basis_snapshot, record_ids = record_ids),
-  basis_path
-)
+saveRDS(list(snapshot = basis_snapshot, records = next_basis), basis_path)
 ```
 
-The saved snapshot always matches the saved record ids. Without a commit it is
+The saved snapshot always matches the saved records. Without a commit it is
 the snapshot this run pinned, so anything accepted by another process since
 then is picked up tomorrow. After a commit it is the post-commit snapshot, and
 the basis absorbs every record accepted between the pin and that boundary,
