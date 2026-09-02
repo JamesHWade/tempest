@@ -236,6 +236,7 @@ the next run will carry forward either way, so a first day without accepted
 change still pins its selection instead of searching again tomorrow:
 
 ```{r accept}
+basis_snapshot <- snapshot
 claim_rows <- plan@changes[plan@changes$class == "Claim", ]
 has_change <- any(
   claim_rows$disposition %in% c("new", "supersedes", "superseded", "contradicted")
@@ -256,28 +257,30 @@ if (has_change) {
     promotion_receipt = receipt
   )
 
+  basis_snapshot <- graft_snapshot(store)
   record_ids <- union(
     record_ids,
-    vapply(
-      Filter(
-        \(revision) revision$class %in% accepted_classes,
-        receipt@record_revisions
-      ),
-      `[[`,
-      character(1),
-      "record_id"
-    )
+    graft_changes(
+      store,
+      since = snapshot,
+      until = basis_snapshot,
+      class = accepted_classes
+    )$record_id
   )
 }
 
 saveRDS(
-  list(snapshot = graft_snapshot(store), record_ids = record_ids),
+  list(snapshot = basis_snapshot, record_ids = record_ids),
   basis_path
 )
 ```
 
-Rejection leaves accepted knowledge unchanged, and the saved basis then points
-at a snapshot with the same accepted boundary as today's. This two-speed loop keeps routine monitoring
+The saved snapshot always matches the saved record ids. Without a commit it is
+the snapshot this run pinned, so anything accepted by another process since
+then is picked up tomorrow. After a commit it is the post-commit snapshot, and
+the basis absorbs every record accepted between the pin and that boundary,
+including a concurrent commit by another process. Rejection leaves accepted
+knowledge unchanged. This two-speed loop keeps routine monitoring
 passive and makes only material changes enter the slower decision-and-review
 path.
 

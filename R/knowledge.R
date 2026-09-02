@@ -22,6 +22,10 @@ tempest_knowledge_record_allowlist <- function() {
   c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
 }
 
+tempest_is_accepted_knowledge_resource <- function(resource) {
+  identical(resource@resource_kind, "graft.record")
+}
+
 tempest_knowledge_max_records <- function() {
   1000L
 }

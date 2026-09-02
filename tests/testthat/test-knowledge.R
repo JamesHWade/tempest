@@ -176,3 +176,31 @@ test_that("an absent knowledge value resolves the builtin program set", {
   expect_identical(resolved$records, list())
   expect_s7_class(resolved$program_set, tempest:::TempestProgramSet)
 })
+
+test_that("accepted knowledge records do not consume the retrieval source cap", {
+  workspace <- tempest_research_workspace()
+  workspace$set_max_sources(1)
+  workspace$upsert_retrieved_resource(test_typed_web_resource())
+  for (index in 1:3) {
+    workspace$upsert_retrieved_resource(tempest:::tempest_resource(
+      resource_kind = "graft.record",
+      locator = paste0("graft/Claim/", index),
+      title = paste("Claim", index),
+      media_type = "text/plain",
+      content = paste0("statement_text: Claim ", index),
+      metadata = list(
+        graft_record_id = as.character(index),
+        graft_record_class = "Claim",
+        graft_revision_id = as.character(index)
+      )
+    ))
+  }
+
+  expect_length(workspace$list_retrieved_resources(), 4L)
+  expect_error(
+    workspace$upsert_retrieved_resource(
+      test_typed_web_resource(url = "https://example.org/second")
+    ),
+    class = "tempest_research_workspace_error"
+  )
+})

@@ -847,7 +847,9 @@ tempest_research_workspace_seal <- function(workspace, owner = NULL) {
 #'   `graft::GraftSnapshot` used to reopen the accepted knowledge boundary.
 #' @field citation_audit Read-only pair-level projection of the authoritative
 #'   claim-support assessments, when available.
-#' @field max_sources Maximum number of unique resources admitted.
+#' @field max_sources Maximum number of unique retrieved resources admitted.
+#'   Accepted Graft knowledge records inserted by [tempest_knowledge()] are
+#'   bounded separately and do not count.
 #'
 #' @keywords internal
 ResearchWorkspace <- R6::R6Class(
@@ -953,9 +955,12 @@ ResearchWorkspace <- R6::R6Class(
       resource_id <- resource@resource_id
       previous <- private$resources_value[[resource_id]]
       is_new <- is.null(previous)
+      # Accepted Graft records enter through tempest_knowledge()'s own bounded
+      # allowlist and do not consume the retrieval-source budget.
       if (
         is_new &&
-          length(self$list_retrieved_resources()) >= self$max_sources
+          !tempest_is_accepted_knowledge_resource(resource) &&
+          private$retrieved_source_count() >= self$max_sources
       ) {
         tempest_research_workspace_abort(
           c(
@@ -1875,6 +1880,15 @@ ResearchWorkspace <- R6::R6Class(
     }
   ),
   private = list(
+    retrieved_source_count = function() {
+      sum(
+        !vapply(
+          self$list_retrieved_resources(),
+          tempest_is_accepted_knowledge_resource,
+          logical(1)
+        )
+      )
+    },
     mutation_state_value = "open",
     publication_owner_token_value = NULL,
     resources_value = NULL,
