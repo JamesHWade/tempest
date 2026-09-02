@@ -72,10 +72,16 @@ another process halfway through the briefing cannot silently alter its input.
 ### Select the accepted basis durably
 
 The first day has nothing to carry forward, so it searches. Every later day
-starts from the records the previous run carried and adds whatever Graft
-reports as accepted since the previous snapshot. The basis therefore grows
-only through explicit acceptance; a keyword search that happens to match a
-different set of records on day 40 cannot change it.
+starts from the records the previous run carried and adds what Graft reports
+as accepted since the previous snapshot, scoped to this briefing: a changed
+`Claim` joins the basis only when it matches the monitored topic, and a
+changed `ClaimSupport` only when it supports a claim in the basis. The basis
+therefore grows only through explicit acceptance of relevant knowledge; a
+keyword search that happens to match a different set of records on day 40
+cannot change it, and a shared organizational store cannot flood it with
+other topics. Evidence spans and sources are carried as accepted because
+this store is dedicated to the briefing; filter them the same way if you
+share a store.
 
 `tempest_knowledge()` reads at most 1,000 records, so the basis is a bounded
 table rather than an ever-growing id list. Every active `Claim` is always
@@ -89,6 +95,26 @@ the topic or give it its own store.
 basis_path <- "briefing/basis.rds"
 accepted_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
 basis_limit <- 1000
+topic_query <- "grid-scale battery recycling"
+
+in_scope <- function(changed, basis_claims) {
+  topic_claims <- graft_find(view, topic_query, class = "Claim", limit = 1000)$id
+  support_claims <- vapply(
+    changed$record,
+    \(record) if (is.null(record$statement_id)) NA_character_ else record$statement_id,
+    character(1)
+  )
+  keep <- ifelse(
+    changed$class == "Claim",
+    changed$record_id %in% topic_claims,
+    ifelse(
+      changed$class == "ClaimSupport",
+      support_claims %in% c(basis_claims, topic_claims),
+      TRUE
+    )
+  )
+  changed[keep, ]
+}
 
 bound_basis <- function(records) {
   records <- records[!duplicated(records$record_id, fromLast = TRUE), ]
@@ -125,14 +151,13 @@ if (file.exists(basis_path)) {
     since = previous$snapshot,
     class = accepted_classes
   )
+  changed <- in_scope(
+    changed,
+    previous$records$record_id[previous$records$class == "Claim"]
+  )
   basis <- bound_basis(rbind(previous$records, changes_as_basis(changed)))
 } else {
-  claims <- graft_find(
-    view,
-    "grid-scale battery recycling",
-    class = "Claim",
-    limit = 25
-  )
+  claims <- graft_find(view, topic_query, class = "Claim", limit = 25)
   basis <- data.frame(
     record_id = claims$id,
     class = rep("Claim", length(claims$id)),
@@ -306,6 +331,10 @@ if (has_change) {
     since = snapshot,
     until = basis_snapshot,
     class = accepted_classes
+  )
+  accepted_now <- in_scope(
+    accepted_now,
+    basis$record_id[basis$class == "Claim"]
   )
   next_basis <- bound_basis(rbind(basis, changes_as_basis(accepted_now)))
 }

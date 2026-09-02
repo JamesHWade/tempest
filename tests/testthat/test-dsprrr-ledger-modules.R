@@ -82,6 +82,16 @@ test_that("grounded writing programs separate observation and synthesis", {
     fixed = TRUE
   )
   expect_match(
+    section_instructions,
+    "at least one observation is required whenever any fact is new",
+    fixed = TRUE
+  )
+  expect_match(
+    lead_instructions,
+    "at least one observation is required whenever any fact is new",
+    fixed = TRUE
+  )
+  expect_match(
     lead_instructions,
     "When no fact is new, return exactly one no_change item",
     fixed = TRUE
