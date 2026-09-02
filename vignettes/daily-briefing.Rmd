@@ -98,7 +98,14 @@ basis_limit <- 1000
 topic_query <- "grid-scale battery recycling"
 
 in_scope <- function(changed, basis_claims) {
-  topic_claims <- graft_find(view, topic_query, class = "Claim", limit = 1000)$id
+  matches <- graft_find(view, topic_query, class = "Claim", limit = basis_limit)
+  if (isTRUE(attr(matches, "truncated"))) {
+    stop(
+      "More than ", basis_limit, " accepted claims match the monitored topic; ",
+      "narrow the topic or split the store before carrying changes forward."
+    )
+  }
+  topic_claims <- matches$id
   support_claims <- vapply(
     changed$record,
     \(record) if (is.null(record$statement_id)) NA_character_ else record$statement_id,
