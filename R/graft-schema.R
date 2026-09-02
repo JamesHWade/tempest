@@ -354,6 +354,22 @@ tempest_graft_coalesce_sources <- function(records) {
   if (all(alias == names(alias))) {
     return(records)
   }
+  # Evidence spans carry the hash of the content they were extracted from, so
+  # two Sources with one locator can only merge when they hold the same content.
+  for (locator in unique(locators[duplicated(locators)])) {
+    hashes <- unique(vapply(
+      sources[locators == locator],
+      \(source) as.character(source$content_hash %||% NA_character_),
+      character(1)
+    ))
+    if (length(hashes) > 1L) {
+      tempest_graft_plan_abort(paste0(
+        "Promotion contains Sources with the same locator {.val {locator}} ",
+        "but different content hashes ({.val {hashes}}); the evidence was ",
+        "extracted from different content and cannot share one accepted Source."
+      ))
+    }
+  }
   records$Source <- sources[!duplicated(locators)]
   repoint <- function(rows) {
     lapply(rows, function(row) {

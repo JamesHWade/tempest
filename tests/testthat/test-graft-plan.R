@@ -370,6 +370,14 @@ test_that("repeated source locators in one bundle coalesce and re-point evidence
     c("S1", "S3")
   )
   expect_identical(coalesced$ClaimSupport[[1L]]$source_id, "S1")
+
+  conflicting <- records
+  conflicting$Source[[1L]]$content_hash <- "sha256:aaa"
+  conflicting$Source[[2L]]$content_hash <- "sha256:bbb"
+  expect_error(
+    tempest:::tempest_graft_coalesce_bundle_rows(conflicting),
+    class = "tempest_graft_plan_error"
+  )
 })
 test_that("claim origin keys normalize text", {
   keys <- tempest:::tempest_claim_origin_keys(c(
