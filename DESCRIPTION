@@ -67,7 +67,7 @@ Suggests:
 Remotes:
     JamesHWade/deputy@4a8ee639df8c5e5e32567cb706b722f14732c923,
     JamesHWade/dsprrr@76a014f74e8d4a236aa0a0c5dda87de388310cf6,
-    JamesHWade/graft@5e6cb8d2b8fc623b44f22cf96edb65ba91a41b59,
+    JamesHWade/graft@cf0c8bdf99b578cb539456e32d077c0da7e61ef0,
     JamesHWade/scans@fa78f7f80d913c429df0613ac7c1b89e4d4a83a0,
     posit-dev/shinychat/pkg-r,
     tidyverse/ellmer@5cb916dbab521f2d0b3871f284a6c67b8045d14c
