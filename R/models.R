@@ -928,7 +928,7 @@ ResearchWorkspace <- R6::R6Class(
       }
       if (
         is.finite(max_sources) &&
-          length(self$list_retrieved_resources()) > max_sources
+          private$retrieved_source_count() > max_sources
       ) {
         tempest_research_workspace_abort(
           "{.arg max_sources} cannot be lower than the current source count."

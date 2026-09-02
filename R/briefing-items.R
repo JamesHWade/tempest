@@ -33,7 +33,19 @@ tempest_workspace_accepted_claim_keys <- function(workspace) {
     }
     text <- metadata$graft_statement_text
     if (!rlang::is_string(text)) {
-      text <- tempest_knowledge_content_statement_text(resource@content)
+      text <- tempest_knowledge_content_field(
+        resource@content,
+        "statement_text"
+      )
+    }
+    status <- metadata$graft_statement_status
+    if (!rlang::is_string(status)) {
+      status <- tempest_knowledge_content_field(resource@content, "status")
+    }
+    # A retracted or superseded Claim is no longer accepted knowledge, so a
+    # verified restatement of it is a change, not a no-change finding.
+    if (rlang::is_string(status) && !identical(status, "active")) {
+      next
     }
     if (rlang::is_string(text) && nzchar(tempest_trim(text))) {
       keys <- c(keys, tempest_claim_text_key(text))
@@ -42,16 +54,17 @@ tempest_workspace_accepted_claim_keys <- function(workspace) {
   unique(keys)
 }
 
-tempest_knowledge_content_statement_text <- function(content) {
+tempest_knowledge_content_field <- function(content, field) {
   if (!rlang::is_string(content)) {
     return(NULL)
   }
+  prefix <- paste0(field, ": ")
   lines <- strsplit(content, "\n", fixed = TRUE)[[1L]]
-  line <- lines[startsWith(lines, "statement_text: ")]
+  line <- lines[startsWith(lines, prefix)]
   if (length(line) != 1L) {
     return(NULL)
   }
-  sub("^statement_text: ", "", line)
+  substring(line, nchar(prefix) + 1L)
 }
 
 # `accepted` is the vector from tempest_workspace_accepted_claim_keys(),

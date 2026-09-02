@@ -529,7 +529,12 @@ test_program_reference <- function(
 
 # Insert an accepted Graft Claim into a workspace the way tempest_knowledge()
 # does, so briefing dispositions can be tested without a live store.
-fake_accepted_claim <- function(workspace, text, record_id = NULL) {
+fake_accepted_claim <- function(
+  workspace,
+  text,
+  record_id = NULL,
+  status = "active"
+) {
   record_id <- record_id %||%
     paste0("graft:0", toupper(substr(digest::digest(text), 1, 25)))
   resource <- tempest:::tempest_resource(
@@ -542,7 +547,8 @@ fake_accepted_claim <- function(workspace, text, record_id = NULL) {
       graft_record_id = record_id,
       graft_record_class = "Claim",
       graft_revision_id = paste0("graft:0", strrep("A", 25L)),
-      graft_statement_text = text
+      graft_statement_text = text,
+      graft_statement_status = status
     )
   )
   workspace$upsert_retrieved_resource(resource)

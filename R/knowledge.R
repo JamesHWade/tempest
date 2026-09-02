@@ -170,7 +170,11 @@ tempest_knowledge_statement_metadata <- function(record_class, payload) {
   if (!rlang::is_string(text) || is.na(text)) {
     return(list())
   }
-  list(graft_statement_text = text)
+  status <- payload[["status"]]
+  if (!rlang::is_string(status) || is.na(status)) {
+    status <- "active"
+  }
+  list(graft_statement_text = text, graft_statement_status = status)
 }
 
 # Render an accepted record as canonical inert text. A record whose fields

@@ -229,17 +229,52 @@ tempest_graft_records_data_frame <- function(rows, schema, record_class) {
   )
 }
 
-tempest_graft_bundle_records <- function(bundle, schema) {
+tempest_graft_bundle_records <- function(records, schema) {
   stats::setNames(
-    lapply(names(bundle@records), function(record_class) {
+    lapply(names(records), function(record_class) {
       tempest_graft_records_data_frame(
-        bundle@records[[record_class]],
+        records[[record_class]],
         schema,
         record_class
       )
     }),
-    names(bundle@records)
+    names(records)
   )
+}
+
+# Two experts can extract the same statement in one run. Accepted Claim
+# identity is keyed on the statement text, so such rows must become one
+# planned Claim; their supports are kept and re-pointed at that Claim, and a
+# support that would then repeat the same statement and evidence span is
+# dropped. The returned alias maps every bundle claim id to the id it planned
+# under.
+tempest_graft_coalesce_bundle_rows <- function(records) {
+  claims <- records$Claim %||% list()
+  if (length(claims) == 0L) {
+    return(list(records = records, alias = character()))
+  }
+  ids <- vapply(claims, `[[`, character(1), "tempest_claim_id")
+  keys <- tempest_claim_text_key(
+    vapply(claims, `[[`, character(1), "statement_text")
+  )
+  alias <- stats::setNames(ids[match(keys, keys)], ids)
+  records$Claim <- claims[!duplicated(keys)]
+  supports <- records$ClaimSupport %||% list()
+  if (length(supports) > 0L) {
+    support_keys <- vapply(
+      supports,
+      function(row) {
+        paste(
+          alias[[row$tempest_claim_id]],
+          row$evidence_span_id,
+          sep = "\u001f"
+        )
+      },
+      character(1)
+    )
+    records$ClaimSupport <- supports[!duplicated(support_keys)]
+  }
+  list(records = records, alias = alias)
 }
 
 tempest_graft_plan_abort <- function(
@@ -566,6 +601,9 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
     )
   }
 
+  coalesced <- tempest_graft_coalesce_bundle_rows(bundle@records)
+  bundle_records <- coalesced$records
+  claim_alias <- coalesced$alias
   source_map <- stats::setNames(
     as.character(plan@records$Source$id),
     as.character(plan@records$Source$tempest_source_id)
@@ -579,7 +617,7 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
     fields <- tempest_promotion_record_fields()[[record_class]]
     if (
       !tempest_graft_bundle_plan_match(
-        bundle@records[[record_class]],
+        bundle_records[[record_class]],
         plan@records[[record_class]],
         fields,
         tempest_promotion_record_id_field(record_class)
@@ -597,7 +635,7 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
   )
   if (
     !tempest_graft_bundle_plan_match(
-      bundle@records$EvidenceSpan,
+      bundle_records$EvidenceSpan,
       plan@records$EvidenceSpan,
       span_fields,
       "id"
@@ -611,7 +649,7 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
     as.character(plan@records$EvidenceSpan$source_id),
     as.character(plan@records$EvidenceSpan$id)
   )
-  for (row in bundle@records$EvidenceSpan) {
+  for (row in bundle_records$EvidenceSpan) {
     if (!identical(span_sources[[row$id]], source_map[[row$source_id]])) {
       tempest_graft_plan_abort(
         "A planned EvidenceSpan does not resolve its exact Source identity."
@@ -625,7 +663,7 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
   )
   if (
     !tempest_graft_bundle_plan_match(
-      bundle@records$ClaimSupport,
+      bundle_records$ClaimSupport,
       plan@records$ClaimSupport,
       support_fields,
       "tempest_claim_support_id"
@@ -638,7 +676,7 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
   planned_support <- plan@records$ClaimSupport
   support_index <- match(
     vapply(
-      bundle@records$ClaimSupport,
+      bundle_records$ClaimSupport,
       `[[`,
       character(1),
       "tempest_claim_support_id"
@@ -646,12 +684,12 @@ tempest_graft_plan_assert_bundle <- function(plan, bundle) {
     as.character(planned_support$tempest_claim_support_id)
   )
   for (index in seq_along(support_index)) {
-    row <- bundle@records$ClaimSupport[[index]]
+    row <- bundle_records$ClaimSupport[[index]]
     planned_index <- support_index[[index]]
     if (
       !identical(
         as.character(planned_support$statement_id[[planned_index]]),
-        claim_map[[row$tempest_claim_id]]
+        claim_map[[claim_alias[[row$tempest_claim_id]]]]
       ) ||
         !identical(
           as.character(planned_support$source_id[[planned_index]]),
@@ -686,7 +724,8 @@ tempest_graft_plan <- function(store, bundle) {
   }
   S7::validate(bundle)
   schema <- store@schema
-  records <- tempest_graft_bundle_records(bundle, schema)
+  coalesced <- tempest_graft_coalesce_bundle_rows(bundle@records)
+  records <- tempest_graft_bundle_records(coalesced$records, schema)
   planning_snapshot <- tryCatch(
     tempest_graft_snapshot_call(store),
     error = function(error) {
@@ -741,7 +780,7 @@ tempest_graft_plan <- function(store, bundle) {
     source_map[records$EvidenceSpan$source_id]
   )
   records$ClaimSupport$statement_id <- unname(
-    claim_map[records$ClaimSupport$tempest_claim_id]
+    claim_map[unname(coalesced$alias[records$ClaimSupport$tempest_claim_id])]
   )
   records$ClaimSupport$source_id <- unname(
     source_map[records$ClaimSupport$source_id]
@@ -791,7 +830,7 @@ tempest_graft_plan <- function(store, bundle) {
 # Accepted Claim identity is keyed on the normalized statement text rather
 # than on the run-scoped Tempest claim id, so a claim that later research
 # re-verifies resolves to the record already accepted instead of duplicating
-# it. Repeated text inside one bundle keeps distinct keys in input order.
+# it. Repeated text inside one bundle is coalesced before planning.
 tempest_claim_text_key <- function(text) {
   normalized <- stringi::stri_trans_tolower(
     tempest_trim(as.character(text)),
@@ -827,7 +866,7 @@ tempest_claim_origin_keys <- function(texts) {
   if (length(texts) == 0L) {
     return(character())
   }
-  keys <- vapply(
+  vapply(
     tempest_claim_text_key(texts),
     function(key) {
       paste0(
@@ -838,8 +877,6 @@ tempest_claim_origin_keys <- function(texts) {
     character(1),
     USE.NAMES = FALSE
   )
-  repeats <- stats::ave(seq_along(keys), keys, FUN = seq_along)
-  ifelse(repeats > 1L, paste0(keys, "#", repeats), keys)
 }
 
 tempest_graft_named_counts <- function(value) {

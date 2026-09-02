@@ -197,6 +197,7 @@ test_that("accepted knowledge records do not consume the retrieval source cap", 
   }
 
   expect_length(workspace$list_retrieved_resources(), 4L)
+  workspace$set_max_sources(1)
   expect_error(
     workspace$upsert_retrieved_resource(
       test_typed_web_resource(url = "https://example.org/second")

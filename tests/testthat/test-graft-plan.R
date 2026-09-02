@@ -337,20 +337,71 @@ test_that("source origin keys follow the exact locator", {
   )
 })
 
-test_that("claim origin keys normalize text and keep in-bundle repeats distinct", {
+test_that("claim origin keys normalize text", {
   keys <- tempest:::tempest_claim_origin_keys(c(
     "Output held steady.",
     "  output HELD   steady",
-    "Output held steady.",
     "Output rose."
   ))
 
-  expect_identical(keys[[2L]], paste0(keys[[1L]], "#2"))
-  expect_identical(keys[[3L]], paste0(keys[[1L]], "#3"))
+  expect_identical(keys[[2L]], keys[[1L]])
   expect_match(keys[[1L]], "^tempest-claim-text-v1:[a-f0-9]{64}$")
-  expect_false(identical(keys[[4L]], keys[[1L]]))
+  expect_false(identical(keys[[3L]], keys[[1L]]))
   expect_identical(
     tempest:::tempest_claim_origin_keys(character()),
+    character()
+  )
+})
+
+test_that("repeated claim text in one bundle coalesces before planning", {
+  records <- list(
+    Claim = list(
+      list(tempest_claim_id = "C1", statement_text = "Output held steady."),
+      list(tempest_claim_id = "C2", statement_text = "output held steady"),
+      list(tempest_claim_id = "C3", statement_text = "Output rose.")
+    ),
+    ClaimSupport = list(
+      list(
+        tempest_claim_support_id = "S1",
+        tempest_claim_id = "C1",
+        evidence_span_id = "E1"
+      ),
+      list(
+        tempest_claim_support_id = "S2",
+        tempest_claim_id = "C2",
+        evidence_span_id = "E1"
+      ),
+      list(
+        tempest_claim_support_id = "S3",
+        tempest_claim_id = "C2",
+        evidence_span_id = "E2"
+      ),
+      list(
+        tempest_claim_support_id = "S4",
+        tempest_claim_id = "C3",
+        evidence_span_id = "E1"
+      )
+    )
+  )
+
+  coalesced <- tempest:::tempest_graft_coalesce_bundle_rows(records)
+
+  expect_identical(coalesced$alias, c(C1 = "C1", C2 = "C1", C3 = "C3"))
+  expect_identical(
+    vapply(coalesced$records$Claim, `[[`, character(1), "tempest_claim_id"),
+    c("C1", "C3")
+  )
+  expect_identical(
+    vapply(
+      coalesced$records$ClaimSupport,
+      `[[`,
+      character(1),
+      "tempest_claim_support_id"
+    ),
+    c("S1", "S3", "S4")
+  )
+  expect_identical(
+    tempest:::tempest_graft_coalesce_bundle_rows(list(Claim = list()))$alias,
     character()
   )
 })

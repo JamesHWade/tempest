@@ -661,3 +661,28 @@ test_that("section facts carry each claim's disposition for the writer", {
     fixed = TRUE
   )
 })
+
+test_that("retracted or superseded accepted claims are not no-change anchors", {
+  workspace <- fake_store_with_sources(1)
+  fake_accepted_claim(workspace, "Output held steady.", status = "superseded")
+  fake_accepted_claim(workspace, "Yield reached target.", status = "retracted")
+  fake_accepted_claim(workspace, "Permits are unchanged.")
+  legacy <- tempest:::tempest_resource(
+    resource_kind = "graft.record",
+    locator = "graft/Claim/legacy",
+    title = "Claim legacy",
+    media_type = "text/plain",
+    content = "statement_text: Old finding.\nstatus: superseded\n",
+    metadata = list(
+      graft_record_id = "legacy",
+      graft_record_class = "Claim",
+      graft_revision_id = "legacy"
+    )
+  )
+  workspace$upsert_retrieved_resource(legacy)
+
+  expect_identical(
+    tempest:::tempest_workspace_accepted_claim_keys(workspace),
+    tempest:::tempest_claim_text_key("Permits are unchanged.")
+  )
+})
