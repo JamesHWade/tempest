@@ -230,9 +230,10 @@ nothing the organization does not already know; publish the briefing and
 record that no-change outcome in the host's run log rather than manufacturing a
 knowledge revision to prove the schedule ran.
 
-When the reviewer accepts a real change, commit the exact plan that was shown,
-bind a Tempest receipt to the resulting immutable snapshot, and save the
-basis the next run will carry forward:
+When the reviewer accepts a real change, commit the exact plan that was shown
+and bind a Tempest receipt to the resulting immutable snapshot. Save the basis
+the next run will carry forward either way, so a first day without accepted
+change still pins its selection instead of searching again tomorrow:
 
 ```{r accept}
 claim_rows <- plan@changes[plan@changes$class == "Claim", ]
@@ -255,27 +256,28 @@ if (has_change) {
     promotion_receipt = receipt
   )
 
-  accepted_ids <- vapply(
-    Filter(
-      \(revision) revision$class %in% accepted_classes,
-      receipt@record_revisions
-    ),
-    `[[`,
-    character(1),
-    "record_id"
-  )
-  saveRDS(
-    list(
-      snapshot = graft_snapshot(store),
-      record_ids = union(record_ids, accepted_ids)
-    ),
-    basis_path
+  record_ids <- union(
+    record_ids,
+    vapply(
+      Filter(
+        \(revision) revision$class %in% accepted_classes,
+        receipt@record_revisions
+      ),
+      `[[`,
+      character(1),
+      "record_id"
+    )
   )
 }
+
+saveRDS(
+  list(snapshot = graft_snapshot(store), record_ids = record_ids),
+  basis_path
+)
 ```
 
-Rejection leaves accepted knowledge unchanged, and the saved basis keeps
-pointing at the previous snapshot. This two-speed loop keeps routine monitoring
+Rejection leaves accepted knowledge unchanged, and the saved basis then points
+at a snapshot with the same accepted boundary as today's. This two-speed loop keeps routine monitoring
 passive and makes only material changes enter the slower decision-and-review
 path.
 

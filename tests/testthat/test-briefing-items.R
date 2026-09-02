@@ -634,3 +634,30 @@ test_that("a briefing may consist of no-change findings alone", {
   expect_match(evaluated$output, "### No material change", fixed = TRUE)
   expect_no_match(evaluated$output, "### What changed", fixed = TRUE)
 })
+
+test_that("section facts carry each claim's disposition for the writer", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  fake_accepted_claim(workspace, "The permit schedule remains unchanged.")
+  claims <- list(
+    tempest_claim("A new line reached yield.", source_ids = source_id),
+    tempest_claim(
+      "The permit schedule remains unchanged.",
+      source_ids = source_id
+    )
+  )
+
+  text <- tempest:::tempest_section_evidence_text(
+    claims,
+    accepted = tempest:::tempest_workspace_accepted_claim_keys(workspace)
+  )
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
+
+  expect_match(lines[[1L]], "\\(status: new\\)$")
+  expect_match(lines[[2L]], "\\(status: already accepted\\)$")
+  expect_match(
+    lines[[1L]],
+    paste0("(claim_id: ", claims[[1L]]@claim_id, ")"),
+    fixed = TRUE
+  )
+})
