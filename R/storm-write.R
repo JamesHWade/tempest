@@ -609,11 +609,17 @@ tempest_summarize_facts_for_prompt <- function(
       }
     )
   }
-  facts <- facts[seq_len(min(length(facts), max_items))]
-  tempest_section_evidence_text(
+  accepted <- tempest_workspace_accepted_claim_keys(store)
+  # New claims come first so truncation never hides a change behind facts
+  # that only restate accepted knowledge.
+  disposition <- vapply(
     facts,
-    accepted = tempest_workspace_accepted_claim_keys(store)
+    \(fact) tempest_briefing_claim_disposition(fact@claim_text, accepted),
+    character(1)
   )
+  facts <- facts[order(disposition != "new", seq_along(facts))]
+  facts <- facts[seq_len(min(length(facts), max_items))]
+  tempest_section_evidence_text(facts, accepted = accepted)
 }
 
 #' @keywords internal

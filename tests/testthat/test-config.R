@@ -272,7 +272,7 @@ test_that("explicit chat configuration overrides tempest.chat", {
   expect_equal(model_cfg@models$coordinator, "openai/gpt-5.6-luna")
   expect_null(model_cfg@chat)
   expect_null(factory_cfg@chat)
-  expect_type(tempest_make_chat(factory_cfg, "coordinator"), "list")
+  expect_s3_class(tempest_make_chat(factory_cfg, "coordinator"), "Chat")
 })
 
 test_that("default OpenAI chats use ChatGPT subscription authentication", {

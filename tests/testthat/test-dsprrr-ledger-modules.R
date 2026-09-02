@@ -53,12 +53,12 @@ test_that("grounded writing programs separate observation and synthesis", {
 
   expect_match(
     section_instructions,
-    "observations by copying claim text exactly",
+    "observations by copying the exact text of facts whose status is new",
     fixed = TRUE
   )
   expect_match(
     lead_instructions,
-    "observations by copying claim text exactly",
+    "observations by copying the exact text of facts whose status is new",
     fixed = TRUE
   )
   expect_match(
@@ -73,12 +73,12 @@ test_that("grounded writing programs separate observation and synthesis", {
   )
   expect_match(
     section_instructions,
-    "Omit no_change when the evidence is missing, unresolved",
+    "Omit no_change when no fact is already accepted",
     fixed = TRUE
   )
   expect_match(
     lead_instructions,
-    "no_change item must copy exactly one verified claim",
+    "no_change item must copy the exact text of one fact whose status is already accepted",
     fixed = TRUE
   )
 })

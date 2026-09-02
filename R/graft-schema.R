@@ -249,6 +249,7 @@ tempest_graft_bundle_records <- function(records, schema) {
 # dropped. The returned alias maps every bundle claim id to the id it planned
 # under.
 tempest_graft_coalesce_bundle_rows <- function(records) {
+  records <- tempest_graft_coalesce_sources(records)
   claims <- records$Claim %||% list()
   if (length(claims) == 0L) {
     return(list(records = records, alias = character()))
@@ -303,6 +304,34 @@ tempest_graft_coalesce_bundle_rows <- function(records) {
     })
   }
   list(records = records, alias = alias)
+}
+
+# Accepted Source identity is keyed on the locator, so two bundle Sources
+# with the same locator become one planned Source; spans and supports are
+# re-pointed at it.
+tempest_graft_coalesce_sources <- function(records) {
+  sources <- records$Source %||% list()
+  if (length(sources) < 2L) {
+    return(records)
+  }
+  ids <- vapply(sources, `[[`, character(1), "tempest_source_id")
+  locators <- tempest_trim(vapply(sources, `[[`, character(1), "locator"))
+  alias <- stats::setNames(ids[match(locators, locators)], ids)
+  if (all(alias == names(alias))) {
+    return(records)
+  }
+  records$Source <- sources[!duplicated(locators)]
+  repoint <- function(rows) {
+    lapply(rows, function(row) {
+      if (rlang::is_string(row$source_id) && row$source_id %in% names(alias)) {
+        row$source_id <- alias[[row$source_id]]
+      }
+      row
+    })
+  }
+  records$EvidenceSpan <- repoint(records$EvidenceSpan %||% list())
+  records$ClaimSupport <- repoint(records$ClaimSupport %||% list())
+  records
 }
 
 # The kept Claim's summary must describe its merged support set, computed the
@@ -879,12 +908,13 @@ tempest_claim_text_key <- function(text) {
 }
 
 # Accepted Sources are keyed on their exact locator so the same document cited
-# by later research resolves to its accepted record.
+# by later research resolves to its accepted record. Repeated locators inside
+# one bundle are coalesced before planning.
 tempest_source_origin_keys <- function(locators) {
   if (length(locators) == 0L) {
     return(character())
   }
-  keys <- vapply(
+  vapply(
     tempest_trim(as.character(locators)),
     function(locator) {
       paste0(
@@ -895,8 +925,6 @@ tempest_source_origin_keys <- function(locators) {
     character(1),
     USE.NAMES = FALSE
   )
-  repeats <- stats::ave(seq_along(keys), keys, FUN = seq_along)
-  ifelse(repeats > 1L, paste0(keys, "#", repeats), keys)
 }
 
 tempest_claim_origin_keys <- function(texts) {

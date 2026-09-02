@@ -8,6 +8,7 @@ output_dir <- file.path(root, "inst", "schema")
 output <- file.path(output_dir, "tempest-research.graft.json")
 sys.source(file.path(root, "R", "graft-schema.R"), envir = environment())
 required_contract <- tempest_graft_contract_version
+required_store_format <- tempest_graft_store_format_version
 
 if (!requireNamespace("graft", quietly = TRUE)) {
   stop("Install Graft with consumer contract ", required_contract, " first.")
@@ -15,13 +16,16 @@ if (!requireNamespace("graft", quietly = TRUE)) {
 
 contract <- tryCatch(graft::graft_contract_version(), error = function(e) NULL)
 pin_valid <- tryCatch(
-  tempest_graft_pin_valid(contract),
+  tempest_graft_pin_valid(contract) &&
+    identical(contract$store_format, required_store_format),
   error = function(error) FALSE
 )
 if (!pin_valid) {
   stop(
     "The installed Graft package does not satisfy consumer contract ",
     required_contract,
+    " with store format ",
+    required_store_format,
     "."
   )
 }

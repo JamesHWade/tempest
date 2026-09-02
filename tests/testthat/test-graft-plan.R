@@ -328,7 +328,7 @@ test_that("source origin keys follow the exact locator", {
     "https://example.com/b"
   ))
 
-  expect_identical(keys[[2L]], paste0(keys[[1L]], "#2"))
+  expect_identical(keys[[2L]], keys[[1L]])
   expect_match(keys[[1L]], "^tempest-source-locator-v1:[a-f0-9]{64}$")
   expect_false(identical(keys[[3L]], keys[[1L]]))
   expect_identical(
@@ -337,6 +337,40 @@ test_that("source origin keys follow the exact locator", {
   )
 })
 
+test_that("repeated source locators in one bundle coalesce and re-point evidence", {
+  records <- list(
+    Source = list(
+      list(tempest_source_id = "S1", locator = "https://example.com/a"),
+      list(tempest_source_id = "S2", locator = "https://example.com/a"),
+      list(tempest_source_id = "S3", locator = "https://example.com/b")
+    ),
+    EvidenceSpan = list(
+      list(id = "E1", source_id = "S2"),
+      list(id = "E2", source_id = "S3")
+    ),
+    ClaimSupport = list(
+      list(
+        tempest_claim_support_id = "P1",
+        source_id = "S2",
+        tempest_claim_id = "C1",
+        evidence_span_id = "E1"
+      )
+    ),
+    Claim = list()
+  )
+
+  coalesced <- tempest:::tempest_graft_coalesce_bundle_rows(records)$records
+
+  expect_identical(
+    vapply(coalesced$Source, `[[`, character(1), "tempest_source_id"),
+    c("S1", "S3")
+  )
+  expect_identical(
+    vapply(coalesced$EvidenceSpan, `[[`, character(1), "source_id"),
+    c("S1", "S3")
+  )
+  expect_identical(coalesced$ClaimSupport[[1L]]$source_id, "S1")
+})
 test_that("claim origin keys normalize text", {
   keys <- tempest:::tempest_claim_origin_keys(c(
     "Output held steady.",

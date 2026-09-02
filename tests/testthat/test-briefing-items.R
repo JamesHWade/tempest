@@ -686,3 +686,36 @@ test_that("retracted or superseded accepted claims are not no-change anchors", {
     tempest:::tempest_claim_text_key("Permits are unchanged.")
   )
 })
+
+test_that("lead facts keep a new claim ahead of accepted ones when truncated", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  fake_accepted_claim(workspace, "The permit schedule remains unchanged.")
+  claims <- list(
+    tempest_claim(
+      "The permit schedule remains unchanged.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    ),
+    tempest_claim(
+      "A new line reached yield.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    )
+  )
+  for (claim in claims) {
+    workspace$add_proposed_claim(claim)
+  }
+  fake_verify_claim_supports(workspace, claims)
+
+  text <- tempest:::tempest_summarize_facts_for_prompt(
+    workspace,
+    max_items = 1,
+    verified_only = TRUE
+  )
+
+  expect_match(text, "A new line reached yield.", fixed = TRUE)
+  expect_no_match(text, "already accepted", fixed = TRUE)
+})

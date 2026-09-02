@@ -165,4 +165,5 @@ test_that("schema compiler reuses the exact runtime Graft pin", {
   expect_match(compiler, "sys.source", all = FALSE)
   expect_match(compiler, "tempest_graft_pin_valid", all = FALSE)
   expect_match(compiler, "graft_contract_version", all = FALSE)
+  expect_match(compiler, "tempest_graft_store_format_version", all = FALSE)
 })
