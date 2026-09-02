@@ -1,14 +1,16 @@
 # Tempest's compiled Graft research contract and review-only planning adapter
 
-tempest_graft_accessor_commit <-
-  "81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5"
+tempest_graft_contract_version <- "0.2.0"
 
-tempest_graft_behavior_digest <-
-  "sha256:687520a6d3bfc963e8c5b9dc090a759349747d87d398cb2c14a5972e35c01b21"
+# The Graft store format whose snapshots, receipts, and trajectory reviews
+# Tempest can validate offline.
+tempest_graft_store_format_version <- "3.1.0"
 
 tempest_graft_required_exports <- function() {
   c(
     "graft_at",
+    "graft_changes",
+    "graft_contract_version",
     "graft_get",
     "graft_history",
     "graft_plan",
@@ -27,197 +29,60 @@ tempest_graft_snapshot_call <- function(store) {
   graft::graft_snapshot(store)
 }
 
-tempest_graft_remote_sha <- function() {
-  utils::packageDescription("graft")[["RemoteSha"]]
+tempest_graft_contract_call <- function() {
+  graft::graft_contract_version()
 }
 
-tempest_graft_deparse <- function(value) {
-  paste(
-    deparse(
-      value,
-      width.cutoff = 500L,
-      control = c(
-        "keepInteger",
-        "quoteExpressions",
-        "showAttributes",
-        "useSource",
-        "keepNA",
-        "digits17",
-        "niceNames"
-      )
-    ),
-    collapse = "\n"
-  )
-}
-
-tempest_graft_function_descriptor <- function(value) {
-  list(
-    formals = tempest_graft_deparse(formals(value)),
-    body = tempest_graft_deparse(body(value))
-  )
-}
-
-tempest_graft_property_descriptor <- function(property) {
-  data <- unclass(property)
-  property_class <- data$class
-  class_data <- unclass(property_class)
-  list(
-    name = data$name,
-    class_kind = class(property_class),
-    class_value = if (is.null(class_data$class)) {
-      character()
-    } else {
-      class_data$class
-    },
-    getter = if (is.function(data$getter)) {
-      tempest_graft_function_descriptor(data$getter)
-    } else {
-      NULL
-    },
-    setter = if (is.function(data$setter)) {
-      tempest_graft_function_descriptor(data$setter)
-    } else {
-      NULL
-    },
-    validator = if (is.function(data$validator)) {
-      tempest_graft_function_descriptor(data$validator)
-    } else {
-      NULL
-    },
-    default = paste(utils::capture.output(dput(data$default)), collapse = "\n")
-  )
-}
-
-tempest_graft_class_descriptor <- function(value) {
-  data <- attributes(value)
-  list(
-    name = data$name,
-    package = data$package,
-    abstract = data$abstract,
-    parent = class(data$parent),
-    constructor = tempest_graft_function_descriptor(data$constructor),
-    validator = tempest_graft_function_descriptor(data$validator),
-    properties = stats::setNames(
-      lapply(data$properties, tempest_graft_property_descriptor),
-      names(data$properties)
-    )
-  )
-}
-
-tempest_graft_plain_constant <- function(value) {
-  if (is.function(value) || is.environment(value) || is.object(value)) {
+# Graft publishes a semantic consumer contract version. Tempest accepts the
+# same major and minor contract at any patch level; a different minor or
+# major version may change argument shapes or return values Tempest relies on.
+tempest_graft_pin_valid <- function(version) {
+  if (!is.list(version) || !rlang::is_string(version$contract)) {
     return(FALSE)
   }
-  if (is.list(value)) {
-    return(all(vapply(value, tempest_graft_plain_constant, logical(1))))
+  observed <- tryCatch(
+    numeric_version(version$contract),
+    error = function(error) NULL
+  )
+  if (is.null(observed)) {
+    return(FALSE)
   }
-  is.atomic(value)
-}
-
-tempest_graft_behavior_fingerprint <- function() {
-  namespace <- asNamespace("graft")
-  object_names <- sort(ls(namespace, all.names = TRUE), method = "radix")
-  function_names <- Filter(
-    function(name) {
-      value <- get(name, envir = namespace, inherits = FALSE)
-      is.function(value) && identical(environment(value), namespace)
-    },
-    object_names
-  )
-  class_names <- Filter(
-    function(name) {
-      inherits(
-        get(name, envir = namespace, inherits = FALSE),
-        "S7_class"
-      )
-    },
-    function_names
-  )
-  constant_names <- Filter(
-    function(name) {
-      tempest_graft_plain_constant(
-        get(name, envir = namespace, inherits = FALSE)
-      )
-    },
-    object_names
-  )
-  payload <- list(
-    exports = sort(getNamespaceExports("graft"), method = "radix"),
-    functions = stats::setNames(
-      lapply(function_names, function(name) {
-        tempest_graft_function_descriptor(
-          get(name, envir = namespace, inherits = FALSE)
-        )
-      }),
-      function_names
-    ),
-    classes = stats::setNames(
-      lapply(class_names, function(name) {
-        tempest_graft_class_descriptor(
-          get(name, envir = namespace, inherits = FALSE)
-        )
-      }),
-      class_names
-    ),
-    constants = stats::setNames(
-      lapply(constant_names, function(name) {
-        paste(
-          utils::capture.output(dput(get(
-            name,
-            envir = namespace,
-            inherits = FALSE
-          ))),
-          collapse = "\n"
-        )
-      }),
-      constant_names
-    )
-  )
-  paste0(
-    "sha256:",
-    digest::digest(payload, algo = "sha256", serialize = TRUE)
-  )
-}
-
-tempest_graft_pin_valid <- function(remote_sha) {
-  if (!is.null(remote_sha)) {
-    return(identical(remote_sha, tempest_graft_accessor_commit))
-  }
-  identical(
-    tempest_graft_behavior_fingerprint(),
-    tempest_graft_behavior_digest
-  )
+  required <- numeric_version(tempest_graft_contract_version)
+  identical(observed[[1L, 1L]], required[[1L, 1L]]) &&
+    identical(observed[[1L, 2L]], required[[1L, 2L]]) &&
+    observed >= required
 }
 
 tempest_graft_require <- function() {
   if (!requireNamespace("graft", quietly = TRUE)) {
     tempest_promotion_abort(
       paste0(
-        "Graft at commit ",
-        tempest_graft_accessor_commit,
+        "Graft with consumer contract ",
+        tempest_graft_contract_version,
         " is required for research promotion."
       ),
       class = "tempest_graft_schema_error"
     )
   }
-  remote_sha <- tryCatch(
-    tempest_graft_remote_sha(),
-    error = function(error) {
-      tempest_promotion_abort(
-        "Could not verify the installed Graft package identity.",
-        class = "tempest_graft_schema_error"
-      )
+  contract <- tryCatch(
+    tempest_graft_contract_call(),
+    error = function(error) NULL
+  )
+  if (
+    !tempest_graft_pin_valid(contract) ||
+      !identical(contract$store_format, tempest_graft_store_format_version)
+  ) {
+    observed <- if (is.list(contract) && rlang::is_string(contract$contract)) {
+      contract$contract
+    } else {
+      "an unknown contract"
     }
-  )
-  pin_valid <- tryCatch(
-    tempest_graft_pin_valid(remote_sha),
-    error = function(error) FALSE
-  )
-  if (!pin_valid) {
     tempest_promotion_abort(
       paste0(
-        "The installed Graft package does not match approved accessor commit ",
-        tempest_graft_accessor_commit,
+        "The installed Graft package reports ",
+        observed,
+        ", but Tempest requires Graft consumer contract ",
+        tempest_graft_contract_version,
         "."
       ),
       class = "tempest_graft_schema_error"
@@ -256,9 +121,10 @@ tempest_graft_schema_path <- function() {
 
 #' Load Tempest's compiled scientific Graft schema
 #'
-#' The packaged contract is compiled against Graft accessor commit
-#' `81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5`. Runtime loading never compiles
-#' LinkML and rejects any manifest whose immutable build digest differs.
+#' The packaged contract is compiled for Graft consumer contract `0.2.0`, which
+#' runtime loading checks through `graft::graft_contract_version()`. Loading
+#' never compiles LinkML and rejects any manifest whose immutable build digest
+#' differs.
 #'
 #' @return A validated `graft::GraftSchema`.
 #' @export
@@ -284,7 +150,8 @@ tempest_graft_schema <- function() {
           "EvidenceSpan",
           "GovernedProcedure",
           "ProgramArtifact",
-          "Source"
+          "Source",
+          "GraftDefinition"
         )
       )
   ) {
@@ -472,7 +339,7 @@ tempest_graft_plan_provenance <- function(
       store_id
     ),
     metadata = list(
-      graft_accessor_commit = tempest_graft_accessor_commit,
+      graft_contract_version = tempest_graft_contract_version,
       promotion_bundle_id = bundle@bundle_id,
       research_manifest_digest = tempest_promotion_digest(
         bundle@research_manifest
@@ -844,6 +711,12 @@ tempest_graft_plan <- function(store, bundle) {
     planning_snapshot@store_id
   )
 
+  records$Claim$.graft_origin_key <- tempest_claim_origin_keys(
+    records$Claim$statement_text
+  )
+  records$Source$.graft_origin_key <- tempest_source_origin_keys(
+    records$Source$locator
+  )
   seed <- tryCatch(
     tempest_graft_plan_call(
       store,
@@ -910,6 +783,58 @@ tempest_graft_plan <- function(store, bundle) {
   }
   tempest_graft_plan_assert_bundle(plan, bundle)
   plan
+}
+
+
+# Accepted Claim identity is keyed on the normalized statement text rather
+# than on the run-scoped Tempest claim id, so a claim that later research
+# re-verifies resolves to the record already accepted instead of duplicating
+# it. Repeated text inside one bundle keeps distinct keys in input order.
+tempest_claim_text_key <- function(text) {
+  normalized <- tolower(tempest_trim(as.character(text)))
+  normalized <- gsub("[[:space:]]+", " ", normalized, perl = TRUE)
+  normalized <- sub("[.]$", "", normalized, perl = TRUE)
+  enc2utf8(normalized)
+}
+
+# Accepted Sources are keyed on their exact locator so the same document cited
+# by later research resolves to its accepted record.
+tempest_source_origin_keys <- function(locators) {
+  if (length(locators) == 0L) {
+    return(character())
+  }
+  keys <- vapply(
+    tempest_trim(as.character(locators)),
+    function(locator) {
+      paste0(
+        "tempest-source-locator-v1:",
+        digest::digest(enc2utf8(locator), algo = "sha256", serialize = FALSE)
+      )
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  repeats <- stats::ave(seq_along(keys), keys, FUN = seq_along)
+  ifelse(repeats > 1L, paste0(keys, "#", repeats), keys)
+}
+
+tempest_claim_origin_keys <- function(texts) {
+  if (length(texts) == 0L) {
+    return(character())
+  }
+  keys <- vapply(
+    tempest_claim_text_key(texts),
+    function(key) {
+      paste0(
+        "tempest-claim-text-v1:",
+        digest::digest(key, algo = "sha256", serialize = FALSE)
+      )
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  repeats <- stats::ave(seq_along(keys), keys, FUN = seq_along)
+  ifelse(repeats > 1L, paste0(keys, "#", repeats), keys)
 }
 
 tempest_graft_named_counts <- function(value) {

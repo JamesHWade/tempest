@@ -26,8 +26,8 @@ their existing responsibilities:
 
 | Module | Responsibility in the briefing |
 |---|---|
-| Graft | Pin accepted knowledge before research and hold reviewed revisions afterward. |
-| Tempest | Produce a source-grounded research product and a review-only evidence proposal. |
+| Graft | Pin accepted knowledge before research, report what was accepted since the last run, and hold reviewed revisions afterward. |
+| Tempest | Produce a source-grounded research product whose change signal is computed against the pinned snapshot, plus a review-only evidence proposal. |
 | dsprrr | Run Tempest's validated structured research stages. |
 | Deputy | Execute Tempest's permission-bounded agent work. |
 | scans | Inspect the closed Tempest trajectory without reopening live product state. |
@@ -64,15 +64,49 @@ topic <- paste(
   "Omit no-change when evidence is missing or inconclusive. Preserve",
   "uncertainty and cite evidence."
 )
-
-matches <- graft_find(view, "grid-scale battery recycling", limit = 25)
-accepted_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
-record_ids <- matches$id[matches$class %in% accepted_classes]
-knowledge <- tempest_knowledge(view, record_ids = record_ids)
 ```
 
 The snapshot fixes the accepted boundary for the whole run. A commit made by
 another process halfway through the briefing cannot silently alter its input.
+
+### Select the accepted basis durably
+
+The first day has nothing to carry forward, so it searches. Every later day
+starts from the record ids the previous run accepted and adds whatever Graft
+reports as accepted since the previous snapshot. The basis therefore grows
+only through explicit acceptance; a keyword search that happens to match a
+different set of records on day 40 cannot change it.
+
+```{r basis}
+basis_path <- "briefing/basis.rds"
+accepted_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
+
+if (file.exists(basis_path)) {
+  previous <- readRDS(basis_path)
+  changed <- graft_changes(
+    view,
+    since = previous$snapshot,
+    class = accepted_classes
+  )
+  record_ids <- union(previous$record_ids, changed$record_id)
+} else {
+  claims <- graft_find(
+    view,
+    "grid-scale battery recycling",
+    class = "Claim",
+    limit = 25
+  )
+  record_ids <- claims$id
+}
+
+knowledge <- tempest_knowledge(view, record_ids = record_ids)
+```
+
+`graft_changes()` compares two committed boundaries store-wide and returns one
+row per changed record with its action, the union of changed public fields,
+and the latest accepted record. A `GraftView` bounds it at the pinned
+snapshot, so the selection cannot include a commit that landed after the run
+started.
 
 ## Research today's change
 
@@ -89,7 +123,7 @@ technical <- tempest_expert(
   instructions = paste(
     "Separate measured performance from projections.",
     "Call out consequential unknowns. Report no change only when a verified",
-    "claim explicitly establishes an unchanged material condition."
+    "claim restates a condition the organization already accepted."
   ),
   focus_areas = c("process yield", "scale-up", "safety")
 )
@@ -127,16 +161,24 @@ supports <- tempest_claim_supports(result)
 
 Treat the report as the briefing and the tables as its evidence rail. The
 at-a-glance brief and each detailed section keep four statements visibly
-distinct: verified observations copy claims exactly; “Why it matters”
-assessments are labeled, confidence-calibrated inferences; “Review today” items
-are proposed actions; and “No material change” statements copy one explicit
-verified claim exactly. That claim must pass a conservative language gate that
-requires an unchanged assertion and rejects a simultaneous change assertion.
+distinct, and the first and last of them are decided against the pinned
+snapshot rather than by the prompt:
+
+- "What changed" items copy verified claims exactly, and Tempest accepts one
+  only when its text does not restate a `Claim` already in the pinned
+  knowledge. On the first day every verified claim is new.
+- "Why it matters" assessments are labeled, confidence-calibrated inferences.
+- "Review today" items are proposed actions.
+- "No material change" statements copy one verified claim exactly, and
+  Tempest accepts one only when that claim restates an accepted `Claim`. Today's
+  evidence re-verified something the organization already knew.
+
 Missing, unresolved, or inconclusive evidence does not become a no-change
-statement. A daily host presents verified observations as
-“What changed.” Tempest binds every item to its exact claim IDs in
-machine-readable provenance and rejects a report if that provenance no longer
-matches the visible Markdown.
+statement, because it does not produce a verified claim at all. Tempest binds
+every item to its exact claim IDs in machine-readable provenance, re-checks
+each item's disposition against the accepted claims whenever the report is
+rendered, and rejects a report if that provenance no longer matches the
+visible Markdown.
 
 Whether somebody was shown the briefing or read it is operational state; it is
 not accepted knowledge. An assessment or review action is also not accepted
@@ -162,26 +204,41 @@ run_summary <- scans::summarize_trajectories(trajectory)
 run_findings <- scans::scan_trajectories(trajectory)
 
 plan@valid
-plan@changes[, c("class", "record_id", "action", "changed_fields")]
+plan@changes[, c("class", "record_id", "action", "disposition", "changed_fields")]
 run_summary
 run_findings
 ```
+
+Tempest keys accepted `Claim` identity on the claim's normalized statement
+text and accepted `Source` identity on its locator. A claim the organization
+already accepted therefore plans as an `update` whose `changed_fields` name
+only run metadata such as the Tempest claim id and verification time, and
+Graft's `disposition` column reads `revision`; a genuinely new statement reads
+`new`; an identical proposal reads `duplicate`. A staged claim that sets
+`superseded_by`, or evidence whose `support_type` is `contradicts`, surfaces
+as `superseded`, `supersedes`, or `contradicted` so the reviewer sees
+statement-level relations without reading every row.
 
 Do not collapse these into one confidence score. Claim support, proposed Graft
 changes, and trajectory findings answer different review questions.
 
 ## Accept deliberately, including no change
 
-If every planned action is `"match"`, today's research proposes no accepted
-state change. Publish the briefing and record that no-change outcome in the
-host's run log; do not manufacture a knowledge revision merely to prove the
-schedule ran.
+Accepted knowledge changes only when a `Claim` is new, superseded, or
+contradicted. A plan whose claims are all `duplicate` or `revision` proposes
+nothing the organization does not already know; publish the briefing and
+record that no-change outcome in the host's run log rather than manufacturing a
+knowledge revision to prove the schedule ran.
 
-When the reviewer accepts a real change, commit the exact plan that was shown
-and bind a Tempest receipt to the resulting immutable snapshot:
+When the reviewer accepts a real change, commit the exact plan that was shown,
+bind a Tempest receipt to the resulting immutable snapshot, and save the
+basis the next run will carry forward:
 
 ```{r accept}
-has_change <- any(plan@changes$action != "match")
+claim_rows <- plan@changes[plan@changes$class == "Claim", ]
+has_change <- any(
+  claim_rows$disposition %in% c("new", "supersedes", "superseded", "contradicted")
+)
 
 if (has_change) {
   commit_result <- graft_commit(store, plan)
@@ -197,13 +254,67 @@ if (has_change) {
     promotion_bundle = proposal,
     promotion_receipt = receipt
   )
+
+  accepted_ids <- vapply(
+    Filter(
+      \(revision) revision$class %in% accepted_classes,
+      receipt@record_revisions
+    ),
+    `[[`,
+    character(1),
+    "record_id"
+  )
+  saveRDS(
+    list(
+      snapshot = graft_snapshot(store),
+      record_ids = union(record_ids, accepted_ids)
+    ),
+    basis_path
+  )
 }
 ```
 
-The next briefing captures a new Graft snapshot and explicitly selects the
-accepted records it should carry forward. Rejection leaves accepted knowledge
-unchanged. This two-speed loop keeps routine monitoring passive and makes only
-material changes enter the slower decision-and-review path.
+Rejection leaves accepted knowledge unchanged, and the saved basis keeps
+pointing at the previous snapshot. This two-speed loop keeps routine monitoring
+passive and makes only material changes enter the slower decision-and-review
+path.
+
+## Let a person edit accepted knowledge
+
+The store was opened with `okf = "managed"`, so Graft keeps a readable Open
+Knowledge Format working tree next to the DuckDB file. A reviewer who wants to
+correct a wording, retract a claim, or mark one statement as superseding
+another edits those files; Graft turns the edits back into the same kind of
+plan the briefing produced, and the same acceptance step applies.
+
+```{r okf}
+graft_sync(store)
+graft_status(store)$status
+#> "current"
+
+# A person edits files under the managed OKF directory, then:
+graft_status(store)$status
+#> "modified"
+
+edited <- graft_review(
+  store,
+  provenance = graft_provenance(
+    "briefing-reviewer",
+    idempotency_key = paste0("okf-", Sys.Date())
+  )
+)
+edited@changes[, c("class", "record_id", "action", "disposition")]
+
+if (edited@valid) {
+  graft_commit(store, edited)
+  graft_sync(store)
+}
+```
+
+The edited plan is bound to the exact bundle and accepted batch it was
+reviewed against, so a commit that landed in between fails the plan instead
+of silently rebasing the person's edits. Tomorrow's briefing picks the edit up
+through `graft_changes()` like any other accepted change.
 
 ```{r close}
 graft_close(store)

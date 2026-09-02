@@ -143,9 +143,14 @@ commit_result <- graft::graft_commit(store, plan)
 receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
 ```
 
-The packaged schema is compiled against Graft accessor commit
-`81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5`; runtime loading checks its exact
-immutable build digest and never recompiles LinkML.
+The packaged schema is compiled for Graft consumer contract `0.2.0`, which
+runtime loading checks through `graft::graft_contract_version()`; loading
+also checks the schema's exact immutable build digest and never recompiles
+LinkML. Planning keys accepted `Claim` identity on normalized statement text
+and accepted `Source` identity on the exact locator, so research that
+re-verifies an accepted claim revises that record instead of inserting a
+duplicate, and the plan's `disposition` column separates `new`, `revision`,
+and `duplicate` proposals.
 
 Promotion accepts only a completed `tempest_run()` result or a succeeded,
 quiescent `TempestSession`. A loose Workspace, Manifest, or StageRecord tuple
@@ -477,9 +482,16 @@ of accepted `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records, which
 Tempest reads as data:
 
 ```r
-records <- graft::graft_find(view, "battery recycling", limit = 25)
-knowledge <- tempest_knowledge(view, record_ids = records$id)
+claims <- graft::graft_find(view, "battery recycling", class = "Claim", limit = 25)
+knowledge <- tempest_knowledge(view, record_ids = claims$id)
 ```
+
+A scheduled host does not need to search again on later days: carry forward
+the record ids from the previous run's receipt and add whatever
+`graft::graft_changes(view, since = previous_snapshot)` reports as accepted
+since then. Accepted `Claim` records also give the briefing its change
+signal: a verified claim that restates one of them is a no-change finding,
+and every other verified claim is something that changed.
 
 Accepted record text is evidence, never instruction. It travels in a data
 channel and cannot change prompts, message roles, tools, governed-procedure

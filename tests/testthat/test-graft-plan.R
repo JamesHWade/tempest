@@ -268,3 +268,89 @@ test_that("planning failures do not expose Graft errors", {
   )
   expect_identical(grepl(secret, rendered, fixed = TRUE), FALSE)
 })
+
+
+test_that("re-verified claim text resolves to the accepted Claim record", {
+  skip_if_not_installed("graft")
+  first <- tempest_promotion_bundle(test_promotion_storm_fixture()$research)
+  second <- tempest_promotion_bundle(
+    test_promotion_storm_fixture(run_id = "research-promotion-2")$research
+  )
+  first_ids <- vapply(
+    first@records$Claim,
+    `[[`,
+    character(1),
+    "tempest_claim_id"
+  )
+  second_ids <- vapply(
+    second@records$Claim,
+    `[[`,
+    character(1),
+    "tempest_claim_id"
+  )
+  renamed <- second_ids[!second_ids %in% first_ids]
+  expect_gt(length(renamed), 0L)
+  expect_identical(
+    vapply(first@records$Claim, `[[`, character(1), "statement_text"),
+    vapply(second@records$Claim, `[[`, character(1), "statement_text")
+  )
+  store <- test_promotion_store()
+  withr::defer(graft::graft_close(store))
+
+  accepted <- tempest_graft_plan(store, first)
+  graft::graft_commit(store, accepted)
+  replay <- tempest_graft_plan(store, second)
+  accepted_claims <- accepted@changes[accepted@changes$class == "Claim", ]
+  replay_claims <- replay@changes[replay@changes$class == "Claim", ]
+
+  expect_setequal(replay_claims$record_id, accepted_claims$record_id)
+  expect_false("insert" %in% replay_claims$action)
+  expect_false("new" %in% replay_claims$disposition)
+  renamed_rows <- replay_claims[
+    replay@records$Claim$tempest_claim_id[replay_claims$input_row] %in% renamed,
+  ]
+  expect_identical(unique(renamed_rows$action), "update")
+  expect_identical(unique(renamed_rows$disposition), "revision")
+  expect_all_true(vapply(
+    strsplit(renamed_rows$changed_fields, ", ", fixed = TRUE),
+    \(fields) "tempest_claim_id" %in% fields && !"statement_text" %in% fields,
+    logical(1)
+  ))
+  sources <- replay@changes[replay@changes$class == "Source", ]
+  expect_identical(unique(sources$action), "insert")
+  expect_identical(unique(sources$disposition), "new")
+})
+
+test_that("source origin keys follow the exact locator", {
+  keys <- tempest:::tempest_source_origin_keys(c(
+    "https://example.com/a",
+    " https://example.com/a ",
+    "https://example.com/b"
+  ))
+
+  expect_identical(keys[[2L]], paste0(keys[[1L]], "#2"))
+  expect_match(keys[[1L]], "^tempest-source-locator-v1:[a-f0-9]{64}$")
+  expect_false(identical(keys[[3L]], keys[[1L]]))
+  expect_identical(
+    tempest:::tempest_source_origin_keys(character()),
+    character()
+  )
+})
+
+test_that("claim origin keys normalize text and keep in-bundle repeats distinct", {
+  keys <- tempest:::tempest_claim_origin_keys(c(
+    "Output held steady.",
+    "  output HELD   steady",
+    "Output held steady.",
+    "Output rose."
+  ))
+
+  expect_identical(keys[[2L]], paste0(keys[[1L]], "#2"))
+  expect_identical(keys[[3L]], paste0(keys[[1L]], "#3"))
+  expect_match(keys[[1L]], "^tempest-claim-text-v1:[a-f0-9]{64}$")
+  expect_false(identical(keys[[4L]], keys[[1L]]))
+  expect_identical(
+    tempest:::tempest_claim_origin_keys(character()),
+    character()
+  )
+})

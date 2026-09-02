@@ -39,8 +39,15 @@ only from an explicit \code{governed_procedures} stage binding.
 \examples{
 \dontrun{
 view <- graft::graft_at(store, graft::graft_snapshot(store))
-records <- graft::graft_find(view, "battery recycling", limit = 25)
-knowledge <- tempest_knowledge(view, record_ids = records$id)
+claims <- graft::graft_find(
+  view,
+  "battery recycling",
+  class = "Claim",
+  limit = 25
+)
+knowledge <- tempest_knowledge(view, record_ids = claims$id)
+# On later days carry the previous receipt's record ids forward and add
+# graft::graft_changes(view, since = previous_snapshot)$record_id.
 result <- tempest_run("Battery recycling", knowledge = knowledge)
 }
 }

@@ -2001,7 +2001,10 @@ tempest_trajectory_validate_graft_snapshot <- function(snapshot) {
   if (
     !identical(snapshot$schema_version, 1L) ||
       !tempest_promotion_receipt_store_id_valid(snapshot$store_id) ||
-      !identical(snapshot$store_format_version, "3.0.0") ||
+      !identical(
+        snapshot$store_format_version,
+        tempest_graft_store_format_version
+      ) ||
       !rlang::is_string(snapshot$schema_build_digest) ||
       is.na(snapshot$schema_build_digest) ||
       !grepl("^sha256:[a-f0-9]{64}$", snapshot$schema_build_digest) ||
@@ -2108,7 +2111,10 @@ tempest_trajectory_validate_snapshot <- function(
   if (
     complete &&
       (!identical(snapshot$schema_version, 1L) ||
-        !identical(snapshot$store_format_version, "3.0.0") ||
+        !identical(
+          snapshot$store_format_version,
+          tempest_graft_store_format_version
+        ) ||
         snapshot$commit_order < 1L ||
         !tempest_ledger_timestamp_valid(snapshot$committed_at))
   ) {

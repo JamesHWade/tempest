@@ -23,7 +23,7 @@ tempest_knowledge_record_allowlist <- function() {
 }
 
 tempest_knowledge_max_records <- function() {
-  100L
+  1000L
 }
 
 #' Accepted organizational knowledge pinned to one Graft view
@@ -145,12 +145,28 @@ tempest_knowledge_record_resource <- function(knowledge_view, record_id) {
     title = paste(record_class, record_id),
     media_type = "text/plain",
     content = content,
-    metadata = list(
-      graft_record_id = record_id,
-      graft_record_class = record_class,
-      graft_revision_id = history$revision_id[[1L]]
+    metadata = c(
+      list(
+        graft_record_id = record_id,
+        graft_record_class = record_class,
+        graft_revision_id = history$revision_id[[1L]]
+      ),
+      tempest_knowledge_statement_metadata(record_class, payload)
     )
   )
+}
+
+# Accepted Claims carry their exact statement text as metadata so the briefing
+# can decide structurally whether a verified claim restates accepted knowledge.
+tempest_knowledge_statement_metadata <- function(record_class, payload) {
+  if (!identical(record_class, "Claim")) {
+    return(list())
+  }
+  text <- payload[["statement_text"]]
+  if (!rlang::is_string(text) || is.na(text)) {
+    return(list())
+  }
+  list(graft_statement_text = text)
 }
 
 # Render an accepted record as canonical inert text. A record whose fields
@@ -234,8 +250,15 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #' @examples
 #' \dontrun{
 #' view <- graft::graft_at(store, graft::graft_snapshot(store))
-#' records <- graft::graft_find(view, "battery recycling", limit = 25)
-#' knowledge <- tempest_knowledge(view, record_ids = records$id)
+#' claims <- graft::graft_find(
+#'   view,
+#'   "battery recycling",
+#'   class = "Claim",
+#'   limit = 25
+#' )
+#' knowledge <- tempest_knowledge(view, record_ids = claims$id)
+#' # On later days carry the previous receipt's record ids forward and add
+#' # graft::graft_changes(view, since = previous_snapshot)$record_id.
 #' result <- tempest_run("Battery recycling", knowledge = knowledge)
 #' }
 #' @export

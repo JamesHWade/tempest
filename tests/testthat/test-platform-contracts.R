@@ -70,9 +70,10 @@ test_that("platform completion digests survive deep Turn duplication", {
   )
 })
 
-test_that("platform Graft behavior fingerprint is exact and quiet", {
+test_that("platform Graft contract pin accepts the installed Graft", {
+  skip_if_not_installed("graft")
   expect_no_warning(
-    actual <- tempest:::tempest_graft_behavior_fingerprint()
+    valid <- tempest:::tempest_graft_pin_valid(graft::graft_contract_version())
   )
-  expect_identical(actual, tempest:::tempest_graft_behavior_digest)
+  expect_identical(valid, TRUE)
 })

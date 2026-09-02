@@ -332,8 +332,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Each perspective needs 3-6 specific research questions.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     personas = dsprrr::module(
       dsprrr::signature(
@@ -349,8 +348,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Return exactly n_experts personas.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     query_decomposition = dsprrr::module(
       dsprrr::signature(
@@ -364,8 +362,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Queries should cover different aspects of the question and stay anchored to the topic.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     extract_claims = dsprrr::module(
       dsprrr::signature(
@@ -402,8 +399,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Do not infer or invent facts.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     verify_claim_support = dsprrr::module(
       dsprrr::signature(
@@ -417,8 +413,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Return a status, a support score in [0,1], and a short rationale.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     next_question = dsprrr::module(
       dsprrr::signature(
@@ -434,8 +429,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Set done to true only when the perspective is sufficiently covered.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     draft_outline = dsprrr::module(
       dsprrr::signature(
@@ -451,8 +445,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "The outline will later be refined using verified facts.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     refined_outline = dsprrr::module(
       dsprrr::signature(
@@ -471,8 +464,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Ensure sections are supportable by cited facts.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     section_writing = dsprrr::module(
       dsprrr::signature(
@@ -497,8 +489,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Do not put source citations, Markdown, or provenance prose in item text.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     lead_section = dsprrr::module(
       dsprrr::signature(
@@ -522,8 +513,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Do not put source citations, Markdown, or provenance prose in item text.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     )
   )
   modules

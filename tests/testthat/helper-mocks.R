@@ -148,7 +148,7 @@ fake_chat <- function(
   }
 
   chat <- NULL
-  chat <- structure(
+  chat <- fake_chat_r6(
     list(
       chat_structured = function(prompt, type = NULL, ...) {
         record_call("structured", prompt, "chat_structured")
@@ -250,9 +250,36 @@ fake_chat <- function(
           provider_turns = state$provider_turns
         )
       }
-    ),
-    class = c("Chat", "list")
+    )
   )
+  chat
+}
+
+# dsprrr and Deputy require an R6 environment that inherits from "Chat";
+# expose the fake members through such an environment.
+fake_chat_r6 <- function(members) {
+  turns <- list()
+  defaults <- list(
+    get_turns = function(include_system_prompt = FALSE, ...) turns,
+    set_turns = function(value, ...) {
+      turns <<- value
+      invisible(NULL)
+    },
+    get_system_prompt = function() NULL,
+    get_model = function() "fake",
+    get_tokens = function() {
+      data.frame(
+        input = numeric(),
+        output = numeric(),
+        cached_input = numeric(),
+        cost = numeric()
+      )
+    },
+    register_tools = function(...) invisible(NULL)
+  )
+  members <- c(members, defaults[setdiff(names(defaults), names(members))])
+  chat <- list2env(members, parent = emptyenv())
+  class(chat) <- c("Chat", "R6")
   chat
 }
 
@@ -498,4 +525,26 @@ test_program_reference <- function(
     evaluator_id = paste0("tempest::evaluator/", stage),
     evaluator_version = "1"
   )
+}
+
+# Insert an accepted Graft Claim into a workspace the way tempest_knowledge()
+# does, so briefing dispositions can be tested without a live store.
+fake_accepted_claim <- function(workspace, text, record_id = NULL) {
+  record_id <- record_id %||%
+    paste0("graft:0", toupper(substr(digest::digest(text), 1, 25)))
+  resource <- tempest:::tempest_resource(
+    resource_kind = "graft.record",
+    locator = paste0("graft/Claim/", record_id),
+    title = paste("Claim", record_id),
+    media_type = "text/plain",
+    content = paste0("statement_text: ", text),
+    metadata = list(
+      graft_record_id = record_id,
+      graft_record_class = "Claim",
+      graft_revision_id = paste0("graft:0", strrep("A", 25L)),
+      graft_statement_text = text
+    )
+  )
+  workspace$upsert_retrieved_resource(resource)
+  invisible(record_id)
 }

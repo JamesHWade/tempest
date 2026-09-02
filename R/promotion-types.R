@@ -2,7 +2,7 @@
 
 tempest_promotion_schema_version <- 1L
 tempest_promotion_schema_build_digest <-
-  "sha256:3d907e013022c7a455066d02138183b237e4120d1e763f6705f10573a3ac1034"
+  "sha256:0ef4a9c9143e6aaff3def45c996855773dd3c5ce341293bc15032c0924ed4296"
 
 tempest_promotion_abort <- function(
   message,
@@ -2520,7 +2520,10 @@ tempest_promotion_receipt_validate_snapshot <- function(self) {
       is.na(snapshot$snapshot_id) ||
       !grepl("^sha256:[a-f0-9]{64}$", snapshot$snapshot_id) ||
       !identical(snapshot$store_id, self@store_id) ||
-      !identical(snapshot$store_format_version, "3.0.0") ||
+      !identical(
+        snapshot$store_format_version,
+        tempest_graft_store_format_version
+      ) ||
       !identical(snapshot$schema_build_digest, self@schema_build_digest) ||
       !tempest_promotion_receipt_whole_number(
         snapshot$commit_order,

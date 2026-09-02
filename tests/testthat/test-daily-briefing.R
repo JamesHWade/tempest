@@ -5,6 +5,7 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
   store <- test_promotion_store()
   withr::defer(graft::graft_close(store))
 
+  before <- graft::graft_snapshot(store)
   report <- tempest_report(fixture$research)
   sources <- tempest_sources(fixture$research)
   claims <- tempest_claims(fixture$research)
@@ -45,6 +46,19 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
 
   next_plan <- tempest_graft_plan(store, fixture$bundle)
   expect_identical(unique(next_plan@changes$action), "match")
+  expect_identical(unique(next_plan@changes$disposition), "duplicate")
+  expect_identical(unique(plan@changes$disposition), "new")
+
+  changes <- graft::graft_changes(store, since = before)
+  expect_identical(unique(changes$action), "insert")
+  expect_setequal(
+    changes$record_id,
+    vapply(receipt@record_revisions, `[[`, character(1), "record_id")
+  )
+  expect_identical(
+    nrow(graft::graft_changes(store, since = commit_result$batch_id)),
+    0L
+  )
 
   next_view <- graft::graft_at(store, graft::graft_snapshot(store))
   evidence_revisions <- Filter(

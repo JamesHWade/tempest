@@ -13,7 +13,8 @@ test_that("compiled Tempest research schema has the exact typed contracts", {
       "EvidenceSpan",
       "GovernedProcedure",
       "ProgramArtifact",
-      "Source"
+      "Source",
+      "GraftDefinition"
     )
   )
   classes <- schema@manifest$classes
@@ -78,38 +79,62 @@ test_that("compiled Tempest research schema has the exact typed contracts", {
   )
 })
 
-test_that("schema runtime assumption names the approved Graft accessor commit", {
-  expect_identical(
-    tempest:::tempest_graft_accessor_commit,
-    "81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5"
+test_that("schema runtime pins the Graft consumer contract", {
+  expect_match(
+    tempest:::tempest_graft_contract_version,
+    "^[0-9]+\\.[0-9]+\\.[0-9]+$"
   )
   expect_contains(
     tempest:::tempest_graft_required_exports(),
-    "graft_view_snapshot"
+    c("graft_view_snapshot", "graft_contract_version", "graft_changes")
   )
-  expect_no_warning(
-    actual <- tempest:::tempest_graft_behavior_fingerprint()
+  expect_identical(
+    tempest:::tempest_graft_pin_valid(graft::graft_contract_version()),
+    TRUE
   )
-  expect_identical(actual, tempest:::tempest_graft_behavior_digest)
+  required <- numeric_version(tempest:::tempest_graft_contract_version)
+  patched <- paste(
+    required[[1L, 1L]],
+    required[[1L, 2L]],
+    required[[1L, 3L]] + 1L,
+    sep = "."
+  )
+  minor <- paste(required[[1L, 1L]], required[[1L, 2L]] + 1L, 0L, sep = ".")
+  major <- paste(required[[1L, 1L]] + 1L, 0L, 0L, sep = ".")
+  expect_identical(
+    tempest:::tempest_graft_pin_valid(list(contract = patched)),
+    TRUE
+  )
+  expect_identical(
+    tempest:::tempest_graft_pin_valid(list(contract = minor)),
+    FALSE
+  )
+  expect_identical(
+    tempest:::tempest_graft_pin_valid(list(contract = major)),
+    FALSE
+  )
+  expect_identical(
+    tempest:::tempest_graft_pin_valid(list(contract = "0.0.1")),
+    FALSE
+  )
+  expect_identical(
+    tempest:::tempest_graft_pin_valid(list(contract = "nope")),
+    FALSE
+  )
+  expect_identical(tempest:::tempest_graft_pin_valid(NULL), FALSE)
 })
 
-test_that("schema runtime rejects a mismatched Graft RemoteSha", {
+test_that("schema runtime rejects an incompatible Graft contract", {
   testthat::local_mocked_bindings(
-    tempest_graft_remote_sha = function() strrep("0", 40L)
+    tempest_graft_contract_call = function() list(contract = "99.0.0")
   )
 
-  expect_error(
-    tempest:::tempest_graft_require(),
-    class = "tempest_graft_schema_error"
-  )
+  expect_snapshot(tempest:::tempest_graft_require(), error = TRUE)
 })
 
-test_that("schema runtime rejects an unpinned local Graft build", {
+test_that("schema runtime rejects a Graft build without a contract", {
   testthat::local_mocked_bindings(
-    tempest_graft_remote_sha = function() NULL,
-    tempest_graft_behavior_fingerprint = function() {
-      paste0("sha256:", strrep("0", 64L))
-    }
+    tempest_graft_contract_call = function() stop("no contract")
   )
 
   expect_error(
@@ -135,5 +160,5 @@ test_that("schema compiler reuses the exact runtime Graft pin", {
 
   expect_match(compiler, "sys.source", all = FALSE)
   expect_match(compiler, "tempest_graft_pin_valid", all = FALSE)
-  expect_match(compiler, "tempest_graft_remote_sha", all = FALSE)
+  expect_match(compiler, "graft_contract_version", all = FALSE)
 })

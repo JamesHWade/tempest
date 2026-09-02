@@ -16,3 +16,4 @@
         "program_stages": ["perspectives", "personas"],
         "event_sequence": ["workflow:NA:NA:started", "stage:perspectives:NA:started", "step:persistence:perspectives_artifacts:started", "step:persistence:perspectives_artifacts:succeeded", "stage:perspectives:NA:succeeded", "stage:research:NA:started", "cancellation:research:NA:cancelled"]
       }
+

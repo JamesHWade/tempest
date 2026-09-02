@@ -7,21 +7,21 @@ source <- file.path(root, "dev", "schema", "tempest-research.linkml.yaml")
 output_dir <- file.path(root, "inst", "schema")
 output <- file.path(output_dir, "tempest-research.graft.json")
 sys.source(file.path(root, "R", "graft-schema.R"), envir = environment())
-approved_graft_commit <- tempest_graft_accessor_commit
+required_contract <- tempest_graft_contract_version
 
 if (!requireNamespace("graft", quietly = TRUE)) {
-  stop("Install Graft at commit ", approved_graft_commit, " before compiling.")
+  stop("Install Graft with consumer contract ", required_contract, " first.")
 }
 
-remote_sha <- tempest_graft_remote_sha()
+contract <- tryCatch(graft::graft_contract_version(), error = function(e) NULL)
 pin_valid <- tryCatch(
-  tempest_graft_pin_valid(remote_sha),
+  tempest_graft_pin_valid(contract),
   error = function(error) FALSE
 )
 if (!pin_valid) {
   stop(
-    "The installed Graft package is not approved accessor commit ",
-    approved_graft_commit,
+    "The installed Graft package does not satisfy consumer contract ",
+    required_contract,
     "."
   )
 }
@@ -55,8 +55,8 @@ schema <- graft::graft_schema(
   output = output
 )
 message(
-  "Compiled Tempest research schema with Graft assumption ",
-  approved_graft_commit,
+  "Compiled Tempest research schema for Graft contract ",
+  required_contract,
   ": ",
   schema@build_digest
 )
