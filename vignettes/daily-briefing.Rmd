@@ -97,8 +97,13 @@ accepted_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
 basis_limit <- 1000
 topic_query <- "grid-scale battery recycling"
 
-in_scope <- function(changed, basis_claims) {
-  matches <- graft_find(view, topic_query, class = "Claim", limit = basis_limit)
+in_scope <- function(changed, basis_claims, scope_view = view) {
+  matches <- graft_find(
+    scope_view,
+    topic_query,
+    class = "Claim",
+    limit = basis_limit
+  )
   if (isTRUE(attr(matches, "truncated"))) {
     stop(
       "More than ", basis_limit, " accepted claims match the monitored topic; ",
@@ -341,7 +346,8 @@ if (has_change) {
   )
   accepted_now <- in_scope(
     accepted_now,
-    basis$record_id[basis$class == "Claim"]
+    basis$record_id[basis$class == "Claim"],
+    scope_view = graft_at(store, basis_snapshot)
   )
   next_basis <- bound_basis(rbind(basis, changes_as_basis(accepted_now)))
 }
