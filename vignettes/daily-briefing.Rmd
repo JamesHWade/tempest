@@ -169,7 +169,13 @@ if (file.exists(basis_path)) {
   )
   basis <- bound_basis(rbind(previous$records, changes_as_basis(changed)))
 } else {
-  claims <- graft_find(view, topic_query, class = "Claim", limit = 25)
+  claims <- graft_find(view, topic_query, class = "Claim", limit = basis_limit)
+  if (isTRUE(attr(claims, "truncated"))) {
+    stop(
+      "More than ", basis_limit, " accepted claims match the monitored topic; ",
+      "narrow the topic or split the store before starting the briefing."
+    )
+  }
   basis <- data.frame(
     record_id = claims$id,
     class = rep("Claim", length(claims$id)),
