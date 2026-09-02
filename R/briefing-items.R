@@ -54,7 +54,9 @@ tempest_knowledge_content_statement_text <- function(content) {
   sub("^statement_text: ", "", line)
 }
 
-tempest_briefing_claim_disposition <- function(claim_text, workspace) {
+# `accepted` is the vector from tempest_workspace_accepted_claim_keys(),
+# computed once per briefing rather than once per item.
+tempest_briefing_claim_disposition <- function(claim_text, accepted) {
   if (
     !rlang::is_string(claim_text) ||
       is.na(claim_text) ||
@@ -62,7 +64,6 @@ tempest_briefing_claim_disposition <- function(claim_text, workspace) {
   ) {
     return("new")
   }
-  accepted <- tempest_workspace_accepted_claim_keys(workspace)
   if (tempest_claim_text_key(claim_text) %in% accepted) {
     "duplicate"
   } else {
@@ -73,12 +74,12 @@ tempest_briefing_claim_disposition <- function(claim_text, workspace) {
 tempest_briefing_item_disposition_valid <- function(
   kind,
   claim_text,
-  workspace
+  accepted
 ) {
   if (!kind %in% c("observation", "no_change")) {
     return(TRUE)
   }
-  disposition <- tempest_briefing_claim_disposition(claim_text, workspace)
+  disposition <- tempest_briefing_claim_disposition(claim_text, accepted)
   identical(
     disposition,
     if (identical(kind, "no_change")) "duplicate" else "new"
@@ -375,9 +376,12 @@ tempest_briefing_items_validate_counts <- function(
 ) {
   kinds <- vapply(items, \(item) item@kind, character(1))
   counts <- table(factor(kinds, levels = names(limits)))
-  if (counts[["observation"]] == 0L) {
+  if (counts[["observation"]] == 0L && counts[["no_change"]] == 0L) {
     tempest_stage_output_abort(
-      "Grounded writing requires at least one verified observation."
+      paste0(
+        "Grounded writing requires at least one verified observation or ",
+        "one verified no-change finding."
+      )
     )
   }
   if (any(counts > limits)) {
@@ -418,6 +422,7 @@ tempest_briefing_items_from_output <- function(output, context) {
   min_support_score <- tempest_normalize_min_support_score(
     context$min_support_score %||% 0.7
   )
+  accepted <- tempest_workspace_accepted_claim_keys(workspace)
   items <- lapply(values, function(value) {
     value <- tempest_briefing_item_output_record(value)
     if (
@@ -468,7 +473,7 @@ tempest_briefing_items_from_output <- function(output, context) {
       !tempest_briefing_item_disposition_valid(
         value$kind,
         claims[[1]]@claim_text,
-        workspace
+        accepted
       )
     ) {
       tempest_stage_output_abort(
@@ -721,6 +726,7 @@ tempest_briefing_items_from_markdown <- function(
   }
   items <- lapply(parsed[has_record], `[[`, "item")
   parsed_lines <- parsed[has_record]
+  accepted <- tempest_workspace_accepted_claim_keys(workspace)
   for (index in seq_along(items)) {
     item <- items[[index]]
     claims <- lapply(item@claim_ids, workspace$get_proposed_claim)
@@ -777,7 +783,7 @@ tempest_briefing_items_from_markdown <- function(
       !tempest_briefing_item_disposition_valid(
         item@kind,
         claims[[1]]@claim_text,
-        workspace
+        accepted
       )
     ) {
       tempest_product_report_abort(

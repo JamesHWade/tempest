@@ -1,4 +1,5 @@
 test_that("compiled Tempest research schema has the exact typed contracts", {
+  skip_if_not_installed("graft")
   schema <- tempest_graft_schema()
 
   expect_identical(
@@ -80,6 +81,7 @@ test_that("compiled Tempest research schema has the exact typed contracts", {
 })
 
 test_that("schema runtime pins the Graft consumer contract", {
+  skip_if_not_installed("graft")
   expect_match(
     tempest:::tempest_graft_contract_version,
     "^[0-9]+\\.[0-9]+\\.[0-9]+$"
@@ -125,6 +127,7 @@ test_that("schema runtime pins the Graft consumer contract", {
 })
 
 test_that("schema runtime rejects an incompatible Graft contract", {
+  skip_if_not_installed("graft")
   testthat::local_mocked_bindings(
     tempest_graft_contract_call = function() list(contract = "99.0.0")
   )
@@ -133,6 +136,7 @@ test_that("schema runtime rejects an incompatible Graft contract", {
 })
 
 test_that("schema runtime rejects a Graft build without a contract", {
+  skip_if_not_installed("graft")
   testthat::local_mocked_bindings(
     tempest_graft_contract_call = function() stop("no contract")
   )

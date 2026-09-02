@@ -288,29 +288,26 @@ test_that("claim dispositions compare verified text with pinned Claims", {
   expect_identical(
     tempest:::tempest_briefing_claim_disposition(
       "The permit schedule remains unchanged.",
-      workspace
+      tempest:::tempest_workspace_accepted_claim_keys(workspace)
     ),
     "duplicate"
   )
   expect_identical(
     tempest:::tempest_briefing_claim_disposition(
       "  the permit  schedule remains UNCHANGED",
-      workspace
+      tempest:::tempest_workspace_accepted_claim_keys(workspace)
     ),
     "duplicate"
   )
   expect_identical(
     tempest:::tempest_briefing_claim_disposition(
       "The permit schedule moved by two weeks.",
-      workspace
+      tempest:::tempest_workspace_accepted_claim_keys(workspace)
     ),
     "new"
   )
   expect_identical(
-    tempest:::tempest_briefing_claim_disposition(
-      "Anything",
-      fake_store_with_sources(1)
-    ),
+    tempest:::tempest_briefing_claim_disposition("Anything", character()),
     "new"
   )
 })
@@ -600,4 +597,40 @@ test_that("canonical reports preserve assessment provenance", {
     ),
     class = "tempest_product_report_error"
   )
+})
+
+test_that("a briefing may consist of no-change findings alone", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  claim <- tempest_claim(
+    "The permit schedule remains unchanged.",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  fake_accepted_claim(workspace, claim@claim_text)
+  workspace$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+
+  evaluated <- tempest:::tempest_stage_evaluate(
+    test_program_executions()$section_writing,
+    list(
+      items = list(
+        list(
+          kind = "no_change",
+          text = claim@claim_text,
+          claim_ids = list(claim@claim_id),
+          confidence = "high"
+        )
+      )
+    ),
+    context = list(
+      workspace = workspace,
+      evidence = list(claim),
+      min_support_score = 0.7
+    )
+  )
+
+  expect_match(evaluated$output, "### No material change", fixed = TRUE)
+  expect_no_match(evaluated$output, "### What changed", fixed = TRUE)
 })

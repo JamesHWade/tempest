@@ -72,17 +72,19 @@ tempest_graft_require <- function() {
     !tempest_graft_pin_valid(contract) ||
       !identical(contract$store_format, tempest_graft_store_format_version)
   ) {
-    observed <- if (is.list(contract) && rlang::is_string(contract$contract)) {
-      contract$contract
-    } else {
-      "an unknown contract"
+    describe <- function(value) {
+      if (rlang::is_string(value)) value else "unknown"
     }
     tempest_promotion_abort(
       paste0(
-        "The installed Graft package reports ",
-        observed,
-        ", but Tempest requires Graft consumer contract ",
+        "The installed Graft package reports consumer contract ",
+        describe(contract$contract),
+        " and store format ",
+        describe(contract$store_format),
+        ", but Tempest requires contract ",
         tempest_graft_contract_version,
+        " and store format ",
+        tempest_graft_store_format_version,
         "."
       ),
       class = "tempest_graft_schema_error"
@@ -791,7 +793,10 @@ tempest_graft_plan <- function(store, bundle) {
 # re-verifies resolves to the record already accepted instead of duplicating
 # it. Repeated text inside one bundle keeps distinct keys in input order.
 tempest_claim_text_key <- function(text) {
-  normalized <- tolower(tempest_trim(as.character(text)))
+  normalized <- stringi::stri_trans_tolower(
+    tempest_trim(as.character(text)),
+    locale = "root"
+  )
   normalized <- gsub("[[:space:]]+", " ", normalized, perl = TRUE)
   normalized <- sub("[.]$", "", normalized, perl = TRUE)
   enc2utf8(normalized)
