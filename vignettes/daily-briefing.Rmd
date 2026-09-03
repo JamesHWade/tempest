@@ -99,7 +99,9 @@ accepted_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
 basis_limit <- 1000
 topic_query <- "grid-scale battery recycling"
 
-in_scope <- function(changed, basis_claims, scope_view = view) {
+in_scope <- function(changed, basis, scope_view = view) {
+  basis_claims <- basis$record_id[basis$class == "Claim"]
+  basis_record_ids <- basis$record_id
   matches <- graft_find(
     scope_view,
     topic_query,
@@ -118,12 +120,15 @@ in_scope <- function(changed, basis_claims, scope_view = view) {
     \(record) if (is.null(record$statement_id)) NA_character_ else record$statement_id,
     character(1)
   )
+  deleted_from_basis <-
+    changed$action == "delete" & changed$record_id %in% basis_record_ids
   keep <- ifelse(
     changed$class == "Claim",
     changed$record_id %in% c(basis_claims, topic_claims),
     ifelse(
       changed$class == "ClaimSupport",
-      support_claims %in% c(basis_claims, topic_claims),
+      deleted_from_basis |
+        support_claims %in% c(basis_claims, topic_claims),
       TRUE
     )
   )
@@ -171,10 +176,7 @@ if (file.exists(basis_path)) {
     since = previous$snapshot,
     class = accepted_classes
   )
-  changed <- in_scope(
-    changed,
-    previous$records$record_id[previous$records$class == "Claim"]
-  )
+  changed <- in_scope(changed, previous$records)
   basis <- bound_basis(rbind(previous$records, changes_as_basis(changed)))
 } else {
   claims <- graft_find(view, topic_query, class = "Claim", limit = basis_limit)
@@ -360,7 +362,7 @@ if (has_change) {
   )
   accepted_now <- in_scope(
     accepted_now,
-    basis$record_id[basis$class == "Claim"],
+    basis,
     scope_view = graft_at(store, basis_snapshot)
   )
   next_basis <- bound_basis(rbind(basis, changes_as_basis(accepted_now)))

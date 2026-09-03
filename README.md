@@ -484,24 +484,27 @@ Tempest reads as data:
 ```r
 claims <- graft::graft_find(view, "battery recycling", class = "Claim", limit = 25)
 knowledge <- tempest_knowledge(view, record_ids = claims$id)
+basis <- list(
+  snapshot = graft::graft_view_snapshot(view),
+  record_ids = claims$id
+)
+saveRDS(basis, "accepted-basis.rds")
 ```
 
-A scheduled host does not need to search again on later days. Carry forward
-only readable record ids from the previous receipt, then apply readable,
-active changes since its snapshot. Deleted, retracted, and superseded records
-must leave the basis, while unrelated classes such as `ProgramArtifact` and
-`GovernedProcedure` remain outside Tempest's evidence channel:
+A scheduled host does not need to search again on later days. Persist the
+whole selected basis and its snapshot, then apply readable, active changes to
+that basis. A promotion receipt contains only the records planned for one run,
+so it cannot replace this durable selection. Deleted, retracted, and
+superseded records must leave the basis, while unrelated classes such as
+`ProgramArtifact` and `GovernedProcedure` remain outside Tempest's evidence
+channel:
 
 ```r
+previous_basis <- readRDS("accepted-basis.rds")
 readable_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
-revisions <- Filter(
-  \(revision) revision$class %in% readable_classes,
-  previous_receipt@record_revisions
-)
-receipt_ids <- vapply(revisions, `[[`, character(1), "record_id")
 changes <- graft::graft_changes(
   view,
-  since = previous_snapshot,
+  since = previous_basis$snapshot,
   class = readable_classes
 )
 status <- vapply(
@@ -512,10 +515,15 @@ status <- vapply(
 keep <- changes$action != "delete" & status == "active"
 removed_ids <- changes$record_id[!keep]
 record_ids <- union(
-  setdiff(receipt_ids, removed_ids),
+  setdiff(previous_basis$record_ids, removed_ids),
   changes$record_id[keep]
 )
 knowledge <- tempest_knowledge(view, record_ids = record_ids)
+basis <- list(
+  snapshot = graft::graft_view_snapshot(view),
+  record_ids = record_ids
+)
+saveRDS(basis, "accepted-basis.rds")
 ```
 
 Accepted `Claim` records give the briefing its change signal: a verified claim

@@ -115,31 +115,34 @@ test_that("the daily briefing keeps lifecycle changes for carried claims", {
   env$topic_query <- "test topic"
   lapply(assignments, eval, envir = env)
 
+  previous <- data.frame(
+    record_id = c("carried", "deleted", "deleted-support"),
+    class = c("Claim", "EvidenceSpan", "ClaimSupport"),
+    commit_order = c(1L, 1L, 1L),
+    status = c("active", "active", "active")
+  )
   changed <- data.frame(
-    record_id = c("carried", "unrelated", "deleted"),
-    class = c("Claim", "Claim", "EvidenceSpan"),
-    action = c("update", "insert", "delete"),
-    commit_order = c(2L, 2L, 3L)
+    record_id = c("carried", "unrelated", "deleted", "deleted-support"),
+    class = c("Claim", "Claim", "EvidenceSpan", "ClaimSupport"),
+    action = c("update", "insert", "delete", "delete"),
+    commit_order = c(2L, 2L, 3L, 3L)
   )
   changed$record <- I(list(
     list(status = "retracted"),
     list(status = "active"),
+    list(),
     list()
   ))
 
   kept <- env$in_scope(
     changed,
-    basis_claims = "carried",
+    basis = previous,
     scope_view = NULL
   )
 
-  expect_identical(kept$record_id, c("carried", "deleted"))
-
-  previous <- data.frame(
-    record_id = c("carried", "deleted"),
-    class = c("Claim", "EvidenceSpan"),
-    commit_order = c(1L, 1L),
-    status = c("active", "active")
+  expect_identical(
+    kept$record_id,
+    c("carried", "deleted", "deleted-support")
   )
   next_basis <- env$bound_basis(rbind(
     previous,

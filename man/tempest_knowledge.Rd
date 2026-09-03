@@ -46,16 +46,18 @@ claims <- graft::graft_find(
   limit = 25
 )
 knowledge <- tempest_knowledge(view, record_ids = claims$id)
-# On later days, carry only readable, active evidence forward.
-readable_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
-revisions <- Filter(
-  \(revision) revision$class \%in\% readable_classes,
-  previous_receipt@record_revisions
+basis <- list(
+  snapshot = graft::graft_view_snapshot(view),
+  record_ids = claims$id
 )
-receipt_ids <- vapply(revisions, `[[`, character(1), "record_id")
+saveRDS(basis, "accepted-basis.rds")
+
+# On later days, apply readable, active changes to the whole saved basis.
+previous_basis <- readRDS("accepted-basis.rds")
+readable_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
 changes <- graft::graft_changes(
   view,
-  since = previous_snapshot,
+  since = previous_basis$snapshot,
   class = readable_classes
 )
 status <- vapply(
@@ -66,10 +68,15 @@ status <- vapply(
 keep <- changes$action != "delete" & status == "active"
 removed_ids <- changes$record_id[!keep]
 record_ids <- union(
-  setdiff(receipt_ids, removed_ids),
+  setdiff(previous_basis$record_ids, removed_ids),
   changes$record_id[keep]
 )
 knowledge <- tempest_knowledge(view, record_ids = record_ids)
+basis <- list(
+  snapshot = graft::graft_view_snapshot(view),
+  record_ids = record_ids
+)
+saveRDS(basis, "accepted-basis.rds")
 result <- tempest_run("Battery recycling", knowledge = knowledge)
 }
 }
