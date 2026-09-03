@@ -80,12 +80,15 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
 })
 
 test_that("the daily briefing keeps lifecycle changes for carried claims", {
-  path <- testthat::test_path(
-    "..",
-    "..",
-    "vignettes",
-    "daily-briefing.Rmd"
-  )
+  path <- system.file("doc", "daily-briefing.Rmd", package = "tempest")
+  if (!nzchar(path)) {
+    path <- testthat::test_path(
+      "..",
+      "..",
+      "vignettes",
+      "daily-briefing.Rmd"
+    )
+  }
   source <- readLines(path, warn = FALSE)
   chunk_start <- match("```{r basis}", source)
   chunk_end <- which(
