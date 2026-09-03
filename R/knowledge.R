@@ -265,8 +265,30 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #'   limit = 25
 #' )
 #' knowledge <- tempest_knowledge(view, record_ids = claims$id)
-#' # On later days carry the previous receipt's record ids forward and add
-#' # graft::graft_changes(view, since = previous_snapshot)$record_id.
+#' # On later days, carry only readable, active evidence forward.
+#' readable_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
+#' revisions <- Filter(
+#'   \(revision) revision$class %in% readable_classes,
+#'   previous_receipt@record_revisions
+#' )
+#' receipt_ids <- vapply(revisions, `[[`, character(1), "record_id")
+#' changes <- graft::graft_changes(
+#'   view,
+#'   since = previous_snapshot,
+#'   class = readable_classes
+#' )
+#' status <- vapply(
+#'   changes$record,
+#'   \(record) if (is.null(record$status)) "active" else record$status,
+#'   character(1)
+#' )
+#' keep <- changes$action != "delete" & status == "active"
+#' removed_ids <- changes$record_id[!keep]
+#' record_ids <- union(
+#'   setdiff(receipt_ids, removed_ids),
+#'   changes$record_id[keep]
+#' )
+#' knowledge <- tempest_knowledge(view, record_ids = record_ids)
 #' result <- tempest_run("Battery recycling", knowledge = knowledge)
 #' }
 #' @export

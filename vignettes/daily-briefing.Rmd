@@ -88,7 +88,8 @@ briefing; filter them the same way if you share a store.
 table rather than an ever-growing id list. Every active `Claim` is always
 kept because the claims are the change signal; evidence records fill the
 remaining room newest-first, and a record whose latest revision is retracted
-or superseded drops out. If a monitored topic ever accumulates more than
+or superseded, or whose change is a deletion, drops out. If a monitored topic
+ever accumulates more than
 1,000 active claims, the run stops rather than forgetting some of them: narrow
 the topic or give it its own store.
 
@@ -150,8 +151,14 @@ changes_as_basis <- function(changed) {
     class = changed$class,
     commit_order = changed$commit_order,
     status = vapply(
-      changed$record,
-      \(record) if (is.null(record$status)) "active" else record$status,
+      seq_len(nrow(changed)),
+      function(index) {
+        if (identical(changed$action[[index]], "delete")) {
+          return("deleted")
+        }
+        record <- changed$record[[index]]
+        if (is.null(record$status)) "active" else record$status
+      },
       character(1)
     )
   )

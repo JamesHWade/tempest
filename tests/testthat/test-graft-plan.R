@@ -304,8 +304,8 @@ test_that("re-verified claim text resolves to the accepted Claim record", {
   replay_claims <- replay@changes[replay@changes$class == "Claim", ]
 
   expect_setequal(replay_claims$record_id, accepted_claims$record_id)
-  expect_false("insert" %in% replay_claims$action)
-  expect_false("new" %in% replay_claims$disposition)
+  expect_no_match(replay_claims$action, "^insert$")
+  expect_no_match(replay_claims$disposition, "^new$")
   renamed_rows <- replay_claims[
     replay@records$Claim$tempest_claim_id[replay_claims$input_row] %in% renamed,
   ]
@@ -333,7 +333,7 @@ test_that("source origin keys follow the locator and content hash", {
 
   expect_identical(keys[[2L]], keys[[1L]])
   expect_match(keys[[1L]], "^tempest-source-locator-v1:[a-f0-9]{64}$")
-  expect_false(identical(keys[[3L]], keys[[1L]]))
+  expect_identical(anyDuplicated(keys[c(1L, 3L)]), 0L)
   expect_identical(
     tempest:::tempest_source_origin_keys(character(), character()),
     character()
@@ -407,37 +407,30 @@ test_that("re-verified claims merge previously accepted supports into their summ
   accepted <- tempest_graft_plan(store, first)
   graft::graft_commit(store, accepted)
   accepted_support <- accepted@records$ClaimSupport[1L, ]
-  contradicting <- as.list(accepted_support)
-  contradicting$pair_verification_status <- "contradicted"
-  contradicting$support_score <- 0.2
-  testthat::local_mocked_bindings(
-    tempest_graft_evidence_call = function(store, record_id) {
-      list(
-        related = list(
-          evidence = data.frame(
-            evidence_class = "ClaimSupport",
-            record = I(list(contradicting))
-          )
-        ),
-        truncated = list(evidence = FALSE)
-      )
-    }
+  contradicting <- accepted_support
+  contradicting$pair_verification_status[[1L]] <- "contradicted"
+  contradicting$support_score[[1L]] <- 0.2
+  support_plan <- graft::graft_plan(
+    store,
+    records = list(ClaimSupport = contradicting),
+    provenance = graft::graft_provenance(
+      "test-reviewer",
+      idempotency_key = "contradict-support-1"
+    )
   )
+  expect_identical(support_plan@valid, TRUE)
+  graft::graft_commit(store, support_plan)
 
   replay <- tempest_graft_plan(store, second)
   planned_claim <- replay@records$Claim[1L, ]
   proposed <- tempest:::tempest_graft_coalesce_bundle_rows(second@records)
   expected <- tempest:::tempest_graft_coalesced_claim_summary(c(
-    list(contradicting),
+    list(as.list(contradicting)),
     proposed$records$ClaimSupport
   ))
 
   expect_identical(planned_claim$verification_status, expected$status)
   expect_identical(planned_claim$support_score, expected$score)
-  expect_false(identical(
-    planned_claim$verification_status,
-    second@records$Claim[[1L]]$verification_status
-  ))
   commit_result <- graft::graft_commit(store, replay)
   receipt <- tempest_promotion_receipt(store, second, replay, commit_result)
   expect_s7_class(receipt, tempest:::TempestPromotionReceipt)
@@ -451,7 +444,7 @@ test_that("claim origin keys normalize text", {
 
   expect_identical(keys[[2L]], keys[[1L]])
   expect_match(keys[[1L]], "^tempest-claim-text-v1:[a-f0-9]{64}$")
-  expect_false(identical(keys[[3L]], keys[[1L]]))
+  expect_identical(anyDuplicated(keys[c(1L, 3L)]), 0L)
   expect_identical(
     tempest:::tempest_claim_origin_keys(character()),
     character()

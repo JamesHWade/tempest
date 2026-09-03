@@ -1242,6 +1242,50 @@ tempest_graft_record_matches <- function(expected, observed) {
   )
 }
 
+tempest_graft_receipt_assert_claim_summary <- function(
+  view,
+  record_id,
+  expected
+) {
+  accepted <- tryCatch(
+    tempest_graft_evidence_call(view, record_id),
+    error = function(error) {
+      tempest_promotion_receipt_abort(
+        "Could not read accepted Claim supports for the receipt."
+      )
+    }
+  )
+  if (isTRUE(accepted$truncated$evidence)) {
+    tempest_promotion_receipt_abort(
+      "Accepted Claim supports were truncated while verifying the receipt."
+    )
+  }
+  evidence <- accepted$related$evidence
+  supports <- list()
+  if (is.data.frame(evidence) && nrow(evidence) > 0L) {
+    supports <- evidence$record[evidence$evidence_class == "ClaimSupport"]
+  }
+  summary <- tryCatch(
+    tempest_graft_coalesced_claim_summary(supports),
+    error = function(error) {
+      tempest_promotion_receipt_abort(
+        "Could not derive the accepted Claim summary for the receipt."
+      )
+    }
+  )
+  expected_summary <- expected[c("verification_status", "support_score")]
+  accepted_summary <- list(
+    verification_status = summary$status,
+    support_score = summary$score
+  )
+  if (!tempest_graft_record_matches(expected_summary, accepted_summary)) {
+    tempest_promotion_receipt_abort(
+      "An accepted Claim summary differs from its committed supports."
+    )
+  }
+  invisible(NULL)
+}
+
 tempest_graft_counts_data <- function(counts) {
   lapply(counts, function(value) {
     value <- tempest_graft_named_counts(value)
@@ -1382,6 +1426,9 @@ tempest_promotion_receipt <- function(store, bundle, plan, commit_result) {
         tempest_promotion_receipt_abort(
           "An accepted Graft record has the wrong class."
         )
+      }
+      if (identical(record_class, "Claim")) {
+        tempest_graft_receipt_assert_claim_summary(view, id, expected)
       }
       history <- tryCatch(
         graft::graft_history(view, id, limit = 1L),

@@ -97,28 +97,34 @@ test_that("the daily briefing keeps lifecycle changes for carried claims", {
   expressions <- as.list(parse(
     text = source[seq.int(chunk_start + 1L, chunk_end - 1L)]
   ))
-  assignment <- Filter(
+  assignments <- Filter(
     function(expr) {
       is.call(expr) &&
         identical(expr[[1L]], as.name("<-")) &&
-        identical(expr[[2L]], as.name("in_scope"))
+        as.character(expr[[2L]]) %in%
+          c("in_scope", "bound_basis", "changes_as_basis")
     },
     expressions
   )
-  expect_length(assignment, 1L)
+  expect_length(assignments, 3L)
 
   env <- new.env(parent = baseenv())
   env$graft_find <- \(...) data.frame(id = character())
-  eval(assignment[[1L]], envir = env)
+  env$head <- utils::head
+  env$basis_limit <- 1000L
+  env$topic_query <- "test topic"
+  lapply(assignments, eval, envir = env)
 
   changed <- data.frame(
-    record_id = c("carried", "unrelated"),
-    class = c("Claim", "Claim"),
-    commit_order = c(2L, 2L)
+    record_id = c("carried", "unrelated", "deleted"),
+    class = c("Claim", "Claim", "EvidenceSpan"),
+    action = c("update", "insert", "delete"),
+    commit_order = c(2L, 2L, 3L)
   )
   changed$record <- I(list(
     list(status = "retracted"),
-    list(status = "active")
+    list(status = "active"),
+    list()
   ))
 
   kept <- env$in_scope(
@@ -127,5 +133,18 @@ test_that("the daily briefing keeps lifecycle changes for carried claims", {
     scope_view = NULL
   )
 
-  expect_identical(kept$record_id, "carried")
+  expect_identical(kept$record_id, c("carried", "deleted"))
+
+  previous <- data.frame(
+    record_id = c("carried", "deleted"),
+    class = c("Claim", "EvidenceSpan"),
+    commit_order = c(1L, 1L),
+    status = c("active", "active")
+  )
+  next_basis <- env$bound_basis(rbind(
+    previous,
+    env$changes_as_basis(kept)
+  ))
+
+  expect_identical(next_basis$record_id, character())
 })

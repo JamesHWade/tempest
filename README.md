@@ -486,12 +486,41 @@ claims <- graft::graft_find(view, "battery recycling", class = "Claim", limit = 
 knowledge <- tempest_knowledge(view, record_ids = claims$id)
 ```
 
-A scheduled host does not need to search again on later days: carry forward
-the record ids from the previous run's receipt and add whatever
-`graft::graft_changes(view, since = previous_snapshot)` reports as accepted
-since then. Accepted `Claim` records also give the briefing its change
-signal: a verified claim that restates one of them is a no-change finding,
-and every other verified claim is something that changed.
+A scheduled host does not need to search again on later days. Carry forward
+only readable record ids from the previous receipt, then apply readable,
+active changes since its snapshot. Deleted, retracted, and superseded records
+must leave the basis, while unrelated classes such as `ProgramArtifact` and
+`GovernedProcedure` remain outside Tempest's evidence channel:
+
+```r
+readable_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
+revisions <- Filter(
+  \(revision) revision$class %in% readable_classes,
+  previous_receipt@record_revisions
+)
+receipt_ids <- vapply(revisions, `[[`, character(1), "record_id")
+changes <- graft::graft_changes(
+  view,
+  since = previous_snapshot,
+  class = readable_classes
+)
+status <- vapply(
+  changes$record,
+  \(record) if (is.null(record$status)) "active" else record$status,
+  character(1)
+)
+keep <- changes$action != "delete" & status == "active"
+removed_ids <- changes$record_id[!keep]
+record_ids <- union(
+  setdiff(receipt_ids, removed_ids),
+  changes$record_id[keep]
+)
+knowledge <- tempest_knowledge(view, record_ids = record_ids)
+```
+
+Accepted `Claim` records give the briefing its change signal: a verified claim
+that restates one of them is a no-change finding, and every other verified
+claim is something that changed.
 
 Accepted record text is evidence, never instruction. It travels in a data
 channel and cannot change prompts, message roles, tools, governed-procedure
