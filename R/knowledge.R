@@ -258,12 +258,15 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #' @examples
 #' \dontrun{
 #' view <- graft::graft_at(store, graft::graft_snapshot(store))
+#' topic_query <- "battery recycling"
+#' basis_limit <- 1000L
 #' claims <- graft::graft_find(
 #'   view,
-#'   "battery recycling",
+#'   topic_query,
 #'   class = "Claim",
-#'   limit = 25
+#'   limit = basis_limit
 #' )
+#' if (isTRUE(attr(claims, "truncated"))) stop("Narrow the topic.")
 #' knowledge <- tempest_knowledge(view, record_ids = claims$id)
 #' basis <- list(
 #'   snapshot = graft::graft_view_snapshot(view),
@@ -271,14 +274,25 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #' )
 #' saveRDS(basis, "accepted-basis.rds")
 #'
-#' # On later days, apply readable, active changes to the whole saved basis.
+#' # On later days, apply only scoped, active Claim changes to the saved basis.
 #' previous_basis <- readRDS("accepted-basis.rds")
-#' readable_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
+#' matches <- graft::graft_find(
+#'   view,
+#'   topic_query,
+#'   class = "Claim",
+#'   limit = basis_limit
+#' )
+#' if (isTRUE(attr(matches, "truncated"))) stop("Narrow the topic.")
 #' changes <- graft::graft_changes(
 #'   view,
 #'   since = previous_basis$snapshot,
-#'   class = readable_classes
+#'   class = "Claim"
 #' )
+#' relevant <- changes$record_id %in% union(
+#'   previous_basis$record_ids,
+#'   matches$id
+#' )
+#' changes <- changes[relevant, ]
 #' status <- vapply(
 #'   changes$record,
 #'   \(record) if (is.null(record$status)) "active" else record$status,
@@ -290,6 +304,7 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #'   setdiff(previous_basis$record_ids, removed_ids),
 #'   changes$record_id[keep]
 #' )
+#' if (length(record_ids) > basis_limit) stop("Narrow the topic.")
 #' knowledge <- tempest_knowledge(view, record_ids = record_ids)
 #' basis <- list(
 #'   snapshot = graft::graft_view_snapshot(view),

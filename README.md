@@ -482,7 +482,15 @@ of accepted `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records, which
 Tempest reads as data:
 
 ```r
-claims <- graft::graft_find(view, "battery recycling", class = "Claim", limit = 25)
+topic_query <- "battery recycling"
+basis_limit <- 1000L
+claims <- graft::graft_find(
+  view,
+  topic_query,
+  class = "Claim",
+  limit = basis_limit
+)
+if (isTRUE(attr(claims, "truncated"))) stop("Narrow the topic.")
 knowledge <- tempest_knowledge(view, record_ids = claims$id)
 basis <- list(
   snapshot = graft::graft_view_snapshot(view),
@@ -492,21 +500,33 @@ saveRDS(basis, "accepted-basis.rds")
 ```
 
 A scheduled host does not need to search again on later days. Persist the
-whole selected basis and its snapshot, then apply readable, active changes to
-that basis. A promotion receipt contains only the records planned for one run,
-so it cannot replace this durable selection. Deleted, retracted, and
-superseded records must leave the basis, while unrelated classes such as
-`ProgramArtifact` and `GovernedProcedure` remain outside Tempest's evidence
-channel:
+whole selected basis and its snapshot, then apply active changes scoped to
+that basis and topic. A promotion receipt contains only the records planned
+for one run, so it cannot replace this durable selection. This compact example
+carries `Claim` records only; the daily briefing vignette shows the
+class-aware workflow for carrying related evidence. Deleted, retracted, and
+superseded records leave the basis, while unrelated topics and record classes
+remain outside Tempest's evidence channel:
 
 ```r
 previous_basis <- readRDS("accepted-basis.rds")
-readable_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
+matches <- graft::graft_find(
+  view,
+  topic_query,
+  class = "Claim",
+  limit = basis_limit
+)
+if (isTRUE(attr(matches, "truncated"))) stop("Narrow the topic.")
 changes <- graft::graft_changes(
   view,
   since = previous_basis$snapshot,
-  class = readable_classes
+  class = "Claim"
 )
+relevant <- changes$record_id %in% union(
+  previous_basis$record_ids,
+  matches$id
+)
+changes <- changes[relevant, ]
 status <- vapply(
   changes$record,
   \(record) if (is.null(record$status)) "active" else record$status,
@@ -518,6 +538,7 @@ record_ids <- union(
   setdiff(previous_basis$record_ids, removed_ids),
   changes$record_id[keep]
 )
+if (length(record_ids) > basis_limit) stop("Narrow the topic.")
 knowledge <- tempest_knowledge(view, record_ids = record_ids)
 basis <- list(
   snapshot = graft::graft_view_snapshot(view),
