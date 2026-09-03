@@ -78,3 +78,51 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
 
   expect_setequal(knowledge@record_ids, record_ids)
 })
+
+test_that("the daily briefing keeps lifecycle changes for carried claims", {
+  path <- testthat::test_path(
+    "..",
+    "..",
+    "vignettes",
+    "daily-briefing.Rmd"
+  )
+  source <- readLines(path, warn = FALSE)
+  chunk_start <- match("```{r basis}", source)
+  chunk_end <- which(
+    seq_along(source) > chunk_start & source == "```"
+  )[[1L]]
+  expressions <- as.list(parse(
+    text = source[seq.int(chunk_start + 1L, chunk_end - 1L)]
+  ))
+  assignment <- Filter(
+    function(expr) {
+      is.call(expr) &&
+        identical(expr[[1L]], as.name("<-")) &&
+        identical(expr[[2L]], as.name("in_scope"))
+    },
+    expressions
+  )
+  expect_length(assignment, 1L)
+
+  env <- new.env(parent = baseenv())
+  env$graft_find <- \(...) data.frame(id = character())
+  eval(assignment[[1L]], envir = env)
+
+  changed <- data.frame(
+    record_id = c("carried", "unrelated"),
+    class = c("Claim", "Claim"),
+    commit_order = c(2L, 2L)
+  )
+  changed$record <- I(list(
+    list(status = "retracted"),
+    list(status = "active")
+  ))
+
+  kept <- env$in_scope(
+    changed,
+    basis_claims = "carried",
+    scope_view = NULL
+  )
+
+  expect_identical(kept$record_id, "carried")
+})

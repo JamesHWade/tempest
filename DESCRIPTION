@@ -70,7 +70,7 @@ Remotes:
     JamesHWade/graft,
     JamesHWade/scans,
     posit-dev/shinychat/pkg-r,
-    tidyverse/ellmer
+    tidyverse/ellmer#1067
 Config/testthat/edition: 3
 Config/testthat/parallel: true
 Config/testthat/start-first: storm-persistence-artifact-drift,

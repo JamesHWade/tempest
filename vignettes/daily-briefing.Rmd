@@ -74,14 +74,15 @@ another process halfway through the briefing cannot silently alter its input.
 The first day has nothing to carry forward, so it searches. Every later day
 starts from the records the previous run carried and adds what Graft reports
 as accepted since the previous snapshot, scoped to this briefing: a changed
-`Claim` joins the basis only when it matches the monitored topic, and a
-changed `ClaimSupport` only when it supports a claim in the basis. The basis
-therefore grows only through explicit acceptance of relevant knowledge; a
-keyword search that happens to match a different set of records on day 40
-cannot change it, and a shared organizational store cannot flood it with
-other topics. Evidence spans and sources are carried as accepted because
-this store is dedicated to the briefing; filter them the same way if you
-share a store.
+`Claim` joins the basis when it matches the monitored topic, while a lifecycle
+change to a claim already in the basis is retained so a retraction or
+supersession can remove it. A changed `ClaimSupport` joins only when it
+supports a claim in the basis. The basis therefore grows only through explicit
+acceptance of relevant knowledge; a keyword search that happens to match a
+different set of records on day 40 cannot add unrelated claims, and a shared
+organizational store cannot flood it with other topics. Evidence spans and
+sources are carried as accepted because this store is dedicated to the
+briefing; filter them the same way if you share a store.
 
 `tempest_knowledge()` reads at most 1,000 records, so the basis is a bounded
 table rather than an ever-growing id list. Every active `Claim` is always
@@ -118,7 +119,7 @@ in_scope <- function(changed, basis_claims, scope_view = view) {
   )
   keep <- ifelse(
     changed$class == "Claim",
-    changed$record_id %in% topic_claims,
+    changed$record_id %in% c(basis_claims, topic_claims),
     ifelse(
       changed$class == "ClaimSupport",
       support_claims %in% c(basis_claims, topic_claims),
