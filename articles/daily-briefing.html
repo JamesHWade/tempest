@@ -85,13 +85,14 @@ The packages keep their existing responsibilities:</p>
 <tbody>
 <tr class="odd">
 <td>Graft</td>
-<td>Pin accepted knowledge before research and hold reviewed revisions
-afterward.</td>
+<td>Pin accepted knowledge before research, report what was accepted
+since the last run, and hold reviewed revisions afterward.</td>
 </tr>
 <tr class="even">
 <td>Tempest</td>
-<td>Produce a source-grounded research product and a review-only
-evidence proposal.</td>
+<td>Produce a source-grounded research product whose change signal is
+computed against the pinned snapshot, plus a review-only evidence
+proposal.</td>
 </tr>
 <tr class="odd">
 <td>dsprrr</td>
@@ -139,15 +140,143 @@ day.</p>
 <span>  <span class="st">"and any material no-change signal explicitly established by evidence."</span>,</span>
 <span>  <span class="st">"Omit no-change when evidence is missing or inconclusive. Preserve"</span>,</span>
 <span>  <span class="st">"uncertainty and cite evidence."</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">matches</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_find.html" class="external-link">graft_find</a></span><span class="op">(</span><span class="va">view</span>, <span class="st">"grid-scale battery recycling"</span>, limit <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
-<span><span class="va">accepted_classes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Claim"</span>, <span class="st">"ClaimSupport"</span>, <span class="st">"EvidenceSpan"</span>, <span class="st">"Source"</span><span class="op">)</span></span>
-<span><span class="va">record_ids</span> <span class="op">&lt;-</span> <span class="va">matches</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="va">matches</span><span class="op">$</span><span class="va">class</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">accepted_classes</span><span class="op">]</span></span>
-<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_knowledge.html">tempest_knowledge</a></span><span class="op">(</span><span class="va">view</span>, record_ids <span class="op">=</span> <span class="va">record_ids</span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span></code></pre></div>
 <p>The snapshot fixes the accepted boundary for the whole run. A commit
 made by another process halfway through the briefing cannot silently
 alter its input.</p>
+<div class="section level3">
+<h3 id="select-the-accepted-basis-durably">Select the accepted basis durably<a class="anchor" aria-label="anchor" href="#select-the-accepted-basis-durably"></a>
+</h3>
+<p>The first day has nothing to carry forward, so it searches. Every
+later day starts from the records the previous run carried and adds what
+Graft reports as accepted since the previous snapshot, scoped to this
+briefing: a changed <code>Claim</code> joins the basis when it matches
+the monitored topic, while a lifecycle change to a claim already in the
+basis is retained so a retraction or supersession can remove it. A
+changed <code>ClaimSupport</code> joins only when it supports a claim in
+the basis. The basis therefore grows only through explicit acceptance of
+relevant knowledge; a keyword search that happens to match a different
+set of records on day 40 cannot add unrelated claims, and a shared
+organizational store cannot flood it with other topics. Evidence spans
+and sources are carried as accepted because this store is dedicated to
+the briefing; filter them the same way if you share a store.</p>
+<p><code><a href="../reference/tempest_knowledge.html">tempest_knowledge()</a></code> reads at most 1,000 records, so the
+basis is a bounded table rather than an ever-growing id list. Every
+active <code>Claim</code> is always kept because the claims are the
+change signal; evidence records fill the remaining room newest-first,
+and a record whose latest revision is retracted or superseded, or whose
+change is a deletion, drops out. If a monitored topic ever accumulates
+more than 1,000 active claims, the run stops rather than forgetting some
+of them: narrow the topic or give it its own store.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">basis_path</span> <span class="op">&lt;-</span> <span class="st">"briefing/basis.rds"</span></span>
+<span><span class="va">accepted_classes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Claim"</span>, <span class="st">"ClaimSupport"</span>, <span class="st">"EvidenceSpan"</span>, <span class="st">"Source"</span><span class="op">)</span></span>
+<span><span class="va">basis_limit</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
+<span><span class="va">topic_query</span> <span class="op">&lt;-</span> <span class="st">"grid-scale battery recycling"</span></span>
+<span></span>
+<span><span class="va">in_scope</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">changed</span>, <span class="va">basis</span>, <span class="va">scope_view</span> <span class="op">=</span> <span class="va">view</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">basis_claims</span> <span class="op">&lt;-</span> <span class="va">basis</span><span class="op">$</span><span class="va">record_id</span><span class="op">[</span><span class="va">basis</span><span class="op">$</span><span class="va">class</span> <span class="op">==</span> <span class="st">"Claim"</span><span class="op">]</span></span>
+<span>  <span class="va">basis_record_ids</span> <span class="op">&lt;-</span> <span class="va">basis</span><span class="op">$</span><span class="va">record_id</span></span>
+<span>  <span class="va">matches</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_find.html" class="external-link">graft_find</a></span><span class="op">(</span></span>
+<span>    <span class="va">scope_view</span>,</span>
+<span>    <span class="va">topic_query</span>,</span>
+<span>    class <span class="op">=</span> <span class="st">"Claim"</span>,</span>
+<span>    limit <span class="op">=</span> <span class="va">basis_limit</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">matches</span>, <span class="st">"truncated"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span></span>
+<span>      <span class="st">"More than "</span>, <span class="va">basis_limit</span>, <span class="st">" accepted claims match the monitored topic; "</span>,</span>
+<span>      <span class="st">"narrow the topic or split the store before carrying changes forward."</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">topic_claims</span> <span class="op">&lt;-</span> <span class="va">matches</span><span class="op">$</span><span class="va">id</span></span>
+<span>  <span class="va">support_claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>    <span class="va">changed</span><span class="op">$</span><span class="va">record</span>,</span>
+<span>    \<span class="op">(</span><span class="va">record</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">record</span><span class="op">$</span><span class="va">statement_id</span><span class="op">)</span><span class="op">)</span> <span class="cn">NA_character_</span> <span class="kw">else</span> <span class="va">record</span><span class="op">$</span><span class="va">statement_id</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">deleted_from_basis</span> <span class="op">&lt;-</span></span>
+<span>    <span class="va">changed</span><span class="op">$</span><span class="va">action</span> <span class="op">==</span> <span class="st">"delete"</span> <span class="op">&amp;</span> <span class="va">changed</span><span class="op">$</span><span class="va">record_id</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">basis_record_ids</span></span>
+<span>  <span class="va">keep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span></span>
+<span>    <span class="va">changed</span><span class="op">$</span><span class="va">class</span> <span class="op">==</span> <span class="st">"Claim"</span>,</span>
+<span>    <span class="va">changed</span><span class="op">$</span><span class="va">record_id</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">basis_claims</span>, <span class="va">topic_claims</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span></span>
+<span>      <span class="va">changed</span><span class="op">$</span><span class="va">class</span> <span class="op">==</span> <span class="st">"ClaimSupport"</span>,</span>
+<span>      <span class="va">deleted_from_basis</span> <span class="op">|</span></span>
+<span>        <span class="va">support_claims</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">basis_claims</span>, <span class="va">topic_claims</span><span class="op">)</span>,</span>
+<span>      <span class="cn">TRUE</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">changed</span><span class="op">[</span><span class="va">keep</span>, <span class="op">]</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">bound_basis</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">records</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">records</span> <span class="op">&lt;-</span> <span class="va">records</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html" class="external-link">duplicated</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">record_id</span>, fromLast <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="op">]</span></span>
+<span>  <span class="va">records</span> <span class="op">&lt;-</span> <span class="va">records</span><span class="op">[</span><span class="va">records</span><span class="op">$</span><span class="va">status</span> <span class="op">==</span> <span class="st">"active"</span>, <span class="op">]</span></span>
+<span>  <span class="va">claims</span> <span class="op">&lt;-</span> <span class="va">records</span><span class="op">[</span><span class="va">records</span><span class="op">$</span><span class="va">class</span> <span class="op">==</span> <span class="st">"Claim"</span>, <span class="op">]</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">claims</span><span class="op">)</span> <span class="op">&gt;</span> <span class="va">basis_limit</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span></span>
+<span>      <span class="st">"The monitored topic has "</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">claims</span><span class="op">)</span>, <span class="st">" active accepted claims, "</span>,</span>
+<span>      <span class="st">"more than tempest_knowledge() can pin; narrow the topic or split the store."</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">evidence</span> <span class="op">&lt;-</span> <span class="va">records</span><span class="op">[</span><span class="va">records</span><span class="op">$</span><span class="va">class</span> <span class="op">!=</span> <span class="st">"Claim"</span>, <span class="op">]</span></span>
+<span>  <span class="va">evidence</span> <span class="op">&lt;-</span> <span class="va">evidence</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">evidence</span><span class="op">$</span><span class="va">commit_order</span><span class="op">)</span>, <span class="op">]</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">claims</span>, <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">evidence</span>, <span class="va">basis_limit</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">claims</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">changes_as_basis</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">changed</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    record_id <span class="op">=</span> <span class="va">changed</span><span class="op">$</span><span class="va">record_id</span>,</span>
+<span>    class <span class="op">=</span> <span class="va">changed</span><span class="op">$</span><span class="va">class</span>,</span>
+<span>    commit_order <span class="op">=</span> <span class="va">changed</span><span class="op">$</span><span class="va">commit_order</span>,</span>
+<span>    status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">changed</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      <span class="kw">function</span><span class="op">(</span><span class="va">index</span><span class="op">)</span> <span class="op">{</span></span>
+<span>        <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">changed</span><span class="op">$</span><span class="va">action</span><span class="op">[[</span><span class="va">index</span><span class="op">]</span><span class="op">]</span>, <span class="st">"delete"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>          <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="st">"deleted"</span><span class="op">)</span></span>
+<span>        <span class="op">}</span></span>
+<span>        <span class="va">record</span> <span class="op">&lt;-</span> <span class="va">changed</span><span class="op">$</span><span class="va">record</span><span class="op">[[</span><span class="va">index</span><span class="op">]</span><span class="op">]</span></span>
+<span>        <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">record</span><span class="op">$</span><span class="va">status</span><span class="op">)</span><span class="op">)</span> <span class="st">"active"</span> <span class="kw">else</span> <span class="va">record</span><span class="op">$</span><span class="va">status</span></span>
+<span>      <span class="op">}</span>,</span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">basis_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">previous</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">basis_path</span><span class="op">)</span></span>
+<span>  <span class="va">changed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_changes.html" class="external-link">graft_changes</a></span><span class="op">(</span></span>
+<span>    <span class="va">view</span>,</span>
+<span>    since <span class="op">=</span> <span class="va">previous</span><span class="op">$</span><span class="va">snapshot</span>,</span>
+<span>    class <span class="op">=</span> <span class="va">accepted_classes</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">changed</span> <span class="op">&lt;-</span> <span class="fu">in_scope</span><span class="op">(</span><span class="va">changed</span>, <span class="va">previous</span><span class="op">$</span><span class="va">records</span><span class="op">)</span></span>
+<span>  <span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu">bound_basis</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">previous</span><span class="op">$</span><span class="va">records</span>, <span class="fu">changes_as_basis</span><span class="op">(</span><span class="va">changed</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_find.html" class="external-link">graft_find</a></span><span class="op">(</span><span class="va">view</span>, <span class="va">topic_query</span>, class <span class="op">=</span> <span class="st">"Claim"</span>, limit <span class="op">=</span> <span class="va">basis_limit</span><span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">claims</span>, <span class="st">"truncated"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span></span>
+<span>      <span class="st">"More than "</span>, <span class="va">basis_limit</span>, <span class="st">" accepted claims match the monitored topic; "</span>,</span>
+<span>      <span class="st">"narrow the topic or split the store before starting the briefing."</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    record_id <span class="op">=</span> <span class="va">claims</span><span class="op">$</span><span class="va">id</span>,</span>
+<span>    class <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">"Claim"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">claims</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    commit_order <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">snapshot</span><span class="op">@</span><span class="va">commit_order</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">claims</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">"active"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">claims</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_knowledge.html">tempest_knowledge</a></span><span class="op">(</span><span class="va">view</span>, record_ids <span class="op">=</span> <span class="va">basis</span><span class="op">$</span><span class="va">record_id</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="https://jameshwade.github.io/graft/reference/graft_changes.html" class="external-link">graft_changes()</a></code> compares two committed boundaries
+store-wide and returns one row per changed record with its action, the
+union of changed public fields, and the latest accepted record, whose
+<code>status</code> tells the basis whether the record is still active.
+A <code>GraftView</code> bounds it at the pinned snapshot, so the
+selection cannot include a commit that landed after the run started.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="research-todays-change">Research today’s change<a class="anchor" aria-label="anchor" href="#research-todays-change"></a>
@@ -156,7 +285,7 @@ alter its input.</p>
 of generic personas. The topic asks for the briefing’s decision
 structure while Tempest keeps the exact report, sources, claims, and
 claim-support pairs behind its ordinary product interface.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">technical</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"Technical readiness reviewer"</span>,</span>
 <span>  title <span class="op">=</span> <span class="st">"Battery recycling process specialist"</span>,</span>
@@ -164,7 +293,7 @@ claim-support pairs behind its ordinary product interface.</p>
 <span>  instructions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
 <span>    <span class="st">"Separate measured performance from projections."</span>,</span>
 <span>    <span class="st">"Call out consequential unknowns. Report no change only when a verified"</span>,</span>
-<span>    <span class="st">"claim explicitly establishes an unchanged material condition."</span></span>
+<span>    <span class="st">"claim restates a condition the organization already accepted."</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  focus_areas <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"process yield"</span>, <span class="st">"scale-up"</span>, <span class="st">"safety"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -200,17 +329,27 @@ claim-support pairs behind its ordinary product interface.</p>
 <span><span class="va">supports</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claim_supports.html">tempest_claim_supports</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></code></pre></div>
 <p>Treat the report as the briefing and the tables as its evidence rail.
 The at-a-glance brief and each detailed section keep four statements
-visibly distinct: verified observations copy claims exactly; “Why it
-matters” assessments are labeled, confidence-calibrated inferences;
-“Review today” items are proposed actions; and “No material change”
-statements copy one explicit verified claim exactly. That claim must
-pass a conservative language gate that requires an unchanged assertion
-and rejects a simultaneous change assertion. Missing, unresolved, or
-inconclusive evidence does not become a no-change statement. A daily
-host presents verified observations as “What changed.” Tempest binds
-every item to its exact claim IDs in machine-readable provenance and
-rejects a report if that provenance no longer matches the visible
-Markdown.</p>
+visibly distinct, and the first and last of them are decided against the
+pinned snapshot rather than by the prompt:</p>
+<ul>
+<li>“What changed” items copy verified claims exactly, and Tempest
+accepts one only when its text does not restate a <code>Claim</code>
+already in the pinned knowledge. On the first day every verified claim
+is new.</li>
+<li>“Why it matters” assessments are labeled, confidence-calibrated
+inferences.</li>
+<li>“Review today” items are proposed actions.</li>
+<li>“No material change” statements copy one verified claim exactly, and
+Tempest accepts one only when that claim restates an accepted
+<code>Claim</code>. Today’s evidence re-verified something the
+organization already knew.</li>
+</ul>
+<p>Missing, unresolved, or inconclusive evidence does not become a
+no-change statement, because it does not produce a verified claim at
+all. Tempest binds every item to its exact claim IDs in machine-readable
+provenance, re-checks each item’s disposition against the accepted
+claims whenever the report is rendered, and rejects a report if that
+provenance no longer matches the visible Markdown.</p>
 <p>Whether somebody was shown the briefing or read it is operational
 state; it is not accepted knowledge. An assessment or review action is
 also not accepted knowledge merely because it appears in the
@@ -223,7 +362,7 @@ briefing.</p>
 completed run into scans. The first review asks whether the proposed
 knowledge is fit to accept; the second asks whether the agent trajectory
 itself behaved well.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">proposal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_promotion_bundle.html">tempest_promotion_bundle</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="va">plan</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_graft_plan.html">tempest_graft_plan</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">proposal</span><span class="op">)</span></span>
 <span></span>
@@ -237,9 +376,22 @@ itself behaved well.</p>
 <span><span class="va">run_findings</span> <span class="op">&lt;-</span> <span class="fu">scans</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/scans/man/scan_trajectories.html" class="external-link">scan_trajectories</a></span><span class="op">(</span><span class="va">trajectory</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">plan</span><span class="op">@</span><span class="va">valid</span></span>
-<span><span class="va">plan</span><span class="op">@</span><span class="va">changes</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"class"</span>, <span class="st">"record_id"</span>, <span class="st">"action"</span>, <span class="st">"changed_fields"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">plan</span><span class="op">@</span><span class="va">changes</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"class"</span>, <span class="st">"record_id"</span>, <span class="st">"action"</span>, <span class="st">"disposition"</span>, <span class="st">"changed_fields"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="va">run_summary</span></span>
 <span><span class="va">run_findings</span></span></code></pre></div>
+<p>Tempest keys accepted <code>Claim</code> identity on the claim’s
+normalized statement text and accepted <code>Source</code> identity on
+its locator plus content hash. A claim the organization already accepted
+therefore plans as an <code>update</code> whose
+<code>changed_fields</code> name only run metadata such as the Tempest
+claim id and verification time, and Graft’s <code>disposition</code>
+column reads <code>revision</code>; a genuinely new statement reads
+<code>new</code>; an identical proposal reads <code>duplicate</code>. A
+staged claim that sets <code>superseded_by</code>, or evidence whose
+<code>support_type</code> is <code>contradicts</code>, surfaces as
+<code>superseded</code>, <code>supersedes</code>, or
+<code>contradicted</code> so the reviewer sees statement-level relations
+without reading every row.</p>
 <p>Do not collapse these into one confidence score. Claim support,
 proposed Graft changes, and trajectory findings answer different review
 questions.</p>
@@ -247,15 +399,24 @@ questions.</p>
 <div class="section level2">
 <h2 id="accept-deliberately-including-no-change">Accept deliberately, including no change<a class="anchor" aria-label="anchor" href="#accept-deliberately-including-no-change"></a>
 </h2>
-<p>If every planned action is <code>"match"</code>, today’s research
-proposes no accepted state change. Publish the briefing and record that
-no-change outcome in the host’s run log; do not manufacture a knowledge
-revision merely to prove the schedule ran.</p>
+<p>Accepted knowledge changes only when a <code>Claim</code> is new,
+superseded, or contradicted. A plan whose claims are all
+<code>duplicate</code> or <code>revision</code> proposes nothing the
+organization does not already know; publish the briefing and record that
+no-change outcome in the host’s run log rather than manufacturing a
+knowledge revision to prove the schedule ran.</p>
 <p>When the reviewer accepts a real change, commit the exact plan that
 was shown and bind a Tempest receipt to the resulting immutable
-snapshot:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">has_change</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span><span class="va">plan</span><span class="op">@</span><span class="va">changes</span><span class="op">$</span><span class="va">action</span> <span class="op">!=</span> <span class="st">"match"</span><span class="op">)</span></span>
+snapshot. Save the basis the next run will carry forward either way, so
+a first day without accepted change still pins its selection instead of
+searching again tomorrow:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">basis_snapshot</span> <span class="op">&lt;-</span> <span class="va">snapshot</span></span>
+<span><span class="va">next_basis</span> <span class="op">&lt;-</span> <span class="va">basis</span></span>
+<span><span class="va">claim_rows</span> <span class="op">&lt;-</span> <span class="va">plan</span><span class="op">@</span><span class="va">changes</span><span class="op">[</span><span class="va">plan</span><span class="op">@</span><span class="va">changes</span><span class="op">$</span><span class="va">class</span> <span class="op">==</span> <span class="st">"Claim"</span>, <span class="op">]</span></span>
+<span><span class="va">has_change</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span></span>
+<span>  <span class="va">claim_rows</span><span class="op">$</span><span class="va">disposition</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"new"</span>, <span class="st">"supersedes"</span>, <span class="st">"superseded"</span>, <span class="st">"contradicted"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="va">has_change</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">commit_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft_commit</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">plan</span><span class="op">)</span></span>
@@ -271,13 +432,69 @@ snapshot:</p>
 <span>    promotion_bundle <span class="op">=</span> <span class="va">proposal</span>,</span>
 <span>    promotion_receipt <span class="op">=</span> <span class="va">receipt</span></span>
 <span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">basis_snapshot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_snapshot.html" class="external-link">graft_snapshot</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
+<span>  <span class="va">accepted_now</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_changes.html" class="external-link">graft_changes</a></span><span class="op">(</span></span>
+<span>    <span class="va">store</span>,</span>
+<span>    since <span class="op">=</span> <span class="va">snapshot</span>,</span>
+<span>    until <span class="op">=</span> <span class="va">basis_snapshot</span>,</span>
+<span>    class <span class="op">=</span> <span class="va">accepted_classes</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">accepted_now</span> <span class="op">&lt;-</span> <span class="fu">in_scope</span><span class="op">(</span></span>
+<span>    <span class="va">accepted_now</span>,</span>
+<span>    <span class="va">basis</span>,</span>
+<span>    scope_view <span class="op">=</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_at.html" class="external-link">graft_at</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">basis_snapshot</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">next_basis</span> <span class="op">&lt;-</span> <span class="fu">bound_basis</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">basis</span>, <span class="fu">changes_as_basis</span><span class="op">(</span><span class="va">accepted_now</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>snapshot <span class="op">=</span> <span class="va">basis_snapshot</span>, records <span class="op">=</span> <span class="va">next_basis</span><span class="op">)</span>, <span class="va">basis_path</span><span class="op">)</span></span></code></pre></div>
+<p>The saved snapshot always matches the saved records. Without a commit
+it is the snapshot this run pinned, so anything accepted by another
+process since then is picked up tomorrow. After a commit it is the
+post-commit snapshot, and the basis absorbs every record accepted
+between the pin and that boundary, including a concurrent commit by
+another process. Rejection leaves accepted knowledge unchanged. This
+two-speed loop keeps routine monitoring passive and makes only material
+changes enter the slower decision-and-review path.</p>
+</div>
+<div class="section level2">
+<h2 id="let-a-person-edit-accepted-knowledge">Let a person edit accepted knowledge<a class="anchor" aria-label="anchor" href="#let-a-person-edit-accepted-knowledge"></a>
+</h2>
+<p>The store was opened with <code>okf = "managed"</code>, so Graft
+keeps a readable Open Knowledge Format working tree next to the DuckDB
+file. A reviewer who wants to correct a wording, retract a claim, or
+mark one statement as superseding another edits those files; Graft turns
+the edits back into the same kind of plan the briefing produced, and the
+same acceptance step applies.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_sync.html" class="external-link">graft_sync</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_status.html" class="external-link">graft_status</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span><span class="op">$</span><span class="va">status</span></span>
+<span><span class="co">#&gt; "current"</span></span>
+<span></span>
+<span><span class="co"># A person edits files under the managed OKF directory, then:</span></span>
+<span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_status.html" class="external-link">graft_status</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span><span class="op">$</span><span class="va">status</span></span>
+<span><span class="co">#&gt; "modified"</span></span>
+<span></span>
+<span><span class="va">edited</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_review.html" class="external-link">graft_review</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>,</span>
+<span>  provenance <span class="op">=</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_provenance.html" class="external-link">graft_provenance</a></span><span class="op">(</span></span>
+<span>    <span class="st">"briefing-reviewer"</span>,</span>
+<span>    idempotency_key <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"okf-"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">edited</span><span class="op">@</span><span class="va">changes</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"class"</span>, <span class="st">"record_id"</span>, <span class="st">"action"</span>, <span class="st">"disposition"</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="va">edited</span><span class="op">@</span><span class="va">valid</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft_commit</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">edited</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_sync.html" class="external-link">graft_sync</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>The next briefing captures a new Graft snapshot and explicitly
-selects the accepted records it should carry forward. Rejection leaves
-accepted knowledge unchanged. This two-speed loop keeps routine
-monitoring passive and makes only material changes enter the slower
-decision-and-review path.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>The edited plan is bound to the exact bundle and accepted batch it
+was reviewed against, so a commit that landed in between fails the plan
+instead of silently rebasing the person’s edits. Tomorrow’s briefing
+picks the edit up through <code><a href="https://jameshwade.github.io/graft/reference/graft_changes.html" class="external-link">graft_changes()</a></code> like any other
+accepted change.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_close.html" class="external-link">graft_close</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

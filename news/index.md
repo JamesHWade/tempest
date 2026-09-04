@@ -2,6 +2,49 @@
 
 ## tempest (development version)
 
+- Tempest now runs against the current `main` of deputy, dsprrr, graft,
+  and scans. dsprrr’s `module()` no longer takes `type`, and its runner
+  requires a real ellmer `Chat`, so the test fakes are now R6-classed
+  environments that expose chat history (0mpk).
+- Graft compatibility is now checked through
+  [`graft::graft_contract_version()`](https://jameshwade.github.io/graft/reference/graft_contract_version.html)
+  instead of a pinned git commit and a digest of Graft’s entire
+  namespace; Tempest requires consumer contract `0.2.0` and store format
+  `3.1.0`, and the compiled research schema is loaded with Graft’s
+  injected `GraftDefinition` system class (0mpk).
+- Briefing items now decide structurally whether a verified claim
+  changes accepted knowledge:
+  [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
+  compares each claim’s text with the `Claim` records pinned from the
+  Graft snapshot, so an observation must be a claim that is not yet
+  accepted and renders under “What changed”, while a no-change item must
+  restate an accepted claim. The previous language-pattern gate for
+  no-change claims is removed, and reloading a report re-checks the same
+  disposition (0mpk).
+- [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
+  now keys accepted `Claim` identity on normalized statement text and
+  accepted `Source` identity on the exact locator plus content hash
+  through Graft’s explicit origin key, so a claim or source that later
+  research re-verifies resolves to the record already accepted instead
+  of inserting a duplicate, and repeated claim text inside one bundle
+  coalesces into one planned Claim; a re-verified Claim’s summary is
+  recomputed over its previously accepted supports plus today’s, a
+  retracted or superseded accepted Claim is a planning conflict rather
+  than a silent reactivation, and a locator whose content changed
+  becomes a new Source; the plan’s new `disposition` column then reads
+  `duplicate` or `revision` for re-verified knowledge and `new` only for
+  genuinely new records (0mpk).
+- [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
+  now accepts up to 1,000 accepted record ids instead of 100, accepted
+  records no longer count against the workspace’s `max_sources`
+  retrieval cap, and each accepted `Claim` resource carries its
+  statement text as metadata (0mpk).
+- [`vignette("daily-briefing")`](https://jameshwade.github.io/tempest/articles/daily-briefing.md)
+  now selects the next day’s accepted basis durably by carrying forward
+  the previous receipt and adding
+  [`graft::graft_changes()`](https://jameshwade.github.io/graft/reference/graft_changes.html)
+  since the previous snapshot, reads the plan’s `disposition` column for
+  the change signal, and shows the managed OKF review round trip (0mpk).
 - Internal ellmer Chat clients are now governed directly by Deputy Agent
   objects while preserving Tempest’s exact completion and terminal-trace
   bindings; this removes Tempest’s parallel hand-built Chat facade and

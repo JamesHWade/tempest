@@ -180,7 +180,7 @@
 <span><span class="co"># Acceptance authority remains an explicit Graft operation after review.</span></span>
 <span><span class="va">commit_result</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft_commit</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">plan</span><span class="op">)</span></span>
 <span><span class="va">receipt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_promotion_receipt.html">tempest_promotion_receipt</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">bundle</span>, <span class="va">plan</span>, <span class="va">commit_result</span><span class="op">)</span></span></code></pre></div>
-<p>The packaged schema is compiled against Graft accessor commit <code>81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5</code>; runtime loading checks its exact immutable build digest and never recompiles LinkML.</p>
+<p>The packaged schema is compiled for Graft consumer contract <code>0.2.0</code>, which runtime loading checks through <code><a href="https://jameshwade.github.io/graft/reference/graft_contract_version.html" class="external-link">graft::graft_contract_version()</a></code>; loading also checks the schema’s exact immutable build digest and never recompiles LinkML. Planning keys accepted <code>Claim</code> identity on normalized statement text and accepted <code>Source</code> identity on the exact locator plus content hash, so research that re-verifies an accepted claim revises that record instead of inserting a duplicate, and the plan’s <code>disposition</code> column separates <code>new</code>, <code>revision</code>, and <code>duplicate</code> proposals.</p>
 <p>Promotion accepts only a completed <code><a href="reference/tempest_run.html">tempest_run()</a></code> result or a succeeded, quiescent <code>TempestSession</code>. A loose Workspace, Manifest, or StageRecord tuple cannot reconstruct publication authority. The bundle contains the selected Sources, Claims, EvidenceSpans, ClaimSupports, and exact extraction and verification ProgramArtifacts. Its closed proof projection retains the exact resources, claims, spans, and supports needed to recompute each retained StageRecord digest. A selection must include every output bound by each retained extraction or verification record; Tempest rejects partial stage-output selection instead of packaging unselected evidence. Planning is read-only: Tempest does not call <code><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft::graft_commit()</a></code> on the host’s behalf. The promotion directory is a closed current-format bundle, its destination must not already exist, and any older or extra shape is rejected. Reading requires the original bundle id as an out-of-band trust pin; checksums stored inside the directory establish internal consistency but are not a signature. A <code>GovernedProcedure</code> is accepted through a separate reviewed Graft flow; research promotion never mints one.</p>
 </div>
 <div class="section level2">
@@ -382,8 +382,60 @@
 <span><span class="op">)</span></span></code></pre></div>
 <p>The same value carries accepted evidence. <code>record_ids</code> names an exact allowlist of accepted <code>Claim</code>, <code>ClaimSupport</code>, <code>EvidenceSpan</code>, and <code>Source</code> records, which Tempest reads as data:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">records</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_find.html" class="external-link">graft_find</a></span><span class="op">(</span><span class="va">view</span>, <span class="st">"battery recycling"</span>, limit <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
-<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_knowledge.html">tempest_knowledge</a></span><span class="op">(</span><span class="va">view</span>, record_ids <span class="op">=</span> <span class="va">records</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">topic_query</span> <span class="op">&lt;-</span> <span class="st">"battery recycling"</span></span>
+<span><span class="va">basis_limit</span> <span class="op">&lt;-</span> <span class="fl">1000L</span></span>
+<span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_find.html" class="external-link">graft_find</a></span><span class="op">(</span></span>
+<span>  <span class="va">view</span>,</span>
+<span>  <span class="va">topic_query</span>,</span>
+<span>  class <span class="op">=</span> <span class="st">"Claim"</span>,</span>
+<span>  limit <span class="op">=</span> <span class="va">basis_limit</span></span>
+<span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">claims</span>, <span class="st">"truncated"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Narrow the topic."</span><span class="op">)</span></span>
+<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_knowledge.html">tempest_knowledge</a></span><span class="op">(</span><span class="va">view</span>, record_ids <span class="op">=</span> <span class="va">claims</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
+<span><span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  snapshot <span class="op">=</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_view_snapshot.html" class="external-link">graft_view_snapshot</a></span><span class="op">(</span><span class="va">view</span><span class="op">)</span>,</span>
+<span>  record_ids <span class="op">=</span> <span class="va">claims</span><span class="op">$</span><span class="va">id</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">basis</span>, <span class="st">"accepted-basis.rds"</span><span class="op">)</span></span></code></pre></div>
+<p>A scheduled host does not need to search again on later days. Persist the whole selected basis and its snapshot, then apply active changes scoped to that basis and topic. A promotion receipt contains only the records planned for one run, so it cannot replace this durable selection. This compact example carries <code>Claim</code> records only; the daily briefing vignette shows the class-aware workflow for carrying related evidence. Deleted, retracted, and superseded records leave the basis, while unrelated topics and record classes remain outside Tempest’s evidence channel:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">previous_basis</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"accepted-basis.rds"</span><span class="op">)</span></span>
+<span><span class="va">matches</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_find.html" class="external-link">graft_find</a></span><span class="op">(</span></span>
+<span>  <span class="va">view</span>,</span>
+<span>  <span class="va">topic_query</span>,</span>
+<span>  class <span class="op">=</span> <span class="st">"Claim"</span>,</span>
+<span>  limit <span class="op">=</span> <span class="va">basis_limit</span></span>
+<span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">matches</span>, <span class="st">"truncated"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Narrow the topic."</span><span class="op">)</span></span>
+<span><span class="va">changes</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_changes.html" class="external-link">graft_changes</a></span><span class="op">(</span></span>
+<span>  <span class="va">view</span>,</span>
+<span>  since <span class="op">=</span> <span class="va">previous_basis</span><span class="op">$</span><span class="va">snapshot</span>,</span>
+<span>  class <span class="op">=</span> <span class="st">"Claim"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">relevant</span> <span class="op">&lt;-</span> <span class="va">changes</span><span class="op">$</span><span class="va">record_id</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">union</a></span><span class="op">(</span></span>
+<span>  <span class="va">previous_basis</span><span class="op">$</span><span class="va">record_ids</span>,</span>
+<span>  <span class="va">matches</span><span class="op">$</span><span class="va">id</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">changes</span> <span class="op">&lt;-</span> <span class="va">changes</span><span class="op">[</span><span class="va">relevant</span>, <span class="op">]</span></span>
+<span><span class="va">status</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>  <span class="va">changes</span><span class="op">$</span><span class="va">record</span>,</span>
+<span>  \<span class="op">(</span><span class="va">record</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">record</span><span class="op">$</span><span class="va">status</span><span class="op">)</span><span class="op">)</span> <span class="st">"active"</span> <span class="kw">else</span> <span class="va">record</span><span class="op">$</span><span class="va">status</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">keep</span> <span class="op">&lt;-</span> <span class="va">changes</span><span class="op">$</span><span class="va">action</span> <span class="op">!=</span> <span class="st">"delete"</span> <span class="op">&amp;</span> <span class="va">status</span> <span class="op">==</span> <span class="st">"active"</span></span>
+<span><span class="va">removed_ids</span> <span class="op">&lt;-</span> <span class="va">changes</span><span class="op">$</span><span class="va">record_id</span><span class="op">[</span><span class="op">!</span><span class="va">keep</span><span class="op">]</span></span>
+<span><span class="va">record_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">union</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">setdiff</a></span><span class="op">(</span><span class="va">previous_basis</span><span class="op">$</span><span class="va">record_ids</span>, <span class="va">removed_ids</span><span class="op">)</span>,</span>
+<span>  <span class="va">changes</span><span class="op">$</span><span class="va">record_id</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span></span>
+<span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">record_ids</span><span class="op">)</span> <span class="op">&gt;</span> <span class="va">basis_limit</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Narrow the topic."</span><span class="op">)</span></span>
+<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_knowledge.html">tempest_knowledge</a></span><span class="op">(</span><span class="va">view</span>, record_ids <span class="op">=</span> <span class="va">record_ids</span><span class="op">)</span></span>
+<span><span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  snapshot <span class="op">=</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_view_snapshot.html" class="external-link">graft_view_snapshot</a></span><span class="op">(</span><span class="va">view</span><span class="op">)</span>,</span>
+<span>  record_ids <span class="op">=</span> <span class="va">record_ids</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">basis</span>, <span class="st">"accepted-basis.rds"</span><span class="op">)</span></span></code></pre></div>
+<p>Accepted <code>Claim</code> records give the briefing its change signal: a verified claim that restates one of them is a no-change finding, and every other verified claim is something that changed.</p>
 <p>Accepted record text is evidence, never instruction. It travels in a data channel and cannot change prompts, message roles, tools, governed-procedure selection, or executable artifacts. Executable authority comes only from an explicit <code>governed_procedures</code> stage binding, and a record Tempest cannot materialize exactly is rejected rather than truncated.</p>
 <p>Tempest verifies the accepted procedure, program artifact, revision, schema, store, snapshot, and commit boundary again immediately before the provider runs. The live view is transient and is never serialized. A restored or resumed governed workflow therefore needs the matching pinned view before its next governed stage; a stored typed reference alone cannot authorize execution.</p>
 </div>
@@ -475,10 +527,10 @@
 </table>
 <p>By default, coordinator and writer roles use <code>openai/gpt-5.6-sol</code>; expert, mind map, and judge roles use <code>openai/gpt-5.6-luna</code>. Tempest constructs these clients with <code>ellmer::chat_openai(auth = "codex")</code>, reusing the ChatGPT subscription authenticated by Codex CLI. Built-in subscription clients use lower reasoning effort for mind-map and judge calls; explicit <code>params</code> values override these defaults. <code><a href="reference/tempest_app.html">tempest_app()</a></code> limits individual provider requests to 120 seconds by default, configurable with <code>tempest.shiny.provider_timeout_s</code>. The bundled app’s warmup asks each active expert for one brief, bounded, evidence-backed orientation. Each expert reuses session evidence or runs one targeted search, inspects at most two results, and preserves at least one citation. Tempest then commits source-backed claims in stable expert order and updates the shared mind map once for the complete panel. The summary says explicitly when no citable evidence was collected. Warmup concurrency and its 120-second safety timeout are configurable with <code>tempest.shiny.warmup_*</code> options.</p>
 <p>To set a personal default model, add the <code>tempest.chat</code> option to your <code>.Rprofile</code>, using the same provider/model format as <code><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">ellmer::chat()</a></code>:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>tempest.chat <span class="op">=</span> <span class="st">"anthropic/claude-sonnet-4-20250514"</span><span class="op">)</span></span></code></pre></div>
 <p>You can also supply a configured ellmer Chat object:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span></span>
 <span>  tempest.chat <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_ollama.html" class="external-link">chat_ollama</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"qwen3.5:9b"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -489,7 +541,7 @@
 <h2 id="rag-with-ragnar">RAG with ragnar<a class="anchor" aria-label="anchor" href="#rag-with-ragnar"></a>
 </h2>
 <p>Enable semantic search over fetched sources by providing an embedding function:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
@@ -506,7 +558,7 @@
 <li>Registers a semantic retrieve tool with chat agents</li>
 </ul>
 <p>You can also provide a pre-built ragnar store:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_create_ragnar_store.html">tempest_create_ragnar_store</a></span><span class="op">(</span></span>
 <span>  embed_fn <span class="op">=</span> <span class="fu">ragnar</span><span class="fu">::</span><span class="fu"><a href="https://ragnar.tidyverse.org/reference/embed_ollama.html" class="external-link">embed_openai</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  cache_dir <span class="op">=</span> <span class="st">"~/.tempest_cache"</span></span>
@@ -517,7 +569,7 @@
 <h2 id="custom-chat-functions">Custom chat functions<a class="anchor" aria-label="anchor" href="#custom-chat-functions"></a>
 </h2>
 <p>Use custom LLM providers (e.g., internal APIs) with the <code>chat_fn</code> parameter:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
 <span>  chat_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">role</span>, <span class="va">model</span>, <span class="va">system_prompt</span>, <span class="va">echo</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu">my_company_chat</span><span class="op">(</span></span>
@@ -540,7 +592,7 @@
 <div class="section level3">
 <h3 id="console-usage">Console Usage<a class="anchor" aria-label="anchor" href="#console-usage"></a>
 </h3>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Create a session - expert profiles are generated automatically</span></span>
@@ -586,7 +638,7 @@
 <h3 id="warmup-phase">Warmup Phase<a class="anchor" aria-label="anchor" href="#warmup-phase"></a>
 </h3>
 <p>The optional warmup phase has each expert research their initial questions before interactive Q&amp;A begins. This primes the knowledge base with foundational research:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Skip warmup - jump straight into Q&amp;A</span></span>
 <span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_session.html">tempest_session</a></span><span class="op">(</span><span class="st">"Quantum computing"</span><span class="op">)</span></span>
 <span><span class="va">session</span><span class="op">$</span><span class="fu">step</span><span class="op">(</span><span class="st">"What is quantum supremacy?"</span><span class="op">)</span></span>
@@ -600,7 +652,7 @@
 <h3 id="dynamic-expert-roster">Dynamic Expert Roster<a class="anchor" aria-label="anchor" href="#dynamic-expert-roster"></a>
 </h3>
 <p>Experts can be added or retired during a session:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">error_correction_expert</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"Dr. Sarah Chen"</span>,</span>
 <span>  title <span class="op">=</span> <span class="st">"Quantum error-correction researcher"</span>,</span>
@@ -619,14 +671,14 @@
 <div class="section level3">
 <h3 id="report-generation">Report Generation<a class="anchor" aria-label="anchor" href="#report-generation"></a>
 </h3>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">session</span><span class="op">$</span><span class="fu">reorganize_mindmap</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">report</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">publish</span><span class="op">(</span>style <span class="op">=</span> <span class="st">"technical"</span>, include_references <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="shiny-app">Shiny App<a class="anchor" aria-label="anchor" href="#shiny-app"></a>
 </h3>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/tempest_app.html">tempest_app</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Untouched model fields inherit <code>options(tempest.chat = )</code>; otherwise the app uses Tempest’s GPT-5.6 Sol/Luna defaults with ChatGPT subscription authentication. Editing any model field switches the app to those explicit per-role model selections.</p>

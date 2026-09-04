@@ -51,7 +51,10 @@ acceptance remains an explicit graft review and commit.
 
 - `max_sources`:
 
-  Maximum number of unique resources admitted.
+  Maximum number of unique retrieved resources admitted. Accepted Graft
+  knowledge records inserted by
+  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
+  are bounded separately and do not count.
 
 ## Methods
 
