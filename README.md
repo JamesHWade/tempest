@@ -1,4 +1,4 @@
-# tempest
+# tempest <img src="man/figures/logo.png" align="right" height="139" alt="Tempest hex sticker: a storm petrel flying through swirling wind." />
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/JamesHWade/tempest/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/JamesHWade/tempest/actions/workflows/R-CMD-check.yaml)
