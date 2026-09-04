@@ -20,3 +20,4 @@
 ^.*[.]dsprrr_cache$
 ^inst/shiny/[.]shinychat$
 ^vignettes/.*[.]html$
+^tools/hex-sticker$
