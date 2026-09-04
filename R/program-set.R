@@ -1025,7 +1025,3 @@ tempest_program_set_compile_isolate <- function(
   }
   isolated
 }
-
-tempest_program_set_compile_module <- function(...) {
-  dsprrr::compile_module(...)
-}

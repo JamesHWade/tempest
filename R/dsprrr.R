@@ -332,8 +332,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Each perspective needs 3-6 specific research questions.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     personas = dsprrr::module(
       dsprrr::signature(
@@ -349,8 +348,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Return exactly n_experts personas.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     query_decomposition = dsprrr::module(
       dsprrr::signature(
@@ -364,8 +362,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Queries should cover different aspects of the question and stay anchored to the topic.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     extract_claims = dsprrr::module(
       dsprrr::signature(
@@ -402,8 +399,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Do not infer or invent facts.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     verify_claim_support = dsprrr::module(
       dsprrr::signature(
@@ -417,8 +413,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Return a status, a support score in [0,1], and a short rationale.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     next_question = dsprrr::module(
       dsprrr::signature(
@@ -434,8 +429,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Set done to true only when the perspective is sufficiently covered.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     draft_outline = dsprrr::module(
       dsprrr::signature(
@@ -451,8 +445,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "The outline will later be refined using verified facts.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     refined_outline = dsprrr::module(
       dsprrr::signature(
@@ -471,8 +464,7 @@ tempest_make_dsprrr_modules <- function(config) {
           "Ensure sections are supportable by cited facts.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     section_writing = dsprrr::module(
       dsprrr::signature(
@@ -486,19 +478,20 @@ tempest_make_dsprrr_modules <- function(config) {
         instructions = paste(
           "Prepare one concise, decision-useful section as typed briefing items.",
           "Use only the supplied verified facts and their exact claim_ids.",
-          "Return one to three observations by copying claim text exactly.",
+          "Each fact ends with its status against accepted knowledge: new, or already accepted.",
+          "Return one to three observations by copying the exact text of facts whose status is new; at least one observation is required whenever any fact is new, and none are allowed when no fact is new.",
           "Add up to two assessment prompts using only: Assess the decision implications of: CLAIM_TEXT.",
           "Add up to two review_action prompts using only: Review before deciding: CLAIM_TEXT.",
           "For multiple bound claims, sort by claim_id and join their exact claim text with ' | ' in either prompt.",
-          "Add at most one no_change item by copying exactly one verified claim that explicitly uses unchanged, has not changed, did not change, or no material change language and does not also assert another change.",
-          "Omit no_change when the evidence is missing, unresolved, or merely fails to establish a change.",
+          "Add at most one no_change item by copying the exact text of one fact whose status is already accepted; never use a new fact for no_change.",
+          "When no fact is new, return exactly one no_change item so the section still reports its verified finding.",
+          "Omit no_change when no fact is already accepted; missing or unresolved evidence is not a no-change signal.",
           "Every non-observation item must bind exactly the claim_ids copied into its text.",
           "Assessments and no_change items require calibrated confidence; observations and review actions omit it.",
           "Do not put source citations, Markdown, or provenance prose in item text.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     ),
     lead_section = dsprrr::module(
       dsprrr::signature(
@@ -512,18 +505,19 @@ tempest_make_dsprrr_modules <- function(config) {
         instructions = paste(
           "Prepare a compact at-a-glance decision brief as typed items.",
           "Use only the supplied verified facts and their exact claim_ids.",
-          "Select one to three observations by copying claim text exactly.",
+          "Each fact ends with its status against accepted knowledge: new, or already accepted.",
+          "Select one to three observations by copying the exact text of facts whose status is new; at least one observation is required whenever any fact is new, and none are allowed when no fact is new.",
           "Add no more than one assessment prompt using only: Assess the decision implications of: CLAIM_TEXT.",
           "Add no more than one review_action prompt using only: Review before deciding: CLAIM_TEXT.",
           "For multiple bound claims, sort by claim_id and join their exact claim text with ' | ' in either prompt.",
-          "A no_change item must copy exactly one verified claim that explicitly uses unchanged, has not changed, did not change, or no material change language and does not also assert another change; otherwise omit it.",
+          "A no_change item must copy the exact text of one fact whose status is already accepted; omit it when no fact is already accepted.",
+          "When no fact is new, return exactly one no_change item so the brief still reports its verified finding.",
           "Every non-observation item must bind exactly the verified claim_ids copied into its text.",
           "Assessments and no_change items require calibrated confidence; observations and review actions omit it.",
           "Do not put source citations, Markdown, or provenance prose in item text.",
           sep = "\n"
         )
-      ),
-      type = "predict"
+      )
     )
   )
   modules

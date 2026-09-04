@@ -106,3 +106,4 @@
         "terminal_status": "succeeded",
         "event_sequence": ["workflow:session:created:started", "stage:warmup:expert_fanout:started", "expert:warmup:expert_fanout:started", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "expert:warmup:expert_fanout:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "stage:warmup:expert_fanout:succeeded", "stage:dialogue:turn:started", "step:dialogue:user_turn:succeeded", "step:dialogue:moderator_response:succeeded", "step:evidence:fact_extraction:started", "step:evidence:fact_extraction:succeeded", "step:mindmap:update:started", "step:mindmap:update:succeeded", "stage:dialogue:turn:succeeded", "step:suggestions:question_generation:started", "step:suggestions:question_generation:succeeded", "stage:report:generate:started", "artifact:report:report_md:available", "stage:report:generate:succeeded"]
       }
+

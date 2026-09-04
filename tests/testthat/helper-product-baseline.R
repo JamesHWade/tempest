@@ -260,7 +260,7 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
       ))
     }
     if (identical(role, "writer")) {
-      return(list(
+      return(fake_chat_r6(list(
         chat_structured = function(prompt, type = NULL, ...) {
           if (
             startsWith(
@@ -318,13 +318,13 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
           stop("Unexpected direct writer fallback in product baseline.")
         },
         register_tools = function(...) invisible(NULL)
-      ))
+      )))
     }
     if (
       identical(role, "judge") &&
         identical(system_prompt, tempest_prompt("fact_extractor_system"))
     ) {
-      return(list(
+      return(fake_chat_r6(list(
         chat_structured = function(prompt, type = NULL, ...) {
           if (
             !startsWith(
@@ -357,7 +357,7 @@ storm_product_fixture <- function(.local_envir = parent.frame()) {
         },
         chat = function(prompt, ...) "",
         register_tools = function(...) invisible(NULL)
-      ))
+      )))
     }
     if (identical(role, "judge")) {
       return(expect_program_prompt(

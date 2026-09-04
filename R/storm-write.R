@@ -86,15 +86,22 @@ tempest_section_facts_text <- function(
     return(result)
   }
 
-  result <- tempest_section_evidence_text(relevant)
+  result <- tempest_section_evidence_text(
+    relevant,
+    accepted = tempest_workspace_accepted_claim_keys(store)
+  )
   attr(result, "verified_evidence") <- relevant
   attr(result, "verified_evidence_count") <- as.integer(length(relevant))
   result
 }
 
-tempest_section_evidence_text <- function(evidence) {
+# Each fact carries its disposition against the accepted Claims pinned from
+# the Graft snapshot, so the writer can tell which claims are new (what
+# changed) and which restate accepted knowledge (no material change).
+tempest_section_evidence_text <- function(evidence, accepted = character()) {
   paste(
     purrr::map_chr(evidence, function(f) {
+      status <- tempest_briefing_claim_disposition(f@claim_text, accepted)
       paste0(
         "- ",
         f@claim_text,
@@ -102,6 +109,8 @@ tempest_section_evidence_text <- function(evidence) {
         paste(f@source_ids, collapse = ", "),
         "] (claim_id: ",
         f@claim_id,
+        ") (status: ",
+        if (identical(status, "duplicate")) "already accepted" else "new",
         ")"
       )
     }),
@@ -198,7 +207,10 @@ tempest_section_partition_evidence <- function(jobs) {
       logical(1)
     )
     claims <- job$verified_evidence[keep]
-    job$facts_text <- tempest_section_evidence_text(claims)
+    job$facts_text <- tempest_section_evidence_text(
+      claims,
+      accepted = tempest_workspace_accepted_claim_keys(job$workspace)
+    )
     job$evidence <- claims
     job$verified_evidence <- claims
     job
@@ -597,12 +609,17 @@ tempest_summarize_facts_for_prompt <- function(
       }
     )
   }
+  accepted <- tempest_workspace_accepted_claim_keys(store)
+  # New claims come first so truncation never hides a change behind facts
+  # that only restate accepted knowledge.
+  disposition <- vapply(
+    facts,
+    \(fact) tempest_briefing_claim_disposition(fact@claim_text, accepted),
+    character(1)
+  )
+  facts <- facts[order(disposition != "new", seq_along(facts))]
   facts <- facts[seq_len(min(length(facts), max_items))]
-  lines <- purrr::map_chr(facts, function(f) {
-    cites <- paste0("[", paste(f@source_ids, collapse = ", "), "]")
-    glue::glue("- {f@claim_text} {cites} (claim_id: {f@claim_id})")
-  })
-  paste(lines, collapse = "\n")
+  tempest_section_evidence_text(facts, accepted = accepted)
 }
 
 #' @keywords internal

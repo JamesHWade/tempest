@@ -62,3 +62,4 @@
     Condition
       Error in `tempest_research_workspace_abort()`:
       ! base_snapshot_id is pinned when the workspace is created.
+

@@ -65,12 +65,12 @@ Suggests:
     withr,
     zip
 Remotes:
-    JamesHWade/deputy@8b523801db2f283b4155a738106c1386cacf5af8,
-    JamesHWade/dsprrr@db28eae2235ab15c4f5c1c9794118d127eabbdd7,
-    JamesHWade/graft@81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5,
-    JamesHWade/scans@f44bbe44a13da59d6cb589be9f4fedb6f788bcce,
+    JamesHWade/deputy,
+    JamesHWade/dsprrr,
+    JamesHWade/graft,
+    JamesHWade/scans,
     posit-dev/shinychat/pkg-r,
-    tidyverse/ellmer@5cb916dbab521f2d0b3871f284a6c67b8045d14c
+    tidyverse/ellmer#1067
 Config/testthat/edition: 3
 Config/testthat/parallel: true
 Config/testthat/start-first: storm-persistence-artifact-drift,

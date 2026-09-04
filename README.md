@@ -143,9 +143,14 @@ commit_result <- graft::graft_commit(store, plan)
 receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
 ```
 
-The packaged schema is compiled against Graft accessor commit
-`81bd3f83a3c8ee2bee22b61ff09b475f58b4f0e5`; runtime loading checks its exact
-immutable build digest and never recompiles LinkML.
+The packaged schema is compiled for Graft consumer contract `0.2.0`, which
+runtime loading checks through `graft::graft_contract_version()`; loading
+also checks the schema's exact immutable build digest and never recompiles
+LinkML. Planning keys accepted `Claim` identity on normalized statement text
+and accepted `Source` identity on the exact locator plus content hash, so research that
+re-verifies an accepted claim revises that record instead of inserting a
+duplicate, and the plan's `disposition` column separates `new`, `revision`,
+and `duplicate` proposals.
 
 Promotion accepts only a completed `tempest_run()` result or a succeeded,
 quiescent `TempestSession`. A loose Workspace, Manifest, or StageRecord tuple
@@ -477,9 +482,74 @@ of accepted `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records, which
 Tempest reads as data:
 
 ```r
-records <- graft::graft_find(view, "battery recycling", limit = 25)
-knowledge <- tempest_knowledge(view, record_ids = records$id)
+topic_query <- "battery recycling"
+basis_limit <- 1000L
+claims <- graft::graft_find(
+  view,
+  topic_query,
+  class = "Claim",
+  limit = basis_limit
+)
+if (isTRUE(attr(claims, "truncated"))) stop("Narrow the topic.")
+knowledge <- tempest_knowledge(view, record_ids = claims$id)
+basis <- list(
+  snapshot = graft::graft_view_snapshot(view),
+  record_ids = claims$id
+)
+saveRDS(basis, "accepted-basis.rds")
 ```
+
+A scheduled host does not need to search again on later days. Persist the
+whole selected basis and its snapshot, then apply active changes scoped to
+that basis and topic. A promotion receipt contains only the records planned
+for one run, so it cannot replace this durable selection. This compact example
+carries `Claim` records only; the daily briefing vignette shows the
+class-aware workflow for carrying related evidence. Deleted, retracted, and
+superseded records leave the basis, while unrelated topics and record classes
+remain outside Tempest's evidence channel:
+
+```r
+previous_basis <- readRDS("accepted-basis.rds")
+matches <- graft::graft_find(
+  view,
+  topic_query,
+  class = "Claim",
+  limit = basis_limit
+)
+if (isTRUE(attr(matches, "truncated"))) stop("Narrow the topic.")
+changes <- graft::graft_changes(
+  view,
+  since = previous_basis$snapshot,
+  class = "Claim"
+)
+relevant <- changes$record_id %in% union(
+  previous_basis$record_ids,
+  matches$id
+)
+changes <- changes[relevant, ]
+status <- vapply(
+  changes$record,
+  \(record) if (is.null(record$status)) "active" else record$status,
+  character(1)
+)
+keep <- changes$action != "delete" & status == "active"
+removed_ids <- changes$record_id[!keep]
+record_ids <- union(
+  setdiff(previous_basis$record_ids, removed_ids),
+  changes$record_id[keep]
+)
+if (length(record_ids) > basis_limit) stop("Narrow the topic.")
+knowledge <- tempest_knowledge(view, record_ids = record_ids)
+basis <- list(
+  snapshot = graft::graft_view_snapshot(view),
+  record_ids = record_ids
+)
+saveRDS(basis, "accepted-basis.rds")
+```
+
+Accepted `Claim` records give the briefing its change signal: a verified claim
+that restates one of them is a no-change finding, and every other verified
+claim is something that changed.
 
 Accepted record text is evidence, never instruction. It travels in a data
 channel and cannot change prompts, message roles, tools, governed-procedure

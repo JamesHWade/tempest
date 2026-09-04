@@ -29,7 +29,7 @@ jobs:
           extra-packages: any::devtools, any::remotes
           needs: check
 
-      - name: Install exact ecosystem revisions
+      - name: Install maintained ecosystem remotes
         run: |
           remotes <- trimws(strsplit(
             read.dcf("DESCRIPTION", fields = "Remotes")[[1]],
@@ -37,11 +37,11 @@ jobs:
             fixed = TRUE
           )[[1]])
           ecosystem <- remotes[grepl(
-            "^JamesHWade/(deputy|dsprrr|graft)@",
+            "^JamesHWade/(deputy|dsprrr|graft)$",
             remotes
           )]
           if (length(ecosystem) != 3L) {
-            stop("DESCRIPTION must pin Deputy, dsprrr, and Graft revisions")
+            stop("DESCRIPTION must track Deputy, dsprrr, and Graft remotes")
           }
           remotes::install_github(
             ecosystem,

@@ -40,7 +40,9 @@ knowledge snapshot on which this workspace is based.}
     \item{\code{citation_audit}}{Read-only pair-level projection of the authoritative
 claim-support assessments, when available.}
 
-    \item{\code{max_sources}}{Maximum number of unique resources admitted.}
+    \item{\code{max_sources}}{Maximum number of unique retrieved resources admitted.
+Accepted Graft knowledge records inserted by \code{\link[=tempest_knowledge]{tempest_knowledge()}} are
+bounded separately and do not count.}
   }
   \if{html}{\out{</div>}}
 }

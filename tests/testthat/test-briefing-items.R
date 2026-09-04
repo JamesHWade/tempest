@@ -20,6 +20,7 @@ test_that("grounded writing renders typed briefing items", {
       support_score = 0.91
     )
   )
+  fake_accepted_claim(workspace, claims[[2]]@claim_text)
   lapply(claims, workspace$add_proposed_claim)
   claims <- fake_verify_claim_supports(workspace, claims)
   assessment_text <- tempest:::tempest_briefing_item_synthesis_text(
@@ -70,7 +71,7 @@ test_that("grounded writing renders typed briefing items", {
   )
 
   expect_identical(evaluated$support_status, "verified")
-  expect_match(evaluated$output, "### Verified observations", fixed = TRUE)
+  expect_match(evaluated$output, "### What changed", fixed = TRUE)
   expect_match(evaluated$output, "### Why it matters", fixed = TRUE)
   expect_match(evaluated$output, "### Review today", fixed = TRUE)
   expect_match(evaluated$output, "### No material change", fixed = TRUE)
@@ -280,101 +281,64 @@ test_that("briefing items fail closed on ungoverned synthesis", {
   )
 })
 
-test_that("no-change claims use a conservative deterministic gate", {
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "The permit schedule remains unchanged since the prior review"
+test_that("claim dispositions compare verified text with pinned Claims", {
+  workspace <- fake_store_with_sources(1)
+  fake_accepted_claim(workspace, "The permit schedule remains unchanged.")
+
+  expect_identical(
+    tempest:::tempest_briefing_claim_disposition(
+      "The permit schedule remains unchanged.",
+      tempest:::tempest_workspace_accepted_claim_keys(workspace)
     ),
-    TRUE
+    "duplicate"
   )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "No material change was reported in permit timing"
+  expect_identical(
+    tempest:::tempest_briefing_claim_disposition(
+      "  the permit  schedule remains UNCHANGED",
+      tempest:::tempest_workspace_accepted_claim_keys(workspace)
     ),
-    TRUE
+    "duplicate"
   )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "The project start date remains unchanged"
+  expect_identical(
+    tempest:::tempest_briefing_claim_disposition(
+      "The permit schedule moved by two weeks.",
+      tempest:::tempest_workspace_accepted_claim_keys(workspace)
     ),
-    TRUE
+    "new"
   )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "The operator\u2019s permit remains unchanged"
-    ),
-    TRUE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Pilot output increased by 18 percent"
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      paste(
-        "The permit schedule remains unchanged,",
-        "but pilot output increased by 18 percent"
-      )
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Pilot output remains unchanged at an 18 percent increase"
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Headcount remained unchanged; revenue doubled."
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Headcount remained unchanged and revenue doubled."
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Headcount remained unchanged because revenue doubled."
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Revenue doubled as headcount remained unchanged."
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Revenue doubled before headcount remained unchanged."
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Revenue doubled when headcount remained unchanged."
-    ),
-    FALSE
-  )
-  expect_equal(
-    tempest:::tempest_briefing_claim_affirms_no_change(
-      "Revenue doubled. Headcount remained unchanged."
-    ),
-    FALSE
+  expect_identical(
+    tempest:::tempest_briefing_claim_disposition("Anything", character()),
+    "new"
   )
 })
 
-test_that("compound no-change claims cannot enter or reload a briefing", {
+test_that("accepted claim text is recovered from legacy record content", {
+  workspace <- fake_store_with_sources(1)
+  resource <- tempest:::tempest_resource(
+    resource_kind = "graft.record",
+    locator = "graft/Claim/legacy",
+    title = "Claim legacy",
+    media_type = "text/plain",
+    content = "claim_type: finding\nstatement_text: Output held steady.\n",
+    metadata = list(
+      graft_record_id = "legacy",
+      graft_record_class = "Claim",
+      graft_revision_id = "legacy"
+    )
+  )
+  workspace$upsert_retrieved_resource(resource)
+
+  expect_identical(
+    tempest:::tempest_workspace_accepted_claim_keys(workspace),
+    tempest:::tempest_claim_text_key("Output held steady.")
+  )
+})
+
+test_that("no-change items require a claim already accepted in the snapshot", {
   workspace <- fake_store_with_sources(1)
   source_id <- workspace$list_retrieved_sources()[[1]]$id
   claim <- tempest_claim(
-    "Headcount remained unchanged; revenue doubled.",
+    "Headcount remained unchanged this quarter.",
     source_ids = source_id,
     verification_status = "supported",
     support_score = 0.9
@@ -387,20 +351,33 @@ test_that("compound no-change claims cannot enter or reload a briefing", {
     claim_ids = list(claim@claim_id),
     confidence = "high"
   )
+  accepted <- fake_store_with_sources(1)
+  fake_accepted_claim(accepted, claim@claim_text)
+  accepted_claim <- tempest_claim(
+    claim@claim_text,
+    source_ids = accepted$list_retrieved_sources()[[1]]$id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  accepted$add_proposed_claim(accepted_claim)
+  accepted_claim <- fake_verify_claim_supports(
+    accepted,
+    list(accepted_claim)
+  )[[1]]
+  context <- list(
+    workspace = workspace,
+    evidence = list(claim),
+    min_support_score = 0.7
+  )
 
   expect_error(
     tempest:::tempest_stage_evaluate(
       test_program_executions()$section_writing,
       list(items = list(value)),
-      context = list(
-        workspace = workspace,
-        evidence = list(claim),
-        min_support_score = 0.7
-      )
+      context = context
     ),
     class = "tempest_stage_output_validation_error"
   )
-
   item <- tempest:::TempestBriefingItem(
     kind = value$kind,
     text = value$text,
@@ -414,6 +391,94 @@ test_that("compound no-change claims cannot enter or reload a briefing", {
       min_support_score = 0.7
     ),
     class = "tempest_product_report_error"
+  )
+
+  observation <- list(
+    kind = "observation",
+    text = accepted_claim@claim_text,
+    claim_ids = list(accepted_claim@claim_id)
+  )
+  expect_error(
+    tempest:::tempest_stage_evaluate(
+      test_program_executions()$section_writing,
+      list(items = list(observation)),
+      context = list(
+        workspace = accepted,
+        evidence = list(accepted_claim),
+        min_support_score = 0.7
+      )
+    ),
+    class = "tempest_stage_output_validation_error"
+  )
+  accepted_item <- tempest:::TempestBriefingItem(
+    kind = "no_change",
+    text = accepted_claim@claim_text,
+    claim_ids = accepted_claim@claim_id,
+    confidence = "high"
+  )
+  reloaded <- tempest:::tempest_briefing_items_from_markdown(
+    tempest:::tempest_briefing_item_markdown(accepted_item, accepted),
+    accepted,
+    min_support_score = 0.7
+  )
+  expect_identical(reloaded[[1L]]@kind, "no_change")
+})
+
+test_that("observations render under What changed and no-change separately", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  claims <- list(
+    tempest_claim(
+      "A new recycling line reached commercial yield.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    ),
+    tempest_claim(
+      "The permit schedule remains unchanged.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    )
+  )
+  fake_accepted_claim(workspace, claims[[2L]]@claim_text)
+  for (claim in claims) {
+    workspace$add_proposed_claim(claim)
+  }
+  claims <- fake_verify_claim_supports(workspace, claims)
+  evaluated <- tempest:::tempest_stage_evaluate(
+    test_program_executions()$section_writing,
+    list(
+      items = list(
+        list(
+          kind = "observation",
+          text = claims[[1L]]@claim_text,
+          claim_ids = list(claims[[1L]]@claim_id)
+        ),
+        list(
+          kind = "no_change",
+          text = claims[[2L]]@claim_text,
+          claim_ids = list(claims[[2L]]@claim_id),
+          confidence = "high"
+        )
+      )
+    ),
+    context = list(
+      workspace = workspace,
+      evidence = claims,
+      min_support_score = 0.7
+    )
+  )
+  lines <- strsplit(evaluated$output, "\n", fixed = TRUE)[[1L]]
+
+  expect_identical(
+    lines[startsWith(lines, "### ")],
+    c("### What changed", "### No material change")
+  )
+  expect_match(
+    evaluated$output,
+    "**No material change:** The permit",
+    fixed = TRUE
   )
 })
 
@@ -531,5 +596,182 @@ test_that("canonical reports preserve assessment provenance", {
       min_support_score = 0.7
     ),
     class = "tempest_product_report_error"
+  )
+})
+
+test_that("a briefing may consist of no-change findings alone", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  claim <- tempest_claim(
+    "The permit schedule remains unchanged.",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  fake_accepted_claim(workspace, claim@claim_text)
+  workspace$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+
+  evaluated <- tempest:::tempest_stage_evaluate(
+    test_program_executions()$section_writing,
+    list(
+      items = list(
+        list(
+          kind = "no_change",
+          text = claim@claim_text,
+          claim_ids = list(claim@claim_id),
+          confidence = "high"
+        )
+      )
+    ),
+    context = list(
+      workspace = workspace,
+      evidence = list(claim),
+      min_support_score = 0.7
+    )
+  )
+
+  expect_match(evaluated$output, "### No material change", fixed = TRUE)
+  expect_no_match(evaluated$output, "### What changed", fixed = TRUE)
+})
+
+test_that("section facts carry each claim's disposition for the writer", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  fake_accepted_claim(workspace, "The permit schedule remains unchanged.")
+  claims <- list(
+    tempest_claim("A new line reached yield.", source_ids = source_id),
+    tempest_claim(
+      "The permit schedule remains unchanged.",
+      source_ids = source_id
+    )
+  )
+
+  text <- tempest:::tempest_section_evidence_text(
+    claims,
+    accepted = tempest:::tempest_workspace_accepted_claim_keys(workspace)
+  )
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
+
+  expect_match(lines[[1L]], "\\(status: new\\)$")
+  expect_match(lines[[2L]], "\\(status: already accepted\\)$")
+  expect_match(
+    lines[[1L]],
+    paste0("(claim_id: ", claims[[1L]]@claim_id, ")"),
+    fixed = TRUE
+  )
+})
+
+test_that("retracted or superseded accepted claims are not no-change anchors", {
+  workspace <- fake_store_with_sources(1)
+  fake_accepted_claim(workspace, "Output held steady.", status = "superseded")
+  fake_accepted_claim(workspace, "Yield reached target.", status = "retracted")
+  fake_accepted_claim(workspace, "Permits are unchanged.")
+  legacy <- tempest:::tempest_resource(
+    resource_kind = "graft.record",
+    locator = "graft/Claim/legacy",
+    title = "Claim legacy",
+    media_type = "text/plain",
+    content = "statement_text: Old finding.\nstatus: superseded\n",
+    metadata = list(
+      graft_record_id = "legacy",
+      graft_record_class = "Claim",
+      graft_revision_id = "legacy"
+    )
+  )
+  workspace$upsert_retrieved_resource(legacy)
+
+  expect_identical(
+    tempest:::tempest_workspace_accepted_claim_keys(workspace),
+    tempest:::tempest_claim_text_key("Permits are unchanged.")
+  )
+})
+
+test_that("lead facts keep a new claim ahead of accepted ones when truncated", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  fake_accepted_claim(workspace, "The permit schedule remains unchanged.")
+  claims <- list(
+    tempest_claim(
+      "The permit schedule remains unchanged.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    ),
+    tempest_claim(
+      "A new line reached yield.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    )
+  )
+  for (claim in claims) {
+    workspace$add_proposed_claim(claim)
+  }
+  fake_verify_claim_supports(workspace, claims)
+
+  text <- tempest:::tempest_summarize_facts_for_prompt(
+    workspace,
+    max_items = 1,
+    verified_only = TRUE
+  )
+
+  expect_match(text, "A new line reached yield.", fixed = TRUE)
+  expect_no_match(text, "already accepted", fixed = TRUE)
+})
+
+test_that("a briefing cannot hide a new claim behind a no-change finding", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  fake_accepted_claim(workspace, "The permit schedule remains unchanged.")
+  claims <- list(
+    tempest_claim(
+      "A new line reached yield.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    ),
+    tempest_claim(
+      "The permit schedule remains unchanged.",
+      source_ids = source_id,
+      verification_status = "supported",
+      support_score = 0.9
+    )
+  )
+  for (claim in claims) {
+    workspace$add_proposed_claim(claim)
+  }
+  claims <- fake_verify_claim_supports(workspace, claims)
+  context <- list(
+    workspace = workspace,
+    evidence = claims,
+    min_support_score = 0.7
+  )
+  only_no_change <- list(
+    items = list(
+      list(
+        kind = "no_change",
+        text = claims[[2L]]@claim_text,
+        claim_ids = list(claims[[2L]]@claim_id),
+        confidence = "high"
+      )
+    )
+  )
+
+  expect_error(
+    tempest:::tempest_stage_evaluate(
+      test_program_executions()$section_writing,
+      only_no_change,
+      context = context
+    ),
+    class = "tempest_stage_output_validation_error"
+  )
+  expect_error(
+    tempest:::tempest_stage_evaluate(
+      test_program_executions()$lead_section,
+      only_no_change,
+      context = context
+    ),
+    class = "tempest_stage_output_validation_error"
   )
 })

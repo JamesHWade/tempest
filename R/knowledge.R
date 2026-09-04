@@ -22,8 +22,12 @@ tempest_knowledge_record_allowlist <- function() {
   c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
 }
 
+tempest_is_accepted_knowledge_resource <- function(resource) {
+  identical(resource@resource_kind, "graft.record")
+}
+
 tempest_knowledge_max_records <- function() {
-  100L
+  1000L
 }
 
 #' Accepted organizational knowledge pinned to one Graft view
@@ -145,12 +149,32 @@ tempest_knowledge_record_resource <- function(knowledge_view, record_id) {
     title = paste(record_class, record_id),
     media_type = "text/plain",
     content = content,
-    metadata = list(
-      graft_record_id = record_id,
-      graft_record_class = record_class,
-      graft_revision_id = history$revision_id[[1L]]
+    metadata = c(
+      list(
+        graft_record_id = record_id,
+        graft_record_class = record_class,
+        graft_revision_id = history$revision_id[[1L]]
+      ),
+      tempest_knowledge_statement_metadata(record_class, payload)
     )
   )
+}
+
+# Accepted Claims carry their exact statement text as metadata so the briefing
+# can decide structurally whether a verified claim restates accepted knowledge.
+tempest_knowledge_statement_metadata <- function(record_class, payload) {
+  if (!identical(record_class, "Claim")) {
+    return(list())
+  }
+  text <- payload[["statement_text"]]
+  if (!rlang::is_string(text) || is.na(text)) {
+    return(list())
+  }
+  status <- payload[["status"]]
+  if (!rlang::is_string(status) || is.na(status)) {
+    status <- "active"
+  }
+  list(graft_statement_text = text, graft_statement_status = status)
 }
 
 # Render an accepted record as canonical inert text. A record whose fields
@@ -234,8 +258,59 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #' @examples
 #' \dontrun{
 #' view <- graft::graft_at(store, graft::graft_snapshot(store))
-#' records <- graft::graft_find(view, "battery recycling", limit = 25)
-#' knowledge <- tempest_knowledge(view, record_ids = records$id)
+#' topic_query <- "battery recycling"
+#' basis_limit <- 1000L
+#' claims <- graft::graft_find(
+#'   view,
+#'   topic_query,
+#'   class = "Claim",
+#'   limit = basis_limit
+#' )
+#' if (isTRUE(attr(claims, "truncated"))) stop("Narrow the topic.")
+#' knowledge <- tempest_knowledge(view, record_ids = claims$id)
+#' basis <- list(
+#'   snapshot = graft::graft_view_snapshot(view),
+#'   record_ids = claims$id
+#' )
+#' saveRDS(basis, "accepted-basis.rds")
+#'
+#' # On later days, apply only scoped, active Claim changes to the saved basis.
+#' previous_basis <- readRDS("accepted-basis.rds")
+#' matches <- graft::graft_find(
+#'   view,
+#'   topic_query,
+#'   class = "Claim",
+#'   limit = basis_limit
+#' )
+#' if (isTRUE(attr(matches, "truncated"))) stop("Narrow the topic.")
+#' changes <- graft::graft_changes(
+#'   view,
+#'   since = previous_basis$snapshot,
+#'   class = "Claim"
+#' )
+#' relevant <- changes$record_id %in% union(
+#'   previous_basis$record_ids,
+#'   matches$id
+#' )
+#' changes <- changes[relevant, ]
+#' status <- vapply(
+#'   changes$record,
+#'   \(record) if (is.null(record$status)) "active" else record$status,
+#'   character(1)
+#' )
+#' keep <- changes$action != "delete" & status == "active"
+#' removed_ids <- changes$record_id[!keep]
+#' record_ids <- union(
+#'   setdiff(previous_basis$record_ids, removed_ids),
+#'   changes$record_id[keep]
+#' )
+#' if (length(record_ids) > basis_limit) stop("Narrow the topic.")
+#' knowledge <- tempest_knowledge(view, record_ids = record_ids)
+#' basis <- list(
+#'   snapshot = graft::graft_view_snapshot(view),
+#'   record_ids = record_ids
+#' )
+#' saveRDS(basis, "accepted-basis.rds")
 #' result <- tempest_run("Battery recycling", knowledge = knowledge)
 #' }
 #' @export

@@ -331,8 +331,8 @@ fake_costorm_warmup_session <- function(
   # Mirror the R6 private layout the internal session accessors read.
   test_session_private(session, workspace = store)
   session$fake_chats <- list(
-    extractor = list(chat_structured_async = extractor_async),
-    mindmap = list()
+    extractor = fake_chat_r6(list(chat_structured_async = extractor_async)),
+    mindmap = fake_chat_r6(list())
   )
   session$emit_progress <- function(
     event_type,

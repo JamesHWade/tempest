@@ -585,6 +585,7 @@ test_that("briefing items render each source as a citation token", {
   for (claim in claims) {
     store$add_proposed_claim(claim)
   }
+  fake_accepted_claim(store, claims[[2L]]@claim_text)
   claims <- fake_verify_claim_supports(store, claims)
   items <- list(
     tempest:::TempestBriefingItem(

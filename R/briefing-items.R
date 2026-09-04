@@ -8,103 +8,95 @@ tempest_briefing_item_confidences <- function() {
   c("low", "medium", "high")
 }
 
-tempest_briefing_no_change_patterns <- function() {
-  term <- paste0(
-    "(?!(?:after|although|and|as|because|before|but|despite|for|however|",
-    "if|instead|meanwhile|moreover|nevertheless|nor|once|or|otherwise|",
-    "plus|provided|since|so|than|that|then|therefore|though|unless|until|",
-    "when|whenever|where|whereas|wherever|whether|which|while|who|whom|",
-    "whose|yet)\\b)",
-    "[[:alnum:]][[:alnum:]'/-]*"
-  )
-  phrase <- paste0(
-    term,
-    "(?: ",
-    term,
-    "){0,15}"
-  )
-  reference <- paste0(
-    "(?:the )?(?:prior|previous|last|earlier|baseline|initial|",
-    "most recent) (?:review|report|assessment|briefing|update|period|",
-    "measurement|observation|snapshot|version|release)"
-  )
-  unchanged <- paste(
-    c(
-      "(?:has|have|had) remained (?:materially )?unchanged",
-      "remain(?:s|ed)? (?:materially )?unchanged",
-      "(?:is|are|was|were) (?:materially )?unchanged",
-      "(?:has|have|had) not (?:materially )?changed",
-      "did not (?:materially )?change"
-    ),
-    collapse = "|"
-  )
-  reported <- paste(
-    c(
-      "reported",
-      "observed",
-      "identified",
-      "detected",
-      "documented",
-      "found",
-      "noted"
-    ),
-    collapse = "|"
-  )
-  no_change <- "no (?:material )?changes?"
-
-  c(
-    paste0(
-      "^",
-      phrase,
-      " (?:",
-      unchanged,
-      ")(?: since ",
-      reference,
-      ")?[.]?$"
-    ),
-    paste0("^", no_change, "[.]?$"),
-    paste0(
-      "^",
-      no_change,
-      " (?:in|to|for) ",
-      phrase,
-      "[.]?$"
-    ),
-    paste0(
-      "^",
-      no_change,
-      " (?:is|are|was|were|has been|have been|had been) (?:",
-      reported,
-      ")(?: (?:in|to|for) ",
-      phrase,
-      ")?[.]?$"
-    ),
-    paste0(
-      "^there (?:is|are|was|were|has been|have been|had been) ",
-      no_change,
-      "(?: (?:in|to|for) ",
-      phrase,
-      ")?[.]?$"
-    )
-  )
+# A briefing decides structurally whether a verified claim changes accepted
+# knowledge: it compares the claim text with the Claim records that were
+# pinned from the Graft snapshot at the start of the run. A claim that restates
+# an accepted Claim is a duplicate and may only support a no-change item; any
+# other verified claim is new and reads as an observation of what changed.
+tempest_briefing_claim_dispositions <- function() {
+  c("new", "duplicate")
 }
 
-tempest_briefing_claim_affirms_no_change <- function(text) {
-  if (!rlang::is_string(text) || is.na(text) || !nzchar(tempest_trim(text))) {
-    return(FALSE)
+tempest_workspace_accepted_claim_keys <- function(workspace) {
+  if (!inherits(workspace, "ResearchWorkspace")) {
+    return(character())
   }
-  normalized <- gsub(
-    pattern = "[[:space:]]+",
-    replacement = " ",
-    x = chartr("\u2019", "'", tolower(tempest_trim(text)))
+  resources <- workspace$list_retrieved_resources()
+  keys <- character()
+  for (resource in resources) {
+    if (!identical(resource@resource_kind, "graft.record")) {
+      next
+    }
+    metadata <- resource@metadata
+    if (!identical(metadata$graft_record_class, "Claim")) {
+      next
+    }
+    text <- metadata$graft_statement_text
+    if (!rlang::is_string(text)) {
+      text <- tempest_knowledge_content_field(
+        resource@content,
+        "statement_text"
+      )
+    }
+    status <- metadata$graft_statement_status
+    if (!rlang::is_string(status)) {
+      status <- tempest_knowledge_content_field(resource@content, "status")
+    }
+    # A retracted or superseded Claim is no longer accepted knowledge, so a
+    # verified restatement of it is a change, not a no-change finding.
+    if (rlang::is_string(status) && !identical(status, "active")) {
+      next
+    }
+    if (rlang::is_string(text) && nzchar(tempest_trim(text))) {
+      keys <- c(keys, tempest_claim_text_key(text))
+    }
+  }
+  unique(keys)
+}
+
+tempest_knowledge_content_field <- function(content, field) {
+  if (!rlang::is_string(content)) {
+    return(NULL)
+  }
+  prefix <- paste0(field, ": ")
+  lines <- strsplit(content, "\n", fixed = TRUE)[[1L]]
+  line <- lines[startsWith(lines, prefix)]
+  if (length(line) != 1L) {
+    return(NULL)
+  }
+  substring(line, nchar(prefix) + 1L)
+}
+
+# `accepted` is the vector from tempest_workspace_accepted_claim_keys(),
+# computed once per briefing rather than once per item.
+tempest_briefing_claim_disposition <- function(claim_text, accepted) {
+  if (
+    !rlang::is_string(claim_text) ||
+      is.na(claim_text) ||
+      !nzchar(tempest_trim(claim_text))
+  ) {
+    return("new")
+  }
+  if (tempest_claim_text_key(claim_text) %in% accepted) {
+    "duplicate"
+  } else {
+    "new"
+  }
+}
+
+tempest_briefing_item_disposition_valid <- function(
+  kind,
+  claim_text,
+  accepted
+) {
+  if (!kind %in% c("observation", "no_change")) {
+    return(TRUE)
+  }
+  disposition <- tempest_briefing_claim_disposition(claim_text, accepted)
+  identical(
+    disposition,
+    if (identical(kind, "no_change")) "duplicate" else "new"
   )
-  any(vapply(
-    tempest_briefing_no_change_patterns(),
-    grepl,
-    logical(1),
-    x = normalized,
-    perl = TRUE
-  ))
 }
 
 tempest_briefing_item_confidence_prop <- function() {
@@ -386,6 +378,9 @@ tempest_briefing_item_validate_synthesis <- function(kind, text, claims) {
   invisible(NULL)
 }
 
+# `require_observation` is TRUE when the supplied evidence contains a claim
+# that is not yet accepted: a briefing must then report at least one change
+# rather than hide it behind a no-change finding.
 tempest_briefing_items_validate_counts <- function(
   items,
   limits = c(
@@ -393,13 +388,25 @@ tempest_briefing_items_validate_counts <- function(
     assessment = 2L,
     review_action = 2L,
     no_change = 1L
-  )
+  ),
+  require_observation = FALSE
 ) {
   kinds <- vapply(items, \(item) item@kind, character(1))
   counts <- table(factor(kinds, levels = names(limits)))
-  if (counts[["observation"]] == 0L) {
+  if (isTRUE(require_observation) && counts[["observation"]] == 0L) {
     tempest_stage_output_abort(
-      "Grounded writing requires at least one verified observation."
+      paste0(
+        "Grounded writing must report at least one observation when the ",
+        "supplied evidence contains a claim that is not yet accepted."
+      )
+    )
+  }
+  if (counts[["observation"]] == 0L && counts[["no_change"]] == 0L) {
+    tempest_stage_output_abort(
+      paste0(
+        "Grounded writing requires at least one verified observation or ",
+        "one verified no-change finding."
+      )
     )
   }
   if (any(counts > limits)) {
@@ -440,6 +447,8 @@ tempest_briefing_items_from_output <- function(output, context) {
   min_support_score <- tempest_normalize_min_support_score(
     context$min_support_score %||% 0.7
   )
+  accepted <- tempest_workspace_accepted_claim_keys(workspace)
+  has_new <- tempest_briefing_evidence_has_new(evidence, accepted)
   items <- lapply(values, function(value) {
     value <- tempest_briefing_item_output_record(value)
     if (
@@ -487,14 +496,17 @@ tempest_briefing_items_from_output <- function(output, context) {
       claims
     )
     if (
-      identical(value$kind, "no_change") &&
-        !tempest_briefing_claim_affirms_no_change(claims[[1]]@claim_text)
+      !tempest_briefing_item_disposition_valid(
+        value$kind,
+        claims[[1]]@claim_text,
+        accepted
+      )
     ) {
       tempest_stage_output_abort(
         paste0(
-          "A no-change item requires a verified claim that conservatively ",
-          "affirms an unchanged condition without also asserting a material ",
-          "change."
+          "A no-change item must copy a verified claim that restates a Claim ",
+          "accepted in the pinned Graft snapshot, and an observation must copy ",
+          "a verified claim that is not yet accepted."
         )
       )
     }
@@ -514,7 +526,20 @@ tempest_briefing_items_from_output <- function(output, context) {
     )
     item
   })
-  tempest_briefing_items_validate_counts(items)
+  tempest_briefing_items_validate_counts(items, require_observation = has_new)
+}
+
+tempest_briefing_evidence_has_new <- function(evidence, accepted) {
+  any(vapply(
+    evidence,
+    \(claim) {
+      identical(
+        tempest_briefing_claim_disposition(claim@claim_text, accepted),
+        "new"
+      )
+    },
+    logical(1)
+  ))
 }
 
 tempest_briefing_hex_encode <- function(value) {
@@ -613,7 +638,7 @@ tempest_briefing_items_markdown <- function(
   lead = FALSE
 ) {
   headings <- c(
-    observation = "Verified observations",
+    observation = "What changed",
     assessment = "Why it matters",
     review_action = "Review today",
     no_change = "No material change"
@@ -740,6 +765,7 @@ tempest_briefing_items_from_markdown <- function(
   }
   items <- lapply(parsed[has_record], `[[`, "item")
   parsed_lines <- parsed[has_record]
+  accepted <- tempest_workspace_accepted_claim_keys(workspace)
   for (index in seq_along(items)) {
     item <- items[[index]]
     claims <- lapply(item@claim_ids, workspace$get_proposed_claim)
@@ -793,13 +819,16 @@ tempest_briefing_items_from_markdown <- function(
       )
     }
     if (
-      identical(item@kind, "no_change") &&
-        !tempest_briefing_claim_affirms_no_change(claims[[1]]@claim_text)
+      !tempest_briefing_item_disposition_valid(
+        item@kind,
+        claims[[1]]@claim_text,
+        accepted
+      )
     ) {
       tempest_product_report_abort(
         paste0(
-          "A no-change briefing item no longer binds a claim that ",
-          "conservatively affirms an unchanged condition."
+          "A briefing item no longer matches its claim's disposition against ",
+          "the pinned accepted Claims."
         )
       )
     }
@@ -887,6 +916,7 @@ tempest_briefing_markdown_assertion_input <- function(
 tempest_stage_evaluate_briefing_items <- function(output, context, stage) {
   items <- tempest_briefing_items_from_output(output, context)
   if (identical(stage, "lead_section")) {
+    workspace <- tempest_stage_workspace(context)
     items <- tempest_briefing_items_validate_counts(
       items,
       limits = c(
@@ -894,6 +924,10 @@ tempest_stage_evaluate_briefing_items <- function(output, context, stage) {
         assessment = 1L,
         review_action = 1L,
         no_change = 1L
+      ),
+      require_observation = tempest_briefing_evidence_has_new(
+        tempest_stage_evidence(context),
+        tempest_workspace_accepted_claim_keys(workspace)
       )
     )
   }

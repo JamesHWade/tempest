@@ -281,7 +281,7 @@ test_that("tempest_storm_section_job wraps section text as markdown", {
   expect_equal(result$title, "Mechanisms")
   expect_match(
     result$section_text,
-    "### Verified observations",
+    "### What changed",
     fixed = TRUE
   )
   expect_match(result$section_text, "Section body", fixed = TRUE)
@@ -294,7 +294,7 @@ test_that("tempest_storm_section_job wraps section text as markdown", {
   )
   expect_match(
     result$markdown,
-    "## Evidence focus\n\n### Verified observations",
+    "## Evidence focus\n\n### What changed",
     fixed = TRUE
   )
 })

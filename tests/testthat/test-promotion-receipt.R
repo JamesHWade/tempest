@@ -73,6 +73,32 @@ test_that("promotion receipt rejects an incorrect commit summary", {
   )
 })
 
+test_that("promotion receipt binds Claim summaries to accepted supports", {
+  fixture <- test_promotion_bundle()
+  store <- test_promotion_store()
+  withr::defer(graft::graft_close(store))
+  reviewed <- tempest_graft_plan(store, fixture$bundle)
+  substituted_records <- reviewed@records
+  substituted_records$Claim$support_score[[1L]] <- 0.01
+  substituted <- graft::graft_plan(
+    store,
+    records = substituted_records,
+    provenance = reviewed@provenance
+  )
+  expect_identical(substituted@valid, TRUE)
+  result <- graft::graft_commit(store, substituted)
+
+  expect_error(
+    tempest_promotion_receipt(
+      store,
+      fixture$bundle,
+      substituted,
+      result
+    ),
+    class = "tempest_promotion_receipt_error"
+  )
+})
+
 test_that("promotion receipt records an idempotent matching commit", {
   fixture <- test_promotion_bundle()
   store <- test_promotion_store()
