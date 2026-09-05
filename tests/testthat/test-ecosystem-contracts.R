@@ -509,7 +509,10 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     name = "inspect_evidence",
     description = "Inspect deterministic evidence.",
     arguments = list(claim = ellmer::type_string("Claim identifier")),
-    annotations = ellmer::tool_annotations(read_only_hint = TRUE)
+    annotations = ellmer::tool_annotations(
+      read_only_hint = TRUE,
+      open_world_hint = FALSE
+    )
   )
   definition <- deputy::agent_definition(
     name = "evidence_reviewer",

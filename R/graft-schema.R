@@ -1,6 +1,16 @@
 # Tempest's compiled Graft research contract and review-only planning adapter
 
 tempest_graft_contract_version <- "0.2.0"
+tempest_graft_contract_upper_bound <- "0.6.0"
+
+tempest_graft_contract_range <- function() {
+  paste0(
+    ">= ",
+    tempest_graft_contract_version,
+    " and < ",
+    tempest_graft_contract_upper_bound
+  )
+}
 
 # The Graft store format whose snapshots, receipts, and trajectory reviews
 # Tempest can validate offline.
@@ -33,9 +43,8 @@ tempest_graft_contract_call <- function() {
   graft::graft_contract_version()
 }
 
-# Graft publishes a semantic consumer contract version. Tempest accepts the
-# same major and minor contract at any patch level; a different minor or
-# major version may change argument shapes or return values Tempest relies on.
+# Graft 0.3-0.5 add consumer APIs without changing Tempest's receipt or
+# snapshot shapes. Future minor contracts still require consumer verification.
 tempest_graft_pin_valid <- function(version) {
   if (!is.list(version) || !rlang::is_string(version$contract)) {
     return(FALSE)
@@ -47,10 +56,8 @@ tempest_graft_pin_valid <- function(version) {
   if (is.null(observed)) {
     return(FALSE)
   }
-  required <- numeric_version(tempest_graft_contract_version)
-  identical(observed[[1L, 1L]], required[[1L, 1L]]) &&
-    identical(observed[[1L, 2L]], required[[1L, 2L]]) &&
-    observed >= required
+  observed >= numeric_version(tempest_graft_contract_version) &&
+    observed < numeric_version(tempest_graft_contract_upper_bound)
 }
 
 tempest_graft_require <- function() {
@@ -58,7 +65,7 @@ tempest_graft_require <- function() {
     tempest_promotion_abort(
       paste0(
         "Graft with consumer contract ",
-        tempest_graft_contract_version,
+        tempest_graft_contract_range(),
         " is required for research promotion."
       ),
       class = "tempest_graft_schema_error"
@@ -82,7 +89,7 @@ tempest_graft_require <- function() {
         " and store format ",
         describe(contract$store_format),
         ", but Tempest requires contract ",
-        tempest_graft_contract_version,
+        tempest_graft_contract_range(),
         " and store format ",
         tempest_graft_store_format_version,
         "."
@@ -123,10 +130,10 @@ tempest_graft_schema_path <- function() {
 
 #' Load Tempest's compiled scientific Graft schema
 #'
-#' The packaged contract is compiled for Graft consumer contract `0.2.0`, which
-#' runtime loading checks through `graft::graft_contract_version()`. Loading
-#' never compiles LinkML and rejects any manifest whose immutable build digest
-#' differs.
+#' The packaged schema was compiled for Graft consumer contract `0.2.0`.
+#' Runtime loading accepts contracts `>= 0.2.0` and `< 0.6.0`, with store format
+#' `3.1.0`, through `graft::graft_contract_version()`. Loading never compiles
+#' LinkML and rejects any manifest whose immutable build digest differs.
 #'
 #' @return A validated `graft::GraftSchema`.
 #' @export

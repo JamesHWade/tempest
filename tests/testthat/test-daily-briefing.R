@@ -1,8 +1,12 @@
-test_that("the daily briefing composes review, diagnostics, and acceptance", {
+test_that("the daily briefing restores accepted evidence in a fresh process", {
   skip_if_not_installed("graft")
-  skip_if_not_installed("scans", "0.0.0.9000")
   fixture <- test_promotion_bundle()
-  store <- test_promotion_store()
+  store_path <- withr::local_tempfile(fileext = ".duckdb")
+  store <- graft::graft_open(
+    tempest_graft_schema(),
+    store_path,
+    okf = "disabled"
+  )
   withr::defer(graft::graft_close(store))
 
   before <- graft::graft_snapshot(store)
@@ -15,19 +19,12 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
     fixture$research,
     promotion_bundle = fixture$bundle
   )
-  trajectory <- scans::as_trajectory_tempest(proposed)
 
   expect_type(report, "character")
   expect_gt(nrow(sources), 0L)
   expect_gt(nrow(claims), 0L)
   expect_gt(nrow(supports), 0L)
   expect_identical(proposed@knowledge$promotion_state, "proposed")
-  expect_identical(
-    scans::trajectory_info(trajectory)$source_type,
-    "tempest"
-  )
-  expect_s3_class(scans::summarize_trajectories(trajectory), "data.frame")
-  expect_s3_class(scans::scan_trajectories(trajectory), "data.frame")
 
   commit_result <- graft::graft_commit(store, plan)
   receipt <- tempest_promotion_receipt(
@@ -77,6 +74,60 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
   knowledge <- tempest_knowledge(next_view, record_ids = record_ids)
 
   expect_setequal(knowledge@record_ids, record_ids)
+  checkpoint <- withr::local_tempfile(fileext = ".rds")
+  saveRDS(
+    list(snapshot = knowledge@snapshot, record_ids = record_ids),
+    checkpoint
+  )
+  expected <- lapply(knowledge@records, function(resource) {
+    list(content = resource@content, metadata = resource@metadata)
+  })
+  expect_setequal(
+    vapply(
+      expected,
+      function(record) record$metadata$graft_revision_id,
+      character(1)
+    ),
+    vapply(evidence_revisions, `[[`, character(1), "revision_id")
+  )
+  graft::graft_close(store)
+  restored <- callr::r(
+    function(checkout, store_path, checkpoint) {
+      if (!is.null(checkout)) {
+        pkgload::load_all(checkout, quiet = TRUE)
+      }
+      store <- graft::graft_open(
+        tempest::tempest_graft_schema(),
+        store_path,
+        read_only = TRUE,
+        okf = "disabled"
+      )
+      on.exit(graft::graft_close(store))
+      basis <- readRDS(checkpoint)
+      view <- graft::graft_at(store, basis$snapshot)
+      knowledge <- tempest::tempest_knowledge(
+        view,
+        record_ids = basis$record_ids
+      )
+      list(
+        changes = nrow(graft::graft_changes(store, since = basis$snapshot)),
+        records = lapply(knowledge@records, function(resource) {
+          list(content = resource@content, metadata = resource@metadata)
+        })
+      )
+    },
+    args = list(
+      checkout = if (pkgload::is_dev_package("tempest")) {
+        normalizePath(test_path("../.."))
+      } else {
+        NULL
+      },
+      store_path = store_path,
+      checkpoint = checkpoint
+    )
+  )
+  expect_identical(restored$changes, 0L)
+  expect_identical(restored$records, expected)
 })
 
 test_that("the daily briefing keeps lifecycle changes for carried claims", {

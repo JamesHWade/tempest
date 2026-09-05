@@ -10,8 +10,8 @@ tempest_graft_schema()
 A validated \code{graft::GraftSchema}.
 }
 \description{
-The packaged contract is compiled for Graft consumer contract \verb{0.2.0}, which
-runtime loading checks through \code{graft::graft_contract_version()}. Loading
-never compiles LinkML and rejects any manifest whose immutable build digest
-differs.
+The packaged schema was compiled for Graft consumer contract \verb{0.2.0}.
+Runtime loading accepts contracts \verb{>= 0.2.0} and \verb{< 0.6.0}, with store format
+\verb{3.1.0}, through \code{graft::graft_contract_version()}. Loading never compiles
+LinkML and rejects any manifest whose immutable build digest differs.
 }
