@@ -70,7 +70,7 @@ Remotes:
     JamesHWade/deputy,
     JamesHWade/dsprrr,
     JamesHWade/graft,
-    JamesHWade/scans,
+    JamesHWade/scans@codex/tempest-prerelease-compat,
     posit-dev/shinychat/pkg-r,
     JamesHWade/elmer@codex/subscription-auth-0.5
 Config/testthat/edition: 3
