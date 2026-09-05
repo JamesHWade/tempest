@@ -1,7 +1,7 @@
 # tempest 0.0.0.9000
 
 * The daily briefing example preserves complete selected evidence across unchanged days and reviewed corrections, with an executable offline companion (graft #50).
-* Subscription authentication now uses the ellmer 0.5-based port of upstream PR #1067, allowing current Graft dependencies to resolve.
+* Subscription authentication now uses the ellmer 0.5-based port of upstream subscription support, allowing current Graft dependencies to resolve (tidyverse/ellmer#1067).
 
 * The development package version is `0.0.0.9000` while Tempest remains unreleased. Compatibility contracts and persisted storage formats retain their independent versions.
 

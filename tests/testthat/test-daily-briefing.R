@@ -85,7 +85,7 @@ test_that("the daily briefing restores accepted evidence in a fresh process", {
   expect_setequal(
     vapply(
       expected,
-      function(record) record$metadata$graft_revision_id,
+      \(record) record$metadata$graft_revision_id,
       character(1)
     ),
     vapply(evidence_revisions, `[[`, character(1), "revision_id")
@@ -173,7 +173,7 @@ test_that("a briefing retains complete evidence across unchanged days and correc
   expect_setequal(
     vapply(
       original@records,
-      function(x) x@metadata$graft_record_class,
+      \(x) x@metadata$graft_record_class,
       character(1)
     ),
     c("Claim", "ClaimSupport", "EvidenceSpan", "Source")

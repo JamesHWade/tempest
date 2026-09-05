@@ -73,8 +73,8 @@ accepted_research_example <- function() {
   current <- recipe$read_briefing_basis(store, next_basis)
   historical <- recipe$read_briefing_basis(store, basis)
   stopifnot(identical(
-    lapply(original@records, function(x) x@content),
-    lapply(historical@records, function(x) x@content)
+    lapply(original@records, \(x) x@content),
+    lapply(historical@records, \(x) x@content)
   ))
   list(
     initial_report = basis$report_md,
