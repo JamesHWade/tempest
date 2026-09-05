@@ -27,7 +27,7 @@ run_test_shard <- function() {
   cli::cli_inform("Shard {shard}/{count}: {length(selected)} test files.")
   results <- testthat::test_local(
     filter = filter,
-    reporter = "summary",
+    reporter = testthat::ParallelProgressReporter$new(),
     stop_on_failure = FALSE
   )
   timings <- as.data.frame(results)
