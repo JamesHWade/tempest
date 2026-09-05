@@ -258,59 +258,12 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #' @examples
 #' \dontrun{
 #' view <- graft::graft_at(store, graft::graft_snapshot(store))
-#' topic_query <- "battery recycling"
-#' basis_limit <- 1000L
-#' claims <- graft::graft_find(
-#'   view,
-#'   topic_query,
-#'   class = "Claim",
-#'   limit = basis_limit
-#' )
-#' if (isTRUE(attr(claims, "truncated"))) stop("Narrow the topic.")
-#' knowledge <- tempest_knowledge(view, record_ids = claims$id)
-#' basis <- list(
-#'   snapshot = graft::graft_view_snapshot(view),
-#'   record_ids = claims$id
-#' )
+#' # Retain complete selected claim, support, span and source IDs from
+#' # host-accepted promotion receipts, not only matching claim IDs.
+#' source(system.file("examples", "briefing-basis.R", package = "tempest"))
+#' basis <- capture_briefing_basis(store, list(briefing_selection(receipt)))
 #' saveRDS(basis, "accepted-basis.rds")
-#'
-#' # On later days, apply only scoped, active Claim changes to the saved basis.
-#' previous_basis <- readRDS("accepted-basis.rds")
-#' matches <- graft::graft_find(
-#'   view,
-#'   topic_query,
-#'   class = "Claim",
-#'   limit = basis_limit
-#' )
-#' if (isTRUE(attr(matches, "truncated"))) stop("Narrow the topic.")
-#' changes <- graft::graft_changes(
-#'   view,
-#'   since = previous_basis$snapshot,
-#'   class = "Claim"
-#' )
-#' relevant <- changes$record_id %in% union(
-#'   previous_basis$record_ids,
-#'   matches$id
-#' )
-#' changes <- changes[relevant, ]
-#' status <- vapply(
-#'   changes$record,
-#'   \(record) if (is.null(record$status)) "active" else record$status,
-#'   character(1)
-#' )
-#' keep <- changes$action != "delete" & status == "active"
-#' removed_ids <- changes$record_id[!keep]
-#' record_ids <- union(
-#'   setdiff(previous_basis$record_ids, removed_ids),
-#'   changes$record_id[keep]
-#' )
-#' if (length(record_ids) > basis_limit) stop("Narrow the topic.")
-#' knowledge <- tempest_knowledge(view, record_ids = record_ids)
-#' basis <- list(
-#'   snapshot = graft::graft_view_snapshot(view),
-#'   record_ids = record_ids
-#' )
-#' saveRDS(basis, "accepted-basis.rds")
+#' knowledge <- read_briefing_basis(store, basis)
 #' result <- tempest_run("Battery recycling", knowledge = knowledge)
 #' }
 #' @export

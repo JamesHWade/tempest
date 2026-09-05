@@ -130,75 +130,97 @@ test_that("the daily briefing restores accepted evidence in a fresh process", {
   expect_identical(restored$records, expected)
 })
 
-test_that("the daily briefing keeps lifecycle changes for carried claims", {
-  path <- system.file("doc", "daily-briefing.Rmd", package = "tempest")
-  if (!nzchar(path)) {
-    path <- testthat::test_path(
-      "..",
-      "..",
-      "vignettes",
-      "daily-briefing.Rmd"
-    )
+test_that("a briefing retains complete evidence across unchanged days and corrections", {
+  skip_if_not_installed("graft")
+  host <- new.env(parent = globalenv())
+  sys.source(
+    system.file("examples", "briefing-basis.R", package = "tempest"),
+    host
+  )
+  initial <- test_promotion_storm_fixture(
+    "pilot-initial",
+    "The pilot recovered 82% of the material."
+  )
+  correction <- test_promotion_storm_fixture(
+    "pilot-correction",
+    "The corrected pilot result is 62%, not 82%."
+  )
+  store <- test_promotion_store()
+  withr::defer(graft::graft_close(store))
+  accept <- function(research) {
+    bundle <- tempest_promotion_bundle(research)
+    plan <- tempest_graft_plan(store, bundle)
+    commit <- graft::graft_commit(store, plan)
+    receipt <- tempest_promotion_receipt(store, bundle, plan, commit)
+    list(receipt = receipt, plan = plan)
   }
-  source <- readLines(path, warn = FALSE)
-  chunk_start <- match("```{r basis}", source)
-  chunk_end <- which(
-    seq_along(source) > chunk_start & source == "```"
-  )[[1L]]
-  expressions <- as.list(parse(
-    text = source[seq.int(chunk_start + 1L, chunk_end - 1L)]
-  ))
-  assignments <- Filter(
-    function(expr) {
-      is.call(expr) &&
-        identical(expr[[1L]], as.name("<-")) &&
-        as.character(expr[[2L]]) %in%
-          c("in_scope", "bound_basis", "changes_as_basis")
-    },
-    expressions
+  first <- accept(initial$research)
+  selections <- list(host$briefing_selection(first$receipt))
+  basis <- host$capture_briefing_basis(
+    store,
+    selections,
+    tempest_report(initial$research)
   )
-  expect_length(assignments, 3L)
-
-  env <- new.env(parent = baseenv())
-  env$graft_find <- \(...) data.frame(id = character())
-  env$head <- utils::head
-  env$basis_limit <- 1000L
-  env$topic_query <- "test topic"
-  lapply(assignments, eval, envir = env)
-
-  previous <- data.frame(
-    record_id = c("carried", "deleted", "deleted-support"),
-    class = c("Claim", "EvidenceSpan", "ClaimSupport"),
-    commit_order = c(1L, 1L, 1L),
-    status = c("active", "active", "active")
+  original <- host$read_briefing_basis(store, basis)
+  evidence <- function(knowledge) {
+    lapply(knowledge@records, function(record) {
+      list(content = record@content, metadata = record@metadata)
+    })
+  }
+  expect_length(original@records, 4L)
+  expect_setequal(
+    vapply(
+      original@records,
+      function(x) x@metadata$graft_record_class,
+      character(1)
+    ),
+    c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
   )
-  changed <- data.frame(
-    record_id = c("carried", "unrelated", "deleted", "deleted-support"),
-    class = c("Claim", "Claim", "EvidenceSpan", "ClaimSupport"),
-    action = c("update", "insert", "delete", "delete"),
-    commit_order = c(2L, 2L, 3L, 3L)
-  )
-  changed$record <- I(list(
-    list(status = "retracted"),
-    list(status = "active"),
-    list(),
-    list()
-  ))
-
-  kept <- env$in_scope(
-    changed,
-    basis = previous,
-    scope_view = NULL
-  )
-
+  checkpoint <- withr::local_tempfile(fileext = ".rds")
+  saveRDS(basis, checkpoint)
+  unchanged <- readRDS(checkpoint)
+  expect_identical(nrow(host$briefing_changes(store, unchanged)), 0L)
+  expect_identical(unchanged, basis)
   expect_identical(
-    kept$record_id,
-    c("carried", "deleted", "deleted-support")
+    evidence(host$read_briefing_basis(store, unchanged)),
+    evidence(original)
   )
-  next_basis <- env$bound_basis(rbind(
-    previous,
-    env$changes_as_basis(kept)
-  ))
 
-  expect_identical(next_basis$record_id, character())
+  later <- accept(correction$research)
+  combined <- host$capture_briefing_basis(
+    store,
+    c(selections, list(host$briefing_selection(later$receipt)))
+  )
+  expect_length(combined$record_ids, 8L)
+  expect_match(basis$report_md, "82%", fixed = TRUE)
+  old_claim <- first$plan@records$Claim
+  old_claim$status <- "superseded"
+  retire <- graft::graft_plan(
+    store,
+    list(Claim = old_claim),
+    graft::graft_provenance("host-review", idempotency_key = "pilot-correction")
+  )
+  graft::graft_commit(store, retire)
+  changed <- host$briefing_changes(store, basis)
+  expect_identical(changed$record_id, old_claim$id)
+  expect_identical(changed$record[[1L]]$status, "superseded")
+  expect_identical(
+    evidence(host$read_briefing_basis(store, basis)),
+    evidence(original)
+  )
+  expect_snapshot(error = TRUE, host$capture_briefing_basis(store, selections))
+
+  corrected <- host$capture_briefing_basis(
+    store,
+    list(host$briefing_selection(later$receipt)),
+    tempest_report(correction$research)
+  )
+  current <- host$read_briefing_basis(store, corrected)
+  expect_length(current@records, 4L)
+  expect_match(corrected$report_md, "62%, not 82%", fixed = TRUE)
+  expect_identical(nrow(host$briefing_changes(store, corrected)), 0L)
+  expect_identical(readRDS(checkpoint)$report_md, basis$report_md)
+  partial <- corrected
+  partial$record_ids <- partial$record_ids[-1L]
+  expect_snapshot(error = TRUE, host$read_briefing_basis(store, partial))
 })

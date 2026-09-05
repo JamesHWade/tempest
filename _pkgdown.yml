@@ -8,6 +8,7 @@ articles:
   contents:
   - tempest
   - daily-briefing
+  - accepted-research
 reference:
 - title: Research products
   desc: Run scripted STORM, hold a Co-STORM session, or open the bundled app.

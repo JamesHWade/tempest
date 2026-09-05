@@ -28,7 +28,7 @@ Imports:
     deputy,
     digest,
     dsprrr,
-    ellmer (>= 0.4.2.9000),
+    ellmer (>= 0.5.0),
     fs,
     glue,
     httr2,
@@ -72,7 +72,7 @@ Remotes:
     JamesHWade/graft,
     JamesHWade/scans,
     posit-dev/shinychat/pkg-r,
-    tidyverse/ellmer#1067
+    JamesHWade/elmer@codex/subscription-auth-0.5
 Config/testthat/edition: 3
 Config/testthat/parallel: true
 Config/testthat/start-first: storm-persistence-artifact-drift,

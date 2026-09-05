@@ -71,137 +71,43 @@ another process halfway through the briefing cannot silently alter its input.
 
 ### Select the accepted basis durably
 
-The first day has nothing to carry forward, so it searches. Every later day
-starts from the records the previous run carried and adds what Graft reports
-as accepted since the previous snapshot, scoped to this briefing: a changed
-`Claim` joins the basis when it matches the monitored topic, while a lifecycle
-change to a claim already in the basis is retained so a retraction or
-supersession can remove it. A changed `ClaimSupport` joins only when it
-supports a claim in the basis. The basis therefore grows only through explicit
-acceptance of relevant knowledge; a keyword search that happens to match a
-different set of records on day 40 cannot add unrelated claims, and a shared
-organizational store cannot flood it with other topics. Evidence spans and
-sources are carried as accepted because this store is dedicated to the
-briefing; filter them the same way if you share a store.
+The host selects complete promotion bundles, including each claim's supports,
+evidence spans and sources. It keeps the union of those selections across
+acceptance cycles. An unchanged day retains the same checkpoint; it does not
+replace the evidence with an empty change receipt or fill a record limit by
+dropping older sources.
 
-`tempest_knowledge()` reads at most 1,000 records, so the basis is a bounded
-table rather than an ever-growing id list. Every active `Claim` is always
-kept because the claims are the change signal; evidence records fill the
-remaining room newest-first, and a record whose latest revision is retracted
-or superseded, or whose change is a deletion, drops out. If a monitored topic
-ever accumulates more than
-1,000 active claims, the run stops rather than forgetting some of them: narrow
-the topic or give it its own store.
+This example uses the small host-owned recipe shipped with Tempest. It is an
+example, not a new package API or an access-control mechanism. The checkpoint
+is trusted local host data; authorize access and consultation before reading it.
 
 ```{r basis}
+source(system.file("examples", "briefing-basis.R", package = "tempest"))
 basis_path <- "briefing/basis.rds"
-accepted_classes <- c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
-basis_limit <- 1000
-topic_query <- "grid-scale battery recycling"
-
-in_scope <- function(changed, basis, scope_view = view) {
-  basis_claims <- basis$record_id[basis$class == "Claim"]
-  basis_record_ids <- basis$record_id
-  matches <- graft_find(
-    scope_view,
-    topic_query,
-    class = "Claim",
-    limit = basis_limit
-  )
-  if (isTRUE(attr(matches, "truncated"))) {
-    stop(
-      "More than ", basis_limit, " accepted claims match the monitored topic; ",
-      "narrow the topic or split the store before carrying changes forward."
-    )
-  }
-  topic_claims <- matches$id
-  support_claims <- vapply(
-    changed$record,
-    \(record) if (is.null(record$statement_id)) NA_character_ else record$statement_id,
-    character(1)
-  )
-  deleted_from_basis <-
-    changed$action == "delete" & changed$record_id %in% basis_record_ids
-  keep <- ifelse(
-    changed$class == "Claim",
-    changed$record_id %in% c(basis_claims, topic_claims),
-    ifelse(
-      changed$class == "ClaimSupport",
-      deleted_from_basis |
-        support_claims %in% c(basis_claims, topic_claims),
-      TRUE
-    )
-  )
-  changed[keep, ]
-}
-
-bound_basis <- function(records) {
-  records <- records[!duplicated(records$record_id, fromLast = TRUE), ]
-  records <- records[records$status == "active", ]
-  claims <- records[records$class == "Claim", ]
-  if (nrow(claims) > basis_limit) {
-    stop(
-      "The monitored topic has ", nrow(claims), " active accepted claims, ",
-      "more than tempest_knowledge() can pin; narrow the topic or split the store."
-    )
-  }
-  evidence <- records[records$class != "Claim", ]
-  evidence <- evidence[order(-evidence$commit_order), ]
-  rbind(claims, head(evidence, basis_limit - nrow(claims)))
-}
-
-changes_as_basis <- function(changed) {
-  data.frame(
-    record_id = changed$record_id,
-    class = changed$class,
-    commit_order = changed$commit_order,
-    status = vapply(
-      seq_len(nrow(changed)),
-      function(index) {
-        if (identical(changed$action[[index]], "delete")) {
-          return("deleted")
-        }
-        record <- changed$record[[index]]
-        if (is.null(record$status)) "active" else record$status
-      },
-      character(1)
-    )
-  )
-}
-
 if (file.exists(basis_path)) {
-  previous <- readRDS(basis_path)
-  changed <- graft_changes(
-    view,
-    since = previous$snapshot,
-    class = accepted_classes
-  )
-  changed <- in_scope(changed, previous$records)
-  basis <- bound_basis(rbind(previous$records, changes_as_basis(changed)))
-} else {
-  claims <- graft_find(view, topic_query, class = "Claim", limit = basis_limit)
-  if (isTRUE(attr(claims, "truncated"))) {
-    stop(
-      "More than ", basis_limit, " accepted claims match the monitored topic; ",
-      "narrow the topic or split the store before starting the briefing."
-    )
+  basis <- readRDS(basis_path)
+  changes <- briefing_changes(store, basis)
+  if (nrow(changes) > 0L) {
+    stop("Selected evidence changed; review the complete selection before research.")
   }
-  basis <- data.frame(
-    record_id = claims$id,
-    class = rep("Claim", length(claims$id)),
-    commit_order = rep(snapshot@commit_order, length(claims$id)),
-    status = rep("active", length(claims$id))
-  )
+} else {
+  basis <- capture_briefing_basis(store, selections = list())
 }
-
-knowledge <- tempest_knowledge(view, record_ids = basis$record_id)
+knowledge <- read_briefing_basis(store, basis)
 ```
 
-`graft_changes()` compares two committed boundaries store-wide and returns one
-row per changed record with its action, the union of changed public fields,
-and the latest accepted record, whose `status` tells the basis whether the
-record is still active. A `GraftView` bounds it at the pinned snapshot, so the
-selection cannot include a commit that landed after the run started.
+`briefing_changes()` uses `graft_changes(record_ids = ...)` to retain changes to
+selected records, including deletion tombstones whose payload no longer names
+their parent claim. An unrelated acceptance does not join the selection. A
+changed or superseded claim pauses automatic reuse until the host reviews the
+selection. Historical inspection can still use the original checkpoint.
+
+The complete selection must fit `tempest_knowledge()`'s 1,000-record ceiling.
+Exceeding it stops the example rather than silently losing evidence. A snapshot
+fixes an accepted boundary; the checkpoint additionally retains the selected
+IDs, exact revisions and host-accepted report text. The report is synthesis,
+not primary source evidence, and its recorded basis does not establish support
+for every sentence.
 
 ## Research today's change
 
@@ -331,54 +237,40 @@ the next run will carry forward either way, so a first day without accepted
 change still pins its selection instead of searching again tomorrow:
 
 ```{r accept}
-basis_snapshot <- snapshot
-next_basis <- basis
 claim_rows <- plan@changes[plan@changes$class == "Claim", ]
 has_change <- any(
   claim_rows$disposition %in% c("new", "supersedes", "superseded", "contradicted")
 )
+approved <- FALSE # The host supplies the review decision.
 
-if (has_change) {
+if (has_change && approved) {
   commit_result <- graft_commit(store, plan)
-  receipt <- tempest_promotion_receipt(
-    store,
-    proposal,
-    plan,
-    commit_result
-  )
-
+  receipt <- tempest_promotion_receipt(store, proposal, plan, commit_result)
   accepted_review <- tempest_trajectory_review(
-    result,
-    promotion_bundle = proposal,
-    promotion_receipt = receipt
+    result, promotion_bundle = proposal, promotion_receipt = receipt
   )
-
-  basis_snapshot <- graft_snapshot(store)
-  accepted_now <- graft_changes(
-    store,
-    since = snapshot,
-    until = basis_snapshot,
-    class = accepted_classes
-  )
-  accepted_now <- in_scope(
-    accepted_now,
-    basis,
-    scope_view = graft_at(store, basis_snapshot)
-  )
-  next_basis <- bound_basis(rbind(basis, changes_as_basis(accepted_now)))
+  selections <- c(basis$selections, list(briefing_selection(receipt)))
+  basis <- capture_briefing_basis(store, selections, tempest_report(result))
 }
-
-saveRDS(list(snapshot = basis_snapshot, records = next_basis), basis_path)
+saveRDS(basis, basis_path)
 ```
 
-The saved snapshot always matches the saved records. Without a commit it is
-the snapshot this run pinned, so anything accepted by another process since
-then is picked up tomorrow. After a commit it is the post-commit snapshot, and
-the basis absorbs every record accepted between the pin and that boundary,
-including a concurrent commit by another process. Rejection leaves accepted
-knowledge unchanged. This two-speed loop keeps routine monitoring
-passive and makes only material changes enter the slower decision-and-review
-path.
+A rejected or unchanged proposal preserves the previous basis and accepted
+report. Today's unaccepted briefing belongs in the host's run log. A correction
+requires reviewing the older claim's lifecycle and replacing its selection
+with the complete corrected bundle; appending the new claim alone does not
+supersede the old one. Keep the prior checkpoint for authorized historical
+inspection, subject to the host's erasure policy.
+
+Commit the reviewed plan before saving its checkpoint. If saving fails, report
+the checkpoint failure separately from acceptance. Recover from the retained
+plan, bundle, commit result and receipt; do not report a failed commit or retry
+with a fabricated receipt. This short recipe uses one local host writer; a
+production scheduler needs its own atomic checkpoint publication and recovery.
+
+The offline [accepted-research example](accepted-research.html) demonstrates
+two contradictory research products, an unchanged day and explicit correction
+without API keys.
 
 ## Let a person edit accepted knowledge
 

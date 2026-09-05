@@ -447,7 +447,8 @@ test_persistence_complete_storm_product <- function(
   config,
   program_set,
   manifest_status = "succeeded",
-  extra_sources = list()
+  extra_sources = list(),
+  evidence_text = "Durable evidence supports the completed research product."
 ) {
   programs <- tempest:::tempest_program_set_manifest_programs(program_set)
   workspace <- tempest_research_workspace()
@@ -461,7 +462,7 @@ test_persistence_complete_storm_product <- function(
   source <- fake_source(
     url = paste0("https://example.com/", run_id),
     title = paste(topic, "source"),
-    content_text = "Durable evidence supports the completed research product."
+    content_text = evidence_text
   )
   workspace$upsert_retrieved_resource(source)
   for (extra_source in extra_sources) {
@@ -470,16 +471,16 @@ test_persistence_complete_storm_product <- function(
   span_id <- workspace$add_evidence_span(tempest_evidence_span(
     evidence_span_id = paste0("span.", run_id),
     source_id = source@resource_id,
-    quote = "Durable evidence supports the completed research product.",
+    quote = evidence_text,
     extracted_by = programs$extract_claims$program_artifact_id
   ))
   claim_id <- workspace$add_proposed_claim(tempest_claim(
     claim_id = paste0("claim.", run_id),
-    claim_text = "Durable evidence supports the completed research product.",
+    claim_text = evidence_text,
     source_ids = source@resource_id,
     evidence_span_ids = span_id,
     supporting_quotes = list(
-      "Durable evidence supports the completed research product."
+      evidence_text
     ),
     retrieval_step_id = correlation_id,
     expert_id = expert@expert_id,
@@ -510,7 +511,8 @@ test_persistence_complete_storm_product <- function(
   report_md <- tempest:::tempest_report_md_render(
     title = topic,
     body = paste0(
-      "Durable evidence supports the completed research product. [",
+      evidence_text,
+      " [",
       source@resource_id,
       "]"
     ),
@@ -529,12 +531,13 @@ test_persistence_complete_storm_product <- function(
     experts = list(expert),
     draft_outline = outline,
     outline = outline,
-    lead_section = "Durable evidence supports the completed research product.",
+    lead_section = evidence_text,
     draft_md = paste0(
-      "Durable evidence supports the completed research product.\n\n",
+      evidence_text,
+      "\n\n",
       tempest:::tempest_section_markdown_heading(),
       "\n\n",
-      "Durable evidence supports the completed research product."
+      evidence_text
     ),
     report_md = report_md,
     completed_stages = c(
