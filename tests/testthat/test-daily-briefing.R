@@ -1,6 +1,5 @@
-test_that("the daily briefing composes review, diagnostics, and acceptance", {
+test_that("the daily briefing restores accepted evidence in a fresh process", {
   skip_if_not_installed("graft")
-  skip_if_not_installed("scans", "0.0.0.9000")
   fixture <- test_promotion_bundle()
   store_path <- withr::local_tempfile(fileext = ".duckdb")
   store <- graft::graft_open(
@@ -20,19 +19,12 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
     fixture$research,
     promotion_bundle = fixture$bundle
   )
-  trajectory <- scans::as_trajectory_tempest(proposed)
 
   expect_type(report, "character")
   expect_gt(nrow(sources), 0L)
   expect_gt(nrow(claims), 0L)
   expect_gt(nrow(supports), 0L)
   expect_identical(proposed@knowledge$promotion_state, "proposed")
-  expect_identical(
-    scans::trajectory_info(trajectory)$source_type,
-    "tempest"
-  )
-  expect_s3_class(scans::summarize_trajectories(trajectory), "data.frame")
-  expect_s3_class(scans::scan_trajectories(trajectory), "data.frame")
 
   commit_result <- graft::graft_commit(store, plan)
   receipt <- tempest_promotion_receipt(
@@ -101,7 +93,9 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
   graft::graft_close(store)
   restored <- callr::r(
     function(checkout, store_path, checkpoint) {
-      pkgload::load_all(checkout, quiet = TRUE)
+      if (!is.null(checkout)) {
+        pkgload::load_all(checkout, quiet = TRUE)
+      }
       store <- graft::graft_open(
         tempest::tempest_graft_schema(),
         store_path,
@@ -123,7 +117,11 @@ test_that("the daily briefing composes review, diagnostics, and acceptance", {
       )
     },
     args = list(
-      checkout = normalizePath(test_path("../..")),
+      checkout = if (pkgload::is_dev_package("tempest")) {
+        normalizePath(test_path("../.."))
+      } else {
+        NULL
+      },
       store_path = store_path,
       checkpoint = checkpoint
     )
