@@ -257,7 +257,6 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #'   [tempest_session()].
 #' @examples
 #' \dontrun{
-#' view <- graft::graft_at(store, graft::graft_snapshot(store))
 #' # Retain complete selected claim, support, span and source IDs from
 #' # host-accepted promotion receipts, not only matching claim IDs.
 #' source(system.file("examples", "briefing-basis.R", package = "tempest"))

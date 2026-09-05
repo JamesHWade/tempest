@@ -51,6 +51,10 @@ The earlier checkpoint still reconstructs the earlier accepted revisions:
 cat(result$initial_report, "\n\n", result$corrected_report)
 ```
 
+The reports retain their execution-review annotations, including unknown stage
+support and publication blocks. Host acceptance of the selected evidence does
+not clear those diagnostics or establish publishable research quality.
+
 Readable synthesis remains host-owned checkpoint content. Graft stores the
 accepted research evidence through Tempest's existing schema; this example
 adds no report class or executable procedure. The checkpoint links a report to

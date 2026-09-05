@@ -53,9 +53,6 @@ store <- graft_open(
   okf = "managed"
 )
 
-snapshot <- graft_snapshot(store)
-view <- graft_at(store, snapshot)
-
 topic <- paste(
   "Daily decision briefing on grid-scale battery recycling as of",
   Sys.Date(),
@@ -66,8 +63,8 @@ topic <- paste(
 )
 ```
 
-The snapshot fixes the accepted boundary for the whole run. A commit made by
-another process halfway through the briefing cannot silently alter its input.
+The selection recipe below pins the accepted boundary for the whole run. A
+commit made by another process cannot silently alter its input.
 
 ### Select the accepted basis durably
 
