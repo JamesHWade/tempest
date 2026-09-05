@@ -70,9 +70,9 @@ Remotes:
     JamesHWade/deputy,
     JamesHWade/dsprrr,
     JamesHWade/graft,
-    JamesHWade/scans@codex/tempest-prerelease-compat,
+    JamesHWade/scans,
     posit-dev/shinychat/pkg-r,
-    JamesHWade/elmer@codex/subscription-auth-0.5
+    ellmer=JamesHWade/elmer@codex/subscription-auth-0.5
 Config/testthat/edition: 3
 Config/testthat/parallel: true
 Config/testthat/start-first: storm-persistence-artifact-drift,
