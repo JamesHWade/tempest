@@ -1,4 +1,3 @@
-# tests/testthat/helper-mocks.R
 # Reusable fakes so ledger/verification logic is testable without network or API keys.
 
 tempest_mock_provider <- function(name = "mock", model = "fake") {
@@ -11,6 +10,9 @@ tempest_mock_provider <- function(name = "mock", model = "fake") {
     extra_headers = character(),
     credentials = NULL
   )
+  if (utils::packageVersion("ellmer") >= "0.5.0") {
+    provider_args[c("model", "params", "extra_args")] <- NULL
+  }
   accepted_provider_args <- names(formals(ellmer::Provider))
   provider <- do.call(
     ellmer::Provider,
@@ -20,7 +22,6 @@ tempest_mock_provider <- function(name = "mock", model = "fake") {
   provider
 }
 
-# A deterministic current ellmer provider for fake Chat objects.
 fake_chat_provider <- function(model = "fake") {
   tempest_mock_provider(model = model)
 }
@@ -281,21 +282,6 @@ fake_chat_r6 <- function(members) {
   chat <- list2env(members, parent = emptyenv())
   class(chat) <- c("Chat", "R6")
   chat
-}
-
-# A fake judge that returns a fixed verification verdict for every claim.
-fake_judge <- function(
-  status = "supported",
-  score = 0.9,
-  rationale = "matches source"
-) {
-  fake_chat(structured = list()) # placeholder; verdict queue set per-test via fake_verdicts()
-}
-
-# Build a verdict queue (one per claim-span pair) for verification tests.
-fake_verdicts <- function(...) {
-  verdicts <- list(...)
-  fake_chat(structured = verdicts)
 }
 
 # Fixture builders.

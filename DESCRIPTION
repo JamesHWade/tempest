@@ -43,6 +43,7 @@ Imports:
     xml2
 Suggests:
     bslib (>= 0.6.0),
+    callr,
     dplyr,
     DT,
     graft,
@@ -51,6 +52,7 @@ Suggests:
     mirai,
     otel (>= 0.2.0),
     pdftools,
+    pkgload,
     promises,
     ragnar,
     rmarkdown,

@@ -7,7 +7,7 @@ source <- file.path(root, "dev", "schema", "tempest-research.linkml.yaml")
 output_dir <- file.path(root, "inst", "schema")
 output <- file.path(output_dir, "tempest-research.graft.json")
 sys.source(file.path(root, "R", "graft-schema.R"), envir = environment())
-required_contract <- tempest_graft_contract_version
+required_contract <- tempest_graft_contract_range()
 required_store_format <- tempest_graft_store_format_version
 
 if (!requireNamespace("graft", quietly = TRUE)) {

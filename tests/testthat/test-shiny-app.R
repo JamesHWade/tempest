@@ -1419,6 +1419,7 @@ test_that("repeated settings toggles preserve bound workspace values", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   skip_if_not_installed("shinychat")
+  local_mocked_bindings(tempest_chat_openai = function(...) fake_chat())
   app <- source_shiny_modules()
   store <- app$new_session_store()
   host_server <- function(input, output, session) {

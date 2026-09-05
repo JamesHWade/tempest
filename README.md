@@ -143,8 +143,9 @@ commit_result <- graft::graft_commit(store, plan)
 receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
 ```
 
-The packaged schema is compiled for Graft consumer contract `0.2.0`, which
-runtime loading checks through `graft::graft_contract_version()`; loading
+The packaged schema was compiled for Graft consumer contract `0.2.0`. Runtime
+loading accepts contracts `>= 0.2.0` and `< 0.6.0` with store format `3.1.0`,
+checked through `graft::graft_contract_version()`; loading
 also checks the schema's exact immutable build digest and never recompiles
 LinkML. Planning keys accepted `Claim` identity on normalized statement text
 and accepted `Source` identity on the exact locator plus content hash, so research that
