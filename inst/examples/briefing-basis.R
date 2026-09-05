@@ -8,26 +8,29 @@ briefing_selection <- function(receipt) {
   )
 }
 
-briefing_ids <- function(selections) {
-  ids <- sort(
-    unique(vapply(
-      unlist(selections, recursive = FALSE),
-      `[[`,
-      character(1),
-      "record_id"
-    )),
-    method = "radix"
+briefing_revisions <- function(selections) {
+  records <- unlist(selections, recursive = FALSE)
+  ids <- vapply(records, `[[`, character(1), "record_id")
+  numbers <- vapply(records, `[[`, integer(1), "revision_number")
+  ordered <- order(ids, -numbers, method = "radix")
+  records <- records[ordered]
+  ids <- ids[ordered]
+  newest <- !duplicated(ids)
+  revisions <- stats::setNames(
+    vapply(records[newest], `[[`, character(1), "revision_id"),
+    ids[newest]
   )
-  if (length(ids) > 1000L) {
+  if (length(revisions) > 1000L) {
     stop(
       "The complete evidence basis exceeds 1,000 records; narrow the selection."
     )
   }
-  ids
+  revisions
 }
 
 capture_briefing_basis <- function(store, selections, report_md = character()) {
-  ids <- briefing_ids(selections)
+  selected <- briefing_revisions(selections)
+  ids <- names(selected)
   snapshot <- graft::graft_snapshot(store)
   view <- graft::graft_at(store, snapshot)
   revisions <- vapply(
@@ -40,7 +43,13 @@ capture_briefing_basis <- function(store, selections, report_md = character()) {
       ) {
         stop("Review the selection before consulting an inactive claim.")
       }
-      graft::graft_history(view, id, limit = 1L)$revision_id[[1L]]
+      revision <- graft::graft_history(view, id, limit = 1L)$revision_id[[1L]]
+      if (!identical(revision, selected[[id]])) {
+        stop(
+          "Selected evidence changed after its receipt; review before checkpointing."
+        )
+      }
+      revision
     },
     character(1)
   )
@@ -54,9 +63,13 @@ capture_briefing_basis <- function(store, selections, report_md = character()) {
 }
 
 read_briefing_basis <- function(store, basis) {
-  ids <- briefing_ids(basis$selections)
+  selected <- briefing_revisions(basis$selections)
+  ids <- names(selected)
   if (!identical(ids, basis$record_ids)) {
     stop("The checkpoint is missing part of its selected evidence.")
+  }
+  if (!identical(unname(selected), basis$revision_ids)) {
+    stop("The checkpoint revisions are not covered by the selected receipts.")
   }
   view <- graft::graft_at(store, basis$snapshot)
   revisions <- vapply(

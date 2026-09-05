@@ -154,6 +154,8 @@ test_that("a briefing retains complete evidence across unchanged days and correc
     receipt <- tempest_promotion_receipt(store, bundle, plan, commit)
     list(receipt = receipt, plan = plan)
   }
+  empty <- host$capture_briefing_basis(store, list())
+  expect_length(host$read_briefing_basis(store, empty)@records, 0L)
   first <- accept(initial$research)
   selections <- list(host$briefing_selection(first$receipt))
   basis <- host$capture_briefing_basis(
@@ -223,4 +225,38 @@ test_that("a briefing retains complete evidence across unchanged days and correc
   partial <- corrected
   partial$record_ids <- partial$record_ids[-1L]
   expect_snapshot(error = TRUE, host$read_briefing_basis(store, partial))
+
+  active_update <- later$plan@records$Claim
+  active_update$support_score <- 0.01
+  graft::graft_commit(
+    store,
+    graft::graft_plan(
+      store,
+      list(Claim = active_update),
+      graft::graft_provenance("another-host", idempotency_key = "score-update")
+    )
+  )
+  expect_snapshot(
+    error = TRUE,
+    host$capture_briefing_basis(store, corrected$selections)
+  )
+  expect_identical(
+    evidence(host$read_briefing_basis(store, corrected)),
+    evidence(current)
+  )
+
+  reviewed <- accept(correction$research)
+  refreshed <- host$capture_briefing_basis(
+    store,
+    c(list(host$briefing_selection(reviewed$receipt)), corrected$selections)
+  )
+  expect_identical(refreshed$record_ids, corrected$record_ids)
+  expect_equal(
+    graft::graft_history(store, active_update$id, limit = 1L)$revision_number,
+    3L
+  )
+  expect_length(host$read_briefing_basis(store, refreshed)@records, 4L)
+  stale <- refreshed
+  stale$selections <- corrected$selections
+  expect_snapshot(error = TRUE, host$read_briefing_basis(store, stale))
 })

@@ -74,6 +74,10 @@ acceptance cycles. An unchanged day retains the same checkpoint; it does not
 replace the evidence with an empty change receipt or fill a record limit by
 dropping older sources.
 
+For repeated record IDs, the newest selected receipt revision wins. Capturing a
+checkpoint stops if current evidence differs from those reviewed revisions, so
+a concurrent update cannot silently become part of an accepted report's basis.
+
 This example uses the small host-owned recipe shipped with Tempest. It is an
 example, not a new package API or an access-control mechanism. The checkpoint
 is trusted local host data; authorize access and consultation before reading it.

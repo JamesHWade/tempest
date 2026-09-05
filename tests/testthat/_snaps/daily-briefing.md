@@ -14,3 +14,19 @@
       Error in `host$read_briefing_basis()`:
       ! The checkpoint is missing part of its selected evidence.
 
+---
+
+    Code
+      host$capture_briefing_basis(store, corrected$selections)
+    Condition
+      Error in `FUN()`:
+      ! Selected evidence changed after its receipt; review before checkpointing.
+
+---
+
+    Code
+      host$read_briefing_basis(store, stale)
+    Condition
+      Error in `host$read_briefing_basis()`:
+      ! The checkpoint revisions are not covered by the selected receipts.
+
