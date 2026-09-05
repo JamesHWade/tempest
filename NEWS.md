@@ -1,4 +1,6 @@
-# tempest (development version)
+# tempest 0.0.0.9000
+
+* The development package version is `0.0.0.9000` while Tempest remains unreleased. Compatibility contracts and persisted storage formats retain their independent versions.
 
 * Tempest now runs against the current `main` of deputy, dsprrr, graft, and scans. dsprrr's `module()` no longer takes `type`, and its runner requires a real ellmer `Chat`, so the test fakes are now R6-classed environments that expose chat history (0mpk).
 * `tempest_graft_schema()` accepts Graft consumer contracts `>= 0.2.0` and `< 0.6.0` with store format `3.1.0`, retaining the immutable compiled-schema check and Graft's injected `GraftDefinition` system class (0mpk, 03d5).
