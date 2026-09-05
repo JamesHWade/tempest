@@ -365,9 +365,6 @@ test_that("tempest_config does not accept globally registered tools", {
 })
 
 test_that("make_chat creates ellmer chat object", {
-  skip_if_not_installed("ellmer")
-  skip_if(!"auth" %in% names(formals(ellmer::chat_openai)))
-
   cfg <- tempest_config()
   chat <- tempest_make_chat(cfg, "coordinator")
   expect_s3_class(chat, "Chat")

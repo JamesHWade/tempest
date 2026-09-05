@@ -385,7 +385,7 @@ tempest_chat_openai <- function(...) {
     tempest_abort(
       c(
         "The installed ellmer does not support ChatGPT subscription authentication.",
-        i = "Reinstall Tempest dependencies to obtain tidyverse/ellmer PR #1067."
+        i = "Reinstall Tempest dependencies to obtain the ellmer 0.5 subscription-auth port."
       ),
       class = c(
         "tempest_chat_error",

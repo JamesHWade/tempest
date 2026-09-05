@@ -1,0 +1,2 @@
+# Promotion manifests checksum the exact bundle bytes.
+inst/examples/accepted-research/*/*.json -text

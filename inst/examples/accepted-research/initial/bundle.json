@@ -1,0 +1,474 @@
+{
+  "bundle_id": "sha256:b19dedc6127d20c515af3bcb9bae9c960bb04cf4a05af5ffafa259f7acf8c43d",
+  "schema_version": 1,
+  "schema_build_digest": "sha256:0ef4a9c9143e6aaff3def45c996855773dd3c5ce341293bc15032c0924ed4296",
+  "research_run_id": "pilot-initial",
+  "min_support_score": 0.7,
+  "research_manifest": {
+    "schema_version": 3,
+    "research_run_id": "pilot-initial",
+    "mode": "storm",
+    "config_digest": "sha256:d3476d16504db1a7ca93f3eb50c038e26deffda9f8d25cd972419b996ea9957b",
+    "programs": {
+      "draft_outline": {
+        "stage": "draft_outline",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:5aa9e4124de737048d657d5129d6cffd096cc3b83cc644c974b78f5cdb1c7788",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::draft_outline"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/draft_outline",
+        "evaluator_version": "1"
+      },
+      "extract_claims": {
+        "stage": "extract_claims",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::extract_claims"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/extract_claims",
+        "evaluator_version": "1"
+      },
+      "lead_section": {
+        "stage": "lead_section",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:56427459731766e4e6ed367fff20992a5490c8859c5f128142f14cc88628f25b",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::lead_section"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/lead_section",
+        "evaluator_version": "1"
+      },
+      "next_question": {
+        "stage": "next_question",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:832acec81d69d09e7cd88820a0e08658886ad539965a0cf7c47bd5cbc6d72786",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::next_question"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/next_question",
+        "evaluator_version": "1"
+      },
+      "personas": {
+        "stage": "personas",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:ce358c348b1e538e65390e1dd3de7235eff108b5adcda0c1ecfee70e32e9e8a9",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::personas"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/personas",
+        "evaluator_version": "1"
+      },
+      "perspectives": {
+        "stage": "perspectives",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:418be97c0e236c241c3314e4a3d04ea8d12d5eb68a987b33edd5cec5573dd616",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::perspectives"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/perspectives",
+        "evaluator_version": "1"
+      },
+      "query_decomposition": {
+        "stage": "query_decomposition",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:ed5bfe02f791be72fc6245de627bddb3d6d9ce2b3b8d76ea456fda045a793b58",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::query_decomposition"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/query_decomposition",
+        "evaluator_version": "1"
+      },
+      "refined_outline": {
+        "stage": "refined_outline",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:c6d55a5e924cf43e130e5b34eb4149498dbdb18310f163cbd2b32a8ca3f8cd28",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::refined_outline"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/refined_outline",
+        "evaluator_version": "1"
+      },
+      "section_writing": {
+        "stage": "section_writing",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:a4b648e1a3fad4ac9b0e04730979af7a7c909bf99014f06b26ee706b71b610b1",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::section_writing"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/section_writing",
+        "evaluator_version": "1"
+      },
+      "verify_claim_support": {
+        "stage": "verify_claim_support",
+        "contract_version": 1,
+        "program_artifact_id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
+        "artifact_reference": {
+          "type": "builtin",
+          "id": "tempest::verify_claim_support"
+        },
+        "governed_procedure_ref": null,
+        "evaluator_id": "tempest::evaluator/verify_claim_support",
+        "evaluator_version": "1"
+      }
+    },
+    "knowledge_snapshot": [],
+    "runtime": {
+      "deputy_run_ids": [
+        "deputy.persistence-pilot-initial"
+      ],
+      "deputy_session_ids": [
+        "tempest-storm-expert-252534fa9527477b5a06467b"
+      ]
+    },
+    "traces": [
+      {
+        "program_artifact_id": "sha256:418be97c0e236c241c3314e4a3d04ea8d12d5eb68a987b33edd5cec5573dd616",
+        "role": "program",
+        "stage": "perspectives",
+        "status": "succeeded",
+        "trace_id": "attempt-persistence-01-perspectives",
+        "trace_type": "stage_attempt"
+      },
+      {
+        "program_artifact_id": "sha256:ed5bfe02f791be72fc6245de627bddb3d6d9ce2b3b8d76ea456fda045a793b58",
+        "role": "program",
+        "stage": "query_decomposition",
+        "status": "succeeded",
+        "trace_id": "attempt-persistence-02-query_decomposition",
+        "trace_type": "stage_attempt"
+      },
+      {
+        "correlation_id": "correlation.persistence-pilot-initial",
+        "deputy_run_id": "deputy.persistence-pilot-initial",
+        "deputy_session_id": "tempest-storm-expert-252534fa9527477b5a06467b",
+        "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
+        "program_artifact_id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "role": "program",
+        "stage": "extract_claims",
+        "status": "succeeded",
+        "trace_id": "attempt-persistence-03-extract_claims",
+        "trace_type": "stage_attempt"
+      },
+      {
+        "program_artifact_id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
+        "role": "program",
+        "stage": "verify_claim_support",
+        "status": "succeeded",
+        "trace_id": "attempt-persistence-04-verify_claim_support",
+        "trace_type": "stage_attempt"
+      },
+      {
+        "program_artifact_id": "sha256:5aa9e4124de737048d657d5129d6cffd096cc3b83cc644c974b78f5cdb1c7788",
+        "role": "program",
+        "stage": "draft_outline",
+        "status": "succeeded",
+        "trace_id": "attempt-persistence-05-draft_outline",
+        "trace_type": "stage_attempt"
+      },
+      {
+        "program_artifact_id": "sha256:c6d55a5e924cf43e130e5b34eb4149498dbdb18310f163cbd2b32a8ca3f8cd28",
+        "role": "program",
+        "stage": "refined_outline",
+        "status": "succeeded",
+        "trace_id": "attempt-persistence-06-refined_outline",
+        "trace_type": "stage_attempt"
+      },
+      {
+        "program_artifact_id": "sha256:56427459731766e4e6ed367fff20992a5490c8859c5f128142f14cc88628f25b",
+        "role": "program",
+        "stage": "lead_section",
+        "status": "succeeded",
+        "trace_id": "attempt-persistence-07-lead_section",
+        "trace_type": "stage_attempt"
+      },
+      {
+        "program_artifact_id": "sha256:a4b648e1a3fad4ac9b0e04730979af7a7c909bf99014f06b26ee706b71b610b1",
+        "role": "program",
+        "stage": "section_writing",
+        "status": "succeeded",
+        "trace_id": "attempt-persistence-08-section_writing",
+        "trace_type": "stage_attempt"
+      },
+      {
+        "agent_id": "tempest-agent-e6993be1f7616966881059944361202d",
+        "completion_disposition": "issued",
+        "correlation_id": "correlation.persistence-pilot-initial",
+        "deputy_run_id": "deputy.persistence-pilot-initial",
+        "deputy_session_id": "tempest-storm-expert-252534fa9527477b5a06467b",
+        "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
+        "role": "expert",
+        "stage": "research",
+        "status": "complete",
+        "trace_id": "deputy.persistence-pilot-initial",
+        "trace_type": "deputy_run"
+      }
+    ],
+    "deliverables": {
+      "report_md": {
+        "report_id": "report_md",
+        "sha256": "sha256:d12abb257d48fc6f28df792d13d3d9b7cfb38d0492fd2e1dd830c3ffde2e0c42",
+        "status": "durable"
+      }
+    },
+    "status": "succeeded"
+  },
+  "stage_records": [
+    {
+      "stage": "extract_claims",
+      "attempt_id": "attempt-persistence-03-extract_claims",
+      "status": "succeeded",
+      "output_reference": {
+        "kind": "workspace_claims",
+        "ids": [
+          "claim.pilot-initial"
+        ],
+        "content_digest": "sha256:43065dce20dbe529a0b00f007be36388482c7b05bb0451ac4b569c1858c24b71"
+      },
+      "program_artifact_id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+      "governed_procedure_revision_id": null,
+      "trace_references": {
+        "correlation_id": "correlation.persistence-pilot-initial",
+        "deputy_run_id": "deputy.persistence-pilot-initial",
+        "deputy_session_id": "tempest-storm-expert-252534fa9527477b5a06467b",
+        "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
+        "mode": "storm",
+        "research_run_id": "pilot-initial",
+        "role": "program",
+        "stage_attempt_id": "attempt-persistence-03-extract_claims",
+        "trace_id": "attempt-persistence-03-extract_claims"
+      },
+      "started_at": "2026-08-16T00:03:00Z",
+      "completed_at": "2026-08-16T00:03:30Z",
+      "failure_class": null,
+      "failure_message": null,
+      "fallback_policy": "fail_closed",
+      "fallback_implementation": null,
+      "fallback_taken": false,
+      "execution_path": "grounded",
+      "support_status": "unknown",
+      "publication_allowed": false
+    },
+    {
+      "stage": "verify_claim_support",
+      "attempt_id": "attempt-persistence-04-verify_claim_support",
+      "status": "succeeded",
+      "output_reference": {
+        "kind": "claim_supports",
+        "ids": [
+          "sha256:f58f2bf66721ed78e622fd21ce525c80787d316192567b21589113b591575917"
+        ],
+        "content_digest": "sha256:5ca9572a099290ce3824b2189404e1b2e7990ab19ca46c4342bbcc3dec336b30"
+      },
+      "program_artifact_id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
+      "governed_procedure_revision_id": null,
+      "trace_references": {
+        "min_support_score": "0.7",
+        "mode": "storm",
+        "research_run_id": "pilot-initial",
+        "role": "program",
+        "stage_attempt_id": "attempt-persistence-04-verify_claim_support",
+        "trace_id": "attempt-persistence-04-verify_claim_support",
+        "verified_at": "2026-08-16T00:00:00Z",
+        "verifier_model": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d"
+      },
+      "started_at": "2026-08-16T00:04:00Z",
+      "completed_at": "2026-08-16T00:04:30Z",
+      "failure_class": null,
+      "failure_message": null,
+      "fallback_policy": "fail_closed",
+      "fallback_implementation": null,
+      "fallback_taken": false,
+      "execution_path": "grounded",
+      "support_status": "verified",
+      "publication_allowed": true
+    }
+  ],
+  "proof": {
+    "resources": [
+      {
+        "resource_id": "S318f3274f2a1",
+        "resource_kind": "web",
+        "locator": "https://example.com/pilot-initial",
+        "title": "Promotion evidence source",
+        "media_type": "text/html",
+        "content": "The pilot recovered 82% of the material.",
+        "storage_ref": null,
+        "origin_connection_id": null,
+        "scope_metadata": [],
+        "content_hash": "e142655169028269071a881dd2466e037f8a83bcee08083a8c8d56f9bf5d32f7",
+        "retrieved_at": "2026-01-01T00:00:00Z",
+        "redaction": [],
+        "retention": [],
+        "metadata": [],
+        "schema_version": 1,
+        "fingerprint": "4c879f6c4d97fb58d99b759f3c705c2a7fade4fafb41ef95e47c55d936ca7f53"
+      }
+    ],
+    "claims": [
+      {
+        "claim_id": "claim.pilot-initial",
+        "claim_text": "The pilot recovered 82% of the material.",
+        "claim_type": "finding",
+        "source_ids": [
+          "S318f3274f2a1"
+        ],
+        "evidence_span_ids": [
+          "span.pilot-initial"
+        ],
+        "supporting_quotes": [
+          "The pilot recovered 82% of the material."
+        ],
+        "contradicting_source_ids": [],
+        "contradiction_note": null,
+        "confidence": "medium",
+        "support_score": null,
+        "contradiction_score": null,
+        "source_quality_score": null,
+        "retrieval_query": null,
+        "retrieval_step_id": "correlation.persistence-pilot-initial",
+        "perspective_id": null,
+        "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
+        "session_id": "pilot-initial",
+        "section_id": null,
+        "created_at": "2026-09-05T15:11:13.550776Z",
+        "verified_at": null,
+        "verifier_model": null,
+        "verification_status": "unverified"
+      }
+    ],
+    "evidence_spans": [
+      {
+        "evidence_span_id": "span.pilot-initial",
+        "source_id": "S318f3274f2a1",
+        "chunk_id": null,
+        "quote": "The pilot recovered 82% of the material.",
+        "start_offset": null,
+        "end_offset": null,
+        "page": null,
+        "section_heading": null,
+        "relevance_score": null,
+        "extracted_by": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "created_at": "2026-09-05T15:11:13.513495Z"
+      }
+    ],
+    "claim_supports": [
+      {
+        "claim_support_id": "sha256:f58f2bf66721ed78e622fd21ce525c80787d316192567b21589113b591575917",
+        "claim_id": "claim.pilot-initial",
+        "evidence_span_id": "span.pilot-initial",
+        "source_id": "S318f3274f2a1",
+        "verification_status": "supported",
+        "support_score": 0.9,
+        "rationale": "The exact durable excerpt supports the claim."
+      }
+    ]
+  },
+  "claim_ids": [
+    "claim.pilot-initial"
+  ],
+  "records": {
+    "Source": [
+      {
+        "tempest_source_id": "S318f3274f2a1",
+        "resource_kind": "web",
+        "locator": "https://example.com/pilot-initial",
+        "title": "Promotion evidence source",
+        "media_type": "text/html",
+        "content_hash": "sha256:e142655169028269071a881dd2466e037f8a83bcee08083a8c8d56f9bf5d32f7",
+        "retrieved_at": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "Claim": [
+      {
+        "tempest_claim_id": "claim.pilot-initial",
+        "statement_text": "The pilot recovered 82% of the material.",
+        "claim_type": "finding",
+        "confidence_label": "medium",
+        "verification_status": "supported",
+        "support_score": 0.9,
+        "contradiction_score": null,
+        "source_quality_score": null,
+        "retrieval_query": null,
+        "retrieval_step_id": "correlation.persistence-pilot-initial",
+        "perspective_id": null,
+        "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
+        "session_id": "pilot-initial",
+        "section_id": null,
+        "asserted_at": "2026-09-05T15:11:13.550776Z",
+        "verified_at": null,
+        "verifier_model": null,
+        "status": "active"
+      }
+    ],
+    "EvidenceSpan": [
+      {
+        "id": "tempest:span.pilot-initial",
+        "tempest_evidence_span_id": "span.pilot-initial",
+        "source_id": "S318f3274f2a1",
+        "excerpt": "The pilot recovered 82% of the material.",
+        "chunk_id": null,
+        "start_offset": null,
+        "end_offset": null,
+        "page_start": null,
+        "page_end": null,
+        "section_heading": null,
+        "relevance_score": null,
+        "extraction_method": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "extraction_version": "tempest.evidence-span/1",
+        "source_content_hash": "sha256:e142655169028269071a881dd2466e037f8a83bcee08083a8c8d56f9bf5d32f7",
+        "extracted_at": "2026-09-05T15:11:13.513495Z"
+      }
+    ],
+    "ClaimSupport": [
+      {
+        "tempest_claim_support_id": "sha256:f58f2bf66721ed78e622fd21ce525c80787d316192567b21589113b591575917",
+        "tempest_claim_id": "claim.pilot-initial",
+        "statement_id": "claim.pilot-initial",
+        "source_id": "S318f3274f2a1",
+        "evidence_span_id": "tempest:span.pilot-initial",
+        "support_type": "supports",
+        "pair_verification_status": "supported",
+        "support_score": 0.9,
+        "rationale": "The exact durable excerpt supports the claim.",
+        "locator_type": null,
+        "locator_value": null,
+        "page_start": null,
+        "page_end": null,
+        "excerpt": "The pilot recovered 82% of the material.",
+        "source_content_hash": "sha256:e142655169028269071a881dd2466e037f8a83bcee08083a8c8d56f9bf5d32f7",
+        "extraction_method": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "extraction_version": "tempest.evidence-span/1"
+      }
+    ],
+    "ProgramArtifact": [
+      {
+        "id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "artifact_kind": "dsprrr_program"
+      },
+      {
+        "id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
+        "artifact_kind": "dsprrr_program"
+      }
+    ]
+  }
+}

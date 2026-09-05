@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "bundle_type": "tempest_promotion",
+  "status": "complete",
+  "bundle_id": "sha256:b19dedc6127d20c515af3bcb9bae9c960bb04cf4a05af5ffafa259f7acf8c43d",
+  "files": [
+    "bundle.json"
+  ],
+  "checksums": {
+    "bundle.json": "7173cd1c4d5eee6e1ab3aa8b4e6ef352f5683b067e5c7902b30428bbd2cc8eae"
+  },
+  "manifest_digest": "sha256:319685859d1705c8ad52d499ba47f8423651d6f389098cecdf2ea5ea32bd1487"
+}

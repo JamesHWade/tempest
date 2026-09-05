@@ -46,7 +46,6 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
-          http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
@@ -54,33 +53,74 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
+      - name: Verify subscription-auth dependency
+        run: stopifnot("auth" %in% names(formals(ellmer::chat_openai)))
+        shell: Rscript {0}
+
       - uses: r-lib/actions/check-r-package@v2
         env:
           TESTTHAT_CPUS: ${{ runner.os == 'Linux' && '4' || '' }}
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
-          # PRs and pushes run the complete suite once, on Ubuntu. Scheduled
-          # and manually dispatched checks retain full three-OS tests.
-          args: ${{ (runner.os == 'Linux' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'c("--no-manual", "--as-cran")' || 'c("--no-manual", "--as-cran", "--no-tests")' }}
+          # PR and push tests run once across the Linux shards below.
+          # Scheduled/manual checks retain the complete three-OS suite.
+          args: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'c("--no-manual", "--as-cran")' || 'c("--no-manual", "--as-cran", "--no-tests")' }}
 
       - name: Run platform contracts
         if: runner.os != 'Linux' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
         run: testthat::test_local(".", filter = "^platform-contracts$")
         shell: Rscript {0}
 
+  tests:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    name: tests (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      TESTTHAT_CPUS: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          needs: check
+      - name: Verify subscription-auth dependency
+        run: stopifnot("auth" %in% names(formals(ellmer::chat_openai)))
+        shell: Rscript {0}
+      - name: Run test shard
+        run: Rscript tools/test-shard.R ${{ matrix.shard }} 4
+      - name: Upload test timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-times-${{ matrix.shard }}
+          path: ${{ runner.temp }}/test-times-*.csv
+
   required:
     name: required
     if: always()
-    needs: R-CMD-check
+    needs: [R-CMD-check, tests]
     runs-on: ubuntu-latest
 
     steps:
       - name: Confirm package checks passed
         env:
           CHECK_RESULT: ${{ needs.R-CMD-check.result }}
+          TEST_RESULT: ${{ needs.tests.result }}
+          RUN_TEST_SHARDS: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
         run: |
           if [[ "$CHECK_RESULT" != "success" ]]; then
             echo "Package checks finished with result: $CHECK_RESULT"
+            exit 1
+          fi
+          if [[ "$RUN_TEST_SHARDS" == "true" && "$TEST_RESULT" != "success" ]]; then
+            echo "Test shards finished with result: $TEST_RESULT"
             exit 1
           fi
