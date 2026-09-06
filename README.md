@@ -478,75 +478,42 @@ result <- tempest_run(
 )
 ```
 
-The same value carries accepted evidence. `record_ids` names an exact allowlist
-of accepted `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records, which
-Tempest reads as data:
+Accepted evidence uses the same immutable knowledge boundary. Preserve complete
+host-selected promotion receipts so each claim keeps its supports, evidence
+spans and sources. The shared host recipe retains exact reviewed revisions:
 
 ```r
-topic_query <- "battery recycling"
-basis_limit <- 1000L
-claims <- graft::graft_find(
-  view,
-  topic_query,
-  class = "Claim",
-  limit = basis_limit
-)
-if (isTRUE(attr(claims, "truncated"))) stop("Narrow the topic.")
-knowledge <- tempest_knowledge(view, record_ids = claims$id)
-basis <- list(
-  snapshot = graft::graft_view_snapshot(view),
-  record_ids = claims$id
-)
+source(system.file("examples", "briefing-basis.R", package = "tempest"))
+selections <- list(briefing_selection(receipt))
+basis <- capture_briefing_basis(store, selections, report_md = report)
 saveRDS(basis, "accepted-basis.rds")
+knowledge <- read_briefing_basis(store, basis)
 ```
 
-A scheduled host does not need to search again on later days. Persist the
-whole selected basis and its snapshot, then apply active changes scoped to
-that basis and topic. A promotion receipt contains only the records planned
-for one run, so it cannot replace this durable selection. This compact example
-carries `Claim` records only; the daily briefing vignette shows the
-class-aware workflow for carrying related evidence. Deleted, retracted, and
-superseded records leave the basis, while unrelated topics and record classes
-remain outside Tempest's evidence channel:
+On later days, reopen the matching store and trusted checkpoint. Changes to the
+selected evidence require host review before another automatic run:
 
 ```r
-previous_basis <- readRDS("accepted-basis.rds")
-matches <- graft::graft_find(
-  view,
-  topic_query,
-  class = "Claim",
-  limit = basis_limit
-)
-if (isTRUE(attr(matches, "truncated"))) stop("Narrow the topic.")
-changes <- graft::graft_changes(
-  view,
-  since = previous_basis$snapshot,
-  class = "Claim"
-)
-relevant <- changes$record_id %in% union(
-  previous_basis$record_ids,
-  matches$id
-)
-changes <- changes[relevant, ]
-status <- vapply(
-  changes$record,
-  \(record) if (is.null(record$status)) "active" else record$status,
-  character(1)
-)
-keep <- changes$action != "delete" & status == "active"
-removed_ids <- changes$record_id[!keep]
-record_ids <- union(
-  setdiff(previous_basis$record_ids, removed_ids),
-  changes$record_id[keep]
-)
-if (length(record_ids) > basis_limit) stop("Narrow the topic.")
-knowledge <- tempest_knowledge(view, record_ids = record_ids)
-basis <- list(
-  snapshot = graft::graft_view_snapshot(view),
-  record_ids = record_ids
-)
-saveRDS(basis, "accepted-basis.rds")
+basis <- readRDS("accepted-basis.rds")
+if (nrow(briefing_changes(store, basis)) > 0L) {
+  stop("Review the selected evidence before research.")
+}
+knowledge <- read_briefing_basis(store, basis)
 ```
+
+An unchanged day keeps the full selection. After accepting additional research,
+append its complete selection to `basis$selections` and capture a new checkpoint.
+For repeated record IDs, the newest selected receipt revision wins. If current
+records differ from those reviewed revisions, checkpoint creation stops for
+review. The recipe also stops above 1,000 records instead of dropping evidence.
+Historical inspection can still reconstruct the earlier pinned answer.
+
+A report remains host-owned synthesis linked to its selected evidence, not a
+new source or an execution grant. The [offline acceptance and correction
+example](https://jameshwade.github.io/tempest/articles/accepted-research.html)
+shows the complete restart and correction workflow. The [daily briefing
+guide](https://jameshwade.github.io/tempest/articles/daily-briefing.html) applies
+the same recipe to a scheduled host.
 
 Accepted `Claim` records give the briefing its change signal: a verified claim
 that restates one of them is a no-change finding, and every other verified

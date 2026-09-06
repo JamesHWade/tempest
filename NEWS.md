@@ -1,5 +1,8 @@
 # tempest 0.0.0.9000
 
+* The daily briefing example preserves complete selected evidence across unchanged days and reviewed corrections, with an executable offline companion (graft #50).
+* Subscription authentication now uses the ellmer 0.5-based port of upstream subscription support, allowing current Graft dependencies to resolve (tidyverse/ellmer#1067).
+
 * The development package version is `0.0.0.9000` while Tempest remains unreleased. Compatibility contracts and persisted storage formats retain their independent versions.
 
 * Tempest now runs against the current `main` of deputy, dsprrr, graft, and scans. dsprrr's `module()` no longer takes `type`, and its runner requires a real ellmer `Chat`, so the test fakes are now R6-classed environments that expose chat history (0mpk).

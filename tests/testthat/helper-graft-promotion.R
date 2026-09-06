@@ -8,14 +8,18 @@ test_promotion_program_set <- local({
   }
 })
 
-test_promotion_storm_fixture <- function(run_id = "research-promotion-1") {
+test_promotion_storm_fixture <- function(
+  run_id = "research-promotion-1",
+  evidence_text = "Durable evidence supports the completed research product."
+) {
   config <- tempest_config(chat_fn = function(...) fake_chat())
   program_set <- test_promotion_program_set()
   completed <- test_persistence_complete_storm_product(
     topic = "Promotion evidence",
     run_id = run_id,
     config = config,
-    program_set = program_set
+    program_set = program_set,
+    evidence_text = evidence_text
   )
   manifest <- tempest:::tempest_product_authority_finalize_manifest(
     manifest = completed$manifest,
