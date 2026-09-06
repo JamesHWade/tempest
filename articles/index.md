@@ -13,3 +13,6 @@ Install Tempest and run your first workflow.
 
 - [Build a governed daily
   briefing](https://jameshwade.github.io/tempest/articles/daily-briefing.md):
+
+- [Reuse and correct accepted
+  research](https://jameshwade.github.io/tempest/articles/accepted-research.md):

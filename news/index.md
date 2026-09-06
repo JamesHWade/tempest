@@ -1,17 +1,30 @@
 # Changelog
 
-## tempest (development version)
+## tempest 0.0.0.9000
+
+- The daily briefing example preserves complete selected evidence across
+  unchanged days and reviewed corrections, with an executable offline
+  companion (graft
+  [\#50](https://github.com/JamesHWade/tempest/issues/50)).
+
+- Subscription authentication now uses the ellmer 0.5-based port of
+  upstream subscription support, allowing current Graft dependencies to
+  resolve (tidyverse/ellmer#1067).
+
+- The development package version is `0.0.0.9000` while Tempest remains
+  unreleased. Compatibility contracts and persisted storage formats
+  retain their independent versions.
 
 - Tempest now runs against the current `main` of deputy, dsprrr, graft,
   and scans. dsprrr’s `module()` no longer takes `type`, and its runner
   requires a real ellmer `Chat`, so the test fakes are now R6-classed
   environments that expose chat history (0mpk).
-- Graft compatibility is now checked through
-  [`graft::graft_contract_version()`](https://jameshwade.github.io/graft/reference/graft_contract_version.html)
-  instead of a pinned git commit and a digest of Graft’s entire
-  namespace; Tempest requires consumer contract `0.2.0` and store format
-  `3.1.0`, and the compiled research schema is loaded with Graft’s
-  injected `GraftDefinition` system class (0mpk).
+
+- [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
+  accepts Graft consumer contracts `>= 0.2.0` and `< 0.6.0` with store
+  format `3.1.0`, retaining the immutable compiled-schema check and
+  Graft’s injected `GraftDefinition` system class (0mpk, 03d5).
+
 - Briefing items now decide structurally whether a verified claim
   changes accepted knowledge:
   [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
@@ -21,6 +34,7 @@
   restate an accepted claim. The previous language-pattern gate for
   no-change claims is removed, and reloading a report re-checks the same
   disposition (0mpk).
+
 - [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
   now keys accepted `Claim` identity on normalized statement text and
   accepted `Source` identity on the exact locator plus content hash
@@ -34,22 +48,26 @@
   becomes a new Source; the plan’s new `disposition` column then reads
   `duplicate` or `revision` for re-verified knowledge and `new` only for
   genuinely new records (0mpk).
+
 - [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
   now accepts up to 1,000 accepted record ids instead of 100, accepted
   records no longer count against the workspace’s `max_sources`
   retrieval cap, and each accepted `Claim` resource carries its
   statement text as metadata (0mpk).
+
 - [`vignette("daily-briefing")`](https://jameshwade.github.io/tempest/articles/daily-briefing.md)
   now selects the next day’s accepted basis durably by carrying forward
   the previous receipt and adding
   [`graft::graft_changes()`](https://jameshwade.github.io/graft/reference/graft_changes.html)
   since the previous snapshot, reads the plan’s `disposition` column for
   the change signal, and shows the managed OKF review round trip (0mpk).
+
 - Internal ellmer Chat clients are now governed directly by Deputy Agent
   objects while preserving Tempest’s exact completion and terminal-trace
   bindings; this removes Tempest’s parallel hand-built Chat facade and
   accepts real R6 ellmer clients, including shinychat attachment content
   (pjsd).
+
 - The public namespace is now exactly 20 exports and one S3 method,
   [`print.tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md).
   Workspaces, retrievers, resources, manifests, ProgramSets,
@@ -60,24 +78,28 @@
   reachable only through
   [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
   (pjsd).
+
 - User-facing failures now inherit `tempest_error` and exactly one
   public category: `tempest_input_error`, `tempest_execution_error`,
   `tempest_persistence_error`, `tempest_authority_error`, or
   `tempest_cancelled`; internal subclasses remain for diagnostics, and
   the original provider or package condition stays reachable through the
   ordinary parent chain (pjsd).
+
 - `SimulatedUser`, `tempest_task()`, `tempest_costorm_task()`,
   `tempest_compile_programs()`, `tempest_save_program_set()`, and
   `tempest_load_program_set()` are removed without replacement;
   standalone evaluation and file-backed ProgramSet compilation are no
   longer Tempest capabilities, and resume continues to verify a supplied
   ProgramSet against persisted program identity (pjsd).
+
 - Progress callbacks now receive one canonical plain named record with
   exactly `event_id`, `run_id`, `workflow`, `event_type`, `stage`,
   `step`, `status`, `timestamp`, `message`, `payload`,
   `parent_event_id`, and `correlation_id`, so hosts can store and reduce
   progress with ordinary R code instead of event constructors, decoders,
   or label tables (pjsd).
+
 - `TempestSession` is reduced to six operations (`warmup()`,
   [`step()`](https://rdrr.io/r/stats/step.html), `suggest_questions()`,
   `add_expert()`, `retire_expert()`, and `publish()`) and six read-only
@@ -86,13 +108,16 @@
   and completion claiming, event emission, Deputy routing, mind-map
   maintenance, and workspace and manifest mutation are now private
   (pjsd).
+
 - [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
   replaces `run_app()` so every Tempest entry point is visibly
   namespaced (pjsd).
+
 - [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md)
   now returns the complete joined proof table, adding claim text and the
   exact evidence-span quote, offsets, page, and section heading to the
   existing support, claim, and source identities (pjsd).
+
 - [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
   is the one strict constructor for accepted organizational knowledge,
   replacing the `knowledge_view` arguments and public governed-procedure
@@ -102,12 +127,14 @@
   records it cannot materialize exactly rather than truncating them, and
   keeps executable authority reachable only through an explicit
   governed-procedure stage binding (pjsd).
+
 - [`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md)
   is now the one read accessor for the committed Markdown report of a
   completed
   [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   product or a published session, replacing `tempest_report_md()` and
   `tempest_session_report_md()` (pjsd).
+
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   now returns one validated product value read through
   [`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md),
@@ -118,6 +145,7 @@
   [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md);
   the raw retriever, mutable workspace, manifest, and stage state are no
   longer part of the supported result surface (pjsd).
+
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   now canonicalizes dsprrr’s typed tabular structured results before
   strict validation and renders governed briefing items: observations
@@ -128,6 +156,7 @@
   missing or inconclusive evidence is never presented as no change, and
   reports reject altered or repetitive items whose hidden provenance no
   longer matches the visible Markdown (pjsd).
+
 - [`tempest_trajectory_review_data()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review_data.md)
   exposes the validated, schema-versioned plain projection from an exact
   [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
@@ -135,6 +164,7 @@
   bindings, canonical-set ordering and uniqueness, bounded acceptance
   reconciliation, and content-bound review identity so downstream
   adapters do not duplicate source invariants (scans#21).
+
 - Tempest 0.3 begins a hard, pre-production API reset: Agent Skill and
   Open Knowledge Format APIs and assets, standalone
   `tempest_suggest_questions()`, permissive provider, model, and
@@ -142,6 +172,7 @@
   session recovery, and the Deputy SDK-compatibility hook have been
   removed without deprecation or migration shims; Graft is the sole
   accepted-knowledge compatibility boundary (pjsd).
+
 - Experimental OpenTelemetry tracing can be enabled for bounded Tempest
   STORM, stage-execution, retrieval search/fetch, and Co-STORM
   moderator-completion, turn-commit, warmup, and report operations
@@ -151,10 +182,12 @@
   ownership; the privacy-safe projection is off by default and excludes
   research content, identifiers, URLs, and arbitrary progress payloads
   (bavj).
+
 - The bundled Shiny workspace settings drawer now moves keyboard focus
   into its named controls, keeps mobile focus inside the full-width
   drawer, closes with Escape, restores the exact launcher, synchronizes
   launcher state, and leaves the desktop chat interactive (dqyv).
+
 - Tempest now uses Deputy’s current constructor, drop-in Chat, hook, and
   policy APIs: every product-owned session identifier passes through
   `Agent$new(session_id = )` and is verified against the live runtime,
@@ -163,16 +196,19 @@
   and current `"cost_unavailable"` and `"tool_loop"` terminal reasons
   remain distinct instead of collapsing to a generic error
   (JamesHWade/deputy#56).
+
 - Co-STORM expert-session identities now bind their research run and
   expert owner while retaining a fresh session instance suffix; snapshot
   and bundle schema 11 rejects schema 10 rather than silently
   reinterpreting its legacy session identifiers (scans#21).
+
 - [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
   now accepts only six authored scientific-profile fields, derives
   immutable identity and version from canonical content, and separates
   Co-STORM retirement into session-roster state; expert profile schema
   2, STORM state schema 5 and bundle schema 8, and Co-STORM snapshot and
   bundle schema 11 have no compatibility readers (pjsd).
+
 - Internally, `TempestResource` is the only writable evidence
   representation: retriever fetches, provider-native evidence, caches,
   workspace persistence, and direct workspace insertion all require
