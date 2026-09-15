@@ -378,23 +378,35 @@ tempest_config <- function(
   )
 }
 
+# Whether the installed ellmer takes `chat_openai(auth = )`, the ChatGPT
+# subscription-authentication port (tidyverse/ellmer#1067). Released ellmer
+# 0.5.0 does not; the port lives on a fork. Kept as a seam so tests can
+# exercise both answers without swapping ellmer builds.
+tempest_chat_openai_supports_auth <- function() {
+  "auth" %in% names(formals(ellmer::chat_openai))
+}
+
 # Call ellmer through a package-local seam so the provider boundary can be
-# tested without credentials or network access.
+# tested without credentials or network access. Subscription authentication
+# is requested when the installed ellmer can honour it; otherwise the request
+# is dropped and the chat authenticates through ellmer's standard API-key
+# path, with a once-per-session note. Tempest no longer pins ellmer to the
+# fork carrying the port, so a stock ellmer must still yield a working chat.
 tempest_chat_openai <- function(...) {
-  if (!"auth" %in% names(formals(ellmer::chat_openai))) {
-    tempest_abort(
+  args <- list(...)
+  if (!is.null(args$auth) && !tempest_chat_openai_supports_auth()) {
+    rlang::inform(
       c(
-        "The installed ellmer does not support ChatGPT subscription authentication.",
-        i = "Reinstall Tempest dependencies to obtain the ellmer 0.5 subscription-auth port."
+        "The installed ellmer does not support ChatGPT subscription authentication; using API-key authentication instead.",
+        i = "Install the ellmer subscription-auth port (tidyverse/ellmer#1067) to authenticate through Codex."
       ),
-      class = c(
-        "tempest_chat_error",
-        "tempest_config_error",
-        "tempest_error"
-      )
+      class = "tempest_subscription_auth_unavailable",
+      .frequency = "once",
+      .frequency_id = "tempest_subscription_auth_unavailable"
     )
+    args$auth <- NULL
   }
-  ellmer::chat_openai(...)
+  do.call(ellmer::chat_openai, args)
 }
 
 tempest_subscription_chat_params <- function(role, params) {
