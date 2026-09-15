@@ -53,8 +53,16 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - name: Verify subscription-auth dependency
-        run: stopifnot("auth" %in% names(formals(ellmer::chat_openai)))
+      - name: Report subscription-auth availability
+        # Tempest no longer pins the ellmer fork that carries chat_openai(auth = );
+        # stock ellmer falls back to API-key authentication. Record which path
+        # this runner exercises so a failure can be read against it.
+        run: |
+          has_auth <- "auth" %in% names(formals(ellmer::chat_openai))
+          cat("ellmer", as.character(packageVersion("ellmer")),
+              if (has_auth) "supports" else "lacks",
+              "chat_openai(auth = ); Tempest",
+              if (has_auth) "uses subscription auth" else "falls back to API-key auth", "\n")
         shell: Rscript {0}
 
       - uses: r-lib/actions/check-r-package@v2
@@ -91,8 +99,16 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           needs: check
-      - name: Verify subscription-auth dependency
-        run: stopifnot("auth" %in% names(formals(ellmer::chat_openai)))
+      - name: Report subscription-auth availability
+        # Tempest no longer pins the ellmer fork that carries chat_openai(auth = );
+        # stock ellmer falls back to API-key authentication. Record which path
+        # this runner exercises so a failure can be read against it.
+        run: |
+          has_auth <- "auth" %in% names(formals(ellmer::chat_openai))
+          cat("ellmer", as.character(packageVersion("ellmer")),
+              if (has_auth) "supports" else "lacks",
+              "chat_openai(auth = ); Tempest",
+              if (has_auth) "uses subscription auth" else "falls back to API-key auth", "\n")
         shell: Rscript {0}
       - name: Run test shard
         run: Rscript tools/test-shard.R ${{ matrix.shard }} 4

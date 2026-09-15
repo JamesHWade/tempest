@@ -301,13 +301,12 @@ test_that("default OpenAI chats use ChatGPT subscription authentication", {
 
 test_that("a stock ellmer without `auth` falls back to API-key authentication", {
   captured <- NULL
-  local_mocked_bindings(tempest_chat_openai_supports_auth = function() FALSE)
   local_mocked_bindings(
-    chat_openai = function(...) {
+    tempest_chat_openai_supports_auth = function() FALSE,
+    tempest_ellmer_chat_openai = function(...) {
       captured <<- list(...)
       list(mock = TRUE)
-    },
-    .package = "ellmer"
+    }
   )
   rlang::reset_message_verbosity("tempest_subscription_auth_unavailable")
 
@@ -317,6 +316,12 @@ test_that("a stock ellmer without `auth` falls back to API-key authentication", 
   )
   expect_identical(chat$mock, TRUE)
   expect_equal(captured$model, "gpt-5.6-luna")
+  expect_false("auth" %in% names(captured))
+
+  # The note is once per session: a second fallback is silent.
+  expect_no_message(
+    tempest_chat_openai(model = "gpt-5.6-luna", auth = "codex")
+  )
   expect_false("auth" %in% names(captured))
 
   # With the port installed the request goes through untouched.
