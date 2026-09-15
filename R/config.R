@@ -198,7 +198,7 @@ TempestConfig <- S7::new_class(
 #' @param models Named list of model identifiers for each role, or a single
 #'   string to use for all roles.
 #' @param params Additional parameters passed to chat creation. Explicit values
-#'   override the role defaults used by built-in ChatGPT-subscription clients.
+#'   override the role defaults used by Tempest's built-in OpenAI clients.
 #' @param chat_fn Custom chat factory function. Should accept `role`, `model`,
 #'   `system_prompt`, and `echo` arguments and return an ellmer-compatible Chat
 #'   object. Use this for custom providers like `chat_company()`.
@@ -240,9 +240,14 @@ TempestConfig <- S7::new_class(
 #' role. Chat objects are cloned for every role, retain their provider settings
 #' and system instructions, and receive the appropriate Tempest role prompt.
 #' When the option is unset, Tempest creates its built-in OpenAI clients with
-#' [ellmer::chat_openai()] and `auth = "codex"`, which uses file-backed ChatGPT
-#' subscription authentication managed by Codex CLI. Explicit `models` and
-#' `chat_fn` arguments take precedence over the option.
+#' [ellmer::chat_openai()]. If the installed ellmer carries the ChatGPT
+#' subscription-authentication port (`chat_openai(auth = )`,
+#' tidyverse/ellmer#1067), the clients are created with `auth = "codex"` and
+#' reuse the file-backed subscription managed by Codex CLI, so no
+#' `OPENAI_API_KEY` is needed. With released ellmer, which lacks that
+#' argument, the clients use ellmer's standard API-key authentication
+#' (`OPENAI_API_KEY`), and Tempest says so once per session. Explicit
+#' `models` and `chat_fn` arguments take precedence over the option.
 #' @return A `TempestConfig` S7 object.
 #' @examples
 #' cfg <- tempest_config()
@@ -378,22 +383,40 @@ tempest_config <- function(
   )
 }
 
+# Whether the installed ellmer takes `chat_openai(auth = )`, the ChatGPT
+# subscription-authentication port (tidyverse/ellmer#1067). Released ellmer
+# 0.5.0 does not; the port lives on a fork. Kept as a seam so tests can
+# exercise both answers without swapping ellmer builds.
+tempest_chat_openai_supports_auth <- function() {
+  "auth" %in% names(formals(ellmer::chat_openai))
+}
+
 # Call ellmer through a package-local seam so the provider boundary can be
-# tested without credentials or network access.
+# tested without credentials or network access. Subscription authentication
+# is requested when the installed ellmer can honour it; otherwise the request
+# is dropped and the chat authenticates through ellmer's standard API-key
+# path, with a once-per-session note. Tempest no longer pins ellmer to the
+# fork carrying the port, so a stock ellmer must still yield a working chat.
 tempest_chat_openai <- function(...) {
-  if (!"auth" %in% names(formals(ellmer::chat_openai))) {
-    tempest_abort(
+  args <- list(...)
+  if (!is.null(args$auth) && !tempest_chat_openai_supports_auth()) {
+    rlang::inform(
       c(
-        "The installed ellmer does not support ChatGPT subscription authentication.",
-        i = "Reinstall Tempest dependencies to obtain the ellmer 0.5 subscription-auth port."
+        "The installed ellmer does not support ChatGPT subscription authentication; using API-key authentication instead.",
+        i = "Install the ellmer subscription-auth port (tidyverse/ellmer#1067) to authenticate through Codex."
       ),
-      class = c(
-        "tempest_chat_error",
-        "tempest_config_error",
-        "tempest_error"
-      )
+      class = "tempest_subscription_auth_unavailable",
+      .frequency = "once",
+      .frequency_id = "tempest_subscription_auth_unavailable"
     )
+    args$auth <- NULL
   }
+  do.call(tempest_ellmer_chat_openai, args)
+}
+
+# The one place Tempest reaches ellmer's OpenAI constructor, so tests mock a
+# Tempest binding rather than a dependency's namespace.
+tempest_ellmer_chat_openai <- function(...) {
   ellmer::chat_openai(...)
 }
 

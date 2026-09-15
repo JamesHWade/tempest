@@ -1,5 +1,7 @@
 # tempest 0.0.0.9000
 
+* Tempest no longer pins ellmer to a fork commit in `Remotes`. Released ellmer (>= 0.5.0) satisfies the dependency, so Tempest installs beside packages that require ellmer 0.5 (querychat 0.4.0 broke every dowci CI build on the old pin). When the installed ellmer lacks the ChatGPT subscription-authentication port, `openai/` chats fall back to API-key authentication with a once-per-session note instead of aborting.
+
 * The daily briefing example preserves complete selected evidence across unchanged days and reviewed corrections, with an executable offline companion (graft #50).
 * Subscription authentication now uses the ellmer 0.5-based port of upstream subscription support, allowing current Graft dependencies to resolve (tidyverse/ellmer#1067).
 
