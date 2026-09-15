@@ -37,8 +37,7 @@ tempest_config(
 - params:
 
   Additional parameters passed to chat creation. Explicit values
-  override the role defaults used by built-in ChatGPT-subscription
-  clients.
+  override the role defaults used by Tempest's built-in OpenAI clients.
 
 - chat_fn:
 
@@ -138,10 +137,15 @@ objects are cloned for every role, retain their provider settings and
 system instructions, and receive the appropriate Tempest role prompt.
 When the option is unset, Tempest creates its built-in OpenAI clients
 with
-[`ellmer::chat_openai()`](https://ellmer.tidyverse.org/reference/chat_openai.html)
-and `auth = "codex"`, which uses file-backed ChatGPT subscription
-authentication managed by Codex CLI. Explicit `models` and `chat_fn`
-arguments take precedence over the option.
+[`ellmer::chat_openai()`](https://ellmer.tidyverse.org/reference/chat_openai.html).
+If the installed ellmer carries the ChatGPT subscription-authentication
+port (`chat_openai(auth = )`, tidyverse/ellmer#1067), the clients are
+created with `auth = "codex"` and reuse the file-backed subscription
+managed by Codex CLI, so no `OPENAI_API_KEY` is needed. With released
+ellmer, which lacks that argument, the clients use ellmer's standard
+API-key authentication (`OPENAI_API_KEY`), and Tempest says so once per
+session. Explicit `models` and `chat_fn` arguments take precedence over
+the option.
 
 ## Examples
 

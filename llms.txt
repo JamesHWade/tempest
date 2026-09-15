@@ -56,19 +56,27 @@ for the package tour and a first STORM workflow.
 ### LLM provider credentials
 
 By default, Tempest creates OpenAI clients with
-`ellmer::chat_openai(auth = "codex")`. This reuses file-backed ChatGPT
-subscription authentication managed by an installed Codex CLI; no
-`OPENAI_API_KEY` is required. If Codex has not stored file-backed
-credentials, run `codex login -c 'cli_auth_credentials_store="file"'`.
+[`ellmer::chat_openai()`](https://ellmer.tidyverse.org/reference/chat_openai.html).
+Which credential it needs depends on the installed ellmer:
 
-Alternative providers and custom chat factories use the credential
-mechanism configured for that provider. For example, an OpenAI API-key
-factory can read:
+- **Released ellmer (0.5.0 or later from CRAN)** authenticates with an
+  API key. Set it outside your R source files:
 
-``` r
+  ``` r
 
-Sys.setenv(OPENAI_API_KEY = "<your key>")
-```
+  Sys.setenv(OPENAI_API_KEY = "<your key>")
+  ```
+
+- **ellmer with the subscription-authentication port**
+  (`chat_openai(auth = )`, tidyverse/ellmer#1067) lets Tempest pass
+  `auth = "codex"` and reuse the file-backed ChatGPT subscription
+  managed by an installed Codex CLI; no `OPENAI_API_KEY` is required. If
+  Codex has not stored file-backed credentials, run
+  `codex login -c 'cli_auth_credentials_store="file"'`.
+
+Tempest detects which it has and tells you once per session when it
+falls back to the API key. Alternative providers and custom chat
+factories use the credential mechanism configured for that provider.
 
 ### Search provider
 
@@ -618,10 +626,13 @@ accepts the following parameters:
 
 By default, coordinator and writer roles use `openai/gpt-5.6-sol`;
 expert, mind map, and judge roles use `openai/gpt-5.6-luna`. Tempest
-constructs these clients with `ellmer::chat_openai(auth = "codex")`,
-reusing the ChatGPT subscription authenticated by Codex CLI. Built-in
-subscription clients use lower reasoning effort for mind-map and judge
-calls; explicit `params` values override these defaults.
+constructs these clients with
+[`ellmer::chat_openai()`](https://ellmer.tidyverse.org/reference/chat_openai.html),
+passing `auth = "codex"` to reuse the ChatGPT subscription authenticated
+by Codex CLI when the installed ellmer supports it and using
+`OPENAI_API_KEY` otherwise (see *LLM provider credentials*). Built-in
+clients use lower reasoning effort for mind-map and judge calls;
+explicit `params` values override these defaults.
 [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
 limits individual provider requests to 120 seconds by default,
 configurable with `tempest.shiny.provider_timeout_s`. The bundled app’s
@@ -849,7 +860,8 @@ tempest_app()
 
 Untouched model fields inherit `options(tempest.chat = )`; otherwise the
 app uses Tempest’s GPT-5.6 Sol/Luna defaults with ChatGPT subscription
-authentication. Editing any model field switches the app to those
+authentication where the installed ellmer supports it, else
+`OPENAI_API_KEY`. Editing any model field switches the app to those
 explicit per-role model selections.
 
 The app provides:

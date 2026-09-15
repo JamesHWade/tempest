@@ -136,10 +136,13 @@ Tempest 0.2 has no application-neutral workflow or runtime API.</p>
 <p>Tempest uses <code>ellmer</code> for model access. Configure the
 credential required by your chosen provider outside your R source files.
 For the default OpenAI models, Tempest uses
-<code>ellmer::chat_openai(auth = "codex")</code> and reuses the
-file-backed ChatGPT subscription authentication managed by Codex CLI. If
-Codex has not stored file-backed credentials, run
-<code>codex login -c 'cli_auth_credentials_store="file"'</code>. Do not
+<code><a href="https://ellmer.tidyverse.org/reference/chat_openai.html" class="external-link">ellmer::chat_openai()</a></code>: with released ellmer that means
+<code>OPENAI_API_KEY</code>; with the ellmer subscription-authentication
+port (<code>chat_openai(auth = )</code>) Tempest passes
+<code>auth = "codex"</code> and reuses the file-backed ChatGPT
+subscription managed by Codex CLI (if Codex has not stored file-backed
+credentials, run
+<code>codex login -c 'cli_auth_credentials_store="file"'</code>). Do not
 put credentials in a Tempest configuration, expert profile, workflow
 specification, or saved run.</p>
 <p><code><a href="../reference/tempest_config.html">tempest_config()</a></code> controls model roles, retrieval,

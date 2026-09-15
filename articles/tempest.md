@@ -45,10 +45,12 @@ library(tempest)
 Tempest uses `ellmer` for model access. Configure the credential
 required by your chosen provider outside your R source files. For the
 default OpenAI models, Tempest uses
-`ellmer::chat_openai(auth = "codex")` and reuses the file-backed ChatGPT
-subscription authentication managed by Codex CLI. If Codex has not
-stored file-backed credentials, run
-`codex login -c 'cli_auth_credentials_store="file"'`. Do not put
+[`ellmer::chat_openai()`](https://ellmer.tidyverse.org/reference/chat_openai.html):
+with released ellmer that means `OPENAI_API_KEY`; with the ellmer
+subscription-authentication port (`chat_openai(auth = )`) Tempest passes
+`auth = "codex"` and reuses the file-backed ChatGPT subscription managed
+by Codex CLI (if Codex has not stored file-backed credentials, run
+`codex login -c 'cli_auth_credentials_store="file"'`). Do not put
 credentials in a Tempest configuration, expert profile, workflow
 specification, or saved run.
 

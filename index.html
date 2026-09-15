@@ -126,10 +126,16 @@
 <div class="section level3">
 <h3 id="llm-provider-credentials">LLM provider credentials<a class="anchor" aria-label="anchor" href="#llm-provider-credentials"></a>
 </h3>
-<p>By default, Tempest creates OpenAI clients with <code>ellmer::chat_openai(auth = "codex")</code>. This reuses file-backed ChatGPT subscription authentication managed by an installed Codex CLI; no <code>OPENAI_API_KEY</code> is required. If Codex has not stored file-backed credentials, run <code>codex login -c 'cli_auth_credentials_store="file"'</code>.</p>
-<p>Alternative providers and custom chat factories use the credential mechanism configured for that provider. For example, an OpenAI API-key factory can read:</p>
+<p>By default, Tempest creates OpenAI clients with <code><a href="https://ellmer.tidyverse.org/reference/chat_openai.html" class="external-link">ellmer::chat_openai()</a></code>. Which credential it needs depends on the installed ellmer:</p>
+<ul>
+<li>
+<p><strong>Released ellmer (0.5.0 or later from CRAN)</strong> authenticates with an API key. Set it outside your R source files:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>OPENAI_API_KEY <span class="op">=</span> <span class="st">"&lt;your key&gt;"</span><span class="op">)</span></span></code></pre></div>
+</li>
+<li><p><strong>ellmer with the subscription-authentication port</strong> (<code>chat_openai(auth = )</code>, tidyverse/ellmer#1067) lets Tempest pass <code>auth = "codex"</code> and reuse the file-backed ChatGPT subscription managed by an installed Codex CLI; no <code>OPENAI_API_KEY</code> is required. If Codex has not stored file-backed credentials, run <code>codex login -c 'cli_auth_credentials_store="file"'</code>.</p></li>
+</ul>
+<p>Tempest detects which it has and tells you once per session when it falls back to the API key. Alternative providers and custom chat factories use the credential mechanism configured for that provider.</p>
 </div>
 <div class="section level3">
 <h3 id="search-provider">Search provider<a class="anchor" aria-label="anchor" href="#search-provider"></a>
@@ -495,7 +501,7 @@
 </tr>
 </tbody>
 </table>
-<p>By default, coordinator and writer roles use <code>openai/gpt-5.6-sol</code>; expert, mind map, and judge roles use <code>openai/gpt-5.6-luna</code>. Tempest constructs these clients with <code>ellmer::chat_openai(auth = "codex")</code>, reusing the ChatGPT subscription authenticated by Codex CLI. Built-in subscription clients use lower reasoning effort for mind-map and judge calls; explicit <code>params</code> values override these defaults. <code><a href="reference/tempest_app.html">tempest_app()</a></code> limits individual provider requests to 120 seconds by default, configurable with <code>tempest.shiny.provider_timeout_s</code>. The bundled app’s warmup asks each active expert for one brief, bounded, evidence-backed orientation. Each expert reuses session evidence or runs one targeted search, inspects at most two results, and preserves at least one citation. Tempest then commits source-backed claims in stable expert order and updates the shared mind map once for the complete panel. The summary says explicitly when no citable evidence was collected. Warmup concurrency and its 120-second safety timeout are configurable with <code>tempest.shiny.warmup_*</code> options.</p>
+<p>By default, coordinator and writer roles use <code>openai/gpt-5.6-sol</code>; expert, mind map, and judge roles use <code>openai/gpt-5.6-luna</code>. Tempest constructs these clients with <code><a href="https://ellmer.tidyverse.org/reference/chat_openai.html" class="external-link">ellmer::chat_openai()</a></code>, passing <code>auth = "codex"</code> to reuse the ChatGPT subscription authenticated by Codex CLI when the installed ellmer supports it and using <code>OPENAI_API_KEY</code> otherwise (see <em>LLM provider credentials</em>). Built-in clients use lower reasoning effort for mind-map and judge calls; explicit <code>params</code> values override these defaults. <code><a href="reference/tempest_app.html">tempest_app()</a></code> limits individual provider requests to 120 seconds by default, configurable with <code>tempest.shiny.provider_timeout_s</code>. The bundled app’s warmup asks each active expert for one brief, bounded, evidence-backed orientation. Each expert reuses session evidence or runs one targeted search, inspects at most two results, and preserves at least one citation. Tempest then commits source-backed claims in stable expert order and updates the shared mind map once for the complete panel. The summary says explicitly when no citable evidence was collected. Warmup concurrency and its 120-second safety timeout are configurable with <code>tempest.shiny.warmup_*</code> options.</p>
 <p>To set a personal default model, add the <code>tempest.chat</code> option to your <code>.Rprofile</code>, using the same provider/model format as <code><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">ellmer::chat()</a></code>:</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>tempest.chat <span class="op">=</span> <span class="st">"anthropic/claude-sonnet-4-20250514"</span><span class="op">)</span></span></code></pre></div>
@@ -651,7 +657,7 @@
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/tempest_app.html">tempest_app</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>Untouched model fields inherit <code>options(tempest.chat = )</code>; otherwise the app uses Tempest’s GPT-5.6 Sol/Luna defaults with ChatGPT subscription authentication. Editing any model field switches the app to those explicit per-role model selections.</p>
+<p>Untouched model fields inherit <code>options(tempest.chat = )</code>; otherwise the app uses Tempest’s GPT-5.6 Sol/Luna defaults with ChatGPT subscription authentication where the installed ellmer supports it, else <code>OPENAI_API_KEY</code>. Editing any model field switches the app to those explicit per-role model selections.</p>
 <p>The app provides:</p>
 <ul>
 <li>
