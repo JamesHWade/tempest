@@ -6,7 +6,7 @@ test_that("artifact knowledge validates exact bytes, references and dependency c
   expect_identical(knowledge@governed_procedures, list())
   expect_identical(knowledge@record_ids, names(input$contents))
   expect_identical(
-    lapply(knowledge@records, function(resource) resource@content),
+    lapply(knowledge@records, \(resource) resource@content),
     unname(input$contents)
   )
   altered <- input
@@ -58,7 +58,7 @@ test_that("artifact knowledge validates exact bytes, references and dependency c
 test_that("both public research constructors admit the artifact selection", {
   input <- test_artifact_knowledge_input()
   knowledge <- do.call(tempest_artifact_knowledge, input)
-  config <- tempest_config(chat_fn = function(...) fake_chat())
+  config <- tempest_config(chat_fn = \(...) fake_chat())
   session <- tempest_session(
     "Artifact briefing",
     config = config,
@@ -79,7 +79,7 @@ test_that("both public research constructors admit the artifact selection", {
     tempest_wiki_search = function(...) {
       data.frame(title = character(), url = character(), snippet = character())
     },
-    tempest_extract_toc_from_url = function(...) character()
+    tempest_extract_toc_from_url = \(...) character()
   )
   config <- tempest_config(chat_fn = function(...) {
     fake_chat_r6(list(
@@ -140,7 +140,7 @@ test_that("saved sessions retain artifact inputs across processes and correction
     "The corrected result is 62%.",
     "v2"
   )
-  config <- tempest_config(chat_fn = function(...) fake_chat())
+  config <- tempest_config(chat_fn = \(...) fake_chat())
   directory <- withr::local_tempdir()
   for (name in c("initial", "corrected")) {
     input <- if (name == "initial") first else corrected

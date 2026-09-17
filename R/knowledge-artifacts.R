@@ -89,7 +89,7 @@ tempest_artifact_selection <- function(selection, allow_empty = FALSE) {
       tempest_knowledge_abort("Artifact dependencies must be unique.")
     }
   }
-  ids <- vapply(refs, function(ref) ref$record_id, character(1))
+  ids <- vapply(refs, \(ref) ref$record_id, character(1))
   if (anyDuplicated(ids)) {
     tempest_knowledge_abort("Artifact selection record ids must be unique.")
   }
@@ -170,7 +170,7 @@ tempest_artifact_resource <- function(selection, ref, content) {
 #' @export
 tempest_artifact_knowledge <- function(selection, contents) {
   selection <- tempest_artifact_selection(selection)
-  ids <- vapply(selection$records, function(ref) ref$record_id, character(1))
+  ids <- vapply(selection$records, \(ref) ref$record_id, character(1))
   if (
     !is.list(contents) ||
       is.data.frame(contents) ||
@@ -211,7 +211,7 @@ tempest_artifact_knowledge <- function(selection, contents) {
 tempest_artifact_selection_validate <- function(selection, resources) {
   selection <- tempest_artifact_selection(selection, allow_empty = TRUE)
   artifacts <- Filter(
-    function(resource) identical(resource@resource_kind, "artifact.record"),
+    \(resource) identical(resource@resource_kind, "artifact.record"),
     resources
   )
   if (!length(selection)) {
@@ -224,12 +224,12 @@ tempest_artifact_selection_validate <- function(selection, resources) {
   }
   ids <- vapply(
     artifacts,
-    function(resource) resource@metadata$artifact_record_id %||% "",
+    \(resource) resource@metadata$artifact_record_id %||% "",
     character(1)
   )
   expected <- vapply(
     selection$records,
-    function(ref) ref$record_id,
+    \(ref) ref$record_id,
     character(1)
   )
   if (anyDuplicated(ids) || !setequal(ids, expected)) {
