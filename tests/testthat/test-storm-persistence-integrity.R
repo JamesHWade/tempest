@@ -1,4 +1,4 @@
-test_that("schema 8 STORM declared JSON fails closed", {
+test_that("schema 9 STORM declared JSON fails closed", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
@@ -153,7 +153,7 @@ test_that("schema 8 manifests require files implied by completed stages", {
 
 test_that("current STORM state readers require core sidecars", {
   metadata <- list(
-    schema_version = 8L,
+    schema_version = 9L,
     topic = "Required sidecars",
     title = "Required sidecars",
     requested_steps = as.list(tempest:::tempest_storm_stage_order()),

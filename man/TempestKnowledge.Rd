@@ -2,7 +2,7 @@
 % Please edit documentation in R/knowledge.R
 \name{TempestKnowledge}
 \alias{TempestKnowledge}
-\title{Accepted organizational knowledge pinned to one Graft view}
+\title{Retained research knowledge from a Graft view or artifact selection}
 \usage{
 TempestKnowledge(
   view = NULL,
@@ -10,10 +10,11 @@ TempestKnowledge(
   reference = NULL,
   record_ids = character(),
   records = list(),
-  governed_procedures = list()
+  governed_procedures = list(),
+  artifact_selection = list()
 )
 }
 \description{
-Accepted organizational knowledge pinned to one Graft view
+Retained research knowledge from a Graft view or artifact selection
 }
 \keyword{internal}

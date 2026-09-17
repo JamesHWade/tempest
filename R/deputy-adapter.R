@@ -82,7 +82,7 @@ tempest_deputy_adapter_agent_id <- function(run_context) {
 }
 
 tempest_deputy_adapter_permissions <- function(tool_allowlist) {
-  deputy::Permissions$new(
+  deputy::Permissions(
     mode = "standard",
     file_read = FALSE,
     file_write = FALSE,
@@ -1049,7 +1049,7 @@ tempest_deputy_chat_adapter <- function(
     state$permission_reference <-
       tempest_deputy_adapter_permission_reference(permissions)
 
-    start_hook <- deputy::HookMatcher$new(
+    start_hook <- deputy::HookMatcher(
       event = "SessionStart",
       timeout = 0,
       callback = function(context) {
@@ -1100,7 +1100,7 @@ tempest_deputy_chat_adapter <- function(
         NULL
       }
     )
-    terminal_hook <- deputy::HookMatcher$new(
+    terminal_hook <- deputy::HookMatcher(
       event = "SessionEnd",
       timeout = 0,
       callback = function(reason, context) {

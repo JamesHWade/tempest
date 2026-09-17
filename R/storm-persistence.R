@@ -504,7 +504,7 @@ tempest_storm_require_current_schema <- function(metadata) {
     "STORM run schema version",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
-  if (!identical(schema_version, 8L)) {
+  if (!identical(schema_version, 9L)) {
     tempest_product_unsupported_format_abort(
       "STORM bundle format",
       schema_version,
@@ -582,7 +582,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   }
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 8 STORM file inventory",
+    "Schema 9 STORM file inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   tempest_persistence_require_regular_bundle_files(
@@ -633,7 +633,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 8 STORM checksum inventory",
+    "Schema 9 STORM checksum inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   missing_checksums <- setdiff(files, names(checksums))
@@ -756,7 +756,8 @@ tempest_storm_workspace_identity_record <- function(workspace) {
     max_sources = tempest_research_workspace_max_sources_data(
       workspace$max_sources
     ),
-    accepted_graft_references = workspace$list_accepted_graft_references()
+    accepted_graft_references = workspace$list_accepted_graft_references(),
+    artifact_selection = workspace$artifact_selection
   )
 }
 
@@ -935,13 +936,14 @@ tempest_storm_restore_workspace <- function(
   identity <- metadata$workspace
   if (!is.list(identity) || is.data.frame(identity)) {
     tempest_storm_run_restore_abort(
-      "Schema 8 STORM bundles must contain a workspace identity record."
+      "Schema 9 STORM bundles must contain a workspace identity record."
     )
   }
   required <- c(
     "base_snapshot_id",
     "max_sources",
-    "accepted_graft_references"
+    "accepted_graft_references",
+    "artifact_selection"
   )
   identity_fields <- names(identity)
   if (!identical(identity_fields, required)) {
@@ -988,7 +990,8 @@ tempest_storm_restore_workspace <- function(
     base_snapshot_id = base_snapshot_id,
     graft_snapshot = graft_snapshot,
     max_sources = max_sources,
-    accepted_graft_references = accepted_references
+    accepted_graft_references = accepted_references,
+    artifact_selection = identity$artifact_selection
   )
 }
 
@@ -1472,7 +1475,7 @@ tempest_storm_load_artifacts <- function(
   )
   tempest_research_workspace_require_current_schema(
     workspace_snapshot,
-    "Schema 8 STORM research workspace",
+    "Schema 9 STORM research workspace",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   workspace <- tryCatch(
@@ -2056,7 +2059,7 @@ tempest_storm_save_artifacts <- function(
     title = state$title,
     requested_steps = requested_steps,
     completed_stages = state$completed_stages,
-    schema_version = 8L,
+    schema_version = 9L,
     bundle_type = "storm",
     bundle_status = "complete",
     research_manifest = tempest_research_manifest_record(research_manifest),

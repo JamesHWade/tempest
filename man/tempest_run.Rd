@@ -32,7 +32,7 @@ tempest_run(
 \code{config}.}
 
 \item{knowledge}{Optional accepted organizational knowledge from
-\code{\link[=tempest_knowledge]{tempest_knowledge()}}. It pins an immutable Graft view, supplies accepted
+\code{\link[=tempest_knowledge]{tempest_knowledge()}} or \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}. It supplies accepted
 evidence records, and carries any accepted governed-procedure stage
 bindings. It is never persisted.}
 
@@ -60,7 +60,7 @@ the mirai package. Failed parallel sections are retried sequentially.}
 all.}
 
 \item{output_dir}{Optional directory for persisted STORM run artifacts. When
-supplied, a current schema-8 product bundle with schema-5 STORM state is
+supplied, a current schema-9 product bundle with schema-5 STORM state is
 written under a topic-specific subdirectory.}
 
 \item{resume}{If \code{TRUE} and \code{output_dir} contains a previous run, load saved

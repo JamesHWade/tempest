@@ -1,4 +1,4 @@
-test_that("schema 8 STORM bundles restore workspace, state, and manifest", {
+test_that("schema 9 STORM bundles restore workspace, state, and manifest", {
   skip_if_not_installed("jsonlite")
   test_env <- environment()
   root <- withr::local_tempdir(pattern = "tempest-runs-")
@@ -219,7 +219,7 @@ test_that("schema 8 STORM bundles restore workspace, state, and manifest", {
     unlist(loaded$metadata$files, use.names = FALSE),
     "artifacts/typed/"
   )))
-  expect_equal(loaded$metadata$schema_version, 8L)
+  expect_equal(loaded$metadata$schema_version, 9L)
   expect_identical(loaded$metadata$bundle_type, "storm")
   expect_identical(loaded$metadata$bundle_status, "complete")
   expect_type(loaded$metadata$research_manifest, "list")
@@ -239,8 +239,8 @@ test_that("schema 8 STORM bundles restore workspace, state, and manifest", {
   manifest_path <- file.path(run_dir, "run_config.json")
   double_schema <- readLines(manifest_path, warn = FALSE)
   double_schema <- sub(
-    '"schema_version": 8,',
-    '"schema_version": 8.0,',
+    '"schema_version": 9,',
+    '"schema_version": 9.0,',
     double_schema,
     fixed = TRUE
   )

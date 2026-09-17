@@ -1,5 +1,6 @@
 [exports]
 tempest_app
+tempest_artifact_knowledge
 tempest_claim_supports
 tempest_claims
 tempest_config

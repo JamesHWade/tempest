@@ -9,6 +9,7 @@ articles:
   - tempest
   - daily-briefing
   - accepted-research
+  - artifact-knowledge
 reference:
 - title: Research products
   desc: Run scripted STORM, hold a Co-STORM session, or open the bundled app.
@@ -21,8 +22,9 @@ reference:
   contents:
   - tempest_expert
 - title: Accepted organizational knowledge
-  desc: Bring reviewed Graft evidence and accepted procedures into a run.
+  desc: Bring retained artifact evidence or reviewed Graft knowledge into a run.
   contents:
+  - tempest_artifact_knowledge
   - tempest_knowledge
   - print.tempest_knowledge
 - title: Reading a completed product

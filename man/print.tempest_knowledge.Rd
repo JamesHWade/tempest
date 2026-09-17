@@ -7,7 +7,8 @@
 \method{print}{tempest_knowledge}(x, ...)
 }
 \arguments{
-\item{x}{A \code{TempestKnowledge} value from \code{\link[=tempest_knowledge]{tempest_knowledge()}}.}
+\item{x}{A \code{TempestKnowledge} value from \code{\link[=tempest_knowledge]{tempest_knowledge()}} or
+\code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}.}
 
 \item{...}{Ignored.}
 }

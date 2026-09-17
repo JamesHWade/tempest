@@ -154,21 +154,23 @@ test_that("allowlisted tools pass with ambient execution disabled", {
     "search_workspace"
   )
 
-  allowed <- permissions$check(
+  allowed <- deputy::permissions_check(
+    permissions,
     tool@name,
     list(query = "claim"),
     context = list(tool_annotations = tool@annotations)
   )
-  denied <- permissions$check(
+  denied <- deputy::permissions_check(
+    permissions,
     "unlisted_workspace_tool",
     list(query = "claim"),
     context = list(tool_annotations = tool@annotations)
   )
 
-  expect_s3_class(allowed, "PermissionResultAllow")
+  expect_s7_class(allowed, deputy::PermissionResultAllow)
   expect_identical(tool(query = "claim"), "workspace claim")
-  expect_s3_class(denied, "PermissionResultDeny")
-  expect_match(denied$reason, "not in allowlist", fixed = TRUE)
+  expect_s7_class(denied, deputy::PermissionResultDeny)
+  expect_match(denied@reason, "not in allowlist", fixed = TRUE)
   expect_identical(permissions$file_read, FALSE)
   expect_identical(permissions$file_write, FALSE)
   expect_identical(permissions$bash, FALSE)

@@ -109,7 +109,7 @@ tempest_stage_context_knowledge_view <- function(
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from
 #'   `config`.
 #' @param knowledge Optional accepted organizational knowledge from
-#'   [tempest_knowledge()]. It pins an immutable Graft view, supplies accepted
+#'   [tempest_knowledge()] or [tempest_artifact_knowledge()]. It supplies accepted
 #'   evidence records, and carries any accepted governed-procedure stage
 #'   bindings. It is never persisted.
 #' @param n_experts Number of expert profiles to generate when `experts` is
@@ -129,7 +129,7 @@ tempest_stage_context_knowledge_view <- function(
 #' @param steps Character vector controlling which steps to run. Defaults to
 #'   all.
 #' @param output_dir Optional directory for persisted STORM run artifacts. When
-#'   supplied, a current schema-8 product bundle with schema-5 STORM state is
+#'   supplied, a current schema-9 product bundle with schema-5 STORM state is
 #'   written under a topic-specific subdirectory.
 #' @param resume If `TRUE` and `output_dir` contains a previous run, load saved
 #'   current-format artifacts and skip stages recorded as complete. Older,
@@ -178,6 +178,7 @@ tempest_run <- function(
       retriever = retriever,
       knowledge_view = knowledge$view,
       knowledge_records = knowledge$records,
+      knowledge_selection = knowledge$artifact_selection,
       program_set = knowledge$program_set,
       n_experts = n_experts,
       experts = experts,
@@ -201,6 +202,7 @@ tempest_run_internal <- function(
   retriever = NULL,
   knowledge_view = NULL,
   knowledge_records = list(),
+  knowledge_selection = list(),
   n_experts = 3,
   experts = NULL,
   research_strategy = c("key_questions", "conversation"),
@@ -311,7 +313,11 @@ tempest_run_internal <- function(
       )
     )
   }
-  tempest_knowledge_insert_records(workspace, knowledge_records)
+  tempest_knowledge_insert_records(
+    workspace,
+    knowledge_records,
+    knowledge_selection
+  )
   store <- workspace
   run_dir <- tempest_storm_prepare_run_dir(output_dir, topic, run_id = run_id)
   progress <- tempest_progress_callback(progress)

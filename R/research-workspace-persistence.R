@@ -138,6 +138,7 @@ tempest_research_workspace_snapshot_fields <- function() {
     "base_snapshot_id",
     "max_sources",
     "accepted_graft_references",
+    "artifact_selection",
     "retrieved_resources",
     "proposed_claims",
     "evidence_spans",
@@ -171,12 +172,13 @@ tempest_research_workspace_snapshot <- function(workspace) {
   ))
 
   snapshot <- list(
-    schema_version = 5L,
+    schema_version = 6L,
     base_snapshot_id = workspace$base_snapshot_id,
     max_sources = tempest_research_workspace_max_sources_data(
       workspace$max_sources
     ),
     accepted_graft_references = workspace$list_accepted_graft_references(),
+    artifact_selection = workspace$artifact_selection,
     retrieved_resources = retrieved_resources,
     proposed_claims = lapply(
       workspace$list_proposed_claims(),
@@ -237,7 +239,7 @@ tempest_research_workspace_restore_schema <- function(snapshot) {
     ),
     minimum = 0L
   )
-  if (!identical(value, 5L)) {
+  if (!identical(value, 6L)) {
     tempest_product_unsupported_format_abort(
       "ResearchWorkspace snapshot format",
       value,
@@ -266,7 +268,7 @@ tempest_research_workspace_require_current_schema <- function(
     paste0(what, " schema version"),
     class
   )
-  if (!identical(schema_version, 5L)) {
+  if (!identical(schema_version, 6L)) {
     tempest_product_unsupported_format_abort(
       paste0(what, " format"),
       schema_version,
@@ -711,7 +713,11 @@ tempest_research_workspace_restore_metadata <- function(snapshot) {
   list(
     base_snapshot_id = base_snapshot_id,
     max_sources = max_sources,
-    accepted_graft_references = references
+    accepted_graft_references = references,
+    artifact_selection = tempest_artifact_selection(
+      snapshot$artifact_selection,
+      allow_empty = TRUE
+    )
   )
 }
 
@@ -777,9 +783,18 @@ tempest_research_workspace_restore <- function(
     base_snapshot_id = metadata$base_snapshot_id,
     graft_snapshot = graft_snapshot,
     max_sources = metadata$max_sources,
-    accepted_graft_references = metadata$accepted_graft_references
+    accepted_graft_references = metadata$accepted_graft_references,
+    artifact_selection = metadata$artifact_selection
   )
   if (!is.null(workspace)) {
+    if (
+      length(workspace$artifact_selection) &&
+        !identical(workspace$artifact_selection, metadata$artifact_selection)
+    ) {
+      tempest_research_workspace_restore_abort(
+        "Artifact selection does not match the pinned workspace."
+      )
+    }
     if (!identical(workspace$base_snapshot_id, metadata$base_snapshot_id)) {
       tempest_research_workspace_restore_abort(
         "{.field base_snapshot_id} does not match the pinned workspace."
@@ -1151,6 +1166,7 @@ tempest_research_workspace_restore <- function(
     "claims_by_source",
     "base_snapshot_id_value",
     "graft_snapshot_value",
+    "artifact_selection_value",
     "accepted_graft_references_value",
     "citation_audit_value"
   )

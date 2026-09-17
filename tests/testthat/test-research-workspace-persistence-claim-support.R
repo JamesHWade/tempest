@@ -1,10 +1,10 @@
-test_that("workspace schema 5 round-trips authoritative claim supports", {
+test_that("workspace schema 6 round-trips authoritative claim supports", {
   fixture <- test_verified_workspace()
   snapshot <- tempest:::tempest_research_workspace_snapshot(
     fixture$workspace
   )
 
-  expect_identical(snapshot$schema_version, 5L)
+  expect_identical(snapshot$schema_version, 6L)
   expect_named(
     snapshot,
     c(
@@ -12,6 +12,7 @@ test_that("workspace schema 5 round-trips authoritative claim supports", {
       "base_snapshot_id",
       "max_sources",
       "accepted_graft_references",
+      "artifact_selection",
       "retrieved_resources",
       "proposed_claims",
       "evidence_spans",
@@ -141,7 +142,7 @@ test_that("workspace restore validates support identity and derived summaries", 
   )
 })
 
-test_that("workspace schema 5 and every fixed row preserve writer order", {
+test_that("workspace schema 6 and every fixed row preserve writer order", {
   workspace <- tempest_research_workspace()
   fixture <- test_add_verifiable_claim(workspace)
   workspace$add_dispute(tempest_dispute(

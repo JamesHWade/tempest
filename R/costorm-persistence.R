@@ -899,7 +899,7 @@ tempest_session_snapshot <- function(session) {
   )
 
   snapshot <- list(
-    schema_version = 11L,
+    schema_version = 12L,
     package_version = tryCatch(
       as.character(utils::packageVersion("tempest")),
       error = function(e) NA_character_
@@ -1125,7 +1125,7 @@ tempest_session_restore_internal <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 11L)) {
+  if (!identical(schema_version, 12L)) {
     tempest_product_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -1594,7 +1594,7 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_save()` writes a schema-versioned directory bundle for a
-#' [TempestSession]. The exact current format is schema 11, with no legacy or
+#' [TempestSession]. The exact current format is schema 12, with no legacy or
 #' compatibility writer. The bundle stores the research manifest, authoritative
 #' workspace, explicit stage-record history, optional immutable Graft snapshot,
 #' and narrow report product. Every declared file is checksummed, and the
@@ -1962,7 +1962,8 @@ tempest_session_bundle_workspace_fields <- function() {
     "schema_version",
     "base_snapshot_id",
     "max_sources",
-    "accepted_graft_references"
+    "accepted_graft_references",
+    "artifact_selection"
   )
 }
 
@@ -1978,7 +1979,7 @@ tempest_session_bundle_validate_manifest <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 11L)) {
+  if (!identical(schema_version, 12L)) {
     tempest_product_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -2265,7 +2266,7 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 11L)) {
+  if (!identical(schema_version, 12L)) {
     tempest_product_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -2545,7 +2546,7 @@ tempest_costorm_bundle_read <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 11L)) {
+  if (!identical(schema_version, 12L)) {
     tempest_product_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
