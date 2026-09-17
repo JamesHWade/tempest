@@ -33,7 +33,7 @@ tempest_run(
 
 \item{knowledge}{Optional accepted organizational knowledge from
 \code{\link[=tempest_knowledge]{tempest_knowledge()}} or \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}. It supplies
-accepted evidence records and any accepted governed-procedure stage bindings.
+accepted evidence records and accepted governed-procedure stage bindings.
 The live Graft view and knowledge object are not serialized;
 materialized evidence and artifact selections are retained in the bundle.}
 
