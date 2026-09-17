@@ -4,6 +4,7 @@ tempest_artifact_selection <- function(selection, allow_empty = FALSE) {
     return(list())
   }
   selection <- tempest_resource_metadata(selection, "selection")
+  selection <- tempest_product_canonical_value(selection)
   if (
     !setequal(
       names(selection),

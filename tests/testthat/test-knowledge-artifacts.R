@@ -139,6 +139,8 @@ test_that("both public research constructors admit the artifact selection", {
     knowledge@artifact_selection
   )
   expect_identical(tempest_sources(resumed), tempest_sources(result))
+  input$selection <- rev(input$selection)
+  input$selection$records <- lapply(input$selection$records, rev)
   readmitted <- with_mocked_bindings(
     do.call(tempest_artifact_knowledge, input),
     tempest_now_utc = \() "2040-01-01T00:00:00Z"
@@ -547,4 +549,40 @@ test_that("malformed persisted selections use the workspace restore error", {
     "artifact_selection.*invalid",
     class = "tempest_research_workspace_restore_error"
   )
+})
+
+
+test_that("artifact selections canonicalize all JSON object members", {
+  input <- test_artifact_knowledge_input()
+  input$selection$provenance <- list(
+    producer = "offline-test",
+    source = list(uri = "urn:pilot", receipt = "receipt:1")
+  )
+  first <- do.call(tempest_artifact_knowledge, input)
+  reverse_members <- function(value) {
+    if (!is.list(value)) {
+      return(value)
+    }
+    value <- lapply(value, reverse_members)
+    if (!is.null(names(value))) rev(value) else value
+  }
+  input$selection <- reverse_members(input$selection)
+  second <- do.call(tempest_artifact_knowledge, input)
+  expect_identical(first@artifact_selection, second@artifact_selection)
+  workspace <- tempest_research_workspace()
+  tempest_knowledge_insert_records(
+    workspace,
+    first@records,
+    first@artifact_selection
+  )
+  tempest_knowledge_insert_records(
+    workspace,
+    second@records,
+    second@artifact_selection
+  )
+  expect_identical(workspace$artifact_selection, first@artifact_selection)
+  snapshot <- tempest_research_workspace_snapshot(workspace)
+  snapshot$artifact_selection <- reverse_members(snapshot$artifact_selection)
+  restored <- tempest_research_workspace_restore(snapshot)
+  expect_identical(restored$artifact_selection, first@artifact_selection)
 })
