@@ -1071,7 +1071,7 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #' [tempest_session_resume()]. It restores the research manifest and
 #' authoritative workspace, and creates fresh chat/tool handles using `config`.
 #' Only the exact current schema-12 snapshot is accepted. Older, future,
-#' missing, extra, coerced, or mismatched shapes are rejected rather than migrated.
+#' missing, extra, coerced, or mismatched shapes are rejected without migration.
 #'
 #' Historical progress events are restored as session artifact data and can be
 #' reduced with [tempest_progress_state()]. They are not replayed into the new
