@@ -33,6 +33,19 @@ Built on the R AI ecosystem:
 - [shinychat](https://github.com/posit-dev/shinychat) — interactive chat UI
 - [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
 
+## Reuse retained artifacts
+
+`tempest_artifact_knowledge(selection, contents)` supplies exact retained evidence
+without a Graft view. The host checks current eligibility and resolves the bytes;
+Tempest checks complete selection coverage, SHA-256 digests, allowed evidence
+classes, and exact declared dependencies. STORM and Co-STORM retain this input in
+their research workspace and current save/resume formats. Saved evidence cannot
+register tools or bind executable procedures.
+
+See [artifact knowledge](https://jameshwade.github.io/tempest/articles/artifact-knowledge.html)
+for the input contract and a local example. This is an evidence consumer API;
+it does not implement artifact storage, approval, withdrawal, or future acceptance.
+
 ## Installation
 
 ```r
@@ -99,8 +112,9 @@ Completed STORM products are read through `tempest_report()`,
 `tempest_trajectory_review()`. Internal manifests, mutable workspaces,
 retrievers, and state remain implementation details used to validate those
 reads. A Co-STORM session exposes only its supported operations and read-only
-projections. Accepted knowledge enters through `tempest_knowledge()`, and new
-evidence still requires explicit Graft review and commit.
+projections. Retained artifact evidence enters through `tempest_artifact_knowledge()`;
+`tempest_knowledge()` reads the Graft producer. New research remains provisional
+until the host explicitly reviews and accepts it.
 
 Internally, every evidence value is one exact `TempestResource`. Retriever
 fetches, provider-native tools, caches, and restored products must agree on
@@ -213,8 +227,8 @@ promotion bundle is shown as proposed, and an exact matching bundle plus
 receipt is shown as accepted; a receipt alone or a cross-run product fails
 closed.
 
-The current persistence line accepts only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 11, STORM bundle schema 8 with state schema
+The current persistence line accepts only `ResearchWorkspace` snapshot schema 6,
+Co-STORM snapshot and bundle schema 12, STORM bundle schema 9 with state schema
 5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest
 payload schema 3, and promotion-bundle schema 1. Readers reject every other
 version; missing fields, extra fields, and values that only become valid after
@@ -416,7 +430,7 @@ res <- tempest_run(
 )
 ```
 
-Each run directory is an exact current schema-8 STORM product bundle with
+Each run directory is an exact current schema-9 STORM product bundle with
 schema-5 state. It includes checksummed JSON state for perspectives, experts,
 sources, claims, outlines, and references; Markdown drafts; and the final
 Markdown report. Resume rejects older, future, missing, extra, coerced, or
@@ -712,7 +726,7 @@ expert run records an opaque terminal trace that is carried through Co-STORM
 snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-11 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+schema-12 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
 suggested-question, and Graft snapshot state must pass integrity checks. Live
 chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
 rather than serialized.

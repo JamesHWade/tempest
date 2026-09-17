@@ -119,7 +119,7 @@ tempest_product_read_workspace <- function(x, arg = "x") {
     return(x@workspace)
   }
   if (inherits(x, "TempestSession")) {
-    return(x$workspace)
+    return(tempest_session_workspace(x))
   }
   tempest_product_result_abort(
     paste0(

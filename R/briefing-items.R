@@ -24,11 +24,16 @@ tempest_workspace_accepted_claim_keys <- function(workspace) {
   resources <- workspace$list_retrieved_resources()
   keys <- character()
   for (resource in resources) {
-    if (!identical(resource@resource_kind, "graft.record")) {
+    if (!tempest_is_accepted_knowledge_resource(resource)) {
       next
     }
     metadata <- resource@metadata
-    if (!identical(metadata$graft_record_class, "Claim")) {
+    record_class <- if (identical(resource@resource_kind, "artifact.record")) {
+      metadata$artifact_record_class
+    } else {
+      metadata$graft_record_class
+    }
+    if (!identical(record_class, "Claim")) {
       next
     }
     text <- metadata$graft_statement_text
@@ -44,10 +49,10 @@ tempest_workspace_accepted_claim_keys <- function(workspace) {
     }
     # A retracted or superseded Claim is no longer accepted knowledge, so a
     # verified restatement of it is a change, not a no-change finding.
-    if (rlang::is_string(status) && !identical(status, "active")) {
+    if (!identical(status, "active")) {
       next
     }
-    if (rlang::is_string(text) && nzchar(tempest_trim(text))) {
+    if (rlang::is_string(text) && !is.na(text) && nzchar(tempest_trim(text))) {
       keys <- c(keys, tempest_claim_text_key(text))
     }
   }

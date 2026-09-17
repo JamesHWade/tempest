@@ -34,6 +34,8 @@ accepted graft knowledge used by the research run.}
     \item{\code{base_snapshot_id}}{Read-only opaque identifier for the accepted
 knowledge snapshot on which this workspace is based.}
 
+    \item{\code{artifact_selection}}{Read-only exact artifact input and provenance.}
+
     \item{\code{graft_snapshot}}{Optional read-only, path-free
 \code{graft::GraftSnapshot} used to reopen the accepted knowledge boundary.}
 
@@ -74,6 +76,7 @@ bounded separately and do not count.}
     \item \href{#method-ResearchWorkspace-list_disputes}{\code{ResearchWorkspace$list_disputes()}}
     \item \href{#method-ResearchWorkspace-record_accepted_graft_reference}{\code{ResearchWorkspace$record_accepted_graft_reference()}}
     \item \href{#method-ResearchWorkspace-list_accepted_graft_references}{\code{ResearchWorkspace$list_accepted_graft_references()}}
+    \item \href{#method-ResearchWorkspace-bind_artifact_selection}{\code{ResearchWorkspace$bind_artifact_selection()}}
     \item \href{#method-ResearchWorkspace-validate_integrity}{\code{ResearchWorkspace$validate_integrity()}}
     \item \href{#method-ResearchWorkspace-to_tibbles}{\code{ResearchWorkspace$to_tibbles()}}
     \item \href{#method-ResearchWorkspace-clone}{\code{ResearchWorkspace$clone()}}
@@ -90,7 +93,8 @@ bounded separately and do not count.}
   base_snapshot_id = NULL,
   graft_snapshot = NULL,
   max_sources = Inf,
-  accepted_graft_references = list()
+  accepted_graft_references = list(),
+  artifact_selection = list()
 )}
     \if{html}{\out{</div>}}
   }
@@ -104,6 +108,8 @@ accepted knowledge snapshot.}
 refused once the limit is reached.}
       \item{\code{accepted_graft_references}}{Unnamed list of canonical
 JSON-compatible references to accepted graft records.}
+      \item{\code{artifact_selection}}{Exact artifact input, retained without a
+Graft snapshot.}
     }
     \if{html}{\out{</div>}}
   }
@@ -536,6 +542,25 @@ capability. Standalone workspaces require \code{NULL}.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ResearchWorkspace$list_accepted_graft_references()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-bind_artifact_selection"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-bind_artifact_selection}{}}}
+\subsection{\code{ResearchWorkspace$bind_artifact_selection()}}{
+  Pin an exact artifact selection after admitting its resources.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$bind_artifact_selection(selection)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{selection}}{A validated artifact selection.}
+    }
     \if{html}{\out{</div>}}
   }
 }

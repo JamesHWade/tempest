@@ -2636,7 +2636,7 @@ tempest_session_set_report_value <- function(session, report_md) {
 #' @param session_id Optional stable session identifier. If `NULL`, a new
 #'   identifier is generated.
 #' @param knowledge Optional accepted organizational knowledge from
-#'   [tempest_knowledge()]. It pins an immutable Graft view, supplies accepted
+#'   [tempest_knowledge()] or [tempest_artifact_knowledge()]. It supplies accepted
 #'   evidence records, and carries any accepted governed-procedure stage
 #'   bindings.
 #' @return A `TempestSession` R6 object for the active Co-STORM research
@@ -2658,7 +2658,7 @@ tempest_session <- function(
   knowledge = NULL
 ) {
   knowledge <- tempest_knowledge_argument(knowledge)
-  tempest_session_new(
+  session <- tempest_session_new(
     topic = topic,
     config = config,
     n_experts = n_experts,
@@ -2669,6 +2669,12 @@ tempest_session <- function(
     program_set = knowledge$program_set,
     knowledge_view = knowledge$view
   )
+  tempest_knowledge_insert_records(
+    tempest_session_workspace(session),
+    knowledge$records,
+    knowledge$artifact_selection
+  )
+  session
 }
 
 tempest_session_new <- function(

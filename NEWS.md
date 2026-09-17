@@ -1,5 +1,8 @@
 # tempest 0.0.0.9000
 
+- Persisted workspace, STORM, and Co-STORM formats are now 6, 9, and 12. Regenerate older experimental bundles; compatibility readers are not provided.
+- `tempest_artifact_knowledge()` admits an exact host-selected artifact input without a Graft view and preserves its content, revision references, dependencies, and provenance across save/resume (graft #64).
+
 * Tempest no longer pins ellmer to a fork commit in `Remotes`. Released ellmer (>= 0.5.0) satisfies the dependency, so Tempest installs beside packages that require ellmer 0.5 (querychat 0.4.0 broke every dowci CI build on the old pin). When the installed ellmer lacks the ChatGPT subscription-authentication port, `openai/` chats fall back to API-key authentication with a once-per-session note instead of aborting.
 
 * The daily briefing example preserves complete selected evidence across unchanged days and reviewed corrections, with an executable offline companion (graft #50).

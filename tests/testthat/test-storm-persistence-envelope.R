@@ -1,4 +1,4 @@
-test_that("schema 8 STORM manifests have an exact product envelope", {
+test_that("schema 9 STORM manifests have an exact product envelope", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)

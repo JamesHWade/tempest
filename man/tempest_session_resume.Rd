@@ -34,7 +34,7 @@ A restored \link{TempestSession}.
 \description{
 \code{tempest_session_resume()} reads a directory bundle written by
 \code{\link[=tempest_session_save]{tempest_session_save()}} and rebuilds a \link{TempestSession} with a fresh runtime
-\link{TempestConfig}. Only the exact current schema-9 bundle is accepted; no
+\link{TempestConfig}. Only the exact current schema-12 bundle is accepted; no
 compatibility or migration reader is provided. Historical progress events are
 loaded for display and reduction, but they are not replayed into \code{progress}.
 Stage-record history is restored for audit, but running attempts are rejected

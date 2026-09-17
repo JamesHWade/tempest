@@ -1,0 +1,106 @@
+---
+title: "Reuse retained artifact evidence"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Reuse retained artifact evidence}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+A research run can use an exact set of retained evidence without opening a Graft
+store. `tempest_artifact_knowledge()` accepts a host-selected description and its
+text content. The host owns storage, saving, review, purpose, access, and current
+consultation eligibility. Tempest owns the research interpretation of that input.
+
+## Build an exact input
+
+This small example represents two artifacts already retained and selected by a
+host. In an application, read the references and content from the artifact store
+and check current eligibility before constructing the input.
+
+```{r}
+library(tempest)
+contents <- list(
+  "claim:pilot" = "statement_text: The pilot recovered 82%.\nstatus: active",
+  "source:pilot" = "excerpt: The pilot recovered 82%."
+)
+refs <- lapply(names(contents), function(id) {
+  list(
+    record_id = id,
+    revision_id = "revision:1",
+    class = if (startsWith(id, "claim")) "Claim" else "Source",
+    sha256 = digest::digest(charToRaw(enc2utf8(contents[[id]])),
+      algo = "sha256", serialize = FALSE),
+    dependencies = if (startsWith(id, "claim")) {
+      list(list(record_id = "source:pilot", revision_id = "revision:1"))
+    } else {
+      list()
+    }
+  )
+})
+selection <- list(
+  selection_id = "selection:pilot-briefing-1",
+  purpose = "daily-briefing",
+  records = refs,
+  provenance = list(producer = "synthetic-pilot")
+)
+knowledge <- tempest_artifact_knowledge(selection, contents)
+knowledge
+```
+
+Each selected record has an immutable revision reference and the SHA-256 digest
+of its UTF-8 content bytes. The contents must cover every selected record exactly
+once. Every declared dependency must resolve to the exact selected revision.
+Supported evidence classes are Claim, ClaimSupport, EvidenceSpan, and Source.
+The host supplies the complete required selection; Tempest does not infer omitted
+relationships or authenticate the host's acceptance decision.
+
+Only inert text is admitted. Claims use the accepted projection's
+`statement_text: ...` and `status: ...` fields for briefing change detection.
+An active statement already present in this input can support a no-change item;
+a superseded or retracted statement cannot. Storing code or instructions does not
+make them tools, prompts, or governed procedures.
+
+## Use it in a new run
+
+```{r, eval=FALSE}
+result <- tempest_run("Pilot recovery briefing", knowledge = knowledge)
+session <- tempest_session("Pilot recovery briefing", knowledge = knowledge)
+tempest_session_save(session, "briefing-session")
+
+# Check the host's current access and eligibility policy again before resuming.
+resumed <- tempest_session_resume("briefing-session", config = tempest_config())
+```
+
+The workspace retains the full input selection and evidence resources. Session
+bundles include the selection in `session.json` and checksummed resource content.
+STORM bundles retain it in their workspace identity and evidence snapshot. The
+selection's input digest binds its description, separately from a native Graft
+snapshot, receipt, or acceptance event. Source receipts and other source
+identities can be retained as inert `provenance` data.
+
+A correction gets a new artifact revision and a new selection. A new run can use
+that selection while the previous run still resolves its original evidence.
+Saving and resuming preserves the historical input; it does not freeze permission
+or automatically reapprove withdrawn knowledge. The host must enforce current
+eligibility before starting or resuming work. This constructor does not monitor
+policy changes during an active run. Re-admitting the same artifact input for
+STORM resume preserves the saved research state and original retrieval times;
+a later read time alone does not make the immutable input different.
+
+## Scope and current formats
+
+The input is bounded to 1,000 records, 1 MiB of selection metadata, and 1 MiB of
+text content. This slice supports evidence admission and cross-run reuse. Future
+acceptance into an artifact store, concurrent publication, permanent deletion,
+and production recovery remain host/storage work. Existing Graft promotion is
+still available for the reference producer; its presence is not a decision to
+retain Graft.
+
+Workspace format 6, STORM format 9, and Co-STORM format 12 retain artifact inputs.
+This project is pre-production: regenerate older experimental bundles instead of
+using a compatibility reader.

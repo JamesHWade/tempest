@@ -35,7 +35,7 @@ objects as the session makes progress.}
 identifier is generated.}
 
 \item{knowledge}{Optional accepted organizational knowledge from
-\code{\link[=tempest_knowledge]{tempest_knowledge()}}. It pins an immutable Graft view, supplies accepted
+\code{\link[=tempest_knowledge]{tempest_knowledge()}} or \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}. It supplies accepted
 evidence records, and carries any accepted governed-procedure stage
 bindings.}
 }

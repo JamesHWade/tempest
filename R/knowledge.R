@@ -23,14 +23,14 @@ tempest_knowledge_record_allowlist <- function() {
 }
 
 tempest_is_accepted_knowledge_resource <- function(resource) {
-  identical(resource@resource_kind, "graft.record")
+  resource@resource_kind %in% c("graft.record", "artifact.record")
 }
 
 tempest_knowledge_max_records <- function() {
   1000L
 }
 
-#' Accepted organizational knowledge pinned to one Graft view
+#' Retained research knowledge from a Graft view or artifact selection
 #'
 #' @keywords internal
 TempestKnowledge <- S7::new_class(
@@ -42,6 +42,7 @@ TempestKnowledge <- S7::new_class(
     reference = S7::new_property(S7::class_any),
     record_ids = S7::new_property(S7::class_character, default = character()),
     records = S7::new_property(S7::class_list, default = list()),
+    artifact_selection = S7::new_property(S7::class_list, default = list()),
     governed_procedures = S7::new_property(S7::class_list, default = list())
   ),
   constructor = function(
@@ -50,7 +51,8 @@ TempestKnowledge <- S7::new_class(
     reference = NULL,
     record_ids = character(),
     records = list(),
-    governed_procedures = list()
+    governed_procedures = list(),
+    artifact_selection = list()
   ) {
     value <- S7::new_object(
       S7::S7_object(),
@@ -59,7 +61,8 @@ TempestKnowledge <- S7::new_class(
       reference = reference,
       record_ids = record_ids,
       records = records,
-      governed_procedures = governed_procedures
+      governed_procedures = governed_procedures,
+      artifact_selection = artifact_selection
     )
     # Carry the S3 class so the public print method dispatches.
     class(value) <- c("tempest_knowledge", class(value))
@@ -237,7 +240,7 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 
 #' Bring accepted organizational knowledge into a Tempest run
 #'
-#' `tempest_knowledge()` is the one strict constructor for accepted
+#' `tempest_knowledge()` is the Graft constructor for accepted
 #' organizational knowledge. It pins an immutable Graft view, materializes an
 #' exact allowlist of accepted evidence records, and optionally binds accepted
 #' governed procedures to Tempest stages.
@@ -358,16 +361,22 @@ tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
       value = NULL,
       view = NULL,
       records = list(),
+      artifact_selection = list(),
       program_set = tempest_program_set()
     ))
   }
   if (!tempest_is_knowledge(knowledge)) {
     tempest_knowledge_abort(
-      "{.arg {arg}} must be created by {.fn tempest_knowledge}.",
+      "{.arg {arg}} must be created by {.fn tempest_knowledge} or {.fn tempest_artifact_knowledge}.",
       class = "tempest_input_error"
     )
   }
+  tempest_artifact_selection_validate(
+    knowledge@artifact_selection,
+    knowledge@records
+  )
   list(
+    artifact_selection = knowledge@artifact_selection,
     value = knowledge,
     view = knowledge@view,
     records = knowledge@records,
@@ -379,7 +388,12 @@ tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
 
 # Insert accepted evidence records into the product workspace as ordinary
 # read-only resources.
-tempest_knowledge_insert_records <- function(workspace, records) {
+tempest_knowledge_insert_records <- function(
+  workspace,
+  records,
+  selection = list()
+) {
+  tempest_artifact_selection_validate(selection, records)
   if (length(records) == 0L) {
     return(invisible(workspace))
   }
@@ -388,22 +402,38 @@ tempest_knowledge_insert_records <- function(workspace, records) {
       "Accepted knowledge records require a ResearchWorkspace."
     )
   }
+  if (
+    length(workspace$artifact_selection) &&
+      !identical(workspace$artifact_selection, selection)
+  ) {
+    tempest_knowledge_abort(
+      "A workspace cannot change its pinned artifact selection."
+    )
+  }
   for (record in records) {
     workspace$upsert_retrieved_resource(record)
+  }
+  if (length(selection)) {
+    workspace$bind_artifact_selection(selection)
   }
   invisible(workspace)
 }
 
 #' Print accepted organizational knowledge
 #'
-#' @param x A `TempestKnowledge` value from [tempest_knowledge()].
+#' @param x A `TempestKnowledge` value from [tempest_knowledge()] or
+#'   [tempest_artifact_knowledge()].
 #' @param ... Ignored.
 #' @return `x`, invisibly.
 #' @export
 print.tempest_knowledge <- function(x, ...) {
   cli::cli_text("{.cls tempest_knowledge}")
   cli::cli_bullets(c(
-    "*" = "snapshot: {.val {x@reference$snapshot_id %||% NA_character_}}",
+    "*" = if (length(x@artifact_selection)) {
+      "artifact selection: {.val {x@artifact_selection$selection_id}}"
+    } else {
+      "snapshot: {.val {x@reference$snapshot_id %||% NA_character_}}"
+    },
     "*" = "accepted records: {length(x@record_ids)}",
     "*" = "governed stages: {.val {names(x@governed_procedures)}}"
   ))

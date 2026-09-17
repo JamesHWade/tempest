@@ -25,7 +25,7 @@ A validated \code{TempestKnowledge} value for \code{\link[=tempest_run]{tempest_
 \code{\link[=tempest_session]{tempest_session()}}.
 }
 \description{
-\code{tempest_knowledge()} is the one strict constructor for accepted
+\code{tempest_knowledge()} is the Graft constructor for accepted
 organizational knowledge. It pins an immutable Graft view, materializes an
 exact allowlist of accepted evidence records, and optionally binds accepted
 governed procedures to Tempest stages.

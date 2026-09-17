@@ -532,7 +532,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     agent_name = "moderator"
   )
   seen <- new.env(parent = emptyenv())
-  lead$add_hook(deputy::HookMatcher$new(
+  lead$add_hook(deputy::HookMatcher(
     event = "SessionStart",
     timeout = 0,
     callback = function(context) {
@@ -540,7 +540,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
       NULL
     }
   ))
-  lead$add_hook(deputy::HookMatcher$new(
+  lead$add_hook(deputy::HookMatcher(
     event = "SessionEnd",
     timeout = 0,
     callback = function(reason, context) {
@@ -548,7 +548,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
       NULL
     }
   ))
-  lead$add_hook(deputy::HookMatcher$new(
+  lead$add_hook(deputy::HookMatcher(
     event = "SubagentStart",
     timeout = 0,
     callback = function(agent_name, task, context) {
@@ -556,7 +556,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
       NULL
     }
   ))
-  lead$add_hook(deputy::HookMatcher$new(
+  lead$add_hook(deputy::HookMatcher(
     event = "SubagentStop",
     timeout = 0,
     callback = function(agent_name, task, result, context) {
@@ -566,14 +566,14 @@ test_that("Tempest context survives Deputy delegation and hooks", {
   ))
 
   parent_result <- lead$run_sync("Delegate evidence review")
-  parent_start <- parent_result$tool_calls()[[1L]]
-  parent_end <- parent_result$tool_results()[[1L]]
+  parent_start <- deputy::result_tool_calls(parent_result)[[1L]]
+  parent_end <- deputy::result_tool_results(parent_result)[[1L]]
   delegated <- lead$list_subagents()
   child_result <- lead$get_subagent_results(
     delegation_id = delegated$delegation_id
   )[[1L]]
-  child_start <- child_result$tool_calls()[[1L]]
-  child_end <- child_result$tool_results()[[1L]]
+  child_start <- deputy::result_tool_calls(child_result)[[1L]]
+  child_end <- deputy::result_tool_results(child_result)[[1L]]
   child_context <- context
   child_context$role <- "evidence_reviewer"
   child_context <- child_context[order(names(child_context))]

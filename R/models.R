@@ -843,6 +843,7 @@ tempest_research_workspace_seal <- function(workspace, owner = NULL) {
 #'   accepted graft knowledge used by the research run.
 #' @field base_snapshot_id Read-only opaque identifier for the accepted
 #'   knowledge snapshot on which this workspace is based.
+#' @field artifact_selection Read-only exact artifact input and provenance.
 #' @field graft_snapshot Optional read-only, path-free
 #'   `graft::GraftSnapshot` used to reopen the accepted knowledge boundary.
 #' @field citation_audit Read-only pair-level projection of the authoritative
@@ -859,6 +860,8 @@ ResearchWorkspace <- R6::R6Class(
     #' @param base_snapshot_id Optional opaque identifier for the pinned
     #'   accepted knowledge snapshot.
     #' @param graft_snapshot Optional real, path-free `graft::GraftSnapshot`.
+    #' @param artifact_selection Exact artifact input, retained without a
+    #'   Graft snapshot.
     #' @param max_sources Maximum number of unique sources. New sources are
     #'   refused once the limit is reached.
     #' @param accepted_graft_references Unnamed list of canonical
@@ -867,7 +870,8 @@ ResearchWorkspace <- R6::R6Class(
       base_snapshot_id = NULL,
       graft_snapshot = NULL,
       max_sources = Inf,
-      accepted_graft_references = list()
+      accepted_graft_references = list(),
+      artifact_selection = list()
     ) {
       private$mutation_state_value <- "open"
       private$publication_owner_token_value <- NULL
@@ -888,6 +892,10 @@ ResearchWorkspace <- R6::R6Class(
         base_snapshot_id <- S7::prop(graft_snapshot, "snapshot_id")
       }
       private$base_snapshot_id_value <- base_snapshot_id
+      private$artifact_selection_value <- tempest_artifact_selection(
+        artifact_selection,
+        allow_empty = TRUE
+      )
       private$graft_snapshot_value <- graft_snapshot
       private$accepted_graft_references_value <-
         tempest_research_workspace_references(
@@ -1602,8 +1610,33 @@ ResearchWorkspace <- R6::R6Class(
       )
     },
 
+    #' @description Pin an exact artifact selection after admitting its resources.
+    #' @param selection A validated artifact selection.
+    bind_artifact_selection = function(selection) {
+      private$assert_mutation_open()
+      selection <- tempest_artifact_selection(selection)
+      if (
+        length(private$artifact_selection_value) &&
+          !identical(private$artifact_selection_value, selection)
+      ) {
+        tempest_knowledge_abort(
+          "A workspace cannot change its pinned artifact selection."
+        )
+      }
+      tempest_artifact_selection_validate(
+        selection,
+        self$list_retrieved_resources()
+      )
+      private$artifact_selection_value <- selection
+      invisible(self)
+    },
+
     #' @description Validate all authoritative workspace cross-record links.
     validate_integrity = function() {
+      tempest_artifact_selection_validate(
+        private$artifact_selection_value,
+        self$list_retrieved_resources()
+      )
       resource_ids <- sort(ls(private$resources_value, all.names = TRUE))
       for (resource_id in resource_ids) {
         resource <- private$validate_resource(
@@ -1850,6 +1883,12 @@ ResearchWorkspace <- R6::R6Class(
       }
       private$base_snapshot_id_value
     },
+    artifact_selection = function(value) {
+      if (!missing(value)) {
+        private$read_only_binding("artifact_selection")
+      }
+      tempest_research_workspace_copy(private$artifact_selection_value)
+    },
     graft_snapshot = function(value) {
       if (!missing(value)) {
         tempest_research_workspace_abort(
@@ -1899,6 +1938,7 @@ ResearchWorkspace <- R6::R6Class(
     max_sources_value = NULL,
     claims_by_source = NULL,
     base_snapshot_id_value = NULL,
+    artifact_selection_value = list(),
     graft_snapshot_value = NULL,
     accepted_graft_references_value = NULL,
     citation_audit_value = NULL,
@@ -2476,6 +2516,7 @@ ResearchWorkspace <- R6::R6Class(
 #' @param base_snapshot_id Optional opaque identifier for the pinned accepted
 #'   knowledge snapshot.
 #' @param graft_snapshot Optional real, path-free `graft::GraftSnapshot`.
+#' @param artifact_selection Exact artifact input retained by the workspace.
 #' @param max_sources Maximum number of unique resources admitted.
 #' @param accepted_graft_references Unnamed list of canonical JSON-compatible
 #'   references to accepted graft records.
@@ -2486,12 +2527,14 @@ tempest_research_workspace <- function(
   base_snapshot_id = NULL,
   graft_snapshot = NULL,
   max_sources = Inf,
-  accepted_graft_references = list()
+  accepted_graft_references = list(),
+  artifact_selection = list()
 ) {
   ResearchWorkspace$new(
     base_snapshot_id = base_snapshot_id,
     graft_snapshot = graft_snapshot,
     max_sources = max_sources,
-    accepted_graft_references = accepted_graft_references
+    accepted_graft_references = accepted_graft_references,
+    artifact_selection = artifact_selection
   )
 }
