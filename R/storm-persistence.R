@@ -986,17 +986,68 @@ tempest_storm_restore_workspace <- function(
     }
   )
 
+  artifact_selection <- tryCatch(
+    tempest_artifact_selection(identity$artifact_selection, allow_empty = TRUE),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The persisted workspace artifact selection is invalid.",
+        parent = error
+      )
+    }
+  )
   tempest_research_workspace(
     base_snapshot_id = base_snapshot_id,
     graft_snapshot = graft_snapshot,
     max_sources = max_sources,
     accepted_graft_references = accepted_references,
-    artifact_selection = identity$artifact_selection
+    artifact_selection = artifact_selection
   )
 }
 
 tempest_storm_workspace_equivalence_record <- function(workspace) {
   tempest_research_workspace_snapshot(workspace)
+}
+
+# Re-admission changes the read time, not the immutable artifact input. Keep
+# every other field, including exact selection/content identities, in comparison.
+tempest_storm_artifact_input_record <- function(snapshot) {
+  snapshot$retrieved_resources <- lapply(
+    snapshot$retrieved_resources,
+    function(resource) {
+      if (identical(resource$resource_kind, "artifact.record")) {
+        resource$retrieved_at <- NULL
+        resource$fingerprint <- NULL
+      }
+      resource
+    }
+  )
+  snapshot
+}
+
+tempest_storm_artifact_input_matches <- function(supplied, persisted) {
+  if (!length(supplied$artifact_selection)) {
+    return(FALSE)
+  }
+  evidence_fields <- c(
+    "proposed_claims",
+    "evidence_spans",
+    "claim_supports",
+    "disputes"
+  )
+  if (any(vapply(supplied[evidence_fields], length, integer(1)) != 0L)) {
+    return(FALSE)
+  }
+  # A fresh input has no provisional research state. Restore that state from the
+  # saved run only when every supplied resource is exactly its artifact input.
+  persisted[evidence_fields] <- rep(list(list()), length(evidence_fields))
+  persisted$retrieved_resources <- Filter(
+    \(resource) identical(resource$resource_kind, "artifact.record"),
+    persisted$retrieved_resources
+  )
+  identical(
+    tempest_storm_artifact_input_record(supplied),
+    tempest_storm_artifact_input_record(persisted)
+  )
 }
 
 tempest_storm_workspace_is_empty <- function(workspace) {
@@ -1049,7 +1100,14 @@ tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
   if (identical(supplied_record, persisted_record)) {
     return(supplied)
   }
-  if (!tempest_storm_workspace_is_empty(supplied)) {
+  if (
+    !tempest_storm_workspace_is_empty(supplied) &&
+      !identical(
+        tempest_storm_artifact_input_record(supplied_record),
+        tempest_storm_artifact_input_record(persisted_record)
+      ) &&
+      !tempest_storm_artifact_input_matches(supplied_record, persisted_record)
+  ) {
     tempest_storm_run_restore_abort(
       "The supplied workspace diverges from the persisted STORM workspace."
     )

@@ -39,7 +39,7 @@ A restored \link{TempestSession}.
 snapshot created by \code{\link[=tempest_session_snapshot]{tempest_session_snapshot()}} or read by
 \code{\link[=tempest_session_resume]{tempest_session_resume()}}. It restores the research manifest and
 authoritative workspace, and creates fresh chat/tool handles using \code{config}.
-Only the exact current schema-9 snapshot is accepted; older, future, missing,
+Only the exact current schema-12 snapshot is accepted. Older, future, missing,
 extra, coerced, or mismatched shapes are rejected rather than migrated.
 
 Historical progress events are restored as session artifact data and can be

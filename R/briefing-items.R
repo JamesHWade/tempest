@@ -49,10 +49,10 @@ tempest_workspace_accepted_claim_keys <- function(workspace) {
     }
     # A retracted or superseded Claim is no longer accepted knowledge, so a
     # verified restatement of it is a change, not a no-change finding.
-    if (rlang::is_string(status) && !identical(status, "active")) {
+    if (!identical(status, "active")) {
       next
     }
-    if (rlang::is_string(text) && nzchar(tempest_trim(text))) {
+    if (rlang::is_string(text) && !is.na(text) && nzchar(tempest_trim(text))) {
       keys <- c(keys, tempest_claim_text_key(text))
     }
   }

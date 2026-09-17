@@ -312,14 +312,14 @@ test_that("claim dispositions compare verified text with pinned Claims", {
   )
 })
 
-test_that("accepted claim text is recovered from legacy record content", {
+test_that("accepted claim fields are recovered from rendered record content", {
   workspace <- fake_store_with_sources(1)
   resource <- tempest:::tempest_resource(
     resource_kind = "graft.record",
     locator = "graft/Claim/legacy",
     title = "Claim legacy",
     media_type = "text/plain",
-    content = "claim_type: finding\nstatement_text: Output held steady.\n",
+    content = "claim_type: finding\nstatement_text: Output held steady.\nstatus: active\n",
     metadata = list(
       graft_record_id = "legacy",
       graft_record_class = "Claim",

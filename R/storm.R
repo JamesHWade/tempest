@@ -109,9 +109,10 @@ tempest_stage_context_knowledge_view <- function(
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from
 #'   `config`.
 #' @param knowledge Optional accepted organizational knowledge from
-#'   [tempest_knowledge()] or [tempest_artifact_knowledge()]. It supplies accepted
-#'   evidence records, and carries any accepted governed-procedure stage
-#'   bindings. It is never persisted.
+#'   [tempest_knowledge()] or [tempest_artifact_knowledge()]. It supplies
+#'   accepted evidence records and any accepted governed-procedure stage bindings.
+#'   The live Graft view and knowledge object are not serialized;
+#'   materialized evidence and artifact selections are retained in the bundle.
 #' @param n_experts Number of expert profiles to generate when `experts` is
 #'   `NULL` (default 3).
 #' @param experts Optional list of active profiles created by

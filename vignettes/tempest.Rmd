@@ -392,7 +392,7 @@ credentials, live chat handles, tools, or authenticated clients. Configure
 fresh supported chats and retrieval dependencies through `config` before
 resuming.
 
-Snapshot, save, restore, and resume accept only the exact schema-10 Co-STORM
+Snapshot, save, restore, and resume accept only the exact schema-12 Co-STORM
 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
 suggested-question, and Graft snapshot state must pass integrity checks.
 

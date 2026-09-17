@@ -88,7 +88,9 @@ that selection while the previous run still resolves its original evidence.
 Saving and resuming preserves the historical input; it does not freeze permission
 or automatically reapprove withdrawn knowledge. The host must enforce current
 eligibility before starting or resuming work. This constructor does not monitor
-policy changes during an active run.
+policy changes during an active run. Re-admitting the same artifact input for
+STORM resume preserves the saved research state and original retrieval times;
+a later read time alone does not make the immutable input different.
 
 ## Scope and current formats
 

@@ -17,6 +17,13 @@ test_that("artifact knowledge validates exact bytes, references and dependency c
     class = "tempest_knowledge_error"
   )
   altered <- input
+  altered$contents[[1L]] <- NA_character_
+  expect_error(
+    do.call(tempest_artifact_knowledge, altered),
+    "nonmissing",
+    class = "tempest_knowledge_error"
+  )
+  altered <- input
   altered$contents <- altered$contents[-1L]
   expect_error(
     do.call(tempest_artifact_knowledge, altered),
@@ -132,6 +139,85 @@ test_that("both public research constructors admit the artifact selection", {
     knowledge@artifact_selection
   )
   expect_identical(tempest_sources(resumed), tempest_sources(result))
+  readmitted <- with_mocked_bindings(
+    do.call(tempest_artifact_knowledge, input),
+    tempest_now_utc = \() "2040-01-01T00:00:00Z"
+  )
+  expect_identical(
+    identical(
+      readmitted@records[[1L]]@retrieved_at,
+      knowledge@records[[1L]]@retrieved_at
+    ),
+    FALSE
+  )
+  resumed <- tempest_run(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert()),
+    knowledge = readmitted,
+    steps = "perspectives",
+    output_dir = output,
+    resume = TRUE,
+    verbose = FALSE
+  )
+  expect_identical(tempest_sources(resumed), tempest_sources(result))
+  expect_identical(
+    resumed@workspace$artifact_selection,
+    knowledge@artifact_selection
+  )
+  expert <- test_expert()
+  fields <- c(
+    "name",
+    "title",
+    "description",
+    "instructions",
+    "initial_questions"
+  )
+  expert_args <- stats::setNames(
+    lapply(fields, \(field) S7::prop(expert, field)),
+    fields
+  )
+  fresh <- callr::r(
+    function(checkout, input, path, expert_args) {
+      if (!is.null(checkout)) {
+        pkgload::load_all(checkout, quiet = TRUE)
+      }
+      knowledge <- do.call(tempest::tempest_artifact_knowledge, input)
+      result <- tempest::tempest_run(
+        "Artifact briefing",
+        config = tempest::tempest_config(chat_fn = function(...) {
+          ellmer::chat_openai(model = "gpt-4.1-mini", credentials = \() {
+            "offline-test"
+          })
+        }),
+        experts = list(do.call(tempest::tempest_expert, expert_args)),
+        knowledge = knowledge,
+        steps = "perspectives",
+        output_dir = path,
+        resume = TRUE,
+        verbose = FALSE
+      )
+      list(
+        sources = tempest::tempest_sources(result),
+        read_at = knowledge@records[[1L]]@retrieved_at
+      )
+    },
+    args = list(
+      checkout = if (pkgload::is_dev_package("tempest")) {
+        normalizePath(test_path("../.."))
+      } else {
+        NULL
+      },
+      input = input,
+      path = output,
+      expert_args = expert_args
+    )
+  )
+  expect_identical(
+    identical(fresh$read_at, knowledge@records[[1L]]@retrieved_at),
+    FALSE
+  )
+  expect_identical(fresh$sources, tempest_sources(result))
 })
 
 test_that("saved sessions retain artifact inputs across processes and corrections", {
@@ -294,5 +380,104 @@ test_that("artifact input bounds cover both admission and restored content", {
     do.call(tempest_artifact_knowledge, input),
     "metadata exceeds",
     class = "tempest_knowledge_error"
+  )
+})
+
+
+test_that("only explicit active artifact claims count as accepted statements", {
+  for (content in c(
+    "statement_text: X",
+    "statement_text: X\nstatus: superseded",
+    "statement_text: X\nstatus: active\nstatus: active",
+    "statement_text: X\nstatement_text: Y\nstatus: active"
+  )) {
+    input <- test_artifact_knowledge_input()
+    input$contents[[1L]] <- content
+    input$selection$records[[1L]]$sha256 <- digest::digest(
+      charToRaw(content),
+      algo = "sha256",
+      serialize = FALSE
+    )
+    knowledge <- do.call(tempest_artifact_knowledge, input)
+    workspace <- tempest_research_workspace()
+    tempest_knowledge_insert_records(
+      workspace,
+      knowledge@records,
+      knowledge@artifact_selection
+    )
+    expect_identical(
+      tempest_workspace_accepted_claim_keys(workspace),
+      character()
+    )
+  }
+})
+
+test_that("malformed persisted artifact selections use the STORM restore error", {
+  workspace <- tempest_research_workspace()
+  metadata <- list(
+    schema_version = 9L,
+    workspace = tempest_storm_workspace_identity_record(workspace)
+  )
+  metadata$workspace$artifact_selection <- list(selection_id = "incomplete")
+  expect_error(
+    tempest_storm_restore_workspace(metadata),
+    "artifact selection is invalid",
+    class = "tempest_run_restore_error"
+  )
+})
+
+
+test_that("re-admitted artifact input preserves the saved research workspace", {
+  input <- test_artifact_knowledge_input()
+  first <- do.call(tempest_artifact_knowledge, input)
+  later <- with_mocked_bindings(
+    do.call(tempest_artifact_knowledge, input),
+    tempest_now_utc = \() "2040-01-01T00:00:00Z"
+  )
+  saved <- tempest_research_workspace()
+  tempest_knowledge_insert_records(
+    saved,
+    first@records,
+    first@artifact_selection
+  )
+  source <- tempest_resource(
+    resource_kind = "web.page",
+    locator = "https://example.org/new",
+    title = "New source",
+    media_type = "text/plain",
+    content = "New research evidence."
+  )
+  saved$upsert_retrieved_resource(source)
+  saved$add_proposed_claim(tempest_claim(
+    "New finding",
+    source_ids = source@resource_id
+  ))
+  before <- tempest_research_workspace_snapshot(saved)
+  supplied <- tempest_research_workspace()
+  tempest_knowledge_insert_records(
+    supplied,
+    later@records,
+    later@artifact_selection
+  )
+  restored <- tempest_storm_assert_workspace_equivalent(supplied, saved)
+  expect_identical(restored, supplied)
+  expect_identical(tempest_research_workspace_snapshot(restored), before)
+
+  changed <- tempest_research_workspace()
+  tempest_knowledge_insert_records(
+    changed,
+    later@records,
+    later@artifact_selection
+  )
+  changed$upsert_retrieved_resource(source)
+  supplied_before <- tempest_research_workspace_snapshot(changed)
+  expect_error(
+    tempest_storm_assert_workspace_equivalent(changed, saved),
+    "diverges",
+    class = "tempest_run_restore_error"
+  )
+  expect_identical(
+    tempest_research_workspace_snapshot(changed),
+    supplied_before
   )
 })

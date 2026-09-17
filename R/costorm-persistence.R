@@ -639,7 +639,7 @@ tempest_session_assert_persistence_quiescent <- function(
 #'
 #' `tempest_session_snapshot()` returns a structured, in-memory representation
 #' of the durable state in a [TempestSession]. The only supported snapshot is
-#' the exact current schema-9 product shape; no legacy or migration reader is
+#' the exact current schema-12 product shape; no legacy or migration reader is
 #' provided. It includes the research
 #' manifest; fixed session and configuration identity; the authoritative
 #' [ResearchWorkspace]; expert profiles; transcript and mind map; the latest
@@ -655,7 +655,7 @@ tempest_session_assert_persistence_quiescent <- function(
 #' durable record without changing the live session.
 #'
 #' @param session A [TempestSession] object.
-#' @return A list containing an exact schema-9 session snapshot.
+#' @return A list containing an exact schema-12 session snapshot.
 #' @keywords internal
 tempest_session_snapshot <- function(session) {
   if (!inherits(session, "TempestSession")) {
@@ -1070,7 +1070,7 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #' snapshot created by [tempest_session_snapshot()] or read by
 #' [tempest_session_resume()]. It restores the research manifest and
 #' authoritative workspace, and creates fresh chat/tool handles using `config`.
-#' Only the exact current schema-9 snapshot is accepted; older, future, missing,
+#' Only the exact current schema-12 snapshot is accepted. Older, future, missing,
 #' extra, coerced, or mismatched shapes are rejected rather than migrated.
 #'
 #' Historical progress events are restored as session artifact data and can be
@@ -1162,7 +1162,7 @@ tempest_session_restore_internal <- function(
   )
   tempest_research_workspace_require_current_schema(
     snapshot$workspace,
-    "Schema 10 session workspace",
+    "Schema 12 session workspace",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -2003,7 +2003,7 @@ tempest_session_bundle_validate_manifest <- function(
       !identical(manifest$bundle_status %||% "", "complete")
   ) {
     tempest_session_restore_abort(
-      "Schema 10 Co-STORM bundle envelope is not complete."
+      "Schema 12 Co-STORM bundle envelope is not complete."
     )
   }
   if (
@@ -2011,25 +2011,25 @@ tempest_session_bundle_validate_manifest <- function(
       !is.list(manifest$workspace)
   ) {
     tempest_session_restore_abort(
-      "Schema 10 Co-STORM bundle is missing research identity metadata."
+      "Schema 12 Co-STORM bundle is missing research identity metadata."
     )
   }
   workspace_fields <- tempest_session_bundle_workspace_fields()
   if (!identical(names(manifest$workspace), workspace_fields)) {
     tempest_session_restore_abort(
-      "Schema 10 Co-STORM bundle has invalid workspace identity metadata."
+      "Schema 12 Co-STORM bundle has invalid workspace identity metadata."
     )
   }
   tempest_research_workspace_require_current_schema(
     manifest$workspace,
-    "Schema 10 Co-STORM workspace identity",
+    "Schema 12 Co-STORM workspace identity",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 10 Co-STORM file inventory",
+    "Schema 12 Co-STORM file inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -2099,7 +2099,7 @@ tempest_session_bundle_validate_manifest <- function(
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 10 Co-STORM checksum inventory",
+    "Schema 12 Co-STORM checksum inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -2690,7 +2690,7 @@ tempest_costorm_archive_read <- function(path) {
 #'
 #' `tempest_session_resume()` reads a directory bundle written by
 #' [tempest_session_save()] and rebuilds a [TempestSession] with a fresh runtime
-#' [TempestConfig]. Only the exact current schema-9 bundle is accepted; no
+#' [TempestConfig]. Only the exact current schema-12 bundle is accepted; no
 #' compatibility or migration reader is provided. Historical progress events are
 #' loaded for display and reduction, but they are not replayed into `progress`.
 #' Stage-record history is restored for audit, but running attempts are rejected

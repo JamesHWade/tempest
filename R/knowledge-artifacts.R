@@ -105,6 +105,7 @@ tempest_artifact_selection <- function(selection, allow_empty = FALSE) {
 tempest_artifact_resource <- function(selection, ref, content) {
   if (
     !rlang::is_string(content) ||
+      is.na(content) ||
       !nzchar(content) ||
       !identical(
         digest::digest(
@@ -184,7 +185,7 @@ tempest_artifact_knowledge <- function(selection, contents) {
   sizes <- vapply(
     contents,
     function(content) {
-      if (!rlang::is_string(content)) {
+      if (!rlang::is_string(content) || is.na(content)) {
         tempest_knowledge_abort(
           "Artifact contents must be nonmissing text strings."
         )

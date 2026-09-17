@@ -32,9 +32,10 @@ tempest_run(
 \code{config}.}
 
 \item{knowledge}{Optional accepted organizational knowledge from
-\code{\link[=tempest_knowledge]{tempest_knowledge()}} or \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}. It supplies accepted
-evidence records, and carries any accepted governed-procedure stage
-bindings. It is never persisted.}
+\code{\link[=tempest_knowledge]{tempest_knowledge()}} or \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}. It supplies
+accepted evidence records and any accepted governed-procedure stage bindings.
+The live Graft view and knowledge object are not serialized;
+materialized evidence and artifact selections are retained in the bundle.}
 
 \item{n_experts}{Number of expert profiles to generate when \code{experts} is
 \code{NULL} (default 3).}
