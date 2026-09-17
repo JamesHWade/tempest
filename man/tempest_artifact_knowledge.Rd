@@ -13,7 +13,8 @@ Each record has \code{record_id}, \code{revision_id}, \code{class}, \code{sha256
 SHA-256 of UTF-8 text bytes), and \code{dependencies} (a list of exact
 \code{record_id}/\code{revision_id} pairs). Supported classes are \code{Claim},
 \code{ClaimSupport}, \code{EvidenceSpan}, and \code{Source}. The selection contains 1 to
-1000 unique records; its metadata is limited to 1 MiB. Dependencies describe
+1000 unique records; its metadata is limited to 1 MiB. Record and revision
+identifiers must not contain surrounding whitespace. Dependencies describe
 the host's evidence selection, not an inferred graph or authorization.}
 
 \item{contents}{Named list of retained text strings, keyed by \code{record_id},

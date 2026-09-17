@@ -45,7 +45,16 @@ tempest_artifact_selection <- function(selection, allow_empty = FALSE) {
       )
     }
     for (field in c("record_id", "revision_id", "class")) {
-      tempest_resource_safe_scalar(ref[[field]], field, identifier = TRUE)
+      value <- tempest_resource_safe_scalar(
+        ref[[field]],
+        field,
+        identifier = TRUE
+      )
+      if (!identical(value, ref[[field]])) {
+        tempest_knowledge_abort(
+          "Artifact identifiers must not contain surrounding whitespace."
+        )
+      }
     }
     if (!ref$class %in% tempest_knowledge_record_allowlist()) {
       tempest_knowledge_abort(
@@ -70,6 +79,18 @@ tempest_artifact_selection <- function(selection, allow_empty = FALSE) {
         tempest_knowledge_abort(
           "Each dependency requires record_id and revision_id."
         )
+      }
+      for (field in c("record_id", "revision_id")) {
+        value <- tempest_resource_safe_scalar(
+          dependency[[field]],
+          field,
+          identifier = TRUE
+        )
+        if (!identical(value, dependency[[field]])) {
+          tempest_knowledge_abort(
+            "Artifact identifiers must not contain surrounding whitespace."
+          )
+        }
       }
       matched <- vapply(
         refs,
@@ -124,11 +145,7 @@ tempest_artifact_resource <- function(selection, ref, content) {
     resource_kind = "artifact.record",
     locator = paste0(
       "artifact/",
-      ref$class,
-      "/",
-      ref$record_id,
-      "/",
-      ref$revision_id
+      tempest_product_record_hash(ref[c("class", "record_id", "revision_id")])
     ),
     title = paste(ref$class, ref$record_id),
     media_type = "text/plain",
@@ -156,7 +173,8 @@ tempest_artifact_resource <- function(selection, ref, content) {
 #'   SHA-256 of UTF-8 text bytes), and `dependencies` (a list of exact
 #'   `record_id`/`revision_id` pairs). Supported classes are `Claim`,
 #'   `ClaimSupport`, `EvidenceSpan`, and `Source`. The selection contains 1 to
-#'   1000 unique records; its metadata is limited to 1 MiB. Dependencies describe
+#'   1000 unique records; its metadata is limited to 1 MiB. Record and revision
+#'   identifiers must not contain surrounding whitespace. Dependencies describe
 #'   the host's evidence selection, not an inferred graph or authorization.
 #' @param contents Named list of retained text strings, keyed by `record_id`,
 #'   with exactly the selection's records and at most 1 MiB of UTF-8 text total.

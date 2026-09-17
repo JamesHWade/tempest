@@ -714,9 +714,17 @@ tempest_research_workspace_restore_metadata <- function(snapshot) {
     base_snapshot_id = base_snapshot_id,
     max_sources = max_sources,
     accepted_graft_references = references,
-    artifact_selection = tempest_artifact_selection(
-      snapshot$artifact_selection,
-      allow_empty = TRUE
+    artifact_selection = tryCatch(
+      tempest_artifact_selection(
+        snapshot$artifact_selection,
+        allow_empty = TRUE
+      ),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          "{.field artifact_selection} is invalid.",
+          parent = error
+        )
+      }
     )
   )
 }

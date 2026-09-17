@@ -481,3 +481,70 @@ test_that("re-admitted artifact input preserves the saved research workspace", {
     supplied_before
   )
 })
+
+
+test_that("artifact reference segments cannot collide in resource identity", {
+  input <- test_artifact_knowledge_input()
+  input$selection$records[[1L]]$record_id <- "a/b"
+  input$selection$records[[1L]]$revision_id <- "c"
+  input$selection$records[[1L]]$dependencies <- list()
+  input$selection$records[[2L]]$record_id <- "a"
+  input$selection$records[[2L]]$revision_id <- "b/c"
+  input$selection$records[[2L]]$class <- "Claim"
+  names(input$contents) <- c("a/b", "a")
+  knowledge <- do.call(tempest_artifact_knowledge, input)
+  session <- tempest_session(
+    "Distinct artifact identities",
+    config = tempest_config(chat_fn = \(...) fake_chat()),
+    experts = list(test_expert()),
+    knowledge = knowledge
+  )
+  sources <- tempest_sources(session)
+  expect_equal(nrow(sources), 2L)
+  expect_length(unique(sources$id), 2L)
+  snapshot <- tempest_research_workspace_snapshot(
+    tempest_session_workspace(session)
+  )
+  restored <- tempest_research_workspace_restore(snapshot)
+  expect_identical(tempest_research_workspace_snapshot(restored), snapshot)
+})
+
+test_that("artifact identifiers reject surrounding whitespace before admission", {
+  for (field in c("record_id", "revision_id", "class")) {
+    input <- test_artifact_knowledge_input()
+    input$selection$records[[1L]][[field]] <- paste0(
+      " ",
+      input$selection$records[[1L]][[field]],
+      " "
+    )
+    expect_error(
+      do.call(tempest_artifact_knowledge, input),
+      "surrounding whitespace",
+      class = "tempest_knowledge_error"
+    )
+  }
+  for (field in c("record_id", "revision_id")) {
+    input <- test_artifact_knowledge_input()
+    input$selection$records[[1L]]$dependencies[[1L]][[field]] <- paste0(
+      " ",
+      input$selection$records[[1L]]$dependencies[[1L]][[field]],
+      " "
+    )
+    expect_error(
+      do.call(tempest_artifact_knowledge, input),
+      "surrounding whitespace",
+      class = "tempest_knowledge_error"
+    )
+  }
+})
+
+test_that("malformed persisted selections use the workspace restore error", {
+  workspace <- tempest_research_workspace()
+  snapshot <- tempest_research_workspace_snapshot(workspace)
+  snapshot$artifact_selection <- list(selection_id = "incomplete")
+  expect_error(
+    tempest_research_workspace_restore(snapshot),
+    "artifact_selection.*invalid",
+    class = "tempest_research_workspace_restore_error"
+  )
+})
