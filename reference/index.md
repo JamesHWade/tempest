@@ -20,8 +20,10 @@ Run scripted STORM, hold a Co-STORM session, or open the bundled app.
 
 ## Accepted organizational knowledge
 
-Bring reviewed Graft evidence and accepted procedures into a run.
+Bring retained artifact evidence or reviewed Graft knowledge into a run.
 
+- [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
+  : Bring a retained artifact selection into a research run
 - [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
   : Bring accepted organizational knowledge into a Tempest run
 - [`print(`*`<tempest_knowledge>`*`)`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md)

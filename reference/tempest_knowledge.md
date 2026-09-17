@@ -1,6 +1,6 @@
 # Bring accepted organizational knowledge into a Tempest run
 
-`tempest_knowledge()` is the one strict constructor for accepted
+`tempest_knowledge()` is the Graft constructor for accepted
 organizational knowledge. It pins an immutable Graft view, materializes
 an exact allowlist of accepted evidence records, and optionally binds
 accepted governed procedures to Tempest stages.

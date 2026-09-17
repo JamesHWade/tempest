@@ -39,6 +39,10 @@ acceptance remains an explicit graft review and commit.
   Read-only opaque identifier for the accepted knowledge snapshot on
   which this workspace is based.
 
+- `artifact_selection`:
+
+  Read-only exact artifact input and provenance.
+
 - `graft_snapshot`:
 
   Optional read-only, path-free `graft::GraftSnapshot` used to reopen
@@ -110,6 +114,8 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$list_accepted_graft_references()`](#method-ResearchWorkspace-list_accepted_graft_references)
 
+- [`ResearchWorkspace$bind_artifact_selection()`](#method-ResearchWorkspace-bind_artifact_selection)
+
 - [`ResearchWorkspace$validate_integrity()`](#method-ResearchWorkspace-validate_integrity)
 
 - [`ResearchWorkspace$to_tibbles()`](#method-ResearchWorkspace-to_tibbles)
@@ -128,7 +134,8 @@ Create a new provisional research workspace.
       base_snapshot_id = NULL,
       graft_snapshot = NULL,
       max_sources = Inf,
-      accepted_graft_references = list()
+      accepted_graft_references = list(),
+      artifact_selection = list()
     )
 
 #### Arguments
@@ -150,6 +157,10 @@ Create a new provisional research workspace.
 
   Unnamed list of canonical JSON-compatible references to accepted graft
   records.
+
+- `artifact_selection`:
+
+  Exact artifact input, retained without a Graft snapshot.
 
 ------------------------------------------------------------------------
 
@@ -542,6 +553,22 @@ List accepted graft references deterministically.
 #### Usage
 
     ResearchWorkspace$list_accepted_graft_references()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$bind_artifact_selection()`
+
+Pin an exact artifact selection after admitting its resources.
+
+#### Usage
+
+    ResearchWorkspace$bind_artifact_selection(selection)
+
+#### Arguments
+
+- `selection`:
+
+  A validated artifact selection.
 
 ------------------------------------------------------------------------
 

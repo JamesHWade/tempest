@@ -6,7 +6,7 @@ and rebuilds a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md)
 with a fresh runtime
 [TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md).
-Only the exact current schema-9 bundle is accepted; no compatibility or
+Only the exact current schema-12 bundle is accepted; no compatibility or
 migration reader is provided. Historical progress events are loaded for
 display and reduction, but they are not replayed into `progress`.
 Stage-record history is restored for audit, but running attempts are

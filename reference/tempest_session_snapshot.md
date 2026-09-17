@@ -18,16 +18,17 @@ tempest_session_snapshot(session)
 
 ## Value
 
-A list containing an exact schema-9 session snapshot.
+A list containing an exact schema-12 session snapshot.
 
 ## Details
 
 `tempest_session_snapshot()` returns a structured, in-memory
 representation of the durable state in a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
-The only supported snapshot is the exact current schema-9 product shape;
-no legacy or migration reader is provided. It includes the research
-manifest; fixed session and configuration identity; the authoritative
+The only supported snapshot is the exact current schema-12 product
+shape; no legacy or migration reader is provided. It includes the
+research manifest; fixed session and configuration identity; the
+authoritative
 [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md);
 expert profiles; transcript and mind map; the latest report Markdown;
 stage-record, progress-event, and expert-session metadata; and the

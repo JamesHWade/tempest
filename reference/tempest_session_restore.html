@@ -21,6 +21,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
     <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+    <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -92,8 +93,8 @@ never reconstructed from or written to persistence.</p></dd>
 snapshot created by <code><a href="tempest_session_snapshot.html">tempest_session_snapshot()</a></code> or read by
 <code><a href="tempest_session_resume.html">tempest_session_resume()</a></code>. It restores the research manifest and
 authoritative workspace, and creates fresh chat/tool handles using <code>config</code>.
-Only the exact current schema-9 snapshot is accepted; older, future, missing,
-extra, coerced, or mismatched shapes are rejected rather than migrated.</p>
+Only the exact current schema-12 snapshot is accepted. Older, future,
+missing, extra, coerced, or mismatched shapes are rejected without migration.</p>
 <p>Historical progress events are restored as session artifact data and can be
 reduced with <code><a href="tempest_progress_state.html">tempest_progress_state()</a></code>. They are not replayed into the new
 <code>progress</code> callback; future calls on the restored session use that callback.

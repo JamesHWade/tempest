@@ -1,8 +1,10 @@
 # Return evidence resources as a tibble
 
 Reports every evidence resource consumed by a product, including
-accepted organizational knowledge records supplied through
-[`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md).
+accepted organizational knowledge supplied through
+[`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
+or
+[`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md).
 
 ## Usage
 

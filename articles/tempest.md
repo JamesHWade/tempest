@@ -274,8 +274,8 @@ result <- tempest_run(
 Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.
 
-Current readers accept only `ResearchWorkspace` snapshot schema 5,
-Co-STORM snapshot and bundle schema 10, STORM bundle schema 8 with state
+Current readers accept only `ResearchWorkspace` snapshot schema 6,
+Co-STORM snapshot and bundle schema 12, STORM bundle schema 9 with state
 schema 5, ProgramSet schema 2, research-manifest schema 3, StageRecord
 output-digest payload schema 3, and promotion-bundle schema 1. Every
 other version is rejected, as is any missing or extra field or value
@@ -405,7 +405,7 @@ state, but not credentials, live chat handles, tools, or authenticated
 clients. Configure fresh supported chats and retrieval dependencies
 through `config` before resuming.
 
-Snapshot, save, restore, and resume accept only the exact schema-10
+Snapshot, save, restore, and resume accept only the exact schema-12
 Co-STORM product. Expert, transcript, mind-map, StageRecord, Workspace,
 report, suggested-question, and Graft snapshot state must pass integrity
 checks.

@@ -55,9 +55,11 @@ tempest_session(
 - knowledge:
 
   Optional accepted organizational knowledge from
-  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md).
-  It pins an immutable Graft view, supplies accepted evidence records,
-  and carries any accepted governed-procedure stage bindings.
+  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
+  or
+  [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md).
+  It supplies accepted evidence records, and carries any accepted
+  governed-procedure stage bindings.
 
 ## Value
 

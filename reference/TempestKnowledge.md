@@ -1,6 +1,6 @@
-# Accepted organizational knowledge pinned to one Graft view
+# Retained research knowledge from a Graft view or artifact selection
 
-Accepted organizational knowledge pinned to one Graft view
+Retained research knowledge from a Graft view or artifact selection
 
 ## Usage
 
@@ -11,6 +11,7 @@ TempestKnowledge(
   reference = NULL,
   record_ids = character(),
   records = list(),
-  governed_procedures = list()
+  governed_procedures = list(),
+  artifact_selection = list()
 )
 ```

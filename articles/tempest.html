@@ -46,6 +46,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
     <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+    <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -341,7 +342,7 @@ configuration, output directory, and run ID:</p>
 <p>Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.</p>
 <p>Current readers accept only <code>ResearchWorkspace</code> snapshot
-schema 5, Co-STORM snapshot and bundle schema 10, STORM bundle schema 8
+schema 6, Co-STORM snapshot and bundle schema 12, STORM bundle schema 9
 with state schema 5, ProgramSet schema 2, research-manifest schema 3,
 StageRecord output-digest payload schema 3, and promotion-bundle schema
 1. Every other version is rejected, as is any missing or extra field or
@@ -460,7 +461,7 @@ available to the final report. Session bundles preserve durable research
 state, but not credentials, live chat handles, tools, or authenticated
 clients. Configure fresh supported chats and retrieval dependencies
 through <code>config</code> before resuming.</p>
-<p>Snapshot, save, restore, and resume accept only the exact schema-10
+<p>Snapshot, save, restore, and resume accept only the exact schema-12
 Co-STORM product. Expert, transcript, mind-map, StageRecord, Workspace,
 report, suggested-question, and Graft snapshot state must pass integrity
 checks.</p>

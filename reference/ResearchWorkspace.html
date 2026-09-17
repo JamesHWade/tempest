@@ -27,6 +27,7 @@ explicit graft review and commit."><meta property="og:image" content="https://ja
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
     <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+    <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -89,6 +90,10 @@ accepted graft knowledge used by the research run.</p></dd>
 knowledge snapshot on which this workspace is based.</p></dd>
 
 
+    <dt><code>artifact_selection</code></dt>
+<dd><p>Read-only exact artifact input and provenance.</p></dd>
+
+
     <dt><code>graft_snapshot</code></dt>
 <dd><p>Optional read-only, path-free
 <code>graft::GraftSnapshot</code> used to reopen the accepted knowledge boundary.</p></dd>
@@ -137,6 +142,7 @@ bounded separately and do not count.</p></dd>
 <li><p><a href="#method-ResearchWorkspace-list_disputes"><code>ResearchWorkspace$list_disputes()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-record_accepted_graft_reference"><code>ResearchWorkspace$record_accepted_graft_reference()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-list_accepted_graft_references"><code>ResearchWorkspace$list_accepted_graft_references()</code></a></p></li>
+<li><p><a href="#method-ResearchWorkspace-bind_artifact_selection"><code>ResearchWorkspace$bind_artifact_selection()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-validate_integrity"><code>ResearchWorkspace$validate_integrity()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-to_tibbles"><code>ResearchWorkspace$to_tibbles()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-clone"><code>ResearchWorkspace$clone()</code></a></p></li>
@@ -148,7 +154,8 @@ bounded separately and do not count.</p></dd>
 <span>  base_snapshot_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  graft_snapshot <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  max_sources <span class="op">=</span> <span class="cn">Inf</span>,</span>
-<span>  accepted_graft_references <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  accepted_graft_references <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  artifact_selection <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
@@ -166,6 +173,10 @@ refused once the limit is reached.</p></dd>
       <dt><code>accepted_graft_references</code></dt>
 <dd><p>Unnamed list of canonical
 JSON-compatible references to accepted graft records.</p></dd>
+
+      <dt><code>artifact_selection</code></dt>
+<dd><p>Exact artifact input, retained without a
+Graft snapshot.</p></dd>
 
 
 </dl><p></p></div>
@@ -550,10 +561,26 @@ capability. Standalone workspaces require <code>NULL</code>.</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-ResearchWorkspace-bind_artifact_selection"></a><div class="section">
+<h3 id="researchworkspace-bind-artifact-selection-"><code>ResearchWorkspace$bind_artifact_selection()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-bind-artifact-selection-"></a></h3>
+<p>Pin an exact artifact selection after admitting its resources.</p><div class="section">
+<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">bind_artifact_selection</span><span class="op">(</span><span class="va">selection</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>selection</code></dt>
+<dd><p>A validated artifact selection.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-ResearchWorkspace-validate_integrity"></a><div class="section">
 <h3 id="researchworkspace-validate-integrity-"><code>ResearchWorkspace$validate_integrity()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-validate-integrity-"></a></h3>
 <p>Validate all authoritative workspace cross-record links.</p><div class="section">
-<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
+<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">validate_integrity</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -562,7 +589,7 @@ capability. Standalone workspaces require <code>NULL</code>.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-to_tibbles"></a><div class="section">
 <h3 id="researchworkspace-to-tibbles-"><code>ResearchWorkspace$to_tibbles()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-to-tibbles-"></a></h3>
 <p>Convert sources, claims, and disputes to tibbles.</p><div class="section">
-<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
+<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">to_tibbles</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -571,10 +598,10 @@ capability. Standalone workspaces require <code>NULL</code>.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-clone"></a><div class="section">
 <h3 id="researchworkspace-clone-"><code>ResearchWorkspace$clone()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
+<h4 id="usage-28">Usage<a class="anchor" aria-label="anchor" href="#usage-28"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
+<h4 id="arguments-19">Arguments<a class="anchor" aria-label="anchor" href="#arguments-19"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

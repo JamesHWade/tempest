@@ -2,6 +2,16 @@
 
 ## tempest 0.0.0.9000
 
+- Persisted workspace, STORM, and Co-STORM formats are now 6, 9, and 12.
+  Regenerate older experimental bundles; compatibility readers are not
+  provided.
+
+- [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
+  admits an exact host-selected artifact input without a Graft view and
+  preserves its content, revision references, dependencies, and
+  provenance across save/resume (graft
+  [\#64](https://github.com/JamesHWade/tempest/issues/64)).
+
 - Tempest no longer pins ellmer to a fork commit in `Remotes`. Released
   ellmer (\>= 0.5.0) satisfies the dependency, so Tempest installs
   beside packages that require ellmer 0.5 (querychat 0.4.0 broke every

@@ -51,10 +51,13 @@ tempest_run(
 - knowledge:
 
   Optional accepted organizational knowledge from
-  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md).
-  It pins an immutable Graft view, supplies accepted evidence records,
-  and carries any accepted governed-procedure stage bindings. It is
-  never persisted.
+  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
+  or
+  [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md).
+  It supplies accepted evidence records and accepted governed-procedure
+  stage bindings. The live Graft view and knowledge object are not
+  serialized; materialized evidence and artifact selections are retained
+  in the bundle.
 
 - n_experts:
 
@@ -96,7 +99,7 @@ tempest_run(
 - output_dir:
 
   Optional directory for persisted STORM run artifacts. When supplied, a
-  current schema-8 product bundle with schema-5 STORM state is written
+  current schema-9 product bundle with schema-5 STORM state is written
   under a topic-specific subdirectory.
 
 - resume:

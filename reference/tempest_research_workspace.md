@@ -13,7 +13,8 @@ tempest_research_workspace(
   base_snapshot_id = NULL,
   graft_snapshot = NULL,
   max_sources = Inf,
-  accepted_graft_references = list()
+  accepted_graft_references = list(),
+  artifact_selection = list()
 )
 ```
 
@@ -35,6 +36,10 @@ tempest_research_workspace(
 
   Unnamed list of canonical JSON-compatible references to accepted graft
   records.
+
+- artifact_selection:
+
+  Exact artifact input retained by the workspace.
 
 ## Value
 

@@ -44,6 +44,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/daily-briefing.html">Build a governed daily briefing</a></li>
     <li><a class="dropdown-item" href="articles/accepted-research.html">Reuse and correct accepted research</a></li>
+    <li><a class="dropdown-item" href="articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -113,6 +114,12 @@
 <a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a> — evaluation tasks</li>
 </ul>
 <div class="section level2">
+<h2 id="reuse-retained-artifacts">Reuse retained artifacts<a class="anchor" aria-label="anchor" href="#reuse-retained-artifacts"></a>
+</h2>
+<p><code>tempest_artifact_knowledge(selection, contents)</code> supplies exact retained evidence without a Graft view. The host checks current eligibility and resolves the bytes; Tempest checks complete selection coverage, SHA-256 digests, allowed evidence classes, and exact declared dependencies. STORM and Co-STORM retain this input in their research workspace and current save/resume formats. Saved evidence cannot register tools or bind executable procedures.</p>
+<p>See <a href="https://jameshwade.github.io/tempest/articles/artifact-knowledge.html">artifact knowledge</a> for the input contract and a local example. This is an evidence consumer API; it does not implement artifact storage, approval, withdrawal, or future acceptance.</p>
+</div>
+<div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -167,7 +174,7 @@
 <li>Azure AI Search: set <code>AZURE_AI_SEARCH_API_KEY</code>, <code>AZURE_AI_SEARCH_ENDPOINT</code>, and <code>AZURE_AI_SEARCH_INDEX_NAME</code>
 </li>
 </ul>
-<p>Completed STORM products are read through <code><a href="reference/tempest_report.html">tempest_report()</a></code>, <code><a href="reference/tempest_sources.html">tempest_sources()</a></code>, <code><a href="reference/tempest_claims.html">tempest_claims()</a></code>, <code><a href="reference/tempest_claim_supports.html">tempest_claim_supports()</a></code>, and <code><a href="reference/tempest_trajectory_review.html">tempest_trajectory_review()</a></code>. Internal manifests, mutable workspaces, retrievers, and state remain implementation details used to validate those reads. A Co-STORM session exposes only its supported operations and read-only projections. Accepted knowledge enters through <code><a href="reference/tempest_knowledge.html">tempest_knowledge()</a></code>, and new evidence still requires explicit Graft review and commit.</p>
+<p>Completed STORM products are read through <code><a href="reference/tempest_report.html">tempest_report()</a></code>, <code><a href="reference/tempest_sources.html">tempest_sources()</a></code>, <code><a href="reference/tempest_claims.html">tempest_claims()</a></code>, <code><a href="reference/tempest_claim_supports.html">tempest_claim_supports()</a></code>, and <code><a href="reference/tempest_trajectory_review.html">tempest_trajectory_review()</a></code>. Internal manifests, mutable workspaces, retrievers, and state remain implementation details used to validate those reads. A Co-STORM session exposes only its supported operations and read-only projections. Retained artifact evidence enters through <code><a href="reference/tempest_artifact_knowledge.html">tempest_artifact_knowledge()</a></code>; <code><a href="reference/tempest_knowledge.html">tempest_knowledge()</a></code> reads the Graft producer. New research remains provisional until the host explicitly reviews and accepts it.</p>
 <p>Internally, every evidence value is one exact <code>TempestResource</code>. Retriever fetches, provider-native tools, caches, and restored products must agree on that shape. <code><a href="reference/tempest_sources.html">tempest_sources()</a></code> returns a read-only presentation table rather than a writable evidence object, and Tempest provides no legacy list conversion path.</p>
 <p>Co-STORM moderator and expert chats run through required persistent Deputy agents. Tempest disables ambient file, shell, R, and package-install authority at that boundary and allowlists only the Tempest tools already attached to each chat. Web authority is limited to that frozen tool surface, including an explicit provider-native search tool when configured. Each product-owned Deputy session identifier is passed to the Agent constructor and checked against the live runtime before use. Session persistence stores credential-safe opaque run, session, agent, stage, role, expert, and correlation references; it never serializes a Deputy Agent or provider credentials.</p>
 </div>
@@ -215,7 +222,7 @@
 <span><span class="op">)</span></span></code></pre></div>
 <p>The ten-field value identifies the product and contains ordered StageRecord summaries, safe terminal Deputy identities, the fixed ProgramSet references, input and optional promotion knowledge, evidence identities, explicit joins, and structural findings. Variable lanes retain at most 250 records and report the complete count and digest when rows are omitted. The review contains no prompts, responses, source text, paths, credentials, live objects, or capabilities, and it is reconstructable rather than persisted.</p>
 <p>Every join names its relation and proof. Exact run, stage, program, snapshot, bundle, and receipt identities can establish a validated binding; <code>correlation_id</code> can establish only <code>correlated_with</code> with <code>correlation_only</code> proof. It never establishes authorship or causation. Mutable progress events are intentionally outside the review identity. A promotion bundle is shown as proposed, and an exact matching bundle plus receipt is shown as accepted; a receipt alone or a cross-run product fails closed.</p>
-<p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 5, Co-STORM snapshot and bundle schema 11, STORM bundle schema 8 with state schema 5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload schema 3, and promotion-bundle schema 1. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
+<p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 6, Co-STORM snapshot and bundle schema 12, STORM bundle schema 9 with state schema 5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest payload schema 3, and promotion-bundle schema 1. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
 </div>
 <div class="section level2">
 <h2 id="product-boundary">Product boundary<a class="anchor" aria-label="anchor" href="#product-boundary"></a>
@@ -343,7 +350,7 @@
 <span>  output_dir <span class="op">=</span> <span class="st">"storm-runs"</span>,</span>
 <span>  resume <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Each run directory is an exact current schema-8 STORM product bundle with schema-5 state. It includes checksummed JSON state for perspectives, experts, sources, claims, outlines, and references; Markdown drafts; and the final Markdown report. Resume rejects older, future, missing, extra, coerced, or mismatched shapes rather than migrating them.</p>
+<p>Each run directory is an exact current schema-9 STORM product bundle with schema-5 state. It includes checksummed JSON state for perspectives, experts, sources, claims, outlines, and references; Markdown drafts; and the final Markdown report. Resume rejects older, future, missing, extra, coerced, or mismatched shapes rather than migrating them.</p>
 <p>Every typed ProgramSet attempt also has a durable record of its stage, program, evaluator, trace, support decision, and execution or fallback path. Tempest evaluates a complete structured output before changing product state, so malformed output cannot leave a partial update. On resume, persisted running attempts become cancelled records. Final reports append a deterministic <code>Execution review</code> when an attempt failed, was cancelled, used a policy fallback, or produced a grounded result that was not verified.</p>
 </div>
 <div class="section level3">
@@ -608,7 +615,7 @@
 <li>Keeps an opaque, host-inaccessible chat session binding for continuity</li>
 </ul>
 <p>The moderator uses the same bounded Deputy runtime. Each completed moderator or expert run records an opaque terminal trace that is carried through Co-STORM snapshot and bundle persistence.</p>
-<p>Co-STORM save, snapshot, restore, and resume accept only the exact current schema-11 product. Expert, transcript, mind-map, StageRecord, Workspace, report, suggested-question, and Graft snapshot state must pass integrity checks. Live chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated rather than serialized.</p>
+<p>Co-STORM save, snapshot, restore, and resume accept only the exact current schema-12 product. Expert, transcript, mind-map, StageRecord, Workspace, report, suggested-question, and Graft snapshot state must pass integrity checks. Live chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated rather than serialized.</p>
 </div>
 <div class="section level3">
 <h3 id="warmup-phase">Warmup Phase<a class="anchor" aria-label="anchor" href="#warmup-phase"></a>

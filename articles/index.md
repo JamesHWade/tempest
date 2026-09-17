@@ -16,3 +16,6 @@ Install Tempest and run your first workflow.
 
 - [Reuse and correct accepted
   research](https://jameshwade.github.io/tempest/articles/accepted-research.md):
+
+- [Reuse retained artifact
+  evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.md):
