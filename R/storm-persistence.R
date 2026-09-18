@@ -1062,9 +1062,9 @@ tempest_storm_workspace_is_empty <- function(workspace) {
   all(vapply(snapshot[evidence_fields], length, integer(1)) == 0L)
 }
 
-tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
+tempest_storm_workspace_needs_restore <- function(supplied, persisted) {
   if (is.null(supplied)) {
-    return(persisted)
+    return(FALSE)
   }
   snapshot_values <- function(workspace, label) {
     snapshot <- workspace$graft_snapshot
@@ -1097,8 +1097,19 @@ tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
     }
   )
   persisted_record <- tempest_storm_workspace_equivalence_record(persisted)
+  if (
+    length(supplied_record$artifact_selection) &&
+      !identical(
+        supplied_record$artifact_selection,
+        persisted_record$artifact_selection
+      )
+  ) {
+    tempest_storm_run_restore_abort(
+      "The supplied workspace has a different pinned artifact selection."
+    )
+  }
   if (identical(supplied_record, persisted_record)) {
-    return(supplied)
+    return(FALSE)
   }
   if (
     !tempest_storm_workspace_is_empty(supplied) &&
@@ -1134,6 +1145,40 @@ tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
       "The supplied workspace contains accepted graft references outside the persisted run."
     )
   }
+  TRUE
+}
+
+tempest_storm_preflight_workspace <- function(supplied, persisted, status) {
+  needs_restore <- tempest_storm_workspace_needs_restore(supplied, persisted)
+  workspace <- supplied %||% persisted
+  state <- tempest_research_workspace_mutation_state(workspace)
+  if (needs_restore && !identical(state, "open")) {
+    tempest_storm_run_restore_abort(
+      "Restoring saved evidence requires an open supplied workspace."
+    )
+  }
+  if (identical(status, "succeeded")) {
+    if (!state %in% c("open", "sealed")) {
+      tempest_storm_run_restore_abort(
+        "A succeeded STORM workspace must restore into sealed state."
+      )
+    }
+  } else if (!identical(state, "open")) {
+    tempest_storm_run_restore_abort(
+      "A partial STORM workspace must restore into mutable open state."
+    )
+  }
+  invisible(NULL)
+}
+
+tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
+  if (is.null(supplied)) {
+    return(persisted)
+  }
+  if (!tempest_storm_workspace_needs_restore(supplied, persisted)) {
+    return(supplied)
+  }
+  persisted_record <- tempest_storm_workspace_equivalence_record(persisted)
   supplied <- tryCatch(
     tempest_research_workspace_restore(
       tempest_research_workspace_snapshot(persisted),
@@ -1469,6 +1514,7 @@ tempest_storm_attach_workspace <- function(
   workspace,
   status
 ) {
+  tempest_storm_preflight_workspace(supplied_workspace, workspace, status)
   workspace <- tempest_storm_assert_workspace_equivalent(
     supplied_workspace,
     workspace

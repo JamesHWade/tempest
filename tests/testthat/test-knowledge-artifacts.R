@@ -154,6 +154,95 @@ test_that("both public research constructors admit the artifact selection", {
     ),
     class = "tempest_error"
   )
+  invalid_checks <- 0L
+  invalid_admission <- knowledge
+  invalid_admission@admission <- function() {
+    invalid_checks <<- invalid_checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  other <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input("A corrected claim", "v2")
+  )
+  for (kind in c(
+    "selection",
+    "empty_selection",
+    "evidence",
+    "sealed_empty",
+    "sealed_partial"
+  )) {
+    supplied_workspace <- if (kind == "empty_selection") {
+      tempest_research_workspace(artifact_selection = other@artifact_selection)
+    } else if (kind == "sealed_partial") {
+      tempest_research_workspace_restore(
+        tempest_research_workspace_snapshot(result@workspace)
+      )
+    } else {
+      tempest_research_workspace()
+    }
+    supplied_retriever <- tempest_retriever(
+      config = config,
+      workspace = supplied_workspace
+    )
+    if (kind == "selection") {
+      tempest_knowledge_insert_records(
+        supplied_workspace,
+        other@records,
+        other@artifact_selection
+      )
+    } else if (kind == "evidence") {
+      tempest_knowledge_insert_records(
+        supplied_workspace,
+        knowledge@records,
+        knowledge@artifact_selection
+      )
+      supplied_workspace$upsert_retrieved_resource(tempest_resource(
+        resource_kind = "web.page",
+        locator = "https://example.org/unrelated",
+        title = "Unrelated source",
+        media_type = "text/plain",
+        content = "Evidence outside the persisted research."
+      ))
+    } else if (kind %in% c("sealed_empty", "sealed_partial")) {
+      tempest_research_workspace_seal(supplied_workspace)
+    }
+    inspect_workspace <- function(workspace) {
+      if (kind == "empty_selection") {
+        return(list(
+          selection = workspace$artifact_selection,
+          resources = workspace$list_retrieved_resources()
+        ))
+      }
+      tempest_research_workspace_snapshot(workspace)
+    }
+    supplied_before <- inspect_workspace(supplied_workspace)
+    supplied_state <- tempest_research_workspace_mutation_state(
+      supplied_workspace
+    )
+    expect_error(
+      tempest_run(
+        "Artifact briefing",
+        config = config,
+        experts = list(test_expert()),
+        retriever = supplied_retriever,
+        knowledge = invalid_admission,
+        steps = "perspectives",
+        output_dir = output,
+        resume = TRUE,
+        verbose = FALSE
+      ),
+      class = "tempest_run_restore_error"
+    )
+    expect_identical(invalid_checks, 0L)
+    expect_identical(
+      inspect_workspace(supplied_workspace),
+      supplied_before
+    )
+    expect_identical(
+      tempest_research_workspace_mutation_state(supplied_workspace),
+      supplied_state
+    )
+  }
   checks <- 0L
   declined <- knowledge
   declined@admission <- function() {
