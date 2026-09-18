@@ -956,6 +956,20 @@ Code that inspired tempest:
 - [Stanford STORM project](https://storm.genie.stanford.edu/) — live
   demo and project overview.
 
+## Retain reviewed research across runs
+
+Use
+[`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
+to preserve a completed report and its full evidence through Graft’s
+artifact store. After explicit host acceptance,
+[`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
+checks the current decision and host policy before research admission.
+Historical inspection uses
+[`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md)
+and grants no current permission. See [retained artifact
+evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.html)
+for an executable offline example and session resume rules.
+
 # Package index
 
 ## Research products
@@ -980,6 +994,12 @@ Run scripted STORM, hold a Co-STORM session, or open the bundled app.
 
 Bring retained artifact evidence or reviewed Graft knowledge into a run.
 
+- [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
+  : Preserve completed research in a Graft artifact store
+- [`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md)
+  : Inspect retained research without admitting it to execution
+- [`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
+  : Admit a current accepted research decision
 - [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
   : Bring a retained artifact selection into a research run
 - [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)

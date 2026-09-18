@@ -955,3 +955,17 @@ Code that inspired tempest:
   to R for tempest’s optimizable modules.
 - [Stanford STORM project](https://storm.genie.stanford.edu/) — live
   demo and project overview.
+
+## Retain reviewed research across runs
+
+Use
+[`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
+to preserve a completed report and its full evidence through Graft’s
+artifact store. After explicit host acceptance,
+[`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
+checks the current decision and host policy before research admission.
+Historical inspection uses
+[`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md)
+and grants no current permission. See [retained artifact
+evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.html)
+for an executable offline example and session resume rules.

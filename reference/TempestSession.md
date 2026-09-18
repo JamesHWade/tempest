@@ -79,7 +79,8 @@ for the supported API.
       program_set = NULL,
       knowledge_view = NULL,
       .restore_manifest = NULL,
-      .restore_token = NULL
+      .restore_token = NULL,
+      .admit_knowledge = NULL
     )
 
 #### Arguments
@@ -137,6 +138,11 @@ for the supported API.
 - `.restore_token`:
 
   Internal authorization token for bundle restoration.
+
+- `.admit_knowledge`:
+
+  Internal callback receiving the validated workspace for fresh
+  knowledge admission.
 
 ------------------------------------------------------------------------
 

@@ -22,6 +22,12 @@ Run scripted STORM, hold a Co-STORM session, or open the bundled app.
 
 Bring retained artifact evidence or reviewed Graft knowledge into a run.
 
+- [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
+  : Preserve completed research in a Graft artifact store
+- [`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md)
+  : Inspect retained research without admitting it to execution
+- [`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
+  : Admit a current accepted research decision
 - [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
   : Bring a retained artifact selection into a research run
 - [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)

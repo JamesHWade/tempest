@@ -50,7 +50,8 @@
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  knowledge <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -81,6 +82,11 @@ identities recorded in the snapshot. If <code>NULL</code>, the builtin set is us
 <dd><p>Optional transient immutable Graft view required by
 future execution when <code>program_set</code> contains governed procedures. It is
 never reconstructed from or written to persistence.</p></dd>
+
+
+<dt id="arg-knowledge">knowledge<a class="anchor" aria-label="anchor" href="#arg-knowledge"></a></dt>
+<dd><p>Freshly admitted artifact knowledge matching the saved
+selection. Required when the session contains artifact evidence.</p></dd>
 
 </dl></div>
     <div class="section level2">

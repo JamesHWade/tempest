@@ -72,11 +72,69 @@
 
     
     
-<p>A research run can use an exact set of retained evidence without
-opening a Graft store. <code><a href="../reference/tempest_artifact_knowledge.html">tempest_artifact_knowledge()</a></code> accepts
-a host-selected description and its text content. The host owns storage,
-saving, review, purpose, access, and current consultation eligibility.
-Tempest owns the research interpretation of that input.</p>
+<p>Graft preserves exact research contents and explicit host review
+decisions. Tempest validates scientific evidence and admits it to a
+research run. Applications own approval, access, purpose, and current
+eligibility.</p>
+<div class="section level2">
+<h2 id="publish-and-review-completed-research">Publish and review completed research<a class="anchor" aria-label="anchor" href="#publish-and-review-completed-research"></a>
+</h2>
+<p>The installed offline example below uses independently pinned
+promotion bundles from synthetic completed Tempest products. It
+publishes the complete evidence and readable synthesis using the same
+public functions as live products.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
+<span><span class="va">example</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">new.env</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/sys.source.html" class="external-link">sys.source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"artifact-research.R"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span>, <span class="va">example</span><span class="op">)</span></span>
+<span><span class="va">evidence</span> <span class="op">&lt;-</span> <span class="va">example</span><span class="op">$</span><span class="fu">artifact_research_example</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">evidence</span></span>
+<span><span class="co">#&gt; $evidence_records</span></span>
+<span><span class="co">#&gt; [1] 4</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $historical_report_retained</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $unchanged_review_is_distinct</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $corrected_selection_is_distinct</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $withdrawal_blocks_reuse</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $retry_preserves_withdrawal</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>With a completed result from <code><a href="../reference/tempest_run.html">tempest_run()</a></code> or
+<code><a href="../reference/tempest_session.html">tempest_session()</a></code>, use:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_store.html" class="external-link">graft_artifact_store</a></span><span class="op">(</span><span class="st">"research-store"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">store</span><span class="op">)</span></span>
+<span><span class="co"># Review the report and evidence before explicitly accepting.</span></span>
+<span><span class="fu"><a href="../reference/tempest_read_artifact_research.html">tempest_read_artifact_research</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">selection</span><span class="op">)</span></span>
+<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="st">"pilot"</span>, <span class="st">"review-1"</span>, expected <span class="op">=</span> <span class="cn">NULL</span>, selection <span class="op">=</span> <span class="va">selection</span>,</span>
+<span>  action <span class="op">=</span> <span class="st">"accept"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>, reason <span class="op">=</span> <span class="st">"Evidence reviewed"</span>,</span>
+<span>  purpose <span class="op">=</span> <span class="st">"daily-briefing"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_reuse_artifact_research.html">tempest_reuse_artifact_research</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="st">"pilot"</span>, <span class="va">accepted</span><span class="op">$</span><span class="va">id</span>, <span class="st">"daily-briefing"</span>,</span>
+<span>  eligible <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">decision</span><span class="op">)</span> <span class="fu">host_can_consult</span><span class="op">(</span><span class="va">decision</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span><span class="st">"Pilot recovery briefing"</span>, knowledge <span class="op">=</span> <span class="va">knowledge</span><span class="op">)</span></span></code></pre></div>
+<p>The host callback runs when knowledge is constructed and again at
+admission. Withdrawal, correction, wrong purpose, or missing content
+prevents a cached knowledge value from entering another run. A new
+unchanged review retains the selection but has its own decision
+identity. Identical decision retries return the original event without
+reapproving withdrawn knowledge.</p>
+<p>The report remains synthesis, not primary evidence. Program
+identities remain inert provenance, not executable tools. Historical
+inspection stays available separately from current reuse. The trusted
+local store has one writer; access, active-task cancellation, backup,
+and permanent erasure remain host concerns.</p>
+</div>
 <div class="section level2">
 <h2 id="build-an-exact-input">Build an exact input<a class="anchor" aria-label="anchor" href="#build-an-exact-input"></a>
 </h2>
@@ -84,7 +142,7 @@ Tempest owns the research interpretation of that input.</p>
 selected by a host. In an application, read the references and content
 from the artifact store and check current eligibility before
 constructing the input.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="va">contents</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="st">"claim:pilot"</span> <span class="op">=</span> <span class="st">"statement_text: The pilot recovered 82%.\nstatus: active"</span>,</span>
@@ -133,13 +191,15 @@ or governed procedures.</p>
 <div class="section level2">
 <h2 id="use-it-in-a-new-run">Use it in a new run<a class="anchor" aria-label="anchor" href="#use-it-in-a-new-run"></a>
 </h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span><span class="st">"Pilot recovery briefing"</span>, knowledge <span class="op">=</span> <span class="va">knowledge</span><span class="op">)</span></span>
 <span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_session.html">tempest_session</a></span><span class="op">(</span><span class="st">"Pilot recovery briefing"</span>, knowledge <span class="op">=</span> <span class="va">knowledge</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/tempest_session_save.html">tempest_session_save</a></span><span class="op">(</span><span class="va">session</span>, <span class="st">"briefing-session"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Check the host's current access and eligibility policy again before resuming.</span></span>
-<span><span class="va">resumed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_session_resume.html">tempest_session_resume</a></span><span class="op">(</span><span class="st">"briefing-session"</span>, config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">resumed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_session_resume.html">tempest_session_resume</a></span><span class="op">(</span></span>
+<span>  <span class="st">"briefing-session"</span>, config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>, knowledge <span class="op">=</span> <span class="va">knowledge</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <p>The workspace retains the full input selection and evidence
 resources. Session bundles include the selection in
 <code>session.json</code> and checksummed resource content. STORM
@@ -153,20 +213,41 @@ run can use that selection while the previous run still resolves its
 original evidence. Saving and resuming preserves the historical input;
 it does not freeze permission or automatically reapprove withdrawn
 knowledge. The host must enforce current eligibility before starting or
-resuming work. This constructor does not monitor policy changes during
-an active run. Re-admitting the same artifact input for STORM resume
-preserves the saved research state and original retrieval times; a later
-read time alone does not make the immutable input different.</p>
+resuming work. STORM and Co-STORM validate new-run arguments and the
+supplied retriever before invoking the admission callback. Co-STORM
+restore validates its saved snapshot and new progress callback, then
+uses the constructor’s input checks before admission. A supplied
+knowledge view must match both the governed procedures and the saved
+workspace. Omitting the view still allows inspection of a restored
+session; governed execution requires the exact pinned view. A new run
+requires an open workspace whose pinned artifact selection matches its
+knowledge input. These checks do not modify the supplied workspace. This
+constructor does not monitor policy changes during an active run.
+Re-admitting the same artifact input for STORM resume preserves the
+saved research state and original retrieval times; a later read time
+alone does not make the immutable input different. You can reuse a
+completed run’s retriever: its sealed workspace is compared with the
+saved state and retained without reinserting evidence. Resume checks the
+supplied workspace against the saved evidence and required mutation
+state before invoking admission; restoration occurs only after admission
+succeeds.</p>
 </div>
 <div class="section level2">
 <h2 id="scope-and-current-formats">Scope and current formats<a class="anchor" aria-label="anchor" href="#scope-and-current-formats"></a>
 </h2>
 <p>The input is bounded to 1,000 records, 1 MiB of selection metadata,
-and 1 MiB of text content. This slice supports evidence admission and
-cross-run reuse. Future acceptance into an artifact store, concurrent
-publication, permanent deletion, and production recovery remain
-host/storage work. Existing Graft promotion is still available for the
-reference producer; its presence is not a decision to retain Graft.</p>
+and 1 MiB of text content. The Graft publisher reserves two additional
+artifacts for the report and proposal, so it accepts up to 998 evidence
+records. The verified promotion bundle also retains exact source proofs
+and program provenance. Graft enforces aggregate payload, revision
+metadata, and selection bounds. Publication may leave unreferenced
+artifacts on failure; it never implies acceptance.</p>
+<p>Resume requires explicit fresh knowledge with the exact saved
+selection and decision provenance. Policy callbacks and store handles
+are not serialized. Supplying a later corrected decision does not
+rewrite an earlier session. Concurrent publication, permanent deletion,
+and production recovery remain separate work. Native graph promotion is
+scheduled for removal after consumer adoption is proved.</p>
 <p>Workspace format 6, STORM format 9, and Co-STORM format 12 retain
 artifact inputs. This project is pre-production: regenerate older
 experimental bundles instead of using a compatibility reader.</p>

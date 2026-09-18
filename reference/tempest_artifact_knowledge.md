@@ -4,7 +4,10 @@ The host resolves immutable content and checks current permission and
 consultation eligibility before calling this constructor. Tempest
 verifies exact selection coverage, content digests and declared
 dependencies. It does not open storage, infer approval, or grant
-execution authority.
+execution authority. For Graft decisions use
+[`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md);
+reconstructing detached input does not recreate its required
+current-admission callback.
 
 ## Usage
 
@@ -31,10 +34,11 @@ tempest_artifact_knowledge(selection, contents)
 
   Named list of retained text strings, keyed by `record_id`, with
   exactly the selection's records and at most 1 MiB of UTF-8 text total.
-  Claims use the same inert `statement_text: ...` and `status: ...`
-  fields as the accepted research projection; active statements support
-  no-change briefing detection. Content is never evaluated as code or
-  instructions.
+  Claims may contain a JSON object with `statement_text` and `status`
+  fields, preserving multiline statements exactly. Plain text claims use
+  inert `statement_text: ...` and `status: ...` lines. Active statements
+  support no-change briefing detection. Content is never evaluated as
+  code or instructions.
 
 ## Value
 

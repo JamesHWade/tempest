@@ -2,6 +2,19 @@
 
 ## tempest 0.0.0.9000
 
+- [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md),
+  [`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md),
+  and
+  [`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
+  preserve completed research through Graft’s public artifact and
+  decision interfaces, retain exact reports and evidence, and recheck
+  current host eligibility at research admission (srvc).
+
+- [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md)
+  and STORM resume now require freshly supplied artifact knowledge
+  matching the saved selection; policy callbacks and store handles
+  remain transient (srvc).
+
 - Persisted workspace, STORM, and Co-STORM formats are now 6, 9, and 12.
   Regenerate older experimental bundles; compatibility readers are not
   provided.

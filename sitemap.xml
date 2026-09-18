@@ -78,6 +78,8 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_prompt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_provider_has_native_search.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_read_text.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_register_default_tools.html</loc></url>
@@ -88,6 +90,7 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_research_workspace.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_resource.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_retriever.html</loc></url>
+<url><loc>https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_async.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_run_cancel.html</loc></url>

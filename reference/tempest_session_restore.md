@@ -10,7 +10,8 @@ tempest_session_restore(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge_view = NULL,
+  knowledge = NULL
 )
 ```
 
@@ -43,6 +44,11 @@ tempest_session_restore(
   Optional transient immutable Graft view required by future execution
   when `program_set` contains governed procedures. It is never
   reconstructed from or written to persistence.
+
+- knowledge:
+
+  Freshly admitted artifact knowledge matching the saved selection.
+  Required when the session contains artifact evidence.
 
 ## Value
 
