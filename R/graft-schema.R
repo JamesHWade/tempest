@@ -1,7 +1,7 @@
 # Tempest's compiled Graft research contract and review-only planning adapter
 
 tempest_graft_contract_version <- "0.2.0"
-tempest_graft_contract_upper_bound <- "0.9.0"
+tempest_graft_contract_upper_bound <- "2.0.0"
 
 tempest_graft_contract_range <- function() {
   paste0(
@@ -43,8 +43,8 @@ tempest_graft_contract_call <- function() {
   graft::graft_contract_version()
 }
 
-# Graft 0.3-0.8 add consumer APIs without changing Tempest's receipt or
-# snapshot shapes. Future minor contracts still require consumer verification.
+# Graft 1.0 cuts off old data-dict compiler manifests. Tempest uses its own pinned
+# LinkML manifest, verified against 1.0. Keep export/store/schema guards as well.
 tempest_graft_pin_valid <- function(version) {
   if (!is.list(version) || !rlang::is_string(version$contract)) {
     return(FALSE)
@@ -131,9 +131,14 @@ tempest_graft_schema_path <- function() {
 #' Load Tempest's compiled scientific Graft schema
 #'
 #' The packaged schema was compiled for Graft consumer contract `0.2.0`.
-#' Runtime loading accepts contracts `>= 0.2.0` and `< 0.9.0`, with store format
-#' `3.1.0`, through `graft::graft_contract_version()`. Loading never compiles
-#' LinkML and rejects any manifest whose immutable build digest differs.
+#' Runtime loading accepts contracts `>= 0.2.0` and `< 2.0.0`, with store format
+#' `3.1.0`, through `graft::graft_contract_version()`. The range follows Graft's
+#' additive-minor contract policy within the tested 0.x and 1.x major lines.
+#' The 1.0 data-dict manifest cutoff does not affect Tempest's pinned LinkML
+#' schema. Future minors are not individually certified by this range. Required
+#' exports and the compiled schema are checked independently.
+#' Loading never compiles LinkML and rejects any manifest whose immutable build
+#' digest differs.
 #'
 #' @return A validated `graft::GraftSchema`.
 #' @export
