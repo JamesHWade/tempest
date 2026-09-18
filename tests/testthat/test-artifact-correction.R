@@ -31,6 +31,15 @@ test_that("contradictory research executes and preserves the prior evidence", {
   }
   accepted <- accept("original", NULL, old_selection)
   old <- tempest_read_artifact_research(store, old_selection)
+  expect_match(
+    tempest_report(original),
+    "STORM progress emits stage events.",
+    fixed = TRUE
+  )
+  expect_identical(
+    old$bundle@records$Claim[[1L]]$statement_text,
+    "STORM progress emits stage events."
+  )
   old_refs <- graft::graft_artifact_read_selection(store, old_selection)
   store <- graft::graft_artifact_store(file.path(directory, "artifacts"))
   knowledge <- tempest_reuse_artifact_research(
@@ -38,7 +47,7 @@ test_that("contradictory research executes and preserves the prior evidence", {
     "daily",
     accepted$id,
     "briefing",
-    eligible = function(event) TRUE
+    eligible = \(event) TRUE
   )
   next_day <- artifact_correction_fixture()
   correction <- tempest_run(
@@ -112,7 +121,7 @@ test_that("contradictory research executes and preserves the prior evidence", {
     "daily",
     reviewed$id,
     "briefing",
-    eligible = function(event) TRUE
+    eligible = \(event) TRUE
   )
   expect_identical(fresh@artifact_selection$selection_id, corrected_selection)
   expect_identical(accept("original", NULL, old_selection), accepted)
@@ -132,7 +141,7 @@ test_that("contradictory research executes and preserves the prior evidence", {
         "daily",
         decision,
         "briefing",
-        eligible = function(event) TRUE
+        eligible = \(event) TRUE
       )
       list(
         report = old$report_md,

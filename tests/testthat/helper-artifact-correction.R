@@ -37,8 +37,8 @@ artifact_correction_fixture <- function(.local_envir = parent.frame()) {
             ))
           )
         },
-        chat = function(...) "",
-        register_tools = function(...) invisible(NULL)
+        chat = \(...) "",
+        register_tools = \(...) invisible(NULL)
       )))
     }
     chat <- original_chat(role, model, system_prompt, echo)
