@@ -1101,6 +1101,14 @@ tempest_session_restore <- function(
   knowledge_view = NULL,
   knowledge = NULL
 ) {
+  if (!is.list(snapshot)) {
+    tempest_session_restore_abort("{.arg snapshot} must be a list.")
+  }
+  if (!is.list(snapshot$workspace)) {
+    tempest_session_restore_abort(
+      "Session snapshot must contain a workspace list."
+    )
+  }
   tempest_artifact_resume_admission(
     snapshot$workspace$artifact_selection,
     knowledge

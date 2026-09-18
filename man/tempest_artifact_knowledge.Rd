@@ -34,6 +34,8 @@ The host resolves immutable content and checks current permission and
 consultation eligibility before calling this constructor. Tempest verifies
 exact selection coverage, content digests and declared dependencies. It does
 not open storage, infer approval, or grant execution authority.
+For Graft decisions use \code{\link[=tempest_reuse_artifact_research]{tempest_reuse_artifact_research()}}; reconstructing
+detached input does not recreate its required current-admission callback.
 }
 \seealso{
 \code{\link[=tempest_knowledge]{tempest_knowledge()}} for the existing Graft producer.

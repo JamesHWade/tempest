@@ -29,6 +29,22 @@ test_that("completed research retains exact report, proof and source contents", 
     reason = "Reviewed",
     purpose = "briefing"
   )
+  checks <- 0L
+  expect_error(
+    tempest_reuse_artifact_research(
+      store,
+      "topic",
+      accepted$id,
+      "briefing",
+      eligible = function(event) {
+        checks <<- checks + 1L
+        checks == 1L
+      }
+    ),
+    "eligibility",
+    class = "graft_artifact_error"
+  )
+  expect_identical(checks, 2L)
   knowledge <- tempest_reuse_artifact_research(
     store,
     "topic",
@@ -413,5 +429,16 @@ test_that("an unchanged research day executes with native accepted evidence", {
   expect_identical(
     tempest_read_artifact_research(store, selection)$report_md,
     tempest_report(initial$research)
+  )
+})
+
+test_that("malformed resume snapshots retain the restoration condition", {
+  expect_error(
+    tempest_session_restore(1),
+    class = "tempest_session_restore_error"
+  )
+  expect_error(
+    tempest_session_restore(list(workspace = 1)),
+    class = "tempest_session_restore_error"
   )
 })

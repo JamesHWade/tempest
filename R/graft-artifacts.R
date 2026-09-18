@@ -255,7 +255,7 @@ tempest_reuse_artifact_research <- function(
       stream,
       decision,
       purpose,
-      eligible = TRUE
+      eligible = eligible(event)
     )
     knowledge
   }
