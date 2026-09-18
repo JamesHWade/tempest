@@ -1165,3 +1165,47 @@ test_that("incompatible research workspaces fail before artifact admission", {
     }
   }
 })
+
+
+test_that("failed Co-STORM construction leaves caller artifact knowledge unchanged", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  workspace <- tempest_research_workspace()
+  config <- tempest_config(chat_fn = function(...) {
+    rlang::abort("Chat construction failed.", class = "test_chat_error")
+  })
+  retriever <- tempest_retriever(config = config, workspace = workspace)
+  before <- tempest_research_workspace_snapshot(workspace)
+  expect_error(
+    tempest_session(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      retriever = retriever,
+      knowledge = knowledge
+    ),
+    class = "test_chat_error"
+  )
+  expect_identical(tempest_research_workspace_snapshot(workspace), before)
+  expect_identical(tempest_research_workspace_mutation_state(workspace), "open")
+
+  other <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input("A corrected claim", "v2")
+  )
+  config <- tempest_config(chat_fn = \(...) fake_chat())
+  session <- tempest_session(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert()),
+    retriever = tempest_retriever(config = config, workspace = workspace),
+    knowledge = other
+  )
+  expect_identical(workspace$artifact_selection, other@artifact_selection)
+  expect_identical(
+    tempest_session_manifest(session)@artifact_selection,
+    other@artifact_selection
+  )
+})
