@@ -940,8 +940,11 @@ tempest_session_snapshot <- function(session) {
 }
 
 #' @keywords internal
-tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
-  manager <- tempest_session_expert_manager(session)
+tempest_session_validate_expert_sessions <- function(
+  expert_sessions,
+  experts,
+  retired_expert_ids = character()
+) {
   expert_sessions <- tempest_persistence_exact_records(
     expert_sessions,
     tempest_expert_session_record_fields(),
@@ -988,13 +991,18 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
     }
   }
   for (expert_session in expert_sessions) {
+    if (expert_session$expert_id %in% retired_expert_ids) {
+      tempest_session_restore_abort(
+        "Saved expert session refers to a retired expert."
+      )
+    }
     if (!tempest_ledger_timestamp_valid(expert_session$created_at)) {
       tempest_session_restore_abort(
         "Expert sessions require one canonical creation timestamp."
       )
     }
     expert_ids <- vapply(
-      session$experts,
+      experts,
       \(expert) expert@expert_id,
       character(1)
     )
@@ -1008,7 +1016,7 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
         )
       )
     }
-    expert <- session$experts[[idx]]
+    expert <- experts[[idx]]
     if (
       !identical(expert@version, expert_session$expert_version) ||
         !identical(
@@ -1024,6 +1032,17 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
         )
       )
     }
+  }
+  expert_sessions
+}
+
+tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
+  manager <- tempest_session_expert_manager(session)
+  expert_sessions <- tempest_session_validate_expert_sessions(
+    expert_sessions,
+    session$experts
+  )
+  for (expert_session in expert_sessions) {
     tryCatch(
       manager$restore_session(expert_session),
       error = function(error) {
@@ -1101,24 +1120,13 @@ tempest_session_restore <- function(
   knowledge_view = NULL,
   knowledge = NULL
 ) {
-  if (!is.list(snapshot)) {
-    tempest_session_restore_abort("{.arg snapshot} must be a list.")
-  }
-  if (!is.list(snapshot$workspace)) {
-    tempest_session_restore_abort(
-      "Session snapshot must contain a workspace list."
-    )
-  }
-  tempest_artifact_resume_admission(
-    snapshot$workspace$artifact_selection,
-    knowledge
-  )
   tempest_session_restore_internal(
     snapshot = snapshot,
     config = config,
     progress = progress,
     program_set = program_set,
-    knowledge_view = knowledge_view
+    knowledge_view = knowledge_view,
+    knowledge = knowledge
   )
 }
 
@@ -1128,7 +1136,8 @@ tempest_session_restore_internal <- function(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge_view = NULL,
+  knowledge = NULL
 ) {
   if (!is.list(snapshot)) {
     tempest_session_restore_abort("{.arg snapshot} must be a list.")
@@ -1414,6 +1423,33 @@ tempest_session_restore_internal <- function(
     }
   )
   tempest_session_mindmap_assert_binding(snapshot$mindmap, workspace)
+  tryCatch(
+    tempest_report_title_validate(snapshot$title),
+    error = function(error) {
+      tempest_session_restore_abort(
+        "Snapshot title is invalid.",
+        parent = error
+      )
+    }
+  )
+  tempest_session_validate_expert_sessions(
+    snapshot$expert_sessions,
+    experts,
+    retired_expert_ids
+  )
+  suggested_questions <- tempest_session_suggested_questions(
+    snapshot$suggested_questions,
+    action = "restore"
+  )
+  tempest_session_restore_progress_events(
+    snapshot$progress_events,
+    session_id = snapshot$session_id,
+    action = "restore"
+  )
+  tempest_artifact_resume_admission(
+    workspace$artifact_selection,
+    knowledge
+  )
 
   retriever <- tempest_retriever(config = config, workspace = workspace)
   session <- tempest_session_restore_new(
@@ -1445,13 +1481,7 @@ tempest_session_restore_internal <- function(
     tempest_session_report_record(snapshot$report_md, action = "restore")
   )
 
-  tempest_session_set_suggestions(
-    session,
-    tempest_session_suggested_questions(
-      snapshot$suggested_questions,
-      action = "restore"
-    )
-  )
+  tempest_session_set_suggestions(session, suggested_questions)
   tempest_session_restore_expert_sessions(
     session,
     snapshot$expert_sessions
@@ -2753,15 +2783,12 @@ tempest_session_resume_internal <- function(
   knowledge = NULL
 ) {
   bundle <- tempest_costorm_bundle_read(path)
-  tempest_artifact_resume_admission(
-    bundle$snapshot$workspace$artifact_selection,
-    knowledge
-  )
   tempest_session_restore_internal(
     bundle$snapshot,
     config = config,
     progress = progress,
     program_set = program_set,
-    knowledge_view = knowledge_view
+    knowledge_view = knowledge_view,
+    knowledge = knowledge
   )
 }

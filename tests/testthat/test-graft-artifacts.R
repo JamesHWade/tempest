@@ -495,3 +495,78 @@ test_that("multiline accepted claims retain their complete no-change identity", 
   )
   tempest_knowledge_argument(knowledge)
 })
+
+
+test_that("snapshot validation precedes fresh artifact admission", {
+  input <- test_artifact_knowledge_input()
+  knowledge <- do.call(tempest_artifact_knowledge, input)
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  session <- tempest_session(
+    "Saved research",
+    config = config,
+    experts = list(test_expert()),
+    knowledge = knowledge
+  )
+  tempest_session_expert_manager(session)$get_or_create(
+    session$experts[[1L]]@expert_id
+  )
+  snapshot <- tempest_session_snapshot(session)
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    knowledge
+  }
+  for (field in c(
+    "schema_version",
+    "topic",
+    "workspace",
+    "suggested_questions",
+    "progress_events"
+  )) {
+    invalid <- snapshot
+    invalid[field] <- list(list(123))
+    expect_error(
+      tempest_session_restore(invalid, config = config, knowledge = knowledge),
+      class = "tempest_session_restore_error"
+    )
+    expect_error(
+      tempest_session_restore(invalid, config = config),
+      class = "tempest_session_restore_error"
+    )
+  }
+  for (field in c(
+    "title",
+    "created_at",
+    "expert_version",
+    "expert_fingerprint"
+  )) {
+    invalid <- snapshot
+    if (field == "title") {
+      invalid$title <- "One\nTwo"
+    } else {
+      invalid$expert_sessions[[1L]][[field]] <- "invalid"
+    }
+    expect_error(
+      tempest_session_restore(invalid, config = config, knowledge = knowledge),
+      class = "tempest_session_restore_error"
+    )
+  }
+  invalid <- snapshot
+  invalid$retired_expert_ids <- list(session$experts[[1L]]@expert_id)
+  expect_error(
+    tempest_session_restore(invalid, config = config, knowledge = knowledge),
+    class = "tempest_session_restore_error"
+  )
+  expect_identical(checks, 0L)
+  expect_error(
+    tempest_session_restore(snapshot, config = config),
+    class = "tempest_knowledge_error"
+  )
+  restored <- tempest_session_restore(
+    snapshot,
+    config = config,
+    knowledge = knowledge
+  )
+  expect_identical(checks, 1L)
+  expect_identical(tempest_sources(restored), tempest_sources(session))
+})
