@@ -149,6 +149,30 @@ saved state and retained without reinserting evidence. Resume checks the supplie
 workspace against the saved evidence and required mutation state before invoking
 admission; restoration occurs only after admission succeeds.
 
+## Researching a correction
+
+The offline correction proof executes two complete STORM runs with scripted chats
+and synthetic local sources. The second run receives the exact accepted selection,
+processes contradictory evidence, and produces an observation rather than a
+no-change result.
+
+Publishing the correction makes a proposal available for review. The host must
+explicitly accept it before it replaces the current decision. The original report,
+source contents, spans, and supports remain readable, including supports absent
+from the correction. A fresh process reopens both the historical selection and the
+new accepted selection. Retrying the original acceptance cannot restore it as the
+current decision.
+
+Run this proof from a package checkout:
+
+```r
+# Scripted chats; no model or network access required.
+devtools::test(filter = "^artifact-correction$")
+```
+
+This verifies execution and revision behavior. Scientific correctness and
+production access policy still require application-specific evaluation.
+
 ## Scope and current formats
 
 The input is bounded to 1,000 records, 1 MiB of selection metadata, and 1 MiB of

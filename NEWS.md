@@ -1,5 +1,7 @@
 # tempest 0.0.0.9000
 
+* The offline artifact correction proof now executes two complete STORM runs, reviews contradictory evidence, and verifies historical reports and supports plus current eligibility after fresh-process reopening (zf9y; Graft #50).
+
 * `tempest_publish_artifact_research()`, `tempest_read_artifact_research()`, and `tempest_reuse_artifact_research()` preserve completed research through Graft's public artifact and decision interfaces, retain exact reports and evidence, and recheck current host eligibility at research admission (srvc).
 * `tempest_session_resume()` and STORM resume now require freshly supplied artifact knowledge matching the saved selection; policy callbacks and store handles remain transient (srvc).
 
