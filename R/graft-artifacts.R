@@ -134,6 +134,16 @@ tempest_read_artifact_research <- function(store, selection) {
   )
   if (
     !tempest_artifact_ref_matches(
+      selected$roots[[1L]],
+      paste0("tempest:research:", bundle@research_run_id)
+    )
+  ) {
+    tempest_knowledge_abort(
+      "Research proposal identity differs from its proof."
+    )
+  }
+  if (
+    !tempest_artifact_ref_matches(
       candidate$report,
       paste0("tempest:report:", bundle@research_run_id)
     )

@@ -281,15 +281,48 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
   fixture <- test_promotion_storm_fixture()
   store <- graft::graft_artifact_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
-  root <- graft::graft_artifact_read(
+  root_ref <- graft::graft_artifact_read_selection(store, selection)$roots[[1L]]
+  root <- graft::graft_artifact_read(store, root_ref)
+  alias <- graft::graft_artifact_save(
     store,
-    graft::graft_artifact_read_selection(store, selection)$roots[[1L]]
+    "aliased-research",
+    root$bytes,
+    "application/json",
+    dependencies = root$metadata$dependencies
+  )
+  alias_selection <- graft::graft_artifact_select(store, list(alias))
+  expect_error(
+    tempest_read_artifact_research(store, alias_selection),
+    "proposal identity",
+    class = "tempest_knowledge_error"
+  )
+  alias_decision <- graft::graft_artifact_decide(
+    store,
+    "alias",
+    "one",
+    NULL,
+    alias_selection,
+    "accept",
+    "host",
+    "Reviewed",
+    "briefing"
+  )
+  expect_error(
+    tempest_reuse_artifact_research(
+      store,
+      "alias",
+      alias_decision$id,
+      "briefing",
+      eligible = function(event) TRUE
+    ),
+    "proposal identity",
+    class = "tempest_knowledge_error"
   )
   candidate <- jsonlite::fromJSON(rawToChar(root$bytes), simplifyVector = FALSE)
   duplicate <- c(candidate, list(format = "unknown-format"))
   duplicate_ref <- graft::graft_artifact_save(
     store,
-    "duplicate-json",
+    root_ref$id,
     charToRaw(as.character(jsonlite::toJSON(
       duplicate,
       auto_unbox = TRUE,
@@ -314,7 +347,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
     malformed["bundle"] <- list(bad_bundle)
     malformed_ref <- graft::graft_artifact_save(
       store,
-      "malformed-bundle",
+      root_ref$id,
       charToRaw(as.character(jsonlite::toJSON(
         malformed,
         auto_unbox = TRUE,
@@ -360,7 +393,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
       }
       malformed_ref <- graft::graft_artifact_save(
         store,
-        "malformed-ref",
+        root_ref$id,
         charToRaw(as.character(jsonlite::toJSON(
           malformed,
           auto_unbox = TRUE,
@@ -384,7 +417,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
   names(named_records$records) <- paste0("record", seq_along(candidate$records))
   named_ref <- graft::graft_artifact_save(
     store,
-    "named-records",
+    root_ref$id,
     charToRaw(as.character(jsonlite::toJSON(
       named_records,
       auto_unbox = TRUE,
@@ -405,7 +438,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
   candidate$records <- candidate$records[-1L]
   forged <- graft::graft_artifact_save(
     store,
-    "forged",
+    root_ref$id,
     charToRaw(as.character(jsonlite::toJSON(
       candidate,
       auto_unbox = TRUE,
