@@ -576,8 +576,7 @@ tempest_costorm_program_execution <- function(
   program_set,
   stage,
   session_id,
-  knowledge_snapshot_id = NULL,
-  knowledge_view = NULL
+  knowledge_snapshot_id = NULL
 ) {
   session_id <- tempest_research_manifest_id(session_id, "session_id")
   trace_context <- list(
@@ -590,10 +589,6 @@ tempest_costorm_program_execution <- function(
   if (!is.null(knowledge_snapshot_id)) {
     trace_context$knowledge_snapshot_id <- knowledge_snapshot_id
   }
-  knowledge <- tempest_product_knowledge_view(
-    program_set,
-    knowledge_view
-  )
   execution <- tempest_program_set_execution(
     program_set,
     stage,
@@ -790,8 +785,8 @@ TempestSession <- R6::R6Class(
     #'   identifier is generated.
     #' @param program_set A [TempestProgramSet] used for every structured
     #'   Co-STORM stage.
-    #' @param knowledge_view Optional immutable Graft view. A fresh session
-    #'   requires it whenever `program_set` contains governed procedures.
+    #' @param knowledge_view Optional immutable Graft view for accepted evidence.
+    #'   It must match the workspace snapshot and remains process-local.
     #' @param .admit_knowledge Internal callback receiving the validated
     #'   workspace for fresh knowledge admission.
     #' @param .artifact_selection Internal selection retained in a fresh manifest
@@ -997,7 +992,6 @@ TempestSession <- R6::R6Class(
           config = config,
           verbose = FALSE,
           module = private$programs_value$personas,
-          knowledge_view = private$knowledge_view_value,
           record_stage = function(record, output = NULL) {
             tempest_session_record_stage(
               self,
@@ -2651,8 +2645,7 @@ tempest_session_set_report_value <- function(session, report_md) {
 #'   identifier is generated.
 #' @param knowledge Optional accepted organizational knowledge from
 #'   [tempest_knowledge()] or [tempest_artifact_knowledge()]. It supplies accepted
-#'   evidence records, and carries any accepted governed-procedure stage
-#'   bindings.
+#'   evidence records without selecting or authorizing executable programs.
 #' @return A `TempestSession` R6 object for the active Co-STORM research
 #'   session.
 #' @examples

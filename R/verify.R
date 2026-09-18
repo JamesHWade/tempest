@@ -170,8 +170,8 @@ tempest_empty_claim_supports <- function() {
 #'   the builtin set. When `workspace` is a `TempestSession`, its immutable
 #'   ProgramSet, citation policy, and support threshold are authoritative;
 #'   supplied values must match.
-#' @param knowledge_view Optional immutable Graft view required when a
-#'   standalone `program_set` binds verification to a governed procedure.
+#' @param knowledge_view Optional immutable Graft evidence view. When supplied,
+#'   it must match the standalone workspace snapshot.
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
 #' @return A claim-support audit tibble with one row per verified

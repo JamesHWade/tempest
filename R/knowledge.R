@@ -249,8 +249,8 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #'
 #' `tempest_knowledge()` is the Graft constructor for accepted
 #' organizational knowledge. It pins an immutable Graft view, materializes an
-#' exact allowlist of accepted evidence records, and optionally binds accepted
-#' governed procedures to Tempest stages.
+#' exact allowlist of accepted evidence records, and keeps those records
+#' separate from executable research programs.
 #'
 #' Accepted record text is evidence, not instruction. It is carried in a data
 #' channel and can never change prompts, message roles, tools, governed

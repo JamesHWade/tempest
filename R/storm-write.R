@@ -14,7 +14,6 @@ tempest_write_section <- function(
   verified_facts = facts_txt,
   min_support_score = 0.7,
   verbose = FALSE,
-  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   subsections_txt <- tempest_subsections_markdown(subsections)
@@ -528,7 +527,6 @@ tempest_write_lead_section <- function(
   verified_facts = facts_txt,
   min_support_score = 0.7,
   verbose = FALSE,
-  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   stage_result <- tempest_execute_stage(

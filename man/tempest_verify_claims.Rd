@@ -34,8 +34,8 @@ the builtin set. When \code{workspace} is a \code{TempestSession}, its immutable
 ProgramSet, citation policy, and support threshold are authoritative;
 supplied values must match.}
 
-\item{knowledge_view}{Optional immutable Graft view required when a
-standalone \code{program_set} binds verification to a governed procedure.}
+\item{knowledge_view}{Optional immutable Graft evidence view. When supplied,
+it must match the standalone workspace snapshot.}
 
 \item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
 considered supported.}

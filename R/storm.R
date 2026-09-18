@@ -75,7 +75,8 @@ tempest_programs_have_knowledge_view <- function(programs) {
 #'   `config`.
 #' @param knowledge Optional accepted organizational knowledge from
 #'   [tempest_knowledge()] or [tempest_artifact_knowledge()]. It supplies
-#'   accepted evidence records and accepted governed-procedure stage bindings.
+#'   accepted evidence records without selecting or authorizing executable
+#'   programs.
 #'   The live Graft view and knowledge object are not serialized;
 #'   materialized evidence and artifact selections are retained in the bundle.
 #' @param n_experts Number of expert profiles to generate when `experts` is

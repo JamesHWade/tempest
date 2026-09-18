@@ -36,10 +36,9 @@ for new Co-STORM sessions. May be a value, function, or reactive.}
 Co-STORM sessions. May be a value, function, or reactive. \code{NULL} uses the
 builtin set.}
 
-\item{knowledge_view}{Optional immutable Graft view used with
-\code{program_set}. May be a value, function, or reactive. A governed ProgramSet
-requires its exact pinned view before any provider call; the view remains
-process-local and is never serialized.}
+\item{knowledge_view}{Optional immutable Graft evidence view. May be a value,
+function, or reactive. It must match the session workspace and remains
+process-local; it does not select executable programs.}
 }
 \value{
 A list with the shared \code{store}; reactive \code{costorm_session},

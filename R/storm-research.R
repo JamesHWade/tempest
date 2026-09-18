@@ -141,7 +141,6 @@ tempest_generate_next_question <- function(
   answered_md,
   facts_md,
   module,
-  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   stage_result <- tempest_execute_stage(
@@ -197,7 +196,6 @@ tempest_decompose_query <- function(
   topic,
   module,
   max_queries = 3,
-  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   stage_result <- tempest_execute_stage(
@@ -476,7 +474,6 @@ tempest_extract_facts_from_answer <- function(
   parent_run_id = NA_character_,
   delegation_id = NA_character_,
   tool_call_id = NA_character_,
-  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   record_stage_callback <- record_stage %||% tempest_stage_record_discard
@@ -560,7 +557,6 @@ tempest_extract_facts_from_answer_async <- function(
   parent_run_id = NA_character_,
   delegation_id = NA_character_,
   tool_call_id = NA_character_,
-  knowledge_view = module$knowledge_view %||% NULL,
   commit_if = function() TRUE,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
