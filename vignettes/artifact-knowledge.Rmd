@@ -11,10 +11,53 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-A research run can use an exact set of retained evidence without opening a Graft
-store. `tempest_artifact_knowledge()` accepts a host-selected description and its
-text content. The host owns storage, saving, review, purpose, access, and current
-consultation eligibility. Tempest owns the research interpretation of that input.
+Graft preserves exact research contents and explicit host review decisions.
+Tempest validates scientific evidence and admits it to a research run. Applications
+own approval, access, purpose, and current eligibility.
+
+## Publish and review completed research
+
+The installed offline example below uses independently pinned promotion bundles
+from synthetic completed Tempest products. It publishes the complete evidence
+and readable synthesis using the same public functions as live products.
+
+```{r}
+library(tempest)
+example <- new.env()
+sys.source(system.file("examples", "artifact-research.R", package = "tempest"), example)
+evidence <- example$artifact_research_example()
+evidence
+```
+
+With a completed result from `tempest_run()` or `tempest_session()`, use:
+
+```{r, eval=FALSE}
+store <- graft::graft_artifact_store("research-store", create = TRUE)
+selection <- tempest_publish_artifact_research(result, store)
+# Review the report and evidence before explicitly accepting.
+tempest_read_artifact_research(store, selection)
+accepted <- graft::graft_artifact_decide(
+  store, "pilot", "review-1", expected = NULL, selection = selection,
+  action = "accept", actor = "reviewer", reason = "Evidence reviewed",
+  purpose = "daily-briefing"
+)
+knowledge <- tempest_reuse_artifact_research(
+  store, "pilot", accepted$id, "daily-briefing",
+  eligible = function(decision) host_can_consult(decision)
+)
+result <- tempest_run("Pilot recovery briefing", knowledge = knowledge)
+```
+
+The host callback runs when knowledge is constructed and again at admission.
+Withdrawal, correction, wrong purpose, or missing content prevents a cached
+knowledge value from entering another run. A new unchanged review retains the
+selection but has its own decision identity. Identical decision retries return
+the original event without reapproving withdrawn knowledge.
+
+The report remains synthesis, not primary evidence. Program identities remain
+inert provenance, not executable tools. Historical inspection stays available
+separately from current reuse. The trusted local store has one writer; access,
+active-task cancellation, backup, and permanent erasure remain host concerns.
 
 ## Build an exact input
 
@@ -73,7 +116,9 @@ session <- tempest_session("Pilot recovery briefing", knowledge = knowledge)
 tempest_session_save(session, "briefing-session")
 
 # Check the host's current access and eligibility policy again before resuming.
-resumed <- tempest_session_resume("briefing-session", config = tempest_config())
+resumed <- tempest_session_resume(
+  "briefing-session", config = tempest_config(), knowledge = knowledge
+)
 ```
 
 The workspace retains the full input selection and evidence resources. Session
@@ -87,19 +132,38 @@ A correction gets a new artifact revision and a new selection. A new run can use
 that selection while the previous run still resolves its original evidence.
 Saving and resuming preserves the historical input; it does not freeze permission
 or automatically reapprove withdrawn knowledge. The host must enforce current
-eligibility before starting or resuming work. This constructor does not monitor
-policy changes during an active run. Re-admitting the same artifact input for
-STORM resume preserves the saved research state and original retrieval times;
-a later read time alone does not make the immutable input different.
+eligibility before starting or resuming work. STORM and Co-STORM validate new-run
+arguments and the supplied retriever before invoking the admission callback.
+Co-STORM restore validates its saved snapshot and new progress callback, then
+uses the constructor's input checks before admission. A supplied knowledge view
+must match both the governed procedures and the saved workspace. Omitting the
+view still allows inspection of a restored session; governed execution requires
+the exact pinned view.
+A new run requires an open workspace whose pinned artifact selection matches
+its knowledge input. These checks do not modify the supplied workspace.
+This constructor does not monitor policy changes during an active run.
+Re-admitting the same artifact input for STORM resume preserves the saved research state and original retrieval times;
+a later read time alone does not make the immutable input different. You can
+reuse a completed run's retriever: its sealed workspace is compared with the
+saved state and retained without reinserting evidence. Resume checks the supplied
+workspace against the saved evidence and required mutation state before invoking
+admission; restoration occurs only after admission succeeds.
 
 ## Scope and current formats
 
 The input is bounded to 1,000 records, 1 MiB of selection metadata, and 1 MiB of
-text content. This slice supports evidence admission and cross-run reuse. Future
-acceptance into an artifact store, concurrent publication, permanent deletion,
-and production recovery remain host/storage work. Existing Graft promotion is
-still available for the reference producer; its presence is not a decision to
-retain Graft.
+text content. The Graft publisher reserves two additional artifacts for the report and proposal,
+so it accepts up to 998 evidence records. The verified promotion bundle also
+retains exact source proofs and program provenance. Graft enforces aggregate
+payload, revision metadata, and selection bounds. Publication may leave
+unreferenced artifacts on failure; it never implies acceptance.
+
+Resume requires explicit fresh knowledge with the exact saved selection and
+decision provenance. Policy callbacks and store handles are not serialized.
+Supplying a later corrected decision does not rewrite an earlier session.
+Concurrent publication, permanent deletion, and production recovery remain
+separate work. Native graph promotion is scheduled for removal after consumer
+adoption is proved.
 
 Workspace format 6, STORM format 9, and Co-STORM format 12 retain artifact inputs.
 This project is pre-production: regenerate older experimental bundles instead of

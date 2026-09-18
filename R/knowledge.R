@@ -37,6 +37,7 @@ TempestKnowledge <- S7::new_class(
   "TempestKnowledge",
   package = "tempest",
   properties = list(
+    admission = S7::new_property(S7::class_any),
     view = S7::new_property(S7::class_any),
     snapshot = S7::new_property(S7::class_any),
     reference = S7::new_property(S7::class_any),
@@ -52,10 +53,12 @@ TempestKnowledge <- S7::new_class(
     record_ids = character(),
     records = list(),
     governed_procedures = list(),
-    artifact_selection = list()
+    artifact_selection = list(),
+    admission = NULL
   ) {
     value <- S7::new_object(
       S7::S7_object(),
+      admission = admission,
       view = view,
       snapshot = snapshot,
       reference = reference,
@@ -355,7 +358,11 @@ tempest_knowledge_governed_procedures <- function(graft_view, value) {
 
 # Resolve the public `knowledge` argument into the internal pinned view and the
 # ProgramSet carrying any accepted governed-procedure stage bindings.
-tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
+tempest_knowledge_argument <- function(
+  knowledge,
+  arg = "knowledge",
+  admit = TRUE
+) {
   if (is.null(knowledge)) {
     return(list(
       value = NULL,
@@ -370,6 +377,22 @@ tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
       "{.arg {arg}} must be created by {.fn tempest_knowledge} or {.fn tempest_artifact_knowledge}.",
       class = "tempest_input_error"
     )
+  }
+  if (
+    !is.null(knowledge@artifact_selection$provenance$graft_decision) &&
+      !is.function(knowledge@admission)
+  ) {
+    tempest_knowledge_abort(
+      "Graft decision knowledge requires current admission through tempest_reuse_artifact_research()."
+    )
+  }
+  if (isTRUE(admit) && !is.null(knowledge@admission)) {
+    current <- knowledge@admission()
+    if (!identical(current@artifact_selection, knowledge@artifact_selection)) {
+      tempest_knowledge_abort(
+        "Research admission differs from its retained decision."
+      )
+    }
   }
   tempest_artifact_selection_validate(
     knowledge@artifact_selection,
@@ -386,17 +409,7 @@ tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
   )
 }
 
-# Insert accepted evidence records into the product workspace as ordinary
-# read-only resources.
-tempest_knowledge_insert_records <- function(
-  workspace,
-  records,
-  selection = list()
-) {
-  tempest_artifact_selection_validate(selection, records)
-  if (length(records) == 0L) {
-    return(invisible(workspace))
-  }
+tempest_knowledge_workspace_preflight <- function(workspace, selection) {
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_knowledge_abort(
       "Accepted knowledge records require a ResearchWorkspace."
@@ -409,6 +422,26 @@ tempest_knowledge_insert_records <- function(
     tempest_knowledge_abort(
       "A workspace cannot change its pinned artifact selection."
     )
+  }
+  if (
+    !identical(tempest_research_workspace_mutation_state(workspace), "open")
+  ) {
+    tempest_knowledge_abort("New research requires an open workspace.")
+  }
+  invisible(workspace)
+}
+
+# Insert accepted evidence records into the product workspace as ordinary
+# read-only resources.
+tempest_knowledge_insert_records <- function(
+  workspace,
+  records,
+  selection = list()
+) {
+  tempest_artifact_selection_validate(selection, records)
+  tempest_knowledge_workspace_preflight(workspace, selection)
+  if (length(records) == 0L) {
+    return(invisible(workspace))
   }
   for (record in records) {
     workspace$upsert_retrieved_resource(record)

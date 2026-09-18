@@ -170,7 +170,8 @@ tempest_run <- function(
   progress = NULL,
   verbose = TRUE
 ) {
-  knowledge <- tempest_knowledge_argument(knowledge)
+  supplied_knowledge <- knowledge
+  knowledge <- tempest_knowledge_argument(knowledge, admit = FALSE)
   tempest_otel_trace(
     "storm.run",
     tempest_run_internal(
@@ -192,7 +193,10 @@ tempest_run <- function(
       resume = resume,
       run_id = run_id,
       progress = progress,
-      verbose = verbose
+      verbose = verbose,
+      .admit_knowledge = function() {
+        tempest_knowledge_argument(supplied_knowledge)
+      }
     )
   )
 }
@@ -217,7 +221,8 @@ tempest_run_internal <- function(
   run_id = NULL,
   progress = NULL,
   verbose = TRUE,
-  .requested_steps = NULL
+  .requested_steps = NULL,
+  .admit_knowledge = NULL
 ) {
   tempest_require("ellmer", "tempest_run() requires ellmer.")
   if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
@@ -273,6 +278,35 @@ tempest_run_internal <- function(
   }
 
   program_set <- program_set %||% tempest_program_set()
+  run_dir <- tempest_storm_prepare_run_dir(output_dir, topic, run_id = run_id)
+  supplied_run_id <- if (
+    rlang::is_string(run_id) &&
+      nzchar(tempest_trim(run_id))
+  ) {
+    tempest_trim(run_id)
+  } else {
+    NULL
+  }
+  loaded_run <- NULL
+  if (
+    isTRUE(resume) &&
+      !is.null(run_dir) &&
+      file.exists(tempest_storm_artifact_paths(run_dir)$run_config)
+  ) {
+    loaded_run <- tempest_storm_load_artifacts(
+      run_dir,
+      config = config,
+      program_set = program_set,
+      run_id = supplied_run_id
+    )
+    tempest_storm_validate_resume_request(
+      loaded_run,
+      topic,
+      requested_steps,
+      steps,
+      knowledge_selection
+    )
+  }
   knowledge <- tempest_product_knowledge_view(
     program_set,
     knowledge_view
@@ -314,22 +348,27 @@ tempest_run_internal <- function(
       )
     )
   }
-  tempest_knowledge_insert_records(
-    workspace,
-    knowledge_records,
-    knowledge_selection
-  )
-  store <- workspace
-  run_dir <- tempest_storm_prepare_run_dir(output_dir, topic, run_id = run_id)
   progress <- tempest_progress_callback(progress)
-  supplied_run_id <- if (
-    rlang::is_string(run_id) &&
-      nzchar(tempest_trim(run_id))
-  ) {
-    tempest_trim(run_id)
+  if (is.null(loaded_run)) {
+    tempest_knowledge_workspace_preflight(workspace, knowledge_selection)
   } else {
-    NULL
+    tempest_storm_preflight_workspace(
+      workspace,
+      loaded_run$workspace,
+      loaded_run$research_manifest@status
+    )
   }
+  if (!is.null(.admit_knowledge)) {
+    .admit_knowledge()
+  }
+  if (is.null(loaded_run)) {
+    tempest_knowledge_insert_records(
+      workspace,
+      knowledge_records,
+      knowledge_selection
+    )
+  }
+  store <- workspace
   progress_run_id <- if (!is.null(supplied_run_id)) {
     supplied_run_id
   } else if (!is.null(run_dir)) {
@@ -560,22 +599,11 @@ tempest_run_internal <- function(
   }
 
   completed_stages <- state$completed_stages
-  run_manifest <- if (is.null(run_dir)) {
-    NULL
-  } else {
-    tempest_storm_artifact_paths(run_dir)$run_config
-  }
-  if (
-    !is.null(run_manifest) &&
-      isTRUE(resume) &&
-      file.exists(run_manifest)
-  ) {
-    loaded_run <- tempest_storm_load_artifacts(
-      run_dir,
-      workspace = workspace,
-      config = config,
-      program_set = program_set,
-      run_id = supplied_run_id
+  if (!is.null(loaded_run)) {
+    loaded_run$workspace <- tempest_storm_attach_workspace(
+      workspace,
+      loaded_run$workspace,
+      loaded_run$research_manifest@status
     )
     workspace <- loaded_run$workspace
     workspace <- tempest_product_workspace_validate(
@@ -593,28 +621,6 @@ tempest_run_internal <- function(
       )
     }
     state <- loaded_run$state
-    if (!identical(state$topic, topic)) {
-      tempest_abort(
-        paste0(
-          "Cannot resume a STORM research run for a different topic. ",
-          "The requested {.arg topic} must match the persisted state topic."
-        ),
-        class = tempest_persistence_error_class(
-          "tempest_run_resume_error"
-        )
-      )
-    }
-    if (!identical(state$requested_steps, requested_steps)) {
-      tempest_abort(
-        paste0(
-          "Cannot resume a STORM research run with different requested ",
-          "steps. The requested {.arg steps} must match persisted state."
-        ),
-        class = tempest_persistence_error_class(
-          "tempest_run_resume_error"
-        )
-      )
-    }
     completed_stages <- state$completed_stages
     research_manifest <- loaded_run$research_manifest
     programs <- tempest_bind_program_set(
@@ -625,30 +631,6 @@ tempest_run_internal <- function(
       programs,
       knowledge$view
     )
-    terminal_status <- research_manifest@status
-    pending_steps <- setdiff(steps, completed_stages)
-    if (terminal_status %in% c("failed", "cancelled")) {
-      tempest_abort(
-        paste0(
-          "Cannot resume a {.val {terminal_status}} STORM research run. ",
-          "Start a new run with a new {.arg run_id}."
-        ),
-        class = tempest_persistence_error_class(
-          "tempest_run_resume_error"
-        )
-      )
-    }
-    if (identical(terminal_status, "succeeded") && length(pending_steps) > 0L) {
-      tempest_abort(
-        paste0(
-          "Cannot execute additional stages for a succeeded STORM research ",
-          "run. Start a new run with a new {.arg run_id}."
-        ),
-        class = tempest_persistence_error_class(
-          "tempest_run_resume_error"
-        )
-      )
-    }
     progress_run_id <- research_manifest@research_run_id
     if (verbose && length(completed_stages) > 0) {
       tempest_inform(
@@ -658,20 +640,6 @@ tempest_run_internal <- function(
   }
 
   if (identical(research_manifest@status, "succeeded")) {
-    if (
-      !tempest_storm_state_is_complete(state) ||
-        !identical(
-          tempest_research_workspace_mutation_state(workspace),
-          "sealed"
-        )
-    ) {
-      tempest_abort(
-        "A succeeded STORM resume requires complete state and a sealed workspace.",
-        class = tempest_persistence_error_class(
-          "tempest_run_resume_error"
-        )
-      )
-    }
     emit_progress(
       "workflow",
       "started",

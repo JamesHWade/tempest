@@ -125,15 +125,202 @@ test_that("both public research constructors admit the artifact selection", {
     knowledge@artifact_selection
   )
   expect_length(result@workspace$list_retrieved_resources(), 2L)
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      steps = "perspectives",
+      output_dir = output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "fresh admission",
+    class = "tempest_knowledge_error"
+  )
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      steps = "perspectives",
+      output_dir = output,
+      knowledge = do.call(
+        tempest_artifact_knowledge,
+        test_artifact_knowledge_input("A corrected claim", "v2")
+      ),
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    class = "tempest_error"
+  )
+  invalid_checks <- 0L
+  invalid_admission <- knowledge
+  invalid_admission@admission <- function() {
+    invalid_checks <<- invalid_checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  other <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input("A corrected claim", "v2")
+  )
+  for (kind in c(
+    "selection",
+    "empty_selection",
+    "evidence",
+    "sealed_empty",
+    "sealed_partial"
+  )) {
+    supplied_workspace <- if (kind == "empty_selection") {
+      tempest_research_workspace(artifact_selection = other@artifact_selection)
+    } else if (kind == "sealed_partial") {
+      tempest_research_workspace_restore(
+        tempest_research_workspace_snapshot(result@workspace)
+      )
+    } else {
+      tempest_research_workspace()
+    }
+    supplied_retriever <- tempest_retriever(
+      config = config,
+      workspace = supplied_workspace
+    )
+    if (kind == "selection") {
+      tempest_knowledge_insert_records(
+        supplied_workspace,
+        other@records,
+        other@artifact_selection
+      )
+    } else if (kind == "evidence") {
+      tempest_knowledge_insert_records(
+        supplied_workspace,
+        knowledge@records,
+        knowledge@artifact_selection
+      )
+      supplied_workspace$upsert_retrieved_resource(tempest_resource(
+        resource_kind = "web.page",
+        locator = "https://example.org/unrelated",
+        title = "Unrelated source",
+        media_type = "text/plain",
+        content = "Evidence outside the persisted research."
+      ))
+    } else if (kind %in% c("sealed_empty", "sealed_partial")) {
+      tempest_research_workspace_seal(supplied_workspace)
+    }
+    inspect_workspace <- function(workspace) {
+      if (kind == "empty_selection") {
+        return(list(
+          selection = workspace$artifact_selection,
+          resources = workspace$list_retrieved_resources()
+        ))
+      }
+      tempest_research_workspace_snapshot(workspace)
+    }
+    supplied_before <- inspect_workspace(supplied_workspace)
+    supplied_state <- tempest_research_workspace_mutation_state(
+      supplied_workspace
+    )
+    expect_error(
+      tempest_run(
+        "Artifact briefing",
+        config = config,
+        experts = list(test_expert()),
+        retriever = supplied_retriever,
+        knowledge = invalid_admission,
+        steps = "perspectives",
+        output_dir = output,
+        resume = TRUE,
+        verbose = FALSE
+      ),
+      class = "tempest_run_restore_error"
+    )
+    expect_identical(invalid_checks, 0L)
+    expect_identical(
+      inspect_workspace(supplied_workspace),
+      supplied_before
+    )
+    expect_identical(
+      tempest_research_workspace_mutation_state(supplied_workspace),
+      supplied_state
+    )
+  }
+  checks <- 0L
+  declined <- knowledge
+  declined@admission <- function() {
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  caller_workspace <- tempest_research_workspace()
+  caller_retriever <- tempest_retriever(
+    config = config,
+    workspace = caller_workspace
+  )
+  before <- tempest_research_workspace_snapshot(caller_workspace)
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      retriever = caller_retriever,
+      knowledge = declined,
+      steps = "perspectives",
+      output_dir = output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "revoked",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(
+    tempest_research_workspace_snapshot(caller_workspace),
+    before
+  )
+  expect_identical(
+    tempest_research_workspace_mutation_state(caller_workspace),
+    "open"
+  )
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    knowledge
+  }
+  plain_output <- withr::local_tempdir()
+  tempest_run(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert()),
+    steps = "perspectives",
+    output_dir = plain_output,
+    verbose = FALSE
+  )
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      retriever = caller_retriever,
+      knowledge = knowledge,
+      steps = "perspectives",
+      output_dir = plain_output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "exact retained knowledge",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 0L)
+  expect_identical(
+    tempest_research_workspace_snapshot(caller_workspace),
+    before
+  )
   resumed <- tempest_run(
     "Artifact briefing",
     config = config,
     experts = list(test_expert()),
+    knowledge = knowledge,
     steps = "perspectives",
     output_dir = output,
     resume = TRUE,
     verbose = FALSE
   )
+  expect_identical(checks, 1L)
   expect_identical(
     resumed@workspace$artifact_selection,
     knowledge@artifact_selection
@@ -242,6 +429,7 @@ test_that("saved sessions retain artifact inputs across processes and correction
   }
   resumed <- tempest_session_resume(
     file.path(directory, "initial"),
+    knowledge = do.call(tempest_artifact_knowledge, first),
     config = config
   )
   expect_identical(
@@ -255,14 +443,18 @@ test_that("saved sessions retain artifact inputs across processes and correction
     "the pilot recovered 82%"
   )
   fresh <- callr::r(
-    function(checkout, path) {
+    function(checkout, path, input) {
       if (!is.null(checkout)) {
         pkgload::load_all(checkout, quiet = TRUE)
       }
       config <- tempest::tempest_config(chat_fn = function(...) {
         ellmer::chat_openai(credentials = \() "offline-test")
       })
-      session <- tempest::tempest_session_resume(path, config = config)
+      session <- tempest::tempest_session_resume(
+        path,
+        config = config,
+        knowledge = do.call(tempest::tempest_artifact_knowledge, input)
+      )
       workspace <- tempest:::tempest_session_workspace(session)
       list(
         selection = workspace$artifact_selection,
@@ -276,6 +468,7 @@ test_that("saved sessions retain artifact inputs across processes and correction
       } else {
         NULL
       },
+      input = corrected,
       path = file.path(directory, "corrected")
     )
   )
@@ -585,4 +778,390 @@ test_that("artifact selections canonicalize all JSON object members", {
   snapshot$artifact_selection <- reverse_members(snapshot$artifact_selection)
   restored <- tempest_research_workspace_restore(snapshot)
   expect_identical(restored$artifact_selection, first@artifact_selection)
+})
+
+
+test_that("JSON claim inputs require explicit active status for no-change identity", {
+  for (status in list(NULL, FALSE, "superseded", "active")) {
+    input <- test_artifact_knowledge_input()
+    content <- as.character(jsonlite::toJSON(
+      list(statement_text = "The pilot recovered 82%.", status = status),
+      auto_unbox = TRUE,
+      null = "null"
+    ))
+    input$contents[[1L]] <- content
+    input$selection$records[[1L]]$sha256 <- digest::digest(
+      charToRaw(content),
+      algo = "sha256",
+      serialize = FALSE
+    )
+    knowledge <- do.call(tempest_artifact_knowledge, input)
+    workspace <- tempest_research_workspace()
+    tempest_knowledge_insert_records(
+      workspace,
+      knowledge@records,
+      knowledge@artifact_selection
+    )
+    expect_identical(
+      tempest_workspace_accepted_claim_keys(workspace),
+      if (identical(status, "active")) {
+        "the pilot recovered 82%"
+      } else {
+        character()
+      }
+    )
+  }
+})
+
+
+test_that("STORM resume validates saved data before invoking admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  output <- withr::local_tempdir()
+  tempest_product_write_json(
+    file.path(
+      tempest_storm_prepare_run_dir(output, "Artifact briefing"),
+      "run_config.json"
+    ),
+    list(schema_version = 7L)
+  )
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      knowledge = knowledge,
+      output_dir = output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    class = "tempest_run_restore_error"
+  )
+  expect_identical(checks, 0L)
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      knowledge = knowledge,
+      output_dir = withr::local_tempdir(),
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "revoked",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 1L)
+})
+
+
+test_that("Co-STORM restore validates progress before artifact admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  session <- tempest_session(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert()),
+    knowledge = knowledge
+  )
+  snapshot <- tempest_session_snapshot(session)
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  expect_error(
+    tempest_session_restore(
+      snapshot,
+      config = config,
+      progress = 1,
+      knowledge = knowledge
+    ),
+    "progress.*must be NULL or a function",
+    class = "tempest_error"
+  )
+  expect_identical(checks, 0L)
+  expect_identical(tempest_session_snapshot(session), snapshot)
+})
+
+test_that("Co-STORM restore validates knowledge views before artifact admission", {
+  skip_if_not_installed("graft")
+  fixture <- test_knowledge_view()
+  other <- test_knowledge_view()
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  program_set <- test_governed_program_set(
+    snapshot_reference = tempest_snapshot_reference(fixture$snapshot)
+  )
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  workspace <- tempest_research_workspace(graft_snapshot = fixture$snapshot)
+  tempest_knowledge_insert_records(
+    workspace,
+    knowledge@records,
+    knowledge@artifact_selection
+  )
+  session <- tempest_session_new(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert()),
+    retriever = tempest_retriever(config = config, workspace = workspace),
+    program_set = program_set,
+    knowledge_view = fixture$view
+  )
+  snapshot <- tempest_session_snapshot(session)
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  for (invalid_view in list(list(), other$view)) {
+    expect_error(
+      tempest_session_restore(
+        snapshot,
+        config = config,
+        program_set = program_set,
+        knowledge_view = invalid_view,
+        knowledge = knowledge
+      ),
+      class = "tempest_governed_procedure_error"
+    )
+    expect_identical(checks, 0L)
+    expect_identical(tempest_session_snapshot(session), snapshot)
+  }
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    knowledge
+  }
+  for (view in list(NULL, fixture$view)) {
+    restored <- tempest_session_restore(
+      snapshot,
+      config = config,
+      program_set = program_set,
+      knowledge_view = view,
+      knowledge = knowledge
+    )
+    expect_identical(tempest_session_knowledge_view(restored), view)
+    expect_identical(
+      tempest_session_workspace(restored)$artifact_selection,
+      knowledge@artifact_selection
+    )
+  }
+  expect_identical(checks, 2L)
+})
+
+test_that("Co-STORM resume cannot introduce a new artifact selection", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    knowledge
+  }
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  plain_session <- tempest_session(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert())
+  )
+  expect_error(
+    tempest_session_restore(
+      tempest_session_snapshot(plain_session),
+      config = config,
+      knowledge = knowledge
+    ),
+    "exact retained knowledge",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 0L)
+})
+
+test_that("STORM validates run inputs before invoking artifact admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  workspace <- tempest_research_workspace()
+  retriever <- tempest_retriever(config = config, workspace = workspace)
+  other_config <- tempest_config(
+    chat_fn = function(...) fake_chat(),
+    max_active_experts = 2L
+  )
+  mismatched <- tempest_retriever(config = other_config, workspace = workspace)
+  before <- tempest_research_workspace_snapshot(workspace)
+  args <- list(
+    topic = "Artifact briefing",
+    config = config,
+    retriever = retriever,
+    knowledge = knowledge,
+    n_experts = 1L,
+    steps = "perspectives",
+    verbose = FALSE
+  )
+  for (invalid in list(
+    list(topic = ""),
+    list(config = list()),
+    list(resume = NA),
+    list(n_experts = 0L),
+    list(max_rounds = 0L),
+    list(progress = 1),
+    list(retriever = list()),
+    list(retriever = mismatched),
+    list(retriever = mismatched, resume = TRUE)
+  )) {
+    supplied <- args
+    supplied[names(invalid)] <- invalid
+    expect_error(
+      do.call(tempest_run, supplied),
+      names(invalid)[[1L]],
+      class = "tempest_error"
+    )
+  }
+  expect_identical(checks, 0L)
+  expect_error(
+    do.call(tempest_run, args),
+    "revoked",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 1L)
+  expect_identical(tempest_research_workspace_snapshot(workspace), before)
+  expect_identical(tempest_research_workspace_mutation_state(workspace), "open")
+})
+
+test_that("Co-STORM validates session inputs before invoking artifact admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  workspace <- tempest_research_workspace()
+  retriever <- tempest_retriever(config = config, workspace = workspace)
+  mismatched <- tempest_retriever(
+    config = tempest_config(
+      chat_fn = function(...) fake_chat(),
+      max_active_experts = 2L
+    ),
+    workspace = workspace
+  )
+  before <- tempest_research_workspace_snapshot(workspace)
+  args <- list(
+    topic = "Artifact briefing",
+    config = config,
+    retriever = retriever,
+    knowledge = knowledge,
+    n_experts = 1L
+  )
+  for (invalid in list(
+    list(topic = ""),
+    list(config = list()),
+    list(n_experts = 0L),
+    list(experts = list("invalid")),
+    list(session_id = ""),
+    list(progress = 1),
+    list(retriever = list()),
+    list(retriever = mismatched)
+  )) {
+    supplied <- args
+    supplied[names(invalid)] <- invalid
+    expect_error(
+      do.call(tempest_session, supplied),
+      names(invalid)[[1L]],
+      class = "tempest_error"
+    )
+  }
+  expect_identical(checks, 0L)
+  expect_error(
+    do.call(tempest_session, args),
+    "revoked",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 1L)
+  expect_identical(tempest_research_workspace_snapshot(workspace), before)
+  expect_identical(tempest_research_workspace_mutation_state(workspace), "open")
+})
+
+test_that("incompatible research workspaces fail before artifact admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  different <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input("A corrected claim", "v2")
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  for (mode in c("storm", "costorm")) {
+    for (state in c("different_selection", "sealed")) {
+      workspace <- tempest_research_workspace()
+      retriever <- tempest_retriever(config = config, workspace = workspace)
+      input <- if (state == "different_selection") different else knowledge
+      tempest_knowledge_insert_records(
+        workspace,
+        input@records,
+        input@artifact_selection
+      )
+      if (state == "sealed") {
+        tempest_research_workspace_seal(workspace)
+      }
+      before <- tempest_research_workspace_snapshot(workspace)
+      mutation_state <- tempest_research_workspace_mutation_state(workspace)
+      args <- list(
+        topic = "Artifact briefing",
+        config = config,
+        retriever = retriever,
+        knowledge = knowledge,
+        experts = list(test_expert())
+      )
+      if (mode == "storm") {
+        args$steps <- "perspectives"
+        args$verbose <- FALSE
+      }
+      run <- if (mode == "storm") tempest_run else tempest_session
+      expect_error(
+        do.call(run, args),
+        if (state == "different_selection") {
+          "pinned artifact selection"
+        } else {
+          "open workspace"
+        },
+        class = "tempest_knowledge_error"
+      )
+      expect_identical(checks, 0L)
+      expect_identical(tempest_research_workspace_snapshot(workspace), before)
+      expect_identical(
+        tempest_research_workspace_mutation_state(workspace),
+        mutation_state
+      )
+    }
+  }
 })

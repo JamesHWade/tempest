@@ -1062,9 +1062,9 @@ tempest_storm_workspace_is_empty <- function(workspace) {
   all(vapply(snapshot[evidence_fields], length, integer(1)) == 0L)
 }
 
-tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
+tempest_storm_workspace_needs_restore <- function(supplied, persisted) {
   if (is.null(supplied)) {
-    return(persisted)
+    return(FALSE)
   }
   snapshot_values <- function(workspace, label) {
     snapshot <- workspace$graft_snapshot
@@ -1097,8 +1097,19 @@ tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
     }
   )
   persisted_record <- tempest_storm_workspace_equivalence_record(persisted)
+  if (
+    length(supplied_record$artifact_selection) &&
+      !identical(
+        supplied_record$artifact_selection,
+        persisted_record$artifact_selection
+      )
+  ) {
+    tempest_storm_run_restore_abort(
+      "The supplied workspace has a different pinned artifact selection."
+    )
+  }
   if (identical(supplied_record, persisted_record)) {
-    return(supplied)
+    return(FALSE)
   }
   if (
     !tempest_storm_workspace_is_empty(supplied) &&
@@ -1134,6 +1145,40 @@ tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
       "The supplied workspace contains accepted graft references outside the persisted run."
     )
   }
+  TRUE
+}
+
+tempest_storm_preflight_workspace <- function(supplied, persisted, status) {
+  needs_restore <- tempest_storm_workspace_needs_restore(supplied, persisted)
+  workspace <- supplied %||% persisted
+  state <- tempest_research_workspace_mutation_state(workspace)
+  if (needs_restore && !identical(state, "open")) {
+    tempest_storm_run_restore_abort(
+      "Restoring saved evidence requires an open supplied workspace."
+    )
+  }
+  if (identical(status, "succeeded")) {
+    if (!state %in% c("open", "sealed")) {
+      tempest_storm_run_restore_abort(
+        "A succeeded STORM workspace must restore into sealed state."
+      )
+    }
+  } else if (!identical(state, "open")) {
+    tempest_storm_run_restore_abort(
+      "A partial STORM workspace must restore into mutable open state."
+    )
+  }
+  invisible(NULL)
+}
+
+tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
+  if (is.null(supplied)) {
+    return(persisted)
+  }
+  if (!tempest_storm_workspace_needs_restore(supplied, persisted)) {
+    return(supplied)
+  }
+  persisted_record <- tempest_storm_workspace_equivalence_record(persisted)
   supplied <- tryCatch(
     tempest_research_workspace_restore(
       tempest_research_workspace_snapshot(persisted),
@@ -1464,6 +1509,42 @@ tempest_storm_read_state <- function(
 }
 
 #' @keywords internal
+tempest_storm_attach_workspace <- function(
+  supplied_workspace,
+  workspace,
+  status
+) {
+  tempest_storm_preflight_workspace(supplied_workspace, workspace, status)
+  workspace <- tempest_storm_assert_workspace_equivalent(
+    supplied_workspace,
+    workspace
+  )
+  workspace_state <- tempest_research_workspace_mutation_state(workspace)
+  if (identical(status, "succeeded")) {
+    if (identical(workspace_state, "open")) {
+      tryCatch(
+        tempest_research_workspace_seal(workspace),
+        error = function(error) {
+          tempest_storm_run_restore_abort(
+            "The succeeded STORM workspace could not be sealed.",
+            parent = error
+          )
+        }
+      )
+    } else if (!identical(workspace_state, "sealed")) {
+      tempest_storm_run_restore_abort(
+        "A succeeded STORM workspace must restore into sealed state."
+      )
+    }
+  } else if (!identical(workspace_state, "open")) {
+    tempest_storm_run_restore_abort(
+      "A partial STORM workspace must restore into mutable open state."
+    )
+  }
+
+  workspace
+}
+
 tempest_storm_load_artifacts <- function(
   run_dir,
   workspace = NULL,
@@ -1576,32 +1657,11 @@ tempest_storm_load_artifacts <- function(
     run_id = run_id
   )
 
-  workspace <- tempest_storm_assert_workspace_equivalent(
+  workspace <- tempest_storm_attach_workspace(
     supplied_workspace,
-    workspace
+    workspace,
+    research_manifest@status
   )
-  workspace_state <- tempest_research_workspace_mutation_state(workspace)
-  if (identical(research_manifest@status, "succeeded")) {
-    if (identical(workspace_state, "open")) {
-      tryCatch(
-        tempest_research_workspace_seal(workspace),
-        error = function(error) {
-          tempest_storm_run_restore_abort(
-            "The succeeded STORM workspace could not be sealed.",
-            parent = error
-          )
-        }
-      )
-    } else if (!identical(workspace_state, "sealed")) {
-      tempest_storm_run_restore_abort(
-        "A succeeded STORM workspace must restore into sealed state."
-      )
-    }
-  } else if (!identical(workspace_state, "open")) {
-    tempest_storm_run_restore_abort(
-      "A partial STORM workspace must restore into mutable open state."
-    )
-  }
 
   list(
     metadata = metadata,
@@ -2166,4 +2226,58 @@ tempest_storm_save_artifacts <- function(
     what = "STORM bundle"
   )
   invisible(research_manifest)
+}
+
+tempest_storm_validate_resume_request <- function(
+  loaded,
+  topic,
+  requested_steps,
+  steps,
+  selection
+) {
+  if (!identical(loaded$workspace$artifact_selection, selection)) {
+    tempest_knowledge_abort(
+      "Resuming artifact research requires fresh admission of its exact retained knowledge."
+    )
+  }
+  if (!identical(loaded$state$topic, topic)) {
+    tempest_abort(
+      "Cannot resume a STORM research run for a different topic. The requested {.arg topic} must match the persisted state topic.",
+      class = tempest_persistence_error_class("tempest_run_resume_error")
+    )
+  }
+  if (!identical(loaded$state$requested_steps, requested_steps)) {
+    tempest_abort(
+      "Cannot resume a STORM research run with different requested steps. The requested {.arg steps} must match persisted state.",
+      class = tempest_persistence_error_class("tempest_run_resume_error")
+    )
+  }
+  status <- loaded$research_manifest@status
+  if (status %in% c("failed", "cancelled")) {
+    tempest_abort(
+      "Cannot resume a {.val {status}} STORM research run. Start a new run with a new {.arg run_id}.",
+      class = tempest_persistence_error_class("tempest_run_resume_error")
+    )
+  }
+  if (identical(status, "succeeded")) {
+    if (length(setdiff(steps, loaded$state$completed_stages))) {
+      tempest_abort(
+        "Cannot execute additional stages for a succeeded STORM research run. Start a new run with a new {.arg run_id}.",
+        class = tempest_persistence_error_class("tempest_run_resume_error")
+      )
+    }
+    if (
+      !tempest_storm_state_is_complete(loaded$state) ||
+        !identical(
+          tempest_research_workspace_mutation_state(loaded$workspace),
+          "sealed"
+        )
+    ) {
+      tempest_abort(
+        "A succeeded STORM resume requires complete state and a sealed workspace.",
+        class = tempest_persistence_error_class("tempest_run_resume_error")
+      )
+    }
+  }
+  invisible(NULL)
 }

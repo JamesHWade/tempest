@@ -10,8 +10,11 @@ tempest_graft_schema
 tempest_knowledge
 tempest_promotion_bundle
 tempest_promotion_receipt
+tempest_publish_artifact_research
+tempest_read_artifact_research
 tempest_read_promotion_bundle
 tempest_report
+tempest_reuse_artifact_research
 tempest_run
 tempest_save_promotion_bundle
 tempest_session
@@ -45,6 +48,7 @@ config
 progress
 program_set
 knowledge_view
+knowledge
 [formals.tempest_expert]
 name
 title

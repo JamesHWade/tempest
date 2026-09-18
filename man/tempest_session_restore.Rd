@@ -9,7 +9,8 @@ tempest_session_restore(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge_view = NULL,
+  knowledge = NULL
 )
 }
 \arguments{
@@ -27,6 +28,9 @@ identities recorded in the snapshot. If \code{NULL}, the builtin set is used.}
 \item{knowledge_view}{Optional transient immutable Graft view required by
 future execution when \code{program_set} contains governed procedures. It is
 never reconstructed from or written to persistence.}
+
+\item{knowledge}{Freshly admitted artifact knowledge matching the saved
+selection. Required when the session contains artifact evidence.}
 }
 \value{
 A restored \link{TempestSession}.
