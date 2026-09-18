@@ -98,7 +98,9 @@ test_that("schema runtime follows the Graft major contract boundary", {
     "0.9.9",
     "0.10.0",
     "1.0.0",
-    "1.1.0"
+    "1.1.0",
+    "2.0.0",
+    "2.1.0"
   )) {
     expect_identical(
       tempest_graft_pin_valid(list(contract = version)),
@@ -106,7 +108,7 @@ test_that("schema runtime follows the Graft major contract boundary", {
       info = version
     )
   }
-  for (version in c("0.1.9", "2.0.0", "2.1.0", "nope", "")) {
+  for (version in c("0.1.9", "3.0.0", "3.1.0", "nope", "")) {
     expect_identical(
       tempest_graft_pin_valid(list(contract = version)),
       FALSE,

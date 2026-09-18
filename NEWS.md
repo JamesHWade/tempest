@@ -1,5 +1,7 @@
 # tempest 0.0.0.9000
 
+* `tempest_graft_schema()` accepts Graft consumer contract 2 while retaining the same exact native store format requirement. Recompile old preproduction data-dict manifests after the Graft vocabulary addition; artifact and decision formats are unchanged (zf9y; Graft #75).
+
 * Research manifests now retain the exact artifact evidence selection for STORM and Co-STORM, reject a different workspace basis, and preserve that provenance in published corrections. Manifest schema 4 requires regenerating earlier preproduction bundles (zf9y; Graft #50, #74).
 
 * The offline artifact correction proof now executes two complete STORM runs, reviews contradictory evidence, and verifies historical reports and supports plus current eligibility after fresh-process reopening (zf9y; Graft #50).

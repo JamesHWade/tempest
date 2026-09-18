@@ -11,7 +11,7 @@ A validated \code{graft::GraftSchema}.
 }
 \description{
 The packaged schema was compiled for Graft consumer contract \verb{0.2.0}.
-Runtime loading accepts contracts \verb{>= 0.2.0} and \verb{< 2.0.0}, with store format
+Runtime loading accepts contracts \verb{>= 0.2.0} and \verb{< 3.0.0}, with store format
 \verb{3.1.0}, through \code{graft::graft_contract_version()}. The range follows Graft's
 additive-minor contract policy within the tested 0.x and 1.x major lines.
 The 1.0 data-dict manifest cutoff does not affect Tempest's pinned LinkML

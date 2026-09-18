@@ -1,7 +1,7 @@
 # Tempest's compiled Graft research contract and review-only planning adapter
 
 tempest_graft_contract_version <- "0.2.0"
-tempest_graft_contract_upper_bound <- "2.0.0"
+tempest_graft_contract_upper_bound <- "3.0.0"
 
 tempest_graft_contract_range <- function() {
   paste0(
@@ -131,7 +131,7 @@ tempest_graft_schema_path <- function() {
 #' Load Tempest's compiled scientific Graft schema
 #'
 #' The packaged schema was compiled for Graft consumer contract `0.2.0`.
-#' Runtime loading accepts contracts `>= 0.2.0` and `< 2.0.0`, with store format
+#' Runtime loading accepts contracts `>= 0.2.0` and `< 3.0.0`, with store format
 #' `3.1.0`, through `graft::graft_contract_version()`. The range follows Graft's
 #' additive-minor contract policy within the tested 0.x and 1.x major lines.
 #' The 1.0 data-dict manifest cutoff does not affect Tempest's pinned LinkML

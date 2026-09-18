@@ -166,7 +166,7 @@ receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
 ```
 
 The packaged schema was compiled for Graft consumer contract `0.2.0`. Runtime
-loading accepts contracts `>= 0.2.0` and `< 2.0.0` with store format `3.1.0`,
+loading accepts contracts `>= 0.2.0` and `< 3.0.0` with store format `3.1.0`,
 covering the tested 0.x and 1.x major lines. The 1.0 data-dict manifest cutoff
 does not affect Tempest's pinned LinkML schema. Required exports, store format
 and the schema's exact immutable build digest remain independently checked.
