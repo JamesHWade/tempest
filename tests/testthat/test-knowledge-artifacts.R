@@ -155,6 +155,39 @@ test_that("both public research constructors admit the artifact selection", {
     class = "tempest_error"
   )
   checks <- 0L
+  declined <- knowledge
+  declined@admission <- function() {
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  caller_workspace <- tempest_research_workspace()
+  caller_retriever <- tempest_retriever(
+    config = config,
+    workspace = caller_workspace
+  )
+  before <- tempest_research_workspace_snapshot(caller_workspace)
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      retriever = caller_retriever,
+      knowledge = declined,
+      steps = "perspectives",
+      output_dir = output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "revoked",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(
+    tempest_research_workspace_snapshot(caller_workspace),
+    before
+  )
+  expect_identical(
+    tempest_research_workspace_mutation_state(caller_workspace),
+    "open"
+  )
   knowledge@admission <- function() {
     checks <<- checks + 1L
     knowledge
