@@ -4,11 +4,7 @@
 \alias{tempest_knowledge}
 \title{Bring accepted organizational knowledge into a Tempest run}
 \usage{
-tempest_knowledge(
-  graft_view,
-  record_ids = character(),
-  governed_procedures = list()
-)
+tempest_knowledge(graft_view, record_ids = character())
 }
 \arguments{
 \item{graft_view}{A pinned \code{GraftView} from \code{\link[graft:graft_at]{graft::graft_at()}}.}
@@ -16,9 +12,6 @@ tempest_knowledge(
 \item{record_ids}{Character vector of accepted record ids to read as
 evidence. Only \code{Claim}, \code{ClaimSupport}, \code{EvidenceSpan}, and \code{Source}
 records are readable.}
-
-\item{governed_procedures}{Optional named list mapping an exact Tempest
-stage to an accepted \code{GovernedProcedure} record id.}
 }
 \value{
 A validated \code{TempestKnowledge} value for \code{\link[=tempest_run]{tempest_run()}} and
@@ -33,8 +26,8 @@ governed procedures to Tempest stages.
 \details{
 Accepted record text is evidence, not instruction. It is carried in a data
 channel and can never change prompts, message roles, tools, governed
-procedure selection, or executable artifacts. Executable authority comes
-only from an explicit \code{governed_procedures} stage binding.
+procedure selection, or executable artifacts. The host selects research
+programs independently of stored knowledge.
 }
 \examples{
 \dontrun{

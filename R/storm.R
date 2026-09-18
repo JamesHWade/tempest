@@ -53,47 +53,12 @@ tempest_storm_retriever_workspace <- function(retriever) {
   workspace
 }
 
-tempest_program_set_requires_knowledge_view <- function(program_set) {
-  entries <- tempest_program_set_entries(program_set)
-  any(vapply(
-    entries,
-    \(entry) !is.null(entry$governed_procedure_ref),
-    logical(1)
-  ))
-}
-
-tempest_programs_bind_knowledge_view <- function(programs, knowledge_view) {
-  lapply(programs, function(program) {
-    if (!inherits(program, "tempest_dsprrr_execution")) {
-      tempest_ecosystem_contract_abort(
-        "Every structured program must be a ProgramSet-bound execution."
-      )
-    }
-    program$knowledge_view <- knowledge_view
-    program
-  })
-}
-
 tempest_programs_have_knowledge_view <- function(programs) {
   any(vapply(
     programs,
     \(program) !is.null(program$knowledge_view %||% NULL),
     logical(1)
   ))
-}
-
-tempest_stage_context_knowledge_view <- function(
-  context = list(),
-  module,
-  knowledge_view = module$knowledge_view %||% NULL
-) {
-  if (!is.list(context) || is.data.frame(context)) {
-    tempest_ecosystem_contract_abort("Stage context must be a list.")
-  }
-  if (!is.null(knowledge_view)) {
-    context$knowledge_view <- knowledge_view
-  }
-  context
 }
 
 #' Run the STORM pipeline
@@ -401,10 +366,6 @@ tempest_run_internal <- function(
     program_set,
     research_manifest
   )
-  programs <- tempest_programs_bind_knowledge_view(
-    programs,
-    knowledge$view
-  )
   completion_owner <- new.env(parent = emptyenv())
   completion_registry <- tempest_agent_completion_registry(completion_owner)
   current_progress_stage <- NA_character_
@@ -627,10 +588,6 @@ tempest_run_internal <- function(
     programs <- tempest_bind_program_set(
       program_set,
       research_manifest
-    )
-    programs <- tempest_programs_bind_knowledge_view(
-      programs,
-      knowledge$view
     )
     progress_run_id <- research_manifest@research_run_id
     if (verbose && length(completed_stages) > 0) {
@@ -1718,26 +1675,23 @@ tempest_run_internal <- function(
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
 #' @param knowledge_view Accepted knowledge and a live pinned Graft view cannot
 #'   cross the asynchronous
-#'   worker boundary. Governed runs must use [tempest_run()] in the process that
-#'   owns the view.
+#'   worker boundary. Use [tempest_run()] in the process that owns the knowledge
+#'   value and its admission callback.
 #' @return A `tempest_async_run` promise that resolves with the
 #'   [tempest_run()] result.
 #' @seealso [tempest_run()] for the synchronous version.
 #' @keywords internal
 tempest_run_async <- function(..., knowledge_view = NULL) {
   args <- list(...)
-  program_set <- args$program_set %||% NULL
   knowledge <- args$knowledge %||% NULL
   if (
     !is.null(knowledge_view) ||
-      !is.null(knowledge) ||
-      (!is.null(program_set) &&
-        tempest_program_set_requires_knowledge_view(program_set))
+      !is.null(knowledge)
   ) {
     tempest_governed_procedure_abort(
       paste0(
         "{.fn tempest_run_async} never serializes a live pinned ",
-        "{.arg knowledge_view}. Run the governed workflow with ",
+        "{.arg knowledge_view}. Run the knowledge-backed workflow with ",
         "{.fn tempest_run} in the process that owns the view."
       )
     )

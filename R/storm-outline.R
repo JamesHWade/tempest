@@ -13,11 +13,7 @@ tempest_draft_outline <- function(
     module,
     writer,
     inputs = list(topic = topic, report_title = title),
-    context = tempest_stage_context_knowledge_view(
-      list(),
-      module,
-      knowledge_view
-    ),
+    context = list(),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }
@@ -50,17 +46,13 @@ tempest_refine_outline <- function(
       draft_outline = tempest_outline_summary(draft_outline),
       facts = facts_txt
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(
-        workspace = workspace,
-        title = title,
-        evidence = evidence,
-        verified_evidence = verified_evidence,
-        verified_facts = verified_facts,
-        min_support_score = min_support_score
-      ),
-      module,
-      knowledge_view
+    context = list(
+      workspace = workspace,
+      title = title,
+      evidence = evidence,
+      verified_evidence = verified_evidence,
+      verified_facts = verified_facts,
+      min_support_score = min_support_score
     ),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)

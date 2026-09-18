@@ -40,7 +40,6 @@ tempest_generate_experts <- function(
     "personas",
     trace_context = tempest_standalone_dsprrr_trace_context("personas")
   )
-  module$knowledge_view <- knowledge$view
   tempest_generate_experts_with_program(
     topic = topic,
     n = n,
@@ -131,11 +130,7 @@ tempest_generate_experts_with_program <- function(
       n_experts = n,
       requirements = requirements
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(n_experts = n),
-      module,
-      knowledge_view
-    ),
+    context = list(n_experts = n),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }
@@ -186,11 +181,7 @@ tempest_generate_experts_async <- function(
       n_experts = n,
       requirements = requirements
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(n_experts = n),
-      program,
-      knowledge_view
-    ),
+    context = list(n_experts = n),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }
@@ -284,11 +275,7 @@ tempest_generate_perspectives <- function(
       seed_context = seed_context,
       n_experts = n_experts
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(topic = topic, n_experts = n_experts),
-      module,
-      knowledge_view
-    ),
+    context = list(topic = topic, n_experts = n_experts),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }

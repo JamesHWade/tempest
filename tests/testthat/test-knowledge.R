@@ -7,11 +7,10 @@ test_that("tempest_knowledge pins one immutable Graft view", {
   expect_s7_class(knowledge, tempest:::TempestKnowledge)
   expect_identical(knowledge@record_ids, character())
   expect_identical(knowledge@records, list())
-  expect_identical(knowledge@governed_procedures, list())
   expect_identical(
     knowledge@reference,
     tempest:::tempest_snapshot_reference(
-      tempest:::tempest_governed_procedure_view_snapshot(fixture$view)
+      tempest:::tempest_knowledge_view_snapshot(fixture$view)
     )
   )
 })
@@ -114,30 +113,6 @@ test_that("tempest_knowledge materializes complete canonical records", {
       "asserted_at: 2026-08-27T12:34:56.000000Z",
       sep = "\n"
     )
-  )
-})
-
-test_that("tempest_knowledge validates governed-procedure stage bindings", {
-  skip_if_not_installed("graft")
-  fixture <- test_knowledge_view()
-
-  expect_error(
-    tempest_knowledge(
-      fixture$view,
-      governed_procedures = list(not_a_stage = "record:a")
-    ),
-    class = "tempest_knowledge_error"
-  )
-  expect_error(
-    tempest_knowledge(
-      fixture$view,
-      governed_procedures = list(personas = 42L)
-    ),
-    class = "tempest_knowledge_error"
-  )
-  expect_error(
-    tempest_knowledge(fixture$view, governed_procedures = list("record:a")),
-    class = "tempest_knowledge_error"
   )
 })
 

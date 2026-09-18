@@ -65,7 +65,6 @@ test_that("completed research retains exact report, proof and source contents", 
     "current admission",
     class = "tempest_knowledge_error"
   )
-  expect_identical(knowledge@governed_procedures, list())
   expect_length(knowledge@records, length(retained$records))
   session <- tempest_session(
     "Briefing",

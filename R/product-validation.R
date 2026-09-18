@@ -155,28 +155,14 @@ tempest_product_prop_list <- function() {
 
 tempest_product_knowledge_view <- function(
   program_set,
-  knowledge_view,
-  restoring = FALSE
+  knowledge_view
 ) {
-  required <- tempest_program_set_requires_knowledge_view(program_set)
+  tempest_program_set_assert(program_set)
   if (is.null(knowledge_view)) {
-    if (required && !isTRUE(restoring)) {
-      tempest_governed_procedure_abort(
-        paste0(
-          "A ProgramSet with governed procedures requires its exact pinned ",
-          "{.arg knowledge_view}."
-        )
-      )
-    }
-    return(list(
-      view = NULL,
-      snapshot = NULL,
-      reference = NULL,
-      required = required
-    ))
+    return(list(view = NULL, snapshot = NULL, reference = NULL))
   }
   snapshot <- tryCatch(
-    tempest_governed_procedure_view_snapshot(knowledge_view),
+    tempest_knowledge_view_snapshot(knowledge_view),
     error = function(error) {
       tempest_governed_procedure_abort(
         "{.arg knowledge_view} must be a valid pinned Graft view."
@@ -185,39 +171,10 @@ tempest_product_knowledge_view <- function(
   )
   snapshot <- tempest_research_workspace_graft_snapshot(snapshot)
   reference <- tempest_snapshot_reference(snapshot)
-  entries <- tempest_program_set_entries(program_set)
-  governed <- Filter(
-    Negate(is.null),
-    lapply(entries, \(entry) entry$governed_procedure_ref)
-  )
-  snapshot_fields <- c(
-    "store_id",
-    "snapshot_id",
-    "schema_build_digest",
-    "commit_order"
-  )
-  mismatched <- names(governed)[
-    !vapply(
-      governed,
-      \(procedure) {
-        identical(procedure[snapshot_fields], reference[snapshot_fields])
-      },
-      logical(1)
-    )
-  ]
-  if (length(mismatched) > 0L) {
-    tempest_governed_procedure_abort(
-      paste0(
-        "Governed procedure references do not belong to the supplied pinned ",
-        "view: {.val {mismatched}}."
-      )
-    )
-  }
   list(
     view = knowledge_view,
     snapshot = snapshot,
-    reference = reference,
-    required = required
+    reference = reference
   )
 }
 

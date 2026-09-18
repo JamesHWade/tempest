@@ -27,16 +27,12 @@ tempest_write_section <- function(
       subsections = subsections_txt,
       facts = facts_txt
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(
-        workspace = workspace,
-        evidence = evidence,
-        verified_evidence = verified_evidence,
-        verified_facts = verified_facts,
-        min_support_score = min_support_score
-      ),
-      module,
-      knowledge_view
+    context = list(
+      workspace = workspace,
+      evidence = evidence,
+      verified_evidence = verified_evidence,
+      verified_facts = verified_facts,
+      min_support_score = min_support_score
     ),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
@@ -544,16 +540,12 @@ tempest_write_lead_section <- function(
       article_body = substr(draft_md, 1, 3000),
       facts = facts_txt
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(
-        workspace = workspace,
-        evidence = evidence,
-        verified_evidence = verified_evidence,
-        verified_facts = verified_facts,
-        min_support_score = min_support_score
-      ),
-      module,
-      knowledge_view
+    context = list(
+      workspace = workspace,
+      evidence = evidence,
+      verified_evidence = verified_evidence,
+      verified_facts = verified_facts,
+      min_support_score = min_support_score
     ),
     record_stage = function(record, output = NULL) {
       record_stage(record, output)

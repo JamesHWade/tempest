@@ -313,19 +313,15 @@ tempest_costorm_report_verify_async <- function(session, is_current) {
             workspace
           )
         ),
-        context = tempest_stage_context_knowledge_view(
-          list(
-            workspace = workspace,
-            claim = item$claim,
-            evidence_span = item$span,
-            min_support_score = tempest_session_config(
-              session
-            )@min_support_score,
-            verified_at = verified_at,
-            verifier_model = verifier_model
-          ),
-          program,
-          tempest_session_knowledge_view(session)
+        context = list(
+          workspace = workspace,
+          claim = item$claim,
+          evidence_span = item$span,
+          min_support_score = tempest_session_config(
+            session
+          )@min_support_score,
+          verified_at = verified_at,
+          verifier_model = verifier_model
         ),
         record_stage = collect,
         output_reference = output_reference,

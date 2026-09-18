@@ -24,8 +24,7 @@ tempest_dsprrr_execution <- function(
   stage,
   contract_version = 1L,
   evaluator_id,
-  evaluator_version,
-  governed_procedure_ref = NULL
+  evaluator_version
 ) {
   stage <- tempest_program_set_string(stage, "stage")
   if (!stage %in% tempest_program_set_stages()) {
@@ -51,27 +50,6 @@ tempest_dsprrr_execution <- function(
       "The stage execution references an unknown builtin evaluator contract."
     )
   }
-  governed_procedure_ref <- if (is.null(governed_procedure_ref)) {
-    NULL
-  } else {
-    reference <- tempest_governed_procedure_record(
-      governed_procedure_ref,
-      "governed_procedure_ref"
-    )
-    expected_binding <- list(
-      stage = stage,
-      program_artifact_id = program_artifact_id,
-      contract_version = contract_version,
-      evaluator_id = evaluator_id,
-      evaluator_version = evaluator_version
-    )
-    if (!identical(reference[names(expected_binding)], expected_binding)) {
-      tempest_ecosystem_contract_abort(
-        "The governed procedure does not match the dsprrr execution contract."
-      )
-    }
-    reference
-  }
   structure(
     list(
       program = tempest_dsprrr_execution_program(program),
@@ -86,8 +64,7 @@ tempest_dsprrr_execution <- function(
       stage = stage,
       contract_version = contract_version,
       evaluator_id = evaluator_id,
-      evaluator_version = evaluator_version,
-      governed_procedure_ref = governed_procedure_ref
+      evaluator_version = evaluator_version
     ),
     class = c("tempest_dsprrr_execution", "list")
   )

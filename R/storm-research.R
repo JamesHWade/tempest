@@ -157,11 +157,7 @@ tempest_generate_next_question <- function(
       answered = answered_md,
       facts = facts_md
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(),
-      module,
-      knowledge_view
-    ),
+    context = list(),
     record_stage = record_stage
   )
   stage_result$output
@@ -208,11 +204,7 @@ tempest_decompose_query <- function(
     module,
     chat,
     inputs = list(question = question, topic = topic),
-    context = tempest_stage_context_knowledge_view(
-      list(max_queries = as.integer(max_queries)),
-      module,
-      knowledge_view
-    ),
+    context = list(max_queries = as.integer(max_queries)),
     record_stage = record_stage
   )
   stage_result$output
@@ -515,20 +507,16 @@ tempest_extract_facts_from_answer <- function(
     module,
     chat,
     inputs = extraction_inputs,
-    context = tempest_stage_context_knowledge_view(
-      list(
-        workspace = store,
-        known_source_ids = vapply(
-          store$list_retrieved_sources(),
-          `[[`,
-          character(1),
-          "id"
-        ),
-        claim_context = binding$claim_context,
-        deputy_execution = binding$deputy_execution
+    context = list(
+      workspace = store,
+      known_source_ids = vapply(
+        store$list_retrieved_sources(),
+        `[[`,
+        character(1),
+        "id"
       ),
-      module,
-      knowledge_view
+      claim_context = binding$claim_context,
+      deputy_execution = binding$deputy_execution
     ),
     output_reference = function(output, running_record, context) {
       tempest_stage_output_reference(
@@ -598,20 +586,16 @@ tempest_extract_facts_from_answer_async <- function(
     module,
     chat,
     inputs = inputs,
-    context = tempest_stage_context_knowledge_view(
-      list(
-        workspace = store,
-        known_source_ids = vapply(
-          store$list_retrieved_sources(),
-          `[[`,
-          character(1),
-          "id"
-        ),
-        claim_context = binding$claim_context,
-        deputy_execution = binding$deputy_execution
+    context = list(
+      workspace = store,
+      known_source_ids = vapply(
+        store$list_retrieved_sources(),
+        `[[`,
+        character(1),
+        "id"
       ),
-      module,
-      knowledge_view
+      claim_context = binding$claim_context,
+      deputy_execution = binding$deputy_execution
     ),
     output_reference = function(output, running_record, context) {
       tempest_stage_output_reference(

@@ -192,8 +192,8 @@ unselected evidence. Planning is read-only: Tempest does not call
 closed current-format bundle, its destination must not already exist, and any
 older or extra shape is rejected. Reading requires the original bundle id as an
 out-of-band trust pin; checksums stored inside the directory establish internal
-consistency but are not a signature. A `GovernedProcedure` is accepted through
-a separate reviewed Graft flow; research promotion never mints one.
+consistency but are not a signature. Research promotion never creates executable
+authority; stored program references are provenance only.
 
 ## Review a completed run
 
@@ -479,29 +479,14 @@ Resuming a run recomputes every program artifact ID and continues only when they
 match the persisted run.
 
 
-### Run an accepted governed procedure
+### Keep stored knowledge separate from execution
 
-An accepted `GovernedProcedure` binds one stage to an exact dsprrr
-`ProgramArtifact`, contract, and evaluator. `tempest_knowledge()` pins the
-immutable Graft view and binds the procedure to its stage:
-
-```r
-snapshot <- graft::graft_snapshot(store)
-view <- graft::graft_at(store, snapshot)
-
-knowledge <- tempest_knowledge(
-  view,
-  governed_procedures = list(
-    verify_claim_support = "governed-procedure-record-id"
-  )
-)
-
-result <- tempest_run(
-  "Life cycle assessment of lithium-ion batteries",
-  config = cfg,
-  knowledge = knowledge
-)
-```
+The host selects the programs used by a research run. Accepted evidence and
+stored program references cannot select, replace, or authorize executable
+programs. Tempest no longer resolves `GovernedProcedure` records from Graft or
+passes live Graft views into stage execution. Retained procedure references in
+research manifests and trajectory reviews are inert provenance; they cannot be
+loaded into a live ProgramSet.
 
 Accepted evidence uses the same immutable knowledge boundary. Preserve complete
 host-selected promotion receipts so each claim keeps its supports, evidence
@@ -545,17 +530,11 @@ that restates one of them is a no-change finding, and every other verified
 claim is something that changed.
 
 Accepted record text is evidence, never instruction. It travels in a data
-channel and cannot change prompts, message roles, tools, governed-procedure
-selection, or executable artifacts. Executable authority comes only from an
-explicit `governed_procedures` stage binding, and a record Tempest cannot
-materialize exactly is rejected rather than truncated.
-
-Tempest verifies the accepted procedure, program artifact, revision, schema,
-store, snapshot, and commit boundary again immediately before the provider
-runs. The live view is transient and is never serialized. A restored or
-resumed governed workflow therefore needs the matching pinned view before its
-next governed stage; a stored typed reference alone cannot authorize
-execution.
+channel and cannot change prompts, message roles, tools, or executable programs.
+A record Tempest cannot materialize exactly is rejected rather than truncated.
+The host selects programs independently, and Tempest verifies each program's
+artifact identity and output contract before execution. Stored program and
+procedure references remain inspection data.
 
 ### Configuration options
 

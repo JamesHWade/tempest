@@ -62,8 +62,7 @@ test_that("ProgramSet accepts only exact builtin evaluator pairs", {
       "stage",
       "contract_version",
       "evaluator_id",
-      "evaluator_version",
-      "governed_procedure_ref"
+      "evaluator_version"
     )
   )
 })

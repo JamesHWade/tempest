@@ -123,16 +123,13 @@ tempest_verify_one_claim_span <- function(
       claim_text = claim@claim_text,
       source_excerpts = span_input
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(
-        workspace = store,
-        claim = claim,
-        evidence_span = span,
-        min_support_score = min_support_score,
-        verified_at = verified_at,
-        verifier_model = verifier_model
-      ),
-      module
+    context = list(
+      workspace = store,
+      claim = claim,
+      evidence_span = span,
+      min_support_score = min_support_score,
+      verified_at = verified_at,
+      verifier_model = verifier_model
     ),
     output_reference = function(output, running_record, context) {
       tempest_stage_output_reference(
@@ -310,7 +307,6 @@ tempest_verify_claims <- function(
         knowledge_snapshot_id = snapshot_id
       )
     )
-    program$knowledge_view <- knowledge$view
   }
   tempest_verify_claims_internal(
     workspace = workspace,

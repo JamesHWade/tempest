@@ -204,8 +204,7 @@ rejects partial stage-output selection instead of packaging nonselected
 evidence. Reading requires the original bundle id as an out-of-band trust pin;
 bundle-local checksums establish internal consistency, not authenticity. Older
 bundle shapes are rejected. Research promotion never mints a
-`GovernedProcedure`; that record requires its own reviewed Graft acceptance
-flow.
+`GovernedProcedure`; stored research does not authorize program execution.
 
 The constructor accepts only a completed `tempest_run()` result or a succeeded,
 quiescent `TempestSession`. Independently supplied Workspace, Manifest, and
@@ -439,8 +438,7 @@ stage state are not part of that surface. No compatibility layer is provided.
   `ragnar_store`.
 - Bring accepted organizational knowledge into a run with
   `tempest_knowledge()`, which pins the immutable Graft view, names the exact
-  accepted evidence records, and binds any accepted governed procedure to its
-  stage.
+  accepted evidence records, and keeps them separate from executable programs.
 - Review provisional evidence with `tempest_promotion_bundle()` and
   `tempest_graft_plan()` before exercising Graft acceptance authority.
 - Reconstruct a non-authoritative review with

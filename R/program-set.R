@@ -1,4 +1,4 @@
-# Governed dsprrr program sets ----------------------------------------------
+# Host-selected dsprrr program sets ----------------------------------------------
 
 tempest_program_set_abort <- function(
   message,
@@ -185,20 +185,6 @@ tempest_program_set_evaluators <- function(value) {
   )
 }
 
-tempest_program_set_governed_references <- function(value) {
-  tryCatch(
-    tempest_governed_procedure_references(value),
-    error = function(error) {
-      if (inherits(error, "tempest_program_set_error")) {
-        stop(error)
-      }
-      tempest_program_set_abort(
-        "{.arg governed_procedure_refs} is invalid."
-      )
-    }
-  )
-}
-
 tempest_program_set_validate_programs <- function(value, arg = "programs") {
   stages <- tempest_program_set_stages()
   value <- tempest_program_set_named_list(value, arg, stages)
@@ -248,7 +234,6 @@ tempest_program_set_entries_from_programs <- function(
   programs,
   contract_versions,
   evaluators,
-  governed_references,
   reference_type,
   registry = list()
 ) {
@@ -269,7 +254,7 @@ tempest_program_set_entries_from_programs <- function(
             stage,
             reference_type
           ),
-          governed_procedure_ref = governed_references[[stage]],
+          governed_procedure_ref = NULL,
           evaluator_id = evaluators[[stage]]$evaluator_id,
           evaluator_version = evaluators[[stage]]$evaluator_version
         )
@@ -293,6 +278,17 @@ tempest_program_set_root <- function(value, must_exist = FALSE) {
 
 tempest_program_set_validate_entries <- function(entries, require_all = TRUE) {
   entries <- tempest_research_manifest_programs(entries)
+  if (
+    any(vapply(
+      entries,
+      \(entry) !is.null(entry$governed_procedure_ref),
+      logical(1)
+    ))
+  ) {
+    tempest_program_set_abort(
+      "Stored governed-procedure references are provenance only and cannot bind a live ProgramSet."
+    )
+  }
   stages <- tempest_program_set_stages()
   if (require_all && !setequal(names(entries), stages)) {
     missing <- setdiff(stages, names(entries))
@@ -502,10 +498,6 @@ tempest_program_set_metadata <- function(program_set) {
         }
       ),
       stages
-    ),
-    governed_references = stats::setNames(
-      lapply(entries, \(entry) entry$governed_procedure_ref),
-      stages
     )
   )
 }
@@ -530,7 +522,6 @@ tempest_program_set_write_bundle <- function(
   path,
   contract_versions,
   evaluators,
-  governed_references,
   registry = list()
 ) {
   root <- tempest_program_set_root(path)
@@ -567,7 +558,6 @@ tempest_program_set_write_bundle <- function(
     programs,
     contract_versions,
     evaluators,
-    governed_references,
     reference_type = "file",
     registry = registry
   )
@@ -644,8 +634,9 @@ tempest_program_set_write_bundle <- function(
 #' dsprrr program artifacts.
 #'
 #' The returned live value retains executable modules. Its manifest projection
-#' contains only portable identifiers, evaluator metadata, governed-procedure
-#' references, and builtin or bundle-relative artifact references.
+#' contains only portable identifiers, evaluator metadata, and builtin or
+#' bundle-relative artifact references. Stored research and Graft records never
+#' select or authorize executable programs.
 #'
 #' Resume compares program identity independently of physical location, so a
 #' relocated verified bundle is accepted. A custom-program run must resume with
@@ -663,8 +654,6 @@ tempest_program_set_write_bundle <- function(
 #'   evaluators, or an exact named list whose records contain `evaluator_id`
 #'   and `evaluator_version`. These identify how stage output is judged and are
 #'   distinct from an optimization teleprompter or metric.
-#' @param governed_procedure_refs Optional named list of typed
-#'   `tempest_governed_procedure_ref()` values by stage.
 #' @param registry Named runtime-binding registry passed to dsprrr artifact
 #'   operations. It is never stored in ProgramSet metadata.
 #' @return A validated `TempestProgramSet` S7 object.
@@ -674,7 +663,6 @@ tempest_program_set <- function(
   path = NULL,
   contract_versions = 1L,
   evaluators = NULL,
-  governed_procedure_refs = list(),
   registry = list()
 ) {
   builtin <- is.null(programs)
@@ -693,16 +681,12 @@ tempest_program_set <- function(
   programs <- tempest_program_set_validate_programs(programs)
   contract_versions <- tempest_program_set_contract_versions(contract_versions)
   evaluators <- tempest_program_set_evaluators(evaluators)
-  governed_references <- tempest_program_set_governed_references(
-    governed_procedure_refs
-  )
   if (!is.null(path)) {
     return(tempest_program_set_write_bundle(
       programs,
       path,
       contract_versions,
       evaluators,
-      governed_references,
       registry = registry
     ))
   }
@@ -710,7 +694,6 @@ tempest_program_set <- function(
     programs,
     contract_versions,
     evaluators,
-    governed_references,
     reference_type = "builtin",
     registry = registry
   )

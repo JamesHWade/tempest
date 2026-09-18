@@ -602,7 +602,6 @@ tempest_costorm_program_execution <- function(
       "trace_context"
     )
   )
-  execution$knowledge_view <- knowledge$view
   execution
 }
 
@@ -850,8 +849,7 @@ TempestSession <- R6::R6Class(
       program_set <- program_set %||% tempest_program_set()
       knowledge <- tempest_product_knowledge_view(
         program_set,
-        knowledge_view,
-        restoring = restoring
+        knowledge_view
       )
       program_references <- tempest_program_set_manifest_programs(program_set)
       if (is.null(experts)) {
@@ -978,10 +976,6 @@ TempestSession <- R6::R6Class(
       private$programs_value <- tempest_bind_program_set(
         program_set,
         private$manifest_value
-      )
-      private$programs_value <- tempest_programs_bind_knowledge_view(
-        private$programs_value,
-        knowledge$view
       )
       private$knowledge_view_value <- knowledge$view
       private$program_set_value <- program_set
