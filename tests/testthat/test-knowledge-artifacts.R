@@ -192,6 +192,35 @@ test_that("both public research constructors admit the artifact selection", {
     checks <<- checks + 1L
     knowledge
   }
+  plain_output <- withr::local_tempdir()
+  tempest_run(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert()),
+    steps = "perspectives",
+    output_dir = plain_output,
+    verbose = FALSE
+  )
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      retriever = caller_retriever,
+      knowledge = knowledge,
+      steps = "perspectives",
+      output_dir = plain_output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "exact retained knowledge",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 0L)
+  expect_identical(
+    tempest_research_workspace_snapshot(caller_workspace),
+    before
+  )
   resumed <- tempest_run(
     "Artifact briefing",
     config = config,
@@ -742,4 +771,33 @@ test_that("STORM resume validates saved data before invoking admission", {
     class = "tempest_knowledge_error"
   )
   expect_identical(checks, 1L)
+})
+
+
+test_that("Co-STORM resume cannot introduce a new artifact selection", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    knowledge
+  }
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  plain_session <- tempest_session(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert())
+  )
+  expect_error(
+    tempest_session_restore(
+      tempest_session_snapshot(plain_session),
+      config = config,
+      knowledge = knowledge
+    ),
+    "exact retained knowledge",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 0L)
 })

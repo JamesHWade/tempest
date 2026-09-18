@@ -2189,10 +2189,7 @@ tempest_storm_validate_resume_request <- function(
   steps,
   selection
 ) {
-  if (
-    length(loaded$workspace$artifact_selection) &&
-      !identical(loaded$workspace$artifact_selection, selection)
-  ) {
+  if (!identical(loaded$workspace$artifact_selection, selection)) {
     tempest_knowledge_abort(
       "Resuming artifact research requires fresh admission of its exact retained knowledge."
     )

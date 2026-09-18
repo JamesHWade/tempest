@@ -354,14 +354,14 @@ tempest_artifact_research_records <- function(bundle) {
 }
 
 tempest_artifact_resume_admission <- function(selection, knowledge) {
-  if (!length(selection)) {
-    return(invisible(NULL))
-  }
-  admitted <- tempest_knowledge_argument(knowledge)
+  admitted <- tempest_knowledge_argument(knowledge, admit = FALSE)
   if (!identical(admitted$artifact_selection, selection)) {
     tempest_knowledge_abort(
       "Resuming artifact research requires fresh admission of its exact retained knowledge."
     )
+  }
+  if (length(selection)) {
+    tempest_knowledge_argument(knowledge)
   }
   invisible(NULL)
 }
