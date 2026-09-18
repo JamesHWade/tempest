@@ -39,10 +39,12 @@
   environments that expose chat history (0mpk).
 
 - [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
-  accepts Graft consumer contracts `>= 0.2.0` and `< 0.9.0` with store
-  format `3.1.0`, retaining the immutable compiled-schema check and
-  Graft’s injected `GraftDefinition` system class (0mpk, 03d5, fwmt;
-  graft [\#53](https://github.com/JamesHWade/tempest/issues/53),
+  accepts Graft consumer contracts `>= 0.2.0` and `< 2.0.0` with store
+  format `3.1.0`, supporting the tested 1.0 consumer contract while
+  retaining the immutable compiled-schema check and Graft’s injected
+  `GraftDefinition` system class (0mpk, 03d5, fwmt, x3wk; graft
+  [\#53](https://github.com/JamesHWade/tempest/issues/53),
+  [\#73](https://github.com/JamesHWade/tempest/issues/73),
   [\#77](https://github.com/JamesHWade/tempest/issues/77),
   [\#78](https://github.com/JamesHWade/tempest/issues/78)).
 
