@@ -39,10 +39,12 @@
   environments that expose chat history (0mpk).
 
 - [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
-  accepts Graft consumer contracts `>= 0.2.0` and `< 0.7.0` with store
+  accepts Graft consumer contracts `>= 0.2.0` and `< 0.9.0` with store
   format `3.1.0`, retaining the immutable compiled-schema check and
-  Graft’s injected `GraftDefinition` system class (0mpk, 03d5; graft
-  [\#53](https://github.com/JamesHWade/tempest/issues/53)).
+  Graft’s injected `GraftDefinition` system class (0mpk, 03d5, fwmt;
+  graft [\#53](https://github.com/JamesHWade/tempest/issues/53),
+  [\#77](https://github.com/JamesHWade/tempest/issues/77),
+  [\#78](https://github.com/JamesHWade/tempest/issues/78)).
 
 - Briefing items now decide structurally whether a verified claim
   changes accepted knowledge:
