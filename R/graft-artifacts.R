@@ -141,6 +141,9 @@ tempest_read_artifact_research <- function(store, selection) {
         anyDuplicated(names(saved)) ||
         !setequal(names(saved), c("id", "ref")) ||
         !identical(saved$id, record$id) ||
+        !is.list(saved$ref) ||
+        !identical(names(saved$ref), c("id", "revision")) ||
+        !rlang::is_string(saved$ref$revision) ||
         !identical(saved$ref$id, record$id)
     ) {
       tempest_knowledge_abort(
