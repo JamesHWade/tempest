@@ -11,7 +11,10 @@ A validated \code{graft::GraftSchema}.
 }
 \description{
 The packaged schema was compiled for Graft consumer contract \verb{0.2.0}.
-Runtime loading accepts contracts \verb{>= 0.2.0} and \verb{< 0.9.0}, with store format
-\verb{3.1.0}, through \code{graft::graft_contract_version()}. Loading never compiles
-LinkML and rejects any manifest whose immutable build digest differs.
+Runtime loading accepts contracts \verb{>= 0.2.0} and \verb{< 1.0.0}, with store format
+\verb{3.1.0}, through \code{graft::graft_contract_version()}. The range follows Graft's
+additive-minor contract policy; it does not claim every future minor has been
+tested. Required exports and the compiled schema are checked independently.
+Loading never compiles LinkML and rejects any manifest whose immutable build
+digest differs.
 }

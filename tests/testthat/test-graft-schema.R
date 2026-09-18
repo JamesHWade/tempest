@@ -80,7 +80,7 @@ test_that("compiled Tempest research schema has the exact typed contracts", {
   )
 })
 
-test_that("schema runtime accepts verified Graft contracts and rejects other ranges", {
+test_that("schema runtime follows the Graft major contract boundary", {
   for (version in c(
     "0.2.0",
     "0.2.1",
@@ -93,7 +93,10 @@ test_that("schema runtime accepts verified Graft contracts and rejects other ran
     "0.7.0",
     "0.7.9",
     "0.8.0",
-    "0.8.9"
+    "0.8.9",
+    "0.9.0",
+    "0.9.9",
+    "0.10.0"
   )) {
     expect_identical(
       tempest_graft_pin_valid(list(contract = version)),
@@ -101,7 +104,7 @@ test_that("schema runtime accepts verified Graft contracts and rejects other ran
       info = version
     )
   }
-  for (version in c("0.1.9", "0.9.0", "1.0.0", "nope", "")) {
+  for (version in c("0.1.9", "1.0.0", "1.1.0", "nope", "")) {
     expect_identical(
       tempest_graft_pin_valid(list(contract = version)),
       FALSE,

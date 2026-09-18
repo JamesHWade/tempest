@@ -166,10 +166,11 @@ receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
 ```
 
 The packaged schema was compiled for Graft consumer contract `0.2.0`. Runtime
-loading accepts contracts `>= 0.2.0` and `< 0.9.0` with store format `3.1.0`,
-checked through `graft::graft_contract_version()`; loading
-also checks the schema's exact immutable build digest and never recompiles
-LinkML. Planning keys accepted `Claim` identity on normalized statement text
+loading accepts contracts `>= 0.2.0` and `< 1.0.0` with store format `3.1.0`,
+following Graft's additive-minor and breaking-major contract policy. Required
+exports, store format and the schema's exact immutable build digest remain
+independently checked. The range does not claim every future minor has been
+tested. Loading never recompiles LinkML. Planning keys accepted `Claim` identity on normalized statement text
 and accepted `Source` identity on the exact locator plus content hash, so research that
 re-verifies an accepted claim revises that record instead of inserting a
 duplicate, and the plan's `disposition` column separates `new`, `revision`,
