@@ -358,7 +358,11 @@ tempest_knowledge_governed_procedures <- function(graft_view, value) {
 
 # Resolve the public `knowledge` argument into the internal pinned view and the
 # ProgramSet carrying any accepted governed-procedure stage bindings.
-tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
+tempest_knowledge_argument <- function(
+  knowledge,
+  arg = "knowledge",
+  admit = TRUE
+) {
   if (is.null(knowledge)) {
     return(list(
       value = NULL,
@@ -382,7 +386,7 @@ tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
       "Graft decision knowledge requires current admission through tempest_reuse_artifact_research()."
     )
   }
-  if (!is.null(knowledge@admission)) {
+  if (isTRUE(admit) && !is.null(knowledge@admission)) {
     current <- knowledge@admission()
     if (!identical(current@artifact_selection, knowledge@artifact_selection)) {
       tempest_knowledge_abort(

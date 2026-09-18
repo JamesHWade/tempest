@@ -154,6 +154,11 @@ test_that("both public research constructors admit the artifact selection", {
     ),
     class = "tempest_error"
   )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    knowledge
+  }
   resumed <- tempest_run(
     "Artifact briefing",
     config = config,
@@ -164,6 +169,7 @@ test_that("both public research constructors admit the artifact selection", {
     resume = TRUE,
     verbose = FALSE
   )
+  expect_identical(checks, 1L)
   expect_identical(
     resumed@workspace$artifact_selection,
     knowledge@artifact_selection
@@ -654,4 +660,53 @@ test_that("JSON claim inputs require explicit active status for no-change identi
       }
     )
   }
+})
+
+
+test_that("STORM resume validates saved data before invoking admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  output <- withr::local_tempdir()
+  tempest_product_write_json(
+    file.path(
+      tempest_storm_prepare_run_dir(output, "Artifact briefing"),
+      "run_config.json"
+    ),
+    list(schema_version = 7L)
+  )
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      knowledge = knowledge,
+      output_dir = output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    class = "tempest_run_restore_error"
+  )
+  expect_identical(checks, 0L)
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      knowledge = knowledge,
+      output_dir = withr::local_tempdir(),
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "revoked",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 1L)
 })

@@ -170,7 +170,8 @@ tempest_run <- function(
   progress = NULL,
   verbose = TRUE
 ) {
-  knowledge <- tempest_knowledge_argument(knowledge)
+  supplied_knowledge <- knowledge
+  knowledge <- tempest_knowledge_argument(knowledge, admit = !isTRUE(resume))
   tempest_otel_trace(
     "storm.run",
     tempest_run_internal(
@@ -192,7 +193,12 @@ tempest_run <- function(
       resume = resume,
       run_id = run_id,
       progress = progress,
-      verbose = verbose
+      verbose = verbose,
+      .admit_knowledge = if (isTRUE(resume)) {
+        function() tempest_knowledge_argument(supplied_knowledge)
+      } else {
+        NULL
+      }
     )
   )
 }
@@ -217,7 +223,8 @@ tempest_run_internal <- function(
   run_id = NULL,
   progress = NULL,
   verbose = TRUE,
-  .requested_steps = NULL
+  .requested_steps = NULL,
+  .admit_knowledge = NULL
 ) {
   tempest_require("ellmer", "tempest_run() requires ellmer.")
   if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
@@ -680,6 +687,9 @@ tempest_run_internal <- function(
         )
       )
     }
+    if (!is.null(.admit_knowledge)) {
+      .admit_knowledge()
+    }
     emit_progress(
       "workflow",
       "started",
@@ -706,6 +716,10 @@ tempest_run_internal <- function(
       retriever = retriever,
       output_dir = run_dir
     ))
+  }
+
+  if (!is.null(.admit_knowledge)) {
+    .admit_knowledge()
   }
 
   stage_recorder <- function(commit_output = NULL) {
