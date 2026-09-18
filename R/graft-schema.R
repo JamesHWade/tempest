@@ -1,7 +1,7 @@
 # Tempest's compiled Graft research contract and review-only planning adapter
 
 tempest_graft_contract_version <- "0.2.0"
-tempest_graft_contract_upper_bound <- "0.7.0"
+tempest_graft_contract_upper_bound <- "0.9.0"
 
 tempest_graft_contract_range <- function() {
   paste0(
@@ -43,7 +43,7 @@ tempest_graft_contract_call <- function() {
   graft::graft_contract_version()
 }
 
-# Graft 0.3-0.6 add consumer APIs without changing Tempest's receipt or
+# Graft 0.3-0.8 add consumer APIs without changing Tempest's receipt or
 # snapshot shapes. Future minor contracts still require consumer verification.
 tempest_graft_pin_valid <- function(version) {
   if (!is.list(version) || !rlang::is_string(version$contract)) {
@@ -131,7 +131,7 @@ tempest_graft_schema_path <- function() {
 #' Load Tempest's compiled scientific Graft schema
 #'
 #' The packaged schema was compiled for Graft consumer contract `0.2.0`.
-#' Runtime loading accepts contracts `>= 0.2.0` and `< 0.7.0`, with store format
+#' Runtime loading accepts contracts `>= 0.2.0` and `< 0.9.0`, with store format
 #' `3.1.0`, through `graft::graft_contract_version()`. Loading never compiles
 #' LinkML and rejects any manifest whose immutable build digest differs.
 #'
