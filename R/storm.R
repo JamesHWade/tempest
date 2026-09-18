@@ -353,11 +353,13 @@ tempest_run_internal <- function(
       )
     )
   }
-  tempest_knowledge_insert_records(
-    workspace,
-    knowledge_records,
-    knowledge_selection
-  )
+  if (is.null(loaded_run)) {
+    tempest_knowledge_insert_records(
+      workspace,
+      knowledge_records,
+      knowledge_selection
+    )
+  }
   store <- workspace
   progress <- tempest_progress_callback(progress)
   progress_run_id <- if (!is.null(supplied_run_id)) {

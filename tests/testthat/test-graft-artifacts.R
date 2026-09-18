@@ -440,17 +440,42 @@ test_that("an unchanged research day executes with native accepted evidence", {
     config = fixture$config,
     workspace = fixture$store
   )
+  output <- withr::local_tempdir()
   result <- tempest_run(
     "Progress events",
     config = fixture$config,
     retriever = fixture$retriever,
     knowledge = knowledge,
+    output_dir = output,
     n_experts = 1,
     max_questions_per_perspective = 1,
     verbose = FALSE
   )
   expect_identical(result@manifest@status, "succeeded")
   expect_match(tempest_report(result), "No material change", fixed = TRUE)
+  sealed_before <- tempest_research_workspace_snapshot(result@workspace)
+  resumed <- tempest_run(
+    "Progress events",
+    config = fixture$config,
+    retriever = result@retriever,
+    knowledge = knowledge,
+    output_dir = output,
+    resume = TRUE,
+    n_experts = 1,
+    max_questions_per_perspective = 1,
+    verbose = FALSE
+  )
+  expect_identical(resumed@retriever, result@retriever)
+  expect_identical(resumed@workspace, result@workspace)
+  expect_identical(
+    tempest_research_workspace_mutation_state(resumed@workspace),
+    "sealed"
+  )
+  expect_identical(
+    tempest_research_workspace_snapshot(resumed@workspace),
+    sealed_before
+  )
+  expect_identical(tempest_report(resumed), tempest_report(result))
   expect_identical(
     result@workspace$artifact_selection,
     knowledge@artifact_selection

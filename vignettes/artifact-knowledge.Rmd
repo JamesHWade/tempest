@@ -135,7 +135,9 @@ or automatically reapprove withdrawn knowledge. The host must enforce current
 eligibility before starting or resuming work. This constructor does not monitor
 policy changes during an active run. Re-admitting the same artifact input for
 STORM resume preserves the saved research state and original retrieval times;
-a later read time alone does not make the immutable input different.
+a later read time alone does not make the immutable input different. You can
+reuse a completed run's retriever: its sealed workspace is compared with the
+saved state and retained without reinserting evidence.
 
 ## Scope and current formats
 
