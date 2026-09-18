@@ -1266,7 +1266,15 @@ tempest_storm_restore_manifest <- function(
       )
     }
   )
-  tempest_research_artifact_basis_validate(manifest, workspace)
+  tryCatch(
+    tempest_research_artifact_basis_validate(manifest, workspace),
+    error = function(error) {
+      tempest_storm_run_restore_abort(
+        "The persisted STORM artifact input basis is invalid.",
+        parent = error
+      )
+    }
+  )
   tempest_storm_program_set_validate(
     program_set,
     manifest,
