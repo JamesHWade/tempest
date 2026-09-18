@@ -129,6 +129,7 @@ test_that("both public research constructors admit the artifact selection", {
     "Artifact briefing",
     config = config,
     experts = list(test_expert()),
+    knowledge = knowledge,
     steps = "perspectives",
     output_dir = output,
     resume = TRUE,
@@ -242,6 +243,7 @@ test_that("saved sessions retain artifact inputs across processes and correction
   }
   resumed <- tempest_session_resume(
     file.path(directory, "initial"),
+    knowledge = do.call(tempest_artifact_knowledge, first),
     config = config
   )
   expect_identical(
@@ -255,14 +257,18 @@ test_that("saved sessions retain artifact inputs across processes and correction
     "the pilot recovered 82%"
   )
   fresh <- callr::r(
-    function(checkout, path) {
+    function(checkout, path, input) {
       if (!is.null(checkout)) {
         pkgload::load_all(checkout, quiet = TRUE)
       }
       config <- tempest::tempest_config(chat_fn = function(...) {
         ellmer::chat_openai(credentials = \() "offline-test")
       })
-      session <- tempest::tempest_session_resume(path, config = config)
+      session <- tempest::tempest_session_resume(
+        path,
+        config = config,
+        knowledge = do.call(tempest::tempest_artifact_knowledge, input)
+      )
       workspace <- tempest:::tempest_session_workspace(session)
       list(
         selection = workspace$artifact_selection,
@@ -276,6 +282,7 @@ test_that("saved sessions retain artifact inputs across processes and correction
       } else {
         NULL
       },
+      input = corrected,
       path = file.path(directory, "corrected")
     )
   )

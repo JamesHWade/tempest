@@ -1,5 +1,8 @@
 # tempest 0.0.0.9000
 
+* `tempest_publish_artifact_research()`, `tempest_read_artifact_research()`, and `tempest_reuse_artifact_research()` preserve completed research through Graft's public artifact and decision interfaces, retain exact reports and evidence, and recheck current host eligibility at research admission (srvc).
+* `tempest_session_resume()` and STORM resume now require freshly supplied artifact knowledge matching the saved selection; policy callbacks and store handles remain transient (srvc).
+
 - Persisted workspace, STORM, and Co-STORM formats are now 6, 9, and 12. Regenerate older experimental bundles; compatibility readers are not provided.
 - `tempest_artifact_knowledge()` admits an exact host-selected artifact input without a Graft view and preserves its content, revision references, dependencies, and provenance across save/resume (graft #64).
 

@@ -577,6 +577,14 @@ tempest_run_internal <- function(
       program_set = program_set,
       run_id = supplied_run_id
     )
+    if (
+      length(loaded_run$workspace$artifact_selection) &&
+        !identical(loaded_run$workspace$artifact_selection, knowledge_selection)
+    ) {
+      tempest_knowledge_abort(
+        "Resuming artifact research requires fresh admission of its exact retained knowledge."
+      )
+    }
     workspace <- loaded_run$workspace
     workspace <- tempest_product_workspace_validate(
       workspace,

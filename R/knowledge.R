@@ -37,6 +37,7 @@ TempestKnowledge <- S7::new_class(
   "TempestKnowledge",
   package = "tempest",
   properties = list(
+    admission = S7::new_property(S7::class_any),
     view = S7::new_property(S7::class_any),
     snapshot = S7::new_property(S7::class_any),
     reference = S7::new_property(S7::class_any),
@@ -52,10 +53,12 @@ TempestKnowledge <- S7::new_class(
     record_ids = character(),
     records = list(),
     governed_procedures = list(),
-    artifact_selection = list()
+    artifact_selection = list(),
+    admission = NULL
   ) {
     value <- S7::new_object(
       S7::S7_object(),
+      admission = admission,
       view = view,
       snapshot = snapshot,
       reference = reference,
@@ -370,6 +373,14 @@ tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
       "{.arg {arg}} must be created by {.fn tempest_knowledge} or {.fn tempest_artifact_knowledge}.",
       class = "tempest_input_error"
     )
+  }
+  if (!is.null(knowledge@admission)) {
+    current <- knowledge@admission()
+    if (!identical(current@artifact_selection, knowledge@artifact_selection)) {
+      tempest_knowledge_abort(
+        "Research admission differs from its retained decision."
+      )
+    }
   }
   tempest_artifact_selection_validate(
     knowledge@artifact_selection,

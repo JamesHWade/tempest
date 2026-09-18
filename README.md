@@ -848,3 +848,13 @@ Code that inspired tempest:
 - [stanford-oval/storm](https://github.com/stanford-oval/storm) — the reference STORM and Co-STORM implementation this package ports to R.
 - [stanfordnlp/dspy](https://github.com/stanfordnlp/dspy) — the DSPy framework that [dsprrr](https://github.com/JamesHWade/dsprrr) brings to R for tempest's optimizable modules.
 - [Stanford STORM project](https://storm.genie.stanford.edu/) — live demo and project overview.
+
+## Retain reviewed research across runs
+
+Use `tempest_publish_artifact_research()` to preserve a completed report and its
+full evidence through Graft's artifact store. After explicit host acceptance,
+`tempest_reuse_artifact_research()` checks the current decision and host policy
+before research admission. Historical inspection uses
+`tempest_read_artifact_research()` and grants no current permission.
+See [retained artifact evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.html)
+for an executable offline example and session resume rules.

@@ -1089,6 +1089,8 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #' @param knowledge_view Optional transient immutable Graft view required by
 #'   future execution when `program_set` contains governed procedures. It is
 #'   never reconstructed from or written to persistence.
+#' @param knowledge Freshly admitted artifact knowledge matching the saved
+#'   selection. Required when the session contains artifact evidence.
 #' @return A restored [TempestSession].
 #' @keywords internal
 tempest_session_restore <- function(
@@ -1096,8 +1098,13 @@ tempest_session_restore <- function(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge_view = NULL,
+  knowledge = NULL
 ) {
+  tempest_artifact_resume_admission(
+    snapshot$workspace$artifact_selection,
+    knowledge
+  )
   tempest_session_restore_internal(
     snapshot = snapshot,
     config = config,
@@ -2706,6 +2713,8 @@ tempest_costorm_archive_read <- function(path) {
 #' @param knowledge_view Optional transient immutable Graft view required by
 #'   future execution when `program_set` contains governed procedures. It is
 #'   never reconstructed from or written to persistence.
+#' @param knowledge Freshly admitted artifact knowledge matching the saved
+#'   selection. Required when the session contains artifact evidence.
 #' @return A restored [TempestSession].
 #' @export
 tempest_session_resume <- function(
@@ -2713,14 +2722,16 @@ tempest_session_resume <- function(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge_view = NULL,
+  knowledge = NULL
 ) {
   tempest_session_resume_internal(
     path = path,
     config = config,
     progress = progress,
     program_set = program_set,
-    knowledge_view = knowledge_view
+    knowledge_view = knowledge_view,
+    knowledge = knowledge
   )
 }
 
@@ -2730,9 +2741,14 @@ tempest_session_resume_internal <- function(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge_view = NULL,
+  knowledge = NULL
 ) {
   bundle <- tempest_costorm_bundle_read(path)
+  tempest_artifact_resume_admission(
+    bundle$snapshot$workspace$artifact_selection,
+    knowledge
+  )
   tempest_session_restore_internal(
     bundle$snapshot,
     config = config,

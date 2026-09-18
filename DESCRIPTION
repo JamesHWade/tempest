@@ -121,6 +121,7 @@ Collate:
     'product-result.R'
     'knowledge.R'
     'knowledge-artifacts.R'
+    'graft-artifacts.R'
     'storm-state.R'
     'product-authority.R'
     'costorm-report.R'
