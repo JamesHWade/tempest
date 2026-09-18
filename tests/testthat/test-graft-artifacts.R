@@ -270,6 +270,27 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
     graft::graft_artifact_read_selection(store, selection)$roots[[1L]]
   )
   candidate <- jsonlite::fromJSON(rawToChar(root$bytes), simplifyVector = FALSE)
+  duplicate <- c(candidate, list(format = "unknown-format"))
+  duplicate_ref <- graft::graft_artifact_save(
+    store,
+    "duplicate-json",
+    charToRaw(as.character(jsonlite::toJSON(
+      duplicate,
+      auto_unbox = TRUE,
+      null = "null",
+      digits = NA
+    ))),
+    "application/json",
+    dependencies = root$metadata$dependencies
+  )
+  expect_error(
+    tempest_read_artifact_research(
+      store,
+      graft::graft_artifact_select(store, list(duplicate_ref))
+    ),
+    "Unsupported",
+    class = "tempest_knowledge_error"
+  )
   candidate$records <- candidate$records[-1L]
   forged <- graft::graft_artifact_save(
     store,
@@ -310,5 +331,87 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
     ),
     "cover its evidence",
     class = "tempest_knowledge_error"
+  )
+})
+
+test_that("an unchanged research day executes with native accepted evidence", {
+  skip_if_not_installed("graft")
+  initial <- test_promotion_storm_fixture(
+    evidence_text = "STORM progress emits stage events."
+  )
+  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  selection <- tempest_publish_artifact_research(initial$research, store)
+  accepted <- graft::graft_artifact_decide(
+    store,
+    "daily",
+    "day-one",
+    NULL,
+    selection,
+    "accept",
+    "reviewer",
+    "Reviewed evidence",
+    "briefing"
+  )
+  reviewed <- graft::graft_artifact_decide(
+    store,
+    "daily",
+    "day-two",
+    accepted$id,
+    selection,
+    "accept",
+    "reviewer",
+    "Unchanged evidence reviewed",
+    "briefing"
+  )
+  knowledge <- tempest_reuse_artifact_research(
+    store,
+    "daily",
+    reviewed$id,
+    "briefing",
+    eligible = function(event) TRUE
+  )
+  fixture <- storm_product_fixture()
+  original_chat <- fixture$config@chat_fn
+  fixture$config@chat_fn <- function(role, model, system_prompt, echo) {
+    chat <- original_chat(role, model, system_prompt, echo)
+    if (identical(role, "writer")) {
+      structured <- chat$chat_structured
+      chat$chat_structured <- function(...) {
+        result <- structured(...)
+        if (is.list(result$items)) {
+          result$items <- lapply(result$items, function(item) {
+            item$kind <- "no_change"
+            item$confidence <- "high"
+            item
+          })
+        }
+        result
+      }
+    }
+    chat
+  }
+  # The fixture retriever must use the same final configuration as the run.
+  fixture$retriever <- tempest_retriever(
+    config = fixture$config,
+    workspace = fixture$store
+  )
+  result <- tempest_run(
+    "Progress events",
+    config = fixture$config,
+    retriever = fixture$retriever,
+    knowledge = knowledge,
+    n_experts = 1,
+    max_questions_per_perspective = 1,
+    verbose = FALSE
+  )
+  expect_identical(result@manifest@status, "succeeded")
+  expect_match(tempest_report(result), "No material change", fixed = TRUE)
+  expect_identical(
+    result@workspace$artifact_selection,
+    knowledge@artifact_selection
+  )
+  expect_identical(
+    tempest_read_artifact_research(store, selection)$report_md,
+    tempest_report(initial$research)
   )
 })

@@ -117,6 +117,7 @@ tempest_read_artifact_research <- function(store, selection) {
   )
   if (
     !is.list(candidate) ||
+      anyDuplicated(names(candidate)) ||
       !setequal(names(candidate), c("format", "bundle", "report", "records")) ||
       !identical(candidate$format, "tempest-research-1")
   ) {
@@ -137,6 +138,7 @@ tempest_read_artifact_research <- function(store, selection) {
     saved <- candidate$records[[i]]
     if (
       !is.list(saved) ||
+        anyDuplicated(names(saved)) ||
         !setequal(names(saved), c("id", "ref")) ||
         !identical(saved$id, record$id) ||
         !identical(saved$ref$id, record$id)
