@@ -270,13 +270,12 @@ test_that("verification output digest binds the exact span and source content", 
   expect_identical(identical(before, after), FALSE)
 })
 
-test_that("pair verification context carries the exact transient view", {
+test_that("pair verification context carries evidence without live authority", {
   workspace <- tempest_research_workspace()
   fixture <- test_add_verifiable_claim(workspace)
-  view <- new.env(parent = emptyenv())
-  module <- structure(
-    list(knowledge_view = view),
-    class = c("tempest_dsprrr_execution", "list")
+  module <- tempest_program_set_execution(
+    tempest_program_set(),
+    "verify_claim_support"
   )
   seen <- NULL
   local_mocked_bindings(
@@ -302,7 +301,10 @@ test_that("pair verification context carries the exact transient view", {
     verifier_model = "test-verifier"
   )
 
-  expect_identical(seen$knowledge_view, view)
+  expect_identical(
+    intersect(names(seen), c("knowledge_view", "governed_procedure_ref")),
+    character()
+  )
   expect_identical(seen$claim, fixture$claim)
   expect_identical(seen$evidence_span, fixture$span)
   expect_identical(seen$verified_at, "2026-08-16T12:03:00Z")
