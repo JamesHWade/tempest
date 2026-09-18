@@ -132,9 +132,10 @@ A correction gets a new artifact revision and a new selection. A new run can use
 that selection while the previous run still resolves its original evidence.
 Saving and resuming preserves the historical input; it does not freeze permission
 or automatically reapprove withdrawn knowledge. The host must enforce current
-eligibility before starting or resuming work. This constructor does not monitor
-policy changes during an active run. Re-admitting the same artifact input for
-STORM resume preserves the saved research state and original retrieval times;
+eligibility before starting or resuming work. STORM and Co-STORM validate new-run
+arguments and the supplied retriever before invoking the admission callback.
+This constructor does not monitor policy changes during an active run.
+Re-admitting the same artifact input for STORM resume preserves the saved research state and original retrieval times;
 a later read time alone does not make the immutable input different. You can
 reuse a completed run's retriever: its sealed workspace is compared with the
 saved state and retained without reinserting evidence.

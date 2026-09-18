@@ -171,7 +171,7 @@ tempest_run <- function(
   verbose = TRUE
 ) {
   supplied_knowledge <- knowledge
-  knowledge <- tempest_knowledge_argument(knowledge, admit = !isTRUE(resume))
+  knowledge <- tempest_knowledge_argument(knowledge, admit = FALSE)
   tempest_otel_trace(
     "storm.run",
     tempest_run_internal(
@@ -194,10 +194,8 @@ tempest_run <- function(
       run_id = run_id,
       progress = progress,
       verbose = verbose,
-      .admit_knowledge = if (isTRUE(resume)) {
-        function() tempest_knowledge_argument(supplied_knowledge)
-      } else {
-        NULL
+      .admit_knowledge = function() {
+        tempest_knowledge_argument(supplied_knowledge)
       }
     )
   )
@@ -309,9 +307,6 @@ tempest_run_internal <- function(
       knowledge_selection
     )
   }
-  if (!is.null(.admit_knowledge)) {
-    .admit_knowledge()
-  }
   knowledge <- tempest_product_knowledge_view(
     program_set,
     knowledge_view
@@ -353,6 +348,10 @@ tempest_run_internal <- function(
       )
     )
   }
+  progress <- tempest_progress_callback(progress)
+  if (!is.null(.admit_knowledge)) {
+    .admit_knowledge()
+  }
   if (is.null(loaded_run)) {
     tempest_knowledge_insert_records(
       workspace,
@@ -361,7 +360,6 @@ tempest_run_internal <- function(
     )
   }
   store <- workspace
-  progress <- tempest_progress_callback(progress)
   progress_run_id <- if (!is.null(supplied_run_id)) {
     supplied_run_id
   } else if (!is.null(run_dir)) {

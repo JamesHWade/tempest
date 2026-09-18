@@ -66,7 +66,8 @@ part of the persistence or public API contract.
   program_set = NULL,
   knowledge_view = NULL,
   .restore_manifest = NULL,
-  .restore_token = NULL
+  .restore_token = NULL,
+  .admit_knowledge = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -92,6 +93,8 @@ requires it whenever \code{program_set} contains governed procedures.}
 Tempest's bundle-restoration seam.}
       \item{\code{.restore_token}}{Internal authorization token for bundle
 restoration.}
+      \item{\code{.admit_knowledge}}{Internal callback for fresh knowledge admission
+after constructor inputs are validated.}
     }
     \if{html}{\out{</div>}}
   }

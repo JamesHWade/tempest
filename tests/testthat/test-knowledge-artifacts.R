@@ -801,3 +801,118 @@ test_that("Co-STORM resume cannot introduce a new artifact selection", {
   )
   expect_identical(checks, 0L)
 })
+
+test_that("STORM validates run inputs before invoking artifact admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  workspace <- tempest_research_workspace()
+  retriever <- tempest_retriever(config = config, workspace = workspace)
+  other_config <- tempest_config(
+    chat_fn = function(...) fake_chat(),
+    max_active_experts = 2L
+  )
+  mismatched <- tempest_retriever(config = other_config, workspace = workspace)
+  before <- tempest_research_workspace_snapshot(workspace)
+  args <- list(
+    topic = "Artifact briefing",
+    config = config,
+    retriever = retriever,
+    knowledge = knowledge,
+    n_experts = 1L,
+    steps = "perspectives",
+    verbose = FALSE
+  )
+  for (invalid in list(
+    list(topic = ""),
+    list(config = list()),
+    list(resume = NA),
+    list(n_experts = 0L),
+    list(max_rounds = 0L),
+    list(progress = 1),
+    list(retriever = list()),
+    list(retriever = mismatched),
+    list(retriever = mismatched, resume = TRUE)
+  )) {
+    supplied <- args
+    supplied[names(invalid)] <- invalid
+    expect_error(
+      do.call(tempest_run, supplied),
+      names(invalid)[[1L]],
+      class = "tempest_error"
+    )
+  }
+  expect_identical(checks, 0L)
+  expect_error(
+    do.call(tempest_run, args),
+    "revoked",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 1L)
+  expect_identical(tempest_research_workspace_snapshot(workspace), before)
+  expect_identical(tempest_research_workspace_mutation_state(workspace), "open")
+})
+
+test_that("Co-STORM validates session inputs before invoking artifact admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  workspace <- tempest_research_workspace()
+  retriever <- tempest_retriever(config = config, workspace = workspace)
+  mismatched <- tempest_retriever(
+    config = tempest_config(
+      chat_fn = function(...) fake_chat(),
+      max_active_experts = 2L
+    ),
+    workspace = workspace
+  )
+  before <- tempest_research_workspace_snapshot(workspace)
+  args <- list(
+    topic = "Artifact briefing",
+    config = config,
+    retriever = retriever,
+    knowledge = knowledge,
+    n_experts = 1L
+  )
+  for (invalid in list(
+    list(topic = ""),
+    list(config = list()),
+    list(n_experts = 0L),
+    list(experts = list("invalid")),
+    list(session_id = ""),
+    list(progress = 1),
+    list(retriever = list()),
+    list(retriever = mismatched)
+  )) {
+    supplied <- args
+    supplied[names(invalid)] <- invalid
+    expect_error(
+      do.call(tempest_session, supplied),
+      names(invalid)[[1L]],
+      class = "tempest_error"
+    )
+  }
+  expect_identical(checks, 0L)
+  expect_error(
+    do.call(tempest_session, args),
+    "revoked",
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(checks, 1L)
+  expect_identical(tempest_research_workspace_snapshot(workspace), before)
+  expect_identical(tempest_research_workspace_mutation_state(workspace), "open")
+})

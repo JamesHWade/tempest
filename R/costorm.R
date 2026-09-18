@@ -792,6 +792,8 @@ TempestSession <- R6::R6Class(
     #'   Co-STORM stage.
     #' @param knowledge_view Optional immutable Graft view. A fresh session
     #'   requires it whenever `program_set` contains governed procedures.
+    #' @param .admit_knowledge Internal callback for fresh knowledge admission
+    #'   after constructor inputs are validated.
     #' @param .restore_manifest Internal research manifest supplied only by
     #'   Tempest's bundle-restoration seam.
     #' @param .restore_token Internal authorization token for bundle
@@ -807,7 +809,8 @@ TempestSession <- R6::R6Class(
       program_set = NULL,
       knowledge_view = NULL,
       .restore_manifest = NULL,
-      .restore_token = NULL
+      .restore_token = NULL,
+      .admit_knowledge = NULL
     ) {
       tempest_require("ellmer", "TempestSession requires ellmer.")
       restoring <- identical(.restore_token, tempest_costorm_restore_token)
@@ -855,6 +858,14 @@ TempestSession <- R6::R6Class(
               "Expert request exceeds the configured budget.",
               x = "Requested {n_experts}; maximum is {config@max_active_experts}."
             )
+          )
+        }
+      }
+      if (!is.null(experts)) {
+        experts <- tempest_validate_experts(experts)
+        if (length(experts) > config@max_active_experts) {
+          tempest_config_abort(
+            "{.arg experts} exceeds {.arg max_active_experts}."
           )
         }
       }
@@ -924,6 +935,9 @@ TempestSession <- R6::R6Class(
         private$workspace_value,
         restoring = restoring
       )
+      if (!is.null(.admit_knowledge)) {
+        .admit_knowledge()
+      }
       private$manifest_value <- if (is.null(manifest)) {
         tempest_research_manifest(
           research_run_id = session_id,
@@ -1000,7 +1014,7 @@ TempestSession <- R6::R6Class(
           }
         )
       } else {
-        private$experts_value <- tempest_validate_experts(experts)
+        private$experts_value <- experts
       }
       if (length(self$experts) > config@max_active_experts) {
         tempest_config_abort(
@@ -2657,7 +2671,8 @@ tempest_session <- function(
   session_id = NULL,
   knowledge = NULL
 ) {
-  knowledge <- tempest_knowledge_argument(knowledge)
+  supplied_knowledge <- knowledge
+  knowledge <- tempest_knowledge_argument(knowledge, admit = FALSE)
   session <- tempest_session_new(
     topic = topic,
     config = config,
@@ -2667,7 +2682,10 @@ tempest_session <- function(
     progress = progress,
     session_id = session_id,
     program_set = knowledge$program_set,
-    knowledge_view = knowledge$view
+    knowledge_view = knowledge$view,
+    .admit_knowledge = function() {
+      tempest_knowledge_argument(supplied_knowledge)
+    }
   )
   tempest_knowledge_insert_records(
     tempest_session_workspace(session),
@@ -2686,7 +2704,8 @@ tempest_session_new <- function(
   progress = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge_view = NULL,
+  .admit_knowledge = NULL
 ) {
   TempestSession$new(
     topic = topic,
@@ -2697,7 +2716,8 @@ tempest_session_new <- function(
     progress = progress,
     session_id = session_id,
     program_set = program_set,
-    knowledge_view = knowledge_view
+    knowledge_view = knowledge_view,
+    .admit_knowledge = .admit_knowledge
   )
 }
 
