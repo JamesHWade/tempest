@@ -546,6 +546,7 @@ tempest_costorm_manifest_validate <- function(
       "{.arg manifest} must record the complete Tempest ProgramSet."
     )
   }
+  tempest_research_artifact_basis_validate(manifest, workspace)
   snapshot <- manifest@knowledge_snapshot
   snapshot_id <- snapshot$snapshot_id %||% NULL
   if (length(snapshot) > 0L && is.null(snapshot_id)) {
@@ -794,6 +795,8 @@ TempestSession <- R6::R6Class(
     #'   requires it whenever `program_set` contains governed procedures.
     #' @param .admit_knowledge Internal callback receiving the validated
     #'   workspace for fresh knowledge admission.
+    #' @param .artifact_selection Internal selection retained in a fresh manifest
+    #'   before accepted records are inserted after successful construction.
     #' @param .restore_manifest Internal research manifest supplied only by
     #'   Tempest's bundle-restoration seam.
     #' @param .restore_token Internal authorization token for bundle
@@ -810,7 +813,8 @@ TempestSession <- R6::R6Class(
       knowledge_view = NULL,
       .restore_manifest = NULL,
       .restore_token = NULL,
-      .admit_knowledge = NULL
+      .admit_knowledge = NULL,
+      .artifact_selection = NULL
     ) {
       tempest_require("ellmer", "TempestSession requires ellmer.")
       restoring <- identical(.restore_token, tempest_costorm_restore_token)
@@ -944,6 +948,8 @@ TempestSession <- R6::R6Class(
           mode = "costorm",
           config = config,
           programs = program_references,
+          artifact_selection = .artifact_selection %||%
+            private$workspace_value$artifact_selection,
           knowledge_snapshot = tempest_costorm_manifest_snapshot_reference(
             private$workspace_value
           ),
@@ -2683,6 +2689,7 @@ tempest_session <- function(
     session_id = session_id,
     program_set = knowledge$program_set,
     knowledge_view = knowledge$view,
+    .artifact_selection = knowledge$artifact_selection,
     .admit_knowledge = function(workspace) {
       tempest_knowledge_workspace_preflight(
         workspace,
@@ -2709,7 +2716,8 @@ tempest_session_new <- function(
   session_id = NULL,
   program_set = NULL,
   knowledge_view = NULL,
-  .admit_knowledge = NULL
+  .admit_knowledge = NULL,
+  .artifact_selection = NULL
 ) {
   TempestSession$new(
     topic = topic,
@@ -2721,7 +2729,8 @@ tempest_session_new <- function(
     session_id = session_id,
     program_set = program_set,
     knowledge_view = knowledge_view,
-    .admit_knowledge = .admit_knowledge
+    .admit_knowledge = .admit_knowledge,
+    .artifact_selection = .artifact_selection
   )
 }
 

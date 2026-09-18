@@ -2,12 +2,12 @@
   "schema_version": 1,
   "bundle_type": "tempest_promotion",
   "status": "complete",
-  "bundle_id": "sha256:b19dedc6127d20c515af3bcb9bae9c960bb04cf4a05af5ffafa259f7acf8c43d",
+  "bundle_id": "sha256:00e1323021683893220b0b919ce019933449d97d01a0da1e0ece858964cb1c86",
   "files": [
     "bundle.json"
   ],
   "checksums": {
-    "bundle.json": "7173cd1c4d5eee6e1ab3aa8b4e6ef352f5683b067e5c7902b30428bbd2cc8eae"
+    "bundle.json": "be78998fe0b8c67021d860711eaed8655bb3fdf548542de518f6b3fbd1e559a5"
   },
-  "manifest_digest": "sha256:319685859d1705c8ad52d499ba47f8423651d6f389098cecdf2ea5ea32bd1487"
+  "manifest_digest": "sha256:150e53f584cdd5ea6342d599ad8be96f9c727963b91b53a64e06917c4fd7ab19"
 }

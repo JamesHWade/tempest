@@ -183,3 +183,45 @@ test_that("current STORM state readers require core sidecars", {
     )
   }
 })
+
+test_that("STORM restore classifies a detached artifact basis before admission", {
+  fixture <- storm_product_fixture()
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  output <- withr::local_tempdir()
+  result <- tempest_run(
+    "Progress events",
+    config = fixture$config,
+    experts = list(test_expert()),
+    knowledge = knowledge,
+    steps = "perspectives",
+    output_dir = output,
+    verbose = FALSE
+  )
+  path <- file.path(result@output_dir, "run_config.json")
+  metadata <- tempest_product_read_json(path)
+  metadata$research_manifest$artifact_selection <- list()
+  tempest_product_write_json(path, metadata)
+  admissions <- 0L
+  knowledge@admission <- function() {
+    admissions <<- admissions + 1L
+    knowledge
+  }
+  expect_error(
+    tempest_run(
+      "Progress events",
+      config = fixture$config,
+      experts = list(test_expert()),
+      knowledge = knowledge,
+      steps = "perspectives",
+      output_dir = output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "artifact input basis is invalid",
+    class = "tempest_run_restore_error"
+  )
+  expect_identical(admissions, 0L)
+})

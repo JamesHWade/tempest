@@ -141,6 +141,7 @@ tempest_product_authority_validate <- function(
       "Product authority requires a ResearchWorkspace."
     )
   }
+  tempest_research_artifact_basis_validate(manifest, workspace)
   stage_records <- tryCatch(
     tempest_stage_records_validate(stage_records, allow_running = FALSE),
     error = function(error) {

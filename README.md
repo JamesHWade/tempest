@@ -166,8 +166,8 @@ receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
 ```
 
 The packaged schema was compiled for Graft consumer contract `0.2.0`. Runtime
-loading accepts contracts `>= 0.2.0` and `< 2.0.0` with store format `3.1.0`,
-covering the tested 0.x and 1.x major lines. The 1.0 data-dict manifest cutoff
+loading accepts contracts `>= 0.2.0` and `< 3.0.0` with store format `3.1.0`,
+covering the tested 0.x, 1.x and 2.x major lines. The 1.0 data-dict manifest cutoff
 does not affect Tempest's pinned LinkML schema. Required exports, store format
 and the schema's exact immutable build digest remain independently checked.
 Future minors follow Graft's additive contract policy; the range does not claim
@@ -232,7 +232,7 @@ closed.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 6,
 Co-STORM snapshot and bundle schema 12, STORM bundle schema 9 with state schema
-5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest
+5, ProgramSet schema 2, research-manifest schema 4, StageRecord output-digest
 payload schema 3, and promotion-bundle schema 1. Readers reject every other
 version; missing fields, extra fields, and values that only become valid after
 coercion are errors.

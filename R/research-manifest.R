@@ -216,6 +216,7 @@ tempest_research_manifest_record_fields <- function() {
     "config_digest",
     "programs",
     "knowledge_snapshot",
+    "artifact_selection",
     "runtime",
     "traces",
     "deliverables",
@@ -980,11 +981,24 @@ tempest_research_manifest_deliverables <- function(value) {
   )
 }
 
+tempest_research_manifest_artifact_selection <- function(value) {
+  tryCatch(
+    tempest_artifact_selection(value, allow_empty = TRUE),
+    error = function(error) {
+      tempest_research_manifest_abort(
+        "The research artifact selection is invalid.",
+        parent = error
+      )
+    }
+  )
+}
+
 tempest_research_manifest_field <- function(value, field) {
   switch(
     field,
     programs = tempest_research_manifest_programs(value),
     knowledge_snapshot = tempest_research_manifest_knowledge_snapshot(value),
+    artifact_selection = tempest_research_manifest_artifact_selection(value),
     runtime = tempest_research_manifest_runtime(value),
     traces = tempest_research_manifest_traces(value),
     deliverables = tempest_research_manifest_deliverables(value),
@@ -1146,8 +1160,8 @@ tempest_research_manifest_prop_enum <- function(choices) {
 }
 
 tempest_research_manifest_s7_validator <- function(self) {
-  if (!identical(self@schema_version, 3L)) {
-    return("schema_version must be the supported version 3")
+  if (!identical(self@schema_version, 4L)) {
+    return("schema_version must be the supported version 4")
   }
   if (!grepl("^sha256:[a-f0-9]{64}$", self@config_digest)) {
     return("config_digest must be a SHA-256 identifier")
@@ -1155,6 +1169,7 @@ tempest_research_manifest_s7_validator <- function(self) {
   for (field in c(
     "programs",
     "knowledge_snapshot",
+    "artifact_selection",
     "runtime",
     "traces",
     "deliverables"
@@ -1186,12 +1201,13 @@ tempest_research_manifest_s7_validator <- function(self) {
 TempestResearchManifest <- S7::new_class(
   "TempestResearchManifest",
   properties = list(
-    schema_version = S7::new_property(S7::class_integer, default = 3L),
+    schema_version = S7::new_property(S7::class_integer, default = 4L),
     research_run_id = tempest_research_manifest_prop_string(),
     mode = tempest_research_manifest_prop_enum(c("storm", "costorm")),
     config_digest = tempest_research_manifest_prop_string(),
     programs = S7::new_property(S7::class_list, default = list()),
     knowledge_snapshot = S7::new_property(S7::class_list, default = list()),
+    artifact_selection = S7::new_property(S7::class_list, default = list()),
     runtime = S7::new_property(S7::class_list, default = list()),
     traces = S7::new_property(S7::class_list, default = list()),
     deliverables = S7::new_property(S7::class_list, default = list()),
@@ -1221,6 +1237,8 @@ TempestResearchManifest <- S7::new_class(
 #'   only when `config` is unavailable during restoration.
 #' @param programs Named references to exact scientific programs.
 #' @param knowledge_snapshot Reference to a pinned accepted-knowledge snapshot.
+#' @param artifact_selection Exact retained artifact evidence selection. This is
+#'   input provenance, not current permission or execution authority.
 #' @param runtime Opaque Deputy session and run references.
 #' @param traces References to Deputy or dsprrr traces.
 #' @param deliverables References to product deliverables.
@@ -1235,6 +1253,7 @@ tempest_research_manifest <- function(
   config_digest = NULL,
   programs = list(),
   knowledge_snapshot = list(),
+  artifact_selection = list(),
   runtime = list(
     deputy_session_ids = character(),
     deputy_run_ids = character()
@@ -1285,13 +1304,16 @@ tempest_research_manifest <- function(
   config_digest <- computed_digest %||% config_digest
 
   TempestResearchManifest(
-    schema_version = 3L,
+    schema_version = 4L,
     research_run_id = research_run_id,
     mode = mode,
     config_digest = config_digest,
     programs = tempest_research_manifest_programs(programs),
     knowledge_snapshot = tempest_research_manifest_knowledge_snapshot(
       knowledge_snapshot
+    ),
+    artifact_selection = tempest_research_manifest_artifact_selection(
+      artifact_selection
     ),
     runtime = tempest_research_manifest_runtime(runtime),
     traces = tempest_research_manifest_traces(traces),
@@ -1324,7 +1346,7 @@ tempest_research_manifest_from_record <- function(record) {
   if (!identical(record_names, fields)) {
     tempest_research_manifest_abort(
       paste0(
-        "{.arg record} must contain exactly the schema version 3 manifest ",
+        "{.arg record} must contain exactly the schema version 4 manifest ",
         "fields in writer order."
       )
     )
@@ -1332,6 +1354,7 @@ tempest_research_manifest_from_record <- function(record) {
   required_records <- c(
     "programs",
     "knowledge_snapshot",
+    "artifact_selection",
     "runtime",
     "traces",
     "deliverables"
@@ -1348,9 +1371,9 @@ tempest_research_manifest_from_record <- function(record) {
       )
     )
   }
-  if (!tempest_exact_integer_scalar_valid(record$schema_version, 3L, 3L)) {
+  if (!tempest_exact_integer_scalar_valid(record$schema_version, 4L, 4L)) {
     tempest_research_manifest_abort(
-      "Research manifest records must use exact supported version `3`."
+      "Research manifest records must use exact supported version `4`."
     )
   }
   record$runtime <- tempest_research_manifest_runtime_record(record$runtime)
@@ -1360,6 +1383,7 @@ tempest_research_manifest_from_record <- function(record) {
     config_digest = record$config_digest,
     programs = record$programs,
     knowledge_snapshot = record$knowledge_snapshot,
+    artifact_selection = record$artifact_selection,
     runtime = record$runtime,
     traces = record$traces,
     deliverables = record$deliverables,
@@ -1397,6 +1421,7 @@ tempest_research_manifest_update <- function(
     config_digest = manifest@config_digest,
     programs = manifest@programs,
     knowledge_snapshot = manifest@knowledge_snapshot,
+    artifact_selection = manifest@artifact_selection,
     runtime = runtime %||% manifest@runtime,
     traces = traces %||% manifest@traces,
     deliverables = deliverables %||% manifest@deliverables,

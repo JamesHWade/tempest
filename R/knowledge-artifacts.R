@@ -312,3 +312,17 @@ tempest_artifact_selection_validate <- function(selection, resources) {
   }
   invisible(NULL)
 }
+
+# Bind the durable research identity to its exact accepted input description.
+tempest_research_artifact_basis_validate <- function(manifest, workspace) {
+  if (!identical(manifest@artifact_selection, workspace$artifact_selection)) {
+    tempest_knowledge_abort(
+      "The research manifest artifact selection differs from its workspace."
+    )
+  }
+  tempest_artifact_selection_validate(
+    manifest@artifact_selection,
+    workspace$list_retrieved_resources()
+  )
+  invisible(NULL)
+}

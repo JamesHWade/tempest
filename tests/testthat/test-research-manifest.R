@@ -6,7 +6,7 @@ test_that("research manifests validate schema and lifecycle enums", {
   )
 
   expect_identical(S7::S7_inherits(manifest, TempestResearchManifest), TRUE)
-  expect_identical(manifest@schema_version, 3L)
+  expect_identical(manifest@schema_version, 4L)
   expect_identical(manifest@research_run_id, "research-123")
   expect_identical(manifest@mode, "storm")
   expect_identical(manifest@status, "running")
@@ -90,6 +90,7 @@ test_that("research manifest records survive canonical JSON without drift", {
       "config_digest",
       "programs",
       "knowledge_snapshot",
+      "artifact_selection",
       "runtime",
       "traces",
       "deliverables",
@@ -127,22 +128,23 @@ test_that("research manifest readers require exact current records", {
   ))
 
   whole_double_schema <- record
-  whole_double_schema$schema_version <- 3
+  whole_double_schema$schema_version <- 4
   expect_error(
     tempest_research_manifest_from_record(whole_double_schema),
     class = "tempest_research_manifest_error"
   )
   prior_schema <- record
-  prior_schema$schema_version <- 2L
+  prior_schema$schema_version <- 3L
   expect_error(
     tempest_research_manifest_from_record(prior_schema),
     class = "tempest_research_manifest_error",
-    regexp = "supported version.*3"
+    regexp = "supported version.*4"
   )
 
   for (field in c(
     "programs",
     "knowledge_snapshot",
+    "artifact_selection",
     "runtime",
     "traces",
     "deliverables"
@@ -1012,5 +1014,80 @@ test_that("execution path and support status are independent dimensions", {
     tempest_research_provenance_record("grounded", "supported"),
     class = "tempest_research_manifest_error",
     regexp = "support_status"
+  )
+})
+
+test_that("research manifests retain exact artifact input provenance", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  workspace <- tempest_research_workspace()
+  tempest_knowledge_insert_records(
+    workspace,
+    knowledge@records,
+    knowledge@artifact_selection
+  )
+  manifest <- tempest_research_manifest(
+    "artifact-basis",
+    config = tempest_config(),
+    artifact_selection = knowledge@artifact_selection
+  )
+  record <- tempest_research_manifest_record(manifest)
+  restored <- tempest_research_manifest_from_record(jsonlite::fromJSON(
+    tempest_research_manifest_canonical_json(record),
+    simplifyVector = FALSE
+  ))
+  expect_identical(restored@artifact_selection, knowledge@artifact_selection)
+  expect_identical(
+    tempest_research_manifest_update(
+      manifest,
+      status = "succeeded"
+    )@artifact_selection,
+    knowledge@artifact_selection
+  )
+  expect_no_error(tempest_research_artifact_basis_validate(manifest, workspace))
+  detached <- record
+  detached$artifact_selection <- list()
+  detached <- tempest_research_manifest_from_record(detached)
+  expect_error(
+    tempest_product_authority_validate(detached, list(), workspace),
+    "artifact selection differs",
+    class = "tempest_knowledge_error"
+  )
+  malformed <- record
+  malformed$artifact_selection$records <- malformed$artifact_selection$records[
+    -2L
+  ]
+  expect_error(
+    tempest_research_manifest_from_record(malformed),
+    "artifact selection is invalid",
+    class = "tempest_research_manifest_error"
+  )
+})
+
+test_that("Co-STORM binds artifact input to its manifest before persistence", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  fixture <- storm_product_fixture()
+  session <- tempest_session(
+    "Artifact basis",
+    config = fixture$config,
+    experts = list(test_expert()),
+    knowledge = knowledge
+  )
+  manifest <- tempest_session_manifest(session)
+  expect_identical(manifest@artifact_selection, knowledge@artifact_selection)
+  snapshot <- tempest_session_snapshot(session)
+  snapshot$research_manifest$artifact_selection <- list()
+  expect_error(
+    tempest_session_restore(
+      snapshot,
+      config = fixture$config,
+      knowledge = knowledge
+    ),
+    class = "tempest_session_restore_error"
   )
 })
