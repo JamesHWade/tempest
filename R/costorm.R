@@ -546,6 +546,7 @@ tempest_costorm_manifest_validate <- function(
       "{.arg manifest} must record the complete Tempest ProgramSet."
     )
   }
+  tempest_research_artifact_basis_validate(manifest, workspace)
   snapshot <- manifest@knowledge_snapshot
   snapshot_id <- snapshot$snapshot_id %||% NULL
   if (length(snapshot) > 0L && is.null(snapshot_id)) {
@@ -944,6 +945,7 @@ TempestSession <- R6::R6Class(
           mode = "costorm",
           config = config,
           programs = program_references,
+          artifact_selection = private$workspace_value$artifact_selection,
           knowledge_snapshot = tempest_costorm_manifest_snapshot_reference(
             private$workspace_value
           ),
@@ -2689,12 +2691,12 @@ tempest_session <- function(
         knowledge$artifact_selection
       )
       tempest_knowledge_argument(supplied_knowledge)
+      tempest_knowledge_insert_records(
+        workspace,
+        knowledge$records,
+        knowledge$artifact_selection
+      )
     }
-  )
-  tempest_knowledge_insert_records(
-    tempest_session_workspace(session),
-    knowledge$records,
-    knowledge$artifact_selection
   )
   session
 }

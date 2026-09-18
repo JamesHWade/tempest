@@ -388,6 +388,7 @@ tempest_run_internal <- function(
     config = config,
     programs = program_references,
     knowledge_snapshot = tempest_storm_snapshot_reference(workspace),
+    artifact_selection = workspace$artifact_selection,
     runtime = list(
       deputy_session_ids = character(),
       deputy_run_ids = character()

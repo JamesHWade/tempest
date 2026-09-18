@@ -1266,6 +1266,7 @@ tempest_storm_restore_manifest <- function(
       )
     }
   )
+  tempest_research_artifact_basis_validate(manifest, workspace)
   tempest_storm_program_set_validate(
     program_set,
     manifest,

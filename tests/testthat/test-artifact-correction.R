@@ -71,6 +71,10 @@ test_that("contradictory research executes and preserves the prior evidence", {
     correction@workspace$artifact_selection,
     knowledge@artifact_selection
   )
+  expect_identical(
+    correction@manifest@artifact_selection,
+    knowledge@artifact_selection
+  )
   corrected_selection <- tempest_publish_artifact_research(correction, store)
   proposed <- tempest_read_artifact_research(store, corrected_selection)
   expect_identical(
@@ -85,6 +89,10 @@ test_that("contradictory research executes and preserves the prior evidence", {
     proposed$contents[[paste0("Source:", next_day$source@resource_id)]],
     next_day$source@content,
     fixed = TRUE
+  )
+  expect_identical(
+    proposed$bundle@research_manifest$artifact_selection,
+    knowledge@artifact_selection
   )
   reviewed <- accept("correction", accepted$id, corrected_selection)
   expect_identical(identical(reviewed$selection, accepted$selection), FALSE)

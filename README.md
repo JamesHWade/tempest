@@ -232,7 +232,7 @@ closed.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 6,
 Co-STORM snapshot and bundle schema 12, STORM bundle schema 9 with state schema
-5, ProgramSet schema 2, research-manifest schema 3, StageRecord output-digest
+5, ProgramSet schema 2, research-manifest schema 4, StageRecord output-digest
 payload schema 3, and promotion-bundle schema 1. Readers reject every other
 version; missing fields, extra fields, and values that only become valid after
 coercion are errors.
