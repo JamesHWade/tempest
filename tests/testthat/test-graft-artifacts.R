@@ -40,6 +40,15 @@ test_that("completed research retains exact report, proof and source contents", 
     knowledge@artifact_selection$provenance$graft_decision,
     tempest_product_canonical_value(accepted)
   )
+  detached <- tempest_artifact_knowledge(
+    knowledge@artifact_selection,
+    retained$contents
+  )
+  expect_error(
+    tempest_knowledge_argument(detached),
+    "current admission",
+    class = "tempest_knowledge_error"
+  )
   expect_identical(knowledge@governed_procedures, list())
   expect_length(knowledge@records, length(retained$records))
   session <- tempest_session(
@@ -61,6 +70,13 @@ test_that("completed research retains exact report, proof and source contents", 
     knowledge = knowledge
   )
   expect_identical(tempest_sources(resumed), tempest_sources(session))
+  workspace <- tempest_research_workspace()
+  tempest_knowledge_insert_records(
+    workspace,
+    knowledge@records,
+    knowledge@artifact_selection
+  )
+  retriever <- tempest_retriever(config = fixture$config, workspace = workspace)
   withdrawal <- graft::graft_artifact_decide(
     store,
     "topic",
@@ -85,6 +101,28 @@ test_that("completed research retains exact report, proof and source contents", 
     ),
     "current acceptance",
     class = "graft_artifact_error"
+  )
+  expect_error(
+    tempest_session(
+      "Briefing",
+      config = fixture$config,
+      experts = list(test_expert()),
+      retriever = retriever
+    ),
+    "pinned artifact selection",
+    class = "tempest_knowledge_error"
+  )
+  expect_error(
+    tempest_run(
+      "Briefing",
+      config = fixture$config,
+      experts = list(test_expert()),
+      retriever = retriever,
+      steps = "perspectives",
+      verbose = FALSE
+    ),
+    "pinned artifact selection",
+    class = "tempest_knowledge_error"
   )
   expect_identical(
     tempest_read_artifact_research(store, selection)$report_md,

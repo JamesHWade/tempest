@@ -374,6 +374,14 @@ tempest_knowledge_argument <- function(knowledge, arg = "knowledge") {
       class = "tempest_input_error"
     )
   }
+  if (
+    !is.null(knowledge@artifact_selection$provenance$graft_decision) &&
+      !is.function(knowledge@admission)
+  ) {
+    tempest_knowledge_abort(
+      "Graft decision knowledge requires current admission through tempest_reuse_artifact_research()."
+    )
+  }
   if (!is.null(knowledge@admission)) {
     current <- knowledge@admission()
     if (!identical(current@artifact_selection, knowledge@artifact_selection)) {
@@ -405,9 +413,6 @@ tempest_knowledge_insert_records <- function(
   selection = list()
 ) {
   tempest_artifact_selection_validate(selection, records)
-  if (length(records) == 0L) {
-    return(invisible(workspace))
-  }
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_knowledge_abort(
       "Accepted knowledge records require a ResearchWorkspace."
@@ -420,6 +425,9 @@ tempest_knowledge_insert_records <- function(
     tempest_knowledge_abort(
       "A workspace cannot change its pinned artifact selection."
     )
+  }
+  if (length(records) == 0L) {
+    return(invisible(workspace))
   }
   for (record in records) {
     workspace$upsert_retrieved_resource(record)

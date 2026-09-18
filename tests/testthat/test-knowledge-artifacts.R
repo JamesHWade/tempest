@@ -125,6 +125,35 @@ test_that("both public research constructors admit the artifact selection", {
     knowledge@artifact_selection
   )
   expect_length(result@workspace$list_retrieved_resources(), 2L)
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      steps = "perspectives",
+      output_dir = output,
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    "fresh admission",
+    class = "tempest_knowledge_error"
+  )
+  expect_error(
+    tempest_run(
+      "Artifact briefing",
+      config = config,
+      experts = list(test_expert()),
+      steps = "perspectives",
+      output_dir = output,
+      knowledge = do.call(
+        tempest_artifact_knowledge,
+        test_artifact_knowledge_input("A corrected claim", "v2")
+      ),
+      resume = TRUE,
+      verbose = FALSE
+    ),
+    class = "tempest_error"
+  )
   resumed <- tempest_run(
     "Artifact briefing",
     config = config,
