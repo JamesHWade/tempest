@@ -276,7 +276,7 @@ and workflow settings stable when continuing an existing run.
 
 Current readers accept only `ResearchWorkspace` snapshot schema 6,
 Co-STORM snapshot and bundle schema 12, STORM bundle schema 9 with state
-schema 5, ProgramSet schema 2, research-manifest schema 3, StageRecord
+schema 5, ProgramSet schema 2, research-manifest schema 4, StageRecord
 output-digest payload schema 3, and promotion-bundle schema 1. Every
 other version is rejected, as is any missing or extra field or value
 that becomes valid only after coercion. Shared envelope primitives,

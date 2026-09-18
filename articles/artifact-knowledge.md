@@ -178,6 +178,51 @@ supplied workspace against the saved evidence and required mutation
 state before invoking admission; restoration occurs only after admission
 succeeds.
 
+## Researching a correction
+
+The offline correction proof executes two complete STORM runs with
+scripted chats and synthetic local sources. The second run receives the
+exact accepted selection, processes contradictory evidence, and produces
+an observation rather than a no-change result.
+
+Publishing the correction makes a proposal available for review. The
+host must explicitly accept it before it replaces the current decision.
+The original report, source contents, spans, and supports remain
+readable, including supports absent from the correction. A fresh process
+reopens both the historical selection and the new accepted selection.
+Retrying the original acceptance cannot restore it as the current
+decision.
+
+Run this proof from a package checkout:
+
+``` r
+
+# Scripted chats; no model or network access required.
+devtools::test(filter = "^artifact-correction$")
+```
+
+This verifies execution and revision behavior. Scientific correctness
+and production access policy still require application-specific
+evaluation.
+
+## Retaining the input basis
+
+Every new STORM and Co-STORM research manifest retains the exact
+artifact selection supplied to the run, including record revisions,
+content digests, dependencies, purpose, and host provenance. The
+manifest must match the workspace when research is saved, restored, or
+published. A correction therefore records which accepted evidence it
+consulted even after the current decision changes.
+
+The manifest contains references, not a second copy of every input
+artifact. Keep the referenced selection and its contents in the artifact
+store. Reading those references does not grant current reuse permission
+or program execution authority. New execution still requires current
+admission.
+
+Research manifests use schema 4. Earlier preproduction manifests must be
+regenerated; no compatibility conversion is provided.
+
 ## Scope and current formats
 
 The input is bounded to 1,000 records, 1 MiB of selection metadata, and

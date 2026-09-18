@@ -80,7 +80,8 @@ for the supported API.
       knowledge_view = NULL,
       .restore_manifest = NULL,
       .restore_token = NULL,
-      .admit_knowledge = NULL
+      .admit_knowledge = NULL,
+      .artifact_selection = NULL
     )
 
 #### Arguments
@@ -143,6 +144,11 @@ for the supported API.
 
   Internal callback receiving the validated workspace for fresh
   knowledge admission.
+
+- `.artifact_selection`:
+
+  Internal selection retained in a fresh manifest before accepted
+  records are inserted after successful construction.
 
 ------------------------------------------------------------------------
 

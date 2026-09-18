@@ -16,6 +16,7 @@ tempest_research_manifest(
   config_digest = NULL,
   programs = list(),
   knowledge_snapshot = list(),
+  artifact_selection = list(),
   runtime = list(deputy_session_ids = character(), deputy_run_ids = character()),
   traces = list(),
   deliverables = list(),
@@ -50,6 +51,11 @@ tempest_research_manifest(
 - knowledge_snapshot:
 
   Reference to a pinned accepted-knowledge snapshot.
+
+- artifact_selection:
+
+  Exact retained artifact evidence selection. This is input provenance,
+  not current permission or execution authority.
 
 - runtime:
 

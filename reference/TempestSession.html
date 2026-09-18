@@ -115,7 +115,8 @@ part of the persistence or public API contract.</p>
 <span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .restore_manifest <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .restore_token <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  .admit_knowledge <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  .admit_knowledge <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  .artifact_selection <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
@@ -163,6 +164,10 @@ restoration.</p></dd>
       <dt><code>.admit_knowledge</code></dt>
 <dd><p>Internal callback receiving the validated
 workspace for fresh knowledge admission.</p></dd>
+
+      <dt><code>.artifact_selection</code></dt>
+<dd><p>Internal selection retained in a fresh manifest
+before accepted records are inserted after successful construction.</p></dd>
 
 
 </dl><p></p></div>
