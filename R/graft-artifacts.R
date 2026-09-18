@@ -303,7 +303,16 @@ tempest_artifact_research_records <- function(bundle) {
         },
         character(1)
       )
-      content <- tempest_knowledge_record_text(row, id)
+      content <- if (class == "Claim") {
+        as.character(jsonlite::toJSON(
+          row,
+          auto_unbox = TRUE,
+          null = "null",
+          digits = NA
+        ))
+      } else {
+        tempest_knowledge_record_text(row, id)
+      }
       if (class == "Source") {
         source <- Filter(
           function(resource) {

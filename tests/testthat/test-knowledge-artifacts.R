@@ -622,3 +622,36 @@ test_that("artifact selections canonicalize all JSON object members", {
   restored <- tempest_research_workspace_restore(snapshot)
   expect_identical(restored$artifact_selection, first@artifact_selection)
 })
+
+
+test_that("JSON claim inputs require explicit active status for no-change identity", {
+  for (status in list(NULL, FALSE, "superseded", "active")) {
+    input <- test_artifact_knowledge_input()
+    content <- as.character(jsonlite::toJSON(
+      list(statement_text = "The pilot recovered 82%.", status = status),
+      auto_unbox = TRUE,
+      null = "null"
+    ))
+    input$contents[[1L]] <- content
+    input$selection$records[[1L]]$sha256 <- digest::digest(
+      charToRaw(content),
+      algo = "sha256",
+      serialize = FALSE
+    )
+    knowledge <- do.call(tempest_artifact_knowledge, input)
+    workspace <- tempest_research_workspace()
+    tempest_knowledge_insert_records(
+      workspace,
+      knowledge@records,
+      knowledge@artifact_selection
+    )
+    expect_identical(
+      tempest_workspace_accepted_claim_keys(workspace),
+      if (identical(status, "active")) {
+        "the pilot recovered 82%"
+      } else {
+        character()
+      }
+    )
+  }
+})

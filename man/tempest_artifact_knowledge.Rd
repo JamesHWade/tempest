@@ -19,9 +19,11 @@ the host's evidence selection, not an inferred graph or authorization.}
 
 \item{contents}{Named list of retained text strings, keyed by \code{record_id},
 with exactly the selection's records and at most 1 MiB of UTF-8 text total.
-Claims use the same inert \code{statement_text: ...} and \code{status: ...} fields as
-the accepted research projection; active statements support no-change
-briefing detection. Content is never evaluated as code or instructions.}
+Claims may contain a JSON object with \code{statement_text} and \code{status} fields,
+preserving multiline statements exactly. Plain text claims use inert
+\code{statement_text: ...} and \code{status: ...} lines. Active statements support
+no-change briefing detection. Content is never evaluated as code or
+instructions.}
 }
 \value{
 A \code{TempestKnowledge} value for \code{\link[=tempest_run]{tempest_run()}} or \code{\link[=tempest_session]{tempest_session()}}.

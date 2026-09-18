@@ -142,6 +142,24 @@ tempest_artifact_resource <- function(selection, ref, content) {
       "Artifact {.val {ref$record_id}} content is missing or differs from its SHA-256 digest."
     )
   }
+  statement <- if (identical(ref$class, "Claim")) {
+    tryCatch(
+      jsonlite::fromJSON(content, simplifyVector = FALSE),
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+  statement_metadata <- if (
+    is.list(statement) &&
+      !anyDuplicated(names(statement)) &&
+      rlang::is_string(statement$status) &&
+      !is.na(statement$status)
+  ) {
+    tempest_knowledge_statement_metadata(ref$class, statement)
+  } else {
+    list()
+  }
   tempest_resource(
     resource_kind = "artifact.record",
     locator = paste0(
@@ -151,12 +169,15 @@ tempest_artifact_resource <- function(selection, ref, content) {
     title = paste(ref$class, ref$record_id),
     media_type = "text/plain",
     content = content,
-    metadata = list(
-      artifact_record_id = ref$record_id,
-      artifact_revision_id = ref$revision_id,
-      artifact_record_class = ref$class,
-      artifact_selection_id = selection$selection_id,
-      artifact_selection_digest = tempest_product_record_hash(selection)
+    metadata = c(
+      list(
+        artifact_record_id = ref$record_id,
+        artifact_revision_id = ref$revision_id,
+        artifact_record_class = ref$class,
+        artifact_selection_id = selection$selection_id,
+        artifact_selection_digest = tempest_product_record_hash(selection)
+      ),
+      statement_metadata
     )
   )
 }
@@ -181,9 +202,11 @@ tempest_artifact_resource <- function(selection, ref, content) {
 #'   the host's evidence selection, not an inferred graph or authorization.
 #' @param contents Named list of retained text strings, keyed by `record_id`,
 #'   with exactly the selection's records and at most 1 MiB of UTF-8 text total.
-#'   Claims use the same inert `statement_text: ...` and `status: ...` fields as
-#'   the accepted research projection; active statements support no-change
-#'   briefing detection. Content is never evaluated as code or instructions.
+#'   Claims may contain a JSON object with `statement_text` and `status` fields,
+#'   preserving multiline statements exactly. Plain text claims use inert
+#'   `statement_text: ...` and `status: ...` lines. Active statements support
+#'   no-change briefing detection. Content is never evaluated as code or
+#'   instructions.
 #' @return A `TempestKnowledge` value for [tempest_run()] or [tempest_session()].
 #'   The run retains the selection separately from any Graft snapshot. Its
 #'   computed input digest binds the input description; it does not authenticate

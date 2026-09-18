@@ -442,3 +442,56 @@ test_that("malformed resume snapshots retain the restoration condition", {
     class = "tempest_session_restore_error"
   )
 })
+
+
+test_that("multiline accepted claims retain their complete no-change identity", {
+  skip_if_not_installed("graft")
+  statement <- "The first line remains true.\nstatement_text: The second line remains true."
+  fixture <- test_promotion_storm_fixture(evidence_text = statement)
+  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  selection <- tempest_publish_artifact_research(fixture$research, store)
+  retained <- tempest_read_artifact_research(store, selection)
+  claim_id <- paste0(
+    "Claim:",
+    retained$bundle@records$Claim[[1L]]$tempest_claim_id
+  )
+  expect_identical(
+    jsonlite::fromJSON(retained$contents[[claim_id]], simplifyVector = FALSE),
+    retained$bundle@records$Claim[[1L]]
+  )
+  accepted <- graft::graft_artifact_decide(
+    store,
+    "topic",
+    "review",
+    expected = NULL,
+    selection = selection,
+    action = "accept",
+    actor = "host",
+    reason = "Reviewed",
+    purpose = "briefing"
+  )
+  knowledge <- tempest_reuse_artifact_research(
+    store,
+    "topic",
+    accepted$id,
+    "briefing",
+    eligible = function(event) TRUE
+  )
+  workspace <- tempest_research_workspace()
+  tempest_knowledge_insert_records(
+    workspace,
+    knowledge@records,
+    knowledge@artifact_selection
+  )
+  keys <- tempest_workspace_accepted_claim_keys(workspace)
+  expect_identical(keys, tempest_claim_text_key(statement))
+  expect_identical(
+    tempest_briefing_claim_disposition(statement, keys),
+    "duplicate"
+  )
+  expect_identical(
+    tempest_briefing_claim_disposition("The first line remains true.", keys),
+    "new"
+  )
+  tempest_knowledge_argument(knowledge)
+})
