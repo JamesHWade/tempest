@@ -89,7 +89,11 @@ test_that("schema runtime accepts verified Graft contracts and rejects other ran
     "0.5.0",
     "0.5.9",
     "0.6.0",
-    "0.6.9"
+    "0.6.9",
+    "0.7.0",
+    "0.7.9",
+    "0.8.0",
+    "0.8.9"
   )) {
     expect_identical(
       tempest_graft_pin_valid(list(contract = version)),
@@ -97,7 +101,7 @@ test_that("schema runtime accepts verified Graft contracts and rejects other ran
       info = version
     )
   }
-  for (version in c("0.1.9", "0.7.0", "1.0.0", "nope", "")) {
+  for (version in c("0.1.9", "0.9.0", "1.0.0", "nope", "")) {
     expect_identical(
       tempest_graft_pin_valid(list(contract = version)),
       FALSE,
