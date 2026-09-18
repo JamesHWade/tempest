@@ -916,3 +916,64 @@ test_that("Co-STORM validates session inputs before invoking artifact admission"
   expect_identical(tempest_research_workspace_snapshot(workspace), before)
   expect_identical(tempest_research_workspace_mutation_state(workspace), "open")
 })
+
+test_that("incompatible research workspaces fail before artifact admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  different <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input("A corrected claim", "v2")
+  )
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  for (mode in c("storm", "costorm")) {
+    for (state in c("different_selection", "sealed")) {
+      workspace <- tempest_research_workspace()
+      retriever <- tempest_retriever(config = config, workspace = workspace)
+      input <- if (state == "different_selection") different else knowledge
+      tempest_knowledge_insert_records(
+        workspace,
+        input@records,
+        input@artifact_selection
+      )
+      if (state == "sealed") {
+        tempest_research_workspace_seal(workspace)
+      }
+      before <- tempest_research_workspace_snapshot(workspace)
+      mutation_state <- tempest_research_workspace_mutation_state(workspace)
+      args <- list(
+        topic = "Artifact briefing",
+        config = config,
+        retriever = retriever,
+        knowledge = knowledge,
+        experts = list(test_expert())
+      )
+      if (mode == "storm") {
+        args$steps <- "perspectives"
+        args$verbose <- FALSE
+      }
+      run <- if (mode == "storm") tempest_run else tempest_session
+      expect_error(
+        do.call(run, args),
+        if (state == "different_selection") {
+          "pinned artifact selection"
+        } else {
+          "open workspace"
+        },
+        class = "tempest_knowledge_error"
+      )
+      expect_identical(checks, 0L)
+      expect_identical(tempest_research_workspace_snapshot(workspace), before)
+      expect_identical(
+        tempest_research_workspace_mutation_state(workspace),
+        mutation_state
+      )
+    }
+  }
+})

@@ -792,8 +792,8 @@ TempestSession <- R6::R6Class(
     #'   Co-STORM stage.
     #' @param knowledge_view Optional immutable Graft view. A fresh session
     #'   requires it whenever `program_set` contains governed procedures.
-    #' @param .admit_knowledge Internal callback for fresh knowledge admission
-    #'   after constructor inputs are validated.
+    #' @param .admit_knowledge Internal callback receiving the validated
+    #'   workspace for fresh knowledge admission.
     #' @param .restore_manifest Internal research manifest supplied only by
     #'   Tempest's bundle-restoration seam.
     #' @param .restore_token Internal authorization token for bundle
@@ -936,7 +936,7 @@ TempestSession <- R6::R6Class(
         restoring = restoring
       )
       if (!is.null(.admit_knowledge)) {
-        .admit_knowledge()
+        .admit_knowledge(private$workspace_value)
       }
       private$manifest_value <- if (is.null(manifest)) {
         tempest_research_manifest(
@@ -2683,7 +2683,11 @@ tempest_session <- function(
     session_id = session_id,
     program_set = knowledge$program_set,
     knowledge_view = knowledge$view,
-    .admit_knowledge = function() {
+    .admit_knowledge = function(workspace) {
+      tempest_knowledge_workspace_preflight(
+        workspace,
+        knowledge$artifact_selection
+      )
       tempest_knowledge_argument(supplied_knowledge)
     }
   )

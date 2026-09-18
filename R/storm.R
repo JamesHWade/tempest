@@ -349,6 +349,9 @@ tempest_run_internal <- function(
     )
   }
   progress <- tempest_progress_callback(progress)
+  if (is.null(loaded_run)) {
+    tempest_knowledge_workspace_preflight(workspace, knowledge_selection)
+  }
   if (!is.null(.admit_knowledge)) {
     .admit_knowledge()
   }

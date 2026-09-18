@@ -723,3 +723,48 @@ test_that("snapshot validation precedes fresh artifact admission", {
   expect_identical(checks, 1L)
   expect_identical(tempest_sources(restored), tempest_sources(session))
 })
+
+test_that("malformed retained report bytes raise knowledge errors", {
+  skip_if_not_installed("graft")
+  fixture <- test_promotion_storm_fixture()
+  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  selection <- tempest_publish_artifact_research(fixture$research, store)
+  root_ref <- graft::graft_artifact_read_selection(store, selection)$roots[[1L]]
+  root <- graft::graft_artifact_read(store, root_ref)
+  candidate <- jsonlite::fromJSON(rawToChar(root$bytes), simplifyVector = FALSE)
+  report <- graft::graft_artifact_read(store, candidate$report)
+  for (bytes in list(
+    c(charToRaw("bad"), as.raw(0), charToRaw("report")),
+    as.raw(255),
+    raw(),
+    charToRaw("A different report")
+  )) {
+    invalid <- candidate
+    invalid$report <- graft::graft_artifact_save(
+      store,
+      candidate$report$id,
+      bytes,
+      "text/markdown",
+      dependencies = report$metadata$dependencies
+    )
+    invalid_root <- graft::graft_artifact_save(
+      store,
+      root_ref$id,
+      charToRaw(as.character(jsonlite::toJSON(
+        invalid,
+        auto_unbox = TRUE,
+        null = "null",
+        digits = NA
+      ))),
+      "application/json",
+      dependencies = c(list(invalid$report), report$metadata$dependencies)
+    )
+    expect_error(
+      tempest_read_artifact_research(
+        store,
+        graft::graft_artifact_select(store, list(invalid_root))
+      ),
+      class = "tempest_knowledge_error"
+    )
+  }
+})

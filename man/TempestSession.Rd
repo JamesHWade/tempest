@@ -93,8 +93,8 @@ requires it whenever \code{program_set} contains governed procedures.}
 Tempest's bundle-restoration seam.}
       \item{\code{.restore_token}}{Internal authorization token for bundle
 restoration.}
-      \item{\code{.admit_knowledge}}{Internal callback for fresh knowledge admission
-after constructor inputs are validated.}
+      \item{\code{.admit_knowledge}}{Internal callback receiving the validated
+workspace for fresh knowledge admission.}
     }
     \if{html}{\out{</div>}}
   }

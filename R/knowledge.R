@@ -409,14 +409,7 @@ tempest_knowledge_argument <- function(
   )
 }
 
-# Insert accepted evidence records into the product workspace as ordinary
-# read-only resources.
-tempest_knowledge_insert_records <- function(
-  workspace,
-  records,
-  selection = list()
-) {
-  tempest_artifact_selection_validate(selection, records)
+tempest_knowledge_workspace_preflight <- function(workspace, selection) {
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_knowledge_abort(
       "Accepted knowledge records require a ResearchWorkspace."
@@ -430,6 +423,23 @@ tempest_knowledge_insert_records <- function(
       "A workspace cannot change its pinned artifact selection."
     )
   }
+  if (
+    !identical(tempest_research_workspace_mutation_state(workspace), "open")
+  ) {
+    tempest_knowledge_abort("New research requires an open workspace.")
+  }
+  invisible(workspace)
+}
+
+# Insert accepted evidence records into the product workspace as ordinary
+# read-only resources.
+tempest_knowledge_insert_records <- function(
+  workspace,
+  records,
+  selection = list()
+) {
+  tempest_artifact_selection_validate(selection, records)
+  tempest_knowledge_workspace_preflight(workspace, selection)
   if (length(records) == 0L) {
     return(invisible(workspace))
   }

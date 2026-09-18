@@ -199,7 +199,20 @@ tempest_read_artifact_research <- function(store, selection) {
     )
   }
   report <- graft::graft_artifact_read(store, candidate$report)
-  report_md <- rawToChar(report$bytes)
+  report_md <- tryCatch(
+    rawToChar(report$bytes),
+    error = function(error) {
+      tempest_knowledge_abort(
+        "Retained research contains invalid report bytes.",
+        parent = error
+      )
+    }
+  )
+  if (!validUTF8(report_md)) {
+    tempest_knowledge_abort(
+      "Retained research report must contain valid UTF-8."
+    )
+  }
   tempest_artifact_report_validate(bundle, report_md)
   if (
     !identical(report$metadata$dependencies, unname(refs)) ||
