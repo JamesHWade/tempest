@@ -380,6 +380,28 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
       )
     }
   }
+  named_records <- candidate
+  names(named_records$records) <- paste0("record", seq_along(candidate$records))
+  named_ref <- graft::graft_artifact_save(
+    store,
+    "named-records",
+    charToRaw(as.character(jsonlite::toJSON(
+      named_records,
+      auto_unbox = TRUE,
+      null = "null",
+      digits = NA
+    ))),
+    "application/json",
+    dependencies = root$metadata$dependencies
+  )
+  expect_error(
+    tempest_read_artifact_research(
+      store,
+      graft::graft_artifact_select(store, list(named_ref))
+    ),
+    "cover its evidence",
+    class = "tempest_knowledge_error"
+  )
   candidate$records <- candidate$records[-1L]
   forged <- graft::graft_artifact_save(
     store,

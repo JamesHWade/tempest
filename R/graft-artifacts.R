@@ -142,7 +142,9 @@ tempest_read_artifact_research <- function(store, selection) {
   }
   expected <- tempest_artifact_research_records(bundle)
   if (
-    !is.list(candidate$records) || length(candidate$records) != length(expected)
+    !is.list(candidate$records) ||
+      !is.null(names(candidate$records)) ||
+      length(candidate$records) != length(expected)
   ) {
     tempest_knowledge_abort("Research proposal does not cover its evidence.")
   }
