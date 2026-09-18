@@ -124,6 +124,14 @@ tempest_read_artifact_research <- function(store, selection) {
     tempest_knowledge_abort("Unsupported retained research proposal.")
   }
   bundle <- tempest_promotion_bundle_from_data(candidate$bundle)
+  if (
+    !tempest_artifact_ref_matches(
+      candidate$report,
+      paste0("tempest:report:", bundle@research_run_id)
+    )
+  ) {
+    tempest_knowledge_abort("Research report identity differs from its proof.")
+  }
   expected <- tempest_artifact_research_records(bundle)
   if (
     !is.list(candidate$records) || length(candidate$records) != length(expected)
@@ -141,10 +149,7 @@ tempest_read_artifact_research <- function(store, selection) {
         anyDuplicated(names(saved)) ||
         !setequal(names(saved), c("id", "ref")) ||
         !identical(saved$id, record$id) ||
-        !is.list(saved$ref) ||
-        !identical(names(saved$ref), c("id", "revision")) ||
-        !rlang::is_string(saved$ref$revision) ||
-        !identical(saved$ref$id, record$id)
+        !tempest_artifact_ref_matches(saved$ref, record$id)
     ) {
       tempest_knowledge_abort(
         "Research evidence identity differs from its proof."
@@ -265,6 +270,14 @@ tempest_reuse_artifact_research <- function(
   knowledge <- admit()
   knowledge@admission <- admit
   knowledge
+}
+
+tempest_artifact_ref_matches <- function(ref, id) {
+  is.list(ref) &&
+    identical(names(ref), c("id", "revision")) &&
+    identical(ref$id, id) &&
+    rlang::is_string(ref$revision) &&
+    grepl("^[0-9a-f]{64}$", ref$revision)
 }
 
 tempest_artifact_report_validate <- function(bundle, report) {

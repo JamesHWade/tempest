@@ -307,34 +307,51 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
     "Unsupported",
     class = "tempest_knowledge_error"
   )
-  for (bad_ref in list(
-    "bad",
-    NULL,
-    list(id = "bad"),
-    list(id = "bad", revision = list())
-  )) {
-    malformed <- candidate
-    malformed$records[[1L]]["ref"] <- list(bad_ref)
-    malformed_ref <- graft::graft_artifact_save(
-      store,
-      "malformed-ref",
-      charToRaw(as.character(jsonlite::toJSON(
-        malformed,
-        auto_unbox = TRUE,
-        null = "null",
-        digits = NA
-      ))),
-      "application/json",
-      dependencies = root$metadata$dependencies
-    )
-    expect_error(
-      tempest_read_artifact_research(
+  for (field in c("evidence", "report")) {
+    valid_ref <- if (field == "report") {
+      candidate$report
+    } else {
+      candidate$records[[1L]]$ref
+    }
+    for (bad_ref in list(
+      "bad",
+      NULL,
+      list(id = valid_ref$id),
+      list(id = valid_ref$id, revision = list()),
+      list(id = valid_ref$id, revision = ""),
+      list(id = valid_ref$id, revision = "invalid-digest"),
+      list(id = valid_ref$id, revision = c("one", "two")),
+      list(id = "wrong-id", revision = valid_ref$revision),
+      c(valid_ref, list(extra = "unexpected")),
+      rev(valid_ref)
+    )) {
+      malformed <- candidate
+      if (field == "report") {
+        malformed["report"] <- list(bad_ref)
+      } else {
+        malformed$records[[1L]]["ref"] <- list(bad_ref)
+      }
+      malformed_ref <- graft::graft_artifact_save(
         store,
-        graft::graft_artifact_select(store, list(malformed_ref))
-      ),
-      "identity",
-      class = "tempest_knowledge_error"
-    )
+        "malformed-ref",
+        charToRaw(as.character(jsonlite::toJSON(
+          malformed,
+          auto_unbox = TRUE,
+          null = "null",
+          digits = NA
+        ))),
+        "application/json",
+        dependencies = root$metadata$dependencies
+      )
+      expect_error(
+        tempest_read_artifact_research(
+          store,
+          graft::graft_artifact_select(store, list(malformed_ref))
+        ),
+        "identity",
+        class = "tempest_knowledge_error"
+      )
+    }
   }
   candidate$records <- candidate$records[-1L]
   forged <- graft::graft_artifact_save(
