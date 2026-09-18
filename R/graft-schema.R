@@ -133,7 +133,7 @@ tempest_graft_schema_path <- function() {
 #' The packaged schema was compiled for Graft consumer contract `0.2.0`.
 #' Runtime loading accepts contracts `>= 0.2.0` and `< 3.0.0`, with store format
 #' `3.1.0`, through `graft::graft_contract_version()`. The range follows Graft's
-#' additive-minor contract policy within the tested 0.x and 1.x major lines.
+#' additive-minor contract policy within the tested 0.x, 1.x and 2.x major lines.
 #' The 1.0 data-dict manifest cutoff does not affect Tempest's pinned LinkML
 #' schema. Future minors are not individually certified by this range. Required
 #' exports and the compiled schema are checked independently.
