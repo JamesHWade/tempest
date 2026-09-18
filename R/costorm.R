@@ -2735,7 +2735,8 @@ tempest_session_restore_new <- function(
   session_id = NULL,
   program_set = NULL,
   knowledge_view = NULL,
-  manifest
+  manifest,
+  .admit_knowledge = NULL
 ) {
   TempestSession$new(
     topic = topic,
@@ -2748,6 +2749,7 @@ tempest_session_restore_new <- function(
     program_set = program_set,
     knowledge_view = knowledge_view,
     .restore_manifest = manifest,
-    .restore_token = tempest_costorm_restore_token
+    .restore_token = tempest_costorm_restore_token,
+    .admit_knowledge = .admit_knowledge
   )
 }

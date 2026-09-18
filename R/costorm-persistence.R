@@ -1447,11 +1447,6 @@ tempest_session_restore_internal <- function(
     action = "restore"
   )
   tempest_progress_callback(progress)
-  tempest_artifact_resume_admission(
-    workspace$artifact_selection,
-    knowledge
-  )
-
   retriever <- tempest_retriever(config = config, workspace = workspace)
   session <- tempest_session_restore_new(
     topic = snapshot$topic,
@@ -1462,7 +1457,13 @@ tempest_session_restore_internal <- function(
     session_id = snapshot$session_id,
     program_set = program_set,
     knowledge_view = knowledge_view,
-    manifest = research_manifest
+    manifest = research_manifest,
+    .admit_knowledge = function(workspace) {
+      tempest_artifact_resume_admission(
+        workspace$artifact_selection,
+        knowledge
+      )
+    }
   )
 
   for (expert_id in retired_expert_ids) {

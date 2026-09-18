@@ -134,8 +134,11 @@ Saving and resuming preserves the historical input; it does not freeze permissio
 or automatically reapprove withdrawn knowledge. The host must enforce current
 eligibility before starting or resuming work. STORM and Co-STORM validate new-run
 arguments and the supplied retriever before invoking the admission callback.
-Co-STORM restore also validates its saved snapshot and new progress callback
-before admission.
+Co-STORM restore validates its saved snapshot and new progress callback, then
+uses the constructor's input checks before admission. A supplied knowledge view
+must match both the governed procedures and the saved workspace. Omitting the
+view still allows inspection of a restored session; governed execution requires
+the exact pinned view.
 A new run requires an open workspace whose pinned artifact selection matches
 its knowledge input. These checks do not modify the supplied workspace.
 This constructor does not monitor policy changes during an active run.
