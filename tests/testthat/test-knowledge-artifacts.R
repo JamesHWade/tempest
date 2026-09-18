@@ -863,6 +863,38 @@ test_that("STORM resume validates saved data before invoking admission", {
 })
 
 
+test_that("Co-STORM restore validates progress before artifact admission", {
+  knowledge <- do.call(
+    tempest_artifact_knowledge,
+    test_artifact_knowledge_input()
+  )
+  config <- tempest_config(chat_fn = function(...) fake_chat())
+  session <- tempest_session(
+    "Artifact briefing",
+    config = config,
+    experts = list(test_expert()),
+    knowledge = knowledge
+  )
+  snapshot <- tempest_session_snapshot(session)
+  checks <- 0L
+  knowledge@admission <- function() {
+    checks <<- checks + 1L
+    tempest_knowledge_abort("Current access revoked.")
+  }
+  expect_error(
+    tempest_session_restore(
+      snapshot,
+      config = config,
+      progress = 1,
+      knowledge = knowledge
+    ),
+    "progress.*must be NULL or a function",
+    class = "tempest_error"
+  )
+  expect_identical(checks, 0L)
+  expect_identical(tempest_session_snapshot(session), snapshot)
+})
+
 test_that("Co-STORM resume cannot introduce a new artifact selection", {
   knowledge <- do.call(
     tempest_artifact_knowledge,

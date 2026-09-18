@@ -1446,6 +1446,7 @@ tempest_session_restore_internal <- function(
     session_id = snapshot$session_id,
     action = "restore"
   )
+  tempest_progress_callback(progress)
   tempest_artifact_resume_admission(
     workspace$artifact_selection,
     knowledge
