@@ -67,7 +67,8 @@ part of the persistence or public API contract.
   knowledge_view = NULL,
   .restore_manifest = NULL,
   .restore_token = NULL,
-  .admit_knowledge = NULL
+  .admit_knowledge = NULL,
+  .artifact_selection = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -95,6 +96,8 @@ Tempest's bundle-restoration seam.}
 restoration.}
       \item{\code{.admit_knowledge}}{Internal callback receiving the validated
 workspace for fresh knowledge admission.}
+      \item{\code{.artifact_selection}}{Internal selection retained in a fresh manifest
+before accepted records are inserted after successful construction.}
     }
     \if{html}{\out{</div>}}
   }
