@@ -123,7 +123,15 @@ tempest_read_artifact_research <- function(store, selection) {
   ) {
     tempest_knowledge_abort("Unsupported retained research proposal.")
   }
-  bundle <- tempest_promotion_bundle_from_data(candidate$bundle)
+  bundle <- tryCatch(
+    tempest_promotion_bundle_from_data(candidate$bundle),
+    error = function(error) {
+      tempest_knowledge_abort(
+        "Retained research contains an invalid bundle.",
+        parent = error
+      )
+    }
+  )
   if (
     !tempest_artifact_ref_matches(
       candidate$report,

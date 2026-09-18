@@ -307,6 +307,33 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
     "Unsupported",
     class = "tempest_knowledge_error"
   )
+  invalid_version <- candidate$bundle
+  invalid_version$schema_version <- "invalid"
+  for (bad_bundle in list("bad", NULL, list(), invalid_version)) {
+    malformed <- candidate
+    malformed["bundle"] <- list(bad_bundle)
+    malformed_ref <- graft::graft_artifact_save(
+      store,
+      "malformed-bundle",
+      charToRaw(as.character(jsonlite::toJSON(
+        malformed,
+        auto_unbox = TRUE,
+        null = "null",
+        digits = NA
+      ))),
+      "application/json",
+      dependencies = root$metadata$dependencies
+    )
+    error <- expect_error(
+      tempest_read_artifact_research(
+        store,
+        graft::graft_artifact_select(store, list(malformed_ref))
+      ),
+      "invalid bundle",
+      class = "tempest_knowledge_error"
+    )
+    expect_s3_class(error$parent, "tempest_promotion_error")
+  }
   for (field in c("evidence", "report")) {
     valid_ref <- if (field == "report") {
       candidate$report
