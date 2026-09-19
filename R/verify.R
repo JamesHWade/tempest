@@ -170,8 +170,6 @@ tempest_empty_claim_supports <- function() {
 #'   the builtin set. When `workspace` is a `TempestSession`, its immutable
 #'   ProgramSet, citation policy, and support threshold are authoritative;
 #'   supplied values must match.
-#' @param knowledge_view Optional immutable Graft evidence view. When supplied,
-#'   it must match the standalone workspace snapshot.
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
 #' @return A claim-support audit tibble with one row per verified
@@ -188,7 +186,7 @@ tempest_verify_claims <- function(
   policy = "claim_verified",
   verifier_model = NA_character_,
   program_set = NULL,
-  knowledge_view = NULL,
+
   min_support_score = 0.7
 ) {
   policy_supplied <- !missing(policy)
@@ -205,14 +203,7 @@ tempest_verify_claims <- function(
         )
       )
     }
-    if (!is.null(knowledge_view)) {
-      tempest_stage_governance_abort(
-        paste0(
-          "A TempestSession must use its immutable knowledge view; ",
-          "{.arg knowledge_view} must be {.code NULL}."
-        )
-      )
-    }
+
     config <- tempest_session_config(session)
     if (!model_supplied) {
       verifier_model <- config@models[["judge"]] %||% NA_character_
@@ -289,22 +280,12 @@ tempest_verify_claims <- function(
   program <- NULL
   if (policy %in% c("claim_verified", "strict")) {
     program_set <- program_set %||% tempest_program_set()
-    knowledge <- tempest_product_knowledge_view(
-      program_set,
-      knowledge_view
-    )
-    workspace <- tempest_product_workspace_validate(
-      workspace,
-      knowledge,
-      arg = "workspace"
-    )
-    snapshot_id <- workspace$base_snapshot_id %||% NULL
+
     program <- tempest_program_set_execution(
       program_set,
       "verify_claim_support",
       trace_context = tempest_standalone_dsprrr_trace_context(
-        "verify_claim_support",
-        knowledge_snapshot_id = snapshot_id
+        "verify_claim_support"
       )
     )
   }

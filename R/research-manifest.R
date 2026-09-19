@@ -215,7 +215,7 @@ tempest_research_manifest_record_fields <- function() {
     "mode",
     "config_digest",
     "programs",
-    "knowledge_snapshot",
+
     "artifact_selection",
     "runtime",
     "traces",
@@ -634,120 +634,6 @@ tempest_research_manifest_programs_same_identity <- function(x, y) {
   )
 }
 
-tempest_research_manifest_knowledge_snapshot <- function(value) {
-  value <- value %||% list()
-  if (!is.list(value) || is.data.frame(value)) {
-    tempest_research_manifest_abort(
-      "{.arg knowledge_snapshot} must be a snapshot reference record."
-    )
-  }
-  if (length(value) == 0L) {
-    return(list())
-  }
-  value <- tempest_research_manifest_canonical_value(
-    value,
-    "knowledge_snapshot"
-  )
-  value <- tempest_research_manifest_named_record(
-    value,
-    "knowledge_snapshot"
-  )
-  allowed <- c(
-    "batch_id",
-    "commit_order",
-    "committed_at",
-    "history_complete",
-    "schema_build_digest",
-    "schema_version",
-    "snapshot_id",
-    "store_format_version",
-    "store_id"
-  )
-  tempest_research_manifest_unknown_fields(
-    value,
-    allowed,
-    "knowledge_snapshot"
-  )
-  if (is.null(value$snapshot_id)) {
-    tempest_research_manifest_abort(
-      "{.field knowledge_snapshot$snapshot_id} is required."
-    )
-  }
-  value$snapshot_id <- tempest_research_manifest_id(
-    value$snapshot_id,
-    "knowledge_snapshot$snapshot_id"
-  )
-  if (!is.null(value$store_id)) {
-    value$store_id <- tempest_research_manifest_id(
-      value$store_id,
-      "knowledge_snapshot$store_id"
-    )
-  }
-  for (field in intersect(
-    c(
-      "batch_id",
-      "committed_at",
-      "schema_build_digest",
-      "store_format_version"
-    ),
-    names(value)
-  )) {
-    if (is.null(value[[field]])) {
-      next
-    }
-    value[[field]] <- tempest_research_manifest_id(
-      value[[field]],
-      paste0("knowledge_snapshot$", field)
-    )
-  }
-  if (!is.null(value$schema_version)) {
-    schema_version <- value$schema_version
-    if (
-      !is.numeric(schema_version) ||
-        length(schema_version) != 1L ||
-        is.na(schema_version) ||
-        !is.finite(schema_version) ||
-        schema_version < 1 ||
-        schema_version != trunc(schema_version) ||
-        schema_version > .Machine$integer.max
-    ) {
-      tempest_research_manifest_abort(
-        "{.field knowledge_snapshot$schema_version} must be a positive whole number."
-      )
-    }
-    value$schema_version <- as.integer(schema_version)
-  }
-  if (!is.null(value$history_complete)) {
-    history_complete <- value$history_complete
-    if (
-      !is.logical(history_complete) ||
-        length(history_complete) != 1L ||
-        is.na(history_complete)
-    ) {
-      tempest_research_manifest_abort(
-        "{.field knowledge_snapshot$history_complete} must be TRUE or FALSE."
-      )
-    }
-  }
-  if (!is.null(value$commit_order)) {
-    commit_order <- value$commit_order
-    if (
-      !is.numeric(commit_order) ||
-        length(commit_order) != 1L ||
-        is.na(commit_order) ||
-        !is.finite(commit_order) ||
-        commit_order < 0 ||
-        commit_order != trunc(commit_order) ||
-        commit_order >= 2^53
-    ) {
-      tempest_research_manifest_abort(
-        "{.field knowledge_snapshot$commit_order} must be a non-negative whole number."
-      )
-    }
-    value$commit_order <- as.double(commit_order)
-  }
-  value[order(names(value))]
-}
 
 tempest_research_manifest_runtime <- function(value) {
   value <- value %||% list()
@@ -997,7 +883,7 @@ tempest_research_manifest_field <- function(value, field) {
   switch(
     field,
     programs = tempest_research_manifest_programs(value),
-    knowledge_snapshot = tempest_research_manifest_knowledge_snapshot(value),
+
     artifact_selection = tempest_research_manifest_artifact_selection(value),
     runtime = tempest_research_manifest_runtime(value),
     traces = tempest_research_manifest_traces(value),
@@ -1160,15 +1046,15 @@ tempest_research_manifest_prop_enum <- function(choices) {
 }
 
 tempest_research_manifest_s7_validator <- function(self) {
-  if (!identical(self@schema_version, 4L)) {
-    return("schema_version must be the supported version 4")
+  if (!identical(self@schema_version, 5L)) {
+    return("schema_version must be the supported version 5")
   }
   if (!grepl("^sha256:[a-f0-9]{64}$", self@config_digest)) {
     return("config_digest must be a SHA-256 identifier")
   }
   for (field in c(
     "programs",
-    "knowledge_snapshot",
+
     "artifact_selection",
     "runtime",
     "traces",
@@ -1201,12 +1087,12 @@ tempest_research_manifest_s7_validator <- function(self) {
 TempestResearchManifest <- S7::new_class(
   "TempestResearchManifest",
   properties = list(
-    schema_version = S7::new_property(S7::class_integer, default = 4L),
+    schema_version = S7::new_property(S7::class_integer, default = 5L),
     research_run_id = tempest_research_manifest_prop_string(),
     mode = tempest_research_manifest_prop_enum(c("storm", "costorm")),
     config_digest = tempest_research_manifest_prop_string(),
     programs = S7::new_property(S7::class_list, default = list()),
-    knowledge_snapshot = S7::new_property(S7::class_list, default = list()),
+
     artifact_selection = S7::new_property(S7::class_list, default = list()),
     runtime = S7::new_property(S7::class_list, default = list()),
     traces = S7::new_property(S7::class_list, default = list()),
@@ -1236,7 +1122,6 @@ TempestResearchManifest <- S7::new_class(
 #' @param config_digest Existing SHA-256 configuration identity. Supply this
 #'   only when `config` is unavailable during restoration.
 #' @param programs Named references to exact scientific programs.
-#' @param knowledge_snapshot Reference to a pinned accepted-knowledge snapshot.
 #' @param artifact_selection Exact retained artifact evidence selection. This is
 #'   input provenance, not current permission or execution authority.
 #' @param runtime Opaque Deputy session and run references.
@@ -1252,7 +1137,7 @@ tempest_research_manifest <- function(
   config = NULL,
   config_digest = NULL,
   programs = list(),
-  knowledge_snapshot = list(),
+
   artifact_selection = list(),
   runtime = list(
     deputy_session_ids = character(),
@@ -1304,14 +1189,12 @@ tempest_research_manifest <- function(
   config_digest <- computed_digest %||% config_digest
 
   TempestResearchManifest(
-    schema_version = 4L,
+    schema_version = 5L,
     research_run_id = research_run_id,
     mode = mode,
     config_digest = config_digest,
     programs = tempest_research_manifest_programs(programs),
-    knowledge_snapshot = tempest_research_manifest_knowledge_snapshot(
-      knowledge_snapshot
-    ),
+
     artifact_selection = tempest_research_manifest_artifact_selection(
       artifact_selection
     ),
@@ -1346,14 +1229,14 @@ tempest_research_manifest_from_record <- function(record) {
   if (!identical(record_names, fields)) {
     tempest_research_manifest_abort(
       paste0(
-        "{.arg record} must contain exactly the schema version 4 manifest ",
+        "{.arg record} must contain exactly the schema version 5 manifest ",
         "fields in writer order."
       )
     )
   }
   required_records <- c(
     "programs",
-    "knowledge_snapshot",
+
     "artifact_selection",
     "runtime",
     "traces",
@@ -1371,9 +1254,9 @@ tempest_research_manifest_from_record <- function(record) {
       )
     )
   }
-  if (!tempest_exact_integer_scalar_valid(record$schema_version, 4L, 4L)) {
+  if (!tempest_exact_integer_scalar_valid(record$schema_version, 5L, 5L)) {
     tempest_research_manifest_abort(
-      "Research manifest records must use exact supported version `4`."
+      "Research manifest records must use exact supported version `5`."
     )
   }
   record$runtime <- tempest_research_manifest_runtime_record(record$runtime)
@@ -1382,7 +1265,7 @@ tempest_research_manifest_from_record <- function(record) {
     mode = record$mode,
     config_digest = record$config_digest,
     programs = record$programs,
-    knowledge_snapshot = record$knowledge_snapshot,
+
     artifact_selection = record$artifact_selection,
     runtime = record$runtime,
     traces = record$traces,
@@ -1420,7 +1303,7 @@ tempest_research_manifest_update <- function(
     mode = manifest@mode,
     config_digest = manifest@config_digest,
     programs = manifest@programs,
-    knowledge_snapshot = manifest@knowledge_snapshot,
+
     artifact_selection = manifest@artifact_selection,
     runtime = runtime %||% manifest@runtime,
     traces = traces %||% manifest@traces,

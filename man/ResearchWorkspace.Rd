@@ -28,22 +28,13 @@ claim-by-evidence-span support assessments.}
     \item{\code{disputes}}{Read-only named-list snapshot of provisional dispute
 records.}
 
-    \item{\code{accepted_graft_references}}{Read-only list of opaque references to
-accepted graft knowledge used by the research run.}
-
-    \item{\code{base_snapshot_id}}{Read-only opaque identifier for the accepted
-knowledge snapshot on which this workspace is based.}
-
     \item{\code{artifact_selection}}{Read-only exact artifact input and provenance.}
-
-    \item{\code{graft_snapshot}}{Optional read-only, path-free
-\code{graft::GraftSnapshot} used to reopen the accepted knowledge boundary.}
 
     \item{\code{citation_audit}}{Read-only pair-level projection of the authoritative
 claim-support assessments, when available.}
 
     \item{\code{max_sources}}{Maximum number of unique retrieved resources admitted.
-Accepted Graft knowledge records inserted by \code{\link[=tempest_knowledge]{tempest_knowledge()}} are
+Accepted Graft knowledge records inserted by \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}} are
 bounded separately and do not count.}
   }
   \if{html}{\out{</div>}}
@@ -74,8 +65,6 @@ bounded separately and do not count.}
     \item \href{#method-ResearchWorkspace-get_evidence_for_proposed_claim}{\code{ResearchWorkspace$get_evidence_for_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-add_dispute}{\code{ResearchWorkspace$add_dispute()}}
     \item \href{#method-ResearchWorkspace-list_disputes}{\code{ResearchWorkspace$list_disputes()}}
-    \item \href{#method-ResearchWorkspace-record_accepted_graft_reference}{\code{ResearchWorkspace$record_accepted_graft_reference()}}
-    \item \href{#method-ResearchWorkspace-list_accepted_graft_references}{\code{ResearchWorkspace$list_accepted_graft_references()}}
     \item \href{#method-ResearchWorkspace-bind_artifact_selection}{\code{ResearchWorkspace$bind_artifact_selection()}}
     \item \href{#method-ResearchWorkspace-validate_integrity}{\code{ResearchWorkspace$validate_integrity()}}
     \item \href{#method-ResearchWorkspace-to_tibbles}{\code{ResearchWorkspace$to_tibbles()}}
@@ -89,27 +78,15 @@ bounded separately and do not count.}
   Create a new provisional research workspace.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$new(
-  base_snapshot_id = NULL,
-  graft_snapshot = NULL,
-  max_sources = Inf,
-  accepted_graft_references = list(),
-  artifact_selection = list()
-)}
+    \preformatted{ResearchWorkspace$new(max_sources = Inf, artifact_selection = list())}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{base_snapshot_id}}{Optional opaque identifier for the pinned
-accepted knowledge snapshot.}
-      \item{\code{graft_snapshot}}{Optional real, path-free \code{graft::GraftSnapshot}.}
       \item{\code{max_sources}}{Maximum number of unique sources. New sources are
 refused once the limit is reached.}
-      \item{\code{accepted_graft_references}}{Unnamed list of canonical
-JSON-compatible references to accepted graft records.}
-      \item{\code{artifact_selection}}{Exact artifact input, retained without a
-Graft snapshot.}
+      \item{\code{artifact_selection}}{Exact artifact input retained by the workspace.}
     }
     \if{html}{\out{</div>}}
   }
@@ -511,37 +488,6 @@ capability. Standalone workspaces require \code{NULL}.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ResearchWorkspace$list_disputes()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-record_accepted_graft_reference"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-record_accepted_graft_reference}{}}}
-\subsection{\code{ResearchWorkspace$record_accepted_graft_reference()}}{
-  Record a reference to accepted graft knowledge.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$record_accepted_graft_reference(reference)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{reference}}{Opaque canonical JSON-compatible graft reference.}
-    }
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-ResearchWorkspace-list_accepted_graft_references"></a>}}
-\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_accepted_graft_references}{}}}
-\subsection{\code{ResearchWorkspace$list_accepted_graft_references()}}{
-  List accepted graft references deterministically.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{ResearchWorkspace$list_accepted_graft_references()}
     \if{html}{\out{</div>}}
   }
 }

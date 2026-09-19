@@ -1,6 +1,6 @@
 # Bounded, read-only trajectory review for completed Tempest products.
 
-tempest_trajectory_schema_version <- 2L
+tempest_trajectory_schema_version <- 3L
 tempest_trajectory_max_records <- 250L
 
 tempest_trajectory_review_abort <- function(
@@ -124,7 +124,6 @@ tempest_trajectory_program_fields <- function() {
 
 tempest_trajectory_knowledge_fields <- function() {
   c(
-    "input_snapshot",
     "input_selection",
     "promotion_state",
     "proposal",
@@ -132,19 +131,6 @@ tempest_trajectory_knowledge_fields <- function() {
   )
 }
 
-tempest_trajectory_snapshot_fields <- function() {
-  c(
-    "schema_version",
-    "snapshot_id",
-    "store_id",
-    "store_format_version",
-    "schema_build_digest",
-    "commit_order",
-    "batch_id",
-    "committed_at",
-    "history_complete"
-  )
-}
 
 tempest_trajectory_proposal_fields <- function() {
   c(
@@ -474,16 +460,6 @@ tempest_trajectory_unique_records <- function(records) {
   records[!duplicated(keys)]
 }
 
-tempest_trajectory_snapshot <- function(snapshot) {
-  if (length(snapshot) == 0L) {
-    return(NULL)
-  }
-  fields <- tempest_trajectory_snapshot_fields()
-  stats::setNames(
-    lapply(fields, \(field) tempest_trajectory_nullable(snapshot[[field]])),
-    fields
-  )
-}
 
 tempest_trajectory_stage_output <- function(record) {
   reference <- record@output_reference
@@ -691,7 +667,6 @@ tempest_trajectory_knowledge <- function(
     "none"
   }
   list(
-    input_snapshot = tempest_trajectory_snapshot(manifest@knowledge_snapshot),
     input_selection = tempest_trajectory_input_selection(
       manifest@artifact_selection
     ),
@@ -748,18 +723,6 @@ tempest_trajectory_join_contract <- function(from_type, relation, to_type) {
       identical(to_type, "deputy_run")
   ) {
     c("correlation_only", "correlation_id")
-  } else if (
-    identical(from_type, "product") &&
-      identical(relation, "read_from") &&
-      identical(to_type, "graft_snapshot")
-  ) {
-    c(
-      "authority_validated",
-      "snapshot_id",
-      "store_id",
-      "schema_build_digest",
-      "commit_order"
-    )
   } else if (
     identical(from_type, "product") &&
       identical(relation, "proposed_as") &&
@@ -946,24 +909,6 @@ tempest_trajectory_joins <- function(
       c("research_run_id", "record_id")
     ))
   }
-  snapshot <- tempest_trajectory_snapshot(context$manifest@knowledge_snapshot)
-  if (!is.null(snapshot)) {
-    add(tempest_trajectory_join(
-      "product",
-      run_id,
-      "read_from",
-      "graft_snapshot",
-      snapshot$snapshot_id,
-      "authority_validated",
-      c(
-        "snapshot_id",
-        "store_id",
-        "schema_build_digest",
-        "commit_order"
-      )
-    ))
-  }
-
   linked_agents <- rep(FALSE, length(agents))
   if (length(agents) > 0L) {
     agent_keys <- vapply(
@@ -1741,10 +1686,6 @@ tempest_trajectory_validate_agent <- function(
     stage = agent_stage,
     role = agent$role
   )
-  snapshot_id <- knowledge$input_snapshot$snapshot_id %||% NULL
-  if (!is.null(snapshot_id)) {
-    run_context$knowledge_snapshot_id <- snapshot_id
-  }
   if (!is.null(agent$expert_id)) {
     run_context$expert_id <- agent$expert_id
   }
@@ -1757,7 +1698,7 @@ tempest_trajectory_validate_agent <- function(
   invisible(agent)
 }
 
-tempest_trajectory_validate_programs <- function(programs, input_snapshot) {
+tempest_trajectory_validate_programs <- function(programs) {
   stages <- tempest_program_set_stages()
   expected_evaluators <- tempest_program_set_default_evaluators()
   if (
@@ -1831,223 +1772,11 @@ tempest_trajectory_validate_programs <- function(programs, input_snapshot) {
           "A trajectory governed-procedure reference is not bound to its program."
         )
       }
-      snapshot_fields <- c(
-        "snapshot_id",
-        "store_id",
-        "schema_build_digest",
-        "commit_order"
-      )
-      if (
-        is.null(input_snapshot) ||
-          !identical(
-            reference[snapshot_fields],
-            input_snapshot[snapshot_fields]
-          )
-      ) {
-        tempest_trajectory_review_abort(
-          paste0(
-            "A trajectory governed-procedure reference is not bound to ",
-            "the input snapshot."
-          )
-        )
-      }
     }
   }
   invisible(programs)
 }
 
-tempest_trajectory_graft_snapshot_timestamp_valid <- function(value) {
-  if (
-    !rlang::is_string(value) ||
-      is.na(value) ||
-      !grepl(
-        paste0(
-          "^[0-9]{4}-[0-9]{2}-[0-9]{2}T",
-          "[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$"
-        ),
-        value
-      )
-  ) {
-    return(FALSE)
-  }
-  whole_seconds <- substr(value, 1L, 19L)
-  parsed <- suppressWarnings(as.POSIXct(
-    whole_seconds,
-    format = "%Y-%m-%dT%H:%M:%S",
-    tz = "UTC"
-  ))
-  !is.na(parsed) &&
-    identical(
-      format(parsed, "%Y-%m-%dT%H:%M:%S", tz = "UTC"),
-      whole_seconds
-    )
-}
-
-tempest_trajectory_graft_snapshot_digest <- function(snapshot) {
-  identity <- snapshot[
-    setdiff(tempest_trajectory_snapshot_fields(), "snapshot_id")
-  ]
-  if (identical(identity$commit_order, -0)) {
-    identity$commit_order <- 0
-  }
-  canonical <- as.character(jsonlite::toJSON(
-    identity,
-    auto_unbox = TRUE,
-    null = "null",
-    na = "null",
-    digits = 17,
-    POSIXt = "ISO8601",
-    UTC = TRUE,
-    pretty = FALSE
-  ))
-  paste0(
-    "sha256:",
-    digest::digest(canonical, algo = "sha256", serialize = FALSE)
-  )
-}
-
-tempest_trajectory_validate_graft_snapshot <- function(snapshot) {
-  empty <- identical(snapshot$commit_order, 0)
-  committed <- is.double(snapshot$commit_order) &&
-    !is.object(snapshot$commit_order) &&
-    is.null(names(snapshot$commit_order)) &&
-    length(snapshot$commit_order) == 1L &&
-    !is.na(snapshot$commit_order) &&
-    is.finite(snapshot$commit_order) &&
-    snapshot$commit_order >= 0 &&
-    snapshot$commit_order == floor(snapshot$commit_order) &&
-    snapshot$commit_order < 2^53
-  empty_boundary <- is.null(snapshot$batch_id) &&
-    is.null(snapshot$committed_at)
-  committed_boundary <-
-    tempest_promotion_receipt_graft_id_valid(snapshot$batch_id) &&
-    tempest_trajectory_graft_snapshot_timestamp_valid(snapshot$committed_at)
-  if (
-    !identical(snapshot$schema_version, 1L) ||
-      !tempest_promotion_receipt_store_id_valid(snapshot$store_id) ||
-      !identical(
-        snapshot$store_format_version,
-        tempest_graft_store_format_version
-      ) ||
-      !rlang::is_string(snapshot$schema_build_digest) ||
-      is.na(snapshot$schema_build_digest) ||
-      !grepl("^sha256:[a-f0-9]{64}$", snapshot$schema_build_digest) ||
-      !committed ||
-      !rlang::is_bool(snapshot$history_complete) ||
-      (empty && !empty_boundary) ||
-      (!empty && !committed_boundary) ||
-      !identical(
-        snapshot$snapshot_id,
-        tempest_trajectory_graft_snapshot_digest(snapshot)
-      )
-  ) {
-    tempest_trajectory_review_abort(
-      "A trajectory snapshot is not an exact immutable Graft snapshot."
-    )
-  }
-  invisible(snapshot)
-}
-
-tempest_trajectory_validate_snapshot <- function(
-  snapshot,
-  nullable = FALSE,
-  complete = FALSE,
-  digest_identity = FALSE
-) {
-  if (is.null(snapshot) && isTRUE(nullable)) {
-    return(invisible(snapshot))
-  }
-  tempest_trajectory_exact_record(
-    snapshot,
-    tempest_trajectory_snapshot_fields(),
-    "Trajectory snapshot"
-  )
-  source_snapshot <- tryCatch(
-    tempest_research_manifest_knowledge_snapshot(
-      snapshot[!vapply(snapshot, is.null, logical(1))]
-    ),
-    error = function(error) {
-      tempest_trajectory_review_abort(
-        "A trajectory snapshot is not a valid manifest snapshot reference.",
-        parent = error
-      )
-    }
-  )
-  canonical_snapshot <- stats::setNames(
-    lapply(
-      tempest_trajectory_snapshot_fields(),
-      \(field) tempest_trajectory_nullable(source_snapshot[[field]])
-    ),
-    tempest_trajectory_snapshot_fields()
-  )
-  if (!identical(snapshot, canonical_snapshot)) {
-    tempest_trajectory_review_abort(
-      "A trajectory snapshot does not retain its canonical source shape."
-    )
-  }
-  tempest_trajectory_validate_graft_snapshot(snapshot)
-  if (digest_identity) {
-    tempest_trajectory_validate_sha256(
-      snapshot$snapshot_id,
-      "Trajectory snapshot snapshot_id"
-    )
-  } else {
-    tempest_trajectory_scalar_string(
-      snapshot$snapshot_id,
-      "Trajectory snapshot snapshot_id"
-    )
-  }
-  for (field in c(
-    "store_id",
-    "store_format_version",
-    "schema_build_digest",
-    "batch_id",
-    "committed_at"
-  )) {
-    tempest_trajectory_scalar_string(
-      snapshot[[field]],
-      paste("Trajectory snapshot", field),
-      nullable = !complete
-    )
-  }
-  if (digest_identity) {
-    tempest_trajectory_validate_sha256(
-      snapshot$schema_build_digest,
-      "Trajectory snapshot schema_build_digest"
-    )
-  }
-  for (field in c("schema_version", "commit_order")) {
-    if (!is.null(snapshot[[field]]) || complete) {
-      tempest_trajectory_exact_whole_number(
-        snapshot[[field]],
-        paste("Trajectory snapshot", field)
-      )
-    }
-  }
-  if (
-    (!is.null(snapshot$history_complete) || complete) &&
-      !rlang::is_bool(snapshot$history_complete)
-  ) {
-    tempest_trajectory_review_abort(
-      "Trajectory snapshot history_complete must be one logical."
-    )
-  }
-  if (
-    complete &&
-      (!identical(snapshot$schema_version, 1L) ||
-        !identical(
-          snapshot$store_format_version,
-          tempest_graft_store_format_version
-        ) ||
-        snapshot$commit_order < 1L ||
-        !tempest_ledger_timestamp_valid(snapshot$committed_at))
-  ) {
-    tempest_trajectory_review_abort(
-      "A complete trajectory snapshot has invalid receipt metadata."
-    )
-  }
-  invisible(snapshot)
-}
 
 tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
   tempest_trajectory_exact_record(
@@ -2055,10 +1784,7 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     tempest_trajectory_knowledge_fields(),
     "Trajectory knowledge"
   )
-  tempest_trajectory_validate_snapshot(
-    knowledge$input_snapshot,
-    nullable = TRUE
-  )
+
   tempest_trajectory_validate_input_selection(knowledge$input_selection)
   tempest_trajectory_scalar_string(
     knowledge$promotion_state,
@@ -2349,18 +2075,6 @@ tempest_trajectory_mandatory_joins <- function(review) {
       c("research_run_id", "record_id")
     ))
   }
-  snapshot <- review@knowledge$input_snapshot
-  if (!is.null(snapshot)) {
-    add(tempest_trajectory_join(
-      "product",
-      run_id,
-      "read_from",
-      "graft_snapshot",
-      snapshot$snapshot_id,
-      "authority_validated",
-      c("snapshot_id", "store_id", "schema_build_digest", "commit_order")
-    ))
-  }
   agents_complete <- identical(review@agent_runs$omitted, 0L)
   if (agents_complete) {
     for (child in review@agent_runs$items) {
@@ -2625,7 +2339,6 @@ tempest_trajectory_validate_join_graph <- function(review) {
       item$record_id
     )
   }
-  input_snapshot <- review@knowledge$input_snapshot
   proposal <- review@knowledge$proposal
   acceptance <- review@knowledge$acceptance
   identities <- c(
@@ -2649,11 +2362,6 @@ tempest_trajectory_validate_join_graph <- function(review) {
         character(1),
         "program_artifact_id"
       ),
-      graft_snapshot = if (is.null(input_snapshot)) {
-        character()
-      } else {
-        input_snapshot$snapshot_id
-      },
       promotion_bundle = if (is.null(proposal)) {
         character()
       } else {
@@ -3109,8 +2817,7 @@ tempest_trajectory_review_validation_message <- function(self) {
         self@product$research_run_id
       )
       tempest_trajectory_validate_programs(
-        self@programs,
-        self@knowledge$input_snapshot
+        self@programs
       )
       tempest_trajectory_validate_collection(
         self@stages,
@@ -3313,9 +3020,8 @@ tempest_trajectory_review_validation_message <- function(self) {
 #' from output publication. Input `reported_decision` is unverified host
 #' provenance, never authenticated acceptance; malformed metadata is omitted.
 #' Decision actor, reason, key and other arbitrary input provenance are
-#' excluded. Native input snapshots remain inspectable until
-#' their separate retirement; native output receipts are no longer accepted.
-#' Schema 2 replaces schema 1 directly.
+#' excluded. Schema 3 retains artifact inputs and directly replaces native
+#' snapshot and receipt-based reviews.
 #'
 #' @param research One exact completed result returned by [tempest_run()] or a
 #'   succeeded, quiescent `TempestSession` returned by [tempest_session()].

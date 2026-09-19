@@ -3,13 +3,9 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()
-  knowledge <- test_knowledge_view()
+
   workspace <- tempest_research_workspace(
-    graft_snapshot = knowledge$snapshot,
-    max_sources = 8L,
-    accepted_graft_references = list(
-      list(record_id = "accepted-a", revision_id = "revision-a")
-    )
+    max_sources = 8L
   )
   source <- tempest_resource(
     resource_kind = "web",
@@ -64,10 +60,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   manifest <- tempest_research_manifest(
     "authoritative-workspace",
     config = cfg,
-    programs = tempest:::tempest_program_set_manifest_programs(program_set),
-    knowledge_snapshot = tempest:::tempest_snapshot_reference(
-      knowledge$snapshot
-    )
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
   state <- tempest:::tempest_storm_state(
     "Authoritative workspace",
@@ -94,8 +87,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
     FALSE
   )
   equivalent <- tempest:::tempest_research_workspace_restore(
-    snapshot,
-    graft_snapshot = knowledge$snapshot
+    snapshot
   )
   loaded <- tempest:::tempest_storm_load_artifacts(
     dir,
@@ -111,7 +103,6 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   )
 
   empty <- tempest_research_workspace(
-    graft_snapshot = knowledge$snapshot,
     max_sources = 2L
   )
   loaded_empty <- tempest:::tempest_storm_load_artifacts(
@@ -254,8 +245,7 @@ test_that("STORM resume accepts only an equivalent supplied workspace", {
   changed_supports_snapshot$claim_supports[[1]]$rationale <-
     "A different exact support rationale."
   changed_supports <- tempest:::tempest_research_workspace_restore(
-    changed_supports_snapshot,
-    graft_snapshot = knowledge$snapshot
+    changed_supports_snapshot
   )
   divergent_records <- list(
     extra_source = extra_source_record,

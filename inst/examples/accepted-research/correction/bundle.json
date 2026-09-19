@@ -1,11 +1,11 @@
 {
-  "bundle_id": "sha256:8d12626a5a0c953211e77604357cba44b6359459d9dbd45d732deca86ce5204d",
+  "bundle_id": "sha256:c5d758ca494d8499f8c7c99f3b0a245c2efaeef8440176e9ea88eac0de06227c",
   "schema_version": 1,
   "schema_build_digest": "sha256:0ef4a9c9143e6aaff3def45c996855773dd3c5ce341293bc15032c0924ed4296",
   "research_run_id": "pilot-correction",
   "min_support_score": 0.7,
   "research_manifest": {
-    "schema_version": 4,
+    "schema_version": 5,
     "research_run_id": "pilot-correction",
     "mode": "storm",
     "config_digest": "sha256:d3476d16504db1a7ca93f3eb50c038e26deffda9f8d25cd972419b996ea9957b",
@@ -131,7 +131,6 @@
         "evaluator_version": "1"
       }
     },
-    "knowledge_snapshot": [],
     "artifact_selection": [],
     "runtime": {
       "deputy_run_ids": [
@@ -243,7 +242,7 @@
         "ids": [
           "claim.pilot-correction"
         ],
-        "content_digest": "sha256:0b52d2ae257f1092b7bff1701f0b46c1bde6f51a4a1a86a282b91cd105f5d456"
+        "content_digest": "sha256:5db1994040982dd5a7d291de27d1f155edd1d6b1ed2db9b72d3cad9b0af36a0e"
       },
       "program_artifact_id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
       "governed_procedure_revision_id": null,
@@ -278,7 +277,7 @@
         "ids": [
           "sha256:6e1ac86c9dc59ae83e421fd5dd55f5b05fca988dfec426a168d53be757efbc01"
         ],
-        "content_digest": "sha256:706831d1f7badc85b15bc8098ad475ce64e3fc8af73282a15cf68db35ccbd68b"
+        "content_digest": "sha256:0b17c7ff7526f8728e24ea73bd91fbfb5fd216ad11061aa41742e010edf7da35"
       },
       "program_artifact_id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
       "governed_procedure_revision_id": null,
@@ -351,7 +350,7 @@
         "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
         "session_id": "pilot-correction",
         "section_id": null,
-        "created_at": "2026-09-18T20:31:23.795156Z",
+        "created_at": "2026-09-19T02:36:24.604860Z",
         "verified_at": null,
         "verifier_model": null,
         "verification_status": "unverified"
@@ -369,7 +368,7 @@
         "section_heading": null,
         "relevance_score": null,
         "extracted_by": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
-        "created_at": "2026-09-18T20:31:23.786855Z"
+        "created_at": "2026-09-19T02:36:24.593266Z"
       }
     ],
     "claim_supports": [
@@ -415,7 +414,7 @@
         "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
         "session_id": "pilot-correction",
         "section_id": null,
-        "asserted_at": "2026-09-18T20:31:23.795156Z",
+        "asserted_at": "2026-09-19T02:36:24.604860Z",
         "verified_at": null,
         "verifier_model": null,
         "status": "active"
@@ -437,7 +436,7 @@
         "extraction_method": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
         "extraction_version": "tempest.evidence-span/1",
         "source_content_hash": "sha256:613b514a4edb1d77f8c6e47ef7f297f82a55ab02b91087992fb4c9a1ed08e2eb",
-        "extracted_at": "2026-09-18T20:31:23.786855Z"
+        "extracted_at": "2026-09-19T02:36:24.593266Z"
       }
     ],
     "ClaimSupport": [

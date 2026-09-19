@@ -315,15 +315,15 @@ test_that("claim dispositions compare verified text with pinned Claims", {
 test_that("accepted claim fields are recovered from rendered record content", {
   workspace <- fake_store_with_sources(1)
   resource <- tempest:::tempest_resource(
-    resource_kind = "graft.record",
+    resource_kind = "artifact.record",
     locator = "graft/Claim/legacy",
     title = "Claim legacy",
     media_type = "text/plain",
     content = "claim_type: finding\nstatement_text: Output held steady.\nstatus: active\n",
     metadata = list(
-      graft_record_id = "legacy",
-      graft_record_class = "Claim",
-      graft_revision_id = "legacy"
+      artifact_record_id = "legacy",
+      artifact_record_class = "Claim",
+      artifact_revision_id = "legacy"
     )
   )
   workspace$upsert_retrieved_resource(resource)
@@ -664,19 +664,21 @@ test_that("section facts carry each claim's disposition for the writer", {
 
 test_that("retracted or superseded accepted claims are not no-change anchors", {
   workspace <- fake_store_with_sources(1)
-  fake_accepted_claim(workspace, "Output held steady.", status = "superseded")
-  fake_accepted_claim(workspace, "Yield reached target.", status = "retracted")
-  fake_accepted_claim(workspace, "Permits are unchanged.")
+  fake_accepted_claim(
+    workspace,
+    c("Output held steady.", "Yield reached target.", "Permits are unchanged."),
+    status = c("superseded", "retracted", "active")
+  )
   legacy <- tempest:::tempest_resource(
-    resource_kind = "graft.record",
+    resource_kind = "artifact.record",
     locator = "graft/Claim/legacy",
     title = "Claim legacy",
     media_type = "text/plain",
     content = "statement_text: Old finding.\nstatus: superseded\n",
     metadata = list(
-      graft_record_id = "legacy",
-      graft_record_class = "Claim",
-      graft_revision_id = "legacy"
+      artifact_record_id = "legacy",
+      artifact_record_class = "Claim",
+      artifact_revision_id = "legacy"
     )
   )
   workspace$upsert_retrieved_resource(legacy)

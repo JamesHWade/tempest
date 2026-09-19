@@ -153,7 +153,7 @@ test_that("schema 8 manifests require files implied by completed stages", {
 
 test_that("current STORM state readers require core sidecars", {
   metadata <- list(
-    schema_version = 9L,
+    schema_version = 10L,
     topic = "Required sidecars",
     title = "Required sidecars",
     requested_steps = as.list(tempest:::tempest_storm_stage_order()),

@@ -573,7 +573,6 @@ tempest_stage_trace_reference_fields <- function() {
     "delegation_id",
     "tool_call_id",
     "trace_id",
-    "knowledge_snapshot_id",
     "expert_id",
     "correlation_id",
     "mode",
@@ -1770,13 +1769,6 @@ tempest_stage_records_validate_manifest <- function(records, manifest) {
     if (!identical(role, "program")) {
       tempest_stage_record_abort(
         "Stage record role trace must identify ProgramSet execution."
-      )
-    }
-    snapshot_id <- record@trace_references$knowledge_snapshot_id %||% NULL
-    manifest_snapshot_id <- manifest@knowledge_snapshot$snapshot_id %||% NULL
-    if (!identical(snapshot_id, manifest_snapshot_id)) {
-      tempest_stage_record_abort(
-        "Stage record knowledge-snapshot trace does not match the manifest."
       )
     }
     runtime_bindings <- c(
@@ -4234,7 +4226,6 @@ tempest_stage_execution_trace_references <- function(execution, context) {
     "delegation_id",
     "tool_call_id",
     "trace_id",
-    "knowledge_snapshot_id",
     "expert_id",
     "correlation_id",
     "mode",

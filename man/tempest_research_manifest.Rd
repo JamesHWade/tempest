@@ -10,7 +10,6 @@ tempest_research_manifest(
   config = NULL,
   config_digest = NULL,
   programs = list(),
-  knowledge_snapshot = list(),
   artifact_selection = list(),
   runtime = list(deputy_session_ids = character(), deputy_run_ids = character()),
   traces = list(),
@@ -30,8 +29,6 @@ when restoring an existing digest.}
 only when \code{config} is unavailable during restoration.}
 
 \item{programs}{Named references to exact scientific programs.}
-
-\item{knowledge_snapshot}{Reference to a pinned accepted-knowledge snapshot.}
 
 \item{artifact_selection}{Exact retained artifact evidence selection. This is
 input provenance, not current permission or execution authority.}

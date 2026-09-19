@@ -1,11 +1,11 @@
 {
-  "bundle_id": "sha256:00e1323021683893220b0b919ce019933449d97d01a0da1e0ece858964cb1c86",
+  "bundle_id": "sha256:5082654b0f6a348b6e1bbe053e751c3d01fbdd9b4d0c0831b8b64902bb13d4b8",
   "schema_version": 1,
   "schema_build_digest": "sha256:0ef4a9c9143e6aaff3def45c996855773dd3c5ce341293bc15032c0924ed4296",
   "research_run_id": "pilot-initial",
   "min_support_score": 0.7,
   "research_manifest": {
-    "schema_version": 4,
+    "schema_version": 5,
     "research_run_id": "pilot-initial",
     "mode": "storm",
     "config_digest": "sha256:d3476d16504db1a7ca93f3eb50c038e26deffda9f8d25cd972419b996ea9957b",
@@ -131,7 +131,6 @@
         "evaluator_version": "1"
       }
     },
-    "knowledge_snapshot": [],
     "artifact_selection": [],
     "runtime": {
       "deputy_run_ids": [
@@ -243,7 +242,7 @@
         "ids": [
           "claim.pilot-initial"
         ],
-        "content_digest": "sha256:54a2289d6fae3289c450a5e4aca5a94c4f70108059d71cd428c29f78cda20b2d"
+        "content_digest": "sha256:6e5a9ea51eb0d7069a9c23f375698446541c38a1d2eda428d1a6a2d81101d13e"
       },
       "program_artifact_id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
       "governed_procedure_revision_id": null,
@@ -278,7 +277,7 @@
         "ids": [
           "sha256:f58f2bf66721ed78e622fd21ce525c80787d316192567b21589113b591575917"
         ],
-        "content_digest": "sha256:e8e7144a3fefe74c208f613e2c2278dba2d4d9e93d0bd13cdf8c45c8aa4b427d"
+        "content_digest": "sha256:0f461563668061bb52b616585b1c17f9ee2d12ecffbc4cf938b51cf490eff672"
       },
       "program_artifact_id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
       "governed_procedure_revision_id": null,
@@ -351,7 +350,7 @@
         "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
         "session_id": "pilot-initial",
         "section_id": null,
-        "created_at": "2026-09-18T20:31:19.556407Z",
+        "created_at": "2026-09-19T02:36:20.199088Z",
         "verified_at": null,
         "verifier_model": null,
         "verification_status": "unverified"
@@ -369,7 +368,7 @@
         "section_heading": null,
         "relevance_score": null,
         "extracted_by": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
-        "created_at": "2026-09-18T20:31:19.524173Z"
+        "created_at": "2026-09-19T02:36:20.167016Z"
       }
     ],
     "claim_supports": [
@@ -415,7 +414,7 @@
         "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
         "session_id": "pilot-initial",
         "section_id": null,
-        "asserted_at": "2026-09-18T20:31:19.556407Z",
+        "asserted_at": "2026-09-19T02:36:20.199088Z",
         "verified_at": null,
         "verifier_model": null,
         "status": "active"
@@ -437,7 +436,7 @@
         "extraction_method": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
         "extraction_version": "tempest.evidence-span/1",
         "source_content_hash": "sha256:e142655169028269071a881dd2466e037f8a83bcee08083a8c8d56f9bf5d32f7",
-        "extracted_at": "2026-09-18T20:31:19.524173Z"
+        "extracted_at": "2026-09-19T02:36:20.167016Z"
       }
     ],
     "ClaimSupport": [

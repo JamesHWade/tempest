@@ -35,11 +35,7 @@ tempest_storm_artifact_paths <- function(run_dir) {
   list(
     run_config = file.path(run_dir, "run_config.json"),
     workspace = file.path(run_dir, "workspace.json"),
-    graft_snapshot = file.path(
-      run_dir,
-      "knowledge",
-      "graft-snapshot.rds"
-    ),
+
     perspectives = file.path(run_dir, "perspectives.json"),
     experts = file.path(run_dir, "experts.json"),
     draft_outline = file.path(run_dir, "direct_gen_outline.json"),
@@ -491,8 +487,7 @@ tempest_storm_bundle_owned_files <- function(include_manifest = FALSE) {
     "storm_gen_article.md",
     "storm_gen_article_polished.md",
     "references.json",
-    "stage_records.json",
-    tempest_graft_snapshot_relative_path()
+    "stage_records.json"
   )
   if (isTRUE(include_manifest)) c("run_config.json", files) else files
 }
@@ -504,7 +499,7 @@ tempest_storm_require_current_schema <- function(metadata) {
     "STORM run schema version",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
-  if (!identical(schema_version, 9L)) {
+  if (!identical(schema_version, 10L)) {
     tempest_product_unsupported_format_abort(
       "STORM bundle format",
       schema_version,
@@ -582,7 +577,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   }
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 9 STORM file inventory",
+    "Schema 10 STORM file inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   tempest_persistence_require_regular_bundle_files(
@@ -606,21 +601,13 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
     "run_config.json"
   )
   undeclared_on_disk <- setdiff(physical_files, normalized)
-  snapshot_path <- tempest_graft_snapshot_relative_path()
-  knowledge_reference <- manifest$research_manifest$knowledge_snapshot %||%
-    list()
-  pinned <- length(knowledge_reference) > 0L
   required <- c(
     "workspace.json",
     "experts.json",
     "references.json",
-    "stage_records.json",
-    if (pinned) snapshot_path else character()
+    "stage_records.json"
   )
-  allowed <- setdiff(
-    tempest_storm_bundle_owned_files(),
-    if (pinned) character() else snapshot_path
-  )
+  allowed <- tempest_storm_bundle_owned_files()
   stage_required <- tempest_storm_stage_required_files(
     completed_stages
   )
@@ -633,7 +620,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 9 STORM checksum inventory",
+    "Schema 10 STORM checksum inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   missing_checksums <- setdiff(files, names(checksums))
@@ -685,7 +672,6 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
     },
     logical(1)
   )]
-  snapshot_exists <- file.exists(file.path(run_dir, snapshot_path))
   problems <- c(
     if (length(files) == 0L) "Manifest declares no files.",
     if (anyDuplicated(normalized)) "Manifest declares duplicate files.",
@@ -710,15 +696,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
     if (length(non_regular_stage_records) > 0L) {
       "The stage-record sidecar must be a regular non-symlink file."
     },
-    if (!identical(pinned, snapshot_path %in% files)) {
-      paste0(
-        "The Graft snapshot sidecar and research manifest must either both ",
-        "be declared or both be absent."
-      )
-    },
-    if (!pinned && snapshot_exists) {
-      "An unpinned STORM bundle cannot contain a Graft snapshot sidecar."
-    },
+
     if (length(setdiff(stage_required, files)) > 0L) {
       paste0(
         "Manifest omits product files required by completed stages: ",
@@ -752,47 +730,14 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
 #' @keywords internal
 tempest_storm_workspace_identity_record <- function(workspace) {
   list(
-    base_snapshot_id = workspace$base_snapshot_id,
     max_sources = tempest_research_workspace_max_sources_data(
       workspace$max_sources
     ),
-    accepted_graft_references = workspace$list_accepted_graft_references(),
+
     artifact_selection = workspace$artifact_selection
   )
 }
 
-#' @keywords internal
-tempest_storm_snapshot_reference <- function(workspace) {
-  snapshot <- workspace$graft_snapshot
-  if (is.null(snapshot) && is.null(workspace$base_snapshot_id)) {
-    return(list())
-  }
-  if (is.null(snapshot)) {
-    tempest_abort(
-      paste0(
-        "Pinned STORM execution requires an actual path-free ",
-        "graft::GraftSnapshot; a scalar snapshot id is insufficient."
-      ),
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
-    )
-  }
-  validated <- tempest_graft_snapshot_validate(
-    snapshot,
-    tempest_persistence_error_class("tempest_run_persistence_error"),
-    "STORM Graft snapshot"
-  )
-  if (!identical(validated$reference$snapshot_id, workspace$base_snapshot_id)) {
-    tempest_abort(
-      "The STORM Graft snapshot does not match the workspace base snapshot.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
-    )
-  }
-  validated$reference
-}
 
 #' @keywords internal
 tempest_storm_run_restore_abort <- function(message, parent = NULL) {
@@ -929,20 +874,18 @@ tempest_storm_program_set_validate <- function(
 
 #' @keywords internal
 tempest_storm_restore_workspace <- function(
-  metadata,
-  graft_snapshot = NULL
+  metadata
 ) {
   tempest_storm_require_current_schema(metadata)
   identity <- metadata$workspace
   if (!is.list(identity) || is.data.frame(identity)) {
     tempest_storm_run_restore_abort(
-      "Schema 9 STORM bundles must contain a workspace identity record."
+      "Schema 10 STORM bundles must contain a workspace identity record."
     )
   }
   required <- c(
-    "base_snapshot_id",
     "max_sources",
-    "accepted_graft_references",
+
     "artifact_selection"
   )
   identity_fields <- names(identity)
@@ -951,15 +894,6 @@ tempest_storm_restore_workspace <- function(
       "The STORM workspace identity record has unexpected fields."
     )
   }
-  base_snapshot_id <- tryCatch(
-    tempest_research_workspace_snapshot_id(identity$base_snapshot_id),
-    error = function(error) {
-      tempest_storm_run_restore_abort(
-        "The persisted workspace snapshot identity is invalid.",
-        parent = error
-      )
-    }
-  )
   max_sources <- tryCatch(
     tempest_research_workspace_restore_max_sources(identity$max_sources),
     error = function(error) {
@@ -969,23 +903,6 @@ tempest_storm_restore_workspace <- function(
       )
     }
   )
-  if (is.null(identity$accepted_graft_references)) {
-    tempest_storm_run_restore_abort(
-      "Persisted accepted graft references cannot be literal null."
-    )
-  }
-  accepted_references <- tryCatch(
-    tempest_research_workspace_references(
-      identity$accepted_graft_references
-    ),
-    error = function(error) {
-      tempest_storm_run_restore_abort(
-        "The persisted accepted graft references are invalid.",
-        parent = error
-      )
-    }
-  )
-
   artifact_selection <- tryCatch(
     tempest_artifact_selection(identity$artifact_selection, allow_empty = TRUE),
     error = function(error) {
@@ -996,10 +913,8 @@ tempest_storm_restore_workspace <- function(
     }
   )
   tempest_research_workspace(
-    base_snapshot_id = base_snapshot_id,
-    graft_snapshot = graft_snapshot,
     max_sources = max_sources,
-    accepted_graft_references = accepted_references,
+
     artifact_selection = artifact_selection
   )
 }
@@ -1066,27 +981,6 @@ tempest_storm_workspace_needs_restore <- function(supplied, persisted) {
   if (is.null(supplied)) {
     return(FALSE)
   }
-  snapshot_values <- function(workspace, label) {
-    snapshot <- workspace$graft_snapshot
-    if (is.null(snapshot)) {
-      return(NULL)
-    }
-    tempest_graft_snapshot_validate(
-      snapshot,
-      tempest_persistence_error_class("tempest_run_restore_error"),
-      label
-    )$values
-  }
-  if (
-    !identical(
-      snapshot_values(supplied, "Supplied workspace Graft snapshot"),
-      snapshot_values(persisted, "Persisted workspace Graft snapshot")
-    )
-  ) {
-    tempest_storm_run_restore_abort(
-      "The supplied workspace does not retain the persisted Graft snapshot."
-    )
-  }
   supplied_record <- tryCatch(
     tempest_storm_workspace_equivalence_record(supplied),
     error = function(error) {
@@ -1121,28 +1015,6 @@ tempest_storm_workspace_needs_restore <- function(supplied, persisted) {
   ) {
     tempest_storm_run_restore_abort(
       "The supplied workspace diverges from the persisted STORM workspace."
-    )
-  }
-  if (!identical(supplied$base_snapshot_id, persisted$base_snapshot_id)) {
-    tempest_storm_run_restore_abort(
-      "The supplied workspace does not match the persisted base snapshot."
-    )
-  }
-  supplied_references <- supplied$list_accepted_graft_references()
-  persisted_references <- persisted$list_accepted_graft_references()
-  supplied_keys <- vapply(
-    supplied_references,
-    tempest_research_workspace_reference_json,
-    character(1)
-  )
-  persisted_keys <- vapply(
-    persisted_references,
-    tempest_research_workspace_reference_json,
-    character(1)
-  )
-  if (length(setdiff(supplied_keys, persisted_keys)) > 0L) {
-    tempest_storm_run_restore_abort(
-      "The supplied workspace contains accepted graft references outside the persisted run."
     )
   }
   TRUE
@@ -1182,8 +1054,7 @@ tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
   supplied <- tryCatch(
     tempest_research_workspace_restore(
       tempest_research_workspace_snapshot(persisted),
-      workspace = supplied,
-      graft_snapshot = persisted$graft_snapshot
+      workspace = supplied
     ),
     error = function(error) {
       tempest_storm_run_restore_abort(
@@ -1251,21 +1122,7 @@ tempest_storm_restore_manifest <- function(
       )
     )
   }
-  tryCatch(
-    tempest_graft_snapshot_assert_binding(
-      workspace$graft_snapshot,
-      manifest@knowledge_snapshot,
-      workspace,
-      tempest_persistence_error_class("tempest_run_restore_error"),
-      "Restored STORM Graft snapshot"
-    ),
-    error = function(error) {
-      tempest_storm_run_restore_abort(
-        "The persisted STORM accepted-knowledge identity is invalid.",
-        parent = error
-      )
-    }
-  )
+
   tryCatch(
     tempest_research_artifact_basis_validate(manifest, workspace),
     error = function(error) {
@@ -1592,13 +1449,7 @@ tempest_storm_load_artifacts <- function(
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   declared_files <- tempest_storm_bundle_validate_manifest(run_dir, metadata)
-  graft_snapshot <- tempest_graft_snapshot_read(
-    run_dir,
-    declared_files = declared_files,
-    manifest_reference = metadata$research_manifest$knowledge_snapshot %||%
-      list(),
-    class = tempest_persistence_error_class("tempest_run_restore_error")
-  )
+
   tempest_storm_require_current_schema(metadata)
   path_is_declared <- function(path) {
     rel_path <- gsub(
@@ -1610,8 +1461,7 @@ tempest_storm_load_artifacts <- function(
   }
 
   workspace <- tempest_storm_restore_workspace(
-    metadata,
-    graft_snapshot = graft_snapshot
+    metadata
   )
   manifest_workspace_identity <- tempest_storm_workspace_identity_record(
     workspace
@@ -1623,14 +1473,13 @@ tempest_storm_load_artifacts <- function(
   )
   tempest_research_workspace_require_current_schema(
     workspace_snapshot,
-    "Schema 9 STORM research workspace",
+    "Schema 10 STORM research workspace",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   workspace <- tryCatch(
     tempest_research_workspace_restore(
       workspace_snapshot,
-      workspace = workspace,
-      graft_snapshot = graft_snapshot
+      workspace = workspace
     ),
     error = function(error) {
       tempest_storm_run_restore_abort(
@@ -1988,26 +1837,7 @@ tempest_storm_save_artifacts <- function(
       )
     }
   )
-  tryCatch(
-    tempest_graft_snapshot_assert_binding(
-      workspace$graft_snapshot,
-      research_manifest@knowledge_snapshot,
-      workspace,
-      tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      ),
-      "STORM Graft snapshot"
-    ),
-    error = function(error) {
-      tempest_abort(
-        "{.arg research_manifest} does not match the workspace snapshot.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
-        parent = error
-      )
-    }
-  )
+
   existing_files <- list.files(
     run_dir,
     recursive = TRUE,
@@ -2163,16 +1993,7 @@ tempest_storm_save_artifacts <- function(
       )
     }
   }
-  files <- c(
-    files,
-    tempest_graft_snapshot_write(
-      staging_dir,
-      workspace$graft_snapshot,
-      tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
-    )
-  )
+
   files <- sort(unique(files))
   checksums <- stats::setNames(
     lapply(
@@ -2186,7 +2007,7 @@ tempest_storm_save_artifacts <- function(
     title = state$title,
     requested_steps = requested_steps,
     completed_stages = state$completed_stages,
-    schema_version = 9L,
+    schema_version = 10L,
     bundle_type = "storm",
     bundle_status = "complete",
     research_manifest = tempest_research_manifest_record(research_manifest),

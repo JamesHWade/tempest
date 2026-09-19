@@ -1,100 +1,53 @@
-# Host-owned recipe. Load checkpoints only from trusted local storage.
-briefing_selection <- function(receipt) {
-  Filter(
-    function(record) {
-      record$class %in% c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
-    },
-    receipt@record_revisions
+# Host-owned recipe. Read checkpoints only from trusted local storage.
+capture_briefing_basis <- function(store, stream, decision, purpose) {
+  event <- graft::graft_artifact_read_decision(store, stream, decision)
+  stopifnot(
+    identical(event$action, "accept"),
+    identical(event$purpose, purpose)
   )
-}
-
-briefing_revisions <- function(selections) {
-  records <- unlist(selections, recursive = FALSE)
-  ids <- vapply(records, `[[`, character(1), "record_id")
-  numbers <- vapply(records, `[[`, integer(1), "revision_number")
-  ordered <- order(ids, -numbers, method = "radix")
-  records <- records[ordered]
-  ids <- ids[ordered]
-  newest <- !duplicated(ids)
-  revisions <- stats::setNames(
-    vapply(records[newest], `[[`, character(1), "revision_id"),
-    ids[newest]
-  )
-  if (length(revisions) > 1000L) {
-    stop(
-      "The complete evidence basis exceeds 1,000 records; narrow the selection."
-    )
-  }
-  revisions
-}
-
-capture_briefing_basis <- function(store, selections, report_md = character()) {
-  selected <- briefing_revisions(selections)
-  ids <- names(selected)
-  snapshot <- graft::graft_snapshot(store)
-  view <- graft::graft_at(store, snapshot)
-  revisions <- vapply(
-    ids,
-    function(id) {
-      value <- graft::graft_get(view, id, include = character())
-      if (
-        identical(value$class, "Claim") &&
-          !identical(value$record$status, "active")
-      ) {
-        stop("Review the selection before consulting an inactive claim.")
-      }
-      revision <- graft::graft_history(view, id, limit = 1L)$revision_id[[1L]]
-      if (!identical(revision, selected[[id]])) {
-        stop(
-          "Selected evidence changed after its receipt; review before checkpointing."
-        )
-      }
-      revision
-    },
-    character(1)
-  )
+  # Verify the complete scientific evidence and report before retaining its pin.
+  tempest::tempest_read_artifact_research(store, event$selection)
   list(
-    snapshot = snapshot,
-    selections = selections,
-    record_ids = ids,
-    revision_ids = unname(revisions),
-    report_md = report_md
+    format = 1L,
+    stream = stream,
+    decision = event$id,
+    selection = event$selection,
+    purpose = purpose
   )
 }
 
 read_briefing_basis <- function(store, basis) {
-  selected <- briefing_revisions(basis$selections)
-  ids <- names(selected)
-  if (!identical(ids, basis$record_ids)) {
-    stop("The checkpoint is missing part of its selected evidence.")
-  }
-  if (!identical(unname(selected), basis$revision_ids)) {
-    stop("The checkpoint revisions are not covered by the selected receipts.")
-  }
-  view <- graft::graft_at(store, basis$snapshot)
-  revisions <- vapply(
-    ids,
-    function(id) {
-      graft::graft_get(view, id, include = character())
-      graft::graft_history(view, id, limit = 1L)$revision_id[[1L]]
-    },
-    character(1)
+  stopifnot(identical(basis$format, 1L))
+  event <- graft::graft_artifact_read_decision(
+    store,
+    basis$stream,
+    basis$decision
   )
-  if (!identical(unname(revisions), basis$revision_ids)) {
-    stop("The checkpoint does not match its exact accepted revisions.")
-  }
-  tempest::tempest_knowledge(view, record_ids = ids)
+  stopifnot(
+    identical(event$action, "accept"),
+    identical(event$selection, basis$selection),
+    identical(event$purpose, basis$purpose)
+  )
+  tempest::tempest_read_artifact_research(store, basis$selection)
+}
+
+reuse_briefing_basis <- function(store, basis, eligible) {
+  read_briefing_basis(store, basis)
+  tempest::tempest_reuse_artifact_research(
+    store,
+    basis$stream,
+    basis$decision,
+    basis$purpose,
+    eligible = eligible
+  )
 }
 
 briefing_changes <- function(store, basis) {
-  changed <- graft::graft_changes(
-    store,
-    since = basis$snapshot,
-    record_ids = basis$record_ids,
-    limit = 1000L
+  read_briefing_basis(store, basis)
+  head <- graft::graft_artifact_read_decision(store, basis$stream)
+  list(
+    decision_changed = !identical(head$id, basis$decision),
+    selection_changed = !identical(head$selection, basis$selection),
+    action = head$action
   )
-  if (isTRUE(attr(changed, "truncated"))) {
-    stop("The change assessment is incomplete; review before continuing.")
-  }
-  changed
 }

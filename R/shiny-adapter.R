@@ -207,9 +207,9 @@ tempest_shiny_ui <- function(
 #' @param program_set Optional [TempestProgramSet] used for new and restored
 #'   Co-STORM sessions. May be a value, function, or reactive. `NULL` uses the
 #'   builtin set.
-#' @param knowledge_view Optional immutable Graft evidence view. May be a value,
-#'   function, or reactive. It must match the session workspace and remains
-#'   process-local; it does not select executable programs.
+#' @param knowledge Optional artifact knowledge from [tempest_artifact_knowledge()]
+#'   for new and restored Co-STORM sessions. May be a value, function, or
+#'   reactive. Admission is checked when the session is created or restored.
 #' @return A list with the shared `store`; reactive `costorm_session`,
 #'   `costorm_events`, `costorm_evidence`, `storm_events`, `report_md`,
 #'   `report_workspace`, and `report_topic` accessors; a monotonic
@@ -223,7 +223,7 @@ tempest_shiny_server <- function(
   experts = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge = NULL
 ) {
   panels <- tempest_shiny_panels(panels)
   tempest_shiny_require_server(panels)
@@ -246,7 +246,7 @@ tempest_shiny_server <- function(
         experts = experts,
         session_id = session_id,
         program_set = program_set,
-        knowledge_view = knowledge_view
+        knowledge = knowledge
       )
     }
     if ("storm" %in% panels) {

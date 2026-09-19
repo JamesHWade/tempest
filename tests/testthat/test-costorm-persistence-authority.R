@@ -163,7 +163,7 @@ test_that("schema 12 persists exact Deputy execution authority", {
     character(1),
     "trace_type"
   )
-  expect_identical(snapshot$schema_version, 12L)
+  expect_identical(snapshot$schema_version, 13L)
   expect_identical(
     trace_types,
     c("stage_attempt", "stage_attempt", "deputy_run", "deputy_run")

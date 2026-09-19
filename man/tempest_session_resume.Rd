@@ -9,7 +9,6 @@ tempest_session_resume(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
   knowledge = NULL
 )
 }
@@ -25,10 +24,6 @@ objects.}
 \item{program_set}{A \link{TempestProgramSet} carrying the same program
 identities recorded in the bundle. If \code{NULL}, the builtin set is used.}
 
-\item{knowledge_view}{Optional transient immutable Graft evidence view that
-must match the saved workspace. It is never reconstructed from or written
-to persistence and does not select executable programs.}
-
 \item{knowledge}{Freshly admitted artifact knowledge matching the saved
 selection. Required when the session contains artifact evidence.}
 }
@@ -38,7 +33,7 @@ A restored \link{TempestSession}.
 \description{
 \code{tempest_session_resume()} reads a directory bundle written by
 \code{\link[=tempest_session_save]{tempest_session_save()}} and rebuilds a \link{TempestSession} with a fresh runtime
-\link{TempestConfig}. Only the exact current schema-12 bundle is accepted; no
+\link{TempestConfig}. Only the exact current schema-13 bundle is accepted; no
 compatibility or migration reader is provided. Historical progress events are
 loaded for display and reduction, but they are not replayed into \code{progress}.
 Stage-record history is restored for audit, but running attempts are rejected

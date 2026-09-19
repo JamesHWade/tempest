@@ -1,8 +1,6 @@
 test_that("artifact knowledge validates exact bytes, references and dependency closure", {
   input <- test_artifact_knowledge_input()
   knowledge <- do.call(tempest_artifact_knowledge, input)
-  expect_null(knowledge@view)
-  expect_null(knowledge@snapshot)
   expect_identical(knowledge@record_ids, names(input$contents))
   expect_identical(
     lapply(knowledge@records, \(resource) resource@content),
@@ -80,7 +78,6 @@ test_that("both public research constructors admit the artifact selection", {
     tempest:::tempest_workspace_accepted_claim_keys(workspace),
     "the pilot recovered 82%"
   )
-  expect_null(workspace$graft_snapshot)
   local_mocked_bindings(
     tempest_wiki_search = function(...) {
       data.frame(title = character(), url = character(), snippet = character())
@@ -609,7 +606,7 @@ test_that("only explicit active artifact claims count as accepted statements", {
 test_that("malformed persisted artifact selections use the STORM restore error", {
   workspace <- tempest_research_workspace()
   metadata <- list(
-    schema_version = 9L,
+    schema_version = 10L,
     workspace = tempest_storm_workspace_identity_record(workspace)
   )
   metadata$workspace$artifact_selection <- list(selection_id = "incomplete")
@@ -892,71 +889,6 @@ test_that("Co-STORM restore validates progress before artifact admission", {
   )
   expect_identical(checks, 0L)
   expect_identical(tempest_session_snapshot(session), snapshot)
-})
-
-test_that("Co-STORM restore validates knowledge views before artifact admission", {
-  skip_if_not_installed("graft")
-  fixture <- test_knowledge_view()
-  other <- test_knowledge_view()
-  knowledge <- do.call(
-    tempest_artifact_knowledge,
-    test_artifact_knowledge_input()
-  )
-  program_set <- tempest_program_set()
-  config <- tempest_config(chat_fn = function(...) fake_chat())
-  workspace <- tempest_research_workspace(graft_snapshot = fixture$snapshot)
-  tempest_knowledge_insert_records(
-    workspace,
-    knowledge@records,
-    knowledge@artifact_selection
-  )
-  session <- tempest_session_new(
-    "Artifact briefing",
-    config = config,
-    experts = list(test_expert()),
-    retriever = tempest_retriever(config = config, workspace = workspace),
-    program_set = program_set,
-    knowledge_view = fixture$view
-  )
-  snapshot <- tempest_session_snapshot(session)
-  checks <- 0L
-  knowledge@admission <- function() {
-    checks <<- checks + 1L
-    tempest_knowledge_abort("Current access revoked.")
-  }
-  for (invalid_view in list(list(), other$view)) {
-    expect_error(
-      tempest_session_restore(
-        snapshot,
-        config = config,
-        program_set = program_set,
-        knowledge_view = invalid_view,
-        knowledge = knowledge
-      ),
-      class = "tempest_governed_procedure_error"
-    )
-    expect_identical(checks, 0L)
-    expect_identical(tempest_session_snapshot(session), snapshot)
-  }
-  knowledge@admission <- function() {
-    checks <<- checks + 1L
-    knowledge
-  }
-  for (view in list(NULL, fixture$view)) {
-    restored <- tempest_session_restore(
-      snapshot,
-      config = config,
-      program_set = program_set,
-      knowledge_view = view,
-      knowledge = knowledge
-    )
-    expect_identical(tempest_session_knowledge_view(restored), view)
-    expect_identical(
-      tempest_session_workspace(restored)$artifact_selection,
-      knowledge@artifact_selection
-    )
-  }
-  expect_identical(checks, 2L)
 })
 
 test_that("Co-STORM resume cannot introduce a new artifact selection", {

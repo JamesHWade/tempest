@@ -231,22 +231,6 @@ tempest_costorm_retriever_workspace <- function(retriever) {
   workspace
 }
 
-tempest_costorm_manifest_snapshot_reference <- function(workspace) {
-  snapshot_id <- workspace$base_snapshot_id
-  if (is.null(snapshot_id)) {
-    return(list())
-  }
-  snapshot <- workspace$graft_snapshot
-  if (is.null(snapshot)) {
-    tempest_ecosystem_contract_abort(
-      paste0(
-        "A pinned Co-STORM workspace must retain its actual path-free ",
-        "Graft snapshot."
-      )
-    )
-  }
-  tempest_snapshot_reference(snapshot)
-}
 
 tempest_costorm_deputy_trace <- function(trace) {
   if (!is.list(trace) || is.data.frame(trace)) {
@@ -547,36 +531,13 @@ tempest_costorm_manifest_validate <- function(
     )
   }
   tempest_research_artifact_basis_validate(manifest, workspace)
-  snapshot <- manifest@knowledge_snapshot
-  snapshot_id <- snapshot$snapshot_id %||% NULL
-  if (length(snapshot) > 0L && is.null(snapshot_id)) {
-    tempest_costorm_session_abort(
-      paste0(
-        "{.code manifest@knowledge_snapshot} must identify its ",
-        "{.field snapshot_id}."
-      )
-    )
-  }
-  workspace_snapshot <- tempest_costorm_manifest_snapshot_reference(workspace)
-  if (
-    !identical(snapshot_id, workspace$base_snapshot_id) ||
-      !identical(snapshot, workspace_snapshot)
-  ) {
-    tempest_costorm_session_abort(
-      paste0(
-        "{.code manifest@knowledge_snapshot} does not match the ",
-        "exact ResearchWorkspace base snapshot."
-      )
-    )
-  }
   manifest
 }
 
 tempest_costorm_program_execution <- function(
   program_set,
   stage,
-  session_id,
-  knowledge_snapshot_id = NULL
+  session_id
 ) {
   session_id <- tempest_research_manifest_id(session_id, "session_id")
   trace_context <- list(
@@ -586,9 +547,7 @@ tempest_costorm_program_execution <- function(
     stage = stage,
     role = "program"
   )
-  if (!is.null(knowledge_snapshot_id)) {
-    trace_context$knowledge_snapshot_id <- knowledge_snapshot_id
-  }
+
   execution <- tempest_program_set_execution(
     program_set,
     stage,
@@ -785,8 +744,6 @@ TempestSession <- R6::R6Class(
     #'   identifier is generated.
     #' @param program_set A [TempestProgramSet] used for every structured
     #'   Co-STORM stage.
-    #' @param knowledge_view Optional immutable Graft view for accepted evidence.
-    #'   It must match the workspace snapshot and remains process-local.
     #' @param .admit_knowledge Internal callback receiving the validated
     #'   workspace for fresh knowledge admission.
     #' @param .artifact_selection Internal selection retained in a fresh manifest
@@ -804,7 +761,7 @@ TempestSession <- R6::R6Class(
       progress = NULL,
       session_id = NULL,
       program_set = NULL,
-      knowledge_view = NULL,
+
       .restore_manifest = NULL,
       .restore_token = NULL,
       .admit_knowledge = NULL,
@@ -842,10 +799,7 @@ TempestSession <- R6::R6Class(
         )
       }
       program_set <- program_set %||% tempest_program_set()
-      knowledge <- tempest_product_knowledge_view(
-        program_set,
-        knowledge_view
-      )
+
       program_references <- tempest_program_set_manifest_programs(program_set)
       if (is.null(experts)) {
         n_experts <- tempest_config_count(n_experts, "n_experts")
@@ -894,9 +848,7 @@ TempestSession <- R6::R6Class(
       }
       private$progress_value <- tempest_progress_callback(progress)
       if (is.null(retriever)) {
-        private$workspace_value <- tempest_research_workspace(
-          graft_snapshot = knowledge$snapshot
-        )
+        private$workspace_value <- tempest_research_workspace()
         private$retriever_value <- tempest_retriever(
           config = config,
           workspace = private$workspace_value
@@ -923,11 +875,7 @@ TempestSession <- R6::R6Class(
           retriever
         )
       }
-      private$workspace_value <- tempest_product_workspace_validate(
-        private$workspace_value,
-        knowledge,
-        arg = "retriever"
-      )
+
       tempest_research_workspace_verification_owner_preflight(
         private$workspace_value,
         restoring = restoring
@@ -943,9 +891,7 @@ TempestSession <- R6::R6Class(
           programs = program_references,
           artifact_selection = .artifact_selection %||%
             private$workspace_value$artifact_selection,
-          knowledge_snapshot = tempest_costorm_manifest_snapshot_reference(
-            private$workspace_value
-          ),
+
           runtime = list(),
           traces = list(),
           deliverables = list(),
@@ -972,7 +918,6 @@ TempestSession <- R6::R6Class(
         program_set,
         private$manifest_value
       )
-      private$knowledge_view_value <- knowledge$view
       private$program_set_value <- program_set
       private$session_id_value <- private$manifest_value@research_run_id
       private$transcript_value <- list()
@@ -1611,7 +1556,6 @@ TempestSession <- R6::R6Class(
     manifest_value = NULL,
     programs_value = NULL,
     program_set_value = NULL,
-    knowledge_view_value = NULL,
     workspace_value = NULL,
     chats_value = NULL,
     expert_manager_value = NULL,
@@ -2140,14 +2084,6 @@ tempest_session_programs <- function(session) {
   session$.__enclos_env__$private$programs_value
 }
 
-tempest_session_knowledge_view <- function(session) {
-  if (!inherits(session, "TempestSession")) {
-    tempest_costorm_session_abort(
-      "{.arg session} must be a TempestSession."
-    )
-  }
-  session$.__enclos_env__$private$knowledge_view_value
-}
 
 tempest_session_stage_records <- function(session) {
   if (!inherits(session, "TempestSession")) {
@@ -2644,7 +2580,7 @@ tempest_session_set_report_value <- function(session, report_md) {
 #' @param session_id Optional stable session identifier. If `NULL`, a new
 #'   identifier is generated.
 #' @param knowledge Optional accepted organizational knowledge from
-#'   [tempest_knowledge()] or [tempest_artifact_knowledge()]. It supplies accepted
+#'   [tempest_artifact_knowledge()]. It supplies accepted
 #'   evidence records without selecting or authorizing executable programs.
 #' @return A `TempestSession` R6 object for the active Co-STORM research
 #'   session.
@@ -2664,6 +2600,29 @@ tempest_session <- function(
   session_id = NULL,
   knowledge = NULL
 ) {
+  tempest_session_with_knowledge(
+    topic = topic,
+    config = config,
+    n_experts = n_experts,
+    experts = experts,
+    retriever = retriever,
+    progress = progress,
+    session_id = session_id,
+    knowledge = knowledge
+  )
+}
+
+tempest_session_with_knowledge <- function(
+  topic,
+  config = tempest_config(),
+  n_experts = 3,
+  experts = NULL,
+  retriever = NULL,
+  progress = NULL,
+  session_id = NULL,
+  knowledge = NULL,
+  program_set = NULL
+) {
   supplied_knowledge <- knowledge
   knowledge <- tempest_knowledge_argument(knowledge, admit = FALSE)
   session <- tempest_session_new(
@@ -2674,8 +2633,8 @@ tempest_session <- function(
     retriever = retriever,
     progress = progress,
     session_id = session_id,
-    program_set = knowledge$program_set,
-    knowledge_view = knowledge$view,
+    program_set = program_set %||% knowledge$program_set,
+
     .artifact_selection = knowledge$artifact_selection,
     .admit_knowledge = function(workspace) {
       tempest_knowledge_workspace_preflight(
@@ -2702,7 +2661,7 @@ tempest_session_new <- function(
   progress = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
+
   .admit_knowledge = NULL,
   .artifact_selection = NULL
 ) {
@@ -2715,7 +2674,7 @@ tempest_session_new <- function(
     progress = progress,
     session_id = session_id,
     program_set = program_set,
-    knowledge_view = knowledge_view,
+
     .admit_knowledge = .admit_knowledge,
     .artifact_selection = .artifact_selection
   )
@@ -2730,7 +2689,7 @@ tempest_session_restore_new <- function(
   progress = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
+
   manifest,
   .admit_knowledge = NULL
 ) {
@@ -2743,7 +2702,7 @@ tempest_session_restore_new <- function(
     progress = progress,
     session_id = session_id,
     program_set = program_set,
-    knowledge_view = knowledge_view,
+
     .restore_manifest = manifest,
     .restore_token = tempest_costorm_restore_token,
     .admit_knowledge = .admit_knowledge

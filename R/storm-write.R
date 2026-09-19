@@ -91,7 +91,7 @@ tempest_section_facts_text <- function(
 }
 
 # Each fact carries its disposition against the accepted Claims pinned from
-# the Graft snapshot, so the writer can tell which claims are new (what
+# the retained artifact selection, so the writer can tell which claims are new (what
 # changed) and which restate accepted knowledge (no material change).
 tempest_section_evidence_text <- function(evidence, accepted = character()) {
   paste(
@@ -387,10 +387,7 @@ tempest_write_sections_parallel <- function(
   config,
   programs
 ) {
-  if (
-    !tempest_has("mirai") ||
-      tempest_programs_have_knowledge_view(programs)
-  ) {
+  if (!tempest_has("mirai")) {
     return(NULL)
   }
 

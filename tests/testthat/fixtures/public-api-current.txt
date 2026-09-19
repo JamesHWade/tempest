@@ -5,11 +5,7 @@ tempest_claim_supports
 tempest_claims
 tempest_config
 tempest_expert
-tempest_graft_plan
-tempest_graft_schema
-tempest_knowledge
 tempest_promotion_bundle
-tempest_promotion_receipt
 tempest_publish_artifact_research
 tempest_read_artifact_research
 tempest_read_promotion_bundle
@@ -47,7 +43,6 @@ path
 config
 progress
 program_set
-knowledge_view
 knowledge
 [formals.tempest_expert]
 name

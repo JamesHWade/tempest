@@ -105,7 +105,6 @@ test_that("Co-STORM report accessor reads only the exact committed artifact", {
       mode = mode,
       config_digest = config_digest,
       programs = original_manifest@programs,
-      knowledge_snapshot = original_manifest@knowledge_snapshot,
       runtime = original_manifest@runtime,
       traces = original_manifest@traces,
       deliverables = deliverables,

@@ -52,8 +52,7 @@ tempest_program_set_execution <- function(
 }
 
 tempest_standalone_dsprrr_trace_context <- function(
-  stage,
-  knowledge_snapshot_id = NULL
+  stage
 ) {
   context <- list(
     product = "tempest",
@@ -61,9 +60,7 @@ tempest_standalone_dsprrr_trace_context <- function(
     role = "program",
     stage = stage
   )
-  if (!is.null(knowledge_snapshot_id)) {
-    context$knowledge_snapshot_id <- knowledge_snapshot_id
-  }
+
   tempest_research_manifest_canonical_value(context, "trace_context")
 }
 

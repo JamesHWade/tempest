@@ -27,7 +27,7 @@ instructions.}
 }
 \value{
 A \code{TempestKnowledge} value for \code{\link[=tempest_run]{tempest_run()}} or \code{\link[=tempest_session]{tempest_session()}}.
-The run retains the selection separately from any Graft snapshot. Its
+The run retains the exact artifact selection. Its
 computed input digest binds the input description; it does not authenticate
 a host, prove factual truth, or represent a native acceptance event.
 }
@@ -40,5 +40,5 @@ For Graft decisions use \code{\link[=tempest_reuse_artifact_research]{tempest_re
 detached input does not recreate its required current-admission callback.
 }
 \seealso{
-\code{\link[=tempest_knowledge]{tempest_knowledge()}} for the existing Graft producer.
+\code{\link[=tempest_reuse_artifact_research]{tempest_reuse_artifact_research()}} for current host admission.
 }

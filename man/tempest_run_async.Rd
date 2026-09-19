@@ -4,17 +4,12 @@
 \alias{tempest_run_async}
 \title{Run STORM asynchronously (Shiny-friendly)}
 \usage{
-tempest_run_async(..., knowledge_view = NULL)
+tempest_run_async(...)
 }
 \arguments{
 \item{...}{Arguments passed to \code{\link[=tempest_run]{tempest_run()}}. See \code{\link[=tempest_run]{tempest_run()}} for
 details on available parameters including \code{topic}, \code{config}, \code{retriever},
 \code{n_experts}, \code{research_strategy}, \code{max_rounds}, \code{steps}, and \code{verbose}.}
-
-\item{knowledge_view}{Accepted knowledge and a live pinned Graft view cannot
-cross the asynchronous
-worker boundary. Use \code{\link[=tempest_run]{tempest_run()}} in the process that owns the knowledge
-value and its admission callback.}
 }
 \value{
 A \code{tempest_async_run} promise that resolves with the

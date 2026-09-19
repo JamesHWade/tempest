@@ -321,40 +321,6 @@ test_that("publication authority is non-vacuous", {
   }
 })
 
-test_that("accepted context conditionally requires a real Graft snapshot", {
-  config <- tempest_config()
-  manifest <- tempest_research_manifest(
-    research_run_id = "authority-accepted-context",
-    mode = "storm",
-    config = config,
-    programs = tempest:::tempest_program_set_manifest_programs(
-      tempest_program_set()
-    ),
-    runtime = list(deputy_run_ids = list(), deputy_session_ids = list()),
-    traces = list(),
-    status = "running"
-  )
-  exploratory <- tempest_research_workspace()
-  expect_no_error(tempest:::tempest_product_authority_validate(
-    manifest,
-    list(),
-    exploratory,
-    config = config
-  ))
-
-  accepted_without_snapshot <- tempest_research_workspace(
-    accepted_graft_references = list(list(record_id = "accepted-record-1"))
-  )
-  expect_error(
-    tempest:::tempest_product_authority_validate(
-      manifest,
-      list(),
-      accepted_without_snapshot,
-      config = config
-    ),
-    class = "tempest_product_authority_error"
-  )
-})
 
 test_that("Deputy traces reject cross-mode execution identity splices", {
   config <- tempest_config()

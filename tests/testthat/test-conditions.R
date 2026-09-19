@@ -84,7 +84,6 @@ test_that("public entry points fail with one exact catchable category", {
   cases <- list(
     config = function() tempest_config(models = 42),
     expert = function() tempest_expert(name = 1),
-    knowledge = function() tempest_knowledge(list(not = "a view")),
     run = function() tempest_run("Topic", knowledge = "raw"),
     session = function() tempest_session("Topic", knowledge = "raw"),
     report = function() tempest_report(list()),
@@ -101,7 +100,10 @@ test_that("public entry points fail with one exact catchable category", {
       info = name
     )
     expect_identical(
-      length(intersect(class(condition), "tempest_input_error")),
+      length(intersect(
+        class(condition),
+        "tempest_input_error"
+      )),
       1L,
       info = name
     )

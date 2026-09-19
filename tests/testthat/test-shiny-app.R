@@ -537,7 +537,7 @@ test_that("chat module delegates native chat and session lifecycle work", {
       "experts",
       "session_id",
       "program_set",
-      "knowledge_view"
+      "knowledge"
     )
   )
   expect_named(
@@ -549,7 +549,7 @@ test_that("chat module delegates native chat and session lifecycle work", {
       "experts",
       "session_id",
       "program_set",
-      "knowledge_view",
+      "knowledge",
       "allow_user_experts"
     )
   )
@@ -572,16 +572,16 @@ test_that("chat module delegates native chat and session lifecycle work", {
   expect_no_match(server_code, "turn_id =", fixed = TRUE)
   expect_no_match(server_code, "tempest_uuid(\"chat-turn\")", fixed = TRUE)
   expect_match(server_code, "tempest_session_warmup_async", fixed = TRUE)
-  expect_match(server_code, "tempest_session_new", fixed = TRUE)
+  expect_match(server_code, "tempest_session_with_knowledge", fixed = TRUE)
   expect_match(
     server_code,
     "tempest_program_set_manifest_programs",
     fixed = TRUE
   )
-  expect_match(server_code, "tempest_product_knowledge_view", fixed = TRUE)
+  expect_match(server_code, "tempest_knowledge_argument", fixed = TRUE)
   expect_match(
     server_code,
-    "knowledge_view = knowledge_view_value",
+    "knowledge = knowledge_value",
     fixed = TRUE
   )
   expect_match(server_code, "tempest_generate_experts_async", fixed = TRUE)

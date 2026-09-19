@@ -192,13 +192,6 @@ test_promotion_bundle <- local({
   }
 })
 
-test_promotion_store <- function() {
-  graft::graft_open(
-    tempest_graft_schema(),
-    path = ":memory:",
-    okf = "disabled"
-  )
-}
 
 test_promotion_resign_data <- function(data) {
   payload <- data[setdiff(names(data), "bundle_id")]

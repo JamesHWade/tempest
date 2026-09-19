@@ -18,10 +18,6 @@ test_persistence_storm_stage_records <- function(
           governed_reference
         )
     }
-    snapshot_id <- manifest@knowledge_snapshot$snapshot_id %||% NULL
-    if (!is.null(snapshot_id)) {
-      trace$knowledge_snapshot_id <- snapshot_id
-    }
     tempest:::tempest_stage_record_start(
       stage,
       reference$program_artifact_id,

@@ -153,56 +153,6 @@ tempest_product_prop_list <- function() {
   S7::new_property(S7::class_list, default = list())
 }
 
-tempest_product_knowledge_view <- function(
-  program_set,
-  knowledge_view
-) {
-  tempest_program_set_assert(program_set)
-  if (is.null(knowledge_view)) {
-    return(list(view = NULL, snapshot = NULL, reference = NULL))
-  }
-  snapshot <- tryCatch(
-    tempest_knowledge_view_snapshot(knowledge_view),
-    error = function(error) {
-      tempest_governed_procedure_abort(
-        "{.arg knowledge_view} must be a valid pinned Graft view."
-      )
-    }
-  )
-  snapshot <- tempest_research_workspace_graft_snapshot(snapshot)
-  reference <- tempest_snapshot_reference(snapshot)
-  list(
-    view = knowledge_view,
-    snapshot = snapshot,
-    reference = reference
-  )
-}
-
-tempest_product_workspace_validate <- function(
-  workspace,
-  knowledge,
-  arg = "retriever"
-) {
-  if (is.null(knowledge$view)) {
-    return(workspace)
-  }
-  snapshot <- workspace$graft_snapshot
-  if (
-    is.null(snapshot) ||
-      !identical(workspace$base_snapshot_id, knowledge$reference$snapshot_id)
-  ) {
-    tempest_governed_procedure_abort(
-      "{.arg {arg}} workspace does not use the supplied pinned knowledge view."
-    )
-  }
-  workspace_reference <- tempest_snapshot_reference(snapshot)
-  if (!identical(workspace_reference, knowledge$reference)) {
-    tempest_governed_procedure_abort(
-      "{.arg {arg}} workspace snapshot is not exactly the supplied pinned view."
-    )
-  }
-  workspace
-}
 
 # Shared credential-safe validation retained by product records and errors.
 tempest_contract_sensitive_names <- function(value, path) {

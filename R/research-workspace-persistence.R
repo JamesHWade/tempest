@@ -135,9 +135,9 @@ tempest_research_workspace_validate_noncontent <- function(
 tempest_research_workspace_snapshot_fields <- function() {
   c(
     "schema_version",
-    "base_snapshot_id",
+
     "max_sources",
-    "accepted_graft_references",
+
     "artifact_selection",
     "retrieved_resources",
     "proposed_claims",
@@ -172,12 +172,12 @@ tempest_research_workspace_snapshot <- function(workspace) {
   ))
 
   snapshot <- list(
-    schema_version = 6L,
-    base_snapshot_id = workspace$base_snapshot_id,
+    schema_version = 7L,
+
     max_sources = tempest_research_workspace_max_sources_data(
       workspace$max_sources
     ),
-    accepted_graft_references = workspace$list_accepted_graft_references(),
+
     artifact_selection = workspace$artifact_selection,
     retrieved_resources = retrieved_resources,
     proposed_claims = lapply(
@@ -239,7 +239,7 @@ tempest_research_workspace_restore_schema <- function(snapshot) {
     ),
     minimum = 0L
   )
-  if (!identical(value, 6L)) {
+  if (!identical(value, 7L)) {
     tempest_product_unsupported_format_abort(
       "ResearchWorkspace snapshot format",
       value,
@@ -268,7 +268,7 @@ tempest_research_workspace_require_current_schema <- function(
     paste0(what, " schema version"),
     class
   )
-  if (!identical(schema_version, 6L)) {
+  if (!identical(schema_version, 7L)) {
     tempest_product_unsupported_format_abort(
       paste0(what, " format"),
       schema_version,
@@ -681,39 +681,13 @@ tempest_research_workspace_unique_record_ids <- function(
 
 #' @keywords internal
 tempest_research_workspace_restore_metadata <- function(snapshot) {
-  base_snapshot_id <- tryCatch(
-    tempest_research_workspace_snapshot_id(snapshot$base_snapshot_id),
-    error = function(error) {
-      tempest_research_workspace_restore_abort(
-        "{.field base_snapshot_id} is invalid.",
-        parent = error
-      )
-    }
-  )
-  if (is.null(snapshot$accepted_graft_references)) {
-    tempest_research_workspace_restore_abort(
-      "{.field accepted_graft_references} cannot be literal null."
-    )
-  }
-  references <- tryCatch(
-    tempest_research_workspace_references(
-      snapshot$accepted_graft_references
-    ),
-    error = function(error) {
-      tempest_research_workspace_restore_abort(
-        "{.field accepted_graft_references} is invalid.",
-        parent = error
-      )
-    }
-  )
   max_sources <- tempest_research_workspace_restore_max_sources(
     snapshot$max_sources
   )
 
   list(
-    base_snapshot_id = base_snapshot_id,
     max_sources = max_sources,
-    accepted_graft_references = references,
+
     artifact_selection = tryCatch(
       tempest_artifact_selection(
         snapshot$artifact_selection,
@@ -732,10 +706,8 @@ tempest_research_workspace_restore_metadata <- function(snapshot) {
 #' @keywords internal
 tempest_research_workspace_restore <- function(
   snapshot,
-  workspace = NULL,
-  graft_snapshot = NULL
+  workspace = NULL
 ) {
-  graft_snapshot_missing <- missing(graft_snapshot)
   if (!is.list(snapshot)) {
     tempest_abort(
       "{.arg snapshot} must be a list.",
@@ -752,9 +724,7 @@ tempest_research_workspace_restore <- function(
       )
     )
   }
-  if (graft_snapshot_missing && !is.null(workspace)) {
-    graft_snapshot <- workspace$graft_snapshot
-  }
+
   schema_version <- tempest_research_workspace_restore_schema(snapshot)
   expected_fields <- tempest_research_workspace_snapshot_fields()
   snapshot_fields <- names(snapshot)
@@ -775,23 +745,9 @@ tempest_research_workspace_restore <- function(
     )
   )
   metadata <- tempest_research_workspace_restore_metadata(snapshot)
-  graft_snapshot <- tryCatch(
-    tempest_research_workspace_graft_snapshot(
-      graft_snapshot,
-      metadata$base_snapshot_id
-    ),
-    error = function(error) {
-      tempest_research_workspace_restore_abort(
-        "The retained Graft snapshot is invalid.",
-        parent = error
-      )
-    }
-  )
   candidate <- tempest_research_workspace(
-    base_snapshot_id = metadata$base_snapshot_id,
-    graft_snapshot = graft_snapshot,
     max_sources = metadata$max_sources,
-    accepted_graft_references = metadata$accepted_graft_references,
+
     artifact_selection = metadata$artifact_selection
   )
   if (!is.null(workspace)) {
@@ -801,75 +757,6 @@ tempest_research_workspace_restore <- function(
     ) {
       tempest_research_workspace_restore_abort(
         "Artifact selection does not match the pinned workspace."
-      )
-    }
-    if (!identical(workspace$base_snapshot_id, metadata$base_snapshot_id)) {
-      tempest_research_workspace_restore_abort(
-        "{.field base_snapshot_id} does not match the pinned workspace."
-      )
-    }
-    workspace_references <- workspace$list_accepted_graft_references()
-    workspace_reference_keys <- vapply(
-      workspace_references,
-      tempest_research_workspace_reference_json,
-      character(1)
-    )
-    metadata_reference_keys <- vapply(
-      metadata$accepted_graft_references,
-      tempest_research_workspace_reference_json,
-      character(1)
-    )
-    if (
-      length(
-        setdiff(workspace_reference_keys, metadata_reference_keys)
-      ) >
-        0L
-    ) {
-      tempest_research_workspace_restore_abort(
-        paste0(
-          "{.field accepted_graft_references} contain identities outside ",
-          "the pinned workspace snapshot."
-        )
-      )
-    }
-    workspace_graft <- tryCatch(
-      tempest_research_workspace_graft_snapshot(
-        workspace$graft_snapshot,
-        metadata$base_snapshot_id
-      ),
-      error = function(error) {
-        tempest_research_workspace_restore_abort(
-          "The supplied workspace Graft snapshot is invalid.",
-          parent = error
-        )
-      }
-    )
-    if (
-      !identical(
-        lapply(
-          tempest_graft_snapshot_field_names(),
-          \(field) {
-            if (is.null(workspace_graft)) {
-              NULL
-            } else {
-              S7::prop(workspace_graft, field)
-            }
-          }
-        ),
-        lapply(
-          tempest_graft_snapshot_field_names(),
-          \(field) {
-            if (is.null(graft_snapshot)) {
-              NULL
-            } else {
-              S7::prop(graft_snapshot, field)
-            }
-          }
-        )
-      )
-    ) {
-      tempest_research_workspace_restore_abort(
-        "The retained Graft snapshot does not match the supplied workspace."
       )
     }
   }
@@ -1172,10 +1059,9 @@ tempest_research_workspace_restore <- function(
     "disputes_value",
     "max_sources_value",
     "claims_by_source",
-    "base_snapshot_id_value",
-    "graft_snapshot_value",
+
     "artifact_selection_value",
-    "accepted_graft_references_value",
+
     "citation_audit_value"
   )
   for (field in fields) {
