@@ -208,10 +208,10 @@ tempest_artifact_resource <- function(selection, ref, content) {
 #'   no-change briefing detection. Content is never evaluated as code or
 #'   instructions.
 #' @return A `TempestKnowledge` value for [tempest_run()] or [tempest_session()].
-#'   The run retains the selection separately from any Graft snapshot. Its
+#'   The run retains the exact artifact selection. Its
 #'   computed input digest binds the input description; it does not authenticate
 #'   a host, prove factual truth, or represent a native acceptance event.
-#' @seealso [tempest_knowledge()] for the existing Graft producer.
+#' @seealso [tempest_reuse_artifact_research()] for current host admission.
 #' @export
 tempest_artifact_knowledge <- function(selection, contents) {
   selection <- tempest_artifact_selection(selection)

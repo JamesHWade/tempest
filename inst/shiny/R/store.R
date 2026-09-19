@@ -117,7 +117,7 @@ new_session_store <- function() {
     config,
     progress = NULL,
     program_set = NULL,
-    knowledge_view = NULL
+    knowledge = NULL
   ) {
     tryCatch(
       {
@@ -126,7 +126,7 @@ new_session_store <- function() {
           config = config,
           progress = progress,
           program_set = program_set,
-          knowledge_view = knowledge_view
+          knowledge = knowledge
         )
         set_costorm_session(session)
         set_costorm_persistence_status(

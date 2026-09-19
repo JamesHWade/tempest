@@ -513,30 +513,43 @@ test_program_reference <- function(
   )
 }
 
-# Insert an accepted Graft Claim into a workspace the way tempest_knowledge()
-# does, so briefing dispositions can be tested without a live store.
+# Admit exact artifact claims without a live persistence store.
 fake_accepted_claim <- function(
   workspace,
   text,
   record_id = NULL,
   status = "active"
 ) {
-  record_id <- record_id %||%
-    paste0("graft:0", toupper(substr(digest::digest(text), 1, 25)))
-  resource <- tempest:::tempest_resource(
-    resource_kind = "graft.record",
-    locator = paste0("graft/Claim/", record_id),
-    title = paste("Claim", record_id),
-    media_type = "text/plain",
-    content = paste0("statement_text: ", text),
-    metadata = list(
-      graft_record_id = record_id,
-      graft_record_class = "Claim",
-      graft_revision_id = paste0("graft:0", strrep("A", 25L)),
-      graft_statement_text = text,
-      graft_statement_status = status
-    )
+  ids <- record_id %||%
+    paste0("claim:", vapply(text, digest::digest, character(1)))
+  status <- rep_len(status, length(text))
+  contents <- stats::setNames(
+    as.list(paste0("statement_text: ", text, "\nstatus: ", status)),
+    ids
   )
-  workspace$upsert_retrieved_resource(resource)
-  invisible(record_id)
+  selection <- list(
+    selection_id = paste0("selection:", digest::digest(contents)),
+    purpose = "briefing",
+    records = lapply(ids, function(id) {
+      list(
+        record_id = id,
+        revision_id = "v1",
+        class = "Claim",
+        sha256 = digest::digest(
+          charToRaw(contents[[id]]),
+          algo = "sha256",
+          serialize = FALSE
+        ),
+        dependencies = list()
+      )
+    }),
+    provenance = list(producer = "offline-test")
+  )
+  knowledge <- tempest_artifact_knowledge(selection, contents)
+  tempest:::tempest_knowledge_insert_records(
+    workspace,
+    knowledge@records,
+    knowledge@artifact_selection
+  )
+  invisible(ids)
 }

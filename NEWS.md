@@ -1,5 +1,8 @@
 # tempest 0.0.0.9000
 
+* Accepted research now uses artifact selections throughout STORM and Co-STORM inputs, save, restore, resume, and daily-briefing examples. Native Graft views, graph promotion plans/receipts, compiled schemas, and snapshot sidecars are removed. Current formats are workspace 7, research manifest 5, STORM bundle 10, Co-STORM snapshot/bundle 13, and trajectory review 3; older shapes are rejected without compatibility wrappers (zf9y; Graft #50, #74).
+
+
 * Research manifests now retain the exact artifact evidence selection for STORM and Co-STORM, reject a different workspace basis, and preserve that provenance in published corrections. Manifest schema 4 requires regenerating earlier preproduction bundles (zf9y; Graft #50, #74).
 
 * The offline artifact correction proof now executes two complete STORM runs, reviews contradictory evidence, and verifies historical reports and supports plus current eligibility after fresh-process reopening (zf9y; Graft #50).

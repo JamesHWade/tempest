@@ -938,7 +938,6 @@ test_that("exploratory fallback is evaluated and visible", {
     "query_decomposition",
     trace_context = list(
       research_run_id = "fallback-run",
-      knowledge_snapshot_id = "snapshot-1",
       expert_id = "expert-1",
       correlation_id = "correlation-1",
       mode = "storm",
@@ -969,10 +968,7 @@ test_that("exploratory fallback is evaluated and visible", {
     "tempest::fallback/query-decomposition/original-question@1"
   )
   expect_identical(result$record@publication_allowed, FALSE)
-  expect_identical(
-    result$record@trace_references$knowledge_snapshot_id,
-    "snapshot-1"
-  )
+
   expect_identical(result$record@trace_references$expert_id, "expert-1")
   expect_identical(
     result$record@trace_references$correlation_id,

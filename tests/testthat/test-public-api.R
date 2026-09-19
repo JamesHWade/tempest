@@ -29,7 +29,7 @@ test_that("the current public API contract is exact", {
     "tempest_session.active_bindings"
   )
   expect_named(contract, expected_sections)
-  expect_length(contract$exports, 24L)
+  expect_length(contract$exports, 20L)
   expect_identical(
     contract$exports,
     sort(unique(contract$exports), method = "radix")
@@ -112,68 +112,5 @@ test_that("the current public API contract is exact", {
   expect_identical(
     intersect(getNamespaceExports("tempest"), retired_exports),
     character()
-  )
-})
-
-test_that("the 0.3 transition inventory maps the former surface exactly once", {
-  transition <- utils::read.csv(
-    test_path("fixtures", "public-api-transition-0.3.csv"),
-    stringsAsFactors = FALSE
-  )
-
-  expect_named(
-    transition,
-    c("current_export", "disposition", "target_export")
-  )
-  expect_equal(nrow(transition), 63L)
-  expect_identical(
-    transition$current_export,
-    sort(unique(transition$current_export), method = "radix")
-  )
-  expect_setequal(
-    unique(transition$disposition),
-    c("retain", "replace", "internalize", "delete")
-  )
-
-  retained <- transition$disposition == "retain"
-  replaced <- transition$disposition == "replace"
-  removed <- transition$disposition %in% c("internalize", "delete")
-  expect_identical(
-    transition$target_export[retained],
-    transition$current_export[retained]
-  )
-  expect_equal(
-    nzchar(transition$target_export[replaced]),
-    rep(TRUE, sum(replaced))
-  )
-  expect_equal(transition$target_export[removed], rep("", sum(removed)))
-
-  target <- sort(
-    unique(transition$target_export[nzchar(transition$target_export)]),
-    method = "radix"
-  )
-  expect_identical(
-    target,
-    c(
-      "tempest_app",
-      "tempest_claim_supports",
-      "tempest_claims",
-      "tempest_config",
-      "tempest_expert",
-      "tempest_graft_plan",
-      "tempest_graft_schema",
-      "tempest_knowledge",
-      "tempest_promotion_bundle",
-      "tempest_promotion_receipt",
-      "tempest_read_promotion_bundle",
-      "tempest_report",
-      "tempest_run",
-      "tempest_save_promotion_bundle",
-      "tempest_session",
-      "tempest_session_resume",
-      "tempest_session_save",
-      "tempest_sources",
-      "tempest_trajectory_review"
-    )
   )
 })

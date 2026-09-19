@@ -185,13 +185,13 @@ bundle <- tempest_read_promotion_bundle(
   expected_bundle_id = trusted_bundle_id
 )
 
-schema <- tempest_graft_schema()
-# Open `store` with this schema using the host's chosen Graft location.
-plan <- tempest_graft_plan(store, bundle)
-
-# Review the plan before the host explicitly accepts it.
-commit_result <- graft::graft_commit(store, plan)
-receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
+store <- graft::graft_artifact_store("research-artifacts", create = TRUE)
+selection <- tempest_publish_artifact_research(result, store)
+# Host review and acceptance remain explicit; saving alone does not approve.
+accepted <- graft::graft_artifact_decide(
+  store, "research", "review-1", expected = NULL, selection = selection,
+  action = "accept", actor = "reviewer", reason = "Reviewed", purpose = "research"
+)
 ```
 
 Tempest does not commit during bundle construction or planning. The current
@@ -278,9 +278,9 @@ result <- tempest_run(
 Completed stages are loaded rather than rerun. Keep model, retrieval, and
 workflow settings stable when continuing an existing run.
 
-Current readers accept only `ResearchWorkspace` snapshot schema 6, Co-STORM
-snapshot and bundle schema 12, STORM bundle schema 9 with state schema 5,
-ProgramSet schema 2, research-manifest schema 4, StageRecord output-digest
+Current readers accept only `ResearchWorkspace` snapshot schema 7, Co-STORM
+snapshot and bundle schema 13, STORM bundle schema 10 with state schema 5,
+ProgramSet schema 2, research-manifest schema 5, StageRecord output-digest
 payload schema 3, and promotion-bundle schema 1. Every other version is
 rejected, as is any missing or extra field or value that becomes valid only
 after coercion. Shared envelope primitives, ResearchWorkspace snapshots,
@@ -403,9 +403,9 @@ credentials, live chat handles, tools, or authenticated clients. Configure
 fresh supported chats and retrieval dependencies through `config` before
 resuming.
 
-Snapshot, save, restore, and resume accept only the exact schema-12 Co-STORM
+Snapshot, save, restore, and resume accept only the exact schema-13 Co-STORM
 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
-suggested-question, and Graft snapshot state must pass integrity checks.
+suggested-question, and artifact selection state must pass integrity checks.
 
 The moderator and experts use persistent Deputy agents as the required
 Co-STORM runtime. Tempest disables ambient file, shell, R, and package-install
@@ -449,10 +449,10 @@ stage state are not part of that surface. No compatibility layer is provided.
 - Add semantic retrieval with `ragnar` through `embed_fn` or a pre-built
   `ragnar_store`.
 - Bring accepted organizational knowledge into a run with
-  `tempest_knowledge()`, which pins the immutable Graft view, names the exact
+  `tempest_reuse_artifact_research()`, which verifies an exact artifact selection and
   accepted evidence records, and keeps them separate from executable programs.
 - Review provisional evidence with `tempest_promotion_bundle()` and
-  `tempest_graft_plan()` before exercising Graft acceptance authority.
+  `tempest_publish_artifact_research()` before recording a host acceptance decision.
 - Reconstruct a non-authoritative review with
   `tempest_trajectory_review()`.
 - Capture progress by passing a `progress` callback, which receives one

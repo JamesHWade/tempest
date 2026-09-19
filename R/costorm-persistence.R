@@ -351,7 +351,7 @@ tempest_session_portable_snapshot <- function(snapshot, action = "snapshot") {
       }
     )
   }
-  whole_snapshot <- snapshot[setdiff(names(snapshot), "graft_snapshot")]
+  whole_snapshot <- snapshot
   tryCatch(
     tempest_product_canonical_list(
       whole_snapshot,
@@ -468,8 +468,7 @@ tempest_session_snapshot_fields <- function() {
     "progress_events",
     "stage_records",
     "workspace",
-    "expert_sessions",
-    "graft_snapshot"
+    "expert_sessions"
   )
 }
 
@@ -639,12 +638,12 @@ tempest_session_assert_persistence_quiescent <- function(
 #'
 #' `tempest_session_snapshot()` returns a structured, in-memory representation
 #' of the durable state in a [TempestSession]. The only supported snapshot is
-#' the exact current schema-12 product shape; no legacy or migration reader is
+#' the exact current schema-13 product shape; no legacy or migration reader is
 #' provided. It includes the research
 #' manifest; fixed session and configuration identity; the authoritative
 #' [ResearchWorkspace]; expert profiles; transcript and mind map; the latest
 #' report Markdown; stage-record, progress-event, and expert-session metadata;
-#' and the optional immutable Graft snapshot. Live chat
+#' and the retained artifact selection. Live chat
 #' handles, runtime clients, tools, closures, generic workflows, generic
 #' artifact catalogs, Shiny reactive state, credentials, and provider request
 #' bodies are not included.
@@ -655,7 +654,7 @@ tempest_session_assert_persistence_quiescent <- function(
 #' durable record without changing the live session.
 #'
 #' @param session A [TempestSession] object.
-#' @return A list containing an exact schema-12 session snapshot.
+#' @return A list containing an exact schema-13 session snapshot.
 #' @keywords internal
 tempest_session_snapshot <- function(session) {
   if (!inherits(session, "TempestSession")) {
@@ -853,27 +852,7 @@ tempest_session_snapshot <- function(session) {
   suggested_questions <- tempest_session_suggested_questions(
     tempest_session_suggestions(session)
   )
-  graft_snapshot <- tempest_session_workspace(session)$graft_snapshot
-  tryCatch(
-    tempest_graft_snapshot_assert_binding(
-      graft_snapshot,
-      research_manifest@knowledge_snapshot,
-      tempest_session_workspace(session),
-      tempest_session_persistence_error_class(
-        "tempest_session_snapshot_error"
-      ),
-      "Co-STORM Graft snapshot"
-    ),
-    error = function(error) {
-      tempest_abort(
-        "Cannot snapshot inconsistent accepted-knowledge state.",
-        class = tempest_session_persistence_error_class(
-          "tempest_session_snapshot_error"
-        ),
-        parent = error
-      )
-    }
-  )
+
   tryCatch(
     tempest_product_authority_validate(
       research_manifest,
@@ -899,7 +878,7 @@ tempest_session_snapshot <- function(session) {
   )
 
   snapshot <- list(
-    schema_version = 12L,
+    schema_version = 13L,
     package_version = tryCatch(
       as.character(utils::packageVersion("tempest")),
       error = function(e) NA_character_
@@ -925,8 +904,7 @@ tempest_session_snapshot <- function(session) {
     ),
     stage_records = tempest_stage_records_data(durable_records),
     workspace = workspace,
-    expert_sessions = expert_sessions,
-    graft_snapshot = graft_snapshot
+    expert_sessions = expert_sessions
   )
   tempest_persistence_credential_audit(
     snapshot,
@@ -1089,7 +1067,7 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #' snapshot created by [tempest_session_snapshot()] or read by
 #' [tempest_session_resume()]. It restores the research manifest and
 #' authoritative workspace, and creates fresh chat/tool handles using `config`.
-#' Only the exact current schema-12 snapshot is accepted. Older, future,
+#' Only the exact current schema-13 snapshot is accepted. Older, future,
 #' missing, extra, coerced, or mismatched shapes are rejected without migration.
 #'
 #' Historical progress events are restored as session artifact data and can be
@@ -1105,9 +1083,6 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #'   objects.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the snapshot. If `NULL`, the builtin set is used.
-#' @param knowledge_view Optional transient immutable Graft evidence view that
-#'   must match the saved workspace. It is never reconstructed from or written
-#'   to persistence and does not select executable programs.
 #' @param knowledge Freshly admitted artifact knowledge matching the saved
 #'   selection. Required when the session contains artifact evidence.
 #' @return A restored [TempestSession].
@@ -1117,7 +1092,7 @@ tempest_session_restore <- function(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
+
   knowledge = NULL
 ) {
   tempest_session_restore_internal(
@@ -1125,7 +1100,7 @@ tempest_session_restore <- function(
     config = config,
     progress = progress,
     program_set = program_set,
-    knowledge_view = knowledge_view,
+
     knowledge = knowledge
   )
 }
@@ -1136,7 +1111,7 @@ tempest_session_restore_internal <- function(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
+
   knowledge = NULL
 ) {
   if (!is.list(snapshot)) {
@@ -1149,7 +1124,7 @@ tempest_session_restore_internal <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 12L)) {
+  if (!identical(schema_version, 13L)) {
     tempest_product_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -1186,7 +1161,7 @@ tempest_session_restore_internal <- function(
   )
   tempest_research_workspace_require_current_schema(
     snapshot$workspace,
-    "Schema 12 session workspace",
+    "Schema 13 session workspace",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -1273,8 +1248,7 @@ tempest_session_restore_internal <- function(
   )
   workspace <- tryCatch(
     tempest_research_workspace_restore(
-      snapshot$workspace,
-      graft_snapshot = snapshot$graft_snapshot
+      snapshot$workspace
     ),
     error = function(error) {
       tempest_session_restore_abort(
@@ -1353,25 +1327,7 @@ tempest_session_restore_internal <- function(
       )
     }
   )
-  tryCatch(
-    tempest_graft_snapshot_assert_binding(
-      snapshot$graft_snapshot,
-      research_manifest@knowledge_snapshot,
-      workspace,
-      tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      ),
-      "Restored Co-STORM Graft snapshot"
-    ),
-    error = function(error) {
-      tempest_session_restore_abort(
-        paste0(
-          "Snapshot accepted-knowledge identity is invalid: ",
-          conditionMessage(error)
-        )
-      )
-    }
-  )
+
   program_set <- program_set %||% tempest_program_set()
   tryCatch(
     {
@@ -1456,7 +1412,7 @@ tempest_session_restore_internal <- function(
     progress = NULL,
     session_id = snapshot$session_id,
     program_set = program_set,
-    knowledge_view = knowledge_view,
+
     manifest = research_manifest,
     .admit_knowledge = function(workspace) {
       tempest_artifact_resume_admission(
@@ -1641,9 +1597,9 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_save()` writes a schema-versioned directory bundle for a
-#' [TempestSession]. The exact current format is schema 12, with no legacy or
+#' [TempestSession]. The exact current format is schema 13, with no legacy or
 #' compatibility writer. The bundle stores the research manifest, authoritative
-#' workspace, explicit stage-record history, optional immutable Graft snapshot,
+#' workspace, explicit stage-record history, retained artifact selection,
 #' and narrow report product. Every declared file is checksummed, and the
 #' `session.json` manifest is written last. Generic workflow and
 #' artifact-catalog state, live chat handles, registered tool closures, Shiny
@@ -1759,14 +1715,7 @@ tempest_session_save <- function(
     )
   }
   files <- c(
-    files,
-    tempest_graft_snapshot_write(
-      staging_dir,
-      snapshot$graft_snapshot,
-      tempest_session_persistence_error_class(
-        "tempest_session_save_error"
-      )
-    )
+    files
   )
 
   if (length(snapshot$suggested_questions) > 0L) {
@@ -2007,9 +1956,9 @@ tempest_session_bundle_manifest_fields <- function() {
 tempest_session_bundle_workspace_fields <- function() {
   c(
     "schema_version",
-    "base_snapshot_id",
+
     "max_sources",
-    "accepted_graft_references",
+
     "artifact_selection"
   )
 }
@@ -2026,7 +1975,7 @@ tempest_session_bundle_validate_manifest <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 12L)) {
+  if (!identical(schema_version, 13L)) {
     tempest_product_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -2050,7 +1999,7 @@ tempest_session_bundle_validate_manifest <- function(
       !identical(manifest$bundle_status %||% "", "complete")
   ) {
     tempest_session_restore_abort(
-      "Schema 12 Co-STORM bundle envelope is not complete."
+      "Schema 13 Co-STORM bundle envelope is not complete."
     )
   }
   if (
@@ -2058,25 +2007,25 @@ tempest_session_bundle_validate_manifest <- function(
       !is.list(manifest$workspace)
   ) {
     tempest_session_restore_abort(
-      "Schema 12 Co-STORM bundle is missing research identity metadata."
+      "Schema 13 Co-STORM bundle is missing research identity metadata."
     )
   }
   workspace_fields <- tempest_session_bundle_workspace_fields()
   if (!identical(names(manifest$workspace), workspace_fields)) {
     tempest_session_restore_abort(
-      "Schema 12 Co-STORM bundle has invalid workspace identity metadata."
+      "Schema 13 Co-STORM bundle has invalid workspace identity metadata."
     )
   }
   tempest_research_workspace_require_current_schema(
     manifest$workspace,
-    "Schema 12 Co-STORM workspace identity",
+    "Schema 13 Co-STORM workspace identity",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
   )
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 12 Co-STORM file inventory",
+    "Schema 13 Co-STORM file inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -2107,16 +2056,11 @@ tempest_session_bundle_validate_manifest <- function(
     evidence_required
   )
   optional_presentation <- tempest_session_bundle_optional_presentation_files()
-  snapshot_path <- tempest_graft_snapshot_relative_path()
-  knowledge_reference <- manifest$research_manifest$knowledge_snapshot %||%
-    list()
-  pinned <- length(knowledge_reference) > 0L
-  required <- c(core_required, if (pinned) snapshot_path else character())
+  required <- core_required
   allowed <- c(
     core_required,
     optional_presentation,
-    "report.md",
-    if (pinned) snapshot_path else character()
+    "report.md"
   )
   normalized_files <- gsub("\\\\", "/", files)
   physical_files <- setdiff(
@@ -2146,7 +2090,7 @@ tempest_session_bundle_validate_manifest <- function(
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 12 Co-STORM checksum inventory",
+    "Schema 13 Co-STORM checksum inventory",
     tempest_session_persistence_error_class(
       "tempest_session_restore_error"
     )
@@ -2199,7 +2143,6 @@ tempest_session_bundle_validate_manifest <- function(
   )]
   undeclared_required <- setdiff(required, files)
   unexpected_files <- setdiff(files, allowed)
-  snapshot_exists <- file.exists(file.path(bundle_dir, snapshot_path))
 
   structural_problems <- c(
     if (length(files) == 0L) "Manifest declares no files.",
@@ -2231,15 +2174,7 @@ tempest_session_bundle_validate_manifest <- function(
     if (length(non_regular_stage_records) > 0L) {
       "The stage-record sidecar must be a regular non-symlink file."
     },
-    if (!identical(pinned, snapshot_path %in% files)) {
-      paste0(
-        "The Graft snapshot sidecar and research manifest must either both ",
-        "be declared or both be absent."
-      )
-    },
-    if (!pinned && snapshot_exists) {
-      "An unpinned bundle cannot contain a Graft snapshot sidecar."
-    },
+
     if (length(extra_checksums) > 0L) {
       paste0(
         "Manifest contains checksums for undeclared files: ",
@@ -2313,7 +2248,7 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 12L)) {
+  if (!identical(schema_version, 13L)) {
     tempest_product_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
@@ -2427,8 +2362,7 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
   )
   workspace <- tryCatch(
     tempest_research_workspace_restore(
-      snapshot$workspace,
-      graft_snapshot = snapshot$graft_snapshot
+      snapshot$workspace
     ),
     error = function(error) {
       tempest_session_restore_abort(
@@ -2439,28 +2373,6 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
       )
     }
   )
-  knowledge_snapshot <- research_manifest@knowledge_snapshot
-  snapshot_id <- knowledge_snapshot$snapshot_id %||% NULL
-  workspace_snapshot <- tryCatch(
-    tempest_costorm_manifest_snapshot_reference(workspace),
-    error = function(error) {
-      tempest_session_restore_abort(
-        "Snapshot workspace lacks its exact accepted-knowledge identity.",
-        parent = error
-      )
-    }
-  )
-  if (
-    !identical(snapshot_id, workspace$base_snapshot_id) ||
-      !identical(knowledge_snapshot, workspace_snapshot)
-  ) {
-    tempest_session_restore_abort(
-      paste0(
-        "Snapshot research manifest does not match the exact ",
-        "ResearchWorkspace base snapshot."
-      )
-    )
-  }
   tryCatch(
     {
       tempest_product_authority_validate_report(
@@ -2492,25 +2404,7 @@ tempest_costorm_bundle_validate_product <- function(snapshot) {
       )
     }
   )
-  tryCatch(
-    tempest_graft_snapshot_assert_binding(
-      snapshot$graft_snapshot,
-      knowledge_snapshot,
-      workspace,
-      tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      ),
-      "Restored Co-STORM Graft snapshot"
-    ),
-    error = function(error) {
-      tempest_session_restore_abort(
-        paste0(
-          "Snapshot accepted-knowledge identity is invalid: ",
-          conditionMessage(error)
-        )
-      )
-    }
-  )
+
   tempest_session_mindmap_assert_binding(mindmap, workspace)
   invisible(snapshot)
 }
@@ -2593,7 +2487,7 @@ tempest_costorm_bundle_read <- function(
       "tempest_session_restore_error"
     )
   )
-  if (!identical(schema_version, 12L)) {
+  if (!identical(schema_version, 13L)) {
     tempest_product_unsupported_format_abort(
       "Co-STORM bundle format",
       schema_version,
@@ -2640,15 +2534,7 @@ tempest_costorm_bundle_read <- function(
   } else {
     NULL
   }
-  graft_snapshot <- tempest_graft_snapshot_read(
-    bundle_dir,
-    declared_files = declared_files,
-    manifest_reference = manifest$research_manifest$knowledge_snapshot %||%
-      list(),
-    class = tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
-  )
+
   snapshot <- list(
     schema_version = schema_version,
     package_version = manifest$package_version %||% NA_character_,
@@ -2692,8 +2578,7 @@ tempest_costorm_bundle_read <- function(
         "expert_sessions.json",
         what = "expert-session metadata"
       )
-    ),
-    graft_snapshot = graft_snapshot
+    )
   )
   workspace <- manifest$workspace
   workspace$retrieved_resources <- strict_json(
@@ -2737,7 +2622,7 @@ tempest_costorm_archive_read <- function(path) {
 #'
 #' `tempest_session_resume()` reads a directory bundle written by
 #' [tempest_session_save()] and rebuilds a [TempestSession] with a fresh runtime
-#' [TempestConfig]. Only the exact current schema-12 bundle is accepted; no
+#' [TempestConfig]. Only the exact current schema-13 bundle is accepted; no
 #' compatibility or migration reader is provided. Historical progress events are
 #' loaded for display and reduction, but they are not replayed into `progress`.
 #' Stage-record history is restored for audit, but running attempts are rejected
@@ -2750,9 +2635,6 @@ tempest_costorm_archive_read <- function(path) {
 #'   objects.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the bundle. If `NULL`, the builtin set is used.
-#' @param knowledge_view Optional transient immutable Graft evidence view that
-#'   must match the saved workspace. It is never reconstructed from or written
-#'   to persistence and does not select executable programs.
 #' @param knowledge Freshly admitted artifact knowledge matching the saved
 #'   selection. Required when the session contains artifact evidence.
 #' @return A restored [TempestSession].
@@ -2762,7 +2644,7 @@ tempest_session_resume <- function(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
+
   knowledge = NULL
 ) {
   tempest_session_resume_internal(
@@ -2770,7 +2652,7 @@ tempest_session_resume <- function(
     config = config,
     progress = progress,
     program_set = program_set,
-    knowledge_view = knowledge_view,
+
     knowledge = knowledge
   )
 }
@@ -2781,7 +2663,7 @@ tempest_session_resume_internal <- function(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
+
   knowledge = NULL
 ) {
   bundle <- tempest_costorm_bundle_read(path)
@@ -2790,7 +2672,7 @@ tempest_session_resume_internal <- function(
     config = config,
     progress = progress,
     program_set = program_set,
-    knowledge_view = knowledge_view,
+
     knowledge = knowledge
   )
 }

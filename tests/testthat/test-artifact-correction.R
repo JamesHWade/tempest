@@ -1,6 +1,5 @@
 test_that("contradictory research executes and preserves the prior evidence", {
   skip_if_not_installed("graft")
-  skip_if_not_installed("scans")
   first <- storm_product_fixture()
   original <- tempest_run(
     "Progress events",
@@ -193,19 +192,6 @@ test_that("contradictory research executes and preserves the prior evidence", {
   )
   expect_identical(data$knowledge$proposal$selection_id, corrected_selection)
   expect_identical(data$knowledge$acceptance$decision_id, reviewed$id)
-  trajectory <- scans::as_trajectory_tempest(review)
-  events <- scans::trajectory_events(trajectory)
-  projected <- events$value[[which(events$event_type == "tempest:knowledge")]]
-  expect_identical(projected$input_selection$selection_id, old_selection)
-  expect_identical(
-    projected$input_selection$reported_decision$decision_id,
-    accepted$id
-  )
-  expect_identical(projected$acceptance, data$knowledge$acceptance)
-  expect_identical(
-    sum(events$event_type == "tempest:input_artifact"),
-    data$knowledge$input_selection$records$retained
-  )
   withdrawal <- graft::graft_artifact_decide(
     store,
     "daily",

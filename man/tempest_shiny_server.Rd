@@ -12,7 +12,7 @@ tempest_shiny_server(
   experts = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge = NULL
 )
 }
 \arguments{
@@ -36,9 +36,9 @@ for new Co-STORM sessions. May be a value, function, or reactive.}
 Co-STORM sessions. May be a value, function, or reactive. \code{NULL} uses the
 builtin set.}
 
-\item{knowledge_view}{Optional immutable Graft evidence view. May be a value,
-function, or reactive. It must match the session workspace and remains
-process-local; it does not select executable programs.}
+\item{knowledge}{Optional artifact knowledge from \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}
+for new and restored Co-STORM sessions. May be a value, function, or
+reactive. Admission is checked when the session is created or restored.}
 }
 \value{
 A list with the shared \code{store}; reactive \code{costorm_session},

@@ -5,13 +5,9 @@ test_that("schema 9 STORM bundles round-trip the complete workspace", {
   program_set <- tempest_program_set()
   program_references <-
     tempest:::tempest_program_set_manifest_programs(program_set)
-  knowledge <- test_knowledge_view()
+
   workspace <- tempest_research_workspace(
-    graft_snapshot = knowledge$snapshot,
-    max_sources = 4L,
-    accepted_graft_references = list(
-      list(record_id = "claim.accepted", revision_id = "revision-7")
-    )
+    max_sources = 4L
   )
   source <- tempest_resource(
     resource_kind = "web",
@@ -88,10 +84,7 @@ test_that("schema 9 STORM bundles round-trip the complete workspace", {
   manifest <- tempest_research_manifest(
     "complete-workspace",
     config = cfg,
-    programs = program_references,
-    knowledge_snapshot = tempest:::tempest_snapshot_reference(
-      knowledge$snapshot
-    )
+    programs = program_references
   )
   bound <- test_persistence_bind_storm_records(state, workspace, manifest)
   state <- bound$state
@@ -163,14 +156,9 @@ test_that("STORM workspace files match the exact manifest identity", {
     dir <- tempfile("tempest-workspace-identity-")
     dir.create(dir)
     cfg <- tempest_config()
-    knowledge <- test_knowledge_view()
+
     workspace <- tempest_research_workspace(
-      graft_snapshot = knowledge$snapshot,
-      max_sources = 4L,
-      accepted_graft_references = list(list(
-        record_id = "accepted.identity",
-        revision_id = "revision-1"
-      ))
+      max_sources = 4L
     )
     tempest:::tempest_storm_save_artifacts(
       dir,
@@ -179,10 +167,7 @@ test_that("STORM workspace files match the exact manifest identity", {
       tempest_research_manifest(
         "workspace-identity",
         config = cfg,
-        programs = program_references,
-        knowledge_snapshot = tempest:::tempest_snapshot_reference(
-          knowledge$snapshot
-        )
+        programs = program_references
       ),
       program_set = program_set,
       config = cfg,
@@ -237,11 +222,7 @@ test_that("STORM workspace files match the exact manifest identity", {
   manifest <- tempest:::tempest_product_read_json(
     file.path(bundle$dir, "run_config.json")
   )
-  names(manifest$workspace) <- c(
-    "base_snapshot_id",
-    "max_sources",
-    "max_sources"
-  )
+  names(manifest$workspace) <- c("max_sources", "max_sources")
   expect_error(
     tempest:::tempest_storm_restore_workspace(
       manifest

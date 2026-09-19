@@ -10,7 +10,7 @@ tempest_briefing_item_confidences <- function() {
 
 # A briefing decides structurally whether a verified claim changes accepted
 # knowledge: it compares the claim text with the Claim records that were
-# pinned from the Graft snapshot at the start of the run. A claim that restates
+# retained in the artifact selection at the start of the run. A claim that restates
 # an accepted Claim is a duplicate and may only support a no-change item; any
 # other verified claim is new and reads as an observation of what changed.
 tempest_briefing_claim_dispositions <- function() {
@@ -28,11 +28,7 @@ tempest_workspace_accepted_claim_keys <- function(workspace) {
       next
     }
     metadata <- resource@metadata
-    record_class <- if (identical(resource@resource_kind, "artifact.record")) {
-      metadata$artifact_record_class
-    } else {
-      metadata$graft_record_class
-    }
+    record_class <- metadata$artifact_record_class
     if (!identical(record_class, "Claim")) {
       next
     }
@@ -510,7 +506,7 @@ tempest_briefing_items_from_output <- function(output, context) {
       tempest_stage_output_abort(
         paste0(
           "A no-change item must copy a verified claim that restates a Claim ",
-          "accepted in the pinned Graft snapshot, and an observation must copy ",
+          "retained in the pinned artifact selection, and an observation must copy ",
           "a verified claim that is not yet accepted."
         )
       )

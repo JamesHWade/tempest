@@ -4,14 +4,12 @@ test_that("workspace schema 6 round-trips authoritative claim supports", {
     fixture$workspace
   )
 
-  expect_identical(snapshot$schema_version, 6L)
+  expect_identical(snapshot$schema_version, 7L)
   expect_named(
     snapshot,
     c(
       "schema_version",
-      "base_snapshot_id",
       "max_sources",
-      "accepted_graft_references",
       "artifact_selection",
       "retrieved_resources",
       "proposed_claims",
@@ -94,7 +92,7 @@ test_that("workspace restore rejects every aggregate and old schema shape", {
   null_references["accepted_graft_references"] <- list(NULL)
   expect_error(
     tempest:::tempest_research_workspace_restore(null_references),
-    class = "tempest_research_workspace_restore_error"
+    class = "tempest_unsupported_format_error"
   )
 
   aggregate_shape <- snapshot

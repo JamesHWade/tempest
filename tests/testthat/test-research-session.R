@@ -102,7 +102,7 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
     "program_artifact_id"
   )
   expect_identical(
-    tempest:::tempest_session_manifest(session)@knowledge_snapshot,
+    tempest:::tempest_session_manifest(session)@artifact_selection,
     list()
   )
   expect_identical(tempest:::tempest_session_manifest(session)@runtime, list())
@@ -420,30 +420,6 @@ test_that("Co-STORM snapshots reject mutated live ProgramSets", {
   )
 })
 
-test_that("Co-STORM rejects scalar-only pinned workspaces", {
-  skip_if_not_installed("ellmer")
-  config <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  workspace <- tempest_research_workspace(
-    base_snapshot_id = "snapshot-accepted-1"
-  )
-  retriever <- tempest_retriever(config = config, workspace = workspace)
-
-  expect_error(
-    tempest_session(
-      "Pinned research session",
-      config = config,
-      experts = list(test_expert(
-        expert_id = "expert.pinned-session",
-        name = "Pinned Session Expert"
-      )),
-      retriever = retriever,
-      session_id = "research-session-pinned"
-    ),
-    class = "tempest_ecosystem_contract_error"
-  )
-})
 
 test_that("Co-STORM rejects a mismatched TempestRetriever before execution", {
   skip_if_not_installed("ellmer")
@@ -511,18 +487,16 @@ test_that("Co-STORM restoration preserves manifest identity", {
     }
   )
   program_set <- tempest_program_set()
-  knowledge <- test_knowledge_view()
-  workspace <- tempest_research_workspace(graft_snapshot = knowledge$snapshot)
-  snapshot_reference <- tempest:::tempest_snapshot_reference(
-    knowledge$snapshot
-  )
+
+  workspace <- tempest_research_workspace()
+
   retriever <- tempest_retriever(config = config, workspace = workspace)
   manifest <- tempest_research_manifest(
     research_run_id = "restored-costorm-session",
     mode = "costorm",
     config = config,
     programs = tempest:::tempest_program_set_manifest_programs(program_set),
-    knowledge_snapshot = snapshot_reference,
+
     runtime = list(),
     traces = list(),
     deliverables = list(),
@@ -564,11 +538,9 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
   program_set <- tempest_program_set()
-  knowledge <- test_knowledge_view()
-  workspace <- tempest_research_workspace(graft_snapshot = knowledge$snapshot)
-  snapshot_reference <- tempest:::tempest_snapshot_reference(
-    knowledge$snapshot
-  )
+
+  workspace <- tempest_research_workspace()
+
   retriever <- tempest_retriever(config = config, workspace = workspace)
   expert <- test_expert(
     expert_id = "expert.invalid-manifest",
@@ -588,17 +560,14 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
   manifest <- function(
     mode = "costorm",
     status = "running",
-    snapshot_id = snapshot_reference$snapshot_id,
     config_ = config
   ) {
-    knowledge_snapshot <- snapshot_reference
-    knowledge_snapshot$snapshot_id <- snapshot_id
     tempest_research_manifest(
       research_run_id = "manifest-session",
       mode = mode,
       config = config_,
       programs = tempest:::tempest_program_set_manifest_programs(program_set),
-      knowledge_snapshot = knowledge_snapshot,
+
       runtime = list(),
       status = status
     )
@@ -635,11 +604,6 @@ test_that("Co-STORM restoration rejects mismatched manifests", {
     create_session(manifest(status = "succeeded")),
     class = "tempest_session_error",
     regexp = "canonical durable report binding"
-  )
-  expect_error(
-    create_session(manifest(snapshot_id = "snapshot:mismatched")),
-    class = "tempest_session_error",
-    regexp = "base snapshot"
   )
 
   changed_config <- tempest_config(

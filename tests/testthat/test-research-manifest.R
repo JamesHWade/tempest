@@ -6,7 +6,7 @@ test_that("research manifests validate schema and lifecycle enums", {
   )
 
   expect_identical(S7::S7_inherits(manifest, TempestResearchManifest), TRUE)
-  expect_identical(manifest@schema_version, 4L)
+  expect_identical(manifest@schema_version, 5L)
   expect_identical(manifest@research_run_id, "research-123")
   expect_identical(manifest@mode, "storm")
   expect_identical(manifest@status, "running")
@@ -59,11 +59,7 @@ test_that("research manifest records survive canonical JSON without drift", {
         evaluator_version = "1.0.0"
       )
     ),
-    knowledge_snapshot = list(
-      snapshot_id = "snapshot:opaque",
-      store_id = "store:opaque",
-      commit_order = 117L
-    ),
+
     runtime = list(
       deputy_session_ids = c("session-a", "session-b"),
       deputy_run_ids = "run-a"
@@ -89,7 +85,6 @@ test_that("research manifest records survive canonical JSON without drift", {
       "mode",
       "config_digest",
       "programs",
-      "knowledge_snapshot",
       "artifact_selection",
       "runtime",
       "traces",
@@ -128,7 +123,7 @@ test_that("research manifest readers require exact current records", {
   ))
 
   whole_double_schema <- record
-  whole_double_schema$schema_version <- 4
+  whole_double_schema$schema_version <- 5
   expect_error(
     tempest_research_manifest_from_record(whole_double_schema),
     class = "tempest_research_manifest_error"
@@ -143,7 +138,6 @@ test_that("research manifest readers require exact current records", {
 
   for (field in c(
     "programs",
-    "knowledge_snapshot",
     "artifact_selection",
     "runtime",
     "traces",
@@ -375,17 +369,13 @@ test_that("manifest identifiers share the portable credential boundary", {
     "SK-BR-3",
     "storm",
     tempest_config(),
-    knowledge_snapshot = list(
-      snapshot_id = "SK-N-SH",
-      store_id = "SK-MEL-28",
-      commit_order = 1L
-    ),
+
     traces = list(list(trace_id = "SK-OV-3"))
   )
   expect_identical(biomedical@research_run_id, "SK-BR-3")
   expect_identical(
-    biomedical@knowledge_snapshot$snapshot_id,
-    "SK-N-SH"
+    biomedical@research_run_id,
+    "SK-BR-3"
   )
   expect_identical(biomedical@traces[[1]]$trace_id, "SK-OV-3")
 
@@ -394,19 +384,7 @@ test_that("manifest identifiers share the portable credential boundary", {
     tempest_research_manifest(credential, "storm", tempest_config()),
     class = "tempest_research_manifest_error"
   )
-  expect_error(
-    tempest_research_manifest(
-      "research-safe",
-      "storm",
-      tempest_config(),
-      knowledge_snapshot = list(
-        snapshot_id = credential,
-        store_id = "store-safe",
-        commit_order = 1L
-      )
-    ),
-    class = "tempest_research_manifest_error"
-  )
+
   expect_error(
     tempest_research_manifest(
       "research-safe",
@@ -649,10 +627,7 @@ test_that("research manifest reference schemas are closed", {
       )
     ),
     list(
-      knowledge_snapshot = list(
-        snapshot_id = "snapshot-1",
-        label = "not-part-of-the-snapshot-contract"
-      )
+      artifact_selection = list(selection_id = "incomplete")
     ),
     list(runtime = list(parent_run_id = "run-parent")),
     list(traces = list(list(trace_id = "trace-1", content = "secret"))),
@@ -678,7 +653,7 @@ test_that("research manifest reference schemas are closed", {
         )
       ),
       class = "tempest_research_manifest_error",
-      regexp = "Unknown reference fields|credential-like"
+      regexp = "Unknown reference fields|credential-like|artifact selection is invalid"
     )
   }
 })
@@ -920,7 +895,7 @@ test_that("research manifest records contain references only", {
         evaluator_version = "1.0.0"
       )
     ),
-    knowledge_snapshot = list(snapshot_id = "snapshot-1"),
+
     runtime = list(deputy_run_ids = "deputy-run-1"),
     traces = list(list(trace_id = "trace-1")),
     deliverables = list(list(deliverable_id = "report-1"))
@@ -959,7 +934,7 @@ test_that("research manifest updates return a new validated value", {
   expect_identical(updated@traces[[1]]$trace_id, "trace-1")
   expect_identical(updated@deliverables[[1]]$deliverable_id, "report-1")
   expect_identical(updated@programs, manifest@programs)
-  expect_identical(updated@knowledge_snapshot, manifest@knowledge_snapshot)
+  expect_identical(updated@artifact_selection, manifest@artifact_selection)
 })
 
 test_that("terminal research manifest statuses are absorbing and idempotent", {

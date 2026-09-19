@@ -22,12 +22,7 @@ test_that("durable integer validation accepts the exact non-NA range", {
 test_that("ResearchWorkspace snapshots restore artifact-free product state", {
   skip_if_not_installed("jsonlite")
   workspace <- tempest_research_workspace(
-    base_snapshot_id = "snapshot-a",
-    max_sources = 4L,
-    accepted_graft_references = list(
-      list(record_id = "record-z", revision_id = "revision-2"),
-      list(record_id = "record-a", revision_id = "revision-1")
-    )
+    max_sources = 4L
   )
   source <- test_typed_web_resource(
     "https://example.com/workspace",
@@ -101,15 +96,15 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
 
   expect_identical(snapshot, snapshot_again)
   expect_identical(now_calls, 0L)
-  expect_identical(snapshot$schema_version, 6L)
+  expect_identical(snapshot$schema_version, 7L)
   expect_identical(snapshot$max_sources, 4L)
   expect_named(
     snapshot,
     c(
       "schema_version",
-      "base_snapshot_id",
+
       "max_sources",
-      "accepted_graft_references",
+
       "artifact_selection",
       "retrieved_resources",
       "proposed_claims",
@@ -126,15 +121,6 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
     "resource_id"
   )
   expect_contains(resource_ids, c(resource@resource_id, source@resource_id))
-  expect_equal(
-    vapply(
-      snapshot$accepted_graft_references,
-      `[[`,
-      character(1),
-      "record_id"
-    ),
-    c("record-a", "record-z")
-  )
 
   path <- withr::local_tempfile(fileext = ".json")
   tempest:::tempest_product_write_json(path, snapshot)
@@ -145,12 +131,9 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
 
   expect_identical(restored_snapshot, snapshot)
   expect_r6_class(restored, "ResearchWorkspace")
-  expect_identical(restored$base_snapshot_id, "snapshot-a")
+
   expect_equal(restored$max_sources, 4L)
-  expect_equal(
-    restored$list_accepted_graft_references(),
-    workspace$list_accepted_graft_references()
-  )
+
   expect_s7_class(
     restored$get_retrieved_resource(source@resource_id),
     tempest:::TempestResource
@@ -171,7 +154,6 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
   expect_equal(restored$citation_audit$support_score, 0.95)
   expect_equal("artifacts" %in% names(restored), FALSE)
 
-  workspace$record_accepted_graft_reference(list(record_id = "record-new"))
   sealed_before <- tempest:::tempest_research_workspace_snapshot(workspace)
   expect_error(
     workspace$upsert_retrieved_resource(test_typed_web_resource(
@@ -185,7 +167,7 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
     tempest:::tempest_research_workspace_snapshot(workspace),
     sealed_before
   )
-  expect_equal(length(snapshot$accepted_graft_references), 2L)
+
   titles <- vapply(
     snapshot$retrieved_resources,
     `[[`,
@@ -195,12 +177,8 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
   expect_contains(titles, c("Workspace source", "Workspace protocol"))
   expect_equal(snapshot$claim_supports[[1]]$support_score, 0.95)
 
-  snapshot$accepted_graft_references[[1]]$record_id <- "tampered"
   snapshot$retrieved_resources[[1]]$title <- "Tampered snapshot"
-  expect_equal(
-    restored$accepted_graft_references[[1]]$record_id,
-    "record-a"
-  )
+
   expect_equal(
     restored$get_retrieved_source(source@resource_id)$title,
     "Workspace source"
@@ -233,32 +211,12 @@ test_that("ResearchWorkspace snapshots encode unbounded source limits", {
 
 test_that("ResearchWorkspace restore validates schema and pinned state", {
   snapshot <- tempest:::tempest_research_workspace_snapshot(
-    tempest_research_workspace(
-      base_snapshot_id = "snapshot-a",
-      accepted_graft_references = list(list(record_id = "record-a"))
-    )
+    tempest_research_workspace()
   )
-  foreign <- tempest_research_workspace(
-    base_snapshot_id = "snapshot-b",
-    accepted_graft_references = list(list(record_id = "record-a"))
-  )
-
+  input <- test_artifact_knowledge_input()
+  foreign <- tempest_research_workspace(artifact_selection = input$selection)
   expect_error(
-    tempest:::tempest_research_workspace_restore(
-      snapshot,
-      workspace = foreign
-    ),
-    class = "tempest_research_workspace_restore_error"
-  )
-  foreign <- tempest_research_workspace(
-    base_snapshot_id = "snapshot-a",
-    accepted_graft_references = list(list(record_id = "record-b"))
-  )
-  expect_error(
-    tempest:::tempest_research_workspace_restore(
-      snapshot,
-      workspace = foreign
-    ),
+    tempest:::tempest_research_workspace_restore(snapshot, workspace = foreign),
     class = "tempest_research_workspace_restore_error"
   )
 

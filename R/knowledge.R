@@ -1,11 +1,3 @@
-tempest_knowledge_view_snapshot <- function(knowledge_view) {
-  graft::graft_view_snapshot(knowledge_view)
-}
-
-tempest_knowledge_history <- function(knowledge_view, record_id) {
-  graft::graft_history(knowledge_view, record_id, limit = 1L)
-}
-
 # Accepted organizational knowledge boundary
 
 tempest_knowledge_abort <- function(
@@ -30,14 +22,14 @@ tempest_knowledge_record_allowlist <- function() {
 }
 
 tempest_is_accepted_knowledge_resource <- function(resource) {
-  resource@resource_kind %in% c("graft.record", "artifact.record")
+  resource@resource_kind %in% "artifact.record"
 }
 
 tempest_knowledge_max_records <- function() {
   1000L
 }
 
-#' Retained research knowledge from a Graft view or artifact selection
+#' Retained research knowledge from an artifact selection
 #'
 #' @keywords internal
 TempestKnowledge <- S7::new_class(
@@ -45,17 +37,12 @@ TempestKnowledge <- S7::new_class(
   package = "tempest",
   properties = list(
     admission = S7::new_property(S7::class_any),
-    view = S7::new_property(S7::class_any),
-    snapshot = S7::new_property(S7::class_any),
-    reference = S7::new_property(S7::class_any),
+
     record_ids = S7::new_property(S7::class_character, default = character()),
     records = S7::new_property(S7::class_list, default = list()),
     artifact_selection = S7::new_property(S7::class_list, default = list())
   ),
   constructor = function(
-    view = NULL,
-    snapshot = NULL,
-    reference = NULL,
     record_ids = character(),
     records = list(),
     artifact_selection = list(),
@@ -64,9 +51,7 @@ TempestKnowledge <- S7::new_class(
     value <- S7::new_object(
       S7::S7_object(),
       admission = admission,
-      view = view,
-      snapshot = snapshot,
-      reference = reference,
+
       record_ids = record_ids,
       records = records,
       artifact_selection = artifact_selection
@@ -108,67 +93,6 @@ tempest_knowledge_record_ids <- function(value) {
   value
 }
 
-# Project one accepted immutable record into an exact evidence resource. The
-# record text stays in a data field; it never becomes a prompt, a role, a tool,
-# a procedure selection, or an executable artifact.
-tempest_knowledge_record_resource <- function(knowledge_view, record_id) {
-  history <- tryCatch(
-    tempest_knowledge_history(knowledge_view, record_id),
-    error = function(error) {
-      tempest_knowledge_abort(
-        "Could not resolve the accepted Graft record {.val {record_id}}.",
-        parent = error
-      )
-    }
-  )
-  required <- c("revision_id", "record_id", "class", "record")
-  if (
-    !is.data.frame(history) ||
-      nrow(history) != 1L ||
-      !all(required %in% names(history)) ||
-      !identical(history$record_id[[1L]], record_id) ||
-      !is.list(history$record[[1L]])
-  ) {
-    tempest_knowledge_abort(
-      "The pinned Graft view did not return one exact accepted record for {.val {record_id}}."
-    )
-  }
-  record_class <- history$class[[1L]]
-  if (!isTRUE(record_class %in% tempest_knowledge_record_allowlist())) {
-    tempest_knowledge_abort(paste0(
-      "Accepted record {.val {record_id}} has class {.val {record_class}}, ",
-      "which is not readable accepted evidence."
-    ))
-  }
-  payload <- history$record[[1L]]
-  payload_names <- names(payload)
-  if (
-    is.null(payload_names) ||
-      anyNA(payload_names) ||
-      any(!nzchar(payload_names)) ||
-      anyDuplicated(payload_names)
-  ) {
-    tempest_knowledge_abort(
-      "Accepted record {.val {record_id}} is not materializable."
-    )
-  }
-  content <- tempest_knowledge_record_text(payload, record_id)
-  tempest_resource(
-    resource_kind = "graft.record",
-    locator = paste0("graft/", record_class, "/", record_id),
-    title = paste(record_class, record_id),
-    media_type = "text/plain",
-    content = content,
-    metadata = c(
-      list(
-        graft_record_id = record_id,
-        graft_record_class = record_class,
-        graft_revision_id = history$revision_id[[1L]]
-      ),
-      tempest_knowledge_statement_metadata(record_class, payload)
-    )
-  )
-}
 
 # Accepted Claims carry their exact statement text as metadata so the briefing
 # can decide structurally whether a verified claim restates accepted knowledge.
@@ -198,7 +122,7 @@ tempest_knowledge_record_text <- function(payload, record_id) {
         return(paste0(field, ": "))
       }
       normalized <- tryCatch(
-        tempest_graft_plan_value(value),
+        tempest_knowledge_value(value),
         error = function(error) {
           tempest_knowledge_abort(
             paste0(
@@ -245,76 +169,9 @@ tempest_knowledge_record_text <- function(payload, record_id) {
   paste(parts, collapse = "\n")
 }
 
-#' Bring accepted organizational knowledge into a Tempest run
-#'
-#' `tempest_knowledge()` is the Graft constructor for accepted
-#' organizational knowledge. It pins an immutable Graft view, materializes an
-#' exact allowlist of accepted evidence records, and keeps those records
-#' separate from executable research programs.
-#'
-#' Accepted record text is evidence, not instruction. It is carried in a data
-#' channel and can never change prompts, message roles, tools, governed
-#' procedure selection, or executable artifacts. The host selects research
-#' programs independently of stored knowledge.
-#'
-#' @param graft_view A pinned `GraftView` from [graft::graft_at()].
-#' @param record_ids Character vector of accepted record ids to read as
-#'   evidence. Only `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source`
-#'   records are readable.
-#' @return A validated `TempestKnowledge` value for [tempest_run()] and
-#'   [tempest_session()].
-#' @examples
-#' \dontrun{
-#' # Retain complete selected claim, support, span and source IDs from
-#' # host-accepted promotion receipts, not only matching claim IDs.
-#' source(system.file("examples", "briefing-basis.R", package = "tempest"))
-#' basis <- capture_briefing_basis(store, list(briefing_selection(receipt)))
-#' saveRDS(basis, "accepted-basis.rds")
-#' knowledge <- read_briefing_basis(store, basis)
-#' result <- tempest_run("Battery recycling", knowledge = knowledge)
-#' }
-#' @export
-tempest_knowledge <- function(
-  graft_view,
-  record_ids = character()
-) {
-  snapshot <- tryCatch(
-    tempest_knowledge_view_snapshot(graft_view),
-    error = function(error) {
-      tempest_knowledge_abort(
-        "{.arg graft_view} must be a valid pinned Graft view.",
-        class = "tempest_input_error",
-        parent = error
-      )
-    }
-  )
-  reference <- tryCatch(
-    tempest_snapshot_reference(snapshot),
-    error = function(error) {
-      tempest_knowledge_abort(
-        "The pinned Graft view does not expose a valid immutable snapshot.",
-        parent = error
-      )
-    }
-  )
-  record_ids <- tempest_knowledge_record_ids(record_ids)
-  records <- lapply(
-    record_ids,
-    function(record_id) {
-      tempest_knowledge_record_resource(graft_view, record_id)
-    }
-  )
-  TempestKnowledge(
-    view = graft_view,
-    snapshot = tempest_research_workspace_graft_snapshot(snapshot),
-    reference = reference,
-    record_ids = record_ids,
-    records = records
-  )
-}
 
-# Resolve the public `knowledge` argument into the internal pinned view and the
-# host-selected builtin ProgramSet.
+# Resolve the public `knowledge` argument into the validated artifact selection and the
+# builtin ProgramSet.
 tempest_knowledge_argument <- function(
   knowledge,
   arg = "knowledge",
@@ -323,7 +180,7 @@ tempest_knowledge_argument <- function(
   if (is.null(knowledge)) {
     return(list(
       value = NULL,
-      view = NULL,
+
       records = list(),
       artifact_selection = list(),
       program_set = tempest_program_set()
@@ -331,7 +188,7 @@ tempest_knowledge_argument <- function(
   }
   if (!tempest_is_knowledge(knowledge)) {
     tempest_knowledge_abort(
-      "{.arg {arg}} must be created by {.fn tempest_knowledge} or {.fn tempest_artifact_knowledge}.",
+      "{.arg {arg}} must be created by {.fn tempest_artifact_knowledge}.",
       class = "tempest_input_error"
     )
   }
@@ -358,7 +215,7 @@ tempest_knowledge_argument <- function(
   list(
     artifact_selection = knowledge@artifact_selection,
     value = knowledge,
-    view = knowledge@view,
+
     records = knowledge@records,
     program_set = tempest_program_set()
   )
@@ -409,20 +266,128 @@ tempest_knowledge_insert_records <- function(
 
 #' Print accepted organizational knowledge
 #'
-#' @param x A `TempestKnowledge` value from [tempest_knowledge()] or
-#'   [tempest_artifact_knowledge()].
+#' @param x A `TempestKnowledge` value from [tempest_artifact_knowledge()].
 #' @param ... Ignored.
 #' @return `x`, invisibly.
 #' @export
 print.tempest_knowledge <- function(x, ...) {
   cli::cli_text("{.cls tempest_knowledge}")
   cli::cli_bullets(c(
-    "*" = if (length(x@artifact_selection)) {
-      "artifact selection: {.val {x@artifact_selection$selection_id}}"
-    } else {
-      "snapshot: {.val {x@reference$snapshot_id %||% NA_character_}}"
-    },
+    "*" = "artifact selection: {.val {x@artifact_selection$selection_id}}",
     "*" = "accepted records: {length(x@record_ids)}"
   ))
   invisible(x)
+}
+
+tempest_knowledge_timestamp_value <- function(value) {
+  if (
+    !rlang::is_string(value) ||
+      is.na(value) ||
+      !grepl(
+        paste0(
+          "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:",
+          "[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+        ),
+        value
+      )
+  ) {
+    return(NULL)
+  }
+  parsed <- suppressWarnings(tempest_stage_time_parse(value))
+  if (length(parsed) != 1L || is.na(parsed)) {
+    return(NULL)
+  }
+  fraction <- if (nchar(value) == 20L) {
+    ""
+  } else {
+    substr(value, 21L, nchar(value) - 1L)
+  }
+  paste0(
+    substr(value, 1L, 19L),
+    ".",
+    fraction,
+    strrep("0", 6L - nchar(fraction)),
+    "Z"
+  )
+}
+
+tempest_knowledge_posix_value <- function(value) {
+  result <- rep(NA_character_, length(value))
+  value <- tryCatch(
+    suppressWarnings(as.POSIXct(value)),
+    error = \(error) NULL
+  )
+  if (is.null(value) || length(value) != length(result)) {
+    return(result)
+  }
+  numeric_value <- suppressWarnings(as.numeric(value))
+  valid <- !is.na(numeric_value) & is.finite(numeric_value)
+  indices <- which(valid)
+  if (length(indices) == 0L) {
+    return(result)
+  }
+  microseconds <- round(numeric_value[indices] * 1e6)
+  seconds <- floor(microseconds / 1e6)
+  fractions <- microseconds - seconds * 1e6
+  finite <- is.finite(microseconds) &
+    is.finite(seconds) &
+    is.finite(fractions) &
+    fractions >= 0 &
+    fractions < 1e6
+  indices <- indices[finite]
+  seconds <- seconds[finite]
+  fractions <- fractions[finite]
+  if (length(indices) == 0L) {
+    return(result)
+  }
+  rendered <- tryCatch(
+    suppressWarnings(format(
+      as.POSIXct(seconds, origin = "1970-01-01", tz = "UTC"),
+      "%Y-%m-%dT%H:%M:%S",
+      tz = "UTC"
+    )),
+    error = \(error) rep(NA_character_, length(seconds))
+  )
+  candidates <- paste0(
+    rendered,
+    ".",
+    sprintf("%06d", as.integer(fractions)),
+    "Z"
+  )
+  result[indices] <- vapply(
+    candidates,
+    function(candidate) {
+      canonical <- tempest_knowledge_timestamp_value(candidate)
+      if (is.null(canonical) || !identical(canonical, candidate)) {
+        return(NA_character_)
+      }
+      canonical
+    },
+    character(1)
+  )
+  result
+}
+
+tempest_knowledge_value <- function(value) {
+  if (
+    is.null(value) ||
+      length(value) == 0L ||
+      (length(value) == 1L && is.atomic(value) && is.na(value))
+  ) {
+    return(NULL)
+  }
+  if (inherits(value, "POSIXt")) {
+    return(tempest_knowledge_posix_value(value))
+  }
+  timestamp <- tempest_knowledge_timestamp_value(value)
+  if (!is.null(timestamp)) {
+    return(timestamp)
+  }
+  if (is.factor(value)) {
+    value <- as.character(value)
+  }
+  if (is.list(value)) {
+    return(lapply(value, tempest_knowledge_value))
+  }
+  unname(value)
 }

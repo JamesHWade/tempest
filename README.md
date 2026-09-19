@@ -113,7 +113,8 @@ Completed STORM products are read through `tempest_report()`,
 retrievers, and state remain implementation details used to validate those
 reads. A Co-STORM session exposes only its supported operations and read-only
 projections. Retained artifact evidence enters through `tempest_artifact_knowledge()`;
-`tempest_knowledge()` reads the Graft producer. New research remains provisional
+`tempest_reuse_artifact_research()` rechecks Graft decisions and host eligibility.
+New research remains provisional
 until the host explicitly reviews and accepts it.
 
 Internally, every evidence value is one exact `TempestResource`. Retriever
@@ -156,27 +157,19 @@ bundle <- tempest_read_promotion_bundle(
   expected_bundle_id = trusted_bundle_id
 )
 
-schema <- tempest_graft_schema()
-# Open `store` with this exact schema using the host's chosen Graft location.
-plan <- tempest_graft_plan(store, bundle)
-
-# Acceptance authority remains an explicit Graft operation after review.
-commit_result <- graft::graft_commit(store, plan)
-receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
+store <- graft::graft_artifact_store("research-artifacts", create = TRUE)
+selection <- tempest_publish_artifact_research(result, store)
+# The host explicitly reviews the complete evidence and report.
+accepted <- graft::graft_artifact_decide(
+  store, "battery-recycling", "review-1", expected = NULL,
+  selection = selection, action = "accept", actor = "reviewer",
+  reason = "Evidence reviewed", purpose = "research"
+)
 ```
 
-The packaged schema was compiled for Graft consumer contract `0.2.0`. Runtime
-loading accepts contracts `>= 0.2.0` and `< 3.0.0` with store format `3.1.0`,
-covering the tested 0.x, 1.x and 2.x major lines. The 1.0 data-dict manifest cutoff
-does not affect Tempest's pinned LinkML schema. Required exports, store format
-and the schema's exact immutable build digest remain independently checked.
-Future minors follow Graft's additive contract policy; the range does not claim
-each has been tested. Loading never recompiles LinkML. Planning keys accepted
-`Claim` identity on normalized statement text and accepted `Source` identity on
-the exact locator plus content hash, so research that
-re-verifies an accepted claim revises that record instead of inserting a
-duplicate, and the plan's `disposition` column separates `new`, `revision`,
-and `duplicate` proposals.
+Graft retains exact bytes and decision history. Tempest owns the scientific
+record contract and verifies report, source, span, claim, support, and program
+provenance. No graph schema compiler or native database is required.
 
 Promotion accepts only a completed `tempest_run()` result or a succeeded,
 quiescent `TempestSession`. A loose Workspace, Manifest, or StageRecord tuple
@@ -187,8 +180,7 @@ closed proof projection retains the exact resources, claims, spans, and
 supports needed to recompute each retained StageRecord digest. A selection
 must include every output bound by each retained extraction or verification
 record; Tempest rejects partial stage-output selection instead of packaging
-unselected evidence. Planning is read-only: Tempest does not call
-`graft::graft_commit()` on the host's behalf. The promotion directory is a
+unselected evidence. Publishing retains a candidate: Tempest never records host acceptance itself. The promotion directory is a
 closed current-format bundle, its destination must not already exist, and any
 older or extra shape is rejected. Reading requires the original bundle id as an
 out-of-band trust pin; checksums stored inside the directory establish internal
@@ -227,7 +219,7 @@ the complete count and digest when rows are omitted. The review contains no
 prompts, responses, source text, paths, credentials, live objects, or
 capabilities, and it is reconstructable rather than persisted.
 
-Every join names its relation and proof. Exact run, stage, program, snapshot,
+Every join names its relation and proof. Exact run, stage, program, artifact selection,
 bundle, publication, and recorded decision identities establish explicit bindings;
 `correlation_id` can establish only `correlated_with` with
 `correlation_only` proof. It never establishes authorship or causation.
@@ -237,12 +229,12 @@ decision is shown as historically accepted. Withdrawal does not erase that
 history or alter the original input selection. An input `reported_decision` is
 unverified host provenance, not authenticated acceptance; malformed metadata is
 omitted from the projection. Current reuse still requires
-fresh admission through `tempest_reuse_artifact_research()`. Schema 2 directly
-replaces the old receipt-based review; cross-product publications are rejected.
+fresh admission through `tempest_reuse_artifact_research()`. Schema 3 directly
+replaces native-snapshot and receipt-based reviews; cross-product publications are rejected.
 
-The current persistence line accepts only `ResearchWorkspace` snapshot schema 6,
-Co-STORM snapshot and bundle schema 12, STORM bundle schema 9 with state schema
-5, ProgramSet schema 2, research-manifest schema 4, StageRecord output-digest
+The current persistence line accepts only `ResearchWorkspace` snapshot schema 7,
+Co-STORM snapshot and bundle schema 13, STORM bundle schema 10 with state schema
+5, ProgramSet schema 2, research-manifest schema 5, StageRecord output-digest
 payload schema 3, and promotion-bundle schema 1. Readers reject every other
 version; missing fields, extra fields, and values that only become valid after
 coercion are errors.
@@ -256,7 +248,7 @@ connection, skill, deliverable, and artifact kernel and its symbols have been
 removed. There is no compatibility or generic-kernel migration layer.
 
 Product bundles contain the exact research manifest, provisional workspace,
-product state, report, and optional immutable Graft snapshot. Fixed scientific
+product state, report, and retained artifact selection. Fixed scientific
 transformations carry dsprrr program identity, while open-ended agent calls
 carry Deputy execution identity. Those identities support correlation and
 audit joins only; they do not claim that an execution caused, authored, or
@@ -443,7 +435,7 @@ res <- tempest_run(
 )
 ```
 
-Each run directory is an exact current schema-9 STORM product bundle with
+Each run directory is an exact current schema-10 STORM product bundle with
 schema-5 state. It includes checksummed JSON state for perspectives, experts,
 sources, claims, outlines, and references; Markdown drafts; and the final
 Markdown report. Resume rejects older, future, missing, extra, coerced, or
@@ -498,17 +490,21 @@ passes live Graft views into stage execution. Retained procedure references in
 research manifests and trajectory reviews are inert provenance; they cannot be
 loaded into a live ProgramSet.
 
-Accepted evidence uses the same immutable knowledge boundary. Preserve complete
-host-selected promotion receipts so each claim keeps its supports, evidence
-spans and sources. The shared host recipe retains exact reviewed revisions:
+Accepted evidence uses exact artifact selections. The host recipe retains a
+reviewed decision and its complete evidence closure:
 
 ```r
 source(system.file("examples", "briefing-basis.R", package = "tempest"))
-selections <- list(briefing_selection(receipt))
-basis <- capture_briefing_basis(store, selections, report_md = report)
+basis <- capture_briefing_basis(store, "battery-recycling", accepted$id, "research")
 saveRDS(basis, "accepted-basis.rds")
-knowledge <- read_briefing_basis(store, basis)
+historical <- read_briefing_basis(store, basis)
+knowledge <- reuse_briefing_basis(store, basis, eligible = function(event) TRUE)
 ```
+
+The eligibility callback represents the host's current access and purpose check.
+Historical inspection remains available after correction; it does not authorize
+new research or resume.
+
 
 On later days, reopen the matching store and trusted checkpoint. Changes to the
 selected evidence require host review before another automatic run:
@@ -718,8 +714,8 @@ expert run records an opaque terminal trace that is carried through Co-STORM
 snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-12 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
-suggested-question, and Graft snapshot state must pass integrity checks. Live
+schema-13 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+suggested-question, and artifact selection state must pass integrity checks. Live
 chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
 rather than serialized.
 

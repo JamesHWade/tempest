@@ -4,20 +4,17 @@ test_that("tempest_research_workspace creates explicit provisional compartments"
     list(record_id = "record-a", snapshot_id = "snapshot-1")
   )
   workspace <- tempest_research_workspace(
-    base_snapshot_id = " snapshot-1 ",
-    max_sources = 3L,
-    accepted_graft_references = references
+    max_sources = 3L
   )
 
   expect_r6_class(workspace, "ResearchWorkspace")
   expect_length(workspace$retrieved_resources, 0L)
   expect_length(workspace$proposed_claims, 0L)
-  expect_equal(workspace$base_snapshot_id, "snapshot-1")
+
   expect_equal(workspace$max_sources, 3L)
   expect_contains(
     names(workspace),
     c(
-      "accepted_graft_references",
       "claim_supports",
       "citation_audit",
       "disputes",
@@ -26,188 +23,18 @@ test_that("tempest_research_workspace creates explicit provisional compartments"
       "retrieved_resources"
     )
   )
-  expect_equal(
-    vapply(
-      workspace$list_accepted_graft_references(),
-      `[[`,
-      character(1),
-      "record_id"
-    ),
-    c("record-a", "record-z")
-  )
 
   references[[1]]$record_id <- "changed-input"
-  returned <- workspace$accepted_graft_references
-  returned[[1]]$record_id <- "changed-output"
-  expect_equal(
-    workspace$accepted_graft_references[[1]]$record_id,
-    "record-a"
-  )
+
   expect_equal(
     c("artifacts", "set_artifact", "get_artifact") %in% names(workspace),
     rep(FALSE, 3L)
   )
 })
 
-test_that("ResearchWorkspace validates snapshot and accepted references", {
-  expect_snapshot(
-    error = TRUE,
-    tempest_research_workspace(base_snapshot_id = character())
-  )
-  expect_snapshot(
-    error = TRUE,
-    tempest_research_workspace(base_snapshot_id = " ")
-  )
-  expect_snapshot(
-    error = TRUE,
-    tempest_research_workspace(accepted_graft_references = data.frame())
-  )
-  expect_snapshot(
-    error = TRUE,
-    tempest_research_workspace(
-      accepted_graft_references = list(list(record_id = NA_character_))
-    )
-  )
-  expect_error(
-    tempest_research_workspace(
-      accepted_graft_references = list(function() NULL)
-    ),
-    class = "tempest_research_workspace_error",
-    regexp = "non-empty named records"
-  )
-  expect_snapshot(
-    error = TRUE,
-    tempest_research_workspace(
-      accepted_graft_references = list(named = list(record_id = "record-a"))
-    )
-  )
-
-  sensitive <- expect_error(
-    tempest_research_workspace(
-      accepted_graft_references = list(
-        list(metadata = list(apiKey = "secret"), record_id = "record-a")
-      )
-    ),
-    class = "tempest_research_workspace_error"
-  )
-  expect_match(conditionMessage(sensitive), "credential-like")
-  expect_match(conditionMessage(sensitive), "apiKey")
-
-  RuntimeReference <- R6::R6Class("WorkspaceRuntimeReference")
-  connection <- file(withr::local_tempfile())
-  withr::defer(close(connection))
-  forbidden <- list(
-    new.env(parent = emptyenv()),
-    connection,
-    methods::new("externalptr"),
-    RuntimeReference$new(),
-    tempest_config()
-  )
-  for (value in forbidden) {
-    expect_error(
-      tempest_research_workspace(
-        accepted_graft_references = list(list(runtime = value))
-      ),
-      class = "tempest_research_workspace_error",
-      regexp = "cannot contain|plain JSON-compatible"
-    )
-  }
-  expect_error(
-    tempest_research_workspace(
-      accepted_graft_references = list(list(label = "not-an-id"))
-    ),
-    class = "tempest_research_workspace_error",
-    regexp = "at least one non-empty.*_id"
-  )
-  expect_error(
-    tempest_research_workspace(
-      accepted_graft_references = list(list(record_id = 42L))
-    ),
-    class = "tempest_research_workspace_error",
-    regexp = "single non-empty string"
-  )
-  expect_error(
-    tempest_research_workspace(
-      accepted_graft_references = list(list(
-        record_id = "record-a",
-        metadata = list(procedure_id = "")
-      ))
-    ),
-    class = "tempest_research_workspace_error",
-    regexp = "procedure_id.*single non-empty string"
-  )
-  expect_error(
-    tempest_research_workspace(
-      base_snapshot_id = "snapshot-a",
-      accepted_graft_references = list(list(
-        record_id = "record-a",
-        snapshot_id = "snapshot-b"
-      ))
-    ),
-    class = "tempest_research_workspace_error",
-    regexp = "snapshot does not match"
-  )
-})
-
-test_that("accepted graft references use canonical JSON array forms", {
-  reference <- list(
-    record_id = "record-a",
-    metadata = structure(
-      list(c(1, 2), character(), c(TRUE, FALSE), 0.5),
-      names = c("", "", "", "")
-    )
-  )
-  references <- list(reference)
-  workspace <- tempest_research_workspace(
-    accepted_graft_references = references
-  )
-  stored <- workspace$accepted_graft_references[[1]]
-
-  expect_null(names(stored$metadata))
-  expect_identical(stored$metadata[[1]], list(1L, 2L))
-  expect_identical(stored$metadata[[2]], list())
-  expect_identical(stored$metadata[[3]], list(TRUE, FALSE))
-  expect_identical(stored$metadata[[4]], 0.5)
-  expect_identical(
-    jsonlite::fromJSON(
-      tempest_research_workspace_reference_json(stored),
-      simplifyVector = FALSE
-    ),
-    stored
-  )
-
-  references[[1]]$metadata[[1]][[1]] <- 99
-  returned <- workspace$accepted_graft_references
-  returned[[1]]$metadata[[1]][[1]] <- 88L
-  expect_identical(
-    workspace$accepted_graft_references[[1]]$metadata[[1]],
-    list(1L, 2L)
-  )
-})
-
-test_that("accepted graft identifiers reject credential-shaped values", {
-  for (identifier in c(
-    "Authorization:Bearer-sk-live-secret",
-    "sk-live-secret",
-    "api_key-secret"
-  )) {
-    expect_error(
-      tempest_research_workspace(
-        accepted_graft_references = list(list(record_id = identifier))
-      ),
-      class = "tempest_research_workspace_integrity_error"
-    )
-  }
-})
 
 test_that("ResearchWorkspace listings are deterministic", {
-  workspace <- tempest_research_workspace(
-    accepted_graft_references = list(
-      list(record_id = "record-z"),
-      list(record_id = "record-a"),
-      list(record_id = "record-z")
-    )
-  )
+  workspace <- tempest_research_workspace()
   source_z <- test_typed_web_resource("https://example.org/z")
   source_a <- test_typed_web_resource("https://example.org/a")
   workspace$upsert_retrieved_resource(source_z)
@@ -280,39 +107,17 @@ test_that("ResearchWorkspace listings are deterministic", {
     ),
     c("dispute-a", "dispute-z")
   )
-  expect_equal(
-    vapply(
-      workspace$list_accepted_graft_references(),
-      `[[`,
-      character(1),
-      "record_id"
-    ),
-    c("record-a", "record-z")
-  )
 })
 
 test_that("proposed claims cannot become accepted through workspace mutation", {
-  workspace <- tempest_research_workspace(
-    accepted_graft_references = list(list(record_id = "accepted-claim"))
-  )
+  workspace <- tempest_research_workspace()
   claim <- tempest_claim(claim_id = "proposal", claim_text = "A proposal")
   workspace$add_proposed_claim(claim)
 
   expect_equal("accepted" %in% S7::prop_names(claim), FALSE)
   expect_equal(workspace$list_proposed_claims(), list(claim))
-  expect_equal(
-    workspace$accepted_graft_references,
-    list(list(record_id = "accepted-claim"))
-  )
+
   expect_snapshot(error = TRUE, S7::set_props(claim, accepted = TRUE))
-  expect_snapshot(
-    error = TRUE,
-    workspace$accepted_graft_references <- list(list(record_id = "proposal"))
-  )
-  expect_snapshot(
-    error = TRUE,
-    workspace$base_snapshot_id <- "another-snapshot"
-  )
 })
 
 test_that("ResearchWorkspace exposes copies instead of mutable backing stores", {

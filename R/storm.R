@@ -53,13 +53,6 @@ tempest_storm_retriever_workspace <- function(retriever) {
   workspace
 }
 
-tempest_programs_have_knowledge_view <- function(programs) {
-  any(vapply(
-    programs,
-    \(program) !is.null(program$knowledge_view %||% NULL),
-    logical(1)
-  ))
-}
 
 #' Run the STORM pipeline
 #'
@@ -74,7 +67,7 @@ tempest_programs_have_knowledge_view <- function(programs) {
 #' @param retriever Optional `TempestRetriever`. If `NULL`, created from
 #'   `config`.
 #' @param knowledge Optional accepted organizational knowledge from
-#'   [tempest_knowledge()] or [tempest_artifact_knowledge()]. It supplies
+#'   [tempest_artifact_knowledge()]. It supplies
 #'   accepted evidence records without selecting or authorizing executable
 #'   programs.
 #'   The live Graft view and knowledge object are not serialized;
@@ -96,7 +89,7 @@ tempest_programs_have_knowledge_view <- function(programs) {
 #' @param steps Character vector controlling which steps to run. Defaults to
 #'   all.
 #' @param output_dir Optional directory for persisted STORM run artifacts. When
-#'   supplied, a current schema-9 product bundle with schema-5 STORM state is
+#'   supplied, a current schema-10 product bundle with schema-5 STORM state is
 #'   written under a topic-specific subdirectory.
 #' @param resume If `TRUE` and `output_dir` contains a previous run, load saved
 #'   current-format artifacts and skip stages recorded as complete. Older,
@@ -144,7 +137,7 @@ tempest_run <- function(
       topic = topic,
       config = config,
       retriever = retriever,
-      knowledge_view = knowledge$view,
+
       knowledge_records = knowledge$records,
       knowledge_selection = knowledge$artifact_selection,
       program_set = knowledge$program_set,
@@ -171,7 +164,7 @@ tempest_run_internal <- function(
   topic,
   config = tempest_config(),
   retriever = NULL,
-  knowledge_view = NULL,
+
   knowledge_records = list(),
   knowledge_selection = list(),
   n_experts = 3,
@@ -273,16 +266,11 @@ tempest_run_internal <- function(
       knowledge_selection
     )
   }
-  knowledge <- tempest_product_knowledge_view(
-    program_set,
-    knowledge_view
-  )
+
   retriever <- retriever %||%
     tempest_retriever(
       config = config,
-      workspace = tempest_research_workspace(
-        graft_snapshot = knowledge$snapshot
-      )
+      workspace = tempest_research_workspace()
     )
   retriever_config_digest <- tempest_retriever_config_digest(retriever)
   if (
@@ -301,11 +289,7 @@ tempest_run_internal <- function(
     ))
   }
   workspace <- tempest_storm_retriever_workspace(retriever)
-  workspace <- tempest_product_workspace_validate(
-    workspace,
-    knowledge,
-    arg = "retriever"
-  )
+
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_config_abort(
       paste0(
@@ -353,7 +337,7 @@ tempest_run_internal <- function(
     mode = "storm",
     config = config,
     programs = program_references,
-    knowledge_snapshot = tempest_storm_snapshot_reference(workspace),
+
     artifact_selection = workspace$artifact_selection,
     runtime = list(
       deputy_session_ids = character(),
@@ -569,11 +553,7 @@ tempest_run_internal <- function(
       loaded_run$research_manifest@status
     )
     workspace <- loaded_run$workspace
-    workspace <- tempest_product_workspace_validate(
-      workspace,
-      knowledge,
-      arg = "restored workspace"
-    )
+
     store <- workspace
     if (!identical(tempest_storm_retriever_workspace(retriever), workspace)) {
       tempest_abort(
@@ -1674,26 +1654,19 @@ tempest_run_internal <- function(
 #' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for
 #'   details on available parameters including `topic`, `config`, `retriever`,
 #'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
-#' @param knowledge_view Accepted knowledge and a live pinned Graft view cannot
-#'   cross the asynchronous
-#'   worker boundary. Use [tempest_run()] in the process that owns the knowledge
-#'   value and its admission callback.
 #' @return A `tempest_async_run` promise that resolves with the
 #'   [tempest_run()] result.
 #' @seealso [tempest_run()] for the synchronous version.
 #' @keywords internal
-tempest_run_async <- function(..., knowledge_view = NULL) {
+tempest_run_async <- function(...) {
   args <- list(...)
   knowledge <- args$knowledge %||% NULL
-  if (
-    !is.null(knowledge_view) ||
-      !is.null(knowledge)
-  ) {
+  if (!is.null(knowledge)) {
     tempest_governed_procedure_abort(
       paste0(
-        "{.fn tempest_run_async} never serializes a live pinned ",
-        "{.arg knowledge_view}. Run the knowledge-backed workflow with ",
-        "{.fn tempest_run} in the process that owns the view."
+        "{.fn tempest_run_async} never serializes a live ",
+        "{.arg knowledge}. Run the knowledge-backed workflow with ",
+        "{.fn tempest_run} in the process that owns the admission callback."
       )
     )
   }

@@ -28,7 +28,7 @@ test_that("extracted Co-STORM archives require the exact current product", {
       manifest
     },
     future_schema = function(manifest) {
-      manifest$schema_version <- 13L
+      manifest$schema_version <- 14L
       manifest
     },
     wrong_bundle_type = function(manifest) {
@@ -48,7 +48,7 @@ test_that("extracted Co-STORM archives require the exact current product", {
       manifest
     },
     future_manifest_schema = function(manifest) {
-      manifest$research_manifest$schema_version <- 5L
+      manifest$research_manifest$schema_version <- 6L
       manifest
     },
     wrong_manifest_mode = function(manifest) {

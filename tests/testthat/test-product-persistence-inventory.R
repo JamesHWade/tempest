@@ -209,7 +209,15 @@ test_that("former run persistence definitions have one product owner", {
   deleted <- c(
     "tempest_env_values",
     "tempest_env_snapshot",
-    "tempest_session_bundle_require_files"
+    "tempest_session_bundle_require_files",
+    "tempest_graft_snapshot_relative_path",
+    "tempest_graft_snapshot_field_names",
+    "tempest_graft_snapshot_abort",
+    "tempest_graft_snapshot_validate",
+    "tempest_graft_snapshot_assert_binding",
+    "tempest_graft_snapshot_write",
+    "tempest_graft_snapshot_read",
+    "tempest_storm_snapshot_reference"
   )
 
   retained <- !original %in% c(deleted, names(consolidated))
@@ -217,13 +225,13 @@ test_that("former run persistence definitions have one product owner", {
   final_names[match(names(renames), original)] <- unname(renames)
   expected_counts <- c(
     "costorm-persistence.R" = 34L,
-    "product-authority.R" = 18L,
+    "product-authority.R" = 11L,
     "product-persistence.R" = 15L,
     "product-report.R" = 5L,
     "research-expert.R" = 6L,
     "research-workspace-persistence.R" = 25L,
     "stage-record.R" = 6L,
-    "storm-persistence.R" = 34L,
+    "storm-persistence.R" = 33L,
     "storm-state.R" = 2L
   )
 
@@ -236,7 +244,7 @@ test_that("former run persistence definitions have one product owner", {
 
   expect_identical(length(original), 150L)
   expect_identical(anyDuplicated(original), 0L)
-  expect_identical(sum(retained), 145L)
+  expect_identical(sum(retained), 137L)
   expect_identical(
     as.integer(table(factor(
       owners[retained],
@@ -258,7 +266,7 @@ test_that("former run persistence definitions have one product owner", {
       },
       integer(1)
     )
-    expect_identical(unname(retained_counts), rep(1L, 145L))
+    expect_identical(unname(retained_counts), rep(1L, 137L))
     retained_rows <- match(final_names[retained], definitions$name)
     expect_identical(
       definitions$owner[retained_rows],

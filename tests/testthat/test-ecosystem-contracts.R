@@ -13,8 +13,7 @@ test_that("dsprrr identity enters the manifest and execution metadata", {
     research_run_id = "research-contract",
     mode = "storm",
     config = tempest_config(),
-    programs = tempest:::tempest_program_set_manifest_programs(program_set),
-    knowledge_snapshot = list(snapshot_id = "snapshot-contract")
+    programs = tempest:::tempest_program_set_manifest_programs(program_set)
   )
 
   programs <- tempest:::tempest_bind_program_set(program_set, manifest)
@@ -25,7 +24,6 @@ test_that("dsprrr identity enters the manifest and execution metadata", {
     step = "extract_claims"
   )
   expected_context <- list(
-    knowledge_snapshot_id = "snapshot-contract",
     mode = "storm",
     product = "tempest",
     research_run_id = "research-contract",
@@ -144,15 +142,13 @@ test_that("dsprrr bindings are isolated per invocation", {
     research_run_id = "research-binding-a",
     mode = "storm",
     config = tempest_config(),
-    programs = program_reference,
-    knowledge_snapshot = list(snapshot_id = "snapshot-a")
+    programs = program_reference
   )
   manifest_b <- tempest_research_manifest(
     research_run_id = "research-binding-b",
     mode = "storm",
     config = tempest_config(),
-    programs = program_reference,
-    knowledge_snapshot = list(snapshot_id = "snapshot-b")
+    programs = program_reference
   )
 
   binding_a <- tempest:::tempest_bind_program_set(program_set, manifest_a)
@@ -237,8 +233,7 @@ test_that("Deputy context is canonical and contains no runtime objects", {
     config = tempest_config(),
     programs = list(
       extract_claims = program_reference
-    ),
-    knowledge_snapshot = list(snapshot_id = "sha256:snapshot")
+    )
   )
 
   context <- tempest:::tempest_deputy_run_context(
@@ -251,7 +246,6 @@ test_that("Deputy context is canonical and contains no runtime objects", {
   expect_identical(
     context,
     list(
-      knowledge_snapshot_id = "sha256:snapshot",
       mode = "costorm",
       product = "tempest",
       program_artifact_id = program_artifact_id,
@@ -321,164 +315,6 @@ test_that("Deputy context binds program identity to the manifest", {
   )
 })
 
-test_that("Graft snapshots retain their immutable restoration boundary", {
-  skip_if_not_installed("graft")
-
-  store_path <- file.path(withr::local_tempdir(), "contract.duckdb")
-  schema <- graft::graft_schema(system.file(
-    "extdata",
-    "team-directory.data-dict.json",
-    package = "graft",
-    mustWork = TRUE
-  ))
-  store <- graft::graft_open(schema, store_path, okf = "disabled")
-  withr::defer(graft::graft_close(store))
-  empty_snapshot <- graft::graft_snapshot(store)
-  empty_reference <- tempest:::tempest_snapshot_reference(empty_snapshot)
-  empty_workspace <- tempest_research_workspace(
-    graft_snapshot = empty_snapshot
-  )
-  graft::graft_ingest(
-    store,
-    list(organization = data.frame(id = "org:tempest", name = "Tempest")),
-    graft::graft_provenance(
-      "tempest-contract",
-      idempotency_key = "tempest-contract-1"
-    )
-  )
-  snapshot <- graft::graft_snapshot(store)
-  reference <- tempest:::tempest_snapshot_reference(snapshot)
-  snapshot_fields <- c(
-    "schema_version",
-    "snapshot_id",
-    "store_id",
-    "store_format_version",
-    "schema_build_digest",
-    "commit_order",
-    "batch_id",
-    "committed_at",
-    "history_complete"
-  )
-  config <- tempest_config()
-  empty_manifest <- tempest_research_manifest(
-    research_run_id = "research-empty-graft-contract",
-    mode = "storm",
-    config = config,
-    knowledge_snapshot = empty_reference
-  )
-  restored_empty_manifest <- tempest_research_manifest_from_record(
-    jsonlite::fromJSON(
-      tempest_research_manifest_canonical_json(
-        tempest_research_manifest_record(empty_manifest)
-      ),
-      simplifyVector = FALSE
-    )
-  )
-  program_set <- tempest_program_set()
-  manifest <- tempest_research_manifest(
-    research_run_id = "research-graft-contract",
-    mode = "storm",
-    config = config,
-    programs = tempest:::tempest_program_set_manifest_programs(program_set),
-    knowledge_snapshot = reference
-  )
-  manifest_json <- tempest_research_manifest_canonical_json(
-    tempest_research_manifest_record(manifest)
-  )
-  restored_manifest <- tempest_research_manifest_from_record(
-    jsonlite::fromJSON(manifest_json, simplifyVector = FALSE)
-  )
-  workspace <- tempest_research_workspace(graft_snapshot = snapshot)
-  run_dir <- file.path(dirname(store_path), "storm-bundle")
-  tempest:::tempest_storm_save_artifacts(
-    run_dir,
-    workspace,
-    tempest:::tempest_storm_state("Graft contract"),
-    manifest,
-    program_set = program_set,
-    config = config,
-    steps = "research"
-  )
-  serialized_snapshot <- serialize(snapshot, NULL, version = 3L)
-  snapshot_id_raw <- charToRaw(reference$snapshot_id)
-  match_starts <- Filter(
-    \(start) {
-      end <- start + length(snapshot_id_raw) - 1L
-      identical(serialized_snapshot[start:end], snapshot_id_raw)
-    },
-    seq_len(length(serialized_snapshot) - length(snapshot_id_raw) + 1L)
-  )
-  expect_length(match_starts, 1L)
-  replacement_raw <- charToRaw(paste0("sha256:", strrep("0", 64L)))
-  tampered_serialized <- serialized_snapshot
-  start <- match_starts[[1L]]
-  end <- start + length(replacement_raw) - 1L
-  tampered_serialized[start:end] <- replacement_raw
-  tampered_snapshot <- unserialize(tampered_serialized)
-
-  rm(snapshot, workspace)
-  graft::graft_close(store)
-  store <- graft::graft_open(schema, store_path, okf = "disabled")
-  graft::graft_ingest(
-    store,
-    list(organization = data.frame(id = "org:tempest", name = "Tempest 2")),
-    graft::graft_provenance(
-      "tempest-contract",
-      idempotency_key = "tempest-contract-2"
-    )
-  )
-  restored_run <- tempest:::tempest_storm_load_artifacts(
-    run_dir,
-    config = config,
-    program_set = program_set,
-    run_id = "research-graft-contract"
-  )
-  restored_snapshot <- restored_run$workspace$graft_snapshot
-  pinned <- graft::graft_at(store, restored_snapshot)
-
-  expect_setequal(names(reference), snapshot_fields)
-  expect_setequal(names(empty_reference), snapshot_fields)
-  expect_null(empty_reference$batch_id)
-  expect_null(empty_reference$committed_at)
-  expect_identical(empty_workspace$graft_snapshot, empty_snapshot)
-  expect_identical(
-    empty_workspace$list_accepted_graft_references(),
-    list(empty_reference)
-  )
-  expect_identical(
-    restored_empty_manifest@knowledge_snapshot,
-    empty_reference
-  )
-  expect_identical(restored_manifest@knowledge_snapshot, reference)
-  expect_identical(
-    tempest_research_manifest_record(restored_manifest)$knowledge_snapshot,
-    reference
-  )
-  expect_identical(
-    restored_run$workspace$list_accepted_graft_references(),
-    list(reference)
-  )
-  expect_identical(
-    restored_run$research_manifest@knowledge_snapshot,
-    reference
-  )
-  expect_identical(
-    graft::graft_get(pinned, "org:tempest")$record$name,
-    "Tempest"
-  )
-  expect_identical(
-    graft::graft_get(store, "org:tempest")$record$name,
-    "Tempest 2"
-  )
-  expect_error(
-    tempest:::tempest_snapshot_reference(pinned),
-    class = "tempest_ecosystem_contract_error"
-  )
-  expect_error(
-    tempest:::tempest_snapshot_reference(tampered_snapshot),
-    class = "tempest_ecosystem_contract_error"
-  )
-})
 
 test_that("Tempest context survives Deputy delegation and hooks", {
   skip_if_not_installed("deputy")
@@ -493,8 +329,7 @@ test_that("Tempest context survives Deputy delegation and hooks", {
     config = tempest_config(),
     programs = list(
       review = program_reference
-    ),
-    knowledge_snapshot = list(snapshot_id = "sha256:deputy-snapshot")
+    )
   )
   context <- tempest:::tempest_deputy_run_context(
     manifest,

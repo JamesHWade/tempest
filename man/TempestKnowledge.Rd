@@ -2,12 +2,9 @@
 % Please edit documentation in R/knowledge.R
 \name{TempestKnowledge}
 \alias{TempestKnowledge}
-\title{Retained research knowledge from a Graft view or artifact selection}
+\title{Retained research knowledge from an artifact selection}
 \usage{
 TempestKnowledge(
-  view = NULL,
-  snapshot = NULL,
-  reference = NULL,
   record_ids = character(),
   records = list(),
   artifact_selection = list(),
@@ -15,6 +12,6 @@ TempestKnowledge(
 )
 }
 \description{
-Retained research knowledge from a Graft view or artifact selection
+Retained research knowledge from an artifact selection
 }
 \keyword{internal}

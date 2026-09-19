@@ -384,9 +384,7 @@ test_that("schema 7 STORM bundles fail closed", {
       list(
         schema_version = 7L,
         workspace = list(
-          base_snapshot_id = NULL,
-          max_sources = "unbounded",
-          accepted_graft_references = list()
+          max_sources = "unbounded"
         )
       )
     ),
@@ -394,7 +392,7 @@ test_that("schema 7 STORM bundles fail closed", {
   )
 })
 
-test_that("schema 8 resume protects STORM run and config identity", {
+test_that("current resume protects STORM run and config identity", {
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()
@@ -433,12 +431,17 @@ test_that("schema 8 resume protects STORM run and config identity", {
     ),
     class = "tempest_run_restore_error"
   )
+  different_basis <- tempest_research_workspace()
+  input <- do.call(tempest_artifact_knowledge, test_artifact_knowledge_input())
+  tempest_knowledge_insert_records(
+    different_basis,
+    input@records,
+    input@artifact_selection
+  )
   expect_error(
     tempest:::tempest_storm_load_artifacts(
       dir,
-      workspace = tempest_research_workspace(
-        base_snapshot_id = "snapshot-b"
-      ),
+      workspace = different_basis,
       config = cfg,
       program_set = program_set,
       run_id = "protected-run"

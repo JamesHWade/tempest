@@ -10,7 +10,6 @@ tempest_verify_claims(
   policy = "claim_verified",
   verifier_model = NA_character_,
   program_set = NULL,
-  knowledge_view = NULL,
   min_support_score = 0.7
 )
 }
@@ -33,9 +32,6 @@ proof and projected onto each verified claim.}
 the builtin set. When \code{workspace} is a \code{TempestSession}, its immutable
 ProgramSet, citation policy, and support threshold are authoritative;
 supplied values must match.}
-
-\item{knowledge_view}{Optional immutable Graft evidence view. When supplied,
-it must match the standalone workspace snapshot.}
 
 \item{min_support_score}{Minimum support score in \verb{[0, 1]} for a claim to be
 considered supported.}

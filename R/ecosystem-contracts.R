@@ -89,52 +89,6 @@ tempest_program_reference <- function(program) {
   )
 }
 
-tempest_snapshot_reference <- function(snapshot) {
-  if (
-    !inherits(snapshot, "graft::GraftSnapshot") ||
-      !inherits(snapshot, "S7_object")
-  ) {
-    tempest_ecosystem_contract_abort(
-      "{.arg snapshot} must be a real {.cls graft::GraftSnapshot}."
-    )
-  }
-  fields <- c(
-    "schema_version",
-    "snapshot_id",
-    "store_id",
-    "store_format_version",
-    "schema_build_digest",
-    "commit_order",
-    "batch_id",
-    "committed_at",
-    "history_complete"
-  )
-  if (!setequal(S7::prop_names(snapshot), fields)) {
-    tempest_ecosystem_contract_abort(
-      "The Graft snapshot does not expose the complete public boundary."
-    )
-  }
-  tryCatch(
-    S7::validate(snapshot),
-    error = function(error) {
-      tempest_ecosystem_contract_abort(
-        "The Graft snapshot failed its public validation contract.",
-        parent = error
-      )
-    }
-  )
-  reference <- stats::setNames(
-    lapply(fields, \(field) S7::prop(snapshot, field)),
-    fields
-  )
-  missing <- vapply(
-    reference,
-    \(value) length(value) == 1L && is.atomic(value) && is.na(value),
-    logical(1)
-  )
-  reference[missing] <- rep(list(NULL), sum(missing))
-  tempest_research_manifest_knowledge_snapshot(reference)
-}
 
 tempest_deputy_run_context <- function(
   manifest,
@@ -184,10 +138,6 @@ tempest_deputy_run_context <- function(
     stage = stage,
     role = role
   )
-  snapshot_id <- manifest@knowledge_snapshot$snapshot_id %||% NULL
-  if (!is.null(snapshot_id)) {
-    context$knowledge_snapshot_id <- snapshot_id
-  }
   if (!is.null(program_artifact_id)) {
     context$program_artifact_id <- program_artifact_id
   }

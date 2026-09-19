@@ -64,7 +64,6 @@ part of the persistence or public API contract.
   progress = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
   .restore_manifest = NULL,
   .restore_token = NULL,
   .admit_knowledge = NULL,
@@ -88,8 +87,6 @@ objects as the session makes progress.}
 identifier is generated.}
       \item{\code{program_set}}{A \link{TempestProgramSet} used for every structured
 Co-STORM stage.}
-      \item{\code{knowledge_view}}{Optional immutable Graft view for accepted evidence.
-It must match the workspace snapshot and remains process-local.}
       \item{\code{.restore_manifest}}{Internal research manifest supplied only by
 Tempest's bundle-restoration seam.}
       \item{\code{.restore_token}}{Internal authorization token for bundle

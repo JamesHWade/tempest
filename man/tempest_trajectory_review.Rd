@@ -68,9 +68,8 @@ Input selection identities and their full metadata digest remain distinct
 from output publication. Input \code{reported_decision} is unverified host
 provenance, never authenticated acceptance; malformed metadata is omitted.
 Decision actor, reason, key and other arbitrary input provenance are
-excluded. Native input snapshots remain inspectable until
-their separate retirement; native output receipts are no longer accepted.
-Schema 2 replaces schema 1 directly.
+excluded. Schema 3 retains artifact inputs and directly replaces native
+snapshot and receipt-based reviews.
 }
 \examples{
 \dontrun{

@@ -21,7 +21,7 @@ test_that("trajectory review returns the exact bounded STORM projection", {
     S7::prop_names(review),
     tempest:::tempest_trajectory_review_fields()
   )
-  expect_identical(review@schema_version, 2L)
+  expect_identical(review@schema_version, 3L)
   expect_identical(review@review_id, repeated@review_id)
   expect_match(review@review_id, "^sha256:[a-f0-9]{64}$")
   expect_named(
@@ -569,19 +569,15 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     logical(1)
   ))[[1L]]
   governed_program <- governed$programs$extract_claims
-  knowledge <- test_knowledge_view()
-  snapshot_reference <- tempest_snapshot_reference(knowledge$snapshot)
+
   governed_reference <- tempest_governed_procedure_record(
     test_governed_procedure_ref(
       "extract_claims",
-      governed_program$program_artifact_id,
-      snapshot_reference = snapshot_reference
+      governed_program$program_artifact_id
     )
   )
   governed$programs$extract_claims$governed_procedure_ref <-
     governed_reference
-  governed$knowledge$input_snapshot <-
-    tempest_trajectory_snapshot(snapshot_reference)
   governed$stages$items[[
     governed_stage
   ]]$governed_procedure_revision_id <- governed_reference$revision_id
@@ -597,7 +593,6 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     mode = governed$product$mode,
     stage = governed_agent$stage,
     role = governed_agent$role,
-    knowledge_snapshot_id = governed_reference$snapshot_id,
     expert_id = governed_agent$expert_id
   )
   governed$agent_runs$items[[1L]]$agent_id <-
@@ -606,50 +601,7 @@ test_that("trajectory review revalidates ordered stage and Deputy identities", {
     governed$agent_runs$items,
     preserve_order = FALSE
   )
-  governed$joins <- tempest_trajectory_collection(
-    c(
-      governed$joins$items,
-      list(tempest_trajectory_join(
-        "product",
-        governed$product$research_run_id,
-        "read_from",
-        "graft_snapshot",
-        governed_reference$snapshot_id,
-        "authority_validated",
-        c("snapshot_id", "store_id", "schema_build_digest", "commit_order")
-      ))
-    ),
-    preserve_order = FALSE
-  )
   expect_s7_class(rebuild(governed), TempestTrajectoryReview)
-
-  snapshot_mutations <- list(
-    schema_version = function(value) {
-      value$knowledge$input_snapshot$schema_version <- 2L
-      value
-    },
-    store_format_version = function(value) {
-      value$knowledge$input_snapshot$store_format_version <- "2.0.0"
-      value
-    },
-    committed_at = function(value) {
-      value$knowledge$input_snapshot$committed_at <-
-        "2000-01-01T00:00:00.000000Z"
-      value
-    },
-    history_complete = function(value) {
-      value$knowledge$input_snapshot$history_complete <-
-        !value$knowledge$input_snapshot$history_complete
-      value
-    }
-  )
-  for (mutate in snapshot_mutations) {
-    expect_error(rebuild(mutate(unserialize(serialize(governed, NULL)))))
-  }
-
-  wrong_governed_snapshot <- unserialize(serialize(governed, NULL))
-  wrong_governed_snapshot$programs$extract_claims$governed_procedure_ref$snapshot_id <- "snapshot:forged"
-  expect_error(rebuild(wrong_governed_snapshot), "input snapshot")
 
   wrong_governed_path <- unserialize(serialize(governed, NULL))
   wrong_governed_path$stages$items[[governed_stage]]$execution_path <-
@@ -940,10 +892,6 @@ test_that("trajectory review preserves Co-STORM session ownership", {
     role = agent$role,
     expert_id = agent$expert_id
   )
-  snapshot_id <- properties$knowledge$input_snapshot$snapshot_id %||% NULL
-  if (!is.null(snapshot_id)) {
-    run_context$knowledge_snapshot_id <- snapshot_id
-  }
   agent$agent_id <- tempest_deputy_adapter_agent_id(run_context)
   properties$agent_runs$items[[expert_index]] <- agent
   properties$agent_runs <- tempest_trajectory_collection(

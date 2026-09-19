@@ -21,9 +21,9 @@ Invisibly returns the normalized bundle directory.
 }
 \details{
 \code{tempest_session_save()} writes a schema-versioned directory bundle for a
-\link{TempestSession}. The exact current format is schema 12, with no legacy or
+\link{TempestSession}. The exact current format is schema 13, with no legacy or
 compatibility writer. The bundle stores the research manifest, authoritative
-workspace, explicit stage-record history, optional immutable Graft snapshot,
+workspace, explicit stage-record history, retained artifact selection,
 and narrow report product. Every declared file is checksummed, and the
 \code{session.json} manifest is written last. Generic workflow and
 artifact-catalog state, live chat handles, registered tool closures, Shiny

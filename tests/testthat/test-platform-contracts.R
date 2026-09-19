@@ -69,11 +69,3 @@ test_that("platform completion digests survive deep Turn duplication", {
     digest(provider_turn)
   )
 })
-
-test_that("platform Graft contract pin accepts the installed Graft", {
-  skip_if_not_installed("graft")
-  expect_no_warning(
-    valid <- tempest:::tempest_graft_pin_valid(graft::graft_contract_version())
-  )
-  expect_identical(valid, TRUE)
-})

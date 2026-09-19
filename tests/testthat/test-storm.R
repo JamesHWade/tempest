@@ -1206,9 +1206,7 @@ test_that("STORM publishes report authority atomically and restores it", {
       mutation_attempt <- length(mutation_conditions) + 1L
       condition <- tryCatch(
         {
-          fixture$store$record_accepted_graft_reference(list(
-            record_id = paste0("callback-mutation-", mutation_attempt)
-          ))
+          fixture$store$set_max_sources(100L + mutation_attempt)
           NULL
         },
         error = \(error) error

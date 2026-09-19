@@ -3,7 +3,7 @@
 #' Return evidence resources as a tibble
 #'
 #' Reports every evidence resource consumed by a product, including accepted
-#' organizational knowledge supplied through [tempest_knowledge()] or
+#' organizational knowledge supplied through [tempest_artifact_knowledge()] or
 #' [tempest_artifact_knowledge()].
 #'
 #' @param x A completed [tempest_run()] product or a `TempestSession`.

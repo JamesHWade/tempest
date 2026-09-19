@@ -8,7 +8,6 @@ articles:
   contents:
   - tempest
   - daily-briefing
-  - accepted-research
   - artifact-knowledge
 reference:
 - title: Research products
@@ -28,7 +27,6 @@ reference:
   - tempest_read_artifact_research
   - tempest_reuse_artifact_research
   - tempest_artifact_knowledge
-  - tempest_knowledge
   - print.tempest_knowledge
 - title: Reading a completed product
   desc: Read the committed report and inspect the evidence behind it.
@@ -47,9 +45,6 @@ reference:
 - title: Graft review and promotion
   desc: Propose, review, commit, and verify accepted research evidence.
   contents:
-  - tempest_graft_schema
-  - tempest_graft_plan
   - tempest_promotion_bundle
   - tempest_save_promotion_bundle
   - tempest_read_promotion_bundle
-  - tempest_promotion_receipt

@@ -115,18 +115,15 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_null(manifest$status)
   expect_equal(manifest$bundle_type, "costorm")
   expect_equal(manifest$bundle_status, "complete")
-  expect_equal(manifest$schema_version, 12L)
+  expect_equal(manifest$schema_version, 13L)
   expect_identical(
     manifest$research_manifest$research_run_id,
     session_id
   )
   expect_identical(manifest$research_manifest$mode, "costorm")
   expect_identical(manifest$research_manifest$status, "succeeded")
-  expect_identical(
-    manifest$workspace$base_snapshot_id,
-    tempest:::tempest_session_workspace(session)$base_snapshot_id
-  )
-  expect_identical(manifest$workspace$schema_version, 6L)
+
+  expect_identical(manifest$workspace$schema_version, 7L)
   expect_setequal(names(manifest$checksums), manifest$files)
   expect_contains(
     manifest$files,
@@ -298,7 +295,7 @@ test_that("schema 9 session bundles are rejected", {
   bundle_dir <- withr::local_tempdir()
   tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
-    list(schema_version = 9L)
+    list(schema_version = 10L)
   )
   expect_error(
     tempest_session_resume(bundle_dir),

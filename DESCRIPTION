@@ -57,7 +57,6 @@ Suggests:
     ragnar,
     rmarkdown,
     rvest,
-    scans (>= 0.0.0.9000),
     shiny (>= 1.8.1),
     shinychat (>= 0.4.0.9000),
     testthat (>= 3.2.0),
@@ -70,7 +69,6 @@ Remotes:
     JamesHWade/deputy,
     JamesHWade/dsprrr,
     JamesHWade/graft,
-    JamesHWade/scans@cfec2e69ae97639279802f6aabeb8cc6f63153c1,
     posit-dev/shinychat/pkg-r
 Config/testthat/edition: 3
 Config/testthat/parallel: true
@@ -80,7 +78,6 @@ Config/testthat/start-first: storm-persistence-artifact-drift,
     research-workspace-persistence-records,
     costorm-persistence-roundtrip,
     storm-persistence-program-set,
-    product-persistence-graft-integrity,
     storm-persistence-envelope, product-baseline-*,
     product-persistence-stage-records,
     costorm-persistence-recovery,
@@ -136,7 +133,7 @@ Collate:
     'promotion-types.R'
     'trajectory-artifacts.R'
     'trajectory-review.R'
-    'graft-schema.R'
+    'research-record-identity.R'
     'promotion-persistence.R'
     'shiny-adapter.R'
     'shinychat-adapter.R'

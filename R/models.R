@@ -353,289 +353,6 @@ tempest_research_workspace_reference_id_valid <- function(value) {
   tempest_opaque_identifier_valid(value)
 }
 
-tempest_research_workspace_snapshot_id <- function(value) {
-  if (is.null(value)) {
-    return(NULL)
-  }
-  if (rlang::is_string(value) && !is.na(value)) {
-    value <- tempest_trim(value)
-  }
-  if (!tempest_research_workspace_reference_id_valid(value)) {
-    tempest_research_workspace_abort(
-      paste0(
-        "{.arg base_snapshot_id} must be `NULL` or a bounded ",
-        "credential-free identifier."
-      )
-    )
-  }
-  value
-}
-
-#' @keywords internal
-tempest_research_workspace_graft_snapshot <- function(
-  value,
-  base_snapshot_id = NULL
-) {
-  if (is.null(value)) {
-    return(NULL)
-  }
-  if (!requireNamespace("graft", quietly = TRUE)) {
-    tempest_research_workspace_abort(
-      paste0(
-        "{.arg graft_snapshot} requires the optional {.pkg graft} package ",
-        "to be installed."
-      )
-    )
-  }
-  if (
-    !inherits(value, "graft::GraftSnapshot") ||
-      !inherits(value, "S7_object")
-  ) {
-    tempest_research_workspace_abort(
-      "{.arg graft_snapshot} must be a real {.cls graft::GraftSnapshot}."
-    )
-  }
-  tryCatch(
-    S7::validate(value),
-    error = function(error) {
-      tempest_research_workspace_abort(
-        "{.arg graft_snapshot} is not a valid immutable Graft snapshot.",
-        parent = error
-      )
-    }
-  )
-  reference <- tryCatch(
-    tempest_snapshot_reference(value),
-    error = function(error) {
-      tempest_research_workspace_abort(
-        "{.arg graft_snapshot} does not expose the public Graft boundary.",
-        parent = error
-      )
-    }
-  )
-  if (
-    !is.null(base_snapshot_id) &&
-      !identical(reference$snapshot_id, base_snapshot_id)
-  ) {
-    tempest_research_workspace_abort(
-      paste0(
-        "{.arg graft_snapshot} does not match ",
-        "{.arg base_snapshot_id}."
-      )
-    )
-  }
-  value
-}
-
-#' @keywords internal
-tempest_research_workspace_reference_value <- function(value, path) {
-  tempest_research_reference_value(
-    value,
-    path,
-    abort = tempest_research_workspace_abort,
-    noun = "Accepted graft references"
-  )
-}
-
-#' @keywords internal
-tempest_research_workspace_reference_json <- function(value) {
-  as.character(jsonlite::toJSON(
-    value,
-    auto_unbox = TRUE,
-    null = "null",
-    digits = NA,
-    pretty = FALSE,
-    force = TRUE
-  ))
-}
-
-#' @keywords internal
-tempest_research_workspace_validate_reference_ids <- function(
-  value,
-  path,
-  base_snapshot_id
-) {
-  if (!is.list(value) || length(value) == 0L) {
-    return(value)
-  }
-  value_names <- names(value)
-  if (is.null(value_names)) {
-    return(lapply(
-      seq_along(value),
-      \(index) {
-        tempest_research_workspace_validate_reference_ids(
-          value[[index]],
-          paste0(path, "[[", index, "]]"),
-          base_snapshot_id
-        )
-      }
-    ))
-  }
-  normalized_names <- tolower(gsub(
-    "[^A-Za-z0-9]+",
-    "_",
-    gsub("([a-z0-9])([A-Z])", "\\1_\\2", value_names)
-  ))
-  if (anyDuplicated(normalized_names)) {
-    tempest_research_workspace_abort(
-      "Accepted graft reference fields must remain unique after normalization at {.field {path}}."
-    )
-  }
-  for (index in seq_along(value)) {
-    field <- value_names[[index]]
-    normalized <- normalized_names[[index]]
-    child_path <- paste0(path, "$", field)
-    child <- value[[field]]
-    if (grepl("(^|_)id$", normalized)) {
-      if (identical(normalized, "batch_id") && is.null(child)) {
-        next
-      }
-      if (!tempest_research_workspace_reference_id_valid(child)) {
-        tempest_research_workspace_abort(
-          paste0(
-            "Accepted graft reference ID {.field {child_path}} must be a ",
-            "single non-empty string and bounded credential-free identifier."
-          )
-        )
-      }
-      if (
-        identical(normalized, "snapshot_id") &&
-          !is.null(base_snapshot_id) &&
-          !identical(child, base_snapshot_id)
-      ) {
-        tempest_research_workspace_abort(
-          paste0(
-            "Accepted graft reference snapshot does not match ",
-            "{.field base_snapshot_id} at {.field {path}}."
-          )
-        )
-      }
-      value[[field]] <- child
-      next
-    }
-    value[field] <- list(tempest_research_workspace_validate_reference_ids(
-      child,
-      child_path,
-      base_snapshot_id
-    ))
-  }
-  value
-}
-
-#' @keywords internal
-tempest_research_workspace_reference_record <- function(
-  reference,
-  index,
-  base_snapshot_id
-) {
-  path <- paste0("accepted_graft_references[[", index, "]]")
-  if (
-    !is.list(reference) ||
-      is.data.frame(reference) ||
-      length(reference) == 0L
-  ) {
-    tempest_research_workspace_abort(
-      "Accepted graft references must be non-empty named records at {.field {path}}."
-    )
-  }
-  reference_names <- names(reference)
-  if (
-    is.null(reference_names) ||
-      anyNA(reference_names) ||
-      any(!nzchar(reference_names)) ||
-      anyDuplicated(reference_names)
-  ) {
-    tempest_research_workspace_abort(
-      "Accepted graft references must be non-empty named records at {.field {path}}."
-    )
-  }
-  reference <- tempest_research_workspace_reference_value(reference, path)
-  reference_names <- names(reference)
-  normalized_names <- tolower(gsub(
-    "[^A-Za-z0-9]+",
-    "_",
-    gsub("([a-z0-9])([A-Z])", "\\1_\\2", reference_names)
-  ))
-  if (anyDuplicated(normalized_names)) {
-    tempest_research_workspace_abort(
-      "Accepted graft reference fields must remain unique after normalization at {.field {path}}."
-    )
-  }
-  id_fields <- grepl("(^|_)id$", normalized_names)
-  if (!any(id_fields)) {
-    tempest_research_workspace_abort(
-      "Accepted graft references require at least one non-empty `*_id` field at {.field {path}}."
-    )
-  }
-  reference <- tempest_research_workspace_validate_reference_ids(
-    reference,
-    path,
-    base_snapshot_id
-  )
-  commit_order <- which(normalized_names == "commit_order")
-  if (length(commit_order) == 1L) {
-    value <- reference[[commit_order]]
-    if (
-      !is.numeric(value) ||
-        length(value) != 1L ||
-        is.na(value) ||
-        !is.finite(value) ||
-        value < 0 ||
-        value != trunc(value) ||
-        value >= 2^53
-    ) {
-      tempest_research_workspace_abort(
-        "Accepted graft reference commit_order must be an exact non-negative whole number at {.field {path}}."
-      )
-    }
-    reference[[commit_order]] <- as.double(value)
-  }
-  reference
-}
-
-#' @keywords internal
-tempest_research_workspace_references <- function(
-  value,
-  base_snapshot_id = NULL
-) {
-  if (!is.list(value) || is.data.frame(value)) {
-    tempest_research_workspace_abort(
-      "{.arg accepted_graft_references} must be a list of references."
-    )
-  }
-  if (length(value) == 0L) {
-    return(list())
-  }
-  reference_names <- names(value)
-  if (
-    !is.null(reference_names) &&
-      (anyNA(reference_names) || any(nzchar(reference_names)))
-  ) {
-    tempest_research_workspace_abort(
-      "{.arg accepted_graft_references} must be an unnamed list of references."
-    )
-  }
-  references <- lapply(
-    seq_along(value),
-    function(index) {
-      reference <- tempest_research_workspace_reference_record(
-        value[[index]],
-        index,
-        base_snapshot_id
-      )
-      reference
-    }
-  )
-  keys <- vapply(
-    references,
-    tempest_research_workspace_reference_json,
-    character(1)
-  )
-  index <- order(keys)
-  references <- references[index]
-  keys <- keys[index]
-  references[!duplicated(keys)]
-}
 
 #' @keywords internal
 tempest_research_workspace_copy <- function(value) {
@@ -839,17 +556,11 @@ tempest_research_workspace_seal <- function(workspace, owner = NULL) {
 #'   claim-by-evidence-span support assessments.
 #' @field disputes Read-only named-list snapshot of provisional dispute
 #'   records.
-#' @field accepted_graft_references Read-only list of opaque references to
-#'   accepted graft knowledge used by the research run.
-#' @field base_snapshot_id Read-only opaque identifier for the accepted
-#'   knowledge snapshot on which this workspace is based.
 #' @field artifact_selection Read-only exact artifact input and provenance.
-#' @field graft_snapshot Optional read-only, path-free
-#'   `graft::GraftSnapshot` used to reopen the accepted knowledge boundary.
 #' @field citation_audit Read-only pair-level projection of the authoritative
 #'   claim-support assessments, when available.
 #' @field max_sources Maximum number of unique retrieved resources admitted.
-#'   Accepted Graft knowledge records inserted by [tempest_knowledge()] are
+#'   Accepted Graft knowledge records inserted by [tempest_artifact_knowledge()] are
 #'   bounded separately and do not count.
 #'
 #' @keywords internal
@@ -857,20 +568,12 @@ ResearchWorkspace <- R6::R6Class(
   "ResearchWorkspace",
   public = list(
     #' @description Create a new provisional research workspace.
-    #' @param base_snapshot_id Optional opaque identifier for the pinned
-    #'   accepted knowledge snapshot.
-    #' @param graft_snapshot Optional real, path-free `graft::GraftSnapshot`.
-    #' @param artifact_selection Exact artifact input, retained without a
-    #'   Graft snapshot.
+    #' @param artifact_selection Exact artifact input retained by the workspace.
     #' @param max_sources Maximum number of unique sources. New sources are
     #'   refused once the limit is reached.
-    #' @param accepted_graft_references Unnamed list of canonical
-    #'   JSON-compatible references to accepted graft records.
     initialize = function(
-      base_snapshot_id = NULL,
-      graft_snapshot = NULL,
       max_sources = Inf,
-      accepted_graft_references = list(),
+
       artifact_selection = list()
     ) {
       private$mutation_state_value <- "open"
@@ -882,36 +585,10 @@ ResearchWorkspace <- R6::R6Class(
       private$disputes_value <- new.env(parent = emptyenv())
       private$citation_audit_value <- NULL
       private$claims_by_source <- new.env(parent = emptyenv())
-      base_snapshot_id <-
-        tempest_research_workspace_snapshot_id(base_snapshot_id)
-      graft_snapshot <- tempest_research_workspace_graft_snapshot(
-        graft_snapshot,
-        base_snapshot_id
-      )
-      if (is.null(base_snapshot_id) && !is.null(graft_snapshot)) {
-        base_snapshot_id <- S7::prop(graft_snapshot, "snapshot_id")
-      }
-      private$base_snapshot_id_value <- base_snapshot_id
       private$artifact_selection_value <- tempest_artifact_selection(
         artifact_selection,
         allow_empty = TRUE
       )
-      private$graft_snapshot_value <- graft_snapshot
-      private$accepted_graft_references_value <-
-        tempest_research_workspace_references(
-          accepted_graft_references,
-          private$base_snapshot_id_value
-        )
-      if (!is.null(graft_snapshot)) {
-        private$accepted_graft_references_value <-
-          tempest_research_workspace_references(
-            c(
-              private$accepted_graft_references_value,
-              list(tempest_snapshot_reference(graft_snapshot))
-            ),
-            private$base_snapshot_id_value
-          )
-      }
       self$set_max_sources(max_sources)
       invisible(self)
     },
@@ -963,7 +640,7 @@ ResearchWorkspace <- R6::R6Class(
       resource_id <- resource@resource_id
       previous <- private$resources_value[[resource_id]]
       is_new <- is.null(previous)
-      # Accepted Graft records enter through tempest_knowledge()'s own bounded
+      # Accepted Graft records enter through tempest_artifact_knowledge()'s own bounded
       # allowlist and do not consume the retrieval-source budget.
       if (
         is_new &&
@@ -1587,29 +1264,6 @@ ResearchWorkspace <- R6::R6Class(
       )
     },
 
-    #' @description Record a reference to accepted graft knowledge.
-    #' @param reference Opaque canonical JSON-compatible graft reference.
-    record_accepted_graft_reference = function(reference) {
-      private$assert_mutation_open()
-      private$accepted_graft_references_value <-
-        tempest_research_workspace_references(
-          c(
-            private$accepted_graft_references_value,
-            list(reference)
-          ),
-          private$base_snapshot_id_value
-        )
-      invisible(tempest_research_workspace_copy(reference))
-    },
-
-    #' @description List accepted graft references deterministically.
-    list_accepted_graft_references = function() {
-      tempest_research_workspace_references(
-        private$accepted_graft_references_value,
-        private$base_snapshot_id_value
-      )
-    },
-
     #' @description Pin an exact artifact selection after admitting its resources.
     #' @param selection A validated artifact selection.
     bind_artifact_selection = function(selection) {
@@ -1875,39 +1529,14 @@ ResearchWorkspace <- R6::R6Class(
       }
       private$max_sources_value
     },
-    base_snapshot_id = function(value) {
-      if (!missing(value)) {
-        tempest_research_workspace_abort(
-          "{.field base_snapshot_id} is pinned when the workspace is created."
-        )
-      }
-      private$base_snapshot_id_value
-    },
+
     artifact_selection = function(value) {
       if (!missing(value)) {
         private$read_only_binding("artifact_selection")
       }
       tempest_research_workspace_copy(private$artifact_selection_value)
     },
-    graft_snapshot = function(value) {
-      if (!missing(value)) {
-        tempest_research_workspace_abort(
-          "{.field graft_snapshot} is pinned when the workspace is created."
-        )
-      }
-      private$graft_snapshot_value
-    },
-    accepted_graft_references = function(value) {
-      if (!missing(value)) {
-        tempest_research_workspace_abort(
-          paste0(
-            "{.field accepted_graft_references} is read-only; use ",
-            "{.fn record_accepted_graft_reference}."
-          )
-        )
-      }
-      self$list_accepted_graft_references()
-    },
+
     citation_audit = function(value) {
       if (!missing(value)) {
         private$read_only_binding("citation_audit")
@@ -1937,10 +1566,9 @@ ResearchWorkspace <- R6::R6Class(
     disputes_value = NULL,
     max_sources_value = NULL,
     claims_by_source = NULL,
-    base_snapshot_id_value = NULL,
+
     artifact_selection_value = list(),
-    graft_snapshot_value = NULL,
-    accepted_graft_references_value = NULL,
+
     citation_audit_value = NULL,
     verification_owner_token_value = NULL,
     assert_mutation_open = function() {
@@ -2510,31 +2138,22 @@ ResearchWorkspace <- R6::R6Class(
 #'
 #' `tempest_research_workspace()` creates the run-scoped ledger for material
 #' gathered or proposed during scientific research. Accepted knowledge remains
-#' in graft; this workspace retains opaque record references and, when pinned,
-#' the path-free immutable Graft snapshot needed to reopen that boundary.
+#' in Graft; this workspace retains exact artifact selection references and
+#' materialized evidence for inspection. Reuse requires fresh host admission.
 #'
-#' @param base_snapshot_id Optional opaque identifier for the pinned accepted
-#'   knowledge snapshot.
-#' @param graft_snapshot Optional real, path-free `graft::GraftSnapshot`.
 #' @param artifact_selection Exact artifact input retained by the workspace.
 #' @param max_sources Maximum number of unique resources admitted.
-#' @param accepted_graft_references Unnamed list of canonical JSON-compatible
-#'   references to accepted graft records.
 #'
 #' @return A [ResearchWorkspace] object.
 #' @keywords internal
 tempest_research_workspace <- function(
-  base_snapshot_id = NULL,
-  graft_snapshot = NULL,
   max_sources = Inf,
-  accepted_graft_references = list(),
+
   artifact_selection = list()
 ) {
   ResearchWorkspace$new(
-    base_snapshot_id = base_snapshot_id,
-    graft_snapshot = graft_snapshot,
     max_sources = max_sources,
-    accepted_graft_references = accepted_graft_references,
+
     artifact_selection = artifact_selection
   )
 }
