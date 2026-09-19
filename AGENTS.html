@@ -39,16 +39,9 @@
 
 
 <div class="section level2">
-<h2 id="kata-issue-tracker">kata issue tracker<a class="anchor" aria-label="anchor" href="#kata-issue-tracker"></a></h2>
-<p>This project uses <a href="https://github.com/kenn-io/kata" class="external-link">kata</a> as its shared issue ledger. Run <code>kata quickstart</code> at the start of each session for the full agent contract. The short version:</p>
-<ul><li>Search before creating: <code>kata search "&lt;keywords&gt;" --agent</code>.</li>
-<li>Prefer updating existing issues over duplicates (<code>kata comment</code>, <code>kata label add</code>, <code>kata edit</code>).</li>
-<li>Default to <code>--agent</code> for ordinary reads and mutations; use <code>--json</code> only when a script needs structured data.</li>
-<li>Close only verified work: <code>kata close &lt;ref&gt; --done --message "&lt;scope + verification&gt;" --commit &lt;sha&gt;</code>.</li>
-<li>If work is incomplete, label <code>needs-review</code> and comment what remains rather than closing.</li>
-<li>Never <code>kata delete</code> or <code>kata purge</code> without explicit user authorization. <!-- END KATA -->
-</li>
-</ul></div>
+<h2 id="issue-tracker">Issue tracker<a class="anchor" aria-label="anchor" href="#issue-tracker"></a></h2>
+<p>Backlog work and specifications live in GitHub Issues for <code>JamesHWade/tempest</code>. Read <a href="dev/agents/issue-tracker.html">the issue workflow</a> when finding, creating, updating, or closing work.</p>
+</div>
 <div class="section level2">
 <h2 id="this-package">This package<a class="anchor" aria-label="anchor" href="#this-package"></a></h2>
 <p><code>tempest</code> is an R package that ports STORM and Co-STORM research workflows to R. The package has three main surfaces:</p>
