@@ -11,7 +11,6 @@ tempest_decompose_query(
   topic,
   module,
   max_queries = 3,
-  knowledge_view = module$knowledge_view %||% NULL,
   record_stage = function(record, output = NULL) invisible(record)
 )
 ```

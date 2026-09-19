@@ -21,6 +21,13 @@
   formats are unchanged (zf9y; Graft
   [\#75](https://github.com/JamesHWade/tempest/issues/75)).
 
+- [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
+  no longer accepts governed-procedure bindings. Research execution uses
+  host-selected programs; stored procedure references remain inert
+  provenance and are rejected by live ProgramSets. Graft views no longer
+  enter stage execution (zf9y; Graft
+  [\#74](https://github.com/JamesHWade/tempest/issues/74)).
+
 - [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md),
   [`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md),
   and
@@ -33,6 +40,12 @@
   and STORM resume now require freshly supplied artifact knowledge
   matching the saved selection; policy callbacks and store handles
   remain transient (srvc).
+
+- [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
+  now projects exact input artifact selections and output publications
+  with explicit historical acceptance decisions in schema 2; native
+  output receipts and schema 1 reviews are no longer accepted
+  (JamesHWade/graft#74).
 
 - Persisted workspace, STORM, and Co-STORM formats are now 6, 9, and 12.
   Regenerate older experimental bundles; compatibility readers are not

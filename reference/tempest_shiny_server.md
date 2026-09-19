@@ -59,10 +59,9 @@ tempest_shiny_server(
 
 - knowledge_view:
 
-  Optional immutable Graft view used with `program_set`. May be a value,
-  function, or reactive. A governed ProgramSet requires its exact pinned
-  view before any provider call; the view remains process-local and is
-  never serialized.
+  Optional immutable Graft evidence view. May be a value, function, or
+  reactive. It must match the session workspace and remains
+  process-local; it does not select executable programs.
 
 ## Value
 

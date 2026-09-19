@@ -172,8 +172,7 @@ constructing the input.</p>
 <span><span class="va">knowledge</span></span>
 <span><span class="co">#&gt; <span style="color: #0000BB;">&lt;tempest_knowledge&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> artifact selection: <span style="color: #0000BB;">"selection:pilot-briefing-1"</span></span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> accepted records: 2</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> governed stages:</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> accepted records: 2</span></span></code></pre></div>
 <p>Each selected record has an immutable revision reference and the
 SHA-256 digest of its UTF-8 content bytes. The contents must cover every
 selected record exactly once. Every declared dependency must resolve to
@@ -217,20 +216,19 @@ resuming work. STORM and Co-STORM validate new-run arguments and the
 supplied retriever before invoking the admission callback. Co-STORM
 restore validates its saved snapshot and new progress callback, then
 uses the constructor’s input checks before admission. A supplied
-knowledge view must match both the governed procedures and the saved
-workspace. Omitting the view still allows inspection of a restored
-session; governed execution requires the exact pinned view. A new run
-requires an open workspace whose pinned artifact selection matches its
-knowledge input. These checks do not modify the supplied workspace. This
-constructor does not monitor policy changes during an active run.
-Re-admitting the same artifact input for STORM resume preserves the
-saved research state and original retrieval times; a later read time
-alone does not make the immutable input different. You can reuse a
-completed run’s retriever: its sealed workspace is compared with the
-saved state and retained without reinserting evidence. Resume checks the
-supplied workspace against the saved evidence and required mutation
-state before invoking admission; restoration occurs only after admission
-succeeds.</p>
+knowledge view must match the saved workspace. Stored procedure
+references are inert provenance, and live research programs are selected
+independently by the host. A new run requires an open workspace whose
+pinned artifact selection matches its knowledge input. These checks do
+not modify the supplied workspace. This constructor does not monitor
+policy changes during an active run. Re-admitting the same artifact
+input for STORM resume preserves the saved research state and original
+retrieval times; a later read time alone does not make the immutable
+input different. You can reuse a completed run’s retriever: its sealed
+workspace is compared with the saved state and retained without
+reinserting evidence. Resume checks the supplied workspace against the
+saved evidence and required mutation state before invoking admission;
+restoration occurs only after admission succeeds.</p>
 </div>
 <div class="section level2">
 <h2 id="researching-a-correction">Researching a correction<a class="anchor" aria-label="anchor" href="#researching-a-correction"></a>

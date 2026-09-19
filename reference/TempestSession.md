@@ -128,8 +128,8 @@ for the supported API.
 
 - `knowledge_view`:
 
-  Optional immutable Graft view. A fresh session requires it whenever
-  `program_set` contains governed procedures.
+  Optional immutable Graft view for accepted evidence. It must match the
+  workspace snapshot and remains process-local.
 
 - `.restore_manifest`:
 

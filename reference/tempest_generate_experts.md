@@ -14,8 +14,7 @@ tempest_generate_experts(
   n = 3,
   config = tempest_config(),
   verbose = FALSE,
-  program_set = NULL,
-  knowledge_view = NULL
+  program_set = NULL
 )
 ```
 
@@ -44,10 +43,6 @@ tempest_generate_experts(
   containing the exact `personas` program. If `NULL`,
   [`tempest_program_set()`](https://jameshwade.github.io/tempest/reference/tempest_program_set.md)
   creates the builtin set.
-
-- knowledge_view:
-
-  Optional pinned Graft view required by a governed `program_set`.
 
 ## Value
 

@@ -27,9 +27,10 @@ tempest_run_async(..., knowledge_view = NULL)
 - knowledge_view:
 
   Accepted knowledge and a live pinned Graft view cannot cross the
-  asynchronous worker boundary. Governed runs must use
+  asynchronous worker boundary. Use
   [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
-  in the process that owns the view.
+  in the process that owns the knowledge value and its admission
+  callback.
 
 ## Value
 

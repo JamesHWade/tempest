@@ -96,10 +96,9 @@ builtin set.</p></dd>
 
 
 <dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
-<dd><p>Optional immutable Graft view used with
-<code>program_set</code>. May be a value, function, or reactive. A governed ProgramSet
-requires its exact pinned view before any provider call; the view remains
-process-local and is never serialized.</p></dd>
+<dd><p>Optional immutable Graft evidence view. May be a value,
+function, or reactive. It must match the session workspace and remains
+process-local; it does not select executable programs.</p></dd>
 
 </dl></div>
     <div class="section level2">

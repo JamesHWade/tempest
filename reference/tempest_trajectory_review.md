@@ -13,8 +13,8 @@ The value contains exactly `schema_version`, `review_id`, `product`,
 `stages`, `agent_runs`, `programs`, `knowledge`, `evidence`, `joins`,
 and `findings`. The `stages` lane retains authoritative StageRecord
 order. The `agent_runs`, `evidence`, `joins`, and `findings` lanes are
-canonical sets; accepted promotion revisions use the same canonical
-envelope beneath `knowledge$acceptance$record_revisions`. Every variable
+canonical sets; input artifact identities use the same canonical
+envelope beneath `knowledge$input_selection$records`. Every variable
 lane contains exactly `total`, `retained`, `omitted`, `digest`, and
 `items`, retains at most 250 items, and binds the complete lane digest.
 Mutable progress events, prompts, responses, source content, paths,
@@ -23,9 +23,16 @@ credentials, capabilities, and live objects are excluded.
 Joins distinguish authority-validated bindings, exact identity, and
 correlation-only grouping. A `correlation_id` can support only a
 `correlated_with` relation and never claims causation or authorship. An
-exact promotion bundle adds proposed state; its exact matching receipt
-adds accepted state. A receipt alone or a cross-product combination is
-rejected.
+exact promotion bundle or verified publication adds proposed state. An
+exact recorded accept decision adds historical accepted state. This
+remains inspectable after withdrawal and never grants current reuse
+permission. Input selection identities and their full metadata digest
+remain distinct from output publication. Input `reported_decision` is
+unverified host provenance, never authenticated acceptance; malformed
+metadata is omitted. Decision actor, reason, key and other arbitrary
+input provenance are excluded. Native input snapshots remain inspectable
+until their separate retirement; native output receipts are no longer
+accepted. Schema 2 replaces schema 1 directly.
 
 ## Usage
 
@@ -33,7 +40,10 @@ rejected.
 tempest_trajectory_review(
   research,
   promotion_bundle = NULL,
-  promotion_receipt = NULL
+  store = NULL,
+  selection = NULL,
+  stream = NULL,
+  decision = NULL
 )
 ```
 
@@ -51,11 +61,27 @@ tempest_trajectory_review(
   Optional exact bundle returned by
   [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md).
 
-- promotion_receipt:
+- store:
 
-  Optional exact receipt returned by
-  [`tempest_promotion_receipt()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.md).
-  Requires `promotion_bundle`.
+  Artifact store used to verify an output publication. Required with
+  `selection`. The store is never retained in the review.
+
+- selection:
+
+  Exact output selection returned by
+  [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md).
+  The retained bundle and report must match this completed research
+  product.
+
+- stream:
+
+  Decision stream containing `decision`. Supply both together.
+
+- decision:
+
+  Exact historical accept decision digest. Omit to inspect a publication
+  without asserting acceptance. No latest-decision lookup or current
+  admission check is performed.
 
 ## Value
 

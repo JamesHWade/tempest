@@ -14,7 +14,6 @@ tempest_program_set(
   path = NULL,
   contract_versions = 1L,
   evaluators = NULL,
-  governed_procedure_refs = list(),
   registry = list()
 )
 ```
@@ -43,11 +42,6 @@ tempest_program_set(
   `evaluator_version`. These identify how stage output is judged and are
   distinct from an optimization teleprompter or metric.
 
-- governed_procedure_refs:
-
-  Optional named list of typed `tempest_governed_procedure_ref()` values
-  by stage.
-
 - registry:
 
   Named runtime-binding registry passed to dsprrr artifact operations.
@@ -60,9 +54,9 @@ A validated `TempestProgramSet` S7 object.
 ## Details
 
 The returned live value retains executable modules. Its manifest
-projection contains only portable identifiers, evaluator metadata,
-governed-procedure references, and builtin or bundle-relative artifact
-references.
+projection contains only portable identifiers, evaluator metadata, and
+builtin or bundle-relative artifact references. Stored research and
+Graft records never select or authorize executable programs.
 
 Resume compares program identity independently of physical location, so
 a relocated verified bundle is accepted. A custom-program run must

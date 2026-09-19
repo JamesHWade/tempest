@@ -2,17 +2,13 @@
 
 `tempest_knowledge()` is the Graft constructor for accepted
 organizational knowledge. It pins an immutable Graft view, materializes
-an exact allowlist of accepted evidence records, and optionally binds
-accepted governed procedures to Tempest stages.
+an exact allowlist of accepted evidence records, and keeps those records
+separate from executable research programs.
 
 ## Usage
 
 ``` r
-tempest_knowledge(
-  graft_view,
-  record_ids = character(),
-  governed_procedures = list()
-)
+tempest_knowledge(graft_view, record_ids = character())
 ```
 
 ## Arguments
@@ -28,11 +24,6 @@ tempest_knowledge(
   `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source` records are
   readable.
 
-- governed_procedures:
-
-  Optional named list mapping an exact Tempest stage to an accepted
-  `GovernedProcedure` record id.
-
 ## Value
 
 A validated `TempestKnowledge` value for
@@ -44,9 +35,8 @@ and
 
 Accepted record text is evidence, not instruction. It is carried in a
 data channel and can never change prompts, message roles, tools,
-governed procedure selection, or executable artifacts. Executable
-authority comes only from an explicit `governed_procedures` stage
-binding.
+governed procedure selection, or executable artifacts. The host selects
+research programs independently of stored knowledge.
 
 ## Examples
 

@@ -67,8 +67,8 @@ details on available parameters including <code>topic</code>, <code>config</code
 <dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
 <dd><p>Accepted knowledge and a live pinned Graft view cannot
 cross the asynchronous
-worker boundary. Governed runs must use <code><a href="tempest_run.html">tempest_run()</a></code> in the process that
-owns the view.</p></dd>
+worker boundary. Use <code><a href="tempest_run.html">tempest_run()</a></code> in the process that owns the knowledge
+value and its admission callback.</p></dd>
 
 </dl></div>
     <div class="section level2">

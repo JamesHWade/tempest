@@ -205,8 +205,8 @@ stage-output selection instead of packaging nonselected evidence.
 Reading requires the original bundle id as an out-of-band trust pin;
 bundle-local checksums establish internal consistency, not authenticity.
 Older bundle shapes are rejected. Research promotion never mints a
-`GovernedProcedure`; that record requires its own reviewed Graft
-acceptance flow.
+`GovernedProcedure`; stored research does not authorize program
+execution.
 
 The constructor accepts only a completed
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
@@ -226,10 +226,16 @@ proposed_review <- tempest_trajectory_review(
   result,
   promotion_bundle = bundle
 )
+artifact_store <- graft::graft_artifact_store("research-artifacts", create = TRUE)
+selection <- tempest_publish_artifact_research(result, artifact_store)
+accepted <- graft::graft_artifact_decide(
+  artifact_store, "research", "review-1", expected = NULL,
+  selection = selection, action = "accept", actor = "reviewer",
+  reason = "Reviewed the evidence", purpose = "briefing"
+)
 accepted_review <- tempest_trajectory_review(
-  result,
-  promotion_bundle = bundle,
-  promotion_receipt = receipt
+  result, store = artifact_store, selection = selection,
+  stream = "research", decision = accepted$id
 )
 ```
 
@@ -246,9 +252,15 @@ Join proofs distinguish authority-validated bindings and exact identity
 from mere correlation. A `correlation_id` appears only in
 `correlated_with` joins with `correlation_only` proof and never
 establishes causation or authorship. Mutable progress events remain
-outside the review identity. Proposed and accepted promotion states
-require the exact completed product, and receipt-only or cross-run
-combinations fail closed.
+outside the review identity. Proposed and historically accepted states
+bind the exact completed product and publication. An old acceptance
+remains inspectable after withdrawal; current reuse still requires fresh
+admission. Cross-product publications fail closed. Schema 2 directly
+replaces the earlier receipt-based review contract.
+
+Input `reported_decision` metadata is explicitly unverified host
+provenance. Malformed metadata is omitted from the review; only the
+output acceptance is verified against the selected store event.
 
 ## Resume a staged run
 
@@ -471,7 +483,7 @@ of that surface. No compatibility layer is provided.
 - Bring accepted organizational knowledge into a run with
   [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md),
   which pins the immutable Graft view, names the exact accepted evidence
-  records, and binds any accepted governed procedure to its stage.
+  records, and keeps them separate from executable programs.
 - Review provisional evidence with
   [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md)
   and

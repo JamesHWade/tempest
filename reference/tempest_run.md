@@ -54,8 +54,8 @@ tempest_run(
   [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
   or
   [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md).
-  It supplies accepted evidence records and accepted governed-procedure
-  stage bindings. The live Graft view and knowledge object are not
+  It supplies accepted evidence records without selecting or authorizing
+  executable programs. The live Graft view and knowledge object are not
   serialized; materialized evidence and artifact selections are retained
   in the bundle.
 

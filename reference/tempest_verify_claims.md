@@ -54,8 +54,8 @@ tempest_verify_claims(
 
 - knowledge_view:
 
-  Optional immutable Graft view required when a standalone `program_set`
-  binds verification to a governed procedure.
+  Optional immutable Graft evidence view. When supplied, it must match
+  the standalone workspace snapshot.
 
 - min_support_score:
 

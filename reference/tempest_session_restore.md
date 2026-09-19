@@ -41,9 +41,9 @@ tempest_session_restore(
 
 - knowledge_view:
 
-  Optional transient immutable Graft view required by future execution
-  when `program_set` contains governed procedures. It is never
-  reconstructed from or written to persistence.
+  Optional transient immutable Graft evidence view that must match the
+  saved workspace. It is never reconstructed from or written to
+  persistence and does not select executable programs.
 
 - knowledge:
 

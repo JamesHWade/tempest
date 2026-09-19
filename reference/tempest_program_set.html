@@ -62,7 +62,6 @@ dsprrr program artifacts.</p>
 <span>  path <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  contract_versions <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  evaluators <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  governed_procedure_refs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  registry <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -93,11 +92,6 @@ and <code>evaluator_version</code>. These identify how stage output is judged an
 distinct from an optimization teleprompter or metric.</p></dd>
 
 
-<dt id="arg-governed-procedure-refs">governed_procedure_refs<a class="anchor" aria-label="anchor" href="#arg-governed-procedure-refs"></a></dt>
-<dd><p>Optional named list of typed
-<code>tempest_governed_procedure_ref()</code> values by stage.</p></dd>
-
-
 <dt id="arg-registry">registry<a class="anchor" aria-label="anchor" href="#arg-registry"></a></dt>
 <dd><p>Named runtime-binding registry passed to dsprrr artifact
 operations. It is never stored in ProgramSet metadata.</p></dd>
@@ -110,8 +104,9 @@ operations. It is never stored in ProgramSet metadata.</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The returned live value retains executable modules. Its manifest projection
-contains only portable identifiers, evaluator metadata, governed-procedure
-references, and builtin or bundle-relative artifact references.</p>
+contains only portable identifiers, evaluator metadata, and builtin or
+bundle-relative artifact references. Stored research and Graft records never
+select or authorize executable programs.</p>
 <p>Resume compares program identity independently of physical location, so a
 relocated verified bundle is accepted. A custom-program run must resume with
 a ProgramSet carrying the same identities. Omitting <code>program_set</code> at a run

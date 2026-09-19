@@ -114,7 +114,6 @@ knowledge
 #> <tempest_knowledge>
 #> • artifact selection: "selection:pilot-briefing-1"
 #> • accepted records: 2
-#> • governed stages:
 ```
 
 Each selected record has an immutable revision reference and the SHA-256
@@ -163,20 +162,19 @@ resuming work. STORM and Co-STORM validate new-run arguments and the
 supplied retriever before invoking the admission callback. Co-STORM
 restore validates its saved snapshot and new progress callback, then
 uses the constructor’s input checks before admission. A supplied
-knowledge view must match both the governed procedures and the saved
-workspace. Omitting the view still allows inspection of a restored
-session; governed execution requires the exact pinned view. A new run
-requires an open workspace whose pinned artifact selection matches its
-knowledge input. These checks do not modify the supplied workspace. This
-constructor does not monitor policy changes during an active run.
-Re-admitting the same artifact input for STORM resume preserves the
-saved research state and original retrieval times; a later read time
-alone does not make the immutable input different. You can reuse a
-completed run’s retriever: its sealed workspace is compared with the
-saved state and retained without reinserting evidence. Resume checks the
-supplied workspace against the saved evidence and required mutation
-state before invoking admission; restoration occurs only after admission
-succeeds.
+knowledge view must match the saved workspace. Stored procedure
+references are inert provenance, and live research programs are selected
+independently by the host. A new run requires an open workspace whose
+pinned artifact selection matches its knowledge input. These checks do
+not modify the supplied workspace. This constructor does not monitor
+policy changes during an active run. Re-admitting the same artifact
+input for STORM resume preserves the saved research state and original
+retrieval times; a later read time alone does not make the immutable
+input different. You can reuse a completed run’s retriever: its sealed
+workspace is compared with the saved state and retained without
+reinserting evidence. Resume checks the supplied workspace against the
+saved evidence and required mutation state before invoking admission;
+restoration occurs only after admission succeeds.
 
 ## Researching a correction
 

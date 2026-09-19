@@ -282,8 +282,8 @@ stage-output selection instead of packaging nonselected evidence.
 Reading requires the original bundle id as an out-of-band trust pin;
 bundle-local checksums establish internal consistency, not authenticity.
 Older bundle shapes are rejected. Research promotion never mints a
-<code>GovernedProcedure</code>; that record requires its own reviewed
-Graft acceptance flow.</p>
+<code>GovernedProcedure</code>; stored research does not authorize
+program execution.</p>
 <p>The constructor accepts only a completed <code><a href="../reference/tempest_run.html">tempest_run()</a></code>
 result or a succeeded, quiescent <code>TempestSession</code>.
 Independently supplied Workspace, Manifest, and StageRecord values
@@ -300,10 +300,16 @@ or Graft authority:</p>
 <span>  <span class="va">result</span>,</span>
 <span>  promotion_bundle <span class="op">=</span> <span class="va">bundle</span></span>
 <span><span class="op">)</span></span>
+<span><span class="va">artifact_store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_store.html" class="external-link">graft_artifact_store</a></span><span class="op">(</span><span class="st">"research-artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">artifact_store</span><span class="op">)</span></span>
+<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
+<span>  <span class="va">artifact_store</span>, <span class="st">"research"</span>, <span class="st">"review-1"</span>, expected <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  selection <span class="op">=</span> <span class="va">selection</span>, action <span class="op">=</span> <span class="st">"accept"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>,</span>
+<span>  reason <span class="op">=</span> <span class="st">"Reviewed the evidence"</span>, purpose <span class="op">=</span> <span class="st">"briefing"</span></span>
+<span><span class="op">)</span></span>
 <span><span class="va">accepted_review</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_trajectory_review.html">tempest_trajectory_review</a></span><span class="op">(</span></span>
-<span>  <span class="va">result</span>,</span>
-<span>  promotion_bundle <span class="op">=</span> <span class="va">bundle</span>,</span>
-<span>  promotion_receipt <span class="op">=</span> <span class="va">receipt</span></span>
+<span>  <span class="va">result</span>, store <span class="op">=</span> <span class="va">artifact_store</span>, selection <span class="op">=</span> <span class="va">selection</span>,</span>
+<span>  stream <span class="op">=</span> <span class="st">"research"</span>, decision <span class="op">=</span> <span class="va">accepted</span><span class="op">$</span><span class="va">id</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The closed ten-field projection contains the product identity,
 ordered StageRecord summaries, safe terminal Deputy identities, fixed
@@ -318,8 +324,15 @@ identity from mere correlation. A <code>correlation_id</code> appears
 only in <code>correlated_with</code> joins with
 <code>correlation_only</code> proof and never establishes causation or
 authorship. Mutable progress events remain outside the review identity.
-Proposed and accepted promotion states require the exact completed
-product, and receipt-only or cross-run combinations fail closed.</p>
+Proposed and historically accepted states bind the exact completed
+product and publication. An old acceptance remains inspectable after
+withdrawal; current reuse still requires fresh admission. Cross-product
+publications fail closed. Schema 2 directly replaces the earlier
+receipt-based review contract.</p>
+<p>Input <code>reported_decision</code> metadata is explicitly
+unverified host provenance. Malformed metadata is omitted from the
+review; only the output acceptance is verified against the selected
+store event.</p>
 </div>
 <div class="section level2">
 <h2 id="resume-a-staged-run">Resume a staged run<a class="anchor" aria-label="anchor" href="#resume-a-staged-run"></a>
@@ -515,8 +528,8 @@ interactive Co-STORM research.</li>
 <code>embed_fn</code> or a pre-built <code>ragnar_store</code>.</li>
 <li>Bring accepted organizational knowledge into a run with
 <code><a href="../reference/tempest_knowledge.html">tempest_knowledge()</a></code>, which pins the immutable Graft view,
-names the exact accepted evidence records, and binds any accepted
-governed procedure to its stage.</li>
+names the exact accepted evidence records, and keeps them separate from
+executable programs.</li>
 <li>Review provisional evidence with
 <code><a href="../reference/tempest_promotion_bundle.html">tempest_promotion_bundle()</a></code> and
 <code><a href="../reference/tempest_graft_plan.html">tempest_graft_plan()</a></code> before exercising Graft acceptance

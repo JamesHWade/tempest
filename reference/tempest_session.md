@@ -58,8 +58,8 @@ tempest_session(
   [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
   or
   [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md).
-  It supplies accepted evidence records, and carries any accepted
-  governed-procedure stage bindings.
+  It supplies accepted evidence records without selecting or authorizing
+  executable programs.
 
 ## Value
 
