@@ -70,7 +70,7 @@ Remotes:
     JamesHWade/deputy,
     JamesHWade/dsprrr,
     JamesHWade/graft,
-    JamesHWade/scans,
+    JamesHWade/scans@cfec2e69ae97639279802f6aabeb8cc6f63153c1,
     posit-dev/shinychat/pkg-r
 Config/testthat/edition: 3
 Config/testthat/parallel: true
@@ -134,6 +134,7 @@ Collate:
     'costorm-persistence.R'
     'storm-persistence.R'
     'promotion-types.R'
+    'trajectory-artifacts.R'
     'trajectory-review.R'
     'graft-schema.R'
     'promotion-persistence.R'

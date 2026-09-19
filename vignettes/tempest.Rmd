@@ -222,10 +222,16 @@ proposed_review <- tempest_trajectory_review(
   result,
   promotion_bundle = bundle
 )
+artifact_store <- graft::graft_artifact_store("research-artifacts", create = TRUE)
+selection <- tempest_publish_artifact_research(result, artifact_store)
+accepted <- graft::graft_artifact_decide(
+  artifact_store, "research", "review-1", expected = NULL,
+  selection = selection, action = "accept", actor = "reviewer",
+  reason = "Reviewed the evidence", purpose = "briefing"
+)
 accepted_review <- tempest_trajectory_review(
-  result,
-  promotion_bundle = bundle,
-  promotion_receipt = receipt
+  result, store = artifact_store, selection = selection,
+  stream = "research", decision = accepted$id
 )
 ```
 
@@ -241,8 +247,10 @@ Join proofs distinguish authority-validated bindings and exact identity from
 mere correlation. A `correlation_id` appears only in `correlated_with` joins
 with `correlation_only` proof and never establishes causation or authorship.
 Mutable progress events remain outside the review identity. Proposed and
-accepted promotion states require the exact completed product, and receipt-only
-or cross-run combinations fail closed.
+historically accepted states bind the exact completed product and publication.
+An old acceptance remains inspectable after withdrawal; current reuse still
+requires fresh admission. Cross-product publications fail closed. Schema 2
+directly replaces the earlier receipt-based review contract.
 
 ## Resume a staged run
 

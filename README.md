@@ -206,10 +206,16 @@ proposed_review <- tempest_trajectory_review(
   result,
   promotion_bundle = bundle
 )
+artifact_store <- graft::graft_artifact_store("research-artifacts", create = TRUE)
+selection <- tempest_publish_artifact_research(result, artifact_store)
+accepted <- graft::graft_artifact_decide(
+  artifact_store, "research", "review-1", expected = NULL,
+  selection = selection, action = "accept", actor = "reviewer",
+  reason = "Reviewed the evidence", purpose = "briefing"
+)
 accepted_review <- tempest_trajectory_review(
-  result,
-  promotion_bundle = bundle,
-  promotion_receipt = receipt
+  result, store = artifact_store, selection = selection,
+  stream = "research", decision = accepted$id
 )
 ```
 
@@ -222,13 +228,15 @@ prompts, responses, source text, paths, credentials, live objects, or
 capabilities, and it is reconstructable rather than persisted.
 
 Every join names its relation and proof. Exact run, stage, program, snapshot,
-bundle, and receipt identities can establish a validated binding;
+bundle, publication, and recorded decision identities establish explicit bindings;
 `correlation_id` can establish only `correlated_with` with
 `correlation_only` proof. It never establishes authorship or causation.
 Mutable progress events are intentionally outside the review identity. A
-promotion bundle is shown as proposed, and an exact matching bundle plus
-receipt is shown as accepted; a receipt alone or a cross-run product fails
-closed.
+promotion bundle or publication is shown as proposed; an exact recorded accept
+decision is shown as historically accepted. Withdrawal does not erase that
+history or alter the original input selection. Current reuse still requires
+fresh admission through `tempest_reuse_artifact_research()`. Schema 2 directly
+replaces the old receipt-based review; cross-product publications are rejected.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot schema 6,
 Co-STORM snapshot and bundle schema 12, STORM bundle schema 9 with state schema
