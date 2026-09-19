@@ -37,6 +37,11 @@ test_that("research manifests validate schema and lifecycle enums", {
     class = "simpleError",
     regexp = "unused argument"
   )
+  expect_error(
+    manifest@schema_version <- 4L,
+    regexp = "supported version 5",
+    class = "simpleError"
+  )
 })
 
 test_that("research manifest records survive canonical JSON without drift", {
@@ -129,11 +134,11 @@ test_that("research manifest readers require exact current records", {
     class = "tempest_research_manifest_error"
   )
   prior_schema <- record
-  prior_schema$schema_version <- 3L
+  prior_schema$schema_version <- 4L
   expect_error(
     tempest_research_manifest_from_record(prior_schema),
     class = "tempest_research_manifest_error",
-    regexp = "supported version.*4"
+    regexp = "supported version.*5"
   )
 
   for (field in c(

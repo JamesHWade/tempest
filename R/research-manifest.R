@@ -1047,7 +1047,7 @@ tempest_research_manifest_prop_enum <- function(choices) {
 
 tempest_research_manifest_s7_validator <- function(self) {
   if (!identical(self@schema_version, 5L)) {
-    return("schema_version must be the supported version 4")
+    return("schema_version must be the supported version 5")
   }
   if (!grepl("^sha256:[a-f0-9]{64}$", self@config_digest)) {
     return("config_digest must be a SHA-256 identifier")
@@ -1256,7 +1256,7 @@ tempest_research_manifest_from_record <- function(record) {
   }
   if (!tempest_exact_integer_scalar_valid(record$schema_version, 5L, 5L)) {
     tempest_research_manifest_abort(
-      "Research manifest records must use exact supported version `4`."
+      "Research manifest records must use exact supported version `5`."
     )
   }
   record$runtime <- tempest_research_manifest_runtime_record(record$runtime)
