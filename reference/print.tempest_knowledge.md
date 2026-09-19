@@ -14,8 +14,6 @@ print(x, ...)
 - x:
 
   A `TempestKnowledge` value from
-  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-  or
   [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md).
 
 - ...:

@@ -30,8 +30,6 @@ Bring retained artifact evidence or reviewed Graft knowledge into a run.
   : Admit a current accepted research decision
 - [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
   : Bring a retained artifact selection into a research run
-- [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-  : Bring accepted organizational knowledge into a Tempest run
 - [`print(`*`<tempest_knowledge>`*`)`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md)
   : Print accepted organizational knowledge
 
@@ -66,15 +64,9 @@ Save and resume the exact current session product.
 
 Propose, review, commit, and verify accepted research evidence.
 
-- [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
-  : Load Tempest's compiled scientific Graft schema
-- [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
-  : Plan a Tempest research promotion without accepting it
 - [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md)
   : Build a deterministic proposal for reviewed Graft promotion
 - [`tempest_save_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_save_promotion_bundle.md)
   : Save a Tempest promotion bundle atomically
 - [`tempest_read_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.md)
   : Read and validate a current Tempest promotion bundle
-- [`tempest_promotion_receipt()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.md)
-  : Record exact accepted revisions for a committed promotion plan

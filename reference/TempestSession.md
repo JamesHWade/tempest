@@ -77,7 +77,6 @@ for the supported API.
       progress = NULL,
       session_id = NULL,
       program_set = NULL,
-      knowledge_view = NULL,
       .restore_manifest = NULL,
       .restore_token = NULL,
       .admit_knowledge = NULL,
@@ -125,11 +124,6 @@ for the supported API.
   A
   [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
   used for every structured Co-STORM stage.
-
-- `knowledge_view`:
-
-  Optional immutable Graft view for accepted evidence. It must match the
-  workspace snapshot and remains process-local.
 
 - `.restore_manifest`:
 

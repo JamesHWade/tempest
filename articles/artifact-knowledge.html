@@ -39,8 +39,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+<li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul>
 </li>
@@ -215,20 +214,23 @@ knowledge. The host must enforce current eligibility before starting or
 resuming work. STORM and Co-STORM validate new-run arguments and the
 supplied retriever before invoking the admission callback. Co-STORM
 restore validates its saved snapshot and new progress callback, then
-uses the constructor’s input checks before admission. A supplied
-knowledge view must match the saved workspace. Stored procedure
+uses the constructor’s input checks before admission. Freshly admitted
+artifact knowledge must match the saved selection. Stored procedure
 references are inert provenance, and live research programs are selected
 independently by the host. A new run requires an open workspace whose
 pinned artifact selection matches its knowledge input. These checks do
-not modify the supplied workspace. This constructor does not monitor
-policy changes during an active run. Re-admitting the same artifact
-input for STORM resume preserves the saved research state and original
-retrieval times; a later read time alone does not make the immutable
-input different. You can reuse a completed run’s retriever: its sealed
-workspace is compared with the saved state and retained without
-reinserting evidence. Resume checks the supplied workspace against the
-saved evidence and required mutation state before invoking admission;
-restoration occurs only after admission succeeds.</p>
+not modify the supplied workspace. The Shiny adapter applies the same
+check when constructing or restoring a session. Preliminary persona
+generation receives no artifact knowledge; the constructor checks
+admission before materializing accepted evidence. This constructor does
+not monitor policy changes during an active run. Re-admitting the same
+artifact input for STORM resume preserves the saved research state and
+original retrieval times; a later read time alone does not make the
+immutable input different. You can reuse a completed run’s retriever:
+its sealed workspace is compared with the saved state and retained
+without reinserting evidence. Resume checks the supplied workspace
+against the saved evidence and required mutation state before invoking
+admission; restoration occurs only after admission succeeds.</p>
 </div>
 <div class="section level2">
 <h2 id="researching-a-correction">Researching a correction<a class="anchor" aria-label="anchor" href="#researching-a-correction"></a>
@@ -266,7 +268,7 @@ artifact. Keep the referenced selection and its contents in the artifact
 store. Reading those references does not grant current reuse permission
 or program execution authority. New execution still requires current
 admission.</p>
-<p>Research manifests use schema 4. Earlier preproduction manifests must
+<p>Research manifests use schema 5. Earlier preproduction manifests must
 be regenerated; no compatibility conversion is provided.</p>
 </div>
 <div class="section level2">

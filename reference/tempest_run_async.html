@@ -23,8 +23,7 @@ Use tempest_run_cancel() to stop a run that is no longer needed."><meta property
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -51,7 +50,7 @@ Use <code><a href="tempest_run_cancel.html">tempest_run_cancel()</a></code> to s
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_run_async</span><span class="op">(</span><span class="va">...</span>, knowledge_view <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">tempest_run_async</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -62,13 +61,6 @@ Use <code><a href="tempest_run_cancel.html">tempest_run_cancel()</a></code> to s
 <dd><p>Arguments passed to <code><a href="tempest_run.html">tempest_run()</a></code>. See <code><a href="tempest_run.html">tempest_run()</a></code> for
 details on available parameters including <code>topic</code>, <code>config</code>, <code>retriever</code>,
 <code>n_experts</code>, <code>research_strategy</code>, <code>max_rounds</code>, <code>steps</code>, and <code>verbose</code>.</p></dd>
-
-
-<dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
-<dd><p>Accepted knowledge and a live pinned Graft view cannot
-cross the asynchronous
-worker boundary. Use <code><a href="tempest_run.html">tempest_run()</a></code> in the process that owns the knowledge
-value and its admission callback.</p></dd>
 
 </dl></div>
     <div class="section level2">

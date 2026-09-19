@@ -3,7 +3,6 @@
 <url><loc>https://jameshwade.github.io/tempest/AGENTS.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/LICENSE-text.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/LICENSE.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/articles/accepted-research.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/articles/artifact-knowledge.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/articles/daily-briefing.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/articles/index.html</loc></url>
@@ -19,7 +18,6 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestKnowledge.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestProgramSet.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestPromotionBundle.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/TempestPromotionReceipt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestResearchManifest.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestResult.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/TempestRetriever.html</loc></url>
@@ -55,12 +53,9 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_generate_experts.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_generate_single_expert.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_get_native_web_tools.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_graft_plan.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_graft_schema.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_has.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_http_get.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_inform.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_knowledge.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_chat.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_make_dsprrr_modules.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_normalize_url.html</loc></url>
@@ -75,7 +70,6 @@
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_replay.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_progress_state.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.html</loc></url>
-<url><loc>https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_prompt.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_provider_has_native_search.html</loc></url>
 <url><loc>https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.html</loc></url>

@@ -25,8 +25,7 @@ explicit graft review and commit."><meta property="og:image" content="https://ja
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -80,23 +79,8 @@ claim-by-evidence-span support assessments.</p></dd>
 records.</p></dd>
 
 
-    <dt><code>accepted_graft_references</code></dt>
-<dd><p>Read-only list of opaque references to
-accepted graft knowledge used by the research run.</p></dd>
-
-
-    <dt><code>base_snapshot_id</code></dt>
-<dd><p>Read-only opaque identifier for the accepted
-knowledge snapshot on which this workspace is based.</p></dd>
-
-
     <dt><code>artifact_selection</code></dt>
 <dd><p>Read-only exact artifact input and provenance.</p></dd>
-
-
-    <dt><code>graft_snapshot</code></dt>
-<dd><p>Optional read-only, path-free
-<code>graft::GraftSnapshot</code> used to reopen the accepted knowledge boundary.</p></dd>
 
 
     <dt><code>citation_audit</code></dt>
@@ -106,7 +90,7 @@ claim-support assessments, when available.</p></dd>
 
     <dt><code>max_sources</code></dt>
 <dd><p>Maximum number of unique retrieved resources admitted.
-Accepted Graft knowledge records inserted by <code><a href="tempest_knowledge.html">tempest_knowledge()</a></code> are
+Accepted Graft knowledge records inserted by <code><a href="tempest_artifact_knowledge.html">tempest_artifact_knowledge()</a></code> are
 bounded separately and do not count.</p></dd>
 
 
@@ -140,8 +124,6 @@ bounded separately and do not count.</p></dd>
 <li><p><a href="#method-ResearchWorkspace-get_evidence_for_proposed_claim"><code>ResearchWorkspace$get_evidence_for_proposed_claim()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-add_dispute"><code>ResearchWorkspace$add_dispute()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-list_disputes"><code>ResearchWorkspace$list_disputes()</code></a></p></li>
-<li><p><a href="#method-ResearchWorkspace-record_accepted_graft_reference"><code>ResearchWorkspace$record_accepted_graft_reference()</code></a></p></li>
-<li><p><a href="#method-ResearchWorkspace-list_accepted_graft_references"><code>ResearchWorkspace$list_accepted_graft_references()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-bind_artifact_selection"><code>ResearchWorkspace$bind_artifact_selection()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-validate_integrity"><code>ResearchWorkspace$validate_integrity()</code></a></p></li>
 <li><p><a href="#method-ResearchWorkspace-to_tibbles"><code>ResearchWorkspace$to_tibbles()</code></a></p></li>
@@ -150,33 +132,15 @@ bounded separately and do not count.</p></dd>
 <h3 id="researchworkspace-new-"><code>ResearchWorkspace$new()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-new-"></a></h3>
 <p>Create a new provisional research workspace.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/ResearchWorkspace.html">ResearchWorkspace</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
-<span>  base_snapshot_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  graft_snapshot <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  max_sources <span class="op">=</span> <span class="cn">Inf</span>,</span>
-<span>  accepted_graft_references <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  artifact_selection <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/ResearchWorkspace.html">ResearchWorkspace</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>max_sources <span class="op">=</span> <span class="cn">Inf</span>, artifact_selection <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>base_snapshot_id</code></dt>
-<dd><p>Optional opaque identifier for the pinned
-accepted knowledge snapshot.</p></dd>
-
-      <dt><code>graft_snapshot</code></dt>
-<dd><p>Optional real, path-free <code>graft::GraftSnapshot</code>.</p></dd>
-
-      <dt><code>max_sources</code></dt>
+<p></p><div class="arguments"><dl><dt><code>max_sources</code></dt>
 <dd><p>Maximum number of unique sources. New sources are
 refused once the limit is reached.</p></dd>
 
-      <dt><code>accepted_graft_references</code></dt>
-<dd><p>Unnamed list of canonical
-JSON-compatible references to accepted graft records.</p></dd>
-
       <dt><code>artifact_selection</code></dt>
-<dd><p>Exact artifact input, retained without a
-Graft snapshot.</p></dd>
+<dd><p>Exact artifact input retained by the workspace.</p></dd>
 
 
 </dl><p></p></div>
@@ -536,38 +500,13 @@ capability. Standalone workspaces require <code>NULL</code>.</p></dd>
 
 </div>
 
-<p></p><hr><a id="method-ResearchWorkspace-record_accepted_graft_reference"></a><div class="section">
-<h3 id="researchworkspace-record-accepted-graft-reference-"><code>ResearchWorkspace$record_accepted_graft_reference()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-record-accepted-graft-reference-"></a></h3>
-<p>Record a reference to accepted graft knowledge.</p><div class="section">
-<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">record_accepted_graft_reference</span><span class="op">(</span><span class="va">reference</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div><p></p><div class="section">
-<h4 id="arguments-17">Arguments<a class="anchor" aria-label="anchor" href="#arguments-17"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>reference</code></dt>
-<dd><p>Opaque canonical JSON-compatible graft reference.</p></dd>
-
-
-</dl><p></p></div>
-</div>
-
-</div>
-
-<p></p><hr><a id="method-ResearchWorkspace-list_accepted_graft_references"></a><div class="section">
-<h3 id="researchworkspace-list-accepted-graft-references-"><code>ResearchWorkspace$list_accepted_graft_references()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-list-accepted-graft-references-"></a></h3>
-<p>List accepted graft references deterministically.</p><div class="section">
-<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">list_accepted_graft_references</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-</div>
-
 <p></p><hr><a id="method-ResearchWorkspace-bind_artifact_selection"></a><div class="section">
 <h3 id="researchworkspace-bind-artifact-selection-"><code>ResearchWorkspace$bind_artifact_selection()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-bind-artifact-selection-"></a></h3>
 <p>Pin an exact artifact selection after admitting its resources.</p><div class="section">
-<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
+<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">bind_artifact_selection</span><span class="op">(</span><span class="va">selection</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
+<h4 id="arguments-17">Arguments<a class="anchor" aria-label="anchor" href="#arguments-17"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>selection</code></dt>
 <dd><p>A validated artifact selection.</p></dd>
 
@@ -580,7 +519,7 @@ capability. Standalone workspaces require <code>NULL</code>.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-validate_integrity"></a><div class="section">
 <h3 id="researchworkspace-validate-integrity-"><code>ResearchWorkspace$validate_integrity()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-validate-integrity-"></a></h3>
 <p>Validate all authoritative workspace cross-record links.</p><div class="section">
-<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
+<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">validate_integrity</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -589,7 +528,7 @@ capability. Standalone workspaces require <code>NULL</code>.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-to_tibbles"></a><div class="section">
 <h3 id="researchworkspace-to-tibbles-"><code>ResearchWorkspace$to_tibbles()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-to-tibbles-"></a></h3>
 <p>Convert sources, claims, and disputes to tibbles.</p><div class="section">
-<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
+<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">to_tibbles</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -598,10 +537,10 @@ capability. Standalone workspaces require <code>NULL</code>.</p></dd>
 <p></p><hr><a id="method-ResearchWorkspace-clone"></a><div class="section">
 <h3 id="researchworkspace-clone-"><code>ResearchWorkspace$clone()</code><a class="anchor" aria-label="anchor" href="#researchworkspace-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-28">Usage<a class="anchor" aria-label="anchor" href="#usage-28"></a></h4>
+<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">ResearchWorkspace</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-19">Arguments<a class="anchor" aria-label="anchor" href="#arguments-19"></a></h4>
+<h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

@@ -2,9 +2,19 @@
 
 ## tempest 0.0.0.9000
 
+- Accepted research now uses artifact selections throughout STORM and
+  Co-STORM inputs, save, restore, resume, and daily-briefing examples.
+  Native Graft views, graph promotion plans/receipts, compiled schemas,
+  and snapshot sidecars are removed. Current formats are workspace 7,
+  research manifest 5, STORM bundle 10, Co-STORM snapshot/bundle 13, and
+  trajectory review 3; older shapes are rejected without compatibility
+  wrappers (zf9y; Graft
+  [\#50](https://github.com/JamesHWade/tempest/issues/50),
+  [\#74](https://github.com/JamesHWade/tempest/issues/74)).
+
 - Research manifests now retain the exact artifact evidence selection
   for STORM and Co-STORM, reject a different workspace basis, and
-  preserve that provenance in published corrections. Manifest schema 4
+  preserve that provenance in published corrections. Manifest schema 5
   requires regenerating earlier preproduction bundles (zf9y; Graft
   [\#50](https://github.com/JamesHWade/tempest/issues/50),
   [\#74](https://github.com/JamesHWade/tempest/issues/74)).
@@ -13,20 +23,6 @@
   runs, reviews contradictory evidence, and verifies historical reports
   and supports plus current eligibility after fresh-process reopening
   (zf9y; Graft [\#50](https://github.com/JamesHWade/tempest/issues/50)).
-
-- [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
-  accepts Graft consumer contract 2 while retaining the same exact
-  native store format requirement. Recompile old preproduction data-dict
-  manifests after the Graft vocabulary addition; artifact and decision
-  formats are unchanged (zf9y; Graft
-  [\#75](https://github.com/JamesHWade/tempest/issues/75)).
-
-- [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-  no longer accepts governed-procedure bindings. Research execution uses
-  host-selected programs; stored procedure references remain inert
-  provenance and are rejected by live ProgramSets. Graft views no longer
-  enter stage execution (zf9y; Graft
-  [\#74](https://github.com/JamesHWade/tempest/issues/74)).
 
 - [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md),
   [`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md),
@@ -43,13 +39,13 @@
 
 - [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
   now projects exact input artifact selections and output publications
-  with explicit historical acceptance decisions in schema 2; native
-  output receipts and schema 1 reviews are no longer accepted
+  with explicit historical acceptance decisions in schema 3; native
+  output receipts and every other review schema are rejected
   (JamesHWade/graft#74).
 
-- Persisted workspace, STORM, and Co-STORM formats are now 6, 9, and 12.
-  Regenerate older experimental bundles; compatibility readers are not
-  provided.
+- Persisted workspace, STORM, and Co-STORM formats are now 7, 10,
+  and 13. Regenerate older experimental bundles; compatibility readers
+  are not provided.
 
 - [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
   admits an exact host-selected artifact input without a Graft view and
@@ -78,57 +74,20 @@
   unreleased. Compatibility contracts and persisted storage formats
   retain their independent versions.
 
-- Tempest now runs against the current `main` of deputy, dsprrr, graft,
-  and scans. dsprrr’s `module()` no longer takes `type`, and its runner
+- Tempest now runs against the current `main` of deputy, dsprrr, and
+  graft. dsprrr’s `module()` no longer takes `type`, and its runner
   requires a real ellmer `Chat`, so the test fakes are now R6-classed
   environments that expose chat history (0mpk).
-
-- [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
-  accepts Graft consumer contracts `>= 0.2.0` and `< 2.0.0` with store
-  format `3.1.0`, supporting the tested 1.0 consumer contract while
-  retaining the immutable compiled-schema check and Graft’s injected
-  `GraftDefinition` system class (0mpk, 03d5, fwmt, x3wk; graft
-  [\#53](https://github.com/JamesHWade/tempest/issues/53),
-  [\#73](https://github.com/JamesHWade/tempest/issues/73),
-  [\#77](https://github.com/JamesHWade/tempest/issues/77),
-  [\#78](https://github.com/JamesHWade/tempest/issues/78)).
 
 - Briefing items now decide structurally whether a verified claim
   changes accepted knowledge:
   [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
-  compares each claim’s text with the `Claim` records pinned from the
-  Graft snapshot, so an observation must be a claim that is not yet
+  compares each claim’s text with the `Claim` records retained in the
+  artifact selection, so an observation must be a claim that is not yet
   accepted and renders under “What changed”, while a no-change item must
   restate an accepted claim. The previous language-pattern gate for
   no-change claims is removed, and reloading a report re-checks the same
   disposition (0mpk).
-
-- [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
-  now keys accepted `Claim` identity on normalized statement text and
-  accepted `Source` identity on the exact locator plus content hash
-  through Graft’s explicit origin key, so a claim or source that later
-  research re-verifies resolves to the record already accepted instead
-  of inserting a duplicate, and repeated claim text inside one bundle
-  coalesces into one planned Claim; a re-verified Claim’s summary is
-  recomputed over its previously accepted supports plus today’s, a
-  retracted or superseded accepted Claim is a planning conflict rather
-  than a silent reactivation, and a locator whose content changed
-  becomes a new Source; the plan’s new `disposition` column then reads
-  `duplicate` or `revision` for re-verified knowledge and `new` only for
-  genuinely new records (0mpk).
-
-- [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-  now accepts up to 1,000 accepted record ids instead of 100, accepted
-  records no longer count against the workspace’s `max_sources`
-  retrieval cap, and each accepted `Claim` resource carries its
-  statement text as metadata (0mpk).
-
-- [`vignette("daily-briefing")`](https://jameshwade.github.io/tempest/articles/daily-briefing.md)
-  now selects the next day’s accepted basis durably by carrying forward
-  the previous receipt and adding
-  [`graft::graft_changes()`](https://jameshwade.github.io/graft/reference/graft_changes.html)
-  since the previous snapshot, reads the plan’s `disposition` column for
-  the change signal, and shows the managed OKF review round trip (0mpk).
 
 - Internal ellmer Chat clients are now governed directly by Deputy Agent
   objects while preserving Tempest’s exact completion and terminal-trace
@@ -185,16 +144,6 @@
   now returns the complete joined proof table, adding claim text and the
   exact evidence-span quote, offsets, page, and section heading to the
   existing support, claim, and source identities (pjsd).
-
-- [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-  is the one strict constructor for accepted organizational knowledge,
-  replacing the `knowledge_view` arguments and public governed-procedure
-  and ProgramSet assembly; it pins an immutable Graft view, reads
-  complete scalar and relation-valued accepted `Claim`, `ClaimSupport`,
-  `EvidenceSpan`, and `Source` records as inert evidence, rejects
-  records it cannot materialize exactly rather than truncating them, and
-  keeps executable authority reachable only through an explicit
-  governed-procedure stage binding (pjsd).
 
 - [`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md)
   is now the one read accessor for the committed Markdown report of a
@@ -267,15 +216,15 @@
 
 - Co-STORM expert-session identities now bind their research run and
   expert owner while retaining a fresh session instance suffix; snapshot
-  and bundle schema 11 rejects schema 10 rather than silently
+  and bundle schema 13 rejects earlier formats rather than silently
   reinterpreting its legacy session identifiers (scans#21).
 
 - [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
   now accepts only six authored scientific-profile fields, derives
   immutable identity and version from canonical content, and separates
   Co-STORM retirement into session-roster state; expert profile schema
-  2, STORM state schema 5 and bundle schema 8, and Co-STORM snapshot and
-  bundle schema 11 have no compatibility readers (pjsd).
+  2, STORM state schema 5 and bundle schema 10, and Co-STORM snapshot
+  and bundle schema 13 have no compatibility readers (pjsd).
 
 - Internally, `TempestResource` is the only writable evidence
   representation: retriever fetches, provider-native evidence, caches,
@@ -348,16 +297,13 @@
   pinned Graft view. ProgramSets carrying these typed references require
   the matching live view before provider execution; serialized
   references never grant authority by themselves.
-- [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
-  loads the immutable compiled scientific schema, while
-  `tempest_promotion_bundle(research, claim_ids = NULL)`,
+- `tempest_graft_schema()` loads the immutable compiled scientific
+  schema, while `tempest_promotion_bundle(research, claim_ids = NULL)`,
   [`tempest_save_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_save_promotion_bundle.md),
   [`tempest_read_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.md),
-  [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md),
-  and
-  [`tempest_promotion_receipt()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.md)
-  provide a deterministic review-only path from a completed STORM result
-  or succeeded `TempestSession` to exact accepted Graft revisions. Loose
+  `tempest_graft_plan()`, and `tempest_promotion_receipt()` provide a
+  deterministic review-only path from a completed STORM result or
+  succeeded `TempestSession` to exact accepted Graft revisions. Loose
   Workspace, Manifest, and StageRecord tuples are rejected; reading
   requires the original bundle id as an out-of-band trust pin; Tempest
   never commits a promotion implicitly; and prior promotion formats are

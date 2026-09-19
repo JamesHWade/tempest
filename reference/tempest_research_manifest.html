@@ -25,8 +25,7 @@ an existing record."><meta property="og:image" content="https://jameshwade.githu
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -60,7 +59,6 @@ an existing record.</p>
 <span>  config <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  config_digest <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  programs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  knowledge_snapshot <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  artifact_selection <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  runtime <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>deputy_session_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>, deputy_run_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  traces <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -93,10 +91,6 @@ only when <code>config</code> is unavailable during restoration.</p></dd>
 
 <dt id="arg-programs">programs<a class="anchor" aria-label="anchor" href="#arg-programs"></a></dt>
 <dd><p>Named references to exact scientific programs.</p></dd>
-
-
-<dt id="arg-knowledge-snapshot">knowledge_snapshot<a class="anchor" aria-label="anchor" href="#arg-knowledge-snapshot"></a></dt>
-<dd><p>Reference to a pinned accepted-knowledge snapshot.</p></dd>
 
 
 <dt id="arg-artifact-selection">artifact_selection<a class="anchor" aria-label="anchor" href="#arg-artifact-selection"></a></dt>

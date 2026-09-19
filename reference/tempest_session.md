@@ -55,8 +55,6 @@ tempest_session(
 - knowledge:
 
   Optional accepted organizational knowledge from
-  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-  or
   [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md).
   It supplies accepted evidence records without selecting or authorizing
   executable programs.

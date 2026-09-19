@@ -10,7 +10,6 @@ tempest_session_restore(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
   knowledge = NULL
 )
 ```
@@ -39,12 +38,6 @@ tempest_session_restore(
   carrying the same program identities recorded in the snapshot. If
   `NULL`, the builtin set is used.
 
-- knowledge_view:
-
-  Optional transient immutable Graft evidence view that must match the
-  saved workspace. It is never reconstructed from or written to
-  persistence and does not select executable programs.
-
 - knowledge:
 
   Freshly admitted artifact knowledge matching the saved selection.
@@ -65,7 +58,7 @@ or read by
 [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md).
 It restores the research manifest and authoritative workspace, and
 creates fresh chat/tool handles using `config`. Only the exact current
-schema-12 snapshot is accepted. Older, future, missing, extra, coerced,
+schema-13 snapshot is accepted. Older, future, missing, extra, coerced,
 or mismatched shapes are rejected without migration.
 
 Historical progress events are restored as session artifact data and can

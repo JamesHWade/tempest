@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Build a governed daily briefing • tempest</title>
+<title>A daily briefing with persistent evidence • tempest</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -15,7 +15,7 @@
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Build a governed daily briefing">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="A daily briefing with persistent evidence">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -39,8 +39,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+<li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul>
 </li>
@@ -63,7 +62,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Build a governed daily briefing</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>A daily briefing with persistent evidence</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/vignettes/daily-briefing.Rmd" class="external-link"><code>vignettes/daily-briefing.Rmd</code></a></small>
@@ -72,327 +71,145 @@
 
     
     
-<p>A useful daily briefing is an attention system: it says what changed,
-why the change matters, what deserves review today, and what important
-topics did not change. It should not turn every observation into
-accepted organizational knowledge.</p>
-<p>This workflow needs no briefing-specific Tempest interface. The host
-owns the schedule, monitored topic, presentation, and approval policy.
-The packages keep their existing responsibilities:</p>
+<p>A daily briefing should distinguish new evidence, an unchanged
+finding, and a correction. Its earlier reports and evidence must remain
+inspectable after the next run. Tempest produces and validates the
+research; the host reviews it; Graft retains exact artifacts and
+decisions.</p>
+<div class="section level2">
+<h2 id="ownership">Ownership<a class="anchor" aria-label="anchor" href="#ownership"></a>
+</h2>
 <table class="table">
 <colgroup>
 <col width="50%">
 <col width="50%">
 </colgroup>
 <thead><tr class="header">
-<th>Module</th>
-<th>Responsibility in the briefing</th>
+<th>Component</th>
+<th>Responsibility</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>Graft</td>
-<td>Pin accepted knowledge before research, report what was accepted
-since the last run, and hold reviewed revisions afterward.</td>
+<td>Host</td>
+<td>Schedule, topic, credentials, review, access, and retention
+policy</td>
 </tr>
 <tr class="even">
 <td>Tempest</td>
-<td>Produce a source-grounded research product whose change signal is
-computed against the pinned snapshot, plus a review-only evidence
-proposal.</td>
+<td>Evidence, verification, report, scientific provenance, saved
+research</td>
 </tr>
 <tr class="odd">
-<td>dsprrr</td>
-<td>Run Tempest’s validated structured research stages.</td>
+<td>Graft</td>
+<td>Exact artifact selections and explicit host decision history</td>
 </tr>
 <tr class="even">
-<td>Deputy</td>
-<td>Execute Tempest’s permission-bounded agent work.</td>
-</tr>
-<tr class="odd">
 <td>scans</td>
-<td>Inspect the closed Tempest trajectory without reopening live product
-state.</td>
+<td>Inspection through Tempest’s validated public trajectory
+projection</td>
 </tr>
 </tbody>
 </table>
-<p>The host directly calls Tempest, Graft, and scans. Tempest uses
-dsprrr and Deputy behind its product interface, so the host does not
-need to coordinate their internal objects.</p>
+</div>
 <div class="section level2">
-<h2 id="pin-what-the-organization-already-knows">Pin what the organization already knows<a class="anchor" aria-label="anchor" href="#pin-what-the-organization-already-knows"></a>
+<h2 id="start-with-a-retained-basis">Start with a retained basis<a class="anchor" aria-label="anchor" href="#start-with-a-retained-basis"></a>
 </h2>
-<p>Open one Graft store with Tempest’s schema. Capture an immutable view
-before starting the run, then select the accepted evidence that is
-relevant to this briefing. An empty selection is valid on the first
-day.</p>
+<p>These are host integration snippets, not a scheduled service. Supply
+real current eligibility checks and model/search configuration in the
+application.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/graft/" class="external-link">graft</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/scans/" class="external-link">scans</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_open.html" class="external-link">graft_open</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/tempest_graft_schema.html">tempest_graft_schema</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  <span class="st">"briefing/knowledge.duckdb"</span>,</span>
-<span>  okf <span class="op">=</span> <span class="st">"managed"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">topic</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Daily decision briefing on grid-scale battery recycling as of"</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  <span class="st">"Cover what changed, why it matters, what needs review today,"</span>,</span>
-<span>  <span class="st">"and any material no-change signal explicitly established by evidence."</span>,</span>
-<span>  <span class="st">"Omit no-change when evidence is missing or inconclusive. Preserve"</span>,</span>
-<span>  <span class="st">"uncertainty and cite evidence."</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>The selection recipe below pins the accepted boundary for the whole
-run. A commit made by another process cannot silently alter its
-input.</p>
-<div class="section level3">
-<h3 id="select-the-accepted-basis-durably">Select the accepted basis durably<a class="anchor" aria-label="anchor" href="#select-the-accepted-basis-durably"></a>
-</h3>
-<p>The host selects complete promotion bundles, including each claim’s
-supports, evidence spans and sources. It keeps the union of those
-selections across acceptance cycles. An unchanged day retains the same
-checkpoint; it does not replace the evidence with an empty change
-receipt or fill a record limit by dropping older sources.</p>
-<p>For repeated record IDs, the newest selected receipt revision wins.
-Capturing a checkpoint stops if current evidence differs from those
-reviewed revisions, so a concurrent update cannot silently become part
-of an accepted report’s basis.</p>
-<p>This example uses the small host-owned recipe shipped with Tempest.
-It is an example, not a new package API or an access-control mechanism.
-The checkpoint is trusted local host data; authorize access and
-consultation before reading it.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"briefing-basis.R"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"briefing-basis.R"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_store.html" class="external-link">graft_artifact_store</a></span><span class="op">(</span><span class="st">"briefing/artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">basis_path</span> <span class="op">&lt;-</span> <span class="st">"briefing/basis.rds"</span></span>
+<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">basis_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">basis_path</span><span class="op">)</span></span>
+<span>  <span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">basis_path</span><span class="op">)</span> <span class="co"># Trusted host-owned checkpoint.</span></span>
 <span>  <span class="va">changes</span> <span class="op">&lt;-</span> <span class="fu">briefing_changes</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span><span class="op">)</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">changes</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0L</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Selected evidence changed; review the complete selection before research."</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu">capture_briefing_basis</span><span class="op">(</span><span class="va">store</span>, selections <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu">read_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span><span class="op">)</span></span></code></pre></div>
-<p><code>briefing_changes()</code> uses
-<code>graft_changes(record_ids = ...)</code> to retain changes to
-selected records, including deletion tombstones whose payload no longer
-names their parent claim. An unrelated acceptance does not join the
-selection. A changed or superseded claim pauses automatic reuse until
-the host reviews the selection. Historical inspection can still use the
-original checkpoint.</p>
-<p>The complete selection must fit <code><a href="../reference/tempest_knowledge.html">tempest_knowledge()</a></code>’s
-1,000-record ceiling. Exceeding it stops the example rather than
-silently losing evidence. A snapshot fixes an accepted boundary; the
-checkpoint additionally retains the selected IDs, exact revisions and
-host-accepted report text. The report is synthesis, not primary source
-evidence, and its recorded basis does not establish support for every
-sentence.</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="research-todays-change">Research today’s change<a class="anchor" aria-label="anchor" href="#research-todays-change"></a>
-</h2>
-<p>Use a small expert panel that reflects the decision, not a collection
-of generic personas. The topic asks for the briefing’s decision
-structure while Tempest keeps the exact report, sources, claims, and
-claim-support pairs behind its ordinary product interface.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">technical</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"Technical readiness reviewer"</span>,</span>
-<span>  title <span class="op">=</span> <span class="st">"Battery recycling process specialist"</span>,</span>
-<span>  description <span class="op">=</span> <span class="st">"Reviews demonstrated process performance and scale-up risk."</span>,</span>
-<span>  instructions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>    <span class="st">"Separate measured performance from projections."</span>,</span>
-<span>    <span class="st">"Call out consequential unknowns. Report no change only when a verified"</span>,</span>
-<span>    <span class="st">"claim restates a condition the organization already accepted."</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  focus_areas <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"process yield"</span>, <span class="st">"scale-up"</span>, <span class="st">"safety"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">market</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"Market and policy reviewer"</span>,</span>
-<span>  title <span class="op">=</span> <span class="st">"Battery supply-chain analyst"</span>,</span>
-<span>  description <span class="op">=</span> <span class="st">"Reviews policy, capacity, partnerships, and market movement."</span>,</span>
-<span>  instructions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>    <span class="st">"Distinguish announcements from operating evidence."</span>,</span>
-<span>    <span class="st">"State which developments could change a decision today."</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  focus_areas <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"policy"</span>, <span class="st">"capacity"</span>, <span class="st">"partnerships"</span>, <span class="st">"economics"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
-<span>  <span class="va">topic</span>,</span>
-<span>  config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
-<span>    models <span class="op">=</span> <span class="st">"openai/gpt-5.6-luna"</span>,</span>
-<span>    citation_policy <span class="op">=</span> <span class="st">"claim_verified"</span>,</span>
-<span>    on_unsupported_claim <span class="op">=</span> <span class="st">"flag"</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  knowledge <span class="op">=</span> <span class="va">knowledge</span>,</span>
-<span>  experts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">technical</span>, <span class="va">market</span><span class="op">)</span>,</span>
-<span>  max_questions_per_perspective <span class="op">=</span> <span class="fl">2</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"briefing/runs"</span>,</span>
-<span>  run_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"daily-"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">report</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="va">sources</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_sources.html">tempest_sources</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claims.html">tempest_claims</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="va">supports</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claim_supports.html">tempest_claim_supports</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></code></pre></div>
-<p>Treat the report as the briefing and the tables as its evidence rail.
-The at-a-glance brief and each detailed section keep four statements
-visibly distinct, and the first and last of them are decided against the
-pinned snapshot rather than by the prompt:</p>
-<ul>
-<li>“What changed” items copy verified claims exactly, and Tempest
-accepts one only when its text does not restate a <code>Claim</code>
-already in the pinned knowledge. On the first day every verified claim
-is new.</li>
-<li>“Why it matters” assessments are labeled, confidence-calibrated
-inferences.</li>
-<li>“Review today” items are proposed actions.</li>
-<li>“No material change” statements copy one verified claim exactly, and
-Tempest accepts one only when that claim restates an accepted
-<code>Claim</code>. Today’s evidence re-verified something the
-organization already knew.</li>
-</ul>
-<p>Missing, unresolved, or inconclusive evidence does not become a
-no-change statement, because it does not produce a verified claim at
-all. Tempest binds every item to its exact claim IDs in machine-readable
-provenance, re-checks each item’s disposition against the accepted
-claims whenever the report is rendered, and rejects a report if that
-provenance no longer matches the visible Markdown.</p>
-<p>Whether somebody was shown the briefing or read it is operational
-state; it is not accepted knowledge. An assessment or review action is
-also not accepted knowledge merely because it appears in the
-briefing.</p>
-</div>
-<div class="section level2">
-<h2 id="review-the-evidence-and-the-run-separately">Review the evidence and the run separately<a class="anchor" aria-label="anchor" href="#review-the-evidence-and-the-run-separately"></a>
-</h2>
-<p>Prepare a Graft plan, but do not commit it. In parallel, project the
-completed run into scans. The first review asks whether the proposed
-knowledge is fit to accept; the second asks whether the agent trajectory
-itself behaved well.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">proposal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_promotion_bundle.html">tempest_promotion_bundle</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="va">plan</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_graft_plan.html">tempest_graft_plan</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">proposal</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">review</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_trajectory_review.html">tempest_trajectory_review</a></span><span class="op">(</span></span>
-<span>  <span class="va">result</span>,</span>
-<span>  promotion_bundle <span class="op">=</span> <span class="va">proposal</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">trajectory</span> <span class="op">&lt;-</span> <span class="fu">scans</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/scans/man/as_trajectory_tempest.html" class="external-link">as_trajectory_tempest</a></span><span class="op">(</span><span class="va">review</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">run_summary</span> <span class="op">&lt;-</span> <span class="fu">scans</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/scans/man/summarize_trajectories.html" class="external-link">summarize_trajectories</a></span><span class="op">(</span><span class="va">trajectory</span><span class="op">)</span></span>
-<span><span class="va">run_findings</span> <span class="op">&lt;-</span> <span class="fu">scans</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/scans/man/scan_trajectories.html" class="external-link">scan_trajectories</a></span><span class="op">(</span><span class="va">trajectory</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">plan</span><span class="op">@</span><span class="va">valid</span></span>
-<span><span class="va">plan</span><span class="op">@</span><span class="va">changes</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"class"</span>, <span class="st">"record_id"</span>, <span class="st">"action"</span>, <span class="st">"disposition"</span>, <span class="st">"changed_fields"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="va">run_summary</span></span>
-<span><span class="va">run_findings</span></span></code></pre></div>
-<p>Tempest keys accepted <code>Claim</code> identity on the claim’s
-normalized statement text and accepted <code>Source</code> identity on
-its locator plus content hash. A claim the organization already accepted
-therefore plans as an <code>update</code> whose
-<code>changed_fields</code> name only run metadata such as the Tempest
-claim id and verification time, and Graft’s <code>disposition</code>
-column reads <code>revision</code>; a genuinely new statement reads
-<code>new</code>; an identical proposal reads <code>duplicate</code>. A
-staged claim that sets <code>superseded_by</code>, or evidence whose
-<code>support_type</code> is <code>contradicts</code>, surfaces as
-<code>superseded</code>, <code>supersedes</code>, or
-<code>contradicted</code> so the reviewer sees statement-level relations
-without reading every row.</p>
-<p>Do not collapse these into one confidence score. Claim support,
-proposed Graft changes, and trajectory findings answer different review
-questions.</p>
-</div>
-<div class="section level2">
-<h2 id="accept-deliberately-including-no-change">Accept deliberately, including no change<a class="anchor" aria-label="anchor" href="#accept-deliberately-including-no-change"></a>
-</h2>
-<p>Accepted knowledge changes only when a <code>Claim</code> is new,
-superseded, or contradicted. A plan whose claims are all
-<code>duplicate</code> or <code>revision</code> proposes nothing the
-organization does not already know; publish the briefing and record that
-no-change outcome in the host’s run log rather than manufacturing a
-knowledge revision to prove the schedule ran.</p>
-<p>When the reviewer accepts a real change, commit the exact plan that
-was shown and bind a Tempest receipt to the resulting immutable
-snapshot. Save the basis the next run will carry forward either way, so
-a first day without accepted change still pins its selection instead of
-searching again tomorrow:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">claim_rows</span> <span class="op">&lt;-</span> <span class="va">plan</span><span class="op">@</span><span class="va">changes</span><span class="op">[</span><span class="va">plan</span><span class="op">@</span><span class="va">changes</span><span class="op">$</span><span class="va">class</span> <span class="op">==</span> <span class="st">"Claim"</span>, <span class="op">]</span></span>
-<span><span class="va">has_change</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span></span>
-<span>  <span class="va">claim_rows</span><span class="op">$</span><span class="va">disposition</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"new"</span>, <span class="st">"supersedes"</span>, <span class="st">"superseded"</span>, <span class="st">"contradicted"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">approved</span> <span class="op">&lt;-</span> <span class="cn">FALSE</span> <span class="co"># The host supplies the review decision.</span></span>
-<span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="va">has_change</span> <span class="op">&amp;&amp;</span> <span class="va">approved</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">commit_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft_commit</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">plan</span><span class="op">)</span></span>
-<span>  <span class="va">receipt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_promotion_receipt.html">tempest_promotion_receipt</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">proposal</span>, <span class="va">plan</span>, <span class="va">commit_result</span><span class="op">)</span></span>
-<span>  <span class="va">selections</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">basis</span><span class="op">$</span><span class="va">selections</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu">briefing_selection</span><span class="op">(</span><span class="va">receipt</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu">capture_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="va">selections</span>, <span class="fu"><a href="../reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">basis</span>, <span class="va">basis_path</span><span class="op">)</span></span></code></pre></div>
-<p>A rejected or unchanged proposal preserves the previous basis and
-accepted report. Today’s unaccepted briefing belongs in the host’s run
-log. A correction requires reviewing the older claim’s lifecycle and
-replacing its selection with the complete corrected bundle; appending
-the new claim alone does not supersede the old one. Keep the prior
-checkpoint for authorized historical inspection, subject to the host’s
-erasure policy.</p>
-<p>Commit the reviewed plan before saving its checkpoint. If saving
-fails, report the checkpoint failure separately from acceptance. Recover
-from the retained plan, bundle, commit result and receipt; do not report
-a failed commit or retry with a fabricated receipt. This short recipe
-uses one local host writer; a production scheduler needs its own atomic
-checkpoint publication and recovery.</p>
-<p>The offline <a href="accepted-research.html">accepted-research
-example</a> demonstrates two contradictory research products, an
-unchanged day and explicit correction without API keys.</p>
-</div>
-<div class="section level2">
-<h2 id="let-a-person-edit-accepted-knowledge">Let a person edit accepted knowledge<a class="anchor" aria-label="anchor" href="#let-a-person-edit-accepted-knowledge"></a>
-</h2>
-<p>The store was opened with <code>okf = "managed"</code>, so Graft
-keeps a readable Open Knowledge Format working tree next to the DuckDB
-file. A reviewer who wants to correct a wording, retract a claim, or
-mark one statement as superseding another edits those files; Graft turns
-the edits back into the same kind of plan the briefing produced, and the
-same acceptance step applies.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_sync.html" class="external-link">graft_sync</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_status.html" class="external-link">graft_status</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span><span class="op">$</span><span class="va">status</span></span>
-<span><span class="co">#&gt; "current"</span></span>
-<span></span>
-<span><span class="co"># A person edits files under the managed OKF directory, then:</span></span>
-<span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_status.html" class="external-link">graft_status</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span><span class="op">$</span><span class="va">status</span></span>
-<span><span class="co">#&gt; "modified"</span></span>
-<span></span>
-<span><span class="va">edited</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_review.html" class="external-link">graft_review</a></span><span class="op">(</span></span>
-<span>  <span class="va">store</span>,</span>
-<span>  provenance <span class="op">=</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_provenance.html" class="external-link">graft_provenance</a></span><span class="op">(</span></span>
-<span>    <span class="st">"briefing-reviewer"</span>,</span>
-<span>    idempotency_key <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"okf-"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">historical</span> <span class="op">&lt;-</span> <span class="fu">read_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span><span class="op">)</span></span>
+<span>  <span class="co"># Inspect changed decisions before choosing the basis for another run.</span></span>
+<span>  <span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu">reuse_briefing_basis</span><span class="op">(</span></span>
+<span>    <span class="va">store</span>, <span class="va">basis</span>, eligible <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="fu">host_allows</span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">edited</span><span class="op">@</span><span class="va">changes</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"class"</span>, <span class="st">"record_id"</span>, <span class="st">"action"</span>, <span class="st">"disposition"</span><span class="op">)</span><span class="op">]</span></span>
-<span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="va">edited</span><span class="op">@</span><span class="va">valid</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft_commit</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">edited</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_sync.html" class="external-link">graft_sync</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>The edited plan is bound to the exact bundle and accepted batch it
-was reviewed against, so a commit that landed in between fails the plan
-instead of silently rebasing the person’s edits. Tomorrow’s briefing
-picks the edit up through <code><a href="https://jameshwade.github.io/graft/reference/graft_changes.html" class="external-link">graft_changes()</a></code> like any other
-accepted change.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_close.html" class="external-link">graft_close</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span></code></pre></div>
+<p>The checkpoint names one exact decision, selection, stream, and
+purpose. Reading history verifies the retained evidence and report
+without granting current admission. Reuse also checks that the decision
+is the current accepted head, that the purpose matches, and that the
+host permits consultation now. A stale, withdrawn, or disallowed basis
+fails; it is never silently replaced by “latest.”</p>
+</div>
+<div class="section level2">
+<h2 id="run-and-review">Run and review<a class="anchor" aria-label="anchor" href="#run-and-review"></a>
+</h2>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Battery recycling: evidence that changes today's operating decisions"</span>,</span>
+<span>  knowledge <span class="op">=</span> <span class="va">knowledge</span>,</span>
+<span>  config <span class="op">=</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  output_dir <span class="op">=</span> <span class="st">"briefing/runs"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">report</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<span><span class="va">review</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_trajectory_review.html">tempest_trajectory_review</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">store</span><span class="op">)</span></span></code></pre></div>
+<p>Publishing stores a candidate and its exact report, sources, spans,
+claims, supports, and program provenance. It does not accept the
+research. The host reviews the complete evidence before making an
+explicit decision.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">previous</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">basis_path</span><span class="op">)</span><span class="op">)</span> <span class="va">basis</span><span class="op">$</span><span class="va">decision</span> <span class="kw">else</span> <span class="cn">NULL</span></span>
+<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="st">"battery-briefing"</span>, <span class="st">"review-2026-09-18"</span>, expected <span class="op">=</span> <span class="va">previous</span>,</span>
+<span>  selection <span class="op">=</span> <span class="va">selection</span>, action <span class="op">=</span> <span class="st">"accept"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>,</span>
+<span>  reason <span class="op">=</span> <span class="st">"Evidence and proposed changes reviewed"</span>, purpose <span class="op">=</span> <span class="st">"briefing"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu">capture_briefing_basis</span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="st">"battery-briefing"</span>, <span class="va">accepted</span><span class="op">$</span><span class="va">id</span>, <span class="st">"briefing"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">basis</span>, <span class="va">basis_path</span><span class="op">)</span></span></code></pre></div>
+<p>The predecessor is explicit. If another review has advanced the
+stream, this request fails and the host reviews the changed state.
+Retrying the same committed request returns its original event; it
+cannot restore eligibility after withdrawal.</p>
+</div>
+<div class="section level2">
+<h2 id="unchanged-days-and-corrections">Unchanged days and corrections<a class="anchor" aria-label="anchor" href="#unchanged-days-and-corrections"></a>
+</h2>
+<p>Tempest compares verified statements with active Claim records in the
+admitted artifact selection. A verified restatement supports a no-change
+finding; it cannot masquerade as a new observation. The report still
+needs exact evidence.</p>
+<p>An unchanged day can retain its new run and report without replacing
+the accepted basis. An explicit new review of the same selection creates
+a distinct decision. A correction accepts a new complete selection,
+making the old event ineligible for new consultation while keeping the
+old report and bytes readable. Nothing automatically unions evidence
+across decisions or accepts model output.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">withdrawn</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="va">basis</span><span class="op">$</span><span class="va">stream</span>, <span class="st">"withdraw-2026-09-19"</span>, expected <span class="op">=</span> <span class="va">basis</span><span class="op">$</span><span class="va">decision</span>,</span>
+<span>  selection <span class="op">=</span> <span class="va">basis</span><span class="op">$</span><span class="va">selection</span>, action <span class="op">=</span> <span class="st">"withdraw"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>,</span>
+<span>  reason <span class="op">=</span> <span class="st">"Evidence needs reconsideration"</span>, purpose <span class="op">=</span> <span class="va">basis</span><span class="op">$</span><span class="va">purpose</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">historical</span> <span class="op">&lt;-</span> <span class="fu">read_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span><span class="op">)</span></span>
+<span><span class="co"># reuse_briefing_basis() now fails for this event.</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="save-inspect-and-resume">Save, inspect, and resume<a class="anchor" aria-label="anchor" href="#save-inspect-and-resume"></a>
+</h2>
+<p>Saved STORM and Co-STORM products contain their exact artifact
+selection and materialized evidence, not a native graph object or
+snapshot sidecar. Offline inspection requires neither a Graft store nor
+permission to start a new run. Resuming a product with accepted inputs
+requires a fresh matching knowledge value and current admission. The
+host controls interruptions and checks during active work; a prior
+admission is not a lasting permit.</p>
+<p>The offline <a href="artifact-knowledge.html">artifact research
+example</a> exercises acceptance, an unchanged review, correction, and
+withdrawal. The daily-briefing tests also reopen checkpoints in a fresh
+process. These synthetic fixtures are contract evidence, not a claim
+that a live model researched the example topic.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

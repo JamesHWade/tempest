@@ -44,8 +44,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+<li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul>
 </li>
@@ -264,13 +263,13 @@ review without granting Tempest acceptance authority:</p>
 <span>  expected_bundle_id <span class="op">=</span> <span class="va">trusted_bundle_id</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">schema</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_graft_schema.html">tempest_graft_schema</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co"># Open `store` with this schema using the host's chosen Graft location.</span></span>
-<span><span class="va">plan</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_graft_plan.html">tempest_graft_plan</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">bundle</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Review the plan before the host explicitly accepts it.</span></span>
-<span><span class="va">commit_result</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_commit.html" class="external-link">graft_commit</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">plan</span><span class="op">)</span></span>
-<span><span class="va">receipt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_promotion_receipt.html">tempest_promotion_receipt</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">bundle</span>, <span class="va">plan</span>, <span class="va">commit_result</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_store.html" class="external-link">graft_artifact_store</a></span><span class="op">(</span><span class="st">"research-artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">store</span><span class="op">)</span></span>
+<span><span class="co"># Host review and acceptance remain explicit; saving alone does not approve.</span></span>
+<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="st">"research"</span>, <span class="st">"review-1"</span>, expected <span class="op">=</span> <span class="cn">NULL</span>, selection <span class="op">=</span> <span class="va">selection</span>,</span>
+<span>  action <span class="op">=</span> <span class="st">"accept"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>, reason <span class="op">=</span> <span class="st">"Reviewed"</span>, purpose <span class="op">=</span> <span class="st">"research"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <p>Tempest does not commit during bundle construction or planning. The
 current closed promotion format contains exact Sources, Claims,
 EvidenceSpans, ClaimSupports, and extraction and verification
@@ -355,8 +354,8 @@ configuration, output directory, and run ID:</p>
 <p>Completed stages are loaded rather than rerun. Keep model, retrieval,
 and workflow settings stable when continuing an existing run.</p>
 <p>Current readers accept only <code>ResearchWorkspace</code> snapshot
-schema 6, Co-STORM snapshot and bundle schema 12, STORM bundle schema 9
-with state schema 5, ProgramSet schema 2, research-manifest schema 4,
+schema 7, Co-STORM snapshot and bundle schema 13, STORM bundle schema 10
+with state schema 5, ProgramSet schema 2, research-manifest schema 5,
 StageRecord output-digest payload schema 3, and promotion-bundle schema
 1. Every other version is rejected, as is any missing or extra field or
 value that becomes valid only after coercion. Shared envelope
@@ -474,10 +473,10 @@ available to the final report. Session bundles preserve durable research
 state, but not credentials, live chat handles, tools, or authenticated
 clients. Configure fresh supported chats and retrieval dependencies
 through <code>config</code> before resuming.</p>
-<p>Snapshot, save, restore, and resume accept only the exact schema-12
+<p>Snapshot, save, restore, and resume accept only the exact schema-13
 Co-STORM product. Expert, transcript, mind-map, StageRecord, Workspace,
-report, suggested-question, and Graft snapshot state must pass integrity
-checks.</p>
+report, suggested-question, and artifact selection state must pass
+integrity checks.</p>
 <p>The moderator and experts use persistent Deputy agents as the
 required Co-STORM runtime. Tempest disables ambient file, shell, R, and
 package-install capabilities, then allowlists only the tools already
@@ -527,13 +526,13 @@ interactive Co-STORM research.</li>
 <li>Add semantic retrieval with <code>ragnar</code> through
 <code>embed_fn</code> or a pre-built <code>ragnar_store</code>.</li>
 <li>Bring accepted organizational knowledge into a run with
-<code><a href="../reference/tempest_knowledge.html">tempest_knowledge()</a></code>, which pins the immutable Graft view,
-names the exact accepted evidence records, and keeps them separate from
-executable programs.</li>
+<code><a href="../reference/tempest_reuse_artifact_research.html">tempest_reuse_artifact_research()</a></code>, which verifies an exact
+artifact selection and accepted evidence records, and keeps them
+separate from executable programs.</li>
 <li>Review provisional evidence with
 <code><a href="../reference/tempest_promotion_bundle.html">tempest_promotion_bundle()</a></code> and
-<code><a href="../reference/tempest_graft_plan.html">tempest_graft_plan()</a></code> before exercising Graft acceptance
-authority.</li>
+<code><a href="../reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research()</a></code> before recording a host
+acceptance decision.</li>
 <li>Reconstruct a non-authoritative review with
 <code><a href="../reference/tempest_trajectory_review.html">tempest_trajectory_review()</a></code>.</li>
 <li>Capture progress by passing a <code>progress</code> callback, which

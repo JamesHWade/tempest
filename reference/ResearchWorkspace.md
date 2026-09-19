@@ -29,24 +29,9 @@ acceptance remains an explicit graft review and commit.
 
   Read-only named-list snapshot of provisional dispute records.
 
-- `accepted_graft_references`:
-
-  Read-only list of opaque references to accepted graft knowledge used
-  by the research run.
-
-- `base_snapshot_id`:
-
-  Read-only opaque identifier for the accepted knowledge snapshot on
-  which this workspace is based.
-
 - `artifact_selection`:
 
   Read-only exact artifact input and provenance.
-
-- `graft_snapshot`:
-
-  Optional read-only, path-free `graft::GraftSnapshot` used to reopen
-  the accepted knowledge boundary.
 
 - `citation_audit`:
 
@@ -57,7 +42,7 @@ acceptance remains an explicit graft review and commit.
 
   Maximum number of unique retrieved resources admitted. Accepted Graft
   knowledge records inserted by
-  [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
+  [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
   are bounded separately and do not count.
 
 ## Methods
@@ -110,10 +95,6 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$list_disputes()`](#method-ResearchWorkspace-list_disputes)
 
-- [`ResearchWorkspace$record_accepted_graft_reference()`](#method-ResearchWorkspace-record_accepted_graft_reference)
-
-- [`ResearchWorkspace$list_accepted_graft_references()`](#method-ResearchWorkspace-list_accepted_graft_references)
-
 - [`ResearchWorkspace$bind_artifact_selection()`](#method-ResearchWorkspace-bind_artifact_selection)
 
 - [`ResearchWorkspace$validate_integrity()`](#method-ResearchWorkspace-validate_integrity)
@@ -130,37 +111,18 @@ Create a new provisional research workspace.
 
 #### Usage
 
-    ResearchWorkspace$new(
-      base_snapshot_id = NULL,
-      graft_snapshot = NULL,
-      max_sources = Inf,
-      accepted_graft_references = list(),
-      artifact_selection = list()
-    )
+    ResearchWorkspace$new(max_sources = Inf, artifact_selection = list())
 
 #### Arguments
-
-- `base_snapshot_id`:
-
-  Optional opaque identifier for the pinned accepted knowledge snapshot.
-
-- `graft_snapshot`:
-
-  Optional real, path-free `graft::GraftSnapshot`.
 
 - `max_sources`:
 
   Maximum number of unique sources. New sources are refused once the
   limit is reached.
 
-- `accepted_graft_references`:
-
-  Unnamed list of canonical JSON-compatible references to accepted graft
-  records.
-
 - `artifact_selection`:
 
-  Exact artifact input, retained without a Graft snapshot.
+  Exact artifact input retained by the workspace.
 
 ------------------------------------------------------------------------
 
@@ -527,32 +489,6 @@ List all disputes.
 #### Usage
 
     ResearchWorkspace$list_disputes()
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$record_accepted_graft_reference()`
-
-Record a reference to accepted graft knowledge.
-
-#### Usage
-
-    ResearchWorkspace$record_accepted_graft_reference(reference)
-
-#### Arguments
-
-- `reference`:
-
-  Opaque canonical JSON-compatible graft reference.
-
-------------------------------------------------------------------------
-
-### `ResearchWorkspace$list_accepted_graft_references()`
-
-List accepted graft references deterministically.
-
-#### Usage
-
-    ResearchWorkspace$list_accepted_graft_references()
 
 ------------------------------------------------------------------------
 

@@ -46,12 +46,11 @@ A `TempestKnowledge` value for
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
 or
 [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
-The run retains the selection separately from any Graft snapshot. Its
-computed input digest binds the input description; it does not
-authenticate a host, prove factual truth, or represent a native
-acceptance event.
+The run retains the exact artifact selection. Its computed input digest
+binds the input description; it does not authenticate a host, prove
+factual truth, or represent a native acceptance event.
 
 ## See also
 
-[`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-for the existing Graft producer.
+[`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
+for current host admission.

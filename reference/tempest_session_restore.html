@@ -19,8 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -50,7 +49,6 @@
 <span>  config <span class="op">=</span> <span class="fu"><a href="tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  knowledge <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -78,12 +76,6 @@ objects.</p></dd>
 identities recorded in the snapshot. If <code>NULL</code>, the builtin set is used.</p></dd>
 
 
-<dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
-<dd><p>Optional transient immutable Graft evidence view that
-must match the saved workspace. It is never reconstructed from or written
-to persistence and does not select executable programs.</p></dd>
-
-
 <dt id="arg-knowledge">knowledge<a class="anchor" aria-label="anchor" href="#arg-knowledge"></a></dt>
 <dd><p>Freshly admitted artifact knowledge matching the saved
 selection. Required when the session contains artifact evidence.</p></dd>
@@ -99,7 +91,7 @@ selection. Required when the session contains artifact evidence.</p></dd>
 snapshot created by <code><a href="tempest_session_snapshot.html">tempest_session_snapshot()</a></code> or read by
 <code><a href="tempest_session_resume.html">tempest_session_resume()</a></code>. It restores the research manifest and
 authoritative workspace, and creates fresh chat/tool handles using <code>config</code>.
-Only the exact current schema-12 snapshot is accepted. Older, future,
+Only the exact current schema-13 snapshot is accepted. Older, future,
 missing, extra, coerced, or mismatched shapes are rejected without migration.</p>
 <p>Historical progress events are restored as session artifact data and can be
 reduced with <code><a href="tempest_progress_state.html">tempest_progress_state()</a></code>. They are not replayed into the new

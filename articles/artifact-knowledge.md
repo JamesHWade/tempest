@@ -161,20 +161,23 @@ knowledge. The host must enforce current eligibility before starting or
 resuming work. STORM and Co-STORM validate new-run arguments and the
 supplied retriever before invoking the admission callback. Co-STORM
 restore validates its saved snapshot and new progress callback, then
-uses the constructor’s input checks before admission. A supplied
-knowledge view must match the saved workspace. Stored procedure
+uses the constructor’s input checks before admission. Freshly admitted
+artifact knowledge must match the saved selection. Stored procedure
 references are inert provenance, and live research programs are selected
 independently by the host. A new run requires an open workspace whose
 pinned artifact selection matches its knowledge input. These checks do
-not modify the supplied workspace. This constructor does not monitor
-policy changes during an active run. Re-admitting the same artifact
-input for STORM resume preserves the saved research state and original
-retrieval times; a later read time alone does not make the immutable
-input different. You can reuse a completed run’s retriever: its sealed
-workspace is compared with the saved state and retained without
-reinserting evidence. Resume checks the supplied workspace against the
-saved evidence and required mutation state before invoking admission;
-restoration occurs only after admission succeeds.
+not modify the supplied workspace. The Shiny adapter applies the same
+check when constructing or restoring a session. Preliminary persona
+generation receives no artifact knowledge; the constructor checks
+admission before materializing accepted evidence. This constructor does
+not monitor policy changes during an active run. Re-admitting the same
+artifact input for STORM resume preserves the saved research state and
+original retrieval times; a later read time alone does not make the
+immutable input different. You can reuse a completed run’s retriever:
+its sealed workspace is compared with the saved state and retained
+without reinserting evidence. Resume checks the supplied workspace
+against the saved evidence and required mutation state before invoking
+admission; restoration occurs only after admission succeeds.
 
 ## Researching a correction
 
@@ -218,7 +221,7 @@ store. Reading those references does not grant current reuse permission
 or program execution authority. New execution still requires current
 admission.
 
-Research manifests use schema 4. Earlier preproduction manifests must be
+Research manifests use schema 5. Earlier preproduction manifests must be
 regenerated; no compatibility conversion is provided.
 
 ## Scope and current formats

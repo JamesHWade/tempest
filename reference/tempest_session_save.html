@@ -19,8 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -71,9 +70,9 @@
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_session_save()</code> writes a schema-versioned directory bundle for a
-<a href="TempestSession.html">TempestSession</a>. The exact current format is schema 12, with no legacy or
+<a href="TempestSession.html">TempestSession</a>. The exact current format is schema 13, with no legacy or
 compatibility writer. The bundle stores the research manifest, authoritative
-workspace, explicit stage-record history, optional immutable Graft snapshot,
+workspace, explicit stage-record history, retained artifact selection,
 and narrow report product. Every declared file is checksummed, and the
 <code>session.json</code> manifest is written last. Generic workflow and
 artifact-catalog state, live chat handles, registered tool closures, Shiny

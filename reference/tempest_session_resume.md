@@ -6,7 +6,7 @@ and rebuilds a
 [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md)
 with a fresh runtime
 [TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md).
-Only the exact current schema-12 bundle is accepted; no compatibility or
+Only the exact current schema-13 bundle is accepted; no compatibility or
 migration reader is provided. Historical progress events are loaded for
 display and reduction, but they are not replayed into `progress`.
 Stage-record history is restored for audit, but running attempts are
@@ -20,7 +20,6 @@ tempest_session_resume(
   config = tempest_config(),
   progress = NULL,
   program_set = NULL,
-  knowledge_view = NULL,
   knowledge = NULL
 )
 ```
@@ -47,12 +46,6 @@ tempest_session_resume(
   [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
   carrying the same program identities recorded in the bundle. If
   `NULL`, the builtin set is used.
-
-- knowledge_view:
-
-  Optional transient immutable Graft evidence view that must match the
-  saved workspace. It is never reconstructed from or written to
-  persistence and does not select executable programs.
 
 - knowledge:
 

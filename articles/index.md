@@ -11,11 +11,8 @@ Install Tempest and run your first workflow.
   evidence-backed report, and continue into interactive scientific
   research.
 
-- [Build a governed daily
-  briefing](https://jameshwade.github.io/tempest/articles/daily-briefing.md):
-
-- [Reuse and correct accepted
-  research](https://jameshwade.github.io/tempest/articles/accepted-research.md):
+- [A daily briefing with persistent
+  evidence](https://jameshwade.github.io/tempest/articles/daily-briefing.md):
 
 - [Reuse retained artifact
   evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.md):

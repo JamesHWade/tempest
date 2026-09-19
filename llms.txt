@@ -135,9 +135,9 @@ implementation details used to validate those reads. A Co-STORM session
 exposes only its supported operations and read-only projections.
 Retained artifact evidence enters through
 [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md);
-[`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-reads the Graft producer. New research remains provisional until the
-host explicitly reviews and accepts it.
+[`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
+rechecks Graft decisions and host eligibility. New research remains
+provisional until the host explicitly reviews and accepts it.
 
 Internally, every evidence value is one exact `TempestResource`.
 Retriever fetches, provider-native tools, caches, and restored products
@@ -181,28 +181,20 @@ bundle <- tempest_read_promotion_bundle(
   expected_bundle_id = trusted_bundle_id
 )
 
-schema <- tempest_graft_schema()
-# Open `store` with this exact schema using the host's chosen Graft location.
-plan <- tempest_graft_plan(store, bundle)
-
-# Acceptance authority remains an explicit Graft operation after review.
-commit_result <- graft::graft_commit(store, plan)
-receipt <- tempest_promotion_receipt(store, bundle, plan, commit_result)
+store <- graft::graft_artifact_store("research-artifacts", create = TRUE)
+selection <- tempest_publish_artifact_research(result, store)
+# The host explicitly reviews the complete evidence and report.
+accepted <- graft::graft_artifact_decide(
+  store, "battery-recycling", "review-1", expected = NULL,
+  selection = selection, action = "accept", actor = "reviewer",
+  reason = "Evidence reviewed", purpose = "research"
+)
 ```
 
-The packaged schema was compiled for Graft consumer contract `0.2.0`.
-Runtime loading accepts contracts `>= 0.2.0` and `< 3.0.0` with store
-format `3.1.0`, covering the tested 0.x, 1.x and 2.x major lines. The
-1.0 data-dict manifest cutoff does not affect Tempest’s pinned LinkML
-schema. Required exports, store format and the schema’s exact immutable
-build digest remain independently checked. Future minors follow Graft’s
-additive contract policy; the range does not claim each has been tested.
-Loading never recompiles LinkML. Planning keys accepted `Claim` identity
-on normalized statement text and accepted `Source` identity on the exact
-locator plus content hash, so research that re-verifies an accepted
-claim revises that record instead of inserting a duplicate, and the
-plan’s `disposition` column separates `new`, `revision`, and `duplicate`
-proposals.
+Graft retains exact bytes and decision history. Tempest owns the
+scientific record contract and verifies report, source, span, claim,
+support, and program provenance. No graph schema compiler or native
+database is required.
 
 Promotion accepts only a completed
 [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
@@ -214,16 +206,14 @@ Its closed proof projection retains the exact resources, claims, spans,
 and supports needed to recompute each retained StageRecord digest. A
 selection must include every output bound by each retained extraction or
 verification record; Tempest rejects partial stage-output selection
-instead of packaging unselected evidence. Planning is read-only: Tempest
-does not call
-[`graft::graft_commit()`](https://jameshwade.github.io/graft/reference/graft_commit.html)
-on the host’s behalf. The promotion directory is a closed current-format
-bundle, its destination must not already exist, and any older or extra
-shape is rejected. Reading requires the original bundle id as an
-out-of-band trust pin; checksums stored inside the directory establish
-internal consistency but are not a signature. Research promotion never
-creates executable authority; stored program references are provenance
-only.
+instead of packaging unselected evidence. Publishing retains a
+candidate: Tempest never records host acceptance itself. The promotion
+directory is a closed current-format bundle, its destination must not
+already exist, and any older or extra shape is rejected. Reading
+requires the original bundle id as an out-of-band trust pin; checksums
+stored inside the directory establish internal consistency but are not a
+signature. Research promotion never creates executable authority; stored
+program references are provenance only.
 
 ## Review a completed run
 
@@ -261,24 +251,24 @@ text, paths, credentials, live objects, or capabilities, and it is
 reconstructable rather than persisted.
 
 Every join names its relation and proof. Exact run, stage, program,
-snapshot, bundle, publication, and recorded decision identities
-establish explicit bindings; `correlation_id` can establish only
-`correlated_with` with `correlation_only` proof. It never establishes
-authorship or causation. Mutable progress events are intentionally
-outside the review identity. A promotion bundle or publication is shown
-as proposed; an exact recorded accept decision is shown as historically
-accepted. Withdrawal does not erase that history or alter the original
-input selection. An input `reported_decision` is unverified host
-provenance, not authenticated acceptance; malformed metadata is omitted
-from the projection. Current reuse still requires fresh admission
-through
+artifact selection, bundle, publication, and recorded decision
+identities establish explicit bindings; `correlation_id` can establish
+only `correlated_with` with `correlation_only` proof. It never
+establishes authorship or causation. Mutable progress events are
+intentionally outside the review identity. A promotion bundle or
+publication is shown as proposed; an exact recorded accept decision is
+shown as historically accepted. Withdrawal does not erase that history
+or alter the original input selection. An input `reported_decision` is
+unverified host provenance, not authenticated acceptance; malformed
+metadata is omitted from the projection. Current reuse still requires
+fresh admission through
 [`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md).
-Schema 2 directly replaces the old receipt-based review; cross-product
-publications are rejected.
+Schema 3 directly replaces native-snapshot and receipt-based reviews;
+cross-product publications are rejected.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot
-schema 6, Co-STORM snapshot and bundle schema 12, STORM bundle schema 9
-with state schema 5, ProgramSet schema 2, research-manifest schema 4,
+schema 7, Co-STORM snapshot and bundle schema 13, STORM bundle schema 10
+with state schema 5, ProgramSet schema 2, research-manifest schema 5,
 StageRecord output-digest payload schema 3, and promotion-bundle
 schema 1. Readers reject every other version; missing fields, extra
 fields, and values that only become valid after coercion are errors.
@@ -295,8 +285,8 @@ and its symbols have been removed. There is no compatibility or
 generic-kernel migration layer.
 
 Product bundles contain the exact research manifest, provisional
-workspace, product state, report, and optional immutable Graft snapshot.
-Fixed scientific transformations carry dsprrr program identity, while
+workspace, product state, report, and retained artifact selection. Fixed
+scientific transformations carry dsprrr program identity, while
 open-ended agent calls carry Deputy execution identity. Those identities
 support correlation and audit joins only; they do not claim that an
 execution caused, authored, or validated report content.
@@ -492,7 +482,7 @@ res <- tempest_run(
 )
 ```
 
-Each run directory is an exact current schema-9 STORM product bundle
+Each run directory is an exact current schema-10 STORM product bundle
 with schema-5 state. It includes checksummed JSON state for
 perspectives, experts, sources, claims, outlines, and references;
 Markdown drafts; and the final Markdown report. Resume rejects older,
@@ -559,19 +549,21 @@ Retained procedure references in research manifests and trajectory
 reviews are inert provenance; they cannot be loaded into a live
 ProgramSet.
 
-Accepted evidence uses the same immutable knowledge boundary. Preserve
-complete host-selected promotion receipts so each claim keeps its
-supports, evidence spans and sources. The shared host recipe retains
-exact reviewed revisions:
+Accepted evidence uses exact artifact selections. The host recipe
+retains a reviewed decision and its complete evidence closure:
 
 ``` r
 
 source(system.file("examples", "briefing-basis.R", package = "tempest"))
-selections <- list(briefing_selection(receipt))
-basis <- capture_briefing_basis(store, selections, report_md = report)
+basis <- capture_briefing_basis(store, "battery-recycling", accepted$id, "research")
 saveRDS(basis, "accepted-basis.rds")
-knowledge <- read_briefing_basis(store, basis)
+historical <- read_briefing_basis(store, basis)
+knowledge <- reuse_briefing_basis(store, basis, eligible = function(event) TRUE)
 ```
+
+The eligibility callback represents the host’s current access and
+purpose check. Historical inspection remains available after correction;
+it does not authorize new research or resume.
 
 On later days, reopen the matching store and trusted checkpoint. Changes
 to the selected evidence require host review before another automatic
@@ -804,8 +796,8 @@ moderator or expert run records an opaque terminal trace that is carried
 through Co-STORM snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact
-current schema-12 product. Expert, transcript, mind-map, StageRecord,
-Workspace, report, suggested-question, and Graft snapshot state must
+current schema-13 product. Expert, transcript, mind-map, StageRecord,
+Workspace, report, suggested-question, and artifact selection state must
 pass integrity checks. Live chats, tools, credentials, clients,
 callbacks, and Shiny reactives are recreated rather than serialized.
 
@@ -993,8 +985,6 @@ Bring retained artifact evidence or reviewed Graft knowledge into a run.
   : Admit a current accepted research decision
 - [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
   : Bring a retained artifact selection into a research run
-- [`tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_knowledge.md)
-  : Bring accepted organizational knowledge into a Tempest run
 - [`print(`*`<tempest_knowledge>`*`)`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md)
   : Print accepted organizational knowledge
 
@@ -1029,18 +1019,12 @@ Save and resume the exact current session product.
 
 Propose, review, commit, and verify accepted research evidence.
 
-- [`tempest_graft_schema()`](https://jameshwade.github.io/tempest/reference/tempest_graft_schema.md)
-  : Load Tempest's compiled scientific Graft schema
-- [`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
-  : Plan a Tempest research promotion without accepting it
 - [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md)
   : Build a deterministic proposal for reviewed Graft promotion
 - [`tempest_save_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_save_promotion_bundle.md)
   : Save a Tempest promotion bundle atomically
 - [`tempest_read_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.md)
   : Read and validate a current Tempest promotion bundle
-- [`tempest_promotion_receipt()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_receipt.md)
-  : Record exact accepted revisions for a committed promotion plan
 
 # Articles
 
@@ -1055,11 +1039,8 @@ Install Tempest and run your first workflow.
   evidence-backed report, and continue into interactive scientific
   research.
 
-- [Build a governed daily
-  briefing](https://jameshwade.github.io/tempest/articles/daily-briefing.md):
-
-- [Reuse and correct accepted
-  research](https://jameshwade.github.io/tempest/articles/accepted-research.md):
+- [A daily briefing with persistent
+  evidence](https://jameshwade.github.io/tempest/articles/daily-briefing.md):
 
 - [Reuse retained artifact
   evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.md):

@@ -19,8 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -53,7 +52,7 @@
 <span>  experts <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  program_set <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  knowledge_view <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  knowledge <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -95,10 +94,10 @@ Co-STORM sessions. May be a value, function, or reactive. <code>NULL</code> uses
 builtin set.</p></dd>
 
 
-<dt id="arg-knowledge-view">knowledge_view<a class="anchor" aria-label="anchor" href="#arg-knowledge-view"></a></dt>
-<dd><p>Optional immutable Graft evidence view. May be a value,
-function, or reactive. It must match the session workspace and remains
-process-local; it does not select executable programs.</p></dd>
+<dt id="arg-knowledge">knowledge<a class="anchor" aria-label="anchor" href="#arg-knowledge"></a></dt>
+<dd><p>Optional artifact knowledge from <code><a href="tempest_artifact_knowledge.html">tempest_artifact_knowledge()</a></code>
+for new and restored Co-STORM sessions. May be a value, function, or
+reactive. Admission is checked when the session is created or restored.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -11,7 +11,6 @@ tempest_verify_claims(
   policy = "claim_verified",
   verifier_model = NA_character_,
   program_set = NULL,
-  knowledge_view = NULL,
   min_support_score = 0.7
 )
 ```
@@ -51,11 +50,6 @@ tempest_verify_claims(
   creates the builtin set. When `workspace` is a `TempestSession`, its
   immutable ProgramSet, citation policy, and support threshold are
   authoritative; supplied values must match.
-
-- knowledge_view:
-
-  Optional immutable Graft evidence view. When supplied, it must match
-  the standalone workspace snapshot.
 
 - min_support_score:
 

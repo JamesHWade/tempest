@@ -2,14 +2,14 @@
 
 `tempest_promotion_bundle()` validates a completed research product and
 packages only promotable claims and their exact pair-level evidence. It
-does not write accepted knowledge. Review
-[`tempest_graft_plan()`](https://jameshwade.github.io/tempest/reference/tempest_graft_plan.md)
+does not write accepted knowledge. Publish with
+[`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
 and call
-[`graft::graft_commit()`](https://jameshwade.github.io/graft/reference/graft_commit.html)
-explicitly to exercise acceptance authority. Loose Workspace, Manifest,
-or StageRecord tuples are not accepted. The promotion payload remains
-the exact schema-1 evidence-only product shape; the terminal report is
-an eligibility gate and is not copied into it.
+[`graft::graft_artifact_decide()`](https://jameshwade.github.io/graft/reference/graft_artifact_decide.html)
+after host review. Loose Workspace, Manifest, or StageRecord tuples are
+not accepted. The promotion payload remains the exact schema-1
+evidence-only product shape; the terminal report is an eligibility gate
+and is not copied into it.
 
 ## Usage
 

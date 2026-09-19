@@ -15,7 +15,6 @@ tempest_research_manifest(
   config = NULL,
   config_digest = NULL,
   programs = list(),
-  knowledge_snapshot = list(),
   artifact_selection = list(),
   runtime = list(deputy_session_ids = character(), deputy_run_ids = character()),
   traces = list(),
@@ -47,10 +46,6 @@ tempest_research_manifest(
 - programs:
 
   Named references to exact scientific programs.
-
-- knowledge_snapshot:
-
-  Reference to a pinned accepted-knowledge snapshot.
 
 - artifact_selection:
 

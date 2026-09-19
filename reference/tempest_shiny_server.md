@@ -13,7 +13,7 @@ tempest_shiny_server(
   experts = NULL,
   session_id = NULL,
   program_set = NULL,
-  knowledge_view = NULL
+  knowledge = NULL
 )
 ```
 
@@ -57,11 +57,13 @@ tempest_shiny_server(
   used for new and restored Co-STORM sessions. May be a value, function,
   or reactive. `NULL` uses the builtin set.
 
-- knowledge_view:
+- knowledge:
 
-  Optional immutable Graft evidence view. May be a value, function, or
-  reactive. It must match the session workspace and remains
-  process-local; it does not select executable programs.
+  Optional artifact knowledge from
+  [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
+  for new and restored Co-STORM sessions. May be a value, function, or
+  reactive. Admission is checked when the session is created or
+  restored.
 
 ## Value
 

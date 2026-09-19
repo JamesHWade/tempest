@@ -19,8 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a governed daily briefing</a></li>
-    <li><a class="dropdown-item" href="../articles/accepted-research.html">Reuse and correct accepted research</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
     <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -58,18 +57,18 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list containing an exact schema-12 session snapshot.</p>
+    <p>A list containing an exact schema-13 session snapshot.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_session_snapshot()</code> returns a structured, in-memory representation
 of the durable state in a <a href="TempestSession.html">TempestSession</a>. The only supported snapshot is
-the exact current schema-12 product shape; no legacy or migration reader is
+the exact current schema-13 product shape; no legacy or migration reader is
 provided. It includes the research
 manifest; fixed session and configuration identity; the authoritative
 <a href="ResearchWorkspace.html">ResearchWorkspace</a>; expert profiles; transcript and mind map; the latest
 report Markdown; stage-record, progress-event, and expert-session metadata;
-and the optional immutable Graft snapshot. Live chat
+and the retained artifact selection. Live chat
 handles, runtime clients, tools, closures, generic workflows, generic
 artifact catalogs, Shiny reactive state, credentials, and provider request
 bodies are not included.</p>
