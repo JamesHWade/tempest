@@ -33,10 +33,31 @@ test_that("the daily briefing restores accepted evidence in a fresh process", {
     plan,
     commit_result
   )
+  artifact_store <- graft::graft_artifact_store(
+    file.path(withr::local_tempdir(), "artifacts"),
+    create = TRUE
+  )
+  selection <- tempest_publish_artifact_research(
+    fixture$research,
+    artifact_store
+  )
+  decision <- graft::graft_artifact_decide(
+    artifact_store,
+    "daily",
+    "briefing",
+    NULL,
+    selection,
+    "accept",
+    "reviewer",
+    "Reviewed exact briefing evidence",
+    "briefing"
+  )
   accepted <- tempest_trajectory_review(
     fixture$research,
-    promotion_bundle = fixture$bundle,
-    promotion_receipt = receipt
+    store = artifact_store,
+    selection = selection,
+    stream = "daily",
+    decision = decision$id
   )
 
   expect_identical(accepted@knowledge$promotion_state, "accepted")
