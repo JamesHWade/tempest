@@ -5,7 +5,7 @@ Status: in progress
 Parent plan:
 [`2026-08-20-external-api-simplification.md`](2026-08-20-external-api-simplification.md)
 
-Tracking issue: kata `pjsd`
+Tracking issue: [GitHub #83](https://github.com/JamesHWade/tempest/issues/83) (formerly Kata `pjsd`)
 
 ## Objective
 
@@ -220,5 +220,5 @@ Publish PR E above PR D and append it to the same native GitHub stack.
   credentials, or provider calls. PR E: 107 source files with zero failures
   and zero skips; 107 installed files with zero failures and one expected
   skip for a compiler path absent from an installed package.
-- [ ] The parent plan and kata issue contain final commit, PR, test, and stack
+- [ ] The parent plan and GitHub issue contain final commit, PR, test, and stack
   merge evidence before closure.

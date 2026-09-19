@@ -14,7 +14,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.positai$
-^\.kata\.toml$
 ^\.roborev$
 ^AGENTS\.md$
 ^.*[.]dsprrr_cache$

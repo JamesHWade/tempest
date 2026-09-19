@@ -1,6 +1,6 @@
 # Tempest 0.3 product-surface reset
 
-Tracking issue: kata `pjsd`
+Tracking issue: [GitHub #83](https://github.com/JamesHWade/tempest/issues/83) (formerly Kata `pjsd`)
 
 Status: PR C #54 and PR D #55 ready and green; PR E implemented, verification in progress
 
