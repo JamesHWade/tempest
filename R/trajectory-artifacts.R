@@ -9,6 +9,23 @@ tempest_trajectory_artifact_digest <- function(value, noun) {
   invisible(value)
 }
 
+tempest_trajectory_artifact_label <- function(value, noun) {
+  if (
+    !rlang::is_string(value) ||
+      is.na(value) ||
+      !validUTF8(enc2utf8(value)) ||
+      !nzchar(value) ||
+      !identical(trimws(value), value) ||
+      nchar(enc2utf8(value), type = "bytes") > 1024L ||
+      grepl("[[:cntrl:]]", value)
+  ) {
+    tempest_trajectory_review_abort(
+      "{noun} must be unpadded UTF-8 text of at most 1024 bytes without control characters."
+    )
+  }
+  invisible(value)
+}
+
 tempest_trajectory_decision <- function(event, selection) {
   if (
     !identical(event$action, "accept") || !identical(event$selection, selection)
@@ -50,8 +67,8 @@ tempest_trajectory_validate_decision <- function(value) {
     value$selection_id,
     "Artifact decision selection"
   )
-  tempest_trajectory_scalar_string(value$stream, "Artifact decision stream")
-  tempest_trajectory_scalar_string(value$purpose, "Artifact decision purpose")
+  tempest_trajectory_artifact_label(value$stream, "Artifact decision stream")
+  tempest_trajectory_artifact_label(value$purpose, "Artifact decision purpose")
   tempest_trajectory_whole_number(value$sequence, "Artifact decision sequence")
   if (value$sequence < 1L) {
     tempest_trajectory_review_abort(
@@ -147,10 +164,12 @@ tempest_trajectory_reported_decision <- function(selection) {
       if (!is.list(event) || !identical(event$purpose, selection$purpose)) {
         return(NULL)
       }
-      c(
+      reported <- c(
         list(verification = "unverified"),
         tempest_trajectory_decision(event, selection$selection_id)
       )
+      tempest_trajectory_plain_value(reported)
+      reported
     },
     error = \(error) NULL
   )
@@ -165,11 +184,11 @@ tempest_trajectory_validate_input_selection <- function(value) {
     c("selection_id", "purpose", "digest", "reported_decision", "records"),
     "Input artifact selection"
   )
-  tempest_trajectory_scalar_string(
+  tempest_trajectory_validate_opaque_identifier(
     value$selection_id,
     "Input selection identity"
   )
-  tempest_trajectory_scalar_string(value$purpose, "Input selection purpose")
+  tempest_trajectory_artifact_label(value$purpose, "Input selection purpose")
   tempest_trajectory_artifact_digest(value$digest, "Input selection digest")
   if (!is.null(value$reported_decision)) {
     reported <- value$reported_decision
@@ -200,6 +219,10 @@ tempest_trajectory_validate_input_selection <- function(value) {
     tempest_trajectory_input_record_fields(),
     "Input artifact records"
   )
+  tempest_trajectory_validate_canonical_set(
+    value$records,
+    "Input artifact records"
+  )
   if (value$records$total < 1L || value$records$total > 1000L) {
     tempest_trajectory_review_abort(
       "Input artifact selection must retain 1 to 1000 records."
@@ -208,7 +231,7 @@ tempest_trajectory_validate_input_selection <- function(value) {
   ids <- character()
   for (record in value$records$items) {
     for (field in c("record_id", "revision_id", "class")) {
-      tempest_trajectory_scalar_string(
+      tempest_trajectory_validate_opaque_identifier(
         record[[field]],
         paste("Input record", field)
       )

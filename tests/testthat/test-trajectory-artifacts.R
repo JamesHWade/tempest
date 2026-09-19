@@ -287,6 +287,15 @@ test_that("host-reported decisions remain unverified and malformed metadata is h
     invalid$sequence <- sequence
     malformed[[length(malformed) + 1L]] <- invalid
   }
+  for (stream in c(
+    strrep("a", 1025L),
+    "line\nbreak",
+    "/tmp/private"
+  )) {
+    invalid <- event
+    invalid$stream <- stream
+    malformed[[length(malformed) + 1L]] <- invalid
+  }
   for (metadata in malformed) {
     projected <- project(metadata)
     expect_null(projected$input_selection$reported_decision)
@@ -296,6 +305,10 @@ test_that("host-reported decisions remain unverified and malformed metadata is h
       projected$input_selection
     ))
   }
+  unsafe <- fixture$selection
+  unsafe$provenance$graft_decision <- event
+  unsafe$provenance$graft_decision$stream <- "api_key=secret"
+  expect_null(tempest_trajectory_reported_decision(unsafe))
   expect_no_match(
     jsonlite::toJSON(tempest_trajectory_artifact_joins(
       value,
@@ -304,4 +317,105 @@ test_that("host-reported decisions remain unverified and malformed metadata is h
     "accepted_as",
     fixed = TRUE
   )
+})
+
+
+test_that("reconstructed reviews enforce bounded and canonical input identities", {
+  fixture <- test_promotion_storm_fixture()
+  values <- S7::props(tempest_trajectory_review(fixture$research))
+  values$knowledge$input_selection <- tempest_trajectory_input_selection(
+    test_artifact_knowledge_input()$selection
+  )
+  values$joins <- tempest_trajectory_collection(
+    c(
+      values$joins$items,
+      tempest_trajectory_artifact_joins(
+        values$knowledge,
+        values$product$research_run_id
+      )
+    ),
+    preserve_order = FALSE
+  )
+  rebuild <- function(values) {
+    values$review_id <- tempest_trajectory_digest(do.call(
+      tempest_trajectory_review_payload,
+      values[setdiff(names(values), "review_id")]
+    ))
+    do.call(TempestTrajectoryReview, values)
+  }
+  expect_s7_class(rebuild(values), TempestTrajectoryReview)
+  for (field in c("record_id", "revision_id")) {
+    for (identifier in c(
+      strrep("a", 129L),
+      "identity containing prose"
+    )) {
+      altered <- values
+      records <- altered$knowledge$input_selection$records$items
+      records[[1L]][[field]] <- identifier
+      altered$knowledge$input_selection$records <- tempest_trajectory_collection(
+        records,
+        preserve_order = FALSE
+      )
+      expect_error(
+        rebuild(altered),
+        "bounded opaque identifier",
+        class = "simpleError"
+      )
+    }
+  }
+  for (label in c(strrep("a", 1025L), "line\nbreak", " padded ")) {
+    altered <- values
+    altered$knowledge$input_selection$purpose <- label
+    expect_error(rebuild(altered), "1024 bytes", class = "simpleError")
+  }
+  altered <- values
+  altered$knowledge$input_selection$records <- tempest_trajectory_collection(
+    rev(altered$knowledge$input_selection$records$items),
+    preserve_order = TRUE
+  )
+  expect_error(
+    rebuild(altered),
+    "canonical order",
+    class = "simpleError"
+  )
+})
+
+
+test_that("decision labels retain the store bounds in reconstructed reviews", {
+  fixture <- test_promotion_storm_fixture()
+  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  selection <- tempest_publish_artifact_research(fixture$research, store)
+  event <- graft::graft_artifact_decide(
+    store,
+    "research",
+    "accept",
+    NULL,
+    selection,
+    "accept",
+    "host",
+    "Reviewed",
+    "Research briefing"
+  )
+  values <- S7::props(tempest_trajectory_review(
+    fixture$research,
+    store = store,
+    selection = selection,
+    stream = "research",
+    decision = event$id
+  ))
+  for (field in c("stream", "purpose")) {
+    for (label in c(strrep("a", 1025L), "line\nbreak", " padded ")) {
+      altered <- values
+      altered$knowledge$acceptance[[field]] <- label
+      altered$review_id <- tempest_trajectory_digest(do.call(
+        tempest_trajectory_review_payload,
+        altered[setdiff(names(altered), "review_id")]
+      ))
+      expect_error(
+        do.call(TempestTrajectoryReview, altered),
+        "1024 bytes",
+        class = "simpleError"
+      )
+    }
+  }
 })
