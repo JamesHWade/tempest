@@ -252,6 +252,10 @@ An old acceptance remains inspectable after withdrawal; current reuse still
 requires fresh admission. Cross-product publications fail closed. Schema 2
 directly replaces the earlier receipt-based review contract.
 
+Input `reported_decision` metadata is explicitly unverified host provenance.
+Malformed metadata is omitted from the review; only the output acceptance
+is verified against the selected store event.
+
 ## Resume a staged run
 
 When `output_dir` is supplied, Tempest saves completed stages, source and claim

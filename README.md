@@ -234,7 +234,9 @@ bundle, publication, and recorded decision identities establish explicit binding
 Mutable progress events are intentionally outside the review identity. A
 promotion bundle or publication is shown as proposed; an exact recorded accept
 decision is shown as historically accepted. Withdrawal does not erase that
-history or alter the original input selection. Current reuse still requires
+history or alter the original input selection. An input `reported_decision` is
+unverified host provenance, not authenticated acceptance; malformed metadata is
+omitted from the projection. Current reuse still requires
 fresh admission through `tempest_reuse_artifact_research()`. Schema 2 directly
 replaces the old receipt-based review; cross-product publications are rejected.
 

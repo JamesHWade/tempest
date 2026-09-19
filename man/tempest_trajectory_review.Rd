@@ -65,8 +65,10 @@ exact promotion bundle or verified publication adds proposed state. An exact
 recorded accept decision adds historical accepted state. This remains
 inspectable after withdrawal and never grants current reuse permission.
 Input selection identities and their full metadata digest remain distinct
-from output publication. Decision actor, reason, key and arbitrary input
-provenance are excluded. Native input snapshots remain inspectable until
+from output publication. Input \code{reported_decision} is unverified host
+provenance, never authenticated acceptance; malformed metadata is omitted.
+Decision actor, reason, key and other arbitrary input provenance are
+excluded. Native input snapshots remain inspectable until
 their separate retirement; native output receipts are no longer accepted.
 Schema 2 replaces schema 1 directly.
 }

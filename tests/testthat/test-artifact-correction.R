@@ -184,8 +184,12 @@ test_that("contradictory research executes and preserves the prior evidence", {
   data <- tempest_trajectory_review_data(review)
   expect_identical(data$knowledge$input_selection$selection_id, old_selection)
   expect_identical(
-    data$knowledge$input_selection$decision$decision_id,
+    data$knowledge$input_selection$reported_decision$decision_id,
     accepted$id
+  )
+  expect_identical(
+    data$knowledge$input_selection$reported_decision$verification,
+    "unverified"
   )
   expect_identical(data$knowledge$proposal$selection_id, corrected_selection)
   expect_identical(data$knowledge$acceptance$decision_id, reviewed$id)
@@ -193,7 +197,10 @@ test_that("contradictory research executes and preserves the prior evidence", {
   events <- scans::trajectory_events(trajectory)
   projected <- events$value[[which(events$event_type == "tempest:knowledge")]]
   expect_identical(projected$input_selection$selection_id, old_selection)
-  expect_identical(projected$input_selection$decision$decision_id, accepted$id)
+  expect_identical(
+    projected$input_selection$reported_decision$decision_id,
+    accepted$id
+  )
   expect_identical(projected$acceptance, data$knowledge$acceptance)
   expect_identical(
     sum(events$event_type == "tempest:input_artifact"),

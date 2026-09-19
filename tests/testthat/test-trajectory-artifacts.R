@@ -177,7 +177,7 @@ test_that("input selection projection is bounded and contains only inspection id
   expect_identical(value$records$total, 251L)
   expect_identical(value$records$retained, 250L)
   expect_identical(value$records$omitted, 1L)
-  expect_null(value$decision)
+  expect_null(value$reported_decision)
   expect_null(value$records$items[[1L]]$dependencies)
   expect_null(value$records$items[[1L]]$content)
   expect_no_error(tempest_trajectory_validate_input_selection(value))
@@ -238,26 +238,70 @@ test_that("closed reviews reject obsolete schemas and inconsistent publication j
 })
 
 
-test_that("input decision sequence is validated before normalization", {
-  input <- test_artifact_knowledge_input()$selection
-  input$selection_id <- strrep("a", 64L)
-  input$provenance$graft_decision <- list(
+test_that("host-reported decisions remain unverified and malformed metadata is harmless", {
+  fixture <- test_artifact_knowledge_input()
+  fixture$selection$selection_id <- strrep("a", 64L)
+  event <- list(
     id = strrep("b", 64L),
     sequence = 1L,
     stream = "research",
     action = "accept",
-    selection = input$selection_id,
-    purpose = input$purpose
+    selection = fixture$selection$selection_id,
+    purpose = fixture$selection$purpose
   )
-  expect_identical(
-    tempest_trajectory_input_selection(input)$decision$sequence,
-    1L
-  )
-  for (sequence in list(1.5, "1", 0, .Machine$integer.max + 1)) {
-    input$provenance$graft_decision$sequence <- sequence
-    expect_error(
-      tempest_trajectory_input_selection(input),
-      class = "tempest_trajectory_review_error"
+  project <- function(event) {
+    fixture$selection$provenance$graft_decision <- event
+    knowledge <- do.call(tempest_artifact_knowledge, fixture)
+    manifest <- tempest_research_manifest(
+      "host-reported-input",
+      "storm",
+      config = tempest_config(),
+      artifact_selection = knowledge@artifact_selection
     )
+    tempest_trajectory_knowledge(manifest, NULL, NULL)
   }
+  value <- project(event)
+  reported <- value$input_selection$reported_decision
+  expect_identical(reported$verification, "unverified")
+  expect_identical(reported$decision_id, event$id)
+  expect_identical(reported$sequence, 1L)
+  expect_identical(value$promotion_state, "none")
+  expect_null(value$acceptance)
+  expect_no_error(tempest_trajectory_validate_input_selection(
+    value$input_selection
+  ))
+  altered <- value$input_selection
+  altered$reported_decision$verification <- "verified"
+  expect_error(
+    tempest_trajectory_validate_input_selection(altered),
+    class = "tempest_trajectory_review_error"
+  )
+  malformed <- list("arbitrary metadata", list(), list(id = "incomplete"))
+  for (field in c("sequence", "selection", "purpose", "action")) {
+    invalid <- event
+    invalid[[field]] <- if (identical(field, "sequence")) 1.5 else "mismatch"
+    malformed[[length(malformed) + 1L]] <- invalid
+  }
+  for (sequence in list("1", 0, .Machine$integer.max + 1)) {
+    invalid <- event
+    invalid$sequence <- sequence
+    malformed[[length(malformed) + 1L]] <- invalid
+  }
+  for (metadata in malformed) {
+    projected <- project(metadata)
+    expect_null(projected$input_selection$reported_decision)
+    expect_identical(projected$promotion_state, "none")
+    expect_null(projected$acceptance)
+    expect_no_error(tempest_trajectory_validate_input_selection(
+      projected$input_selection
+    ))
+  }
+  expect_no_match(
+    jsonlite::toJSON(tempest_trajectory_artifact_joins(
+      value,
+      "host-reported-input"
+    )),
+    "accepted_as",
+    fixed = TRUE
+  )
 })

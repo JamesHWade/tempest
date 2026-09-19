@@ -126,16 +126,11 @@ tempest_trajectory_input_selection <- function(selection) {
     return(NULL)
   }
   selection <- tempest_research_manifest_artifact_selection(selection)
-  event <- selection$provenance$graft_decision %||% NULL
   list(
     selection_id = selection$selection_id,
     purpose = selection$purpose,
     digest = tempest_product_record_hash(selection),
-    decision = if (is.null(event)) {
-      NULL
-    } else {
-      tempest_trajectory_decision(event, selection$selection_id)
-    },
+    reported_decision = tempest_trajectory_reported_decision(selection),
     records = tempest_trajectory_collection(
       lapply(selection$records, function(record) {
         record[tempest_trajectory_input_record_fields()]
@@ -145,13 +140,29 @@ tempest_trajectory_input_selection <- function(selection) {
   )
 }
 
+tempest_trajectory_reported_decision <- function(selection) {
+  tryCatch(
+    {
+      event <- selection$provenance$graft_decision
+      if (!is.list(event) || !identical(event$purpose, selection$purpose)) {
+        return(NULL)
+      }
+      c(
+        list(verification = "unverified"),
+        tempest_trajectory_decision(event, selection$selection_id)
+      )
+    },
+    error = \(error) NULL
+  )
+}
+
 tempest_trajectory_validate_input_selection <- function(value) {
   if (is.null(value)) {
     return(invisible(value))
   }
   tempest_trajectory_exact_record(
     value,
-    c("selection_id", "purpose", "digest", "decision", "records"),
+    c("selection_id", "purpose", "digest", "reported_decision", "records"),
     "Input artifact selection"
   )
   tempest_trajectory_scalar_string(
@@ -160,11 +171,24 @@ tempest_trajectory_validate_input_selection <- function(value) {
   )
   tempest_trajectory_scalar_string(value$purpose, "Input selection purpose")
   tempest_trajectory_artifact_digest(value$digest, "Input selection digest")
-  if (!is.null(value$decision)) {
-    tempest_trajectory_validate_decision(value$decision)
+  if (!is.null(value$reported_decision)) {
+    reported <- value$reported_decision
+    tempest_trajectory_exact_record(
+      reported,
+      c("verification", tempest_trajectory_acceptance_fields()),
+      "Reported input decision"
+    )
+    if (!identical(reported$verification, "unverified")) {
+      tempest_trajectory_review_abort(
+        "Reported input decisions must remain unverified."
+      )
+    }
+    tempest_trajectory_validate_decision(
+      reported[tempest_trajectory_acceptance_fields()]
+    )
     if (
-      !identical(value$decision$selection_id, value$selection_id) ||
-        !identical(value$decision$purpose, value$purpose)
+      !identical(reported$selection_id, value$selection_id) ||
+        !identical(reported$purpose, value$purpose)
     ) {
       tempest_trajectory_review_abort(
         "Input decision must bind the exact selection and purpose."
