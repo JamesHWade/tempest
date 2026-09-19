@@ -13,8 +13,8 @@ details on available parameters including \code{topic}, \code{config}, \code{ret
 
 \item{knowledge_view}{Accepted knowledge and a live pinned Graft view cannot
 cross the asynchronous
-worker boundary. Governed runs must use \code{\link[=tempest_run]{tempest_run()}} in the process that
-owns the view.}
+worker boundary. Use \code{\link[=tempest_run]{tempest_run()}} in the process that owns the knowledge
+value and its admission callback.}
 }
 \value{
 A \code{tempest_async_run} promise that resolves with the

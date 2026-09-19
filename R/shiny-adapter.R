@@ -207,10 +207,9 @@ tempest_shiny_ui <- function(
 #' @param program_set Optional [TempestProgramSet] used for new and restored
 #'   Co-STORM sessions. May be a value, function, or reactive. `NULL` uses the
 #'   builtin set.
-#' @param knowledge_view Optional immutable Graft view used with
-#'   `program_set`. May be a value, function, or reactive. A governed ProgramSet
-#'   requires its exact pinned view before any provider call; the view remains
-#'   process-local and is never serialized.
+#' @param knowledge_view Optional immutable Graft evidence view. May be a value,
+#'   function, or reactive. It must match the session workspace and remains
+#'   process-local; it does not select executable programs.
 #' @return A list with the shared `store`; reactive `costorm_session`,
 #'   `costorm_events`, `costorm_evidence`, `storm_events`, `report_md`,
 #'   `report_workspace`, and `report_topic` accessors; a monotonic

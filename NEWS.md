@@ -5,8 +5,10 @@
 * The offline artifact correction proof now executes two complete STORM runs, reviews contradictory evidence, and verifies historical reports and supports plus current eligibility after fresh-process reopening (zf9y; Graft #50).
 
 * `tempest_graft_schema()` accepts Graft consumer contract 2 while retaining the same exact native store format requirement. Recompile old preproduction data-dict manifests after the Graft vocabulary addition; artifact and decision formats are unchanged (zf9y; Graft #75).
+* `tempest_knowledge()` no longer accepts governed-procedure bindings. Research execution uses host-selected programs; stored procedure references remain inert provenance and are rejected by live ProgramSets. Graft views no longer enter stage execution (zf9y; Graft #74).
 * `tempest_publish_artifact_research()`, `tempest_read_artifact_research()`, and `tempest_reuse_artifact_research()` preserve completed research through Graft's public artifact and decision interfaces, retain exact reports and evidence, and recheck current host eligibility at research admission (srvc).
 * `tempest_session_resume()` and STORM resume now require freshly supplied artifact knowledge matching the saved selection; policy callbacks and store handles remain transient (srvc).
+- `tempest_trajectory_review()` now projects exact input artifact selections and output publications with explicit historical acceptance decisions in schema 2; native output receipts and schema 1 reviews are no longer accepted (JamesHWade/graft#74).
 
 - Persisted workspace, STORM, and Co-STORM formats are now 6, 9, and 12. Regenerate older experimental bundles; compatibility readers are not provided.
 - `tempest_artifact_knowledge()` admits an exact host-selected artifact input without a Graft view and preserves its content, revision references, dependencies, and provenance across save/resume (graft #64).

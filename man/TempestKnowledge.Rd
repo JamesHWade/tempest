@@ -10,7 +10,6 @@ TempestKnowledge(
   reference = NULL,
   record_ids = character(),
   records = list(),
-  governed_procedures = list(),
   artifact_selection = list(),
   admission = NULL
 )

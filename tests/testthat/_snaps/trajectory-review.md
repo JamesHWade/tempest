@@ -25,12 +25,3 @@
       ! <tempest::TempestTrajectoryReview> object is invalid:
       - Trajectory findings total must be one nonnegative integer.
 
-# trajectory promotion lanes rebind proposals and acceptance
-
-    Code
-      do.call(TempestTrajectoryReview, malformed)
-    Condition
-      Error:
-      ! <tempest::TempestTrajectoryReview> object is invalid:
-      - Trajectory accepted revisions must use sorted unique record identities.
-

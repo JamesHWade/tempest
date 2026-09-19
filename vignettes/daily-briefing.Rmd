@@ -247,9 +247,6 @@ approved <- FALSE # The host supplies the review decision.
 if (has_change && approved) {
   commit_result <- graft_commit(store, plan)
   receipt <- tempest_promotion_receipt(store, proposal, plan, commit_result)
-  accepted_review <- tempest_trajectory_review(
-    result, promotion_bundle = proposal, promotion_receipt = receipt
-  )
   selections <- c(basis$selections, list(briefing_selection(receipt)))
   basis <- capture_briefing_basis(store, selections, tempest_report(result))
 }

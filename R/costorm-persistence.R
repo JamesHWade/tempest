@@ -1105,9 +1105,9 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
 #'   objects.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the snapshot. If `NULL`, the builtin set is used.
-#' @param knowledge_view Optional transient immutable Graft view required by
-#'   future execution when `program_set` contains governed procedures. It is
-#'   never reconstructed from or written to persistence.
+#' @param knowledge_view Optional transient immutable Graft evidence view that
+#'   must match the saved workspace. It is never reconstructed from or written
+#'   to persistence and does not select executable programs.
 #' @param knowledge Freshly admitted artifact knowledge matching the saved
 #'   selection. Required when the session contains artifact evidence.
 #' @return A restored [TempestSession].
@@ -2750,9 +2750,9 @@ tempest_costorm_archive_read <- function(path) {
 #'   objects.
 #' @param program_set A [TempestProgramSet] carrying the same program
 #'   identities recorded in the bundle. If `NULL`, the builtin set is used.
-#' @param knowledge_view Optional transient immutable Graft view required by
-#'   future execution when `program_set` contains governed procedures. It is
-#'   never reconstructed from or written to persistence.
+#' @param knowledge_view Optional transient immutable Graft evidence view that
+#'   must match the saved workspace. It is never reconstructed from or written
+#'   to persistence and does not select executable programs.
 #' @param knowledge Freshly admitted artifact knowledge matching the saved
 #'   selection. Required when the session contains artifact evidence.
 #' @return A restored [TempestSession].

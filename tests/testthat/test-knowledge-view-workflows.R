@@ -1,42 +1,3 @@
-test_that("fresh governed workflows require a live pinned view", {
-  program_set <- test_governed_program_set()
-
-  expect_error(
-    tempest:::tempest_run_internal(
-      "Governed STORM",
-      program_set = program_set,
-      steps = "perspectives",
-      verbose = FALSE
-    ),
-    class = "tempest_governed_procedure_error",
-    regexp = "requires its exact pinned"
-  )
-  expect_error(
-    tempest:::tempest_session_new(
-      "Governed Co-STORM",
-      experts = list(test_expert()),
-      program_set = program_set
-    ),
-    class = "tempest_governed_procedure_error",
-    regexp = "requires its exact pinned"
-  )
-  expect_error(
-    tempest_run_async(
-      "Governed async STORM",
-      program_set = program_set
-    ),
-    class = "tempest_governed_procedure_error",
-    regexp = "never serializes a live pinned"
-  )
-  restored <- tempest:::tempest_product_knowledge_view(
-    program_set,
-    knowledge_view = NULL,
-    restoring = TRUE
-  )
-  expect_null(restored$view)
-  expect_identical(restored$required, TRUE)
-})
-
 test_that("a supplied view defines new workspace snapshot authority", {
   skip_if_not_installed("graft")
   fixture <- test_knowledge_view()
@@ -105,36 +66,6 @@ test_that("supplied retriever workspaces must match the exact view", {
   )
 })
 
-test_that("governed references must belong to the supplied view", {
-  skip_if_not_installed("graft")
-  fixture <- test_knowledge_view()
-  program_set <- test_governed_program_set()
-
-  expect_error(
-    tempest:::tempest_product_knowledge_view(
-      program_set,
-      fixture$view
-    ),
-    class = "tempest_governed_procedure_error",
-    regexp = "do not belong to the supplied pinned"
-  )
-})
-
-test_that("structured contexts retain the view only at runtime", {
-  view <- new.env(parent = emptyenv())
-  module <- structure(
-    list(knowledge_view = view),
-    class = c("tempest_dsprrr_execution", "list")
-  )
-  context <- tempest:::tempest_stage_context_knowledge_view(
-    list(topic = "runtime only"),
-    module
-  )
-
-  expect_identical(context$knowledge_view, view)
-  expect_identical(context$topic, "runtime only")
-})
-
 test_that("STORM never serializes a live knowledge view to workers", {
   view <- new.env(parent = emptyenv())
   programs <- list(
@@ -156,14 +87,10 @@ test_that("STORM never serializes a live knowledge view to workers", {
   ))
 })
 
-test_that("restored governed sessions stay inspectable without a live view", {
+test_that("restored sessions keep host programs independent of a live view", {
   skip_if_not_installed("graft")
   fixture <- test_knowledge_view()
-  program_set <- test_governed_program_set(
-    snapshot_reference = tempest:::tempest_snapshot_reference(
-      fixture$snapshot
-    )
-  )
+  program_set <- tempest_program_set()
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -193,18 +120,12 @@ test_that("restored governed sessions stay inspectable without a live view", {
   )
   expect_false("verification_owner_token" %in% names(snapshot$workspace))
   module <- tempest:::tempest_session_programs(restored)$personas
-  expect_error(
-    tempest:::tempest_execute_stage(
-      module,
-      fake_chat(),
-      inputs = list(
-        topic = restored$topic,
-        n_experts = 1L,
-        requirements = tempest:::tempest_persona_requirements(NULL)
-      ),
-      context = list(n_experts = 1L)
-    ),
-    class = "tempest_governed_procedure_error",
-    regexp = "requires its exact pinned"
+  expect_identical(
+    tempest:::tempest_dsprrr_execution_verify(module, "personas"),
+    module
+  )
+  expect_identical(
+    intersect(names(module), c("knowledge_view", "governed_procedure_ref")),
+    character()
   )
 })

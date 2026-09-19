@@ -25,9 +25,9 @@ objects.}
 \item{program_set}{A \link{TempestProgramSet} carrying the same program
 identities recorded in the bundle. If \code{NULL}, the builtin set is used.}
 
-\item{knowledge_view}{Optional transient immutable Graft view required by
-future execution when \code{program_set} contains governed procedures. It is
-never reconstructed from or written to persistence.}
+\item{knowledge_view}{Optional transient immutable Graft evidence view that
+must match the saved workspace. It is never reconstructed from or written
+to persistence and does not select executable programs.}
 
 \item{knowledge}{Freshly admitted artifact knowledge matching the saved
 selection. Required when the session contains artifact evidence.}

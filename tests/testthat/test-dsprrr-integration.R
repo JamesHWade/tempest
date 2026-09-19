@@ -365,36 +365,3 @@ test_that("single-stage ProgramSet access checks file-backed inventory", {
     regexp = "failed live stage validation"
   )
 })
-
-test_that("ProgramSet publication rolls back invalid governed bindings", {
-  root <- withr::local_tempdir()
-  programs <- test_program_set_programs()
-  governed_reference <- test_governed_procedure_ref(
-    "personas",
-    dsprrr::program_artifact_id(programs$personas)
-  )
-  source <- tempest_program_set(
-    programs = programs,
-    path = file.path(root, "source"),
-    governed_procedure_refs = list(personas = governed_reference)
-  )
-  candidate_programs <- tempest:::tempest_program_set_programs(source)
-  candidate_programs$personas <- candidate_programs$personas$copy(deep = TRUE)
-  candidate_programs$personas$config$temperature <- 0.321
-  metadata <- tempest:::tempest_program_set_metadata(source)
-  output <- file.path(root, "candidate")
-
-  expect_error(
-    tempest:::tempest_program_set_write_bundle(
-      candidate_programs,
-      output,
-      metadata$contract_versions,
-      metadata$evaluators,
-      metadata$governed_references
-    ),
-    class = "tempest_research_manifest_error",
-    regexp = "governed_procedure_ref.*must match"
-  )
-  expect_identical(unname(fs::file_exists(output)), FALSE)
-  expect_identical(unname(fs::dir_exists(output)), FALSE)
-})

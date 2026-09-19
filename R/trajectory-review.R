@@ -1,6 +1,6 @@
 # Bounded, read-only trajectory review for completed Tempest products.
 
-tempest_trajectory_schema_version <- 1L
+tempest_trajectory_schema_version <- 2L
 tempest_trajectory_max_records <- 250L
 
 tempest_trajectory_review_abort <- function(
@@ -123,7 +123,13 @@ tempest_trajectory_program_fields <- function() {
 }
 
 tempest_trajectory_knowledge_fields <- function() {
-  c("input_snapshot", "promotion_state", "proposal", "acceptance")
+  c(
+    "input_snapshot",
+    "input_selection",
+    "promotion_state",
+    "proposal",
+    "acceptance"
+  )
 }
 
 tempest_trajectory_snapshot_fields <- function() {
@@ -145,7 +151,8 @@ tempest_trajectory_proposal_fields <- function() {
     "bundle_id",
     "research_run_id",
     "schema_build_digest",
-    "claim_selection"
+    "claim_selection",
+    "selection_id"
   )
 }
 
@@ -154,18 +161,7 @@ tempest_trajectory_selection_fields <- function() {
 }
 
 tempest_trajectory_acceptance_fields <- function() {
-  c(
-    "receipt_id",
-    "bundle_id",
-    "plan_id",
-    "plan_digest",
-    "batch_id",
-    "store_id",
-    "schema_build_digest",
-    "snapshot",
-    "counts",
-    "record_revisions"
-  )
+  c("decision_id", "stream", "sequence", "selection_id", "purpose")
 }
 
 tempest_trajectory_evidence_fields <- function() {
@@ -191,6 +187,7 @@ tempest_trajectory_relations <- function() {
     "correlated_with",
     "read_from",
     "proposed_as",
+    "published_as",
     "accepted_as",
     "parent_of"
   )
@@ -656,35 +653,6 @@ tempest_trajectory_bundle_data <- function(research, promotion_bundle) {
   supplied
 }
 
-tempest_trajectory_receipt_data <- function(
-  promotion_bundle,
-  promotion_receipt
-) {
-  if (is.null(promotion_receipt)) {
-    return(NULL)
-  }
-  if (is.null(promotion_bundle)) {
-    tempest_trajectory_review_abort(
-      "{.arg promotion_receipt} requires its exact {.arg promotion_bundle}."
-    )
-  }
-  receipt <- tryCatch(
-    tempest_promotion_receipt_data(promotion_receipt),
-    error = function(error) {
-      tempest_trajectory_review_abort(
-        "{.arg promotion_receipt} is not an exact acceptance receipt.",
-        parent = error
-      )
-    }
-  )
-  if (!identical(receipt$bundle_id, promotion_bundle$bundle_id)) {
-    tempest_trajectory_review_abort(
-      "{.arg promotion_receipt} does not accept the supplied bundle."
-    )
-  }
-  receipt
-}
-
 tempest_trajectory_claim_selection_digest <- function(claim_ids) {
   claim_ids <- unname(unlist(claim_ids, use.names = FALSE))
   tempest_trajectory_digest(
@@ -695,7 +663,7 @@ tempest_trajectory_claim_selection_digest <- function(claim_ids) {
 tempest_trajectory_knowledge <- function(
   manifest,
   promotion_bundle,
-  promotion_receipt
+  publication
 ) {
   proposal <- if (is.null(promotion_bundle)) {
     NULL
@@ -710,32 +678,11 @@ tempest_trajectory_knowledge <- function(
         digest = tempest_trajectory_claim_selection_digest(
           promotion_bundle$claim_ids
         )
-      )
+      ),
+      selection_id = publication$selection %||% NULL
     )
   }
-  acceptance <- if (is.null(promotion_receipt)) {
-    NULL
-  } else {
-    revisions <- lapply(
-      promotion_receipt$record_revisions,
-      \(revision) revision[tempest_promotion_receipt_revision_fields()]
-    )
-    list(
-      receipt_id = promotion_receipt$receipt_id,
-      bundle_id = promotion_receipt$bundle_id,
-      plan_id = promotion_receipt$plan_id,
-      plan_digest = promotion_receipt$plan_digest,
-      batch_id = promotion_receipt$batch_id,
-      store_id = promotion_receipt$store_id,
-      schema_build_digest = promotion_receipt$schema_build_digest,
-      snapshot = promotion_receipt$snapshot,
-      counts = promotion_receipt$counts,
-      record_revisions = tempest_trajectory_collection(
-        unname(revisions),
-        preserve_order = TRUE
-      )
-    )
-  }
+  acceptance <- publication$acceptance %||% NULL
   state <- if (!is.null(acceptance)) {
     "accepted"
   } else if (!is.null(proposal)) {
@@ -745,6 +692,9 @@ tempest_trajectory_knowledge <- function(
   }
   list(
     input_snapshot = tempest_trajectory_snapshot(manifest@knowledge_snapshot),
+    input_selection = tempest_trajectory_input_selection(
+      manifest@artifact_selection
+    ),
     promotion_state = state,
     proposal = proposal,
     acceptance = acceptance
@@ -817,24 +767,23 @@ tempest_trajectory_join_contract <- function(from_type, relation, to_type) {
   ) {
     c("authority_validated", "research_run_id", "bundle_id", "claim_ids")
   } else if (
-    identical(from_type, "promotion_bundle") &&
-      identical(relation, "accepted_as") &&
-      identical(to_type, "promotion_receipt")
+    identical(from_type, "product") &&
+      identical(relation, "read_from") &&
+      identical(to_type, "artifact_selection")
   ) {
-    c("exact_identity", "bundle_id")
+    c("exact_identity", "selection_id", "selection_digest")
   } else if (
-    identical(from_type, "promotion_receipt") &&
-      identical(relation, "accepted_as") &&
-      identical(to_type, "graft_revision")
+    identical(from_type, "promotion_bundle") &&
+      identical(relation, "published_as") &&
+      identical(to_type, "artifact_selection")
   ) {
-    c(
-      "exact_identity",
-      "record_id",
-      "revision_id",
-      "batch_id",
-      "content_digest",
-      "schema_build_digest"
-    )
+    c("authority_validated", "bundle_id", "selection_id")
+  } else if (
+    identical(from_type, "artifact_selection") &&
+      identical(relation, "accepted_as") &&
+      identical(to_type, "artifact_decision")
+  ) {
+    c("exact_identity", "selection_id", "decision_id", "stream")
   } else if (
     identical(from_type, "deputy_run") &&
       identical(relation, "parent_of") &&
@@ -937,7 +886,7 @@ tempest_trajectory_joins <- function(
   programs,
   evidence,
   bundle,
-  receipt
+  knowledge
 ) {
   run_id <- context$manifest@research_run_id
   joins <- list()
@@ -1130,33 +1079,8 @@ tempest_trajectory_joins <- function(
       c("research_run_id", "bundle_id", "claim_ids")
     ))
   }
-  if (!is.null(receipt)) {
-    add(tempest_trajectory_join(
-      "promotion_bundle",
-      bundle$bundle_id,
-      "accepted_as",
-      "promotion_receipt",
-      receipt$receipt_id,
-      "exact_identity",
-      "bundle_id"
-    ))
-    for (revision in receipt$record_revisions) {
-      add(tempest_trajectory_join(
-        "promotion_receipt",
-        receipt$receipt_id,
-        "accepted_as",
-        "graft_revision",
-        revision$revision_id,
-        "exact_identity",
-        c(
-          "record_id",
-          "revision_id",
-          "batch_id",
-          "content_digest",
-          "schema_build_digest"
-        )
-      ))
-    }
+  for (join in tempest_trajectory_artifact_joins(knowledge, run_id)) {
+    add(join)
   }
   list(
     joins = tempest_trajectory_unique_records(joins),
@@ -2125,195 +2049,6 @@ tempest_trajectory_validate_snapshot <- function(
   invisible(snapshot)
 }
 
-tempest_trajectory_validate_acceptance_counts <- function(counts) {
-  actions <- c("inserted", "updated", "matched", "observed")
-  tempest_trajectory_exact_record(
-    counts,
-    actions,
-    "Trajectory acceptance counts"
-  )
-  classes <- tempest_promotion_receipt_classes()
-  if (
-    !is.list(counts$observed) ||
-      is.data.frame(counts$observed) ||
-      is.object(counts$observed) ||
-      !identical(names(counts$observed), classes)
-  ) {
-    tempest_trajectory_review_abort(
-      "Trajectory acceptance counts have invalid classes."
-    )
-  }
-  for (action in actions) {
-    row <- counts[[action]]
-    if (
-      !is.list(row) ||
-        is.data.frame(row) ||
-        is.object(row) ||
-        !identical(names(row), classes)
-    ) {
-      tempest_trajectory_review_abort(
-        "Trajectory acceptance count rows are malformed."
-      )
-    }
-    invisible(lapply(
-      classes,
-      \(record_class) {
-        tempest_trajectory_whole_number(
-          row[[record_class]],
-          paste("Trajectory acceptance", action, record_class)
-        )
-      }
-    ))
-  }
-  expected <- Map(
-    \(inserted, updated, matched) {
-      as.double(inserted) + as.double(updated) + as.double(matched)
-    },
-    counts$inserted,
-    counts$updated,
-    counts$matched
-  )
-  if (!identical(as.numeric(expected), as.numeric(counts$observed))) {
-    tempest_trajectory_review_abort(
-      "Trajectory acceptance counts do not reconcile."
-    )
-  }
-  counts
-}
-
-tempest_trajectory_validate_accepted_revisions <- function(
-  revisions,
-  acceptance,
-  counts
-) {
-  classes <- names(counts$observed)
-  for (revision in revisions$items) {
-    for (field in c("class", "record_id", "revision_id", "batch_id")) {
-      tempest_trajectory_scalar_string(
-        revision[[field]],
-        paste("Trajectory accepted revision", field)
-      )
-    }
-    for (field in c("content_digest", "schema_build_digest")) {
-      tempest_trajectory_validate_sha256(
-        revision[[field]],
-        paste("Trajectory accepted revision", field)
-      )
-    }
-    tempest_trajectory_scalar_string(
-      revision$action,
-      "Trajectory accepted revision action"
-    )
-    if (!revision$action %in% c("insert", "update", "match")) {
-      tempest_trajectory_review_abort(
-        "Trajectory accepted revision action is invalid."
-      )
-    }
-    if (!revision$class %in% classes) {
-      tempest_trajectory_review_abort(
-        "Trajectory accepted revision class is absent from its counts."
-      )
-    }
-    if (
-      !tempest_ledger_identifier_valid(revision$record_id) ||
-        !tempest_promotion_receipt_graft_id_valid(revision$revision_id) ||
-        !tempest_promotion_receipt_graft_id_valid(revision$batch_id)
-    ) {
-      tempest_trajectory_review_abort(
-        "A trajectory accepted revision has malformed source identities."
-      )
-    }
-    tempest_trajectory_exact_whole_number(
-      revision$revision_number,
-      "Trajectory accepted revision revision_number",
-      minimum = 1
-    )
-    if (
-      !identical(
-        revision$schema_build_digest,
-        acceptance$schema_build_digest
-      ) ||
-        (revision$action %in%
-          c("insert", "update") &&
-          !identical(revision$batch_id, acceptance$batch_id))
-    ) {
-      tempest_trajectory_review_abort(
-        "A trajectory accepted revision is not bound to its receipt."
-      )
-    }
-  }
-  revision_ids <- vapply(
-    revisions$items,
-    `[[`,
-    character(1),
-    "revision_id"
-  )
-  record_keys <- vapply(
-    revisions$items,
-    \(revision) paste(revision$class, revision$record_id, sep = "\u001f"),
-    character(1)
-  )
-  if (
-    anyDuplicated(revision_ids) ||
-      anyDuplicated(record_keys) ||
-      !identical(record_keys, sort(record_keys, method = "radix"))
-  ) {
-    tempest_trajectory_review_abort(
-      paste0(
-        "Trajectory accepted revisions must use sorted unique record ",
-        "identities."
-      )
-    )
-  }
-  if (
-    sum(as.numeric(unlist(counts$observed, use.names = FALSE))) !=
-      as.double(revisions$total)
-  ) {
-    tempest_trajectory_review_abort(
-      "Trajectory accepted revision counts do not match the collection total."
-    )
-  }
-  for (record_class in classes) {
-    class_revisions <- Filter(
-      \(revision) identical(revision$class, record_class),
-      revisions$items
-    )
-    retained <- c(
-      inserted = sum(vapply(
-        class_revisions,
-        \(revision) identical(revision$action, "insert"),
-        logical(1)
-      )),
-      updated = sum(vapply(
-        class_revisions,
-        \(revision) identical(revision$action, "update"),
-        logical(1)
-      )),
-      matched = sum(vapply(
-        class_revisions,
-        \(revision) identical(revision$action, "match"),
-        logical(1)
-      )),
-      observed = length(class_revisions)
-    )
-    receipt <- vapply(
-      names(retained),
-      \(action) as.numeric(counts[[action]][[record_class]]),
-      numeric(1)
-    )
-    if (
-      any(retained > receipt) ||
-        (identical(revisions$omitted, 0L) &&
-          !identical(as.numeric(retained), unname(receipt)))
-    ) {
-      tempest_trajectory_review_abort(
-        "Trajectory accepted revisions do not match their class counts."
-      )
-    }
-  }
-  invisible(revisions)
-}
-
 tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
   tempest_trajectory_exact_record(
     knowledge,
@@ -2324,6 +2059,7 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     knowledge$input_snapshot,
     nullable = TRUE
   )
+  tempest_trajectory_validate_input_selection(knowledge$input_selection)
   tempest_trajectory_scalar_string(
     knowledge$promotion_state,
     "Trajectory promotion state"
@@ -2396,6 +2132,12 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     selection$digest,
     "Trajectory proposal selection digest"
   )
+  if (!is.null(proposal$selection_id)) {
+    tempest_trajectory_artifact_digest(
+      proposal$selection_id,
+      "Publication selection"
+    )
+  }
   if (identical(knowledge$promotion_state, "proposed")) {
     if (!is.null(knowledge$acceptance)) {
       tempest_trajectory_review_abort(
@@ -2404,91 +2146,10 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
     }
     return(invisible(knowledge))
   }
-  acceptance <- tempest_trajectory_exact_record(
-    knowledge$acceptance,
-    tempest_trajectory_acceptance_fields(),
-    "Trajectory acceptance"
-  )
-  for (field in c(
-    "receipt_id",
-    "bundle_id",
-    "plan_digest",
-    "schema_build_digest"
-  )) {
-    tempest_trajectory_validate_sha256(
-      acceptance[[field]],
-      paste("Trajectory acceptance", field)
-    )
-  }
-  for (field in c("plan_id", "batch_id", "store_id")) {
-    tempest_trajectory_scalar_string(
-      acceptance[[field]],
-      paste("Trajectory acceptance", field)
-    )
-  }
-  if (
-    !tempest_promotion_receipt_graft_id_valid(acceptance$plan_id) ||
-      !tempest_promotion_receipt_store_id_valid(acceptance$store_id) ||
-      !identical(
-        acceptance$schema_build_digest,
-        tempest_promotion_schema_build_digest
-      ) ||
-      !identical(acceptance$bundle_id, proposal$bundle_id) ||
-      !identical(
-        acceptance$schema_build_digest,
-        proposal$schema_build_digest
-      ) ||
-      !identical(acceptance$batch_id, acceptance$plan_id)
-  ) {
+  tempest_trajectory_validate_decision(knowledge$acceptance)
+  if (!identical(knowledge$acceptance$selection_id, proposal$selection_id)) {
     tempest_trajectory_review_abort(
-      "Trajectory acceptance does not bind its proposal."
-    )
-  }
-  snapshot <- tempest_trajectory_validate_snapshot(
-    acceptance$snapshot,
-    complete = TRUE,
-    digest_identity = TRUE
-  )
-  if (
-    !identical(snapshot$store_id, acceptance$store_id) ||
-      !identical(snapshot$batch_id, acceptance$batch_id) ||
-      !identical(
-        snapshot$schema_build_digest,
-        acceptance$schema_build_digest
-      ) ||
-      !identical(snapshot$history_complete, TRUE)
-  ) {
-    tempest_trajectory_review_abort(
-      "Trajectory acceptance snapshot is not bound to its receipt."
-    )
-  }
-  counts <- tempest_trajectory_validate_acceptance_counts(acceptance$counts)
-  tempest_trajectory_validate_collection(
-    acceptance$record_revisions,
-    tempest_promotion_receipt_revision_fields(),
-    "Trajectory accepted revisions"
-  )
-  tempest_trajectory_validate_accepted_revisions(
-    acceptance$record_revisions,
-    acceptance,
-    counts
-  )
-  if (identical(acceptance$record_revisions$omitted, 0L)) {
-    tryCatch(
-      do.call(
-        TempestPromotionReceipt,
-        c(
-          list(schema_version = tempest_promotion_schema_version),
-          acceptance[setdiff(names(acceptance), "record_revisions")],
-          list(record_revisions = acceptance$record_revisions$items)
-        )
-      ),
-      error = function(error) {
-        tempest_trajectory_review_abort(
-          "Trajectory acceptance is not an exact promotion receipt.",
-          parent = error
-        )
-      }
+      "Trajectory acceptance does not bind its publication."
     )
   }
   invisible(knowledge)
@@ -2745,7 +2406,6 @@ tempest_trajectory_mandatory_joins <- function(review) {
     }
   }
   proposal <- review@knowledge$proposal
-  acceptance <- review@knowledge$acceptance
   if (!is.null(proposal)) {
     add(tempest_trajectory_join(
       "product",
@@ -2757,33 +2417,8 @@ tempest_trajectory_mandatory_joins <- function(review) {
       c("research_run_id", "bundle_id", "claim_ids")
     ))
   }
-  if (!is.null(acceptance)) {
-    add(tempest_trajectory_join(
-      "promotion_bundle",
-      proposal$bundle_id,
-      "accepted_as",
-      "promotion_receipt",
-      acceptance$receipt_id,
-      "exact_identity",
-      "bundle_id"
-    ))
-    for (revision in acceptance$record_revisions$items) {
-      add(tempest_trajectory_join(
-        "promotion_receipt",
-        acceptance$receipt_id,
-        "accepted_as",
-        "graft_revision",
-        revision$revision_id,
-        "exact_identity",
-        c(
-          "record_id",
-          "revision_id",
-          "batch_id",
-          "content_digest",
-          "schema_build_digest"
-        )
-      ))
-    }
+  for (join in tempest_trajectory_artifact_joins(review@knowledge, run_id)) {
+    add(join)
   }
   tempest_trajectory_unique_records(expected)
 }
@@ -2923,8 +2558,6 @@ tempest_trajectory_validate_closed_joins <- function(review, expected) {
   stages_complete <- identical(review@stages$omitted, 0L)
   evidence_complete <- identical(review@evidence$omitted, 0L)
   agents_complete <- identical(review@agent_runs$omitted, 0L)
-  revisions <- review@knowledge$acceptance$record_revisions %||% NULL
-  revisions_complete <- is.null(revisions) || identical(revisions$omitted, 0L)
   if (stages_complete && evidence_complete) {
     compare_subset(
       Filter(\(join) identical(join$from_type, "product"), review@joins$items),
@@ -2964,13 +2597,16 @@ tempest_trajectory_validate_closed_joins <- function(review, expected) {
       "Deputy lineage"
     )
   }
-  if (revisions_complete) {
+  {
     compare_subset(
       Filter(
-        \(join) identical(join$relation, "accepted_as"),
+        \(join) join$relation %in% c("published_as", "accepted_as"),
         review@joins$items
       ),
-      Filter(\(join) identical(join$relation, "accepted_as"), expected),
+      Filter(
+        \(join) join$relation %in% c("published_as", "accepted_as"),
+        expected
+      ),
       "promotion acceptance"
     )
   }
@@ -2992,11 +2628,6 @@ tempest_trajectory_validate_join_graph <- function(review) {
   input_snapshot <- review@knowledge$input_snapshot
   proposal <- review@knowledge$proposal
   acceptance <- review@knowledge$acceptance
-  revisions <- if (is.null(acceptance)) {
-    NULL
-  } else {
-    acceptance$record_revisions
-  }
   identities <- c(
     list(
       product = review@product$research_run_id,
@@ -3028,16 +2659,11 @@ tempest_trajectory_validate_join_graph <- function(review) {
       } else {
         proposal$bundle_id
       },
-      promotion_receipt = if (is.null(acceptance)) {
-        character()
-      } else {
-        acceptance$receipt_id
-      },
-      graft_revision = if (is.null(revisions)) {
-        character()
-      } else {
-        vapply(revisions$items, `[[`, character(1), "revision_id")
-      }
+      artifact_selection = unique(c(
+        review@knowledge$input_selection$selection_id %||% character(),
+        proposal$selection_id %||% character()
+      )),
+      artifact_decision = acceptance$decision_id %||% character()
     ),
     evidence_ids
   )
@@ -3050,8 +2676,6 @@ tempest_trajectory_validate_join_graph <- function(review) {
   for (type in evidence_types) {
     complete[[type]] <- identical(review@evidence$omitted, 0L)
   }
-  complete$graft_revision <- is.null(revisions) ||
-    identical(revisions$omitted, 0L)
   unprojected_output_types <- c("product_field", "output_digest")
   endpoint_resolves <- function(type, id) {
     if (type %in% unprojected_output_types) {
@@ -3672,8 +3296,8 @@ tempest_trajectory_review_validation_message <- function(self) {
 #' `stages`, `agent_runs`, `programs`, `knowledge`, `evidence`, `joins`, and
 #' `findings`. The `stages` lane retains authoritative StageRecord order. The
 #' `agent_runs`, `evidence`, `joins`, and `findings` lanes are canonical sets;
-#' accepted promotion revisions use the same canonical envelope beneath
-#' `knowledge$acceptance$record_revisions`. Every variable lane contains
+#' input artifact identities use the same canonical envelope beneath
+#' `knowledge$input_selection$records`. Every variable lane contains
 #' exactly `total`, `retained`, `omitted`, `digest`, and `items`, retains at most
 #' 250 items, and binds the complete lane digest. Mutable progress events,
 #' prompts, responses, source content, paths, credentials, capabilities, and
@@ -3682,15 +3306,30 @@ tempest_trajectory_review_validation_message <- function(self) {
 #' Joins distinguish authority-validated bindings, exact identity, and
 #' correlation-only grouping. A `correlation_id` can support only a
 #' `correlated_with` relation and never claims causation or authorship. An
-#' exact promotion bundle adds proposed state; its exact matching receipt adds
-#' accepted state. A receipt alone or a cross-product combination is rejected.
+#' exact promotion bundle or verified publication adds proposed state. An exact
+#' recorded accept decision adds historical accepted state. This remains
+#' inspectable after withdrawal and never grants current reuse permission.
+#' Input selection identities and their full metadata digest remain distinct
+#' from output publication. Input `reported_decision` is unverified host
+#' provenance, never authenticated acceptance; malformed metadata is omitted.
+#' Decision actor, reason, key and other arbitrary input provenance are
+#' excluded. Native input snapshots remain inspectable until
+#' their separate retirement; native output receipts are no longer accepted.
+#' Schema 2 replaces schema 1 directly.
 #'
 #' @param research One exact completed result returned by [tempest_run()] or a
 #'   succeeded, quiescent `TempestSession` returned by [tempest_session()].
 #' @param promotion_bundle Optional exact bundle returned by
 #'   [tempest_promotion_bundle()].
-#' @param promotion_receipt Optional exact receipt returned by
-#'   [tempest_promotion_receipt()]. Requires `promotion_bundle`.
+#' @param store Artifact store used to verify an output publication. Required
+#'   with `selection`. The store is never retained in the review.
+#' @param selection Exact output selection returned by
+#'   [tempest_publish_artifact_research()]. The retained bundle and report must
+#'   match this completed research product.
+#' @param stream Decision stream containing `decision`. Supply both together.
+#' @param decision Exact historical accept decision digest. Omit to inspect a
+#'   publication without asserting acceptance. No latest-decision lookup or
+#'   current admission check is performed.
 #' @return A validated `TempestTrajectoryReview` S7 value containing the closed
 #'   ten-field bounded projection. The class is internal and the review is not
 #'   persisted.
@@ -3705,7 +3344,10 @@ tempest_trajectory_review_validation_message <- function(self) {
 tempest_trajectory_review <- function(
   research,
   promotion_bundle = NULL,
-  promotion_receipt = NULL
+  store = NULL,
+  selection = NULL,
+  stream = NULL,
+  decision = NULL
 ) {
   context <- tempest_completed_product_context(
     research = research,
@@ -3742,7 +3384,17 @@ tempest_trajectory_review <- function(
     )
   }
   bundle <- tempest_trajectory_bundle_data(research, promotion_bundle)
-  receipt <- tempest_trajectory_receipt_data(bundle, promotion_receipt)
+  publication <- tempest_trajectory_publication(
+    research,
+    promotion_bundle,
+    store,
+    selection,
+    stream,
+    decision
+  )
+  if (!is.null(publication)) {
+    bundle <- publication$bundle
+  }
   tryCatch(
     {
       manifest <- context$manifest
@@ -3764,14 +3416,14 @@ tempest_trajectory_review <- function(
       agent_items <- unname(lapply(traces, tempest_trajectory_agent_item))
       programs <- tempest_trajectory_programs(manifest)
       evidence_items <- tempest_trajectory_evidence_items(context$workspace)
-      knowledge <- tempest_trajectory_knowledge(manifest, bundle, receipt)
+      knowledge <- tempest_trajectory_knowledge(manifest, bundle, publication)
       joined <- tempest_trajectory_joins(
         context,
         agent_items,
         programs,
         evidence_items,
         bundle,
-        receipt
+        knowledge
       )
       findings <- tempest_trajectory_findings(
         context$stage_records,

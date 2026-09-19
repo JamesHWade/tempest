@@ -65,7 +65,6 @@ test_that("completed research retains exact report, proof and source contents", 
     "current admission",
     class = "tempest_knowledge_error"
   )
-  expect_identical(knowledge@governed_procedures, list())
   expect_length(knowledge@records, length(retained$records))
   session <- tempest_session(
     "Briefing",
@@ -579,6 +578,44 @@ test_that("an unchanged research day executes with native accepted evidence", {
     result@workspace$artifact_selection,
     knowledge@artifact_selection
   )
+  review <- tempest_trajectory_review(result)
+  expect_identical(review@knowledge$input_selection$selection_id, selection)
+  expect_identical(
+    review@knowledge$input_selection$reported_decision$decision_id,
+    reviewed$id
+  )
+  expect_identical(
+    review@knowledge$input_selection$digest,
+    tempest_product_record_hash(knowledge@artifact_selection)
+  )
+  expect_identical(
+    review@knowledge$input_selection$reported_decision$verification,
+    "unverified"
+  )
+  expect_null(review@knowledge$proposal)
+  expect_null(review@knowledge$acceptance)
+  expect_identical(review@knowledge$promotion_state, "none")
+  expect_in(
+    "artifact_selection",
+    vapply(review@joins$items, `[[`, character(1), "to_type")
+  )
+  withdrawal <- graft::graft_artifact_decide(
+    store,
+    "daily",
+    "withdraw",
+    reviewed$id,
+    selection,
+    "withdraw",
+    "host",
+    "Reconsidered",
+    "briefing"
+  )
+  expect_identical(tempest_trajectory_review(result), review)
+  expect_error(
+    tempest_session("New work", config = fixture$config, knowledge = knowledge),
+    class = "graft_artifact_error"
+  )
+
   expect_identical(
     tempest_read_artifact_research(store, selection)$report_md,
     tempest_report(initial$research)

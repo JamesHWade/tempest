@@ -3,7 +3,6 @@ test_that("artifact knowledge validates exact bytes, references and dependency c
   knowledge <- do.call(tempest_artifact_knowledge, input)
   expect_null(knowledge@view)
   expect_null(knowledge@snapshot)
-  expect_identical(knowledge@governed_procedures, list())
   expect_identical(knowledge@record_ids, names(input$contents))
   expect_identical(
     lapply(knowledge@records, \(resource) resource@content),
@@ -903,9 +902,7 @@ test_that("Co-STORM restore validates knowledge views before artifact admission"
     tempest_artifact_knowledge,
     test_artifact_knowledge_input()
   )
-  program_set <- test_governed_program_set(
-    snapshot_reference = tempest_snapshot_reference(fixture$snapshot)
-  )
+  program_set <- tempest_program_set()
   config <- tempest_config(chat_fn = function(...) fake_chat())
   workspace <- tempest_research_workspace(graft_snapshot = fixture$snapshot)
   tempest_knowledge_insert_records(

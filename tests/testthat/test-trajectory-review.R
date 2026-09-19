@@ -8,13 +8,20 @@ test_that("trajectory review returns the exact bounded STORM projection", {
   expect_s7_class(review, tempest:::TempestTrajectoryReview)
   expect_named(
     formals(tempest_trajectory_review),
-    c("research", "promotion_bundle", "promotion_receipt")
+    c(
+      "research",
+      "promotion_bundle",
+      "store",
+      "selection",
+      "stream",
+      "decision"
+    )
   )
   expect_identical(
     S7::prop_names(review),
     tempest:::tempest_trajectory_review_fields()
   )
-  expect_identical(review@schema_version, 1L)
+  expect_identical(review@schema_version, 2L)
   expect_identical(review@review_id, repeated@review_id)
   expect_match(review@review_id, "^sha256:[a-f0-9]{64}$")
   expect_named(
@@ -1284,256 +1291,10 @@ test_that("trajectory promotion lanes rebind proposals and acceptance", {
     "claim selection digest"
   )
 
-  store <- test_promotion_store()
-  withr::defer(graft::graft_close(store))
-  plan <- tempest_graft_plan(store, fixture$bundle)
-  result <- graft::graft_commit(store, plan)
-  receipt <- tempest_promotion_receipt(store, fixture$bundle, plan, result)
-  receipt_before <- tempest:::tempest_promotion_receipt_data(receipt)
-  accepted <- tempest_trajectory_review(
-    fixture$research,
-    promotion_bundle = fixture$bundle,
-    promotion_receipt = receipt
-  )
-
-  expect_identical(accepted@knowledge$promotion_state, "accepted")
-  expect_identical(
-    accepted@knowledge$acceptance$receipt_id,
-    receipt@receipt_id
-  )
-  expect_identical(
-    accepted@knowledge$acceptance$record_revisions$total,
-    as.integer(length(receipt@record_revisions))
-  )
-  expect_identical(
-    accepted@knowledge$acceptance$record_revisions$items,
-    receipt@record_revisions
-  )
-  accepted_joins <- Filter(
-    \(join) identical(join$relation, "accepted_as"),
-    accepted@joins$items
-  )
-  expect_gt(length(accepted_joins), 0L)
-  expect_identical(
-    tempest:::tempest_promotion_bundle_data(fixture$bundle),
-    bundle_before
-  )
-  expect_identical(
-    tempest:::tempest_promotion_receipt_data(receipt),
-    receipt_before
-  )
-
-  malformed <- S7::props(accepted)
-  revision <- malformed$knowledge$acceptance$record_revisions$items[[1L]]
-  malformed$knowledge$acceptance$record_revisions <-
-    tempest_trajectory_collection(
-      list(revision, revision),
-      preserve_order = FALSE
-    )
-  payload <- do.call(
-    tempest_trajectory_review_payload,
-    malformed[setdiff(names(malformed), "review_id")]
-  )
-  malformed$review_id <- tempest_trajectory_digest(payload)
-  expect_snapshot(
-    error = TRUE,
-    do.call(TempestTrajectoryReview, malformed)
-  )
-
-  missing_class <- S7::props(accepted)
-  classes <- tempest_promotion_receipt_classes()
-  for (action in c("inserted", "updated", "matched", "observed")) {
-    missing_class$knowledge$acceptance$counts[[action]] <-
-      missing_class$knowledge$acceptance$counts[[action]][-1L]
-  }
-  expect_false(
-    classes[[1L]] %in%
-      names(missing_class$knowledge$acceptance$counts$observed)
-  )
-  payload <- do.call(
-    tempest_trajectory_review_payload,
-    missing_class[setdiff(names(missing_class), "review_id")]
-  )
-  missing_class$review_id <- tempest_trajectory_digest(payload)
-  expect_error(do.call(TempestTrajectoryReview, missing_class))
-
-  empty_selection <- S7::props(accepted)
-  empty_selection$knowledge$proposal$claim_selection$count <- 0L
-  payload <- do.call(
-    tempest_trajectory_review_payload,
-    empty_selection[setdiff(names(empty_selection), "review_id")]
-  )
-  empty_selection$review_id <- tempest_trajectory_digest(payload)
-  expect_error(do.call(TempestTrajectoryReview, empty_selection))
-
-  wrong_receipt <- S7::props(accepted)
-  wrong_receipt$knowledge$acceptance$receipt_id <- paste0(
-    "sha256:",
-    strrep("f", 64L)
-  )
-  payload <- do.call(
-    tempest_trajectory_review_payload,
-    wrong_receipt[setdiff(names(wrong_receipt), "review_id")]
-  )
-  wrong_receipt$review_id <- tempest_trajectory_digest(payload)
-  expect_error(do.call(TempestTrajectoryReview, wrong_receipt))
-
-  receipt_mutations <- list(
-    plan = function(value) {
-      value$knowledge$acceptance$plan_id <- "not-a-plan"
-      value$knowledge$acceptance$batch_id <- "not-a-plan"
-      value$knowledge$acceptance$snapshot$batch_id <- "not-a-plan"
-      value
-    },
-    store = function(value) {
-      value$knowledge$acceptance$store_id <- "not-a-store"
-      value$knowledge$acceptance$snapshot$store_id <- "not-a-store"
-      value
-    },
-    snapshot_schema = function(value) {
-      value$knowledge$acceptance$snapshot$schema_version <- 2L
-      value
-    },
-    store_format = function(value) {
-      value$knowledge$acceptance$snapshot$store_format_version <- "2.0.0"
-      value
-    },
-    commit_order = function(value) {
-      value$knowledge$acceptance$snapshot$commit_order <- 0L
-      value
-    },
-    committed_at = function(value) {
-      value$knowledge$acceptance$snapshot$committed_at <- "not-a-time"
-      value
-    }
-  )
-  for (mutate in receipt_mutations) {
-    malformed <- mutate(S7::props(accepted))
-    acceptance <- malformed$knowledge$acceptance
-    receipt_payload <- tempest_promotion_receipt_payload(
-      acceptance$bundle_id,
-      acceptance$plan_id,
-      acceptance$plan_digest,
-      acceptance$batch_id,
-      acceptance$store_id,
-      acceptance$schema_build_digest,
-      acceptance$snapshot,
-      acceptance$counts,
-      acceptance$record_revisions$items
-    )
-    malformed$knowledge$acceptance$receipt_id <-
-      tempest_promotion_digest(receipt_payload)
-    payload <- do.call(
-      tempest_trajectory_review_payload,
-      malformed[setdiff(names(malformed), "review_id")]
-    )
-    malformed$review_id <- tempest_trajectory_digest(payload)
-    expect_error(do.call(TempestTrajectoryReview, malformed))
-  }
-
-  truncated <- S7::props(accepted)
-  source_revision <-
-    truncated$knowledge$acceptance$record_revisions$items[[1L]]
-  all_revisions <- lapply(seq_len(251L), function(index) {
-    revision <- source_revision
-    revision$record_id <- sprintf("retained-record:%03d", index)
-    revision$revision_id <- paste0("graft:", sprintf("%026d", index))
-    revision$action <- "match"
-    revision$batch_id <- truncated$knowledge$acceptance$batch_id
-    revision$revision_number <- 1L
-    revision
-  })
-  revision_class <- source_revision$class
-  for (action in c("inserted", "updated", "matched", "observed")) {
-    truncated$knowledge$acceptance$counts[[action]] <- lapply(
-      truncated$knowledge$acceptance$counts[[action]],
-      \(count) 0L
-    )
-  }
-  truncated$knowledge$acceptance$counts$matched[[revision_class]] <- 251L
-  truncated$knowledge$acceptance$counts$observed[[revision_class]] <- 251L
-  truncated$knowledge$acceptance$record_revisions <-
-    tempest_trajectory_collection(all_revisions, preserve_order = FALSE)
-  keep_join <- function(join) {
-    !(identical(join$from_type, "promotion_receipt") &&
-      identical(join$relation, "accepted_as") &&
-      identical(join$to_type, "graft_revision"))
-  }
-  base_joins <- Filter(keep_join, truncated$joins$items)
-  revision_joins <- lapply(
-    truncated$knowledge$acceptance$record_revisions$items,
-    function(revision) {
-      tempest_trajectory_join(
-        "promotion_receipt",
-        truncated$knowledge$acceptance$receipt_id,
-        "accepted_as",
-        "graft_revision",
-        revision$revision_id,
-        "exact_identity",
-        c(
-          "record_id",
-          "revision_id",
-          "batch_id",
-          "content_digest",
-          "schema_build_digest"
-        )
-      )
-    }
-  )
-  truncated$joins <- tempest_trajectory_collection(
-    c(base_joins, revision_joins),
-    preserve_order = FALSE
-  )
-  rebuild <- function(value) {
-    payload <- do.call(
-      tempest_trajectory_review_payload,
-      value[setdiff(names(value), "review_id")]
-    )
-    value$review_id <- tempest_trajectory_digest(payload)
-    do.call(TempestTrajectoryReview, value)
-  }
-  expect_s7_class(rebuild(truncated), TempestTrajectoryReview)
-
-  revision_mutations <- list(
-    record_id = function(revision) {
-      revision$record_id <- "an impossible retained record identifier"
-      revision
-    },
-    revision_id = function(revision) {
-      revision$revision_id <- "an impossible retained revision identifier"
-      revision
-    },
-    batch_id = function(revision) {
-      revision$batch_id <- "an impossible retained batch identifier"
-      revision
-    }
-  )
-  for (mutate in revision_mutations) {
-    malformed <- unserialize(serialize(truncated, NULL))
-    changed_revisions <- all_revisions
-    changed_revisions[[1L]] <- mutate(changed_revisions[[1L]])
-    old_revision_id <- all_revisions[[1L]]$revision_id
-    new_revision_id <- changed_revisions[[1L]]$revision_id
-    malformed$knowledge$acceptance$record_revisions <-
-      tempest_trajectory_collection(changed_revisions, preserve_order = FALSE)
-    malformed$joins$items <- lapply(malformed$joins$items, function(join) {
-      if (
-        identical(join$to_type, "graft_revision") &&
-          identical(join$to_id, old_revision_id)
-      ) {
-        join$to_id <- new_revision_id
-      }
-      join
-    })
-    malformed$joins <- tempest_trajectory_collection(
-      malformed$joins$items,
-      preserve_order = FALSE
-    )
-    expect_error(rebuild(malformed), "malformed source identities")
-  }
+  expect_identical(tempest_promotion_bundle_data(fixture$bundle), bundle_before)
 })
 
-test_that("trajectory review rejects loose products and receipt-only input", {
+test_that("trajectory review rejects loose products and decision-only input", {
   fixture <- test_promotion_bundle("storm")
   loose <- list(
     manifest = fixture$manifest,
@@ -1546,17 +1307,8 @@ test_that("trajectory review rejects loose products and receipt-only input", {
     class = "tempest_trajectory_review_error"
   )
 
-  store <- test_promotion_store()
-  withr::defer(graft::graft_close(store))
-  plan <- tempest_graft_plan(store, fixture$bundle)
-  result <- graft::graft_commit(store, plan)
-  receipt <- tempest_promotion_receipt(store, fixture$bundle, plan, result)
-
   expect_error(
-    tempest_trajectory_review(
-      fixture$research,
-      promotion_receipt = receipt
-    ),
+    tempest_trajectory_review(fixture$research, decision = strrep("a", 64L)),
     class = "tempest_trajectory_review_error"
   )
 

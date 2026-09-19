@@ -3751,7 +3751,6 @@ tempest_stage_execution_contract_preflight <- function(
       "attempt_id",
       "now",
       "stage_records",
-      "knowledge_view",
       "deputy_execution"
     ),
     names(context) %||% character()
@@ -4282,10 +4281,6 @@ tempest_stage_execution_trace_references <- function(execution, context) {
       references$verified_evidence_claim_ids <- unname(as.list(verified_ids))
     }
   }
-  governed_procedure <- tempest_dsprrr_execution_governance_trace(execution)
-  if (!is.null(governed_procedure)) {
-    references$governed_procedure <- governed_procedure
-  }
   references
 }
 
@@ -4577,12 +4572,6 @@ tempest_execute_stage <- function(
     fallback <- tempest_stage_fallback_resolve(evaluator$stage)
     attempt_id <- context$attempt_id %||% tempest_attempt_id()
     execution <- tempest_stage_execution_attempt(module, attempt_id)
-    governed_procedure <- tempest_dsprrr_execution_governance_preflight(
-      execution,
-      context$knowledge_view %||% execution$knowledge_view %||% NULL
-    )
-    execution$governed_procedure_revision_id <-
-      governed_procedure$revision_id %||% NA_character_
     now <- context$now %||% tempest_now_utc
     if (!is.function(now)) {
       tempest_stage_evaluator_abort("Stage clock context must be a function.")
@@ -4590,7 +4579,6 @@ tempest_execute_stage <- function(
     running <- tempest_stage_record_start(
       execution$stage,
       execution$program_artifact_id,
-      governed_procedure_revision_id = execution$governed_procedure_revision_id,
       trace_references = tempest_stage_execution_trace_references(
         execution,
         context
@@ -4845,12 +4833,6 @@ tempest_execute_stage_async <- function(
     fallback <- tempest_stage_fallback_resolve(evaluator$stage)
     attempt_id <- context$attempt_id %||% tempest_attempt_id()
     execution <- tempest_stage_execution_attempt(module, attempt_id)
-    governed_procedure <- tempest_dsprrr_execution_governance_preflight(
-      execution,
-      context$knowledge_view %||% execution$knowledge_view %||% NULL
-    )
-    execution$governed_procedure_revision_id <-
-      governed_procedure$revision_id %||% NA_character_
     now <- context$now %||% tempest_now_utc
     if (!is.function(now)) {
       tempest_stage_evaluator_abort("Stage clock context must be a function.")
@@ -4858,7 +4840,6 @@ tempest_execute_stage_async <- function(
     running <- tempest_stage_record_start(
       execution$stage,
       execution$program_artifact_id,
-      governed_procedure_revision_id = execution$governed_procedure_revision_id,
       trace_references = tempest_stage_execution_trace_references(
         execution,
         context

@@ -88,8 +88,8 @@ objects as the session makes progress.}
 identifier is generated.}
       \item{\code{program_set}}{A \link{TempestProgramSet} used for every structured
 Co-STORM stage.}
-      \item{\code{knowledge_view}}{Optional immutable Graft view. A fresh session
-requires it whenever \code{program_set} contains governed procedures.}
+      \item{\code{knowledge_view}}{Optional immutable Graft view for accepted evidence.
+It must match the workspace snapshot and remains process-local.}
       \item{\code{.restore_manifest}}{Internal research manifest supplied only by
 Tempest's bundle-restoration seam.}
       \item{\code{.restore_token}}{Internal authorization token for bundle

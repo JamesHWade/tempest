@@ -372,11 +372,7 @@ tempest_session_suggest_questions_async <- function(
           answered = answered,
           facts = facts
         ),
-        context = tempest_stage_context_knowledge_view(
-          list(),
-          module,
-          tempest_session_knowledge_view(session)
-        ),
+        context = list(),
         record_stage = function(record, output = NULL) {
           tempest_session_record_stage(session, record, output)
         },

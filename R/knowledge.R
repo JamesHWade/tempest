@@ -1,3 +1,11 @@
+tempest_knowledge_view_snapshot <- function(knowledge_view) {
+  graft::graft_view_snapshot(knowledge_view)
+}
+
+tempest_knowledge_history <- function(knowledge_view, record_id) {
+  graft::graft_history(knowledge_view, record_id, limit = 1L)
+}
+
 # Accepted organizational knowledge boundary
 
 tempest_knowledge_abort <- function(
@@ -15,9 +23,8 @@ tempest_knowledge_abort <- function(
   )
 }
 
-# Accepted evidence classes Tempest will read as data. GovernedProcedure and
-# ProgramArtifact are executable authority and are reachable only through an
-# explicit stage binding.
+# Accepted evidence classes Tempest will read as data. Stored procedure and
+# program records do not select executable modules.
 tempest_knowledge_record_allowlist <- function() {
   c("Claim", "ClaimSupport", "EvidenceSpan", "Source")
 }
@@ -43,8 +50,7 @@ TempestKnowledge <- S7::new_class(
     reference = S7::new_property(S7::class_any),
     record_ids = S7::new_property(S7::class_character, default = character()),
     records = S7::new_property(S7::class_list, default = list()),
-    artifact_selection = S7::new_property(S7::class_list, default = list()),
-    governed_procedures = S7::new_property(S7::class_list, default = list())
+    artifact_selection = S7::new_property(S7::class_list, default = list())
   ),
   constructor = function(
     view = NULL,
@@ -52,7 +58,6 @@ TempestKnowledge <- S7::new_class(
     reference = NULL,
     record_ids = character(),
     records = list(),
-    governed_procedures = list(),
     artifact_selection = list(),
     admission = NULL
   ) {
@@ -64,7 +69,6 @@ TempestKnowledge <- S7::new_class(
       reference = reference,
       record_ids = record_ids,
       records = records,
-      governed_procedures = governed_procedures,
       artifact_selection = artifact_selection
     )
     # Carry the S3 class so the public print method dispatches.
@@ -109,7 +113,7 @@ tempest_knowledge_record_ids <- function(value) {
 # a procedure selection, or an executable artifact.
 tempest_knowledge_record_resource <- function(knowledge_view, record_id) {
   history <- tryCatch(
-    tempest_governed_procedure_history(knowledge_view, record_id),
+    tempest_knowledge_history(knowledge_view, record_id),
     error = function(error) {
       tempest_knowledge_abort(
         "Could not resolve the accepted Graft record {.val {record_id}}.",
@@ -245,20 +249,18 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #'
 #' `tempest_knowledge()` is the Graft constructor for accepted
 #' organizational knowledge. It pins an immutable Graft view, materializes an
-#' exact allowlist of accepted evidence records, and optionally binds accepted
-#' governed procedures to Tempest stages.
+#' exact allowlist of accepted evidence records, and keeps those records
+#' separate from executable research programs.
 #'
 #' Accepted record text is evidence, not instruction. It is carried in a data
 #' channel and can never change prompts, message roles, tools, governed
-#' procedure selection, or executable artifacts. Executable authority comes
-#' only from an explicit `governed_procedures` stage binding.
+#' procedure selection, or executable artifacts. The host selects research
+#' programs independently of stored knowledge.
 #'
 #' @param graft_view A pinned `GraftView` from [graft::graft_at()].
 #' @param record_ids Character vector of accepted record ids to read as
 #'   evidence. Only `Claim`, `ClaimSupport`, `EvidenceSpan`, and `Source`
 #'   records are readable.
-#' @param governed_procedures Optional named list mapping an exact Tempest
-#'   stage to an accepted `GovernedProcedure` record id.
 #' @return A validated `TempestKnowledge` value for [tempest_run()] and
 #'   [tempest_session()].
 #' @examples
@@ -274,11 +276,10 @@ tempest_knowledge_record_text <- function(payload, record_id) {
 #' @export
 tempest_knowledge <- function(
   graft_view,
-  record_ids = character(),
-  governed_procedures = list()
+  record_ids = character()
 ) {
   snapshot <- tryCatch(
-    tempest_governed_procedure_view_snapshot(graft_view),
+    tempest_knowledge_view_snapshot(graft_view),
     error = function(error) {
       tempest_knowledge_abort(
         "{.arg graft_view} must be a valid pinned Graft view.",
@@ -303,61 +304,17 @@ tempest_knowledge <- function(
       tempest_knowledge_record_resource(graft_view, record_id)
     }
   )
-  refs <- tempest_knowledge_governed_procedures(
-    graft_view,
-    governed_procedures
-  )
   TempestKnowledge(
     view = graft_view,
     snapshot = tempest_research_workspace_graft_snapshot(snapshot),
     reference = reference,
     record_ids = record_ids,
-    records = records,
-    governed_procedures = refs
-  )
-}
-
-tempest_knowledge_governed_procedures <- function(graft_view, value) {
-  if (is.null(value) || length(value) == 0L) {
-    return(list())
-  }
-  stages <- tempest_program_set_stages()
-  names_value <- names(value)
-  if (
-    !is.list(value) ||
-      is.data.frame(value) ||
-      is.null(names_value) ||
-      anyNA(names_value) ||
-      any(!nzchar(names_value)) ||
-      anyDuplicated(names_value) ||
-      any(!names_value %in% stages)
-  ) {
-    tempest_knowledge_abort(paste0(
-      "{.arg governed_procedures} must be a uniquely named list using only ",
-      "exact Tempest stages."
-    ))
-  }
-  stats::setNames(
-    lapply(
-      names_value,
-      function(stage) {
-        record_id <- value[[stage]]
-        if (!rlang::is_string(record_id) || is.na(record_id)) {
-          tempest_knowledge_abort(paste0(
-            "{.arg governed_procedures$",
-            stage,
-            "} must be one accepted GovernedProcedure record id."
-          ))
-        }
-        tempest_governed_procedure_ref(graft_view, record_id)
-      }
-    ),
-    names_value
+    records = records
   )
 }
 
 # Resolve the public `knowledge` argument into the internal pinned view and the
-# ProgramSet carrying any accepted governed-procedure stage bindings.
+# host-selected builtin ProgramSet.
 tempest_knowledge_argument <- function(
   knowledge,
   arg = "knowledge",
@@ -403,9 +360,7 @@ tempest_knowledge_argument <- function(
     value = knowledge,
     view = knowledge@view,
     records = knowledge@records,
-    program_set = tempest_program_set(
-      governed_procedure_refs = knowledge@governed_procedures
-    )
+    program_set = tempest_program_set()
   )
 }
 
@@ -467,8 +422,7 @@ print.tempest_knowledge <- function(x, ...) {
     } else {
       "snapshot: {.val {x@reference$snapshot_id %||% NA_character_}}"
     },
-    "*" = "accepted records: {length(x@record_ids)}",
-    "*" = "governed stages: {.val {names(x@governed_procedures)}}"
+    "*" = "accepted records: {length(x@record_ids)}"
   ))
   invisible(x)
 }

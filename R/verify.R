@@ -123,16 +123,13 @@ tempest_verify_one_claim_span <- function(
       claim_text = claim@claim_text,
       source_excerpts = span_input
     ),
-    context = tempest_stage_context_knowledge_view(
-      list(
-        workspace = store,
-        claim = claim,
-        evidence_span = span,
-        min_support_score = min_support_score,
-        verified_at = verified_at,
-        verifier_model = verifier_model
-      ),
-      module
+    context = list(
+      workspace = store,
+      claim = claim,
+      evidence_span = span,
+      min_support_score = min_support_score,
+      verified_at = verified_at,
+      verifier_model = verifier_model
     ),
     output_reference = function(output, running_record, context) {
       tempest_stage_output_reference(
@@ -173,8 +170,8 @@ tempest_empty_claim_supports <- function() {
 #'   the builtin set. When `workspace` is a `TempestSession`, its immutable
 #'   ProgramSet, citation policy, and support threshold are authoritative;
 #'   supplied values must match.
-#' @param knowledge_view Optional immutable Graft view required when a
-#'   standalone `program_set` binds verification to a governed procedure.
+#' @param knowledge_view Optional immutable Graft evidence view. When supplied,
+#'   it must match the standalone workspace snapshot.
 #' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
 #'   considered supported.
 #' @return A claim-support audit tibble with one row per verified
@@ -310,7 +307,6 @@ tempest_verify_claims <- function(
         knowledge_snapshot_id = snapshot_id
       )
     )
-    program$knowledge_view <- knowledge$view
   }
   tempest_verify_claims_internal(
     workspace = workspace,
