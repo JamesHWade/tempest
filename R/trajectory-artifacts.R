@@ -17,6 +17,14 @@ tempest_trajectory_decision <- function(event, selection) {
       "The recorded decision must accept the exact publication selection."
     )
   }
+  tempest_trajectory_exact_whole_number(
+    event$sequence,
+    "Artifact decision sequence",
+    minimum = 1
+  )
+  if (event$sequence > .Machine$integer.max) {
+    tempest_trajectory_review_abort("Artifact decision sequence is too large.")
+  }
   result <- list(
     decision_id = event$id,
     stream = event$stream,
@@ -129,7 +137,7 @@ tempest_trajectory_input_selection <- function(selection) {
       tempest_trajectory_decision(event, selection$selection_id)
     },
     records = tempest_trajectory_collection(
-      lapply(selection$records, \(record) {
+      lapply(selection$records, function(record) {
         record[tempest_trajectory_input_record_fields()]
       }),
       preserve_order = FALSE

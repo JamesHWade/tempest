@@ -1,5 +1,6 @@
 test_that("contradictory research executes and preserves the prior evidence", {
   skip_if_not_installed("graft")
+  skip_if_not_installed("scans")
   first <- storm_product_fixture()
   original <- tempest_run(
     "Progress events",
@@ -173,4 +174,60 @@ test_that("contradictory research executes and preserves the prior evidence", {
   expect_identical(reopened$contents, old$contents)
   expect_identical(reopened$supports, old$bundle@records$ClaimSupport)
   expect_identical(reopened$selection, fresh@artifact_selection)
+  review <- tempest_trajectory_review(
+    correction,
+    store = store,
+    selection = corrected_selection,
+    stream = "daily",
+    decision = reviewed$id
+  )
+  data <- tempest_trajectory_review_data(review)
+  expect_identical(data$knowledge$input_selection$selection_id, old_selection)
+  expect_identical(
+    data$knowledge$input_selection$decision$decision_id,
+    accepted$id
+  )
+  expect_identical(data$knowledge$proposal$selection_id, corrected_selection)
+  expect_identical(data$knowledge$acceptance$decision_id, reviewed$id)
+  trajectory <- scans::as_trajectory_tempest(review)
+  events <- scans::trajectory_events(trajectory)
+  projected <- events$value[[which(events$event_type == "tempest:knowledge")]]
+  expect_identical(projected$input_selection$selection_id, old_selection)
+  expect_identical(projected$input_selection$decision$decision_id, accepted$id)
+  expect_identical(projected$acceptance, data$knowledge$acceptance)
+  expect_identical(
+    sum(events$event_type == "tempest:input_artifact"),
+    data$knowledge$input_selection$records$retained
+  )
+  withdrawal <- graft::graft_artifact_decide(
+    store,
+    "daily",
+    "withdraw",
+    reviewed$id,
+    corrected_selection,
+    "withdraw",
+    "host",
+    "Reconsidered",
+    "briefing"
+  )
+  expect_identical(
+    tempest_trajectory_review(
+      correction,
+      store = store,
+      selection = corrected_selection,
+      stream = "daily",
+      decision = reviewed$id
+    ),
+    review
+  )
+  expect_error(
+    tempest_reuse_artifact_research(
+      store,
+      "daily",
+      reviewed$id,
+      "briefing",
+      eligible = \(event) TRUE
+    ),
+    class = "graft_artifact_error"
+  )
 })

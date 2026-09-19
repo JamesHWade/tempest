@@ -76,7 +76,7 @@ test_that("artifact publication is distinct from recorded acceptance and current
       "research",
       accepted$id,
       "briefing",
-      eligible = function(event) TRUE
+      eligible = \(event) TRUE
     ),
     class = "graft_artifact_error"
   )
@@ -235,4 +235,29 @@ test_that("closed reviews reject obsolete schemas and inconsistent publication j
     values[setdiff(names(values), "review_id")]
   ))
   expect_snapshot(error = TRUE, do.call(TempestTrajectoryReview, values))
+})
+
+
+test_that("input decision sequence is validated before normalization", {
+  input <- test_artifact_knowledge_input()$selection
+  input$selection_id <- strrep("a", 64L)
+  input$provenance$graft_decision <- list(
+    id = strrep("b", 64L),
+    sequence = 1L,
+    stream = "research",
+    action = "accept",
+    selection = input$selection_id,
+    purpose = input$purpose
+  )
+  expect_identical(
+    tempest_trajectory_input_selection(input)$decision$sequence,
+    1L
+  )
+  for (sequence in list(1.5, "1", 0, .Machine$integer.max + 1)) {
+    input$provenance$graft_decision$sequence <- sequence
+    expect_error(
+      tempest_trajectory_input_selection(input),
+      class = "tempest_trajectory_review_error"
+    )
+  }
 })
