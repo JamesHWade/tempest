@@ -209,7 +209,8 @@ primary source or claim id.
 - Host apps should receive these ids in progress events and artifact metadata
   so a UI can replay or debug why a claim appeared.
 
-The existing `vtz9` kata issue should audit the expert-tool session propagation
+The existing [GitHub #115](https://github.com/JamesHWade/tempest/issues/115)
+(formerly Kata `vtz9`) should audit the expert-tool session propagation
 details. This design adds the evidence requirement: source and claim writes
 need enough provenance to connect them back to a session and turn.
 

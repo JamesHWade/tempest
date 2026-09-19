@@ -1,6 +1,6 @@
 # T7 authoritative product paths implementation plan
 
-Tracking issue: kata `an7p`
+Tracking issue: [GitHub #166](https://github.com/JamesHWade/tempest/issues/166) (formerly Kata `an7p`)
 
 Status: implemented and verified
 

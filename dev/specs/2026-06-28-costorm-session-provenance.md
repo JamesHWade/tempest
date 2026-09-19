@@ -1,7 +1,7 @@
 # Co-STORM session provenance
 
 This note records the identity boundaries used for Co-STORM evidence and
-progress integration. It addresses kata issue `vtz9`.
+progress integration. It addresses [GitHub #115](https://github.com/JamesHWade/tempest/issues/115) (formerly Kata `vtz9`).
 
 ## Identity fields
 
