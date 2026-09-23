@@ -71,7 +71,8 @@ reviews the complete evidence before making an explicit decision.
 ```{r accept, eval=FALSE}
 previous <- if (file.exists(basis_path)) basis$decision else NULL
 accepted <- graft_accept(
-  store, selection, "battery-briefing", expected = previous,
+  store, graft_read_selection(store, selection), "battery-briefing",
+  expected = previous,
   key = "review-2026-09-18", actor = "reviewer",
   reason = "Evidence and proposed changes reviewed", purpose = "briefing"
 )
