@@ -68,10 +68,16 @@ artifact_research_example <- function() {
     },
     tempest_knowledge_error = function(error) TRUE
   )
-  retry <- accept("day-one", NULL, first)
+  retry <- tryCatch(
+    {
+      accept("day-one", NULL, first)
+      FALSE
+    },
+    graft_stale_review_error = function(error) TRUE
+  )
   stopifnot(
     denied,
-    identical(retry, initial),
+    retry,
     identical(initial@selection, unchanged@selection),
     !identical(initial@id, unchanged@id),
     identical(tail(graft::graft_history(store, "pilot"), 1L)[[1L]], withdrawal)
@@ -82,6 +88,6 @@ artifact_research_example <- function() {
     unchanged_review_is_distinct = initial@id != unchanged@id,
     corrected_selection_is_distinct = initial@selection != correction@selection,
     withdrawal_blocks_reuse = denied,
-    retry_preserves_withdrawal = TRUE
+    retry_preserves_withdrawal = retry
   )
 }
