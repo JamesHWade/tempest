@@ -80,7 +80,10 @@ artifact_research_example <- function() {
     retry,
     identical(initial@selection, unchanged@selection),
     !identical(initial@id, unchanged@id),
-    identical(tail(graft::graft_history(store, "pilot"), 1L)[[1L]], withdrawal)
+    identical(
+      utils::tail(graft::graft_history(store, "pilot"), 1L)[[1L]],
+      withdrawal
+    )
   )
   list(
     evidence_records = length(knowledge@records),

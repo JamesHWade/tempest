@@ -129,7 +129,7 @@ test_that("completed research retains exact report, proof and source contents", 
   )
   expect_error(
     tempest_session("Briefing", config = fixture$config, knowledge = knowledge),
-    "current acceptance",
+    "current accepted decision",
     class = "tempest_knowledge_error"
   )
   expect_error(
@@ -138,7 +138,7 @@ test_that("completed research retains exact report, proof and source contents", 
       config = fixture$config,
       knowledge = knowledge
     ),
-    "current acceptance",
+    "current accepted decision",
     class = "tempest_knowledge_error"
   )
   expect_error(
@@ -232,18 +232,18 @@ test_that("fresh reviews, corrections and current host eligibility stay distinct
   correction <- accept("three", unchanged$id, second)
   expect_error(
     tempest_knowledge_argument(knowledge),
-    "current acceptance",
+    "current accepted decision",
     class = "tempest_knowledge_error"
   )
   expect_error(
     accept("three", unchanged$id, first),
     "different request",
-    class = "graft_stale_review_error"
+    class = "graft_artifact_error"
   )
   expect_error(
     accept("stale", unchanged$id, first),
     "predecessor",
-    class = "graft_stale_review_error"
+    class = "graft_artifact_error"
   )
   admitted <- tempest_reuse_artifact_research(
     store,
@@ -265,7 +265,7 @@ test_that("fresh reviews, corrections and current host eligibility stay distinct
       "another-purpose",
       eligible = function(event) TRUE
     ),
-    "current acceptance",
+    "different purpose",
     class = "graft_purpose_error"
   )
   reopened <- callr::r(

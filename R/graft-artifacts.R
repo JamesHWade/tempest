@@ -210,7 +210,15 @@ tempest_read_artifact_research <- function(store, selection) {
       })
     )
   }
-  report <- graft::graft_read(store, tempest_graft_ref_value(candidate$report))
+  report <- tryCatch(
+    graft::graft_read(store, tempest_graft_ref_value(candidate$report)),
+    graft_artifact_decode_error = function(error) {
+      tempest_knowledge_abort(
+        "Retained research contains invalid report bytes.",
+        parent = error
+      )
+    }
+  )
   report_md <- tryCatch(
     rawToChar(report@bytes),
     error = function(error) {

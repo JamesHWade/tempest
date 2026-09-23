@@ -286,6 +286,7 @@ test_that("timed out Deputy warmup stays pending until terminal trace", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   raw_expert <- fake_chat()
+  resolve_late <- NULL
   raw_expert$stream_async <- function(
     prompt = NULL,
     stream = c("text", "content"),
@@ -293,10 +294,7 @@ test_that("timed out Deputy warmup stays pending until terminal trace", {
   ) {
     coro::async_generator(function() {
       content <- coro::await(promises::promise(function(resolve, reject) {
-        later::later(
-          function() resolve(ellmer::ContentText("Late answer.")),
-          0.25
-        )
+        resolve_late <<- resolve
       }))
       coro::yield(content)
       coro::exhausted()
@@ -330,6 +328,7 @@ test_that("timed out Deputy warmup stays pending until terminal trace", {
   pending <- tempest:::tempest_session_pending_deputy_runs(session)
 
   expect_null(settled$error)
+  expect_type(resolve_late, "closure")
   expect_length(pending, 1L)
   expect_length(tempest:::tempest_session_deputy_traces(session), 0L)
   expect_identical(
@@ -356,6 +355,7 @@ test_that("timed out Deputy warmup stays pending until terminal trace", {
     FALSE
   )
 
+  resolve_late(ellmer::ContentText("Late answer."))
   deadline <- Sys.time() + 2
   while (
     length(tempest:::tempest_session_deputy_traces(session)) == 0L &&

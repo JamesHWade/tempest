@@ -98,7 +98,7 @@ test_that("contradictory research executes and preserves the prior evidence", {
   expect_identical(identical(reviewed$selection, accepted$selection), FALSE)
   expect_error(
     tempest_knowledge_argument(knowledge),
-    "current acceptance",
+    "current accepted decision",
     class = "tempest_knowledge_error"
   )
   expect_identical(tempest_read_artifact_research(store, old_selection), old)

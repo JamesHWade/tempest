@@ -49,7 +49,7 @@ reuse_briefing_basis <- function(store, basis, eligible) {
 
 briefing_changes <- function(store, basis) {
   read_briefing_basis(store, basis)
-  head <- tail(graft::graft_history(store, basis$stream), 1L)[[1L]]
+  head <- utils::tail(graft::graft_history(store, basis$stream), 1L)[[1L]]
   list(
     decision_changed = !identical(head@id, basis$decision),
     selection_changed = !identical(head@selection, basis$selection),
