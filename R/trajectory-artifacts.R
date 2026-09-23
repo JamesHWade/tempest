@@ -117,8 +117,11 @@ tempest_trajectory_publication <- function(
       acceptance <- if (is.null(decision)) {
         NULL
       } else {
-        event <- graft::graft_artifact_read_decision(store, stream, decision)
-        tempest_trajectory_decision(event, selection)
+        event <- tempest_graft_decision(store, stream, decision)
+        tempest_trajectory_decision(
+          tempest_graft_decision_record(event),
+          selection
+        )
       }
       list(selection = selection, bundle = bound, acceptance = acceptance)
     },

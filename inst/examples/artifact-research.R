@@ -7,7 +7,7 @@ artifact_research_example <- function() {
   inputs <- system.file("examples", "accepted-research", package = "tempest")
   directory <- tempfile("artifact-research-")
   on.exit(unlink(directory, recursive = TRUE), add = TRUE)
-  store <- graft::graft_artifact_store(directory, create = TRUE)
+  store <- graft::graft_store(directory, create = TRUE)
   publish <- function(day) {
     bundle <- tempest::tempest_read_promotion_bundle(
       file.path(inputs, day),
@@ -20,71 +20,67 @@ artifact_research_example <- function() {
     tempest::tempest_publish_artifact_research(bundle, store, report = report)
   }
   accept <- function(key, expected, selection) {
-    graft::graft_artifact_decide(
+    graft::graft_accept(
       store,
-      "pilot",
-      key,
-      expected,
       selection,
-      "accept",
-      "reviewer",
-      "Evidence reviewed",
-      "briefing"
+      "pilot",
+      expected = expected,
+      key = key,
+      actor = "reviewer",
+      reason = "Evidence reviewed",
+      purpose = "briefing"
     )
   }
   first <- publish("initial")
   initial <- accept("day-one", NULL, first)
-  store <- graft::graft_artifact_store(directory)
-  unchanged <- accept("day-two", initial$id, first)
-  correction <- accept("correction", unchanged$id, publish("correction"))
+  store <- graft::graft_store(directory)
+  unchanged <- accept("day-two", initial@id, first)
+  correction <- accept("correction", unchanged@id, publish("correction"))
   knowledge <- tempest::tempest_reuse_artifact_research(
     store,
     "pilot",
-    correction$id,
+    correction@id,
     "briefing",
     eligible = function(event) TRUE
   )
   historical <- tempest::tempest_read_artifact_research(
     store,
-    initial$selection
+    initial@selection
   )
-  withdrawal <- graft::graft_artifact_decide(
+  withdrawal <- graft::graft_withdraw(
     store,
     "pilot",
-    "withdraw",
-    correction$id,
-    correction$selection,
-    "withdraw",
-    "reviewer",
-    "Review required",
-    "briefing"
+    expected = correction@id,
+    key = "withdraw",
+    actor = "reviewer",
+    reason = "Review required"
   )
   denied <- tryCatch(
     {
       tempest::tempest_reuse_artifact_research(
         store,
         "pilot",
-        correction$id,
+        correction@id,
         "briefing",
         eligible = function(event) TRUE
       )
       FALSE
     },
-    graft_artifact_error = function(error) TRUE
+    tempest_knowledge_error = function(error) TRUE
   )
   retry <- accept("day-one", NULL, first)
   stopifnot(
     denied,
     identical(retry, initial),
-    identical(initial$selection, unchanged$selection),
-    !identical(initial$id, unchanged$id),
-    identical(graft::graft_artifact_read_decision(store, "pilot"), withdrawal)
+    identical(initial@selection, unchanged@selection),
+    !identical(initial@id, unchanged@id),
+    identical(tail(graft::graft_history(store, "pilot"), 1L)[[1L]], withdrawal)
   )
   list(
     evidence_records = length(knowledge@records),
     historical_report_retained = nzchar(historical$report_md),
-    unchanged_review_is_distinct = initial$id != unchanged$id,
-    corrected_selection_is_distinct = initial$selection != correction$selection,
+    unchanged_review_is_distinct = initial@id != unchanged@id,
+    corrected_selection_is_distinct = initial@selection != correction@selection,
     withdrawal_blocks_reuse = denied,
     retry_preserves_withdrawal = TRUE
   )

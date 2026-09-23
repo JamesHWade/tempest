@@ -157,13 +157,12 @@ bundle <- tempest_read_promotion_bundle(
   expected_bundle_id = trusted_bundle_id
 )
 
-store <- graft::graft_artifact_store("research-artifacts", create = TRUE)
+store <- graft::graft_store("research-artifacts", create = TRUE)
 selection <- tempest_publish_artifact_research(result, store)
 # The host explicitly reviews the complete evidence and report.
-accepted <- graft::graft_artifact_decide(
-  store, "battery-recycling", "review-1", expected = NULL,
-  selection = selection, action = "accept", actor = "reviewer",
-  reason = "Evidence reviewed", purpose = "research"
+accepted <- graft::graft_accept(
+  store, selection, "battery-recycling", expected = NULL, key = "review-1",
+  actor = "reviewer", reason = "Evidence reviewed", purpose = "research"
 )
 ```
 
@@ -198,16 +197,15 @@ proposed_review <- tempest_trajectory_review(
   result,
   promotion_bundle = bundle
 )
-artifact_store <- graft::graft_artifact_store("research-artifacts", create = TRUE)
+artifact_store <- graft::graft_store("research-artifacts", create = TRUE)
 selection <- tempest_publish_artifact_research(result, artifact_store)
-accepted <- graft::graft_artifact_decide(
-  artifact_store, "research", "review-1", expected = NULL,
-  selection = selection, action = "accept", actor = "reviewer",
-  reason = "Reviewed the evidence", purpose = "briefing"
+accepted <- graft::graft_accept(
+  artifact_store, selection, "research", expected = NULL, key = "review-1",
+  actor = "reviewer", reason = "Reviewed the evidence", purpose = "briefing"
 )
 accepted_review <- tempest_trajectory_review(
   result, store = artifact_store, selection = selection,
-  stream = "research", decision = accepted$id
+  stream = "research", decision = accepted@id
 )
 ```
 
@@ -495,7 +493,7 @@ reviewed decision and its complete evidence closure:
 
 ```r
 source(system.file("examples", "briefing-basis.R", package = "tempest"))
-basis <- capture_briefing_basis(store, "battery-recycling", accepted$id, "research")
+basis <- capture_briefing_basis(store, "battery-recycling", accepted@id, "research")
 saveRDS(basis, "accepted-basis.rds")
 historical <- read_briefing_basis(store, basis)
 knowledge <- reuse_briefing_basis(store, basis, eligible = function(event) TRUE)

@@ -3,11 +3,12 @@
 #' Publish the validated proposal, exact source bodies, evidence, program
 #' provenance and readable report as one immutable selection. Publication is
 #' not acceptance. The host reviews the selection and explicitly calls
-#' `graft::graft_artifact_decide()` to accept or withdraw it.
+#' `graft::graft_accept()` to accept it or [graft::graft_withdraw()] to
+#' withdraw it.
 #'
 #' @param research A completed research product accepted by
 #'   [tempest_promotion_bundle()], or a validated `TempestPromotionBundle`.
-#' @param store A `graft::graft_artifact_store()` handle. Applications enforce
+#' @param store A `graft::graft_store()` handle. Applications enforce
 #'   access to this trusted local, single-writer store.
 #' @param claim_ids Optional exact claim selection, passed to
 #'   [tempest_promotion_bundle()].
@@ -46,32 +47,31 @@ tempest_publish_artifact_research <- function(
   refs <- list()
   for (record in data) {
     dependencies <- unname(refs[record$dependencies])
-    refs[[record$id]] <- graft::graft_artifact_save(
+    refs[[record$id]] <- graft::graft_save(
       store,
-      record$id,
       charToRaw(enc2utf8(record$content)),
+      record$id,
       "text/plain",
       dependencies = dependencies
     )
   }
-  report_ref <- graft::graft_artifact_save(
+  report_ref <- graft::graft_save(
     store,
-    paste0("tempest:report:", bundle@research_run_id),
     charToRaw(enc2utf8(report)),
+    paste0("tempest:report:", bundle@research_run_id),
     "text/markdown",
     dependencies = unname(refs)
   )
   candidate <- list(
     format = "tempest-research-1",
     bundle = tempest_promotion_bundle_data(bundle),
-    report = report_ref,
+    report = tempest_graft_ref_record(report_ref),
     records = unname(lapply(data, function(record) {
-      list(id = record$id, ref = refs[[record$id]])
+      list(id = record$id, ref = tempest_graft_ref_record(refs[[record$id]]))
     }))
   )
-  root <- graft::graft_artifact_save(
+  root <- graft::graft_save(
     store,
-    paste0("tempest:research:", bundle@research_run_id),
     charToRaw(as.character(jsonlite::toJSON(
       candidate,
       auto_unbox = TRUE,
@@ -80,10 +80,11 @@ tempest_publish_artifact_research <- function(
       digits = NA,
       force = TRUE
     ))),
+    paste0("tempest:research:", bundle@research_run_id),
     "application/json",
     dependencies = c(list(report_ref), unname(refs))
   )
-  graft::graft_artifact_select(store, list(root))
+  graft::graft_select(store, root)@id
 }
 
 #' Inspect retained research without admitting it to execution
@@ -101,13 +102,20 @@ tempest_publish_artifact_research <- function(
 #'   projected text; Graft also enforces its store and selection bounds.
 #' @export
 tempest_read_artifact_research <- function(store, selection) {
-  selected <- graft::graft_artifact_read_selection(store, selection)
-  if (length(selected$roots) != 1L) {
+  selection_id <- if (S7::S7_inherits(selection, graft::ArtifactSelection)) {
+    selection@id
+  } else if (is.list(selection) && !is.null(selection$id)) {
+    selection$id
+  } else {
+    selection
+  }
+  selected <- graft::graft_read_selection(store, selection_id)
+  if (length(selected@roots) != 1L) {
     tempest_knowledge_abort("Research requires one exact proposal root.")
   }
-  root <- graft::graft_artifact_read(store, selected$roots[[1L]])
+  root <- graft::graft_read(store, selected@roots[[1L]])
   candidate <- tryCatch(
-    jsonlite::fromJSON(rawToChar(root$bytes), simplifyVector = FALSE),
+    jsonlite::fromJSON(rawToChar(root@bytes), simplifyVector = FALSE),
     error = function(error) {
       tempest_knowledge_abort(
         "Research proposal is not valid JSON.",
@@ -134,7 +142,7 @@ tempest_read_artifact_research <- function(store, selection) {
   )
   if (
     !tempest_artifact_ref_matches(
-      selected$roots[[1L]],
+      selected@roots[[1L]],
       paste0("tempest:research:", bundle@research_run_id)
     )
   ) {
@@ -175,12 +183,15 @@ tempest_read_artifact_research <- function(store, selection) {
         "Research evidence identity differs from its proof."
       )
     }
-    item <- graft::graft_artifact_read(store, saved$ref)
+    item <- graft::graft_read(store, tempest_graft_ref_value(saved$ref))
     dependencies <- unname(refs[record$dependencies])
     if (
-      !identical(item$bytes, charToRaw(enc2utf8(record$content))) ||
-        !identical(item$metadata$dependencies, dependencies) ||
-        !identical(item$metadata$media_type, "text/plain")
+      !identical(item@bytes, charToRaw(enc2utf8(record$content))) ||
+        !identical(
+          lapply(item@dependencies, tempest_graft_ref_record),
+          lapply(dependencies, tempest_graft_ref_record)
+        ) ||
+        !identical(item@media_type, "text/plain")
     ) {
       tempest_knowledge_abort(
         "Research evidence content or dependencies differ from its proof."
@@ -192,15 +203,15 @@ tempest_read_artifact_research <- function(store, selection) {
       record_id = record$id,
       revision_id = saved$ref$revision,
       class = record$class,
-      sha256 = item$metadata$payload,
+      sha256 = digest::digest(item@bytes, algo = "sha256", serialize = FALSE),
       dependencies = lapply(dependencies, function(ref) {
-        list(record_id = ref$id, revision_id = ref$revision)
+        list(record_id = ref@id, revision_id = ref@revision)
       })
     )
   }
-  report <- graft::graft_artifact_read(store, candidate$report)
+  report <- graft::graft_read(store, tempest_graft_ref_value(candidate$report))
   report_md <- tryCatch(
-    rawToChar(report$bytes),
+    rawToChar(report@bytes),
     error = function(error) {
       tempest_knowledge_abort(
         "Retained research contains invalid report bytes.",
@@ -215,20 +226,26 @@ tempest_read_artifact_research <- function(store, selection) {
   }
   tempest_artifact_report_validate(bundle, report_md)
   if (
-    !identical(report$metadata$dependencies, unname(refs)) ||
-      !identical(report$metadata$media_type, "text/markdown") ||
+    !identical(
+      lapply(report@dependencies, tempest_graft_ref_record),
+      lapply(unname(refs), tempest_graft_ref_record)
+    ) ||
+      !identical(report@media_type, "text/markdown") ||
       !identical(
-        root$metadata$dependencies,
-        c(list(candidate$report), unname(refs))
+        lapply(root@dependencies, tempest_graft_ref_record),
+        c(
+          list(candidate$report),
+          lapply(unname(refs), tempest_graft_ref_record)
+        )
       ) ||
-      !identical(root$metadata$media_type, "application/json")
+      !identical(root@media_type, "application/json")
   ) {
     tempest_knowledge_abort(
       "Research proposal or report has inconsistent dependencies."
     )
   }
   list(
-    selection = selected$id,
+    selection = selected@id,
     bundle = bundle,
     report_md = report_md,
     records = records,
@@ -270,34 +287,51 @@ tempest_reuse_artifact_research <- function(
     )
   }
   admit <- function() {
-    event <- graft::graft_artifact_read_decision(store, stream, decision)
-    current <- graft::graft_artifact_reuse(
+    event <- tempest_graft_decision(store, stream, decision)
+    event_record <- tempest_graft_decision_record(event)
+    current <- graft::graft_recall(
       store,
       stream,
-      decision,
       purpose,
-      eligible = eligible(event)
+      eligible = eligible(event_record)
     )
-    research <- tempest_read_artifact_research(store, current$selection$id)
+    if (
+      !identical(current@status, "accepted") ||
+        is.null(current@decision) ||
+        !identical(current@decision@id, event@id)
+    ) {
+      tempest_knowledge_abort(
+        "The requested Graft decision is not the current accepted decision."
+      )
+    }
+    research <- tempest_read_artifact_research(store, current@selection@id)
     input <- list(
       selection_id = research$selection,
       purpose = purpose,
       records = research$records,
       provenance = list(
-        graft_decision = event,
+        graft_decision = event_record,
         bundle_id = research$bundle@bundle_id,
         research_run_id = research$bundle@research_run_id
       )
     )
     knowledge <- tempest_artifact_knowledge(input, research$contents)
     # Recheck after domain validation and materialization, before admission.
-    graft::graft_artifact_reuse(
+    current <- graft::graft_recall(
       store,
       stream,
-      decision,
       purpose,
-      eligible = eligible(event)
+      eligible = eligible(event_record)
     )
+    if (
+      !identical(current@status, "accepted") ||
+        is.null(current@decision) ||
+        !identical(current@decision@id, event@id)
+    ) {
+      tempest_knowledge_abort(
+        "The requested Graft decision is not the current accepted decision."
+      )
+    }
     knowledge
   }
   knowledge <- admit()
@@ -305,12 +339,66 @@ tempest_reuse_artifact_research <- function(
   knowledge
 }
 
+tempest_graft_ref_record <- function(ref) {
+  if (S7::S7_inherits(ref, graft::ArtifactRef)) {
+    return(list(id = ref@id, revision = ref@revision))
+  }
+  if (
+    !is.list(ref) ||
+      !identical(names(ref), c("id", "revision")) ||
+      !rlang::is_string(ref$id) ||
+      !rlang::is_string(ref$revision)
+  ) {
+    tempest_knowledge_abort("Graft artifact references have an invalid shape.")
+  }
+  ref
+}
+
+tempest_graft_ref_value <- function(ref) {
+  ref <- tempest_graft_ref_record(ref)
+  graft::ArtifactRef(id = ref$id, revision = ref$revision)
+}
+
 tempest_artifact_ref_matches <- function(ref, id) {
-  is.list(ref) &&
-    identical(names(ref), c("id", "revision")) &&
+  ref <- tryCatch(
+    tempest_graft_ref_record(ref),
+    error = function(error) NULL
+  )
+  !is.null(ref) &&
     identical(ref$id, id) &&
-    rlang::is_string(ref$revision) &&
     grepl("^[0-9a-f]{64}$", ref$revision)
+}
+
+tempest_graft_decision <- function(store, stream, decision) {
+  decision_id <- if (S7::S7_inherits(decision, graft::Decision)) {
+    decision@id
+  } else {
+    decision
+  }
+  history <- graft::graft_history(store, stream)
+  matches <- Filter(
+    function(event) identical(event@id, decision_id),
+    history
+  )
+  if (length(matches) != 1L) {
+    tempest_knowledge_abort("The requested Graft decision was not found.")
+  }
+  matches[[1L]]
+}
+
+tempest_graft_decision_record <- function(event) {
+  list(
+    id = event@id,
+    sequence = event@sequence,
+    stream = event@stream,
+    key = event@key,
+    previous = event@previous,
+    action = event@action,
+    selection = event@selection,
+    actor = event@actor,
+    reason = event@reason,
+    purpose = event@purpose
+  )
 }
 
 tempest_artifact_report_validate <- function(bundle, report) {

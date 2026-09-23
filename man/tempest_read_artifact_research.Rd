@@ -7,7 +7,7 @@
 tempest_read_artifact_research(store, selection)
 }
 \arguments{
-\item{store}{A \code{graft::graft_artifact_store()} handle. Applications enforce
+\item{store}{A \code{graft::graft_store()} handle. Applications enforce
 access to this trusted local, single-writer store.}
 
 \item{selection}{Exact digest returned by \code{\link[=tempest_publish_artifact_research]{tempest_publish_artifact_research()}}.}
