@@ -161,7 +161,8 @@ store <- graft::graft_store("research-artifacts", create = TRUE)
 selection <- tempest_publish_artifact_research(result, store)
 # The host explicitly reviews the complete evidence and report.
 accepted <- graft::graft_accept(
-  store, selection, "battery-recycling", expected = NULL, key = "review-1",
+  store, graft::graft_read_selection(store, selection), "battery-recycling",
+  expected = NULL, key = "review-1",
   actor = "reviewer", reason = "Evidence reviewed", purpose = "research"
 )
 ```
@@ -200,7 +201,8 @@ proposed_review <- tempest_trajectory_review(
 artifact_store <- graft::graft_store("research-artifacts", create = TRUE)
 selection <- tempest_publish_artifact_research(result, artifact_store)
 accepted <- graft::graft_accept(
-  artifact_store, selection, "research", expected = NULL, key = "review-1",
+  artifact_store, graft::graft_read_selection(artifact_store, selection),
+  "research", expected = NULL, key = "review-1",
   actor = "reviewer", reason = "Reviewed the evidence", purpose = "briefing"
 )
 accepted_review <- tempest_trajectory_review(

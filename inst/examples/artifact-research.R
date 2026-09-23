@@ -22,7 +22,7 @@ artifact_research_example <- function() {
   accept <- function(key, expected, selection) {
     graft::graft_accept(
       store,
-      selection,
+      graft::graft_read_selection(store, selection),
       "pilot",
       expected = expected,
       key = key,
