@@ -183,7 +183,8 @@ tempest_read_artifact_research <- function(store, selection) {
         "Research evidence identity differs from its proof."
       )
     }
-    item <- graft::graft_read(store, tempest_graft_ref_value(saved$ref))
+    saved_ref <- tempest_graft_ref_value(saved$ref)
+    item <- graft::graft_read(store, saved_ref)
     dependencies <- unname(refs[record$dependencies])
     if (
       !identical(item@bytes, charToRaw(enc2utf8(record$content))) ||
@@ -197,11 +198,11 @@ tempest_read_artifact_research <- function(store, selection) {
         "Research evidence content or dependencies differ from its proof."
       )
     }
-    refs[[record$id]] <- saved$ref
+    refs[[record$id]] <- saved_ref
     contents[[record$id]] <- record$content
     records[[i]] <- list(
       record_id = record$id,
-      revision_id = saved$ref$revision,
+      revision_id = saved_ref@revision,
       class = record$class,
       sha256 = digest::digest(item@bytes, algo = "sha256", serialize = FALSE),
       dependencies = lapply(dependencies, function(ref) {
