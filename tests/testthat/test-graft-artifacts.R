@@ -167,7 +167,7 @@ test_that("completed research retains exact report, proof and source contents", 
     tempest_read_artifact_research(store, selection)$report_md,
     retained$report_md
   )
-  expect_identical(
+  expect_error(
     test_graft_decide(
       store,
       "topic",
@@ -179,7 +179,8 @@ test_that("completed research retains exact report, proof and source contents", 
       reason = "Reviewed",
       purpose = "briefing"
     ),
-    accepted
+    "historical event",
+    class = "graft_stale_review_error"
   )
   expect_identical(
     test_graft_read_decision(store, "topic"),

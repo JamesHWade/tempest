@@ -132,7 +132,11 @@ test_that("contradictory research executes and preserves the prior evidence", {
     eligible = \(event) TRUE
   )
   expect_identical(fresh@artifact_selection$selection_id, corrected_selection)
-  expect_identical(accept("original", NULL, old_selection), accepted)
+  expect_error(
+    accept("original", NULL, old_selection),
+    "historical event",
+    class = "graft_stale_review_error"
+  )
   expect_identical(
     test_graft_read_decision(store, "daily"),
     reviewed
