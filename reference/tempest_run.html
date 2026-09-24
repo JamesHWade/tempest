@@ -92,8 +92,13 @@ writes a cited report in Markdown.
 
 
 <dt id="arg-retriever">retriever<a class="anchor" aria-label="anchor" href="#arg-retriever"></a></dt>
-<dd><p>Optional <code>TempestRetriever</code>. If <code>NULL</code>, created from
-<code>config</code>.</p></dd>
+<dd><p>Optional <code>TempestRetriever</code> or compatible retriever with a
+<a href="ResearchWorkspace.html">ResearchWorkspace</a> at <code>$workspace</code> and <code>search(query, k)</code> and
+<code>fetch(url)</code> methods. <code><a href="https://rdrr.io/r/base/search.html" class="external-link">search()</a></code> returns a data frame with non-empty
+<code>title</code> and HTTP/HTTPS <code>url</code> columns; <code>snippet</code> is optional. Tempest
+derives or verifies <code>source_id</code>. Create the workspace with
+<code><a href="tempest_research_workspace.html">tempest_research_workspace()</a></code> and source IDs with <code><a href="tempest_source_id.html">tempest_source_id()</a></code>.
+If <code>NULL</code>, a retriever is created from <code>config</code>.</p></dd>
 
 
 <dt id="arg-knowledge">knowledge<a class="anchor" aria-label="anchor" href="#arg-knowledge"></a></dt>

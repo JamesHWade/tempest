@@ -133,7 +133,11 @@ experts are generated automatically using <code><a href="tempest_generate_expert
 
       <dt><code>retriever</code></dt>
 <dd><p>Optional <code>TempestRetriever</code> or compatible retriever
-object with a <a href="ResearchWorkspace.html">ResearchWorkspace</a> at <code>$workspace</code>.</p></dd>
+object with a <a href="ResearchWorkspace.html">ResearchWorkspace</a> at <code>$workspace</code> and
+<code>search(query, k)</code> and <code>fetch(url)</code> methods. <code><a href="https://rdrr.io/r/base/search.html" class="external-link">search()</a></code> returns a data
+frame with <code>title</code> and HTTP/HTTPS <code>url</code> columns; <code>snippet</code> is optional
+and Tempest derives or verifies <code>source_id</code>. Create the workspace with
+<code><a href="tempest_research_workspace.html">tempest_research_workspace()</a></code> and source IDs with <code><a href="tempest_source_id.html">tempest_source_id()</a></code>.</p></dd>
 
       <dt><code>progress</code></dt>
 <dd><p>Optional function called with <code>tempest_progress_event</code>

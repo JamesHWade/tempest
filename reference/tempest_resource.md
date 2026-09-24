@@ -101,3 +101,17 @@ or database result used during research. Authenticated clients and
 credentials remain host-owned and are never stored here. This record is
 not a generic connection-management contract; its 0.2 role narrows to
 scientific source and context evidence in a research workspace.
+
+## Examples
+
+``` r
+workspace <- tempest_research_workspace()
+resource <- tempest_resource(
+  resource_kind = "web",
+  locator = "https://example.org/study",
+  title = "Study",
+  media_type = "text/html",
+  content = "Study abstract"
+)
+workspace$upsert_retrieved_resource(resource)
+```

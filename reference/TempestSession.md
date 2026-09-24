@@ -107,7 +107,13 @@ for the supported API.
 
   Optional `TempestRetriever` or compatible retriever object with a
   [ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-  at `$workspace`.
+  at `$workspace` and `search(query, k)` and `fetch(url)` methods.
+  [`search()`](https://rdrr.io/r/base/search.html) returns a data frame
+  with `title` and HTTP/HTTPS `url` columns; `snippet` is optional and
+  Tempest derives or verifies `source_id`. Create the workspace with
+  [`tempest_research_workspace()`](https://jameshwade.github.io/tempest/reference/tempest_research_workspace.md)
+  and source IDs with
+  [`tempest_source_id()`](https://jameshwade.github.io/tempest/reference/tempest_source_id.md).
 
 - `progress`:
 

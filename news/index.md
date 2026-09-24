@@ -2,6 +2,18 @@
 
 ## tempest 0.0.0.9000
 
+- Deputy-backed STORM and Co-STORM setup errors now identify safe
+  underlying causes while redacting credential-like details
+  ([\#69](https://github.com/JamesHWade/tempest/issues/69)).
+
+- [`tempest_research_workspace()`](https://jameshwade.github.io/tempest/reference/tempest_research_workspace.md),
+  [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md),
+  and
+  [`tempest_source_id()`](https://jameshwade.github.io/tempest/reference/tempest_source_id.md)
+  now provide supported workspace, fetched evidence, and source identity
+  constructors for host retrievers passed to STORM or Co-STORM
+  ([\#70](https://github.com/JamesHWade/tempest/issues/70)).
+
 - Tempest’s Graft artifact consumer now uses contract 4 task-oriented
   APIs and typed S7 stores, references, selections, artifacts, and
   decisions while preserving exact research identity, reviewed

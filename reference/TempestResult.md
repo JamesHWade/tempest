@@ -29,6 +29,7 @@ TempestResult(
   manifest = NULL,
   state = list(),
   workspace = NULL,
+  config = NULL,
   retriever = NULL
 )
 ```
