@@ -32,17 +32,17 @@ evidence
 With a completed result from `tempest_run()` or `tempest_session()`, use:
 
 ```{r, eval=FALSE}
-store <- graft::graft_artifact_store("research-store", create = TRUE)
+store <- graft::graft_store("research-store", create = TRUE)
 selection <- tempest_publish_artifact_research(result, store)
 # Review the report and evidence before explicitly accepting.
 tempest_read_artifact_research(store, selection)
-accepted <- graft::graft_artifact_decide(
-  store, "pilot", "review-1", expected = NULL, selection = selection,
-  action = "accept", actor = "reviewer", reason = "Evidence reviewed",
-  purpose = "daily-briefing"
+accepted <- graft::graft_accept(
+  store, graft::graft_read_selection(store, selection), "pilot",
+  expected = NULL, key = "review-1",
+  actor = "reviewer", reason = "Evidence reviewed", purpose = "daily-briefing"
 )
 knowledge <- tempest_reuse_artifact_research(
-  store, "pilot", accepted$id, "daily-briefing",
+  store, "pilot", accepted@id, "daily-briefing",
   eligible = function(decision) host_can_consult(decision)
 )
 result <- tempest_run("Pilot recovery briefing", knowledge = knowledge)

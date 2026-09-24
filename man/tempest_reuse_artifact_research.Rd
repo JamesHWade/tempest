@@ -7,7 +7,7 @@
 tempest_reuse_artifact_research(store, stream, decision, purpose, eligible)
 }
 \arguments{
-\item{store}{A \code{graft::graft_artifact_store()} handle. Applications enforce
+\item{store}{A \code{graft::graft_store()} handle. Applications enforce
 access to this trusted local, single-writer store.}
 
 \item{stream}{Graft decision stream.}

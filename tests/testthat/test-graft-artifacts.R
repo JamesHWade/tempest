@@ -1,7 +1,31 @@
+test_that("Tempest targets Graft contract 4 S7 values", {
+  skip_if_not_installed("graft")
+  store <- graft::graft_store(tempfile(), create = TRUE)
+  ref <- graft::graft_save(store, "retained", "contract-4")
+  selection <- graft::graft_select(store, ref)
+  decision <- graft::graft_accept(
+    store,
+    selection,
+    "contract-4",
+    expected = NULL,
+    key = "review-1",
+    actor = "host",
+    reason = "Reviewed",
+    purpose = "research"
+  )
+  recalled <- graft::graft_recall(store, "contract-4", "research", TRUE)
+  expect_s7_class(ref, graft::ArtifactRef)
+  expect_s7_class(selection, graft::ArtifactSelection)
+  expect_s7_class(decision, graft::Decision)
+  expect_s7_class(recalled, graft::Recall)
+  expect_identical(recalled@decision@id, decision@id)
+  expect_identical(recalled@roots[[1L]]@ref, ref)
+})
+
 test_that("completed research retains exact report, proof and source contents", {
   skip_if_not_installed("graft")
   fixture <- test_promotion_storm_fixture()
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
   expect_identical(
     tempest_publish_artifact_research(fixture$research, store),
@@ -18,7 +42,7 @@ test_that("completed research retains exact report, proof and source contents", 
     fixture$resource@content,
     fixed = TRUE
   )
-  accepted <- graft::graft_artifact_decide(
+  accepted <- test_graft_decide(
     store,
     "topic",
     "review-1",
@@ -42,7 +66,7 @@ test_that("completed research retains exact report, proof and source contents", 
       }
     ),
     "eligibility",
-    class = "graft_artifact_error"
+    class = "graft_ineligible_error"
   )
   expect_identical(checks, 2L)
   knowledge <- tempest_reuse_artifact_research(
@@ -92,7 +116,7 @@ test_that("completed research retains exact report, proof and source contents", 
     knowledge@artifact_selection
   )
   retriever <- tempest_retriever(config = fixture$config, workspace = workspace)
-  withdrawal <- graft::graft_artifact_decide(
+  withdrawal <- test_graft_decide(
     store,
     "topic",
     "withdraw-1",
@@ -105,8 +129,8 @@ test_that("completed research retains exact report, proof and source contents", 
   )
   expect_error(
     tempest_session("Briefing", config = fixture$config, knowledge = knowledge),
-    "current acceptance",
-    class = "graft_artifact_error"
+    "current accepted decision",
+    class = "tempest_knowledge_error"
   )
   expect_error(
     tempest_session_resume(
@@ -114,8 +138,8 @@ test_that("completed research retains exact report, proof and source contents", 
       config = fixture$config,
       knowledge = knowledge
     ),
-    "current acceptance",
-    class = "graft_artifact_error"
+    "current accepted decision",
+    class = "tempest_knowledge_error"
   )
   expect_error(
     tempest_session(
@@ -143,8 +167,8 @@ test_that("completed research retains exact report, proof and source contents", 
     tempest_read_artifact_research(store, selection)$report_md,
     retained$report_md
   )
-  expect_identical(
-    graft::graft_artifact_decide(
+  expect_error(
+    test_graft_decide(
       store,
       "topic",
       "review-1",
@@ -155,10 +179,11 @@ test_that("completed research retains exact report, proof and source contents", 
       reason = "Reviewed",
       purpose = "briefing"
     ),
-    accepted
+    "historical event",
+    class = "graft_stale_review_error"
   )
   expect_identical(
-    graft::graft_artifact_read_decision(store, "topic"),
+    test_graft_read_decision(store, "topic"),
     withdrawal
   )
 })
@@ -169,12 +194,12 @@ test_that("fresh reviews, corrections and current host eligibility stay distinct
   corrected <- test_promotion_storm_fixture(
     evidence_text = "Corrected evidence contradicts the initial result."
   )
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   first <- tempest_publish_artifact_research(initial$research, store)
   second <- tempest_publish_artifact_research(corrected$research, store)
   expect_identical(identical(first, second), FALSE)
   accept <- function(key, expected, selection) {
-    graft::graft_artifact_decide(
+    test_graft_decide(
       store,
       "topic",
       key,
@@ -202,14 +227,14 @@ test_that("fresh reviews, corrections and current host eligibility stay distinct
   expect_error(
     tempest_session("Briefing", config = initial$config, knowledge = knowledge),
     "eligibility",
-    class = "graft_artifact_error"
+    class = "graft_ineligible_error"
   )
   allowed <- TRUE
   correction <- accept("three", unchanged$id, second)
   expect_error(
     tempest_knowledge_argument(knowledge),
-    "current acceptance",
-    class = "graft_artifact_error"
+    "current accepted decision",
+    class = "tempest_knowledge_error"
   )
   expect_error(
     accept("three", unchanged$id, first),
@@ -241,15 +266,15 @@ test_that("fresh reviews, corrections and current host eligibility stay distinct
       "another-purpose",
       eligible = function(event) TRUE
     ),
-    "current acceptance",
-    class = "graft_artifact_error"
+    "different purpose",
+    class = "graft_purpose_error"
   )
   reopened <- callr::r(
     function(checkout, store_path, selection, decision) {
       if (!is.null(checkout)) {
         pkgload::load_all(checkout, quiet = TRUE)
       }
-      store <- graft::graft_artifact_store(store_path)
+      store <- test_graft_store(store_path)
       history <- tempest::tempest_read_artifact_research(store, selection)
       knowledge <- tempest::tempest_reuse_artifact_research(
         store,
@@ -266,7 +291,7 @@ test_that("fresh reviews, corrections and current host eligibility stay distinct
       } else {
         NULL
       },
-      store_path = store$path,
+      store_path = store@path,
       selection = first,
       decision = correction$id
     )
@@ -278,24 +303,24 @@ test_that("fresh reviews, corrections and current host eligibility stay distinct
 test_that("semantically invalid selections fail even with valid Graft hashes", {
   skip_if_not_installed("graft")
   fixture <- test_promotion_storm_fixture()
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
-  root_ref <- graft::graft_artifact_read_selection(store, selection)$roots[[1L]]
-  root <- graft::graft_artifact_read(store, root_ref)
-  alias <- graft::graft_artifact_save(
+  root_ref <- test_graft_read_selection(store, selection)$roots[[1L]]
+  root <- test_graft_read(store, root_ref)
+  alias <- test_graft_save(
     store,
     "aliased-research",
     root$bytes,
     "application/json",
     dependencies = root$metadata$dependencies
   )
-  alias_selection <- graft::graft_artifact_select(store, list(alias))
+  alias_selection <- test_graft_select(store, list(alias))
   expect_error(
     tempest_read_artifact_research(store, alias_selection),
     "proposal identity",
     class = "tempest_knowledge_error"
   )
-  alias_decision <- graft::graft_artifact_decide(
+  alias_decision <- test_graft_decide(
     store,
     "alias",
     "one",
@@ -319,7 +344,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
   )
   candidate <- jsonlite::fromJSON(rawToChar(root$bytes), simplifyVector = FALSE)
   duplicate <- c(candidate, list(format = "unknown-format"))
-  duplicate_ref <- graft::graft_artifact_save(
+  duplicate_ref <- test_graft_save(
     store,
     root_ref$id,
     charToRaw(as.character(jsonlite::toJSON(
@@ -334,7 +359,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
   expect_error(
     tempest_read_artifact_research(
       store,
-      graft::graft_artifact_select(store, list(duplicate_ref))
+      test_graft_select(store, list(duplicate_ref))
     ),
     "Unsupported",
     class = "tempest_knowledge_error"
@@ -344,7 +369,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
   for (bad_bundle in list("bad", NULL, list(), invalid_version)) {
     malformed <- candidate
     malformed["bundle"] <- list(bad_bundle)
-    malformed_ref <- graft::graft_artifact_save(
+    malformed_ref <- test_graft_save(
       store,
       root_ref$id,
       charToRaw(as.character(jsonlite::toJSON(
@@ -359,7 +384,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
     error <- expect_error(
       tempest_read_artifact_research(
         store,
-        graft::graft_artifact_select(store, list(malformed_ref))
+        test_graft_select(store, list(malformed_ref))
       ),
       "invalid bundle",
       class = "tempest_knowledge_error"
@@ -390,7 +415,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
       } else {
         malformed$records[[1L]]["ref"] <- list(bad_ref)
       }
-      malformed_ref <- graft::graft_artifact_save(
+      malformed_ref <- test_graft_save(
         store,
         root_ref$id,
         charToRaw(as.character(jsonlite::toJSON(
@@ -405,7 +430,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
       expect_error(
         tempest_read_artifact_research(
           store,
-          graft::graft_artifact_select(store, list(malformed_ref))
+          test_graft_select(store, list(malformed_ref))
         ),
         "identity",
         class = "tempest_knowledge_error"
@@ -414,7 +439,7 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
   }
   named_records <- candidate
   names(named_records$records) <- paste0("record", seq_along(candidate$records))
-  named_ref <- graft::graft_artifact_save(
+  named_ref <- test_graft_save(
     store,
     root_ref$id,
     charToRaw(as.character(jsonlite::toJSON(
@@ -429,13 +454,13 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
   expect_error(
     tempest_read_artifact_research(
       store,
-      graft::graft_artifact_select(store, list(named_ref))
+      test_graft_select(store, list(named_ref))
     ),
     "cover its evidence",
     class = "tempest_knowledge_error"
   )
   candidate$records <- candidate$records[-1L]
-  forged <- graft::graft_artifact_save(
+  forged <- test_graft_save(
     store,
     root_ref$id,
     charToRaw(as.character(jsonlite::toJSON(
@@ -447,13 +472,13 @@ test_that("semantically invalid selections fail even with valid Graft hashes", {
     "application/json",
     dependencies = root$metadata$dependencies
   )
-  selection <- graft::graft_artifact_select(store, list(forged))
+  selection <- test_graft_select(store, list(forged))
   expect_error(
     tempest_read_artifact_research(store, selection),
     "cover its evidence",
     class = "tempest_knowledge_error"
   )
-  accepted <- graft::graft_artifact_decide(
+  accepted <- test_graft_decide(
     store,
     "forged",
     "one",
@@ -482,9 +507,9 @@ test_that("an unchanged research day executes with native accepted evidence", {
   initial <- test_promotion_storm_fixture(
     evidence_text = "STORM progress emits stage events."
   )
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(initial$research, store)
-  accepted <- graft::graft_artifact_decide(
+  accepted <- test_graft_decide(
     store,
     "daily",
     "day-one",
@@ -495,7 +520,7 @@ test_that("an unchanged research day executes with native accepted evidence", {
     "Reviewed evidence",
     "briefing"
   )
-  reviewed <- graft::graft_artifact_decide(
+  reviewed <- test_graft_decide(
     store,
     "daily",
     "day-two",
@@ -599,7 +624,7 @@ test_that("an unchanged research day executes with native accepted evidence", {
     "artifact_selection",
     vapply(review@joins$items, `[[`, character(1), "to_type")
   )
-  withdrawal <- graft::graft_artifact_decide(
+  withdrawal <- test_graft_decide(
     store,
     "daily",
     "withdraw",
@@ -613,7 +638,7 @@ test_that("an unchanged research day executes with native accepted evidence", {
   expect_identical(tempest_trajectory_review(result), review)
   expect_error(
     tempest_session("New work", config = fixture$config, knowledge = knowledge),
-    class = "graft_artifact_error"
+    class = "tempest_knowledge_error"
   )
 
   expect_identical(
@@ -638,7 +663,7 @@ test_that("multiline accepted claims retain their complete no-change identity", 
   skip_if_not_installed("graft")
   statement <- "The first line remains true.\nstatement_text: The second line remains true."
   fixture <- test_promotion_storm_fixture(evidence_text = statement)
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
   retained <- tempest_read_artifact_research(store, selection)
   claim_id <- paste0(
@@ -649,7 +674,7 @@ test_that("multiline accepted claims retain their complete no-change identity", 
     jsonlite::fromJSON(retained$contents[[claim_id]], simplifyVector = FALSE),
     retained$bundle@records$Claim[[1L]]
   )
-  accepted <- graft::graft_artifact_decide(
+  accepted <- test_graft_decide(
     store,
     "topic",
     "review",
@@ -764,12 +789,12 @@ test_that("snapshot validation precedes fresh artifact admission", {
 test_that("malformed retained report bytes raise knowledge errors", {
   skip_if_not_installed("graft")
   fixture <- test_promotion_storm_fixture()
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
-  root_ref <- graft::graft_artifact_read_selection(store, selection)$roots[[1L]]
-  root <- graft::graft_artifact_read(store, root_ref)
+  root_ref <- test_graft_read_selection(store, selection)$roots[[1L]]
+  root <- test_graft_read(store, root_ref)
   candidate <- jsonlite::fromJSON(rawToChar(root$bytes), simplifyVector = FALSE)
-  report <- graft::graft_artifact_read(store, candidate$report)
+  report <- test_graft_read(store, candidate$report)
   for (bytes in list(
     c(charToRaw("bad"), as.raw(0), charToRaw("report")),
     as.raw(255),
@@ -777,14 +802,14 @@ test_that("malformed retained report bytes raise knowledge errors", {
     charToRaw("A different report")
   )) {
     invalid <- candidate
-    invalid$report <- graft::graft_artifact_save(
+    invalid$report <- test_graft_save(
       store,
       candidate$report$id,
       bytes,
       "text/markdown",
       dependencies = report$metadata$dependencies
     )
-    invalid_root <- graft::graft_artifact_save(
+    invalid_root <- test_graft_save(
       store,
       root_ref$id,
       charToRaw(as.character(jsonlite::toJSON(
@@ -799,7 +824,7 @@ test_that("malformed retained report bytes raise knowledge errors", {
     expect_error(
       tempest_read_artifact_research(
         store,
-        graft::graft_artifact_select(store, list(invalid_root))
+        test_graft_select(store, list(invalid_root))
       ),
       class = "tempest_knowledge_error"
     )

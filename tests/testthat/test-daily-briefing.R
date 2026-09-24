@@ -5,14 +5,14 @@ test_that("daily briefing checkpoints preserve exact history across processes", 
   recipe <- system.file("examples", "briefing-basis.R", package = "tempest")
   sys.source(recipe, host)
   directory <- withr::local_tempdir()
-  store <- graft::graft_artifact_store(
+  store <- test_graft_store(
     file.path(directory, "artifacts"),
     create = TRUE
   )
   initial <- test_promotion_storm_fixture("day-one", "The pilot recovered 82%.")
   selection <- tempest_publish_artifact_research(initial$research, store)
   accept <- function(key, expected, selection) {
-    graft::graft_artifact_decide(
+    test_graft_decide(
       store,
       "pilot",
       key,
@@ -48,7 +48,7 @@ test_that("daily briefing checkpoints preserve exact history across processes", 
   )
   expect_error(
     host$reuse_briefing_basis(store, basis, eligible = function(event) TRUE),
-    class = "graft_artifact_error"
+    class = "tempest_knowledge_error"
   )
   corrected <- test_promotion_storm_fixture(
     "corrected",
@@ -68,7 +68,7 @@ test_that("daily briefing checkpoints preserve exact history across processes", 
       }
       host <- new.env(parent = baseenv())
       sys.source(recipe, host)
-      store <- graft::graft_artifact_store(path)
+      store <- test_graft_store(path)
       historical <- host$read_briefing_basis(store, readRDS(saved))
       basis <- host$capture_briefing_basis(store, "pilot", current, "briefing")
       knowledge <- host$reuse_briefing_basis(

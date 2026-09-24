@@ -11,13 +11,13 @@ test_that("contradictory research executes and preserves the prior evidence", {
     verbose = FALSE
   )
   directory <- withr::local_tempdir()
-  store <- graft::graft_artifact_store(
+  store <- test_graft_store(
     file.path(directory, "artifacts"),
     create = TRUE
   )
   old_selection <- tempest_publish_artifact_research(original, store)
   accept <- function(key, expected, selection) {
-    graft::graft_artifact_decide(
+    test_graft_decide(
       store,
       "daily",
       key,
@@ -40,8 +40,8 @@ test_that("contradictory research executes and preserves the prior evidence", {
     old$bundle@records$Claim[[1L]]$statement_text,
     "STORM progress emits stage events."
   )
-  old_refs <- graft::graft_artifact_read_selection(store, old_selection)
-  store <- graft::graft_artifact_store(file.path(directory, "artifacts"))
+  old_refs <- test_graft_read_selection(store, old_selection)
+  store <- test_graft_store(file.path(directory, "artifacts"))
   knowledge <- tempest_reuse_artifact_research(
     store,
     "daily",
@@ -78,7 +78,7 @@ test_that("contradictory research executes and preserves the prior evidence", {
   corrected_selection <- tempest_publish_artifact_research(correction, store)
   proposed <- tempest_read_artifact_research(store, corrected_selection)
   expect_identical(
-    graft::graft_artifact_read_decision(store, "daily"),
+    test_graft_read_decision(store, "daily"),
     accepted
   )
   expect_identical(
@@ -98,16 +98,16 @@ test_that("contradictory research executes and preserves the prior evidence", {
   expect_identical(identical(reviewed$selection, accepted$selection), FALSE)
   expect_error(
     tempest_knowledge_argument(knowledge),
-    "current acceptance",
-    class = "graft_artifact_error"
+    "current accepted decision",
+    class = "tempest_knowledge_error"
   )
   expect_identical(tempest_read_artifact_research(store, old_selection), old)
   expect_identical(
-    graft::graft_artifact_read_selection(store, old_selection),
+    test_graft_read_selection(store, old_selection),
     old_refs
   )
   expect_identical(
-    graft::graft_artifact_read_decision(store, "daily", accepted$id),
+    test_graft_read_decision(store, "daily", accepted$id),
     accepted
   )
   expect_identical(length(old$bundle@records$ClaimSupport) > 0L, TRUE)
@@ -132,9 +132,13 @@ test_that("contradictory research executes and preserves the prior evidence", {
     eligible = \(event) TRUE
   )
   expect_identical(fresh@artifact_selection$selection_id, corrected_selection)
-  expect_identical(accept("original", NULL, old_selection), accepted)
+  expect_error(
+    accept("original", NULL, old_selection),
+    "historical event",
+    class = "graft_stale_review_error"
+  )
   expect_identical(
-    graft::graft_artifact_read_decision(store, "daily"),
+    test_graft_read_decision(store, "daily"),
     reviewed
   )
   reopened <- callr::r(
@@ -142,7 +146,7 @@ test_that("contradictory research executes and preserves the prior evidence", {
       if (!is.null(checkout)) {
         pkgload::load_all(checkout, quiet = TRUE)
       }
-      store <- graft::graft_artifact_store(path)
+      store <- test_graft_store(path)
       old <- tempest::tempest_read_artifact_research(store, old_selection)
       current <- tempest::tempest_reuse_artifact_research(
         store,
@@ -192,7 +196,7 @@ test_that("contradictory research executes and preserves the prior evidence", {
   )
   expect_identical(data$knowledge$proposal$selection_id, corrected_selection)
   expect_identical(data$knowledge$acceptance$decision_id, reviewed$id)
-  withdrawal <- graft::graft_artifact_decide(
+  withdrawal <- test_graft_decide(
     store,
     "daily",
     "withdraw",
@@ -221,6 +225,6 @@ test_that("contradictory research executes and preserves the prior evidence", {
       "briefing",
       eligible = \(event) TRUE
     ),
-    class = "graft_artifact_error"
+    class = "tempest_knowledge_error"
   )
 })

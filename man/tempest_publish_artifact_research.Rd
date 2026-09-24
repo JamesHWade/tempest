@@ -15,7 +15,7 @@ tempest_publish_artifact_research(
 \item{research}{A completed research product accepted by
 \code{\link[=tempest_promotion_bundle]{tempest_promotion_bundle()}}, or a validated \code{TempestPromotionBundle}.}
 
-\item{store}{A \code{graft::graft_artifact_store()} handle. Applications enforce
+\item{store}{A \code{graft::graft_store()} handle. Applications enforce
 access to this trusted local, single-writer store.}
 
 \item{claim_ids}{Optional exact claim selection, passed to
@@ -33,7 +33,8 @@ the same artifacts; corrected contents retain the earlier selection.
 Publish the validated proposal, exact source bodies, evidence, program
 provenance and readable report as one immutable selection. Publication is
 not acceptance. The host reviews the selection and explicitly calls
-\code{graft::graft_artifact_decide()} to accept or withdraw it.
+\code{graft::graft_accept()} to accept it or \code{\link[graft:graft_withdraw]{graft::graft_withdraw()}} to
+withdraw it.
 }
 \seealso{
 \code{\link[=tempest_read_artifact_research]{tempest_read_artifact_research()}}, \code{\link[=tempest_reuse_artifact_research]{tempest_reuse_artifact_research()}}

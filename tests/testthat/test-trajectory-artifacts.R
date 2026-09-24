@@ -1,6 +1,6 @@
 test_that("artifact publication is distinct from recorded acceptance and current reuse", {
   fixture <- test_promotion_storm_fixture()
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
   proposed <- tempest_trajectory_review(
     fixture$research,
@@ -10,7 +10,7 @@ test_that("artifact publication is distinct from recorded acceptance and current
   expect_identical(proposed@knowledge$promotion_state, "proposed")
   expect_identical(proposed@knowledge$proposal$selection_id, selection)
   expect_null(proposed@knowledge$acceptance)
-  accepted <- graft::graft_artifact_decide(
+  accepted <- test_graft_decide(
     store,
     "research",
     "accept",
@@ -39,7 +39,7 @@ test_that("artifact publication is distinct from recorded acceptance and current
   expect_null(review@knowledge$acceptance$reason)
   relations <- vapply(review@joins$items, `[[`, character(1), "relation")
   expect_in(c("published_as", "accepted_as"), relations)
-  withdrawal <- graft::graft_artifact_decide(
+  withdrawal <- test_graft_decide(
     store,
     "research",
     "withdraw",
@@ -78,17 +78,17 @@ test_that("artifact publication is distinct from recorded acceptance and current
       "briefing",
       eligible = \(event) TRUE
     ),
-    class = "graft_artifact_error"
+    class = "tempest_knowledge_error"
   )
 })
 
 test_that("publication review rejects cross-product and cross-selection bindings", {
   fixture <- test_promotion_storm_fixture()
   other <- test_promotion_storm_fixture(run_id = "research-other")
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
   other_selection <- tempest_publish_artifact_research(other$research, store)
-  accepted <- graft::graft_artifact_decide(
+  accepted <- test_graft_decide(
     store,
     "research",
     "accept",
@@ -190,9 +190,9 @@ test_that("input selection projection is bounded and contains only inspection id
 
 test_that("closed reviews reject obsolete schemas and inconsistent publication joins", {
   fixture <- test_promotion_storm_fixture()
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
-  event <- graft::graft_artifact_decide(
+  event <- test_graft_decide(
     store,
     "research",
     "accept",
@@ -383,9 +383,9 @@ test_that("reconstructed reviews enforce bounded and canonical input identities"
 
 test_that("decision labels retain the store bounds in reconstructed reviews", {
   fixture <- test_promotion_storm_fixture()
-  store <- graft::graft_artifact_store(tempfile(), create = TRUE)
+  store <- test_graft_store(tempfile(), create = TRUE)
   selection <- tempest_publish_artifact_research(fixture$research, store)
-  event <- graft::graft_artifact_decide(
+  event <- test_graft_decide(
     store,
     "research",
     "accept",

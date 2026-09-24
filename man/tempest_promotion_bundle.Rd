@@ -24,7 +24,7 @@ A deterministic \code{TempestPromotionBundle} proposal.
 \code{tempest_promotion_bundle()} validates a completed research product and
 packages only promotable claims and their exact pair-level evidence. It does
 not write accepted knowledge. Publish with \code{\link[=tempest_publish_artifact_research]{tempest_publish_artifact_research()}}
-and call \code{graft::graft_artifact_decide()} after host review.
+and call \code{graft::graft_accept()} after host review.
 Loose Workspace, Manifest, or StageRecord tuples are not accepted. The
 promotion payload remains the exact schema-1 evidence-only product shape;
 the terminal report is an eligibility gate and is not copied into it.
