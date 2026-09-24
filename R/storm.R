@@ -64,8 +64,10 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #'
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
-#' @param retriever Optional `TempestRetriever`. If `NULL`, created from
-#'   `config`.
+#' @param retriever Optional `TempestRetriever` or compatible retriever with a
+#'   [ResearchWorkspace] at `$workspace`. Create the workspace with
+#'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
+#'   If `NULL`, a retriever is created from `config`.
 #' @param knowledge Optional accepted organizational knowledge from
 #'   [tempest_artifact_knowledge()]. It supplies
 #'   accepted evidence records without selecting or authorizing executable

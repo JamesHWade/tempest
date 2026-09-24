@@ -1,9 +1,16 @@
 # Data models and stores
 
-#' Create a deterministic source id from a URL
-#' @param url URL
-#' @return Source id like "Sxxxxxxxxxxxx"
-#' @keywords internal
+#' Create a deterministic source ID from a URL
+#'
+#' Use this when a host retriever constructs search results or fetched sources
+#' for [tempest_run()] or [tempest_session()]. The same trimmed URL always
+#' produces the same ID.
+#'
+#' @param url A single non-empty URL string.
+#' @return A source ID such as `"Sxxxxxxxxxxxx"`.
+#' @examples
+#' tempest_source_id("https://example.org/study")
+#' @export
 tempest_source_id <- function(url) {
   url <- tempest_trim(url)
   if (length(url) != 1 || is.na(url) || url == "") {
@@ -2138,14 +2145,19 @@ ResearchWorkspace <- R6::R6Class(
 #'
 #' `tempest_research_workspace()` creates the run-scoped ledger for material
 #' gathered or proposed during scientific research. Accepted knowledge remains
-#' in Graft; this workspace retains exact artifact selection references and
-#' materialized evidence for inspection. Reuse requires fresh host admission.
+#' in its authoritative store; this workspace retains exact selection
+#' references and materialized evidence for inspection. Reuse requires fresh
+#' host admission.
 #'
 #' @param artifact_selection Exact artifact input retained by the workspace.
 #' @param max_sources Maximum number of unique resources admitted.
 #'
-#' @return A [ResearchWorkspace] object.
-#' @keywords internal
+#' @return A [ResearchWorkspace] object. Supply it as a custom retriever's
+#'   `$workspace` so Tempest and the host write to the same research ledger.
+#' @examples
+#' workspace <- tempest_research_workspace(max_sources = 10L)
+#' inherits(workspace, "ResearchWorkspace")
+#' @export
 tempest_research_workspace <- function(
   max_sources = Inf,
 

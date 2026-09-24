@@ -737,7 +737,9 @@ TempestSession <- R6::R6Class(
     #' @param experts Optional list of validated expert profiles. If `NULL`,
     #'   experts are generated automatically using `tempest_generate_experts()`.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
-    #'   object with a [ResearchWorkspace] at `$workspace`.
+    #'   object with a [ResearchWorkspace] at `$workspace`. Create the
+    #'   workspace with [tempest_research_workspace()] and source IDs with
+    #'   [tempest_source_id()].
     #' @param progress Optional function called with `tempest_progress_event`
     #'   objects as the session makes progress.
     #' @param session_id Optional stable session identifier. If `NULL`, a new
@@ -1045,8 +1047,14 @@ TempestSession <- R6::R6Class(
           }
         ),
         error = function(error) {
+          parent <- if (tempest_condition_chain_sensitive(error)) {
+            tempest_condition_safe_summary(error)
+          } else {
+            error
+          }
           tempest_costorm_session_abort(
-            "The moderator Deputy execution session could not be created."
+            "The moderator Deputy execution session could not be created.",
+            parent = parent
           )
         }
       )
@@ -2574,7 +2582,8 @@ tempest_session_set_report_value <- function(session, report_md) {
 #' @param experts Optional list of validated expert profiles. If `NULL`,
 #'   experts are generated automatically.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
-#'   with a [ResearchWorkspace] at `$workspace`.
+#'   with a [ResearchWorkspace] at `$workspace`. Create the workspace with
+#'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
 #' @param progress Optional function called with `tempest_progress_event`
 #'   objects as the session makes progress.
 #' @param session_id Optional stable session identifier. If `NULL`, a new

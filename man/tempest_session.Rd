@@ -26,7 +26,8 @@ tempest_session(
 experts are generated automatically.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
-with a \link{ResearchWorkspace} at \verb{$workspace}.}
+with a \link{ResearchWorkspace} at \verb{$workspace}. Create the workspace with
+\code{\link[=tempest_research_workspace]{tempest_research_workspace()}} and source IDs with \code{\link[=tempest_source_id]{tempest_source_id()}}.}
 
 \item{progress}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}

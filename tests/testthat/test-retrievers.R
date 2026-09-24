@@ -14,6 +14,26 @@ test_that("search result helpers return the standard retriever shape", {
   expect_equal(results$snippet, NA_character_)
 })
 
+test_that("hosts can construct the documented retriever workspace and IDs", {
+  url <- "https://example.com/host-retriever"
+  workspace <- tempest::tempest_research_workspace()
+  retriever <- list(workspace = workspace)
+
+  expect_r6_class(workspace, "ResearchWorkspace")
+  expect_identical(
+    tempest:::tempest_storm_retriever_workspace(retriever),
+    workspace
+  )
+  expect_identical(
+    tempest:::tempest_costorm_retriever_workspace(retriever),
+    workspace
+  )
+  expect_identical(
+    tempest::tempest_source_id(url),
+    paste0("S", substr(digest::digest(url, algo = "xxhash64"), 1L, 12L))
+  )
+})
+
 test_that("retrievers own one authoritative research workspace", {
   cfg <- tempest_config(cache_dir = withr::local_tempdir())
   retriever <- tempest_retriever(config = cfg)

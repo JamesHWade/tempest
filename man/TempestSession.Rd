@@ -80,7 +80,9 @@ part of the persistence or public API contract.
       \item{\code{experts}}{Optional list of validated expert profiles. If \code{NULL},
 experts are generated automatically using \code{tempest_generate_experts()}.}
       \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
-object with a \link{ResearchWorkspace} at \verb{$workspace}.}
+object with a \link{ResearchWorkspace} at \verb{$workspace}. Create the
+workspace with \code{\link[=tempest_research_workspace]{tempest_research_workspace()}} and source IDs with
+\code{\link[=tempest_source_id]{tempest_source_id()}}.}
       \item{\code{progress}}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}
       \item{\code{session_id}}{Optional stable session identifier. If \code{NULL}, a new

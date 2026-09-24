@@ -1,3 +1,32 @@
+test_that("moderator setup preserves a safe cause and redacts credentials", {
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+  experts <- list(test_expert(name = "Setup Expert"))
+  setup_error <- function(message) {
+    local_mocked_bindings(
+      tempest_deputy_chat_adapter = function(...) stop(message)
+    )
+    tryCatch(
+      tempest_session("Moderator setup", config = config, experts = experts),
+      error = identity
+    )
+  }
+
+  plain <- setup_error("Deputy setup contract changed")
+  expect_s3_class(plain, "tempest_session_error")
+  expect_s3_class(plain$parent, "simpleError")
+  expect_identical(
+    conditionMessage(plain$parent),
+    "Deputy setup contract changed"
+  )
+
+  secret <- "sk-proj-SUPERSECRET0123456789"
+  sensitive <- setup_error(secret)
+  expect_s3_class(sensitive$parent, "tempest_redacted_cause")
+  expect_no_match(conditionMessage(sensitive$parent), secret, fixed = TRUE)
+})
+
 test_that("Deputy expert session IDs bind owner and preserve instances", {
   run_id <- "tempest-run-session-owner"
   first <- tempest:::tempest_deputy_expert_session_id(run_id, "expert.first")

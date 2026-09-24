@@ -1,3 +1,31 @@
+test_that("Deputy adapter guard retains a safe setup failure", {
+  error <- tryCatch(
+    tempest:::tempest_deputy_adapter_guard(
+      stop("graft_snapshot is unavailable")
+    ),
+    error = identity
+  )
+
+  expect_s3_class(error, "tempest_deputy_adapter_error")
+  expect_s3_class(error$parent, "simpleError")
+  expect_identical(
+    conditionMessage(error$parent),
+    "graft_snapshot is unavailable"
+  )
+
+  secret <- "sk-proj-SUPERSECRET0123456789"
+  sensitive_error <- tryCatch(
+    tempest:::tempest_deputy_adapter_guard(stop(secret)),
+    error = identity
+  )
+  expect_s3_class(sensitive_error$parent, "tempest_redacted_cause")
+  expect_no_match(
+    conditionMessage(sensitive_error$parent),
+    secret,
+    fixed = TRUE
+  )
+})
+
 test_that("Deputy adapter freezes the current Chat tool permissions", {
   skip_if_not_installed("deputy")
 
