@@ -59,6 +59,10 @@ test_that("scripted STORM completes with a host retriever", {
   expect_identical(result@retriever, retriever)
   expect_identical(result@config, fixture$config)
   expect_identical(result@manifest@status, "succeeded")
+  expect_identical(
+    as.numeric(fixture$store$max_sources),
+    as.numeric(fixture$config@max_sources)
+  )
 
   resumed <- tempest_run(
     "Host retriever product boundary",

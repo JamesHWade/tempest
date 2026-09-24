@@ -51,6 +51,7 @@ test_that("Co-STORM accepts a host retriever through its public constructor", {
     fetch = function(url) NULL
   )
   config <- tempest_config(
+    max_sources = 1L,
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
 
@@ -63,6 +64,22 @@ test_that("Co-STORM accepts a host retriever through its public constructor", {
 
   expect_r6_class(session, "TempestSession")
   expect_identical(tempest_session_workspace(session), workspace)
+  expect_identical(workspace$max_sources, 1L)
+  workspace$upsert_retrieved_resource(tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/host-first",
+    title = "First",
+    media_type = "text/html"
+  ))
+  expect_error(
+    workspace$upsert_retrieved_resource(tempest_resource(
+      resource_kind = "web",
+      locator = "https://example.org/host-second",
+      title = "Second",
+      media_type = "text/html"
+    )),
+    class = "tempest_research_workspace_error"
+  )
 })
 
 test_that("retrievers own one authoritative research workspace", {

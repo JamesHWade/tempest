@@ -719,6 +719,20 @@ tempest_retriever_compatible <- function(retriever) {
     is.function(retriever[["fetch"]])
 }
 
+tempest_retriever_bind_workspace_budget <- function(
+  retriever,
+  workspace,
+  config
+) {
+  if (
+    !inherits(retriever, "TempestRetriever") &&
+      !isTRUE(workspace$max_sources == config@max_sources)
+  ) {
+    workspace$set_max_sources(config@max_sources)
+  }
+  invisible(workspace)
+}
+
 tempest_host_search_results <- function(results, k) {
   invalid <- function() {
     tempest_abort(

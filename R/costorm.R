@@ -880,6 +880,12 @@ TempestSession <- R6::R6Class(
         )
       }
 
+      tempest_retriever_bind_workspace_budget(
+        private$retriever_value,
+        private$workspace_value,
+        config
+      )
+
       tempest_research_workspace_verification_owner_preflight(
         private$workspace_value,
         restoring = restoring
