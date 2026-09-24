@@ -719,6 +719,63 @@ tempest_retriever_compatible <- function(retriever) {
     is.function(retriever[["fetch"]])
 }
 
+tempest_host_search_results <- function(results, k) {
+  invalid <- function() {
+    tempest_abort(
+      paste0(
+        "A host retriever's search() must return a data frame with ",
+        "non-empty character title and HTTP/HTTPS url columns."
+      ),
+      class = c("tempest_retriever_search_error", "tempest_retriever_error")
+    )
+  }
+  if (
+    !is.data.frame(results) ||
+      !all(c("title", "url") %in% names(results)) ||
+      !is.character(results$title) ||
+      !is.character(results$url) ||
+      anyNA(results$title) ||
+      anyNA(results$url) ||
+      any(!nzchar(tempest_trim(results$title))) ||
+      any(!nzchar(tempest_trim(results$url))) ||
+      nrow(results) > k
+  ) {
+    invalid()
+  }
+  if (!"snippet" %in% names(results)) {
+    results$snippet <- rep(NA_character_, nrow(results))
+  }
+  if (!is.character(results$snippet)) {
+    invalid()
+  }
+  results$title <- tempest_trim(results$title)
+  results$url <- tempest_trim(results$url)
+  source_ids <- tryCatch(
+    vapply(results$url, tempest_source_id, character(1)),
+    error = function(error) invalid()
+  )
+  if (
+    "source_id" %in%
+      names(results) &&
+      !identical(results$source_id, unname(source_ids))
+  ) {
+    tempest_abort(
+      "Host search() source IDs must match their URLs.",
+      class = c("tempest_retriever_search_error", "tempest_retriever_error")
+    )
+  }
+  results$source_id <- unname(source_ids)
+  tibble::as_tibble(results)
+}
+
+tempest_retriever_search <- function(retriever, query, k) {
+  results <- retriever$search(query = query, k = k)
+  if (inherits(retriever, "TempestRetriever")) {
+    return(results)
+  }
+  tempest_host_search_results(results, k)
+}
+
 #' TempestRetriever
 #'
 #' Provides web and Wikipedia retrieval with caching, plus helper methods to

@@ -15,6 +15,7 @@ test_that("the cohesive product surface hides raw internals", {
       "manifest",
       "state",
       "workspace",
+      "config",
       "retriever"
     )
   )

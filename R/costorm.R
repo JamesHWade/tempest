@@ -738,7 +738,9 @@ TempestSession <- R6::R6Class(
     #'   experts are generated automatically using `tempest_generate_experts()`.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
     #'   object with a [ResearchWorkspace] at `$workspace` and
-    #'   `search(query, k)` and `fetch(url)` methods. Create the workspace with
+    #'   `search(query, k)` and `fetch(url)` methods. `search()` returns a data
+    #'   frame with `title` and HTTP/HTTPS `url` columns; `snippet` is optional
+    #'   and Tempest derives or verifies `source_id`. Create the workspace with
     #'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
     #' @param progress Optional function called with `tempest_progress_event`
     #'   objects as the session makes progress.
@@ -2584,7 +2586,9 @@ tempest_session_set_report_value <- function(session, report_md) {
 #'   experts are generated automatically.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
 #'   with a [ResearchWorkspace] at `$workspace` and `search(query, k)` and
-#'   `fetch(url)` methods. Create the workspace with
+#'   `fetch(url)` methods. `search()` returns a data frame with `title` and
+#'   HTTP/HTTPS `url` columns; `snippet` is optional and Tempest derives or
+#'   verifies `source_id`. Create the workspace with
 #'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
 #' @param progress Optional function called with `tempest_progress_event`
 #'   objects as the session makes progress.

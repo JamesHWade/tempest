@@ -82,6 +82,21 @@ test_that("promotion bundle contains only exact promotable research records", {
   )
 })
 
+test_that("completed STORM results retain host retrievers for promotion", {
+  fixture <- test_promotion_storm_fixture(run_id = "research-host-retriever")
+  research <- fixture$research
+  research@retriever <- list(
+    workspace = fixture$workspace,
+    search = function(query, k) tempest:::tempest_empty_search_results(),
+    fetch = function(url) NULL
+  )
+
+  bundle <- tempest_promotion_bundle(research)
+
+  expect_s7_class(bundle, TempestPromotionBundle)
+  expect_identical(research@config, fixture$config)
+})
+
 test_that("promotion accepts an exact succeeded Co-STORM session", {
   fixture <- test_promotion_bundle("costorm")
   bundle <- fixture$bundle

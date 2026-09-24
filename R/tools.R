@@ -806,7 +806,7 @@ tempest_tools_web <- function(
         )
       )
     }
-    retriever$search(query = query, k = k)
+    tempest_retriever_search(retriever, query, k)
   }
 
   fetch_url <- function(url) {

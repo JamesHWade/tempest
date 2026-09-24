@@ -69,7 +69,10 @@ test_that("host retrievers attach research tools with the run's search budget", 
     workspace = workspace,
     search = function(query, k) {
       calls <<- append(calls, list(list(query = query, k = k)))
-      tempest:::tempest_empty_search_results()
+      data.frame(
+        title = "Host result",
+        url = "https://example.org/host-result"
+      )
     },
     fetch = function(url) {
       resource <- tempest::tempest_resource(
@@ -109,8 +112,13 @@ test_that("host retrievers attach research tools with the run's search budget", 
     ),
     ignore.order = TRUE
   )
-  tools$web_search("host query", k = 2L)
+  search_results <- tools$web_search("host query", k = 2L)
   expect_identical(calls, list(list(query = "host query", k = 2L)))
+  expect_identical(
+    search_results$source_id,
+    tempest_source_id("https://example.org/host-result")
+  )
+  expect_identical(search_results$snippet, NA_character_)
   url <- "https://example.org/host-tool"
   fetched <- tools$fetch_url(url)
   source_id <- tempest::tempest_source_id(url)
@@ -124,6 +132,25 @@ test_that("host retrievers attach research tools with the run's search budget", 
     tools$web_search("host query", k = 3L),
     class = "tempest_config_error"
   )
+})
+
+test_that("host search results reject malformed rows before research uses them", {
+  for (results in list(
+    list(list(title = "List result", url = "https://example.org/list")),
+    data.frame(title = "Missing URL"),
+    data.frame(title = "Bad URL", url = "not a URL"),
+    data.frame(
+      title = "Wrong ID",
+      url = "https://example.org/id",
+      source_id = "S000000000000"
+    )
+  )) {
+    retriever <- list(search = function(query, k) results)
+    expect_error(
+      tempest:::tempest_retriever_search(retriever, "host query", 2L),
+      class = "tempest_retriever_search_error"
+    )
+  }
 })
 
 test_that("research tool roles have fixed attachment sets", {

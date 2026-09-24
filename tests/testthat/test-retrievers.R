@@ -19,7 +19,9 @@ test_that("hosts can construct the documented retriever workspace and IDs", {
   workspace <- tempest::tempest_research_workspace()
   retriever <- list(
     workspace = workspace,
-    search = function(query, k) tempest:::tempest_empty_search_results(),
+    search = function(query, k) {
+      data.frame(title = character(), url = character())
+    },
     fetch = function(url) NULL
   )
 
@@ -43,7 +45,9 @@ test_that("Co-STORM accepts a host retriever through its public constructor", {
   workspace <- tempest_research_workspace()
   retriever <- list(
     workspace = workspace,
-    search = function(query, k) tempest:::tempest_empty_search_results(),
+    search = function(query, k) {
+      data.frame(title = character(), url = character())
+    },
     fetch = function(url) NULL
   )
   config <- tempest_config(

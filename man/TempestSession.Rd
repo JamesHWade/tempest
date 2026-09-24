@@ -81,7 +81,9 @@ part of the persistence or public API contract.
 experts are generated automatically using \code{tempest_generate_experts()}.}
       \item{\code{retriever}}{Optional \code{TempestRetriever} or compatible retriever
 object with a \link{ResearchWorkspace} at \verb{$workspace} and
-\code{search(query, k)} and \code{fetch(url)} methods. Create the workspace with
+\code{search(query, k)} and \code{fetch(url)} methods. \code{search()} returns a data
+frame with \code{title} and HTTP/HTTPS \code{url} columns; \code{snippet} is optional
+and Tempest derives or verifies \code{source_id}. Create the workspace with
 \code{\link[=tempest_research_workspace]{tempest_research_workspace()}} and source IDs with \code{\link[=tempest_source_id]{tempest_source_id()}}.}
       \item{\code{progress}}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}
