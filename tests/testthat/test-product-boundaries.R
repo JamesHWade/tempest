@@ -28,6 +28,35 @@ test_that("scripted STORM stays on its product-owned execution path", {
   expect_identical(result@manifest@status, "succeeded")
 })
 
+test_that("scripted STORM completes with a host retriever", {
+  fixture <- storm_progress_fixture()
+  built_in <- fixture$retriever
+  retriever <- list(
+    workspace = fixture$store,
+    search = function(query, k) built_in$search(query, k = k),
+    fetch = function(url) built_in$fetch(url)
+  )
+
+  result <- tempest_run(
+    "Host retriever product boundary",
+    config = fixture$config,
+    retriever = retriever,
+    experts = list(tempest_expert(
+      name = "Host Boundary Expert",
+      title = "Researcher",
+      description = "Exercises a host-owned retriever.",
+      instructions = "Use the supplied evidence."
+    )),
+    max_questions_per_perspective = 1,
+    verbose = FALSE
+  )
+
+  expect_s7_class(result, TempestResult)
+  expect_identical(result@retriever, retriever)
+  expect_identical(result@config, fixture$config)
+  expect_identical(result@manifest@status, "succeeded")
+})
+
 test_that("Co-STORM exposes only the explicit product turn seam", {
   session <- tempest_session(
     "T8 Co-STORM product boundary",
