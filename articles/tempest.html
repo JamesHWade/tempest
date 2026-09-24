@@ -263,12 +263,13 @@ review without granting Tempest acceptance authority:</p>
 <span>  expected_bundle_id <span class="op">=</span> <span class="va">trusted_bundle_id</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_store.html" class="external-link">graft_artifact_store</a></span><span class="op">(</span><span class="st">"research-artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_store.html" class="external-link">graft_store</a></span><span class="op">(</span><span class="st">"research-artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">store</span><span class="op">)</span></span>
 <span><span class="co"># Host review and acceptance remain explicit; saving alone does not approve.</span></span>
-<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
-<span>  <span class="va">store</span>, <span class="st">"research"</span>, <span class="st">"review-1"</span>, expected <span class="op">=</span> <span class="cn">NULL</span>, selection <span class="op">=</span> <span class="va">selection</span>,</span>
-<span>  action <span class="op">=</span> <span class="st">"accept"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>, reason <span class="op">=</span> <span class="st">"Reviewed"</span>, purpose <span class="op">=</span> <span class="st">"research"</span></span>
+<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_accept.html" class="external-link">graft_accept</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_read_selection.html" class="external-link">graft_read_selection</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">selection</span><span class="op">)</span>, <span class="st">"research"</span>,</span>
+<span>  expected <span class="op">=</span> <span class="cn">NULL</span>, key <span class="op">=</span> <span class="st">"review-1"</span>,</span>
+<span>  actor <span class="op">=</span> <span class="st">"reviewer"</span>, reason <span class="op">=</span> <span class="st">"Reviewed"</span>, purpose <span class="op">=</span> <span class="st">"research"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Tempest does not commit during bundle construction or planning. The
 current closed promotion format contains exact Sources, Claims,
@@ -299,16 +300,16 @@ or Graft authority:</p>
 <span>  <span class="va">result</span>,</span>
 <span>  promotion_bundle <span class="op">=</span> <span class="va">bundle</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">artifact_store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_store.html" class="external-link">graft_artifact_store</a></span><span class="op">(</span><span class="st">"research-artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">artifact_store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_store.html" class="external-link">graft_store</a></span><span class="op">(</span><span class="st">"research-artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">artifact_store</span><span class="op">)</span></span>
-<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
-<span>  <span class="va">artifact_store</span>, <span class="st">"research"</span>, <span class="st">"review-1"</span>, expected <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  selection <span class="op">=</span> <span class="va">selection</span>, action <span class="op">=</span> <span class="st">"accept"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>,</span>
-<span>  reason <span class="op">=</span> <span class="st">"Reviewed the evidence"</span>, purpose <span class="op">=</span> <span class="st">"briefing"</span></span>
+<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_accept.html" class="external-link">graft_accept</a></span><span class="op">(</span></span>
+<span>  <span class="va">artifact_store</span>, <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_read_selection.html" class="external-link">graft_read_selection</a></span><span class="op">(</span><span class="va">artifact_store</span>, <span class="va">selection</span><span class="op">)</span>,</span>
+<span>  <span class="st">"research"</span>, expected <span class="op">=</span> <span class="cn">NULL</span>, key <span class="op">=</span> <span class="st">"review-1"</span>,</span>
+<span>  actor <span class="op">=</span> <span class="st">"reviewer"</span>, reason <span class="op">=</span> <span class="st">"Reviewed the evidence"</span>, purpose <span class="op">=</span> <span class="st">"briefing"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">accepted_review</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_trajectory_review.html">tempest_trajectory_review</a></span><span class="op">(</span></span>
 <span>  <span class="va">result</span>, store <span class="op">=</span> <span class="va">artifact_store</span>, selection <span class="op">=</span> <span class="va">selection</span>,</span>
-<span>  stream <span class="op">=</span> <span class="st">"research"</span>, decision <span class="op">=</span> <span class="va">accepted</span><span class="op">$</span><span class="va">id</span></span>
+<span>  stream <span class="op">=</span> <span class="st">"research"</span>, decision <span class="op">=</span> <span class="va">accepted</span><span class="op">@</span><span class="va">id</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The closed ten-field projection contains the product identity,
 ordered StageRecord summaries, safe terminal Deputy identities, fixed

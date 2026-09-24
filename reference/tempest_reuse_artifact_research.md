@@ -23,7 +23,7 @@ tempest_reuse_artifact_research(store, stream, decision, purpose, eligible)
 - store:
 
   A
-  [`graft::graft_artifact_store()`](https://jameshwade.github.io/graft/reference/graft_artifact_store.html)
+  [`graft::graft_store()`](https://jameshwade.github.io/graft/reference/graft_store.html)
   handle. Applications enforce access to this trusted local,
   single-writer store.
 

@@ -121,7 +121,7 @@ application.</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/graft/" class="external-link">graft</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"briefing-basis.R"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_store.html" class="external-link">graft_artifact_store</a></span><span class="op">(</span><span class="st">"briefing/artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_store.html" class="external-link">graft_store</a></span><span class="op">(</span><span class="st">"briefing/artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">basis_path</span> <span class="op">&lt;-</span> <span class="st">"briefing/basis.rds"</span></span>
 <span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">basis_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -159,13 +159,14 @@ research. The host reviews the complete evidence before making an
 explicit decision.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">previous</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">basis_path</span><span class="op">)</span><span class="op">)</span> <span class="va">basis</span><span class="op">$</span><span class="va">decision</span> <span class="kw">else</span> <span class="cn">NULL</span></span>
-<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
-<span>  <span class="va">store</span>, <span class="st">"battery-briefing"</span>, <span class="st">"review-2026-09-18"</span>, expected <span class="op">=</span> <span class="va">previous</span>,</span>
-<span>  selection <span class="op">=</span> <span class="va">selection</span>, action <span class="op">=</span> <span class="st">"accept"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>,</span>
+<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_accept.html" class="external-link">graft_accept</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_read_selection.html" class="external-link">graft_read_selection</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">selection</span><span class="op">)</span>, <span class="st">"battery-briefing"</span>,</span>
+<span>  expected <span class="op">=</span> <span class="va">previous</span>,</span>
+<span>  key <span class="op">=</span> <span class="st">"review-2026-09-18"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>,</span>
 <span>  reason <span class="op">=</span> <span class="st">"Evidence and proposed changes reviewed"</span>, purpose <span class="op">=</span> <span class="st">"briefing"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu">capture_briefing_basis</span><span class="op">(</span></span>
-<span>  <span class="va">store</span>, <span class="st">"battery-briefing"</span>, <span class="va">accepted</span><span class="op">$</span><span class="va">id</span>, <span class="st">"briefing"</span></span>
+<span>  <span class="va">store</span>, <span class="st">"battery-briefing"</span>, <span class="va">accepted</span><span class="op">@</span><span class="va">id</span>, <span class="st">"briefing"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">basis</span>, <span class="va">basis_path</span><span class="op">)</span></span></code></pre></div>
 <p>The predecessor is explicit. If another review has advanced the
@@ -187,10 +188,10 @@ making the old event ineligible for new consultation while keeping the
 old report and bytes readable. Nothing automatically unions evidence
 across decisions or accepts model output.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">withdrawn</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_artifact_decide.html" class="external-link">graft_artifact_decide</a></span><span class="op">(</span></span>
-<span>  <span class="va">store</span>, <span class="va">basis</span><span class="op">$</span><span class="va">stream</span>, <span class="st">"withdraw-2026-09-19"</span>, expected <span class="op">=</span> <span class="va">basis</span><span class="op">$</span><span class="va">decision</span>,</span>
-<span>  selection <span class="op">=</span> <span class="va">basis</span><span class="op">$</span><span class="va">selection</span>, action <span class="op">=</span> <span class="st">"withdraw"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>,</span>
-<span>  reason <span class="op">=</span> <span class="st">"Evidence needs reconsideration"</span>, purpose <span class="op">=</span> <span class="va">basis</span><span class="op">$</span><span class="va">purpose</span></span>
+<code class="sourceCode R"><span><span class="va">withdrawn</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_withdraw.html" class="external-link">graft_withdraw</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>, <span class="va">basis</span><span class="op">$</span><span class="va">stream</span>, expected <span class="op">=</span> <span class="va">basis</span><span class="op">$</span><span class="va">decision</span>,</span>
+<span>  key <span class="op">=</span> <span class="st">"withdraw-2026-09-19"</span>, actor <span class="op">=</span> <span class="st">"reviewer"</span>,</span>
+<span>  reason <span class="op">=</span> <span class="st">"Evidence needs reconsideration"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">historical</span> <span class="op">&lt;-</span> <span class="fu">read_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span><span class="op">)</span></span>
 <span><span class="co"># reuse_briefing_basis() now fails for this event.</span></span></code></pre></div>

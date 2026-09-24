@@ -26,7 +26,7 @@ application.
 library(tempest)
 library(graft)
 source(system.file("examples", "briefing-basis.R", package = "tempest"))
-store <- graft_artifact_store("briefing/artifacts", create = TRUE)
+store <- graft_store("briefing/artifacts", create = TRUE)
 basis_path <- "briefing/basis.rds"
 knowledge <- NULL
 if (file.exists(basis_path)) {
@@ -70,13 +70,14 @@ explicit decision.
 ``` r
 
 previous <- if (file.exists(basis_path)) basis$decision else NULL
-accepted <- graft_artifact_decide(
-  store, "battery-briefing", "review-2026-09-18", expected = previous,
-  selection = selection, action = "accept", actor = "reviewer",
+accepted <- graft_accept(
+  store, graft_read_selection(store, selection), "battery-briefing",
+  expected = previous,
+  key = "review-2026-09-18", actor = "reviewer",
   reason = "Evidence and proposed changes reviewed", purpose = "briefing"
 )
 basis <- capture_briefing_basis(
-  store, "battery-briefing", accepted$id, "briefing"
+  store, "battery-briefing", accepted@id, "briefing"
 )
 saveRDS(basis, basis_path)
 ```
@@ -102,10 +103,10 @@ decisions or accepts model output.
 
 ``` r
 
-withdrawn <- graft_artifact_decide(
-  store, basis$stream, "withdraw-2026-09-19", expected = basis$decision,
-  selection = basis$selection, action = "withdraw", actor = "reviewer",
-  reason = "Evidence needs reconsideration", purpose = basis$purpose
+withdrawn <- graft_withdraw(
+  store, basis$stream, expected = basis$decision,
+  key = "withdraw-2026-09-19", actor = "reviewer",
+  reason = "Evidence needs reconsideration"
 )
 historical <- read_briefing_basis(store, basis)
 # reuse_briefing_basis() now fails for this event.

@@ -5,7 +5,7 @@ packages only promotable claims and their exact pair-level evidence. It
 does not write accepted knowledge. Publish with
 [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
 and call
-[`graft::graft_artifact_decide()`](https://jameshwade.github.io/graft/reference/graft_artifact_decide.html)
+[`graft::graft_accept()`](https://jameshwade.github.io/graft/reference/graft_accept.html)
 after host review. Loose Workspace, Manifest, or StageRecord tuples are
 not accepted. The promotion payload remains the exact schema-1
 evidence-only product shape; the terminal report is an eligibility gate

@@ -16,7 +16,7 @@ tempest_read_artifact_research(store, selection)
 - store:
 
   A
-  [`graft::graft_artifact_store()`](https://jameshwade.github.io/graft/reference/graft_artifact_store.html)
+  [`graft::graft_store()`](https://jameshwade.github.io/graft/reference/graft_store.html)
   handle. Applications enforce access to this trusted local,
   single-writer store.
 

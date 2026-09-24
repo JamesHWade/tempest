@@ -2,6 +2,12 @@
 
 ## tempest 0.0.0.9000
 
+- Tempest’s Graft artifact consumer now uses contract 4 task-oriented
+  APIs and typed S7 stores, references, selections, artifacts, and
+  decisions while preserving exact research identity, reviewed
+  predecessor checks, and current eligibility rechecks
+  (JamesHWade/graft#91).
+
 - Accepted research now uses artifact selections throughout STORM and
   Co-STORM inputs, save, restore, resume, and daily-briefing examples.
   Native Graft views, graph promotion plans/receipts, compiled schemas,

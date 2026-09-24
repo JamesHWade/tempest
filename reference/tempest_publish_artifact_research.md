@@ -3,8 +3,10 @@
 Publish the validated proposal, exact source bodies, evidence, program
 provenance and readable report as one immutable selection. Publication
 is not acceptance. The host reviews the selection and explicitly calls
-[`graft::graft_artifact_decide()`](https://jameshwade.github.io/graft/reference/graft_artifact_decide.html)
-to accept or withdraw it.
+[`graft::graft_accept()`](https://jameshwade.github.io/graft/reference/graft_accept.html)
+to accept it or
+[`graft::graft_withdraw()`](https://jameshwade.github.io/graft/reference/graft_withdraw.html)
+to withdraw it.
 
 ## Usage
 
@@ -28,7 +30,7 @@ tempest_publish_artifact_research(
 - store:
 
   A
-  [`graft::graft_artifact_store()`](https://jameshwade.github.io/graft/reference/graft_artifact_store.html)
+  [`graft::graft_store()`](https://jameshwade.github.io/graft/reference/graft_store.html)
   handle. Applications enforce access to this trusted local,
   single-writer store.
 
