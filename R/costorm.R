@@ -737,7 +737,11 @@ TempestSession <- R6::R6Class(
     #' @param experts Optional list of validated expert profiles. If `NULL`,
     #'   experts are generated automatically using `tempest_generate_experts()`.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
-    #'   object with a [ResearchWorkspace] at `$workspace`.
+    #'   object with a [ResearchWorkspace] at `$workspace` and
+    #'   `search(query, k)` and `fetch(url)` methods. `search()` returns a data
+    #'   frame with `title` and HTTP/HTTPS `url` columns; `snippet` is optional
+    #'   and Tempest derives or verifies `source_id`. Create the workspace with
+    #'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
     #' @param progress Optional function called with `tempest_progress_event`
     #'   objects as the session makes progress.
     #' @param session_id Optional stable session identifier. If `NULL`, a new
@@ -876,6 +880,12 @@ TempestSession <- R6::R6Class(
         )
       }
 
+      tempest_retriever_bind_workspace_budget(
+        private$retriever_value,
+        private$workspace_value,
+        config
+      )
+
       tempest_research_workspace_verification_owner_preflight(
         private$workspace_value,
         restoring = restoring
@@ -1013,7 +1023,8 @@ TempestSession <- R6::R6Class(
         retriever = private$retriever_value,
         role = "coordinator",
         model = tempest_research_model(private$config_value, "coordinator"),
-        search_provider = private$config_value@search_provider
+        search_provider = private$config_value@search_provider,
+        max_search_results = private$config_value@max_search_results
       )
       private$chats_value$moderator$register_tool(
         tempest_create_deputy_expert_delegation_tool(
@@ -1045,8 +1056,14 @@ TempestSession <- R6::R6Class(
           }
         ),
         error = function(error) {
+          parent <- if (tempest_condition_chain_sensitive(error)) {
+            tempest_condition_safe_summary(error)
+          } else {
+            error
+          }
           tempest_costorm_session_abort(
-            "The moderator Deputy execution session could not be created."
+            "The moderator Deputy execution session could not be created.",
+            parent = parent
           )
         }
       )
@@ -2574,7 +2591,11 @@ tempest_session_set_report_value <- function(session, report_md) {
 #' @param experts Optional list of validated expert profiles. If `NULL`,
 #'   experts are generated automatically.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
-#'   with a [ResearchWorkspace] at `$workspace`.
+#'   with a [ResearchWorkspace] at `$workspace` and `search(query, k)` and
+#'   `fetch(url)` methods. `search()` returns a data frame with `title` and
+#'   HTTP/HTTPS `url` columns; `snippet` is optional and Tempest derives or
+#'   verifies `source_id`. Create the workspace with
+#'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
 #' @param progress Optional function called with `tempest_progress_event`
 #'   objects as the session makes progress.
 #' @param session_id Optional stable session identifier. If `NULL`, a new

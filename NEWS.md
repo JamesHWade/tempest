@@ -1,5 +1,8 @@
 # tempest 0.0.0.9000
 
+* Deputy-backed STORM and Co-STORM setup errors now identify safe underlying causes while redacting credential-like details (#69).
+* `tempest_research_workspace()`, `tempest_resource()`, and `tempest_source_id()` now provide supported workspace, fetched evidence, and source identity constructors for host retrievers passed to STORM or Co-STORM (#70).
+
 * Tempest's Graft artifact consumer now uses contract 4 task-oriented APIs and typed S7 stores, references, selections, artifacts, and decisions while preserving exact research identity, reviewed predecessor checks, and current eligibility rechecks (JamesHWade/graft#91).
 
 * Accepted research now uses artifact selections throughout STORM and Co-STORM inputs, save, restore, resume, and daily-briefing examples. Native Graft views, graph promotion plans/receipts, compiled schemas, and snapshot sidecars are removed. Current formats are workspace 7, research manifest 5, STORM bundle 10, Co-STORM snapshot/bundle 13, and trajectory review 3; older shapes are rejected without compatibility wrappers (zf9y; Graft #50, #74).

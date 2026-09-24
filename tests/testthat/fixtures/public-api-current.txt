@@ -10,12 +10,15 @@ tempest_publish_artifact_research
 tempest_read_artifact_research
 tempest_read_promotion_bundle
 tempest_report
+tempest_research_workspace
+tempest_resource
 tempest_reuse_artifact_research
 tempest_run
 tempest_save_promotion_bundle
 tempest_session
 tempest_session_resume
 tempest_session_save
+tempest_source_id
 tempest_sources
 tempest_trajectory_review
 tempest_trajectory_review_data

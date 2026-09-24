@@ -124,9 +124,9 @@ TempestDeputyExpertManager <- R6::R6Class(
           "{.arg config} must be created by {.fn tempest_config}."
         )
       }
-      if (!inherits(retriever, "TempestRetriever")) {
+      if (!tempest_retriever_compatible(retriever)) {
         tempest_deputy_expert_abort(
-          "{.arg retriever} must be a TempestRetriever."
+          "{.arg retriever} must provide a ResearchWorkspace, search(), and fetch()."
         )
       }
       if (!inherits(workspace, "ResearchWorkspace")) {
@@ -688,6 +688,7 @@ TempestDeputyExpertManager <- R6::R6Class(
         role = "expert",
         model = model,
         search_provider = private$config@search_provider,
+        max_search_results = private$config@max_search_results,
         claim_provenance = list(
           session_id = private$run_id,
           expert_id = expert@expert_id

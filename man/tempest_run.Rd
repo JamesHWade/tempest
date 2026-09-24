@@ -28,8 +28,13 @@ tempest_run(
 
 \item{config}{A \code{TempestConfig}.}
 
-\item{retriever}{Optional \code{TempestRetriever}. If \code{NULL}, created from
-\code{config}.}
+\item{retriever}{Optional \code{TempestRetriever} or compatible retriever with a
+\link{ResearchWorkspace} at \verb{$workspace} and \code{search(query, k)} and
+\code{fetch(url)} methods. \code{search()} returns a data frame with non-empty
+\code{title} and HTTP/HTTPS \code{url} columns; \code{snippet} is optional. Tempest
+derives or verifies \code{source_id}. Create the workspace with
+\code{\link[=tempest_research_workspace]{tempest_research_workspace()}} and source IDs with \code{\link[=tempest_source_id]{tempest_source_id()}}.
+If \code{NULL}, a retriever is created from \code{config}.}
 
 \item{knowledge}{Optional accepted organizational knowledge from
 \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}. It supplies

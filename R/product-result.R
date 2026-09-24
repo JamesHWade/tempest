@@ -41,6 +41,7 @@ TempestResult <- S7::new_class(
     manifest = S7::new_property(S7::class_any),
     state = S7::new_property(S7::class_list),
     workspace = S7::new_property(S7::class_any),
+    config = S7::new_property(S7::class_any),
     retriever = S7::new_property(S7::class_any)
   ),
   validator = function(self) {
@@ -49,6 +50,9 @@ TempestResult <- S7::new_class(
     }
     if (!inherits(self@workspace, "ResearchWorkspace")) {
       return("@workspace must be a ResearchWorkspace.")
+    }
+    if (!S7::S7_inherits(self@config, TempestConfig)) {
+      return("@config must be a TempestConfig.")
     }
     if (!S7::S7_inherits(self@manifest, TempestResearchManifest)) {
       return("@manifest must be a TempestResearchManifest.")
@@ -93,8 +97,11 @@ tempest_product_result <- function(
   state,
   workspace,
   retriever,
-  output_dir
+  output_dir,
+  config = NULL
 ) {
+  config <- config %||%
+    if (inherits(retriever, "TempestRetriever")) retriever$config else NULL
   TempestResult(
     title = tempest_product_scalar(title, "title"),
     topic = tempest_product_scalar(topic, "topic"),
@@ -109,6 +116,7 @@ tempest_product_result <- function(
     manifest = manifest,
     state = state,
     workspace = workspace,
+    config = config,
     retriever = retriever
   )
 }

@@ -2,17 +2,21 @@
 % Please edit documentation in R/models.R
 \name{tempest_source_id}
 \alias{tempest_source_id}
-\title{Create a deterministic source id from a URL}
+\title{Create a deterministic source ID from a URL}
 \usage{
 tempest_source_id(url)
 }
 \arguments{
-\item{url}{URL}
+\item{url}{A single non-empty HTTP or HTTPS URL string.}
 }
 \value{
-Source id like "Sxxxxxxxxxxxx"
+A source ID such as \code{"Sxxxxxxxxxxxx"}.
 }
 \description{
-Create a deterministic source id from a URL
+Use this when a host retriever constructs search results or fetched sources
+for \code{\link[=tempest_run]{tempest_run()}} or \code{\link[=tempest_session]{tempest_session()}}. The same trimmed URL always
+produces the same ID.
 }
-\keyword{internal}
+\examples{
+tempest_source_id("https://example.org/study")
+}

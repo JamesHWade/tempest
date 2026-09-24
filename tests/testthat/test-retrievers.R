@@ -14,6 +14,74 @@ test_that("search result helpers return the standard retriever shape", {
   expect_equal(results$snippet, NA_character_)
 })
 
+test_that("hosts can construct the documented retriever workspace and IDs", {
+  url <- "https://example.com/host-retriever"
+  workspace <- tempest::tempest_research_workspace()
+  retriever <- list(
+    workspace = workspace,
+    search = function(query, k) {
+      data.frame(title = character(), url = character())
+    },
+    fetch = function(url) NULL
+  )
+
+  expect_r6_class(workspace, "ResearchWorkspace")
+  expect_identical(tempest:::tempest_retriever_compatible(retriever), TRUE)
+  expect_identical(
+    tempest:::tempest_storm_retriever_workspace(retriever),
+    workspace
+  )
+  expect_identical(
+    tempest:::tempest_costorm_retriever_workspace(retriever),
+    workspace
+  )
+  expect_identical(
+    tempest::tempest_source_id(url),
+    paste0("S", substr(digest::digest(url, algo = "xxhash64"), 1L, 12L))
+  )
+})
+
+test_that("Co-STORM accepts a host retriever through its public constructor", {
+  workspace <- tempest_research_workspace()
+  retriever <- list(
+    workspace = workspace,
+    search = function(query, k) {
+      data.frame(title = character(), url = character())
+    },
+    fetch = function(url) NULL
+  )
+  config <- tempest_config(
+    max_sources = 1L,
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+
+  session <- tempest_session(
+    "Host retriever",
+    config = config,
+    experts = list(test_expert(name = "Host expert")),
+    retriever = retriever
+  )
+
+  expect_r6_class(session, "TempestSession")
+  expect_identical(tempest_session_workspace(session), workspace)
+  expect_identical(workspace$max_sources, 1L)
+  workspace$upsert_retrieved_resource(tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/host-first",
+    title = "First",
+    media_type = "text/html"
+  ))
+  expect_error(
+    workspace$upsert_retrieved_resource(tempest_resource(
+      resource_kind = "web",
+      locator = "https://example.org/host-second",
+      title = "Second",
+      media_type = "text/html"
+    )),
+    class = "tempest_research_workspace_error"
+  )
+})
+
 test_that("retrievers own one authoritative research workspace", {
   cfg <- tempest_config(cache_dir = withr::local_tempdir())
   retriever <- tempest_retriever(config = cfg)

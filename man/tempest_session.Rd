@@ -26,7 +26,11 @@ tempest_session(
 experts are generated automatically.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
-with a \link{ResearchWorkspace} at \verb{$workspace}.}
+with a \link{ResearchWorkspace} at \verb{$workspace} and \code{search(query, k)} and
+\code{fetch(url)} methods. \code{search()} returns a data frame with \code{title} and
+HTTP/HTTPS \code{url} columns; \code{snippet} is optional and Tempest derives or
+verifies \code{source_id}. Create the workspace with
+\code{\link[=tempest_research_workspace]{tempest_research_workspace()}} and source IDs with \code{\link[=tempest_source_id]{tempest_source_id()}}.}
 
 \item{progress}{Optional function called with \code{tempest_progress_event}
 objects as the session makes progress.}

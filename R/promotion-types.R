@@ -1752,9 +1752,14 @@ tempest_completed_product_storm_context <- function(
     )
   }
   if (
-    !inherits(research@retriever, "TempestRetriever") ||
+    !tempest_retriever_compatible(research@retriever) ||
       !identical(research@retriever$workspace, research@workspace) ||
-      !S7::S7_inherits(research@retriever$config, TempestConfig)
+      !S7::S7_inherits(research@config, TempestConfig) ||
+      (inherits(research@retriever, "TempestRetriever") &&
+        !identical(
+          tempest_retriever_config_digest(research@retriever),
+          tempest_research_config_digest(research@config)
+        ))
   ) {
     abort(
       "The STORM result does not retain its exact product retriever identity."
@@ -1786,7 +1791,7 @@ tempest_completed_product_storm_context <- function(
     workspace = research@workspace,
     report_md = research@report_md,
     report_reference = report_reference,
-    config = research@retriever$config,
+    config = research@config,
     experts = state$experts,
     expert_sessions = list(),
     product_state = state

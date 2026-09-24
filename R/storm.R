@@ -64,8 +64,13 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #'
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
-#' @param retriever Optional `TempestRetriever`. If `NULL`, created from
-#'   `config`.
+#' @param retriever Optional `TempestRetriever` or compatible retriever with a
+#'   [ResearchWorkspace] at `$workspace` and `search(query, k)` and
+#'   `fetch(url)` methods. `search()` returns a data frame with non-empty
+#'   `title` and HTTP/HTTPS `url` columns; `snippet` is optional. Tempest
+#'   derives or verifies `source_id`. Create the workspace with
+#'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
+#'   If `NULL`, a retriever is created from `config`.
 #' @param knowledge Optional accepted organizational knowledge from
 #'   [tempest_artifact_knowledge()]. It supplies
 #'   accepted evidence records without selecting or authorizing executable
@@ -298,6 +303,7 @@ tempest_run_internal <- function(
       )
     )
   }
+  tempest_retriever_bind_workspace_budget(retriever, workspace, config)
   progress <- tempest_progress_callback(progress)
   if (is.null(loaded_run)) {
     tempest_knowledge_workspace_preflight(workspace, knowledge_selection)
@@ -603,7 +609,8 @@ tempest_run_internal <- function(
       state = state,
       workspace = workspace,
       retriever = retriever,
-      output_dir = run_dir
+      output_dir = run_dir,
+      config = config
     ))
   }
 
@@ -848,7 +855,11 @@ tempest_run_internal <- function(
         if (verbose) {
           tempest_inform("Discovering perspectives for: {.val {topic}}")
         }
-        seed <- retriever$search(topic, k = min(5, config@max_search_results))
+        seed <- tempest_retriever_search(
+          retriever,
+          topic,
+          k = min(5, config@max_search_results)
+        )
         seed_txt <- paste0(
           "Seed sources:\n",
           paste0(
@@ -1009,6 +1020,7 @@ tempest_run_internal <- function(
             role = "expert",
             model = model,
             search_provider = config@search_provider,
+            max_search_results = config@max_search_results,
             claim_provenance = list(
               session_id = progress_run_id,
               expert_id = expert_id
@@ -1595,7 +1607,8 @@ tempest_run_internal <- function(
         state = state,
         workspace = workspace,
         retriever = retriever,
-        output_dir = run_dir
+        output_dir = run_dir,
+        config = config
       )
     },
     error = function(e) {

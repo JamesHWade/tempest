@@ -12,12 +12,17 @@ tempest_research_workspace(max_sources = Inf, artifact_selection = list())
 \item{artifact_selection}{Exact artifact input retained by the workspace.}
 }
 \value{
-A \link{ResearchWorkspace} object.
+A \link{ResearchWorkspace} object. Supply it as a custom retriever's
+\verb{$workspace} so Tempest and the host write to the same research ledger.
 }
 \description{
 \code{tempest_research_workspace()} creates the run-scoped ledger for material
 gathered or proposed during scientific research. Accepted knowledge remains
-in Graft; this workspace retains exact artifact selection references and
-materialized evidence for inspection. Reuse requires fresh host admission.
+in its authoritative store; this workspace retains exact selection
+references and materialized evidence for inspection. Reuse requires fresh
+host admission.
 }
-\keyword{internal}
+\examples{
+workspace <- tempest_research_workspace(max_sources = 10L)
+inherits(workspace, "ResearchWorkspace")
+}

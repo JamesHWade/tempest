@@ -1,9 +1,10 @@
 # Internal Deputy-backed Chat boundary
 
-tempest_deputy_adapter_error <- function() {
+tempest_deputy_adapter_error <- function(parent = NULL) {
   tempest_abort(
     "Deputy-backed chat execution failed.",
-    class = c("tempest_deputy_adapter_error", "tempest_error")
+    class = c("tempest_deputy_adapter_error", "tempest_error"),
+    parent = parent
   )
 }
 
@@ -17,7 +18,12 @@ tempest_deputy_adapter_guard <- function(expr) {
       ) {
         stop(error)
       }
-      tempest_deputy_adapter_error()
+      parent <- if (tempest_condition_chain_sensitive(error)) {
+        tempest_condition_safe_summary(error)
+      } else {
+        error
+      }
+      tempest_deputy_adapter_error(parent = parent)
     }
   )
 }
