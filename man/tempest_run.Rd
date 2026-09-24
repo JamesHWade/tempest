@@ -29,7 +29,8 @@ tempest_run(
 \item{config}{A \code{TempestConfig}.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever with a
-\link{ResearchWorkspace} at \verb{$workspace}. Create the workspace with
+\link{ResearchWorkspace} at \verb{$workspace} and \code{search(query, k)} and
+\code{fetch(url)} methods. Create the workspace with
 \code{\link[=tempest_research_workspace]{tempest_research_workspace()}} and source IDs with \code{\link[=tempest_source_id]{tempest_source_id()}}.
 If \code{NULL}, a retriever is created from \code{config}.}
 

@@ -17,9 +17,14 @@ test_that("search result helpers return the standard retriever shape", {
 test_that("hosts can construct the documented retriever workspace and IDs", {
   url <- "https://example.com/host-retriever"
   workspace <- tempest::tempest_research_workspace()
-  retriever <- list(workspace = workspace)
+  retriever <- list(
+    workspace = workspace,
+    search = function(query, k) tempest:::tempest_empty_search_results(),
+    fetch = function(url) NULL
+  )
 
   expect_r6_class(workspace, "ResearchWorkspace")
+  expect_identical(tempest:::tempest_retriever_compatible(retriever), TRUE)
   expect_identical(
     tempest:::tempest_storm_retriever_workspace(retriever),
     workspace
@@ -32,6 +37,28 @@ test_that("hosts can construct the documented retriever workspace and IDs", {
     tempest::tempest_source_id(url),
     paste0("S", substr(digest::digest(url, algo = "xxhash64"), 1L, 12L))
   )
+})
+
+test_that("Co-STORM accepts a host retriever through its public constructor", {
+  workspace <- tempest_research_workspace()
+  retriever <- list(
+    workspace = workspace,
+    search = function(query, k) tempest:::tempest_empty_search_results(),
+    fetch = function(url) NULL
+  )
+  config <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  )
+
+  session <- tempest_session(
+    "Host retriever",
+    config = config,
+    experts = list(test_expert(name = "Host expert")),
+    retriever = retriever
+  )
+
+  expect_r6_class(session, "TempestSession")
+  expect_identical(tempest_session_workspace(session), workspace)
 })
 
 test_that("retrievers own one authoritative research workspace", {

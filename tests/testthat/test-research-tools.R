@@ -32,7 +32,12 @@ test_that("fixed research tools preserve every product search provider", {
   observed <- character()
   retriever <- structure(list(), class = "TempestRetriever")
   local_mocked_bindings(
-    tempest_tools_web = function(retriever, model, search_provider) {
+    tempest_tools_web = function(
+      retriever,
+      model,
+      search_provider,
+      max_search_results
+    ) {
       observed <<- c(observed, search_provider)
       list(web = "web")
     },
@@ -55,6 +60,51 @@ test_that("fixed research tools preserve every product search provider", {
   }
 
   expect_identical(observed, providers)
+})
+
+test_that("host retrievers attach research tools with the run's search budget", {
+  workspace <- tempest_research_workspace()
+  calls <- list()
+  retriever <- list(
+    workspace = workspace,
+    search = function(query, k) {
+      calls <<- append(calls, list(list(query = query, k = k)))
+      tempest:::tempest_empty_search_results()
+    },
+    fetch = function(url) stop("fetch should not run")
+  )
+  chat <- fake_chat()
+
+  tempest:::tempest_research_attach_tools(
+    chat,
+    retriever,
+    role = "coordinator",
+    model = "openai/gpt-5.6-sol",
+    search_provider = "native",
+    max_search_results = 2L
+  )
+
+  tools <- chat$get_tools()
+  expect_named(
+    tools,
+    c(
+      "web_search",
+      "fetch_url",
+      "list_retrieved_sources",
+      "get_retrieved_source",
+      "list_proposed_claims",
+      "get_proposed_claim",
+      "get_evidence_for_proposed_claim",
+      "list_unsupported_proposed_claims"
+    ),
+    ignore.order = TRUE
+  )
+  tools$web_search("host query", k = 2L)
+  expect_identical(calls, list(list(query = "host query", k = 2L)))
+  expect_error(
+    tools$web_search("host query", k = 3L),
+    class = "tempest_config_error"
+  )
 })
 
 test_that("research tool roles have fixed attachment sets", {

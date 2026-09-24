@@ -6,15 +6,31 @@
 #' for [tempest_run()] or [tempest_session()]. The same trimmed URL always
 #' produces the same ID.
 #'
-#' @param url A single non-empty URL string.
+#' @param url A single non-empty HTTP or HTTPS URL string.
 #' @return A source ID such as `"Sxxxxxxxxxxxx"`.
 #' @examples
 #' tempest_source_id("https://example.org/study")
 #' @export
 tempest_source_id <- function(url) {
+  if (!rlang::is_string(url) || is.na(url)) {
+    tempest_abort(
+      "{.arg url} must be a single non-empty HTTP or HTTPS URL.",
+      class = "tempest_source_id_error"
+    )
+  }
   url <- tempest_trim(url)
-  if (length(url) != 1 || is.na(url) || url == "") {
-    tempest_abort("Invalid url for source id.")
+  parsed <- tryCatch(curl::curl_parse_url(url), error = function(error) NULL)
+  if (
+    !nzchar(url) ||
+      grepl("[[:space:]]", url) ||
+      is.null(parsed) ||
+      !tolower(parsed$scheme %||% "") %in% c("http", "https") ||
+      !nzchar(parsed$host %||% "")
+  ) {
+    tempest_abort(
+      "{.arg url} must be a single non-empty HTTP or HTTPS URL.",
+      class = "tempest_source_id_error"
+    )
   }
   paste0("S", substr(digest::digest(url, algo = "xxhash64"), 1, 12))
 }

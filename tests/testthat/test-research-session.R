@@ -472,7 +472,7 @@ test_that("Co-STORM sessions reject retriever lookalikes", {
       retriever = retriever
     ),
     class = "tempest_deputy_expert_error",
-    regexp = "must be a TempestRetriever"
+    regexp = "must provide a ResearchWorkspace, search\\(\\), and fetch\\(\\)"
   )
 })
 

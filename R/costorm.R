@@ -737,9 +737,9 @@ TempestSession <- R6::R6Class(
     #' @param experts Optional list of validated expert profiles. If `NULL`,
     #'   experts are generated automatically using `tempest_generate_experts()`.
     #' @param retriever Optional `TempestRetriever` or compatible retriever
-    #'   object with a [ResearchWorkspace] at `$workspace`. Create the
-    #'   workspace with [tempest_research_workspace()] and source IDs with
-    #'   [tempest_source_id()].
+    #'   object with a [ResearchWorkspace] at `$workspace` and
+    #'   `search(query, k)` and `fetch(url)` methods. Create the workspace with
+    #'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
     #' @param progress Optional function called with `tempest_progress_event`
     #'   objects as the session makes progress.
     #' @param session_id Optional stable session identifier. If `NULL`, a new
@@ -1015,7 +1015,8 @@ TempestSession <- R6::R6Class(
         retriever = private$retriever_value,
         role = "coordinator",
         model = tempest_research_model(private$config_value, "coordinator"),
-        search_provider = private$config_value@search_provider
+        search_provider = private$config_value@search_provider,
+        max_search_results = private$config_value@max_search_results
       )
       private$chats_value$moderator$register_tool(
         tempest_create_deputy_expert_delegation_tool(
@@ -2582,7 +2583,8 @@ tempest_session_set_report_value <- function(session, report_md) {
 #' @param experts Optional list of validated expert profiles. If `NULL`,
 #'   experts are generated automatically.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
-#'   with a [ResearchWorkspace] at `$workspace`. Create the workspace with
+#'   with a [ResearchWorkspace] at `$workspace` and `search(query, k)` and
+#'   `fetch(url)` methods. Create the workspace with
 #'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
 #' @param progress Optional function called with `tempest_progress_event`
 #'   objects as the session makes progress.

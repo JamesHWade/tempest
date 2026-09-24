@@ -46,11 +46,12 @@ tempest_research_tools <- function(
   role,
   model = NULL,
   search_provider = "native",
-  claim_provenance = list()
+  claim_provenance = list(),
+  max_search_results = NULL
 ) {
-  if (!inherits(retriever, "TempestRetriever")) {
+  if (!tempest_retriever_compatible(retriever)) {
     tempest_research_tools_abort(
-      "{.arg retriever} must be a TempestRetriever."
+      "{.arg retriever} must provide a ResearchWorkspace, search(), and fetch()."
     )
   }
   role <- tempest_research_tool_role(role)
@@ -66,7 +67,8 @@ tempest_research_tools <- function(
       tempest_tools_web(
         retriever,
         model = model,
-        search_provider = search_provider
+        search_provider = search_provider,
+        max_search_results = max_search_results
       ),
       tools
     )
@@ -90,7 +92,8 @@ tempest_research_attach_tools <- function(
   model = NULL,
   search_provider = "native",
   claim_provenance = list(),
-  semantic_retrieval = TRUE
+  semantic_retrieval = TRUE,
+  max_search_results = NULL
 ) {
   if (is.null(chat) || !is.function(chat$register_tools)) {
     tempest_research_tools_abort(
@@ -106,7 +109,8 @@ tempest_research_attach_tools <- function(
     role = role,
     model = model,
     search_provider = search_provider,
-    claim_provenance = claim_provenance
+    claim_provenance = claim_provenance,
+    max_search_results = max_search_results
   )
   if (length(tools) > 0L) {
     chat$register_tools(tools)

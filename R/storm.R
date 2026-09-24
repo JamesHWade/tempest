@@ -65,7 +65,8 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
 #' @param retriever Optional `TempestRetriever` or compatible retriever with a
-#'   [ResearchWorkspace] at `$workspace`. Create the workspace with
+#'   [ResearchWorkspace] at `$workspace` and `search(query, k)` and
+#'   `fetch(url)` methods. Create the workspace with
 #'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
 #'   If `NULL`, a retriever is created from `config`.
 #' @param knowledge Optional accepted organizational knowledge from
@@ -1011,6 +1012,7 @@ tempest_run_internal <- function(
             role = "expert",
             model = model,
             search_provider = config@search_provider,
+            max_search_results = config@max_search_results,
             claim_provenance = list(
               session_id = progress_run_id,
               expert_id = expert_id

@@ -707,6 +707,18 @@ tempest_retriever_config_digest <- function(retriever) {
   tempest_research_config_digest(retriever$config)
 }
 
+tempest_retriever_compatible <- function(retriever) {
+  if (inherits(retriever, "TempestRetriever")) {
+    return(TRUE)
+  }
+  if (!is.list(retriever) && !is.environment(retriever)) {
+    return(FALSE)
+  }
+  inherits(retriever[["workspace"]], "ResearchWorkspace") &&
+    is.function(retriever[["search"]]) &&
+    is.function(retriever[["fetch"]])
+}
+
 #' TempestRetriever
 #'
 #' Provides web and Wikipedia retrieval with caching, plus helper methods to

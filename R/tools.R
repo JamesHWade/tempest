@@ -760,12 +760,33 @@ tempest_tool_write_ellmer_tools <- function(write) {
 tempest_tools_web <- function(
   retriever,
   model = NULL,
-  search_provider = "native"
+  search_provider = "native",
+  max_search_results = NULL
 ) {
   tempest_require("ellmer", "Tool calling for web research.")
-  stopifnot(inherits(retriever, "TempestRetriever"))
+  stopifnot(tempest_retriever_compatible(retriever))
 
-  if (identical(search_provider, "native") && !is.null(model)) {
+  max_search_results <- max_search_results %||%
+    if (inherits(retriever, "TempestRetriever")) {
+      retriever$config@max_search_results
+    } else {
+      NULL
+    }
+  if (is.null(max_search_results)) {
+    tempest_research_tools_abort(
+      "{.arg max_search_results} is required for a custom retriever."
+    )
+  }
+  max_search_results <- tempest_config_count(
+    max_search_results,
+    "max_search_results"
+  )
+
+  if (
+    inherits(retriever, "TempestRetriever") &&
+      identical(search_provider, "native") &&
+      !is.null(model)
+  ) {
     provider <- tempest_detect_provider(model)
     if (!is.null(provider) && tempest_provider_has_native_search(provider)) {
       native_tools <- tempest_get_native_web_tools(provider)
@@ -775,13 +796,13 @@ tempest_tools_web <- function(
     }
   }
 
-  web_search <- function(query, k = retriever$config@max_search_results) {
+  web_search <- function(query, k = max_search_results) {
     k <- tempest_config_count(k, "k")
-    if (k > retriever$config@max_search_results) {
+    if (k > max_search_results) {
       tempest_config_abort(
         c(
           "Search result request exceeds the configured budget.",
-          x = "Requested {k}; maximum is {retriever$config@max_search_results}."
+          x = "Requested {k}; maximum is {max_search_results}."
         )
       )
     }
@@ -826,7 +847,7 @@ tempest_tools_web <- function(
 #' @keywords internal
 tempest_tools_evidence_read <- function(retriever) {
   tempest_require("ellmer", "Tool calling for evidence review.")
-  stopifnot(inherits(retriever, "TempestRetriever"))
+  stopifnot(tempest_retriever_compatible(retriever))
   retriever$workspace |>
     tempest_tool_review_functions() |>
     tempest_tool_review_ellmer_tools()
@@ -838,7 +859,7 @@ tempest_tools_evidence_write <- function(
   claim_provenance = list()
 ) {
   tempest_require("ellmer", "Tool calling for evidence writing.")
-  stopifnot(inherits(retriever, "TempestRetriever"))
+  stopifnot(tempest_retriever_compatible(retriever))
   tempest_tool_write_functions(
     retriever$workspace,
     provenance = claim_provenance
@@ -848,7 +869,7 @@ tempest_tools_evidence_write <- function(
 
 #' @keywords internal
 tempest_semantic_retrieval_registrar <- function(retriever) {
-  stopifnot(inherits(retriever, "TempestRetriever"))
+  stopifnot(tempest_retriever_compatible(retriever))
   if (is.null(retriever$ragnar_store) || !tempest_has("ragnar")) {
     return(NULL)
   }

@@ -7,7 +7,7 @@
 tempest_source_id(url)
 }
 \arguments{
-\item{url}{A single non-empty URL string.}
+\item{url}{A single non-empty HTTP or HTTPS URL string.}
 }
 \value{
 A source ID such as \code{"Sxxxxxxxxxxxx"}.
