@@ -608,7 +608,8 @@ tempest_run_internal <- function(
       state = state,
       workspace = workspace,
       retriever = retriever,
-      output_dir = run_dir
+      output_dir = run_dir,
+      config = config
     ))
   }
 
