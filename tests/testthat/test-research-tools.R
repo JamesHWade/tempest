@@ -71,7 +71,17 @@ test_that("host retrievers attach research tools with the run's search budget", 
       calls <<- append(calls, list(list(query = query, k = k)))
       tempest:::tempest_empty_search_results()
     },
-    fetch = function(url) stop("fetch should not run")
+    fetch = function(url) {
+      resource <- tempest::tempest_resource(
+        resource_kind = "web",
+        locator = url,
+        title = "Host page",
+        media_type = "text/html",
+        content = "Host evidence"
+      )
+      workspace$upsert_retrieved_resource(resource)
+      resource
+    }
   )
   chat <- fake_chat()
 
@@ -101,6 +111,15 @@ test_that("host retrievers attach research tools with the run's search budget", 
   )
   tools$web_search("host query", k = 2L)
   expect_identical(calls, list(list(query = "host query", k = 2L)))
+  url <- "https://example.org/host-tool"
+  fetched <- tools$fetch_url(url)
+  source_id <- tempest::tempest_source_id(url)
+  expect_identical(fetched$source_id, source_id)
+  expect_identical(fetched$excerpt, "Host evidence")
+  expect_s7_class(
+    workspace$get_retrieved_resource(source_id),
+    tempest:::TempestResource
+  )
   expect_error(
     tools$web_search("host query", k = 3L),
     class = "tempest_config_error"

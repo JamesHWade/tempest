@@ -24,6 +24,7 @@ reference:
   desc: Connect host search and fetch adapters to the research workspace.
   contents:
   - tempest_research_workspace
+  - tempest_resource
   - tempest_source_id
 - title: Accepted organizational knowledge
   desc: Bring retained artifact evidence or reviewed Graft knowledge into a run.
