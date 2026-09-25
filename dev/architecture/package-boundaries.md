@@ -1,8 +1,18 @@
 # Package boundaries for Tempest 0.2
 
 Date: 2026-08-15
-Status: Accepted
+Status: Accepted for 0.2; historical for current development
 Decision owner: Tempest maintainers
+
+The sections below record the 0.2 boundary and the initial 0.3 reset. They
+are historical where later product decisions differ. The current public
+contract is the exact fixture in
+`tests/testthat/fixtures/public-api-current.txt`: 23 exports, one S3 method,
+six session operations, and six read-only session bindings. Artifact
+selections replaced native Graft knowledge inputs, and
+`tempest_research_workspace()`, `tempest_resource()`, and
+`tempest_source_id()` are supported host-retriever constructors. The current
+NEWS and generated reference documentation describe these later changes.
 
 ## Decision
 
@@ -110,7 +120,7 @@ a succeeded, quiescent Co-STORM session. Promotion accepts a completed STORM
 result or succeeded `TempestSession`, never a loose Workspace, Manifest, and
 StageRecord tuple.
 
-The frozen current product contracts are:
+The frozen 0.2 product contracts were:
 
 | Contract | Version |
 |---|---:|
@@ -129,24 +139,24 @@ optional suggested-questions presentation file; it never relaxes durable
 expert, transcript, mind-map, StageRecord, Workspace, report, or Graft
 snapshot integrity.
 
-The public namespace contains exactly the 19 exports in
-`tests/testthat/fixtures/public-api-current.txt` and one registered S3 method,
-`print.tempest_knowledge()`. The product surface is `tempest_run()`,
-`tempest_session()`, `tempest_app()`, `tempest_config()`, `tempest_expert()`,
-`tempest_knowledge()`, the completed-product reads `tempest_report()`,
-`tempest_sources()`, `tempest_claims()`, `tempest_claim_supports()`, and
-`tempest_trajectory_review()`, session persistence through
+The initial 0.3 reset narrowed the public namespace to 19 exports and one
+registered S3 method, `print.tempest_knowledge()`. Its product surface was
+`tempest_run()`, `tempest_session()`, `tempest_app()`, `tempest_config()`,
+`tempest_expert()`, `tempest_knowledge()`, the completed-product reads
+`tempest_report()`, `tempest_sources()`, `tempest_claims()`,
+`tempest_claim_supports()`, and `tempest_trajectory_review()`, session
+persistence through
 `tempest_session_save()` and `tempest_session_resume()`, and the six-step Graft
 acceptance chain.
 
-Workspaces, retrievers, resources, manifests, ProgramSets, verification,
-progress, async execution, and the Shiny implementation are internal. They stay
-available to validation, persistence, telemetry, and promotion but are not a
-construction, subclassing, or host-integration seam. The bundled application is
-reachable only through `tempest_app()`. The internal Run review panel renders
-bounded authoritative StageRecords beside separately labeled untrusted
-progress, with polite live status for progress and success and alerts for
-failures.
+At that reset, workspaces, retrievers, resources, manifests, ProgramSets,
+verification, progress, async execution, and the Shiny implementation were
+internal. They remained available to validation, persistence, telemetry, and
+promotion but were not a construction, subclassing, or host-integration seam.
+The bundled application was reachable only through `tempest_app()`. The
+internal Run review panel rendered bounded authoritative StageRecords beside
+separately labeled untrusted progress, with polite live status for progress and
+success and alerts for failures.
 
 Every user-facing failure inherits `tempest_error` and exactly one public
 category: `tempest_input_error`, `tempest_execution_error`,
@@ -340,10 +350,11 @@ expectations and no failures, warnings, or skips.
 
 The T0 pre-0.2 namespace baseline contains 96 explicit exports and two
 registered S3 print methods. The 0.2 line reached 63 exports and two S3
-methods. The breaking 0.3 reset narrows that to 19 exports and one S3 method;
+methods. The initial breaking 0.3 reset narrowed that to 19 exports and one S3
+method. The transition fixture at
 `tests/testthat/fixtures/public-api-transition-0.3.csv` maps each of the 63
 former exports exactly once to retain, replace, internalize, or delete, and
-`tests/testthat/fixtures/public-api-current.txt` records the exact current
+`tests/testthat/fixtures/public-api-current.txt` now records the exact later
 namespace. Historical fixtures stay unchanged so the difference records the
 breaking removal without rewriting history.
 

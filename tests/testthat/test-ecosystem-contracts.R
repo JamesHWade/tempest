@@ -1,3 +1,30 @@
+test_that("maintained ecosystem remotes use immutable revisions", {
+  remotes <- trimws(strsplit(
+    packageDescription("tempest", fields = "Remotes")[[1L]],
+    ",",
+    fixed = TRUE
+  )[[1L]])
+  maintained <- remotes[grepl(
+    "^JamesHWade/(deputy|dsprrr|graft)(@[^[:space:]]+)?$",
+    remotes
+  )]
+
+  expect_length(maintained, 3L)
+  expect_identical(length(unique(maintained)), 3L)
+  expect_setequal(
+    sub("@[0-9a-f]{40}$", "", maintained),
+    c(
+      "JamesHWade/deputy",
+      "JamesHWade/dsprrr",
+      "JamesHWade/graft"
+    )
+  )
+  expect_identical(
+    all(grepl("@[0-9a-f]{40}$", maintained)),
+    TRUE
+  )
+})
+
 test_that("dsprrr identity enters the manifest and execution metadata", {
   forward <- function(text, ...) list(answer = text)
   program <- dsprrr::module_fn("text -> answer", forward)

@@ -68,7 +68,7 @@ test_that("daily briefing checkpoints preserve exact history across processes", 
       }
       host <- new.env(parent = baseenv())
       sys.source(recipe, host)
-      store <- test_graft_store(path)
+      store <- graft::graft_store(path)
       historical <- host$read_briefing_basis(store, readRDS(saved))
       basis <- host$capture_briefing_basis(store, "pilot", current, "briefing")
       knowledge <- host$reuse_briefing_basis(
