@@ -92,10 +92,13 @@
   unreleased. Compatibility contracts and persisted storage formats
   retain their independent versions.
 
-- Tempest now runs against the current `main` of deputy, dsprrr, and
-  graft. dsprrr’s `module()` no longer takes `type`, and its runner
-  requires a real ellmer `Chat`, so the test fakes are now R6-classed
-  environments that expose chat history (0mpk).
+- Tempest now installs reviewed Deputy, dsprrr, and Graft commits for
+  repeatable integration checks, while a weekly job checks compatibility
+  with their current `main` branches
+  ([\#69](https://github.com/JamesHWade/tempest/issues/69)). dsprrr’s
+  `module()` no longer takes `type`, and its runner requires a real
+  ellmer `Chat`, so the test fakes are R6-classed environments that
+  expose chat history (0mpk).
 
 - Briefing items now decide structurally whether a verified claim
   changes accepted knowledge:
@@ -113,16 +116,16 @@
   accepts real R6 ellmer clients, including shinychat attachment content
   (pjsd).
 
-- The public namespace is now exactly 20 exports and one S3 method,
+- The public namespace now has 23 exports and one S3 method,
   [`print.tempest_knowledge()`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md).
-  Workspaces, retrievers, resources, manifests, ProgramSets,
-  verification, progress, async execution, and the Shiny implementation
-  are internal; they remain available to validation, persistence,
-  telemetry, and promotion but are no longer a construction,
-  subclassing, or host-integration seam, and the bundled application is
-  reachable only through
+  Product entry points remain compact, while workspace, resource, and
+  source-ID constructors provide a narrow supported host-retriever seam.
+  Generic workflow, compiler, evaluation, progress, async execution, and
+  Shiny implementation surfaces remain internal; the bundled application
+  is reachable through
   [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
-  (pjsd).
+  (pjsd; [\#70](https://github.com/JamesHWade/tempest/issues/70);
+  [\#83](https://github.com/JamesHWade/tempest/issues/83)).
 
 - User-facing failures now inherit `tempest_error` and exactly one
   public category: `tempest_input_error`, `tempest_execution_error`,
