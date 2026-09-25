@@ -274,7 +274,7 @@ test_that("fresh reviews, corrections and current host eligibility stay distinct
       if (!is.null(checkout)) {
         pkgload::load_all(checkout, quiet = TRUE)
       }
-      store <- test_graft_store(store_path)
+      store <- graft::graft_store(store_path)
       history <- tempest::tempest_read_artifact_research(store, selection)
       knowledge <- tempest::tempest_reuse_artifact_research(
         store,

@@ -146,7 +146,7 @@ test_that("contradictory research executes and preserves the prior evidence", {
       if (!is.null(checkout)) {
         pkgload::load_all(checkout, quiet = TRUE)
       }
-      store <- test_graft_store(path)
+      store <- graft::graft_store(path)
       old <- tempest::tempest_read_artifact_research(store, old_selection)
       current <- tempest::tempest_reuse_artifact_research(
         store,
