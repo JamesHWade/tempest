@@ -294,11 +294,69 @@ tempest_mcp_stage_table <- function(stages) {
 tempest_mcp_report_html <- function(report) {
   report <- gsub("<!-- tempest-briefing-item:[[:xdigit:]]+ -->", "", report)
   html <- commonmark::markdown_html(
-    htmltools::htmlEscape(report, attribute = FALSE),
+    report,
     extensions = TRUE,
     footnotes = TRUE
   )
   document <- xml2::read_html(html)
+  xml2::xml_remove(xml2::xml_find_all(
+    document,
+    paste0(
+      "//script|//style|//iframe|//object|//embed|//svg|//math|//template|",
+      "//form|//input|//button|//textarea|//select|//img|//audio|//video|",
+      "//source|//link|//meta|//base|//comment()"
+    )
+  ))
+  allowed_elements <- c(
+    "p",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "blockquote",
+    "pre",
+    "code",
+    "em",
+    "strong",
+    "del",
+    "a",
+    "ul",
+    "ol",
+    "li",
+    "hr",
+    "br",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "section",
+    "sup"
+  )
+  elements <- xml2::xml_find_all(document, "//body//*")
+  for (element in rev(elements)) {
+    if (!xml2::xml_name(element) %in% allowed_elements) {
+      for (child in xml2::xml_contents(element)) {
+        xml2::xml_add_sibling(element, child, .where = "before")
+      }
+      xml2::xml_remove(element)
+    }
+  }
+  for (element in xml2::xml_find_all(document, "//body//*")) {
+    allowed_attributes <- switch(
+      xml2::xml_name(element),
+      a = c("id", "href", "title"),
+      ol = c("id", "start"),
+      "id"
+    )
+    attributes <- xml2::xml_attrs(element)
+    xml2::xml_attrs(element) <- attributes[
+      names(attributes) %in% allowed_attributes
+    ]
+  }
   links <- xml2::xml_find_all(document, "//a[@href]")
   href <- xml2::xml_attr(links, "href")
   safe <- grepl("^(https?://|#)", href, ignore.case = TRUE) &
@@ -307,7 +365,6 @@ tempest_mcp_report_html <- function(report) {
     attributes <- xml2::xml_attrs(link)
     xml2::xml_attrs(link) <- attributes[names(attributes) != "href"]
   }
-  xml2::xml_remove(xml2::xml_find_all(document, "//img"))
   paste(
     as.character(xml2::xml_children(xml2::xml_find_first(document, "//body"))),
     collapse = "\n"

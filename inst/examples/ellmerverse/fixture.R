@@ -6,9 +6,15 @@ TempestReplayChat <- R6::R6Class(
   "TempestReplayChat",
   inherit = ellmer::Chat,
   public = list(
-    initialize = function(statement, source_id, system_prompt = NULL) {
+    initialize = function(
+      statement,
+      source_id,
+      system_prompt = NULL,
+      tool_name = "get_retrieved_source"
+    ) {
       private$statement <- statement
       private$source_id <- source_id
+      private$tool_name <- tool_name
       super$initialize(
         provider = ellmer::Provider(
           name = "tempest-replay",
@@ -111,6 +117,35 @@ TempestReplayChat <- R6::R6Class(
       prompt <- paste(unlist(list(...)), collapse = "\n")
       response <- private$answer()
       coro::generator(function() {
+        tool <- self$get_tools()[[private$tool_name]]
+        if (!is.null(tool)) {
+          request <- ellmer::ContentToolRequest(
+            id = paste0("replay-source-", length(self$get_turns()) + 1L),
+            name = private$tool_name,
+            arguments = list(source_id = private$source_id),
+            tool = tool
+          )
+          private$record(prompt, request)
+          coro::yield(request)
+          value <- tryCatch(
+            {
+              private$tool_request_callback(request)
+              tool(source_id = private$source_id)
+            },
+            error = identity
+          )
+          result <- if (inherits(value, "error")) {
+            ellmer::ContentToolResult(
+              value = NULL,
+              error = conditionMessage(value),
+              request = request
+            )
+          } else {
+            ellmer::ContentToolResult(value = value, request = request)
+          }
+          private$tool_result_callback(result)
+          coro::yield(result)
+        }
         coro::yield(ellmer::ContentText(response))
         private$record(prompt, ellmer::ContentText(response))
       })()
@@ -120,17 +155,32 @@ TempestReplayChat <- R6::R6Class(
       stream = c("text", "content"),
       controller = NULL
     ) {
-      prompt <- paste(unlist(list(...)), collapse = "\n")
-      response <- private$answer()
+      source <- self$stream(..., stream = stream, controller = controller)
       coro::async_generator(function() {
-        coro::yield(ellmer::ContentText(response))
-        private$record(prompt, ellmer::ContentText(response))
+        repeat {
+          content <- source()
+          if (coro::is_exhausted(content)) {
+            break
+          }
+          coro::yield(content)
+        }
       })()
+    },
+    on_tool_request = function(callback) {
+      private$tool_request_callback <- callback
+      invisible(self)
+    },
+    on_tool_result = function(callback) {
+      private$tool_result_callback <- callback
+      invisible(self)
     }
   ),
   private = list(
     statement = NULL,
     source_id = NULL,
+    tool_name = NULL,
+    tool_request_callback = function(request) invisible(NULL),
+    tool_result_callback = function(result) invisible(NULL),
     answer = function() {
       paste0(private$statement, " [", private$source_id, "].")
     },
@@ -256,6 +306,13 @@ tempest_demo_research <- function(
   )
 }
 
+tempest_demo_eligible <- function(event) {
+  identical(event$action, "accept") &&
+    identical(event$stream, "synthetic-pilot") &&
+    identical(event$purpose, "demo-briefing") &&
+    identical(event$actor, "local-demo-reviewer")
+}
+
 # Called in an independent R process by the demo and the integration test.
 tempest_demo_reopen <- function(directory, decision_id) {
   store <- graft::graft_store(file.path(directory, "evidence"))
@@ -264,7 +321,7 @@ tempest_demo_reopen <- function(directory, decision_id) {
     "synthetic-pilot",
     decision_id,
     "demo-briefing",
-    eligible = function(event) TRUE
+    eligible = tempest_demo_eligible
   )
   inputs <- tempest_demo_inputs()
   session <- tempest::tempest_session(

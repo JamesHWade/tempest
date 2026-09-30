@@ -2,8 +2,8 @@
 
 * Tempest's research tools declare their actual read, provisional-write, and web effects, including moderator delegation. Deputy >= 0.0.0.9002 can enforce its base permission policy without a permissive callback, while file writes and ambient execution remain disabled. The supported ecosystem pins use the validated merged Deputy, dsprrr, Graft, and shinymcp revisions (JamesHWade/deputy#223, JamesHWade/deputy#234).
 
-* `tempest_app(demo = TRUE)` opens an offline ecosystem demonstration with actual deputy and dsprrr execution, synthetic initial and corrected research, a shinymcp card, explicit Graft acceptance and withdrawal, and fresh-process exact-evidence reuse.
-* `tempest_mcp_app()` presents one completed STORM or Co-STORM product as a pinned, read-only MCP App with a compact overview, exact claim-by-span evidence, and the committed report; rendering and inspection do not rerun research or record acceptance.
+* `tempest_app(demo = TRUE)` opens an offline ecosystem demonstration with actual deputy and dsprrr execution, synthetic initial and corrected research, a shinymcp card, explicit Graft acceptance and withdrawal, and fresh-process exact-evidence reuse (#186).
+* `tempest_mcp_app()` presents one completed STORM or Co-STORM product as a pinned, read-only MCP App with a compact overview, exact claim-by-span evidence, and the committed report; rendering and inspection do not rerun research or record acceptance (#186).
 
 * Deputy-backed STORM and Co-STORM setup errors now identify safe underlying causes while redacting credential-like details (#69).
 * `tempest_research_workspace()`, `tempest_resource()`, and `tempest_source_id()` now provide supported workspace, fetched evidence, and source identity constructors for host retrievers passed to STORM or Co-STORM (#70).

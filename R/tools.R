@@ -834,7 +834,8 @@ tempest_tools_web <- function(
       web_search,
       name = "web_search",
       annotations = ellmer::tool_annotations(
-        read_only_hint = TRUE,
+        read_only_hint = FALSE,
+        destructive_hint = FALSE,
         open_world_hint = TRUE
       ),
       description = paste(
@@ -853,7 +854,8 @@ tempest_tools_web <- function(
       fetch_url,
       name = "fetch_url",
       annotations = ellmer::tool_annotations(
-        read_only_hint = TRUE,
+        read_only_hint = FALSE,
+        destructive_hint = FALSE,
         open_world_hint = TRUE
       ),
       description = paste(

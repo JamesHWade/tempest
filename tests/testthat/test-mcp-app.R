@@ -95,17 +95,26 @@ test_that("unknown claim IDs fail on both entry paths", {
 test_that("research card HTML suppresses active content and unsafe links", {
   html <- tempest_mcp_report_html(paste(
     "<script>alert('source')</script>",
+    '<p onclick="alert(1)" style="color:red">Safe text</p>',
+    '<iframe src="https://example.org/unsafe"></iframe>',
+    '<svg><a href="https://example.org/svg">SVG</a></svg>',
     "[bad](javascript:alert) [data](data:text/html,script)",
     "[source](https://example.org/source) ![image](https://example.org/tracker.png)",
     sep = "\n\n"
   ))
   document <- xml2::read_html(html)
-  expect_length(xml2::xml_find_all(document, "//script|//img"), 0L)
+  expect_length(
+    xml2::xml_find_all(
+      document,
+      "//script|//img|//iframe|//svg|//*[@onclick]|//*[@style]"
+    ),
+    0L
+  )
   expect_identical(
     xml2::xml_attr(xml2::xml_find_all(document, "//a[@href]"), "href"),
     "https://example.org/source"
   )
-  expect_match(html, "&lt;script&gt;", fixed = TRUE)
+  expect_match(xml2::xml_text(document), "Safe text", fixed = TRUE)
   expect_identical(
     grepl(
       "tempest-briefing-item:",
@@ -115,5 +124,21 @@ test_that("research card HTML suppresses active content and unsafe links", {
       fixed = TRUE
     ),
     FALSE
+  )
+})
+
+test_that("research card rendering preserves Markdown syntax and escaping", {
+  document <- xml2::read_html(tempest_mcp_report_html(paste(
+    "> Inspect the exact source quote.",
+    "Use `x < 1` before accepting.",
+    sep = "\n\n"
+  )))
+  expect_identical(
+    trimws(xml2::xml_text(xml2::xml_find_first(document, "//blockquote"))),
+    "Inspect the exact source quote."
+  )
+  expect_identical(
+    xml2::xml_text(xml2::xml_find_first(document, "//code")),
+    "x < 1"
   )
 })

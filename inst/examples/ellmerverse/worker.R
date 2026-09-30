@@ -35,7 +35,7 @@ tempest_demo_worker <- function(
           "synthetic-pilot",
           head@id,
           "demo-briefing",
-          eligible = function(event) TRUE
+          eligible = helper$tempest_demo_eligible
         )
       } else {
         NULL
@@ -62,7 +62,7 @@ tempest_demo_worker <- function(
           "synthetic-pilot",
           candidate$input_decision_id,
           "demo-briefing",
-          eligible = function(event) TRUE
+          eligible = helper$tempest_demo_eligible
         )
       } else {
         NULL

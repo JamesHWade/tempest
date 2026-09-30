@@ -4,7 +4,7 @@
 \alias{tempest_app}
 \title{Run the Tempest research application}
 \usage{
-tempest_app(demo = FALSE, ...)
+tempest_app(..., demo = FALSE)
 }
 \arguments{
 \item{demo}{If \code{TRUE}, open the deterministic ecosystem demonstration.

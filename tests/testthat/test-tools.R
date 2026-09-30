@@ -156,7 +156,11 @@ test_that("research tool effects obey Deputy's capability and mode policies", {
   )
 
   plan <- policy(mode = "plan", tool_allowlist = NULL)
-  expect_setequal(allowed_names(plan), c(read_names, web_names))
+  expect_setequal(allowed_names(plan), read_names)
+  expect_setequal(
+    allowed_names(policy(mode = "plan", tool_allowlist = tool_names)),
+    read_names
+  )
 
   offline <- policy(web = FALSE)
   expect_setequal(

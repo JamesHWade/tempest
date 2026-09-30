@@ -18,12 +18,15 @@ for another session. Tempest owns research state and scientific validation.
 
 Tempest requires deputy 0.0.0.9002 or later. Research tools declare their actual
 effects: local evidence inspection is read-only and closed-world, adding a
-proposed claim changes only provisional research, and web retrieval is read-only
-and open-world. Moderator delegation can change provisional research and reach
+proposed claim changes only provisional research, and web retrieval also writes
+retrieved evidence to that workspace and is open-world. Neither operation is
+destructive. Moderator delegation can change provisional research and reach
 the web. The adapter allowlists its tools while keeping file access, shell and R
 execution, and package installation disabled. It does not override Deputy's base
-permission checks. Plan mode permits the read tools and refuses provisional
-writes and delegation; readonly mode requires custom read tools to be allowlisted.
+permission checks. Plan mode refuses provisional claim writes, web retrieval,
+and delegation even when allowlisted. Readonly mode requires custom tools to
+be allowlisted; a host offering evidence inspection should allowlist only the
+read tools.
 
 ## Try the complete workflow
 
@@ -39,6 +42,8 @@ No model credentials or network requests are needed after installation. Scripted
 Chat responses and local synthetic evidence run through the actual deputy,
 dsprrr, and Tempest implementations. The demonstration proves composition and
 evidence integrity; it does not measure live-model accuracy, cost, or latency.
+The replay requests registered evidence tools through Deputy's tool callbacks,
+so permissions are checked before those functions execute.
 Research, retention, and reuse run in background R processes so the interface
 stays responsive. Before acceptance, the worker restores the saved run and
 checks that its exact review identity still matches the candidate on screen.
@@ -66,9 +71,10 @@ options(tempest.demo_dir = "~/tempest-ecosystem-demo")
 tempest::tempest_app(demo = TRUE)
 ```
 
-The demo is a trusted local, single-user application. Its host reviewer identity
-and eligibility callback are fixed explicitly for that scope. Applications with
-multiple users must bind their own authenticated reviewer and access policy.
+The demo is a trusted local, single-user application. Its eligibility callback
+admits only accepted decisions from `local-demo-reviewer` in the `synthetic-pilot`
+stream for `demo-briefing`. This is a fixed example policy. Applications with
+multiple users must bind their own authenticated reviewer and current access policy.
 
 ## Put your own research in a card
 
@@ -99,7 +105,8 @@ Clients without interactive pages can use the same three read-only tools:
 
 The full rendered report and presentation tables travel as page metadata. The
 model gets a compact overview and can request the evidence it needs. Report
-rendering escapes raw HTML, removes embedded images, and suppresses links other
+rendering keeps safe Markdown elements and attributes, removes active HTML and
+embedded images, and suppresses links other
 than HTTP, HTTPS, and in-page anchors. The exact stored Markdown is unchanged.
 
 In a Shiny host, create the card inside a render function:

@@ -63,7 +63,7 @@ test_that("actual ecosystem execution retains, corrects, reopens and withdraws r
     "synthetic-pilot",
     accepted@id,
     "demo-briefing",
-    eligible = function(event) TRUE
+    eligible = helper$tempest_demo_eligible
   )
   correction <- helper$tempest_demo_research(
     directory,
@@ -108,7 +108,7 @@ test_that("actual ecosystem execution retains, corrects, reopens and withdraws r
       "synthetic-pilot",
       expected = NULL,
       key = "stale",
-      actor = "reviewer",
+      actor = "local-demo-reviewer",
       reason = "Stale review",
       purpose = "demo-briefing"
     ),
@@ -120,7 +120,7 @@ test_that("actual ecosystem execution retains, corrects, reopens and withdraws r
     "synthetic-pilot",
     expected = accepted@id,
     key = "corrected",
-    actor = "reviewer",
+    actor = "local-demo-reviewer",
     reason = "Reviewed the correction",
     purpose = "demo-briefing"
   )
@@ -166,7 +166,7 @@ test_that("actual ecosystem execution retains, corrects, reopens and withdraws r
     "synthetic-pilot",
     corrected@id,
     "demo-briefing",
-    eligible = function(event) TRUE
+    eligible = helper$tempest_demo_eligible
   )
   graft::graft_withdraw(
     store,
@@ -196,4 +196,80 @@ test_that("actual ecosystem execution retains, corrects, reopens and withdraws r
   )
   resumed <- helper$tempest_demo_research(directory)
   expect_identical(tempest_report(resumed), tempest_report(first))
+})
+
+test_that("the replay invokes Deputy permission checks before tool execution", {
+  helper <- ecosystem_demo_helper()
+  calls <- 0L
+  tool <- ellmer::tool(
+    function(source_id) {
+      calls <<- calls + 1L
+      list(source_id = source_id)
+    },
+    name = "add_proposed_claim",
+    description = "Record a provisional claim in this test workspace.",
+    arguments = list(source_id = ellmer::type_string()),
+    annotations = ellmer::tool_annotations(
+      read_only_hint = FALSE,
+      destructive_hint = FALSE,
+      open_world_hint = FALSE
+    )
+  )
+  chat <- helper$TempestReplayChat$new(
+    "Synthetic statement",
+    "source-1",
+    tool_name = "add_proposed_claim"
+  )
+  agent <- deputy::Agent$new(
+    chat = chat,
+    tools = list(tool),
+    permissions = deputy::Permissions(
+      mode = "plan",
+      file_read = FALSE,
+      file_write = FALSE,
+      bash = FALSE,
+      r_code = FALSE,
+      web = FALSE,
+      install_packages = FALSE,
+      tool_allowlist = "add_proposed_claim"
+    ),
+    working_dir = withr::local_tempdir()
+  )
+  result <- agent$run_sync("Attempt a provisional write")
+  expect_identical(calls, 0L)
+  expect_length(deputy::result_tool_calls(result), 1L)
+  denied <- Filter(
+    function(event) {
+      identical(event$type, "permission") && identical(event$decision, "deny")
+    },
+    result$events
+  )
+  expect_length(denied, 1L)
+})
+
+test_that("the demo refuses evidence accepted outside its reviewer policy", {
+  skip_if_not_installed("graft")
+  helper <- ecosystem_demo_helper()
+  directory <- withr::local_tempdir()
+  store <- graft::graft_store(file.path(directory, "evidence"), create = TRUE)
+  research <- ecosystem_demo_product()
+  selection <- tempest_publish_artifact_research(research, store)
+  decision <- graft::graft_accept(
+    store,
+    graft::graft_read_selection(store, selection),
+    "synthetic-pilot",
+    expected = NULL,
+    key = "outside-demo-reviewer",
+    actor = "another-reviewer",
+    reason = "Reviewed elsewhere",
+    purpose = "demo-briefing"
+  )
+  expect_error(
+    helper$tempest_demo_reopen(directory, decision@id),
+    class = "tempest_knowledge_error"
+  )
+  expect_identical(
+    tempest_read_artifact_research(store, selection)$report_md,
+    tempest_report(research)
+  )
 })

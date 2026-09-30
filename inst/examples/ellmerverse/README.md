@@ -9,6 +9,8 @@ quote, and accept it explicitly. Withdraw acceptance and verify that fresh reuse
 is refused while earlier evidence remains readable.
 
 `fixture.R` supplies a deterministic replay Chat and synthetic local source.
+Expert streams request the registered evidence-read tool through Deputy's
+request and result callbacks, so the replay exercises its permission checks.
 `app.R` uses the real Tempest, deputy, dsprrr, shinymcp, and graft APIs. It makes
 no provider or search requests and never installs packages or executes generated
 code. Its verifier score is scripted, not an accuracy benchmark.
@@ -18,6 +20,8 @@ the process boundary.
 
 Set `options(tempest.demo_dir = "~/tempest-demo")` to retain the demo across R
 sessions. Use one trusted local reviewer and one running app at a time.
+The eligibility callback admits only decisions accepted by `local-demo-reviewer`
+in the `synthetic-pilot` stream for `demo-briefing`.
 
 For live research, create a card with `tempest::tempest_mcp_app(result)` and
 preview, embed, or serve it with shinymcp. The card exposes three read-only

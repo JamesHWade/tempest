@@ -25,7 +25,7 @@
 #' tempest_app()
 #' }
 #' @export
-tempest_app <- function(demo = FALSE, ...) {
+tempest_app <- function(..., demo = FALSE) {
   rlang::check_bool(demo)
   if (demo) {
     for (package in c(

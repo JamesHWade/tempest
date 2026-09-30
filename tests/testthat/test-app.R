@@ -13,6 +13,8 @@ test_that("the offline app uses its own dependencies and preserves runApp argume
   )
   expect_match(result$path, "examples/ellmerverse$", perl = TRUE)
   expect_identical(result$arguments, list(port = 9876L, launch.browser = FALSE))
+  positional <- tempest_app(9876L, launch.browser = FALSE, demo = TRUE)
+  expect_identical(positional$arguments, list(9876L, launch.browser = FALSE))
   expect_error(tempest_app(demo = NA), class = "rlang_error")
 })
 
@@ -43,6 +45,9 @@ test_that("tempest_app validates dependencies and delegates to the app runner", 
   expect_equal(called$args$port, 9999L)
   expect_equal(called$args$launch.browser, FALSE)
   expect_equal(called$provider_timeout_s, 120)
+
+  tempest_app(9876L, launch.browser = FALSE)
+  expect_identical(called$args, list(9876L, launch.browser = FALSE))
 })
 
 test_that("tempest_app rejects an invalid configured runner", {
