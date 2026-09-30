@@ -9,6 +9,7 @@ articles:
   - tempest
   - daily-briefing
   - artifact-knowledge
+  - ecosystem-demo
 reference:
 - title: Research products
   desc: Run scripted STORM, hold a Co-STORM session, or open the bundled app.
@@ -43,6 +44,7 @@ reference:
   - tempest_claim_supports
   - tempest_trajectory_review
   - tempest_trajectory_review_data
+  - tempest_mcp_app
 - title: Session persistence
   desc: Save and resume the exact current session product.
   contents:

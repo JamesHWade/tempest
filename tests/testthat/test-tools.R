@@ -107,6 +107,67 @@ test_that("retrieval tools expose canonical research vocabulary", {
   )
 })
 
+test_that("research tool effects obey Deputy's capability and mode policies", {
+  retriever <- tempest_retriever(
+    config = tempest_config(cache_dir = withr::local_tempdir())
+  )
+  tools <- tempest:::tempest_tools_retrieval(retriever)
+  tool_names <- vapply(tools, \(tool) tool@name, character(1))
+  read_names <- c(
+    "get_retrieved_source",
+    "list_retrieved_sources",
+    "list_proposed_claims",
+    "get_proposed_claim",
+    "get_evidence_for_proposed_claim",
+    "list_unsupported_proposed_claims"
+  )
+  web_names <- c("web_search", "fetch_url")
+  allowed_names <- function(permissions) {
+    allowed <- vapply(
+      tools,
+      function(tool) {
+        result <- deputy::permissions_check(
+          permissions,
+          tool@name,
+          list(),
+          context = list(tool_annotations = tool@annotations)
+        )
+        S7::S7_inherits(result, deputy::PermissionResultAllow)
+      },
+      logical(1)
+    )
+    tool_names[allowed]
+  }
+
+  standard <- tempest:::tempest_deputy_adapter_permissions(tool_names)
+  policy <- function(...) {
+    do.call(
+      deputy::Permissions,
+      utils::modifyList(
+        tempest:::tempest_deputy_adapter_permission_reference(standard),
+        list(...),
+        keep.null = TRUE
+      )
+    )
+  }
+  expect_setequal(
+    allowed_names(standard),
+    c(read_names, web_names, "add_proposed_claim")
+  )
+
+  plan <- policy(mode = "plan", tool_allowlist = NULL)
+  expect_setequal(allowed_names(plan), c(read_names, web_names))
+
+  offline <- policy(web = FALSE)
+  expect_setequal(
+    allowed_names(offline),
+    c(read_names, "add_proposed_claim")
+  )
+
+  readonly <- policy(mode = "readonly", tool_allowlist = read_names)
+  expect_setequal(allowed_names(readonly), read_names)
+})
+
 test_that("web tools produce only their delegated retriever spans", {
   skip_if_not_installed("ellmer")
   local_otel_opt_in()

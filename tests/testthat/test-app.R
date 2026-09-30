@@ -1,3 +1,21 @@
+test_that("the offline app uses its own dependencies and preserves runApp arguments", {
+  needed <- character()
+  testthat::local_mocked_bindings(tempest_require = function(package, why) {
+    needed <<- c(needed, package)
+  })
+  withr::local_options(tempest.app_runner = function(path, ...) {
+    list(path = path, arguments = list(...))
+  })
+  result <- tempest_app(demo = TRUE, port = 9876L, launch.browser = FALSE)
+  expect_identical(
+    needed,
+    c("shiny", "bslib", "shinymcp", "graft", "callr", "promises", "later")
+  )
+  expect_match(result$path, "examples/ellmerverse$", perl = TRUE)
+  expect_identical(result$arguments, list(port = 9876L, launch.browser = FALSE))
+  expect_error(tempest_app(demo = NA), class = "rlang_error")
+})
+
 test_that("tempest_app validates dependencies and delegates to the app runner", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")

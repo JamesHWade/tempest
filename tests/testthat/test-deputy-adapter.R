@@ -176,7 +176,10 @@ test_that("allowlisted tools pass with ambient execution disabled", {
     "Search the current Tempest workspace.",
     arguments = list(query = ellmer::type_string()),
     name = "search_workspace",
-    annotations = list(open_world_hint = TRUE)
+    annotations = ellmer::tool_annotations(
+      read_only_hint = TRUE,
+      open_world_hint = FALSE
+    )
   )
   permissions <- tempest:::tempest_deputy_adapter_permissions(
     "search_workspace"
@@ -205,6 +208,7 @@ test_that("allowlisted tools pass with ambient execution disabled", {
   expect_identical(permissions$r_code, FALSE)
   expect_identical(permissions$web, TRUE)
   expect_identical(permissions$install_packages, FALSE)
+  expect_null(permissions$can_use_tool)
 })
 
 test_that("sync runs reuse one Deputy session and record exact traces", {
