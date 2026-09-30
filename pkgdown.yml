@@ -4,8 +4,9 @@ pkgdown_sha: ~
 articles:
   artifact-knowledge: artifact-knowledge.html
   daily-briefing: daily-briefing.html
+  ecosystem-demo: ecosystem-demo.html
   tempest: tempest.html
-last_built: 2026-09-25T04:44Z
+last_built: 2026-09-30T21:10Z
 urls:
   reference: https://jameshwade.github.io/tempest/reference
   article: https://jameshwade.github.io/tempest/articles

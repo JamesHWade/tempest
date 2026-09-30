@@ -15,10 +15,19 @@ Launches an interactive app that provides:
 ## Usage
 
 ``` r
-tempest_app(...)
+tempest_app(..., demo = FALSE)
 ```
 
 ## Arguments
+
+- demo:
+
+  If `TRUE`, open the deterministic ecosystem demonstration. Scripted
+  model responses and synthetic local evidence exercise real deputy and
+  dsprrr execution, a shinymcp research card, and explicit Graft review,
+  correction, withdrawal, and fresh-process reuse. No credentials or
+  network are needed. The example uses a local demo directory; set
+  `options(tempest.demo_dir = "path")` to keep it across R sessions.
 
 - ...:
 

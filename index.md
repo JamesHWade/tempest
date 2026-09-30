@@ -35,9 +35,32 @@ Built on the R AI ecosystem:
   extraction/generation modules
 - [Deputy](https://github.com/JamesHWade/deputy) — persistent,
   permission-bounded Co-STORM agent execution
+- [graft](https://github.com/JamesHWade/graft) — exact retained evidence
+  and explicit review decisions
+- [shinymcp](https://github.com/JamesHWade/shinymcp) — interactive
+  research cards and read-only MCP tools
 - [shinychat](https://github.com/posit-dev/shinychat) — interactive chat
   UI
 - [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
+
+## Try the ecosystem together
+
+``` r
+
+tempest::tempest_app(demo = TRUE)
+```
+
+The offline demonstration runs actual deputy agents and dsprrr stages
+against synthetic evidence, shows a shinymcp research card, and lets you
+explicitly accept, correct, withdraw, and reopen exact evidence through
+graft. No model credentials or network requests are needed after
+installation. Install the optional shinymcp, graft, shiny, bslib, and
+callr packages to run it.
+
+Use `tempest_mcp_app(result)` with your own completed STORM or Co-STORM
+research to give people and models the same read-only claim and evidence
+inspection. See [the ecosystem
+walkthrough](https://jameshwade.github.io/tempest/articles/ecosystem-demo.html).
 
 ## Reuse retained artifacts
 

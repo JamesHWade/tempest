@@ -16,3 +16,6 @@ Install Tempest and run your first workflow.
 
 - [Reuse retained artifact
   evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.md):
+
+- [Research, review, retain, and
+  reuse](https://jameshwade.github.io/tempest/articles/ecosystem-demo.md):

@@ -61,6 +61,9 @@ Read the committed report and inspect the evidence behind it.
   product
 - [`tempest_trajectory_review_data()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review_data.md)
   : Extract a validated trajectory review projection
+- [`tempest_mcp_app()`](https://jameshwade.github.io/tempest/reference/tempest_mcp_app.md)
+  **\[experimental\]** : Review a completed research product in an MCP
+  App
 
 ## Session persistence
 
