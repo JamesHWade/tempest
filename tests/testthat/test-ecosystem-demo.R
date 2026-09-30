@@ -266,7 +266,7 @@ test_that("the demo refuses evidence accepted outside its reviewer policy", {
   )
   expect_error(
     helper$tempest_demo_reopen(directory, decision@id),
-    class = "tempest_knowledge_error"
+    class = "graft_ineligible_error"
   )
   expect_identical(
     tempest_read_artifact_research(store, selection)$report_md,
