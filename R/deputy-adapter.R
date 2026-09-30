@@ -96,10 +96,7 @@ tempest_deputy_adapter_permissions <- function(tool_allowlist) {
     r_code = FALSE,
     web = TRUE,
     install_packages = FALSE,
-    tool_allowlist = tool_allowlist,
-    can_use_tool = function(tool_name, tool_input, context) {
-      deputy::PermissionResultAllow()
-    }
+    tool_allowlist = tool_allowlist
   )
 }
 

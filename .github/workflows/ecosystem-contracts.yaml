@@ -21,6 +21,9 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      NOT_CRAN: "true"
+      TESTTHAT_CPUS: "1"
+      TESTTHAT_PARALLEL: "false"
 
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +68,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Run deterministic cross-repository contracts
-        run: devtools::test(filter = "^ecosystem-contracts$")
+        run: devtools::test(filter = "^(ecosystem-contracts|deputy-adapter|costorm-deputy|tools)$")
         shell: Rscript {0}
 
   floating-heads:
@@ -75,6 +78,9 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      NOT_CRAN: "true"
+      TESTTHAT_CPUS: "1"
+      TESTTHAT_PARALLEL: "false"
 
     steps:
       - uses: actions/checkout@v4
@@ -151,7 +157,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Run contracts against current ecosystem heads
-        run: devtools::test(filter = "^ecosystem-contracts$")
+        run: devtools::test(filter = "^(ecosystem-contracts|deputy-adapter|costorm-deputy|tools)$")
         shell: Rscript {0}
 
       - name: Explain floating-head failures

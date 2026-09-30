@@ -942,6 +942,11 @@ tempest_create_deputy_expert_delegation_tool <- function(
   ellmer::tool(
     delegate_to_expert,
     name = "delegate_to_expert",
+    annotations = ellmer::tool_annotations(
+      read_only_hint = FALSE,
+      destructive_hint = FALSE,
+      open_world_hint = TRUE
+    ),
     description = paste(
       "Delegate one narrow evidence question to an active scientific expert.",
       "Use the exact expert_id.",

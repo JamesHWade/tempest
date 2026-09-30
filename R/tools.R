@@ -656,10 +656,15 @@ tempest_tool_review_functions <- function(workspace) {
 
 #' @keywords internal
 tempest_tool_review_ellmer_tools <- function(review) {
+  annotations <- ellmer::tool_annotations(
+    read_only_hint = TRUE,
+    open_world_hint = FALSE
+  )
   list(
     ellmer::tool(
       review$get_retrieved_source,
       name = "get_retrieved_source",
+      annotations = annotations,
       description = "Get a previously fetched source by source_id. Returns metadata and a compact excerpt.",
       arguments = list(
         source_id = ellmer::type_string("Source id, e.g. S123abc..."),
@@ -672,18 +677,21 @@ tempest_tool_review_ellmer_tools <- function(review) {
     ellmer::tool(
       review$list_retrieved_sources,
       name = "list_retrieved_sources",
+      annotations = annotations,
       description = "List compact metadata for sources currently stored in memory for this session.",
       arguments = list()
     ),
     ellmer::tool(
       review$list_proposed_claims,
       name = "list_proposed_claims",
+      annotations = annotations,
       description = "List compact source-backed claim records currently stored in memory for this session.",
       arguments = list()
     ),
     ellmer::tool(
       review$get_proposed_claim,
       name = "get_proposed_claim",
+      annotations = annotations,
       description = "Get a claim by claim_id, including verification status, support score, and cited source context.",
       arguments = list(
         claim_id = ellmer::type_string("Claim id, e.g. C123abc...")
@@ -692,6 +700,7 @@ tempest_tool_review_ellmer_tools <- function(review) {
     ellmer::tool(
       review$get_evidence_for_proposed_claim,
       name = "get_evidence_for_proposed_claim",
+      annotations = annotations,
       description = "Get evidence spans and compact cited-source excerpts for a claim.",
       arguments = list(
         claim_id = ellmer::type_string("Claim id, e.g. C123abc...")
@@ -700,6 +709,7 @@ tempest_tool_review_ellmer_tools <- function(review) {
     ellmer::tool(
       review$list_unsupported_proposed_claims,
       name = "list_unsupported_proposed_claims",
+      annotations = annotations,
       description = "List claims whose verification status indicates weak, missing, or contradictory support.",
       arguments = list(
         limit = ellmer::type_integer(
@@ -737,6 +747,11 @@ tempest_tool_write_ellmer_tools <- function(write) {
     ellmer::tool(
       write$add_proposed_claim,
       name = "add_proposed_claim",
+      annotations = ellmer::tool_annotations(
+        read_only_hint = FALSE,
+        destructive_hint = FALSE,
+        open_world_hint = FALSE
+      ),
       description = paste(
         "Add an atomic claim to the session memory with supporting source_ids.",
         "Use this after inspecting sources so later writing can cite the claim."
@@ -818,6 +833,11 @@ tempest_tools_web <- function(
     ellmer::tool(
       web_search,
       name = "web_search",
+      annotations = ellmer::tool_annotations(
+        read_only_hint = FALSE,
+        destructive_hint = FALSE,
+        open_world_hint = TRUE
+      ),
       description = paste(
         "Search the web for relevant sources.",
         "Results include source ids, titles, URLs, and snippets."
@@ -833,6 +853,11 @@ tempest_tools_web <- function(
     ellmer::tool(
       fetch_url,
       name = "fetch_url",
+      annotations = ellmer::tool_annotations(
+        read_only_hint = FALSE,
+        destructive_hint = FALSE,
+        open_world_hint = TRUE
+      ),
       description = paste(
         "Fetch a URL and extract readable plain text.",
         "Use this after web_search to inspect a source."

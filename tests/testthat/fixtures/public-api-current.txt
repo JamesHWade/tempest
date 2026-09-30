@@ -5,6 +5,7 @@ tempest_claim_supports
 tempest_claims
 tempest_config
 tempest_expert
+tempest_mcp_app
 tempest_promotion_bundle
 tempest_publish_artifact_research
 tempest_read_artifact_research

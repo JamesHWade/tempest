@@ -247,6 +247,25 @@ test_that("moderator delegates through persistent Deputy expert execution", {
   first <- session$step("First user question")
   second <- session$step("Second user question")
   moderator_state <- moderator_chat$.state()
+  delegation_tool <- moderator_state$tools[["delegate_to_expert"]]
+  delegation_reference <- tempest:::tempest_deputy_adapter_permission_reference(
+    tempest:::tempest_deputy_adapter_permissions("delegate_to_expert")
+  )
+  for (restriction in list(list(mode = "plan"), list(web = FALSE))) {
+    delegation_permissions <- do.call(
+      deputy::Permissions,
+      utils::modifyList(delegation_reference, restriction)
+    )
+    expect_s7_class(
+      deputy::permissions_check(
+        delegation_permissions,
+        delegation_tool@name,
+        list(expert_id = expert@expert_id, question = "Evidence question"),
+        context = list(tool_annotations = delegation_tool@annotations)
+      ),
+      deputy::PermissionResultDeny
+    )
+  }
   delegations <- moderator_state$delegations
   expert_session <- tempest:::tempest_session_expert_manager(
     session

@@ -25,12 +25,13 @@ Imports:
     coro,
     curl,
     DBI,
-    deputy,
+    deputy (>= 0.0.0.9002),
     digest,
     dsprrr,
     ellmer (>= 0.5.0),
     fs,
     glue,
+    htmltools,
     httr2,
     jsonlite,
     lifecycle,
@@ -59,6 +60,7 @@ Suggests:
     rvest,
     shiny (>= 1.8.1),
     shinychat (>= 0.4.0.9000),
+    shinymcp (>= 0.0.0.9000),
     testthat (>= 3.2.0),
     tidyr,
     visNetwork,
@@ -66,9 +68,10 @@ Suggests:
     withr,
     zip
 Remotes:
-    JamesHWade/deputy@404d0cc18c0ccb8d75323db9b0657f3bb79d201d,
-    JamesHWade/dsprrr@76a014f74e8d4a236aa0a0c5dda87de388310cf6,
-    JamesHWade/graft@936d133570e3096a8a1e5f565e887238bff89c17,
+    JamesHWade/deputy@58ed28c8772a48ecd6ecfd56f512b6356fb76bf1,
+    JamesHWade/dsprrr@e925ecd78a8e6d33463cdddf51d45951b3e0ab17,
+    JamesHWade/graft@ad0ab921a02df602bb3687649e48b2e470cf23d6,
+    JamesHWade/shinymcp@0476fcf54a66bf82b0d8a1c0ab3bc516629b0a6b,
     posit-dev/shinychat/pkg-r
 Config/testthat/edition: 3
 Config/testthat/parallel: true
@@ -89,6 +92,7 @@ BugReports: https://github.com/JamesHWade/tempest/issues
 Config/roxygen2/version: 8.1.0
 Collate: 
     'app.R'
+    'mcp-app.R'
     'cache.R'
     'citations.R'
     'ledger-types.R'

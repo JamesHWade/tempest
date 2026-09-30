@@ -12,6 +12,12 @@
 #' polite status regions. Validation, cancellation, and publication failures
 #' are announced as alerts.
 #'
+#' @param demo If `TRUE`, open the deterministic ecosystem demonstration.
+#'   Scripted model responses and synthetic local evidence exercise real
+#'   deputy and dsprrr execution, a shinymcp research card, and explicit Graft
+#'   review, correction, withdrawal, and fresh-process reuse. No credentials
+#'   or network are needed. The example uses a local demo directory; set
+#'   `options(tempest.demo_dir = "path")` to keep it across R sessions.
 #' @param ... Passed to `shiny::runApp()`.
 #' @return A Shiny app object (invisibly, from `shiny::runApp()`).
 #' @examples
@@ -19,10 +25,29 @@
 #' tempest_app()
 #' }
 #' @export
-tempest_app <- function(...) {
-  tempest_shiny_require_ui(tempest_shiny_panel_choices())
-  tempest_shiny_require_server(tempest_shiny_panel_choices())
-  app_dir <- system.file("shiny", package = "tempest")
+tempest_app <- function(..., demo = FALSE) {
+  rlang::check_bool(demo)
+  if (demo) {
+    for (package in c(
+      "shiny",
+      "bslib",
+      "shinymcp",
+      "graft",
+      "callr",
+      "promises",
+      "later"
+    )) {
+      tempest_require(
+        package,
+        "The offline ecosystem demonstration needs this package."
+      )
+    }
+    app_dir <- system.file("examples", "ellmerverse", package = "tempest")
+  } else {
+    tempest_shiny_require_ui(tempest_shiny_panel_choices())
+    tempest_shiny_require_server(tempest_shiny_panel_choices())
+    app_dir <- system.file("shiny", package = "tempest")
+  }
   if (identical(app_dir, "")) {
     tempest_abort("Shiny app not found in installed package.")
   }
