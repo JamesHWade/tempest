@@ -366,7 +366,7 @@ tempest_mcp_report_html <- function(report) {
     xml2::xml_attrs(link) <- attributes[names(attributes) != "href"]
   }
   paste(
-    as.character(xml2::xml_children(xml2::xml_find_first(document, "//body"))),
+    as.character(xml2::xml_contents(xml2::xml_find_first(document, "//body"))),
     collapse = "\n"
   )
 }

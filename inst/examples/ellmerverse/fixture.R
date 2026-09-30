@@ -129,22 +129,7 @@ TempestReplayChat <- R6::R6Class(
           )
           private$record(prompt, request)
           coro::yield(request)
-          value <- tryCatch(
-            {
-              private$tool_request_callback(request)
-              tool(source_id = private$source_id)
-            },
-            error = identity
-          )
-          result <- if (inherits(value, "error")) {
-            ellmer::ContentToolResult(
-              value = NULL,
-              error = conditionMessage(value),
-              request = request
-            )
-          } else {
-            ellmer::ContentToolResult(value = value, request = request)
-          }
+          result <- private$invoke_tool(tool, request)
           private$tool_result_callback(result)
           coro::yield(result)
         }
@@ -183,6 +168,24 @@ TempestReplayChat <- R6::R6Class(
     tool_name = NULL,
     tool_request_callback = NULL,
     tool_result_callback = NULL,
+    invoke_tool = function(tool, request) {
+      value <- tryCatch(
+        {
+          private$tool_request_callback(request)
+          tool(source_id = private$source_id)
+        },
+        error = identity
+      )
+      if (inherits(value, "error")) {
+        ellmer::ContentToolResult(
+          value = NULL,
+          error = conditionMessage(value),
+          request = request
+        )
+      } else {
+        ellmer::ContentToolResult(value = value, request = request)
+      }
+    },
     answer = function() {
       paste0(private$statement, " [", private$source_id, "].")
     },

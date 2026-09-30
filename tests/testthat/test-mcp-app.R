@@ -96,6 +96,7 @@ test_that("research card HTML suppresses active content and unsafe links", {
   html <- tempest_mcp_report_html(paste(
     "<script>alert('source')</script>",
     '<p onclick="alert(1)" style="color:red">Safe text</p>',
+    "<div><b>Wrapper text</b></div>",
     '<iframe src="https://example.org/unsafe"></iframe>',
     '<svg><a href="https://example.org/svg">SVG</a></svg>',
     "[bad](javascript:alert) [data](data:text/html,script)",
@@ -115,6 +116,7 @@ test_that("research card HTML suppresses active content and unsafe links", {
     "https://example.org/source"
   )
   expect_match(xml2::xml_text(document), "Safe text", fixed = TRUE)
+  expect_match(xml2::xml_text(document), "Wrapper text", fixed = TRUE)
   expect_identical(
     grepl(
       "tempest-briefing-item:",
