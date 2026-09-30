@@ -15,6 +15,8 @@ TempestReplayChat <- R6::R6Class(
       private$statement <- statement
       private$source_id <- source_id
       private$tool_name <- tool_name
+      private$tool_request_callback <- function(request) invisible(NULL)
+      private$tool_result_callback <- function(result) invisible(NULL)
       super$initialize(
         provider = ellmer::Provider(
           name = "tempest-replay",
@@ -179,8 +181,8 @@ TempestReplayChat <- R6::R6Class(
     statement = NULL,
     source_id = NULL,
     tool_name = NULL,
-    tool_request_callback = function(request) invisible(NULL),
-    tool_result_callback = function(result) invisible(NULL),
+    tool_request_callback = NULL,
+    tool_result_callback = NULL,
     answer = function() {
       paste0(private$statement, " [", private$source_id, "].")
     },
