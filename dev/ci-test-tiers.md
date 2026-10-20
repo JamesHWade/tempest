@@ -17,16 +17,18 @@ Rscript tools/test-tier.R unit
 The full suite runs after pushes to `main`. A weekly or manually dispatched
 `R-CMD-check.yaml` run also executes it on all three release platforms. Add
 the `full-tests` label to a pull request to run the release-platform checks,
-four full-suite shards, and pinned ecosystem contracts before merge. Removing
+four full-suite shards, and ecosystem contracts before merge. Removing
 the label reruns the ordinary unit gate. The `required` check evaluates the
 jobs selected for each event.
 
-The ecosystem workflow uses immutable Deputy, dsprrr, and Graft revisions
-from `DESCRIPTION` for reproducible checks. Weekly and manual runs separately
-resolve current upstream `main` revisions, record each pin and head SHA in the
-job summary, and run the same contracts against those heads. A floating-head
-failure is a compatibility investigation; update a pin only after verifying
-the new revision.
+`DESCRIPTION` does not pin Deputy, dsprrr, Graft, or shinymcp: its `Remotes`
+track each package's `main` branch, so a host that needs a newer revision of
+one of them can still install Tempest. The ecosystem workflow installs those
+heads, records each installed SHA in the job summary, and runs the
+cross-repository contracts against them, weekly, on manual dispatch, and on
+pull requests labelled `full-tests`. A failure means an upstream `main`
+changed a contract Tempest relies on; fix Tempest or the upstream package
+rather than pinning around it.
 
 Only add a file to the unit allowlist after verifying that every test in it
 runs without a live provider, network access, or a Deputy-backed research

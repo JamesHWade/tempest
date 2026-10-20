@@ -68,10 +68,10 @@ Suggests:
     withr,
     zip
 Remotes:
-    JamesHWade/deputy@58ed28c8772a48ecd6ecfd56f512b6356fb76bf1,
-    JamesHWade/dsprrr@e925ecd78a8e6d33463cdddf51d45951b3e0ab17,
-    JamesHWade/graft@ad0ab921a02df602bb3687649e48b2e470cf23d6,
-    JamesHWade/shinymcp@0476fcf54a66bf82b0d8a1c0ab3bc516629b0a6b,
+    JamesHWade/deputy,
+    JamesHWade/dsprrr,
+    JamesHWade/graft,
+    JamesHWade/shinymcp,
     posit-dev/shinychat/pkg-r
 Config/testthat/edition: 3
 Config/testthat/parallel: true

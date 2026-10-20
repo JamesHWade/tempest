@@ -1,27 +1,24 @@
-test_that("maintained ecosystem remotes use immutable revisions", {
+test_that("maintained ecosystem remotes track their main branches", {
+  # A pinned revision here holds every package that installs Tempest to that
+  # revision: a host that needs a newer Deputy cannot resolve both.
   remotes <- trimws(strsplit(
     packageDescription("tempest", fields = "Remotes")[[1L]],
     ",",
     fixed = TRUE
   )[[1L]])
   maintained <- remotes[grepl(
-    "^JamesHWade/(deputy|dsprrr|graft)(@[^[:space:]]+)?$",
+    "^JamesHWade/(deputy|dsprrr|graft|shinymcp)(@[^[:space:]]+)?$",
     remotes
   )]
 
-  expect_length(maintained, 3L)
-  expect_identical(length(unique(maintained)), 3L)
   expect_setequal(
-    sub("@[0-9a-f]{40}$", "", maintained),
+    maintained,
     c(
       "JamesHWade/deputy",
       "JamesHWade/dsprrr",
-      "JamesHWade/graft"
+      "JamesHWade/graft",
+      "JamesHWade/shinymcp"
     )
-  )
-  expect_identical(
-    all(grepl("@[0-9a-f]{40}$", maintained)),
-    TRUE
   )
 })
 
