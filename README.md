@@ -828,7 +828,7 @@ bundled application is reachable only through `tempest_app()`, and there is no
 supported contract for embedding the panels in a host app.
 
 The app currently depends on the shinychat development version that provides
-`chat_server()`, pinned in `DESCRIPTION`.
+`chat_server()`, installed from GitHub through `Remotes` in `DESCRIPTION`.
 
 ## Notes
 
