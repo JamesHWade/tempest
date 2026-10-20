@@ -2,12 +2,18 @@
 
 ## tempest 0.0.0.9000
 
+- Tempest no longer pins Deputy, dsprrr, Graft, or shinymcp to commits
+  in `Remotes`; each tracks its `main` branch. A pin held every package
+  that installs Tempest to that commit, so a host that needs a newer
+  Deputy could not resolve both. The ecosystem contracts now run against
+  the current heads and record their SHAs.
+
 - Tempest’s research tools declare their actual read, provisional-write,
   and web effects, including moderator delegation. Deputy \>= 0.0.0.9002
   can enforce its base permission policy without a permissive callback,
-  while file writes and ambient execution remain disabled. The supported
-  ecosystem pins use the validated merged Deputy, dsprrr, Graft, and
-  shinymcp revisions (JamesHWade/deputy#223, JamesHWade/deputy#234).
+  while file writes and ambient execution remain disabled. This needs
+  the merged Deputy permission work (JamesHWade/deputy#223,
+  JamesHWade/deputy#234).
 
 - `tempest_app(demo = TRUE)` opens an offline ecosystem demonstration
   with actual deputy and dsprrr execution, synthetic initial and
