@@ -1,10 +1,12 @@
 # Test tiers
 
-Tempest runs an explicit offline unit tier on every pull request. The unit
-allowlist lives in `tools/test-tier.R`; every other `tests/testthat/test-*.R`
-file belongs to the full tier. The selector validates its inventory and checks
-that the testthat filter ran exactly the allowed files, so renames and new
-files cannot silently change the unit set.
+Tempest runs an explicit offline unit tier on every pull request. The shared
+implementation and unit allowlist live in
+`tests/testthat/fixtures/test-tier.R`, which is included with the installed test
+bundle. The `tools/test-tier.R` script is the CLI entry point. Every other file
+matching `tests/testthat/test-*.R` belongs to the full tier. The selector
+validates its inventory and verifies that the testthat filter ran exactly the
+allowlist, so renames and new files cannot silently change the unit set.
 
 Run the tiers from the repository root:
 

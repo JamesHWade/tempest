@@ -1,12 +1,8 @@
-test_tier_fixture <- function() {
-  root <- normalizePath(test_path("..", ".."), mustWork = TRUE)
-  script <- file.path(root, "tools", "test-tier.R")
+test_tier_fixture <- function(root = test_path("..", "..")) {
+  root <- normalizePath(root, winslash = "/", mustWork = TRUE)
+  script <- test_path("fixtures", "test-tier.R")
   if (!file.exists(script)) {
-    root <- file.path(root, "00_pkg_src", "tempest")
-    script <- file.path(root, "tools", "test-tier.R")
-  }
-  if (!file.exists(script)) {
-    stop("The test-tier script is missing from the package source.")
+    stop("The test-tier fixture is missing from the installed test bundle.")
   }
   tier <- new.env(parent = globalenv())
   sys.source(script, envir = tier)

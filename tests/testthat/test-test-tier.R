@@ -137,3 +137,30 @@ test_that("list and validate reports name both tiers", {
     "Integration/full tier"
   )
 })
+
+test_that("the tier script fixture works without a source tools directory", {
+  root <- withr::local_tempdir()
+  testthat_dir <- file.path(root, "tests", "testthat")
+  dir.create(testthat_dir, recursive = TRUE)
+  file.copy(
+    test_path("..", "..", "DESCRIPTION"),
+    root,
+    overwrite = TRUE
+  )
+  writeLines(
+    'test_that("tier fixture probe", { expect_identical(1L, 1L) })',
+    file.path(testthat_dir, "test-probe.R")
+  )
+
+  fixture <- test_tier_fixture(root)
+  expect_identical(fixture$root, normalizePath(root, winslash = "/"))
+  expect_identical(file.exists(file.path(root, "tools", "test-tier.R")), FALSE)
+
+  manifest <- fixture$tier$test_tier_manifest(
+    fixture$root,
+    unit_files = "test-probe.R"
+  )
+  expect_identical(manifest$inventory, "test-probe.R")
+  expect_identical(manifest$unit, "test-probe.R")
+  expect_length(manifest$full, 0L)
+})
