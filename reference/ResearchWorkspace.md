@@ -95,6 +95,10 @@ acceptance remains an explicit graft review and commit.
 
 - [`ResearchWorkspace$list_disputes()`](#method-ResearchWorkspace-list_disputes)
 
+- [`ResearchWorkspace$replace_claim_reviews()`](#method-ResearchWorkspace-replace_claim_reviews)
+
+- [`ResearchWorkspace$list_claim_reviews()`](#method-ResearchWorkspace-list_claim_reviews)
+
 - [`ResearchWorkspace$bind_artifact_selection()`](#method-ResearchWorkspace-bind_artifact_selection)
 
 - [`ResearchWorkspace$validate_integrity()`](#method-ResearchWorkspace-validate_integrity)
@@ -489,6 +493,44 @@ List all disputes.
 #### Usage
 
     ResearchWorkspace$list_disputes()
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$replace_claim_reviews()`
+
+Replace the advisory claim-review records.
+
+#### Usage
+
+    ResearchWorkspace$replace_claim_reviews(
+      reviews,
+      .verification_owner_token = NULL,
+      .resources = list()
+    )
+
+#### Arguments
+
+- `reviews`:
+
+  An unnamed list of exact `TempestClaimReview` values.
+
+- `.verification_owner_token`:
+
+  Internal process-local workspace owner.
+
+- `.resources`:
+
+  Unnamed exact resources staged with the reviews.
+
+------------------------------------------------------------------------
+
+### `ResearchWorkspace$list_claim_reviews()`
+
+List advisory claim-review records in deterministic claim order.
+
+#### Usage
+
+    ResearchWorkspace$list_claim_reviews()
 
 ------------------------------------------------------------------------
 

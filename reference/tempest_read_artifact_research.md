@@ -27,8 +27,10 @@ tempest_read_artifact_research(store, selection)
 
 ## Value
 
-A list with `selection`, validated `bundle`, `report_md`, and the exact
-evidence `records` and text `contents` used for research admission. The
-selection retains program identities as inert provenance, never tools or
-execution authority. Evidence is limited to 998 records and 1 MiB of
-projected text; Graft also enforces its store and selection bounds.
+A list with `selection`, validated `bundle`, `report_md`, advisory
+`claim_reviews`, and the exact evidence `records` and `contents` used
+for research admission. Reviews remain separate from accepted evidence.
+The selection retains program identities as inert provenance, never
+tools or execution authority. Evidence is limited to 998 records and 1
+MiB of projected text; Graft also enforces its store and selection
+bounds.

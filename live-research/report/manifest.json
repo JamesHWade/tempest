@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "research_run_id": "live-co2-captured-evidence",
+  "research_sha256": "4408241b961861d95cd1e9cb8c006288e7f64de4e2b4d95a3bf4d3c372b96520",
+  "created_at": "2026-11-15T12:47:43.416608Z",
+  "provenance": "Derived report; computations and illustrations confer no research or knowledge acceptance.",
+  "files": [
+    {
+      "path": "analyses/plant_level_descriptive_profiles/analysis.R",
+      "bytes": 8859,
+      "sha256": "bca895e1b72e7df315440e84b06b03c3ca49ce2086e3f283bcaef6d8220b5a8f"
+    },
+    {
+      "path": "analyses/plant_level_descriptive_profiles/output-1.csv",
+      "bytes": 192,
+      "sha256": "bda9eccdf432bd00f961018cf4c888c79331af1b0a4e9c87d7325398c5ab8d12"
+    },
+    {
+      "path": "analyses/plant_level_descriptive_profiles/output-2.png",
+      "bytes": 269459,
+      "sha256": "4fed86ddc36c4ee4c6c205a3d62eb172f4a7c324908f2b7c3378836fd3111fd1"
+    },
+    {
+      "path": "analyses/plant_level_descriptive_profiles/output-3.csv",
+      "bytes": 406,
+      "sha256": "6dda998388015778efc1c7beb623b59cefcef3ae8f8281a6dc7cba7fdf149bb3"
+    },
+    {
+      "path": "analyses/plant_level_descriptive_profiles/output-4.csv",
+      "bytes": 543,
+      "sha256": "3ca1e3968601f6ac7ce567185dfd3704926fa8044a9f4440c39a3ae297393932"
+    },
+    {
+      "path": "analyses/plant_level_descriptive_profiles/output-5.csv",
+      "bytes": 1940,
+      "sha256": "830caa41ee6f9648b66491188c81d89d6492b606bcf535ee8b0fab1f25405dbf"
+    },
+    {
+      "path": "analyses/plant_level_descriptive_profiles/output-6.csv",
+      "bytes": 3215,
+      "sha256": "670c4986f7ac87a7ad7165582322ffde257e4631ca42d1aeab0875ec3510419f"
+    },
+    {
+      "path": "analyses/plant_level_descriptive_profiles/output-7.png",
+      "bytes": 435656,
+      "sha256": "077a140283029383ab25bd13bc4c7089295cdd3a9706fc20e482ebc6ec4a36cd"
+    },
+    {
+      "path": "analyses/plant_level_descriptive_profiles/output.txt",
+      "bytes": 6466,
+      "sha256": "9ec217bbd1360752aaf3f35bc454b8f3f6fd1fc044c1fb768f6927f61db7a2c8"
+    },
+    {
+      "path": "illustrations/cold_recovery_measurement_schematic/output-1.png",
+      "bytes": 1785591,
+      "sha256": "e1582761784d4e9c8d198ef6f9da608d8b5f938522e9b4834c5cb0f8817f7878"
+    },
+    {
+      "path": "index.html",
+      "bytes": 75019,
+      "sha256": "de8f3bd73c1abe6918b59553b456f9c544e162667eb2726759c8dbc7cbe99bf8"
+    },
+    {
+      "path": "plan.json",
+      "bytes": 14921,
+      "sha256": "44208ac9991cc048a6b3cdd676c9ae329f416ac85cb12ed096ebcaf573417513"
+    },
+    {
+      "path": "report.json",
+      "bytes": 47121,
+      "sha256": "3fd19e7789fcb305eab3f4050d8c7d23f987f01e270376379aaf6bc565c1fe6d"
+    },
+    {
+      "path": "research.md",
+      "bytes": 19541,
+      "sha256": "ca9cd215944217eabe45437bd99cb50164b050b9b429b0edb6e8ac46d73ac231"
+    },
+    {
+      "path": "sources.json",
+      "bytes": 2702,
+      "sha256": "fb750af5dc2615763030c1aa4513b91cd998c4d7ab5f3c7b74c39fc66afb4783"
+    }
+  ]
+}

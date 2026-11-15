@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light"/>
+  <title>From cold exposure to carbon uptake: individual plant responses in R’s CO₂ dataset</title>
+  <style>:root{color-scheme:light;--paper:#f4f0e8;--paper-deep:#e9e2d5;--ink:#142738;--muted:#5e6c72;--teal:#246b68;--teal-soft:#dce9e4;--gold:#bb8744;--line:#d7d0c3;--white:#fffdf8;--danger:#8d443a;--shadow:0 18px 48px rgba(24,39,51,.08)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.65}a{color:var(--teal);text-decoration-thickness:.08em;text-underline-offset:.18em}a:hover{color:#174f4c}.masthead{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.2rem max(1.4rem,calc((100vw - 1240px)/2));border-bottom:1px solid var(--line);font-size:.76rem;letter-spacing:.14em;text-transform:uppercase}.brand{font-weight:800;color:var(--ink)}.edition{color:var(--muted);letter-spacing:.08em}.page{max-width:1240px;margin:0 auto;padding:0 1.5rem 5rem}.hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);gap:clamp(2rem,6vw,5rem);align-items:center;padding:clamp(3.5rem,8vw,7.5rem) 0 3.5rem}.eyebrow{margin:0 0 .7rem;color:var(--teal);font-size:.73rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}h1,h2,h3,h4{font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif;font-weight:500;line-height:1.12;letter-spacing:-.025em}h1{max-width:16ch;margin:.2rem 0 1.35rem;font-size:clamp(2.7rem,7vw,5.8rem)}.hero-summary{max-width:66ch;margin:0;color:#374c58;font-size:1.14rem}.hero-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;margin-top:1.7rem}.status-pill,.meta-pill{display:inline-flex;align-items:center;gap:.4rem;padding:.36rem .7rem;border:1px solid var(--line);border-radius:99px;background:rgba(255,253,248,.7);color:var(--muted);font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.status-pill.succeeded{border-color:#b4d0c4;background:#e4efe9;color:#235f50}.status-pill.failed{border-color:#dfb8ad;background:#f5e6e0;color:var(--danger)}.status-pill.skipped{background:#eee9de}.hero-art{margin:0;padding:.7rem;border:1px solid var(--line);background:var(--white);box-shadow:var(--shadow);transform:rotate(1.2deg)}.hero-art img{display:block;width:100%;max-height:440px;object-fit:cover;background:var(--paper-deep)}.hero-art figcaption{padding:.85rem .35rem .25rem;color:var(--muted);font-family:Georgia,serif;font-size:.94rem}.generated-label{display:block;margin-bottom:.35rem;color:var(--teal);font-family:ui-sans-serif,system-ui,sans-serif;font-size:.63rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase}.hero-art figcaption p{margin:.25rem 0 0;font-family:inherit;font-size:.82rem}.summary-band{display:grid;grid-template-columns:180px 1fr;gap:1.5rem;padding:1.8rem 2rem;margin:0 0 4rem;border-left:4px solid var(--gold);background:var(--white);box-shadow:var(--shadow)}.summary-band h2{margin:0;font-size:1.25rem}.summary-band p{margin:0;color:#354955;font-size:1.04rem}.summary-label{display:block;color:var(--gold);font-size:.68rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.report-layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:clamp(2rem,5vw,5.5rem)}.rail{align-self:start;position:sticky;top:1.5rem;padding:1rem 0;border-top:2px solid var(--ink)}.rail-label{margin:0 0 .8rem;font-size:.7rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.rail ol{margin:0;padding-left:1.2rem;color:var(--muted)}.rail li{margin:.48rem 0}.rail a{color:inherit;text-decoration:none}.rail a:hover{color:var(--teal)}.content,.content *{min-width:0}.content{overflow-wrap:anywhere}.method-details>pre{max-width:100%;overflow:auto}.content section{padding:0 0 3.8rem;margin:0 0 3.4rem;border-bottom:1px solid var(--line);scroll-margin-top:2rem}.section-kicker{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;color:var(--teal);font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.section-kicker:before{content:'';width:2.2rem;height:1px;background:var(--gold)}.content h2{margin:.1rem 0 1.5rem;font-size:clamp(2rem,4vw,3.2rem)}.research-body{max-width:78ch;font-family:Georgia,'Iowan Old Style',serif;font-size:1.04rem}.research-body h1,.research-body h2,.research-body h3{margin:2rem 0 .8rem}.research-body p{margin:.8rem 0 1.2rem}.research-body blockquote{margin:1.5rem 0;padding:.2rem 1.2rem;border-left:3px solid var(--gold);color:#465d65}.research-body pre,.analysis-output pre{overflow:auto;padding:1rem 1.2rem;border-radius:5px;background:#182c3a;color:#edf2ef;font: .86rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}.research-body code{padding:.1em .3em;background:var(--paper-deep);border-radius:3px;font-family:ui-monospace,monospace;font-size:.88em}.research-body pre code{padding:0;background:transparent}.research-body table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse}.research-body th,.research-body td{padding:.55rem .7rem;border:1px solid var(--line);text-align:left}.research-body th{background:var(--paper-deep)}.analysis-list{display:grid;gap:1rem}.analysis-card,.illustration-card,.source-card,.download-group{padding:1.4rem 1.5rem;border:1px solid var(--line);background:var(--white);box-shadow:0 8px 24px rgba(24,39,51,.04)}.task-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}.task-heading h3{margin:0;font-size:1.5rem}.task-heading .eyebrow{margin-bottom:.45rem}.analysis-output{margin:1rem 0}.analysis-output h4{margin:1.2rem 0 .5rem;font-size:1.05rem}.analysis-output pre{white-space:pre-wrap;overflow-wrap:anywhere}.analysis-figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}.analysis-figure,.illustration-figure{margin:1rem 0 0}.analysis-figure img,.illustration-figure img{display:block;max-width:100%;max-height:560px;margin:auto;object-fit:contain;background:var(--paper)}.analysis-figure figcaption,.illustration-figure figcaption{margin-top:.65rem;color:var(--muted);font-size:.84rem}.method-details{margin-top:1.25rem;border-top:1px solid var(--line);padding-top:.9rem}.method-details summary{cursor:pointer;color:var(--teal);font-weight:750}.method-details summary:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:3px}.method-details>p{max-width:70ch}.method-label,.code-language{color:var(--muted);font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.source-chip-row,.download-row{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem;margin:.8rem 0}.source-chip{display:inline-flex;padding:.2rem .55rem;border:1px solid #bad2ca;border-radius:99px;background:var(--teal-soft);color:#195a56;font-size:.76rem;font-weight:750}.method-assumptions{margin:.9rem 0}.method-assumptions ul{margin:.3rem 0;padding-left:1.2rem}.code-wrap{margin:1rem 0}.code-label{display:flex;justify-content:space-between;padding:.45rem .7rem;background:#e9e5db}.code-wrap pre{margin:0;overflow:auto;padding:1rem;background:#172a38;color:#f5f2eb;font: .82rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}.code-wrap code{white-space:pre}.file-link{display:inline-flex;padding:.3rem .65rem;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--teal);font-size:.78rem;font-weight:700;text-decoration:none}.task-alert{margin:1rem 0;padding:1rem 1.1rem;border-left:3px solid var(--danger);background:#f7eae5;color:#713b35}.task-alert p{margin:.5rem 0 0}.quiet-note{color:var(--muted);font-style:italic}.illustration-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}.illustration-card .task-heading{align-items:center;margin-bottom:.8rem}.illustration-figure{margin:0}.illustration-figure img{width:100%;max-height:440px;object-fit:cover}.illustration-figure figcaption{padding:.3rem .15rem}.source-library{display:grid;gap:.8rem}.source-card{padding:1.1rem 1.25rem;box-shadow:none}.source-card-top{display:flex;gap:.6rem;align-items:center}.source-id,.source-kind{font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.source-id{color:var(--teal)}.source-kind{color:var(--muted)}.source-card h3{margin:.5rem 0;font-size:1.25rem}.source-card h3 a{text-decoration:none}.source-snippet{max-width:76ch;margin:.6rem 0;color:#435661}.source-date{margin:.6rem 0 0;color:var(--muted);font-size:.78rem}.limitations{padding:1.4rem 1.6rem;border:1px solid #c5d4ce;background:#e8efeb;color:#29483f}.limitations h3{margin:0 0 .5rem;font-size:1.25rem}.limitations p{margin:.5rem 0}.task-ledger{margin-top:1.3rem}.task-ledger>h3{margin-bottom:.65rem}.outcome-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:.8rem 0;border-top:1px solid rgba(36,75,65,.18)}.outcome-row .eyebrow{margin:0 0 .25rem;font-size:.62rem}.outcome-row h3{margin:0;font-family:ui-sans-serif,system-ui,sans-serif;font-size:.95rem;font-weight:750}.outcome-row .outcome-note{margin:.25rem 0 0;font-size:.85rem}.download-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.8rem}.download-group h3{margin:0 0 .7rem;font-size:1.2rem}.download-group ul{margin:0;padding-left:1.15rem;overflow-wrap:anywhere}.download-group li{margin:.35rem 0}.report-footer{padding:2rem 0 0;color:var(--muted);font-size:.82rem}.report-footer strong{color:var(--ink)}@media(max-width:800px){.hero{grid-template-columns:1fr;padding-top:3rem}.hero-art{max-width:620px;transform:none}.report-layout{grid-template-columns:minmax(0,1fr)}.rail{position:static;padding:.8rem 0;}.rail ol{display:flex;flex-wrap:wrap;gap:.25rem 1.4rem}.rail li{margin:.2rem 0}.summary-band{grid-template-columns:1fr;gap:.55rem}.masthead{padding:1rem 1.25rem}}@media(max-width:520px){.page{padding-right:1rem;padding-left:1rem}.masthead{align-items:flex-start;flex-direction:column;gap:.15rem}.hero{padding:2.7rem 0 2.3rem}h1{font-size:2.8rem}.summary-band{padding:1.2rem}.analysis-card,.illustration-card{padding:1rem}.task-heading{align-items:flex-start}.status-pill{font-size:.66rem}.content section{padding-bottom:2.6rem;margin-bottom:2.5rem}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{body{background:#fff;color:#111;font-size:10.5pt}.masthead{padding:.5rem 0}.page{max-width:none;padding:0}.hero{grid-template-columns:1fr;padding:1.5rem 0}.hero-art{max-width:45%;box-shadow:none}.report-layout{display:block}.rail{position:static;}.rail ol{display:flex;flex-wrap:wrap;gap:.2rem 1.4rem}.content section{break-inside:auto;border-color:#bbb;page-break-inside:auto}.analysis-card,.source-card,.illustration-card,.summary-band,.limitations{box-shadow:none;break-inside:avoid;border-color:#aaa}.method-details:not([open])>*:not(summary){display:block}.method-details summary{display:none}a{color:#111;text-decoration:none}.file-link{border-color:#888;background:#fff;color:#111}.status-pill,.meta-pill{color:#111;background:#fff}.report-footer{padding-top:1rem}}</style>
+</head>
+
+  <body>
+    <header class="masthead">
+      <span class="brand">Tempest / Research dossier</span>
+      <span class="edition">Derived enrichment · portable edition</span>
+    </header>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Enriched research report</p>
+          <h1>From cold exposure to carbon uptake: individual plant responses in R’s CO₂ dataset</h1>
+          <p class="hero-summary">Follow each plant’s carbon uptake across seven measured CO₂ concentrations, then compare plant-level averages descriptively. Three plants represent each population–treatment combination, so repeated measurements are not independent replicates. The source describes 14 hours of daytime chilling at 7°C, 10 hours of recovery at 20°C, and measurement at 26°C; R’s documentation instead describes overnight chilling. Concentration units remain unresolved, and measurement order may influence curve shape. No new findings are asserted.</p>
+          <div class="hero-meta">
+            <span class="status-pill recorded">Enrichment status complete</span>
+            <span class="meta-pill">7 sources</span>
+            <span class="meta-pill">1 completed analyses</span>
+          </div>
+        </div>
+        <figure class="hero-art">
+          <img src="illustrations/cold_recovery_measurement_schematic/output-1.png" alt="Conceptual three-stage schematic: cold exposure for 14 hours at 7°C, recovery for 10 hours at 20°C, and leaf gas-exchange measurement at 26°C. A note preserves the disagreement between daytime chilling in the source and overnight chilling in R’s documentation. No results or sample counts are depicted." fetchpriority="high"/>
+          <figcaption>
+            <span class="generated-label">AI-generated illustration · Not scientific evidence</span>
+            <strong>From cold exposure to leaf measurement</strong>
+            <p>Conceptual schematic, not a photograph or experimental evidence. The source describes 14 hours of daytime chilling at 7°C followed by 10 hours of recovery at 20°C and measurement at 26°C; R’s documentation instead describes overnight chilling. The schematic shows the reported sequence for chilled plants, not measurements during chilling or a complete comparison of treatment protocols.</p>
+          </figcaption>
+        </figure>
+      </header>
+      <aside class="summary-band">
+        <div>
+          <span class="summary-label">Interpretive layer</span>
+          <h2>Proposed synthesis</h2>
+        </div>
+        <p>Follow each plant’s carbon uptake across seven measured CO₂ concentrations, then compare plant-level averages descriptively. Three plants represent each population–treatment combination, so repeated measurements are not independent replicates. The source describes 14 hours of daytime chilling at 7°C, 10 hours of recovery at 20°C, and measurement at 26°C; R’s documentation instead describes overnight chilling. Concentration units remain unresolved, and measurement order may influence curve shape. No new findings are asserted.</p>
+      </aside>
+      <div class="report-layout">
+        <nav class="rail" aria-label="Report sections">
+          <p class="rail-label">In this report</p>
+          <ol>
+            <li>
+              <a href="#original-research">Original research</a>
+            </li>
+            <li>
+              <a href="#analyses">Computational analysis</a>
+            </li>
+            <li>
+              <a href="#illustrations">Illustrations</a>
+            </li>
+            <li>
+              <a href="#sources">Source library</a>
+            </li>
+            <li>
+              <a href="#limitations">Limitations</a>
+            </li>
+            <li>
+              <a href="#downloads">Downloads</a>
+            </li>
+          </ol>
+        </nav>
+        <main class="content">
+          <section id="original-research">
+            <p class="section-kicker">01 / Evidence record</p>
+            <h2>Original research</h2>
+            <div class="research-body"><h1>Cold Treatment and Carbon Uptake in R’s CO2 Dataset: Experimental Design, Measurement Provenance, and Physiological Limits</h1><h2>At a glance</h2><h3>What changed</h3><ul>
+<li>Chilled plants received 14 hours of daytime chilling at 7°C. <sup><a id="research-fnref-S0aadb060bb3b" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224231666638326565383736656637373966222c226b696e64223a226f62736572766174696f6e222c2274657874223a224368696c6c656420706c616e747320726563656976656420313420686f757273206f662064617974696d65206368696c6c696e672061742037c2b0432e222c22636c61696d5f696473223a5b22435f30306237373934306264643361323337225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+<li>R's documentation describes the chilling treatment as occurring overnight. <sup><a id="research-fnref-S7528fd2c1ece" href="#research-fn-S7528fd2c1ece" aria-label="Follow research citation">2</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224236363865646235363265633338616539222c226b696e64223a226f62736572766174696f6e222c2274657874223a2252277320646f63756d656e746174696f6e2064657363726962657320746865206368696c6c696e672074726561746d656e74206173206f6363757272696e67206f7665726e696768742e222c22636c61696d5f696473223a5b22435f30653762643761653130353839343738225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+<li>Plants underwent 10 hours of nighttime recovery at 20°C before carbon-uptake response curves were generated. <sup><a id="research-fnref-S0aadb060bb3b-2" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224239643466306335303065643333383030222c226b696e64223a226f62736572766174696f6e222c2274657874223a22506c616e747320756e64657277656e7420313020686f757273206f66206e6967687474696d65207265636f76657279206174203230c2b043206265666f726520636172626f6e2d757074616b6520726573706f6e73652063757276657320776572652067656e6572617465642e222c22636c61696d5f696473223a5b22435f37343063313731623163336165376337225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h3>Why it matters</h3><ul>
+<li>
+<strong>Assessment:</strong> Assess the decision implications of: Chilling had a larger observed effect on the photosynthetic CO₂ response curves of Mississippi plants than Québec plants. <em>(Evidence: <code>C_4aedd41cc0ecc97d</code>; confidence: medium.)</em> <!-- tempest-briefing-item:7b226974656d5f6964223a224265663264383233333662316465643733222c226b696e64223a226173736573736d656e74222c2274657874223a2241737365737320746865206465636973696f6e20696d706c69636174696f6e73206f663a204368696c6c696e67206861642061206c6172676572206f6273657276656420656666656374206f6e207468652070686f746f73796e74686574696320434fe2828220726573706f6e736520637572766573206f66204d6973736973736970706920706c616e7473207468616e205175c3a962656320706c616e74732e222c22636c61696d5f696473223a5b22435f34616564643431636330656363393764225d2c22636f6e666964656e6365223a226d656469756d227d -->
+</li>
+</ul><h3>Review today</h3><ul>
+<li>
+<strong>Review:</strong> Review before deciding: Each plant received the seven CO₂ levels in increasing, consecutive order. | Each control plant was randomly paired with a plant designated for chilling. | Three plants were measured for each population-by-chilling-treatment combination. <em>(Evidence: <code>C_2277c94eefb5869a</code>, <code>C_8b1a60b66d8f6f27</code>, <code>C_da954114dc68107b</code>.)</em> <!-- tempest-briefing-item:7b226974656d5f6964223a224235653631333436383861626335343335222c226b696e64223a227265766965775f616374696f6e222c2274657874223a22526576696577206265666f7265206465636964696e673a204561636820706c616e742072656365697665642074686520736576656e20434fe28282206c6576656c7320696e20696e6372656173696e672c20636f6e7365637574697665206f726465722e207c204561636820636f6e74726f6c20706c616e74207761732072616e646f6d6c79207061697265642077697468206120706c616e742064657369676e6174656420666f72206368696c6c696e672e207c20546872656520706c616e74732077657265206d6561737572656420666f72206561636820706f70756c6174696f6e2d62792d6368696c6c696e672d74726561746d656e7420636f6d62696e6174696f6e2e222c22636c61696d5f696473223a5b22435f32323737633934656566623538363961222c22435f38623161363062363664386636663237222c22435f64613935343131346463363831303762225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h2>Evidence focus</h2><h3>What changed</h3><ul>
+<li>Three plants were measured for each population-by-chilling-treatment combination. <sup><a id="research-fnref-S0aadb060bb3b-3" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224237386665613361376163366663386535222c226b696e64223a226f62736572766174696f6e222c2274657874223a22546872656520706c616e74732077657265206d6561737572656420666f72206561636820706f70756c6174696f6e2d62792d6368696c6c696e672d74726561746d656e7420636f6d62696e6174696f6e2e222c22636c61696d5f696473223a5b22435f64613935343131346463363831303762225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+<li>Each plant was measured at seven CO₂ concentrations. <sup><a id="research-fnref-S0aadb060bb3b-4" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224262343632376262326464353131313532222c226b696e64223a226f62736572766174696f6e222c2274657874223a224561636820706c616e7420776173206d6561737572656420617420736576656e20434fe2828220636f6e63656e74726174696f6e732e222c22636c61696d5f696473223a5b22435f34663539623736633634646230323235225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h3>Review today</h3><ul>
+<li>
+<strong>Review:</strong> Review before deciding: Each plant was measured at seven CO₂ concentrations. | Three plants were measured for each population-by-chilling-treatment combination. <em>(Evidence: <code>C_4f59b76c64db0225</code>, <code>C_da954114dc68107b</code>.)</em> <!-- tempest-briefing-item:7b226974656d5f6964223a224239313161356237366233353034373765222c226b696e64223a227265766965775f616374696f6e222c2274657874223a22526576696577206265666f7265206465636964696e673a204561636820706c616e7420776173206d6561737572656420617420736576656e20434fe2828220636f6e63656e74726174696f6e732e207c20546872656520706c616e74732077657265206d6561737572656420666f72206561636820706f70756c6174696f6e2d62792d6368696c6c696e672d74726561746d656e7420636f6d62696e6174696f6e2e222c22636c61696d5f696473223a5b22435f34663539623736633634646230323235222c22435f64613935343131346463363831303762225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h2>Evidence focus</h2><h3>What changed</h3><ul>
+<li>Chilled plants received 14 hours of daytime chilling at 7°C. <sup><a id="research-fnref-S0aadb060bb3b-5" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224231666638326565383736656637373966222c226b696e64223a226f62736572766174696f6e222c2274657874223a224368696c6c656420706c616e747320726563656976656420313420686f757273206f662064617974696d65206368696c6c696e672061742037c2b0432e222c22636c61696d5f696473223a5b22435f30306237373934306264643361323337225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+<li>Plants underwent 10 hours of nighttime recovery at 20°C before carbon-uptake response curves were generated. <sup><a id="research-fnref-S0aadb060bb3b-6" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224239643466306335303065643333383030222c226b696e64223a226f62736572766174696f6e222c2274657874223a22506c616e747320756e64657277656e7420313020686f757273206f66206e6967687474696d65207265636f76657279206174203230c2b043206265666f726520636172626f6e2d757074616b6520726573706f6e73652063757276657320776572652067656e6572617465642e222c22636c61696d5f696473223a5b22435f37343063313731623163336165376337225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h3>Why it matters</h3><ul>
+<li>
+<strong>Assessment:</strong> Assess the decision implications of: Chilled plants received 14 hours of daytime chilling at 7°C. | Plants underwent 10 hours of nighttime recovery at 20°C before carbon-uptake response curves were generated. <em>(Evidence: <code>C_00b77940bdd3a237</code>, <code>C_740c171b1c3ae7c7</code>; confidence: high.)</em> <!-- tempest-briefing-item:7b226974656d5f6964223a224239313533303637313937383566313162222c226b696e64223a226173736573736d656e74222c2274657874223a2241737365737320746865206465636973696f6e20696d706c69636174696f6e73206f663a204368696c6c656420706c616e747320726563656976656420313420686f757273206f662064617974696d65206368696c6c696e672061742037c2b0432e207c20506c616e747320756e64657277656e7420313020686f757273206f66206e6967687474696d65207265636f76657279206174203230c2b043206265666f726520636172626f6e2d757074616b6520726573706f6e73652063757276657320776572652067656e6572617465642e222c22636c61696d5f696473223a5b22435f30306237373934306264643361323337222c22435f37343063313731623163336165376337225d2c22636f6e666964656e6365223a2268696768227d -->
+</li>
+</ul><h2>Evidence focus</h2><h3>What changed</h3><ul>
+<li>R's inspected help page defines uptake as carbon dioxide uptake rate in micromoles per square metre per second. <sup><a id="research-fnref-Sf2ebd0a69642" href="#research-fn-Sf2ebd0a69642" aria-label="Follow research citation">3</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224237313663643063336264356661613931222c226b696e64223a226f62736572766174696f6e222c2274657874223a2252277320696e737065637465642068656c70207061676520646566696e657320757074616b6520617320636172626f6e2064696f7869646520757074616b65207261746520696e206d6963726f6d6f6c65732070657220737175617265206d6574726520706572207365636f6e642e222c22636c61696d5f696473223a5b22435f31396238646530636136383535336336225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h3>Why it matters</h3><ul>
+<li>
+<strong>Assessment:</strong> Assess the decision implications of: R's inspected help page defines uptake as carbon dioxide uptake rate in micromoles per square metre per second. <em>(Evidence: <code>C_19b8de0ca68553c6</code>; confidence: high.)</em> <!-- tempest-briefing-item:7b226974656d5f6964223a224237643366613939623165383663356336222c226b696e64223a226173736573736d656e74222c2274657874223a2241737365737320746865206465636973696f6e20696d706c69636174696f6e73206f663a2052277320696e737065637465642068656c70207061676520646566696e657320757074616b6520617320636172626f6e2064696f7869646520757074616b65207261746520696e206d6963726f6d6f6c65732070657220737175617265206d6574726520706572207365636f6e642e222c22636c61696d5f696473223a5b22435f31396238646530636136383535336336225d2c22636f6e666964656e6365223a2268696768227d -->
+</li>
+</ul><h2>Evidence focus</h2><h3>What changed</h3><ul>
+<li>Each control plant was randomly paired with a plant designated for chilling. <sup><a id="research-fnref-S0aadb060bb3b-7" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224237643139636461343136346434636362222c226b696e64223a226f62736572766174696f6e222c2274657874223a224561636820636f6e74726f6c20706c616e74207761732072616e646f6d6c79207061697265642077697468206120706c616e742064657369676e6174656420666f72206368696c6c696e672e222c22636c61696d5f696473223a5b22435f38623161363062363664386636663237225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h3>Review today</h3><ul>
+<li>
+<strong>Review:</strong> Review before deciding: Each control plant was randomly paired with a plant designated for chilling. <em>(Evidence: <code>C_8b1a60b66d8f6f27</code>.)</em> <!-- tempest-briefing-item:7b226974656d5f6964223a224230636135393733323130316334383530222c226b696e64223a227265766965775f616374696f6e222c2274657874223a22526576696577206265666f7265206465636964696e673a204561636820636f6e74726f6c20706c616e74207761732072616e646f6d6c79207061697265642077697468206120706c616e742064657369676e6174656420666f72206368696c6c696e672e222c22636c61696d5f696473223a5b22435f38623161363062363664386636663237225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h2>Evidence focus</h2><h3>What changed</h3><ul>
+<li>Each plant received the seven CO₂ levels in increasing, consecutive order. <sup><a id="research-fnref-S0aadb060bb3b-8" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224264303830633131623131366138383333222c226b696e64223a226f62736572766174696f6e222c2274657874223a224561636820706c616e742072656365697665642074686520736576656e20434fe28282206c6576656c7320696e20696e6372656173696e672c20636f6e7365637574697665206f726465722e222c22636c61696d5f696473223a5b22435f32323737633934656566623538363961225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h3>Why it matters</h3><ul>
+<li>
+<strong>Assessment:</strong> Assess the decision implications of: Each plant received the seven CO₂ levels in increasing, consecutive order. <em>(Evidence: <code>C_2277c94eefb5869a</code>; confidence: high.)</em> <!-- tempest-briefing-item:7b226974656d5f6964223a224233396639303066666535303363303136222c226b696e64223a226173736573736d656e74222c2274657874223a2241737365737320746865206465636973696f6e20696d706c69636174696f6e73206f663a204561636820706c616e742072656365697665642074686520736576656e20434fe28282206c6576656c7320696e20696e6372656173696e672c20636f6e7365637574697665206f726465722e222c22636c61696d5f696473223a5b22435f32323737633934656566623538363961225d2c22636f6e666964656e6365223a2268696768227d -->
+</li>
+</ul><h2>Evidence focus</h2><h3>What changed</h3><ul>
+<li>Chilling had a larger observed effect on the photosynthetic CO₂ response curves of Mississippi plants than Québec plants. <sup><a id="research-fnref-S0aadb060bb3b-9" href="#research-fn-S0aadb060bb3b" aria-label="Follow research citation">1</a></sup> <!-- tempest-briefing-item:7b226974656d5f6964223a224239383666346339653163636664386466222c226b696e64223a226f62736572766174696f6e222c2274657874223a224368696c6c696e67206861642061206c6172676572206f6273657276656420656666656374206f6e207468652070686f746f73796e74686574696320434fe2828220726573706f6e736520637572766573206f66204d6973736973736970706920706c616e7473207468616e205175c3a962656320706c616e74732e222c22636c61696d5f696473223a5b22435f34616564643431636330656363393764225d2c22636f6e666964656e6365223a6e756c6c7d -->
+</li>
+</ul><h2>References</h2><h2>Scientific review</h2><p>Advisory review of 5 selected claim(s). Other claims were not reviewed. No issue found is not proof of correctness. Citation support and accepted knowledge are unchanged.</p><h3>C_4afcf38e0b62d611</h3><p>Claim: Table 2 expresses CO₂ uptake rates in micromoles per square metre per second.</p><p>Review outcome: <strong>No issue found</strong>.</p><p>Adjudication: The reviewer found no issue, and the captured paper excerpt supports that assessment: the caption for the uptake table explicitly specifies micromoles per square metre per second. The cited quotation directly addresses the reported units and identifies no concrete scientific defect. This verdict concerns unit reporting only, not the validity of the measurements.
+Evidence (S0aadb060bb3b): “CO, uptake rate values (in micromoles per square metre per second) and associated ranks to test for the effects of (A) population (P) and treatment (7) and (B) the pop- ulation * treatment interaction (PT,) in the nonparametnc split-plot analysis. Pairing was done according to Table 1.” Source: <a href="https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf" target="_blank" rel="noopener noreferrer">https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf</a>
+Evidence search: not_requested.
+Review identity: <code>sha256:3e0aabc78447c7331bb9bcf4d41c4e80e6acf549e2f45af81ab4e66008733af6</code>.</p><h3>C_629b46cb0907a724</h3><p>Claim: The single-leaf cuvette measurement temperature was 26°C.</p><p>Review outcome: <strong>No issue found</strong>.</p><p>Adjudication: The reviewer found no issue, and the captured primary source directly reports a measurement temperature of 26° in the single-leaf cuvette. The quotation bears directly on the claim; no captured evidence contradicts it. This establishes agreement with the reported method, not independent verification of the actual temperature.
+Evidence (S0aadb060bb3b): “Measurement temperature in the single-leaf cuvette was 26°” Source: <a href="https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf" target="_blank" rel="noopener noreferrer">https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf</a>
+Evidence search: not_requested.
+Review identity: <code>sha256:789ca7b723a425f128ac6d2a5f8f768a502aba736017544e0de61c2a0645b0db</code>.</p><h3>C_6952c19ade01b01d</h3><p>Claim: The article&amp;#39;s methods report using an absolute IRGA system to measure photosynthesis.</p><p>Review outcome: <strong>No issue found</strong>.</p><p>Adjudication: The reviewer found no issue, and the captured article text supports that assessment. It explicitly names an absolute IRGA system and describes recording the photosynthetic response after stabilization. These quotations directly bear on the narrow claim about what the methods report. No concrete scientific defect is identified; this does not independently validate the instrument or measurements.
+Evidence (S0aadb060bb3b): “using the absolute IRGA system (Horiba, PIR-2000) described in Potvin et al. (1986).” Source: <a href="https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf" target="_blank" rel="noopener noreferrer">https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf</a>
+Evidence (S0aadb060bb3b): “The photosynthetic response to a CO, level was re- corded after photosynthesis had remained unchanged for 5 min.” Source: <a href="https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf" target="_blank" rel="noopener noreferrer">https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf</a>
+Evidence search: not_requested.
+Review identity: <code>sha256:e79c39cb71e21fa16be4c7d8e4a7756244f3ee1998eba8dbebc05e1da24c3bbc</code>.</p><h3>C_90b46b1de6cb41d4</h3><p>Claim: R&amp;#39;s inspected help page defines conc as ambient carbon dioxide concentration in mL/L.</p><p>Review outcome: <strong>No issue found</strong>.</p><p>Adjudication: The reviewer found no issue, and the captured help page directly supports the exact documentary claim: it defines conc as ambient carbon dioxide concentrations in mL/L. Whether that unit correctly describes the underlying experimental measurements is a separate scientific question and does not establish a defect in this narrowly worded claim. This verdict does not independently validate the unit.
+Evidence (Sf2ebd0a69642): “`conc` : a numeric vector of ambient carbon dioxide concentrations (mL/L).” Source: <a href="https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html" target="_blank" rel="noopener noreferrer">https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html</a>
+Evidence search: not_requested.
+Review identity: <code>sha256:4c4573d907f530a54c03800aa79136c588e48554570e18f5af0f06b4b25a25a8</code>.</p><h3>C_e20ea2874d3538b6</h3><p>Claim: R documents Plant as an ordered factor giving a unique identifier for each plant.</p><p>Review outcome: <strong>No issue found</strong>.</p><p>Adjudication: The reviewer found no issue, and its cited passage directly matches the claim: R documents Plant as an ordered factor giving a unique identifier for each plant. The underlying documentation is available in the dossier, and the quotation is accurate and relevant. No concrete scientific defect is identified. This verdict concerns the documentation claim, not independent validation of the dataset.
+Evidence (Sf2ebd0a69642): “`Plant` : an ordered factor with levels `Qn1` &lt; `Qn2` &lt; `Qn3` &lt; ... &lt; `Mc1` giving a unique identifier for each plant.” Source: <a href="https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html" target="_blank" rel="noopener noreferrer">https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html</a>
+Evidence search: not_requested.
+Review identity: <code>sha256:a49680ffe3effd72518026d39ba172eaf696dcfbdc56d060c836c219561513ec</code>.</p><h2>Execution review</h2><ul>
+<li>
+<code>extract_claims</code> attempt <code>stage-attempt_2f659c8d07ad17f8</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>unknown</code>; publication blocked.</li>
+<li>
+<code>extract_claims</code> attempt <code>stage-attempt_b00964fcd67a3182</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>unknown</code>; publication blocked.</li>
+<li>
+<code>extract_claims</code> attempt <code>stage-attempt_201e249dabba8048</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>unknown</code>; publication blocked.</li>
+<li>
+<code>verify_claim_support</code> attempt <code>stage-attempt_9b40b42744fb756b</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>partially_supported</code>; publication blocked.</li>
+<li>
+<code>verify_claim_support</code> attempt <code>stage-attempt_e225e8dac42e7fb6</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>partially_supported</code>; publication blocked.</li>
+<li>
+<code>verify_claim_support</code> attempt <code>stage-attempt_99457a4978c73309</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>partially_supported</code>; publication blocked.</li>
+<li>
+<code>verify_claim_support</code> attempt <code>stage-attempt_b3a49eefdf3c6c56</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>partially_supported</code>; publication blocked.</li>
+<li>
+<code>verify_claim_support</code> attempt <code>stage-attempt_c5bbedf0d45a2a24</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>partially_supported</code>; publication blocked.</li>
+<li>
+<code>verify_claim_support</code> attempt <code>stage-attempt_04827f1ef15c82b5</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>partially_supported</code>; publication blocked.</li>
+<li>
+<code>refined_outline</code> attempt <code>stage-attempt_c75712d117444fa9</code>: status <code>succeeded</code>; path <code>grounded</code>; support <code>unknown</code>; publication blocked.</li>
+</ul><section>
+<ol>
+<li id="research-fn-S0aadb060bb3b">
+<p>*Ecology*, 7(4), 1990, pp. 1389–1400. <a href="https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf" target="_blank" rel="noopener noreferrer">https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf</a> (retrieved 2026-11-15T12:37:37.130232Z). <a href="#research-fnref-S0aadb060bb3b" aria-label="Follow research citation">↩</a> <a href="#research-fnref-S0aadb060bb3b-2" aria-label="Follow research citation">↩<sup>2</sup></a> <a href="#research-fnref-S0aadb060bb3b-3" aria-label="Follow research citation">↩<sup>3</sup></a> <a href="#research-fnref-S0aadb060bb3b-4" aria-label="Follow research citation">↩<sup>4</sup></a> <a href="#research-fnref-S0aadb060bb3b-5" aria-label="Follow research citation">↩<sup>5</sup></a> <a href="#research-fnref-S0aadb060bb3b-6" aria-label="Follow research citation">↩<sup>6</sup></a> <a href="#research-fnref-S0aadb060bb3b-7" aria-label="Follow research citation">↩<sup>7</sup></a> <a href="#research-fnref-S0aadb060bb3b-8" aria-label="Follow research citation">↩<sup>8</sup></a> <a href="#research-fnref-S0aadb060bb3b-9" aria-label="Follow research citation">↩<sup>9</sup></a></p>
+</li>
+<li id="research-fn-S7528fd2c1ece">
+<p>R: Carbon Dioxide Uptake in Grass Plants. <a href="https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html" target="_blank" rel="noopener noreferrer">https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html</a> (retrieved 2026-11-15T12:35:24.009689Z). <a href="#research-fnref-S7528fd2c1ece" aria-label="Follow research citation">↩</a></p>
+</li>
+<li id="research-fn-Sf2ebd0a69642">
+<p>R: Carbon Dioxide Uptake in Grass Plants. <a href="https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html" target="_blank" rel="noopener noreferrer">https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html</a> (retrieved 2026-11-15T12:37:37.263833Z). <a href="#research-fnref-Sf2ebd0a69642" aria-label="Follow research citation">↩</a></p>
+</li>
+</ol>
+</section></div>
+          </section>
+          <section id="analyses">
+            <p class="section-kicker">02 / Derived work</p>
+            <h2>Computational analyses</h2>
+            <div class="analysis-list">
+              <article class="analysis-card">
+                <div class="task-heading">
+                  <div>
+                    <p class="eyebrow">Computational analysis</p>
+                    <h3>Trace individual plant responses and compare plant-level averages</h3>
+                  </div>
+                  <span class="status-pill succeeded">succeeded</span>
+                </div>
+                <div class="analysis-output">
+                  <h4>Observed output</h4>
+                  <pre>
+                    <code>R version: R version 4.6.1 (2026-06-24) 
+
+datasets version: 4.6.1 
+
+
+Observed units attribute of datasets::CO2, printed without reinterpretation:
+
+$x
+[1] "(uL/L)"
+
+$y
+[1] "(umol/m^2 s)"
+
+
+This attribute is observed dataset metadata, not independent confirmation of physical units.
+
+Concentrations remain unchanged; their physical units are unresolved here.
+
+Uptake units below follow the inspected R help page, not an inferred conversion.
+
+
+Missing values by column:
+
+    Plant      Type Treatment      conc    uptake 
+        0         0         0         0         0 
+
+
+Dataset dimensions and concentration values as stored:
+
+[1] 84  5
+
+[1]   95  175  250  350  500  675 1000
+
+
+Rows per plant: repeated measurements, not independent replicates:
+
+
+Mc1 Mc2 Mc3 Mn1 Mn2 Mn3 Qc1 Qc2 Qc3 Qn1 Qn2 Qn3 
+  7   7   7   7   7   7   7   7   7   7   7   7 
+
+
+Plant counts by population and treatment:
+
+             Treatment
+Type          chilled nonchilled
+  Mississippi       3          3
+  Quebec            3          3
+
+
+Pointwise descriptive summaries across plants:
+
+        Type  Treatment conc n_plants mean_uptake sd_uptake minimum_uptake
+ Mississippi    chilled   95        3     9.60000  1.646208            7.7
+ Mississippi    chilled  175        3    14.76667  3.302020           11.4
+ Mississippi    chilled  250        3    16.10000  3.292416           12.3
+ Mississippi    chilled  350        3    16.60000  3.157531           13.0
+ Mississippi    chilled  500        3    16.63333  3.667879           12.5
+ Mississippi    chilled  675        3    18.26667  4.285246           13.7
+ Mississippi    chilled 1000        3    18.73333  3.883727           14.4
+ Mississippi nonchilled   95        3    11.30000  0.700000           10.6
+ Mississippi nonchilled  175        3    20.20000  1.562050           19.2
+ Mississippi nonchilled  250        3    27.53333  2.663331           25.8
+ Mississippi nonchilled  350        3    29.90000  1.951922           27.9
+ Mississippi nonchilled  500        3    30.60000  1.967232           28.5
+ Mississippi nonchilled  675        3    30.53333  2.205297           28.1
+ Mississippi nonchilled 1000        3    31.60000  3.850974           27.8
+      Quebec    chilled   95        3    12.86667  3.121431            9.3
+      Quebec    chilled  175        3    24.13333  3.150132           21.0
+      Quebec    chilled  250        3    34.46667  3.927255           30.3
+      Quebec    chilled  350        3    35.80000  2.615339           34.0
+      Quebec    chilled  500        3    36.66667  3.611556           32.5
+      Quebec    chilled  675        3    37.50000  2.100000           35.4
+      Quebec    chilled 1000        3    40.83333  1.913984           38.7
+      Quebec nonchilled   95        3    15.26667  1.446836           13.6
+      Quebec nonchilled  175        3    30.03333  2.569695           27.3
+      Quebec nonchilled  250        3    37.40000  2.762245           34.8
+      Quebec nonchilled  350        3    40.36667  2.746513           37.2
+      Quebec nonchilled  500        3    39.60000  3.897435           35.3
+      Quebec nonchilled  675        3    41.50000  2.351595           39.2
+      Quebec nonchilled 1000        3    43.16667  3.061590           39.7
+ maximum_uptake
+           10.6
+           18.0
+           18.1
+           18.9
+           19.5
+           22.2
+           21.9
+           12.0
+           22.0
+           30.6
+           31.8
+           32.4
+           32.4
+           35.5
+           15.1
+           27.3
+           38.1
+           38.8
+           38.9
+           39.6
+           42.4
+           16.2
+           32.4
+           40.3
+           42.1
+           42.9
+           43.9
+           45.5
+
+
+Plant-level means across measured concentration levels:
+
+ Plant        Type  Treatment mean_uptake
+   Mc1 Mississippi    chilled    18.00000
+   Mc2 Mississippi    chilled    12.14286
+   Mc3 Mississippi    chilled    17.30000
+   Mn1 Mississippi nonchilled    26.40000
+   Mn2 Mississippi nonchilled    27.34286
+   Mn3 Mississippi nonchilled    24.11429
+   Qc1      Quebec    chilled    29.97143
+   Qc2      Quebec    chilled    32.70000
+   Qc3      Quebec    chilled    32.58571
+   Qn1      Quebec nonchilled    33.22857
+   Qn2      Quebec nonchilled    35.15714
+   Qn3      Quebec nonchilled    37.61429
+
+
+Descriptive summaries of plant-level means:
+
+        Type  Treatment n_plants     mean       sd  minimum  maximum
+ Mississippi    chilled        3 15.81429 3.198756 12.14286 18.00000
+      Quebec    chilled        3 31.75238 1.543408 29.97143 32.70000
+ Mississippi nonchilled        3 25.95238 1.660178 24.11429 27.34286
+      Quebec nonchilled        3 35.33333 2.198159 33.22857 37.61429
+
+
+Descriptive group-mean differences only; not paired differences:
+
+        Type chilled_mean nonchilled_mean chilled_minus_nonchilled
+ Mississippi     15.81429        25.95238               -10.138095
+      Quebec     31.75238        35.33333                -3.580952
+
+
+No hypothesis tests, confidence intervals, fitted asymptotes, or paired calculations are produced.
+
+Concentration and increasing measurement order cannot be separated by these profiles.
+
+Treatment timing: source describes 14 h daytime chilling at 7 C, then 10 h recovery at 20 C, then measurement at 26 C; R documentation describes overnight chilling.
+
+These are not direct measurements during chilling.
+
+agg_record_944434c15ded 
+                      2 
+
+agg_record_944434c15ded 
+                      2 
+
+
+Exported files:
+
+[1] "co2_raw.csv"                    "co2_plant_means.csv"           
+[3] "co2_pointwise_summaries.csv"    "co2_plant_mean_summaries.csv"  
+[5] "co2_descriptive_contrasts.csv"  "co2_response_curves.png"       
+[7] "co2_plant_level_comparison.png"
+
+R version 4.6.1 (2026-06-24)
+Platform: aarch64-apple-darwin23
+Running under: macOS Golden Gate 27.0
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+
+time zone: America/Detroit
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+[1] compiler_4.6.1    cli_3.6.6         ragg_1.5.2        textshaping_1.0.5
+[5] lifecycle_1.0.5   rlang_1.3.0       systemfonts_1.3.2 evaluate_1.0.5   
+</code>
+                  </pre>
+                </div>
+                <div class="analysis-figures">
+                  <figure class="analysis-figure">
+                    <img src="analyses/plant_level_descriptive_profiles/output-2.png" alt="Chart produced for: Trace individual plant responses and compare plant-level averages: How do individual uptake profiles and plant-level mean uptake vary across population and treatment, without assuming an undocumented matched-pair crosswalk or conducting small-sample inference?" loading="lazy"/>
+                    <figcaption>Trace individual plant responses and compare plant-level averages — Computed figure</figcaption>
+                  </figure>
+                  <figure class="analysis-figure">
+                    <img src="analyses/plant_level_descriptive_profiles/output-7.png" alt="Chart produced for: Trace individual plant responses and compare plant-level averages: How do individual uptake profiles and plant-level mean uptake vary across population and treatment, without assuming an undocumented matched-pair crosswalk or conducting small-sample inference?" loading="lazy"/>
+                    <figcaption>Trace individual plant responses and compare plant-level averages — Computed figure</figcaption>
+                  </figure>
+                </div>
+                <details class="method-details">
+                  <summary>Methods and code</summary>
+                  <p>How do individual uptake profiles and plant-level mean uptake vary across population and treatment, without assuming an undocumented matched-pair crosswalk or conducting small-sample inference?</p>
+                  <div class="source-chip-row">
+                    <span class="method-label">Sources</span>
+                    <a class="source-chip" href="#source-item-7">Sf2ebd0a69642</a>
+                    <a class="source-chip" href="#source-item-5">S7528fd2c1ece</a>
+                    <a class="source-chip" href="#source-item-1">S0aadb060bb3b</a>
+                  </div>
+                  <div class="method-assumptions">
+                    <span class="method-label">Assumptions</span>
+                    <ul>
+                      <li>The installed datasets::CO2 object is the accessible quantitative input. Its software version, units attribute, and structure are printed; it is not claimed to be a verified transcription of every value in the paper’s OCR table.</li>
+                      <li>Each plant was measured at seven CO₂ concentrations. Three plants were measured for each population-by-chilling-treatment combination. The code validates these features.</li>
+                      <li>Repeated observations are summarized within plants before describing between-group differences. Pointwise standard deviations describe dispersion across plants at a concentration, not independent replication across concentration levels.</li>
+                      <li>The source describes random pairing of control plants with plants designated for chilling, but no explicit crosswalk from the paper’s numbered plants to R’s Plant identifiers is supplied. Similar suffixes are not evidence of pairing; paired calculations are omitted.</li>
+                      <li>Group-mean contrasts are descriptive only. No hypothesis tests, confidence intervals, or small-sample inferential claims are produced.</li>
+                      <li>Each plant received the seven CO₂ levels in increasing, consecutive order. Curve shape cannot separate concentration effects from possible sequence effects.</li>
+                      <li>The inspected R help page defines uptake as carbon dioxide uptake rate in micromoles per square metre per second. This documentation-based interpretation is distinct from the units attribute printed directly from the installed object.</li>
+                      <li>Concentration values are preserved exactly as stored. Observed metadata are not treated as external confirmation of concentration units; conflicting labels or units are not silently reconciled.</li>
+                      <li>The plant mean equally weights the measured concentration levels. It is not an integral over concentration, time-integrated carbon gain, or fitted physiological capacity.</li>
+                      <li>The source-supported sequence is 14 hours of daytime chilling at 7°C, then 10 hours of recovery at 20°C, then measurement at 26°C. R’s documentation instead describes overnight chilling. This conflict is retained; profiles are not described as direct measurements during chilling.</li>
+                      <li>All generated files use accepted CSV or PNG formats. The two graphics devices are closed separately, with no graphics-parameter restoration after device closure. Only base R and bundled packages are used, without installation, network, environment-variable, or credential access.</li>
+                    </ul>
+                  </div>
+                  <div class="code-wrap">
+                    <div class="code-label">
+                      <span>Analysis code</span>
+                      <span class="code-language">R</span>
+                    </div>
+                    <pre>
+                      <code># Base R only: uses datasets::CO2, with no downloads or package installation.
+x &lt;- datasets::CO2
+cat('R version:', R.version.string, '\n')
+cat('datasets version:', as.character(utils::packageVersion('datasets')), '\n')
+# Inspect metadata before any data.frame conversion.
+cat('\nObserved units attribute of datasets::CO2, printed without reinterpretation:\n')
+print(attr(datasets::CO2, 'units'))
+cat('This attribute is observed dataset metadata, not independent confirmation of physical units.\n')
+cat('Concentrations remain unchanged; their physical units are unresolved here.\n')
+cat('Uptake units below follow the inspected R help page, not an inferred conversion.\n')
+
+d &lt;- data.frame(Plant = as.character(x$Plant),
+                Type = as.character(x$Type),
+                Treatment = as.character(x$Treatment),
+                conc = x$conc, uptake = x$uptake,
+                stringsAsFactors = FALSE)
+cat('\nMissing values by column:\n')
+print(colSums(is.na(d)))
+stopifnot(!anyNA(d), all(is.finite(d$conc)), all(is.finite(d$uptake)))
+stopifnot(!anyDuplicated(d[c('Plant', 'conc')]))
+by_plant &lt;- split(d, d$Plant)
+stopifnot(all(vapply(by_plant, function(z) length(unique(z$Type)) == 1L &amp;&amp;
+  length(unique(z$Treatment)) == 1L, logical(1))))
+grid &lt;- sort(unique(d$conc))
+stopifnot(length(grid) == 7L)
+stopifnot(all(vapply(by_plant, function(z) identical(sort(z$conc), grid), logical(1))))
+plants &lt;- unique(d[c('Plant', 'Type', 'Treatment')])
+plant_counts &lt;- with(plants, table(Type, Treatment))
+stopifnot(nrow(plants) == 12L, all(dim(plant_counts) == c(2L, 2L)),
+          all(plant_counts == 3L))
+cat('\nDataset dimensions and concentration values as stored:\n')
+print(dim(d)); print(grid)
+cat('\nRows per plant: repeated measurements, not independent replicates:\n')
+print(table(d$Plant))
+cat('\nPlant counts by population and treatment:\n')
+print(plant_counts)
+
+# Export the actual installed dataset, not reconstructed or simulated values.
+utils::write.csv(x, 'co2_raw.csv', row.names = FALSE)
+
+# Flatten aggregate output so each exported statistic has its own CSV column.
+pw &lt;- aggregate(uptake ~ Type + Treatment + conc, d,
+  function(v) c(n_plants = length(v), mean_uptake = mean(v), sd_uptake = sd(v),
+                minimum_uptake = min(v), maximum_uptake = max(v)))
+pointwise &lt;- data.frame(pw[c('Type', 'Treatment', 'conc')],
+                        as.data.frame(pw$uptake), check.names = FALSE)
+pointwise &lt;- pointwise[order(pointwise$Type, pointwise$Treatment, pointwise$conc), ]
+cat('\nPointwise descriptive summaries across plants:\n')
+print(pointwise, row.names = FALSE)
+utils::write.csv(pointwise, 'co2_pointwise_summaries.csv', row.names = FALSE)
+
+# Each plant contributes one equally weighted mean across measured levels.
+pm &lt;- aggregate(uptake ~ Plant + Type + Treatment, d, mean)
+names(pm)[names(pm) == 'uptake'] &lt;- 'mean_uptake'
+pm &lt;- pm[order(pm$Type, pm$Treatment, pm$Plant), ]
+cat('\nPlant-level means across measured concentration levels:\n')
+print(pm, row.names = FALSE)
+utils::write.csv(pm, 'co2_plant_means.csv', row.names = FALSE)
+ps &lt;- aggregate(mean_uptake ~ Type + Treatment, pm,
+  function(v) c(n_plants = length(v), mean = mean(v), sd = sd(v),
+                minimum = min(v), maximum = max(v)))
+plant_summary &lt;- data.frame(ps[c('Type', 'Treatment')],
+                            as.data.frame(ps$mean_uptake), check.names = FALSE)
+cat('\nDescriptive summaries of plant-level means:\n')
+print(plant_summary, row.names = FALSE)
+utils::write.csv(plant_summary, 'co2_plant_mean_summaries.csv', row.names = FALSE)
+
+contrast &lt;- do.call(rbind, lapply(sort(unique(pm$Type)), function(tp) {
+  z &lt;- pm[pm$Type == tp, ]
+  stopifnot(all(c('chilled', 'nonchilled') %in% z$Treatment))
+  chilled &lt;- mean(z$mean_uptake[z$Treatment == 'chilled'])
+  nonchilled &lt;- mean(z$mean_uptake[z$Treatment == 'nonchilled'])
+  data.frame(Type = tp, chilled_mean = chilled, nonchilled_mean = nonchilled,
+             chilled_minus_nonchilled = chilled - nonchilled)
+}))
+cat('\nDescriptive group-mean differences only; not paired differences:\n')
+print(contrast, row.names = FALSE)
+utils::write.csv(contrast, 'co2_descriptive_contrasts.csv', row.names = FALSE)
+cat('\nNo hypothesis tests, confidence intervals, fitted asymptotes, or paired calculations are produced.\n')
+cat('Concentration and increasing measurement order cannot be separated by these profiles.\n')
+cat('Treatment timing: source describes 14 h daytime chilling at 7 C, then 10 h recovery at 20 C, then measurement at 26 C; R documentation describes overnight chilling.\n')
+cat('These are not direct measurements during chilling.\n')
+
+# Figure 1: consistent axes and plant-specific trajectories in each group.
+groups &lt;- unique(d[c('Type', 'Treatment')])
+groups &lt;- groups[order(groups$Type, groups$Treatment), ]
+plant_palette &lt;- c('#376C82', '#A36545', '#647C55')
+ink &lt;- '#25313A'
+grid_color &lt;- '#E7EBED'
+pretty_treatment &lt;- function(v) ifelse(v == 'nonchilled', 'Nonchilled', 'Chilled')
+y_limits &lt;- range(d$uptake)
+y_pad &lt;- diff(y_limits) * 0.06
+if (y_pad == 0) y_pad &lt;- 1
+y_limits &lt;- y_limits + c(-y_pad, y_pad)
+grDevices::png('co2_response_curves.png', width = 3000, height = 2400,
+               res = 300, pointsize = 12, bg = 'white')
+par(mfrow = c(2, 2), mar = c(5.2, 5.0, 3.0, 1.0),
+    oma = c(2.0, 0, 2.8, 0), col = ink, col.axis = ink,
+    col.lab = ink, col.main = ink, family = 'sans', las = 1)
+for (i in seq_len(nrow(groups))) {
+  z &lt;- d[d$Type == groups$Type[i] &amp; d$Treatment == groups$Treatment[i], ]
+  ids &lt;- sort(unique(z$Plant))
+  plot(range(d$conc), y_limits, type = 'n', axes = FALSE,
+       xlab = '', ylab = '',
+       main = paste(groups$Type[i], pretty_treatment(groups$Treatment[i]), sep = ' | '))
+  abline(h = pretty(y_limits), col = grid_color, lwd = 0.8)
+  axis(1, at = grid, labels = grid, cex.axis = 0.8)
+  axis(2, cex.axis = 0.9)
+  box(col = '#B8C1C6')
+  mtext('CO2 concentration (stored values; units unresolved)', side = 1, line = 3.1, cex = 0.8)
+  mtext('Uptake (micromol m^-2 s^-1)', side = 2, line = 3.2, las = 0, cex = 0.85)
+  for (j in seq_along(ids)) {
+    zz &lt;- z[z$Plant == ids[j], ]; zz &lt;- zz[order(zz$conc), ]
+    lines(zz$conc, zz$uptake, type = 'b', pch = c(16, 17, 15)[j],
+          col = plant_palette[j], lwd = 1.8, cex = 0.7)
+  }
+  legend('bottomright', legend = ids, col = plant_palette[seq_along(ids)],
+         pch = c(16, 17, 15)[seq_along(ids)], lty = 1, lwd = 1.8,
+         bty = 'n', cex = 0.85)
+}
+mtext('Individual plant uptake profiles', outer = TRUE, side = 3, line = 1.0,
+      cex = 1.25, font = 2)
+mtext('Lines connect repeated observations; concentration increased in measurement order.',
+      outer = TRUE, side = 1, line = 0.6, cex = 0.85)
+grDevices::dev.off()
+
+# Figure 2: open a new device only after closing the first one.
+mean_limits &lt;- range(pm$mean_uptake)
+mean_pad &lt;- diff(mean_limits) * 0.12
+if (mean_pad == 0) mean_pad &lt;- 1
+mean_limits &lt;- mean_limits + c(-mean_pad, mean_pad)
+group_colors &lt;- ifelse(groups$Treatment == 'chilled', '#376C82', '#A36545')
+grDevices::png('co2_plant_level_comparison.png', width = 3000, height = 2100,
+               res = 300, pointsize = 12, bg = 'white')
+par(mar = c(6.5, 5.5, 4.5, 1.5), oma = c(2.0, 0, 0, 0),
+    col = ink, col.axis = ink, col.lab = ink, col.main = ink,
+    family = 'sans', las = 1)
+plot(c(0.5, nrow(groups) + 0.5), mean_limits, type = 'n', axes = FALSE,
+     xlab = '', ylab = '', main = 'Plant-level uptake: individuals and group means')
+abline(h = pretty(mean_limits), col = grid_color, lwd = 0.8)
+axis(2)
+axis(1, at = seq_len(nrow(groups)),
+     labels = paste(groups$Type, pretty_treatment(groups$Treatment), sep = '\n'),
+     tick = FALSE, cex.axis = 0.95)
+box(col = '#B8C1C6')
+mtext('Plant mean uptake (micromol m^-2 s^-1)', side = 2, line = 3.6, las = 0)
+for (i in seq_len(nrow(groups))) {
+  z &lt;- pm[pm$Type == groups$Type[i] &amp; pm$Treatment == groups$Treatment[i], ]
+  z &lt;- z[order(z$Plant), ]
+  offsets &lt;- seq(-0.13, 0.13, length.out = nrow(z))
+  points(i + offsets, z$mean_uptake, pch = 21, bg = group_colors[i],
+         col = 'white', lwd = 0.8, cex = 1.6)
+  text(i + offsets, z$mean_uptake, labels = z$Plant, pos = 3,
+       offset = 0.7, cex = 0.8, col = ink)
+  segments(i - 0.23, mean(z$mean_uptake), i + 0.23, mean(z$mean_uptake),
+           col = ink, lwd = 2.5)
+}
+mtext('Dots: individual plants   |   Short horizontal lines: group means',
+      side = 3, line = 0.7, cex = 0.9)
+mtext('Each plant mean weights the seven measured concentration levels equally; no inferential intervals.',
+      outer = TRUE, side = 1, line = 0.5, cex = 0.85)
+grDevices::dev.off()
+
+cat('\nExported files:\n')
+print(c('co2_raw.csv', 'co2_plant_means.csv', 'co2_pointwise_summaries.csv',
+        'co2_plant_mean_summaries.csv', 'co2_descriptive_contrasts.csv',
+        'co2_response_curves.png', 'co2_plant_level_comparison.png'))
+print(utils::sessionInfo())</code>
+                    </pre>
+                  </div>
+                </details>
+                <div class="download-row task-downloads">
+                  <span class="method-label">Task files</span>
+                  <a class="file-link" href="analyses/plant_level_descriptive_profiles/output-1.csv" download="output-1.csv">output-1.csv</a>
+                  <a class="file-link" href="analyses/plant_level_descriptive_profiles/output-2.png" download="output-2.png">output-2.png</a>
+                  <a class="file-link" href="analyses/plant_level_descriptive_profiles/output-3.csv" download="output-3.csv">output-3.csv</a>
+                  <a class="file-link" href="analyses/plant_level_descriptive_profiles/output-4.csv" download="output-4.csv">output-4.csv</a>
+                  <a class="file-link" href="analyses/plant_level_descriptive_profiles/output-5.csv" download="output-5.csv">output-5.csv</a>
+                  <a class="file-link" href="analyses/plant_level_descriptive_profiles/output-6.csv" download="output-6.csv">output-6.csv</a>
+                  <a class="file-link" href="analyses/plant_level_descriptive_profiles/output-7.png" download="output-7.png">output-7.png</a>
+                </div>
+              </article>
+            </div>
+          </section>
+          <section id="illustrations">
+            <p class="section-kicker">03 / Visual context</p>
+            <h2>Generated illustrations</h2>
+            <p>The generated cover illustration appears at the beginning of this report.</p>
+            <details class="method-details">
+              <summary>Illustration prompt and provenance</summary>
+              <p>Create a beautiful, highly legible editorial scientific schematic as a high-resolution landscape PNG, not a photograph. Use a warm off-white background, generous whitespace, fine charcoal typography, restrained blue-green foliage, cool blue for cold exposure, and muted amber for recovery. Show three clearly separated stages connected left to right by simple arrows. Stage 1: a stylized generic plant in a cool chamber, labeled 'Cold exposure' and '14 hours at 7°C'. Stage 2: the same generic plant motif in a neutral recovery chamber, labeled 'Recovery' and '10 hours at 20°C'. Stage 3: a close-up leaf enclosed in a simplified gas-exchange chamber connected by tubing to an abstract instrument, labeled 'Leaf gas-exchange measurement' and '26°C'. The repeated plant motif indicates stages, not sample counts. Add the clear heading 'From cold exposure to measurement' and a small but readable footer: 'Conceptual schematic — not experimental evidence'. Include a readable note: 'Source describes daytime chilling; R documentation describes overnight chilling.' Do not imply that uptake was measured during cold exposure. Do not depict treatment effects, numerical results, data plots, bar charts, sample counts, geography maps, species-specific identifying features, or undocumented apparatus details. Keep apparatus deliberately schematic and all text crisp and readable at report-embedding size.</p>
+              <pre>
+                <code>{
+  "provider": "openai",
+  "model": "gpt-image-2.6-flare",
+  "size": "1536x1024",
+  "quality": "medium",
+  "revised_prompt": null
+}</code>
+              </pre>
+            </details>
+          </section>
+          <section id="sources">
+            <p class="section-kicker">04 / Source record</p>
+            <h2>Source library</h2>
+            <div class="source-library">
+              <article id="source-item-1" class="source-card">
+                <div class="source-card-top">
+                  <span class="source-id">S0aadb060bb3b</span>
+                  <span class="source-kind">web</span>
+                </div>
+                <h3>
+                  <a href="https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf" target="_blank" rel="noopener noreferrer">*Ecology*, 7(4), 1990, pp. 1389–1400</a>
+                </h3>
+                <p class="source-date">
+                  <span>Retrieved </span>
+                  <time>2026-11-15T12:37:37.130232Z</time>
+                </p>
+              </article>
+              <article id="source-item-2" class="source-card">
+                <div class="source-card-top">
+                  <span class="source-id">S509029c8ae51</span>
+                  <span class="source-kind">web</span>
+                </div>
+                <h3>
+                  <a href="https://svn.r-project.org/R/trunk/src/library/datasets/data/" target="_blank" rel="noopener noreferrer">R - Revision 90893: /trunk/src/library/datasets/data</a>
+                </h3>
+                <p class="source-date">
+                  <span>Retrieved </span>
+                  <time>2026-11-15T12:37:38.426877Z</time>
+                </p>
+              </article>
+              <article id="source-item-3" class="source-card">
+                <div class="source-card-top">
+                  <span class="source-id">S5181028e48ec</span>
+                  <span class="source-kind">web</span>
+                </div>
+                <h3>
+                  <a href="https://www.stat.ethz.ch/CRAN/web/packages/m61r/vignettes/primitives.html" target="_blank" rel="noopener noreferrer">m61r Primitives Written in Base R</a>
+                </h3>
+                <p class="source-date">
+                  <span>Retrieved </span>
+                  <time>2026-11-15T12:37:39.040010Z</time>
+                </p>
+              </article>
+              <article id="source-item-4" class="source-card">
+                <div class="source-card-top">
+                  <span class="source-id">S6e5bd2edc570</span>
+                  <span class="source-kind">web</span>
+                </div>
+                <h3>
+                  <a href="https://raw.githubusercontent.com/wch/r-source/trunk/src/library/datasets/data/CO2.R" target="_blank" rel="noopener noreferrer">https://raw.githubusercontent.com/wch/r-source/trunk/src/library/datasets/data/CO2.R</a>
+                </h3>
+                <p class="source-date">
+                  <span>Retrieved </span>
+                  <time>2026-11-15T12:35:24.271161Z</time>
+                </p>
+              </article>
+              <article id="source-item-5" class="source-card">
+                <div class="source-card-top">
+                  <span class="source-id">S7528fd2c1ece</span>
+                  <span class="source-kind">web</span>
+                </div>
+                <h3>
+                  <a href="https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html" target="_blank" rel="noopener noreferrer">R: Carbon Dioxide Uptake in Grass Plants</a>
+                </h3>
+                <p class="source-date">
+                  <span>Retrieved </span>
+                  <time>2026-11-15T12:35:24.009689Z</time>
+                </p>
+              </article>
+              <article id="source-item-6" class="source-card">
+                <div class="source-card-top">
+                  <span class="source-id">Sd91462337d66</span>
+                  <span class="source-kind">web</span>
+                </div>
+                <h3>
+                  <a href="https://raw.githubusercontent.com/wch/r-source/trunk/src/library/datasets/man/zCO2.Rd" target="_blank" rel="noopener noreferrer">fit the data for the first plant</a>
+                </h3>
+                <p class="source-date">
+                  <span>Retrieved </span>
+                  <time>2026-11-15T12:35:24.542577Z</time>
+                </p>
+              </article>
+              <article id="source-item-7" class="source-card">
+                <div class="source-card-top">
+                  <span class="source-id">Sf2ebd0a69642</span>
+                  <span class="source-kind">web</span>
+                </div>
+                <h3>
+                  <a href="https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html" target="_blank" rel="noopener noreferrer">R: Carbon Dioxide Uptake in Grass Plants</a>
+                </h3>
+                <p class="source-date">
+                  <span>Retrieved </span>
+                  <time>2026-11-15T12:37:37.263833Z</time>
+                </p>
+              </article>
+            </div>
+          </section>
+          <section id="limitations">
+            <p class="section-kicker">05 / Reading guide</p>
+            <h2>Limitations and task record</h2>
+            <div class="limitations">
+              <h3>How to read this report</h3>
+              <p>
+                This report is a derived research aid. Its proposed synthesis, 
+                analyses, and illustrations do not replace or revise the original 
+                cited research record.
+              </p>
+              <p>
+                A completed computation records that its supplied task ran; 
+                scientific interpretation remains conditional on its code, 
+                assumptions, and cited sources. Generated illustrations provide 
+                visual context and are not evidence.
+              </p>
+            </div>
+            <div class="task-ledger">
+              <h3>Task outcomes</h3>
+              <div class="outcome-row">
+                <div>
+                  <p class="eyebrow">Analysis</p>
+                  <h3>Trace individual plant responses and compare plant-level averages</h3>
+                </div>
+                <span class="status-pill succeeded">succeeded</span>
+              </div>
+              <div class="outcome-row">
+                <div>
+                  <p class="eyebrow">Illustration</p>
+                  <h3>From cold exposure to leaf measurement</h3>
+                </div>
+                <span class="status-pill succeeded">succeeded</span>
+              </div>
+            </div>
+          </section>
+          <section id="downloads">
+            <p class="section-kicker">06 / Reproducibility</p>
+            <h2>Files and methods</h2>
+            <p class="quiet-note">
+              Keep this folder intact to preserve local figures, source files, 
+              and the integrity manifest alongside this HTML report.
+            </p>
+            <div class="download-grid">
+              <div class="download-group">
+                <h3>Manifest</h3>
+                <ul>
+                  <li>
+                    <a href="manifest.json" download="manifest.json">manifest.json</a>
+                  </li>
+                </ul>
+              </div>
+              <div class="download-group">
+                <h3>Original research</h3>
+                <ul>
+                  <li>
+                    <a href="research.md" download="research.md">research.md</a>
+                  </li>
+                </ul>
+              </div>
+              <div class="download-group">
+                <h3>Analysis code</h3>
+                <ul>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/analysis.R" download="analysis.R">analyses/plant_level_descriptive_profiles/analysis.R</a>
+                  </li>
+                </ul>
+              </div>
+              <div class="download-group">
+                <h3>Other bundle files</h3>
+                <ul>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/output-1.csv" download="output-1.csv">analyses/plant_level_descriptive_profiles/output-1.csv</a>
+                  </li>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/output-2.png" download="output-2.png">analyses/plant_level_descriptive_profiles/output-2.png</a>
+                  </li>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/output-3.csv" download="output-3.csv">analyses/plant_level_descriptive_profiles/output-3.csv</a>
+                  </li>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/output-4.csv" download="output-4.csv">analyses/plant_level_descriptive_profiles/output-4.csv</a>
+                  </li>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/output-5.csv" download="output-5.csv">analyses/plant_level_descriptive_profiles/output-5.csv</a>
+                  </li>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/output-6.csv" download="output-6.csv">analyses/plant_level_descriptive_profiles/output-6.csv</a>
+                  </li>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/output-7.png" download="output-7.png">analyses/plant_level_descriptive_profiles/output-7.png</a>
+                  </li>
+                  <li>
+                    <a href="analyses/plant_level_descriptive_profiles/output.txt" download="output.txt">analyses/plant_level_descriptive_profiles/output.txt</a>
+                  </li>
+                  <li>
+                    <a href="illustrations/cold_recovery_measurement_schematic/output-1.png" download="output-1.png">illustrations/cold_recovery_measurement_schematic/output-1.png</a>
+                  </li>
+                  <li>
+                    <a href="plan.json" download="plan.json">plan.json</a>
+                  </li>
+                  <li>
+                    <a href="report.json" download="report.json">report.json</a>
+                  </li>
+                  <li>
+                    <a href="sources.json" download="sources.json">sources.json</a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+      <footer class="report-footer">
+        <p>
+          <strong>Tempest</strong>
+           · portable research enrichment. The source record and its citations 
+          remain the publication authority.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>

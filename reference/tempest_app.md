@@ -20,6 +20,11 @@ tempest_app(..., demo = FALSE)
 
 ## Arguments
 
+- ...:
+
+  Passed to
+  [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html).
+
 - demo:
 
   If `TRUE`, open the deterministic ecosystem demonstration. Scripted
@@ -28,11 +33,6 @@ tempest_app(..., demo = FALSE)
   correction, withdrawal, and fresh-process reuse. No credentials or
   network are needed. The example uses a local demo directory; set
   `options(tempest.demo_dir = "path")` to keep it across R sessions.
-
-- ...:
-
-  Passed to
-  [`shiny::runApp()`](https://rdrr.io/pkg/shiny/man/runApp.html).
 
 ## Value
 

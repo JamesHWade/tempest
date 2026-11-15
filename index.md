@@ -240,6 +240,30 @@ program references are provenance only.
 
 ## Review a completed run
 
+For an independent scientific review before publication, enable it in
+the configuration used by either STORM or Co-STORM:
+
+``` r
+
+config <- tempest_config(
+  research_review = TRUE,
+  repair_evidence = TRUE,
+  max_review_claims = 5,
+  review_concurrency = 2
+)
+result <- tempest_run("Your research question", config = config)
+tempest_claim_reviews(result)
+```
+
+The report retains confirmed concerns, dismissed concerns, unresolved
+questions, and cases where no issue was found. Each finding binds to
+captured source excerpts and exact quotes. Evidence repair permits one
+targeted search and at most two fetched sources per selected claim.
+These advisory findings remain separate from citation support and
+accepted knowledge. See [Scientific review and evidence
+repair](https://jameshwade.github.io/tempest/articles/scientific-review.html)
+for limits, persistence, and evaluation guidance.
+
 [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
 reconstructs a bounded, read-only review from one exact completed STORM
 result or succeeded, quiescent Co-STORM session:
@@ -290,11 +314,11 @@ Schema 3 directly replaces native-snapshot and receipt-based reviews;
 cross-product publications are rejected.
 
 The current persistence line accepts only `ResearchWorkspace` snapshot
-schema 7, Co-STORM snapshot and bundle schema 13, STORM bundle schema 10
+schema 8, Co-STORM snapshot and bundle schema 14, STORM bundle schema 11
 with state schema 5, ProgramSet schema 2, research-manifest schema 5,
-StageRecord output-digest payload schema 3, and promotion-bundle
-schema 1. Readers reject every other version; missing fields, extra
-fields, and values that only become valid after coercion are errors.
+StageRecord output-digest payload schema 3, and promotion-bundle schema
+2. Readers reject every other version; missing fields, extra fields, and
+values that only become valid after coercion are errors.
 
 ## Product boundary
 
@@ -313,6 +337,57 @@ scientific transformations carry dsprrr program identity, while
 open-ended agent calls carry Deputy execution identity. Those identities
 support correlation and audit joins only; they do not claim that an
 execution caused, authored, or validated report content.
+
+## Enriched research reports
+
+Turn a completed research product into a portable HTML report with
+computed figures, inspectable R code, source links, and clearly labeled
+AI illustrations:
+
+``` r
+
+delivery <- tempest_researcher(
+  "What does the available evidence say about my research question?",
+  output_dir = "reports/my-research",
+  config = tempest_config(),
+  enrichment = list(
+    allow_code = TRUE,
+    executor = tempest_r_executor(timeout = 60),
+    image_generator = tempest_image_generator(),
+    max_analyses = 3,
+    max_illustrations = 2
+  )
+)
+browseURL(file.path(delivery$report@path, "index.html"))
+tempest_read_enriched_report(delivery$report@path)
+```
+
+The planner proposes analyses only when accessible data support them.
+Code execution is disabled by default; the built-in R executor runs
+trusted code with your account’s access in a Deputy process, not an OS
+sandbox. The image provider uses `OPENAI_API_KEY`. Supply a reviewed
+`plan` to avoid a planning model call, and inject your own execution or
+image providers when needed. `tempest_enrich_report(result, ...)` also
+accepts a finalized Co-STORM session.
+
+Reports retain the original research and its publication authority.
+Calculations and illustrations do not become verified claims or accepted
+knowledge. Failed or skipped tasks yield a visible `partial` report.
+Each new report directory contains the plan, source ledger, scripts,
+outputs, images, and file checksums. See
+[`vignette("enriched-research")`](https://jameshwade.github.io/tempest/articles/enriched-research.md)
+for the plan contract and an offline botanical example with real R
+calculations, repeated-measures limitations, and a generated
+illustration.
+
+See the [supervised live qualification
+report](https://jameshwade.github.io/tempest/live-research/index.html)
+for a reader edition built from a live Tempest research run. It records
+the additional source preparation, review, extraction, analysis, and
+reader synthesis used for that example; it is not an unattended
+benchmark or the expected output of a bare
+[`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
+call.
 
 ## Scripted STORM
 
@@ -505,7 +580,7 @@ res <- tempest_run(
 )
 ```
 
-Each run directory is an exact current schema-10 STORM product bundle
+Each run directory is an exact current schema-11 STORM product bundle
 with schema-5 state. It includes checksummed JSON state for
 perspectives, experts, sources, claims, outlines, and references;
 Markdown drafts; and the final Markdown report. Resume rejects older,
@@ -819,7 +894,7 @@ moderator or expert run records an opaque terminal trace that is carried
 through Co-STORM snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact
-current schema-13 product. Expert, transcript, mind-map, StageRecord,
+current schema-14 product. Expert, transcript, mind-map, StageRecord,
 Workspace, report, suggested-question, and artifact selection state must
 pass integrity checks. Live chats, tools, credentials, clients,
 callbacks, and Shiny reactives are recreated rather than serialized.

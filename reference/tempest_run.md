@@ -107,7 +107,7 @@ tempest_run(
 - output_dir:
 
   Optional directory for persisted STORM run artifacts. When supplied, a
-  current schema-10 product bundle with schema-5 STORM state is written
+  current schema-11 product bundle with schema-5 STORM state is written
   under a topic-specific subdirectory.
 
 - resume:

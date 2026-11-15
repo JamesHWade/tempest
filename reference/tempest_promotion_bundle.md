@@ -1,15 +1,18 @@
 # Build a deterministic proposal for reviewed Graft promotion
 
 `tempest_promotion_bundle()` validates a completed research product and
-packages only promotable claims and their exact pair-level evidence. It
-does not write accepted knowledge. Publish with
+packages promotable claims and their exact pair-level evidence, with
+advisory claim reviews and their retained source dossiers. Reviews
+remain separate from scientific claims and claim support; they do not
+change promotion eligibility. It does not write accepted knowledge.
+Publish with
 [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
 and call
 [`graft::graft_accept()`](https://jameshwade.github.io/graft/reference/graft_accept.html)
 after host review. Loose Workspace, Manifest, or StageRecord tuples are
-not accepted. The promotion payload remains the exact schema-1
-evidence-only product shape; the terminal report is an eligibility gate
-and is not copied into it.
+not accepted. The schema-2 payload retains complete review context while
+keeping the terminal report as an eligibility gate rather than copying
+it.
 
 ## Usage
 
@@ -34,7 +37,9 @@ tempest_promotion_bundle(research, claim_ids = NULL)
   Optional exact claim selection. By default all supported or partially
   supported claims are selected. Selection must be closed over every
   output bound by each retained extraction and verification record;
-  Tempest rejects a partial stage-output selection.
+  Tempest rejects a partial stage-output selection. Advisory reviews for
+  claims in the selected stage-bound proof are retained; reviews of
+  other claims remain with the complete research product.
 
 ## Value
 

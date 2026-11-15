@@ -2,6 +2,46 @@
 
 ## tempest 0.0.0.9000
 
+- Saved research products now retain scientific review records with
+  workspace schema 8, Co-STORM snapshot and bundle schema 14, STORM
+  bundle schema 11 (state schema 5), and promotion bundle schema 2.
+  Readers accept only the current format; older bundles require their
+  matching package version
+  ([\#188](https://github.com/JamesHWade/tempest/issues/188)).
+
+- Tempest rejects provider-truncated Deputy answers before issuing a
+  completion and validates the resolved structured metadata of
+  asynchronous dsprrr stages
+  ([\#188](https://github.com/JamesHWade/tempest/issues/188)).
+
+- [`tempest_claim_reviews()`](https://jameshwade.github.io/tempest/reference/tempest_claim_reviews.md)
+  reads the exact advisory scientific reviews retained by a published
+  product, including independent adjudication, captured evidence and
+  bounded search outcomes; reviews survive session and research artifact
+  round trips without becoming citation support or accepted claims
+  ([\#188](https://github.com/JamesHWade/tempest/issues/188)).
+
+- [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+  can enable bounded scientific review with `research_review = TRUE` and
+  one targeted evidence search per selected claim with
+  `repair_evidence = TRUE`; `max_review_claims` and `review_concurrency`
+  bound the work, and reports distinguish confirmed concerns, dismissed
+  concerns, unresolved findings and no issue found
+  ([\#188](https://github.com/JamesHWade/tempest/issues/188)).
+
+- [`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
+  adds bounded, opt-in R analyses and generated illustrations to
+  completed STORM or Co-STORM research, with portable HTML, executable
+  methods, visible failures, source bindings, and an integrity-checked
+  report bundle.
+  [`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
+  combines research and enrichment;
+  [`tempest_r_executor()`](https://jameshwade.github.io/tempest/reference/tempest_r_executor.md)
+  and
+  [`tempest_image_generator()`](https://jameshwade.github.io/tempest/reference/tempest_image_generator.md)
+  supply configurable providers
+  ([\#189](https://github.com/JamesHWade/tempest/issues/189)).
+
 - Tempest no longer pins Deputy, dsprrr, Graft, or shinymcp to commits
   in `Remotes`; each tracks its `main` branch. A pin held every package
   that installs Tempest to that commit, so a host that needs a newer

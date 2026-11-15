@@ -1,0 +1,13 @@
+"Plant","Type","Treatment","mean_uptake"
+"Mc1","Mississippi","chilled",18
+"Mc2","Mississippi","chilled",12.1428571428571
+"Mc3","Mississippi","chilled",17.3
+"Mn1","Mississippi","nonchilled",26.4
+"Mn2","Mississippi","nonchilled",27.3428571428571
+"Mn3","Mississippi","nonchilled",24.1142857142857
+"Qc1","Quebec","chilled",29.9714285714286
+"Qc2","Quebec","chilled",32.7
+"Qc3","Quebec","chilled",32.5857142857143
+"Qn1","Quebec","nonchilled",33.2285714285714
+"Qn2","Quebec","nonchilled",35.1571428571429
+"Qn3","Quebec","nonchilled",37.6142857142857

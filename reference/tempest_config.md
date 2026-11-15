@@ -23,7 +23,11 @@ tempest_config(
   max_active_experts = 5L,
   citation_policy = "source_attributed",
   min_support_score = 0.7,
-  on_unsupported_claim = "flag"
+  on_unsupported_claim = "flag",
+  research_review = FALSE,
+  repair_evidence = FALSE,
+  max_review_claims = 5L,
+  review_concurrency = 2L
 )
 ```
 
@@ -121,6 +125,29 @@ tempest_config(
   Action for unsupported claims: one of "flag", "drop", "revise", or
   "keep_with_warning". `drop` removes the complete unsupported
   assertion; `revise` replaces it with a revision notice.
+
+- research_review:
+
+  Review selected claims for scientific flaws before publication, using
+  a separate reviewer and adjudicator. Findings remain advisory and do
+  not change citation support or accept knowledge.
+
+- repair_evidence:
+
+  When reviewing, allow one targeted evidence search per selected claim
+  and fetch at most two additional sources. Requires
+  `research_review = TRUE`.
+
+- max_review_claims:
+
+  Maximum claims to review (1 to 20). Disputed and weakly supported
+  claims take priority. Unselected claims are not reviewed.
+
+- review_concurrency:
+
+  Maximum independent claim reviews in flight (1 to 4). Each model
+  request uses its own Chat. Cancellation is cooperative; an active
+  retrieval call must finish before cancellation takes effect.
 
 ## Value
 

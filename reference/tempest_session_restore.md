@@ -58,7 +58,7 @@ or read by
 [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md).
 It restores the research manifest and authoritative workspace, and
 creates fresh chat/tool handles using `config`. Only the exact current
-schema-13 snapshot is accepted. Older, future, missing, extra, coerced,
+schema-14 snapshot is accepted. Older, future, missing, extra, coerced,
 or mismatched shapes are rejected without migration.
 
 Historical progress events are restored as session artifact data and can

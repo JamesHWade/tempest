@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "html": [
+    {
+      "page": "index.html",
+      "local_links_and_anchors": "passed",
+      "links_inspected": 23
+    },
+    {
+      "page": "report/index.html",
+      "local_links_and_anchors": "passed",
+      "links_inspected": 72
+    }
+  ],
+  "enrichment_hashes_verified": 15,
+  "desktop_width": 1305,
+  "mobile_width": 390,
+  "horizontal_overflow": false,
+  "reader_methods_disclosure": "opened in browser",
+  "illustration_and_charts": "visually inspected",
+  "numerical_validation": "result-validation.json",
+  "portable_source_index": "citation metadata only"
+}

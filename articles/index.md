@@ -19,3 +19,13 @@ Install Tempest and run your first workflow.
 
 - [Research, review, retain, and
   reuse](https://jameshwade.github.io/tempest/articles/ecosystem-demo.md):
+
+- [Scientific review and evidence
+  repair](https://jameshwade.github.io/tempest/articles/scientific-review.md):
+
+- [Enriching a research report with reproducible R
+  analysis](https://jameshwade.github.io/tempest/articles/enriched-research.md):
+
+  Build a derived, auditable analysis report from the CO2 grass
+  experiment while preserving source evidence and the original research
+  product.

@@ -13,6 +13,21 @@ Run scripted STORM, hold a Co-STORM session, or open the bundled app.
 - [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
   : Create a STORM configuration
 
+## Enriched research reports
+
+Combine cited research with reproducible calculations and illustrations.
+
+- [`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
+  : Research a topic and produce an enriched report
+- [`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
+  : Enrich completed research with computations and illustrations
+- [`tempest_r_executor()`](https://jameshwade.github.io/tempest/reference/tempest_r_executor.md)
+  : Create a Deputy-backed R execution callback
+- [`tempest_image_generator()`](https://jameshwade.github.io/tempest/reference/tempest_image_generator.md)
+  : Create an OpenAI image generation callback
+- [`tempest_read_enriched_report()`](https://jameshwade.github.io/tempest/reference/tempest_read_enriched_report.md)
+  : Read and verify a portable enriched report
+
 ## Scientific experts
 
 - [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
@@ -56,6 +71,8 @@ Read the committed report and inspect the evidence behind it.
   : Return claims as a tibble
 - [`tempest_claim_supports()`](https://jameshwade.github.io/tempest/reference/tempest_claim_supports.md)
   : List explicit claim-support assessments
+- [`tempest_claim_reviews()`](https://jameshwade.github.io/tempest/reference/tempest_claim_reviews.md)
+  : Read scientific claim reviews
 - [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
   **\[experimental\]** : A bounded review of one completed Tempest
   product
