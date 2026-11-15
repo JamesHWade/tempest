@@ -11,6 +11,7 @@ test_tier_unit_files <- c(
   "test-dsprrr-fallback.R",
   "test-dsprrr-integration.R",
   "test-dsprrr-ledger-modules.R",
+  "test-enriched-render.R",
   "test-execution-events.R",
   "test-expert-types.R",
   "test-governed-procedure.R",
