@@ -294,6 +294,43 @@ carry Deputy execution identity. Those identities support correlation and
 audit joins only; they do not claim that an execution caused, authored, or
 validated report content.
 
+## Enriched research reports
+
+Turn a completed research product into a portable HTML report with computed
+figures, inspectable R code, source links, and clearly labeled AI illustrations:
+
+```r
+delivery <- tempest_researcher(
+  "What does the available evidence say about my research question?",
+  output_dir = "reports/my-research",
+  config = tempest_config(),
+  enrichment = list(
+    allow_code = TRUE,
+    executor = tempest_r_executor(timeout = 60),
+    image_generator = tempest_image_generator(),
+    max_analyses = 3,
+    max_illustrations = 2
+  )
+)
+browseURL(file.path(delivery$report@path, "index.html"))
+tempest_read_enriched_report(delivery$report@path)
+```
+
+The planner proposes analyses only when accessible data support them. Code
+execution is disabled by default; the built-in R executor runs trusted code
+with your account's access in a Deputy process, not an OS sandbox. The image
+provider uses `OPENAI_API_KEY`. Supply a reviewed `plan` to avoid a planning
+model call, and inject your own execution or image providers when needed.
+`tempest_enrich_report(result, ...)` also accepts a finalized Co-STORM session.
+
+Reports retain the original research and its publication authority. Calculations
+and illustrations do not become verified claims or accepted knowledge. Failed
+or skipped tasks yield a visible `partial` report. Each new report directory
+contains the plan, source ledger, scripts, outputs, images, and file checksums.
+See `vignette("enriched-research")` for the plan contract and an offline botanical
+example with real R calculations, repeated-measures limitations, and a generated
+illustration.
+
 ## Scripted STORM
 
 ```r

@@ -11,6 +11,7 @@ articles:
   - artifact-knowledge
   - ecosystem-demo
   - scientific-review
+  - enriched-research
 reference:
 - title: Research products
   desc: Run scripted STORM, hold a Co-STORM session, or open the bundled app.
@@ -19,6 +20,14 @@ reference:
   - tempest_session
   - tempest_app
   - tempest_config
+- title: Enriched research reports
+  desc: Combine cited research with reproducible calculations and illustrations.
+  contents:
+  - tempest_researcher
+  - tempest_enrich_report
+  - tempest_r_executor
+  - tempest_image_generator
+  - tempest_read_enriched_report
 - title: Scientific experts
   contents:
   - tempest_expert
