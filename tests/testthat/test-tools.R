@@ -283,6 +283,61 @@ test_that("native harvesting keeps model prose out of source evidence", {
   expect_identical(presented$snippet, "Native evidence snippet")
 })
 
+test_that("URL-only native harvesting preserves fetched evidence beyond snippets", {
+  workspace <- tempest_research_workspace()
+  url <- "https://example.org/native-fetched-evidence"
+  quote <- "Captured evidence beyond the initial snippet."
+  body <- paste(strrep("Introduction. ", 30), quote)
+  resource <- tempest_resource(
+    resource_kind = "web",
+    locator = url,
+    title = "Fetched evidence",
+    media_type = "text/html",
+    resource_id = tempest:::tempest_source_id(url),
+    content = body,
+    metadata = list(kind = "html", snippet = substr(body, 1, 300))
+  )
+  workspace$upsert_retrieved_resource(resource)
+  span <- tempest_evidence_span(source_id = resource@resource_id, quote = quote)
+  workspace$add_evidence_span(span)
+
+  ids <- tempest:::tempest_harvest_native_sources_from_json(
+    list(url = url),
+    workspace
+  )
+  merged <- workspace$get_retrieved_resource(resource@resource_id)
+
+  expect_identical(ids, resource@resource_id)
+  expect_identical(merged@content, body)
+  expect_identical(merged@content_hash, resource@content_hash)
+  expect_identical(workspace$get_evidence_span(span@evidence_span_id), span)
+  expect_no_match(resource@metadata$snippet, quote, fixed = TRUE)
+  expect_no_error(workspace$validate_integrity())
+})
+
+test_that("native harvesting admits newly captured evidence", {
+  workspace <- tempest_research_workspace()
+  url <- "https://example.org/native-updated-evidence"
+  tempest:::tempest_harvest_native_sources_from_json(
+    list(url = url, content = "Original captured body."),
+    workspace
+  )
+  ids <- tempest:::tempest_harvest_native_sources_from_json(
+    list(url = url, content = "Updated captured body."),
+    workspace
+  )
+  merged <- workspace$get_retrieved_resource(ids[[1]])
+
+  expect_identical(merged@content, "Updated captured body.")
+  expect_identical(
+    merged@content_hash,
+    tempest:::tempest_product_content_hash(
+      "Updated captured body.",
+      "text/html"
+    )
+  )
+})
+
 test_that("answer source resolution preserves captured provider evidence", {
   workspace <- tempest_research_workspace()
   url <- "https://example.org/native-retry-source"

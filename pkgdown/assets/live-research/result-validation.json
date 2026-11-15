@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "raw_rows": 84,
+  "plants": 12,
+  "plant_means": "independently recomputed; match within 1e-12",
+  "contrasts": "independently recomputed; match within 1e-12",
+  "mississippi_contrast": -10.1380952380952,
+  "quebec_contrast": -3.58095238095238,
+  "reader_rounding": "checked",
+  "illustration": "visually inspected; conceptual",
+  "charts": "visually inspected"
+}

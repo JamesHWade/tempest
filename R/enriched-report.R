@@ -710,11 +710,24 @@ tempest_enrich_report <- function(
   )
   statuses <- vapply(c(analyses, illustrations), `[[`, character(1), "status")
   status <- if (all(statuses == "succeeded")) "complete" else "partial"
+  source_index <- sources[intersect(
+    c(
+      "id",
+      "resource_kind",
+      "locator",
+      "url",
+      "title",
+      "media_type",
+      "fetched_at",
+      "content_hash"
+    ),
+    names(sources)
+  )]
   bundle <- list(
     title = plan$title,
     summary = plan$summary,
     research_md = context$report_md,
-    sources = sources,
+    sources = source_index,
     analyses = analyses,
     illustrations = illustrations,
     status = status
@@ -725,7 +738,7 @@ tempest_enrich_report <- function(
     useBytes = TRUE
   )
   tempest_enriched_json(plan, file.path(staging, "plan.json"))
-  tempest_enriched_json(sources, file.path(staging, "sources.json"))
+  tempest_enriched_json(source_index, file.path(staging, "sources.json"))
   tempest_enriched_json(bundle, file.path(staging, "report.json"))
   tempest_enriched_render(bundle, staging)
   paths <- tempest_enriched_inventory(staging)

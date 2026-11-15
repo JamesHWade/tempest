@@ -30,7 +30,7 @@ model, search provider, or the quality of a live model response.
 The [R `datasets::CO2` help page](https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html)
 describes 84 rows from 12 plants: six from Quebec and six from Mississippi.
 Each plant was measured over seven ambient CO2 concentrations. Half the plants
-of each origin were chilled overnight.
+of each origin are described by the help page as having been chilled overnight.
 
 The original study by Potvin, Lechowicz, and Tardif (1990),
 [*The Statistical Analysis of Ecophysiological Response Curves Obtained from
@@ -252,6 +252,34 @@ chooses source IDs from the returned `sources$id` and uses reviewed local code.
 The automatically proposed plan is model output. Inspect `plan.json` and the
 saved analysis scripts before supplying a reviewed plan in a new
 `tempest_enrich_report()` call with `allow_code = TRUE`.
+
+## A supervised live qualification report
+
+The [hosted reader edition](https://jameshwade.github.io/tempest/assets/live-research/index.html)
+links to the evidence briefing, executed analysis, and downloadable outputs.
+It was produced from a live research run using `gpt-6.1-sol` for the research
+roles, enrichment planning, and an additional reader-synthesis call, and
+`gpt-image-2.6-flare` for a conceptual illustration. The executed R analysis
+produced two charts and five CSV files; the report also includes the generated
+image.
+
+This was a supervised qualification with additional source preparation and
+review. The scanned 1990 paper was transcribed with OCR before the final run, a
+custom claim extractor was bounded to source-quoted claims, and the proposed
+plan and R code were reviewed. The model revised the plan after review, and a
+reader-synthesis rounding error was sent back for correction. These steps are
+documented with the report. This artifact is not an unattended benchmark or
+the expected output of a no-intervention `tempest_researcher()` call.
+
+Its summary uses a different descriptive comparison from the offline paired
+replay above. It averages each plant's uptake across all seven concentrations,
+then subtracts the nonchilled group mean from the chilled group mean within
+each origin: **−10.14** for Mississippi and **−3.58** for Quebec, in µmol m⁻² s⁻¹.
+The supplied live outputs do not include the plant-pair mapping, so these are
+unpaired plant-group averages, not paired treatment differences or contrasts at
+the highest concentration. They describe this small dataset and do not
+establish a population-level effect. OCR may contain transcription errors; the
+report also leaves the concentration-unit discrepancy unresolved.
 
 ## References
 

@@ -199,13 +199,25 @@ test_that("custom planning gets exact research and respects budgets", {
     expect_identical(max_analyses, 0L)
     test_enriched_plan(fixture$resource@resource_id, analyses = FALSE)
   }
+  destination <- file.path(withr::local_tempdir(), "report")
   result <- tempest_enrich_report(
     fixture$research,
-    file.path(withr::local_tempdir(), "report"),
+    destination,
     planner = planner,
     max_analyses = 0L
   )
   expect_identical(result@status, "complete")
+  source_index <- jsonlite::read_json(file.path(destination, "sources.json"))
+  expect_equal(source_index[[1]]$id, fixture$resource@resource_id)
+  expect_equal(
+    intersect(
+      names(source_index[[1]]),
+      c("content_text", "snippet", "meta", "context_text")
+    ),
+    character()
+  )
+  exported <- jsonlite::read_json(file.path(destination, "report.json"))
+  expect_identical(exported$sources, source_index)
   destination <- file.path(withr::local_tempdir(), "failed-plan")
   expect_error(
     tempest_enrich_report(

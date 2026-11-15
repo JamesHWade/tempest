@@ -1,0 +1,187 @@
+R version: R version 4.6.1 (2026-06-24) 
+
+datasets version: 4.6.1 
+
+
+Observed units attribute of datasets::CO2, printed without reinterpretation:
+
+$x
+[1] "(uL/L)"
+
+$y
+[1] "(umol/m^2 s)"
+
+
+This attribute is observed dataset metadata, not independent confirmation of physical units.
+
+Concentrations remain unchanged; their physical units are unresolved here.
+
+Uptake units below follow the inspected R help page, not an inferred conversion.
+
+
+Missing values by column:
+
+    Plant      Type Treatment      conc    uptake 
+        0         0         0         0         0 
+
+
+Dataset dimensions and concentration values as stored:
+
+[1] 84  5
+
+[1]   95  175  250  350  500  675 1000
+
+
+Rows per plant: repeated measurements, not independent replicates:
+
+
+Mc1 Mc2 Mc3 Mn1 Mn2 Mn3 Qc1 Qc2 Qc3 Qn1 Qn2 Qn3 
+  7   7   7   7   7   7   7   7   7   7   7   7 
+
+
+Plant counts by population and treatment:
+
+             Treatment
+Type          chilled nonchilled
+  Mississippi       3          3
+  Quebec            3          3
+
+
+Pointwise descriptive summaries across plants:
+
+        Type  Treatment conc n_plants mean_uptake sd_uptake minimum_uptake
+ Mississippi    chilled   95        3     9.60000  1.646208            7.7
+ Mississippi    chilled  175        3    14.76667  3.302020           11.4
+ Mississippi    chilled  250        3    16.10000  3.292416           12.3
+ Mississippi    chilled  350        3    16.60000  3.157531           13.0
+ Mississippi    chilled  500        3    16.63333  3.667879           12.5
+ Mississippi    chilled  675        3    18.26667  4.285246           13.7
+ Mississippi    chilled 1000        3    18.73333  3.883727           14.4
+ Mississippi nonchilled   95        3    11.30000  0.700000           10.6
+ Mississippi nonchilled  175        3    20.20000  1.562050           19.2
+ Mississippi nonchilled  250        3    27.53333  2.663331           25.8
+ Mississippi nonchilled  350        3    29.90000  1.951922           27.9
+ Mississippi nonchilled  500        3    30.60000  1.967232           28.5
+ Mississippi nonchilled  675        3    30.53333  2.205297           28.1
+ Mississippi nonchilled 1000        3    31.60000  3.850974           27.8
+      Quebec    chilled   95        3    12.86667  3.121431            9.3
+      Quebec    chilled  175        3    24.13333  3.150132           21.0
+      Quebec    chilled  250        3    34.46667  3.927255           30.3
+      Quebec    chilled  350        3    35.80000  2.615339           34.0
+      Quebec    chilled  500        3    36.66667  3.611556           32.5
+      Quebec    chilled  675        3    37.50000  2.100000           35.4
+      Quebec    chilled 1000        3    40.83333  1.913984           38.7
+      Quebec nonchilled   95        3    15.26667  1.446836           13.6
+      Quebec nonchilled  175        3    30.03333  2.569695           27.3
+      Quebec nonchilled  250        3    37.40000  2.762245           34.8
+      Quebec nonchilled  350        3    40.36667  2.746513           37.2
+      Quebec nonchilled  500        3    39.60000  3.897435           35.3
+      Quebec nonchilled  675        3    41.50000  2.351595           39.2
+      Quebec nonchilled 1000        3    43.16667  3.061590           39.7
+ maximum_uptake
+           10.6
+           18.0
+           18.1
+           18.9
+           19.5
+           22.2
+           21.9
+           12.0
+           22.0
+           30.6
+           31.8
+           32.4
+           32.4
+           35.5
+           15.1
+           27.3
+           38.1
+           38.8
+           38.9
+           39.6
+           42.4
+           16.2
+           32.4
+           40.3
+           42.1
+           42.9
+           43.9
+           45.5
+
+
+Plant-level means across measured concentration levels:
+
+ Plant        Type  Treatment mean_uptake
+   Mc1 Mississippi    chilled    18.00000
+   Mc2 Mississippi    chilled    12.14286
+   Mc3 Mississippi    chilled    17.30000
+   Mn1 Mississippi nonchilled    26.40000
+   Mn2 Mississippi nonchilled    27.34286
+   Mn3 Mississippi nonchilled    24.11429
+   Qc1      Quebec    chilled    29.97143
+   Qc2      Quebec    chilled    32.70000
+   Qc3      Quebec    chilled    32.58571
+   Qn1      Quebec nonchilled    33.22857
+   Qn2      Quebec nonchilled    35.15714
+   Qn3      Quebec nonchilled    37.61429
+
+
+Descriptive summaries of plant-level means:
+
+        Type  Treatment n_plants     mean       sd  minimum  maximum
+ Mississippi    chilled        3 15.81429 3.198756 12.14286 18.00000
+      Quebec    chilled        3 31.75238 1.543408 29.97143 32.70000
+ Mississippi nonchilled        3 25.95238 1.660178 24.11429 27.34286
+      Quebec nonchilled        3 35.33333 2.198159 33.22857 37.61429
+
+
+Descriptive group-mean differences only; not paired differences:
+
+        Type chilled_mean nonchilled_mean chilled_minus_nonchilled
+ Mississippi     15.81429        25.95238               -10.138095
+      Quebec     31.75238        35.33333                -3.580952
+
+
+No hypothesis tests, confidence intervals, fitted asymptotes, or paired calculations are produced.
+
+Concentration and increasing measurement order cannot be separated by these profiles.
+
+Treatment timing: source describes 14 h daytime chilling at 7 C, then 10 h recovery at 20 C, then measurement at 26 C; R documentation describes overnight chilling.
+
+These are not direct measurements during chilling.
+
+agg_record_944434c15ded 
+                      2 
+
+agg_record_944434c15ded 
+                      2 
+
+
+Exported files:
+
+[1] "co2_raw.csv"                    "co2_plant_means.csv"           
+[3] "co2_pointwise_summaries.csv"    "co2_plant_mean_summaries.csv"  
+[5] "co2_descriptive_contrasts.csv"  "co2_response_curves.png"       
+[7] "co2_plant_level_comparison.png"
+
+R version 4.6.1 (2026-06-24)
+Platform: aarch64-apple-darwin23
+Running under: macOS Golden Gate 27.0
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+
+time zone: America/Detroit
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+[1] compiler_4.6.1    cli_3.6.6         ragg_1.5.2        textshaping_1.0.5
+[5] lifecycle_1.0.5   rlang_1.3.0       systemfonts_1.3.2 evaluate_1.0.5   
+

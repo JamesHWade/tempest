@@ -723,6 +723,7 @@ tempest_run_internal <- function(
       harvest$answer_text,
       harvest$source_ids
     )
+    tempest_storm_capture_sources(retriever, store, harvest$source_ids)
     tempest_extract_facts_from_answer(
       extractor,
       harvest$answer_text,

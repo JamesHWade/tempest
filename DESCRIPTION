@@ -147,6 +147,7 @@ Collate:
     'promotion-persistence.R'
     'shiny-adapter.R'
     'shinychat-adapter.R'
+    'storm-evidence.R'
     'storm-outline.R'
     'storm-perspectives.R'
     'storm-polish.R'

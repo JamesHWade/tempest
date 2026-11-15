@@ -1,0 +1,12 @@
+{
+  "model": {
+    "coordinator": "openai/gpt-6.1-sol",
+    "writer": "openai/gpt-6.1-sol",
+    "expert": "openai/gpt-6.1-sol",
+    "mindmap": "openai/gpt-6.1-sol",
+    "judge": "openai/gpt-6.1-sol"
+  },
+  "search": "native",
+  "authored_replay": false,
+  "started_at": "2026-11-15 12:33:05 UTC"
+}
