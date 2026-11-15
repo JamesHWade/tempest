@@ -1,2 +1,4 @@
 # Promotion manifests checksum the exact bundle bytes.
 inst/examples/accepted-research/*/*.json -text
+# Live report manifests cover original provider output, including whitespace.
+pkgdown/assets/live-research/report/** -text -whitespace
