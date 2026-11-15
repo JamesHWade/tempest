@@ -1,4 +1,4 @@
-test_that("schema 9 STORM bundles round-trip the complete workspace", {
+test_that("schema 11 STORM bundles round-trip the complete workspace", {
   skip_if_not_installed("graft")
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
@@ -128,7 +128,7 @@ test_that("schema 9 STORM bundles round-trip the complete workspace", {
 
   workspace_path <- file.path(dir, "workspace.json")
   downgraded <- tempest:::tempest_product_read_json(workspace_path)
-  downgraded$schema_version <- 4L
+  downgraded$schema_version <- 7L
   tempest:::tempest_product_write_json(workspace_path, downgraded)
   metadata$checksums[["workspace.json"]] <-
     tempest:::tempest_product_bundle_checksum(dir, "workspace.json")

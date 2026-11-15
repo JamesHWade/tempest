@@ -4,20 +4,20 @@ test_that("persistence schema dispatch rejects coerced current versions", {
   run_class <- "tempest_run_restore_error"
 
   expect_error(
-    tempest_session_restore(list(schema_version = 10.0)),
+    tempest_session_restore(list(schema_version = 14.0)),
     class = session_class
   )
   expect_error(
     tempest:::tempest_session_bundle_validate_manifest(
       withr::local_tempdir(),
-      list(schema_version = 10.0)
+      list(schema_version = 14.0)
     ),
     class = session_class
   )
   expect_error(
     tempest:::tempest_storm_bundle_validate_manifest(
       withr::local_tempdir(),
-      list(schema_version = 8.0)
+      list(schema_version = 11.0)
     ),
     class = run_class
   )
@@ -29,7 +29,7 @@ test_that("persistence schema dispatch rejects coerced current versions", {
   )
   expect_error(
     tempest:::tempest_storm_restore_manifest(
-      list(schema_version = 8.0),
+      list(schema_version = 11.0),
       tempest_research_workspace(),
       tempest:::tempest_storm_state("Fractional schema"),
       cfg,

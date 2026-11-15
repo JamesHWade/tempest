@@ -10,7 +10,7 @@ tempest_session_snapshot(session)
 \item{session}{A \link{TempestSession} object.}
 }
 \value{
-A list containing an exact schema-13 session snapshot.
+A list containing an exact schema-14 session snapshot.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -18,7 +18,7 @@ A list containing an exact schema-13 session snapshot.
 \details{
 \code{tempest_session_snapshot()} returns a structured, in-memory representation
 of the durable state in a \link{TempestSession}. The only supported snapshot is
-the exact current schema-13 product shape; no legacy or migration reader is
+the exact current schema-14 product shape; no legacy or migration reader is
 provided. It includes the research
 manifest; fixed session and configuration identity; the authoritative
 \link{ResearchWorkspace}; expert profiles; transcript and mind map; the latest

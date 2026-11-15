@@ -95,10 +95,11 @@ tempest_publish_artifact_research <- function(
 #'
 #' @inheritParams tempest_publish_artifact_research
 #' @param selection Exact digest returned by [tempest_publish_artifact_research()].
-#' @returns A list with `selection`, validated `bundle`, `report_md`, and the
-#'   exact evidence `records` and text `contents` used for research admission.
-#'   The selection retains program identities as inert provenance, never tools
-#'   or execution authority. Evidence is limited to 998 records and 1 MiB of
+#' @returns A list with `selection`, validated `bundle`, `report_md`, advisory
+#'   `claim_reviews`, and the exact evidence `records` and `contents` used for
+#'   research admission. Reviews remain separate from accepted evidence. The
+#'   selection retains program identities as inert provenance, never tools or
+#'   execution authority. Evidence is limited to 998 records and 1 MiB of
 #'   projected text; Graft also enforces its store and selection bounds.
 #' @export
 tempest_read_artifact_research <- function(store, selection) {
@@ -253,10 +254,23 @@ tempest_read_artifact_research <- function(store, selection) {
       "Research proposal or report has inconsistent dependencies."
     )
   }
+  claim_reviews <- lapply(bundle@proof$claim_reviews, function(row) {
+    review <- tryCatch(
+      tempest_claim_review_from_data(row),
+      error = function(error) {
+        tempest_knowledge_abort(
+          "Retained research contains an invalid advisory claim review.",
+          parent = error
+        )
+      }
+    )
+    tempest_claim_review_record(review)
+  })
   list(
     selection = selected@id,
     bundle = bundle,
     report_md = report_md,
+    claim_reviews = claim_reviews,
     records = records,
     contents = contents
   )

@@ -23,6 +23,10 @@ TempestConfig(
   max_active_experts = 5L,
   citation_policy = "source_attributed",
   min_support_score = 0.7,
+  research_review = FALSE,
+  repair_evidence = FALSE,
+  max_review_claims = 5L,
+  review_concurrency = 2L,
   on_unsupported_claim = "flag"
 )
 }

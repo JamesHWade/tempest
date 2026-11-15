@@ -1,3 +1,42 @@
+test_that("scientific review has bounded explicit controls", {
+  cfg <- tempest_config()
+  expect_identical(cfg@research_review, FALSE)
+  expect_identical(cfg@repair_evidence, FALSE)
+  expect_identical(cfg@max_review_claims, 5L)
+  expect_identical(cfg@review_concurrency, 2L)
+  expect_error(
+    tempest_config(repair_evidence = TRUE),
+    class = "tempest_config_error"
+  )
+  expect_error(
+    tempest_config(max_review_claims = 21),
+    class = "tempest_config_error"
+  )
+  expect_error(
+    tempest_config(review_concurrency = 5),
+    class = "tempest_config_error"
+  )
+  expect_error(
+    tempest_config(review_concurrency = 0),
+    class = "tempest_config_error"
+  )
+  configured <- tempest_config(
+    research_review = TRUE,
+    repair_evidence = TRUE,
+    max_review_claims = 3,
+    review_concurrency = 1
+  )
+  expect_identical(configured@max_review_claims, 3L)
+  expect_identical(configured@review_concurrency, 1L)
+  expect_identical(
+    identical(
+      tempest_research_config_digest(cfg),
+      tempest_research_config_digest(configured)
+    ),
+    FALSE
+  )
+})
+
 test_that("tempest_config creates valid config", {
   cfg <- tempest_config()
   expect_identical(S7::S7_inherits(cfg, TempestConfig), TRUE)
@@ -59,7 +98,7 @@ test_that("tempest_config has only the frozen T7 product surface", {
     tempest:::tempest_research_config_digest(cfg),
     paste0(
       "sha256:",
-      "d3476d16504db1a7ca93f3eb50c038e26deffda9f8d25cd972419b996ea9957b"
+      "db4cf816181f39e761a4140a7bef1aabd128539c4dbb61e14322545348ba2c53"
     )
   )
 })

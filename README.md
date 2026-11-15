@@ -207,6 +207,28 @@ authority; stored program references are provenance only.
 
 ## Review a completed run
 
+For an independent scientific review before publication, enable it in the
+configuration used by either STORM or Co-STORM:
+
+```r
+config <- tempest_config(
+  research_review = TRUE,
+  repair_evidence = TRUE,
+  max_review_claims = 5,
+  review_concurrency = 2
+)
+result <- tempest_run("Your research question", config = config)
+tempest_claim_reviews(result)
+```
+
+The report retains confirmed concerns, dismissed concerns, unresolved questions,
+and cases where no issue was found. Each finding binds to captured source
+excerpts and exact quotes. Evidence repair permits one targeted search and at
+most two fetched sources per selected claim. These advisory findings remain
+separate from citation support and accepted knowledge. See
+[Scientific review and evidence repair](https://jameshwade.github.io/tempest/articles/scientific-review.html)
+for limits, persistence, and evaluation guidance.
+
 `tempest_trajectory_review()` reconstructs a bounded, read-only review from one
 exact completed STORM result or succeeded, quiescent Co-STORM session:
 
@@ -250,10 +272,10 @@ omitted from the projection. Current reuse still requires
 fresh admission through `tempest_reuse_artifact_research()`. Schema 3 directly
 replaces native-snapshot and receipt-based reviews; cross-product publications are rejected.
 
-The current persistence line accepts only `ResearchWorkspace` snapshot schema 7,
-Co-STORM snapshot and bundle schema 13, STORM bundle schema 10 with state schema
+The current persistence line accepts only `ResearchWorkspace` snapshot schema 8,
+Co-STORM snapshot and bundle schema 14, STORM bundle schema 11 with state schema
 5, ProgramSet schema 2, research-manifest schema 5, StageRecord output-digest
-payload schema 3, and promotion-bundle schema 1. Readers reject every other
+payload schema 3, and promotion-bundle schema 2. Readers reject every other
 version; missing fields, extra fields, and values that only become valid after
 coercion are errors.
 
@@ -453,7 +475,7 @@ res <- tempest_run(
 )
 ```
 
-Each run directory is an exact current schema-10 STORM product bundle with
+Each run directory is an exact current schema-11 STORM product bundle with
 schema-5 state. It includes checksummed JSON state for perspectives, experts,
 sources, claims, outlines, and references; Markdown drafts; and the final
 Markdown report. Resume rejects older, future, missing, extra, coerced, or
@@ -732,7 +754,7 @@ expert run records an opaque terminal trace that is carried through Co-STORM
 snapshot and bundle persistence.
 
 Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-13 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
+schema-14 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
 suggested-question, and artifact selection state must pass integrity checks. Live
 chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
 rather than serialized.

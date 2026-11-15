@@ -96,7 +96,7 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
 
   expect_identical(snapshot, snapshot_again)
   expect_identical(now_calls, 0L)
-  expect_identical(snapshot$schema_version, 7L)
+  expect_identical(snapshot$schema_version, 8L)
   expect_identical(snapshot$max_sources, 4L)
   expect_named(
     snapshot,
@@ -110,7 +110,8 @@ test_that("ResearchWorkspace snapshots restore artifact-free product state", {
       "proposed_claims",
       "evidence_spans",
       "claim_supports",
-      "disputes"
+      "disputes",
+      "claim_reviews"
     )
   )
   expect_length(snapshot$retrieved_resources, 2L)
@@ -246,7 +247,7 @@ test_that("ResearchWorkspace restore validates schema and pinned state", {
   )
   snapshot$max_sources <- "unbounded"
   double_schema <- snapshot
-  double_schema$schema_version <- 6.0
+  double_schema$schema_version <- 8.0
   expect_error(
     tempest:::tempest_research_workspace_restore(double_schema),
     class = "tempest_research_workspace_restore_error"
@@ -259,7 +260,7 @@ test_that("ResearchWorkspace restore validates schema and pinned state", {
     tempest:::tempest_research_workspace_restore(double_max_sources),
     class = "tempest_research_workspace_restore_error"
   )
-  snapshot$schema_version <- 4L
+  snapshot$schema_version <- 7L
   expect_error(
     tempest:::tempest_research_workspace_restore(snapshot),
     class = "tempest_unsupported_format_error"

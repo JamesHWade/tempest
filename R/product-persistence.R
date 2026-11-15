@@ -207,12 +207,21 @@ tempest_persistence_credential_audit <- function(value, what, class) {
   evidence_path <- function(path) {
     grepl(
       paste0(
-        "\\$workspace\\$retrieved_resources\\[\\[[0-9]+\\]\\]",
-        "\\$content($|\\$|\\[\\[)"
+        "\\$workspace\\$claim_reviews\\[\\[[0-9]+\\]\\]",
+        "(\\$claim_text$|\\$dossier\\[\\[[0-9]+\\]\\]\\$text$|",
+        "\\$(reviewer|adjudication)\\$evidence\\[\\[[0-9]+\\]\\]\\$quote$)"
       ),
       path,
       perl = TRUE
     ) ||
+      grepl(
+        paste0(
+          "\\$workspace\\$retrieved_resources\\[\\[[0-9]+\\]\\]",
+          "\\$content($|\\$|\\[\\[)"
+        ),
+        path,
+        perl = TRUE
+      ) ||
       grepl(
         paste0(
           "\\$workspace\\$retrieved_resources\\[\\[[0-9]+\\]\\]",

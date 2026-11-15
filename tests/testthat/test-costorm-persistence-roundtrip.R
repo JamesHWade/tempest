@@ -115,7 +115,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_null(manifest$status)
   expect_equal(manifest$bundle_type, "costorm")
   expect_equal(manifest$bundle_status, "complete")
-  expect_equal(manifest$schema_version, 13L)
+  expect_equal(manifest$schema_version, 14L)
   expect_identical(
     manifest$research_manifest$research_run_id,
     session_id
@@ -123,7 +123,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_identical(manifest$research_manifest$mode, "costorm")
   expect_identical(manifest$research_manifest$status, "succeeded")
 
-  expect_identical(manifest$workspace$schema_version, 7L)
+  expect_identical(manifest$workspace$schema_version, 8L)
   expect_setequal(names(manifest$checksums), manifest$files)
   expect_contains(
     manifest$files,
@@ -136,6 +136,7 @@ test_that("Tempest session bundles save and resume durable state", {
       "workspace/retrieved_resources.json",
       "workspace/proposed_claims.json",
       "workspace/claim_supports.json",
+      "workspace/claim_reviews.json",
       "report.md",
       "artifacts/suggested_questions.json"
     )
@@ -150,7 +151,7 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_false("config.json" %in% manifest$files)
 
   legacy_manifest <- manifest
-  legacy_manifest$schema_version <- 9L
+  legacy_manifest$schema_version <- 13L
   tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     legacy_manifest
@@ -188,7 +189,7 @@ test_that("Tempest session bundles save and resume durable state", {
   )
 
   downgraded_manifest <- manifest
-  downgraded_manifest$workspace$schema_version <- 4L
+  downgraded_manifest$workspace$schema_version <- 7L
   tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
     downgraded_manifest
@@ -291,11 +292,11 @@ test_that("Tempest session bundles save and resume durable state", {
   expect_no_error(tempest_session_save(session, bundle_dir, overwrite = TRUE))
 })
 
-test_that("schema 9 session bundles are rejected", {
+test_that("schema 13 session bundles are rejected", {
   bundle_dir <- withr::local_tempdir()
   tempest:::tempest_product_write_json(
     file.path(bundle_dir, "session.json"),
-    list(schema_version = 10L)
+    list(schema_version = 13L)
   )
   expect_error(
     tempest_session_resume(bundle_dir),

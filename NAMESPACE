@@ -3,6 +3,7 @@
 S3method(print,tempest_knowledge)
 export(tempest_app)
 export(tempest_artifact_knowledge)
+export(tempest_claim_reviews)
 export(tempest_claim_supports)
 export(tempest_claims)
 export(tempest_config)

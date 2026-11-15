@@ -65,6 +65,8 @@ bounded separately and do not count.}
     \item \href{#method-ResearchWorkspace-get_evidence_for_proposed_claim}{\code{ResearchWorkspace$get_evidence_for_proposed_claim()}}
     \item \href{#method-ResearchWorkspace-add_dispute}{\code{ResearchWorkspace$add_dispute()}}
     \item \href{#method-ResearchWorkspace-list_disputes}{\code{ResearchWorkspace$list_disputes()}}
+    \item \href{#method-ResearchWorkspace-replace_claim_reviews}{\code{ResearchWorkspace$replace_claim_reviews()}}
+    \item \href{#method-ResearchWorkspace-list_claim_reviews}{\code{ResearchWorkspace$list_claim_reviews()}}
     \item \href{#method-ResearchWorkspace-bind_artifact_selection}{\code{ResearchWorkspace$bind_artifact_selection()}}
     \item \href{#method-ResearchWorkspace-validate_integrity}{\code{ResearchWorkspace$validate_integrity()}}
     \item \href{#method-ResearchWorkspace-to_tibbles}{\code{ResearchWorkspace$to_tibbles()}}
@@ -488,6 +490,43 @@ capability. Standalone workspaces require \code{NULL}.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{ResearchWorkspace$list_disputes()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-replace_claim_reviews"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-replace_claim_reviews}{}}}
+\subsection{\code{ResearchWorkspace$replace_claim_reviews()}}{
+  Replace the advisory claim-review records.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$replace_claim_reviews(
+  reviews,
+  .verification_owner_token = NULL,
+  .resources = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{reviews}}{An unnamed list of exact \code{TempestClaimReview} values.}
+      \item{\code{.verification_owner_token}}{Internal process-local workspace owner.}
+      \item{\code{.resources}}{Unnamed exact resources staged with the reviews.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ResearchWorkspace-list_claim_reviews"></a>}}
+\if{latex}{\out{\hypertarget{method-ResearchWorkspace-list_claim_reviews}{}}}
+\subsection{\code{ResearchWorkspace$list_claim_reviews()}}{
+  List advisory claim-review records in deterministic claim order.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{ResearchWorkspace$list_claim_reviews()}
     \if{html}{\out{</div>}}
   }
 }

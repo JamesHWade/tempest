@@ -1,0 +1,109 @@
+---
+title: "Scientific review and evidence repair"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Scientific review and evidence repair}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+Tempest can review a bounded selection of claims before publishing either a
+STORM report or a Co-STORM session. Citation verification asks whether a source
+supports a statement. Scientific review asks whether the statement has an
+unstated assumption, a methodological flaw, or a conflict that needs more
+evidence. The two judgments remain separate.
+
+## Enable review
+
+```{r}
+library(tempest)
+
+config <- tempest_config(
+  research_review = TRUE,
+  repair_evidence = TRUE,
+  max_review_claims = 5,
+  review_concurrency = 2
+)
+
+research <- tempest_run(
+  "What evidence supports the reproducibility of this measurement method?",
+  config = config
+)
+cat(tempest_report(research))
+reviews <- tempest_claim_reviews(research)
+```
+
+The same configuration works with `tempest_session()`. Review runs when the
+session is published, after the conversation has supplied its research claims.
+The bundled app exposes the controls in its settings.
+
+```{r}
+session <- tempest_session("Measurement reproducibility", config = config)
+session$step("Compare the assumptions and validation evidence.")
+session$publish()
+tempest_claim_reviews(session)
+```
+
+Review is off by default. The limit is 1–20 claims, with 1–4 independent claim
+reviews in flight. Each selected claim receives an initial review and a separate
+adjudication. Enabling repair permits at most one search and two fetched sources
+per selected claim. This bounds requests and retrieval work, rather than making
+a promise about token cost or elapsed time. Cancellation is checked between
+operations; it cannot interrupt a synchronous retrieval call already running.
+An already-started model request can finish, but its late result cannot start
+follow-up work or publish a review after cancellation.
+A dossier contains at most 12 sources and 20,000 characters per source. It is
+bounded context, not a claim that every method or result in a paper was read.
+Custom retrievers used for repair must return captured resources without
+mutating the publication workspace; Tempest admits validated additions itself.
+
+## Read the result
+
+The report's **Scientific review** section distinguishes:
+
+- **Concern confirmed by adjudicator:** the adjudicator found evidence for the
+  reviewer's specific concern. It is still a model judgment for human review.
+- **Concern dismissed by adjudicator:** additional context did not support the
+  proposed flaw.
+- **Unresolved:** the available evidence could not settle the question.
+- **No issue found:** no issue was identified within this review's scope and
+  budget. This does not certify correctness.
+
+Only selected claims are reviewed, with contradicted and weakly supported
+claims selected first after citation verification. A completed evidence search
+means retrieval finished, not that the research question was resolved. A failed
+retrieval stops publication; empty and budget-limited searches retain distinct
+outcomes. Source excerpts and
+exact quotes accompany findings; unsupported source identifiers and invented
+quotes fail validation.
+
+`tempest_claim_reviews()` returns versioned plain records with the claim,
+captured source excerpts and hashes, reviewer and adjudicator outputs, search
+outcome, model identifiers, and dsprrr program identities. Their content hashes
+bind the report to the retained records. Saving and resuming a session retains
+these records without rerunning published research. Research artifacts carry
+the advisory records alongside their proof; they are not materialized as
+accepted claims or claim-support judgments.
+
+## Evaluate changes before adopting them
+
+The repository includes `tools/research-eval.R` and a synthetic corpus under
+`inst/extdata/research-eval/`. These cases test support, scope, caveats,
+contradictions, abstention, and misleading evidence. They are engineering
+fixtures, not human-adjudicated scientific gold data.
+
+The developer harness separates topic-disjoint training, validation, and test
+sets and supports opt-in dsprrr optimization. Keep held-out examples out of
+prompt optimization, inspect generated prompts, and measure false support
+separately from coverage. Package tests run without API keys or network calls.
+Passing them verifies implementation behavior; it does not establish an
+improvement in a model's scientific accuracy.
+
+The review design draws on Google's [Deep Review](https://research.google/blog/analyzing-technical-documents-with-deep-review/)
+and the retrieval-feedback approach in [OpenScholar](https://pmc.ncbi.nlm.nih.gov/articles/PMC12935541/).
+These are design inspirations, not evidence that Tempest reproduces their
+published results.

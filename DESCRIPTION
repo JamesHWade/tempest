@@ -25,7 +25,7 @@ Imports:
     coro,
     curl,
     DBI,
-    deputy (>= 0.0.0.9002),
+    deputy (>= 0.0.0.9006),
     digest,
     dsprrr,
     ellmer (>= 0.5.0),
@@ -97,6 +97,9 @@ Collate:
     'citations.R'
     'ledger-types.R'
     'claim-support.R'
+    'research-review-types.R'
+    'research-review-report.R'
+    'research-review.R'
     'conditions.R'
     'config.R'
     'product-hash.R'

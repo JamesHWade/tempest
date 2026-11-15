@@ -67,7 +67,7 @@ the mirai package. Failed parallel sections are retried sequentially.}
 all.}
 
 \item{output_dir}{Optional directory for persisted STORM run artifacts. When
-supplied, a current schema-10 product bundle with schema-5 STORM state is
+supplied, a current schema-11 product bundle with schema-5 STORM state is
 written under a topic-specific subdirectory.}
 
 \item{resume}{If \code{TRUE} and \code{output_dir} contains a previous run, load saved

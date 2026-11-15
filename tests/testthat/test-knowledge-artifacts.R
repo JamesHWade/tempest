@@ -606,7 +606,7 @@ test_that("only explicit active artifact claims count as accepted statements", {
 test_that("malformed persisted artifact selections use the STORM restore error", {
   workspace <- tempest_research_workspace()
   metadata <- list(
-    schema_version = 10L,
+    schema_version = 11L,
     workspace = tempest_storm_workspace_identity_record(workspace)
   )
   metadata$workspace$artifact_selection <- list(selection_id = "incomplete")
@@ -826,7 +826,7 @@ test_that("STORM resume validates saved data before invoking admission", {
       tempest_storm_prepare_run_dir(output, "Artifact briefing"),
       "run_config.json"
     ),
-    list(schema_version = 7L)
+    list(schema_version = 10L)
   )
   config <- tempest_config(chat_fn = function(...) fake_chat())
   expect_error(

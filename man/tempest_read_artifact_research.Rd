@@ -13,10 +13,11 @@ access to this trusted local, single-writer store.}
 \item{selection}{Exact digest returned by \code{\link[=tempest_publish_artifact_research]{tempest_publish_artifact_research()}}.}
 }
 \value{
-A list with \code{selection}, validated \code{bundle}, \code{report_md}, and the
-exact evidence \code{records} and text \code{contents} used for research admission.
-The selection retains program identities as inert provenance, never tools
-or execution authority. Evidence is limited to 998 records and 1 MiB of
+A list with \code{selection}, validated \code{bundle}, \code{report_md}, advisory
+\code{claim_reviews}, and the exact evidence \code{records} and \code{contents} used for
+research admission. Reviews remain separate from accepted evidence. The
+selection retains program identities as inert provenance, never tools or
+execution authority. Evidence is limited to 998 records and 1 MiB of
 projected text; Graft also enforces its store and selection bounds.
 }
 \description{

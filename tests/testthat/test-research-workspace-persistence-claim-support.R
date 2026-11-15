@@ -1,10 +1,10 @@
-test_that("workspace schema 6 round-trips authoritative claim supports", {
+test_that("workspace schema 8 round-trips authoritative claim supports", {
   fixture <- test_verified_workspace()
   snapshot <- tempest:::tempest_research_workspace_snapshot(
     fixture$workspace
   )
 
-  expect_identical(snapshot$schema_version, 7L)
+  expect_identical(snapshot$schema_version, 8L)
   expect_named(
     snapshot,
     c(
@@ -15,7 +15,8 @@ test_that("workspace schema 6 round-trips authoritative claim supports", {
       "proposed_claims",
       "evidence_spans",
       "claim_supports",
-      "disputes"
+      "disputes",
+      "claim_reviews"
     )
   )
   expect_length(snapshot$claim_supports, 1L)
@@ -59,7 +60,7 @@ test_that("workspace restore rejects every aggregate and old schema shape", {
   )
 
   old_schema <- snapshot
-  old_schema$schema_version <- 4L
+  old_schema$schema_version <- 7L
   expect_error(
     tempest:::tempest_research_workspace_restore(old_schema),
     class = "tempest_unsupported_format_error"
@@ -140,7 +141,7 @@ test_that("workspace restore validates support identity and derived summaries", 
   )
 })
 
-test_that("workspace schema 6 and every fixed row preserve writer order", {
+test_that("workspace schema 8 and every fixed row preserve writer order", {
   workspace <- tempest_research_workspace()
   fixture <- test_add_verifiable_claim(workspace)
   workspace$add_dispute(tempest_dispute(

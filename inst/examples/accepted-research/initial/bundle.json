@@ -1,19 +1,19 @@
 {
-  "bundle_id": "sha256:5082654b0f6a348b6e1bbe053e751c3d01fbdd9b4d0c0831b8b64902bb13d4b8",
-  "schema_version": 1,
-  "schema_build_digest": "sha256:0ef4a9c9143e6aaff3def45c996855773dd3c5ce341293bc15032c0924ed4296",
+  "bundle_id": "sha256:2bbd97351f190df05e44a7bfdbd6d52814bf312941bade7899432d7a7b37d621",
+  "schema_version": 2,
+  "schema_build_digest": "sha256:91f476d515dcd35259bad3fee9c0428dd272724a7ccf6edec3ddf064ebe2b430",
   "research_run_id": "pilot-initial",
   "min_support_score": 0.7,
   "research_manifest": {
     "schema_version": 5,
     "research_run_id": "pilot-initial",
     "mode": "storm",
-    "config_digest": "sha256:d3476d16504db1a7ca93f3eb50c038e26deffda9f8d25cd972419b996ea9957b",
+    "config_digest": "sha256:db4cf816181f39e761a4140a7bef1aabd128539c4dbb61e14322545348ba2c53",
     "programs": {
       "draft_outline": {
         "stage": "draft_outline",
         "contract_version": 1,
-        "program_artifact_id": "sha256:5aa9e4124de737048d657d5129d6cffd096cc3b83cc644c974b78f5cdb1c7788",
+        "program_artifact_id": "sha256:4ec54af0cf9da6c0fadeb6461b68b44600992976164e26e63321aea1978a3117",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::draft_outline"
@@ -25,7 +25,7 @@
       "extract_claims": {
         "stage": "extract_claims",
         "contract_version": 1,
-        "program_artifact_id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "program_artifact_id": "sha256:49998cb7e77b0ad4529e55dc11b31f3be6d4e33a4d03eaca3f8fb43d276a655f",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::extract_claims"
@@ -37,7 +37,7 @@
       "lead_section": {
         "stage": "lead_section",
         "contract_version": 1,
-        "program_artifact_id": "sha256:56427459731766e4e6ed367fff20992a5490c8859c5f128142f14cc88628f25b",
+        "program_artifact_id": "sha256:1f3ed18ad4fdfe0364ec2801d10f0016530e37708a999f6834e693ecfacf56f7",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::lead_section"
@@ -49,7 +49,7 @@
       "next_question": {
         "stage": "next_question",
         "contract_version": 1,
-        "program_artifact_id": "sha256:832acec81d69d09e7cd88820a0e08658886ad539965a0cf7c47bd5cbc6d72786",
+        "program_artifact_id": "sha256:f898fdcd3a95b53e99dc58a88ea25aed7cae8b51d7d3e23c7d539fdc6cd59b92",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::next_question"
@@ -61,7 +61,7 @@
       "personas": {
         "stage": "personas",
         "contract_version": 1,
-        "program_artifact_id": "sha256:ce358c348b1e538e65390e1dd3de7235eff108b5adcda0c1ecfee70e32e9e8a9",
+        "program_artifact_id": "sha256:b6d3b787be3a263eed8eb4ca1f687c79b02c38a60478fb0f28aad2117e70d480",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::personas"
@@ -73,7 +73,7 @@
       "perspectives": {
         "stage": "perspectives",
         "contract_version": 1,
-        "program_artifact_id": "sha256:418be97c0e236c241c3314e4a3d04ea8d12d5eb68a987b33edd5cec5573dd616",
+        "program_artifact_id": "sha256:ecbe675294a43c8ac5a3de824c3cecaa7877f0405abca9a13556bdcb2741d51f",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::perspectives"
@@ -85,7 +85,7 @@
       "query_decomposition": {
         "stage": "query_decomposition",
         "contract_version": 1,
-        "program_artifact_id": "sha256:ed5bfe02f791be72fc6245de627bddb3d6d9ce2b3b8d76ea456fda045a793b58",
+        "program_artifact_id": "sha256:633dc1a08e63625feaab72568a1cf5553d23e1e84d3c34963ee7d71f30a29603",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::query_decomposition"
@@ -97,7 +97,7 @@
       "refined_outline": {
         "stage": "refined_outline",
         "contract_version": 1,
-        "program_artifact_id": "sha256:c6d55a5e924cf43e130e5b34eb4149498dbdb18310f163cbd2b32a8ca3f8cd28",
+        "program_artifact_id": "sha256:1e0030d5ef688b3564fd5954cef11e1d714bbebfa098b68007243bd42ccae0ef",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::refined_outline"
@@ -109,7 +109,7 @@
       "section_writing": {
         "stage": "section_writing",
         "contract_version": 1,
-        "program_artifact_id": "sha256:a4b648e1a3fad4ac9b0e04730979af7a7c909bf99014f06b26ee706b71b610b1",
+        "program_artifact_id": "sha256:c0876149704c3cd566f72947bca7b7be3fa002e37b7450fb8061be37e042587e",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::section_writing"
@@ -121,7 +121,7 @@
       "verify_claim_support": {
         "stage": "verify_claim_support",
         "contract_version": 1,
-        "program_artifact_id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
+        "program_artifact_id": "sha256:0272c83ba1333d353f12adc26f6a7c12f3e1d2a4c64e56d0772be7fb134256f8",
         "artifact_reference": {
           "type": "builtin",
           "id": "tempest::verify_claim_support"
@@ -142,7 +142,7 @@
     },
     "traces": [
       {
-        "program_artifact_id": "sha256:418be97c0e236c241c3314e4a3d04ea8d12d5eb68a987b33edd5cec5573dd616",
+        "program_artifact_id": "sha256:ecbe675294a43c8ac5a3de824c3cecaa7877f0405abca9a13556bdcb2741d51f",
         "role": "program",
         "stage": "perspectives",
         "status": "succeeded",
@@ -150,7 +150,7 @@
         "trace_type": "stage_attempt"
       },
       {
-        "program_artifact_id": "sha256:ed5bfe02f791be72fc6245de627bddb3d6d9ce2b3b8d76ea456fda045a793b58",
+        "program_artifact_id": "sha256:633dc1a08e63625feaab72568a1cf5553d23e1e84d3c34963ee7d71f30a29603",
         "role": "program",
         "stage": "query_decomposition",
         "status": "succeeded",
@@ -162,7 +162,7 @@
         "deputy_run_id": "deputy.persistence-pilot-initial",
         "deputy_session_id": "tempest-storm-expert-252534fa9527477b5a06467b",
         "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
-        "program_artifact_id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "program_artifact_id": "sha256:49998cb7e77b0ad4529e55dc11b31f3be6d4e33a4d03eaca3f8fb43d276a655f",
         "role": "program",
         "stage": "extract_claims",
         "status": "succeeded",
@@ -170,7 +170,7 @@
         "trace_type": "stage_attempt"
       },
       {
-        "program_artifact_id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
+        "program_artifact_id": "sha256:0272c83ba1333d353f12adc26f6a7c12f3e1d2a4c64e56d0772be7fb134256f8",
         "role": "program",
         "stage": "verify_claim_support",
         "status": "succeeded",
@@ -178,7 +178,7 @@
         "trace_type": "stage_attempt"
       },
       {
-        "program_artifact_id": "sha256:5aa9e4124de737048d657d5129d6cffd096cc3b83cc644c974b78f5cdb1c7788",
+        "program_artifact_id": "sha256:4ec54af0cf9da6c0fadeb6461b68b44600992976164e26e63321aea1978a3117",
         "role": "program",
         "stage": "draft_outline",
         "status": "succeeded",
@@ -186,7 +186,7 @@
         "trace_type": "stage_attempt"
       },
       {
-        "program_artifact_id": "sha256:c6d55a5e924cf43e130e5b34eb4149498dbdb18310f163cbd2b32a8ca3f8cd28",
+        "program_artifact_id": "sha256:1e0030d5ef688b3564fd5954cef11e1d714bbebfa098b68007243bd42ccae0ef",
         "role": "program",
         "stage": "refined_outline",
         "status": "succeeded",
@@ -194,7 +194,7 @@
         "trace_type": "stage_attempt"
       },
       {
-        "program_artifact_id": "sha256:56427459731766e4e6ed367fff20992a5490c8859c5f128142f14cc88628f25b",
+        "program_artifact_id": "sha256:1f3ed18ad4fdfe0364ec2801d10f0016530e37708a999f6834e693ecfacf56f7",
         "role": "program",
         "stage": "lead_section",
         "status": "succeeded",
@@ -202,7 +202,7 @@
         "trace_type": "stage_attempt"
       },
       {
-        "program_artifact_id": "sha256:a4b648e1a3fad4ac9b0e04730979af7a7c909bf99014f06b26ee706b71b610b1",
+        "program_artifact_id": "sha256:c0876149704c3cd566f72947bca7b7be3fa002e37b7450fb8061be37e042587e",
         "role": "program",
         "stage": "section_writing",
         "status": "succeeded",
@@ -242,9 +242,9 @@
         "ids": [
           "claim.pilot-initial"
         ],
-        "content_digest": "sha256:6e5a9ea51eb0d7069a9c23f375698446541c38a1d2eda428d1a6a2d81101d13e"
+        "content_digest": "sha256:07de64a8953e1483ae01135e0002c6b7f5b40c8cb9847d4466b020442f9e62ef"
       },
-      "program_artifact_id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+      "program_artifact_id": "sha256:49998cb7e77b0ad4529e55dc11b31f3be6d4e33a4d03eaca3f8fb43d276a655f",
       "governed_procedure_revision_id": null,
       "trace_references": {
         "correlation_id": "correlation.persistence-pilot-initial",
@@ -277,9 +277,9 @@
         "ids": [
           "sha256:f58f2bf66721ed78e622fd21ce525c80787d316192567b21589113b591575917"
         ],
-        "content_digest": "sha256:0f461563668061bb52b616585b1c17f9ee2d12ecffbc4cf938b51cf490eff672"
+        "content_digest": "sha256:0f8d9a0e90b9130511e90498774acb24aa42026ec91786f42c062f99da7ee864"
       },
-      "program_artifact_id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
+      "program_artifact_id": "sha256:0272c83ba1333d353f12adc26f6a7c12f3e1d2a4c64e56d0772be7fb134256f8",
       "governed_procedure_revision_id": null,
       "trace_references": {
         "min_support_score": "0.7",
@@ -289,7 +289,7 @@
         "stage_attempt_id": "attempt-persistence-04-verify_claim_support",
         "trace_id": "attempt-persistence-04-verify_claim_support",
         "verified_at": "2026-08-16T00:00:00Z",
-        "verifier_model": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d"
+        "verifier_model": "sha256:0272c83ba1333d353f12adc26f6a7c12f3e1d2a4c64e56d0772be7fb134256f8"
       },
       "started_at": "2026-08-16T00:04:00Z",
       "completed_at": "2026-08-16T00:04:30Z",
@@ -350,7 +350,7 @@
         "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
         "session_id": "pilot-initial",
         "section_id": null,
-        "created_at": "2026-09-19T02:36:20.199088Z",
+        "created_at": "2026-11-15T02:58:28.335756Z",
         "verified_at": null,
         "verifier_model": null,
         "verification_status": "unverified"
@@ -367,8 +367,8 @@
         "page": null,
         "section_heading": null,
         "relevance_score": null,
-        "extracted_by": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
-        "created_at": "2026-09-19T02:36:20.167016Z"
+        "extracted_by": "sha256:49998cb7e77b0ad4529e55dc11b31f3be6d4e33a4d03eaca3f8fb43d276a655f",
+        "created_at": "2026-11-15T02:58:28.306257Z"
       }
     ],
     "claim_supports": [
@@ -381,7 +381,8 @@
         "support_score": 0.9,
         "rationale": "The exact durable excerpt supports the claim."
       }
-    ]
+    ],
+    "claim_reviews": []
   },
   "claim_ids": [
     "claim.pilot-initial"
@@ -414,7 +415,7 @@
         "expert_id": "expert::48184325481c36868abe1f3d73ec499f31b6ae3f2ef71d95a591969277363d74",
         "session_id": "pilot-initial",
         "section_id": null,
-        "asserted_at": "2026-09-19T02:36:20.199088Z",
+        "asserted_at": "2026-11-15T02:58:28.335756Z",
         "verified_at": null,
         "verifier_model": null,
         "status": "active"
@@ -433,10 +434,10 @@
         "page_end": null,
         "section_heading": null,
         "relevance_score": null,
-        "extraction_method": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "extraction_method": "sha256:49998cb7e77b0ad4529e55dc11b31f3be6d4e33a4d03eaca3f8fb43d276a655f",
         "extraction_version": "tempest.evidence-span/1",
         "source_content_hash": "sha256:e142655169028269071a881dd2466e037f8a83bcee08083a8c8d56f9bf5d32f7",
-        "extracted_at": "2026-09-19T02:36:20.167016Z"
+        "extracted_at": "2026-11-15T02:58:28.306257Z"
       }
     ],
     "ClaimSupport": [
@@ -456,17 +457,17 @@
         "page_end": null,
         "excerpt": "The pilot recovered 82% of the material.",
         "source_content_hash": "sha256:e142655169028269071a881dd2466e037f8a83bcee08083a8c8d56f9bf5d32f7",
-        "extraction_method": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "extraction_method": "sha256:49998cb7e77b0ad4529e55dc11b31f3be6d4e33a4d03eaca3f8fb43d276a655f",
         "extraction_version": "tempest.evidence-span/1"
       }
     ],
     "ProgramArtifact": [
       {
-        "id": "sha256:14722fb549759f6ec69436060b1cd543097e4f33e5ef4417c7b610acd7a290aa",
+        "id": "sha256:0272c83ba1333d353f12adc26f6a7c12f3e1d2a4c64e56d0772be7fb134256f8",
         "artifact_kind": "dsprrr_program"
       },
       {
-        "id": "sha256:3cc150698558553706412081266808a1c8abdaf9d1b0e6ba42be08ce185a659d",
+        "id": "sha256:49998cb7e77b0ad4529e55dc11b31f3be6d4e33a4d03eaca3f8fb43d276a655f",
         "artifact_kind": "dsprrr_program"
       }
     ]

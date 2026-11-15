@@ -606,6 +606,7 @@ ResearchWorkspace <- R6::R6Class(
       private$evidence_spans_value <- new.env(parent = emptyenv())
       private$claim_supports_value <- new.env(parent = emptyenv())
       private$disputes_value <- new.env(parent = emptyenv())
+      private$claim_reviews_value <- new.env(parent = emptyenv())
       private$citation_audit_value <- NULL
       private$claims_by_source <- new.env(parent = emptyenv())
       private$artifact_selection_value <- tempest_artifact_selection(
@@ -1287,6 +1288,215 @@ ResearchWorkspace <- R6::R6Class(
       )
     },
 
+    #' @description Replace the advisory claim-review records.
+    #' @param reviews An unnamed list of exact `TempestClaimReview` values.
+    #' @param .verification_owner_token Internal process-local workspace owner.
+    #' @param .resources Unnamed exact resources staged with the reviews.
+    replace_claim_reviews = function(
+      reviews,
+      .verification_owner_token = NULL,
+      .resources = list()
+    ) {
+      private$assert_verification_write(.verification_owner_token)
+      owner <- private$verification_owner_token_value
+      if (
+        (!is.null(owner) && !identical(.verification_owner_token, owner)) ||
+          (is.null(owner) && !is.null(.verification_owner_token))
+      ) {
+        tempest_research_workspace_abort(
+          "Claim-review mutation requires the exact workspace owner token."
+        )
+      }
+      if (
+        !is.list(reviews) ||
+          is.data.frame(reviews) ||
+          !is.null(names(reviews))
+      ) {
+        tempest_research_workspace_abort(
+          "{.arg reviews} must be an unnamed list of exact TempestClaimReview values."
+        )
+      }
+      if (
+        !is.list(.resources) ||
+          is.data.frame(.resources) ||
+          !is.null(names(.resources))
+      ) {
+        tempest_research_workspace_abort(
+          "{.arg .resources} must be an unnamed list of exact TempestResource values."
+        )
+      }
+      records <- lapply(seq_along(reviews), function(index) {
+        review <- reviews[[index]]
+        if (!identical(S7::S7_class(review), TempestClaimReview)) {
+          tempest_research_workspace_abort(
+            "Claim-review entry {.val {index}} must be an exact TempestClaimReview value."
+          )
+        }
+        tryCatch(
+          S7::validate(review),
+          error = function(error) {
+            tempest_research_workspace_abort(
+              "Claim-review entry {.val {index}} failed live validation.",
+              parent = error
+            )
+          }
+        )
+        tempest_claim_review_record(review)
+      })
+      ids <- vapply(records, `[[`, character(1), "review_id")
+      if (anyDuplicated(ids)) {
+        tempest_research_workspace_abort(
+          "{.arg reviews} cannot contain duplicate review ids."
+        )
+      }
+      claim_ids <- vapply(records, `[[`, character(1), "claim_id")
+      if (anyDuplicated(claim_ids)) {
+        tempest_research_workspace_abort(
+          "{.arg reviews} cannot contain more than one record per claim id."
+        )
+      }
+
+      resources <- lapply(.resources, private$validate_resource)
+      resource_ids <- vapply(
+        resources,
+        \(resource) resource@resource_id,
+        character(1)
+      )
+      if (anyDuplicated(resource_ids)) {
+        tempest_research_workspace_abort(
+          "{.arg .resources} cannot contain duplicate resource ids."
+        )
+      }
+      candidate_resources <- tempest_research_workspace_environment_copy(
+        private$resources_value
+      )
+      new_resource_ids <- character()
+      for (index in seq_along(resources)) {
+        resource <- resources[[index]]
+        resource_id <- resource@resource_id
+        existing <- private$resources_value[[resource_id]]
+        if (!is.null(existing)) {
+          if (
+            !identical(existing@resource_kind, resource@resource_kind) ||
+              !identical(existing@locator, resource@locator) ||
+              !identical(existing@content_hash, resource@content_hash) ||
+              !identical(existing@content, resource@content)
+          ) {
+            tempest_research_workspace_abort(
+              "A staged review resource conflicts with existing source {.val {resource_id}}."
+            )
+          }
+          next
+        }
+        if (tempest_is_accepted_knowledge_resource(resource)) {
+          tempest_research_workspace_abort(
+            "New review-only resources cannot replace or admit accepted Graft knowledge."
+          )
+        }
+        candidate_resources[[resource_id]] <- resource
+        new_resource_ids <- c(new_resource_ids, resource_id)
+      }
+      if (
+        length(new_resource_ids) > 0L &&
+          is.finite(self$max_sources) &&
+          private$retrieved_source_count() + length(new_resource_ids) >
+            self$max_sources
+      ) {
+        tempest_research_workspace_abort(
+          "ResearchWorkspace resource limit reached for review-only sources."
+        )
+      }
+      if (length(new_resource_ids) > 0L) {
+        for (resource_id in new_resource_ids) {
+          referenced <- any(vapply(
+            records,
+            function(record) {
+              dossier_ids <- vapply(
+                record$dossier,
+                `[[`,
+                character(1),
+                "source_id"
+              )
+              resource_id %in%
+                record$repair$source_ids &&
+                resource_id %in% dossier_ids
+            },
+            logical(1)
+          ))
+          if (!referenced) {
+            tempest_research_workspace_abort(
+              "New review-only source {.val {resource_id}} must appear in a repair result and its dossier."
+            )
+          }
+        }
+      }
+
+      candidate <- tempest_research_workspace(
+        max_sources = self$max_sources,
+        artifact_selection = self$artifact_selection
+      )
+      candidate_private <- candidate$.__enclos_env__$private
+      candidate_private$resources_value <- candidate_resources
+      candidate_private$claims_value <-
+        tempest_research_workspace_environment_copy(private$claims_value)
+      candidate_private$evidence_spans_value <-
+        tempest_research_workspace_environment_copy(
+          private$evidence_spans_value
+        )
+      candidate_private$disputes_value <-
+        tempest_research_workspace_environment_copy(private$disputes_value)
+      candidate_private$claims_by_source <-
+        tempest_research_workspace_environment_copy(private$claims_by_source)
+
+      for (index in seq_along(records)) {
+        review <- tempest_claim_review(records[[index]])
+        tempest_claim_review_validate_workspace(review, candidate)
+      }
+
+      claim_reviews_value <- new.env(parent = emptyenv())
+      for (index in seq_along(records)) {
+        claim_reviews_value[[ids[[index]]]] <- tempest_claim_review(
+          records[[index]]
+        )
+      }
+      previous_resources <- private$resources_value
+      previous_reviews <- private$claim_reviews_value
+      tryCatch(
+        {
+          private$resources_value <- candidate_resources
+          private$claim_reviews_value <- claim_reviews_value
+        },
+        error = function(error) {
+          private$resources_value <- previous_resources
+          private$claim_reviews_value <- previous_reviews
+          stop(error)
+        }
+      )
+      invisible(self)
+    },
+
+    #' @description List advisory claim-review records in deterministic claim order.
+    list_claim_reviews = function() {
+      ids <- sort(ls(private$claim_reviews_value, all.names = TRUE))
+      if (length(ids) > 1L) {
+        claim_ids <- vapply(
+          ids,
+          function(id) {
+            tempest_claim_review_record(
+              private$claim_reviews_value[[id]]
+            )$claim_id
+          },
+          character(1)
+        )
+        ids <- ids[order(claim_ids, ids)]
+      }
+      purrr::map(ids, function(id) {
+        tempest_research_workspace_copy(
+          private$claim_reviews_value[[id]]
+        )
+      })
+    },
+
     #' @description Pin an exact artifact selection after admitting its resources.
     #' @param selection A validated artifact selection.
     bind_artifact_selection = function(selection) {
@@ -1389,6 +1599,31 @@ ResearchWorkspace <- R6::R6Class(
             "A dispute cites claims absent from the workspace."
           )
         }
+      }
+      review_ids <- sort(ls(private$claim_reviews_value, all.names = TRUE))
+      for (review_id in review_ids) {
+        review <- private$claim_reviews_value[[review_id]]
+        if (!identical(S7::S7_class(review), TempestClaimReview)) {
+          tempest_research_workspace_abort(
+            "Claim-review storage must contain exact TempestClaimReview values."
+          )
+        }
+        tryCatch(
+          S7::validate(review),
+          error = function(error) {
+            tempest_research_workspace_abort(
+              "A claim-review record failed live validation.",
+              parent = error
+            )
+          }
+        )
+        review_record <- tempest_claim_review_record(review)
+        if (!identical(review_record$review_id, review_id)) {
+          tempest_research_workspace_abort(
+            "Claim-review storage key does not match its review id."
+          )
+        }
+        tempest_claim_review_validate_workspace(review, self)
       }
       supports <- self$list_claim_supports()
       if (length(supports) > 0L) {
@@ -1587,6 +1822,7 @@ ResearchWorkspace <- R6::R6Class(
     evidence_spans_value = NULL,
     claim_supports_value = NULL,
     disputes_value = NULL,
+    claim_reviews_value = NULL,
     max_sources_value = NULL,
     claims_by_source = NULL,
 

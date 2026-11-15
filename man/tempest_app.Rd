@@ -7,14 +7,14 @@
 tempest_app(..., demo = FALSE)
 }
 \arguments{
+\item{...}{Passed to \code{shiny::runApp()}.}
+
 \item{demo}{If \code{TRUE}, open the deterministic ecosystem demonstration.
 Scripted model responses and synthetic local evidence exercise real
 deputy and dsprrr execution, a shinymcp research card, and explicit Graft
 review, correction, withdrawal, and fresh-process reuse. No credentials
 or network are needed. The example uses a local demo directory; set
 \code{options(tempest.demo_dir = "path")} to keep it across R sessions.}
-
-\item{...}{Passed to \code{shiny::runApp()}.}
 }
 \value{
 A Shiny app object (invisibly, from \code{shiny::runApp()}).

@@ -420,6 +420,151 @@ test_that("async chat and streams execute through Deputy Chat", {
   )
 })
 
+test_that("typed cutoffs never issue chat completions", {
+  skip_if_not_installed("deputy")
+  skip_if_not_installed("coro")
+  skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+
+  terminals <- list()
+  traces <- list()
+  completions <- list()
+  manifest <- tempest_research_manifest(
+    "deputy-adapter-cutoff",
+    mode = "costorm",
+    config = tempest_config()
+  )
+  make_adapter <- function(transport) {
+    response <- paste("Partial answer from", transport)
+    chat <- fake_chat(
+      text = list(response),
+      provider_turns = list(ellmer::AssistantTurn(
+        list(ellmer::ContentText(response)),
+        tokens = c(0, 0, 0),
+        cost = 0,
+        finish_reason = "max_tokens"
+      ))
+    )
+    tempest:::tempest_deputy_chat_adapter(
+      chat,
+      manifest,
+      deputy_session_id = paste0("deputy-session-cutoff-", transport),
+      stage = "dialogue",
+      role = "moderator",
+      on_run = function(trace) {
+        traces[[length(traces) + 1L]] <<- trace
+        invisible(trace)
+      },
+      on_completion = function(completion) {
+        completions[[length(completions) + 1L]] <<- completion
+        invisible(completion)
+      },
+      on_terminal = function(terminal) {
+        terminals[[length(terminals) + 1L]] <<- list(
+          transport = transport,
+          terminal = terminal
+        )
+        invisible(terminal)
+      }
+    )
+  }
+
+  sync_error <- tryCatch(
+    make_adapter("sync")$chat("Answer synchronously"),
+    error = identity
+  )
+  async_result <- await_tempest_promise(
+    make_adapter("async")$chat_async("Answer asynchronously")
+  )
+  stream_adapter <- make_adapter("stream")
+  stream <- stream_adapter$stream_async("Answer as a stream")
+  stream_result <- await_tempest_promise(coro::async(function() {
+    repeat {
+      content <- stream()
+      if (promises::is.promising(content)) {
+        content <- coro::await(content)
+      }
+      if (coro::is_exhausted(content)) {
+        break
+      }
+    }
+  })())
+  repeated_stream_result <- await_tempest_promise(stream())
+
+  expect_s3_class(sync_error, "tempest_deputy_adapter_error")
+  expect_s3_class(async_result$error, "tempest_deputy_adapter_error")
+  expect_s3_class(stream_result$error, "tempest_deputy_adapter_error")
+  expect_s3_class(sync_error$parent, "tempest_deputy_run_ending_error")
+  expect_s3_class(async_result$error$parent, "tempest_deputy_run_ending_error")
+  expect_s3_class(stream_result$error$parent, "tempest_deputy_run_ending_error")
+  expect_identical(sync_error$parent$details$finish_reason, "max_tokens")
+  expect_identical(
+    async_result$error$parent$details$finish_reason,
+    "max_tokens"
+  )
+  expect_identical(
+    stream_result$error$parent$details$finish_reason,
+    "max_tokens"
+  )
+  expect_null(repeated_stream_result$error)
+  expect_length(terminals, 3L)
+  expect_length(traces, 3L)
+  expect_length(completions, 0L)
+  expect_identical(
+    vapply(terminals, `[[`, character(1), "transport"),
+    c("sync", "async", "stream")
+  )
+  expect_identical(
+    vapply(
+      terminals,
+      function(record) record$terminal$disposition,
+      character(1)
+    ),
+    rep("discarded", 3L)
+  )
+  expect_identical(
+    vapply(
+      traces,
+      `[[`,
+      character(1),
+      "completion_disposition"
+    ),
+    rep("discarded", 3L)
+  )
+})
+
+test_that("failed typed endings keep their reason and safe parent", {
+  cause <- rlang::error_cnd(
+    "provider_failure",
+    message = "provider request failed"
+  )
+  error <- tryCatch(
+    tempest:::tempest_deputy_adapter_ending_error(deputy::RunEndingFailed(
+      reason = "provider_error",
+      error = cause,
+      phase = "stream"
+    )),
+    error = identity
+  )
+
+  expect_s3_class(error, "tempest_deputy_adapter_error")
+  expect_s3_class(error$parent, "tempest_deputy_run_ending_error")
+  expect_identical(error$parent$reason, "provider_error")
+  expect_identical(error$parent$phase, "stream")
+  expect_identical(error$parent$parent, cause)
+
+  secret <- "sk-proj-SUPERSECRET0123456789"
+  stopped_error <- tryCatch(
+    tempest:::tempest_deputy_adapter_ending_error(deputy::RunEndingStopped(
+      by = "caller",
+      reason = secret
+    )),
+    error = identity
+  )
+  expect_identical(stopped_error$parent$reason, "[redacted]")
+  expect_no_match(conditionMessage(stopped_error$parent), secret, fixed = TRUE)
+})
+
 test_that("async chat returns the canonical multi-block provider response", {
   skip_if_not_installed("deputy")
   skip_if_not_installed("coro")

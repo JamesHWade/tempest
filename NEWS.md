@@ -1,5 +1,11 @@
 # tempest 0.0.0.9000
 
+* Saved research products now retain scientific review records with workspace schema 8, Co-STORM snapshot and bundle schema 14, STORM bundle schema 11 (state schema 5), and promotion bundle schema 2. Readers accept only the current format; older bundles require their matching package version (#188).
+
+* Tempest rejects provider-truncated Deputy answers before issuing a completion and validates the resolved structured metadata of asynchronous dsprrr stages (#188).
+* `tempest_claim_reviews()` reads the exact advisory scientific reviews retained by a published product, including independent adjudication, captured evidence and bounded search outcomes; reviews survive session and research artifact round trips without becoming citation support or accepted claims (#188).
+* `tempest_config()` can enable bounded scientific review with `research_review = TRUE` and one targeted evidence search per selected claim with `repair_evidence = TRUE`; `max_review_claims` and `review_concurrency` bound the work, and reports distinguish confirmed concerns, dismissed concerns, unresolved findings and no issue found (#188).
+
 * Tempest no longer pins Deputy, dsprrr, Graft, or shinymcp to commits in `Remotes`; each tracks its `main` branch. A pin held every package that installs Tempest to that commit, so a host that needs a newer Deputy could not resolve both. The ecosystem contracts now run against the current heads and record their SHAs.
 
 * Tempest's research tools declare their actual read, provisional-write, and web effects, including moderator delegation. Deputy >= 0.0.0.9002 can enforce its base permission policy without a permissive callback, while file writes and ambient execution remain disabled. This needs the merged Deputy permission work (JamesHWade/deputy#223, JamesHWade/deputy#234).

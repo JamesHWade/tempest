@@ -10,6 +10,7 @@ articles:
   - daily-briefing
   - artifact-knowledge
   - ecosystem-demo
+  - scientific-review
 reference:
 - title: Research products
   desc: Run scripted STORM, hold a Co-STORM session, or open the bundled app.
@@ -42,6 +43,7 @@ reference:
   - tempest_sources
   - tempest_claims
   - tempest_claim_supports
+  - tempest_claim_reviews
   - tempest_trajectory_review
   - tempest_trajectory_review_data
   - tempest_mcp_app
