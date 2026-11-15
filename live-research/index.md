@@ -9,7 +9,7 @@ larger chilled–nonchilled uptake gap than plants in the Québec sample.
 
 Live run complete 15 November 2026 Research & synthesis: gpt-6.1-sol
 
-**What the data show**
+What the data show
 
 Across seven equally weighted CO₂ concentrations, mean uptake was lower
 in chilled plants in both samples. The chilled-minus-nonchilled contrast
@@ -19,11 +19,19 @@ plants—not paired changes within plants. With only three plants per
 group, the larger Mississippi contrast is a feature of this sample, not
 evidence establishing a population-level difference.
 
-12 Individual plants 84 repeated measurements
+Dataset context
 
-−10.14 Mississippi contrast Chilled − nonchilled
+**12** Individual plants
 
-−3.58 Québec contrast Chilled − nonchilled
+**84** repeated measurements
+
+**−10.14**  
+Mississippi contrast  
+Chilled − nonchilled
+
+**−3.58**  
+Québec contrast  
+Chilled − nonchilled
 
 Contrasts compare group averages of plant-level means across seven
 stored concentration levels, in µmol m⁻² s⁻¹. Descriptive results; three
@@ -147,14 +155,14 @@ research product.
 
 ## Explore the evidence and reproduce the analysis
 
-[Evidence, code &
-files](https://jameshwade.github.io/tempest/live-research/report/index.md)
-[Download raw
-data](https://jameshwade.github.io/tempest/live-research/report/analyses/plant_level_descriptive_profiles/output-6.csv)
-[Download R
-code](https://jameshwade.github.io/tempest/live-research/report/analyses/plant_level_descriptive_profiles/analysis.R)
-[Download
-contrasts](https://jameshwade.github.io/tempest/live-research/report/analyses/plant_level_descriptive_profiles/output-1.csv)
+- [Evidence, code &
+  files](https://jameshwade.github.io/tempest/live-research/report/index.md)
+- [Download raw
+  data](https://jameshwade.github.io/tempest/live-research/report/analyses/plant_level_descriptive_profiles/output-6.csv)
+- [Download R
+  code](https://jameshwade.github.io/tempest/live-research/report/analyses/plant_level_descriptive_profiles/analysis.R)
+- [Download
+  contrasts](https://jameshwade.github.io/tempest/live-research/report/analyses/plant_level_descriptive_profiles/output-1.csv)
 
 How this report was produced
 

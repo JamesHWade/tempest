@@ -33,7 +33,8 @@
   adds bounded, opt-in R analyses and generated illustrations to
   completed STORM or Co-STORM research, with portable HTML, executable
   methods, visible failures, source bindings, and an integrity-checked
-  report bundle.
+  report bundle. Reports use a modern article layout with readable
+  typography, wide figures, margin navigation, and expandable methods.
   [`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
   combines research and enrichment;
   [`tempest_r_executor()`](https://jameshwade.github.io/tempest/reference/tempest_r_executor.md)

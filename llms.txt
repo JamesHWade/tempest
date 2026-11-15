@@ -374,7 +374,10 @@ Reports retain the original research and its publication authority.
 Calculations and illustrations do not become verified claims or accepted
 knowledge. Failed or skipped tasks yield a visible `partial` report.
 Each new report directory contains the plan, source ledger, scripts,
-outputs, images, and file checksums. See
+outputs, images, and file checksums. The default HTML uses a spacious
+article layout with a readable text column, wide figures, and expandable
+methods. Styling is bundled into the report, so reading it does not
+require a server, web fonts, or JavaScript. See
 [`vignette("enriched-research")`](https://jameshwade.github.io/tempest/articles/enriched-research.md)
 for the plan contract and an offline botanical example with real R
 calculations, repeated-measures limitations, and a generated

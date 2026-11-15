@@ -6,6 +6,11 @@ incoming product as the evidence authority and writes a separate,
 portable report. A calculation does not become an accepted research
 claim, and a generated image is not evidence.
 
+The default HTML presents the work as an article: a readable text
+column, wide figures, margin navigation, and expandable methods. Its
+styling is self-contained and works offline, including responsive and
+print layouts.
+
 This worked example uses the built-in
 [`datasets::CO2`](https://rdrr.io/r/datasets/zCO2.html) data for
 chilling treatment and carbon uptake in *Echinochloa crus-galli*. The
