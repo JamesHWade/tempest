@@ -79,9 +79,12 @@ The implementation is stacked above parent PR #190, rebased onto its review
 fixes at `d9ba9fbcbceb902f9dee913671c56f490c73afd5`. Its public surface adds five functions
 and preserves the parent's scientific review and publication contracts.
 
-- The focused enrichment suite passes 150 expectations without warnings or
+- The focused enrichment suite passes 157 expectations without warnings or
   skips, including real offline Deputy sessions, both product modes, bounded
   structured planning, unsafe files, integrity checks and the botanical example.
+- Hosted review identified a mismatched timeout enum. The report now preserves
+  both Deputy `timed_out` and adapter `await_timed_out` outcomes, shows a safe
+  time-budget message, and passes a real end-to-end report timeout regression.
 - R CMD check passed with zero errors, warnings and notes after replacing raw
   non-ASCII source strings with Unicode escapes, including the final filename
   provenance addition. The full suite passed 6,589 expectations without failures,

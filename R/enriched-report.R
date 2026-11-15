@@ -535,9 +535,18 @@ tempest_enriched_task <- function(
       if (
         !is.null(error$deputy_outcome) &&
           error$deputy_outcome %in%
-            c("error", "timeout", "cancelled", "unsupported_output")
+            c(
+              "error",
+              "timed_out",
+              "await_timed_out",
+              "cancelled",
+              "unsupported_output"
+            )
       ) {
         result$metadata$deputy_outcome <- error$deputy_outcome
+        if (error$deputy_outcome %in% c("timed_out", "await_timed_out")) {
+          result$error <- "The analysis exceeded its execution time budget. No result was accepted."
+        }
       }
       outputs <- list.files(target, full.names = TRUE)
       unlink(outputs[basename(outputs) != "analysis.R"], recursive = TRUE)

@@ -109,6 +109,34 @@ test_that("code execution is opt in and provider failures remain visible", {
   expect_match(text, "No result was accepted", fixed = TRUE)
 })
 
+test_that("report generation preserves a real Deputy timeout outcome", {
+  fixture <- test_promotion_fixture("storm")
+  plan <- test_enriched_plan(fixture$resource@resource_id)
+  plan$analyses[[1L]]$code <- "Sys.sleep(2); writeLines('late', 'late.txt')"
+  destination <- file.path(withr::local_tempdir(), "report")
+  report <- tempest_enrich_report(
+    fixture$research,
+    destination,
+    plan = plan,
+    allow_code = TRUE,
+    executor = tempest_r_executor(timeout = 0.25)
+  )
+  expect_identical(report@status, "partial")
+  expect_identical(tempest_read_enriched_report(destination)@status, "partial")
+  task <- jsonlite::read_json(file.path(destination, "report.json"))$analyses[[
+    1L
+  ]]
+  expect_identical(task$status, "failed")
+  expect_identical(task$metadata$deputy_outcome, "timed_out")
+  expect_length(task$files, 0L)
+  expect_length(task$file_map, 0L)
+  html <- paste(
+    readLines(file.path(destination, "index.html")),
+    collapse = "\n"
+  )
+  expect_match(html, "exceeded its execution time budget", fixed = TRUE)
+})
+
 test_that("escaping output paths and image impostors are rejected", {
   root <- withr::local_tempdir()
   task <- test_enriched_plan("source")$analyses[[1L]]
