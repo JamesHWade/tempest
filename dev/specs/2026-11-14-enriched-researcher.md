@@ -1,7 +1,8 @@
 # Enriching an existing Researcher report with reproducible R analysis
 
-**Date:** 2026-11-14  
-**Status:** Research findings and implementation requirements  
+**Date:** 2026-11-14
+
+**Status:** Research findings and implementation requirements
 **Scope:** Tempest enrichment of an already-produced research report; not a
 claim that Tempest reproduces Microsoft 365 Copilot internally or outperforms
 it.

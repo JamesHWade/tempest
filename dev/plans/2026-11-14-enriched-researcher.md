@@ -75,8 +75,8 @@ claim of measured superiority.
 
 ## Qualification record
 
-The implementation is based on parent PR #190 at
-`8de5d1a570a379865db7e87dcdef3e427bd5482c`. Its public surface adds five functions
+The implementation is stacked above parent PR #190, rebased onto its review
+fixes at `d9ba9fbcbceb902f9dee913671c56f490c73afd5`. Its public surface adds five functions
 and preserves the parent's scientific review and publication contracts.
 
 - The focused enrichment suite passes 150 expectations without warnings or
@@ -84,7 +84,9 @@ and preserves the parent's scientific review and publication contracts.
   structured planning, unsafe files, integrity checks and the botanical example.
 - R CMD check passed with zero errors, warnings and notes after replacing raw
   non-ASCII source strings with Unicode escapes, including the final filename
-  provenance addition. The full test suite is running independently.
+  provenance addition. The full suite passed 6,589 expectations without failures,
+  warnings or skips on the preceding parent head `8de5d1a`; the current-parent
+  integration is covered by focused tests and the PR's full-test CI gate.
 - The full pkgdown site builds. Browser inspection at 390 px identified a
   min-content overflow; the corrected report has equal viewport and scroll
   widths, including with expanded methods. Citation fragments resolve, and
