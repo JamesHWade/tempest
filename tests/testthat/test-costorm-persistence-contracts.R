@@ -96,7 +96,7 @@ test_that("TempestSession restores progress history without replaying it", {
   )
 
   legacy_snapshot <- snapshot
-  legacy_snapshot$schema_version <- 9L
+  legacy_snapshot$schema_version <- 13L
   expect_error(
     tempest:::tempest_session_restore(legacy_snapshot, config = cfg),
     class = "tempest_unsupported_format_error"

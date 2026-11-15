@@ -108,11 +108,17 @@ test_that("async dsprrr execution normalizes structured output", {
   )
   local_mocked_bindings(
     tempest_dsprrr_run_async = function(...) {
-      request <- promises::promise_resolve(list(
-        facts = data.frame(
-          claim = factor("A normalized claim"),
-          source_ids = I(list(list("S000000000001")))
-        )
+      request <- promises::promise_resolve(structure(
+        list(
+          output = list(
+            facts = data.frame(
+              claim = factor("A normalized claim"),
+              source_ids = I(list(list("S000000000001")))
+            )
+          ),
+          metadata = metadata
+        ),
+        class = "dsprrr_result"
       ))
       attr(request, "dsprrr_trace_context") <- metadata
       request

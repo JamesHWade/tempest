@@ -67,7 +67,8 @@ test_that("session resume rejects every damaged bundle file", {
     "workspace/proposed_claims.json",
     "workspace/evidence_spans.json",
     "workspace/disputes.json",
-    "workspace/claim_supports.json"
+    "workspace/claim_supports.json",
+    "workspace/claim_reviews.json"
   )
   root <- withr::local_tempdir()
 

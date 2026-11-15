@@ -186,11 +186,41 @@ TempestConfig <- S7::new_class(
       "source_attributed"
     ),
     min_support_score = prop_score_default(0.7),
+    research_review = S7::new_property(S7::class_logical, default = FALSE),
+    repair_evidence = S7::new_property(S7::class_logical, default = FALSE),
+    max_review_claims = S7::new_property(S7::class_integer, default = 5L),
+    review_concurrency = S7::new_property(S7::class_integer, default = 2L),
     on_unsupported_claim = prop_enum(
       c("flag", "drop", "revise", "keep_with_warning"),
       "flag"
     )
-  )
+  ),
+  validator = function(self) {
+    flags <- list(self@research_review, self@repair_evidence)
+    if (any(!vapply(flags, \(x) length(x) == 1L && !is.na(x), logical(1)))) {
+      return("Review flags must be single non-missing logical values.")
+    }
+    if (self@repair_evidence && !self@research_review) {
+      return("Evidence repair requires scientific review.")
+    }
+    if (
+      length(self@max_review_claims) != 1L ||
+        is.na(self@max_review_claims) ||
+        self@max_review_claims < 1L ||
+        self@max_review_claims > 20L
+    ) {
+      return("Review claim limit must be from 1 to 20.")
+    }
+    if (
+      length(self@review_concurrency) != 1L ||
+        is.na(self@review_concurrency) ||
+        self@review_concurrency < 1L ||
+        self@review_concurrency > 4L
+    ) {
+      return("Review concurrency must be from 1 to 4.")
+    }
+    NULL
+  }
 )
 
 #' Create a STORM configuration
@@ -233,6 +263,17 @@ TempestConfig <- S7::new_class(
 #' @param on_unsupported_claim Action for unsupported claims: one of "flag",
 #'   "drop", "revise", or "keep_with_warning". `drop` removes the complete
 #'   unsupported assertion; `revise` replaces it with a revision notice.
+#' @param research_review Review selected claims for scientific flaws before
+#'   publication, using a separate reviewer and adjudicator. Findings remain
+#'   advisory and do not change citation support or accept knowledge.
+#' @param repair_evidence When reviewing, allow one targeted evidence search
+#'   per selected claim and fetch at most two additional sources. Requires
+#'   `research_review = TRUE`.
+#' @param max_review_claims Maximum claims to review (1 to 20). Disputed and
+#'   weakly supported claims take priority. Unselected claims are not reviewed.
+#' @param review_concurrency Maximum independent claim reviews in flight (1 to
+#'   4). Each model request uses its own Chat. Cancellation is cooperative;
+#'   an active retrieval call must finish before cancellation takes effect.
 #' @section Default chat:
 #' When both `models` and `chat_fn` are `NULL`, `tempest_config()` consults the
 #' `tempest.chat` R option. Set it to a provider/model string accepted by
@@ -271,7 +312,11 @@ tempest_config <- function(
   max_active_experts = 5L,
   citation_policy = "source_attributed",
   min_support_score = 0.7,
-  on_unsupported_claim = "flag"
+  on_unsupported_claim = "flag",
+  research_review = FALSE,
+  repair_evidence = FALSE,
+  max_review_claims = 5L,
+  review_concurrency = 2L
 ) {
   default_models <- list(
     coordinator = "openai/gpt-5.6-sol",
@@ -353,6 +398,26 @@ tempest_config <- function(
     )
   }
   min_support_score <- tempest_normalize_min_support_score(min_support_score)
+  research_review <- tempest_config_flag(research_review, "research_review")
+  repair_evidence <- tempest_config_flag(repair_evidence, "repair_evidence")
+  max_review_claims <- tempest_config_count(
+    max_review_claims,
+    "max_review_claims"
+  )
+  review_concurrency <- tempest_config_count(
+    review_concurrency,
+    "review_concurrency"
+  )
+  if (max_review_claims > 20L || review_concurrency > 4L) {
+    tempest_config_abort(
+      "Review limits require at most 20 claims and 4 concurrent reviews."
+    )
+  }
+  if (repair_evidence && !research_review) {
+    tempest_config_abort(
+      "{.arg repair_evidence} requires {.code research_review = TRUE}."
+    )
+  }
 
   ragnar_cache_dir <- cache_dir
   cache_dir <- tempest_cache_dir(cache_dir)
@@ -379,6 +444,10 @@ tempest_config <- function(
     max_active_experts = max_active_experts,
     citation_policy = citation_policy,
     min_support_score = min_support_score,
+    research_review = research_review,
+    repair_evidence = repair_evidence,
+    max_review_claims = max_review_claims,
+    review_concurrency = review_concurrency,
     on_unsupported_claim = on_unsupported_claim
   )
 }

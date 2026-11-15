@@ -499,7 +499,7 @@ tempest_storm_require_current_schema <- function(metadata) {
     "STORM run schema version",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
-  if (!identical(schema_version, 10L)) {
+  if (!identical(schema_version, 11L)) {
     tempest_product_unsupported_format_abort(
       "STORM bundle format",
       schema_version,
@@ -577,7 +577,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   }
   files <- tempest_persistence_manifest_files(
     manifest$files,
-    "Schema 10 STORM file inventory",
+    "Schema 11 STORM file inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   tempest_persistence_require_regular_bundle_files(
@@ -620,7 +620,7 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
-    "Schema 10 STORM checksum inventory",
+    "Schema 11 STORM checksum inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   missing_checksums <- setdiff(files, names(checksums))
@@ -880,7 +880,7 @@ tempest_storm_restore_workspace <- function(
   identity <- metadata$workspace
   if (!is.list(identity) || is.data.frame(identity)) {
     tempest_storm_run_restore_abort(
-      "Schema 10 STORM bundles must contain a workspace identity record."
+      "Schema 11 STORM bundles must contain a workspace identity record."
     )
   }
   required <- c(
@@ -947,7 +947,8 @@ tempest_storm_artifact_input_matches <- function(supplied, persisted) {
     "proposed_claims",
     "evidence_spans",
     "claim_supports",
-    "disputes"
+    "disputes",
+    "claim_reviews"
   )
   if (any(vapply(supplied[evidence_fields], length, integer(1)) != 0L)) {
     return(FALSE)
@@ -972,7 +973,8 @@ tempest_storm_workspace_is_empty <- function(workspace) {
     "proposed_claims",
     "evidence_spans",
     "claim_supports",
-    "disputes"
+    "disputes",
+    "claim_reviews"
   )
   all(vapply(snapshot[evidence_fields], length, integer(1)) == 0L)
 }
@@ -1473,7 +1475,7 @@ tempest_storm_load_artifacts <- function(
   )
   tempest_research_workspace_require_current_schema(
     workspace_snapshot,
-    "Schema 10 STORM research workspace",
+    "Schema 11 STORM research workspace",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   workspace <- tryCatch(
@@ -2007,7 +2009,7 @@ tempest_storm_save_artifacts <- function(
     title = state$title,
     requested_steps = requested_steps,
     completed_stages = state$completed_stages,
-    schema_version = 10L,
+    schema_version = 11L,
     bundle_type = "storm",
     bundle_status = "complete",
     research_manifest = tempest_research_manifest_record(research_manifest),

@@ -1150,6 +1150,10 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
       .trace_context = list()
     ) {
       verification_attempt <<- verification_attempt + 1L
+      metadata <- list(
+        program_artifact_id = dsprrr::program_artifact_id(module),
+        trace_context = .trace_context
+      )
       request <- if (identical(verification_attempt, 1L)) {
         promises::promise(function(resolve, reject) {
           reject(rlang::error_cnd(
@@ -1159,13 +1163,15 @@ test_that("default Co-STORM reporting verifies and publishes atomically", {
         })
       } else {
         promises::promise(function(resolve, reject) {
-          resolve_verification <<- resolve
+          resolve_verification <<- function(output) {
+            resolve(structure(
+              list(output = output, metadata = metadata),
+              class = "dsprrr_result"
+            ))
+          }
         })
       }
-      attr(request, "dsprrr_trace_context") <- list(
-        program_artifact_id = dsprrr::program_artifact_id(module),
-        trace_context = .trace_context
-      )
+      attr(request, "dsprrr_trace_context") <- metadata
       request
     }
   )

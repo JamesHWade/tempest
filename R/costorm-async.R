@@ -1048,10 +1048,8 @@ tempest_session_report_async <- function(
     tempest_otel_no_context_sentinel
   execute <- function() {
     .tempest_otel_context <- otel_callback_context
-    tempest_research_workspace_publication_lock(
-      workspace,
-      publication_owner
-    )
+    lock_owned <- FALSE
+    tempest_research_workspace_publication_lock(workspace, publication_owner)
     lock_owned <- TRUE
     release_publication_lock <- function() {
       if (
@@ -1120,6 +1118,31 @@ tempest_session_report_async <- function(
       return(finish_work(promises::promise_resolve(NULL)))
     }
     request <- tempest_async_promise_try(function() {
+      tempest_costorm_report_verify_async(session, is_current)
+    })
+    request <- tempest_otel_then(request, function(...) {
+      tempest_research_review_async(
+        workspace,
+        tempest_session_retriever(session),
+        tempest_session_config(session),
+        is_current = is_current,
+        .verification_owner_token = publication_owner
+      )
+    })
+    request <- tempest_otel_then(request, function(...) {
+      if (!tempest_async_is_current(is_current)) {
+        tempest_abort(
+          "Scientific review was cancelled.",
+          class = "tempest_review_cancelled"
+        )
+      }
+      if (!lock_owned) {
+        tempest_research_workspace_publication_lock(
+          workspace,
+          publication_owner
+        )
+        lock_owned <<- TRUE
+      }
       tempest_costorm_report_verify_async(session, is_current)
     })
     request <- tempest_otel_then(request, function(...) {

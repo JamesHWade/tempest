@@ -837,7 +837,7 @@ tempest_report_body_validate_reserved_sections <- function(body) {
   }
   reserved <- tempest_markdown_has_heading(
     body,
-    c("References", "Execution review")
+    c("References", "Execution review", "Scientific review")
   )
   if (reserved) {
     tempest_product_report_abort(
@@ -1066,18 +1066,24 @@ tempest_report_md_render <- function(
     )
   }
   if (isTRUE(include_references) && nzchar(res$footnotes)) {
-    return(paste0(
-      "# ",
-      rendered_title,
-      "\n\n",
-      rendered_text,
-      "\n\n",
-      "## References\n\n",
-      res$footnotes,
-      "\n"
+    return(tempest_report_append_claim_reviews(
+      paste0(
+        "# ",
+        rendered_title,
+        "\n\n",
+        rendered_text,
+        "\n\n",
+        "## References\n\n",
+        res$footnotes,
+        "\n"
+      ),
+      workspace
     ))
   }
-  paste0("# ", rendered_title, "\n\n", rendered_text, "\n")
+  tempest_report_append_claim_reviews(
+    paste0("# ", rendered_title, "\n\n", rendered_text, "\n"),
+    workspace
+  )
 }
 
 #' Read the committed Markdown report from a Tempest product
@@ -1176,20 +1182,24 @@ tempest_final_report_validate <- function(
     )
   }
 
+  report_without_claim_review <- tempest_report_strip_claim_reviews(
+    report_without_review,
+    workspace
+  )
   prefix <- paste0(
     "# ",
     tempest_markdown_escape_plain_text(title, "report title"),
     "\n\n"
   )
-  if (!startsWith(report_without_review, prefix)) {
+  if (!startsWith(report_without_claim_review, prefix)) {
     tempest_product_report_abort(
       "Final report title does not match its authoritative product title."
     )
   }
   rendered_body <- substr(
-    report_without_review,
+    report_without_claim_review,
     nchar(prefix) + 1L,
-    nchar(report_without_review)
+    nchar(report_without_claim_review)
   )
   references_marker <- "\n\n## References\n\n"
   reference_positions <- gregexpr(

@@ -994,6 +994,10 @@ tempest_research_config_projection <- function(config) {
     max_active_experts = config@max_active_experts,
     citation_policy = config@citation_policy,
     min_support_score = config@min_support_score,
+    research_review = config@research_review,
+    repair_evidence = config@repair_evidence,
+    max_review_claims = config@max_review_claims,
+    review_concurrency = config@review_concurrency,
     on_unsupported_claim = config@on_unsupported_claim
   )
   projection <- tempest_research_config_without_credentials(

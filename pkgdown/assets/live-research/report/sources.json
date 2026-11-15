@@ -1,0 +1,65 @@
+[
+  {
+    "id": "S0aadb060bb3b",
+    "resource_kind": "web",
+    "locator": "https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf",
+    "url": "https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf",
+    "title": "*Ecology*, 7(4), 1990, pp. 1389–1400",
+    "media_type": "text/html",
+    "fetched_at": "2026-11-15T12:37:37.130232Z"
+  },
+  {
+    "id": "S509029c8ae51",
+    "resource_kind": "web",
+    "locator": "https://svn.r-project.org/R/trunk/src/library/datasets/data/",
+    "url": "https://svn.r-project.org/R/trunk/src/library/datasets/data/",
+    "title": "R - Revision 90893: /trunk/src/library/datasets/data",
+    "media_type": "text/html",
+    "fetched_at": "2026-11-15T12:37:38.426877Z"
+  },
+  {
+    "id": "S5181028e48ec",
+    "resource_kind": "web",
+    "locator": "https://www.stat.ethz.ch/CRAN/web/packages/m61r/vignettes/primitives.html",
+    "url": "https://www.stat.ethz.ch/CRAN/web/packages/m61r/vignettes/primitives.html",
+    "title": "m61r Primitives Written in Base R",
+    "media_type": "text/html",
+    "fetched_at": "2026-11-15T12:37:39.040010Z"
+  },
+  {
+    "id": "S6e5bd2edc570",
+    "resource_kind": "web",
+    "locator": "https://raw.githubusercontent.com/wch/r-source/trunk/src/library/datasets/data/CO2.R",
+    "url": "https://raw.githubusercontent.com/wch/r-source/trunk/src/library/datasets/data/CO2.R",
+    "title": "https://raw.githubusercontent.com/wch/r-source/trunk/src/library/datasets/data/CO2.R",
+    "media_type": "text/html",
+    "fetched_at": "2026-11-15T12:35:24.271161Z"
+  },
+  {
+    "id": "S7528fd2c1ece",
+    "resource_kind": "web",
+    "locator": "https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html",
+    "url": "https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html",
+    "title": "R: Carbon Dioxide Uptake in Grass Plants",
+    "media_type": "text/html",
+    "fetched_at": "2026-11-15T12:35:24.009689Z"
+  },
+  {
+    "id": "Sd91462337d66",
+    "resource_kind": "web",
+    "locator": "https://raw.githubusercontent.com/wch/r-source/trunk/src/library/datasets/man/zCO2.Rd",
+    "url": "https://raw.githubusercontent.com/wch/r-source/trunk/src/library/datasets/man/zCO2.Rd",
+    "title": "fit the data for the first plant",
+    "media_type": "text/html",
+    "fetched_at": "2026-11-15T12:35:24.542577Z"
+  },
+  {
+    "id": "Sf2ebd0a69642",
+    "resource_kind": "web",
+    "locator": "https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html",
+    "url": "https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html",
+    "title": "R: Carbon Dioxide Uptake in Grass Plants",
+    "media_type": "text/html",
+    "fetched_at": "2026-11-15T12:37:37.263833Z"
+  }
+]

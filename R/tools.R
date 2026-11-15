@@ -240,12 +240,14 @@ tempest_merge_resource_record <- function(old, new) {
     )
   }
   metadata <- utils::modifyList(old_data$metadata, new_data$metadata)
-  content <- NULL
-  for (field in c("context_text", "content_text", "snippet")) {
-    value <- metadata[[field]] %||% NA_character_
-    if (rlang::is_string(value) && !is.na(value) && nzchar(value)) {
-      content <- value
-      break
+  content <- if (is.null(new_data$content)) old_data$content else NULL
+  if (is.null(content)) {
+    for (field in c("context_text", "content_text", "snippet")) {
+      value <- metadata[[field]] %||% NA_character_
+      if (rlang::is_string(value) && !is.na(value) && nzchar(value)) {
+        content <- value
+        break
+      }
     }
   }
   if (is.null(content)) {

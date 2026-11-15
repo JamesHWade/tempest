@@ -54,6 +54,18 @@ test_that("promotion bundle contains only exact promotable research records", {
     tempest_promotion_bundle(fixture$research)@bundle_id
   )
   data <- tempest:::tempest_promotion_bundle_data(bundle)
+  expect_identical(data$schema_version, 2L)
+  expect_named(
+    data$proof,
+    c(
+      "resources",
+      "claims",
+      "evidence_spans",
+      "claim_supports",
+      "claim_reviews"
+    )
+  )
+  expect_identical(data$proof$claim_reviews, list())
   repeated_data <- tempest:::tempest_promotion_bundle_data(
     tempest_promotion_bundle(fixture$research)
   )
@@ -564,6 +576,18 @@ test_that("stage proof rejects defaulting and scalar coercion", {
         data$proof$resources[[1L]]$schema_version
       )
       data
+    },
+    function(data) {
+      data$proof$claim_reviews <- NULL
+      data
+    },
+    function(data) {
+      data$proof$claim_reviews <- list(named = list())
+      data
+    },
+    function(data) {
+      data$proof$claim_reviews <- list(list(review_id = "review.incomplete"))
+      data
     }
   )
 
@@ -587,7 +611,7 @@ test_that("promotion decoding requires exact current JSON scalar shapes", {
   original <- tempest:::tempest_promotion_bundle_data(fixture$bundle)
   malformed <- list(
     function(data) {
-      data$schema_version <- "1"
+      data$schema_version <- "2"
       data
     },
     function(data) {
@@ -642,7 +666,7 @@ test_that("promotion persistence rejects forged current-format payloads", {
   old_path <- file.path(root, "old-schema")
   tempest_save_promotion_bundle(fixture$bundle, old_path)
   old_data <- tempest:::tempest_promotion_bundle_data(fixture$bundle)
-  old_data$schema_version <- 0
+  old_data$schema_version <- 1L
   test_promotion_rewrite_saved(old_path, old_data)
   expect_error(
     tempest_read_promotion_bundle(
@@ -864,7 +888,7 @@ test_that("promotion persistence errors do not expose malformed JSON", {
 test_that("promotion manifest requires an exact numeric current version", {
   fixture <- test_promotion_bundle()
   root <- withr::local_tempdir()
-  values <- list("1", 0, list(1), NULL)
+  values <- list("2", 1L, 0, list(2), NULL)
 
   for (index in seq_along(values)) {
     path <- file.path(root, paste0("manifest-version-", index))
@@ -894,8 +918,8 @@ test_that("promotion manifest requires an exact numeric current version", {
   manifest_path <- file.path(path, "manifest.json")
   manifest_json <- readLines(manifest_path, warn = FALSE)
   manifest_json <- sub(
-    '"schema_version": 1,',
-    '"schema_version": 1.0,',
+    '"schema_version": 2,',
+    '"schema_version": 2.0,',
     manifest_json,
     fixed = TRUE
   )

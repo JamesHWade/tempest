@@ -455,6 +455,126 @@ tempest_deputy_adapter_terminal_without_completion <- function(
   tempest_deputy_adapter_error()
 }
 
+tempest_deputy_adapter_ending_error <- function(ending) {
+  reason <- NULL
+  phase <- NULL
+  cause <- NULL
+  details <- list()
+
+  if (S7::S7_inherits(ending, deputy::RunEndingCutOff)) {
+    reason <- ending$finish_reason
+    details$finish_reason <- reason
+    message <- paste0(
+      "Deputy provider cut off the answer (",
+      reason,
+      ")."
+    )
+  } else if (S7::S7_inherits(ending, deputy::RunEndingLimit)) {
+    reason <- ending$reason
+    details$reason <- reason
+    details$field <- ending$field
+    details$actual <- ending$actual
+    details$limit <- ending$limit
+    message <- paste0("Deputy run reached the ", reason, " limit.")
+  } else if (S7::S7_inherits(ending, deputy::RunEndingStopped)) {
+    reason <- ending$reason
+    details$by <- ending$by
+    details$reason <- reason
+    message <- paste0("Deputy run was stopped by ", ending$by)
+    if (!is.null(reason)) {
+      message <- paste0(message, " (", reason, ")")
+    }
+    message <- paste0(message, ".")
+  } else if (S7::S7_inherits(ending, deputy::RunEndingFailed)) {
+    reason <- ending$reason
+    phase <- ending$phase
+    cause <- ending$error
+    details$reason <- reason
+    details$phase <- phase
+    message <- paste0("Deputy run failed with reason ", reason)
+    if (!is.null(phase)) {
+      message <- paste0(message, " during ", phase)
+    }
+    message <- paste0(message, ".")
+  } else {
+    message <- "Deputy run ended without an answered result."
+  }
+
+  if (tempest_contract_sensitive_scalar(message)) {
+    message <- "Deputy run ended without an answered result."
+  }
+  details <- lapply(details, function(value) {
+    if (is.character(value) && tempest_contract_sensitive_scalar(value)) {
+      return("[redacted]")
+    }
+    value
+  })
+  safe_reason <- if (
+    is.character(reason) && tempest_contract_sensitive_scalar(reason)
+  ) {
+    "[redacted]"
+  } else {
+    reason
+  }
+  safe_phase <- if (
+    is.character(phase) && tempest_contract_sensitive_scalar(phase)
+  ) {
+    "[redacted]"
+  } else {
+    phase
+  }
+  parent <- if (!is.null(cause)) {
+    if (tempest_condition_chain_sensitive(cause)) {
+      tempest_condition_safe_summary(cause)
+    } else {
+      cause
+    }
+  } else {
+    NULL
+  }
+  ending_error <- rlang::error_cnd(
+    "tempest_deputy_run_ending_error",
+    message = message,
+    ending_class = class(ending),
+    reason = safe_reason,
+    phase = safe_phase,
+    details = details,
+    parent = parent
+  )
+  tempest_deputy_adapter_error(parent = ending_error)
+}
+
+tempest_deputy_adapter_reject_ending <- function(
+  state,
+  completion_id,
+  starts_before,
+  terminals_before,
+  trace,
+  ending,
+  deputy_run_id = NULL
+) {
+  disposition <- if (identical(trace$status, "complete")) {
+    "discarded"
+  } else {
+    "terminal"
+  }
+  trace <- tempest_deputy_adapter_settle_trace(
+    state,
+    completion_id,
+    starts_before,
+    terminals_before,
+    disposition = disposition,
+    deputy_run_id = deputy_run_id
+  )
+  state$on_terminal(list(
+    completion_id = completion_id,
+    deputy_execution = trace,
+    disposition = disposition
+  ))
+  tempest_deputy_adapter_cleanup(state, completion_id)
+  stop(tempest_deputy_adapter_ending_error(ending))
+}
+
 tempest_deputy_adapter_discard_completion <- function(
   state,
   completion_id,
@@ -484,6 +604,7 @@ tempest_deputy_adapter_complete <- function(
   completion_id,
   prompt,
   response,
+  ending,
   starts_before,
   terminals_before,
   turns_before,
@@ -497,6 +618,17 @@ tempest_deputy_adapter_complete <- function(
     completion_id,
     deputy_run_id = deputy_run_id
   )
+  if (!S7::S7_inherits(ending, deputy::RunEndingAnswered)) {
+    return(tempest_deputy_adapter_reject_ending(
+      state,
+      completion_id,
+      starts_before,
+      terminals_before,
+      trace,
+      ending,
+      deputy_run_id = deputy_run_id
+    ))
+  }
   if (!identical(trace$status, "complete")) {
     return(tempest_deputy_adapter_terminal_without_completion(
       state,
@@ -651,6 +783,7 @@ tempest_deputy_adapter_finish <- function(state, record, response = NULL) {
       record$completion_id,
       record$prompt,
       response,
+      result$ending,
       record$starts_before,
       record$terminals_before,
       record$turns_before,

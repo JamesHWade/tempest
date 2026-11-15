@@ -232,6 +232,7 @@ tempest_run_dsprrr_module_async <- function(module, chat, inputs, step) {
       inputs,
       list(
         .llm = chat,
+        .return_format = "structured",
         .trace_context = execution$trace_context
       )
     )
@@ -240,7 +241,18 @@ tempest_run_dsprrr_module_async <- function(module, chat, inputs, step) {
   tempest_dsprrr_execution_metadata_validate(execution, metadata)
   normalized <- promises::then(
     request,
-    tempest_dsprrr_structured_output
+    function(result) {
+      if (!inherits(result, "dsprrr_result")) {
+        tempest_ecosystem_contract_abort(
+          "dsprrr execution did not return structured verification metadata."
+        )
+      }
+      tempest_dsprrr_execution_metadata_validate(
+        execution,
+        result$metadata
+      )
+      tempest_dsprrr_structured_output(result$output)
+    }
   )
   attr(normalized, "dsprrr_trace_context") <- metadata
   normalized

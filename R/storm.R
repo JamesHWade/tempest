@@ -94,7 +94,7 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #' @param steps Character vector controlling which steps to run. Defaults to
 #'   all.
 #' @param output_dir Optional directory for persisted STORM run artifacts. When
-#'   supplied, a current schema-10 product bundle with schema-5 STORM state is
+#'   supplied, a current schema-11 product bundle with schema-5 STORM state is
 #'   written under a topic-specific subdirectory.
 #' @param resume If `TRUE` and `output_dir` contains a previous run, load saved
 #'   current-format artifacts and skip stages recorded as complete. Older,
@@ -723,6 +723,7 @@ tempest_run_internal <- function(
       harvest$answer_text,
       harvest$source_ids
     )
+    tempest_storm_capture_sources(retriever, store, harvest$source_ids)
     tempest_extract_facts_from_answer(
       extractor,
       harvest$answer_text,
@@ -746,6 +747,7 @@ tempest_run_internal <- function(
     harvest
   }
   verification_ready <- FALSE
+  research_review_ready <- FALSE
   ensure_verification_complete <- function() {
     claims <- store$list_proposed_claims()
     if (isTRUE(verification_ready)) {
@@ -783,6 +785,24 @@ tempest_run_internal <- function(
         payload = list(claim_count = length(claims))
       )
       current_progress_stage <<- parent_progress_stage
+    }
+    if (!research_review_ready && config@research_review) {
+      emit_progress(
+        "step",
+        "started",
+        stage = "research",
+        step = "scientific_review",
+        message = "Reviewing scientific claims and evidence gaps."
+      )
+      tempest_research_review(store, retriever, config)
+      research_review_ready <<- TRUE
+      emit_progress(
+        "step",
+        "succeeded",
+        stage = "research",
+        step = "scientific_review",
+        message = "Scientific review completed; findings remain advisory."
+      )
     }
     verification_ready <<- TRUE
     store$list_proposed_claims()

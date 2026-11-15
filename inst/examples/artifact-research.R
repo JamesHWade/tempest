@@ -1,8 +1,8 @@
 # Offline public-Graft consumer proof using synthetic completed research bundles.
 artifact_research_example <- function() {
   pins <- c(
-    initial = "sha256:5082654b0f6a348b6e1bbe053e751c3d01fbdd9b4d0c0831b8b64902bb13d4b8",
-    correction = "sha256:c5d758ca494d8499f8c7c99f3b0a245c2efaeef8440176e9ea88eac0de06227c"
+    initial = "sha256:2bbd97351f190df05e44a7bfdbd6d52814bf312941bade7899432d7a7b37d621",
+    correction = "sha256:73b7500423b9590651ee219b5d82cf7472d3b3420741b15073aab742ed354200"
   )
   inputs <- system.file("examples", "accepted-research", package = "tempest")
   directory <- tempfile("artifact-research-")

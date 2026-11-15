@@ -1,8 +1,8 @@
 # Typed, review-only promotion bundles for provisional scientific evidence
 
-tempest_promotion_schema_version <- 1L
+tempest_promotion_schema_version <- 2L
 tempest_promotion_schema_build_digest <-
-  "sha256:0ef4a9c9143e6aaff3def45c996855773dd3c5ce341293bc15032c0924ed4296"
+  "sha256:91f476d515dcd35259bad3fee9c0428dd272724a7ccf6edec3ddf064ebe2b430"
 
 tempest_promotion_abort <- function(
   message,
@@ -188,7 +188,13 @@ tempest_promotion_claim_support_proof_fields <- function() {
 }
 
 tempest_promotion_proof_fields <- function() {
-  c("resources", "claims", "evidence_spans", "claim_supports")
+  c(
+    "resources",
+    "claims",
+    "evidence_spans",
+    "claim_supports",
+    "claim_reviews"
+  )
 }
 
 tempest_promotion_assert_exact_row <- function(value, fields, noun) {
@@ -1020,6 +1026,75 @@ tempest_promotion_claim_support_proof_row <- function(support) {
   tempest_promotion_nullable_tree(tempest_claim_support_to_list(support))
 }
 
+tempest_promotion_claim_review_proof_row <- function(review) {
+  record <- tempest_claim_review_record(review)
+  record$repair$source_ids <- unname(as.list(record$repair$source_ids))
+  record
+}
+
+tempest_promotion_workspace_claim_reviews <- function(workspace) {
+  accessor <- workspace$list_claim_reviews
+  if (!is.function(accessor)) {
+    tempest_promotion_abort(
+      "ResearchWorkspace must expose exact claim reviews through list_claim_reviews()."
+    )
+  }
+  reviews <- accessor()
+  if (
+    !is.list(reviews) ||
+      is.data.frame(reviews)
+  ) {
+    tempest_promotion_abort(
+      "ResearchWorkspace returned malformed claim-review records."
+    )
+  }
+  rows <- lapply(reviews, function(review) {
+    if (!identical(S7::S7_class(review), TempestClaimReview)) {
+      tempest_promotion_abort(
+        "ResearchWorkspace claim reviews must use TempestClaimReview values."
+      )
+    }
+    S7::validate(review)
+    tempest_promotion_claim_review_proof_row(review)
+  })
+  ids <- vapply(rows, `[[`, character(1), "review_id")
+  if (anyDuplicated(ids)) {
+    tempest_promotion_abort(
+      "ResearchWorkspace claim reviews must have unique review identifiers."
+    )
+  }
+  rows[order(ids, method = "radix")]
+}
+
+tempest_promotion_review_proof_rows <- function(value) {
+  if (
+    !is.list(value) ||
+      is.data.frame(value) ||
+      !is.null(names(value))
+  ) {
+    tempest_promotion_abort(
+      "Promotion claim reviews must be an unnamed current-schema row list."
+    )
+  }
+  rows <- lapply(
+    value,
+    tempest_promotion_assert_exact_row,
+    fields = tempest_claim_review_record_fields(),
+    noun = "Promotion claim-review proof"
+  )
+  ids <- vapply(rows, `[[`, character(1), "review_id")
+  if (
+    anyNA(ids) ||
+      anyDuplicated(ids) ||
+      !identical(ids, sort(ids, method = "radix"))
+  ) {
+    tempest_promotion_abort(
+      "Promotion claim-review proof must use sorted unique review identifiers."
+    )
+  }
+  rows
+}
+
 tempest_promotion_proof_data <- function(workspace, stage_records, supports) {
   support_map <- stats::setNames(
     supports,
@@ -1062,6 +1137,11 @@ tempest_promotion_proof_data <- function(workspace, stage_records, supports) {
     )),
     method = "radix"
   )
+  claim_reviews <- tempest_promotion_workspace_claim_reviews(workspace)
+  claim_reviews <- Filter(
+    function(review) review$claim_id %in% claim_ids,
+    claim_reviews
+  )
   claims <- stats::setNames(
     lapply(claim_ids, workspace$get_proposed_claim),
     claim_ids
@@ -1095,7 +1175,18 @@ tempest_promotion_proof_data <- function(workspace, stage_records, supports) {
     )
   }
   source_ids <- sort(
-    unique(vapply(spans, function(span) span@source_id, character(1))),
+    unique(c(
+      vapply(spans, function(span) span@source_id, character(1)),
+      unlist(
+        lapply(claim_reviews, function(review) {
+          c(
+            vapply(review$dossier, `[[`, character(1), "source_id"),
+            unlist(review$repair$source_ids, use.names = FALSE)
+          )
+        }),
+        use.names = FALSE
+      )
+    )),
     method = "radix"
   )
   resources <- stats::setNames(
@@ -1128,7 +1219,8 @@ tempest_promotion_proof_data <- function(workspace, stage_records, supports) {
     claim_supports = unname(lapply(
       proof_supports,
       tempest_promotion_claim_support_proof_row
-    ))
+    )),
+    claim_reviews = unname(claim_reviews)
   )
 }
 
@@ -1181,7 +1273,8 @@ tempest_promotion_validate_proof_credentials <- function(
   resource_rows,
   claim_rows,
   span_rows,
-  support_rows
+  support_rows,
+  review_rows
 ) {
   evidence_metadata <- tempest_promotion_proof_evidence_metadata_fields()
   resource_metadata <- c(
@@ -1227,6 +1320,23 @@ tempest_promotion_validate_proof_credentials <- function(
       paste0("proof$claim_supports[[", index, "]]")
     )
   }
+  for (index in seq_along(review_rows)) {
+    row <- review_rows[[index]]
+    row$claim_text <- NULL
+    for (source_index in seq_along(row$dossier)) {
+      row$dossier[[source_index]]$text <- NULL
+    }
+    for (evidence_index in seq_along(row$reviewer$evidence)) {
+      row$reviewer$evidence[[evidence_index]]$quote <- NULL
+    }
+    for (evidence_index in seq_along(row$adjudication$evidence)) {
+      row$adjudication$evidence[[evidence_index]]$quote <- NULL
+    }
+    tempest_promotion_proof_scan_value(
+      row,
+      paste0("proof$claim_reviews[[", index, "]]")
+    )
+  }
   invisible(TRUE)
 }
 
@@ -1256,11 +1366,13 @@ tempest_promotion_restore_proof <- function(proof) {
     tempest_promotion_claim_support_proof_fields(),
     "Promotion claim-support proof"
   )
+  review_rows <- tempest_promotion_review_proof_rows(proof$claim_reviews)
   tempest_promotion_validate_proof_credentials(
     resource_rows,
     claim_rows,
     span_rows,
-    support_rows
+    support_rows,
+    review_rows
   )
   restored <- tryCatch(
     list(
@@ -1273,6 +1385,10 @@ tempest_promotion_restore_proof <- function(proof) {
       claim_supports = lapply(
         support_rows,
         tempest_claim_support_from_list
+      ),
+      claim_reviews = lapply(
+        review_rows,
+        tempest_claim_review_from_data
       )
     ),
     error = function(error) {
@@ -1298,6 +1414,10 @@ tempest_promotion_restore_proof <- function(proof) {
     claim_supports = unname(lapply(
       supports,
       tempest_promotion_claim_support_proof_row
+    )),
+    claim_reviews = unname(lapply(
+      restored$claim_reviews,
+      tempest_promotion_claim_review_proof_row
     ))
   )
   if (
@@ -1307,7 +1427,8 @@ tempest_promotion_restore_proof <- function(proof) {
         resources = resource_rows,
         claims = claim_rows,
         evidence_spans = span_rows,
-        claim_supports = support_rows
+        claim_supports = support_rows,
+        claim_reviews = review_rows
       )
     )
   ) {
@@ -1319,13 +1440,17 @@ tempest_promotion_restore_proof <- function(proof) {
     resources = resources,
     claims = claims,
     evidence_spans = spans,
-    claim_supports = supports
+    claim_supports = supports,
+    claim_reviews = restored$claim_reviews
   )
   id_accessors <- list(
     resources = function(value) value@resource_id,
     claims = function(value) value@claim_id,
     evidence_spans = function(value) value@evidence_span_id,
-    claim_supports = function(value) value@claim_support_id
+    claim_supports = function(value) value@claim_support_id,
+    claim_reviews = function(value) {
+      tempest_claim_review_record(value)$review_id
+    }
   )
   for (field in names(values)) {
     ids <- vapply(values[[field]], id_accessors[[field]], character(1))
@@ -1347,6 +1472,7 @@ tempest_promotion_restore_proof <- function(proof) {
     unname(values$claims),
     unname(values$evidence_spans)
   )
+  workspace$replace_claim_reviews(unname(values$claim_reviews))
   values$workspace <- workspace
   values
 }
@@ -1401,14 +1527,48 @@ tempest_promotion_expected_proof_ids <- function(stage_records, proof) {
     )
   }
   resource_ids <- sort(
-    unique(vapply(spans, function(span) span@source_id, character(1))),
+    unique(c(
+      vapply(spans, function(span) span@source_id, character(1)),
+      unlist(
+        lapply(proof$claim_reviews, function(review) {
+          record <- tempest_claim_review_record(review)
+          claim <- proof$claims[[record$claim_id]]
+          if (is.null(claim)) {
+            tempest_promotion_abort(
+              paste0(
+                "A claim review references a claim outside the exact ",
+                "stage-bound promotion proof."
+              )
+            )
+          }
+          if (!identical(claim@claim_text, record$claim_text)) {
+            tempest_promotion_abort(
+              "A claim review does not bind the exact staged claim text."
+            )
+          }
+          c(
+            vapply(record$dossier, `[[`, character(1), "source_id"),
+            record$repair$source_ids
+          )
+        }),
+        use.names = FALSE
+      )
+    )),
     method = "radix"
   )
   list(
     resources = resource_ids,
     claims = claim_ids,
     evidence_spans = span_ids,
-    claim_supports = sort(support_ids, method = "radix")
+    claim_supports = sort(support_ids, method = "radix"),
+    claim_reviews = unname(sort(
+      vapply(
+        proof$claim_reviews,
+        function(review) tempest_claim_review_record(review)$review_id,
+        character(1)
+      ),
+      method = "radix"
+    ))
   )
 }
 
@@ -1418,7 +1578,8 @@ tempest_promotion_validate_stage_proof <- function(stage_records, proof) {
     resources = names(proof$resources),
     claims = names(proof$claims),
     evidence_spans = names(proof$evidence_spans),
-    claim_supports = names(proof$claim_supports)
+    claim_supports = names(proof$claim_supports),
+    claim_reviews = names(proof$claim_reviews)
   )
   if (!identical(expected_ids, actual_ids)) {
     tempest_promotion_abort(
@@ -1991,12 +2152,14 @@ tempest_promotion_research_context <- function(research) {
 #' Build a deterministic proposal for reviewed Graft promotion
 #'
 #' `tempest_promotion_bundle()` validates a completed research product and
-#' packages only promotable claims and their exact pair-level evidence. It does
-#' not write accepted knowledge. Publish with [tempest_publish_artifact_research()]
-#' and call `graft::graft_accept()` after host review.
-#' Loose Workspace, Manifest, or StageRecord tuples are not accepted. The
-#' promotion payload remains the exact schema-1 evidence-only product shape;
-#' the terminal report is an eligibility gate and is not copied into it.
+#' packages promotable claims and their exact pair-level evidence, with
+#' advisory claim reviews and their retained source dossiers. Reviews remain
+#' separate from scientific claims and claim support; they do not change
+#' promotion eligibility. It does not write accepted knowledge. Publish with
+#' [tempest_publish_artifact_research()] and call `graft::graft_accept()` after
+#' host review. Loose Workspace, Manifest, or StageRecord tuples are not
+#' accepted. The schema-2 payload retains complete review context while keeping
+#' the terminal report as an eligibility gate rather than copying it.
 #'
 #' @param research A completed result returned by [tempest_run()] or a succeeded
 #'   `TempestSession` returned by [tempest_session()]. Tempest requires the
@@ -2005,7 +2168,9 @@ tempest_promotion_research_context <- function(research) {
 #' @param claim_ids Optional exact claim selection. By default all supported or
 #'   partially supported claims are selected. Selection must be closed over
 #'   every output bound by each retained extraction and verification record;
-#'   Tempest rejects a partial stage-output selection.
+#'   Tempest rejects a partial stage-output selection. Advisory reviews for
+#'   claims in the selected stage-bound proof are retained; reviews of other
+#'   claims remain with the complete research product.
 #' @return A deterministic `TempestPromotionBundle` proposal.
 #' @export
 tempest_promotion_bundle <- function(research, claim_ids = NULL) {

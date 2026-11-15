@@ -244,6 +244,18 @@ tempest_product_authority_validate <- function(
         min_support_score = threshold
       )
       claims <- workspace$list_proposed_claims()
+      if (isTRUE(completed) && !is.null(config)) {
+        expected_reviews <- if (isTRUE(config@research_review)) {
+          min(config@max_review_claims, length(claims))
+        } else {
+          0L
+        }
+        if (length(workspace$list_claim_reviews()) != expected_reviews) {
+          tempest_stage_record_abort(
+            "The completed product does not retain the configured scientific review coverage."
+          )
+        }
+      }
       supports <- workspace$list_claim_supports()
       passing_support <- vapply(
         supports,

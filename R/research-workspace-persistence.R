@@ -47,6 +47,12 @@ tempest_research_workspace_dispute_record <- function(dispute) {
   )
 }
 
+tempest_research_workspace_claim_review_record <- function(review) {
+  record <- tempest_claim_review_record(review)
+  record$repair$source_ids <- unname(as.list(record$repair$source_ids))
+  record
+}
+
 #' @keywords internal
 tempest_research_workspace_validate_noncontent <- function(
   workspace,
@@ -143,7 +149,8 @@ tempest_research_workspace_snapshot_fields <- function() {
     "proposed_claims",
     "evidence_spans",
     "claim_supports",
-    "disputes"
+    "disputes",
+    "claim_reviews"
   )
 }
 
@@ -172,7 +179,7 @@ tempest_research_workspace_snapshot <- function(workspace) {
   ))
 
   snapshot <- list(
-    schema_version = 7L,
+    schema_version = 8L,
 
     max_sources = tempest_research_workspace_max_sources_data(
       workspace$max_sources
@@ -195,6 +202,10 @@ tempest_research_workspace_snapshot <- function(workspace) {
     disputes = lapply(
       workspace$list_disputes(),
       tempest_research_workspace_dispute_record
+    ),
+    claim_reviews = lapply(
+      workspace$list_claim_reviews(),
+      tempest_research_workspace_claim_review_record
     )
   )
   snapshot <- tryCatch(
@@ -239,7 +250,7 @@ tempest_research_workspace_restore_schema <- function(snapshot) {
     ),
     minimum = 0L
   )
-  if (!identical(value, 7L)) {
+  if (!identical(value, 8L)) {
     tempest_product_unsupported_format_abort(
       "ResearchWorkspace snapshot format",
       value,
@@ -268,7 +279,7 @@ tempest_research_workspace_require_current_schema <- function(
     paste0(what, " schema version"),
     class
   )
-  if (!identical(schema_version, 7L)) {
+  if (!identical(schema_version, 8L)) {
     tempest_product_unsupported_format_abort(
       paste0(what, " format"),
       schema_version,
@@ -329,6 +340,7 @@ tempest_research_workspace_record_fields <- function(field) {
       "rationale"
     ),
     disputes = tempest_dispute_record_fields(),
+    claim_reviews = tempest_claim_review_record_fields(),
     tempest_research_workspace_restore_abort(
       "Unknown workspace record field {.field {field}}."
     )
@@ -338,15 +350,47 @@ tempest_research_workspace_record_fields <- function(field) {
 #' @keywords internal
 tempest_research_workspace_exact_records <- function(records, field) {
   fields <- tempest_research_workspace_record_fields(field)
-  ordered <- is.list(records) &&
-    !is.data.frame(records) &&
-    is.null(names(records)) &&
-    all(vapply(
-      records,
-      \(record) identical(names(record), fields),
-      logical(1)
-    ))
-  if (!isTRUE(ordered)) {
+  if (identical(field, "claim_reviews")) {
+    record_shapes <- is.list(records) &&
+      !is.data.frame(records) &&
+      is.null(names(records)) &&
+      all(vapply(
+        records,
+        function(record) {
+          is.list(record) &&
+            !is.data.frame(record) &&
+            !is.null(names(record)) &&
+            !anyNA(names(record)) &&
+            !anyDuplicated(names(record)) &&
+            length(record) == length(fields) &&
+            setequal(names(record), fields)
+        },
+        logical(1)
+      ))
+    if (isTRUE(record_shapes)) {
+      records <- lapply(records, function(record) {
+        tryCatch(
+          tempest_claim_review_normalize_record(record),
+          error = function(error) {
+            tempest_research_workspace_restore_abort(
+              "Claim-review records do not match the current nested schema.",
+              parent = error
+            )
+          }
+        )
+      })
+    }
+  } else {
+    record_shapes <- is.list(records) &&
+      !is.data.frame(records) &&
+      is.null(names(records)) &&
+      all(vapply(
+        records,
+        \(record) identical(names(record), fields),
+        logical(1)
+      ))
+  }
+  if (!isTRUE(record_shapes)) {
     tempest_research_workspace_restore_abort(paste0(
       "Workspace ",
       gsub("_", "-", field),
@@ -1035,6 +1079,40 @@ tempest_research_workspace_restore <- function(
     candidate$.__enclos_env__$private$claims_value <- restored_claims_value
   }
 
+  claim_review_records <- tempest_research_workspace_restore_records(
+    snapshot,
+    "claim_reviews"
+  )
+  claim_review_records <- tempest_research_workspace_exact_records(
+    claim_review_records,
+    "claim_reviews"
+  )
+  tempest_research_workspace_unique_record_ids(
+    claim_review_records,
+    "review_id",
+    "Claim-review records"
+  )
+  claim_reviews <- lapply(seq_along(claim_review_records), function(index) {
+    tryCatch(
+      tempest_claim_review_from_data(claim_review_records[[index]]),
+      error = function(error) {
+        tempest_research_workspace_restore_abort(
+          paste0("Claim-review entry ", index, " is invalid."),
+          parent = error
+        )
+      }
+    )
+  })
+  tryCatch(
+    candidate$replace_claim_reviews(claim_reviews),
+    error = function(error) {
+      tempest_research_workspace_restore_abort(
+        "{.field claim_reviews} cannot be restored.",
+        parent = error
+      )
+    }
+  )
+
   tryCatch(
     candidate$validate_integrity(),
     error = function(error) {
@@ -1057,6 +1135,7 @@ tempest_research_workspace_restore <- function(
     "evidence_spans_value",
     "claim_supports_value",
     "disputes_value",
+    "claim_reviews_value",
     "max_sources_value",
     "claims_by_source",
 

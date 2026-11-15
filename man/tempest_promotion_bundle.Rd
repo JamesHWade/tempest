@@ -15,17 +15,21 @@ report, configuration, and publication authority.}
 \item{claim_ids}{Optional exact claim selection. By default all supported or
 partially supported claims are selected. Selection must be closed over
 every output bound by each retained extraction and verification record;
-Tempest rejects a partial stage-output selection.}
+Tempest rejects a partial stage-output selection. Advisory reviews for
+claims in the selected stage-bound proof are retained; reviews of other
+claims remain with the complete research product.}
 }
 \value{
 A deterministic \code{TempestPromotionBundle} proposal.
 }
 \description{
 \code{tempest_promotion_bundle()} validates a completed research product and
-packages only promotable claims and their exact pair-level evidence. It does
-not write accepted knowledge. Publish with \code{\link[=tempest_publish_artifact_research]{tempest_publish_artifact_research()}}
-and call \code{graft::graft_accept()} after host review.
-Loose Workspace, Manifest, or StageRecord tuples are not accepted. The
-promotion payload remains the exact schema-1 evidence-only product shape;
-the terminal report is an eligibility gate and is not copied into it.
+packages promotable claims and their exact pair-level evidence, with
+advisory claim reviews and their retained source dossiers. Reviews remain
+separate from scientific claims and claim support; they do not change
+promotion eligibility. It does not write accepted knowledge. Publish with
+\code{\link[=tempest_publish_artifact_research]{tempest_publish_artifact_research()}} and call \code{graft::graft_accept()} after
+host review. Loose Workspace, Manifest, or StageRecord tuples are not
+accepted. The schema-2 payload retains complete review context while keeping
+the terminal report as an eligibility gate rather than copying it.
 }

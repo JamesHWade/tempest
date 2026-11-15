@@ -24,11 +24,11 @@ test_that("extracted Co-STORM archives require the exact current product", {
 
   invalid_headers <- list(
     old_schema = function(manifest) {
-      manifest$schema_version <- 9L
+      manifest$schema_version <- 13L
       manifest
     },
     future_schema = function(manifest) {
-      manifest$schema_version <- 14L
+      manifest$schema_version <- 15L
       manifest
     },
     wrong_bundle_type = function(manifest) {
