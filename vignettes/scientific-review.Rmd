@@ -60,6 +60,10 @@ A dossier contains at most 12 sources and 20,000 characters per source. It is
 bounded context, not a claim that every method or result in a paper was read.
 Custom retrievers used for repair must return captured resources without
 mutating the publication workspace; Tempest admits validated additions itself.
+Accepted Graft knowledge remains outside review dossiers. A knowledge-backed
+run can review claims grounded in retrieved sources, but accepted records are
+not added as optional evidence. A selected claim that requires an accepted
+record as evidence fails explicitly before review calls begin.
 
 ## Read the result
 

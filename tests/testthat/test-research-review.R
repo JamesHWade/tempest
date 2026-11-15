@@ -606,3 +606,94 @@ test_that("disabled review returns existing records without model or retrieval c
   expect_identical(length(model$requests), requests)
   expect_identical(length(model$chat_calls), chats)
 })
+
+test_that("optional accepted artifacts stay out of the review dossier", {
+  workspace <- tempest_research_workspace()
+  fake_accepted_claim(
+    workspace,
+    "An accepted artifact statement.",
+    record_id = "claim:review.accepted"
+  )
+  accepted <- Filter(
+    tempest:::tempest_is_accepted_knowledge_resource,
+    workspace$list_retrieved_resources()
+  )[[1L]]
+  web <- test_review_source_record(
+    "https://example.invalid/review-web-source",
+    "Captured empirical text for the web claim."
+  )
+  workspace$upsert_retrieved_resource(web)
+  claim <- tempest_claim(
+    claim_text = "A scientific claim backed by a web source.",
+    source_ids = web@resource_id,
+    claim_id = "claim.review.artifact-context",
+    created_at = "2026-11-14T12:02:00Z"
+  )
+  workspace$add_proposed_claim(claim)
+  model <- test_review_mock_models()
+
+  reviews <- tempest:::tempest_research_review_await(
+    tempest:::tempest_research_review_async(
+      workspace,
+      test_review_retriever(),
+      test_review_config()
+    )
+  )
+  record <- tempest_claim_review_record(reviews[[1L]])
+  reviewer_request <- Filter(
+    function(request) identical(request$role, "reviewer"),
+    model$requests
+  )[[1L]]
+  requested_dossier <- test_review_dossier(
+    reviewer_request$inputs$dossier
+  )
+
+  expect_length(reviews, 1L)
+  expect_identical(
+    vapply(requested_dossier, `[[`, character(1), "source_id"),
+    web@resource_id
+  )
+  expect_identical(
+    vapply(record$dossier, `[[`, character(1), "source_id"),
+    web@resource_id
+  )
+  expect_identical(
+    is.null(workspace$get_retrieved_resource(accepted@resource_id)),
+    FALSE
+  )
+  expect_length(workspace$list_claim_reviews(), 1L)
+})
+
+test_that("a required accepted artifact source fails before model calls", {
+  workspace <- tempest_research_workspace()
+  fake_accepted_claim(
+    workspace,
+    "An accepted artifact statement.",
+    record_id = "claim:review.required"
+  )
+  accepted <- Filter(
+    tempest:::tempest_is_accepted_knowledge_resource,
+    workspace$list_retrieved_resources()
+  )[[1L]]
+  claim <- tempest_claim(
+    claim_text = "A claim citing an accepted artifact source.",
+    source_ids = accepted@resource_id,
+    claim_id = "claim.review.required-artifact",
+    created_at = "2026-11-14T12:02:00Z"
+  )
+  workspace$add_proposed_claim(claim)
+  model <- test_review_mock_models()
+
+  expect_error(
+    tempest:::tempest_research_review_async(
+      workspace,
+      test_review_retriever(),
+      test_review_config()
+    ),
+    regexp = "Required accepted Graft knowledge",
+    class = "tempest_research_review_error"
+  )
+  expect_length(model$requests, 0L)
+  expect_length(model$chat_calls, 0L)
+  expect_length(workspace$list_claim_reviews(), 0L)
+})

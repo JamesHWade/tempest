@@ -228,3 +228,12 @@ namespace reuse during evaluation. A serial combined regression gate passed
 277 assertions while retaining valid S7 objects across real fake-chat GEPA
 execution and subsequent product operations. No live provider evaluation or
 scientific accuracy improvement is claimed.
+
+PR review then identified two additional boundary defects. Optional accepted
+Graft artifacts are now excluded from review dossiers; required accepted
+sources fail before model calls. Missing trace-event telemetry stays unknown,
+while an explicitly retained empty event collection counts as zero. Independent
+review accepted both corrections. The combined review/evaluation regression
+gate passed 312 assertions with no failures, warnings, or skips, followed by a
+fresh package check with zero errors, warnings, or notes and a successful
+pkgdown reference check.

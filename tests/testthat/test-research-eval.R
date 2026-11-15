@@ -137,8 +137,7 @@ test_that("provider failures are nonresponses, not correct unverifiable decision
   failed <- eval$research_eval_extract_evaluation_predictions(
     list(
       predictions = rep(list(NULL), nrow(rows)),
-      metadata = rep(list(list(error = "provider failed")), nrow(rows)),
-      traces = rep(list(NULL), nrow(rows))
+      metadata = rep(list(list(error = "provider failed")), nrow(rows))
     ),
     rows
   )
@@ -155,6 +154,18 @@ test_that("provider failures are nonresponses, not correct unverifiable decision
   expect_equal(summary$overall$coverage$rate, 0)
   expect_identical(summary$overall$false_abstention$count, 0L)
   expect_identical(summary$overall$correct_unverifiable$count, 0L)
+  expect_identical(
+    summary$cost_and_trace$trace_event_count$observed_sum,
+    NA_real_
+  )
+  expect_identical(
+    summary$cost_and_trace$trace_event_count$observed_rows,
+    0L
+  )
+  expect_identical(
+    summary$cost_and_trace$trace_event_count$unknown_rows,
+    nrow(rows)
+  )
   challenge_failures <- vapply(
     summary$by_challenge,
     function(item) item$execution_errors$count,
@@ -180,6 +191,40 @@ test_that("provider failures are nonresponses, not correct unverifiable decision
     malformed_summary$overall$execution_errors$count,
     nrow(rows)
   )
+})
+
+test_that("trace event counts distinguish missing telemetry from an empty trace", {
+  context <- research_eval_test_context()
+  skip_if(
+    is.null(context),
+    "developer harness is excluded from source tarballs"
+  )
+  eval <- context$eval
+  corpus <- eval$research_eval_read_corpus(context$corpus_path)
+  rows <- eval$research_eval_split_data(corpus, "test")
+  traces <- rep(list(NULL), nrow(rows))
+  traces[[1L]] <- list(events = list())
+  traces[[2L]] <- list(metadata = list())
+  predictions <- eval$research_eval_extract_evaluation_predictions(
+    list(
+      predictions = lapply(rows$expected_status, function(status) {
+        list(status = status)
+      }),
+      metadata = rep(list(list()), nrow(rows)),
+      traces = traces
+    ),
+    rows
+  )
+  summary <- eval$research_eval_summarize(predictions, rows)
+  event_counts <- summary$cost_and_trace$trace_event_count
+
+  expect_identical(predictions$trace_event_count[[1L]], 0)
+  expect_identical(predictions$trace_event_count[[2L]], NA_real_)
+  expect_identical(predictions$trace_event_count[[3L]], NA_real_)
+  expect_identical(event_counts$observed_sum, 0)
+  expect_identical(event_counts$observed_mean, 0)
+  expect_identical(event_counts$observed_rows, 1L)
+  expect_identical(event_counts$unknown_rows, nrow(rows) - 1L)
 })
 
 test_that("offline selfcheck writes corpus and model provenance without program claims", {

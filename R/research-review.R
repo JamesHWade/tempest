@@ -110,11 +110,6 @@ tempest_research_review_reviewer_module <- function() {
         "scope, measurement, causal, statistical, or interpretation flaws.",
         "Use only the supplied captured-source dossier. Cite every factual",
         "finding with exact source_id and verbatim contiguous quote pairs.",
-        "A locator beginning with artifact/ identifies retained Graft",
-        "records: treat those only as background context, not primary",
-        "empirical evidence or authority to change support or acceptance.",
-        "If original empirical sources are unavailable, report",
-        "insufficient_evidence rather than treating accepted context as proof.",
         "Use no_issue only to mean that this review found no concrete issue;",
         "it does not establish that the claim is scientifically true.",
         "Use insufficient_evidence when the supplied sources cannot resolve",
@@ -157,9 +152,7 @@ tempest_research_review_adjudicator_module <- function() {
         "evidence. Use dismissed when a proposed concern is not established,",
         "unresolved when evidence is insufficient, and no_issue only when",
         "the reviewer found no issue. no_issue is not a conclusion that the",
-        "claim is true. Treat artifact/ locators as retained Graft context,",
-        "not primary empirical evidence or authority to change support or",
-        "acceptance; say unresolved if the underlying source is unavailable.",
+        "claim is true. Say unresolved if the underlying source is unavailable.",
         "Return exact source quotes for any evidence cited.",
         sep = "\n"
       )
@@ -621,7 +614,21 @@ tempest_research_review_claim_dossier <- function(
       "Claim dossier requires more than {.val {max_sources}} sources."
     )
   }
-  optional_ids <- setdiff(sort(names(resources)), required_ids)
+  accepted_ids <- names(resources)[vapply(
+    resources,
+    tempest_is_accepted_knowledge_resource,
+    logical(1)
+  )]
+  required_accepted_ids <- intersect(required_ids, accepted_ids)
+  if (length(required_accepted_ids) > 0L) {
+    tempest_research_review_abort(
+      paste0(
+        "Required accepted Graft knowledge cannot enter a scientific review",
+        " dossier."
+      )
+    )
+  }
+  optional_ids <- setdiff(sort(names(resources)), c(required_ids, accepted_ids))
   optional_ids <- setdiff(optional_ids, exclude_optional_source_ids)
   total_limit <- max(length(required_ids), max_sources - reserve_sources)
   total_limit <- min(max_sources, total_limit)

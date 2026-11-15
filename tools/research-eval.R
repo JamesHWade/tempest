@@ -699,11 +699,24 @@ research_eval_extract_evaluation_predictions <- function(evaluation, rows) {
       list()
     }
     trace <- if (length(traces) >= index) {
-      research_eval_or_null(traces[[index]], list())
+      traces[[index]]
+    } else {
+      NULL
+    }
+    trace_is_list <- is.list(trace) && !is.data.frame(trace)
+    trace_metadata <- if (trace_is_list) {
+      research_eval_or_null(trace$metadata, list())
     } else {
       list()
     }
-    trace_metadata <- research_eval_or_null(trace$metadata, list())
+    has_trace_events <- trace_is_list &&
+      "events" %in% names(trace) &&
+      !is.null(trace[["events"]])
+    trace_event_count <- if (has_trace_events) {
+      as.double(length(trace[["events"]]))
+    } else {
+      NA_real_
+    }
     get_numeric <- function(field) {
       value <- research_eval_or_null(
         row_metadata[[field]],
@@ -759,9 +772,7 @@ research_eval_extract_evaluation_predictions <- function(evaluation, rows) {
       provider_reported_cost = get_numeric("cost"),
       duration_s = get_numeric("duration_s"),
       latency_ms = get_numeric("latency_ms"),
-      trace_event_count = as.double(length(
-        research_eval_or_null(trace$events, list())
-      )),
+      trace_event_count = trace_event_count,
       execution_error = execution_error,
       stringsAsFactors = FALSE
     )
