@@ -137,3 +137,55 @@ test_that("list and validate reports name both tiers", {
     "Integration/full tier"
   )
 })
+
+test_that("the tier script fixture works without a source tools directory", {
+  root <- withr::local_tempdir()
+  testthat_dir <- file.path(root, "tests", "testthat")
+  dir.create(testthat_dir, recursive = TRUE)
+  file.copy(
+    file.path(test_tier_package_root(), "DESCRIPTION"),
+    root,
+    overwrite = TRUE
+  )
+  writeLines(
+    'test_that("tier fixture probe", { expect_identical(1L, 1L) })',
+    file.path(testthat_dir, "test-probe.R")
+  )
+
+  fixture <- test_tier_fixture(root)
+  expect_identical(fixture$root, normalizePath(root, winslash = "/"))
+  expect_identical(file.exists(file.path(root, "tools", "test-tier.R")), FALSE)
+
+  manifest <- fixture$tier$test_tier_manifest(
+    fixture$root,
+    unit_files = "test-probe.R"
+  )
+  expect_identical(manifest$inventory, "test-probe.R")
+  expect_identical(manifest$unit, "test-probe.R")
+  expect_length(manifest$full, 0L)
+})
+
+test_that("test-tier package root supports R CMD check staging", {
+  check_root <- withr::local_tempdir()
+  source_root <- file.path(check_root, "00_pkg_src", "tempest")
+  testthat_dir <- file.path(source_root, "tests", "testthat")
+  dir.create(testthat_dir, recursive = TRUE)
+  file.copy(
+    file.path(test_tier_package_root(), "DESCRIPTION"),
+    source_root,
+    overwrite = TRUE
+  )
+  writeLines(
+    'test_that("tier fixture probe", { expect_identical(1L, 1L) })',
+    file.path(testthat_dir, "test-probe.R")
+  )
+
+  package_root <- test_tier_package_root(check_root)
+  expect_identical(package_root, normalizePath(source_root, winslash = "/"))
+
+  fixture <- test_tier_fixture(package_root)
+  expect_identical(
+    fixture$tier$test_tier_inventory(fixture$root),
+    "test-probe.R"
+  )
+})
