@@ -331,7 +331,7 @@ See `vignette("enriched-research")` for the plan contract and an offline botanic
 example with real R calculations, repeated-measures limitations, and a generated
 illustration.
 
-See the [supervised live qualification report](https://jameshwade.github.io/tempest/assets/live-research/index.html)
+See the [supervised live qualification report](https://jameshwade.github.io/tempest/live-research/index.html)
 for a reader edition built from a live Tempest research run. It records the
 additional source preparation, review, extraction, analysis, and reader synthesis
 used for that example; it is not an unattended benchmark or the expected output

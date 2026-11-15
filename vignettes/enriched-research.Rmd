@@ -255,7 +255,7 @@ saved analysis scripts before supplying a reviewed plan in a new
 
 ## A supervised live qualification report
 
-The [hosted reader edition](https://jameshwade.github.io/tempest/assets/live-research/index.html)
+The [hosted reader edition](https://jameshwade.github.io/tempest/live-research/index.html)
 links to the evidence briefing, executed analysis, and downloadable outputs.
 It was produced from a live research run using `gpt-6.1-sol` for the research
 roles, enrichment planning, and an additional reader-synthesis call, and
