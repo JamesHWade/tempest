@@ -141,14 +141,58 @@ test_that("enriched reports preserve provenance and render as a portable dossier
   expect_match(html, "analysis.R", fixed = TRUE)
   expect_match(html, "download=\"output-1.png\"", fixed = TRUE)
   expect_match(html, "Slope sensitivity — Computed figure", fixed = TRUE)
+  expect_match(html, "Observed console output", fixed = TRUE)
+  expect_match(
+    html,
+    "The model returned a finite slope.",
+    fixed = TRUE
+  )
+  expect_length(
+    xml2::xml_find_all(
+      document,
+      "//details[summary[contains(., 'Observed console output')]]"
+    ),
+    2L
+  )
   expect_match(
     html,
     "AI-generated illustration · Not scientific evidence",
     fixed = TRUE
   )
-  expect_match(html, "@media(max-width:800px)", fixed = TRUE)
+  expect_match(html, "@media(max-width:1000px)", fixed = TRUE)
   expect_match(html, "@media print{", fixed = TRUE)
   expect_match(html, "name=\"viewport\"", fixed = TRUE)
+  expect_length(
+    xml2::xml_find_all(document, "//a[@href='#report-content']"),
+    1L
+  )
+  expect_length(
+    xml2::xml_find_all(
+      document,
+      "//main[@id='report-content'][@tabindex='-1']"
+    ),
+    1L
+  )
+  expect_length(
+    xml2::xml_find_all(
+      document,
+      "//p[normalize-space(.)='A proposed synthesis with limits stated up front.']"
+    ),
+    1L
+  )
+  expect_length(
+    xml2::xml_find_all(
+      document,
+      "//section[@id='illustrations']//img[@src='illustrations/overview.png']"
+    ),
+    1L
+  )
+  expect_length(
+    xml2::xml_find_all(document, "//img[@src='illustrations/overview.png']"),
+    1L
+  )
+  expect_identical(grepl("hero-art", html, fixed = TRUE), FALSE)
+  expect_match(html, "Illustration prompt and provenance", fixed = TRUE)
   expect_match(
     html,
     "alt=\"A diagram connecting research sources",

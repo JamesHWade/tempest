@@ -467,22 +467,22 @@ tempest_enriched_render_analysis <- function(task, directory, sources) {
     )
   } else {
     output <- tempest_enriched_render_text(task$output)
-    if (nzchar(output)) {
-      body <- c(
-        body,
-        list(htmltools::tags$div(
-          class = "analysis-output",
-          htmltools::tags$h4("Observed output"),
-          htmltools::tags$pre(htmltools::tags$code(output))
-        ))
-      )
-    }
     if (length(figure_cards) > 0L) {
       body <- c(
         body,
         list(htmltools::tags$div(
           class = "analysis-figures",
           htmltools::tagList(figure_cards)
+        ))
+      )
+    }
+    if (nzchar(output)) {
+      body <- c(
+        body,
+        list(htmltools::tags$details(
+          class = "method-details analysis-output",
+          htmltools::tags$summary("Observed console output"),
+          htmltools::tags$pre(htmltools::tags$code(output))
         ))
       )
     }
@@ -593,6 +593,13 @@ tempest_enriched_render_illustration <- function(task, directory) {
       "No bundled image file was available for this task."
     )
   }
+  prompt <- tempest_enriched_render_text(task$prompt)
+  metadata <- as.character(jsonlite::toJSON(
+    task$metadata %||% list(),
+    auto_unbox = TRUE,
+    pretty = TRUE,
+    null = "null"
+  ))
   htmltools::tags$article(
     class = "illustration-card",
     htmltools::tags$div(
@@ -603,7 +610,13 @@ tempest_enriched_render_illustration <- function(task, directory) {
         status
       )
     ),
-    content
+    content,
+    htmltools::tags$details(
+      class = "method-details illustration-provenance",
+      htmltools::tags$summary("Illustration prompt and provenance"),
+      if (nzchar(prompt)) htmltools::tags$p(prompt),
+      htmltools::tags$pre(htmltools::tags$code(metadata))
+    )
   )
 }
 
@@ -697,145 +710,169 @@ tempest_enriched_render_download_section <- function(directory, files) {
 
 tempest_enriched_render_styles <- function() {
   paste0(
-    ":root{color-scheme:light;--paper:#f4f0e8;--paper-deep:#e9e2d5;",
-    "--ink:#142738;--muted:#5e6c72;--teal:#246b68;--teal-soft:#dce9e4;",
-    "--gold:#bb8744;--line:#d7d0c3;--white:#fffdf8;--danger:#8d443a;",
-    "--shadow:0 18px 48px rgba(24,39,51,.08)}",
-    "*{box-sizing:border-box}html{scroll-behavior:smooth}",
+    ":root{color-scheme:light;--paper:#fff;--ink:#202a35;",
+    "--muted:#5b6570;--line:#e0e5eb;--accent:#245ea8;",
+    "--accent-dark:#194a87;--danger:#a13f38;--soft:#f5f7fa;",
+    "--serif:Georgia,'Iowan Old Style','Palatino Linotype',serif;",
+    "--sans:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}",
+    "*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1rem}",
     "body{margin:0;background:var(--paper);color:var(--ink);",
-    "font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,",
-    "'Segoe UI',sans-serif;line-height:1.65}",
-    "a{color:var(--teal);text-decoration-thickness:.08em;",
-    "text-underline-offset:.18em}a:hover{color:#174f4c}",
+    "font-family:var(--sans);font-size:1rem;line-height:1.6}",
+    "a{color:var(--accent);text-decoration-thickness:.07em;",
+    "text-underline-offset:.18em}a:hover{color:var(--accent-dark)}",
+    ".skip-link{position:fixed;z-index:5;top:.75rem;left:.75rem;",
+    "padding:.65rem .9rem;background:var(--ink);color:#fff;",
+    "transform:translateY(-160%)}.skip-link:focus{transform:none}",
     ".masthead{display:flex;align-items:center;justify-content:space-between;",
-    "gap:1rem;padding:1.2rem max(1.4rem,calc((100vw - 1240px)/2));",
-    "border-bottom:1px solid var(--line);font-size:.76rem;letter-spacing:.14em;",
-    "text-transform:uppercase}.brand{font-weight:800;color:var(--ink)}",
-    ".edition{color:var(--muted);letter-spacing:.08em}",
-    ".page{max-width:1240px;margin:0 auto;padding:0 1.5rem 5rem}",
-    ".hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);",
-    "gap:clamp(2rem,6vw,5rem);align-items:center;padding:clamp(3.5rem,8vw,7.5rem) 0 3.5rem}",
-    ".eyebrow{margin:0 0 .7rem;color:var(--teal);font-size:.73rem;",
-    "font-weight:800;letter-spacing:.14em;text-transform:uppercase}",
-    "h1,h2,h3,h4{font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif;",
-    "font-weight:500;line-height:1.12;letter-spacing:-.025em}",
-    "h1{max-width:16ch;margin:.2rem 0 1.35rem;font-size:clamp(2.7rem,7vw,5.8rem)}",
-    ".hero-summary{max-width:66ch;margin:0;color:#374c58;font-size:1.14rem}",
-    ".hero-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;margin-top:1.7rem}",
-    ".status-pill,.meta-pill{display:inline-flex;align-items:center;gap:.4rem;",
-    "padding:.36rem .7rem;border:1px solid var(--line);border-radius:99px;",
-    "background:rgba(255,253,248,.7);color:var(--muted);font-size:.74rem;",
-    "font-weight:700;letter-spacing:.06em;text-transform:uppercase}",
-    ".status-pill.succeeded{border-color:#b4d0c4;background:#e4efe9;color:#235f50}",
-    ".status-pill.failed{border-color:#dfb8ad;background:#f5e6e0;color:var(--danger)}",
-    ".status-pill.skipped{background:#eee9de}.hero-art{margin:0;padding:.7rem;",
-    "border:1px solid var(--line);background:var(--white);box-shadow:var(--shadow);",
-    "transform:rotate(1.2deg)}.hero-art img{display:block;width:100%;max-height:440px;",
-    "object-fit:cover;background:var(--paper-deep)}.hero-art figcaption{padding:.85rem .35rem .25rem;",
-    "color:var(--muted);font-family:Georgia,serif;font-size:.94rem}",
-    ".generated-label{display:block;margin-bottom:.35rem;color:var(--teal);",
-    "font-family:ui-sans-serif,system-ui,sans-serif;font-size:.63rem;font-weight:850;",
-    "letter-spacing:.1em;text-transform:uppercase}",
-    ".hero-art figcaption p{margin:.25rem 0 0;font-family:inherit;font-size:.82rem}",
-    ".summary-band{display:grid;grid-template-columns:180px 1fr;gap:1.5rem;",
-    "padding:1.8rem 2rem;margin:0 0 4rem;border-left:4px solid var(--gold);",
-    "background:var(--white);box-shadow:var(--shadow)}.summary-band h2{margin:0;font-size:1.25rem}",
-    ".summary-band p{margin:0;color:#354955;font-size:1.04rem}",
-    ".summary-label{display:block;color:var(--gold);font-size:.68rem;",
-    "font-weight:800;letter-spacing:.13em;text-transform:uppercase}",
-    ".report-layout{display:grid;grid-template-columns:210px minmax(0,1fr);",
-    "gap:clamp(2rem,5vw,5.5rem)}.rail{align-self:start;position:sticky;top:1.5rem;",
-    "padding:1rem 0;border-top:2px solid var(--ink)}.rail-label{margin:0 0 .8rem;",
-    "font-size:.7rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}",
-    ".rail ol{margin:0;padding-left:1.2rem;color:var(--muted)}.rail li{margin:.48rem 0}",
-    ".rail a{color:inherit;text-decoration:none}.rail a:hover{color:var(--teal)}",
-    ".content,.content *{min-width:0}.content{overflow-wrap:anywhere}",
-    ".method-details>pre{max-width:100%;overflow:auto}",
-    ".content section{padding:0 0 3.8rem;margin:0 0 3.4rem;border-bottom:1px solid var(--line);",
-    "scroll-margin-top:2rem}.section-kicker{display:flex;align-items:center;gap:.75rem;",
-    "margin-bottom:.75rem;color:var(--teal);font-size:.72rem;font-weight:800;",
-    "letter-spacing:.14em;text-transform:uppercase}.section-kicker:before{content:'';",
-    "width:2.2rem;height:1px;background:var(--gold)}.content h2{margin:.1rem 0 1.5rem;",
-    "font-size:clamp(2rem,4vw,3.2rem)}.research-body{max-width:78ch;font-family:Georgia,",
-    "'Iowan Old Style',serif;font-size:1.04rem}.research-body h1,.research-body h2,",
-    ".research-body h3{margin:2rem 0 .8rem}.research-body p{margin:.8rem 0 1.2rem}",
-    ".research-body blockquote{margin:1.5rem 0;padding:.2rem 1.2rem;border-left:3px solid var(--gold);",
-    "color:#465d65}.research-body pre,.analysis-output pre{overflow:auto;padding:1rem 1.2rem;",
-    "border-radius:5px;background:#182c3a;color:#edf2ef;font: .86rem/1.6 ui-monospace,",
-    "SFMono-Regular,Menlo,monospace}.research-body code{padding:.1em .3em;background:var(--paper-deep);",
-    "border-radius:3px;font-family:ui-monospace,monospace;font-size:.88em}",
-    ".research-body pre code{padding:0;background:transparent}.research-body table{display:block;",
-    "max-width:100%;overflow-x:auto;border-collapse:collapse}.research-body th,",
-    ".research-body td{padding:.55rem .7rem;border:1px solid var(--line);text-align:left}",
-    ".research-body th{background:var(--paper-deep)}.analysis-list{display:grid;gap:1rem}",
-    ".analysis-card,.illustration-card,.source-card,.download-group{padding:1.4rem 1.5rem;",
-    "border:1px solid var(--line);background:var(--white);box-shadow:0 8px 24px rgba(24,39,51,.04)}",
+    "gap:1rem;max-width:1240px;margin:0 auto;padding:1.1rem 1.5rem;",
+    "border-bottom:1px solid var(--line);font-size:.76rem;letter-spacing:.04em}",
+    ".brand{color:var(--ink);font-weight:700}.edition{color:var(--muted)}",
+    ".page{max-width:1240px;margin:0 auto;padding:0 1.5rem 3.5rem}",
+    ".hero{max-width:none;margin:0;padding:clamp(3rem,7vw,5.5rem) 0 2rem}",
+    ".eyebrow{margin:0 0 .65rem;color:var(--accent);font-size:.72rem;",
+    "font-weight:700;letter-spacing:.11em;text-transform:uppercase}",
+    "h1,h2,h3,h4{font-family:var(--sans);font-weight:650;",
+    "line-height:1.2;letter-spacing:-.025em}",
+    "h1{max-width:25ch;margin:.1rem 0 1rem;font-size:clamp(2.6rem,6vw,4.5rem);",
+    "line-height:1.05;letter-spacing:-.045em}",
+    ".hero-meta{display:flex;flex-wrap:wrap;gap:.35rem .8rem;align-items:center;",
+    "margin-top:1.4rem;color:var(--muted);font-size:.78rem}",
+    ".status-pill,.meta-pill{display:inline-flex;align-items:center;padding:0;",
+    "border:0;background:transparent;color:inherit;font-size:inherit;font-weight:600}",
+    ".hero-meta>*+*:before{content:'\u00b7';margin-right:.8rem;color:#89939d}",
+    ".status-pill.failed{color:var(--danger)}",
+    ".summary-band{display:grid;grid-template-columns:minmax(150px,200px) minmax(0,1fr);",
+    "gap:2rem;max-width:none;margin:1rem 0 4rem;padding:1.4rem 0;",
+    "border-top:1px solid var(--line);border-bottom:1px solid var(--line)}",
+    ".summary-band h2{margin:.15rem 0 0;font-size:1.05rem;letter-spacing:-.01em}",
+    ".summary-band p{max-width:68ch;margin:0;font-family:var(--serif);",
+    "font-size:1.12rem;line-height:1.6}",
+    ".summary-label{display:block;color:var(--muted);font-size:.68rem;",
+    "font-weight:700;letter-spacing:.1em;text-transform:uppercase}",
+    ".report-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,220px);",
+    "gap:clamp(2rem,6vw,5rem);align-items:start}",
+    ".content,.content *{min-width:0}.content{grid-column:1;grid-row:1;",
+    "overflow-wrap:anywhere}.rail{grid-column:2;grid-row:1;align-self:start;",
+    "position:sticky;top:1.25rem;padding:0 0 0 1.1rem;border-left:1px solid var(--line)}",
+    ".rail-label{margin:0 0 .7rem;color:var(--muted);font-size:.69rem;",
+    "font-weight:700;letter-spacing:.09em;text-transform:uppercase}",
+    ".rail ol{margin:0;padding-left:1.15rem;color:var(--muted);font-size:.82rem}",
+    ".rail li{margin:.45rem 0}.rail a{color:inherit;text-decoration:none}",
+    ".rail a:hover{color:var(--accent);text-decoration:underline}",
+    ".content section{padding:0 0 3.5rem;margin:0 0 3rem;",
+    "border-bottom:1px solid var(--line);scroll-margin-top:1.5rem}",
+    ".section-kicker{margin:0 0 .65rem;color:var(--accent);font-size:.69rem;",
+    "font-weight:700;letter-spacing:.1em;text-transform:uppercase}",
+    ".content h2{max-width:700px;margin:.1rem 0 1.5rem;",
+    "font-size:clamp(1.65rem,3vw,2rem)}",
+    ".research-body{max-width:700px;font-family:var(--serif);",
+    "font-size:1.2rem;line-height:1.68}",
+    ".research-body h1,.research-body h2,.research-body h3,",
+    ".research-body h4,.research-body h5,.research-body h6{",
+    "margin:2.2rem 0 .8rem;font-family:var(--sans);font-weight:650}",
+    ".research-body h1{font-size:2rem}.research-body h2{font-size:1.65rem}",
+    ".research-body p{margin:.8rem 0 1.25rem}",
+    ".research-body blockquote{margin:1.5rem 0;padding:.1rem 1.1rem;",
+    "border-left:2px solid var(--accent);color:#46515d}",
+    ".research-body pre,.analysis-output pre{max-width:100%;overflow:auto;",
+    "padding:.9rem 1rem;border:1px solid var(--line);background:var(--soft);",
+    "color:var(--ink);font:.84rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}",
+    ".research-body code{padding:.1em .28em;background:var(--soft);",
+    "font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.86em}",
+    ".research-body pre code{padding:0;background:transparent}",
+    ".research-body table{display:block;max-width:100%;overflow-x:auto;",
+    "border-collapse:collapse}.research-body th,.research-body td{",
+    "padding:.5rem .65rem;border:1px solid var(--line);text-align:left}",
+    ".research-body th{background:var(--soft)}.analysis-list{display:block}",
+    ".analysis-card,.illustration-card{padding:1.4rem 0;border-top:1px solid var(--line)}",
+    ".analysis-card>.task-heading,.analysis-card>.analysis-output,",
+    ".analysis-card>.method-details,.analysis-card>.task-downloads{max-width:700px}",
     ".task-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}",
-    ".task-heading h3{margin:0;font-size:1.5rem}.task-heading .eyebrow{margin-bottom:.45rem}",
-    ".analysis-output{margin:1rem 0}.analysis-output h4{margin:1.2rem 0 .5rem;font-size:1.05rem}",
-    ".analysis-output pre{white-space:pre-wrap;overflow-wrap:anywhere}",
-    ".analysis-figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}",
-    ".analysis-figure,.illustration-figure{margin:1rem 0 0}.analysis-figure img,",
-    ".illustration-figure img{display:block;max-width:100%;max-height:560px;margin:auto;",
-    "object-fit:contain;background:var(--paper)}.analysis-figure figcaption,",
-    ".illustration-figure figcaption{margin-top:.65rem;color:var(--muted);font-size:.84rem}",
-    ".method-details{margin-top:1.25rem;border-top:1px solid var(--line);padding-top:.9rem}",
-    ".method-details summary{cursor:pointer;color:var(--teal);font-weight:750}",
-    ".method-details summary:focus-visible,a:focus-visible{outline:3px solid var(--gold);",
-    "outline-offset:3px}.method-details>p{max-width:70ch}.method-label,.code-language{",
-    "color:var(--muted);font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}",
-    ".source-chip-row,.download-row{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem;margin:.8rem 0}",
-    ".source-chip{display:inline-flex;padding:.2rem .55rem;border:1px solid #bad2ca;",
-    "border-radius:99px;background:var(--teal-soft);color:#195a56;font-size:.76rem;font-weight:750}",
-    ".method-assumptions{margin:.9rem 0}.method-assumptions ul{margin:.3rem 0;padding-left:1.2rem}",
+    ".task-heading h3{margin:0;font-size:1.25rem}.task-heading .eyebrow{margin-bottom:.4rem}",
+    ".analysis-output{margin:1rem 0}.analysis-output pre{white-space:pre-wrap;",
+    "overflow-wrap:anywhere}",
+    ".analysis-figures{width:100%;margin:1.8rem 0}",
+    ".analysis-figure{margin:1rem 0 2rem}",
+    ".analysis-figure img,.illustration-figure img{display:block;max-width:100%;",
+    "max-height:640px;margin:auto;object-fit:contain;background:var(--soft)}",
+    ".analysis-figure img{width:auto}.illustration-figure img{width:100%}",
+    ".analysis-figure figcaption,.illustration-figure figcaption{",
+    "margin-top:.65rem;color:var(--muted);font-size:.82rem}",
+    ".illustration-grid{display:grid;grid-template-columns:repeat(auto-fit,",
+    "minmax(min(100%,290px),1fr));gap:1.5rem 2rem}",
+    ".illustration-card{padding:1rem 0}.illustration-card .task-heading{",
+    "align-items:center;margin-bottom:.75rem}.illustration-figure{margin:0}",
+    ".illustration-figure img{max-height:440px}.generated-label{display:block;",
+    "margin-bottom:.3rem;color:var(--muted);font-size:.66rem;font-weight:700;",
+    "letter-spacing:.06em;text-transform:uppercase}",
+    ".method-details{margin-top:1.1rem;padding-top:.75rem;border-top:1px solid var(--line)}",
+    ".method-details summary{cursor:pointer;color:var(--accent);font-size:.88rem;font-weight:650}",
+    ".method-details summary:focus-visible,a:focus-visible{outline:3px solid #8fb7e5;",
+    "outline-offset:3px}.method-details>p{max-width:70ch}",
+    ".method-details>pre{max-width:100%;overflow:auto;padding:.8rem;",
+    "background:var(--soft);font:.78rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}",
+    ".method-label,.code-language{color:var(--muted);font-size:.67rem;",
+    "font-weight:700;letter-spacing:.08em;text-transform:uppercase}",
+    ".source-chip-row,.download-row{display:flex;flex-wrap:wrap;align-items:center;",
+    "gap:.55rem;margin:.8rem 0}.source-chip{color:var(--accent);font-size:.78rem;",
+    "overflow-wrap:anywhere}",
+    ".method-assumptions{margin:.9rem 0}.method-assumptions ul{",
+    "margin:.3rem 0;padding-left:1.2rem}",
     ".code-wrap{margin:1rem 0}.code-label{display:flex;justify-content:space-between;",
-    "padding:.45rem .7rem;background:#e9e5db}.code-wrap pre{margin:0;overflow:auto;padding:1rem;",
-    "background:#172a38;color:#f5f2eb;font: .82rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}",
-    ".code-wrap code{white-space:pre}.file-link{display:inline-flex;padding:.3rem .65rem;",
-    "border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--teal);",
-    "font-size:.78rem;font-weight:700;text-decoration:none}.task-alert{margin:1rem 0;padding:1rem 1.1rem;",
-    "border-left:3px solid var(--danger);background:#f7eae5;color:#713b35}.task-alert p{margin:.5rem 0 0}",
-    ".quiet-note{color:var(--muted);font-style:italic}.illustration-grid{display:grid;",
-    "grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}.illustration-card .task-heading{",
-    "align-items:center;margin-bottom:.8rem}.illustration-figure{margin:0}.illustration-figure img{",
-    "width:100%;max-height:440px;object-fit:cover}.illustration-figure figcaption{padding:.3rem .15rem}",
-    ".source-library{display:grid;gap:.8rem}.source-card{padding:1.1rem 1.25rem;box-shadow:none}",
-    ".source-card-top{display:flex;gap:.6rem;align-items:center}.source-id,.source-kind{",
-    "font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}",
-    ".source-id{color:var(--teal)}.source-kind{color:var(--muted)}.source-card h3{",
-    "margin:.5rem 0;font-size:1.25rem}.source-card h3 a{text-decoration:none}.source-snippet{",
-    "max-width:76ch;margin:.6rem 0;color:#435661}.source-date{margin:.6rem 0 0;color:var(--muted);font-size:.78rem}",
-    ".limitations{padding:1.4rem 1.6rem;border:1px solid #c5d4ce;background:#e8efeb;color:#29483f}",
-    ".limitations h3{margin:0 0 .5rem;font-size:1.25rem}.limitations p{margin:.5rem 0}",
-    ".task-ledger{margin-top:1.3rem}.task-ledger>h3{margin-bottom:.65rem}",
+    "padding:.4rem 0;border-bottom:1px solid var(--line)}.code-wrap pre{",
+    "margin:0;overflow:auto;padding:.9rem 0;background:var(--soft);",
+    "color:var(--ink);font:.82rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}",
+    ".code-wrap code{white-space:pre}.file-link{color:var(--accent);font-size:.82rem}",
+    ".task-alert{margin:1rem 0;padding:.8rem 1rem;border-left:2px solid var(--danger);",
+    "background:#fcf5f4;color:#713b35}.task-alert p{margin:.5rem 0 0}",
+    ".quiet-note{color:var(--muted);font-size:.9rem}.source-library{display:block}",
+    ".source-library,.limitations,.task-ledger,.download-grid,.content section>.quiet-note{",
+    "max-width:700px}.source-card{padding:1rem 0;border-top:1px solid var(--line)}",
+    ".source-card-top{display:flex;gap:.6rem;align-items:center}",
+    ".source-id,.source-kind{font-size:.67rem;font-weight:700;letter-spacing:.06em;",
+    "text-transform:uppercase}.source-id{color:var(--accent)}.source-kind{color:var(--muted)}",
+    ".source-card h3{margin:.4rem 0;font-size:1.05rem}.source-card h3 a{text-decoration:none}",
+    ".source-snippet{max-width:70ch;margin:.55rem 0;color:#46515d}",
+    ".source-date{margin:.5rem 0 0;color:var(--muted);font-size:.78rem}",
+    ".limitations{padding:1rem 1.15rem;border-left:2px solid var(--line);color:#46515d}",
+    ".limitations h3{margin:0 0 .5rem;color:var(--ink);font-size:1rem}",
+    ".limitations p{margin:.5rem 0}.task-ledger{margin-top:1.5rem}",
+    ".task-ledger>h3{margin-bottom:.65rem;font-size:1.1rem}",
     ".outcome-row{display:flex;align-items:flex-start;justify-content:space-between;",
-    "gap:1rem;padding:.8rem 0;border-top:1px solid rgba(36,75,65,.18)}",
-    ".outcome-row .eyebrow{margin:0 0 .25rem;font-size:.62rem}.outcome-row h3{",
-    "margin:0;font-family:ui-sans-serif,system-ui,sans-serif;font-size:.95rem;font-weight:750}",
-    ".outcome-row .outcome-note{margin:.25rem 0 0;font-size:.85rem}",
-    ".download-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.8rem}",
-    ".download-group h3{margin:0 0 .7rem;font-size:1.2rem}.download-group ul{margin:0;padding-left:1.15rem;",
-    "overflow-wrap:anywhere}.download-group li{margin:.35rem 0}.report-footer{padding:2rem 0 0;",
-    "color:var(--muted);font-size:.82rem}.report-footer strong{color:var(--ink)}",
-    "@media(max-width:800px){.hero{grid-template-columns:1fr;padding-top:3rem}.hero-art{max-width:620px;",
-    "transform:none}.report-layout{grid-template-columns:minmax(0,1fr)}.rail{position:static;padding:.8rem 0;}",
-    ".rail ol{display:flex;flex-wrap:wrap;gap:.25rem 1.4rem}.rail li{margin:.2rem 0}.summary-band{",
-    "grid-template-columns:1fr;gap:.55rem}.masthead{padding:1rem 1.25rem}}",
-    "@media(max-width:520px){.page{padding-right:1rem;padding-left:1rem}.masthead{align-items:flex-start;",
-    "flex-direction:column;gap:.15rem}.hero{padding:2.7rem 0 2.3rem}h1{font-size:2.8rem}",
-    ".summary-band{padding:1.2rem}.analysis-card,.illustration-card{padding:1rem}",
-    ".task-heading{align-items:flex-start}.status-pill{font-size:.66rem}.content section{padding-bottom:2.6rem;",
-    "margin-bottom:2.5rem}}",
+    "gap:1rem;padding:.75rem 0;border-top:1px solid var(--line)}",
+    ".outcome-row .eyebrow{margin:0 0 .25rem;font-size:.62rem}",
+    ".outcome-row h3{margin:0;font-size:.92rem;font-weight:650}",
+    ".outcome-row .outcome-note{margin:.25rem 0 0;color:var(--muted);font-size:.84rem}",
+    ".download-grid{display:grid;grid-template-columns:repeat(auto-fit,",
+    "minmax(220px,1fr));gap:1rem 2rem}.download-group{padding:1rem 0;",
+    "border-top:1px solid var(--line)}.download-group h3{margin:0 0 .65rem;font-size:1rem}",
+    ".download-group ul{margin:0;padding-left:1.15rem;overflow-wrap:anywhere}",
+    ".download-group li{margin:.35rem 0}.report-footer{padding:1.5rem 0 0;",
+    "border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}",
+    ".report-footer strong{color:var(--ink)}",
+    "@media(max-width:1000px){.report-layout{grid-template-columns:minmax(0,1fr);gap:0}",
+    ".rail{position:static;grid-column:1;grid-row:1;margin-bottom:2rem;padding:.8rem 0 0;",
+    "border-top:1px solid var(--line);border-left:0}.rail ol{display:flex;flex-wrap:wrap;",
+    "gap:.25rem 1.3rem;padding-left:1.1rem}.rail li{margin:.2rem 0}",
+    ".content{grid-column:1;grid-row:2}.summary-band{grid-template-columns:1fr;gap:.45rem}",
+    ".masthead{padding:1rem 1.25rem}.hero{padding-top:3rem}}",
+    "@media(max-width:520px){.page{padding-right:1rem;padding-left:1rem}",
+    ".masthead{align-items:flex-start;flex-direction:column;gap:.1rem}",
+    ".hero{padding:2.5rem 0 1.6rem}h1{font-size:2.65rem}",
+    ".summary-band{margin-bottom:3rem}.analysis-card,.illustration-card{padding:1rem 0}",
+    ".task-heading{align-items:flex-start}.status-pill{font-size:.72rem}",
+    ".content section{padding-bottom:2.5rem;margin-bottom:2.2rem}}",
     "@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}",
-    "@media print{body{background:#fff;color:#111;font-size:10.5pt}.masthead{padding:.5rem 0}",
-    ".page{max-width:none;padding:0}.hero{grid-template-columns:1fr;padding:1.5rem 0}",
-    ".hero-art{max-width:45%;box-shadow:none}.report-layout{display:block}.rail{position:static;}",
-    ".rail ol{display:flex;flex-wrap:wrap;gap:.2rem 1.4rem}.content section{break-inside:auto;",
-    "border-color:#bbb;page-break-inside:auto}.analysis-card,.source-card,.illustration-card,",
-    ".summary-band,.limitations{box-shadow:none;break-inside:avoid;border-color:#aaa}",
-    ".method-details:not([open])>*:not(summary){display:block}.method-details summary{display:none}",
-    "a{color:#111;text-decoration:none}.file-link{border-color:#888;background:#fff;color:#111}",
-    ".status-pill,.meta-pill{color:#111;background:#fff}.report-footer{padding-top:1rem}}"
+    "@media print{body{background:#fff;color:#111;font-size:10.5pt}",
+    ".masthead{padding:.5rem 0}.page{max-width:none;padding:0}",
+    ".hero,.summary-band{max-width:none;padding:1rem 0}.report-layout{display:block}",
+    ".rail{position:static;padding-left:0;border-left:0}.content section{break-inside:auto;",
+    "border-color:#bbb;page-break-inside:auto}.analysis-figures{width:auto;margin:1rem 0}",
+    ".analysis-card,.source-card,",
+    ".illustration-card,.download-group{break-inside:avoid}",
+    ".method-details:not([open])>*:not(summary){display:block}",
+    ".method-details summary{display:none}a{color:#111;text-decoration:none}",
+    ".report-footer{padding-top:1rem}}"
   )
 }
 
@@ -870,59 +907,17 @@ tempest_enriched_render <- function(bundle, directory) {
   analyses <- tempest_enriched_render_items(bundle$analyses)
   illustrations <- tempest_enriched_render_items(bundle$illustrations)
 
-  hero_index <- NA_integer_
-  hero_file <- NULL
-  for (i in seq_along(illustrations)) {
-    task <- illustrations[[i]]
-    if (!identical(tempest_enriched_render_text(task$status), "succeeded")) {
-      next
-    }
-    file <- tempest_enriched_render_image_file(
-      directory,
-      tempest_enriched_render_text(task$file)
-    )
-    if (!is.null(file)) {
-      hero_index <- i
-      hero_file <- file
-      break
-    }
-  }
-  hero <- if (!is.null(hero_file)) {
-    task <- illustrations[[hero_index]]
-    htmltools::tags$figure(
-      class = "hero-art",
-      htmltools::tags$img(
-        src = hero_file$href,
-        alt = tempest_enriched_render_text(task$alt),
-        fetchpriority = "high"
-      ),
-      htmltools::tags$figcaption(
-        htmltools::tags$span(
-          class = "generated-label",
-          tempest_enriched_render_illustration_notice()
-        ),
-        htmltools::tags$strong(tempest_enriched_render_text(task$title)),
-        if (nzchar(tempest_enriched_render_text(task$caption))) {
-          htmltools::tags$p(tempest_enriched_render_text(task$caption))
-        }
-      )
-    )
-  } else {
-    NULL
-  }
   analysis_cards <- lapply(
     analyses,
     tempest_enriched_render_analysis,
     directory = directory,
     sources = sources
   )
-  illustration_cards <- lapply(seq_along(illustrations), function(i) {
-    if (identical(i, hero_index)) {
-      return(NULL)
-    }
-    tempest_enriched_render_illustration(illustrations[[i]], directory)
-  })
-  illustration_cards <- Filter(Negate(is.null), illustration_cards)
+  illustration_cards <- lapply(
+    illustrations,
+    tempest_enriched_render_illustration,
+    directory = directory
+  )
   inventory <- tempest_enriched_render_file_inventory(directory)
   source_count <- if (is.data.frame(sources)) nrow(sources) else 0L
   completed_analysis_count <- sum(vapply(
@@ -971,28 +966,10 @@ tempest_enriched_render <- function(bundle, directory) {
       class = "illustration-grid",
       htmltools::tagList(illustration_cards)
     )
-  } else if (!is.na(hero_index)) {
-    task <- illustrations[[hero_index]]
-    htmltools::tagList(
-      htmltools::tags$p(
-        "The generated cover illustration appears at the beginning of this report."
-      ),
-      htmltools::tags$details(
-        class = "method-details",
-        htmltools::tags$summary("Illustration prompt and provenance"),
-        htmltools::tags$p(tempest_enriched_render_text(task$prompt)),
-        htmltools::tags$pre(htmltools::tags$code(as.character(jsonlite::toJSON(
-          task$metadata %||% list(),
-          auto_unbox = TRUE,
-          pretty = TRUE,
-          null = "null"
-        ))))
-      )
-    )
   } else {
     htmltools::tags$p(
       class = "quiet-note",
-      "No additional illustrations were planned."
+      "No illustrations were planned."
     )
   }
   summary_content <- if (nzchar(summary)) {
@@ -1029,6 +1006,11 @@ tempest_enriched_render <- function(bundle, directory) {
       htmltools::tags$style(htmltools::HTML(tempest_enriched_render_styles()))
     ),
     htmltools::tags$body(
+      htmltools::tags$a(
+        class = "skip-link",
+        href = "#report-content",
+        "Skip to report content"
+      ),
       htmltools::tags$header(
         class = "masthead",
         htmltools::tags$span(class = "brand", "Tempest / Research dossier"),
@@ -1044,7 +1026,6 @@ tempest_enriched_render <- function(bundle, directory) {
           htmltools::tags$div(
             htmltools::tags$p(class = "eyebrow", "Enriched research report"),
             htmltools::tags$h1(title),
-            htmltools::tags$p(class = "hero-summary", summary),
             htmltools::tags$div(
               class = "hero-meta",
               htmltools::tags$span(
@@ -1066,8 +1047,7 @@ tempest_enriched_render <- function(bundle, directory) {
                 paste(completed_analysis_count, "completed analyses")
               )
             )
-          ),
-          hero
+          )
         ),
         htmltools::tags$aside(
           class = "summary-band",
@@ -1086,6 +1066,8 @@ tempest_enriched_render <- function(bundle, directory) {
             htmltools::tags$ol(htmltools::tagList(section_nav))
           ),
           htmltools::tags$main(
+            id = "report-content",
+            tabindex = "-1",
             class = "content",
             htmltools::tags$section(
               id = "original-research",

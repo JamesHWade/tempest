@@ -43,3 +43,7 @@ Validation: 331 assertions in the broader focused suite, 20 in the source-captur
 - `report/manifest.json`: checksums for the enrichment bundle.
 
 The full local research checkpoint and provider run logs are retained outside this portable report bundle. Re-running the executed `analysis.R` requires only base R and its bundled datasets package. Keep the report folder beside `index.html` when moving the portable report.
+
+## Presentation refresh
+
+After the recorded run, the reader page received a presentation-only refresh inspired by contemporary scientific article layouts. Its findings, model-generated prose, calculations, and images were retained. The checksum-covered `report/` archive remains unchanged.
