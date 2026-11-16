@@ -437,6 +437,12 @@ test_that("research workers receive private Ragnar store copies", {
     ),
     "try-error"
   )
+  if (
+    !extensions_loaded &&
+      identical(Sys.getenv("TEMPEST_TEST_RAGNAR_EXTENSIONS"), "required")
+  ) {
+    stop("Required DuckDB fts/vss test extensions are unavailable")
+  }
   skip_if_not(extensions_loaded, "DuckDB fts/vss extensions are unavailable")
 
   request <- list(
