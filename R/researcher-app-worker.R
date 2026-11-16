@@ -492,7 +492,7 @@ tempest_researcher_app_restore_ragnar_store <- function(config, handoff) {
     DBI::dbExecute(
       connection,
       paste(
-        "LOAD fts; LOAD vss;",
+        "INSTALL fts; INSTALL vss; LOAD fts; LOAD vss;",
         "SET hnsw_enable_experimental_persistence = true;"
       )
     ),
