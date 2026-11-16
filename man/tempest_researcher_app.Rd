@@ -65,6 +65,12 @@ not an OS sandbox. Image generation uses \code{\link[=tempest_image_generator]{t
 reads \code{OPENAI_API_KEY} in the worker. Credentials and uploaded MCP
 configuration contents are not copied into report downloads. Host tools
 remain responsible for the contents of their own returned data.
+
+A configured Ragnar store is copied into private staging for each research
+run and opened inside its worker. Existing corpus contents remain available;
+newly ingested chunks belong to that run and are not written back to the
+host store. The temporary copy is removed when the job ends. Embedding
+functions must work in a fresh R process without captured open connections.
 }
 \examples{
 \dontrun{

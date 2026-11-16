@@ -303,6 +303,12 @@ tempest_researcher_app(
 )
 ```
 
+If `config` includes a Ragnar store, each research job uses a private copy of
+its existing corpus and opens its own database connection. New chunks are
+ingested into that copy, not the host store. The copy is removed after the job;
+the completed report remains in `output_dir`. Embedding functions must work
+in a fresh R process without capturing open connections.
+
 ### Add tools
 
 Pass named factories for host tools. A factory is invoked only when selected, and
