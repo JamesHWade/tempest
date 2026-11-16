@@ -50,10 +50,12 @@ Suggests:
     graft (>= 0.0.0.9000),
     knitr,
     later,
+    mcptools (>= 1.0.2),
     mirai,
     otel (>= 0.2.0),
     pdftools,
     pkgload,
+    processx,
     promises,
     ragnar,
     rmarkdown,
@@ -92,6 +94,10 @@ BugReports: https://github.com/JamesHWade/tempest/issues
 Config/roxygen2/version: 8.1.0
 Collate: 
     'app.R'
+    'researcher-app-tools.R'
+    'researcher-app-worker.R'
+    'researcher-app-ui.R'
+    'researcher-app.R'
     'mcp-app.R'
     'cache.R'
     'citations.R'
