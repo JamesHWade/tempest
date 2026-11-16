@@ -132,7 +132,7 @@ jobs:
         shell: Rscript {0}
       - name: Install DuckDB extensions for offline tests
         run: |
-          con <- DBI::dbConnect(duckdb::duckdb())
+          con <- DBI::dbConnect(duckdb::duckdb(shared_home = TRUE))
           tryCatch(
             DBI::dbExecute(con, "INSTALL fts; INSTALL vss; LOAD fts; LOAD vss;"),
             finally = DBI::dbDisconnect(con, shutdown = TRUE)
