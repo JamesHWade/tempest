@@ -94,7 +94,12 @@ tempest_researcher_app <- function(
     tempest_abort("The configured Shiny app runner must be a function.")
   }
   app <- shiny::shinyApp(
-    ui = tempest_researcher_ui(catalog, servers, model),
+    ui = tempest_researcher_ui(
+      catalog,
+      servers,
+      model,
+      max_experts = config@max_active_experts
+    ),
     server = tempest_researcher_app_server(
       config,
       tools,

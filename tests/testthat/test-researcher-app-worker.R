@@ -247,6 +247,29 @@ test_that("Google Chat accepts its provider-prefixed model selection", {
   expect_identical(config@chat$get_model(), "gemini-2.5-flash")
 })
 
+test_that("OpenRouter native model IDs remain intact", {
+  chat <- ellmer::chat_openrouter(
+    model = "openai/gpt-4.1",
+    credentials = function() "offline-only"
+  )
+  withr::local_options(tempest.chat = chat)
+  config <- tempest_config()
+
+  native <- tempest_researcher_app_model_config(config, "openai/gpt-4.1")
+  same_provider <- tempest_researcher_app_model_config(
+    config,
+    "openrouter/anthropic/claude-sonnet-4"
+  )
+
+  expect_identical(native@chat$get_model(), "openai/gpt-4.1")
+  expect_identical(same_provider@chat$get_model(), "anthropic/claude-sonnet-4")
+  expect_identical(config@chat$get_model(), "openai/gpt-4.1")
+  expect_error(
+    tempest_researcher_app_model_config(config, "anthropic/claude-sonnet-4"),
+    class = "tempest_researcher_app_config_error"
+  )
+})
+
 test_that("progress is capped, structured, and redacts credential-like text", {
   path <- tempfile(fileext = ".jsonl")
   for (index in seq_len(130L)) {
@@ -742,4 +765,174 @@ test_that("snapshot failures fail launch and clean private job data", {
   expect_no_match(result$error, "snapshot-secret")
   expect_null(session$.__enclos_env__$private$job_dir)
   expect_identical(dir.exists(capture$job_dir), FALSE)
+})
+
+test_that("research expert counts respect the configured budget before launch", {
+  spawn_calls <- new.env(parent = emptyenv())
+  spawn_calls$n <- 0L
+  local_mocked_bindings(tempest_researcher_app_spawn = function(
+    func,
+    args,
+    libpath
+  ) {
+    spawn_calls$n <- spawn_calls$n + 1L
+    stop("The worker must not be spawned for an invalid expert count.")
+  })
+  request <- function(n_experts) {
+    list(
+      topic = "A bounded research question",
+      model = "openai/gpt-6.1-sol",
+      n_experts = n_experts,
+      max_rounds = 2L,
+      max_questions = 3L,
+      allow_code = FALSE,
+      allow_images = FALSE,
+      max_analyses = 0L,
+      max_illustrations = 0L,
+      selected_tools = character(),
+      mcp_servers = character(),
+      selected_mcp = character()
+    )
+  }
+  assert_rejected_before_launch <- function(config, n_experts) {
+    session <- TempestResearcherAppSession$new(config = config)
+    on.exit(session$close(), add = TRUE)
+
+    expect_error(
+      session$start(request(n_experts)),
+      class = "tempest_researcher_app_input_error"
+    )
+    expect_identical(session$.__enclos_env__$private$status, "idle")
+    expect_null(session$.__enclos_env__$private$job_dir)
+  }
+
+  assert_rejected_before_launch(tempest_config(), 6L)
+  assert_rejected_before_launch(
+    tempest_config(max_active_experts = 1L),
+    2L
+  )
+
+  expect_identical(spawn_calls$n, 0L)
+})
+
+test_that("provider timeout reaches the callr worker", {
+  capture <- new.env(parent = emptyenv())
+  local_mocked_bindings(tempest_researcher_app_spawn = function(
+    func,
+    args,
+    libpath
+  ) {
+    capture$args <- args
+    state <- new.env(parent = emptyenv())
+    state$alive <- FALSE
+    list(
+      is_alive = function() state$alive,
+      kill_tree = function() {
+        state$alive <- FALSE
+        integer()
+      },
+      wait = function(timeout) invisible(NULL),
+      kill = function() {
+        state$alive <- FALSE
+        invisible(NULL)
+      }
+    )
+  })
+  request <- list(
+    topic = "A bounded research question",
+    model = "openai/gpt-6.1-sol",
+    n_experts = 2L,
+    max_rounds = 2L,
+    max_questions = 3L,
+    allow_code = FALSE,
+    allow_images = FALSE,
+    max_analyses = 0L,
+    max_illustrations = 0L,
+    selected_tools = character(),
+    mcp_servers = character(),
+    selected_mcp = character()
+  )
+
+  observe_worker_timeout <- function(
+    provider_timeout,
+    ellmer_timeout,
+    expected
+  ) {
+    old_options <- options(
+      tempest.shiny.provider_timeout_s = provider_timeout,
+      ellmer_timeout_s = ellmer_timeout
+    )
+    on.exit(options(old_options), add = TRUE)
+
+    session <- TempestResearcherAppSession$new(config = tempest_config())
+    on.exit(session$close(), add = TRUE)
+    session$start(request)
+    args <- capture$args
+    expect_identical(args$timeout_s, expected)
+    expect_identical("timeout_s" %in% names(args$work), FALSE)
+
+    job_dir <- session$.__enclos_env__$private$job_dir
+    child <- callr::r(
+      function(
+        package_path,
+        libpath,
+        work,
+        result_path,
+        release_path,
+        timeout_s
+      ) {
+        .libPaths(unique(c(libpath, .libPaths())))
+        if (!is.null(package_path)) {
+          pkgload::load_all(package_path, quiet = TRUE)
+        } else {
+          loadNamespace("tempest")
+        }
+        namespace <- asNamespace("tempest")
+        worker <- function(
+          kind,
+          request,
+          config,
+          tools,
+          mcp_config,
+          output_dir,
+          progress_path
+        ) {
+          getOption("ellmer_timeout_s")
+        }
+        unlockBinding("tempest_researcher_worker", namespace)
+        assign("tempest_researcher_worker", worker, envir = namespace)
+        lockBinding("tempest_researcher_worker", namespace)
+
+        file.create(release_path)
+        entry <- get("tempest_researcher_app_callr_entry", namespace)
+        environment(entry) <- baseenv()
+        entry(
+          package_path = NULL,
+          libpath = .libPaths(),
+          work = work,
+          result_path = result_path,
+          release_path = release_path,
+          timeout_s = timeout_s
+        )
+        readRDS(result_path)
+      },
+      args = list(
+        package_path = args$package_path,
+        libpath = args$libpath,
+        work = args$work,
+        result_path = file.path(job_dir, "timeout-result.rds"),
+        release_path = file.path(job_dir, "timeout-release"),
+        timeout_s = args$timeout_s
+      ),
+      libpath = args$libpath
+    )
+
+    expect_identical(child$ok, TRUE)
+    expect_identical(child$result, expected)
+    session$close()
+  }
+
+  observe_worker_timeout(NULL, NULL, 120)
+  observe_worker_timeout(45, NULL, 45)
+  observe_worker_timeout(NULL, 18, 18)
 })

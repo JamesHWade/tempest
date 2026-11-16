@@ -188,6 +188,11 @@ tempest_researcher_app_model_config <- function(config, model) {
     if (provider_id %in% c("gemini", "googlegemini")) {
       provider_id <- "google"
     }
+    native_model <- tryCatch(
+      config@chat$get_model(),
+      error = function(error) NULL
+    )
+    is_native_model <- identical(model, native_model)
     has_prefix <- grepl("/", model, fixed = TRUE)
     selected_provider <- if (has_prefix) {
       sub("/.*$", "", model)
@@ -198,6 +203,10 @@ tempest_researcher_app_model_config <- function(config, model) {
       sub("^[^/]*/", "", model)
     } else {
       model
+    }
+    if (is_native_model) {
+      selected_provider <- provider_id
+      selected_model <- model
     }
     if (!identical(selected_provider, provider_id) || !nzchar(selected_model)) {
       tempest_researcher_app_abort(
@@ -531,11 +540,13 @@ tempest_researcher_app_callr_entry <- function(
   libpath,
   work,
   result_path,
-  release_path
+  release_path,
+  timeout_s = 120
 ) {
   owned_store <- NULL
   tryCatch(
     {
+      options(ellmer_timeout_s = timeout_s)
       .libPaths(unique(c(libpath, .libPaths())))
       if (!is.null(package_path)) {
         if (!requireNamespace("pkgload", quietly = TRUE)) {
@@ -817,6 +828,17 @@ TempestResearcherAppSession <- R6::R6Class(
     start = function(request) {
       private$assert_open()
       request <- tempest_researcher_app_validate_request(request)
+      expert_limit <- min(10L, private$config@max_active_experts)
+      if (request$n_experts > expert_limit) {
+        tempest_researcher_app_abort(
+          paste0(
+            "`n_experts` cannot exceed the configured expert limit of ",
+            expert_limit,
+            "."
+          ),
+          class = "tempest_researcher_app_input_error"
+        )
+      }
       private$launch(
         kind = "research",
         request = request
@@ -1010,6 +1032,7 @@ TempestResearcherAppSession <- R6::R6Class(
           class = "tempest_researcher_app_state_error"
         )
       }
+      timeout_s <- tempest_shiny_provider_timeout()
       if (!is.null(private$worker)) {
         if (!tempest_researcher_app_reap(private$worker)) {
           private$fail(
@@ -1093,7 +1116,8 @@ TempestResearcherAppSession <- R6::R6Class(
         libpath = .libPaths(),
         work = work,
         result_path = private$result_path,
-        release_path = private$release_path
+        release_path = private$release_path,
+        timeout_s = timeout_s
       )
       private$worker <- tryCatch(
         tempest_researcher_app_spawn(

@@ -15,6 +15,21 @@ test_that("the dedicated app launches without constructing host tools", {
   expect_identical(result$args, list(port = 9876L, launch.browser = FALSE))
 })
 
+test_that("the launcher passes the configured expert budget to the UI", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  withr::local_options(tempest.app_runner = function(app, ...) app)
+  observed <- new.env(parent = emptyenv())
+  local_mocked_bindings(tempest_researcher_ui = function(..., max_experts) {
+    observed$budget <- max_experts
+    shiny::div()
+  })
+
+  tempest_researcher_app(config = tempest_config(max_active_experts = 1L))
+
+  expect_identical(observed$budget, 1L)
+})
+
 test_that("the server selects only discovered tools and their owning servers", {
   skip_if_not_installed("shiny")
   events <- new.env(parent = emptyenv())

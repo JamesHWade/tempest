@@ -1,8 +1,10 @@
 tempest_researcher_ui <- function(
   tool_catalog = data.frame(id = character(), label = character()),
   mcp_servers = character(),
-  model = "openai/gpt-6.1-sol"
+  model = "openai/gpt-6.1-sol",
+  max_experts = 5L
 ) {
+  max_experts <- min(10L, max_experts)
   if (
     !is.data.frame(tool_catalog) ||
       !all(c("id", "label") %in% names(tool_catalog))
@@ -390,8 +392,8 @@ tempest_researcher_ui <- function(
                 "n_experts",
                 "Experts",
                 min = 1,
-                max = 10,
-                value = 3,
+                max = max_experts,
+                value = min(3L, max_experts),
                 step = 1
               ),
               shiny::conditionalPanel(

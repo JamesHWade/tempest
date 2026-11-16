@@ -42,7 +42,8 @@ test_that("the researcher UI exposes its controls and live report outputs", {
   expect_match(html, 'id="max_questions"[^>]*value="3"', perl = TRUE)
   expect_match(html, 'id="max_analyses"[^>]*value="3"', perl = TRUE)
   expect_match(html, 'id="max_illustrations"[^>]*value="2"', perl = TRUE)
-  for (id in c("n_experts", "max_rounds", "max_questions")) {
+  expect_match(html, 'id="n_experts"[^>]*min="1"[^>]*max="5"', perl = TRUE)
+  for (id in c("max_rounds", "max_questions")) {
     expect_match(
       html,
       paste0('id="', id, '"[^>]*min="1"[^>]*max="10"'),
@@ -68,6 +69,30 @@ test_that("the researcher UI exposes its controls and live report outputs", {
   expect_match(html, 'for="topic"', fixed = TRUE)
   expect_match(html, "Download report bundle", fixed = TRUE)
   expect_no_match(html, "fas fa-download", fixed = TRUE)
+})
+
+test_that("the expert control respects small and large configured budgets", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  withr::local_options(sass.cache = FALSE)
+
+  for (budget in c(1L, 2L, 30L)) {
+    rendered <- htmltools::renderTags(tempest_researcher_ui(
+      max_experts = budget
+    ))
+    input <- xml2::xml_find_first(
+      xml2::read_html(rendered$html),
+      '//*[@id="n_experts"]'
+    )
+    expect_identical(
+      xml2::xml_attr(input, "max"),
+      as.character(min(10L, budget))
+    )
+    expect_identical(
+      xml2::xml_attr(input, "value"),
+      as.character(min(3L, budget))
+    )
+  }
 })
 
 test_that("tool catalog and server labels render as text", {
