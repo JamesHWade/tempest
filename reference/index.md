@@ -19,6 +19,8 @@ Combine cited research with reproducible calculations and illustrations.
 
 - [`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
   : Research a topic and produce an enriched report
+- [`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
+  : Launch the enriched research application
 - [`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
   : Enrich completed research with computations and illustrations
 - [`tempest_r_executor()`](https://jameshwade.github.io/tempest/reference/tempest_r_executor.md)

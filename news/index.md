@@ -43,6 +43,11 @@
   supply configurable providers
   ([\#189](https://github.com/JamesHWade/tempest/issues/189)).
 
+- [`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
+  opens a dedicated research app with selectable host tools and MCP
+  tools, cancellable background runs, opt-in R analysis and image
+  generation, and portable report previews and downloads.
+
 - Tempest no longer pins Deputy, dsprrr, Graft, or shinymcp to commits
   in `Remotes`; each tracks its `main` branch. A pin held every package
   that installs Tempest to that commit, so a host that needs a newer

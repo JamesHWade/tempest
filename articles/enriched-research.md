@@ -316,3 +316,84 @@ report also leaves the concentration-unit discrepancy unresolved.
   analysis of ecophysiological response curves obtained from experiments
   involving repeated measures.” *Ecology*, 71(4), 1389–1400.
   [doi:10.2307/1938276](https://doi.org/10.2307/1938276).
+
+## Work in the dedicated app
+
+[`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
+provides a separate interface for this workflow. Enter a research brief,
+select a model and run limits, then inspect the resulting report in the
+app or download its portable bundle.
+
+``` r
+
+tempest_researcher_app(
+  model = "openai/gpt-6.1-sol",
+  output_dir = "research-reports"
+)
+```
+
+If `config` includes a Ragnar store, each research job uses a private
+copy of its existing corpus and opens its own database connection. New
+chunks are ingested into that copy, not the host store. The copy is
+removed after the job; the completed report remains in `output_dir`.
+Embedding functions must work in a fresh R process without capturing
+open connections.
+
+### Add tools
+
+Pass named factories for host tools. A factory is invoked only when
+selected, and runs inside the research worker. It must construct fresh
+ellmer tool definitions without relying on open connections in the
+launching R session.
+
+``` r
+
+tempest_researcher_app(
+  tools = list(plant_data = function() {
+    list(ellmer::tool(
+      function() as.data.frame(datasets::CO2),
+      name = "read_co2_data",
+      description = "Read the built-in CO2 plant experiment data",
+      arguments = list(),
+      annotations = ellmer::tool_annotations(
+        read_only_hint = TRUE,
+        open_world_hint = FALSE
+      )
+    ))
+  }),
+  output_dir = "research-reports"
+)
+```
+
+### Connect MCP tools
+
+Supply `mcp_config = "mcp.json"`, or upload a configuration for the
+current app session. The JSON uses an `mcpServers` object with named
+server entries understood by Deputy’s supported mcptools client. Select
+servers, discover their tools, and select the individual tools to
+enable. No server is contacted just by uploading or reading
+configuration. Credentials stay in the host environment or private
+configuration and are not copied into the report bundle. Host tools
+remain responsible for the data they return.
+
+The application delegates transport and authentication to Deputy and
+mcptools; it does not implement a separate MCP protocol or OAuth flow.
+Deputy’s bridge is currently qualified for mcptools 1.0.2 and 1.0.3. An
+incompatible client or missing selected tool fails explicitly. Only
+servers owning selected tools are connected when research starts.
+
+Research tools retain Deputy’s existing research permissions. A
+selection does not override denied filesystem writes, shell commands, or
+other effects. Generic tool results provide research context and still
+need Tempest’s source and claim verification before they can support
+cited assertions. R analysis is a separate, explicit enrichment option
+and uses the local account’s access rather than an OS sandbox. Image
+generation uses the configured OpenAI image callback and requires
+`OPENAI_API_KEY`.
+
+The app is intended for trusted users: MCP configurations can start
+local programs, and tool factories execute host code. Each discovery or
+research job has its own worker process; cancellation and session
+closure terminate its process tree. Completed report directories are
+retained. The default output parent is temporary for the R session;
+choose a persistent `output_dir` to keep reports after R exits.
