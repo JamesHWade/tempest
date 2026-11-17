@@ -110,6 +110,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       TESTTHAT_CPUS: 4
+      TEMPEST_TEST_RAGNAR_EXTENSIONS: required
     steps:
       - uses: actions/checkout@v4
       - uses: r-lib/actions/setup-r@v2
@@ -128,6 +129,14 @@ jobs:
               if (has_auth) "supports" else "lacks",
               "chat_openai(auth = ); Tempest",
               if (has_auth) "uses subscription auth" else "falls back to API-key auth", "\n")
+        shell: Rscript {0}
+      - name: Install DuckDB extensions for offline tests
+        run: |
+          con <- DBI::dbConnect(duckdb::duckdb(shared_home = TRUE))
+          tryCatch(
+            DBI::dbExecute(con, "INSTALL fts; INSTALL vss; LOAD fts; LOAD vss;"),
+            finally = DBI::dbDisconnect(con, shutdown = TRUE)
+          )
         shell: Rscript {0}
       - name: Run test shard
         run: Rscript tools/test-shard.R ${{ matrix.shard }} 4

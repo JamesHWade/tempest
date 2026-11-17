@@ -330,6 +330,32 @@ contains the plan, source ledger, scripts, outputs, images, and file checksums.
 The default HTML uses a spacious article layout with a readable text column,
 wide figures, and expandable methods. Styling is bundled into the report, so
 reading it does not require a server, web fonts, or JavaScript.
+### Dedicated researcher app
+
+Launch a focused app for research briefs, optional computations and illustrations,
+and the resulting article:
+
+```r
+tempest_researcher_app(
+  model = "openai/gpt-6.1-sol",
+  output_dir = "research-reports",
+  mcp_config = "mcp.json" # optional
+)
+```
+
+The app discovers tools from the MCP servers you select. Choose individual tools
+before starting research; discovery alone does not enable them. You can upload a
+session-local MCP JSON configuration without changing the host configuration.
+Host-supplied R tools are added as named, zero-argument factories through the
+`tools` argument. Both kinds of tool are created in an isolated run worker and
+attached to research experts under the existing Deputy permission policy.
+
+Research runs in the background and can be cancelled. R code execution and image
+generation are separate opt-ins. Completed reports open in the app and download
+as portable bundles containing their evidence, figures, code, and checksums.
+See `?tempest_researcher_app` for tool factories, MCP compatibility, and the
+trusted-user deployment boundary.
+
 See `vignette("enriched-research")` for the plan contract and an offline botanical
 example with real R calculations, repeated-measures limitations, and a generated
 illustration.
@@ -891,9 +917,10 @@ browser-temporary autosave, and its STORM panel does not expose unsupported
 parallel perspective research. STORM runs in a `shiny::ExtendedTask` backed by
 Mirai so the Shiny session remains responsive.
 
-The Shiny modules and their store are Tempest implementation details. The
-bundled application is reachable only through `tempest_app()`, and there is no
-supported contract for embedding the panels in a host app.
+The Shiny modules and their store are Tempest implementation details. Use
+`tempest_app()` for this Co-STORM application, or `tempest_researcher_app()` for
+the separate enriched researcher. There is no supported contract for embedding
+the internal panels in a host app.
 
 The app currently depends on the shinychat development version that provides
 `chat_server()`, installed from GitHub through `Remotes` in `DESCRIPTION`.

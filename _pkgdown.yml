@@ -24,6 +24,7 @@ reference:
   desc: Combine cited research with reproducible calculations and illustrations.
   contents:
   - tempest_researcher
+  - tempest_researcher_app
   - tempest_enrich_report
   - tempest_r_executor
   - tempest_image_generator

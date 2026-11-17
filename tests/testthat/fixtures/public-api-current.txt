@@ -18,6 +18,7 @@ tempest_read_promotion_bundle
 tempest_report
 tempest_research_workspace
 tempest_researcher
+tempest_researcher_app
 tempest_resource
 tempest_reuse_artifact_research
 tempest_run
