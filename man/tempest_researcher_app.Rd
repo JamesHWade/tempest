@@ -10,7 +10,8 @@ tempest_researcher_app(
   tools = list(),
   mcp_config = NULL,
   output_dir = file.path(tempdir(), "tempest-researcher"),
-  model = "openai/gpt-6.1-sol"
+  model = "openai/gpt-6.1-sol",
+  report_library = FALSE
 )
 }
 \arguments{
@@ -40,6 +41,12 @@ R session; choose a persistent directory to retain reports after R exits.}
 When omitted with a configured Chat object, starts with that Chat's model.
 A supplied Chat can change models within its provider; use a custom
 \code{config} chat factory to support switching providers.}
+
+\item{report_library}{Enable browsing previously published app reports in
+\code{output_dir}. Defaults to \code{FALSE}. When enabled, every user of this app
+can open and download the reports in that directory. Use a dedicated
+directory managed by the host and enable this only for an audience that
+can read the entire collection.}
 }
 \value{
 Invisibly, the result of \code{\link[shiny:runApp]{shiny::runApp()}}.
@@ -74,7 +81,7 @@ functions must work in a fresh R process without captured open connections.
 }
 \examples{
 \dontrun{
-tempest_researcher_app(output_dir = "research-reports")
+tempest_researcher_app(output_dir = "research-reports", report_library = TRUE)
 
 tempest_researcher_app(
   tools = list(plant_data = function() {

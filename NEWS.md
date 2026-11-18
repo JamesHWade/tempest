@@ -7,6 +7,7 @@
 * `tempest_config()` can enable bounded scientific review with `research_review = TRUE` and one targeted evidence search per selected claim with `repair_evidence = TRUE`; `max_review_claims` and `review_concurrency` bound the work, and reports distinguish confirmed concerns, dismissed concerns, unresolved findings and no issue found (#188).
 * `tempest_enrich_report()` adds bounded, opt-in R analyses and generated illustrations to completed STORM or Co-STORM research, with portable HTML, executable methods, visible failures, source bindings, and an integrity-checked report bundle. Reports use a modern article layout with readable typography, wide figures, margin navigation, and expandable methods. `tempest_researcher()` combines research and enrichment; `tempest_r_executor()` and `tempest_image_generator()` supply configurable providers (#189).
 
+* `tempest_researcher_app()` adds editable starter briefs, an evidence navigator, and an opt-in searchable library for reopening saved reports.
 * `tempest_researcher_app()` opens a dedicated research app with selectable host tools and MCP tools, cancellable background runs, opt-in R analysis and image generation, and portable report previews and downloads.
 
 * Tempest no longer pins Deputy, dsprrr, Graft, or shinymcp to commits in `Remotes`; each tracks its `main` branch. A pin held every package that installs Tempest to that commit, so a host that needs a newer Deputy could not resolve both. The ecosystem contracts now run against the current heads and record their SHAs.

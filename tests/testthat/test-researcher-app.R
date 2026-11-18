@@ -162,3 +162,26 @@ test_that("an invalid completed report cannot be announced as ready", {
     }
   )
 })
+
+test_that("saved report browsing requires the host to opt in", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  withr::local_options(tempest.app_runner = function(app, ...) app)
+  observed <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    tempest_researcher_ui = function(..., library_enabled) {
+      observed$ui <- library_enabled
+      shiny::div()
+    },
+    tempest_researcher_app_server = function(..., report_library) {
+      observed$server <- report_library
+      function(input, output, session) {}
+    }
+  )
+  tempest_researcher_app()
+  expect_identical(observed$ui, FALSE)
+  expect_identical(observed$server, FALSE)
+  tempest_researcher_app(report_library = TRUE)
+  expect_identical(observed$ui, TRUE)
+  expect_identical(observed$server, TRUE)
+})

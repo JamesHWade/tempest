@@ -338,10 +338,18 @@ and the resulting article:
 ```r
 tempest_researcher_app(
   model = "openai/gpt-6.1-sol",
+  report_library = TRUE,
   output_dir = "research-reports",
   mcp_config = "mcp.json" # optional
 )
 ```
+
+Choose a starter brief to draft a question, then edit it before starting.
+Open the evidence navigator to inspect sources and see which computations and
+illustrations completed. To revisit a report in a later session, select it in
+the report library and open it for reading or ZIP download. Enabling
+`report_library` gives all users of this app access to reports in the chosen
+output directory. Use a directory intended for that audience.
 
 The app discovers tools from the MCP servers you select. Choose individual tools
 before starting research; discovery alone does not enable them. You can upload a
