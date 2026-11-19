@@ -36,15 +36,17 @@ are announced as alerts.
 \section{Host retrievers}{
 
 A deployment that owns its evidence sources sets the
-\code{tempest.shiny.retriever} option to a function of \code{config} and \code{session}
-before the app starts. The app calls it once for each new Co-STORM session
-and each STORM run, in the Shiny process, with the launch \code{TempestConfig}
-and the viewer's Shiny session. It returns a retriever as described in
-\code{\link[=tempest_run]{tempest_run()}}, or \code{NULL} to use Tempest's own. Return a new
-\code{\link[=tempest_research_workspace]{tempest_research_workspace()}} each time, since a workspace belongs to one
-session or run. A STORM run executes in a background R process, so the
-retriever and everything its functions reach must survive serialization.
-A Co-STORM session restored from an archive uses Tempest's own retriever.
+\code{tempest.shiny.retriever} option to a function of \code{config}, \code{session}, and
+\code{default} before the app starts. The app calls it once for each new
+Co-STORM session and each STORM run, in the Shiny process, with the launch
+\code{TempestConfig}, the viewer's Shiny session, and the retriever Tempest
+would otherwise use, on a new workspace. It returns a retriever as
+described in \code{\link[=tempest_run]{tempest_run()}}, or \code{NULL} to use \code{default} unchanged. A host
+retriever usually keeps \code{default$workspace} and calls \code{default$search()}
+and \code{default$fetch()} for sources it does not own. A STORM run executes in
+a background R process, so the retriever and everything its functions
+reach must survive serialization. A Co-STORM session restored from an
+archive uses Tempest's own retriever.
 }
 
 \examples{

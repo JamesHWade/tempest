@@ -78,6 +78,11 @@ run and opened inside its worker. Existing corpus contents remain available;
 newly ingested chunks belong to that run and are not written back to the
 host store. The temporary copy is removed when the job ends. Embedding
 functions must work in a fresh R process without captured open connections.
+
+A deployment that owns its evidence sources sets the
+\code{tempest.shiny.retriever} option described in \code{\link[=tempest_app]{tempest_app()}}. The app calls
+it in the Shiny process when a research run starts and hands the retriever
+to that run's worker, so it must survive serialization to a fresh R process.
 }
 \examples{
 \dontrun{

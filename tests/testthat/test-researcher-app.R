@@ -67,8 +67,9 @@ test_that("the server selects only discovered tools and their owning servers", {
         }
         events$value
       },
-      start = function(request) {
+      start = function(request, retriever = NULL) {
         events$request <- request
+        events$retriever <- retriever
         events$value$status <- "running"
         events$value$kind <- "research"
       },
@@ -98,6 +99,7 @@ test_that("the server selects only discovered tools and their owning servers", {
         run = 1
       )
       expect_identical(events$request$selected_mcp, "b:second")
+      expect_null(events$retriever)
       expect_identical(events$request$mcp_servers, "b")
       expect_identical(events$request$allow_code, FALSE)
       session$setInputs(cancel = 1)
@@ -116,7 +118,9 @@ test_that("server errors do not expose provider or configuration secrets", {
   local_mocked_bindings(tempest_researcher_app_controller = function(...) {
     list(
       snapshot = function() list(status = "idle", progress = list()),
-      start = function(request) stop("Authorization: Bearer secret-value"),
+      start = function(request, retriever = NULL) {
+        stop("Authorization: Bearer secret-value")
+      },
       close = function() invisible(NULL)
     )
   })
@@ -138,7 +142,9 @@ test_that("an invalid completed report cannot be announced as ready", {
   local_mocked_bindings(tempest_researcher_app_controller = function(...) {
     list(
       snapshot = function() events$value,
-      start = function(request) events$value$status <- "running",
+      start = function(request, retriever = NULL) {
+        events$value$status <- "running"
+      },
       poll = function() {
         list(
           status = "complete",
@@ -184,4 +190,52 @@ test_that("saved report browsing requires the host to opt in", {
   tempest_researcher_app(report_library = TRUE)
   expect_identical(observed$ui, TRUE)
   expect_identical(observed$server, TRUE)
+})
+
+test_that("the server builds a host retriever for each research run", {
+  skip_if_not_installed("shiny")
+  events <- new.env(parent = emptyenv())
+  idle <- list(
+    status = "idle",
+    kind = NULL,
+    result = NULL,
+    error = NULL,
+    progress = list()
+  )
+  local_mocked_bindings(tempest_researcher_app_controller = function(...) {
+    list(
+      snapshot = function() idle,
+      start = function(request, retriever = NULL) {
+        events$retriever <- retriever
+      },
+      close = function() NULL
+    )
+  })
+  withr::local_options(
+    tempest.shiny.retriever = function(config, session, default) {
+      events$session <- session
+      list(
+        workspace = default$workspace,
+        search = function(query, k = 5L) data.frame(),
+        fetch = function(url) NULL
+      )
+    }
+  )
+  shiny::testServer(
+    tempest_researcher_app_server(tempest_config(), list(), NULL, tempdir()),
+    {
+      session$setInputs(
+        topic = "A research question",
+        model = "openai/gpt-6.1-sol",
+        n_experts = 1,
+        max_rounds = 1,
+        max_questions = 1,
+        max_analyses = 0,
+        max_illustrations = 0,
+        run = 1
+      )
+      expect_identical(events$session, session)
+      expect_s3_class(events$retriever$workspace, "ResearchWorkspace")
+    }
+  )
 })

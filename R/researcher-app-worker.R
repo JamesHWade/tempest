@@ -305,7 +305,8 @@ tempest_researcher_worker <- function(
   tools,
   mcp_config,
   output_dir,
-  progress_path
+  progress_path,
+  retriever = NULL
 ) {
   if (identical(kind, "discover")) {
     servers <- tempest_researcher_app_strings(
@@ -356,7 +357,7 @@ tempest_researcher_worker <- function(
       0L
     }
   )
-  result <- tempest_researcher_app_run_research(
+  run_args <- list(
     topic = request$topic,
     output_dir = output_dir,
     config = cfg,
@@ -368,6 +369,10 @@ tempest_researcher_worker <- function(
     verbose = FALSE,
     enrichment = enrichment
   )
+  if (!is.null(retriever)) {
+    run_args$retriever <- retriever
+  }
+  result <- do.call(tempest_researcher_app_run_research, run_args)
   list(
     path = result$report@path,
     status = result$report@status
@@ -825,7 +830,7 @@ TempestResearcherAppSession <- R6::R6Class(
         request = list(servers = servers)
       )
     },
-    start = function(request) {
+    start = function(request, retriever = NULL) {
       private$assert_open()
       request <- tempest_researcher_app_validate_request(request)
       expert_limit <- min(10L, private$config@max_active_experts)
@@ -841,7 +846,8 @@ TempestResearcherAppSession <- R6::R6Class(
       }
       private$launch(
         kind = "research",
-        request = request
+        request = request,
+        retriever = retriever
       )
     },
     poll = function() {
@@ -1025,7 +1031,7 @@ TempestResearcherAppSession <- R6::R6Class(
         unlink(previous, force = TRUE)
       }
     },
-    launch = function(kind, request) {
+    launch = function(kind, request, retriever = NULL) {
       if (identical(private$status, "running")) {
         tempest_researcher_app_abort(
           "This researcher session already has an active worker.",
@@ -1103,6 +1109,7 @@ TempestResearcherAppSession <- R6::R6Class(
         }
         work$config <- handoff$config
         work$ragnar_handoff <- handoff$handoff
+        work$retriever <- retriever
       }
       if (identical(kind, "discover")) {
         work$config <- NULL

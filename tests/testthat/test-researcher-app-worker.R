@@ -183,7 +183,19 @@ test_that("research workers reuse selected tools and preserve host config", {
     progress_path = tempfile(fileext = ".jsonl")
   )
 
-  expect_identical(events$selected_calls, 1L)
+  expect_null(events$run$retriever)
+  retriever <- list(workspace = "host workspace")
+  tempest_researcher_worker(
+    kind = "research",
+    request = request,
+    config = config,
+    tools = list(),
+    mcp_config = NULL,
+    output_dir = output_dir,
+    progress_path = tempfile(fileext = ".jsonl"),
+    retriever = retriever
+  )
+  expect_identical(events$run$retriever, retriever)
   expect_identical(events$selection_args$selected_tools, character())
   expect_identical(
     events$config@models,

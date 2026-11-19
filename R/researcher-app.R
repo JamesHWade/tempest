@@ -54,6 +54,11 @@
 #' host store. The temporary copy is removed when the job ends. Embedding
 #' functions must work in a fresh R process without captured open connections.
 #'
+#' A deployment that owns its evidence sources sets the
+#' `tempest.shiny.retriever` option described in [tempest_app()]. The app calls
+#' it in the Shiny process when a research run starts and hands the retriever
+#' to that run's worker, so it must survive serialization to a fresh R process.
+#'
 #' @return Invisibly, the result of [shiny::runApp()].
 #' @examples
 #' \dontrun{
@@ -248,21 +253,25 @@ tempest_researcher_app_server <- function(
           } else {
             character()
           }
-          controller$start(list(
-            topic = input$topic,
-            model = input$model,
-            research_strategy = input$research_strategy %||% "key_questions",
-            n_experts = input$n_experts,
-            max_rounds = input$max_rounds,
-            max_questions = input$max_questions,
-            allow_code = isTRUE(input$allow_code),
-            allow_images = isTRUE(input$allow_images),
-            max_analyses = input$max_analyses,
-            max_illustrations = input$max_illustrations,
-            selected_tools = input$local_tools %||% character(),
-            mcp_servers = selected_servers,
-            selected_mcp = selected_mcp
-          ))
+          retriever <- tempest_shiny_host_retriever(config, session)
+          controller$start(
+            retriever = retriever,
+            request = list(
+              topic = input$topic,
+              model = input$model,
+              research_strategy = input$research_strategy %||% "key_questions",
+              n_experts = input$n_experts,
+              max_rounds = input$max_rounds,
+              max_questions = input$max_questions,
+              allow_code = isTRUE(input$allow_code),
+              allow_images = isTRUE(input$allow_images),
+              max_analyses = input$max_analyses,
+              max_illustrations = input$max_illustrations,
+              selected_tools = input$local_tools %||% character(),
+              mcp_servers = selected_servers,
+              selected_mcp = selected_mcp
+            )
+          )
         },
         "Research could not start. Check the topic, model, and run limits; rediscover changed MCP tools, and wait for any active job to finish."
       )
