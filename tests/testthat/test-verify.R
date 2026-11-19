@@ -205,12 +205,13 @@ test_that("verification validates the complete evidence set before providers", {
     ))
   )
 
-  expect_error(
-    tempest_verify_claims(workspace, verifier = judge),
-    class = "tempest_stage_governance_error"
-  )
+  tempest_verify_claims(workspace, verifier = judge)
   expect_length(judge$.calls(), 0L)
   expect_length(workspace$list_claim_supports(), 0L)
+  expect_identical(
+    workspace$get_proposed_claim("claim.no-span")@verification_status,
+    "unverified"
+  )
 })
 
 test_that("verification rejects unsafe metadata before provider use", {

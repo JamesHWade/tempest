@@ -479,23 +479,18 @@ tempest_briefing_items_from_output <- function(output, context) {
       workspace,
       min_support_score
     )
-    if (
-      value$kind %in%
-        c("observation", "no_change") &&
-        (length(claims) != 1L || !identical(value$text, claims[[1]]@claim_text))
-    ) {
+    if (value$kind %in% c("observation", "no_change") && length(claims) != 1L) {
       tempest_stage_output_abort(
         paste0(
-          "An observation or no-change item must copy one threshold-verified ",
-          "claim exactly and bind only that claim."
+          "An observation or no-change item must bind exactly one ",
+          "threshold-verified claim."
         )
       )
     }
-    tempest_briefing_item_validate_synthesis(
-      value$kind,
-      value$text,
-      claims
-    )
+    # An item's kind and bound claims fix its text, so the text is taken
+    # from the claims and not from the model's copy of them.
+    value$text <- tempest_briefing_item_synthesis_text(value$kind, claims) %||%
+      claims[[1]]@claim_text
     if (
       !tempest_briefing_item_disposition_valid(
         value$kind,

@@ -2167,26 +2167,10 @@ ResearchWorkspace <- R6::R6Class(
       expected_ids <- character()
       for (claim_id in claim_ids) {
         claim <- claims_value[[claim_id]]
+        # A claim with no exact evidence span cannot be assessed. It takes
+        # no part in the batch and stays unverified.
         if (length(claim@evidence_span_ids) == 0L) {
-          tempest_research_workspace_abort(
-            paste0(
-              "Every verified claim requires at least one exact evidence ",
-              "span: {.val {claim_id}}."
-            )
-          )
-        }
-        span_sources <- vapply(
-          claim@evidence_span_ids,
-          \(span_id) evidence_spans_value[[span_id]]@source_id,
-          character(1)
-        )
-        if (!setequal(unique(span_sources), claim@source_ids)) {
-          tempest_research_workspace_abort(
-            paste0(
-              "Every cited claim source requires at least one exact evidence ",
-              "span: {.val {claim_id}}."
-            )
-          )
+          next
         }
         expected_ids <- c(
           expected_ids,
@@ -2245,6 +2229,9 @@ ResearchWorkspace <- R6::R6Class(
           \(support) identical(support@claim_id, claim_id),
           supports
         )
+        if (length(claim_supports) == 0L) {
+          next
+        }
         aggregate <- private$aggregate_claim_support(claim_supports)
         claims_value[[claim_id]] <- S7::set_props(
           claims_value[[claim_id]],

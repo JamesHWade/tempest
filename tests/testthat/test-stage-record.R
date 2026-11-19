@@ -1742,7 +1742,7 @@ test_that("a claim without exact supports fails grounded preflight", {
   expect_identical(provider_calls, 0L)
 })
 
-test_that("grounded writing rejects provider-authored Markdown", {
+test_that("grounded writing takes item text from the bound claim", {
   workspace <- fake_store_with_sources(1)
   source_id <- workspace$list_retrieved_sources()[[1]]$id
   claim <- tempest:::tempest_claim(
@@ -1768,20 +1768,17 @@ test_that("grounded writing rejects provider-authored Markdown", {
     fake_briefing_output(list(claim)),
     context
   ))
-  expect_error(
-    tempest:::tempest_stage_evaluate(
-      execution,
-      list(
-        items = list(list(
-          kind = "observation",
-          text = "## Evidence\nA verified observation",
-          claim_ids = list(claim@claim_id)
-        ))
-      ),
-      context
+  items <- tempest:::tempest_briefing_items_from_output(
+    list(
+      items = list(list(
+        kind = "observation",
+        text = "## Evidence\nA verified observation",
+        claim_ids = list(claim@claim_id)
+      ))
     ),
-    class = "tempest_stage_output_validation_error"
+    context
   )
+  expect_identical(items[[1]]@text, "A verified observation")
 })
 
 test_that("refined outline remains non-publishable planning metadata", {
@@ -2415,4 +2412,51 @@ test_that("async fallback rejection rechecks current invocation", {
 
   expect_s3_class(settled$error, "tempest_stage_cancelled")
   expect_identical(records[[1]]@status, "cancelled")
+})
+
+test_that("a claim quote is matched to the captured source text", {
+  text <- "Zeolite  HZSM‑5 gave “high” yields\nat 450 °C in the study."
+  exact <- "Zeolite  HZSM‑5"
+  expect_identical(tempest_stage_captured_quote(exact, text), exact)
+  skip_if_not(l10n_info()[["UTF-8"]])
+  expect_identical(
+    tempest_stage_captured_quote(
+      "\"HZSM-5 gave \"high\" yields at 450 °C...\"",
+      text
+    ),
+    "HZSM‑5 gave “high” yields\nat 450 °C"
+  )
+  expect_null(tempest_stage_captured_quote(
+    "HZSM-5 gave low yields at 450 °C",
+    text
+  ))
+})
+
+test_that("a fact's source loses a quote its text does not hold", {
+  workspace <- tempest_research_workspace()
+  resource <- tempest_resource(
+    resource_kind = "web",
+    locator = "https://example.org/pyrolysis",
+    title = "Pyrolysis",
+    media_type = "text/plain",
+    content = "Catalytic pyrolysis converts polyethylene into liquid fuels."
+  )
+  workspace$upsert_retrieved_resource(resource)
+  source_id <- resource@resource_id
+  sources <- tempest_stage_fact_sources(
+    list(
+      sources = list(
+        list(
+          source_id = source_id,
+          quote = "converts polyethylene into liquid fuels"
+        ),
+        list(source_id = source_id, quote = "turns plastic into petrol")
+      )
+    ),
+    workspace
+  )
+  expect_identical(
+    lapply(sources, `[[`, "quote"),
+    list("converts polyethylene into liquid fuels", NULL)
+  )
 })

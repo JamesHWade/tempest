@@ -2,6 +2,10 @@
 
 * Saved research products now retain scientific review records with workspace schema 8, Co-STORM snapshot and bundle schema 14, STORM bundle schema 11 (state schema 5), and promotion bundle schema 2. Readers accept only the current format; older bundles require their matching package version (#188).
 
+* A claim quote that differs from its source only in spacing or typographic quotes and dashes is now matched to the source's own text, and a quote the source does not hold is removed instead of failing the extraction stage. A claim left with no exact evidence span stays unverified and no longer aborts claim verification.
+* Briefing items now take their text from their kind and bound verified claims, so a model that paraphrases a claim or a closed assessment prompt no longer fails grounded writing.
+* Deputy-backed research turns may now make up to 75 tool calls over 50 requests (previously 25 each) before the run stops.
+* `tempest_enrich_report()` and promotion no longer reject a completed STORM result whose perspective questions are held as a character vector in the result and a list of strings in its state.
 * Tempest rejects provider-truncated Deputy answers before issuing a completion and validates the resolved structured metadata of asynchronous dsprrr stages (#188).
 * `tempest_claim_reviews()` reads the exact advisory scientific reviews retained by a published product, including independent adjudication, captured evidence and bounded search outcomes; reviews survive session and research artifact round trips without becoming citation support or accepted claims (#188).
 * `tempest_config()` can enable bounded scientific review with `research_review = TRUE` and one targeted evidence search per selected claim with `repair_evidence = TRUE`; `max_review_claims` and `review_concurrency` bound the work, and reports distinguish confirmed concerns, dismissed concerns, unresolved findings and no issue found (#188).

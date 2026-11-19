@@ -1084,8 +1084,8 @@ tempest_deputy_chat_adapter <- function(
   on_run = function(trace) invisible(trace),
   on_completion = function(completion) invisible(completion),
   on_terminal = function(terminal) invisible(terminal),
-  max_requests = 25L,
-  max_tool_calls = 25L
+  max_requests = 50L,
+  max_tool_calls = 75L
 ) {
   tempest_deputy_adapter_guard({
     if (

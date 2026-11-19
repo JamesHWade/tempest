@@ -99,6 +99,40 @@ test_that("grounded writing renders typed briefing items", {
   expect_identical(items[[3]]@confidence, NA_character_)
 })
 
+test_that("briefing item text comes from the bound claims, not the model", {
+  workspace <- fake_store_with_sources(1)
+  source_id <- workspace$list_retrieved_sources()[[1]]$id
+  claim <- tempest_claim(
+    "A verified operational change occurred",
+    source_ids = source_id,
+    verification_status = "supported",
+    support_score = 0.9
+  )
+  workspace$add_proposed_claim(claim)
+  claim <- fake_verify_claim_supports(workspace, list(claim))[[1]]
+  item <- function(kind, text, ...) {
+    list(kind = kind, text = text, claim_ids = list(claim@claim_id), ...)
+  }
+  items <- tempest:::tempest_briefing_items_from_output(
+    list(
+      items = list(
+        item("observation", "A convenient paraphrase"),
+        item("assessment", "Revenue doubled.", confidence = "medium"),
+        item("review_action", paste0("Review this [", source_id, "]."))
+      )
+    ),
+    list(workspace = workspace, evidence = list(claim), min_support_score = 0.7)
+  )
+  expect_identical(
+    vapply(items, \(item) item@text, character(1)),
+    c(
+      claim@claim_text,
+      paste0("Assess the decision implications of: ", claim@claim_text),
+      paste0("Review before deciding: ", claim@claim_text)
+    )
+  )
+})
+
 test_that("briefing items fail closed on ungoverned synthesis", {
   workspace <- fake_store_with_sources(1)
   source_id <- workspace$list_retrieved_sources()[[1]]$id
@@ -135,29 +169,6 @@ test_that("briefing items fail closed on ungoverned synthesis", {
         text = "This matters.",
         claim_ids = list(),
         confidence = "medium"
-      )
-    )),
-    class = "tempest_stage_output_validation_error"
-  )
-  expect_error(
-    evaluate(list(
-      observation,
-      list(
-        kind = "assessment",
-        text = "Revenue doubled in the latest quarter.",
-        claim_ids = list(claim@claim_id),
-        confidence = "medium"
-      )
-    )),
-    class = "tempest_stage_output_validation_error"
-  )
-  expect_error(
-    evaluate(list(
-      observation,
-      list(
-        kind = "review_action",
-        text = "Review an unrelated revenue claim.",
-        claim_ids = list(claim@claim_id)
       )
     )),
     class = "tempest_stage_output_validation_error"
@@ -209,13 +220,6 @@ test_that("briefing items fail closed on ungoverned synthesis", {
     class = "tempest_product_report_error"
   )
   expect_error(
-    evaluate(list(utils::modifyList(
-      observation,
-      list(text = "A convenient paraphrase")
-    ))),
-    class = "tempest_stage_output_validation_error"
-  )
-  expect_error(
     evaluate(list(
       observation,
       list(
@@ -223,18 +227,6 @@ test_that("briefing items fail closed on ungoverned synthesis", {
         text = "No defensible no-change signal is available.",
         claim_ids = list(claim@claim_id),
         confidence = "high"
-      )
-    )),
-    class = "tempest_stage_output_validation_error"
-  )
-  expect_error(
-    evaluate(list(
-      observation,
-      list(
-        kind = "assessment",
-        text = paste0("This matters [", source_id, "]."),
-        claim_ids = list(claim@claim_id),
-        confidence = "medium"
       )
     )),
     class = "tempest_stage_output_validation_error"

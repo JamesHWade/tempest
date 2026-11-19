@@ -1907,7 +1907,27 @@ tempest_completed_product_storm_context <- function(
     draft_md = research@draft_md,
     report_md = research@report_md
   )
-  if (!identical(public_projection, projected)) {
+  # A perspective's questions are one string array, held as a character
+  # vector in the result and, after a stage record commits them, as a list
+  # of strings in the state. Both are the same questions.
+  question_strings <- function(projection) {
+    projection$perspectives <- lapply(
+      projection$perspectives,
+      function(perspective) {
+        if (is.list(perspective) && !is.null(perspective$key_questions)) {
+          perspective$key_questions <- as.character(unlist(
+            perspective$key_questions,
+            use.names = FALSE
+          ))
+        }
+        perspective
+      }
+    )
+    projection
+  }
+  if (
+    !identical(question_strings(public_projection), question_strings(projected))
+  ) {
     abort(
       "The STORM result projections do not match its exact product state."
     )

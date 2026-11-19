@@ -2099,6 +2099,53 @@ tempest_stage_known_source_ids <- function(context) {
   vapply(resources, \(resource) resource@resource_id, character(1))
 }
 
+tempest_stage_quote_characters <- function(text) {
+  characters <- strsplit(enc2utf8(text), "", fixed = TRUE)[[1]]
+  code <- vapply(characters, utf8ToInt, integer(1), USE.NAMES = FALSE)
+  folded <- characters
+  # Typographic apostrophes, double quotes, and hyphens and dashes.
+  folded[code %in% c(0x2018L, 0x2019L, 0x201AL, 0x201BL)] <- "'"
+  folded[code %in% c(0x201CL, 0x201DL, 0x201EL)] <- "\""
+  folded[code %in% c(0x2010L:0x2014L, 0x2212L)] <- "-"
+  space <- code %in% c(0x09L:0x0DL, 0x20L, 0xA0L, 0x2007L, 0x202FL)
+  folded[space] <- " "
+  # Soft hyphens vanish and a run of whitespace counts once.
+  keep <- code != 0xADL & !(space & c(FALSE, utils::head(space, -1L)))
+  list(folded = folded[keep], index = which(keep))
+}
+
+# The quote as the captured source text has it. A model copying a passage
+# often changes only its spacing or typography; the passage is then found by
+# comparing both with whitespace runs and typographic quotes and dashes
+# folded, and the source's own characters are returned. `NULL` when the
+# source text holds no such passage.
+tempest_stage_captured_quote <- function(quote, captured_text) {
+  for (text in captured_text) {
+    if (grepl(quote, text, fixed = TRUE)) {
+      return(quote)
+    }
+  }
+  wanted <- tempest_stage_quote_characters(quote)$folded
+  wanted <- paste(wanted, collapse = "")
+  wanted <- trimws(gsub("^[\"' .]+|[\"' .]+$", "", wanted))
+  if (nchar(wanted) < 20L) {
+    return(NULL)
+  }
+  for (text in captured_text) {
+    captured <- tempest_stage_quote_characters(text)
+    start <- regexpr(
+      wanted,
+      paste(captured$folded, collapse = ""),
+      fixed = TRUE
+    )
+    if (start > 0L) {
+      end <- start + nchar(wanted) - 1L
+      return(substr(text, captured$index[[start]], captured$index[[end]]))
+    }
+  }
+  NULL
+}
+
 tempest_stage_fact_sources <- function(value, workspace) {
   value <- tempest_stage_plain_record(value, "facts")
   sources <- value$sources
@@ -2184,16 +2231,10 @@ tempest_stage_fact_sources <- function(value, workspace) {
             )
           )
         }
-        matched <- any(vapply(
-          captured_text,
-          \(text) grepl(quote, text, fixed = TRUE),
-          logical(1)
-        ))
-        if (!matched) {
-          tempest_stage_output_abort(
-            "Claim quote is not an exact substring of source {.val {source_id}}."
-          )
-        }
+        # A quote the source does not hold is no evidence. The source stays
+        # cited without it, and verification leaves the claim unverified
+        # unless another quote supports it.
+        quote <- tempest_stage_captured_quote(quote, captured_text)
       }
       list(source_id = source_id, url = url, quote = quote)
     }

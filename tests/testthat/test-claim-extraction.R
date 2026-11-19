@@ -583,10 +583,6 @@ test_that("extraction rejects duplicate, mismatched, and fabricated sources", {
     list(utils::modifyList(
       valid_source,
       list(url = "https://example.org/tampered")
-    )),
-    list(utils::modifyList(
-      valid_source,
-      list(quote = "fabricated quote")
     ))
   )
 
@@ -609,6 +605,27 @@ test_that("extraction rejects duplicate, mismatched, and fabricated sources", {
     )
   }
   expect_length(store$list_proposed_claims(), 0L)
+  expect_length(store$list_evidence_spans(), 0L)
+
+  # A quote the source does not hold is no evidence: the claim is kept,
+  # citing the source, with no evidence span to verify.
+  output <- list(
+    facts = list(list(
+      claim = "Misquoted claim",
+      sources = list(utils::modifyList(
+        valid_source,
+        list(quote = "fabricated quote")
+      )),
+      confidence = "high"
+    ))
+  )
+  tempest:::tempest_extract_facts_from_answer(
+    chat = NULL,
+    answer_text = "Misquoted claim",
+    store = store,
+    module = module
+  )
+  expect_length(store$list_proposed_claims(), 1L)
   expect_length(store$list_evidence_spans(), 0L)
 })
 

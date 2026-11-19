@@ -74,10 +74,11 @@ tempest_verification_work_items <- function(workspace) {
   claims <- workspace$list_proposed_claims()
   items <- list()
   for (claim in claims) {
+    # A claim with no exact evidence span has nothing to check against a
+    # source. It is left unverified, which keeps it out of anything that
+    # requires verified claims.
     if (length(claim@evidence_span_ids) == 0L) {
-      tempest_stage_governance_abort(
-        "Every verified claim requires at least one exact evidence span."
-      )
+      next
     }
     spans <- lapply(claim@evidence_span_ids, workspace$get_evidence_span)
     if (any(vapply(spans, is.null, logical(1)))) {
@@ -86,9 +87,9 @@ tempest_verification_work_items <- function(workspace) {
       )
     }
     span_sources <- vapply(spans, \(span) span@source_id, character(1))
-    if (!setequal(unique(span_sources), claim@source_ids)) {
+    if (!all(span_sources %in% claim@source_ids)) {
       tempest_stage_governance_abort(
-        "Every cited claim source requires at least one exact evidence span."
+        "A claim's evidence span cites a source the claim does not."
       )
     }
     for (span in spans) {
