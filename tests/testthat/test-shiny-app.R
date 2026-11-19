@@ -11,6 +11,25 @@ source_shiny_modules <- function() {
   env
 }
 
+test_that("app modules reach package internals through the tempest namespace", {
+  skip_if_not_installed("codetools")
+  dir <- system.file("shiny", "R", package = "tempest")
+  # An installed app is sourced outside the namespace, where an unprefixed
+  # internal does not exist.
+  env <- new.env(parent = globalenv())
+  for (f in list.files(dir, pattern = "[.][Rr]$", full.names = TRUE)) {
+    sys.source(f, envir = env)
+  }
+  functions <- Filter(is.function, as.list(env))
+  globals <- unique(unlist(lapply(functions, codetools::findGlobals)))
+  internal <- setdiff(
+    intersect(globals, ls(asNamespace("tempest"), all.names = TRUE)),
+    c(ls(env), getNamespaceExports("tempest"), "%||%")
+  )
+
+  expect_identical(internal, character())
+})
+
 test_that("every module UI builds a Shiny tag", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")

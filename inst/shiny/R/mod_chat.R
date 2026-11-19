@@ -639,7 +639,7 @@ mod_chat_server <- function(
     })
 
     # --- shinychat adapter ---------------------------------------------------
-    initial_chat <- tempest_make_chat(
+    initial_chat <- tempest:::tempest_make_chat(
       shiny::isolate(config()),
       "coordinator",
       system_prompt = paste(
@@ -1860,7 +1860,10 @@ chat_command_facts <- function(ses, n = 5L) {
 }
 
 chat_command_system_prompt <- function() {
-  prompt <- tryCatch(tempest_prompt("moderator_system"), error = function(e) "")
+  prompt <- tryCatch(
+    tempest:::tempest_prompt("moderator_system"),
+    error = function(e) ""
+  )
   if (!nzchar(prompt)) {
     return("The moderator system prompt is not available.")
   }

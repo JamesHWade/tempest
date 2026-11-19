@@ -43,14 +43,17 @@ new_session_store <- function() {
   costorm_report_candidate <- function(session) {
     if (
       !inherits(session, "TempestSession") ||
-        !identical(tempest_session_manifest(session)@status, "succeeded")
+        !identical(
+          tempest:::tempest_session_manifest(session)@status,
+          "succeeded"
+        )
     ) {
       stop("session must be a succeeded TempestSession.", call. = FALSE)
     }
     list(
       report_md = tempest::tempest_report(session),
       report_topic = session$topic,
-      report_workspace = tempest_session_workspace(session)
+      report_workspace = tempest:::tempest_session_workspace(session)
     )
   }
 
@@ -67,7 +70,10 @@ new_session_store <- function() {
     }
     candidate <- if (
       !is.null(session) &&
-        identical(tempest_session_manifest(session)@status, "succeeded")
+        identical(
+          tempest:::tempest_session_manifest(session)@status,
+          "succeeded"
+        )
     ) {
       costorm_report_candidate(session)
     } else {
@@ -204,7 +210,11 @@ new_session_store <- function() {
     costorm_workspace = shiny::reactive({
       rv$costorm_version
       session <- rv$costorm_session
-      if (is.null(session)) NULL else tempest_session_workspace(session)
+      if (is.null(session)) {
+        NULL
+      } else {
+        tempest:::tempest_session_workspace(session)
+      }
     }),
     set_costorm_session = set_costorm_session,
     touch_costorm_session = function() {
