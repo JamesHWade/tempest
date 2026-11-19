@@ -66,6 +66,30 @@ test_that("a verified worker report is published, previewed, and downloaded", {
       )
     }
   )
+  shiny::testServer(
+    tempest_researcher_app_server(
+      tempest_config(),
+      list(),
+      NULL,
+      root,
+      report_library = TRUE
+    ),
+    {
+      session$flushReact()
+      expect_null(published())
+      session$setInputs(`library-selected` = basename(published_path))
+      session$setInputs(`library-open` = 1L)
+      expect_identical(published()$path, published_path)
+      expect_match(output$report$html, "<iframe", fixed = TRUE)
+      expect_match(output$status$html, "Saved report open", fixed = TRUE)
+      unpacked <- file.path(root, "reopened")
+      utils::unzip(output$download, exdir = unpacked)
+      expect_identical(
+        tempest_read_enriched_report(unpacked)@manifest$research_sha256,
+        tempest_read_enriched_report(published_path)@manifest$research_sha256
+      )
+    }
+  )
   expect_identical(dir.exists(published_path), TRUE)
   expect_length(list.files(root, pattern = "^\\.tempest", all.files = TRUE), 0L)
 })

@@ -29,6 +29,8 @@ test_tier_unit_files <- c(
   "test-public-api.R",
   "test-query-decomposition.R",
   "test-researcher-app.R",
+  "test-researcher-app-briefs.R",
+  "test-researcher-app-example.R",
   "test-researcher-app-tools.R",
   "test-researcher-app-ui.R",
   "test-research-expert.R",

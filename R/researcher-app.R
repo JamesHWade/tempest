@@ -23,6 +23,11 @@
 #' @param output_dir Parent directory for newly generated report directories.
 #'   Existing reports are never overwritten. The default lasts for the current
 #'   R session; choose a persistent directory to retain reports after R exits.
+#' @param report_library Enable browsing previously published app reports in
+#'   `output_dir`. Defaults to `FALSE`. When enabled, every user of this app
+#'   can open and download the reports in that directory. Use a dedicated
+#'   directory managed by the host and enable this only for an audience that
+#'   can read the entire collection.
 #' @param model Initial provider/model selection, editable in the application.
 #'   When omitted with a configured Chat object, starts with that Chat's model.
 #'   A supplied Chat can change models within its provider; use a custom
@@ -52,7 +57,7 @@
 #' @return Invisibly, the result of [shiny::runApp()].
 #' @examples
 #' \dontrun{
-#' tempest_researcher_app(output_dir = "research-reports")
+#' tempest_researcher_app(output_dir = "research-reports", report_library = TRUE)
 #'
 #' tempest_researcher_app(
 #'   tools = list(plant_data = function() {
@@ -74,7 +79,8 @@ tempest_researcher_app <- function(
   tools = list(),
   mcp_config = NULL,
   output_dir = file.path(tempdir(), "tempest-researcher"),
-  model = "openai/gpt-6.1-sol"
+  model = "openai/gpt-6.1-sol",
+  report_library = FALSE
 ) {
   for (package in c("shiny", "bslib", "callr", "zip")) {
     tempest_require(package, "The dedicated researcher application needs it.")
@@ -87,6 +93,7 @@ tempest_researcher_app <- function(
   }
   tempest_enriched_string(output_dir, "output_dir")
   tempest_enriched_string(model, "model")
+  rlang::check_bool(report_library)
   catalog <- tempest_researcher_tool_catalog(tools)
   servers <- tempest_researcher_mcp_servers(mcp_config)
   runner <- getOption("tempest.app_runner", shiny::runApp)
@@ -98,13 +105,15 @@ tempest_researcher_app <- function(
       catalog,
       servers,
       model,
-      max_experts = config@max_active_experts
+      max_experts = config@max_active_experts,
+      library_enabled = report_library
     ),
     server = tempest_researcher_app_server(
       config,
       tools,
       mcp_config,
-      output_dir
+      output_dir,
+      report_library = report_library
     )
   )
   old <- options(ellmer_timeout_s = tempest_shiny_provider_timeout())
@@ -120,12 +129,14 @@ tempest_researcher_app_server <- function(
   config,
   tools,
   mcp_config,
-  output_dir
+  output_dir,
+  report_library = FALSE
 ) {
   force(config)
   force(tools)
   force(mcp_config)
   force(output_dir)
+  force(report_library)
   function(input, output, session) {
     controller <- tempest_researcher_app_controller(
       config = config,
@@ -139,6 +150,34 @@ tempest_researcher_app_server <- function(
     discovery_servers <- shiny::reactiveVal(character())
     published <- shiny::reactiveVal(NULL)
     resource <- NULL
+
+    library_revision <- shiny::reactiveVal(0L)
+    open_report <- function(report) {
+      evidence <- tempest_researcher_evidence_ui(report)
+      next_resource <- paste0("tempest-report-", tempest_uuid("view"))
+      shiny::addResourcePath(next_resource, report@path)
+      previous_resource <- resource
+      resource <<- next_resource
+      published(list(
+        path = report@path,
+        status = report@status,
+        evidence = evidence,
+        url = paste0(resource, "/index.html")
+      ))
+      if (!is.null(previous_resource)) {
+        try(shiny::removeResourcePath(previous_resource), silent = TRUE)
+      }
+      notice(NULL)
+      invisible(NULL)
+    }
+    if (report_library) {
+      tempest_researcher_library_server(
+        "library",
+        output_dir,
+        open_report,
+        library_revision
+      )
+    }
 
     refresh <- function() {
       value <- controller$snapshot()
@@ -262,19 +301,8 @@ tempest_researcher_app_server <- function(
         } else if (identical(value$kind, "research")) {
           tryCatch(
             {
-              report <- tempest_read_enriched_report(value$result$path)
-              next_resource <- paste0("tempest-report-", tempest_uuid("view"))
-              shiny::addResourcePath(next_resource, report@path)
-              previous_resource <- resource
-              resource <<- next_resource
-              published(list(
-                path = report@path,
-                status = report@status,
-                url = paste0(resource, "/index.html")
-              ))
-              if (!is.null(previous_resource)) {
-                try(shiny::removeResourcePath(previous_resource), silent = TRUE)
-              }
+              open_report(tempest_read_enriched_report(value$result$path))
+              library_revision(shiny::isolate(library_revision()) + 1L)
             },
             error = function(error) {
               value$status <<- "error"
@@ -306,7 +334,11 @@ tempest_researcher_app_server <- function(
       }
       label <- switch(
         current$status,
-        idle = "Ready for a research question.",
+        idle = if (is.null(published())) {
+          "Ready for a research question."
+        } else {
+          "Saved report open."
+        },
         running = if (identical(current$kind, "discover")) {
           "Discovering tools from the selected servers\u2026"
         } else {
@@ -388,15 +420,10 @@ tempest_researcher_app_server <- function(
     output$report <- shiny::renderUI({
       report <- published()
       if (is.null(report)) {
-        return(shiny::div(
-          class = "researcher-empty",
-          shiny::h2("A question becomes a research report."),
-          shiny::p(
-            "Follow the evidence, inspect computed figures, and keep the sources and methods with your report."
-          )
-        ))
+        return(tempest_researcher_example_ui())
       }
       shiny::tagList(
+        report$evidence,
         if (identical(report$status, "partial")) {
           shiny::p(
             role = "status",
