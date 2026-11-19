@@ -939,6 +939,10 @@ mod_chat_server <- function(
             n_experts = n_experts,
             experts = session_experts,
             session_id = session_id_value,
+            retriever = tempest:::tempest_shiny_host_retriever(
+              config_value,
+              session
+            ),
             progress = record_progress,
             program_set = program_set_value,
             knowledge = knowledge_value

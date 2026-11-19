@@ -87,6 +87,40 @@ tempest_shiny_require_server <- function(panels) {
   invisible(NULL)
 }
 
+# The bundled app builds one retriever per Co-STORM session or STORM run. A
+# host that owns its evidence sources replaces it through the
+# `tempest.shiny.retriever` option, documented in `tempest_app()`.
+tempest_shiny_host_retriever <- function(config, session = NULL) {
+  factory <- getOption("tempest.shiny.retriever")
+  if (is.null(factory)) {
+    return(NULL)
+  }
+  if (!is.function(factory)) {
+    tempest_abort(
+      "The {.option tempest.shiny.retriever} option must be a function or `NULL`.",
+      class = c("tempest_shiny_error", "tempest_error")
+    )
+  }
+  default <- tempest_retriever(
+    config = config,
+    workspace = tempest_research_workspace()
+  )
+  retriever <- factory(config = config, session = session, default = default)
+  if (is.null(retriever)) {
+    return(NULL)
+  }
+  if (!tempest_retriever_compatible(retriever)) {
+    tempest_abort(
+      c(
+        "The {.option tempest.shiny.retriever} function must return a retriever or `NULL`.",
+        i = "A retriever has a ResearchWorkspace at {.code $workspace} and {.code search()} and {.code fetch()} methods."
+      ),
+      class = c("tempest_shiny_error", "tempest_error")
+    )
+  }
+  retriever
+}
+
 tempest_shiny_as_reactive <- function(value) {
   if (shiny::is.reactive(value)) {
     value

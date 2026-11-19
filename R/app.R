@@ -12,6 +12,20 @@
 #' polite status regions. Validation, cancellation, and publication failures
 #' are announced as alerts.
 #'
+#' @section Host retrievers:
+#' A deployment that owns its evidence sources sets the
+#' `tempest.shiny.retriever` option to a function of `config`, `session`, and
+#' `default` before the app starts. The app calls it once for each new
+#' Co-STORM session and each STORM run, in the Shiny process, with the launch
+#' `TempestConfig`, the viewer's Shiny session, and the retriever Tempest
+#' would otherwise use, on a new workspace. It returns a retriever as
+#' described in [tempest_run()], or `NULL` to use `default` unchanged. A host
+#' retriever usually keeps `default$workspace` and calls `default$search()`
+#' and `default$fetch()` for sources it does not own. A STORM run executes in
+#' a background R process, so the retriever and everything its functions
+#' reach must survive serialization. A Co-STORM session restored from an
+#' archive uses Tempest's own retriever.
+#'
 #' @param demo If `TRUE`, open the deterministic ecosystem demonstration.
 #'   Scripted model responses and synthetic local evidence exercise real
 #'   deputy and dsprrr execution, a shinymcp research card, and explicit Graft

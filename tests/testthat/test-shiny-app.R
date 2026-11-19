@@ -2341,6 +2341,88 @@ test_that("STORM worker requires current run and progress contracts", {
   expect_equal(value$progress[[1]]$stage, "research")
 })
 
+test_that("STORM worker collects the plain records tempest_run() reports", {
+  app <- source_shiny_modules()
+  event <- tempest_progress_event(
+    run_id = "shiny-run",
+    workflow = "storm",
+    event_type = "stage",
+    status = "started",
+    stage = "research"
+  )
+  collector <- app$storm_worker_progress_collector(include_payload = TRUE)
+
+  tempest_progress_callback(collector$record)(event)
+
+  expect_identical(collector$data(), list(tempest_progress_event_data(event)))
+})
+
+test_that("STORM worker hands a host retriever to the run", {
+  app <- source_shiny_modules()
+  seen <- list()
+  run <- function(topic, config, run_id, progress, ...) {
+    seen <<- list(...)
+    list(report_md = "run")
+  }
+  retriever <- list(
+    workspace = tempest_research_workspace(),
+    search = function(query, k) data.frame(),
+    fetch = function(url) NULL
+  )
+
+  app$storm_run_with_progress(
+    topic = "Topic",
+    cfg = tempest_config(),
+    n_experts = 1,
+    strategy = "key_questions",
+    max_rounds = 1,
+    tempest_run_factory = function(package_root) run,
+    retriever = retriever
+  )
+
+  expect_identical(seen$retriever, retriever)
+})
+
+test_that("the app builds a host retriever from tempest.shiny.retriever", {
+  config <- tempest_config()
+  expect_null(tempest_shiny_host_retriever(config))
+
+  retriever <- list(
+    workspace = tempest_research_workspace(),
+    search = function(query, k) data.frame(),
+    fetch = function(url) NULL
+  )
+  seen <- NULL
+  withr::local_options(
+    tempest.shiny.retriever = function(config, session, default) {
+      seen <<- list(config = config, session = session, default = default)
+      retriever
+    }
+  )
+  expect_identical(tempest_shiny_host_retriever(config, "session"), retriever)
+  expect_identical(seen$config, config)
+  expect_identical(seen$session, "session")
+  expect_r6_class(seen$default, "TempestRetriever")
+  expect_r6_class(seen$default$workspace, "ResearchWorkspace")
+
+  withr::local_options(tempest.shiny.retriever = function(...) NULL)
+  expect_null(tempest_shiny_host_retriever(config))
+
+  withr::local_options(
+    tempest.shiny.retriever = function(...) list(search = identity)
+  )
+  expect_error(
+    tempest_shiny_host_retriever(config),
+    class = "tempest_shiny_error"
+  )
+
+  withr::local_options(tempest.shiny.retriever = "retriever")
+  expect_error(
+    tempest_shiny_host_retriever(config),
+    class = "tempest_shiny_error"
+  )
+})
+
 test_that("STORM worker scopes exact telemetry intent to the run", {
   app <- source_shiny_modules()
   prior <- options(tempest.otel.enabled = "worker-prior")

@@ -1138,3 +1138,32 @@ test_that("all transports discard stale provider turns", {
     rep("discarded", 3L)
   )
 })
+
+test_that("a failed tool call in an earlier turn keeps the history preserved", {
+  request <- ellmer::ContentToolRequest(id = "call", name = "web_search")
+  tool_turn <- function(error) {
+    ellmer::UserTurn(list(
+      ellmer::ContentToolResult(error = error, request = request)
+    ))
+  }
+  original <- rlang::catch_cnd(rlang::abort("limit reached", class = "custom"))
+  answer <- ellmer::AssistantTurn(list(ellmer::ContentText("answer")))
+  state <- list(agent = list(last_turn = function(role) answer))
+  provider_turn <- function(before, after) {
+    tempest_deputy_adapter_provider_turn(
+      state,
+      list(tool_turn(before)),
+      list(tool_turn(after), answer),
+      "answer"
+    )
+  }
+
+  expect_identical(
+    provider_turn(simpleError("limit reached"), original),
+    answer
+  )
+  expect_error(
+    provider_turn(simpleError("another failure"), original),
+    class = "tempest_agent_completion_binding_error"
+  )
+})

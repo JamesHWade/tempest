@@ -109,6 +109,7 @@ mod_storm_server <- function(id, config, store) {
         max_rounds,
         progress_stream_path,
         progress_run_id,
+        retriever,
         otel_enabled
       ) {
         job <- mirai::mirai(
@@ -124,6 +125,7 @@ mod_storm_server <- function(id, config, store) {
               progress_run_id = progress_run_id,
               progress_collector = progress_collector,
               tempest_run_factory = tempest_run_factory,
+              retriever = retriever,
               otel_enabled = otel_enabled
             )
           },
@@ -134,6 +136,7 @@ mod_storm_server <- function(id, config, store) {
           max_rounds = max_rounds,
           progress_stream_path = progress_stream_path,
           progress_run_id = progress_run_id,
+          retriever = retriever,
           otel_enabled = otel_enabled,
           package_root = storm_package_root(),
           progress_collector = storm_worker_progress_collector,
@@ -163,6 +166,20 @@ mod_storm_server <- function(id, config, store) {
       if (!nzchar(topic)) {
         validation_error(
           "Enter a research topic before running the STORM pipeline."
+        )
+        bslib::update_task_button("run", state = "ready", session = session)
+        return()
+      }
+      launch_config <- shiny::isolate(config())
+      # A host retriever is built here because only this process has the
+      # viewer's session; the worker receives the finished retriever.
+      host_retriever <- tryCatch(
+        tempest:::tempest_shiny_host_retriever(launch_config, session),
+        error = function(error) error
+      )
+      if (inherits(host_retriever, "error")) {
+        validation_error(
+          "The research sources for this app could not be set up."
         )
         bslib::update_task_button("run", state = "ready", session = session)
         return()
@@ -200,6 +217,7 @@ mod_storm_server <- function(id, config, store) {
         max_rounds = input$max_rounds %||% 3,
         progress_stream_path = progress_stream$path,
         progress_run_id = progress_run_id,
+        retriever = host_retriever,
         otel_enabled = otel_enabled
       )
     })
@@ -419,8 +437,9 @@ storm_worker_progress_collector <- function(
   include_payload <- isTRUE(include_payload)
   events <- list()
 
+  # `tempest_run()` hands its progress callback a plain record, not the event.
   event_data <- function(event) {
-    data <- tempest:::tempest_progress_event_data(event)
+    data <- tempest:::tempest_progress_event_record(event)
     if (!include_payload) {
       data$payload <- list()
     }
@@ -610,6 +629,7 @@ storm_run_with_progress <- function(
   progress_run_id = NULL,
   progress_collector = storm_worker_progress_collector,
   tempest_run_factory = storm_worker_tempest_run,
+  retriever = NULL,
   otel_enabled = FALSE
 ) {
   collector <- progress_collector(
@@ -617,18 +637,22 @@ storm_run_with_progress <- function(
     stream_path = progress_stream_path
   )
   tempest_run <- tempest_run_factory(package_root)
+  run_args <- list(
+    topic = topic,
+    config = cfg,
+    n_experts = n_experts,
+    research_strategy = strategy,
+    max_rounds = max_rounds,
+    run_id = progress_run_id,
+    progress = collector$record,
+    verbose = FALSE
+  )
+  if (!is.null(retriever)) {
+    run_args$retriever <- retriever
+  }
   result <- tempest:::tempest_otel_worker_call(
     tempest_run,
-    list(
-      topic = topic,
-      config = cfg,
-      n_experts = n_experts,
-      research_strategy = strategy,
-      max_rounds = max_rounds,
-      run_id = progress_run_id,
-      progress = collector$record,
-      verbose = FALSE
-    ),
+    run_args,
     otel_enabled
   )
   list(

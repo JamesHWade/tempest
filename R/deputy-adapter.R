@@ -328,6 +328,28 @@ tempest_deputy_adapter_turn_boundary <- function(state) {
   tempest_deputy_adapter_turns(turns)
 }
 
+# What must stay the same in an earlier turn while a completion runs. A failed
+# tool call is compared by its message: the condition recorded for it is the
+# same failure whether the chat holds the original error or a plain copy, and
+# the two are not identical objects.
+tempest_deputy_adapter_turn_key <- function(turn) {
+  contents <- tryCatch(turn@contents, error = function(error) NULL)
+  if (!is.list(contents)) {
+    return(turn)
+  }
+  props <- S7::props(turn)
+  props$contents <- lapply(contents, function(content) {
+    error <- tryCatch(content@error, error = function(error) NULL)
+    if (!inherits(error, "condition")) {
+      return(content)
+    }
+    props <- S7::props(content)
+    props$error <- conditionMessage(error)
+    list(class(content), props)
+  })
+  list(class(turn), props)
+}
+
 tempest_deputy_adapter_provider_turn <- function(
   state,
   turns_before,
@@ -340,8 +362,11 @@ tempest_deputy_adapter_provider_turn <- function(
   advanced <- length(turns_after) > before_count
   preserved <- before_count == 0L ||
     identical(
-      turns_after[seq_len(before_count)],
-      turns_before
+      lapply(
+        turns_after[seq_len(before_count)],
+        tempest_deputy_adapter_turn_key
+      ),
+      lapply(turns_before, tempest_deputy_adapter_turn_key)
     )
   if (!advanced || !preserved) {
     tempest_agent_completion_binding_abort()
