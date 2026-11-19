@@ -44,6 +44,10 @@
   ([\#189](https://github.com/JamesHWade/tempest/issues/189)).
 
 - [`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
+  adds editable starter briefs, an evidence navigator, and an opt-in
+  searchable library for reopening saved reports.
+
+- [`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
   opens a dedicated research app with selectable host tools and MCP
   tools, cancellable background runs, opt-in R analysis and image
   generation, and portable report previews and downloads.

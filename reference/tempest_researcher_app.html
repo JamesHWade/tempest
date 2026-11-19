@@ -65,7 +65,8 @@ interactive Co-STORM sessions.</p>
 <span>  tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  mcp_config <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"tempest-researcher"</span><span class="op">)</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"openai/gpt-6.1-sol"</span></span>
+<span>  model <span class="op">=</span> <span class="st">"openai/gpt-6.1-sol"</span>,</span>
+<span>  report_library <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -111,6 +112,14 @@ When omitted with a configured Chat object, starts with that Chat's model.
 A supplied Chat can change models within its provider; use a custom
 <code>config</code> chat factory to support switching providers.</p></dd>
 
+
+<dt id="arg-report-library">report_library<a class="anchor" aria-label="anchor" href="#arg-report-library"></a></dt>
+<dd><p>Enable browsing previously published app reports in
+<code>output_dir</code>. Defaults to <code>FALSE</code>. When enabled, every user of this app
+can open and download the reports in that directory. Use a dedicated
+directory managed by the host and enable this only for an audience that
+can read the entire collection.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -140,7 +149,7 @@ functions must work in a fresh R process without captured open connections.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="fu">tempest_researcher_app</span><span class="op">(</span>output_dir <span class="op">=</span> <span class="st">"research-reports"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">tempest_researcher_app</span><span class="op">(</span>output_dir <span class="op">=</span> <span class="st">"research-reports"</span>, report_library <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">tempest_researcher_app</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>plant_data <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span></span>

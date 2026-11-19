@@ -429,8 +429,16 @@ portable bundle.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/tempest_researcher_app.html">tempest_researcher_app</a></span><span class="op">(</span></span>
 <span>  model <span class="op">=</span> <span class="st">"openai/gpt-6.1-sol"</span>,</span>
+<span>  report_library <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="st">"research-reports"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>Choose a starter brief to draft a question, then edit it before
+starting. Open the evidence navigator to inspect sources and see which
+computations and illustrations completed. To revisit a report in a later
+session, select it in the report library and open it for reading or ZIP
+download. Enabling <code>report_library</code> gives all users of this
+app access to reports in the chosen output directory. Use a directory
+intended for that audience.</p>
 <p>If <code>config</code> includes a Ragnar store, each research job
 uses a private copy of its existing corpus and opens its own database
 connection. New chunks are ingested into that copy, not the host store.

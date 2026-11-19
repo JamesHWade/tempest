@@ -16,7 +16,8 @@ tempest_researcher_app(
   tools = list(),
   mcp_config = NULL,
   output_dir = file.path(tempdir(), "tempest-researcher"),
-  model = "openai/gpt-6.1-sol"
+  model = "openai/gpt-6.1-sol",
+  report_library = FALSE
 )
 ```
 
@@ -65,6 +66,14 @@ tempest_researcher_app(
   A supplied Chat can change models within its provider; use a custom
   `config` chat factory to support switching providers.
 
+- report_library:
+
+  Enable browsing previously published app reports in `output_dir`.
+  Defaults to `FALSE`. When enabled, every user of this app can open and
+  download the reports in that directory. Use a dedicated directory
+  managed by the host and enable this only for an audience that can read
+  the entire collection.
+
 ## Value
 
 Invisibly, the result of
@@ -99,7 +108,7 @@ captured open connections.
 
 ``` r
 if (FALSE) { # \dontrun{
-tempest_researcher_app(output_dir = "research-reports")
+tempest_researcher_app(output_dir = "research-reports", report_library = TRUE)
 
 tempest_researcher_app(
   tools = list(plant_data = function() {
