@@ -7,67 +7,166 @@ mod_run_review_ui <- function(id) {
     title = shiny::tagList(shiny::icon("route"), "Run review"),
     value = "Run review",
     bslib::layout_sidebar(
+      class = "tempest-scripted-layout tempest-review-layout",
       sidebar = bslib::sidebar(
-        title = "Review filters",
-        width = 300,
-        shiny::selectInput(
-          ns("product_source"),
-          "Research product",
-          choices = character()
+        title = "Trajectory review",
+        width = 320,
+        class = "tempest-scripted-sidebar",
+        bslib::card(
+          class = "tempest-review-filter-card",
+          bslib::card_header(
+            shiny::span(
+              shiny::icon("filter", class = "me-2"),
+              "Source and filters"
+            )
+          ),
+          bslib::card_body(
+            shiny::selectInput(
+              ns("product_source"),
+              "Research product",
+              choices = character()
+            ),
+            shiny::helpText(
+              "Choose a completed STORM run or Co-STORM session."
+            ),
+            shiny::selectInput(
+              ns("stage_filter"),
+              "Stage",
+              choices = c("All stages" = "")
+            ),
+            shiny::selectInput(
+              ns("status_filter"),
+              "Status",
+              choices = c("All statuses" = "")
+            ),
+            shiny::checkboxInput(
+              ns("attention_only"),
+              "Only stages with retained findings",
+              value = FALSE
+            ),
+            shiny::selectInput(
+              ns("stage_detail"),
+              "Stage details",
+              choices = character()
+            ),
+            shiny::helpText(
+              "Select an attempt to inspect its fixed artifact and authority references."
+            )
+          )
         ),
-        shiny::selectInput(
-          ns("stage_filter"),
-          "Stage",
-          choices = c("All stages" = "")
-        ),
-        shiny::selectInput(
-          ns("status_filter"),
-          "Status",
-          choices = c("All statuses" = "")
-        ),
-        shiny::checkboxInput(
-          ns("attention_only"),
-          "Only stages with retained findings",
-          value = FALSE
-        ),
-        shiny::selectInput(
-          ns("stage_detail"),
-          "Stage details",
-          choices = character()
+        bslib::card(
+          class = "tempest-review-boundary-card",
+          bslib::card_header(
+            shiny::span(
+              shiny::icon("shield-halved", class = "me-2"),
+              "Evidence boundary"
+            )
+          ),
+          bslib::card_body(
+            shiny::p(
+              class = "small mb-2",
+              "Recorded StageRecords and their exact joins are authoritative."
+            ),
+            shiny::p(
+              class = "small text-body-secondary mb-0",
+              "Live progress is retained separately as an untrusted observation."
+            )
+          )
         )
       ),
       shiny::div(
-        class = "d-flex flex-column gap-3",
+        class = "tempest-review-content d-flex flex-column gap-3",
         shiny::uiOutput(ns("new_failure_alert")),
         shiny::div(
+          class = "tempest-review-summary-region",
           role = "status",
           `aria-live` = "polite",
           `aria-atomic` = "true",
           shiny::uiOutput(ns("summary"))
         ),
-        bslib::card(
-          bslib::card_header("Authoritative stage records"),
-          bslib::card_body(shiny::uiOutput(ns("stage_table")))
-        ),
-        bslib::card(
-          id = ns("stage_detail_card"),
-          `aria-labelledby` = ns("stage_detail_heading"),
-          bslib::card_header(
-            shiny::tags$h2(
-              id = ns("stage_detail_heading"),
-              class = "h5 mb-0",
-              "Selected stage details"
+        bslib::layout_columns(
+          col_widths = c(7, 5),
+          gap = "1rem",
+          class = "tempest-review-primary-grid",
+          bslib::card(
+            class = "tempest-review-card tempest-review-stage-card",
+            bslib::card_header(
+              class = "tempest-scripted-card-header",
+              shiny::div(
+                shiny::h2(class = "h5 mb-1", "Authoritative stage records"),
+                shiny::p(
+                  class = "mb-0 small text-body-secondary",
+                  "The fixed trajectory used for findings, joins, and publication decisions."
+                )
+              )
+            ),
+            bslib::card_body(
+              class = "tempest-scripted-card-body",
+              shiny::uiOutput(ns("stage_table"))
             )
           ),
-          bslib::card_body(shiny::uiOutput(ns("stage_detail_body")))
+          bslib::card(
+            id = ns("stage_detail_card"),
+            class = "tempest-review-card tempest-review-detail-card",
+            `aria-labelledby` = ns("stage_detail_heading"),
+            bslib::card_header(
+              class = "tempest-scripted-card-header",
+              shiny::tags$h2(
+                id = ns("stage_detail_heading"),
+                class = "h5 mb-0",
+                "Selected stage details"
+              )
+            ),
+            bslib::card_body(
+              class = "tempest-scripted-card-body",
+              shiny::uiOutput(ns("stage_detail_body"))
+            )
+          )
         ),
-        bslib::card(
-          bslib::card_header("Unlinked untimed Deputy references"),
-          bslib::card_body(shiny::uiOutput(ns("unlinked_agents")))
-        ),
-        bslib::card(
-          bslib::card_header("Live progress observations (untrusted)"),
-          bslib::card_body(shiny::uiOutput(ns("live_progress")))
+        bslib::layout_columns(
+          col_widths = c(6, 6),
+          gap = "1rem",
+          class = "tempest-review-secondary-grid",
+          bslib::card(
+            class = "tempest-review-card tempest-review-agent-card",
+            bslib::card_header(
+              class = "tempest-scripted-card-header",
+              shiny::div(
+                shiny::h2(
+                  class = "h5 mb-1",
+                  "Unlinked untimed Deputy references"
+                ),
+                shiny::p(
+                  class = "mb-0 small text-body-secondary",
+                  "References that do not have an authority-validated StageRecord execution join."
+                )
+              )
+            ),
+            bslib::card_body(
+              class = "tempest-scripted-card-body",
+              shiny::uiOutput(ns("unlinked_agents"))
+            )
+          ),
+          bslib::card(
+            class = "tempest-review-card tempest-review-live-card",
+            bslib::card_header(
+              class = "tempest-scripted-card-header",
+              shiny::div(
+                shiny::h2(
+                  class = "h5 mb-1",
+                  "Live progress observations (untrusted)"
+                ),
+                shiny::p(
+                  class = "mb-0 small text-body-secondary",
+                  "Useful for orientation, but never used to rewrite the recorded review."
+                )
+              )
+            ),
+            bslib::card_body(
+              class = "tempest-scripted-card-body",
+              shiny::uiOutput(ns("live_progress"))
+            )
+          )
         )
       )
     )
@@ -379,25 +478,26 @@ mod_run_review_server <- function(
         return(NULL)
       }
       shiny::div(
-        class = "alert alert-warning mb-0",
+        class = "tempest-review-alert alert alert-warning mb-0",
         role = "alert",
-        shiny::icon("triangle-exclamation"),
-        " ",
-        message
+        shiny::icon("triangle-exclamation", class = "me-2"),
+        shiny::span(message)
       )
     })
 
     output$summary <- shiny::renderUI({
       state <- review_state()
       if (identical(state$status, "blank")) {
-        return(empty_state(
+        return(run_review_empty_state_ui(
           "route",
+          "No run selected",
           "Complete a STORM run or Co-STORM session to review its trajectory."
         ))
       }
       if (identical(state$status, "unavailable")) {
-        return(empty_state(
+        return(run_review_empty_state_ui(
           "shield-halved",
+          "Review unavailable",
           paste(
             "No authoritative review is available for this product.",
             "Running, failed, cancelled, stale, or invalid products are",
@@ -428,8 +528,7 @@ mod_run_review_server <- function(
 
     output$stage_table <- shiny::renderUI({
       if (!identical(review_state()$status, "ready")) {
-        return(shiny::p(
-          class = "text-body-secondary mb-0",
+        return(run_review_inline_empty_state_ui(
           "No authoritative StageRecord rows are available."
         ))
       }
@@ -443,8 +542,7 @@ mod_run_review_server <- function(
     output$stage_detail_body <- shiny::renderUI({
       stage <- selected_stage()
       if (is.null(stage)) {
-        return(shiny::p(
-          class = "text-body-secondary mb-0",
+        return(run_review_inline_empty_state_ui(
           "Choose an authoritative StageRecord to inspect its fixed references."
         ))
       }
@@ -496,6 +594,26 @@ mod_run_review_server <- function(
 
     invisible(NULL)
   })
+}
+
+run_review_empty_state_ui <- function(icon_name, heading, message) {
+  shiny::div(
+    class = "tempest-scripted-empty-state tempest-review-empty-state",
+    shiny::div(
+      class = "tempest-scripted-empty-icon",
+      shiny::icon(icon_name, `aria-hidden` = "true")
+    ),
+    shiny::h2(class = "h5 mb-2", heading),
+    shiny::p(class = "mb-0", message)
+  )
+}
+
+run_review_inline_empty_state_ui <- function(message) {
+  shiny::div(
+    class = "tempest-review-inline-empty text-body-secondary",
+    shiny::icon("inbox", class = "me-2", `aria-hidden` = "true"),
+    shiny::span(message)
+  )
 }
 
 run_review_prop <- function(value, field) {
@@ -715,38 +833,61 @@ run_review_summary_ui <- function(
   run_id <- run_review_field(product, "research_run_id")
   report_reference <- run_review_prop(product, "report_reference")
   shiny::div(
-    class = "d-flex flex-column gap-2",
+    class = "tempest-review-summary d-flex flex-column gap-3",
     shiny::div(
-      class = "d-flex flex-wrap gap-3 align-items-center",
+      class = "d-flex flex-wrap gap-3 align-items-start justify-content-between",
+      shiny::div(
+        shiny::h2(
+          class = "h4 mb-1",
+          paste(run_review_mode_label(mode), "run review")
+        ),
+        shiny::tags$code(class = "text-break small", run_id)
+      ),
       shiny::span(
-        class = "fw-semibold",
-        shiny::icon(run_review_status_icon(status)),
-        " ",
+        class = paste(
+          "badge rounded-pill",
+          if (status %in% c("succeeded", "completed")) {
+            "text-bg-success"
+          } else if (status %in% c("failed", "cancelled")) {
+            "text-bg-danger"
+          } else {
+            "text-bg-secondary"
+          }
+        ),
+        shiny::icon(run_review_status_icon(status), class = "me-1"),
         run_review_label(status)
-      ),
-      shiny::span("Product: ", shiny::strong(run_review_mode_label(mode))),
-      shiny::span("Run: ", shiny::tags$code(class = "text-break", run_id)),
-      shiny::span(
-        "Review: ",
-        shiny::tags$code(class = "text-break", review_id)
-      ),
-      shiny::span(
-        "Config: ",
-        shiny::tags$code(
-          class = "text-break",
-          run_review_field(product, "config_digest")
-        )
-      ),
-      shiny::span(
-        "Report: ",
-        shiny::tags$code(
-          class = "text-break",
-          run_review_field(report_reference, "sha256")
-        )
       )
     ),
-    shiny::p(
-      class = "mb-0 text-body-secondary",
+    shiny::tags$details(
+      class = "tempest-review-identifiers",
+      shiny::tags$summary("Record identifiers"),
+      shiny::div(
+        class = "tempest-review-summary-meta d-flex flex-wrap gap-2",
+        shiny::div(
+          class = "tempest-review-meta-item",
+          shiny::span(class = "text-body-secondary", "Review:"),
+          shiny::tags$code(class = "text-break", review_id)
+        ),
+        shiny::div(
+          class = "tempest-review-meta-item",
+          shiny::span(class = "text-body-secondary", "Config:"),
+          shiny::tags$code(
+            class = "text-break",
+            run_review_field(product, "config_digest")
+          )
+        ),
+        shiny::div(
+          class = "tempest-review-meta-item",
+          shiny::span(class = "text-body-secondary", "Report:"),
+          shiny::tags$code(
+            class = "text-break",
+            run_review_field(report_reference, "sha256")
+          )
+        )
+      ),
+    ),
+    shiny::div(
+      class = "tempest-review-summary-copy text-body-secondary",
       sprintf(
         paste0(
           "%d authoritative stages retained; %d omitted. ",
@@ -768,8 +909,7 @@ run_review_summary_ui <- function(
 
 run_review_stage_table_ui <- function(stages, findings, lane) {
   if (length(stages) == 0L) {
-    return(shiny::p(
-      class = "text-body-secondary mb-0",
+    return(run_review_inline_empty_state_ui(
       "No StageRecord rows match the current filters."
     ))
   }
@@ -822,9 +962,9 @@ run_review_stage_table_ui <- function(stages, findings, lane) {
   })
   shiny::tagList(
     shiny::div(
-      class = "table-responsive",
+      class = "table-responsive tempest-review-table-wrap",
       shiny::tags$table(
-        class = "table table-sm align-middle mb-1",
+        class = "table table-sm table-hover align-middle mb-1 tempest-review-table",
         `aria-label` = "Authoritative StageRecord trajectory",
         shiny::tags$caption(
           class = "visually-hidden",
@@ -873,7 +1013,7 @@ run_review_definition_list <- function(values) {
   )
   do.call(
     shiny::tags$dl,
-    c(list(class = "row mb-0"), entries)
+    c(list(class = "row mb-0 tempest-review-definitions"), entries)
   )
 }
 
@@ -897,7 +1037,11 @@ run_review_stage_detail_ui <- function(stage, linked_agents, agent_lane) {
       `Output digest` = run_review_field(output, "digest")
     )),
     shiny::tags$hr(),
-    shiny::tags$h3(class = "h6", "Exactly matched untimed Deputy references"),
+    shiny::tags$h3(
+      class = "h6 mb-2",
+      shiny::icon("link", class = "me-2"),
+      "Exactly matched untimed Deputy references"
+    ),
     shiny::p(
       class = "small text-body-secondary",
       paste(
@@ -919,8 +1063,7 @@ run_review_stage_detail_ui <- function(stage, linked_agents, agent_lane) {
 
 run_review_agent_table_ui <- function(agents, label, lane) {
   table <- if (length(agents) == 0L) {
-    shiny::p(
-      class = "text-body-secondary mb-0",
+    run_review_inline_empty_state_ui(
       "No untimed Deputy references are present in this section."
     )
   } else {
@@ -946,9 +1089,9 @@ run_review_agent_table_ui <- function(agents, label, lane) {
       )
     })
     shiny::div(
-      class = "table-responsive",
+      class = "table-responsive tempest-review-table-wrap",
       shiny::tags$table(
-        class = "table table-sm align-middle mb-0",
+        class = "table table-sm table-hover align-middle mb-0 tempest-review-table",
         `aria-label` = label,
         shiny::tags$caption(class = "visually-hidden", label),
         shiny::tags$thead(shiny::tags$tr(
@@ -1068,8 +1211,7 @@ run_review_event_key <- function(event) {
 
 run_review_progress_ui <- function(events, product_id) {
   if (length(events) == 0L) {
-    return(shiny::p(
-      class = "text-body-secondary mb-0",
+    return(run_review_inline_empty_state_ui(
       "No live progress observations are currently available."
     ))
   }
@@ -1102,17 +1244,21 @@ run_review_progress_ui <- function(events, product_id) {
     )
   })
   shiny::tagList(
-    shiny::p(
-      class = "small text-body-secondary",
-      paste(
-        "Mutable progress is shown only as an untrusted observation.",
-        "It cannot change the review id, findings, joins, or persistence."
+    shiny::div(
+      class = "tempest-review-live-boundary d-flex align-items-start gap-2",
+      shiny::icon("eye", class = "mt-1", `aria-hidden` = "true"),
+      shiny::p(
+        class = "small text-body-secondary mb-0",
+        paste(
+          "Mutable progress is shown only as an untrusted observation.",
+          "It cannot change the review id, findings, joins, or persistence."
+        )
       )
     ),
     shiny::div(
-      class = "table-responsive",
+      class = "table-responsive tempest-review-table-wrap",
       shiny::tags$table(
-        class = "table table-sm align-middle mb-1",
+        class = "table table-sm table-hover align-middle mb-1 tempest-review-table",
         `aria-label` = "Untrusted live progress observations",
         shiny::tags$caption(
           class = "visually-hidden",

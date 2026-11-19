@@ -1,0 +1,480 @@
+/* Co-STORM discussion surface.
+ *
+ * The application-level stylesheet loads this file after Bootstrap and the
+ * shared Tempest styles. Keep the selectors scoped to the discussion surface
+ * so host applications can reuse the module without inheriting the palette.
+ */
+
+.tempest-chat-layout {
+  --tempest-ink: #173042;
+  --tempest-button-ink: #fff;
+  --tempest-muted: #5e6d73;
+  --tempest-teal: #0d6f73;
+  --tempest-teal-strong: #075458;
+  --tempest-copper: #c26c4a;
+  --tempest-paper: #fbfcfa;
+  --tempest-panel: #f3f7f5;
+  --tempest-line: rgba(23, 48, 66, .14);
+  min-height: 0;
+  color: var(--tempest-ink);
+  background: var(--tempest-paper);
+}
+
+:root[data-bs-theme="dark"] .tempest-chat-layout,
+[data-bs-theme="dark"] .tempest-chat-layout {
+  --tempest-ink: #e7f0ed;
+  --tempest-button-ink: #10292c;
+  --tempest-muted: #aabbb7;
+  --tempest-teal: #76c8c2;
+  --tempest-teal-strong: #9be0d9;
+  --tempest-copper: #e09a79;
+  --tempest-paper: #101b20;
+  --tempest-panel: #17272c;
+  --tempest-line: rgba(231, 240, 237, .16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-bs-theme="light"]) .tempest-chat-layout {
+    --tempest-ink: #e7f0ed;
+    --tempest-button-ink: #10292c;
+    --tempest-muted: #aabbb7;
+    --tempest-teal: #76c8c2;
+    --tempest-teal-strong: #9be0d9;
+    --tempest-copper: #e09a79;
+    --tempest-paper: #101b20;
+    --tempest-panel: #17272c;
+    --tempest-line: rgba(231, 240, 237, .16);
+  }
+}
+
+.tempest-chat-card,
+.tempest-chat-card-body {
+  min-height: 0;
+  background: var(--tempest-paper);
+}
+
+.tempest-chat-card shiny-chat-container {
+  --shiny-chat-greeting-max-width: 66rem;
+  --shiny-chat-message-max-width: 760px;
+  min-height: 0;
+  color: var(--tempest-ink);
+  background: var(--tempest-paper);
+}
+
+.tempest-chat-card .shiny-chat-wrapper:has(.shiny-chat-greeting) {
+  max-width: min(68rem, 100%);
+}
+.tempest-chat-card .shiny-chat-input {
+  width: min(100%, 45rem);
+  margin-inline: auto;
+}
+.shiny-chat-greeting-content:has(.tempest-chat-welcome) {
+  container-type: inline-size;
+}
+.tempest-chat-welcome {
+  --gutter: clamp(1rem, 3vw, 2.4rem);
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  margin: 0;
+  padding: 0 var(--gutter) var(--gutter);
+  overflow: hidden;
+  border: 1px solid var(--tempest-line);
+  border-radius: .9rem;
+  background: var(--bs-body-bg);
+  box-shadow: 0 .6rem 2.3rem rgb(12 38 48 / 7%);
+}
+.tempest-chat-welcome::before {
+  content: '';
+  height: clamp(5rem, 14vh, 10rem);
+  margin-inline: calc(-1 * var(--gutter));
+  background: #264550 url('storm-front.webp') center 55% / cover no-repeat;
+}
+@container (min-width: 54rem) {
+  .tempest-chat-welcome {
+    grid-template-columns: minmax(0, .61fr) minmax(0, 1fr);
+    column-gap: 2rem;
+    padding: 0 2rem 0 0;
+  }
+  .tempest-chat-welcome::before {
+    grid-area: 1 / 1 / 4 / 2;
+    min-height: 23rem;
+    height: auto;
+    margin: 0;
+    background-position: 65% center;
+  }
+  .tempest-chat-welcome-kicker { grid-column: 2; margin-top: 2.25rem; }
+  .tempest-chat-welcome-copy, .tempest-chat-welcome-form { grid-column: 2; }
+  .tempest-chat-welcome-form { margin-bottom: 2rem; }
+}
+.tempest-chat-footer-shell:has(.tempest-chat-footer-idle),
+.tempest-chat-footer-shell:has(.tempest-chat-footer-output:empty) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.tempest-chat-welcome-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  width: fit-content;
+  color: var(--tempest-teal-strong);
+  font-size: .72rem;
+  font-weight: 750;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.tempest-chat-welcome-kicker .fa,
+.tempest-chat-welcome-kicker svg {
+  color: var(--tempest-copper);
+}
+
+.tempest-display-heading,
+.tempest-chat-settings .sidebar-title,
+.tempest-expert-modal .modal-title {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: -.02em;
+}
+
+.tempest-chat-welcome-copy h2 {
+  color: var(--tempest-ink);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1.05;
+}
+
+.tempest-chat-welcome-copy p {
+  max-width: 44rem;
+  color: var(--tempest-muted);
+  line-height: 1.55;
+}
+
+.tempest-chat-welcome-copy .lead {
+  color: var(--tempest-ink);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+}
+
+.tempest-chat-welcome-topic .control-label,
+.tempest-chat-welcome-experts .control-label {
+  color: var(--tempest-muted);
+  font-size: .75rem;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.tempest-chat-welcome-topic .form-control,
+.tempest-chat-welcome-experts .form-select,
+.tempest-chat-expert-setup {
+  border-color: var(--tempest-line);
+  border-radius: .65rem;
+  box-shadow: none;
+}
+
+.tempest-chat-expert-setup {
+  --bs-btn-color: var(--tempest-ink);
+  --bs-btn-hover-color: var(--tempest-ink);
+  --bs-btn-hover-bg: var(--tempest-panel);
+}
+
+.tempest-chat-welcome-topic .form-control {
+  min-height: 3rem;
+  padding-inline: 1rem;
+  font-size: 1rem;
+}
+
+.tempest-chat-welcome-actions .form-group {
+  min-width: 0;
+}
+
+.tempest-chat-welcome-tools {
+  align-self: end;
+}
+
+.tempest-chat-details {
+  position: relative;
+  min-width: 0;
+}
+
+.tempest-chat-details-summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 2.375rem;
+  padding: .45rem .7rem;
+  border: 1px solid var(--tempest-line);
+  border-radius: .65rem;
+  background: transparent;
+  color: var(--tempest-ink);
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.tempest-chat-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.tempest-chat-details-summary::marker {
+  content: "";
+}
+
+.tempest-chat-details-summary::after {
+  content: "▾";
+  color: var(--tempest-muted);
+  font-size: .8em;
+}
+
+.tempest-chat-details[open] > .tempest-chat-details-summary::after {
+  content: "▴";
+}
+
+.tempest-chat-details-summary:hover,
+.tempest-chat-details-summary:focus-visible,
+.tempest-chat-details[open] > .tempest-chat-details-summary {
+  border-color: var(--tempest-teal);
+  color: var(--tempest-teal-strong);
+}
+
+.tempest-chat-details-panel {
+  position: relative;
+  width: min(20rem, calc(100vw - 2rem));
+  margin-top: .45rem;
+  padding: .85rem;
+  border: 1px solid var(--tempest-line);
+  border-radius: .75rem;
+  background: var(--tempest-paper);
+  box-shadow: 0 .75rem 2rem rgba(12, 38, 48, .14);
+}
+
+.tempest-chat-details-panel .form-group {
+  margin-bottom: .65rem;
+}
+
+/* A disclosed form gets its own row so every control stays reachable. */
+.tempest-chat-welcome-actions:has(.tempest-chat-details[open]) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas: 'experts start' 'tools tools';
+}
+.tempest-chat-welcome-actions:has(details[open]) .tempest-chat-welcome-experts { grid-area: experts; min-width: 0; }
+.tempest-chat-welcome-actions:has(details[open]) .tempest-chat-start { grid-area: start; }
+.tempest-chat-welcome-actions:has(details[open]) .tempest-chat-welcome-tools {
+  grid-area: tools;
+  width: 100%;
+  align-items: flex-start;
+}
+.tempest-chat-welcome-tools .tempest-chat-details-panel {
+  width: 100%;
+  min-width: 0;
+}
+.tempest-chat-welcome-tools { min-width: 0; max-width: 100%; }
+.tempest-chat-welcome-tools .tempest-chat-details-panel .shiny-input-container { width: 100%; min-width: 0; }
+.tempest-chat-welcome-tools .tempest-chat-details-panel { grid-template-columns: minmax(0,1fr); }
+.tempest-chat-welcome-tools details { max-width: 100%; }
+
+.tempest-chat-start {
+  min-height: 2.5rem;
+  border-color: var(--tempest-teal);
+  background: var(--tempest-teal);
+  color: var(--tempest-button-ink);
+  font-weight: 750;
+  letter-spacing: .01em;
+}
+
+.tempest-chat-start:hover,
+.tempest-chat-start:focus-visible {
+  border-color: var(--tempest-teal-strong);
+  background: var(--tempest-teal-strong);
+  color: var(--tempest-button-ink);
+}
+
+.tempest-chat-start-feedback {
+  min-height: 0;
+}
+
+.tempest-chat-research-options {
+  min-width: min(19rem, calc(100vw - 2rem));
+  padding: .1rem;
+}
+
+.tempest-chat-research-options .form-check,
+.tempest-chat-research-options .bslib-switch {
+  margin-bottom: .65rem;
+}
+
+.tempest-chat-settings {
+  background: var(--tempest-panel);
+  border-left-color: var(--tempest-line);
+}
+
+.tempest-chat-settings-intro {
+  padding: .85rem 1rem .15rem;
+}
+
+.tempest-chat-settings .sidebar-title {
+  color: var(--tempest-ink);
+}
+
+.tempest-chat-settings .accordion,
+.tempest-chat-config .accordion {
+  --bs-accordion-border-color: var(--tempest-line);
+  --bs-accordion-btn-color: var(--tempest-ink);
+  --bs-accordion-active-color: var(--tempest-teal-strong);
+  --bs-accordion-bg: transparent;
+  --bs-accordion-active-bg: color-mix(
+    in srgb,
+    var(--tempest-teal) 9%,
+    transparent
+  );
+}
+
+.tempest-chat-settings .accordion-button,
+.tempest-chat-config .accordion-button {
+  font-weight: 700;
+}
+
+.tempest-chat-config {
+  border-top-color: var(--tempest-line);
+}
+
+.tempest-config-intro {
+  margin-bottom: .85rem;
+  line-height: 1.45;
+}
+
+.tempest-config-field .form-group,
+.tempest-config-review-options .form-group {
+  margin-bottom: .7rem;
+}
+
+.tempest-config-field .form-control,
+.tempest-config-review-options .form-control,
+.tempest-config-review-options .form-select {
+  border-color: var(--tempest-line);
+  border-radius: .55rem;
+}
+
+.tempest-config-review-options {
+  padding-top: .25rem;
+}
+
+.tempest-custom-expert-card {
+  border-color: var(--tempest-line);
+  background: color-mix(in srgb, var(--tempest-panel) 80%, var(--tempest-paper));
+}
+
+.tempest-expert-modal .modal-content {
+  border-color: var(--tempest-line);
+  background: var(--tempest-paper);
+  color: var(--tempest-ink);
+}
+
+.tempest-chat-footer-shell {
+  padding: .6rem clamp(.75rem, 3vw, 1.25rem) .8rem;
+  border-top: 1px solid var(--tempest-line);
+  background: color-mix(in srgb, var(--tempest-paper) 96%, var(--tempest-teal));
+}
+
+.tempest-chat-footer-status {
+  min-height: 2rem;
+}
+
+.tempest-chat-footer-status .badge {
+  border-color: var(--tempest-line) !important;
+  background: transparent !important;
+  color: var(--tempest-muted) !important;
+}
+
+.tempest-chat-footer-actions {
+  align-items: center;
+}
+
+.tempest-chat-welcome :is(
+    button,
+    input,
+    select,
+    textarea,
+    .bslib-toolbar-input-button
+  ):focus-visible,
+.tempest-chat-settings :is(
+    button,
+    input,
+    select,
+    textarea
+  ):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--tempest-teal) 65%, white);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767.98px) {
+  .bslib-sidebar-layout > .main.tempest-chat-layout {
+    padding-inline: .5rem;
+  }
+  .tempest-chat-card .shiny-chat-greeting {
+    padding: .5rem;
+  }
+  .tempest-chat-welcome { gap: .75rem; }
+  .tempest-chat-welcome::before { height: 5rem; }
+  .tempest-chat-welcome-actions {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "experts"
+      "tools"
+      "start";
+  }
+
+  .tempest-chat-welcome-experts {
+    grid-area: experts;
+  }
+
+  .tempest-chat-welcome-tools {
+    grid-area: tools;
+    width: 100%;
+  }
+
+  .tempest-chat-start {
+    grid-area: start;
+    width: 100%;
+  }
+
+  .tempest-chat-footer-active {
+    align-items: stretch !important;
+  }
+
+  .tempest-chat-footer-status,
+  .tempest-chat-footer-actions {
+    width: 100%;
+  }
+
+  .tempest-chat-footer-actions {
+    justify-content: stretch;
+    padding-right: 2.25rem;
+  }
+
+  .tempest-chat-footer-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .tempest-chat-footer-actions .btn,
+  .tempest-chat-footer-actions .bslib-toolbar,
+  .tempest-chat-footer-actions .bslib-toolbar-input-button {
+    width: 100%;
+  }
+
+  .tempest-chat-settings {
+    --_sidebar-width: min(100vw, 24rem) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tempest-chat-layout *,
+  .tempest-chat-layout *::before,
+  .tempest-chat-layout *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}

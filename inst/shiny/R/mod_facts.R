@@ -8,7 +8,7 @@ mod_facts_ui <- function(id) {
     value = "Facts",
     bslib::card(
       full_screen = TRUE,
-      class = "tempest-evidence-card",
+      class = "tempest-evidence-card tempest-facts-browser",
       bslib::card_header(evidence_table_header(
         ns = ns,
         title = "Extracted facts",
@@ -37,20 +37,59 @@ mod_facts_server <- function(id, store) {
     output$body <- shiny::renderUI({
       df <- facts()
       if (is.null(df)) {
-        return(empty_state("check-circle", "Start a session to collect facts."))
+        return(evidence_panel_empty_state(
+          "check-circle",
+          "No active session",
+          "Start a session to collect facts."
+        ))
       }
       if (nrow(df) == 0) {
-        return(empty_state("check-circle", "No facts extracted yet."))
+        return(evidence_panel_empty_state(
+          "check-circle",
+          "No facts extracted yet",
+          "Ask a research question to build a claim record."
+        ))
       }
-      if (has_pkg("DT")) {
+
+      table <- if (has_pkg("DT")) {
         shiny::div(
           class = "tempest-evidence-table",
+          role = "region",
+          `aria-label` = "Extracted evidence claims",
           DT::DTOutput(session$ns("table"))
         )
       } else {
         shiny::div(
           class = "tempest-evidence-table p-3",
+          role = "region",
+          `aria-label` = "Extracted evidence claims",
           shiny::tableOutput(session$ns("table_basic"))
+        )
+      }
+
+      if (has_pkg("DT")) {
+        shiny::div(
+          class = "tempest-evidence-panel",
+          shiny::div(
+            class = "tempest-evidence-toolbar tempest-evidence-toolbar-copy",
+            shiny::p(
+              class = "mb-0 small text-muted",
+              "Search the table to filter by claim text, status, support, or source ID."
+            )
+          ),
+          table
+        )
+      } else {
+        shiny::div(
+          class = "tempest-evidence-panel",
+          shiny::div(
+            class = "tempest-evidence-toolbar tempest-evidence-toolbar-copy",
+            shiny::p(
+              class = "mb-0 small text-muted",
+              "The table lists each claim with confidence, verification status, and support."
+            )
+          ),
+          table
         )
       }
     })
@@ -74,7 +113,7 @@ mod_facts_server <- function(id, store) {
           df$Status,
           palette = "verification"
         )
-        styled_datatable(
+        widget <- styled_datatable(
           df,
           html_columns = c("Confidence", "Status"),
           search_placeholder = "Search facts",
@@ -96,6 +135,8 @@ mod_facts_server <- function(id, store) {
             )
           )
         )
+        widget$x$options$language$search <- "Search facts:"
+        widget
       })
     } else {
       output$table_basic <- shiny::renderTable(

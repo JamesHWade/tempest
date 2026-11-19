@@ -16,26 +16,46 @@ tempest:::tempest_shiny_require_server(panels)
 theme <- bs_theme(version = 5, preset = "shiny", brand = TRUE)
 
 ui <- page_navbar(
-  title = tagList(icon("cloud-bolt"), "tempest"),
+  title = span(
+    class = "tempest-wordmark",
+    tags$img(src = tempest_logo_src(), alt = "", width = 36, height = 36),
+    "tempest"
+  ),
+  window_title = "Tempest research workspace",
+  selected = "Chat",
+  lang = "en",
+  navbar_options = navbar_options(theme = "dark"),
   id = "nav",
   theme = theme,
   fillable = TRUE,
-  header = tempest_app_styles(),
-  nav_spacer(),
-  about_nav_item(),
-  nav_item(input_dark_mode(id = "dark_mode", mode = "light")),
+  header = tags$head(
+    tags$link(rel = "icon", type = "image/svg+xml", href = tempest_logo_src()),
+    tags$link(rel = "stylesheet", href = "app.css"),
+    tags$link(rel = "stylesheet", href = "discussion.css"),
+    tags$link(rel = "stylesheet", href = "evidence.css"),
+    tags$link(rel = "stylesheet", href = "scripted.css")
+  ),
   mod_chat_ui(
     "chat",
     config_ui = mod_config_ui("config"),
     allow_user_experts = TRUE
   ),
   mod_storm_ui("storm"),
-  mod_run_review_ui("review"),
-  mod_mindmap_ui("mindmap"),
-  mod_sources_ui("sources"),
-  mod_facts_ui("facts"),
-  mod_transcript_ui("transcript"),
-  mod_report_ui("report")
+  nav_menu(
+    "Evidence",
+    mod_sources_ui("sources"),
+    mod_facts_ui("facts"),
+    mod_mindmap_ui("mindmap")
+  ),
+  nav_menu(
+    "Session record",
+    mod_transcript_ui("transcript"),
+    mod_run_review_ui("review")
+  ),
+  mod_report_ui("report"),
+  nav_spacer(),
+  about_nav_item(),
+  nav_item(input_dark_mode(id = "dark_mode", mode = "light"))
 )
 
 server <- function(input, output, session) {
