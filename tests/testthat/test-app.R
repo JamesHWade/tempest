@@ -92,3 +92,24 @@ test_that("tempest_app validates and preserves shorter provider timeouts", {
   )
   expect_equal(tempest_app(), 30)
 })
+
+
+test_that("the bundled app can open a session using package-scoped modules", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("shinychat")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("mirai")
+  skip_if_not_installed("zip")
+  dir <- system.file("shiny", package = "tempest", mustWork = TRUE)
+  withr::local_dir(dir)
+  app <- new.env(parent = globalenv())
+  sys.source("app.R", envir = app)
+  shiny::testServer(app$server, {
+    session$flushReact()
+    expect_null(store$peek_costorm_session())
+    expect_match(
+      output[["chat-runtime_footer"]]$html,
+      "tempest-chat-footer-idle"
+    )
+  })
+})
