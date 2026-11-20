@@ -313,7 +313,7 @@ test_that("config UI uses current OpenAI model defaults", {
   skip_if_not_installed("bslib")
   app <- source_shiny_modules()
   html <- paste(as.character(app$mod_config_ui("config")), collapse = "")
-  expect_match(html, 'value="openai/gpt-5.6-sol"', fixed = TRUE)
+  expect_match(html, 'value="openai/gpt-6.1-sol"', fixed = TRUE)
   expect_match(html, 'value="openai/gpt-5.6-luna"', fixed = TRUE)
 })
 

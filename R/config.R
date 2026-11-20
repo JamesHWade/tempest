@@ -319,8 +319,8 @@ tempest_config <- function(
   review_concurrency = 2L
 ) {
   default_models <- list(
-    coordinator = "openai/gpt-5.6-sol",
-    writer = "openai/gpt-5.6-sol",
+    coordinator = "openai/gpt-6.1-sol",
+    writer = "openai/gpt-6.1-sol",
     expert = "openai/gpt-5.6-luna",
     mindmap = "openai/gpt-5.6-luna",
     judge = "openai/gpt-5.6-luna"
@@ -535,7 +535,7 @@ tempest_make_chat <- function(
 ) {
   model <- config@models[[role]] %||%
     config@models[["coordinator"]] %||%
-    "openai/gpt-5.6-sol"
+    "openai/gpt-6.1-sol"
   if (is.null(system_prompt)) {
     prompt_name <- paste0(role, "_system")
     system_prompt <- tryCatch(tempest_prompt(prompt_name), error = function(e) {

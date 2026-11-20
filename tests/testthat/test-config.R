@@ -44,8 +44,8 @@ test_that("tempest_config creates valid config", {
   expect_mapequal(
     cfg@models,
     list(
-      coordinator = "openai/gpt-5.6-sol",
-      writer = "openai/gpt-5.6-sol",
+      coordinator = "openai/gpt-6.1-sol",
+      writer = "openai/gpt-6.1-sol",
       expert = "openai/gpt-5.6-luna",
       mindmap = "openai/gpt-5.6-luna",
       judge = "openai/gpt-5.6-luna"
@@ -98,7 +98,7 @@ test_that("tempest_config has only the frozen T7 product surface", {
     tempest:::tempest_research_config_digest(cfg),
     paste0(
       "sha256:",
-      "db4cf816181f39e761a4140a7bef1aabd128539c4dbb61e14322545348ba2c53"
+      "67c5f81a6d5901dd2b87bef186ac0862e7970bf009d3c415bef093c217869520"
     )
   )
 })
@@ -438,7 +438,7 @@ test_that("make_chat creates ellmer chat object", {
   cfg <- tempest_config()
   chat <- tempest_make_chat(cfg, "coordinator")
   expect_s3_class(chat, "Chat")
-  expect_equal(chat$get_model(), "gpt-5.6-sol")
+  expect_equal(chat$get_model(), "gpt-6.1-sol")
 })
 
 test_that("missing optional packages are classed", {

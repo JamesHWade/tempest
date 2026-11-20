@@ -382,9 +382,9 @@ library(tempest)
 cfg <- tempest_config(
   # search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)
   models = list(
-    coordinator = "openai/gpt-5.6-sol",
+    coordinator = "openai/gpt-6.1-sol",
     expert = "openai/gpt-5.6-luna",
-    writer = "openai/gpt-5.6-sol",
+    writer = "openai/gpt-6.1-sol",
     judge = "openai/gpt-5.6-luna",
     mindmap = "openai/gpt-5.6-luna"
   )
@@ -682,7 +682,7 @@ procedure references remain inspection data.
 | `max_sources` | `24` | Maximum sources to track per session |
 | `max_active_experts` | `5` | Co-STORM: maximum concurrent active experts |
 
-By default, coordinator and writer roles use `openai/gpt-5.6-sol`; expert,
+By default, coordinator and writer roles use `openai/gpt-6.1-sol`; expert,
 mind map, and judge roles use `openai/gpt-5.6-luna`. Tempest constructs
 these clients with `ellmer::chat_openai()`, passing `auth = "codex"` to reuse
 the ChatGPT subscription authenticated by Codex CLI when the installed ellmer
