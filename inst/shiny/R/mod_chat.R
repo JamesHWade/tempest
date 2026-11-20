@@ -7,16 +7,24 @@
 mod_chat_ui <- function(id, config_ui, allow_user_experts = FALSE) {
   ns <- shiny::NS(id)
   bslib::nav_panel(
-    title = shiny::tagList(shiny::icon("comments"), "Chat"),
+    title = shiny::tagList(
+      shiny::icon("comments"),
+      shiny::span("Chat", class = "tempest-nav-label")
+    ),
     value = "Chat",
     bslib::layout_sidebar(
       class = "tempest-chat-layout",
+      fillable = TRUE,
+      fill = TRUE,
+      height = "100%",
+      gap = "1rem",
       sidebar = chat_settings_sidebar_ui(ns, config_ui),
       bslib::card(
-        class = "tempest-chat-card",
+        class = "tempest-chat-card border-0",
         full_screen = TRUE,
         bslib::card_body(
-          class = "p-0",
+          class = "p-0 tempest-chat-card-body",
+          fill = TRUE,
           tempest:::tempest_shinychat_ui(
             ns("chat"),
             height = "100%",
@@ -46,33 +54,36 @@ mod_chat_ui <- function(id, config_ui, allow_user_experts = FALSE) {
 }
 
 chat_session_greeting_ui <- function(ns, allow_user_experts = FALSE) {
-  research_options <- bslib::popover(
-    bslib::toolbar_input_button(
-      ns("research_options"),
-      "Research options",
-      icon = shiny::icon("sliders"),
-      show_label = TRUE,
-      tooltip = FALSE,
-      border = TRUE
-    ),
+  research_options <- shiny::tags$details(
     id = ns("research_options_popover"),
-    title = "Research options",
-    placement = "bottom",
+    class = "tempest-chat-details tempest-chat-research-options-details",
+    shiny::tags$summary(
+      id = ns("research_options"),
+      class = "bslib-toolbar-input-button tempest-chat-details-summary",
+      `aria-controls` = ns("research_options_panel"),
+      shiny::icon("sliders"),
+      shiny::span(
+        class = "bslib-toolbar-label visually-hidden",
+        "Research options"
+      ),
+      shiny::div(style = "display:contents;", "Research options")
+    ),
     shiny::div(
-      class = "tempest-chat-research-options",
-      bslib::input_switch(
+      id = ns("research_options_panel"),
+      class = "tempest-chat-details-panel tempest-chat-research-options",
+      shiny::checkboxInput(
         ns("warmup"),
-        "Orient the expert panel",
+        "Orient experts before chat",
         FALSE
       ),
-      bslib::input_switch(
+      shiny::checkboxInput(
         ns("suggest"),
         "Suggest follow-up questions",
         TRUE
       ),
       shiny::p(
         class = "small text-body-secondary mb-0",
-        "Orientation gives experts a short evidence-gathering pass before chat."
+        "An optional evidence-gathering pass runs before you start asking questions."
       )
     )
   )
@@ -80,20 +91,19 @@ chat_session_greeting_ui <- function(ns, allow_user_experts = FALSE) {
   shiny::div(
     class = "tempest-chat-welcome",
     shiny::div(
+      class = "tempest-chat-welcome-kicker",
+      shiny::icon("compass"),
+      shiny::span("Co-STORM discussion")
+    ),
+    shiny::div(
       class = "tempest-chat-welcome-copy",
-      shiny::h2(class = "h4 mb-2", "Welcome to tempest"),
-      shiny::p(
-        paste(
-          "Investigate a topic with a panel of AI experts.",
-          "Ask follow-up questions as they gather cited evidence,",
-          "then generate a report."
-        )
+      shiny::h2(
+        class = "tempest-display-heading h3 mb-2",
+        "Start a research discussion"
       ),
       shiny::p(
-        class = "mb-0",
-        "For a one-shot report, use ",
-        shiny::strong("STORM"),
-        "."
+        class = "lead mb-2",
+        "Choose a focused topic and an expert panel, then follow cited evidence as the discussion develops."
       )
     ),
     shiny::div(
@@ -103,7 +113,7 @@ chat_session_greeting_ui <- function(ns, allow_user_experts = FALSE) {
         shiny::textInput(
           ns("topic"),
           "Research topic",
-          placeholder = "What should the expert panel investigate?"
+          placeholder = "e.g., How do grid-scale batteries affect peak demand?"
         )
       ),
       shiny::div(
@@ -125,6 +135,7 @@ chat_session_greeting_ui <- function(ns, allow_user_experts = FALSE) {
             `aria-controls` = ns("settings"),
             `aria-expanded` = "false",
             `data-tempest-settings-trigger` = "true",
+            title = "Open workspace settings",
             border = TRUE
           )
         ),
@@ -134,10 +145,14 @@ chat_session_greeting_ui <- function(ns, allow_user_experts = FALSE) {
           icon = shiny::icon("play"),
           label_busy = "Starting...",
           auto_reset = FALSE,
-          class = "tempest-chat-start btn-sm"
+          class = "tempest-chat-start btn-sm",
+          title = "Start the Co-STORM discussion"
         )
       ),
-      shiny::uiOutput(ns("start_validation"))
+      shiny::uiOutput(
+        ns("start_validation"),
+        class = "tempest-chat-start-feedback"
+      )
     )
   )
 }
@@ -153,10 +168,11 @@ expert_setup_control_ui <- function(ns, allow_user_experts = FALSE) {
   if (!isTRUE(allow_user_experts)) {
     return(shiny::selectInput(
       ns("n_experts"),
-      "Experts",
+      "Expert panel",
       choices = expert_count_choices(),
       selected = 3,
-      selectize = FALSE
+      selectize = FALSE,
+      width = "100%"
     ))
   }
 
@@ -172,10 +188,10 @@ expert_setup_control_ui <- function(ns, allow_user_experts = FALSE) {
       "3 generated",
       icon = shiny::icon("users"),
       class = paste(
-        "btn-outline-secondary btn-sm",
+        "btn-outline-secondary btn-sm w-100",
         "tempest-chat-expert-setup"
       ),
-      title = "Configure the expert panel"
+      title = "Choose generated or user-defined experts"
     )
   )
 }
@@ -266,16 +282,14 @@ custom_expert_setup_modal <- function(
     title = "Configure expert panel",
     size = "l",
     easyClose = TRUE,
+    class = "tempest-expert-modal",
     shiny::p(
       class = "text-body-secondary",
-      paste(
-        "Choose a generated panel or define the perspectives you want",
-        "represented in this session."
-      )
+      "Choose a generated panel or define the perspectives represented in this session."
     ),
     shiny::radioButtons(
       ns("expert_setup_mode"),
-      "Panel source",
+      "Panel mode",
       choices = c(
         "Generate a balanced panel" = "generated",
         "Choose my own experts" = "custom"
@@ -437,6 +451,13 @@ chat_settings_sidebar_ui <- function(ns, config_ui) {
     width = 340,
     resizable = FALSE,
     class = "tempest-chat-settings",
+    shiny::div(
+      class = "tempest-chat-settings-intro",
+      shiny::p(
+        class = "small text-body-secondary mb-0",
+        "Session controls and defaults for the next discussion."
+      )
+    ),
     bslib::accordion(
       id = ns("session_settings"),
       open = FALSE,
@@ -460,7 +481,8 @@ chat_settings_sidebar_ui <- function(ns, config_ui) {
           "Restore session bundle",
           accept = ".zip",
           buttonLabel = "Choose bundle",
-          placeholder = "No bundle selected"
+          placeholder = "No bundle selected",
+          width = "100%"
         ),
         shiny::uiOutput(ns("session_persistence"))
       )
@@ -507,6 +529,8 @@ mod_chat_server <- function(
       shiny::div(
         class = "alert alert-danger mt-2 mb-0",
         role = "alert",
+        `aria-live` = "assertive",
+        `aria-atomic` = "true",
         message
       )
     })
@@ -1110,11 +1134,6 @@ mod_chat_server <- function(
     })
 
     toggle_workspace_settings <- function() {
-      bslib::toggle_popover(
-        "research_options_popover",
-        show = FALSE,
-        session = session
-      )
       bslib::toggle_sidebar("settings", session = session)
       invisible(NULL)
     }
@@ -1126,11 +1145,6 @@ mod_chat_server <- function(
     })
 
     shiny::observeEvent(input$start, {
-      bslib::toggle_popover(
-        "research_options_popover",
-        show = FALSE,
-        session = session
-      )
       work_queue$cancel()
       warmup_is_current <- next_warmup_guard()
       progress_events(list())
@@ -1472,7 +1486,7 @@ reactive_or_value <- function(x) {
 
 chat_footer_ui <- function(ns) {
   shiny::div(
-    class = "tempest-chat-footer w-100",
+    class = "tempest-chat-footer tempest-chat-footer-shell w-100",
     shiny::uiOutput(
       ns("runtime_footer"),
       class = "tempest-chat-footer-output w-100"
@@ -1481,31 +1495,37 @@ chat_footer_ui <- function(ns) {
 }
 
 chat_report_options_ui <- function(ns) {
-  bslib::popover(
-    bslib::toolbar_input_button(
-      ns("report_options"),
-      "Report options",
-      icon = shiny::icon("sliders"),
-      show_label = TRUE,
-      tooltip = FALSE,
-      border = TRUE
-    ),
+  shiny::tags$details(
     id = ns("report_options_popover"),
-    title = "Report options",
-    placement = "top",
-    shiny::selectInput(
-      ns("report_style"),
-      "Report style",
-      choices = c(
-        "Technical" = "technical",
-        "Executive" = "executive"
+    class = "tempest-chat-details tempest-chat-report-options-details",
+    shiny::tags$summary(
+      id = ns("report_options"),
+      class = "bslib-toolbar-input-button tempest-chat-details-summary",
+      `aria-controls` = ns("report_options_panel"),
+      shiny::icon("sliders"),
+      shiny::span(
+        class = "bslib-toolbar-label visually-hidden",
+        "Report options"
       ),
-      selected = "technical",
-      selectize = FALSE
+      shiny::div(style = "display:contents;", "Report options")
     ),
-    shiny::p(
-      class = "small text-body-secondary mb-0",
-      "Reports use the evidence collected in this session."
+    shiny::div(
+      id = ns("report_options_panel"),
+      class = "tempest-chat-details-panel tempest-chat-report-options",
+      shiny::selectInput(
+        ns("report_style"),
+        "Report style",
+        choices = c(
+          "Technical" = "technical",
+          "Executive" = "executive"
+        ),
+        selected = "technical",
+        selectize = FALSE
+      ),
+      shiny::p(
+        class = "small text-body-secondary mb-0",
+        "Uses evidence collected in this session."
+      )
     )
   )
 }
@@ -1595,6 +1615,9 @@ chat_runtime_footer_ui <- function(
         "tempest-chat-footer-status",
         "d-flex flex-wrap align-items-center gap-1 text-body-secondary"
       ),
+      role = "status",
+      `aria-live` = "polite",
+      `aria-atomic` = "true",
       chat_footer_tooltip(
         shiny::span(
           class = "badge rounded-pill text-bg-light border text-body",
@@ -1648,6 +1671,7 @@ chat_runtime_footer_ui <- function(
           `aria-controls` = ns("settings"),
           `aria-expanded` = "false",
           `data-tempest-settings-trigger` = "true",
+          title = "Open workspace settings",
           border = TRUE
         )
       ),
@@ -1668,7 +1692,8 @@ chat_runtime_footer_ui <- function(
         icon = shiny::icon("file-lines"),
         label_busy = "Generating...",
         type = "secondary",
-        class = "btn-sm text-nowrap"
+        class = "btn-sm text-nowrap",
+        title = "Generate a report from the evidence collected in this session"
       )
     )
   )
